@@ -3,6 +3,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { constants, access, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { loadGitignore, scanDirectoryForExtensions } from './file-scanner.js';
+import * as CoreMethods from './lsp-methods/core-methods.js';
+import * as DocumentMethods from './lsp-methods/document-methods.js';
+import * as DiagnosticMethods from './lsp-methods/diagnostic-methods.js';
+import * as WorkspaceMethods from './lsp-methods/workspace-methods.js';
 import type {
   Config,
   Diagnostic,
@@ -394,7 +398,7 @@ export class LSPClient {
     });
   }
 
-  private sendNotification(process: ChildProcess, method: string, params: unknown): void {
+  sendNotification(process: ChildProcess, method: string, params: unknown): void {
     const message: LSPMessage = {
       jsonrpc: '2.0',
       method,
@@ -711,57 +715,12 @@ export class LSPClient {
   }
 
   async findDefinition(filePath: string, position: Position): Promise<Location[]> {
-    process.stderr.write(
-      `[DEBUG findDefinition] Requesting definition for ${filePath} at ${position.line}:${position.character}\n`
-    );
-
-    const serverState = await this.getServer(filePath);
-
-    // Wait for the server to be fully initialized
-    await serverState.initializationPromise;
-
-    // Ensure the file is opened and synced with the LSP server
-    await this.ensureFileOpen(serverState, filePath);
-
-    process.stderr.write('[DEBUG findDefinition] Sending textDocument/definition request\n');
-    const result = await this.sendRequest(serverState.process, 'textDocument/definition', {
-      textDocument: { uri: pathToUri(filePath) },
-      position,
-    });
-
-    process.stderr.write(
-      `[DEBUG findDefinition] Result type: ${typeof result}, isArray: ${Array.isArray(result)}\n`
-    );
-
-    if (Array.isArray(result)) {
-      process.stderr.write(`[DEBUG findDefinition] Array result with ${result.length} locations\n`);
-      if (result.length > 0) {
-        process.stderr.write(
-          `[DEBUG findDefinition] First location: ${JSON.stringify(result[0], null, 2)}\n`
-        );
-      }
-      return result.map((loc: LSPLocation) => ({
-        uri: loc.uri,
-        range: loc.range,
-      }));
-    }
-    if (result && typeof result === 'object' && 'uri' in result) {
-      process.stderr.write(
-        `[DEBUG findDefinition] Single location result: ${JSON.stringify(result, null, 2)}\n`
-      );
-      const location = result as LSPLocation;
-      return [
-        {
-          uri: location.uri,
-          range: location.range,
-        },
-      ];
-    }
-
-    process.stderr.write(
-      '[DEBUG findDefinition] No definition found or unexpected result format\n'
-    );
-    return [];
+    const context: CoreMethods.CoreMethodsContext = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return CoreMethods.findDefinition(context, filePath, position);
   }
 
   async findReferences(
@@ -769,46 +728,12 @@ export class LSPClient {
     position: Position,
     includeDeclaration = true
   ): Promise<Location[]> {
-    const serverState = await this.getServer(filePath);
-
-    // Wait for the server to be fully initialized
-    await serverState.initializationPromise;
-
-    // Ensure the file is opened and synced with the LSP server
-    await this.ensureFileOpen(serverState, filePath);
-
-    process.stderr.write(
-      `[DEBUG] findReferences for ${filePath} at ${position.line}:${position.character}, includeDeclaration: ${includeDeclaration}\n`
-    );
-
-    const result = await this.sendRequest(serverState.process, 'textDocument/references', {
-      textDocument: { uri: pathToUri(filePath) },
-      position,
-      context: { includeDeclaration },
-    });
-
-    process.stderr.write(
-      `[DEBUG] findReferences result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}\n`
-    );
-
-    if (result && Array.isArray(result) && result.length > 0) {
-      process.stderr.write(`[DEBUG] First reference: ${JSON.stringify(result[0], null, 2)}\n`);
-    } else if (result === null || result === undefined) {
-      process.stderr.write('[DEBUG] findReferences returned null/undefined\n');
-    } else {
-      process.stderr.write(
-        `[DEBUG] findReferences returned unexpected result: ${JSON.stringify(result)}\n`
-      );
-    }
-
-    if (Array.isArray(result)) {
-      return result.map((loc: LSPLocation) => ({
-        uri: loc.uri,
-        range: loc.range,
-      }));
-    }
-
-    return [];
+    const context: CoreMethods.CoreMethodsContext = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return CoreMethods.findReferences(context, filePath, position, includeDeclaration);
   }
 
   async renameSymbol(
@@ -818,211 +743,27 @@ export class LSPClient {
   ): Promise<{
     changes?: Record<string, Array<{ range: { start: Position; end: Position }; newText: string }>>;
   }> {
-    process.stderr.write(
-      `[DEBUG renameSymbol] Requesting rename for ${filePath} at ${position.line}:${position.character} to "${newName}"\n`
-    );
-
-    const serverState = await this.getServer(filePath);
-
-    // Wait for the server to be fully initialized
-    await serverState.initializationPromise;
-
-    // Ensure the file is opened and synced with the LSP server
-    await this.ensureFileOpen(serverState, filePath);
-
-    process.stderr.write('[DEBUG renameSymbol] Sending textDocument/rename request\n');
-    const result = await this.sendRequest(serverState.process, 'textDocument/rename', {
-      textDocument: { uri: pathToUri(filePath) },
-      position,
-      newName,
-    });
-
-    process.stderr.write(
-      `[DEBUG renameSymbol] Result type: ${typeof result}, hasChanges: ${result && typeof result === 'object' && 'changes' in result}, hasDocumentChanges: ${result && typeof result === 'object' && 'documentChanges' in result}\n`
-    );
-
-    if (result && typeof result === 'object') {
-      // Handle the 'changes' format (older LSP servers)
-      if ('changes' in result) {
-        const workspaceEdit = result as {
-          changes: Record<
-            string,
-            Array<{ range: { start: Position; end: Position }; newText: string }>
-          >;
-        };
-
-        const changeCount = Object.keys(workspaceEdit.changes || {}).length;
-        process.stderr.write(
-          `[DEBUG renameSymbol] WorkspaceEdit has changes for ${changeCount} files\n`
-        );
-
-        return workspaceEdit;
-      }
-
-      // Handle the 'documentChanges' format (modern LSP servers like gopls)
-      if ('documentChanges' in result) {
-        const workspaceEdit = result as {
-          documentChanges?: Array<{
-            textDocument: { uri: string; version?: number };
-            edits: Array<{ range: { start: Position; end: Position }; newText: string }>;
-          }>;
-        };
-
-        process.stderr.write(
-          `[DEBUG renameSymbol] WorkspaceEdit has documentChanges with ${workspaceEdit.documentChanges?.length || 0} entries\n`
-        );
-
-        // Convert documentChanges to changes format for compatibility
-        const changes: Record<
-          string,
-          Array<{ range: { start: Position; end: Position }; newText: string }>
-        > = {};
-
-        if (workspaceEdit.documentChanges) {
-          for (const change of workspaceEdit.documentChanges) {
-            // Handle TextDocumentEdit (the only type needed for symbol renames)
-            if (change.textDocument && change.edits) {
-              const uri = change.textDocument.uri;
-              if (!changes[uri]) {
-                changes[uri] = [];
-              }
-              changes[uri].push(...change.edits);
-              process.stderr.write(
-                `[DEBUG renameSymbol] Added ${change.edits.length} edits for ${uri}\n`
-              );
-            }
-          }
-        }
-
-        return { changes };
-      }
-    }
-
-    process.stderr.write('[DEBUG renameSymbol] No rename changes available\n');
-    return {};
+    const context: CoreMethods.CoreMethodsContext = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return CoreMethods.renameSymbol(context, filePath, position, newName);
   }
 
   async getDocumentSymbols(filePath: string): Promise<DocumentSymbol[] | SymbolInformation[]> {
-    const serverState = await this.getServer(filePath);
-
-    // Wait for the server to be fully initialized
-    await serverState.initializationPromise;
-
-    // Ensure the file is opened and synced with the LSP server
-    await this.ensureFileOpen(serverState, filePath);
-
-    process.stderr.write(`[DEBUG] Requesting documentSymbol for: ${filePath}\n`);
-
-    const result = await this.sendRequest(serverState.process, 'textDocument/documentSymbol', {
-      textDocument: { uri: pathToUri(filePath) },
-    });
-
-    process.stderr.write(
-      `[DEBUG] documentSymbol result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}\n`
-    );
-
-    if (result && Array.isArray(result) && result.length > 0) {
-      process.stderr.write(`[DEBUG] First symbol: ${JSON.stringify(result[0], null, 2)}\n`);
-    } else if (result === null || result === undefined) {
-      process.stderr.write('[DEBUG] documentSymbol returned null/undefined\n');
-    } else {
-      process.stderr.write(
-        `[DEBUG] documentSymbol returned unexpected result: ${JSON.stringify(result)}\n`
-      );
-    }
-
-    if (Array.isArray(result)) {
-      return result as DocumentSymbol[] | SymbolInformation[];
-    }
-
-    return [];
-  }
-
-  private flattenDocumentSymbols(symbols: DocumentSymbol[]): DocumentSymbol[] {
-    const flattened: DocumentSymbol[] = [];
-
-    for (const symbol of symbols) {
-      flattened.push(symbol);
-      if (symbol.children) {
-        flattened.push(...this.flattenDocumentSymbols(symbol.children));
-      }
-    }
-
-    return flattened;
-  }
-
-  private isDocumentSymbolArray(
-    symbols: DocumentSymbol[] | SymbolInformation[]
-  ): symbols is DocumentSymbol[] {
-    if (symbols.length === 0) return true;
-    const firstSymbol = symbols[0];
-    if (!firstSymbol) return true;
-    // DocumentSymbol has 'range' and 'selectionRange', SymbolInformation has 'location'
-    return 'range' in firstSymbol && 'selectionRange' in firstSymbol;
-  }
-
-  symbolKindToString(kind: SymbolKind): string {
-    const kindMap: Record<SymbolKind, string> = {
-      [SymbolKind.File]: 'file',
-      [SymbolKind.Module]: 'module',
-      [SymbolKind.Namespace]: 'namespace',
-      [SymbolKind.Package]: 'package',
-      [SymbolKind.Class]: 'class',
-      [SymbolKind.Method]: 'method',
-      [SymbolKind.Property]: 'property',
-      [SymbolKind.Field]: 'field',
-      [SymbolKind.Constructor]: 'constructor',
-      [SymbolKind.Enum]: 'enum',
-      [SymbolKind.Interface]: 'interface',
-      [SymbolKind.Function]: 'function',
-      [SymbolKind.Variable]: 'variable',
-      [SymbolKind.Constant]: 'constant',
-      [SymbolKind.String]: 'string',
-      [SymbolKind.Number]: 'number',
-      [SymbolKind.Boolean]: 'boolean',
-      [SymbolKind.Array]: 'array',
-      [SymbolKind.Object]: 'object',
-      [SymbolKind.Key]: 'key',
-      [SymbolKind.Null]: 'null',
-      [SymbolKind.EnumMember]: 'enum_member',
-      [SymbolKind.Struct]: 'struct',
-      [SymbolKind.Event]: 'event',
-      [SymbolKind.Operator]: 'operator',
-      [SymbolKind.TypeParameter]: 'type_parameter',
+    const context: DocumentMethods.DocumentMethodsContext = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
     };
-    return kindMap[kind] || 'unknown';
+    return DocumentMethods.getDocumentSymbols(context, filePath);
   }
 
-  getValidSymbolKinds(): string[] {
-    return [
-      'file',
-      'module',
-      'namespace',
-      'package',
-      'class',
-      'method',
-      'property',
-      'field',
-      'constructor',
-      'enum',
-      'interface',
-      'function',
-      'variable',
-      'constant',
-      'string',
-      'number',
-      'boolean',
-      'array',
-      'object',
-      'key',
-      'null',
-      'enum_member',
-      'struct',
-      'event',
-      'operator',
-      'type_parameter',
-    ];
-  }
+  flattenDocumentSymbols = DocumentMethods.flattenDocumentSymbols;
+  isDocumentSymbolArray = DocumentMethods.isDocumentSymbolArray;
+  symbolKindToString = DocumentMethods.symbolKindToString;
+  getValidSymbolKinds = DocumentMethods.getValidSymbolKinds;
 
   private async findSymbolPositionInFile(
     filePath: string,
@@ -1276,7 +1017,7 @@ export class LSPClient {
    * Wait for LSP server to become idle after a change.
    * Uses multiple heuristics to determine when diagnostics are likely complete.
    */
-  private async waitForDiagnosticsIdle(
+  async waitForDiagnosticsIdle(
     serverState: ServerState,
     fileUri: string,
     options: {
@@ -1327,148 +1068,14 @@ export class LSPClient {
   }
 
   async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
-    process.stderr.write(`[DEBUG getDiagnostics] Requesting diagnostics for ${filePath}\n`);
-
-    const serverState = await this.getServer(filePath);
-
-    // Wait for the server to be fully initialized
-    await serverState.initializationPromise;
-
-    // Ensure the file is opened and synced with the LSP server
-    await this.ensureFileOpen(serverState, filePath);
-
-    // First, check if we have cached diagnostics from publishDiagnostics
-    const fileUri = pathToUri(filePath);
-    const cachedDiagnostics = serverState.diagnostics.get(fileUri);
-
-    if (cachedDiagnostics !== undefined) {
-      process.stderr.write(
-        `[DEBUG getDiagnostics] Returning ${cachedDiagnostics.length} cached diagnostics from publishDiagnostics\n`
-      );
-      return cachedDiagnostics;
-    }
-
-    // If no cached diagnostics, try the pull-based textDocument/diagnostic
-    process.stderr.write(
-      '[DEBUG getDiagnostics] No cached diagnostics, trying textDocument/diagnostic request\n'
-    );
-
-    try {
-      const result = await this.sendRequest(serverState.process, 'textDocument/diagnostic', {
-        textDocument: { uri: fileUri },
-      });
-
-      process.stderr.write(
-        `[DEBUG getDiagnostics] Result type: ${typeof result}, has kind: ${result && typeof result === 'object' && 'kind' in result}\n`
-      );
-
-      if (result && typeof result === 'object' && 'kind' in result) {
-        const report = result as DocumentDiagnosticReport;
-
-        if (report.kind === 'full' && report.items) {
-          process.stderr.write(
-            `[DEBUG getDiagnostics] Full report with ${report.items.length} diagnostics\n`
-          );
-          return report.items;
-        }
-        if (report.kind === 'unchanged') {
-          process.stderr.write('[DEBUG getDiagnostics] Unchanged report (no new diagnostics)\n');
-          return [];
-        }
-      }
-
-      process.stderr.write(
-        '[DEBUG getDiagnostics] Unexpected response format, returning empty array\n'
-      );
-      return [];
-    } catch (error) {
-      // Some LSP servers may not support textDocument/diagnostic
-      // Try falling back to waiting for publishDiagnostics notifications
-      process.stderr.write(
-        `[DEBUG getDiagnostics] textDocument/diagnostic not supported or failed: ${error}. Waiting for publishDiagnostics...\n`
-      );
-
-      // Wait for the server to become idle and publish diagnostics
-      // MCP tools can afford longer wait times for better reliability
-      await this.waitForDiagnosticsIdle(serverState, fileUri, {
-        maxWaitTime: 5000, // 5 seconds - generous timeout for MCP usage
-        idleTime: 300, // 300ms idle time to ensure all diagnostics are received
-      });
-
-      // Check again for cached diagnostics
-      const diagnosticsAfterWait = serverState.diagnostics.get(fileUri);
-      if (diagnosticsAfterWait !== undefined) {
-        process.stderr.write(
-          `[DEBUG getDiagnostics] Returning ${diagnosticsAfterWait.length} diagnostics after waiting for idle state\n`
-        );
-        return diagnosticsAfterWait;
-      }
-
-      // If still no diagnostics, try triggering publishDiagnostics by making a no-op change
-      process.stderr.write(
-        '[DEBUG getDiagnostics] No diagnostics yet, triggering publishDiagnostics with no-op change\n'
-      );
-
-      try {
-        // Get current file content
-        const fileContent = readFileSync(filePath, 'utf-8');
-
-        // Send a no-op change notification (add and remove a space at the end)
-        // Use proper version tracking instead of timestamps
-        const version1 = (serverState.fileVersions.get(filePath) || 1) + 1;
-        serverState.fileVersions.set(filePath, version1);
-
-        await this.sendNotification(serverState.process, 'textDocument/didChange', {
-          textDocument: {
-            uri: fileUri,
-            version: version1,
-          },
-          contentChanges: [
-            {
-              text: `${fileContent} `,
-            },
-          ],
-        });
-
-        // Immediately revert the change with next version
-        const version2 = version1 + 1;
-        serverState.fileVersions.set(filePath, version2);
-
-        await this.sendNotification(serverState.process, 'textDocument/didChange', {
-          textDocument: {
-            uri: fileUri,
-            version: version2,
-          },
-          contentChanges: [
-            {
-              text: fileContent,
-            },
-          ],
-        });
-
-        // Wait for the server to process the changes and become idle
-        // After making changes, servers may need time to re-analyze
-        await this.waitForDiagnosticsIdle(serverState, fileUri, {
-          maxWaitTime: 3000, // 3 seconds after triggering changes
-          idleTime: 300, // Consistent idle time for reliability
-        });
-
-        // Check one more time
-        const diagnosticsAfterTrigger = serverState.diagnostics.get(fileUri);
-        if (diagnosticsAfterTrigger !== undefined) {
-          process.stderr.write(
-            `[DEBUG getDiagnostics] Returning ${diagnosticsAfterTrigger.length} diagnostics after triggering publishDiagnostics\n`
-          );
-          return diagnosticsAfterTrigger;
-        }
-      } catch (triggerError) {
-        process.stderr.write(
-          `[DEBUG getDiagnostics] Failed to trigger publishDiagnostics: ${triggerError}\n`
-        );
-      }
-
-      return [];
-    }
+    const context: DiagnosticMethods.DiagnosticMethodsContext = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+      sendNotification: this.sendNotification.bind(this),
+      waitForDiagnosticsIdle: this.waitForDiagnosticsIdle.bind(this),
+    };
+    return DiagnosticMethods.getDiagnostics(context, filePath);
   }
 
   async getCodeActions(
@@ -1476,51 +1083,14 @@ export class LSPClient {
     range?: { start: Position; end: Position },
     context?: { diagnostics?: Diagnostic[] }
   ): Promise<any[]> {
-    const serverState = await this.getServer(filePath);
-    if (!serverState.initialized) {
-      throw new Error('Server not initialized');
-    }
-
-    await this.ensureFileOpen(serverState, filePath);
-    const fileUri = pathToUri(filePath);
-
-    // Get current diagnostics for the file to provide context
-    const diagnostics = serverState.diagnostics.get(fileUri) || [];
-    
-    // Create a proper range - use a smaller, more realistic range
-    const requestRange = range || { 
-      start: { line: 0, character: 0 }, 
-      end: { line: Math.min(100, 999999), character: 0 } 
+    const methodContext: DiagnosticMethods.DiagnosticMethodsContext = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+      sendNotification: this.sendNotification.bind(this),
+      waitForDiagnosticsIdle: this.waitForDiagnosticsIdle.bind(this),
     };
-    
-    // Ensure context includes diagnostics and only property
-    const codeActionContext = {
-      diagnostics: context?.diagnostics || diagnostics,
-      only: undefined // Don't filter by specific code action kinds
-    };
-
-    process.stderr.write(`[DEBUG getCodeActions] Request params: ${JSON.stringify({
-      textDocument: { uri: fileUri },
-      range: requestRange,
-      context: codeActionContext
-    }, null, 2)}\n`);
-
-    try {
-      const result = await this.sendRequest(serverState.process, 'textDocument/codeAction', {
-        textDocument: { uri: fileUri },
-        range: requestRange,
-        context: codeActionContext
-      });
-
-      process.stderr.write(`[DEBUG getCodeActions] Raw result: ${JSON.stringify(result)}\n`);
-      
-      if (!result) return [];
-      if (Array.isArray(result)) return result.filter(action => action != null);
-      return [];
-    } catch (error) {
-      process.stderr.write(`[DEBUG getCodeActions] Error: ${error}\n`);
-      return [];
-    }
+    return DiagnosticMethods.getCodeActions(methodContext, filePath, range, context);
   }
 
   async formatDocument(filePath: string, options?: {
@@ -1530,119 +1100,23 @@ export class LSPClient {
     insertFinalNewline?: boolean;
     trimFinalNewlines?: boolean;
   }): Promise<any[]> {
-    const serverState = await this.getServer(filePath);
-    if (!serverState.initialized) {
-      throw new Error('Server not initialized');
-    }
-
-    await this.ensureFileOpen(serverState, filePath);
-    const fileUri = pathToUri(filePath);
-
-    const formattingOptions = {
-      tabSize: options?.tabSize || 2,
-      insertSpaces: options?.insertSpaces !== false,
-      ...(options?.trimTrailingWhitespace !== undefined && { trimTrailingWhitespace: options.trimTrailingWhitespace }),
-      ...(options?.insertFinalNewline !== undefined && { insertFinalNewline: options.insertFinalNewline }),
-      ...(options?.trimFinalNewlines !== undefined && { trimFinalNewlines: options.trimFinalNewlines })
+    const context: DocumentMethods.DocumentMethodsContext = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
     };
-
-    const result = await this.sendRequest(serverState.process, 'textDocument/formatting', {
-      textDocument: { uri: fileUri },
-      options: formattingOptions
-    });
-
-    return Array.isArray(result) ? result : [];
+    return DocumentMethods.formatDocument(context, filePath, options);
   }
 
   async searchWorkspaceSymbols(query: string): Promise<any[]> {
-    // Ensure servers are preloaded before searching
-    if (this.servers.size === 0) {
-      process.stderr.write(`[DEBUG searchWorkspaceSymbols] No servers running, preloading servers first\n`);
-      await this.preloadServers(false); // Preload without verbose logging
-    }
-    
-    // For workspace symbol search to work, TypeScript server needs project context
-    // Open a TypeScript file to establish project context if no files are open yet
-    let hasOpenFiles = false;
-    for (const serverState of this.servers.values()) {
-      if (serverState.openFiles.size > 0) {
-        hasOpenFiles = true;
-        break;
-      }
-    }
-    
-    if (!hasOpenFiles) {
-      try {
-        // Try to open a TypeScript file in the workspace to establish project context
-        const { scanDirectoryForExtensions, loadGitignore } = await import('./file-scanner.js');
-        const gitignore = await loadGitignore(process.cwd());
-        const extensions = await scanDirectoryForExtensions(process.cwd(), 2, gitignore, false);
-        
-        if (extensions.has('ts')) {
-          // Find a .ts file to open for project context
-          const fs = await import('node:fs/promises');
-          const path = await import('node:path');
-          
-          async function findTsFile(dir: string): Promise<string | null> {
-            try {
-              const entries = await fs.readdir(dir, { withFileTypes: true });
-              for (const entry of entries) {
-                if (entry.isFile() && entry.name.endsWith('.ts')) {
-                  return path.join(dir, entry.name);
-                } else if (entry.isDirectory() && !entry.name.startsWith('.')) {
-                  const found = await findTsFile(path.join(dir, entry.name));
-                  if (found) return found;
-                }
-              }
-            } catch {}
-            return null;
-          }
-          
-          const tsFile = await findTsFile(process.cwd());
-          if (tsFile) {
-            process.stderr.write(`[DEBUG searchWorkspaceSymbols] Opening ${tsFile} to establish project context\n`);
-            const serverState = await this.getServer(tsFile);
-            await this.ensureFileOpen(serverState, tsFile);
-          }
-        }
-      } catch (error) {
-        process.stderr.write(`[DEBUG searchWorkspaceSymbols] Failed to establish project context: ${error}\n`);
-      }
-    }
-    
-    // For workspace/symbol, we need to try all running servers
-    const results: any[] = [];
-    
-    process.stderr.write(`[DEBUG searchWorkspaceSymbols] Searching for "${query}" across ${this.servers.size} servers\n`);
-    
-    for (const [serverKey, serverState] of this.servers.entries()) {
-      process.stderr.write(`[DEBUG searchWorkspaceSymbols] Checking server: ${serverKey}, initialized: ${serverState.initialized}\n`);
-      
-      if (!serverState.initialized) continue;
-      
-      try {
-        process.stderr.write(`[DEBUG searchWorkspaceSymbols] Sending workspace/symbol request for "${query}"\n`);
-        
-        const result = await this.sendRequest(serverState.process, 'workspace/symbol', {
-          query: query
-        });
-        
-        process.stderr.write(`[DEBUG searchWorkspaceSymbols] Workspace symbol result: ${JSON.stringify(result)}\n`);
-        
-        if (Array.isArray(result)) {
-          results.push(...result);
-          process.stderr.write(`[DEBUG searchWorkspaceSymbols] Added ${result.length} symbols from server\n`);
-        } else if (result !== null && result !== undefined) {
-          process.stderr.write(`[DEBUG searchWorkspaceSymbols] Non-array result: ${typeof result}\n`);
-        }
-      } catch (error) {
-        // Some servers might not support workspace/symbol, continue with others
-        process.stderr.write(`[DEBUG searchWorkspaceSymbols] Server error: ${error}\n`);
-      }
-    }
-    
-    process.stderr.write(`[DEBUG searchWorkspaceSymbols] Total results found: ${results.length}\n`);
-    return results;
+    const context: WorkspaceMethods.WorkspaceMethodsContext = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+      preloadServers: this.preloadServers.bind(this),
+      servers: this.servers,
+    };
+    return WorkspaceMethods.searchWorkspaceSymbols(context, query);
   }
 
   async preloadServers(debug = true): Promise<void> {
@@ -1717,6 +1191,144 @@ export class LSPClient {
     if (debug) {
       process.stderr.write('LSP server preloading completed\n');
     }
+  }
+
+  // New intelligence methods for LLM agents
+
+  async getHover(filePath: string, position: Position): Promise<import('./types.js').Hover | null> {
+    const { getHover } = await import('./lsp-methods/intelligence-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getHover(context, filePath, position);
+  }
+
+  async getCompletions(
+    filePath: string, 
+    position: Position, 
+    triggerCharacter?: string
+  ): Promise<import('./types.js').CompletionItem[]> {
+    const { getCompletions } = await import('./lsp-methods/intelligence-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getCompletions(context, filePath, position, triggerCharacter);
+  }
+
+  async getInlayHints(
+    filePath: string, 
+    range: { start: Position; end: Position }
+  ): Promise<import('./types.js').InlayHint[]> {
+    const { getInlayHints } = await import('./lsp-methods/intelligence-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getInlayHints(context, filePath, range);
+  }
+
+  async getSemanticTokens(filePath: string): Promise<import('./types.js').SemanticTokens | null> {
+    const { getSemanticTokens } = await import('./lsp-methods/intelligence-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getSemanticTokens(context, filePath);
+  }
+
+  // Hierarchy methods
+
+  async prepareCallHierarchy(
+    filePath: string, 
+    position: Position
+  ): Promise<import('./types.js').CallHierarchyItem[]> {
+    const { prepareCallHierarchy } = await import('./lsp-methods/hierarchy-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return prepareCallHierarchy(context, filePath, position);
+  }
+
+  async getCallHierarchyIncomingCalls(
+    item: import('./types.js').CallHierarchyItem
+  ): Promise<import('./types.js').CallHierarchyIncomingCall[]> {
+    const { getCallHierarchyIncomingCalls } = await import('./lsp-methods/hierarchy-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getCallHierarchyIncomingCalls(context, item);
+  }
+
+  async getCallHierarchyOutgoingCalls(
+    item: import('./types.js').CallHierarchyItem
+  ): Promise<import('./types.js').CallHierarchyOutgoingCall[]> {
+    const { getCallHierarchyOutgoingCalls } = await import('./lsp-methods/hierarchy-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getCallHierarchyOutgoingCalls(context, item);
+  }
+
+  async prepareTypeHierarchy(
+    filePath: string, 
+    position: Position
+  ): Promise<import('./types.js').TypeHierarchyItem[]> {
+    const { prepareTypeHierarchy } = await import('./lsp-methods/hierarchy-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return prepareTypeHierarchy(context, filePath, position);
+  }
+
+  async getTypeHierarchySupertypes(
+    item: import('./types.js').TypeHierarchyItem
+  ): Promise<import('./types.js').TypeHierarchyItem[]> {
+    const { getTypeHierarchySupertypes } = await import('./lsp-methods/hierarchy-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getTypeHierarchySupertypes(context, item);
+  }
+
+  async getTypeHierarchySubtypes(
+    item: import('./types.js').TypeHierarchyItem
+  ): Promise<import('./types.js').TypeHierarchyItem[]> {
+    const { getTypeHierarchySubtypes } = await import('./lsp-methods/hierarchy-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getTypeHierarchySubtypes(context, item);
+  }
+
+  async getSelectionRange(
+    filePath: string, 
+    positions: Position[]
+  ): Promise<import('./types.js').SelectionRange[]> {
+    const { getSelectionRange } = await import('./lsp-methods/hierarchy-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getSelectionRange(context, filePath, positions);
   }
 
   dispose(): void {

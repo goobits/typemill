@@ -168,3 +168,207 @@ export interface DocumentDiagnosticReport {
   resultId?: string;
   items?: Diagnostic[];
 }
+
+// New types for LLM agent intelligence features
+
+export interface Hover {
+  contents: MarkupContent | MarkedString | MarkedString[];
+  range?: {
+    start: Position;
+    end: Position;
+  };
+}
+
+export interface MarkupContent {
+  kind: 'plaintext' | 'markdown';
+  value: string;
+}
+
+export interface MarkedString {
+  language: string;
+  value: string;
+}
+
+export interface CompletionItem {
+  label: string;
+  labelDetails?: CompletionItemLabelDetails;
+  kind?: CompletionItemKind;
+  tags?: CompletionItemTag[];
+  detail?: string;
+  documentation?: string | MarkupContent;
+  deprecated?: boolean;
+  preselect?: boolean;
+  sortText?: string;
+  filterText?: string;
+  insertText?: string;
+  insertTextFormat?: InsertTextFormat;
+  insertTextMode?: InsertTextMode;
+  textEdit?: TextEdit;
+  additionalTextEdits?: TextEdit[];
+  commitCharacters?: string[];
+  command?: Command;
+  data?: unknown;
+}
+
+export interface CompletionItemLabelDetails {
+  detail?: string;
+  description?: string;
+}
+
+export enum CompletionItemKind {
+  Text = 1,
+  Method = 2,
+  Function = 3,
+  Constructor = 4,
+  Field = 5,
+  Variable = 6,
+  Class = 7,
+  Interface = 8,
+  Module = 9,
+  Property = 10,
+  Unit = 11,
+  Value = 12,
+  Enum = 13,
+  Keyword = 14,
+  Snippet = 15,
+  Color = 16,
+  File = 17,
+  Reference = 18,
+  Folder = 19,
+  EnumMember = 20,
+  Constant = 21,
+  Struct = 22,
+  Event = 23,
+  Operator = 24,
+  TypeParameter = 25,
+}
+
+export enum CompletionItemTag {
+  Deprecated = 1,
+}
+
+export enum InsertTextFormat {
+  PlainText = 1,
+  Snippet = 2,
+}
+
+export enum InsertTextMode {
+  AsIs = 1,
+  AdjustIndentation = 2,
+}
+
+export interface TextEdit {
+  range: {
+    start: Position;
+    end: Position;
+  };
+  newText: string;
+}
+
+export interface Command {
+  title: string;
+  command: string;
+  arguments?: unknown[];
+}
+
+export interface InlayHint {
+  position: Position;
+  label: string | InlayHintLabelPart[];
+  kind?: InlayHintKind;
+  textEdits?: TextEdit[];
+  tooltip?: string | MarkupContent;
+  paddingLeft?: boolean;
+  paddingRight?: boolean;
+  data?: unknown;
+}
+
+export interface InlayHintLabelPart {
+  value: string;
+  tooltip?: string | MarkupContent;
+  location?: Location;
+  command?: Command;
+}
+
+export enum InlayHintKind {
+  Type = 1,
+  Parameter = 2,
+}
+
+export interface InlayHintParams {
+  textDocument: {
+    uri: string;
+  };
+  range: {
+    start: Position;
+    end: Position;
+  };
+}
+
+export interface SemanticTokens {
+  resultId?: string;
+  data: number[];
+}
+
+export interface SemanticTokensParams {
+  textDocument: {
+    uri: string;
+  };
+}
+
+export interface CallHierarchyItem {
+  name: string;
+  kind: SymbolKind;
+  tags?: SymbolTag[];
+  detail?: string;
+  uri: string;
+  range: {
+    start: Position;
+    end: Position;
+  };
+  selectionRange: {
+    start: Position;
+    end: Position;
+  };
+  data?: unknown;
+}
+
+export interface CallHierarchyIncomingCall {
+  from: CallHierarchyItem;
+  fromRanges: {
+    start: Position;
+    end: Position;
+  }[];
+}
+
+export interface CallHierarchyOutgoingCall {
+  to: CallHierarchyItem;
+  fromRanges: {
+    start: Position;
+    end: Position;
+  }[];
+}
+
+export interface TypeHierarchyItem {
+  name: string;
+  kind: SymbolKind;
+  tags?: SymbolTag[];
+  detail?: string;
+  uri: string;
+  range: {
+    start: Position;
+    end: Position;
+  };
+  selectionRange: {
+    start: Position;
+    end: Position;
+  };
+  data?: unknown;
+}
+
+export interface SelectionRange {
+  range: {
+    start: Position;
+    end: Position;
+  };
+  parent?: SelectionRange;
+}
