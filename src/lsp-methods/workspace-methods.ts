@@ -2,6 +2,9 @@ import type { LSPClient } from '../lsp-client.js';
 import type { WorkspaceMethodsContext } from '../lsp-types.js';
 import type { SymbolInformation } from '../types.js';
 
+// Re-export context for external use
+export type { WorkspaceMethodsContext };
+
 export async function searchWorkspaceSymbols(
   context: WorkspaceMethodsContext,
   query: string
