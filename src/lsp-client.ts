@@ -14,6 +14,7 @@ import type {
   WorkspaceMethodsContext,
 } from './lsp-types.js';
 import type {
+  CodeAction,
   Config,
   Diagnostic,
   DocumentDiagnosticReport,
@@ -25,6 +26,7 @@ import type {
   Position,
   SymbolInformation,
   SymbolMatch,
+  TextEdit,
 } from './types.js';
 import { SymbolKind } from './types.js';
 import { pathToUri } from './utils.js';
@@ -308,8 +310,8 @@ export class LSPClient {
     capabilityManager.cacheCapabilities(serverKey, initResult);
 
     // Store capabilities in server state for easy access
-    if (initResult && typeof initResult === 'object' && (initResult as any).capabilities) {
-      serverState.capabilities = (initResult as any).capabilities as ServerCapabilities;
+    if (initResult && typeof initResult === 'object' && 'capabilities' in initResult) {
+      serverState.capabilities = (initResult as { capabilities: ServerCapabilities }).capabilities;
     }
 
     // Send the initialized notification after receiving the initialize response
@@ -926,7 +928,7 @@ export class LSPClient {
     symbolKind?: string
   ): Promise<{ matches: SymbolMatch[]; warning?: string }> {
     process.stderr.write(
-      `[DEBUG findSymbolsByName] Searching for symbol "${symbolName}" with kind "${symbolKind || 'any'}" in ${filePath}\n`
+      `[DEBUG findSymbolsByName] Searching for symbol "${symbolName}" with kind "${symbolKind || '(any kind)'}" in ${filePath}\n`
     );
 
     // Validate symbolKind if provided - return validation info for caller to handle
@@ -1144,7 +1146,7 @@ export class LSPClient {
     filePath: string,
     range?: { start: Position; end: Position },
     context?: { diagnostics?: Diagnostic[] }
-  ): Promise<any[]> {
+  ): Promise<CodeAction[]> {
     const methodContext: DiagnosticMethodsContext = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
@@ -1164,7 +1166,7 @@ export class LSPClient {
       insertFinalNewline?: boolean;
       trimFinalNewlines?: boolean;
     }
-  ): Promise<any[]> {
+  ): Promise<TextEdit[]> {
     const context: DocumentMethods.DocumentMethodsContext = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
@@ -1173,7 +1175,7 @@ export class LSPClient {
     return DocumentMethods.formatDocument(context, filePath, options);
   }
 
-  async searchWorkspaceSymbols(query: string): Promise<any[]> {
+  async searchWorkspaceSymbols(query: string): Promise<SymbolInformation[]> {
     const context: WorkspaceMethodsContext = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
@@ -1266,7 +1268,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };
@@ -1282,7 +1289,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };
@@ -1297,7 +1309,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };
@@ -1309,7 +1326,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };
@@ -1325,7 +1347,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };
@@ -1342,7 +1369,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };
@@ -1356,7 +1388,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };
@@ -1370,7 +1407,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };
@@ -1385,7 +1427,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };
@@ -1399,7 +1446,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };
@@ -1413,7 +1465,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };
@@ -1428,7 +1485,12 @@ export class LSPClient {
     const context = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
-      sendRequest: (serverState: any, method: string, params: any, timeout?: number) => {
+      sendRequest: (
+        serverState: ServerState,
+        method: string,
+        params: unknown,
+        timeout?: number
+      ) => {
         return this.sendRequest(serverState.process, method, params, timeout);
       },
     };

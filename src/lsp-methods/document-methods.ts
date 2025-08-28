@@ -1,5 +1,11 @@
 import type { LSPClient } from '../lsp-client.js';
-import type { DocumentLink, DocumentSymbol, FoldingRange, SymbolInformation } from '../types.js';
+import type {
+  DocumentLink,
+  DocumentSymbol,
+  FoldingRange,
+  SymbolInformation,
+  TextEdit,
+} from '../types.js';
 import { SymbolKind } from '../types.js';
 import { pathToUri } from '../utils.js';
 
@@ -145,7 +151,7 @@ export async function formatDocument(
     insertFinalNewline?: boolean;
     trimFinalNewlines?: boolean;
   }
-): Promise<any[]> {
+): Promise<TextEdit[]> {
   const serverState = await context.getServer(filePath);
   if (!serverState.initialized) {
     throw new Error('Server not initialized');

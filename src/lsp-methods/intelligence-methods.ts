@@ -100,7 +100,7 @@ export async function getCompletions(
     );
 
     if (!response || typeof response !== 'object') return [];
-    const result = response as any;
+    const result = response as { items?: CompletionItem[] };
     return Array.isArray(result.items) ? result.items : result.items || [];
   } catch (error: unknown) {
     if (error instanceof Error && error.message?.includes('timeout')) {

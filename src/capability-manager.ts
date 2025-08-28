@@ -3,59 +3,123 @@
 
 import type { ServerState } from './lsp-types.js';
 
+// LSP capability types - simplified version without external dependencies
+type ProviderOption = boolean | Record<string, unknown>;
+
 export interface ServerCapabilities {
-  textDocumentSync?: any;
-  completionProvider?: any;
-  hoverProvider?: boolean | any;
+  textDocumentSync?:
+    | number
+    | {
+        openClose?: boolean;
+        change?: number;
+        willSave?: boolean;
+        willSaveWaitUntil?: boolean;
+        save?: boolean | { includeText?: boolean };
+      };
+  completionProvider?: {
+    resolveProvider?: boolean;
+    triggerCharacters?: string[];
+    allCommitCharacters?: string[];
+    workDoneProgress?: boolean;
+  };
+  hoverProvider?: ProviderOption;
   signatureHelpProvider?: {
     triggerCharacters?: string[];
     retriggerCharacters?: string[];
   };
-  definitionProvider?: boolean | any;
-  typeDefinitionProvider?: boolean | any;
-  implementationProvider?: boolean | any;
-  referencesProvider?: boolean | any;
-  documentHighlightProvider?: boolean | any;
-  documentSymbolProvider?: boolean | any;
-  workspaceSymbolProvider?: boolean | any;
-  codeActionProvider?: boolean | any;
-  codeLensProvider?: any;
+  definitionProvider?: ProviderOption;
+  typeDefinitionProvider?: ProviderOption;
+  implementationProvider?: ProviderOption;
+  referencesProvider?: ProviderOption;
+  documentHighlightProvider?: ProviderOption;
+  documentSymbolProvider?: ProviderOption;
+  workspaceSymbolProvider?: ProviderOption;
+  codeActionProvider?:
+    | boolean
+    | {
+        codeActionKinds?: string[];
+        resolveProvider?: boolean;
+      };
+  codeLensProvider?: {
+    resolveProvider?: boolean;
+  };
   documentLinkProvider?: {
     resolveProvider?: boolean;
   };
-  documentFormattingProvider?: boolean | any;
-  documentRangeFormattingProvider?: boolean | any;
-  documentOnTypeFormattingProvider?: any;
-  renameProvider?: boolean | any;
-  foldingRangeProvider?: boolean | any;
-  executeCommandProvider?: any;
-  selectionRangeProvider?: boolean | any;
-  linkedEditingRangeProvider?: boolean | any;
-  callHierarchyProvider?: boolean | any;
-  semanticTokensProvider?: any;
-  monikerProvider?: boolean | any;
-  typeHierarchyProvider?: boolean | any;
-  inlineValueProvider?: boolean | any;
-  inlayHintProvider?: boolean | any;
-  diagnostic?: any;
+  documentFormattingProvider?: ProviderOption;
+  documentRangeFormattingProvider?: ProviderOption;
+  documentOnTypeFormattingProvider?: {
+    firstTriggerCharacter: string;
+    moreTriggerCharacter?: string[];
+  };
+  renameProvider?:
+    | boolean
+    | {
+        prepareProvider?: boolean;
+      };
+  foldingRangeProvider?: ProviderOption;
+  executeCommandProvider?: {
+    commands: string[];
+    workDoneProgress?: boolean;
+  };
+  selectionRangeProvider?: ProviderOption;
+  linkedEditingRangeProvider?: ProviderOption;
+  callHierarchyProvider?: ProviderOption;
+  semanticTokensProvider?: {
+    legend: {
+      tokenTypes: string[];
+      tokenModifiers: string[];
+    };
+    range?: boolean;
+    full?: boolean | { delta?: boolean };
+  };
+  monikerProvider?: ProviderOption;
+  typeHierarchyProvider?: ProviderOption;
+  inlineValueProvider?: ProviderOption;
+  inlayHintProvider?:
+    | boolean
+    | {
+        resolveProvider?: boolean;
+      };
+  diagnostic?: {
+    identifier?: string;
+    interFileDependencies: boolean;
+    workspaceDiagnostics: boolean;
+  };
   workspace?: {
-    workspaceFolders?: any;
+    workspaceFolders?: {
+      supported?: boolean;
+      changeNotifications?: boolean | string;
+    };
     fileOperations?: {
-      didCreate?: any;
-      willCreate?: any;
-      didRename?: any;
-      willRename?: any;
-      didDelete?: any;
-      willDelete?: any;
+      didCreate?: FileOperationRegistrationOptions;
+      willCreate?: FileOperationRegistrationOptions;
+      didRename?: FileOperationRegistrationOptions;
+      willRename?: FileOperationRegistrationOptions;
+      didDelete?: FileOperationRegistrationOptions;
+      willDelete?: FileOperationRegistrationOptions;
     };
     workspaceEdit?: {
       documentChanges?: boolean;
       resourceOperations?: string[];
       failureHandling?: string;
       normalizesLineEndings?: boolean;
-      changeAnnotationSupport?: any;
+      changeAnnotationSupport?: {
+        groupsOnLabel?: boolean;
+      };
     };
   };
+}
+
+interface FileOperationRegistrationOptions {
+  filters: Array<{
+    scheme?: string;
+    pattern: {
+      glob: string;
+      matches?: 'file' | 'folder';
+      options?: { ignoreCase?: boolean };
+    };
+  }>;
 }
 
 // ServerState is now imported from lsp-types.ts
@@ -66,9 +130,12 @@ class CapabilityManager {
   /**
    * Extract and cache server capabilities from initialization result
    */
-  cacheCapabilities(serverKey: string, initResult: any): void {
-    if (initResult && typeof initResult === 'object' && initResult.capabilities) {
-      this.capabilityCache.set(serverKey, initResult.capabilities as ServerCapabilities);
+  cacheCapabilities(serverKey: string, initResult: unknown): void {
+    if (initResult && typeof initResult === 'object' && 'capabilities' in initResult) {
+      this.capabilityCache.set(
+        serverKey,
+        (initResult as { capabilities: ServerCapabilities }).capabilities
+      );
       process.stderr.write(`[DEBUG CapabilityManager] Cached capabilities for ${serverKey}\n`);
     } else {
       process.stderr.write(
@@ -97,11 +164,11 @@ class CapabilityManager {
 
     // Navigate nested capability path (e.g., "workspace.workspaceEdit.documentChanges")
     const pathParts = capabilityPath.split('.');
-    let current: any = capabilities;
+    let current: unknown = capabilities;
 
     for (const part of pathParts) {
       if (current && typeof current === 'object' && part in current) {
-        current = current[part];
+        current = (current as Record<string, unknown>)[part];
       } else {
         process.stderr.write(`[DEBUG CapabilityManager] Capability ${capabilityPath} not found\n`);
         return false;
@@ -175,7 +242,7 @@ class CapabilityManager {
       'typeHierarchyProvider',
       'inlayHintProvider',
     ].filter((feature) => {
-      const value = (capabilities as any)[feature];
+      const value = (capabilities as Record<string, unknown>)[feature];
       return Boolean(value);
     });
 
