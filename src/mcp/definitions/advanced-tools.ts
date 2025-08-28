@@ -14,7 +14,8 @@ export const advancedToolDefinitions = [
         },
         range: {
           type: 'object',
-          description: 'Optional range to get code actions for. If not provided, gets actions for entire file.',
+          description:
+            'Optional range to get code actions for. If not provided, gets actions for entire file.',
           properties: {
             start: {
               type: 'object',
@@ -42,7 +43,7 @@ export const advancedToolDefinitions = [
   {
     name: 'format_document',
     description:
-      'Format a document using the language server\'s formatter. Applies consistent code style and formatting rules.',
+      "Format a document using the language server's formatter. Applies consistent code style and formatting rules.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -55,7 +56,10 @@ export const advancedToolDefinitions = [
           description: 'Formatting options',
           properties: {
             tab_size: { type: 'number', description: 'Size of tabs (default: 2)' },
-            insert_spaces: { type: 'boolean', description: 'Use spaces instead of tabs (default: true)' },
+            insert_spaces: {
+              type: 'boolean',
+              description: 'Use spaces instead of tabs (default: true)',
+            },
             trim_trailing_whitespace: { type: 'boolean', description: 'Trim trailing whitespace' },
             insert_final_newline: { type: 'boolean', description: 'Insert final newline' },
             trim_final_newlines: { type: 'boolean', description: 'Trim final newlines' },
@@ -97,7 +101,8 @@ export const advancedToolDefinitions = [
   },
   {
     name: 'get_folding_ranges',
-    description: 'Get folding ranges for code structure understanding. Shows logical code blocks that can be folded/collapsed (functions, classes, comments, imports). Helps AI agents understand code organization and nesting levels.',
+    description:
+      'Get folding ranges for code structure understanding. Shows logical code blocks that can be folded/collapsed (functions, classes, comments, imports). Helps AI agents understand code organization and nesting levels.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -111,7 +116,8 @@ export const advancedToolDefinitions = [
   },
   {
     name: 'get_document_links',
-    description: 'Get clickable links in a document (URLs, file references, imports, documentation links). Helps AI agents understand project relationships and external dependencies. Different language servers provide different types of links.',
+    description:
+      'Get clickable links in a document (URLs, file references, imports, documentation links). Helps AI agents understand project relationships and external dependencies. Different language servers provide different types of links.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -125,7 +131,8 @@ export const advancedToolDefinitions = [
   },
   {
     name: 'apply_workspace_edit',
-    description: 'Apply a workspace edit (multi-file text changes) atomically. This is the most powerful editing tool for AI agents, allowing safe modification of multiple files in a single atomic operation with rollback capability. Essential for large refactoring operations.',
+    description:
+      'Apply a workspace edit (multi-file text changes) atomically. This is the most powerful editing tool for AI agents, allowing safe modification of multiple files in a single atomic operation with rollback capability. Essential for large refactoring operations.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -144,37 +151,37 @@ export const advancedToolDefinitions = [
                       type: 'object',
                       properties: {
                         line: { type: 'number', description: 'Start line (0-indexed)' },
-                        character: { type: 'number', description: 'Start character (0-indexed)' }
+                        character: { type: 'number', description: 'Start character (0-indexed)' },
                       },
-                      required: ['line', 'character']
+                      required: ['line', 'character'],
                     },
                     end: {
                       type: 'object',
                       properties: {
                         line: { type: 'number', description: 'End line (0-indexed)' },
-                        character: { type: 'number', description: 'End character (0-indexed)' }
+                        character: { type: 'number', description: 'End character (0-indexed)' },
                       },
-                      required: ['line', 'character']
-                    }
+                      required: ['line', 'character'],
+                    },
                   },
-                  required: ['start', 'end']
+                  required: ['start', 'end'],
                 },
                 newText: {
                   type: 'string',
-                  description: 'The new text to replace the range'
-                }
+                  description: 'The new text to replace the range',
+                },
               },
-              required: ['range', 'newText']
-            }
-          }
+              required: ['range', 'newText'],
+            },
+          },
         },
         validate_before_apply: {
           type: 'boolean',
           description: 'Whether to validate edit positions before applying (default: true)',
-          default: true
-        }
+          default: true,
+        },
       },
-      required: ['changes']
-    }
+      required: ['changes'],
+    },
   },
 ] as const;

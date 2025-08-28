@@ -226,7 +226,7 @@ describe.skipIf(!canCreateSymlinks() || !!process.env.CI)('file-editor symlink h
           ],
         },
       },
-      { createBackups: true }
+      { validateBeforeApply: true }
     );
 
     expect(result.success).toBe(true);

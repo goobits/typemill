@@ -28,7 +28,7 @@ export async function handlePrepareCallHierarchy(
       const kindName = getSymbolKindName(item.kind);
       const range = `${item.range.start.line + 1}:${item.range.start.character} - ${item.range.end.line + 1}:${item.range.end.character}`;
       const detail = item.detail ? ` - ${item.detail}` : '';
-      
+
       return `${index + 1}. **${item.name}** (${kindName}) at ${range}${detail}\n   URI: ${item.uri}`;
     });
 
@@ -53,20 +53,21 @@ export async function handleGetCallHierarchyIncomingCalls(
     const incomingCalls = await lspClient.getCallHierarchyIncomingCalls(item);
 
     if (incomingCalls.length === 0) {
-      return createMCPResponse(
-        `No incoming calls found for ${item.name}`
-      );
+      return createMCPResponse(`No incoming calls found for ${item.name}`);
     }
 
     const callDescriptions = incomingCalls.map((call, index) => {
       const fromKind = getSymbolKindName(call.from.kind);
       const fromRange = `${call.from.range.start.line + 1}:${call.from.range.start.character} - ${call.from.range.end.line + 1}:${call.from.range.end.character}`;
       const fromDetail = call.from.detail ? ` - ${call.from.detail}` : '';
-      
-      const ranges = call.fromRanges.map(range => 
-        `${range.start.line + 1}:${range.start.character} - ${range.end.line + 1}:${range.end.character}`
-      ).join(', ');
-      
+
+      const ranges = call.fromRanges
+        .map(
+          (range) =>
+            `${range.start.line + 1}:${range.start.character} - ${range.end.line + 1}:${range.end.character}`
+        )
+        .join(', ');
+
       return `${index + 1}. From **${call.from.name}** (${fromKind}) at ${fromRange}${fromDetail}\n   Call sites: ${ranges}\n   URI: ${call.from.uri}`;
     });
 
@@ -91,20 +92,21 @@ export async function handleGetCallHierarchyOutgoingCalls(
     const outgoingCalls = await lspClient.getCallHierarchyOutgoingCalls(item);
 
     if (outgoingCalls.length === 0) {
-      return createMCPResponse(
-        `No outgoing calls found from ${item.name}`
-      );
+      return createMCPResponse(`No outgoing calls found from ${item.name}`);
     }
 
     const callDescriptions = outgoingCalls.map((call, index) => {
       const toKind = getSymbolKindName(call.to.kind);
       const toRange = `${call.to.range.start.line + 1}:${call.to.range.start.character} - ${call.to.range.end.line + 1}:${call.to.range.end.character}`;
       const toDetail = call.to.detail ? ` - ${call.to.detail}` : '';
-      
-      const ranges = call.fromRanges.map(range => 
-        `${range.start.line + 1}:${range.start.character} - ${range.end.line + 1}:${range.end.character}`
-      ).join(', ');
-      
+
+      const ranges = call.fromRanges
+        .map(
+          (range) =>
+            `${range.start.line + 1}:${range.start.character} - ${range.end.line + 1}:${range.end.character}`
+        )
+        .join(', ');
+
       return `${index + 1}. To **${call.to.name}** (${toKind}) at ${toRange}${toDetail}\n   Call sites: ${ranges}\n   URI: ${call.to.uri}`;
     });
 
@@ -142,7 +144,7 @@ export async function handlePrepareTypeHierarchy(
       const kindName = getSymbolKindName(item.kind);
       const range = `${item.range.start.line + 1}:${item.range.start.character} - ${item.range.end.line + 1}:${item.range.end.character}`;
       const detail = item.detail ? ` - ${item.detail}` : '';
-      
+
       return `${index + 1}. **${item.name}** (${kindName}) at ${range}${detail}\n   URI: ${item.uri}`;
     });
 
@@ -167,16 +169,14 @@ export async function handleGetTypeHierarchySupertypes(
     const supertypes = await lspClient.getTypeHierarchySupertypes(item);
 
     if (supertypes.length === 0) {
-      return createMCPResponse(
-        `No supertypes found for ${item.name}`
-      );
+      return createMCPResponse(`No supertypes found for ${item.name}`);
     }
 
     const supertypeDescriptions = supertypes.map((supertype, index) => {
       const kindName = getSymbolKindName(supertype.kind);
       const range = `${supertype.range.start.line + 1}:${supertype.range.start.character} - ${supertype.range.end.line + 1}:${supertype.range.end.character}`;
       const detail = supertype.detail ? ` - ${supertype.detail}` : '';
-      
+
       return `${index + 1}. **${supertype.name}** (${kindName}) at ${range}${detail}\n   URI: ${supertype.uri}`;
     });
 
@@ -201,16 +201,14 @@ export async function handleGetTypeHierarchySubtypes(
     const subtypes = await lspClient.getTypeHierarchySubtypes(item);
 
     if (subtypes.length === 0) {
-      return createMCPResponse(
-        `No subtypes found for ${item.name}`
-      );
+      return createMCPResponse(`No subtypes found for ${item.name}`);
     }
 
     const subtypeDescriptions = subtypes.map((subtype, index) => {
       const kindName = getSymbolKindName(subtype.kind);
       const range = `${subtype.range.start.line + 1}:${subtype.range.start.character} - ${subtype.range.end.line + 1}:${subtype.range.end.character}`;
       const detail = subtype.detail ? ` - ${subtype.detail}` : '';
-      
+
       return `${index + 1}. **${subtype.name}** (${kindName}) at ${range}${detail}\n   URI: ${subtype.uri}`;
     });
 
@@ -233,7 +231,7 @@ export async function handleGetSelectionRange(
   const absolutePath = resolve(file_path);
 
   try {
-    const lspPositions = positions.map(pos => ({
+    const lspPositions = positions.map((pos) => ({
       line: pos.line - 1, // Convert to 0-indexed
       character: pos.character,
     }));
@@ -251,19 +249,20 @@ export async function handleGetSelectionRange(
       if (!originalPos) {
         return `Position ${index + 1}: No original position available`;
       }
-      
+
       const ranges = [];
-      
+
       let current: typeof selectionRange | undefined = selectionRange;
       let level = 0;
-      
-      while (current && level < 10) { // Limit depth to prevent infinite loops
+
+      while (current && level < 10) {
+        // Limit depth to prevent infinite loops
         const range = `${current.range.start.line + 1}:${current.range.start.character} - ${current.range.end.line + 1}:${current.range.end.character}`;
         ranges.push(`   Level ${level}: ${range}`);
         current = current.parent;
         level++;
       }
-      
+
       return `Position ${index + 1} (${originalPos.line}:${originalPos.character}):\n${ranges.join('\n')}`;
     });
 

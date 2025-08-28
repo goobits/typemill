@@ -2,11 +2,11 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { constants, access, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { type ServerCapabilities, capabilityManager } from './capability-manager.js';
 import { loadGitignore, scanDirectoryForExtensions } from './file-scanner.js';
-import { capabilityManager, type ServerCapabilities } from './capability-manager.js';
 import * as CoreMethods from './lsp-methods/core-methods.js';
-import * as DocumentMethods from './lsp-methods/document-methods.js';
 import * as DiagnosticMethods from './lsp-methods/diagnostic-methods.js';
+import * as DocumentMethods from './lsp-methods/document-methods.js';
 import * as WorkspaceMethods from './lsp-methods/workspace-methods.js';
 import type {
   Config,
@@ -291,7 +291,7 @@ export class LSPClient {
     // Cache server capabilities for feature detection
     const serverKey = JSON.stringify(serverConfig.command);
     capabilityManager.cacheCapabilities(serverKey, initResult);
-    
+
     // Store capabilities in server state for easy access
     if (initResult && typeof initResult === 'object' && (initResult as any).capabilities) {
       serverState.capabilities = (initResult as any).capabilities as ServerCapabilities;
@@ -302,14 +302,14 @@ export class LSPClient {
 
     // Give the server a moment to process the initialized notification and become ready
     // Most servers are ready immediately after the initialized notification
-    await new Promise(resolve => setTimeout(resolve, 500)); // 500ms should be enough
-    
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms should be enough
+
     serverState.initialized = true;
     if (serverState.initializationResolve) {
       serverState.initializationResolve();
       serverState.initializationResolve = undefined;
     }
-    
+
     process.stderr.write(
       `[DEBUG startServer] Server initialized successfully: ${serverConfig.command.join(' ')}\n`
     );
@@ -1104,13 +1104,16 @@ export class LSPClient {
     return DiagnosticMethods.getCodeActions(methodContext, filePath, range, context);
   }
 
-  async formatDocument(filePath: string, options?: {
-    tabSize?: number;
-    insertSpaces?: boolean;
-    trimTrailingWhitespace?: boolean;
-    insertFinalNewline?: boolean;
-    trimFinalNewlines?: boolean;
-  }): Promise<any[]> {
+  async formatDocument(
+    filePath: string,
+    options?: {
+      tabSize?: number;
+      insertSpaces?: boolean;
+      trimTrailingWhitespace?: boolean;
+      insertFinalNewline?: boolean;
+      trimFinalNewlines?: boolean;
+    }
+  ): Promise<any[]> {
     const context: DocumentMethods.DocumentMethodsContext = {
       getServer: this.getServer.bind(this),
       ensureFileOpen: this.ensureFileOpen.bind(this),
@@ -1217,8 +1220,8 @@ export class LSPClient {
   }
 
   async getCompletions(
-    filePath: string, 
-    position: Position, 
+    filePath: string,
+    position: Position,
     triggerCharacter?: string
   ): Promise<import('./types.js').CompletionItem[]> {
     const { getCompletions } = await import('./lsp-methods/intelligence-methods.js');
@@ -1231,7 +1234,7 @@ export class LSPClient {
   }
 
   async getInlayHints(
-    filePath: string, 
+    filePath: string,
     range: { start: Position; end: Position }
   ): Promise<import('./types.js').InlayHint[]> {
     const { getInlayHints } = await import('./lsp-methods/intelligence-methods.js');
@@ -1254,8 +1257,8 @@ export class LSPClient {
   }
 
   async getSignatureHelp(
-    filePath: string, 
-    position: Position, 
+    filePath: string,
+    position: Position,
     triggerCharacter?: string
   ): Promise<import('./types.js').SignatureHelp | null> {
     const { getSignatureHelp } = await import('./lsp-methods/intelligence-methods.js');
@@ -1270,7 +1273,7 @@ export class LSPClient {
   // Hierarchy methods
 
   async prepareCallHierarchy(
-    filePath: string, 
+    filePath: string,
     position: Position
   ): Promise<import('./types.js').CallHierarchyItem[]> {
     const { prepareCallHierarchy } = await import('./lsp-methods/hierarchy-methods.js');
@@ -1307,7 +1310,7 @@ export class LSPClient {
   }
 
   async prepareTypeHierarchy(
-    filePath: string, 
+    filePath: string,
     position: Position
   ): Promise<import('./types.js').TypeHierarchyItem[]> {
     const { prepareTypeHierarchy } = await import('./lsp-methods/hierarchy-methods.js');
@@ -1344,7 +1347,7 @@ export class LSPClient {
   }
 
   async getSelectionRange(
-    filePath: string, 
+    filePath: string,
     positions: Position[]
   ): Promise<import('./types.js').SelectionRange[]> {
     const { getSelectionRange } = await import('./lsp-methods/hierarchy-methods.js');
@@ -1382,9 +1385,11 @@ export class LSPClient {
    * Check if a server supports a specific capability
    */
   hasCapability(filePath: string, capabilityPath: string): Promise<boolean> {
-    return this.getServer(filePath).then(serverState => {
-      return capabilityManager.hasCapability(serverState, capabilityPath);
-    }).catch(() => false);
+    return this.getServer(filePath)
+      .then((serverState) => {
+        return capabilityManager.hasCapability(serverState, capabilityPath);
+      })
+      .catch(() => false);
   }
 
   /**
@@ -1402,23 +1407,29 @@ export class LSPClient {
   /**
    * Validate required capabilities for a feature
    */
-  async validateCapabilities(filePath: string, requiredCapabilities: string[]): Promise<{
+  async validateCapabilities(
+    filePath: string,
+    requiredCapabilities: string[]
+  ): Promise<{
     supported: boolean;
     missing: string[];
     serverDescription: string;
   }> {
     try {
       const serverState = await this.getServer(filePath);
-      const validation = capabilityManager.validateRequiredCapabilities(serverState, requiredCapabilities);
+      const validation = capabilityManager.validateRequiredCapabilities(
+        serverState,
+        requiredCapabilities
+      );
       return {
         ...validation,
-        serverDescription: capabilityManager.getServerDescription(serverState)
+        serverDescription: capabilityManager.getServerDescription(serverState),
       };
     } catch (error) {
       return {
         supported: false,
         missing: requiredCapabilities,
-        serverDescription: 'Unknown Server'
+        serverDescription: 'Unknown Server',
       };
     }
   }

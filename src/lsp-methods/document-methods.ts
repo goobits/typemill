@@ -1,7 +1,7 @@
-import type { DocumentSymbol, SymbolInformation, FoldingRange, DocumentLink } from '../types.js';
+import type { LSPClient } from '../lsp-client.js';
+import type { DocumentLink, DocumentSymbol, FoldingRange, SymbolInformation } from '../types.js';
 import { SymbolKind } from '../types.js';
 import { pathToUri } from '../utils.js';
-import type { LSPClient } from '../lsp-client.js';
 
 // Type definitions for the methods in this module
 export interface DocumentMethodsContext {
@@ -157,14 +157,20 @@ export async function formatDocument(
   const formattingOptions = {
     tabSize: options?.tabSize || 2,
     insertSpaces: options?.insertSpaces !== false,
-    ...(options?.trimTrailingWhitespace !== undefined && { trimTrailingWhitespace: options.trimTrailingWhitespace }),
-    ...(options?.insertFinalNewline !== undefined && { insertFinalNewline: options.insertFinalNewline }),
-    ...(options?.trimFinalNewlines !== undefined && { trimFinalNewlines: options.trimFinalNewlines })
+    ...(options?.trimTrailingWhitespace !== undefined && {
+      trimTrailingWhitespace: options.trimTrailingWhitespace,
+    }),
+    ...(options?.insertFinalNewline !== undefined && {
+      insertFinalNewline: options.insertFinalNewline,
+    }),
+    ...(options?.trimFinalNewlines !== undefined && {
+      trimFinalNewlines: options.trimFinalNewlines,
+    }),
   };
 
   const result = await context.sendRequest(serverState.process, 'textDocument/formatting', {
     textDocument: { uri: fileUri },
-    options: formattingOptions
+    options: formattingOptions,
   });
 
   return Array.isArray(result) ? result : [];

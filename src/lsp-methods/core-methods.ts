@@ -1,6 +1,6 @@
-import type { Position, Location, LSPLocation } from '../types.js';
-import { pathToUri } from '../utils.js';
 import type { LSPClient } from '../lsp-client.js';
+import type { LSPLocation, Location, Position } from '../types.js';
+import { pathToUri } from '../utils.js';
 
 // Type definitions for the methods in this module
 export interface CoreMethodsContext {
@@ -61,9 +61,7 @@ export async function findDefinition(
     ];
   }
 
-  process.stderr.write(
-    '[DEBUG findDefinition] No definition found or unexpected result format\n'
-  );
+  process.stderr.write('[DEBUG findDefinition] No definition found or unexpected result format\n');
   return [];
 }
 

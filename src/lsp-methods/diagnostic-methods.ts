@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
+import type { LSPClient } from '../lsp-client.js';
 import type { Diagnostic, DocumentDiagnosticReport, Position } from '../types.js';
 import { pathToUri } from '../utils.js';
-import type { LSPClient } from '../lsp-client.js';
 
 // Type definitions for the methods in this module
 export interface DiagnosticMethodsContext {
@@ -176,36 +176,42 @@ export async function getCodeActions(
 
   // Get current diagnostics for the file to provide context
   const diagnostics = serverState.diagnostics.get(fileUri) || [];
-  
+
   // Create a proper range - use a smaller, more realistic range
-  const requestRange = range || { 
-    start: { line: 0, character: 0 }, 
-    end: { line: Math.min(100, 999999), character: 0 } 
+  const requestRange = range || {
+    start: { line: 0, character: 0 },
+    end: { line: Math.min(100, 999999), character: 0 },
   };
-  
+
   // Ensure context includes diagnostics and only property
   const codeActionContext = {
     diagnostics: actionContext?.diagnostics || diagnostics,
-    only: undefined // Don't filter by specific code action kinds
+    only: undefined, // Don't filter by specific code action kinds
   };
 
-  process.stderr.write(`[DEBUG getCodeActions] Request params: ${JSON.stringify({
-    textDocument: { uri: fileUri },
-    range: requestRange,
-    context: codeActionContext
-  }, null, 2)}\n`);
+  process.stderr.write(
+    `[DEBUG getCodeActions] Request params: ${JSON.stringify(
+      {
+        textDocument: { uri: fileUri },
+        range: requestRange,
+        context: codeActionContext,
+      },
+      null,
+      2
+    )}\n`
+  );
 
   try {
     const result = await context.sendRequest(serverState.process, 'textDocument/codeAction', {
       textDocument: { uri: fileUri },
       range: requestRange,
-      context: codeActionContext
+      context: codeActionContext,
     });
 
     process.stderr.write(`[DEBUG getCodeActions] Raw result: ${JSON.stringify(result)}\n`);
-    
+
     if (!result) return [];
-    if (Array.isArray(result)) return result.filter(action => action != null);
+    if (Array.isArray(result)) return result.filter((action) => action != null);
     return [];
   } catch (error) {
     process.stderr.write(`[DEBUG getCodeActions] Error: ${error}\n`);

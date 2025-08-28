@@ -1,11 +1,11 @@
 // Hierarchy and Navigation LSP Methods for LLM agents
-import type { 
-  Position, 
-  CallHierarchyItem, 
-  CallHierarchyIncomingCall, 
+import type {
+  CallHierarchyIncomingCall,
+  CallHierarchyItem,
   CallHierarchyOutgoingCall,
+  Position,
+  SelectionRange,
   TypeHierarchyItem,
-  SelectionRange
 } from '../types.js';
 
 export interface HierarchyMethodsContext {

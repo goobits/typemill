@@ -1,6 +1,6 @@
 import type { LSPClient } from '../lsp-client.js';
 
-// Type definitions for the methods in this module  
+// Type definitions for the methods in this module
 export interface WorkspaceMethodsContext {
   getServer: (filePath: string) => Promise<any>;
   ensureFileOpen: (serverState: any, filePath: string) => Promise<void>;
@@ -15,10 +15,12 @@ export async function searchWorkspaceSymbols(
 ): Promise<any[]> {
   // Ensure servers are preloaded before searching
   if (context.servers.size === 0) {
-    process.stderr.write(`[DEBUG searchWorkspaceSymbols] No servers running, preloading servers first\n`);
+    process.stderr.write(
+      `[DEBUG searchWorkspaceSymbols] No servers running, preloading servers first\n`
+    );
     await context.preloadServers(false); // Preload without verbose logging
   }
-  
+
   // For workspace symbol search to work, TypeScript server needs project context
   // Open a TypeScript file to establish project context if no files are open yet
   let hasOpenFiles = false;
@@ -28,19 +30,19 @@ export async function searchWorkspaceSymbols(
       break;
     }
   }
-  
+
   if (!hasOpenFiles) {
     try {
       // Try to open a TypeScript file in the workspace to establish project context
       const { scanDirectoryForExtensions, loadGitignore } = await import('../file-scanner.js');
       const gitignore = await loadGitignore(process.cwd());
       const extensions = await scanDirectoryForExtensions(process.cwd(), 2, gitignore, false);
-      
+
       if (extensions.has('ts')) {
         // Find a .ts file to open for project context
         const fs = await import('node:fs/promises');
         const path = await import('node:path');
-        
+
         async function findTsFile(dir: string): Promise<string | null> {
           try {
             const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -55,41 +57,55 @@ export async function searchWorkspaceSymbols(
           } catch {}
           return null;
         }
-        
+
         const tsFile = await findTsFile(process.cwd());
         if (tsFile) {
-          process.stderr.write(`[DEBUG searchWorkspaceSymbols] Opening ${tsFile} to establish project context\n`);
+          process.stderr.write(
+            `[DEBUG searchWorkspaceSymbols] Opening ${tsFile} to establish project context\n`
+          );
           const serverState = await context.getServer(tsFile);
           await context.ensureFileOpen(serverState, tsFile);
         }
       }
     } catch (error) {
-      process.stderr.write(`[DEBUG searchWorkspaceSymbols] Failed to establish project context: ${error}\n`);
+      process.stderr.write(
+        `[DEBUG searchWorkspaceSymbols] Failed to establish project context: ${error}\n`
+      );
     }
   }
-  
+
   // For workspace/symbol, we need to try all running servers
   const results: any[] = [];
-  
-  process.stderr.write(`[DEBUG searchWorkspaceSymbols] Searching for "${query}" across ${context.servers.size} servers\n`);
-  
+
+  process.stderr.write(
+    `[DEBUG searchWorkspaceSymbols] Searching for "${query}" across ${context.servers.size} servers\n`
+  );
+
   for (const [serverKey, serverState] of context.servers.entries()) {
-    process.stderr.write(`[DEBUG searchWorkspaceSymbols] Checking server: ${serverKey}, initialized: ${serverState.initialized}\n`);
-    
+    process.stderr.write(
+      `[DEBUG searchWorkspaceSymbols] Checking server: ${serverKey}, initialized: ${serverState.initialized}\n`
+    );
+
     if (!serverState.initialized) continue;
-    
+
     try {
-      process.stderr.write(`[DEBUG searchWorkspaceSymbols] Sending workspace/symbol request for "${query}"\n`);
-      
+      process.stderr.write(
+        `[DEBUG searchWorkspaceSymbols] Sending workspace/symbol request for "${query}"\n`
+      );
+
       const result = await context.sendRequest(serverState.process, 'workspace/symbol', {
-        query: query
+        query: query,
       });
-      
-      process.stderr.write(`[DEBUG searchWorkspaceSymbols] Workspace symbol result: ${JSON.stringify(result)}\n`);
-      
+
+      process.stderr.write(
+        `[DEBUG searchWorkspaceSymbols] Workspace symbol result: ${JSON.stringify(result)}\n`
+      );
+
       if (Array.isArray(result)) {
         results.push(...result);
-        process.stderr.write(`[DEBUG searchWorkspaceSymbols] Added ${result.length} symbols from server\n`);
+        process.stderr.write(
+          `[DEBUG searchWorkspaceSymbols] Added ${result.length} symbols from server\n`
+        );
       } else if (result !== null && result !== undefined) {
         process.stderr.write(`[DEBUG searchWorkspaceSymbols] Non-array result: ${typeof result}\n`);
       }
@@ -98,7 +114,7 @@ export async function searchWorkspaceSymbols(
       process.stderr.write(`[DEBUG searchWorkspaceSymbols] Server error: ${error}\n`);
     }
   }
-  
+
   process.stderr.write(`[DEBUG searchWorkspaceSymbols] Total results found: ${results.length}\n`);
   return results;
 }

@@ -3,7 +3,8 @@
 export const intelligenceToolDefinitions = [
   {
     name: 'get_hover',
-    description: 'Get hover information (documentation, types, signatures) for a symbol at a specific position. Provides rich context about project-specific APIs and functions.',
+    description:
+      'Get hover information (documentation, types, signatures) for a symbol at a specific position. Provides rich context about project-specific APIs and functions.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -25,7 +26,8 @@ export const intelligenceToolDefinitions = [
   },
   {
     name: 'get_completions',
-    description: 'Get intelligent code completions for a specific position. Returns project-aware suggestions including imports, methods, properties, and context-specific completions.',
+    description:
+      'Get intelligent code completions for a specific position. Returns project-aware suggestions including imports, methods, properties, and context-specific completions.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -43,7 +45,8 @@ export const intelligenceToolDefinitions = [
         },
         trigger_character: {
           type: 'string',
-          description: 'Optional trigger character (e.g., ".", ":", ">") that caused the completion request',
+          description:
+            'Optional trigger character (e.g., ".", ":", ">") that caused the completion request',
         },
       },
       required: ['file_path', 'line', 'character'],
@@ -51,7 +54,8 @@ export const intelligenceToolDefinitions = [
   },
   {
     name: 'get_inlay_hints',
-    description: 'Get inlay hints for a range of code. Shows parameter names, type annotations, and other helpful inline information.',
+    description:
+      'Get inlay hints for a range of code. Shows parameter names, type annotations, and other helpful inline information.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -81,7 +85,8 @@ export const intelligenceToolDefinitions = [
   },
   {
     name: 'get_semantic_tokens',
-    description: 'Get semantic token information for syntax highlighting and code understanding. Provides detailed token types and modifiers for enhanced code analysis.',
+    description:
+      'Get semantic token information for syntax highlighting and code understanding. Provides detailed token types and modifiers for enhanced code analysis.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -95,7 +100,8 @@ export const intelligenceToolDefinitions = [
   },
   {
     name: 'get_signature_help',
-    description: 'Get function signature help at a specific position. Shows function signatures, parameter information, and documentation for the function being called. Critical for AI agents when generating function calls with correct parameters.',
+    description:
+      'Get function signature help at a specific position. Shows function signatures, parameter information, and documentation for the function being called. Critical for AI agents when generating function calls with correct parameters.',
     inputSchema: {
       type: 'object',
       properties: {

@@ -3,7 +3,8 @@
 export const hierarchyToolDefinitions = [
   {
     name: 'prepare_call_hierarchy',
-    description: 'Prepare call hierarchy for a symbol. Gets the call hierarchy item that can be used to explore incoming and outgoing calls.',
+    description:
+      'Prepare call hierarchy for a symbol. Gets the call hierarchy item that can be used to explore incoming and outgoing calls.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -25,7 +26,8 @@ export const hierarchyToolDefinitions = [
   },
   {
     name: 'get_call_hierarchy_incoming_calls',
-    description: 'Get all incoming calls to a function/method. Shows where this function is called from throughout the codebase.',
+    description:
+      'Get all incoming calls to a function/method. Shows where this function is called from throughout the codebase.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -89,7 +91,8 @@ export const hierarchyToolDefinitions = [
   },
   {
     name: 'get_call_hierarchy_outgoing_calls',
-    description: 'Get all outgoing calls from a function/method. Shows what functions this function calls.',
+    description:
+      'Get all outgoing calls from a function/method. Shows what functions this function calls.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -153,7 +156,8 @@ export const hierarchyToolDefinitions = [
   },
   {
     name: 'prepare_type_hierarchy',
-    description: 'Prepare type hierarchy for a symbol. Gets the type hierarchy item for exploring inheritance relationships.',
+    description:
+      'Prepare type hierarchy for a symbol. Gets the type hierarchy item for exploring inheritance relationships.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -303,7 +307,8 @@ export const hierarchyToolDefinitions = [
   },
   {
     name: 'get_selection_range',
-    description: 'Get smart selection ranges for positions in a file. Helps with expanding selections to meaningful code blocks.',
+    description:
+      'Get smart selection ranges for positions in a file. Helps with expanding selections to meaningful code blocks.',
     inputSchema: {
       type: 'object',
       properties: {

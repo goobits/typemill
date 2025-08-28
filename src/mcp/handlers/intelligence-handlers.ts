@@ -1,7 +1,11 @@
 // MCP handlers for LLM agent intelligence features
 import { resolve } from 'node:path';
 import type { LSPClient } from '../../lsp-client.js';
-import { createMCPResponse, createUnsupportedFeatureResponse, createLimitedSupportResponse } from '../utils.js';
+import {
+  createLimitedSupportResponse,
+  createMCPResponse,
+  createUnsupportedFeatureResponse,
+} from '../utils.js';
 
 // Handler for get_hover tool
 export async function handleGetHover(
@@ -18,11 +22,13 @@ export async function handleGetHover(
     });
 
     if (!hover) {
-      return createMCPResponse(`No hover information available for position ${line}:${character} in ${file_path}`);
+      return createMCPResponse(
+        `No hover information available for position ${line}:${character} in ${file_path}`
+      );
     }
 
     let content = '';
-    
+
     // Handle different content formats
     if (typeof hover.contents === 'string') {
       content = hover.contents;
@@ -45,7 +51,7 @@ export async function handleGetHover(
       }
     }
 
-    const rangeInfo = hover.range 
+    const rangeInfo = hover.range
       ? ` (range: ${hover.range.start.line + 1}:${hover.range.start.character} - ${hover.range.end.line + 1}:${hover.range.end.character})`
       : '';
 
@@ -92,13 +98,14 @@ export async function handleGetCompletions(
       const kindName = getCompletionKindName(item.kind);
       const detail = item.detail ? ` - ${item.detail}` : '';
       const deprecated = item.deprecated || item.tags?.includes(1) ? ' [DEPRECATED]' : '';
-      const insertText = item.insertText && item.insertText !== item.label ? ` (inserts: "${item.insertText}")` : '';
-      
+      const insertText =
+        item.insertText && item.insertText !== item.label ? ` (inserts: "${item.insertText}")` : '';
+
       return `${index + 1}. **${item.label}** (${kindName})${detail}${deprecated}${insertText}`;
     });
 
     const triggerInfo = trigger_character ? ` (triggered by '${trigger_character}')` : '';
-    
+
     return createMCPResponse(
       `## Code Completions for ${file_path}:${line}:${character}${triggerInfo}\n\nFound ${completions.length} completion${completions.length === 1 ? '' : 's'}:\n\n${completionItems.join('\n')}`
     );
@@ -112,7 +119,13 @@ export async function handleGetCompletions(
 // Handler for get_inlay_hints tool
 export async function handleGetInlayHints(
   lspClient: LSPClient,
-  args: { file_path: string; start_line: number; start_character: number; end_line: number; end_character: number }
+  args: {
+    file_path: string;
+    start_line: number;
+    start_character: number;
+    end_line: number;
+    end_character: number;
+  }
 ) {
   const { file_path, start_line, start_character, end_line, end_character } = args;
   const absolutePath = resolve(file_path);
@@ -137,12 +150,14 @@ export async function handleGetInlayHints(
 
     const hintItems = hints.map((hint, index) => {
       const position = `${hint.position.line + 1}:${hint.position.character}`;
-      const label = Array.isArray(hint.label) 
-        ? hint.label.map(part => part.value).join('')
+      const label = Array.isArray(hint.label)
+        ? hint.label.map((part) => part.value).join('')
         : hint.label;
       const kindName = hint.kind === 1 ? 'Type' : hint.kind === 2 ? 'Parameter' : 'Other';
-      const tooltip = hint.tooltip ? ` (tooltip: ${typeof hint.tooltip === 'string' ? hint.tooltip : hint.tooltip.value})` : '';
-      
+      const tooltip = hint.tooltip
+        ? ` (tooltip: ${typeof hint.tooltip === 'string' ? hint.tooltip : hint.tooltip.value})`
+        : '';
+
       return `${index + 1}. **${label}** at ${position} (${kindName})${tooltip}`;
     });
 
@@ -157,10 +172,7 @@ export async function handleGetInlayHints(
 }
 
 // Handler for get_semantic_tokens tool
-export async function handleGetSemanticTokens(
-  lspClient: LSPClient,
-  args: { file_path: string }
-) {
+export async function handleGetSemanticTokens(lspClient: LSPClient, args: { file_path: string }) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
 
@@ -168,9 +180,7 @@ export async function handleGetSemanticTokens(
     const tokens = await lspClient.getSemanticTokens(absolutePath);
 
     if (!tokens || !tokens.data || tokens.data.length === 0) {
-      return createMCPResponse(
-        `No semantic tokens available for ${file_path}`
-      );
+      return createMCPResponse(`No semantic tokens available for ${file_path}`);
     }
 
     // Semantic tokens are encoded as a flat array of integers
@@ -255,7 +265,9 @@ export async function handleGetSignatureHelp(
 
   try {
     // Check if server supports signature help
-    const validation = await lspClient.validateCapabilities(absolutePath, ['signatureHelpProvider']);
+    const validation = await lspClient.validateCapabilities(absolutePath, [
+      'signatureHelpProvider',
+    ]);
     if (!validation.supported) {
       return createUnsupportedFeatureResponse(
         'Signature Help',
@@ -264,18 +276,24 @@ export async function handleGetSignatureHelp(
         [
           'Use hover information to see function documentation',
           'Check the function definition directly with find_definition',
-          'Look at code completions which may show parameter info'
+          'Look at code completions which may show parameter info',
         ]
       );
     }
 
-    const signatureHelp = await lspClient.getSignatureHelp(absolutePath, {
-      line: line - 1, // Convert to 0-indexed
-      character,
-    }, trigger_character);
+    const signatureHelp = await lspClient.getSignatureHelp(
+      absolutePath,
+      {
+        line: line - 1, // Convert to 0-indexed
+        character,
+      },
+      trigger_character
+    );
 
     if (!signatureHelp || !signatureHelp.signatures || signatureHelp.signatures.length === 0) {
-      return createMCPResponse(`No signature help available for position ${line}:${character} in ${file_path}`);
+      return createMCPResponse(
+        `No signature help available for position ${line}:${character} in ${file_path}`
+      );
     }
 
     const signatures = signatureHelp.signatures;
@@ -290,6 +308,12 @@ export async function handleGetSignatureHelp(
 
     // Show the active signature prominently
     const signature = signatures[activeSignature] || signatures[0];
+    if (!signature) {
+      return createMCPResponse(
+        `No valid signature available for position ${line}:${character} in ${file_path}`
+      );
+    }
+
     response += `**${signature.label}**\n\n`;
 
     if (signature.documentation) {
@@ -307,7 +331,7 @@ export async function handleGetSignatureHelp(
         const isActive = activeParameter !== undefined && index === activeParameter;
         const marker = isActive ? '👉 ' : '   ';
         const emphasis = isActive ? '**' : '';
-        
+
         let paramLabel = '';
         if (typeof param.label === 'string') {
           paramLabel = param.label;
@@ -318,7 +342,7 @@ export async function handleGetSignatureHelp(
         }
 
         response += `${marker}${emphasis}${paramLabel}${emphasis}`;
-        
+
         if (param.documentation) {
           let paramDoc = param.documentation;
           if (typeof paramDoc === 'object' && paramDoc.value) {
@@ -340,7 +364,8 @@ export async function handleGetSignatureHelp(
       });
     }
 
-    response += '\n*Signature help shows function parameters and documentation for the function being called.*';
+    response +=
+      '\n*Signature help shows function parameters and documentation for the function being called.*';
 
     return createMCPResponse(response);
   } catch (error) {

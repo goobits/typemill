@@ -10,9 +10,9 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { readdir } from 'node:fs/promises';
-import { dirname, relative, resolve, extname, join } from 'node:path';
+import { dirname, extname, join, relative, resolve } from 'node:path';
 import type { LSPClient } from './lsp-client.js';
-import { uriToPath, pathToUri } from './utils.js';
+import { pathToUri, uriToPath } from './utils.js';
 
 export interface TextEdit {
   range: {
@@ -52,10 +52,7 @@ export async function applyWorkspaceEdit(
     lspClient?: LSPClient;
   } = {}
 ): Promise<ApplyEditResult> {
-  const {
-    validateBeforeApply = true,
-    lspClient,
-  } = options;
+  const { validateBeforeApply = true, lspClient } = options;
 
   const backups: FileBackup[] = [];
   const filesModified: string[] = [];
@@ -175,7 +172,6 @@ export async function applyWorkspaceEdit(
         console.error(`Failed to rollback ${backup.targetPath}:`, rollbackError);
       }
     }
-
 
     return {
       success: false,
@@ -302,22 +298,22 @@ export function cleanupBackups(backupFiles: string[]): void {
 async function findPotentialImporters(rootDir: string, targetPath: string): Promise<string[]> {
   const files: string[] = [];
   const extensions = new Set(['ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs']);
-  
+
   // Load gitignore patterns
   const { loadGitignore } = await import('./file-scanner.js');
   const ignoreFilter = await loadGitignore(rootDir);
-  
+
   async function* getFiles(dir: string, baseDir: string = dir): AsyncGenerator<string> {
     const entries = await readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = resolve(dir, entry.name);
       const relativePath = relative(baseDir, fullPath);
-      
+
       // Skip ignored paths
       if (ignoreFilter.ignores(relativePath.replace(/\\/g, '/'))) {
         continue;
       }
-      
+
       if (entry.isDirectory() && !entry.name.startsWith('.')) {
         yield* getFiles(fullPath, baseDir);
       } else if (entry.isFile()) {
@@ -328,13 +324,14 @@ async function findPotentialImporters(rootDir: string, targetPath: string): Prom
       }
     }
   }
-  
+
   for await (const file of getFiles(rootDir, rootDir)) {
-    if (file !== targetPath) { // Don't check the file being renamed
+    if (file !== targetPath) {
+      // Don't check the file being renamed
       files.push(file);
     }
   }
-  
+
   return files;
 }
 
@@ -353,18 +350,18 @@ function findImportsInFile(
   const content = readFileSync(filePath, 'utf-8');
   const edits: TextEdit[] = [];
   const lines = content.split('\n');
-  
+
   // Calculate the relative paths from this file to the old and new targets
   const fileDir = dirname(filePath);
-  
+
   // Remove extensions for comparison
   const oldPathNoExt = oldTargetPath.replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, '');
   const newPathNoExt = newTargetPath.replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, '');
-  
+
   // Calculate relative paths
   let oldRelative = relative(fileDir, oldPathNoExt).replace(/\\/g, '/');
   let newRelative = relative(fileDir, newPathNoExt).replace(/\\/g, '/');
-  
+
   // Add ./ prefix if needed for relative paths
   if (!oldRelative.startsWith('.') && !oldRelative.startsWith('/')) {
     oldRelative = `./${oldRelative}`;
@@ -372,34 +369,34 @@ function findImportsInFile(
   if (!newRelative.startsWith('.') && !newRelative.startsWith('/')) {
     newRelative = `./${newRelative}`;
   }
-  
+
   // Escape special regex characters
   const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const oldPattern = escapeRegex(oldRelative);
-  
+
   // Single comprehensive pattern to avoid double-matching
   const importPattern = new RegExp(
     `((?:from|require\\s*\\(|import\\s*\\(|export\\s+.*?from)\\s+['"\`])${oldPattern}(['"\`])`,
     'g'
   );
-  
+
   lines.forEach((line, lineIndex) => {
     let match;
     importPattern.lastIndex = 0; // Reset regex state
     while ((match = importPattern.exec(line)) !== null) {
       const startCol = match.index + (match[1]?.length || 0);
       const endCol = startCol + oldRelative.length;
-      
+
       edits.push({
         range: {
           start: { line: lineIndex, character: startCol },
-          end: { line: lineIndex, character: endCol }
+          end: { line: lineIndex, character: endCol },
         },
-        newText: newRelative
+        newText: newRelative,
       });
     }
   });
-  
+
   return edits;
 }
 
@@ -421,40 +418,40 @@ export async function renameFile(
   } = {}
 ): Promise<ApplyEditResult & { importUpdates?: WorkspaceEdit }> {
   const { dry_run = false, rootDir = process.cwd() } = options;
-  
+
   // Resolve absolute paths
   const absoluteOldPath = resolve(oldPath);
   const absoluteNewPath = resolve(newPath);
-  
+
   // Validation
   if (!existsSync(absoluteOldPath)) {
     return {
       success: false,
       filesModified: [],
       backupFiles: [],
-      error: `File does not exist: ${absoluteOldPath}`
+      error: `File does not exist: ${absoluteOldPath}`,
     };
   }
-  
+
   if (existsSync(absoluteNewPath)) {
     return {
       success: false,
       filesModified: [],
       backupFiles: [],
-      error: `Target file already exists: ${absoluteNewPath}`
+      error: `Target file already exists: ${absoluteNewPath}`,
     };
   }
-  
+
   try {
     // Step 1: Find all files that might import this file
     process.stderr.write(`[DEBUG] Finding files that import ${absoluteOldPath}\n`);
     const importingFiles = await findPotentialImporters(rootDir, absoluteOldPath);
     process.stderr.write(`[DEBUG] Found ${importingFiles.length} potential importing files\n`);
-    
+
     // Step 2: Build WorkspaceEdit for import updates
     const changes: Record<string, TextEdit[]> = {};
     let totalEdits = 0;
-    
+
     for (const file of importingFiles) {
       const edits = findImportsInFile(file, absoluteOldPath, absoluteNewPath);
       if (edits.length > 0) {
@@ -463,72 +460,71 @@ export async function renameFile(
         process.stderr.write(`[DEBUG] Found ${edits.length} imports in ${file}\n`);
       }
     }
-    
+
     const workspaceEdit: WorkspaceEdit = { changes };
-    
+
     if (dry_run) {
       // In dry-run mode, just return what would be changed
-      const filesWithImports = Object.keys(changes).map(uri => uriToPath(uri));
+      const filesWithImports = Object.keys(changes).map((uri) => uriToPath(uri));
       return {
         success: true,
         filesModified: [],
         backupFiles: [],
         importUpdates: workspaceEdit,
-        error: `[DRY RUN] Would update ${totalEdits} imports in ${filesWithImports.length} files and rename ${absoluteOldPath} to ${absoluteNewPath}`
+        error: `[DRY RUN] Would update ${totalEdits} imports in ${filesWithImports.length} files and rename ${absoluteOldPath} to ${absoluteNewPath}`,
       };
     }
-    
+
     // Step 3: Apply import updates using existing infrastructure
     let result: ApplyEditResult = {
       success: true,
       filesModified: [],
-      backupFiles: []
+      backupFiles: [],
     };
-    
+
     if (totalEdits > 0) {
       process.stderr.write(`[DEBUG] Applying ${totalEdits} import updates\n`);
       result = await applyWorkspaceEdit(workspaceEdit, {
-        lspClient
+        lspClient,
       });
-      
+
       if (!result.success) {
         return {
           ...result,
-          error: `Failed to update imports: ${result.error}`
+          error: `Failed to update imports: ${result.error}`,
         };
       }
     }
-    
+
     // Step 4: Move the actual file
     process.stderr.write(`[DEBUG] Renaming file from ${absoluteOldPath} to ${absoluteNewPath}\n`);
-    
+
     // Create parent directory if needed
     const newDir = dirname(absoluteNewPath);
     if (!existsSync(newDir)) {
       const { mkdirSync } = await import('node:fs');
       mkdirSync(newDir, { recursive: true });
     }
-    
+
     renameSync(absoluteOldPath, absoluteNewPath);
     result.filesModified.push(absoluteNewPath);
-    
+
     // Step 5: Notify LSP if available
     if (lspClient) {
       // Sync the new file content with LSP
       await lspClient.syncFileContent(absoluteNewPath);
     }
-    
+
     return {
       ...result,
-      importUpdates: workspaceEdit
+      importUpdates: workspaceEdit,
     };
-    
   } catch (error) {
     return {
       success: false,
       filesModified: [],
       backupFiles: [],
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

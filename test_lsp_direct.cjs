@@ -4,18 +4,18 @@ const path = require('path');
 async function testLSPClient() {
   // Import ES modules
   const { LSPClient } = await import('./dist/src/lsp-client.js');
-  
+
   console.log('🔧 Testing LSP Client directly...');
-  
+
   // Set the config path
   process.env.CCLSP_CONFIG_PATH = path.join(__dirname, 'test-config.json');
-  
+
   const lspClient = new LSPClient();
   const testFile = path.join(__dirname, 'playground/src/components/user-form.ts');
-  
+
   try {
     console.log('📁 Test file:', testFile);
-    
+
     // Test 1: Get folding ranges
     console.log('\n🔍 Testing getFoldingRanges...');
     const foldingRanges = await lspClient.getFoldingRanges(testFile);
@@ -24,7 +24,7 @@ async function testLSPClient() {
       console.log('   First range:', foldingRanges[0]);
     }
 
-    // Test 2: Get document links  
+    // Test 2: Get document links
     console.log('\n🔗 Testing getDocumentLinks...');
     const docLinks = await lspClient.getDocumentLinks(testFile);
     console.log('✅ Document links result:', docLinks?.length || 0, 'links found');
@@ -51,7 +51,6 @@ async function testLSPClient() {
     } catch (sigError) {
       console.log('⚠️ Signature help failed (expected for some positions):', sigError.message);
     }
-    
   } catch (error) {
     console.error('❌ Test failed:', error);
   } finally {

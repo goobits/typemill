@@ -77,8 +77,7 @@ export const coreToolDefinitions = [
         },
         dry_run: {
           type: 'boolean',
-          description:
-            'If true, only preview the changes without applying them (default: false)',
+          description: 'If true, only preview the changes without applying them (default: false)',
         },
       },
       required: ['file_path', 'symbol_name', 'new_name'],
@@ -109,8 +108,7 @@ export const coreToolDefinitions = [
         },
         dry_run: {
           type: 'boolean',
-          description:
-            'If true, only preview the changes without applying them (default: false)',
+          description: 'If true, only preview the changes without applying them (default: false)',
         },
       },
       required: ['file_path', 'line', 'character', 'new_name'],

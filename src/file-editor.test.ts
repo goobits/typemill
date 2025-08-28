@@ -194,7 +194,7 @@ describe('file-editor', () => {
             ],
           },
         },
-        { createBackups: true }
+        { validateBeforeApply: true }
       );
 
       expect(result.success).toBe(true);
@@ -226,7 +226,7 @@ describe('file-editor', () => {
             ],
           },
         },
-        { createBackups: false }
+        { validateBeforeApply: false }
       );
 
       expect(result.success).toBe(true);

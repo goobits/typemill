@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
-import type { LSPClient } from '../../lsp-client.js';
 import { applyWorkspaceEdit } from '../../file-editor.js';
+import type { LSPClient } from '../../lsp-client.js';
 import { uriToPath } from '../../utils.js';
 
 // Handler for find_definition tool

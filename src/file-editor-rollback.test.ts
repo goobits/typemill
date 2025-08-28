@@ -89,7 +89,6 @@ describe.skipIf(!!process.env.CI)('file-editor rollback without backups', () => 
         },
       },
       {
-        createBackups: false, // Critical: no backup files created
         validateBeforeApply: true,
       }
     );

@@ -76,7 +76,9 @@ export class CapabilityManager {
       this.capabilityCache.set(serverKey, initResult.capabilities as ServerCapabilities);
       process.stderr.write(`[DEBUG CapabilityManager] Cached capabilities for ${serverKey}\n`);
     } else {
-      process.stderr.write(`[DEBUG CapabilityManager] No capabilities found in init result for ${serverKey}\n`);
+      process.stderr.write(
+        `[DEBUG CapabilityManager] No capabilities found in init result for ${serverKey}\n`
+      );
     }
   }
 
@@ -115,12 +117,14 @@ export class CapabilityManager {
     if (typeof current === 'boolean') {
       return current;
     }
-    
+
     if (current && typeof current === 'object') {
       return true; // Provider object exists
     }
 
-    process.stderr.write(`[DEBUG CapabilityManager] Capability ${capabilityPath} has unexpected type: ${typeof current}\n`);
+    process.stderr.write(
+      `[DEBUG CapabilityManager] Capability ${capabilityPath} has unexpected type: ${typeof current}\n`
+    );
     return false;
   }
 
@@ -132,7 +136,7 @@ export class CapabilityManager {
     if (capabilities?.signatureHelpProvider?.triggerCharacters) {
       return capabilities.signatureHelpProvider.triggerCharacters;
     }
-    return ['(', ','];  // Common defaults
+    return ['(', ',']; // Common defaults
   }
 
   /**
@@ -160,7 +164,7 @@ export class CapabilityManager {
 
     const supportedFeatures = [
       'hoverProvider',
-      'signatureHelpProvider', 
+      'signatureHelpProvider',
       'definitionProvider',
       'referencesProvider',
       'documentSymbolProvider',
@@ -174,8 +178,8 @@ export class CapabilityManager {
       'callHierarchyProvider',
       'semanticTokensProvider',
       'typeHierarchyProvider',
-      'inlayHintProvider'
-    ].filter(feature => {
+      'inlayHintProvider',
+    ].filter((feature) => {
       const value = (capabilities as any)[feature];
       return Boolean(value);
     });
@@ -203,12 +207,15 @@ export class CapabilityManager {
   /**
    * Validate that required capabilities exist for a feature
    */
-  validateRequiredCapabilities(serverState: ServerState, requiredCapabilities: string[]): {
+  validateRequiredCapabilities(
+    serverState: ServerState,
+    requiredCapabilities: string[]
+  ): {
     supported: boolean;
     missing: string[];
   } {
     const missing: string[] = [];
-    
+
     for (const capability of requiredCapabilities) {
       if (!this.hasCapability(serverState, capability)) {
         missing.push(capability);
@@ -217,7 +224,7 @@ export class CapabilityManager {
 
     return {
       supported: missing.length === 0,
-      missing
+      missing,
     };
   }
 

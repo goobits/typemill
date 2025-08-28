@@ -1,16 +1,23 @@
 import { resolve } from 'node:path';
-import type { LSPClient } from '../../lsp-client.js';
 import { applyWorkspaceEdit } from '../../file-editor.js';
+import type { TextEdit, WorkspaceEdit } from '../../file-editor.js';
+import type { LSPClient } from '../../lsp-client.js';
 import { pathToUri, uriToPath } from '../../utils.js';
-import { createMCPResponse, createUnsupportedFeatureResponse, createLimitedSupportResponse } from '../utils.js';
-import type { WorkspaceEdit, TextEdit } from '../../file-editor.js';
+import {
+  createLimitedSupportResponse,
+  createMCPResponse,
+  createUnsupportedFeatureResponse,
+} from '../utils.js';
 
 // Handler for get_code_actions tool
 export async function handleGetCodeActions(
   lspClient: LSPClient,
   args: {
     file_path: string;
-    range?: { start: { line: number; character: number }; end: { line: number; character: number } };
+    range?: {
+      start: { line: number; character: number };
+      end: { line: number; character: number };
+    };
   }
 ) {
   const { file_path, range } = args;
@@ -78,13 +85,15 @@ export async function handleFormatDocument(
 
   try {
     // Convert snake_case to camelCase for LSP client
-    const lspOptions = options ? {
-      tabSize: options.tab_size,
-      insertSpaces: options.insert_spaces,
-      trimTrailingWhitespace: options.trim_trailing_whitespace,
-      insertFinalNewline: options.insert_final_newline,
-      trimFinalNewlines: options.trim_final_newlines,
-    } : undefined;
+    const lspOptions = options
+      ? {
+          tabSize: options.tab_size,
+          insertSpaces: options.insert_spaces,
+          trimTrailingWhitespace: options.trim_trailing_whitespace,
+          insertFinalNewline: options.insert_final_newline,
+          trimFinalNewlines: options.trim_final_newlines,
+        }
+      : undefined;
 
     const formatEdits = await lspClient.formatDocument(absolutePath, lspOptions);
 
@@ -140,10 +149,7 @@ export async function handleFormatDocument(
 }
 
 // Handler for search_workspace_symbols tool
-export async function handleSearchWorkspaceSymbols(
-  lspClient: LSPClient,
-  args: { query: string }
-) {
+export async function handleSearchWorkspaceSymbols(lspClient: LSPClient, args: { query: string }) {
   const { query } = args;
 
   try {
@@ -168,13 +174,14 @@ export async function handleSearchWorkspaceSymbols(
         const line = location.range.start.line + 1;
         const character = location.range.start.character + 1;
         const symbolKind = symbol.kind ? lspClient.symbolKindToString(symbol.kind) : 'unknown';
-        
+
         return `${index + 1}. ${symbol.name} (${symbolKind}) - ${filePath}:${line}:${character}`;
       });
 
-    const resultText = symbols.length > 50
-      ? `Found ${symbols.length} symbols matching "${query}" (showing first 50):\n\n${symbolDescriptions.join('\n')}`
-      : `Found ${symbols.length} symbol${symbols.length === 1 ? '' : 's'} matching "${query}":\n\n${symbolDescriptions.join('\n')}`;
+    const resultText =
+      symbols.length > 50
+        ? `Found ${symbols.length} symbols matching "${query}" (showing first 50):\n\n${symbolDescriptions.join('\n')}`
+        : `Found ${symbols.length} symbol${symbols.length === 1 ? '' : 's'} matching "${query}":\n\n${symbolDescriptions.join('\n')}`;
 
     return {
       content: [
@@ -197,10 +204,7 @@ export async function handleSearchWorkspaceSymbols(
 }
 
 // Handler for get_document_symbols tool
-export async function handleGetDocumentSymbols(
-  lspClient: LSPClient,
-  args: { file_path: string }
-) {
+export async function handleGetDocumentSymbols(lspClient: LSPClient, args: { file_path: string }) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
 
@@ -220,9 +224,9 @@ export async function handleGetDocumentSymbols(
 
     // Check if we have DocumentSymbols (hierarchical) or SymbolInformation (flat)
     const isHierarchical = lspClient.isDocumentSymbolArray(symbols);
-    
+
     let symbolDescriptions: string[];
-    
+
     if (isHierarchical) {
       // Handle hierarchical DocumentSymbol[]
       const formatDocumentSymbol = (symbol: any, indent = 0): string[] => {
@@ -230,18 +234,18 @@ export async function handleGetDocumentSymbols(
         const line = symbol.range.start.line + 1;
         const character = symbol.range.start.character + 1;
         const symbolKind = lspClient.symbolKindToString(symbol.kind);
-        
+
         const result = [`${prefix}${symbol.name} (${symbolKind}) - Line ${line}:${character}`];
-        
+
         if (symbol.children && symbol.children.length > 0) {
           for (const child of symbol.children) {
             result.push(...formatDocumentSymbol(child, indent + 1));
           }
         }
-        
+
         return result;
       };
-      
+
       symbolDescriptions = [];
       for (const symbol of symbols) {
         symbolDescriptions.push(...formatDocumentSymbol(symbol));
@@ -252,7 +256,7 @@ export async function handleGetDocumentSymbols(
         const line = symbol.location.range.start.line + 1;
         const character = symbol.location.range.start.character + 1;
         const symbolKind = symbol.kind ? lspClient.symbolKindToString(symbol.kind) : 'unknown';
-        
+
         return `${index + 1}. ${symbol.name} (${symbolKind}) - Line ${line}:${character}`;
       });
     }
@@ -278,10 +282,7 @@ export async function handleGetDocumentSymbols(
 }
 
 // Handler for get_folding_ranges tool
-export async function handleGetFoldingRanges(
-  lspClient: LSPClient,
-  args: { file_path: string }
-) {
+export async function handleGetFoldingRanges(lspClient: LSPClient, args: { file_path: string }) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
 
@@ -296,7 +297,7 @@ export async function handleGetFoldingRanges(
         [
           'Use get_document_symbols to understand code structure',
           'Look at indentation patterns in the code',
-          'Use selection ranges for hierarchical code block understanding'
+          'Use selection ranges for hierarchical code block understanding',
         ]
       );
     }
@@ -304,34 +305,41 @@ export async function handleGetFoldingRanges(
     const foldingRanges = await lspClient.getFoldingRanges(absolutePath);
 
     if (foldingRanges.length === 0) {
-      return createMCPResponse(`No folding ranges found in ${file_path}. The file may not have collapsible code blocks.`);
+      return createMCPResponse(
+        `No folding ranges found in ${file_path}. The file may not have collapsible code blocks.`
+      );
     }
 
     const rangeDescriptions = foldingRanges.map((range, index) => {
       const startLine = range.startLine + 1; // Convert to 1-indexed
       const endLine = range.endLine + 1;
       const kind = range.kind || 'code';
-      const characterInfo = range.startCharacter !== undefined && range.endCharacter !== undefined 
-        ? ` (chars ${range.startCharacter}-${range.endCharacter})` 
-        : '';
-      
+      const characterInfo =
+        range.startCharacter !== undefined && range.endCharacter !== undefined
+          ? ` (chars ${range.startCharacter}-${range.endCharacter})`
+          : '';
+
       return `${index + 1}. **${kind}** block: Lines ${startLine}-${endLine}${characterInfo}${range.collapsedText ? ` ("${range.collapsedText}")` : ''}`;
     });
 
-    const kindCount = foldingRanges.reduce((acc, range) => {
-      const kind = range.kind || 'code';
-      acc[kind] = (acc[kind] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const kindCount = foldingRanges.reduce(
+      (acc, range) => {
+        const kind = range.kind || 'code';
+        acc[kind] = (acc[kind] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     const kindSummary = Object.entries(kindCount)
       .map(([kind, count]) => `${count} ${kind}`)
       .join(', ');
 
-    const response = `## Folding Ranges for ${file_path}\n\n` +
-                    `**Found ${foldingRanges.length} foldable regions:** ${kindSummary}\n\n` +
-                    `${rangeDescriptions.join('\n')}\n\n` +
-                    `*Folding ranges show logical code blocks that can be collapsed for better code navigation and understanding.*`;
+    const response =
+      `## Folding Ranges for ${file_path}\n\n` +
+      `**Found ${foldingRanges.length} foldable regions:** ${kindSummary}\n\n` +
+      `${rangeDescriptions.join('\n')}\n\n` +
+      `*Folding ranges show logical code blocks that can be collapsed for better code navigation and understanding.*`;
 
     return createMCPResponse(response);
   } catch (error) {
@@ -352,10 +360,7 @@ export async function handleGetFoldingRanges(
 }
 
 // Handler for get_document_links tool
-export async function handleGetDocumentLinks(
-  lspClient: LSPClient,
-  args: { file_path: string }
-) {
+export async function handleGetDocumentLinks(lspClient: LSPClient, args: { file_path: string }) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
 
@@ -370,7 +375,7 @@ export async function handleGetDocumentLinks(
         [
           'Look for import statements and URLs manually in the code',
           'Use find_references to track symbol usage across files',
-          'Check package.json or similar files for external dependencies'
+          'Check package.json or similar files for external dependencies',
         ]
       );
     }
@@ -378,7 +383,9 @@ export async function handleGetDocumentLinks(
     const documentLinks = await lspClient.getDocumentLinks(absolutePath);
 
     if (documentLinks.length === 0) {
-      return createMCPResponse(`No document links found in ${file_path}. The file may not contain URLs, imports, or other linkable references.`);
+      return createMCPResponse(
+        `No document links found in ${file_path}. The file may not contain URLs, imports, or other linkable references.`
+      );
     }
 
     const linkDescriptions = documentLinks.map((link, index) => {
@@ -386,43 +393,52 @@ export async function handleGetDocumentLinks(
       const startChar = link.range.start.character + 1;
       const endLine = link.range.end.line + 1;
       const endChar = link.range.end.character + 1;
-      
+
       let description = `${index + 1}. **Link** at Line ${startLine}:${startChar}`;
       if (startLine !== endLine || startChar !== endChar) {
         description += ` to ${endLine}:${endChar}`;
       }
-      
+
       if (link.target) {
         description += `\n   Target: ${link.target}`;
       }
-      
+
       if (link.tooltip) {
         description += `\n   Info: ${link.tooltip}`;
       }
-      
+
       return description;
     });
 
     // Categorize links by type for better understanding
     const categories = {
-      urls: documentLinks.filter(link => link.target?.startsWith('http')),
-      files: documentLinks.filter(link => link.target?.startsWith('file:')),
-      packages: documentLinks.filter(link => link.target?.includes('pkg.go.dev') || link.target?.includes('docs.rs') || link.target?.includes('npmjs.com')),
-      other: documentLinks.filter(link => link.target && !link.target.startsWith('http') && !link.target.startsWith('file:'))
+      urls: documentLinks.filter((link) => link.target?.startsWith('http')),
+      files: documentLinks.filter((link) => link.target?.startsWith('file:')),
+      packages: documentLinks.filter(
+        (link) =>
+          link.target?.includes('pkg.go.dev') ||
+          link.target?.includes('docs.rs') ||
+          link.target?.includes('npmjs.com')
+      ),
+      other: documentLinks.filter(
+        (link) => link.target && !link.target.startsWith('http') && !link.target.startsWith('file:')
+      ),
     };
 
     let categorySummary = '';
     if (categories.urls.length > 0) categorySummary += `${categories.urls.length} URLs, `;
     if (categories.files.length > 0) categorySummary += `${categories.files.length} files, `;
-    if (categories.packages.length > 0) categorySummary += `${categories.packages.length} packages, `;
+    if (categories.packages.length > 0)
+      categorySummary += `${categories.packages.length} packages, `;
     if (categories.other.length > 0) categorySummary += `${categories.other.length} other links, `;
-    
+
     categorySummary = categorySummary.replace(/, $/, ''); // Remove trailing comma
 
-    const response = `## Document Links for ${file_path}\n\n` +
-                    `**Found ${documentLinks.length} links:** ${categorySummary}\n\n` +
-                    `${linkDescriptions.join('\n\n')}\n\n` +
-                    `*Document links help navigate between related files, external documentation, and web resources. Different language servers provide different types of links.*`;
+    const response =
+      `## Document Links for ${file_path}\n\n` +
+      `**Found ${documentLinks.length} links:** ${categorySummary}\n\n` +
+      `${linkDescriptions.join('\n\n')}\n\n` +
+      `*Document links help navigate between related files, external documentation, and web resources. Different language servers provide different types of links.*`;
 
     return createMCPResponse(response);
   } catch (error) {
@@ -446,10 +462,16 @@ export async function handleGetDocumentLinks(
 export async function handleApplyWorkspaceEdit(
   lspClient: LSPClient,
   args: {
-    changes: Record<string, Array<{
-      range: { start: { line: number; character: number }; end: { line: number; character: number } };
-      newText: string;
-    }>>;
+    changes: Record<
+      string,
+      Array<{
+        range: {
+          start: { line: number; character: number };
+          end: { line: number; character: number };
+        };
+        newText: string;
+      }>
+    >;
     validate_before_apply?: boolean;
   }
 ) {
@@ -458,18 +480,18 @@ export async function handleApplyWorkspaceEdit(
   try {
     // Convert the input format to internal WorkspaceEdit format
     const workspaceEdit: WorkspaceEdit = {
-      changes: {}
+      changes: {},
     };
 
     // Process each file's changes
     for (const [filePath, edits] of Object.entries(changes)) {
       // Convert file path to URI if it's not already one
       const uri = filePath.startsWith('file://') ? filePath : pathToUri(resolve(filePath));
-      
+
       // Convert edits to internal TextEdit format
-      const textEdits: TextEdit[] = edits.map(edit => ({
+      const textEdits: TextEdit[] = edits.map((edit) => ({
         range: edit.range,
-        newText: edit.newText
+        newText: edit.newText,
       }));
 
       workspaceEdit.changes![uri] = textEdits;
@@ -477,21 +499,31 @@ export async function handleApplyWorkspaceEdit(
 
     // Validate that we have at least one change
     if (!workspaceEdit.changes || Object.keys(workspaceEdit.changes).length === 0) {
-      return createMCPResponse('No changes provided. Please specify at least one file with edits to apply.');
+      return createMCPResponse(
+        'No changes provided. Please specify at least one file with edits to apply.'
+      );
     }
 
     const fileCount = Object.keys(workspaceEdit.changes).length;
-    const editCount = Object.values(workspaceEdit.changes).reduce((sum, edits) => sum + edits.length, 0);
+    const editCount = Object.values(workspaceEdit.changes).reduce(
+      (sum, edits) => sum + edits.length,
+      0
+    );
 
     // Check workspace edit capabilities for any of the files
     let serverSupportsWorkspaceEdit = false;
     let serverDescription = 'Unknown Server';
-    
+
     try {
       // Check capability with the first file
       const firstFile = Object.keys(workspaceEdit.changes)[0];
+      if (!firstFile) {
+        return createMCPResponse('No files found in workspace edit changes.');
+      }
       const firstFilePath = firstFile.startsWith('file://') ? uriToPath(firstFile) : firstFile;
-      const validation = await lspClient.validateCapabilities(firstFilePath, ['workspace.workspaceEdit']);
+      const validation = await lspClient.validateCapabilities(firstFilePath, [
+        'workspace.workspaceEdit',
+      ]);
       serverSupportsWorkspaceEdit = validation.supported;
       serverDescription = validation.serverDescription;
     } catch (error) {
@@ -502,16 +534,16 @@ export async function handleApplyWorkspaceEdit(
     // Apply the workspace edit using the existing infrastructure
     const result = await applyWorkspaceEdit(workspaceEdit, {
       validateBeforeApply: validate_before_apply,
-      lspClient
+      lspClient,
     });
 
     if (!result.success) {
       return createMCPResponse(
         `❌ **Workspace edit failed**\n\n` +
-        `**Error:** ${result.error}\n\n` +
-        `**Files targeted:** ${fileCount}\n` +
-        `**Total edits:** ${editCount}\n\n` +
-        `*No changes were applied due to the error. All files remain unchanged.*`
+          `**Error:** ${result.error}\n\n` +
+          `**Files targeted:** ${fileCount}\n` +
+          `**Total edits:** ${editCount}\n\n` +
+          `*No changes were applied due to the error. All files remain unchanged.*`
       );
     }
 
@@ -522,7 +554,7 @@ export async function handleApplyWorkspaceEdit(
 
     if (result.filesModified.length > 0) {
       response += `**Modified files:**\n`;
-      result.filesModified.forEach(file => {
+      result.filesModified.forEach((file) => {
         response += `• ${file}\n`;
       });
     }

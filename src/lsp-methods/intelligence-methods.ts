@@ -1,5 +1,14 @@
 // LLM Agent Intelligence LSP Methods
-import type { Hover, Position, CompletionItem, InlayHint, InlayHintParams, SemanticTokens, SemanticTokensParams, SignatureHelp } from '../types.js';
+import type {
+  CompletionItem,
+  Hover,
+  InlayHint,
+  InlayHintParams,
+  Position,
+  SemanticTokens,
+  SemanticTokensParams,
+  SignatureHelp,
+} from '../types.js';
 
 export interface IntelligenceMethodsContext {
   getServer: (filePath: string) => Promise<any>;
@@ -53,7 +62,11 @@ export async function getCompletions(
         },
   };
 
-  const response = await context.sendRequest(serverState, 'textDocument/completion', completionParams);
+  const response = await context.sendRequest(
+    serverState,
+    'textDocument/completion',
+    completionParams
+  );
 
   // Handle both CompletionList and CompletionItem[] responses
   if (response && typeof response === 'object') {
@@ -85,7 +98,11 @@ export async function getInlayHints(
     range,
   };
 
-  const response = await context.sendRequest(serverState, 'textDocument/inlayHint', inlayHintParams);
+  const response = await context.sendRequest(
+    serverState,
+    'textDocument/inlayHint',
+    inlayHintParams
+  );
 
   return response || [];
 }
@@ -105,7 +122,11 @@ export async function getSemanticTokens(
     textDocument: { uri: `file://${filePath}` },
   };
 
-  const response = await context.sendRequest(serverState, 'textDocument/semanticTokens/full', semanticTokensParams);
+  const response = await context.sendRequest(
+    serverState,
+    'textDocument/semanticTokens/full',
+    semanticTokensParams
+  );
 
   return response || null;
 }
@@ -130,15 +151,19 @@ export async function getSignatureHelp(
       ? {
           triggerKind: 2, // TriggerCharacter
           triggerCharacter,
-          isRetrigger: false
+          isRetrigger: false,
         }
       : {
           triggerKind: 1, // Invoked
-          isRetrigger: false
+          isRetrigger: false,
         },
   };
 
-  const response = await context.sendRequest(serverState, 'textDocument/signatureHelp', signatureHelpParams);
+  const response = await context.sendRequest(
+    serverState,
+    'textDocument/signatureHelp',
+    signatureHelpParams
+  );
 
   return response || null;
 }

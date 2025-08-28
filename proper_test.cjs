@@ -12,7 +12,7 @@ class MCPTestClient {
       this.process = spawn('node', ['dist/index.js'], {
         stdio: ['pipe', 'pipe', 'pipe'],
         cwd: __dirname,
-        env: { ...process.env, CCLSP_CONFIG_PATH: path.join(__dirname, 'test-config.json') }
+        env: { ...process.env, CCLSP_CONFIG_PATH: path.join(__dirname, 'test-config.json') },
       });
 
       this.process.stderr.on('data', (data) => {
@@ -34,7 +34,7 @@ class MCPTestClient {
         jsonrpc: '2.0',
         id: 1,
         method,
-        params
+        params,
       };
 
       let responseBuffer = '';
@@ -42,16 +42,16 @@ class MCPTestClient {
 
       const handleData = (data) => {
         if (responseReceived) return;
-        
+
         responseBuffer += data.toString();
         console.log('RAW RESPONSE:', responseBuffer);
 
         // Look for Content-Length header
         const headerMatch = responseBuffer.match(/Content-Length: (\d+)\r?\n\r?\n(.*)$/s);
         if (headerMatch) {
-          const contentLength = parseInt(headerMatch[1]);
+          const contentLength = Number.parseInt(headerMatch[1]);
           const content = headerMatch[2];
-          
+
           if (content.length >= contentLength) {
             const jsonResponse = content.substring(0, contentLength);
             try {
@@ -72,7 +72,7 @@ class MCPTestClient {
       const message = JSON.stringify(request);
       const contentLength = Buffer.byteLength(message, 'utf8');
       const headers = `Content-Length: ${contentLength}\r\n\r\n`;
-      
+
       console.log('SENDING:', headers + message);
       this.process.stdin.write(headers + message);
 
@@ -94,7 +94,7 @@ class MCPTestClient {
 
 async function runTest() {
   const client = new MCPTestClient();
-  
+
   try {
     console.log('🚀 Starting CCLSP Test...');
     await client.start();
@@ -109,12 +109,11 @@ async function runTest() {
     console.log('\n🔍 Testing get_folding_ranges...');
     const foldingResponse = await client.sendRequest('tools/call', {
       name: 'get_folding_ranges',
-      arguments: { 
-        file_path: path.join(__dirname, 'playground/src/components/user-form.ts')
-      }
+      arguments: {
+        file_path: path.join(__dirname, 'playground/src/components/user-form.ts'),
+      },
     });
     console.log('✅ Folding ranges response:', JSON.stringify(foldingResponse, null, 2));
-
   } catch (error) {
     console.error('❌ Test failed:', error);
   } finally {

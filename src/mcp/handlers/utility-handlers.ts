@@ -1,14 +1,11 @@
-import { resolve } from 'node:path';
-import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
 import { mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { dirname } from 'node:path';
 import type { LSPClient } from '../../lsp-client.js';
 
 // Handler for get_diagnostics tool
-export async function handleGetDiagnostics(
-  lspClient: LSPClient,
-  args: { file_path: string }
-) {
+export async function handleGetDiagnostics(lspClient: LSPClient, args: { file_path: string }) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
 
@@ -63,10 +60,7 @@ export async function handleGetDiagnostics(
 }
 
 // Handler for restart_server tool
-export async function handleRestartServer(
-  lspClient: LSPClient,
-  args: { extensions?: string[] }
-) {
+export async function handleRestartServer(lspClient: LSPClient, args: { extensions?: string[] }) {
   const { extensions } = args;
 
   try {
@@ -112,16 +106,11 @@ export async function handleRenameFile(
   }
 ) {
   const { old_path, new_path, dry_run = false } = args;
-  
+
   try {
     const { renameFile } = await import('../../file-editor.js');
-    const result = await renameFile(
-      old_path,
-      new_path,
-      lspClient,
-      { dry_run }
-    );
-    
+    const result = await renameFile(old_path, new_path, lspClient, { dry_run });
+
     if (!result.success) {
       return {
         content: [
@@ -132,7 +121,7 @@ export async function handleRenameFile(
         ],
       };
     }
-    
+
     if (dry_run) {
       // In dry-run mode, show what would be changed
       const message = result.error || '[DRY RUN] No changes would be made';
@@ -145,19 +134,22 @@ export async function handleRenameFile(
         ],
       };
     }
-    
+
     // Success message
-    const importCount = result.importUpdates 
-      ? Object.keys(result.importUpdates.changes || {}).length 
+    const importCount = result.importUpdates
+      ? Object.keys(result.importUpdates.changes || {}).length
       : 0;
-    
+
     return {
       content: [
         {
           type: 'text',
-          text: `✅ Successfully renamed ${old_path} to ${new_path}\n\n` +
-                `Files modified: ${result.filesModified.length}\n` +
-                (importCount > 0 ? `Files with updated imports: ${importCount}` : 'No import updates needed'),
+          text:
+            `✅ Successfully renamed ${old_path} to ${new_path}\n\n` +
+            `Files modified: ${result.filesModified.length}\n` +
+            (importCount > 0
+              ? `Files with updated imports: ${importCount}`
+              : 'No import updates needed'),
         },
       ],
     };
