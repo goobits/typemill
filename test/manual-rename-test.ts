@@ -4,8 +4,8 @@
  * Run with: bun test/manual-rename-test.ts
  */
 
-import { spawn } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { execSync, spawn } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -163,7 +163,7 @@ async function setupTestEnvironment() {
   };
 
   const configPath = join(TEST_DIR, 'cclsp.json');
-  require('node:fs').writeFileSync(configPath, JSON.stringify(config, null, 2));
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
   console.log('Created LSP config file');
 }
 
@@ -225,7 +225,7 @@ async function main() {
 
   // Build the project first
   console.log('Building project...');
-  const { execSync } = require('node:child_process');
+  // execSync already imported at the top
   try {
     execSync('bun run build', { cwd: join(__dirname, '..') });
     console.log('Build successful\n');

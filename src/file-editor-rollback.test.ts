@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { applyWorkspaceEdit } from './file-editor.js';
 import { pathToUri } from './utils.js';
@@ -39,7 +39,7 @@ describe.skipIf(!!process.env.CI)('file-editor rollback without backups', () => 
     try {
       writeFileSync(file1, originalContent1);
       console.log('[TEST DEBUG] file1 written successfully');
-      console.log(`[TEST DEBUG] file1 realpath: ${require('node:fs').realpathSync(file1)}`);
+      console.log(`[TEST DEBUG] file1 realpath: ${realpathSync(file1)}`);
     } catch (error) {
       console.log(`[TEST DEBUG] file1 write/realpath failed: ${error}`);
       throw error;
@@ -48,7 +48,7 @@ describe.skipIf(!!process.env.CI)('file-editor rollback without backups', () => 
     try {
       writeFileSync(file2, originalContent2);
       console.log('[TEST DEBUG] file2 written successfully');
-      console.log(`[TEST DEBUG] file2 realpath: ${require('node:fs').realpathSync(file2)}`);
+      console.log(`[TEST DEBUG] file2 realpath: ${realpathSync(file2)}`);
     } catch (error) {
       console.log(`[TEST DEBUG] file2 write/realpath failed: ${error}`);
       throw error;
