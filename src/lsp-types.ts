@@ -24,6 +24,7 @@ export interface ServerState {
   lastDiagnosticUpdate: Map<string, number>; // Track last update time per file
   diagnosticVersions: Map<string, number>; // Track diagnostic versions per file
   capabilities?: ServerCapabilities; // LSP server capabilities from initialization
+  buffer: string; // Buffer for protocol message parsing
 }
 
 /**
