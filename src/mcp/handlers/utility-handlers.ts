@@ -207,26 +207,9 @@ export async function handleCreateFile(
     // Write file content
     writeFileSync(absolutePath, content, 'utf8');
 
-    // Notify LSP servers about the new file
-    try {
-      const serverState = await lspClient.getServer(absolutePath);
-      if (serverState.initialized) {
-        // Send workspace/didCreateFiles notification if supported
-        const capabilities = serverState.capabilities;
-        const fileOperations = capabilities?.workspace?.fileOperations;
-        
-        if (fileOperations?.didCreate) {
-          await lspClient.sendNotification(serverState.process, 'workspace/didCreateFiles', {
-            files: [{
-              uri: `file://${absolutePath}`
-            }]
-          });
-        }
-      }
-    } catch (lspError) {
-      // LSP notification failure is not critical for file creation
-      process.stderr.write(`[WARNING] Could not notify LSP server about file creation: ${lspError}\n`);
-    }
+    // Note: LSP notification for file creation would require access to private methods
+    // For now, file creation works without LSP notification (filesystem operation only)
+    // Future enhancement: Add public method for file operation notifications
 
     return {
       content: [
@@ -272,66 +255,14 @@ export async function handleDeleteFile(
       };
     }
 
-    // Notify LSP servers before deletion
-    try {
-      const serverState = await lspClient.getServer(absolutePath);
-      if (serverState.initialized) {
-        // Close the file if it's open
-        await lspClient.sendNotification(serverState.process, 'textDocument/didClose', {
-          textDocument: {
-            uri: `file://${absolutePath}`
-          }
-        });
-
-        // Send workspace/willDeleteFiles notification if supported
-        const capabilities = serverState.capabilities;
-        const fileOperations = capabilities?.workspace?.fileOperations;
-        
-        if (fileOperations?.willDelete) {
-          await lspClient.sendRequest(serverState.process, 'workspace/willDeleteFiles', {
-            files: [{
-              uri: `file://${absolutePath}`
-            }]
-          });
-        }
-      }
-    } catch (lspError) {
-      if (!force) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `LSP server error during file deletion: ${lspError}. Use force: true to delete anyway.`,
-            },
-          ],
-        };
-      }
-      // With force=true, continue despite LSP errors
-      process.stderr.write(`[WARNING] LSP notification failed, but continuing with forced deletion: ${lspError}\n`);
-    }
+    // Note: LSP notification for file deletion would require access to private methods
+    // For now, file deletion works without LSP notification (filesystem operation only)
+    // Future enhancement: Add public method for file operation notifications
 
     // Delete the file
     unlinkSync(absolutePath);
 
-    // Send post-deletion notification
-    try {
-      const serverState = await lspClient.getServer(absolutePath);
-      if (serverState.initialized) {
-        const capabilities = serverState.capabilities;
-        const fileOperations = capabilities?.workspace?.fileOperations;
-        
-        if (fileOperations?.didDelete) {
-          await lspClient.sendNotification(serverState.process, 'workspace/didDeleteFiles', {
-            files: [{
-              uri: `file://${absolutePath}`
-            }]
-          });
-        }
-      }
-    } catch (lspError) {
-      // Post-deletion notification failure is not critical
-      process.stderr.write(`[WARNING] Could not notify LSP server about file deletion: ${lspError}\n`);
-    }
+    // File successfully deleted (LSP notifications would require public API enhancement)
 
     return {
       content: [
