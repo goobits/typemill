@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { constants, access, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { loadGitignore, scanDirectoryForExtensions } from './file-scanner.js';
+import { capabilityManager, type ServerCapabilities } from './capability-manager.js';
 import * as CoreMethods from './lsp-methods/core-methods.js';
 import * as DocumentMethods from './lsp-methods/document-methods.js';
 import * as DiagnosticMethods from './lsp-methods/diagnostic-methods.js';
@@ -45,6 +46,7 @@ interface ServerState {
   diagnostics: Map<string, Diagnostic[]>; // Store diagnostics by file URI
   lastDiagnosticUpdate: Map<string, number>; // Track last update time per file
   diagnosticVersions: Map<string, number>; // Track diagnostic versions per file
+  capabilities?: ServerCapabilities; // LSP server capabilities from initialization
 }
 
 export class LSPClient {
@@ -285,6 +287,15 @@ export class LSPClient {
     }
 
     const initResult = await this.sendRequest(childProcess, 'initialize', initializeParams);
+
+    // Cache server capabilities for feature detection
+    const serverKey = JSON.stringify(serverConfig.command);
+    capabilityManager.cacheCapabilities(serverKey, initResult);
+    
+    // Store capabilities in server state for easy access
+    if (initResult && typeof initResult === 'object' && (initResult as any).capabilities) {
+      serverState.capabilities = (initResult as any).capabilities as ServerCapabilities;
+    }
 
     // Send the initialized notification after receiving the initialize response
     await this.sendNotification(childProcess, 'initialized', {});
@@ -1242,6 +1253,20 @@ export class LSPClient {
     return getSemanticTokens(context, filePath);
   }
 
+  async getSignatureHelp(
+    filePath: string, 
+    position: Position, 
+    triggerCharacter?: string
+  ): Promise<import('./types.js').SignatureHelp | null> {
+    const { getSignatureHelp } = await import('./lsp-methods/intelligence-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getSignatureHelp(context, filePath, position, triggerCharacter);
+  }
+
   // Hierarchy methods
 
   async prepareCallHierarchy(
@@ -1329,6 +1354,73 @@ export class LSPClient {
       sendRequest: this.sendRequest.bind(this),
     };
     return getSelectionRange(context, filePath, positions);
+  }
+
+  async getFoldingRanges(filePath: string): Promise<import('./types.js').FoldingRange[]> {
+    const { getFoldingRanges } = await import('./lsp-methods/document-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getFoldingRanges(context, filePath);
+  }
+
+  async getDocumentLinks(filePath: string): Promise<import('./types.js').DocumentLink[]> {
+    const { getDocumentLinks } = await import('./lsp-methods/document-methods.js');
+    const context = {
+      getServer: this.getServer.bind(this),
+      ensureFileOpen: this.ensureFileOpen.bind(this),
+      sendRequest: this.sendRequest.bind(this),
+    };
+    return getDocumentLinks(context, filePath);
+  }
+
+  // Capability checking methods for feature validation
+
+  /**
+   * Check if a server supports a specific capability
+   */
+  hasCapability(filePath: string, capabilityPath: string): Promise<boolean> {
+    return this.getServer(filePath).then(serverState => {
+      return capabilityManager.hasCapability(serverState, capabilityPath);
+    }).catch(() => false);
+  }
+
+  /**
+   * Get server capabilities info for debugging
+   */
+  async getCapabilityInfo(filePath: string): Promise<string> {
+    try {
+      const serverState = await this.getServer(filePath);
+      return capabilityManager.getCapabilityInfo(serverState);
+    } catch (error) {
+      return `Error getting server: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
+  /**
+   * Validate required capabilities for a feature
+   */
+  async validateCapabilities(filePath: string, requiredCapabilities: string[]): Promise<{
+    supported: boolean;
+    missing: string[];
+    serverDescription: string;
+  }> {
+    try {
+      const serverState = await this.getServer(filePath);
+      const validation = capabilityManager.validateRequiredCapabilities(serverState, requiredCapabilities);
+      return {
+        ...validation,
+        serverDescription: capabilityManager.getServerDescription(serverState)
+      };
+    } catch (error) {
+      return {
+        supported: false,
+        missing: requiredCapabilities,
+        serverDescription: 'Unknown Server'
+      };
+    }
   }
 
   dispose(): void {

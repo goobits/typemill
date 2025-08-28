@@ -1,7 +1,7 @@
 // MCP handlers for LLM agent intelligence features
 import { resolve } from 'node:path';
 import type { LSPClient } from '../../lsp-client.js';
-import { createMCPResponse } from '../utils.js';
+import { createMCPResponse, createUnsupportedFeatureResponse, createLimitedSupportResponse } from '../utils.js';
 
 // Handler for get_hover tool
 export async function handleGetHover(
@@ -243,4 +243,120 @@ function getCompletionKindName(kind?: number): string {
     25: 'TypeParameter',
   };
   return kind !== undefined ? kindMap[kind] || `Unknown(${kind})` : 'Unknown';
+}
+
+// Handler for get_signature_help tool
+export async function handleGetSignatureHelp(
+  lspClient: LSPClient,
+  args: { file_path: string; line: number; character: number; trigger_character?: string }
+) {
+  const { file_path, line, character, trigger_character } = args;
+  const absolutePath = resolve(file_path);
+
+  try {
+    // Check if server supports signature help
+    const validation = await lspClient.validateCapabilities(absolutePath, ['signatureHelpProvider']);
+    if (!validation.supported) {
+      return createUnsupportedFeatureResponse(
+        'Signature Help',
+        validation.serverDescription,
+        validation.missing,
+        [
+          'Use hover information to see function documentation',
+          'Check the function definition directly with find_definition',
+          'Look at code completions which may show parameter info'
+        ]
+      );
+    }
+
+    const signatureHelp = await lspClient.getSignatureHelp(absolutePath, {
+      line: line - 1, // Convert to 0-indexed
+      character,
+    }, trigger_character);
+
+    if (!signatureHelp || !signatureHelp.signatures || signatureHelp.signatures.length === 0) {
+      return createMCPResponse(`No signature help available for position ${line}:${character} in ${file_path}`);
+    }
+
+    const signatures = signatureHelp.signatures;
+    const activeSignature = signatureHelp.activeSignature ?? 0;
+    const activeParameter = signatureHelp.activeParameter;
+
+    let response = `## Function Signature Help for ${file_path}:${line}:${character}\n\n`;
+
+    if (signatures.length > 1) {
+      response += `**${signatures.length} signatures available** (showing active signature):\n\n`;
+    }
+
+    // Show the active signature prominently
+    const signature = signatures[activeSignature] || signatures[0];
+    response += `**${signature.label}**\n\n`;
+
+    if (signature.documentation) {
+      let doc = signature.documentation;
+      if (typeof doc === 'object' && doc.value) {
+        doc = doc.value;
+      }
+      response += `${doc}\n\n`;
+    }
+
+    // Show parameters with active parameter highlighted
+    if (signature.parameters && signature.parameters.length > 0) {
+      response += '**Parameters:**\n';
+      signature.parameters.forEach((param, index) => {
+        const isActive = activeParameter !== undefined && index === activeParameter;
+        const marker = isActive ? '👉 ' : '   ';
+        const emphasis = isActive ? '**' : '';
+        
+        let paramLabel = '';
+        if (typeof param.label === 'string') {
+          paramLabel = param.label;
+        } else if (Array.isArray(param.label)) {
+          // Extract parameter name from label range
+          const [start, end] = param.label;
+          paramLabel = signature.label.substring(start, end);
+        }
+
+        response += `${marker}${emphasis}${paramLabel}${emphasis}`;
+        
+        if (param.documentation) {
+          let paramDoc = param.documentation;
+          if (typeof paramDoc === 'object' && paramDoc.value) {
+            paramDoc = paramDoc.value;
+          }
+          response += ` - ${paramDoc}`;
+        }
+        response += '\n';
+      });
+    }
+
+    // Show other signatures if available
+    if (signatures.length > 1) {
+      response += '\n**Other signatures:**\n';
+      signatures.forEach((sig, index) => {
+        if (index !== activeSignature) {
+          response += `• ${sig.label}\n`;
+        }
+      });
+    }
+
+    response += '\n*Signature help shows function parameters and documentation for the function being called.*';
+
+    return createMCPResponse(response);
+  } catch (error) {
+    // Check if it's a capability-related error
+    if (error instanceof Error && error.message.includes('not supported')) {
+      const serverInfo = await lspClient.getCapabilityInfo(absolutePath);
+      return createLimitedSupportResponse(
+        'Signature Help',
+        'Current Language Server',
+        'Server may not fully support signature help or the position is not inside a function call',
+        `Server capabilities: ${serverInfo}`
+      );
+    }
+
+    return createMCPResponse(
+      `Error getting signature help: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }

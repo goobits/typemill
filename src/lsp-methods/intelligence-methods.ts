@@ -1,5 +1,5 @@
 // LLM Agent Intelligence LSP Methods
-import type { Hover, Position, CompletionItem, InlayHint, InlayHintParams, SemanticTokens, SemanticTokensParams } from '../types.js';
+import type { Hover, Position, CompletionItem, InlayHint, InlayHintParams, SemanticTokens, SemanticTokensParams, SignatureHelp } from '../types.js';
 
 export interface IntelligenceMethodsContext {
   getServer: (filePath: string) => Promise<any>;
@@ -106,6 +106,39 @@ export async function getSemanticTokens(
   };
 
   const response = await context.sendRequest(serverState, 'textDocument/semanticTokens/full', semanticTokensParams);
+
+  return response || null;
+}
+
+export async function getSignatureHelp(
+  context: IntelligenceMethodsContext,
+  filePath: string,
+  position: Position,
+  triggerCharacter?: string
+): Promise<SignatureHelp | null> {
+  const serverState = await context.getServer(filePath);
+  if (!serverState) {
+    throw new Error('No LSP server available for this file type');
+  }
+
+  await context.ensureFileOpen(serverState, filePath);
+
+  const signatureHelpParams = {
+    textDocument: { uri: `file://${filePath}` },
+    position,
+    context: triggerCharacter
+      ? {
+          triggerKind: 2, // TriggerCharacter
+          triggerCharacter,
+          isRetrigger: false
+        }
+      : {
+          triggerKind: 1, // Invoked
+          isRetrigger: false
+        },
+  };
+
+  const response = await context.sendRequest(serverState, 'textDocument/signatureHelp', signatureHelpParams);
 
   return response || null;
 }

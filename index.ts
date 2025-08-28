@@ -15,6 +15,8 @@ import {
   handleFormatDocument,
   handleSearchWorkspaceSymbols,
   handleGetDocumentSymbols,
+  handleGetFoldingRanges,
+  handleGetDocumentLinks,
   handleGetDiagnostics,
   handleRestartServer,
   handleRenameFile,
@@ -22,6 +24,7 @@ import {
   handleGetCompletions,
   handleGetInlayHints,
   handleGetSemanticTokens,
+  handleGetSignatureHelp,
   handlePrepareCallHierarchy,
   handleGetCallHierarchyIncomingCalls,
   handleGetCallHierarchyOutgoingCalls,
@@ -29,6 +32,9 @@ import {
   handleGetTypeHierarchySupertypes,
   handleGetTypeHierarchySubtypes,
   handleGetSelectionRange,
+  handleApplyWorkspaceEdit,
+  handleCreateFile,
+  handleDeleteFile,
 } from './src/mcp/handlers/index.js';
 import { createMCPError } from './src/mcp/utils.js';
 
@@ -92,6 +98,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return await handleSearchWorkspaceSymbols(lspClient, args as any);
       case 'get_document_symbols':
         return await handleGetDocumentSymbols(lspClient, args as any);
+      case 'get_folding_ranges':
+        return await handleGetFoldingRanges(lspClient, args as any);
+      case 'get_document_links':
+        return await handleGetDocumentLinks(lspClient, args as any);
       case 'get_diagnostics':
         return await handleGetDiagnostics(lspClient, args as any);
       case 'restart_server':
@@ -107,6 +117,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return await handleGetInlayHints(lspClient, args as any);
       case 'get_semantic_tokens':
         return await handleGetSemanticTokens(lspClient, args as any);
+      case 'get_signature_help':
+        return await handleGetSignatureHelp(lspClient, args as any);
       // Hierarchy tools
       case 'prepare_call_hierarchy':
         return await handlePrepareCallHierarchy(lspClient, args as any);
@@ -122,6 +134,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return await handleGetTypeHierarchySubtypes(lspClient, args as any);
       case 'get_selection_range':
         return await handleGetSelectionRange(lspClient, args as any);
+      case 'apply_workspace_edit':
+        return await handleApplyWorkspaceEdit(lspClient, args as any);
+      case 'create_file':
+        return await handleCreateFile(lspClient, args as any);
+      case 'delete_file':
+        return await handleDeleteFile(lspClient, args as any);
       default:
         throw new Error(`Unknown tool: ${name}`);
     }

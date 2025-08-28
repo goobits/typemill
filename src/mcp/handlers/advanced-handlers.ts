@@ -2,6 +2,8 @@ import { resolve } from 'node:path';
 import type { LSPClient } from '../../lsp-client.js';
 import { applyWorkspaceEdit } from '../../file-editor.js';
 import { pathToUri, uriToPath } from '../../utils.js';
+import { createMCPResponse, createUnsupportedFeatureResponse, createLimitedSupportResponse } from '../utils.js';
+import type { WorkspaceEdit, TextEdit } from '../../file-editor.js';
 
 // Handler for get_code_actions tool
 export async function handleGetCodeActions(
@@ -272,5 +274,273 @@ export async function handleGetDocumentSymbols(
         },
       ],
     };
+  }
+}
+
+// Handler for get_folding_ranges tool
+export async function handleGetFoldingRanges(
+  lspClient: LSPClient,
+  args: { file_path: string }
+) {
+  const { file_path } = args;
+  const absolutePath = resolve(file_path);
+
+  try {
+    // Check if server supports folding ranges
+    const validation = await lspClient.validateCapabilities(absolutePath, ['foldingRangeProvider']);
+    if (!validation.supported) {
+      return createUnsupportedFeatureResponse(
+        'Folding Ranges',
+        validation.serverDescription,
+        validation.missing,
+        [
+          'Use get_document_symbols to understand code structure',
+          'Look at indentation patterns in the code',
+          'Use selection ranges for hierarchical code block understanding'
+        ]
+      );
+    }
+
+    const foldingRanges = await lspClient.getFoldingRanges(absolutePath);
+
+    if (foldingRanges.length === 0) {
+      return createMCPResponse(`No folding ranges found in ${file_path}. The file may not have collapsible code blocks.`);
+    }
+
+    const rangeDescriptions = foldingRanges.map((range, index) => {
+      const startLine = range.startLine + 1; // Convert to 1-indexed
+      const endLine = range.endLine + 1;
+      const kind = range.kind || 'code';
+      const characterInfo = range.startCharacter !== undefined && range.endCharacter !== undefined 
+        ? ` (chars ${range.startCharacter}-${range.endCharacter})` 
+        : '';
+      
+      return `${index + 1}. **${kind}** block: Lines ${startLine}-${endLine}${characterInfo}${range.collapsedText ? ` ("${range.collapsedText}")` : ''}`;
+    });
+
+    const kindCount = foldingRanges.reduce((acc, range) => {
+      const kind = range.kind || 'code';
+      acc[kind] = (acc[kind] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const kindSummary = Object.entries(kindCount)
+      .map(([kind, count]) => `${count} ${kind}`)
+      .join(', ');
+
+    const response = `## Folding Ranges for ${file_path}\n\n` +
+                    `**Found ${foldingRanges.length} foldable regions:** ${kindSummary}\n\n` +
+                    `${rangeDescriptions.join('\n')}\n\n` +
+                    `*Folding ranges show logical code blocks that can be collapsed for better code navigation and understanding.*`;
+
+    return createMCPResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('not supported')) {
+      const serverInfo = await lspClient.getCapabilityInfo(absolutePath);
+      return createLimitedSupportResponse(
+        'Folding Ranges',
+        'Current Language Server',
+        'Server may not fully support folding ranges or the file has no collapsible regions',
+        `Server capabilities: ${serverInfo}`
+      );
+    }
+
+    return createMCPResponse(
+      `Error getting folding ranges: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+// Handler for get_document_links tool
+export async function handleGetDocumentLinks(
+  lspClient: LSPClient,
+  args: { file_path: string }
+) {
+  const { file_path } = args;
+  const absolutePath = resolve(file_path);
+
+  try {
+    // Check if server supports document links
+    const validation = await lspClient.validateCapabilities(absolutePath, ['documentLinkProvider']);
+    if (!validation.supported) {
+      return createUnsupportedFeatureResponse(
+        'Document Links',
+        validation.serverDescription,
+        validation.missing,
+        [
+          'Look for import statements and URLs manually in the code',
+          'Use find_references to track symbol usage across files',
+          'Check package.json or similar files for external dependencies'
+        ]
+      );
+    }
+
+    const documentLinks = await lspClient.getDocumentLinks(absolutePath);
+
+    if (documentLinks.length === 0) {
+      return createMCPResponse(`No document links found in ${file_path}. The file may not contain URLs, imports, or other linkable references.`);
+    }
+
+    const linkDescriptions = documentLinks.map((link, index) => {
+      const startLine = link.range.start.line + 1; // Convert to 1-indexed
+      const startChar = link.range.start.character + 1;
+      const endLine = link.range.end.line + 1;
+      const endChar = link.range.end.character + 1;
+      
+      let description = `${index + 1}. **Link** at Line ${startLine}:${startChar}`;
+      if (startLine !== endLine || startChar !== endChar) {
+        description += ` to ${endLine}:${endChar}`;
+      }
+      
+      if (link.target) {
+        description += `\n   Target: ${link.target}`;
+      }
+      
+      if (link.tooltip) {
+        description += `\n   Info: ${link.tooltip}`;
+      }
+      
+      return description;
+    });
+
+    // Categorize links by type for better understanding
+    const categories = {
+      urls: documentLinks.filter(link => link.target?.startsWith('http')),
+      files: documentLinks.filter(link => link.target?.startsWith('file:')),
+      packages: documentLinks.filter(link => link.target?.includes('pkg.go.dev') || link.target?.includes('docs.rs') || link.target?.includes('npmjs.com')),
+      other: documentLinks.filter(link => link.target && !link.target.startsWith('http') && !link.target.startsWith('file:'))
+    };
+
+    let categorySummary = '';
+    if (categories.urls.length > 0) categorySummary += `${categories.urls.length} URLs, `;
+    if (categories.files.length > 0) categorySummary += `${categories.files.length} files, `;
+    if (categories.packages.length > 0) categorySummary += `${categories.packages.length} packages, `;
+    if (categories.other.length > 0) categorySummary += `${categories.other.length} other links, `;
+    
+    categorySummary = categorySummary.replace(/, $/, ''); // Remove trailing comma
+
+    const response = `## Document Links for ${file_path}\n\n` +
+                    `**Found ${documentLinks.length} links:** ${categorySummary}\n\n` +
+                    `${linkDescriptions.join('\n\n')}\n\n` +
+                    `*Document links help navigate between related files, external documentation, and web resources. Different language servers provide different types of links.*`;
+
+    return createMCPResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('not supported')) {
+      const serverInfo = await lspClient.getCapabilityInfo(absolutePath);
+      return createLimitedSupportResponse(
+        'Document Links',
+        'Current Language Server',
+        'Server may not fully support document links or the file contains no linkable content',
+        `Server capabilities: ${serverInfo}`
+      );
+    }
+
+    return createMCPResponse(
+      `Error getting document links: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+// Handler for apply_workspace_edit tool
+export async function handleApplyWorkspaceEdit(
+  lspClient: LSPClient,
+  args: {
+    changes: Record<string, Array<{
+      range: { start: { line: number; character: number }; end: { line: number; character: number } };
+      newText: string;
+    }>>;
+    validate_before_apply?: boolean;
+  }
+) {
+  const { changes, validate_before_apply = true } = args;
+
+  try {
+    // Convert the input format to internal WorkspaceEdit format
+    const workspaceEdit: WorkspaceEdit = {
+      changes: {}
+    };
+
+    // Process each file's changes
+    for (const [filePath, edits] of Object.entries(changes)) {
+      // Convert file path to URI if it's not already one
+      const uri = filePath.startsWith('file://') ? filePath : pathToUri(resolve(filePath));
+      
+      // Convert edits to internal TextEdit format
+      const textEdits: TextEdit[] = edits.map(edit => ({
+        range: edit.range,
+        newText: edit.newText
+      }));
+
+      workspaceEdit.changes![uri] = textEdits;
+    }
+
+    // Validate that we have at least one change
+    if (!workspaceEdit.changes || Object.keys(workspaceEdit.changes).length === 0) {
+      return createMCPResponse('No changes provided. Please specify at least one file with edits to apply.');
+    }
+
+    const fileCount = Object.keys(workspaceEdit.changes).length;
+    const editCount = Object.values(workspaceEdit.changes).reduce((sum, edits) => sum + edits.length, 0);
+
+    // Check workspace edit capabilities for any of the files
+    let serverSupportsWorkspaceEdit = false;
+    let serverDescription = 'Unknown Server';
+    
+    try {
+      // Check capability with the first file
+      const firstFile = Object.keys(workspaceEdit.changes)[0];
+      const firstFilePath = firstFile.startsWith('file://') ? uriToPath(firstFile) : firstFile;
+      const validation = await lspClient.validateCapabilities(firstFilePath, ['workspace.workspaceEdit']);
+      serverSupportsWorkspaceEdit = validation.supported;
+      serverDescription = validation.serverDescription;
+    } catch (error) {
+      // Capability checking failed, but we can still try the edit
+      process.stderr.write(`[DEBUG] Capability check failed: ${error}\n`);
+    }
+
+    // Apply the workspace edit using the existing infrastructure
+    const result = await applyWorkspaceEdit(workspaceEdit, {
+      validateBeforeApply: validate_before_apply,
+      lspClient
+    });
+
+    if (!result.success) {
+      return createMCPResponse(
+        `❌ **Workspace edit failed**\n\n` +
+        `**Error:** ${result.error}\n\n` +
+        `**Files targeted:** ${fileCount}\n` +
+        `**Total edits:** ${editCount}\n\n` +
+        `*No changes were applied due to the error. All files remain unchanged.*`
+      );
+    }
+
+    // Success response
+    let response = `✅ **Workspace edit applied successfully**\n\n`;
+    response += `**Files modified:** ${result.filesModified.length}\n`;
+    response += `**Total edits applied:** ${editCount}\n\n`;
+
+    if (result.filesModified.length > 0) {
+      response += `**Modified files:**\n`;
+      result.filesModified.forEach(file => {
+        response += `• ${file}\n`;
+      });
+    }
+
+    if (!serverSupportsWorkspaceEdit) {
+      response += `\n⚠️ **Note:** ${serverDescription} doesn't fully support workspace edits, but changes were applied successfully using CCLSP's built-in editor.`;
+    }
+
+    if (result.backupFiles && result.backupFiles.length > 0) {
+      response += `\n\n**Backup files created:** ${result.backupFiles.length}`;
+    }
+
+    response += `\n\n*All changes were applied atomically. If any edit had failed, all changes would have been rolled back.*`;
+
+    return createMCPResponse(response);
+  } catch (error) {
+    return createMCPResponse(
+      `Error applying workspace edit: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }

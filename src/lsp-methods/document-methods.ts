@@ -1,4 +1,4 @@
-import type { DocumentSymbol, SymbolInformation } from '../types.js';
+import type { DocumentSymbol, SymbolInformation, FoldingRange, DocumentLink } from '../types.js';
 import { SymbolKind } from '../types.js';
 import { pathToUri } from '../utils.js';
 import type { LSPClient } from '../lsp-client.js';
@@ -168,4 +168,62 @@ export async function formatDocument(
   });
 
   return Array.isArray(result) ? result : [];
+}
+
+export async function getFoldingRanges(
+  context: DocumentMethodsContext,
+  filePath: string
+): Promise<FoldingRange[]> {
+  const serverState = await context.getServer(filePath);
+  if (!serverState.initialized) {
+    throw new Error('Server not initialized');
+  }
+
+  await context.ensureFileOpen(serverState, filePath);
+  const fileUri = pathToUri(filePath);
+
+  process.stderr.write(`[DEBUG getFoldingRanges] Requesting folding ranges for: ${filePath}\n`);
+
+  const result = await context.sendRequest(serverState.process, 'textDocument/foldingRange', {
+    textDocument: { uri: fileUri },
+  });
+
+  process.stderr.write(
+    `[DEBUG getFoldingRanges] Result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}\n`
+  );
+
+  if (Array.isArray(result)) {
+    return result as FoldingRange[];
+  }
+
+  return [];
+}
+
+export async function getDocumentLinks(
+  context: DocumentMethodsContext,
+  filePath: string
+): Promise<DocumentLink[]> {
+  const serverState = await context.getServer(filePath);
+  if (!serverState.initialized) {
+    throw new Error('Server not initialized');
+  }
+
+  await context.ensureFileOpen(serverState, filePath);
+  const fileUri = pathToUri(filePath);
+
+  process.stderr.write(`[DEBUG getDocumentLinks] Requesting document links for: ${filePath}\n`);
+
+  const result = await context.sendRequest(serverState.process, 'textDocument/documentLink', {
+    textDocument: { uri: fileUri },
+  });
+
+  process.stderr.write(
+    `[DEBUG getDocumentLinks] Result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}\n`
+  );
+
+  if (Array.isArray(result)) {
+    return result as DocumentLink[];
+  }
+
+  return [];
 }

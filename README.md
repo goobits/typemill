@@ -57,13 +57,37 @@ When using AI-powered coding assistants like Claude, you often need to navigate 
 
 ## Features
 
+### Core Navigation & Code Understanding
 - **Go to Definition**: Find where symbols are defined
-- **Find References**: Locate all references to a symbol
-- **Multi-language Support**: Configurable LSP servers for different file types
-- **TypeScript**: Built-in support via typescript-language-server
-- **Python**: Support via python-lsp-server (pylsp)
-- **Go**: Support via gopls
-- **And many more**: Extensive language server configurations
+- **Find References**: Locate all references to a symbol  
+- **Hover Information**: Get documentation, types, and signatures
+- **Code Completions**: Context-aware code suggestions
+- **Semantic Analysis**: Enhanced syntax and meaning understanding
+- **Symbol Search**: Find symbols across the entire workspace
+
+### Code Modification & Refactoring
+- **Safe Symbol Renaming**: Rename across entire codebases with confidence
+- **File Renaming**: Rename files and update all import references
+- **Code Actions**: Get and apply suggested fixes and refactors
+- **Document Formatting**: Standardize code style automatically
+
+### Code Structure Analysis
+- **Call Hierarchy**: Understand function call relationships (incoming/outgoing)
+- **Type Hierarchy**: Navigate class/interface inheritance (supertypes/subtypes)
+- **Document Symbols**: Get complete file symbol outline
+- **Selection Ranges**: Smart hierarchical code block selection
+- **Inlay Hints**: Parameter names and type annotations in code
+
+### Code Quality & Diagnostics
+- **Real-time Diagnostics**: Get errors, warnings, and hints
+- **Language Server Management**: Restart and manage LSP servers
+
+### Multi-language Support
+- **TypeScript/JavaScript**: Full support via typescript-language-server
+- **Python**: Complete support via python-lsp-server (pylsp)
+- **Go**: Full support via gopls
+- **Rust**: Support via rust-analyzer
+- **And many more**: 15+ pre-configured language server setups
 
 ## 📋 Prerequisites
 
@@ -378,7 +402,9 @@ bun run typecheck
 
 The server exposes these MCP tools:
 
-### `find_definition`
+### Core Navigation & Analysis
+
+#### `find_definition`
 
 Find the definition of a symbol by name and kind in a file. Returns definitions for all matching symbols.
 
@@ -388,7 +414,7 @@ Find the definition of a symbol by name and kind in a file. Returns definitions 
 - `symbol_name`: The name of the symbol
 - `symbol_kind`: The kind of symbol (function, class, variable, method, etc.) (optional)
 
-### `find_references`
+#### `find_references`
 
 Find all references to a symbol by name and kind in a file. Returns references for all matching symbols.
 
@@ -399,7 +425,9 @@ Find all references to a symbol by name and kind in a file. Returns references f
 - `symbol_kind`: The kind of symbol (function, class, variable, method, etc.) (optional)
 - `include_declaration`: Whether to include the declaration (optional, default: true)
 
-### `rename_symbol`
+### Code Modification
+
+#### `rename_symbol`
 
 Rename a symbol by name and kind in a file. **This tool now applies the rename to all affected files by default.** If multiple symbols match, returns candidate positions and suggests using rename_symbol_strict.
 
@@ -416,7 +444,7 @@ Rename a symbol by name and kind in a file. **This tool now applies the rename t
 - Create backup files with `.bak` extension
 - Return the list of modified files
 
-### `rename_symbol_strict`
+#### `rename_symbol_strict`
 
 Rename a symbol at a specific position in a file. Use this when rename_symbol returns multiple candidates. **This tool now applies the rename to all affected files by default.**
 
@@ -428,14 +456,153 @@ Rename a symbol at a specific position in a file. Use this when rename_symbol re
 - `new_name`: The new name for the symbol
 - `dry_run`: If true, only preview the changes without applying them (optional, default: false)
 
-### `get_diagnostics`
+#### `format_document`
+
+Format a document according to the language server's formatting rules.
+
+**Parameters:**
+- `file_path`: The path to the file to format
+
+#### `get_code_actions`
+
+Get available code actions (fixes, refactors) for a specific range in a file.
+
+**Parameters:**
+- `file_path`: The path to the file
+- `start_line`: Start line number (1-indexed)
+- `start_character`: Start character position (0-indexed)  
+- `end_line`: End line number (1-indexed)
+- `end_character`: End character position (0-indexed)
+
+### Code Intelligence
+
+#### `get_hover`
+
+Get hover information (documentation, types, signatures) for a symbol at a specific position.
+
+**Parameters:**
+- `file_path`: The path to the file
+- `line`: The line number (1-indexed)
+- `character`: The character position in the line (0-indexed)
+
+#### `get_completions`
+
+Get code completion suggestions at a specific position in a file.
+
+**Parameters:**
+- `file_path`: The path to the file
+- `line`: The line number (1-indexed) 
+- `character`: The character position in the line (0-indexed)
+
+#### `get_inlay_hints`
+
+Get inlay hints (parameter names, type annotations) for a range in a file.
+
+**Parameters:**
+- `file_path`: The path to the file
+- `start_line`: Start line number (1-indexed)
+- `start_character`: Start character position (0-indexed)
+- `end_line`: End line number (1-indexed)  
+- `end_character`: End character position (0-indexed)
+
+#### `get_semantic_tokens`
+
+Get semantic tokens (detailed syntax analysis) for enhanced code understanding.
+
+**Parameters:**
+- `file_path`: The path to the file
+
+### Code Structure Analysis
+
+#### `prepare_call_hierarchy`
+
+Prepare call hierarchy items for a symbol at a specific position.
+
+**Parameters:**
+- `file_path`: The path to the file
+- `line`: The line number (1-indexed)
+- `character`: The character position in the line (0-indexed)
+
+#### `get_call_hierarchy_incoming_calls`
+
+Get incoming calls for a call hierarchy item.
+
+**Parameters:**
+- `item`: Call hierarchy item from prepare_call_hierarchy
+
+#### `get_call_hierarchy_outgoing_calls`
+
+Get outgoing calls for a call hierarchy item.
+
+**Parameters:**
+- `item`: Call hierarchy item from prepare_call_hierarchy
+
+#### `prepare_type_hierarchy`
+
+Prepare type hierarchy items for a symbol at a specific position.
+
+**Parameters:**
+- `file_path`: The path to the file
+- `line`: The line number (1-indexed)
+- `character`: The character position in the line (0-indexed)
+
+#### `get_type_hierarchy_supertypes`
+
+Get supertypes (parent classes/interfaces) for a type hierarchy item.
+
+**Parameters:**
+- `item`: Type hierarchy item from prepare_type_hierarchy
+
+#### `get_type_hierarchy_subtypes`
+
+Get subtypes (child implementations) for a type hierarchy item.
+
+**Parameters:**
+- `item`: Type hierarchy item from prepare_type_hierarchy
+
+#### `get_selection_range`
+
+Get hierarchical selection ranges for smart code block selection.
+
+**Parameters:**
+- `file_path`: The path to the file
+- `positions`: Array of positions with line (1-indexed) and character (0-indexed) properties
+
+### Workspace Operations
+
+#### `get_document_symbols`
+
+Get all symbols in a document for code outline and navigation.
+
+**Parameters:**
+- `file_path`: The path to the file
+
+#### `search_workspace_symbols`
+
+Search for symbols across the entire workspace.
+
+**Parameters:**
+- `query`: Search query string
+
+#### `rename_file`
+
+Rename a file and update all import statements that reference it.
+
+**Parameters:**
+- `old_path`: Current file path
+- `new_path`: New file path
+- `dry_run`: If true, only preview changes without applying them (optional, default: false)
+
+### System Operations
+
+#### `get_diagnostics`
 
 Get language diagnostics (errors, warnings, hints) for a file. Uses LSP textDocument/diagnostic to pull current diagnostics.
 
 **Parameters:**
 - `file_path`: The path to the file to get diagnostics for
 
-### `restart_server`
+#### `restart_server`
 
 Manually restart LSP servers. Can restart servers for specific file extensions or all running servers.
 

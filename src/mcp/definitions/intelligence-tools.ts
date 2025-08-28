@@ -93,4 +93,30 @@ export const intelligenceToolDefinitions = [
       required: ['file_path'],
     },
   },
+  {
+    name: 'get_signature_help',
+    description: 'Get function signature help at a specific position. Shows function signatures, parameter information, and documentation for the function being called. Critical for AI agents when generating function calls with correct parameters.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file_path: {
+          type: 'string',
+          description: 'The path to the file',
+        },
+        line: {
+          type: 'number',
+          description: 'The line number (1-indexed)',
+        },
+        character: {
+          type: 'number',
+          description: 'The character position in the line (0-indexed)',
+        },
+        trigger_character: {
+          type: 'string',
+          description: 'Optional trigger character that invoked signature help (e.g., "(", ",")',
+        },
+      },
+      required: ['file_path', 'line', 'character'],
+    },
+  },
 ];

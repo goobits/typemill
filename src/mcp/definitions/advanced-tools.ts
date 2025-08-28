@@ -95,4 +95,86 @@ export const advancedToolDefinitions = [
       required: ['file_path'],
     },
   },
+  {
+    name: 'get_folding_ranges',
+    description: 'Get folding ranges for code structure understanding. Shows logical code blocks that can be folded/collapsed (functions, classes, comments, imports). Helps AI agents understand code organization and nesting levels.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file_path: {
+          type: 'string',
+          description: 'The path to the file',
+        },
+      },
+      required: ['file_path'],
+    },
+  },
+  {
+    name: 'get_document_links',
+    description: 'Get clickable links in a document (URLs, file references, imports, documentation links). Helps AI agents understand project relationships and external dependencies. Different language servers provide different types of links.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file_path: {
+          type: 'string',
+          description: 'The path to the file',
+        },
+      },
+      required: ['file_path'],
+    },
+  },
+  {
+    name: 'apply_workspace_edit',
+    description: 'Apply a workspace edit (multi-file text changes) atomically. This is the most powerful editing tool for AI agents, allowing safe modification of multiple files in a single atomic operation with rollback capability. Essential for large refactoring operations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        changes: {
+          type: 'object',
+          description: 'Map of file URIs/paths to arrays of text edits',
+          additionalProperties: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                range: {
+                  type: 'object',
+                  properties: {
+                    start: {
+                      type: 'object',
+                      properties: {
+                        line: { type: 'number', description: 'Start line (0-indexed)' },
+                        character: { type: 'number', description: 'Start character (0-indexed)' }
+                      },
+                      required: ['line', 'character']
+                    },
+                    end: {
+                      type: 'object',
+                      properties: {
+                        line: { type: 'number', description: 'End line (0-indexed)' },
+                        character: { type: 'number', description: 'End character (0-indexed)' }
+                      },
+                      required: ['line', 'character']
+                    }
+                  },
+                  required: ['start', 'end']
+                },
+                newText: {
+                  type: 'string',
+                  description: 'The new text to replace the range'
+                }
+              },
+              required: ['range', 'newText']
+            }
+          }
+        },
+        validate_before_apply: {
+          type: 'boolean',
+          description: 'Whether to validate edit positions before applying (default: true)',
+          default: true
+        }
+      },
+      required: ['changes']
+    }
+  },
 ] as const;

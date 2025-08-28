@@ -372,3 +372,46 @@ export interface SelectionRange {
   };
   parent?: SelectionRange;
 }
+
+export interface SignatureHelp {
+  signatures: SignatureInformation[];
+  activeSignature?: number;
+  activeParameter?: number;
+}
+
+export interface SignatureInformation {
+  label: string;
+  documentation?: string | MarkupContent;
+  parameters?: ParameterInformation[];
+  activeParameter?: number;
+}
+
+export interface ParameterInformation {
+  label: string | [number, number];
+  documentation?: string | MarkupContent;
+}
+
+export interface FoldingRange {
+  startLine: number;
+  startCharacter?: number;
+  endLine: number;
+  endCharacter?: number;
+  kind?: FoldingRangeKind;
+  collapsedText?: string;
+}
+
+export enum FoldingRangeKind {
+  Comment = 'comment',
+  Imports = 'imports',
+  Region = 'region',
+}
+
+export interface DocumentLink {
+  range: {
+    start: Position;
+    end: Position;
+  };
+  target?: string;
+  tooltip?: string;
+  data?: unknown;
+}
