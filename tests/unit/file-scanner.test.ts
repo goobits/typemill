@@ -7,8 +7,8 @@ import {
   loadGitignore,
   scanDirectoryForExtensions,
   scanProjectFiles,
-} from './file-scanner.js';
-import { LANGUAGE_SERVERS } from './language-servers.js';
+} from '../../src/file-scanner.js';
+import { LANGUAGE_SERVERS } from '../../src/language-servers.js';
 
 const TEST_DIR = process.env.RUNNER_TEMP
   ? `${process.env.RUNNER_TEMP}/file-scanner-test`

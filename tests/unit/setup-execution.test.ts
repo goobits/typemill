@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildMCPArgs, generateMCPCommand } from './setup.js';
+import { buildMCPArgs, generateMCPCommand } from '../../src/setup.js';
 
 // Helper function to execute command
 async function executeCommand(
