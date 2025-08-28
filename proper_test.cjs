@@ -1,5 +1,5 @@
-const { spawn } = require('child_process');
-const path = require('path');
+const { spawn } = require('node:child_process');
+const path = require('node:path');
 
 class MCPTestClient {
   constructor() {

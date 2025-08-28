@@ -1,6 +1,6 @@
 // Comprehensive test of all new LSP features
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 
 async function testAllFeatures() {
   console.log('🚀 CCLSP Feature Test Suite');
@@ -65,7 +65,7 @@ async function testAllFeatures() {
       for (const pos of positions) {
         try {
           const sigHelp = await lspClient.getSignatureHelp(testFile, pos);
-          if (sigHelp && sigHelp.signatures && sigHelp.signatures.length > 0) {
+          if (sigHelp?.signatures && sigHelp.signatures.length > 0) {
             console.log(
               `✅ SUCCESS: Found signature help at line ${pos.line + 1}, char ${pos.character + 1}`
             );
@@ -79,10 +79,7 @@ async function testAllFeatures() {
             sigHelpFound = true;
             break;
           }
-        } catch (posError) {
-          // Try next position
-          continue;
-        }
+        } catch (posError) {}
       }
 
       if (!sigHelpFound) {
@@ -199,7 +196,7 @@ async function testAllFeatures() {
     try {
       const capabilityInfo = await lspClient.getCapabilityInfo(testFile);
       console.log('✅ SUCCESS: Retrieved capability information');
-      console.log('   📋 Capabilities:', capabilityInfo.substring(0, 200) + '...');
+      console.log('   📋 Capabilities:', `${capabilityInfo.substring(0, 200)}...`);
       testResults.push({
         test: 'capability_detection',
         status: 'PASS',

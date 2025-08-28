@@ -1,6 +1,6 @@
 // Quick test of remaining features
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 
 async function quickTest() {
   console.log('🚀 Quick Feature Test');

@@ -42,7 +42,8 @@ export function createUnsupportedFeatureResponse(
     text += `**Alternatives:**\n${alternativeSuggestions.map((suggestion) => `• ${suggestion}`).join('\n')}\n\n`;
   }
 
-  text += `**Note:** Different language servers support different features. TypeScript and Rust servers typically have the most comprehensive support.`;
+  text +=
+    '**Note:** Different language servers support different features. TypeScript and Rust servers typically have the most comprehensive support.';
 
   return createMCPResponse(text);
 }
@@ -55,11 +56,7 @@ export function createCapabilityInfoResponse(
   serverDescription: string,
   capabilityInfo: string
 ): MCPResponse {
-  const text =
-    `## Server Capabilities for ${filePath}\n\n` +
-    `**Server:** ${serverDescription}\n\n` +
-    `**Available Features:**\n${capabilityInfo}\n\n` +
-    `*This information helps debug which LSP features are available for this file type.*`;
+  const text = `## Server Capabilities for ${filePath}\n\n**Server:** ${serverDescription}\n\n**Available Features:**\n${capabilityInfo}\n\n*This information helps debug which LSP features are available for this file type.*`;
 
   return createMCPResponse(text);
 }
@@ -79,7 +76,7 @@ export function createLimitedSupportResponse(
   if (result) {
     text += `**Result:**\n${result}`;
   } else {
-    text += `**Result:** Feature attempted but may not work as expected on this server.`;
+    text += '**Result:** Feature attempted but may not work as expected on this server.';
   }
 
   return createMCPResponse(text);

@@ -1,5 +1,5 @@
-const { spawn } = require('child_process');
-const path = require('path');
+const { spawn } = require('node:child_process');
+const path = require('node:path');
 
 async function testServer() {
   console.log('Starting simple server test...');

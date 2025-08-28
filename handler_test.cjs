@@ -1,6 +1,6 @@
 // Direct test of MCP handlers
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 
 async function testHandlers() {
   console.log('🎯 Direct Handler Test');
@@ -32,10 +32,10 @@ async function testHandlers() {
         file_path: path.join(__dirname, 'playground/src/components/user-form.ts'),
       });
 
-      const success = result.content && result.content[0] && result.content[0].text;
+      const success = result.content?.[0]?.text;
       console.log(`✅ handleGetFoldingRanges: ${success ? 'SUCCESS' : 'FAILED'}`);
       if (success) {
-        console.log('   📋 Response preview:', result.content[0].text.substring(0, 100) + '...');
+        console.log('   📋 Response preview:', `${result.content[0].text.substring(0, 100)}...`);
       }
       testResults.push({ test: 'handleGetFoldingRanges', status: success ? 'PASS' : 'FAIL' });
     } catch (error) {
@@ -55,10 +55,7 @@ async function testHandlers() {
         content: '// Created by handler test\nexport const handlerTest = true;\n',
       });
 
-      const success =
-        result.content &&
-        result.content[0] &&
-        result.content[0].text.includes('Successfully created');
+      const success = result.content?.[0]?.text.includes('Successfully created');
       const fileExists = fs.existsSync(createTestFile);
 
       console.log(`✅ handleCreateFile: ${success && fileExists ? 'SUCCESS' : 'FAILED'}`);
@@ -82,10 +79,7 @@ async function testHandlers() {
           file_path: createTestFile,
         });
 
-        const success =
-          result.content &&
-          result.content[0] &&
-          result.content[0].text.includes('Successfully deleted');
+        const success = result.content?.[0]?.text.includes('Successfully deleted');
         const fileDeleted = !fs.existsSync(createTestFile);
 
         console.log(`✅ handleDeleteFile: ${success && fileDeleted ? 'SUCCESS' : 'FAILED'}`);
@@ -126,8 +120,7 @@ async function testHandlers() {
         },
       });
 
-      const success =
-        result.content && result.content[0] && result.content[0].text.includes('successfully');
+      const success = result.content?.[0]?.text.includes('successfully');
 
       // Check if edit was applied
       const content = fs.readFileSync(editTestFile, 'utf8');
@@ -157,10 +150,10 @@ async function testHandlers() {
         position: { line: 5, character: 10 },
       });
 
-      const success = result.content && result.content[0];
+      const success = result.content?.[0];
       console.log(`✅ handleGetSignatureHelp: ${success ? 'SUCCESS' : 'FAILED'}`);
       if (success) {
-        console.log('   📋 Response preview:', result.content[0].text.substring(0, 100) + '...');
+        console.log('   📋 Response preview:', `${result.content[0].text.substring(0, 100)}...`);
       }
       testResults.push({ test: 'handleGetSignatureHelp', status: success ? 'PASS' : 'FAIL' });
     } catch (error) {
@@ -175,7 +168,7 @@ async function testHandlers() {
         file_path: path.join(__dirname, 'playground/src/components/user-form.ts'),
       });
 
-      const success = result.content && result.content[0];
+      const success = result.content?.[0];
       const isGracefulDegradation = success && result.content[0].text.includes('does not support');
 
       console.log(`✅ handleGetDocumentLinks: ${success ? 'SUCCESS' : 'FAILED'}`);
@@ -183,7 +176,7 @@ async function testHandlers() {
         console.log('   🔵 Graceful degradation detected');
       }
       console.log(
-        `   📋 Response preview: ${success ? result.content[0].text.substring(0, 100) + '...' : 'No response'}`
+        `   📋 Response preview: ${success ? `${result.content[0].text.substring(0, 100)}...` : 'No response'}`
       );
 
       testResults.push({

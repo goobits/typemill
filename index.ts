@@ -6,6 +6,36 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { LSPClient } from './src/lsp-client.js';
 import { allToolDefinitions } from './src/mcp/definitions/index.js';
+import type {
+  ApplyWorkspaceEditArgs,
+  CreateFileArgs,
+  DeleteFileArgs,
+  FindDefinitionArgs,
+  FindReferencesArgs,
+  FormatDocumentArgs,
+  GetCallHierarchyIncomingCallsArgs,
+  GetCallHierarchyOutgoingCallsArgs,
+  GetCodeActionsArgs,
+  GetCompletionsArgs,
+  GetDiagnosticsArgs,
+  GetDocumentLinksArgs,
+  GetDocumentSymbolsArgs,
+  GetFoldingRangesArgs,
+  GetHoverArgs,
+  GetInlayHintsArgs,
+  GetSelectionRangeArgs,
+  GetSemanticTokensArgs,
+  GetSignatureHelpArgs,
+  GetTypeHierarchySubtypesArgs,
+  GetTypeHierarchySupertypesArgs,
+  PrepareCallHierarchyArgs,
+  PrepareTypeHierarchyArgs,
+  RenameFileArgs,
+  RenameSymbolArgs,
+  RenameSymbolStrictArgs,
+  RestartServerArgs,
+  SearchWorkspaceSymbolsArgs,
+} from './src/mcp/handler-types.js';
 import {
   handleApplyWorkspaceEdit,
   handleCreateFile,
@@ -83,63 +113,84 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case 'find_definition':
-        return await handleFindDefinition(lspClient, args as any);
+        return await handleFindDefinition(lspClient, args as unknown as FindDefinitionArgs);
       case 'find_references':
-        return await handleFindReferences(lspClient, args as any);
+        return await handleFindReferences(lspClient, args as unknown as FindReferencesArgs);
       case 'rename_symbol':
-        return await handleRenameSymbol(lspClient, args as any);
+        return await handleRenameSymbol(lspClient, args as unknown as RenameSymbolArgs);
       case 'rename_symbol_strict':
-        return await handleRenameSymbolStrict(lspClient, args as any);
+        return await handleRenameSymbolStrict(lspClient, args as unknown as RenameSymbolStrictArgs);
       case 'get_code_actions':
-        return await handleGetCodeActions(lspClient, args as any);
+        return await handleGetCodeActions(lspClient, args as unknown as GetCodeActionsArgs);
       case 'format_document':
-        return await handleFormatDocument(lspClient, args as any);
+        return await handleFormatDocument(lspClient, args as unknown as FormatDocumentArgs);
       case 'search_workspace_symbols':
-        return await handleSearchWorkspaceSymbols(lspClient, args as any);
+        return await handleSearchWorkspaceSymbols(
+          lspClient,
+          args as unknown as SearchWorkspaceSymbolsArgs
+        );
       case 'get_document_symbols':
-        return await handleGetDocumentSymbols(lspClient, args as any);
+        return await handleGetDocumentSymbols(lspClient, args as unknown as GetDocumentSymbolsArgs);
       case 'get_folding_ranges':
-        return await handleGetFoldingRanges(lspClient, args as any);
+        return await handleGetFoldingRanges(lspClient, args as unknown as GetFoldingRangesArgs);
       case 'get_document_links':
-        return await handleGetDocumentLinks(lspClient, args as any);
+        return await handleGetDocumentLinks(lspClient, args as unknown as GetDocumentLinksArgs);
       case 'get_diagnostics':
-        return await handleGetDiagnostics(lspClient, args as any);
+        return await handleGetDiagnostics(lspClient, args as unknown as GetDiagnosticsArgs);
       case 'restart_server':
-        return await handleRestartServer(lspClient, args as any);
+        return await handleRestartServer(lspClient, args as unknown as RestartServerArgs);
       case 'rename_file':
-        return await handleRenameFile(lspClient, args as any);
+        return await handleRenameFile(lspClient, args as unknown as RenameFileArgs);
       // Intelligence tools
       case 'get_hover':
-        return await handleGetHover(lspClient, args as any);
+        return await handleGetHover(lspClient, args as unknown as GetHoverArgs);
       case 'get_completions':
-        return await handleGetCompletions(lspClient, args as any);
+        return await handleGetCompletions(lspClient, args as unknown as GetCompletionsArgs);
       case 'get_inlay_hints':
-        return await handleGetInlayHints(lspClient, args as any);
+        return await handleGetInlayHints(lspClient, args as unknown as GetInlayHintsArgs);
       case 'get_semantic_tokens':
-        return await handleGetSemanticTokens(lspClient, args as any);
+        return await handleGetSemanticTokens(lspClient, args as unknown as GetSemanticTokensArgs);
       case 'get_signature_help':
-        return await handleGetSignatureHelp(lspClient, args as any);
+        return await handleGetSignatureHelp(lspClient, args as unknown as GetSignatureHelpArgs);
       // Hierarchy tools
       case 'prepare_call_hierarchy':
-        return await handlePrepareCallHierarchy(lspClient, args as any);
+        return await handlePrepareCallHierarchy(
+          lspClient,
+          args as unknown as PrepareCallHierarchyArgs
+        );
       case 'get_call_hierarchy_incoming_calls':
-        return await handleGetCallHierarchyIncomingCalls(lspClient, args as any);
+        return await handleGetCallHierarchyIncomingCalls(
+          lspClient,
+          args as unknown as GetCallHierarchyIncomingCallsArgs
+        );
       case 'get_call_hierarchy_outgoing_calls':
-        return await handleGetCallHierarchyOutgoingCalls(lspClient, args as any);
+        return await handleGetCallHierarchyOutgoingCalls(
+          lspClient,
+          args as unknown as GetCallHierarchyOutgoingCallsArgs
+        );
       case 'prepare_type_hierarchy':
-        return await handlePrepareTypeHierarchy(lspClient, args as any);
+        return await handlePrepareTypeHierarchy(
+          lspClient,
+          args as unknown as PrepareTypeHierarchyArgs
+        );
       case 'get_type_hierarchy_supertypes':
-        return await handleGetTypeHierarchySupertypes(lspClient, args as any);
+        return await handleGetTypeHierarchySupertypes(
+          lspClient,
+          args as unknown as GetTypeHierarchySupertypesArgs
+        );
       case 'get_type_hierarchy_subtypes':
-        return await handleGetTypeHierarchySubtypes(lspClient, args as any);
+        return await handleGetTypeHierarchySubtypes(
+          lspClient,
+          args as unknown as GetTypeHierarchySubtypesArgs
+        );
       case 'get_selection_range':
-        return await handleGetSelectionRange(lspClient, args as any);
+        return await handleGetSelectionRange(lspClient, args as unknown as GetSelectionRangeArgs);
       case 'apply_workspace_edit':
-        return await handleApplyWorkspaceEdit(lspClient, args as any);
+        return await handleApplyWorkspaceEdit(lspClient, args as unknown as ApplyWorkspaceEditArgs);
       case 'create_file':
-        return await handleCreateFile(lspClient, args as any);
+        return await handleCreateFile(lspClient, args as unknown as CreateFileArgs);
       case 'delete_file':
-        return await handleDeleteFile(lspClient, args as any);
+        return await handleDeleteFile(lspClient, args as unknown as DeleteFileArgs);
       default:
         throw new Error(`Unknown tool: ${name}`);
     }

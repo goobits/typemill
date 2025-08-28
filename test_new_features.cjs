@@ -1,5 +1,5 @@
-const { spawn } = require('child_process');
-const path = require('path');
+const { spawn } = require('node:child_process');
+const path = require('node:path');
 
 // Test configuration
 const TEST_FILE = path.join(__dirname, 'playground/src/components/user-form.ts');
@@ -98,24 +98,23 @@ async function testGetFoldingRanges(client) {
       arguments: { file_path: TEST_FILE },
     });
 
-    if (response.result && response.result.content) {
+    if (response.result?.content) {
       const content = response.result.content[0].text;
-      console.log('✅ get_folding_ranges response:', content.substring(0, 200) + '...');
+      console.log('✅ get_folding_ranges response:', `${content.substring(0, 200)}...`);
       TEST_RESULTS.push({
         test: 'get_folding_ranges',
         status: 'PASS',
         details: 'Returned folding range data',
       });
       return true;
-    } else {
-      console.log('❌ get_folding_ranges failed:', response.error || 'No content returned');
-      TEST_RESULTS.push({
-        test: 'get_folding_ranges',
-        status: 'FAIL',
-        details: response.error || 'No content',
-      });
-      return false;
     }
+    console.log('❌ get_folding_ranges failed:', response.error || 'No content returned');
+    TEST_RESULTS.push({
+      test: 'get_folding_ranges',
+      status: 'FAIL',
+      details: response.error || 'No content',
+    });
+    return false;
   } catch (error) {
     console.log('❌ get_folding_ranges error:', error.message);
     TEST_RESULTS.push({ test: 'get_folding_ranges', status: 'ERROR', details: error.message });
@@ -136,22 +135,21 @@ async function testGetSignatureHelp(client) {
 
     if (response.result) {
       const content = response.result.content[0].text;
-      console.log('✅ get_signature_help response:', content.substring(0, 200) + '...');
+      console.log('✅ get_signature_help response:', `${content.substring(0, 200)}...`);
       TEST_RESULTS.push({
         test: 'get_signature_help',
         status: 'PASS',
         details: 'Returned signature help data',
       });
       return true;
-    } else {
-      console.log('❌ get_signature_help failed:', response.error || 'No result');
-      TEST_RESULTS.push({
-        test: 'get_signature_help',
-        status: 'FAIL',
-        details: response.error || 'No result',
-      });
-      return false;
     }
+    console.log('❌ get_signature_help failed:', response.error || 'No result');
+    TEST_RESULTS.push({
+      test: 'get_signature_help',
+      status: 'FAIL',
+      details: response.error || 'No result',
+    });
+    return false;
   } catch (error) {
     console.log('❌ get_signature_help error:', error.message);
     TEST_RESULTS.push({ test: 'get_signature_help', status: 'ERROR', details: error.message });
@@ -167,24 +165,23 @@ async function testGetDocumentLinks(client) {
       arguments: { file_path: TEST_FILE },
     });
 
-    if (response.result && response.result.content) {
+    if (response.result?.content) {
       const content = response.result.content[0].text;
-      console.log('✅ get_document_links response:', content.substring(0, 200) + '...');
+      console.log('✅ get_document_links response:', `${content.substring(0, 200)}...`);
       TEST_RESULTS.push({
         test: 'get_document_links',
         status: 'PASS',
         details: 'Returned document links data',
       });
       return true;
-    } else {
-      console.log('❌ get_document_links failed:', response.error || 'No content');
-      TEST_RESULTS.push({
-        test: 'get_document_links',
-        status: 'FAIL',
-        details: response.error || 'No content',
-      });
-      return false;
     }
+    console.log('❌ get_document_links failed:', response.error || 'No content');
+    TEST_RESULTS.push({
+      test: 'get_document_links',
+      status: 'FAIL',
+      details: response.error || 'No content',
+    });
+    return false;
   } catch (error) {
     console.log('❌ get_document_links error:', error.message);
     TEST_RESULTS.push({ test: 'get_document_links', status: 'ERROR', details: error.message });
@@ -205,7 +202,7 @@ async function testCreateFile(client) {
       },
     });
 
-    if (response.result && response.result.content) {
+    if (response.result?.content) {
       const content = response.result.content[0].text;
       console.log('✅ create_file response:', content);
       TEST_RESULTS.push({
@@ -214,15 +211,14 @@ async function testCreateFile(client) {
         details: 'Successfully created file',
       });
       return true;
-    } else {
-      console.log('❌ create_file failed:', response.error || 'No content');
-      TEST_RESULTS.push({
-        test: 'create_file',
-        status: 'FAIL',
-        details: response.error || 'No content',
-      });
-      return false;
     }
+    console.log('❌ create_file failed:', response.error || 'No content');
+    TEST_RESULTS.push({
+      test: 'create_file',
+      status: 'FAIL',
+      details: response.error || 'No content',
+    });
+    return false;
   } catch (error) {
     console.log('❌ create_file error:', error.message);
     TEST_RESULTS.push({ test: 'create_file', status: 'ERROR', details: error.message });
@@ -240,7 +236,7 @@ async function testDeleteFile(client) {
       arguments: { file_path: testFilePath },
     });
 
-    if (response.result && response.result.content) {
+    if (response.result?.content) {
       const content = response.result.content[0].text;
       console.log('✅ delete_file response:', content);
       TEST_RESULTS.push({
@@ -249,15 +245,14 @@ async function testDeleteFile(client) {
         details: 'Successfully deleted file',
       });
       return true;
-    } else {
-      console.log('❌ delete_file failed:', response.error || 'No content');
-      TEST_RESULTS.push({
-        test: 'delete_file',
-        status: 'FAIL',
-        details: response.error || 'No content',
-      });
-      return false;
     }
+    console.log('❌ delete_file failed:', response.error || 'No content');
+    TEST_RESULTS.push({
+      test: 'delete_file',
+      status: 'FAIL',
+      details: response.error || 'No content',
+    });
+    return false;
   } catch (error) {
     console.log('❌ delete_file error:', error.message);
     TEST_RESULTS.push({ test: 'delete_file', status: 'ERROR', details: error.message });
@@ -287,7 +282,7 @@ async function testApplyWorkspaceEdit(client) {
       },
     });
 
-    if (response.result && response.result.content) {
+    if (response.result?.content) {
       const content = response.result.content[0].text;
       console.log('✅ apply_workspace_edit response:', content);
       TEST_RESULTS.push({
@@ -296,15 +291,14 @@ async function testApplyWorkspaceEdit(client) {
         details: 'Successfully applied workspace edit',
       });
       return true;
-    } else {
-      console.log('❌ apply_workspace_edit failed:', response.error || 'No content');
-      TEST_RESULTS.push({
-        test: 'apply_workspace_edit',
-        status: 'FAIL',
-        details: response.error || 'No content',
-      });
-      return false;
     }
+    console.log('❌ apply_workspace_edit failed:', response.error || 'No content');
+    TEST_RESULTS.push({
+      test: 'apply_workspace_edit',
+      status: 'FAIL',
+      details: response.error || 'No content',
+    });
+    return false;
   } catch (error) {
     console.log('❌ apply_workspace_edit error:', error.message);
     TEST_RESULTS.push({ test: 'apply_workspace_edit', status: 'ERROR', details: error.message });

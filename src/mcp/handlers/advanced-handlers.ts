@@ -335,11 +335,7 @@ export async function handleGetFoldingRanges(lspClient: LSPClient, args: { file_
       .map(([kind, count]) => `${count} ${kind}`)
       .join(', ');
 
-    const response =
-      `## Folding Ranges for ${file_path}\n\n` +
-      `**Found ${foldingRanges.length} foldable regions:** ${kindSummary}\n\n` +
-      `${rangeDescriptions.join('\n')}\n\n` +
-      `*Folding ranges show logical code blocks that can be collapsed for better code navigation and understanding.*`;
+    const response = `## Folding Ranges for ${file_path}\n\n**Found ${foldingRanges.length} foldable regions:** ${kindSummary}\n\n${rangeDescriptions.join('\n')}\n\n*Folding ranges show logical code blocks that can be collapsed for better code navigation and understanding.*`;
 
     return createMCPResponse(response);
   } catch (error) {
@@ -434,11 +430,7 @@ export async function handleGetDocumentLinks(lspClient: LSPClient, args: { file_
 
     categorySummary = categorySummary.replace(/, $/, ''); // Remove trailing comma
 
-    const response =
-      `## Document Links for ${file_path}\n\n` +
-      `**Found ${documentLinks.length} links:** ${categorySummary}\n\n` +
-      `${linkDescriptions.join('\n\n')}\n\n` +
-      `*Document links help navigate between related files, external documentation, and web resources. Different language servers provide different types of links.*`;
+    const response = `## Document Links for ${file_path}\n\n**Found ${documentLinks.length} links:** ${categorySummary}\n\n${linkDescriptions.join('\n\n')}\n\n*Document links help navigate between related files, external documentation, and web resources. Different language servers provide different types of links.*`;
 
     return createMCPResponse(response);
   } catch (error) {
@@ -539,21 +531,17 @@ export async function handleApplyWorkspaceEdit(
 
     if (!result.success) {
       return createMCPResponse(
-        `❌ **Workspace edit failed**\n\n` +
-          `**Error:** ${result.error}\n\n` +
-          `**Files targeted:** ${fileCount}\n` +
-          `**Total edits:** ${editCount}\n\n` +
-          `*No changes were applied due to the error. All files remain unchanged.*`
+        `❌ **Workspace edit failed**\n\n**Error:** ${result.error}\n\n**Files targeted:** ${fileCount}\n**Total edits:** ${editCount}\n\n*No changes were applied due to the error. All files remain unchanged.*`
       );
     }
 
     // Success response
-    let response = `✅ **Workspace edit applied successfully**\n\n`;
+    let response = '✅ **Workspace edit applied successfully**\n\n';
     response += `**Files modified:** ${result.filesModified.length}\n`;
     response += `**Total edits applied:** ${editCount}\n\n`;
 
     if (result.filesModified.length > 0) {
-      response += `**Modified files:**\n`;
+      response += '**Modified files:**\n';
       result.filesModified.forEach((file) => {
         response += `• ${file}\n`;
       });
@@ -567,7 +555,8 @@ export async function handleApplyWorkspaceEdit(
       response += `\n\n**Backup files created:** ${result.backupFiles.length}`;
     }
 
-    response += `\n\n*All changes were applied atomically. If any edit had failed, all changes would have been rolled back.*`;
+    response +=
+      '\n\n*All changes were applied atomically. If any edit had failed, all changes would have been rolled back.*';
 
     return createMCPResponse(response);
   } catch (error) {

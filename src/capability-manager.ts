@@ -96,7 +96,7 @@ export class CapabilityManager {
   hasCapability(serverState: ServerState, capabilityPath: string): boolean {
     const capabilities = this.getCapabilities(serverState);
     if (!capabilities) {
-      process.stderr.write(`[DEBUG CapabilityManager] No capabilities found for server\n`);
+      process.stderr.write('[DEBUG CapabilityManager] No capabilities found for server\n');
       return false;
     }
 

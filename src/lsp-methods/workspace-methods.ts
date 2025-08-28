@@ -16,7 +16,7 @@ export async function searchWorkspaceSymbols(
   // Ensure servers are preloaded before searching
   if (context.servers.size === 0) {
     process.stderr.write(
-      `[DEBUG searchWorkspaceSymbols] No servers running, preloading servers first\n`
+      '[DEBUG searchWorkspaceSymbols] No servers running, preloading servers first\n'
     );
     await context.preloadServers(false); // Preload without verbose logging
   }
@@ -49,7 +49,8 @@ export async function searchWorkspaceSymbols(
             for (const entry of entries) {
               if (entry.isFile() && entry.name.endsWith('.ts')) {
                 return path.join(dir, entry.name);
-              } else if (entry.isDirectory() && !entry.name.startsWith('.')) {
+              }
+              if (entry.isDirectory() && !entry.name.startsWith('.')) {
                 const found = await findTsFile(path.join(dir, entry.name));
                 if (found) return found;
               }

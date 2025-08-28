@@ -1,5 +1,5 @@
 // Test LSP client functionality directly
-const path = require('path');
+const path = require('node:path');
 
 async function testLSPClient() {
   // Import ES modules

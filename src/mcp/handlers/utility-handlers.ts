@@ -144,12 +144,11 @@ export async function handleRenameFile(
       content: [
         {
           type: 'text',
-          text:
-            `✅ Successfully renamed ${old_path} to ${new_path}\n\n` +
-            `Files modified: ${result.filesModified.length}\n` +
-            (importCount > 0
+          text: `✅ Successfully renamed ${old_path} to ${new_path}\n\nFiles modified: ${result.filesModified.length}\n${
+            importCount > 0
               ? `Files with updated imports: ${importCount}`
-              : 'No import updates needed'),
+              : 'No import updates needed'
+          }`,
         },
       ],
     };
