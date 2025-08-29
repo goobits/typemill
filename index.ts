@@ -4,7 +4,6 @@ import { resolve } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { LSPClient as OldLSPClient } from './src/lsp-client.js';
 import { LSPClient as NewLSPClient } from './src/lsp/client.js';
 import { allToolDefinitions } from './src/mcp/definitions/index.js';
 import type {
@@ -68,6 +67,13 @@ import {
   handleSearchWorkspaceSymbols,
 } from './src/mcp/handlers/index.js';
 import { createMCPError } from './src/mcp/utils.js';
+import {
+  createValidationError,
+  validateFilePath,
+  validatePosition,
+  validateQuery,
+  validateSymbolName,
+} from './src/mcp/validation.js';
 import { DiagnosticService } from './src/services/diagnostic-service.js';
 import { FileService } from './src/services/file-service.js';
 import { HierarchyService } from './src/services/hierarchy-service.js';
@@ -93,20 +99,32 @@ if (args.length > 0) {
   }
 }
 
-// Create new LSP client and initialize services
-const newLspClient = new NewLSPClient();
-const getServer = (filePath: string) => newLspClient.getServer(filePath);
-const protocol = newLspClient.protocol;
+// Create LSP clients and services with proper error handling
+let newLspClient: NewLSPClient;
+let symbolService: SymbolService;
+let fileService: FileService;
+let diagnosticService: DiagnosticService;
+let intelligenceService: IntelligenceService;
+let hierarchyService: HierarchyService;
 
-// Initialize services with LSP components
-const symbolService = new SymbolService(getServer, protocol);
-const fileService = new FileService(getServer, protocol);
-const diagnosticService = new DiagnosticService(getServer, protocol);
-const intelligenceService = new IntelligenceService(getServer, protocol);
-const hierarchyService = new HierarchyService(getServer, protocol);
+try {
+  // Create new LSP client and initialize services
+  newLspClient = new NewLSPClient();
+  const getServer = (filePath: string) => newLspClient.getServer(filePath);
+  const protocol = newLspClient.protocol;
 
-// Temporary: Keep old LSP client for handlers that haven't been refactored yet
-const oldLspClient = new OldLSPClient();
+  // Initialize services with LSP components
+  symbolService = new SymbolService(getServer, protocol);
+  fileService = new FileService(getServer, protocol);
+  diagnosticService = new DiagnosticService(getServer, protocol);
+  intelligenceService = new IntelligenceService(getServer, protocol);
+  hierarchyService = new HierarchyService(getServer, protocol);
+} catch (error) {
+  process.stderr.write(
+    `Failed to initialize LSP clients: ${error instanceof Error ? error.message : String(error)}\n`
+  );
+  process.exit(1);
+}
 
 const server = new Server(
   {
@@ -134,12 +152,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case 'find_definition':
+        if (!validateFilePath(args) || !validateSymbolName(args)) {
+          throw createValidationError(
+            'find_definition args',
+            'object with file_path and symbol_name strings'
+          );
+        }
         return await handleFindDefinition(symbolService, args as unknown as FindDefinitionArgs);
       case 'find_references':
+        if (!validateFilePath(args) || !validateSymbolName(args)) {
+          throw createValidationError(
+            'find_references args',
+            'object with file_path and symbol_name strings'
+          );
+        }
         return await handleFindReferences(symbolService, args as unknown as FindReferencesArgs);
       case 'rename_symbol':
         return await handleRenameSymbol(symbolService, args as unknown as RenameSymbolArgs);
       case 'rename_symbol_strict':
+        if (!validateFilePath(args) || !validatePosition(args)) {
+          throw createValidationError(
+            'rename_symbol_strict args',
+            'object with file_path, line, and character'
+          );
+        }
         return await handleRenameSymbolStrict(
           symbolService,
           args as unknown as RenameSymbolStrictArgs
@@ -149,8 +185,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'format_document':
         return await handleFormatDocument(fileService, args as unknown as FormatDocumentArgs);
       case 'search_workspace_symbols':
+        if (!validateQuery(args)) {
+          throw createValidationError('search_workspace_symbols args', 'object with query string');
+        }
         return await handleSearchWorkspaceSymbols(
-          oldLspClient,
+          symbolService,
           args as unknown as SearchWorkspaceSymbolsArgs
         );
       case 'get_document_symbols':
@@ -159,15 +198,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args as unknown as GetDocumentSymbolsArgs
         );
       case 'get_folding_ranges':
-        return await handleGetFoldingRanges(oldLspClient, args as unknown as GetFoldingRangesArgs);
+        return await handleGetFoldingRanges(fileService, args as unknown as GetFoldingRangesArgs);
       case 'get_document_links':
-        return await handleGetDocumentLinks(oldLspClient, args as unknown as GetDocumentLinksArgs);
+        return await handleGetDocumentLinks(fileService, args as unknown as GetDocumentLinksArgs);
       case 'get_diagnostics':
         return await handleGetDiagnostics(diagnosticService, args as unknown as GetDiagnosticsArgs);
       case 'restart_server':
-        return await handleRestartServer(oldLspClient, args as unknown as RestartServerArgs);
+        return await handleRestartServer(newLspClient, args as unknown as RestartServerArgs);
       case 'rename_file':
-        return await handleRenameFile(oldLspClient, args as unknown as RenameFileArgs);
+        return await handleRenameFile(args as unknown as RenameFileArgs);
       // Intelligence tools
       case 'get_hover':
         return await handleGetHover(intelligenceService, args as unknown as GetHoverArgs);
@@ -230,9 +269,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args as unknown as ApplyWorkspaceEditArgs
         );
       case 'create_file':
-        return await handleCreateFile(oldLspClient, args as unknown as CreateFileArgs);
+        return await handleCreateFile(args as unknown as CreateFileArgs);
       case 'delete_file':
-        return await handleDeleteFile(oldLspClient, args as unknown as DeleteFileArgs);
+        return await handleDeleteFile(args as unknown as DeleteFileArgs);
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
@@ -243,13 +282,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 process.on('SIGINT', () => {
   newLspClient.dispose();
-  oldLspClient.dispose();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
   newLspClient.dispose();
-  oldLspClient.dispose();
   process.exit(0);
 });
 
@@ -261,8 +298,7 @@ async function main() {
   // Preload LSP servers for file types found in the project
   try {
     process.stderr.write('Starting LSP server preload...\n');
-    // Use old client for preloading since it has the full preload functionality
-    await oldLspClient.preloadServers();
+    await newLspClient.preloadServers();
     process.stderr.write('LSP servers preloaded successfully\n');
   } catch (error) {
     process.stderr.write(`Failed to preload LSP servers: ${error}\n`);
@@ -272,6 +308,5 @@ async function main() {
 main().catch((error) => {
   process.stderr.write(`Server error: ${error}\n`);
   newLspClient.dispose();
-  oldLspClient.dispose();
   process.exit(1);
 });

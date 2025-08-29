@@ -117,11 +117,17 @@ export async function scanDirectoryForExtensions(
             }
           }
         } catch (error) {
-          process.stderr.write(`Error processing ${fullPath}: ${error}\n`);
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          process.stderr.write(
+            `Error processing file ${fullPath} (stat/type check): ${errorMsg}\n`
+          );
         }
       }
     } catch (error) {
-      process.stderr.write(`Error reading directory ${currentPath}: ${error}\n`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      process.stderr.write(
+        `Error reading directory ${currentPath} (readdir operation): ${errorMsg}\n`
+      );
       return;
     }
   }

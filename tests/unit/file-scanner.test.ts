@@ -32,7 +32,7 @@ describe('file-scanner', () => {
       expect(ig.ignores('node_modules')).toBe(true);
       expect(ig.ignores('dist')).toBe(true);
       expect(ig.ignores('.git')).toBe(true);
-      expect(ig.ignores('src.ts')).toBe(false);
+      expect(ig.ignores('src')).toBe(false);
     });
 
     it('should load custom gitignore patterns', async () => {
@@ -50,14 +50,14 @@ describe('file-scanner', () => {
 
       // Should still have default patterns
       expect(ig.ignores('node_modules')).toBe(true);
-      expect(ig.ignores('regular_file.ts')).toBe(false);
+      expect(ig.ignores('regular_file')).toBe(false);
     });
   });
 
   describe('scanDirectoryForExtensions', () => {
     it('should find file extensions', async () => {
-      await writeFile(join(TEST_DIR, 'test.ts'), 'console.log("test");');
-      await writeFile(join(TEST_DIR, 'app.js'), 'console.log("app");');
+      await writeFile(join(TEST_DIR, 'test'), 'console.log("test");');
+      await writeFile(join(TEST_DIR, 'app'), 'console.log("app");');
       await writeFile(join(TEST_DIR, 'main.py'), 'print("hello")');
 
       const extensions = await scanDirectoryForExtensions(TEST_DIR);
@@ -71,11 +71,11 @@ describe('file-scanner', () => {
       await writeFile(join(TEST_DIR, '.gitignore'), 'ignored.ts\nignored_dir/\n');
 
       // Create files - some should be ignored
-      await writeFile(join(TEST_DIR, 'normal.ts'), 'console.log("normal");');
-      await writeFile(join(TEST_DIR, 'ignored.ts'), 'console.log("ignored");');
+      await writeFile(join(TEST_DIR, 'normal'), 'console.log("normal");');
+      await writeFile(join(TEST_DIR, 'ignored'), 'console.log("ignored");');
 
       await mkdir(join(TEST_DIR, 'ignored_dir'), { recursive: true });
-      await writeFile(join(TEST_DIR, 'ignored_dir', 'file.js'), 'console.log("ignored");');
+      await writeFile(join(TEST_DIR, 'ignored_dir', 'file'), 'console.log("ignored");');
 
       const ig = await loadGitignore(TEST_DIR);
       const extensions = await scanDirectoryForExtensions(TEST_DIR, 3, ig);
@@ -88,13 +88,13 @@ describe('file-scanner', () => {
     it('should skip common ignore patterns by default', async () => {
       // Create files in directories that should be ignored
       await mkdir(join(TEST_DIR, 'node_modules', 'pkg'), { recursive: true });
-      await writeFile(join(TEST_DIR, 'node_modules', 'pkg', 'index.js'), 'module.exports = {};');
+      await writeFile(join(TEST_DIR, 'node_modules', 'pkg', 'index'), 'module.exports = {};');
 
       await mkdir(join(TEST_DIR, 'dist'), { recursive: true });
-      await writeFile(join(TEST_DIR, 'dist', 'build.js'), 'console.log("build");');
+      await writeFile(join(TEST_DIR, 'dist', 'build'), 'console.log("build");');
 
       // Create a file that should be included
-      await writeFile(join(TEST_DIR, 'src.ts'), 'console.log("source");');
+      await writeFile(join(TEST_DIR, 'src'), 'console.log("source");');
 
       const ig = await loadGitignore(TEST_DIR);
       const extensions = await scanDirectoryForExtensions(TEST_DIR, 3, ig);
@@ -149,7 +149,7 @@ describe('file-scanner', () => {
 
   describe('scanProjectFiles', () => {
     it('should return complete scan result', async () => {
-      await writeFile(join(TEST_DIR, 'app.ts'), 'console.log("app");');
+      await writeFile(join(TEST_DIR, 'app'), 'console.log("app");');
       await writeFile(join(TEST_DIR, 'main.py'), 'print("hello")');
 
       const result = await scanProjectFiles(TEST_DIR, LANGUAGE_SERVERS);
@@ -162,7 +162,7 @@ describe('file-scanner', () => {
 
     it('should respect gitignore in full scan', async () => {
       await writeFile(join(TEST_DIR, '.gitignore'), '*.temp\n');
-      await writeFile(join(TEST_DIR, 'app.ts'), 'console.log("app");');
+      await writeFile(join(TEST_DIR, 'app'), 'console.log("app");');
       await writeFile(join(TEST_DIR, 'ignore.temp'), 'temp file');
 
       const result = await scanProjectFiles(TEST_DIR, LANGUAGE_SERVERS);

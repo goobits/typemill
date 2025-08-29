@@ -38,10 +38,9 @@ export class LSPClient {
       );
 
       if (!existsSync(process.env.CCLSP_CONFIG_PATH)) {
-        process.stderr.write(
-          `Config file specified in CCLSP_CONFIG_PATH does not exist: ${process.env.CCLSP_CONFIG_PATH}\n`
+        throw new Error(
+          `Config file specified in CCLSP_CONFIG_PATH does not exist: ${process.env.CCLSP_CONFIG_PATH}`
         );
-        process.exit(1);
       }
 
       try {
@@ -50,17 +49,17 @@ export class LSPClient {
         process.stderr.write(`Loaded ${config.servers.length} server configurations from env\n`);
         return config;
       } catch (error) {
-        process.stderr.write(`Failed to load config from CCLSP_CONFIG_PATH: ${error}\n`);
-        process.exit(1);
+        throw new Error(
+          `Failed to load config from CCLSP_CONFIG_PATH: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
 
     // configPath must be provided if CCLSP_CONFIG_PATH is not set
     if (!configPath) {
-      process.stderr.write(
-        'Error: configPath is required when CCLSP_CONFIG_PATH environment variable is not set\n'
+      throw new Error(
+        'configPath is required when CCLSP_CONFIG_PATH environment variable is not set'
       );
-      process.exit(1);
     }
 
     // Load from config file
@@ -71,8 +70,9 @@ export class LSPClient {
       process.stderr.write(`Loaded ${config.servers.length} server configurations\n`);
       return config;
     } catch (error) {
-      process.stderr.write(`Failed to load config from ${configPath}: ${error}\n`);
-      process.exit(1);
+      throw new Error(
+        `Failed to load config from ${configPath}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 

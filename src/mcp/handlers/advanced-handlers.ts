@@ -1,7 +1,6 @@
 import { resolve } from 'node:path';
 import { applyWorkspaceEdit } from '../../file-editor.js';
 import type { TextEdit, WorkspaceEdit } from '../../file-editor.js';
-import type { LSPClient } from '../../lsp-client.js';
 import { pathToUri, uriToPath } from '../../path-utils.js';
 import type { FileService } from '../../services/file-service.js';
 import type { SymbolService } from '../../services/symbol-service.js';
@@ -152,11 +151,14 @@ export async function handleFormatDocument(
 }
 
 // Handler for search_workspace_symbols tool
-export async function handleSearchWorkspaceSymbols(lspClient: LSPClient, args: { query: string }) {
+export async function handleSearchWorkspaceSymbols(
+  symbolService: SymbolService,
+  args: { query: string }
+) {
   const { query } = args;
 
   try {
-    const symbols = await lspClient.searchWorkspaceSymbols(query);
+    const symbols = await symbolService.searchWorkspaceSymbols(query);
 
     if (symbols.length === 0) {
       return {
@@ -288,27 +290,15 @@ export async function handleGetDocumentSymbols(
 }
 
 // Handler for get_folding_ranges tool
-export async function handleGetFoldingRanges(lspClient: LSPClient, args: { file_path: string }) {
+export async function handleGetFoldingRanges(
+  fileService: FileService,
+  args: { file_path: string }
+) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
 
   try {
-    // Check if server supports folding ranges
-    const validation = await lspClient.validateCapabilities(absolutePath, ['foldingRangeProvider']);
-    if (!validation.supported) {
-      return createUnsupportedFeatureResponse(
-        'Folding Ranges',
-        validation.serverDescription,
-        validation.missing,
-        [
-          'Use get_document_symbols to understand code structure',
-          'Look at indentation patterns in the code',
-          'Use selection ranges for hierarchical code block understanding',
-        ]
-      );
-    }
-
-    const foldingRanges = await lspClient.getFoldingRanges(absolutePath);
+    const foldingRanges = await fileService.getFoldingRanges(absolutePath);
 
     if (foldingRanges.length === 0) {
       return createMCPResponse(
@@ -362,27 +352,15 @@ export async function handleGetFoldingRanges(lspClient: LSPClient, args: { file_
 }
 
 // Handler for get_document_links tool
-export async function handleGetDocumentLinks(lspClient: LSPClient, args: { file_path: string }) {
+export async function handleGetDocumentLinks(
+  fileService: FileService,
+  args: { file_path: string }
+) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
 
   try {
-    // Check if server supports document links
-    const validation = await lspClient.validateCapabilities(absolutePath, ['documentLinkProvider']);
-    if (!validation.supported) {
-      return createUnsupportedFeatureResponse(
-        'Document Links',
-        validation.serverDescription,
-        validation.missing,
-        [
-          'Look for import statements and URLs manually in the code',
-          'Use find_references to track symbol usage across files',
-          'Check package.json or similar files for external dependencies',
-        ]
-      );
-    }
-
-    const documentLinks = await lspClient.getDocumentLinks(absolutePath);
+    const documentLinks = await fileService.getDocumentLinks(absolutePath);
 
     if (documentLinks.length === 0) {
       return createMCPResponse(

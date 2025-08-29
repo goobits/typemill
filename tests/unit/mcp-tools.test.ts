@@ -41,7 +41,7 @@ async function handleToolCall(name: string, args: ToolArgs, mockLspClient: MockL
 
     const adjustedLine = use_zero_index ? line : line - 1;
     const adjustedCharacter = use_zero_index ? character : character - 1;
-    await mockLspClient.findDefinition('test.ts', {
+    await mockLspClient.findDefinition('test', {
       line: adjustedLine,
       character: adjustedCharacter,
     });
@@ -74,7 +74,7 @@ async function handleToolCall(name: string, args: ToolArgs, mockLspClient: MockL
     const adjustedLine = use_zero_index ? line : line - 1;
     const adjustedCharacter = use_zero_index ? character : character - 1;
     await mockLspClient.findReferences(
-      'test.ts',
+      'test',
       { line: adjustedLine, character: adjustedCharacter },
       include_declaration
     );
@@ -107,7 +107,7 @@ async function handleToolCall(name: string, args: ToolArgs, mockLspClient: MockL
     const adjustedLine = use_zero_index ? line : line - 1;
     const adjustedCharacter = use_zero_index ? character : character - 1;
     await mockLspClient.renameSymbol(
-      'test.ts',
+      'test',
       { line: adjustedLine, character: adjustedCharacter },
       new_name || ''
     );
@@ -138,14 +138,14 @@ describe('MCP Tools with use_zero_index option', () => {
       const response = await handleToolCall(
         'find_definition',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10, // 1-indexed input (gets converted to 9)
         },
         mockLspClient
       );
 
-      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test.ts', {
+      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test', {
         line: 4, // 5 - 1 (1-indexed to 0-indexed)
         character: 9, // 10 - 1 (1-indexed to 0-indexed)
       });
@@ -160,7 +160,7 @@ describe('MCP Tools with use_zero_index option', () => {
       const response = await handleToolCall(
         'find_definition',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10, // 1-indexed input
           use_zero_index: true,
@@ -168,7 +168,7 @@ describe('MCP Tools with use_zero_index option', () => {
         mockLspClient
       );
 
-      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test.ts', {
+      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test', {
         line: 5, // Original line number (0-indexed)
         character: 10, // Original character position (0-indexed)
       });
@@ -183,7 +183,7 @@ describe('MCP Tools with use_zero_index option', () => {
       const response = await handleToolCall(
         'find_definition',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10, // 1-indexed input
           use_zero_index: false,
@@ -191,7 +191,7 @@ describe('MCP Tools with use_zero_index option', () => {
         mockLspClient
       );
 
-      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test.ts', {
+      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test', {
         line: 4, // 5 - 1 (1-indexed to 0-indexed)
         character: 9, // 10 - 1 (1-indexed to 0-indexed)
       });
@@ -208,7 +208,7 @@ describe('MCP Tools with use_zero_index option', () => {
       const response = await handleToolCall(
         'find_references',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10, // 1-indexed input
         },
@@ -216,7 +216,7 @@ describe('MCP Tools with use_zero_index option', () => {
       );
 
       expect(mockLspClient.findReferences).toHaveBeenCalledWith(
-        'test.ts',
+        'test',
         {
           line: 4, // 5 - 1 (1-indexed to 0-indexed)
           character: 9, // 10 - 1 (1-indexed to 0-indexed)
@@ -234,7 +234,7 @@ describe('MCP Tools with use_zero_index option', () => {
       const response = await handleToolCall(
         'find_references',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10, // 1-indexed input
           use_zero_index: true,
@@ -244,7 +244,7 @@ describe('MCP Tools with use_zero_index option', () => {
       );
 
       expect(mockLspClient.findReferences).toHaveBeenCalledWith(
-        'test.ts',
+        'test',
         {
           line: 5, // Original line number (0-indexed)
           character: 10, // Original character position (0-indexed)
@@ -264,7 +264,7 @@ describe('MCP Tools with use_zero_index option', () => {
       const response = await handleToolCall(
         'rename_symbol',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10, // 1-indexed input
           new_name: 'newSymbolName',
@@ -273,7 +273,7 @@ describe('MCP Tools with use_zero_index option', () => {
       );
 
       expect(mockLspClient.renameSymbol).toHaveBeenCalledWith(
-        'test.ts',
+        'test',
         {
           line: 4, // 5 - 1 (1-indexed to 0-indexed)
           character: 9, // 10 - 1 (1-indexed to 0-indexed)
@@ -291,7 +291,7 @@ describe('MCP Tools with use_zero_index option', () => {
       const response = await handleToolCall(
         'rename_symbol',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10,
           new_name: 'newSymbolName',
@@ -301,7 +301,7 @@ describe('MCP Tools with use_zero_index option', () => {
       );
 
       expect(mockLspClient.renameSymbol).toHaveBeenCalledWith(
-        'test.ts',
+        'test',
         {
           line: 5, // Original line number (0-indexed)
           character: 10, // Original character position (0-indexed)
@@ -321,7 +321,7 @@ describe('MCP Tools with use_zero_index option', () => {
       const response = await handleToolCall(
         'find_definition',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 0,
           character: 0,
           use_zero_index: true,
@@ -329,7 +329,7 @@ describe('MCP Tools with use_zero_index option', () => {
         mockLspClient
       );
 
-      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test.ts', {
+      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test', {
         line: 0, // Original 0-indexed input
         character: 0, // Original 0-indexed input
       });
@@ -344,14 +344,14 @@ describe('MCP Tools with use_zero_index option', () => {
       const response = await handleToolCall(
         'find_definition',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 1,
           character: 0,
         },
         mockLspClient
       );
 
-      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test.ts', {
+      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test', {
         line: 0, // 1 - 1 (1-indexed to 0-indexed)
         character: -1, // 0 - 1 (1-indexed to 0-indexed)
       });
@@ -366,14 +366,14 @@ describe('MCP Tools with use_zero_index option', () => {
       await handleToolCall(
         'find_definition',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 1,
           character: 5, // 1-indexed input
         },
         mockLspClient
       );
 
-      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test.ts', {
+      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test', {
         line: 0, // 1 - 1 (1-indexed to 0-indexed)
         character: 4, // 5 - 1 (1-indexed to 0-indexed)
       });
@@ -383,7 +383,7 @@ describe('MCP Tools with use_zero_index option', () => {
       await handleToolCall(
         'find_definition',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 1,
           character: 5, // 0-indexed input
           use_zero_index: true,
@@ -391,7 +391,7 @@ describe('MCP Tools with use_zero_index option', () => {
         mockLspClient
       );
 
-      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test.ts', {
+      expect(mockLspClient.findDefinition).toHaveBeenCalledWith('test', {
         line: 1, // Original 0-indexed input
         character: 5, // Original 0-indexed input
       });
@@ -401,7 +401,7 @@ describe('MCP Tools with use_zero_index option', () => {
       await handleToolCall(
         'find_references',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 2,
           character: 1, // 1-indexed input
         },
@@ -409,7 +409,7 @@ describe('MCP Tools with use_zero_index option', () => {
       );
 
       expect(mockLspClient.findReferences).toHaveBeenCalledWith(
-        'test.ts',
+        'test',
         {
           line: 1, // 2 - 1 (1-indexed to 0-indexed)
           character: 0, // 1 - 1 (1-indexed to 0-indexed)
@@ -422,7 +422,7 @@ describe('MCP Tools with use_zero_index option', () => {
       await handleToolCall(
         'rename_symbol',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 0,
           character: 0, // 0-indexed input
           new_name: 'test',
@@ -432,7 +432,7 @@ describe('MCP Tools with use_zero_index option', () => {
       );
 
       expect(mockLspClient.renameSymbol).toHaveBeenCalledWith(
-        'test.ts',
+        'test',
         {
           line: 0, // Original 0-indexed input
           character: 0, // Original 0-indexed input

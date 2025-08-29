@@ -19,8 +19,8 @@ describe.skipIf(!!process.env.CI)('file-editor rollback without backups', () => 
   });
 
   it('should rollback changes when createBackups=false and an error occurs', async () => {
-    const file1 = join(TEST_DIR, 'file1.ts');
-    const file2 = join(TEST_DIR, 'file2.ts');
+    const file1 = join(TEST_DIR, 'file1');
+    const file2 = join(TEST_DIR, 'file2');
 
     const originalContent1 = 'const x = 1;';
     const originalContent2 = 'const y = 2;';
@@ -76,7 +76,7 @@ describe.skipIf(!!process.env.CI)('file-editor rollback without backups', () => 
   });
 
   it('should handle multi-line edit with invalid character positions', async () => {
-    const filePath = join(TEST_DIR, 'test.ts');
+    const filePath = join(TEST_DIR, 'test');
     const content = 'line1\nline2\nline3';
     writeFileSync(filePath, content);
 
@@ -111,7 +111,7 @@ describe.skipIf(!!process.env.CI)('file-editor rollback without backups', () => 
   });
 
   it('should detect inverted ranges (start > end)', async () => {
-    const filePath = join(TEST_DIR, 'test.ts');
+    const filePath = join(TEST_DIR, 'test');
     writeFileSync(filePath, 'const x = 1;\nconst y = 2;');
 
     // Ensure file is available and readable before proceeding
@@ -140,7 +140,7 @@ describe.skipIf(!!process.env.CI)('file-editor rollback without backups', () => 
   });
 
   it('should detect same-line inverted character positions', async () => {
-    const filePath = join(TEST_DIR, 'test.ts');
+    const filePath = join(TEST_DIR, 'test');
     writeFileSync(filePath, 'const x = 1;');
 
     // Ensure file is available and readable before proceeding

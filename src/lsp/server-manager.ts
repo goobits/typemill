@@ -368,7 +368,17 @@ export class ServerManager {
     if (serverState.restartTimer) {
       clearTimeout(serverState.restartTimer);
     }
-    serverState.process.kill();
+
+    try {
+      if (!serverState.process.killed) {
+        serverState.process.kill('SIGTERM');
+      }
+    } catch (error) {
+      // Process might already be dead or permissions issue - log but don't throw
+      process.stderr.write(
+        `Warning: Failed to kill server process (PID: ${serverState.process.pid}): ${error instanceof Error ? error.message : String(error)}\n`
+      );
+    }
   }
 
   private isPylspServer(serverConfig: LSPServerConfig): boolean {

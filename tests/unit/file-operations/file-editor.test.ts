@@ -20,7 +20,7 @@ describe('file-editor', () => {
 
   describe('applyWorkspaceEdit', () => {
     it('should apply a single edit to a file', async () => {
-      const filePath = join(TEST_DIR, 'test.ts');
+      const filePath = join(TEST_DIR, 'test');
       const originalContent = 'const oldName = 42;\nconsole.log(oldName);';
       writeFileSync(filePath, originalContent);
 
@@ -46,7 +46,7 @@ describe('file-editor', () => {
     });
 
     it('should apply multiple edits to the same file', async () => {
-      const filePath = join(TEST_DIR, 'test.ts');
+      const filePath = join(TEST_DIR, 'test');
       const originalContent = 'const foo = 1;\nconst bar = foo + foo;\nconsole.log(foo);';
       writeFileSync(filePath, originalContent);
 
@@ -92,7 +92,7 @@ describe('file-editor', () => {
     });
 
     it('should handle multi-line edits', async () => {
-      const filePath = join(TEST_DIR, 'test.ts');
+      const filePath = join(TEST_DIR, 'test');
       const originalContent = 'function oldFunc() {\n  return 42;\n}\n\noldFunc();';
       writeFileSync(filePath, originalContent);
 
@@ -124,8 +124,8 @@ describe('file-editor', () => {
     });
 
     it('should handle edits across multiple files', async () => {
-      const file1 = join(TEST_DIR, 'file1.ts');
-      const file2 = join(TEST_DIR, 'file2.ts');
+      const file1 = join(TEST_DIR, 'file1');
+      const file2 = join(TEST_DIR, 'file2');
 
       writeFileSync(file1, 'export const oldName = 42;');
       writeFileSync(file2, 'import { oldName } from "./file1";\nconsole.log(oldName);');
@@ -170,7 +170,7 @@ describe('file-editor', () => {
     });
 
     it('should create backup files when requested', async () => {
-      const filePath = join(TEST_DIR, 'test.ts');
+      const filePath = join(TEST_DIR, 'test');
       const originalContent = 'const oldName = 42;';
       writeFileSync(filePath, originalContent);
 
@@ -203,7 +203,7 @@ describe('file-editor', () => {
     });
 
     it('should skip backup creation when disabled', async () => {
-      const filePath = join(TEST_DIR, 'test.ts');
+      const filePath = join(TEST_DIR, 'test');
       writeFileSync(filePath, 'const oldName = 42;');
 
       const result = await applyWorkspaceEdit(
@@ -229,7 +229,7 @@ describe('file-editor', () => {
     });
 
     it('should validate edit positions when requested', async () => {
-      const filePath = join(TEST_DIR, 'test.ts');
+      const filePath = join(TEST_DIR, 'test');
       writeFileSync(filePath, 'const x = 1;');
 
       const result = await applyWorkspaceEdit(
@@ -254,8 +254,8 @@ describe('file-editor', () => {
     });
 
     it('should rollback changes on failure', async () => {
-      const file1 = join(TEST_DIR, 'file1.ts');
-      const file2 = join(TEST_DIR, 'file2.ts');
+      const file1 = join(TEST_DIR, 'file1');
+      const file2 = join(TEST_DIR, 'file2');
 
       const originalContent1 = 'const x = 1;';
       const originalContent2 = 'const y = 2;';
@@ -298,7 +298,7 @@ describe('file-editor', () => {
     });
 
     it('should handle empty files', async () => {
-      const filePath = join(TEST_DIR, 'empty.ts');
+      const filePath = join(TEST_DIR, 'empty');
       writeFileSync(filePath, '');
 
       const result = await applyWorkspaceEdit({
@@ -322,7 +322,7 @@ describe('file-editor', () => {
     });
 
     it('should handle files with different line endings', async () => {
-      const filePath = join(TEST_DIR, 'crlf.ts');
+      const filePath = join(TEST_DIR, 'crlf');
       // File with CRLF line endings (without trailing newline)
       writeFileSync(filePath, 'const x = 1;\r\nconst y = 2;');
 
@@ -348,7 +348,7 @@ describe('file-editor', () => {
     });
 
     it('should handle unicode content', async () => {
-      const filePath = join(TEST_DIR, 'unicode.ts');
+      const filePath = join(TEST_DIR, 'unicode');
       const originalContent = 'const 你好 = "世界";\nconsole.log(你好);';
       writeFileSync(filePath, originalContent);
 
@@ -380,7 +380,7 @@ describe('file-editor', () => {
     });
 
     it('should fail gracefully for non-existent files', async () => {
-      const filePath = join(TEST_DIR, 'non-existent.ts');
+      const filePath = join(TEST_DIR, 'non-existent');
 
       const result = await applyWorkspaceEdit({
         changes: {

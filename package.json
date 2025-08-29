@@ -9,9 +9,10 @@
   "type": "module",
   "scripts": {
     "build": "bun build --target=node --outdir=dist index.ts",
+    "build:tests": "./build-tests.sh",
     "dev": "bun run --watch index.ts",
     "start": "node dist/index.js",
-    "test": "bun test tests/unit",
+    "test": "npm run build:tests && bun test tests/unit",
     "test:sequential": "./run-tests-sequential.sh",
     "test:execution": "RUN_EXECUTION_TESTS=1 bun test tests/unit/setup-execution.test.ts",
     "test:all": "bun test && bun run test:execution",

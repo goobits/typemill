@@ -92,12 +92,12 @@ describe.skipIf(!canCreateSymlinks() || !!process.env.CI)('file-editor symlink h
 
   it('should edit the target file without replacing the symlink', async () => {
     // Create a target file
-    const targetPath = join(TEST_DIR, 'target.ts');
+    const targetPath = join(TEST_DIR, 'target');
     const originalContent = 'const oldName = 42;';
     writeFileSync(targetPath, originalContent);
 
     // Create a symlink pointing to the target using robust operations
-    const symlinkPath = join(TEST_DIR, 'link.ts');
+    const symlinkPath = join(TEST_DIR, 'link');
     await robustCreateSymlink(targetPath, symlinkPath);
 
     // Verify symlink was created correctly using robust operations
@@ -138,17 +138,17 @@ describe.skipIf(!canCreateSymlinks() || !!process.env.CI)('file-editor symlink h
 
   it('should handle edits to multiple symlinks and regular files', async () => {
     // Create target files
-    const target1 = join(TEST_DIR, 'target1.ts');
-    const target2 = join(TEST_DIR, 'target2.ts');
-    const regularFile = join(TEST_DIR, 'regular.ts');
+    const target1 = join(TEST_DIR, 'target1');
+    const target2 = join(TEST_DIR, 'target2');
+    const regularFile = join(TEST_DIR, 'regular');
 
     writeFileSync(target1, 'class OldClass1 {}');
     writeFileSync(target2, 'class OldClass2 {}');
     writeFileSync(regularFile, 'class OldClass3 {}');
 
     // Create symlinks using robust operations
-    const link1 = join(TEST_DIR, 'link1.ts');
-    const link2 = join(TEST_DIR, 'link2.ts');
+    const link1 = join(TEST_DIR, 'link1');
+    const link2 = join(TEST_DIR, 'link2');
     await robustCreateSymlink(target1, link1);
     await robustCreateSymlink(target2, link2);
 
@@ -200,8 +200,8 @@ describe.skipIf(!canCreateSymlinks() || !!process.env.CI)('file-editor symlink h
   });
 
   it('should create backups of the target file, not the symlink', async () => {
-    const targetPath = join(TEST_DIR, 'target.ts');
-    const symlinkPath = join(TEST_DIR, 'link.ts');
+    const targetPath = join(TEST_DIR, 'target');
+    const symlinkPath = join(TEST_DIR, 'link');
 
     writeFileSync(targetPath, 'const x = 1;');
     await robustCreateSymlink(targetPath, symlinkPath);
@@ -241,8 +241,8 @@ describe.skipIf(!canCreateSymlinks() || !!process.env.CI)('file-editor symlink h
   });
 
   it('should handle rollback correctly when editing through symlink fails', async () => {
-    const targetPath = join(TEST_DIR, 'target.ts');
-    const symlinkPath = join(TEST_DIR, 'link.ts');
+    const targetPath = join(TEST_DIR, 'target');
+    const symlinkPath = join(TEST_DIR, 'link');
 
     const originalContent = 'const x = 1;\nconst y = 2;';
     writeFileSync(targetPath, originalContent);

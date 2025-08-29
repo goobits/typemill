@@ -23,7 +23,7 @@ class MockLSPClient {
   preloadServers: any = spyOn({} as any, 'preloadServers').mockResolvedValue(undefined);
 
   // Helper to simulate different results for different positions
-  setPositionBasedResults(results: Record<string, import('../../src/types.js').LSPLocation[]>) {
+  setPositionBasedResults(results: Record<string, import('../../src/types').LSPLocation[]>) {
     this.findDefinition.mockImplementation(
       (filePath: string, position: { line: number; character: number }) => {
         const key = `${position.line}:${position.character}`;
@@ -49,7 +49,7 @@ class MockLSPClient {
         if (locations.length > 0) {
           return Promise.resolve({
             changes: {
-              'file:///test.ts': locations.map((loc) => ({
+              'file:///test': locations.map((loc) => ({
                 range: loc.range,
                 newText: newName,
               })),
@@ -94,14 +94,14 @@ async function handleMultiPositionToolCall(
     const results = [];
     for (const candidate of positionCandidates) {
       try {
-        const locations = await mockLspClient.findDefinition('test.ts', {
+        const locations = await mockLspClient.findDefinition('test', {
           line: candidate.line,
           character: candidate.character,
         });
 
         if (locations.length > 0) {
           const locationResults = locations
-            .map((loc: import('../../src/types.js').LSPLocation) => {
+            .map((loc: import('../../src/types').LSPLocation) => {
               const filePath = loc.uri.replace('file://', '');
               const { start } = loc.range;
               return `${filePath}:${start.line + 1}:${start.character + 1}`;
@@ -163,14 +163,14 @@ async function handleMultiPositionToolCall(
     for (const candidate of positionCandidates) {
       try {
         const locations = await mockLspClient.findReferences(
-          'test.ts',
+          'test',
           { line: candidate.line, character: candidate.character },
           include_declaration
         );
 
         if (locations.length > 0) {
           const locationResults = locations
-            .map((loc: import('../../src/types.js').LSPLocation) => {
+            .map((loc: import('../../src/types').LSPLocation) => {
               const filePath = loc.uri.replace('file://', '');
               const { start } = loc.range;
               return `${filePath}:${start.line + 1}:${start.character + 1}`;
@@ -235,7 +235,7 @@ async function handleMultiPositionToolCall(
     for (const candidate of positionCandidates) {
       try {
         const workspaceEdit = await mockLspClient.renameSymbol(
-          'test.ts',
+          'test',
           { line: candidate.line, character: candidate.character },
           new_name
         );
@@ -245,7 +245,7 @@ async function handleMultiPositionToolCall(
           for (const [uri, edits] of Object.entries(workspaceEdit.changes)) {
             const filePath = uri.replace('file://', '');
             changes.push(`File: ${filePath}`);
-            for (const edit of edits as import('../../src/types.js').TextEdit[]) {
+            for (const edit of edits as import('../../src/types').TextEdit[]) {
               const { start, end } = edit.range;
               changes.push(
                 `  - Line ${start.line + 1}, Column ${start.character + 1} to Line ${end.line + 1}, Column ${end.character + 1}: "${edit.newText}"`
@@ -297,7 +297,7 @@ describe('Multi-Position Tool Calls', () => {
       const mockResults = {
         '4:9': [
           {
-            uri: 'file:///test.ts',
+            uri: 'file:///test',
             range: {
               start: { line: 10, character: 5 },
               end: { line: 10, character: 15 },
@@ -310,7 +310,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_definition',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10,
         },
@@ -326,7 +326,7 @@ describe('Multi-Position Tool Calls', () => {
       const mockResults = {
         '4:9': [
           {
-            uri: 'file:///test.ts',
+            uri: 'file:///test',
             range: {
               start: { line: 10, character: 5 },
               end: { line: 10, character: 15 },
@@ -335,7 +335,7 @@ describe('Multi-Position Tool Calls', () => {
         ],
         '5:9': [
           {
-            uri: 'file:///other.ts',
+            uri: 'file:///other',
             range: {
               start: { line: 15, character: 8 },
               end: { line: 15, character: 18 },
@@ -348,7 +348,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_definition',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10,
         },
@@ -367,7 +367,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_definition',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10,
         },
@@ -385,7 +385,7 @@ describe('Multi-Position Tool Calls', () => {
       const mockResults = {
         '4:10': [
           {
-            uri: 'file:///test.ts',
+            uri: 'file:///test',
             range: {
               start: { line: 20, character: 3 },
               end: { line: 20, character: 13 },
@@ -398,7 +398,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_references',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 11,
           include_declaration: false,
@@ -416,7 +416,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_references',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10,
         },
@@ -434,7 +434,7 @@ describe('Multi-Position Tool Calls', () => {
       const mockResults = {
         '5:10': [
           {
-            uri: 'file:///test.ts',
+            uri: 'file:///test',
             range: {
               start: { line: 5, character: 10 },
               end: { line: 5, character: 20 },
@@ -447,7 +447,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'rename_symbol',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 6,
           character: 11,
           new_name: 'newSymbolName',
@@ -456,7 +456,7 @@ describe('Multi-Position Tool Calls', () => {
       );
 
       expect(response.content[0]?.text).toContain('Results for line-1/character-1 (5:10)');
-      expect(response.content[0]?.text).toContain('File: /test.ts');
+      expect(response.content[0]?.text).toContain('File: /test');
       expect(response.content[0]?.text).toContain(
         'Line 6, Column 11 to Line 6, Column 21: "newSymbolName"'
       );
@@ -468,7 +468,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'rename_symbol',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10,
           new_name: 'newName',
@@ -494,7 +494,7 @@ describe('Multi-Position Tool Calls', () => {
           if (key === '5:9') {
             return Promise.resolve([
               {
-                uri: 'file:///test.ts',
+                uri: 'file:///test',
                 range: {
                   start: { line: 10, character: 5 },
                   end: { line: 10, character: 15 },
@@ -509,7 +509,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_definition',
         {
-          file_path: 'test.ts',
+          file_path: 'test',
           line: 5,
           character: 10,
         },

@@ -2,7 +2,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { LSPClient } from '../../src/lsp-client.js';
 import { LSPClient as NewLSPClient } from '../../src/lsp/client.js';
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { FileService } from '../../src/services/file-service.js';
@@ -24,7 +23,7 @@ import { handleGetSignatureHelp } from '../../src/mcp/handlers/intelligence-hand
 import { handleCreateFile, handleDeleteFile } from '../../src/mcp/handlers/utility-handlers.js';
 
 describe('MCP Handlers Unit Tests', () => {
-  let lspClient: LSPClient;
+  let lspClient: NewLSPClient;
   let fileService: FileService;
   let intelligenceService: IntelligenceService;
   const testDir = '/workspace/plugins/cclsp/playground';
@@ -40,12 +39,11 @@ describe('MCP Handlers Unit Tests', () => {
 
     // Set up LSP client
     process.env.CCLSP_CONFIG_PATH = join('/workspace/plugins/cclsp', 'cclsp.json');
-    lspClient = new LSPClient();
+    lspClient = new NewLSPClient();
 
     // Create services for handlers that need them
-    const newLspClient = new NewLSPClient();
-    const getServerWrapper = (filePath: string) => newLspClient.getServer(filePath);
-    const protocol = newLspClient.protocol;
+    const getServerWrapper = (filePath: string) => lspClient.getServer(filePath);
+    const protocol = lspClient.protocol;
     fileService = new FileService(getServerWrapper, protocol);
     intelligenceService = new IntelligenceService(getServerWrapper, protocol);
   });
@@ -64,7 +62,7 @@ describe('MCP Handlers Unit Tests', () => {
       console.log('🔍 Testing handleGetFoldingRanges...');
 
       const result = (await handleGetFoldingRanges(lspClient, {
-        file_path: join(testDir, 'src/components/user-form.ts'),
+        file_path: join(testDir, 'src/components/user-form'),
       })) as MCPResponse;
 
       const success = result.content?.[0]?.text;
@@ -81,8 +79,8 @@ describe('MCP Handlers Unit Tests', () => {
     it('should handle getDocumentLinks', async () => {
       console.log('🔗 Testing handleGetDocumentLinks...');
 
-      const result = (await handleGetDocumentLinks(lspClient, {
-        file_path: join(testDir, 'src/test-file.ts'),
+      const result = (await handleGetDocumentLinks(fileService, {
+        file_path: join(testDir, 'src/test-file'),
       })) as MCPResponse;
 
       const success = result.content?.[0]?.text;
@@ -102,7 +100,7 @@ describe('MCP Handlers Unit Tests', () => {
       // Create a validation-only edit
       const result = (await handleApplyWorkspaceEdit(fileService, {
         changes: {
-          [join(testDir, 'src/test-file.ts')]: [
+          [join(testDir, 'src/test-file')]: [
             {
               range: {
                 start: { line: 0, character: 0 },
@@ -141,7 +139,7 @@ describe('MCP Handlers Unit Tests', () => {
         await rm(testFile, { force: true });
       }
 
-      const result = (await handleCreateFile(lspClient, {
+      const result = (await handleCreateFile({
         file_path: testFile,
         content: '// Handler test file\nconsole.log("test");',
       })) as MCPResponse;
@@ -163,13 +161,13 @@ describe('MCP Handlers Unit Tests', () => {
 
       // First ensure file exists
       if (!existsSync(testFile)) {
-        await handleCreateFile(lspClient, {
+        await handleCreateFile({
           file_path: testFile,
           content: '// File to delete',
         });
       }
 
-      const result = (await handleDeleteFile(lspClient, {
+      const result = (await handleDeleteFile({
         file_path: testFile,
         force: false,
       })) as MCPResponse;
@@ -193,7 +191,7 @@ describe('MCP Handlers Unit Tests', () => {
 
       try {
         const result = (await handleGetSignatureHelp(intelligenceService, {
-          file_path: join(testDir, 'src/test-file.ts'),
+          file_path: join(testDir, 'src/test-file'),
           line: 14,
           character: 20,
         })) as MCPResponse;
@@ -225,29 +223,29 @@ describe('MCP Handlers Unit Tests', () => {
         name: 'handleGetFoldingRanges',
         handler: () =>
           handleGetFoldingRanges(lspClient, {
-            file_path: join(testDir, 'src/components/user-form.ts'),
+            file_path: join(testDir, 'src/components/user-form'),
           }),
       },
       {
         name: 'handleGetDocumentLinks',
         handler: () =>
-          handleGetDocumentLinks(lspClient, {
-            file_path: join(testDir, 'src/test-file.ts'),
+          handleGetDocumentLinks(fileService, {
+            file_path: join(testDir, 'src/test-file'),
           }),
       },
       {
         name: 'handleCreateFile',
         handler: () =>
-          handleCreateFile(lspClient, {
-            file_path: join(testDir, 'src/temp-test.ts'),
+          handleCreateFile({
+            file_path: join(testDir, 'src/temp-test'),
             content: '// Temp test',
           }),
       },
       {
         name: 'handleDeleteFile',
         handler: () =>
-          handleDeleteFile(lspClient, {
-            file_path: join(testDir, 'src/temp-test.ts'),
+          handleDeleteFile({
+            file_path: join(testDir, 'src/temp-test'),
             force: false,
           }),
       },
@@ -255,7 +253,7 @@ describe('MCP Handlers Unit Tests', () => {
         name: 'handleGetSignatureHelp',
         handler: () =>
           handleGetSignatureHelp(intelligenceService, {
-            file_path: join(testDir, 'src/test-file.ts'),
+            file_path: join(testDir, 'src/test-file'),
             line: 14,
             character: 20,
           }),
