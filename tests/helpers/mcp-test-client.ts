@@ -213,7 +213,7 @@ export const QUICK_TESTS: MCPToolCall[] = [
   },
 ];
 
-// Comprehensive test suite covering all 23 MCP tools
+// Comprehensive test suite covering all 28 MCP tools
 export const ALL_TESTS: MCPToolCall[] = [
   // Core Tools (4)
   {
@@ -228,8 +228,8 @@ export const ALL_TESTS: MCPToolCall[] = [
     name: 'rename_symbol',
     arguments: {
       file_path: TEST_FILES.testFile,
-      symbol_name: 'renamedVariable',
-      new_name: 'testVar',
+      symbol_name: 'RENAMED_CONST',
+      new_name: 'TEST_CONSTANT',
       dry_run: true,
     },
   },
@@ -251,18 +251,20 @@ export const ALL_TESTS: MCPToolCall[] = [
     name: 'get_code_actions',
     arguments: {
       file_path: TEST_FILES.testFile,
-      start_line: 9,
-      start_character: 0,
-      end_line: 9,
-      end_character: 50,
+      range: {
+        start: { line: 8, character: 0 },
+        end: { line: 8, character: 50 },
+      },
     },
   },
   {
     name: 'format_document',
     arguments: {
       file_path: TEST_FILES.testFile,
-      tab_size: 2,
-      insert_spaces: true,
+      options: {
+        tab_size: 2,
+        insert_spaces: true,
+      },
       dry_run: true,
     },
   },
@@ -325,6 +327,97 @@ export const ALL_TESTS: MCPToolCall[] = [
 
   // Server Management (1) - Test this last with longer timeout
   { name: 'restart_server', arguments: { extensions: ['ts', 'tsx'] } },
+
+  // Advanced Workflow Operations (5) - Missing tools added
+  {
+    name: 'apply_workspace_edit',
+    arguments: {
+      changes: {
+        '/tmp/cclsp-workspace-edit.ts': [
+          {
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 0 },
+            },
+            newText: '// Workspace edit test\nconst testVar = "edited";\n',
+          },
+        ],
+      },
+      validate_before_apply: true,
+    },
+  },
+  {
+    name: 'get_call_hierarchy_incoming_calls',
+    arguments: {
+      item: {
+        name: 'calculateAge',
+        kind: 12, // Function kind
+        uri: 'file:///workspace/plugins/cclsp/playground/src/test-file.ts',
+        range: {
+          start: { line: 12, character: 0 },
+          end: { line: 14, character: 1 },
+        },
+        selectionRange: {
+          start: { line: 12, character: 9 },
+          end: { line: 12, character: 20 },
+        },
+      },
+    },
+  },
+  {
+    name: 'get_call_hierarchy_outgoing_calls',
+    arguments: {
+      item: {
+        name: 'calculateAge',
+        kind: 12, // Function kind
+        uri: 'file:///workspace/plugins/cclsp/playground/src/test-file.ts',
+        range: {
+          start: { line: 12, character: 0 },
+          end: { line: 14, character: 1 },
+        },
+        selectionRange: {
+          start: { line: 12, character: 9 },
+          end: { line: 12, character: 20 },
+        },
+      },
+    },
+  },
+  {
+    name: 'get_type_hierarchy_supertypes',
+    arguments: {
+      item: {
+        name: 'TestProcessor',
+        kind: 5, // Class kind
+        uri: 'file:///workspace/plugins/cclsp/playground/src/test-file.ts',
+        range: {
+          start: { line: 17, character: 0 },
+          end: { line: 41, character: 1 },
+        },
+        selectionRange: {
+          start: { line: 17, character: 6 },
+          end: { line: 17, character: 19 },
+        },
+      },
+    },
+  },
+  {
+    name: 'get_type_hierarchy_subtypes',
+    arguments: {
+      item: {
+        name: 'TestProcessor',
+        kind: 5, // Class kind
+        uri: 'file:///workspace/plugins/cclsp/playground/src/test-file.ts',
+        range: {
+          start: { line: 17, character: 0 },
+          end: { line: 41, character: 1 },
+        },
+        selectionRange: {
+          start: { line: 17, character: 6 },
+          end: { line: 17, character: 19 },
+        },
+      },
+    },
+  },
 ];
 
 // Playground tests - specific tests for playground functionality
