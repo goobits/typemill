@@ -1,7 +1,7 @@
 import type { ChildProcess } from 'node:child_process';
 import type { LSPError } from '../types.js';
 
-export interface LSPMessage {
+interface LSPMessage {
   jsonrpc: string;
   id?: number;
   method?: string;
@@ -10,8 +10,7 @@ export interface LSPMessage {
   error?: LSPError;
 }
 
-// Re-export ServerState from lsp-types to maintain compatibility
-export type { ServerState } from '../lsp-types.js';
+// Re-export ServerState from lsp-types to maintain compatibility;
 
 /**
  * Handles LSP JSON-RPC protocol communication

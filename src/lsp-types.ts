@@ -30,7 +30,7 @@ export interface ServerState {
 /**
  * Base context for LSP method implementations
  */
-export interface BaseLSPMethodContext {
+interface BaseLSPMethodContext {
   getServer: (filePath: string) => Promise<ServerState>;
   ensureFileOpen: (serverState: ServerState, filePath: string) => Promise<void>;
   sendRequest: (
@@ -45,7 +45,7 @@ export interface BaseLSPMethodContext {
 /**
  * Context for workspace methods
  */
-export interface WorkspaceMethodsContext extends BaseLSPMethodContext {
+interface WorkspaceMethodsContext extends BaseLSPMethodContext {
   preloadServers: (debug?: boolean) => Promise<void>;
   servers: Map<string, ServerState>;
 }
@@ -53,7 +53,7 @@ export interface WorkspaceMethodsContext extends BaseLSPMethodContext {
 /**
  * Context for diagnostic methods
  */
-export interface DiagnosticMethodsContext extends BaseLSPMethodContext {
+interface DiagnosticMethodsContext extends BaseLSPMethodContext {
   waitForDiagnosticsIdle: (
     serverState: ServerState,
     fileUri: string,
@@ -64,7 +64,7 @@ export interface DiagnosticMethodsContext extends BaseLSPMethodContext {
 /**
  * Context for hierarchy methods (simplified context)
  */
-export interface HierarchyMethodsContext {
+interface HierarchyMethodsContext {
   getServer: (filePath: string) => Promise<ServerState>;
   ensureFileOpen: (serverState: ServerState, filePath: string) => Promise<void>;
   sendRequest: (
@@ -78,7 +78,7 @@ export interface HierarchyMethodsContext {
 /**
  * Context for intelligence methods (simplified - doesn't need sendNotification)
  */
-export interface IntelligenceMethodsContext {
+interface IntelligenceMethodsContext {
   getServer: (filePath: string) => Promise<ServerState>;
   ensureFileOpen: (serverState: ServerState, filePath: string) => Promise<void>;
   sendRequest: (
@@ -92,7 +92,7 @@ export interface IntelligenceMethodsContext {
 /**
  * Context for document methods
  */
-export interface DocumentMethodsContext extends BaseLSPMethodContext {
+interface DocumentMethodsContext extends BaseLSPMethodContext {
   capabilityManager: {
     getCapabilities(serverKey: string): ServerCapabilities | null;
     checkCapability(
@@ -106,6 +106,6 @@ export interface DocumentMethodsContext extends BaseLSPMethodContext {
 /**
  * Context for core methods
  */
-export interface CoreMethodsContext extends BaseLSPMethodContext {
+interface CoreMethodsContext extends BaseLSPMethodContext {
   // Core methods use the base context
 }

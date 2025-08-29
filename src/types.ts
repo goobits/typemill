@@ -434,7 +434,7 @@ export interface CodeAction {
   data?: unknown;
 }
 
-export interface WorkspaceEdit {
+interface WorkspaceEdit {
   changes?: { [uri: string]: TextEdit[] };
   documentChanges?: (TextDocumentEdit | CreateFile | RenameFile | DeleteFile)[];
   changeAnnotations?: { [id: string]: ChangeAnnotation };
