@@ -83,109 +83,101 @@ export class DiagnosticService {
       }
 
       // Handle null/empty responses (server may not have diagnostics yet)
-      if (result === null || result === undefined) {
-        process.stderr.write(
-          '[DEBUG getDiagnostics] Null/undefined result, falling back to other methods\n'
-        );
-      } else {
-        process.stderr.write(
-          '[DEBUG getDiagnostics] Unexpected response format, falling back to other methods\n'
-        );
-      }
-
-      // If we reach here, the textDocument/diagnostic didn't work as expected
-      // Continue to publishDiagnostics fallback methods below
+      // Fall through to publishDiagnostics waiting logic below
+      process.stderr.write(
+        '[DEBUG getDiagnostics] textDocument/diagnostic returned null/invalid result, falling back to publishDiagnostics\n'
+      );
     } catch (error) {
       // Some LSP servers may not support textDocument/diagnostic
-      // Try falling back to waiting for publishDiagnostics notifications
       process.stderr.write(
-        `[DEBUG getDiagnostics] textDocument/diagnostic not supported or failed: ${error}. Waiting for publishDiagnostics...\n`
+        `[DEBUG getDiagnostics] textDocument/diagnostic not supported or failed: ${error}. Falling back to publishDiagnostics...\n`
       );
-
-      // Wait for the server to become idle and publish diagnostics
-      // MCP tools can afford longer wait times for better reliability
-      await this.waitForDiagnosticsIdle(serverState, fileUri, {
-        maxWaitTime: 5000, // 5 seconds - generous timeout for MCP usage
-        idleTime: 300, // 300ms idle time to ensure all diagnostics are received
-      });
-
-      // Check again for cached diagnostics
-      const diagnosticsAfterWait = serverState.diagnostics.get(fileUri);
-      if (diagnosticsAfterWait !== undefined) {
-        process.stderr.write(
-          `[DEBUG getDiagnostics] Returning ${diagnosticsAfterWait.length} diagnostics after waiting for idle state\n`
-        );
-        return diagnosticsAfterWait;
-      }
-
-      // If still no diagnostics, try triggering publishDiagnostics by making a no-op change
-      process.stderr.write(
-        '[DEBUG getDiagnostics] No diagnostics yet, triggering publishDiagnostics with no-op change\n'
-      );
-
-      try {
-        // Get current file content
-        const fileContent = readFileSync(filePath, 'utf-8');
-
-        // Send a no-op change notification (add and remove a space at the end)
-        // Use proper version tracking instead of timestamps
-        const version1 = (serverState.fileVersions.get(filePath) || 1) + 1;
-        serverState.fileVersions.set(filePath, version1);
-
-        await this.protocol.sendNotification(serverState.process, 'textDocument/didChange', {
-          textDocument: {
-            uri: fileUri,
-            version: version1,
-          },
-          contentChanges: [
-            {
-              text: `${fileContent} `,
-            },
-          ],
-        });
-
-        // Immediately revert the change with next version
-        const version2 = version1 + 1;
-        serverState.fileVersions.set(filePath, version2);
-
-        await this.protocol.sendNotification(serverState.process, 'textDocument/didChange', {
-          textDocument: {
-            uri: fileUri,
-            version: version2,
-          },
-          contentChanges: [
-            {
-              text: fileContent,
-            },
-          ],
-        });
-
-        // Wait for the server to process the changes and become idle
-        // After making changes, servers may need time to re-analyze
-        await this.waitForDiagnosticsIdle(serverState, fileUri, {
-          maxWaitTime: 3000, // 3 seconds after triggering changes
-          idleTime: 300, // Consistent idle time for reliability
-        });
-
-        // Check one more time
-        const diagnosticsAfterTrigger = serverState.diagnostics.get(fileUri);
-        if (diagnosticsAfterTrigger !== undefined) {
-          process.stderr.write(
-            `[DEBUG getDiagnostics] Returning ${diagnosticsAfterTrigger.length} diagnostics after triggering publishDiagnostics\n`
-          );
-          return diagnosticsAfterTrigger;
-        }
-      } catch (triggerError) {
-        process.stderr.write(
-          `[DEBUG getDiagnostics] Failed to trigger publishDiagnostics: ${triggerError}\n`
-        );
-      }
-
-      return [];
     }
 
-    // Failsafe: This should never be reached, but ensures we always return an array
-    process.stderr.write('[DEBUG getDiagnostics] FALLBACK: Returning empty array\n');
+    // Fallback: Wait for publishDiagnostics notifications (works for most LSP servers)
+    process.stderr.write(
+      '[DEBUG getDiagnostics] Waiting for publishDiagnostics notifications...\n'
+    );
+
+    // Wait for the server to become idle and publish diagnostics
+    // MCP tools can afford longer wait times for better reliability
+    await this.waitForDiagnosticsIdle(serverState, fileUri, {
+      maxWaitTime: 5000, // 5 seconds - generous timeout for MCP usage
+      idleTime: 300, // 300ms idle time to ensure all diagnostics are received
+    });
+
+    // Check again for cached diagnostics
+    const diagnosticsAfterWait = serverState.diagnostics.get(fileUri);
+    if (diagnosticsAfterWait !== undefined) {
+      process.stderr.write(
+        `[DEBUG getDiagnostics] Returning ${diagnosticsAfterWait.length} diagnostics after waiting for idle state\n`
+      );
+      return diagnosticsAfterWait;
+    }
+
+    // If still no diagnostics, try triggering publishDiagnostics by making a no-op change
+    process.stderr.write(
+      '[DEBUG getDiagnostics] No diagnostics yet, triggering publishDiagnostics with no-op change\n'
+    );
+
+    try {
+      // Get current file content
+      const fileContent = readFileSync(filePath, 'utf-8');
+
+      // Send a no-op change notification (add and remove a space at the end)
+      // Use proper version tracking instead of timestamps
+      const version1 = (serverState.fileVersions.get(filePath) || 1) + 1;
+      serverState.fileVersions.set(filePath, version1);
+
+      await this.protocol.sendNotification(serverState.process, 'textDocument/didChange', {
+        textDocument: {
+          uri: fileUri,
+          version: version1,
+        },
+        contentChanges: [
+          {
+            text: `${fileContent} `,
+          },
+        ],
+      });
+
+      // Immediately revert the change with next version
+      const version2 = version1 + 1;
+      serverState.fileVersions.set(filePath, version2);
+
+      await this.protocol.sendNotification(serverState.process, 'textDocument/didChange', {
+        textDocument: {
+          uri: fileUri,
+          version: version2,
+        },
+        contentChanges: [
+          {
+            text: fileContent,
+          },
+        ],
+      });
+
+      // Wait for the server to process the changes and become idle
+      // After making changes, servers may need time to re-analyze
+      await this.waitForDiagnosticsIdle(serverState, fileUri, {
+        maxWaitTime: 3000, // 3 seconds after triggering changes
+        idleTime: 300, // Consistent idle time for reliability
+      });
+
+      // Check one more time
+      const diagnosticsAfterTrigger = serverState.diagnostics.get(fileUri);
+      if (diagnosticsAfterTrigger !== undefined) {
+        process.stderr.write(
+          `[DEBUG getDiagnostics] Returning ${diagnosticsAfterTrigger.length} diagnostics after triggering publishDiagnostics\n`
+        );
+        return diagnosticsAfterTrigger;
+      }
+    } catch (triggerError) {
+      process.stderr.write(
+        `[DEBUG getDiagnostics] Failed to trigger publishDiagnostics: ${triggerError}\n`
+      );
+    }
+
     return [];
   }
 
