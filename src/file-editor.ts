@@ -286,21 +286,7 @@ function applyEditsToContent(content: string, edits: TextEdit[], validate: boole
   return lines.join(lineEnding);
 }
 
-/**
- * Clean up backup files created during editing
- * @param backupFiles List of backup file paths
- */
-export function cleanupBackups(backupFiles: string[]): void {
-  for (const backupPath of backupFiles) {
-    try {
-      if (existsSync(backupPath)) {
-        unlinkSync(backupPath);
-      }
-    } catch (error) {
-      console.error(`Failed to remove backup file ${backupPath}:`, error);
-    }
-  }
-}
+// Removed unused cleanupBackups function - backup cleanup is handled inline
 
 /**
  * Find all TypeScript/JavaScript files that might import the target file

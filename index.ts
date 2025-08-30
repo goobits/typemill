@@ -190,7 +190,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         return await handleSearchWorkspaceSymbols(
           symbolService,
-          args as unknown as SearchWorkspaceSymbolsArgs
+          args as unknown as SearchWorkspaceSymbolsArgs,
+          newLspClient
         );
       case 'get_document_symbols':
         return await handleGetDocumentSymbols(
@@ -198,9 +199,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args as unknown as GetDocumentSymbolsArgs
         );
       case 'get_folding_ranges':
-        return await handleGetFoldingRanges(fileService, args as unknown as GetFoldingRangesArgs);
+        return await handleGetFoldingRanges(
+          fileService,
+          args as unknown as GetFoldingRangesArgs,
+          newLspClient
+        );
       case 'get_document_links':
-        return await handleGetDocumentLinks(fileService, args as unknown as GetDocumentLinksArgs);
+        return await handleGetDocumentLinks(
+          fileService,
+          args as unknown as GetDocumentLinksArgs,
+          newLspClient
+        );
       case 'get_diagnostics':
         return await handleGetDiagnostics(diagnosticService, args as unknown as GetDiagnosticsArgs);
       case 'restart_server':

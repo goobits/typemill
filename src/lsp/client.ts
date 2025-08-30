@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { scanDirectoryForExtensions } from '../file-scanner.js';
+import type { ServerState } from '../lsp-types.js';
 import type { Config } from '../types.js';
-import { LSPProtocol, type ServerState } from './protocol.js';
+import { LSPProtocol } from './protocol.js';
 import { ServerManager } from './server-manager.js';
 
 /**

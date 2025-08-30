@@ -138,8 +138,9 @@ export async function scanDirectoryForExtensions(
 
 /**
  * Get recommended language servers based on found extensions
+ * Internal helper - not exposed in public API
  */
-export function getRecommendedLanguageServers(
+function getRecommendedLanguageServers(
   extensions: Set<string>,
   languageServers: LanguageServerConfig[]
 ): string[] {

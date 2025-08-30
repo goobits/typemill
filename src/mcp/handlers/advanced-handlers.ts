@@ -153,12 +153,17 @@ export async function handleFormatDocument(
 // Handler for search_workspace_symbols tool
 export async function handleSearchWorkspaceSymbols(
   symbolService: SymbolService,
-  args: { query: string }
+  args: { query: string },
+  lspClient: import('../../lsp/client.js').LSPClient
 ) {
   const { query } = args;
 
   try {
-    const symbols = await symbolService.searchWorkspaceSymbols(query);
+    const symbols = await symbolService.searchWorkspaceSymbols(
+      query,
+      lspClient.serverManager.activeServers,
+      lspClient.preloadServers.bind(lspClient)
+    );
 
     if (symbols.length === 0) {
       return {
@@ -178,7 +183,7 @@ export async function handleSearchWorkspaceSymbols(
         const filePath = uriToPath(location.uri);
         const line = location.range.start.line + 1;
         const character = location.range.start.character + 1;
-        const symbolKind = symbol.kind ? lspClient.symbolKindToString(symbol.kind) : 'unknown';
+        const symbolKind = symbol.kind ? String(symbol.kind) : 'unknown';
 
         return `${index + 1}. ${symbol.name} (${symbolKind}) - ${filePath}:${line}:${character}`;
       });
@@ -292,7 +297,8 @@ export async function handleGetDocumentSymbols(
 // Handler for get_folding_ranges tool
 export async function handleGetFoldingRanges(
   fileService: FileService,
-  args: { file_path: string }
+  args: { file_path: string },
+  lspClient: import('../../lsp/client.js').LSPClient
 ) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
@@ -336,7 +342,7 @@ export async function handleGetFoldingRanges(
     return createMCPResponse(response);
   } catch (error) {
     if (error instanceof Error && error.message.includes('not supported')) {
-      const serverInfo = await lspClient.getCapabilityInfo(absolutePath);
+      const serverInfo = 'Current Language Server';
       return createLimitedSupportResponse(
         'Folding Ranges',
         'Current Language Server',
@@ -354,7 +360,8 @@ export async function handleGetFoldingRanges(
 // Handler for get_document_links tool
 export async function handleGetDocumentLinks(
   fileService: FileService,
-  args: { file_path: string }
+  args: { file_path: string },
+  lspClient: import('../../lsp/client.js').LSPClient
 ) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
@@ -419,7 +426,7 @@ export async function handleGetDocumentLinks(
     return createMCPResponse(response);
   } catch (error) {
     if (error instanceof Error && error.message.includes('not supported')) {
-      const serverInfo = await lspClient.getCapabilityInfo(absolutePath);
+      const serverInfo = 'Current Language Server';
       return createLimitedSupportResponse(
         'Document Links',
         'Current Language Server',

@@ -245,7 +245,7 @@ async function runCommandSilent(
   });
 }
 
-export function generateMCPCommand(
+function generateMCPCommand(
   configPath: string,
   isUser: boolean,
   platform: NodeJS.Platform = process.platform
@@ -273,7 +273,7 @@ export function generateMCPCommand(
   return `claude mcp add cclsp ${commandPrefix}npx cclsp@latest${scopeFlag} --env CCLSP_CONFIG_PATH=${quotedPath}`;
 }
 
-export function buildMCPArgs(
+function buildMCPArgs(
   absoluteConfigPath: string,
   isUser: boolean,
   platform: NodeJS.Platform = process.platform
