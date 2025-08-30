@@ -15,6 +15,18 @@ export async function handleGetDiagnostics(
   try {
     const diagnostics = await diagnosticService.getDiagnostics(absolutePath);
 
+    // Handle undefined return (should not happen, but defensive coding)
+    if (!diagnostics || !Array.isArray(diagnostics)) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error getting diagnostics: Diagnostic service returned invalid result (${typeof diagnostics})`,
+          },
+        ],
+      };
+    }
+
     if (diagnostics.length === 0) {
       return {
         content: [

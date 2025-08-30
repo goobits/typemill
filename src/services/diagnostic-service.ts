@@ -87,7 +87,6 @@ export class DiagnosticService {
         process.stderr.write(
           '[DEBUG getDiagnostics] Null/undefined result, falling back to other methods\n'
         );
-        // Don't return early, fall through to the publishDiagnostics fallback
       } else {
         process.stderr.write(
           '[DEBUG getDiagnostics] Unexpected response format, falling back to other methods\n'
@@ -95,7 +94,7 @@ export class DiagnosticService {
       }
 
       // If we reach here, the textDocument/diagnostic didn't work as expected
-      // Fall through to publishDiagnostics method
+      // Continue to publishDiagnostics fallback methods below
     } catch (error) {
       // Some LSP servers may not support textDocument/diagnostic
       // Try falling back to waiting for publishDiagnostics notifications
@@ -184,6 +183,10 @@ export class DiagnosticService {
 
       return [];
     }
+
+    // Failsafe: This should never be reached, but ensures we always return an array
+    process.stderr.write('[DEBUG getDiagnostics] FALLBACK: Returning empty array\n');
+    return [];
   }
 
   /**
