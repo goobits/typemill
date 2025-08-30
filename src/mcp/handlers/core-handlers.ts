@@ -255,6 +255,19 @@ export async function handleRenameSymbol(
   if (!match) {
     throw new Error('Symbol match is undefined');
   }
+
+  // Check if the new name is the same as the old name
+  if (symbol_name === new_name) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `No changes needed - symbol "${symbol_name}" is already named "${new_name}".`,
+        },
+      ],
+    };
+  }
+
   try {
     const workspaceEdit = await symbolService.renameSymbol(
       absolutePath,

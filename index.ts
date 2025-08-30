@@ -140,7 +140,7 @@ try {
 const server = new Server(
   {
     name: 'cclsp',
-    version: '0.5.12',
+    version: '0.5.13',
   },
   {
     capabilities: {

@@ -19,7 +19,7 @@ We take the security of cclsp seriously. If you believe you have found a securit
 - Exploit the vulnerability
 
 ### Please DO:
-- Email us at [INSERT SECURITY EMAIL] with details
+- Email us at security@example.com with details (placeholder - update with actual security contact)
 - Include steps to reproduce if possible
 - Allow us reasonable time to respond and fix the issue
 

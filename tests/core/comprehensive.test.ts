@@ -49,7 +49,7 @@ describe('MCP Comprehensive Tests - All 28 Tools', () => {
       expect(content).toMatch(/References for.*TestProcessor|line \d+/i);
     });
 
-    it('should rename symbol', async () => {
+    it('should rename symbol with dry_run', async () => {
       const result = await client.callTool('rename_symbol', {
         file_path: '/workspace/plugins/cclsp/playground/src/test-file.ts',
         symbol_name: 'TEST_CONSTANT',
@@ -62,6 +62,38 @@ describe('MCP Comprehensive Tests - All 28 Tools', () => {
       const content = toolResult.content?.[0]?.text || '';
       expect(content).not.toMatch(/No symbols found|Error/);
       expect(content).toMatch(/DRY RUN.*rename|Would rename/i);
+    });
+
+    it('should execute actual rename on temporary file', async () => {
+      // Create a temporary test file for actual rename testing
+      const tempFile = '/tmp/cclsp-rename-test.ts';
+      await client.callTool('create_file', {
+        file_path: tempFile,
+        content: `export const TEMP_CONSTANT = 'test';
+export function useTempConstant() {
+  return TEMP_CONSTANT + ' used';
+}`,
+      });
+
+      // Execute actual rename (not dry-run)
+      const result = await client.callTool('rename_symbol', {
+        file_path: tempFile,
+        symbol_name: 'TEMP_CONSTANT',
+        new_name: 'ACTUAL_CONSTANT',
+        dry_run: false,
+      });
+
+      expect(result).toBeDefined();
+      const toolResult = assertToolResult(result);
+      const content = toolResult.content?.[0]?.text || '';
+      expect(content).not.toMatch(/No symbols found|Error/);
+      expect(content).toMatch(/renamed|success|applied/i);
+
+      // Clean up
+      await client.callTool('delete_file', {
+        file_path: tempFile,
+        dry_run: false,
+      });
     });
 
     it('should rename symbol strict', async () => {

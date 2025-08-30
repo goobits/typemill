@@ -24,6 +24,8 @@
     "test:mcp:core": "bun test tests/core",
     "test:mcp:unit": "bun test tests/unit",
     "test:mcp:restart": "bun test tests/unit/restart-server.test.ts",
+    "test:multifile": "bun test tests/integration/multi-file-rename.test.ts",
+    "test:multifile:path": "bun test tests/integration/multi-file-rename-file.test.ts",
     "test:complete": "npm run build && npm run test:all && npm run test:mcp",
     "lint": "biome check .",
     "lint:fix": "biome check --fix .",

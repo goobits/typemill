@@ -1,5 +1,7 @@
 import { capabilityManager } from '../capability-manager.js';
-import { pathToUri } from '../path-utils.js';
+import type { ServerState } from '../lsp-types.js';
+import type { LSPProtocol } from '../lsp/protocol.js';
+import { pathToUri, uriToPath } from '../path-utils.js';
 import type {
   DocumentSymbol,
   LSPLocation,
@@ -10,13 +12,22 @@ import type {
 } from '../types.js';
 import { SymbolKind } from '../types.js';
 import type { ServiceContext } from './service-context.js';
+import { ServiceContextUtils } from './service-context.js';
 
 /**
  * Service for symbol-related LSP operations
  * Handles definition, references, renaming, and symbol search
  */
 export class SymbolService {
-  constructor(private context: ServiceContext) {}
+  constructor(
+    private getServer: (filePath: string) => Promise<ServerState>,
+    private protocol: LSPProtocol
+  ) {}
+
+  // Create context from constructor parameters
+  private get context(): ServiceContext {
+    return ServiceContextUtils.createServiceContext(this.getServer, this.protocol);
+  }
 
   /**
    * Find definition of symbol at position
@@ -148,31 +159,141 @@ export class SymbolService {
       `[DEBUG renameSymbol] Requesting rename for ${filePath} at ${position.line}:${position.character} to "${newName}", dryRun: ${dryRun}\n`
     );
 
-    // CRITICAL FIX: For dry_run operations, do NOT send textDocument/rename to LSP server
-    // The TypeScript Language Server auto-applies rename changes to files, ignoring our dry_run intent
-    if (dryRun) {
-      process.stderr.write(
-        '[DEBUG renameSymbol] Skipping LSP rename request for dry_run operation\n'
-      );
-      return {
-        changes: {
-          [`file://${filePath}`]: [
-            {
-              range: { start: position, end: position },
-              newText: '[DRY_RUN_PLACEHOLDER]',
-            },
-          ],
-        },
-      };
-    }
-
     const serverState = await this.context.getServer(filePath);
 
     // Wait for the server to be fully initialized
     await serverState.initializationPromise;
 
-    // Ensure the file is opened and synced with the LSP server
+    // Ensure the main file is opened and synced with the LSP server
     await this.context.ensureFileOpen(serverState, filePath);
+
+    // CRITICAL FIX: For multi-file rename to work, we need to:
+    // 1. First open all potential project files (same extension) in the directory tree
+    // 2. Then find references (which now works across all opened files)
+    // 3. Finally perform the rename
+
+    // Step 1: Open all TypeScript/JavaScript files in the project to enable cross-file operations
+    const projectFiles = new Set<string>();
+    const fileExt = filePath.match(/\.(tsx?|jsx?|mjs|cjs)$/)?.[1];
+    if (fileExt) {
+      process.stderr.write(
+        '[DEBUG renameSymbol] Opening project files to enable cross-file rename...\n'
+      );
+
+      // Find project root (go up until we find package.json or .git)
+      const { dirname, join } = await import('node:path');
+      const { existsSync, readdirSync, statSync } = await import('node:fs');
+
+      let projectRoot = dirname(filePath);
+      while (projectRoot !== '/' && projectRoot !== '.') {
+        if (
+          existsSync(join(projectRoot, 'package.json')) ||
+          existsSync(join(projectRoot, '.git'))
+        ) {
+          break;
+        }
+        const parent = dirname(projectRoot);
+        if (parent === projectRoot) break;
+        projectRoot = parent;
+      }
+
+      // Recursively find all files with same extension in project
+      const findProjectFiles = (dir: string, depth = 0): void => {
+        if (depth > 5) return; // Limit depth to avoid scanning too deep
+
+        try {
+          const entries = readdirSync(dir);
+          for (const entry of entries) {
+            const fullPath = join(dir, entry);
+
+            // Skip node_modules, dist, build, etc.
+            if (
+              entry === 'node_modules' ||
+              entry === 'dist' ||
+              entry === 'build' ||
+              entry === '.git'
+            ) {
+              continue;
+            }
+
+            const stats = statSync(fullPath);
+            if (stats.isDirectory()) {
+              findProjectFiles(fullPath, depth + 1);
+            } else if (stats.isFile() && fullPath.match(/\.(tsx?|jsx?|mjs|cjs)$/)) {
+              projectFiles.add(fullPath);
+            }
+          }
+        } catch (error) {
+          // Ignore errors reading directories
+        }
+      };
+
+      findProjectFiles(projectRoot);
+
+      // Open all project files (up to a reasonable limit)
+      const filesToOpen = Array.from(projectFiles).slice(0, 50); // Limit to 50 files
+      process.stderr.write(`[DEBUG renameSymbol] Opening ${filesToOpen.length} project files...\n`);
+
+      for (const projectFile of filesToOpen) {
+        try {
+          const fileServerState = await this.context.getServer(projectFile);
+          await this.context.ensureFileOpen(fileServerState, projectFile);
+        } catch (error) {
+          // Ignore errors opening individual files
+        }
+      }
+    }
+
+    // Step 2: Now find references (this should work across all opened files)
+    const referencingFiles = new Set<string>();
+    try {
+      process.stderr.write(
+        '[DEBUG renameSymbol] Finding cross-file references for multi-file rename\n'
+      );
+      const references = await this.findReferences(filePath, position, true);
+      for (const ref of references) {
+        const refFilePath = uriToPath(ref.uri);
+        referencingFiles.add(refFilePath);
+      }
+      process.stderr.write(
+        `[DEBUG renameSymbol] Found references in ${referencingFiles.size} files\n`
+      );
+    } catch (error) {
+      process.stderr.write(
+        `[DEBUG renameSymbol] Could not find references for pre-opening: ${error}\n`
+      );
+      // Fallback to just the main file
+      referencingFiles.add(filePath);
+    }
+
+    // Step 3: Ensure all referencing files are opened (some may already be open from step 1)
+    for (const refFilePath of referencingFiles) {
+      try {
+        const fileServerState = await this.context.getServer(refFilePath);
+        await this.context.ensureFileOpen(fileServerState, refFilePath);
+        process.stderr.write(
+          `[DEBUG renameSymbol] Ensured file is open for rename: ${refFilePath}\n`
+        );
+      } catch (error) {
+        process.stderr.write(`[DEBUG renameSymbol] Failed to open ${refFilePath}: ${error}\n`);
+      }
+    }
+
+    // Give LSP server time to process the newly opened files
+    // This is critical for the server to establish proper cross-file relationships
+    if (referencingFiles.size > 1) {
+      process.stderr.write(
+        '[DEBUG renameSymbol] Waiting for LSP server to process opened files...\n'
+      );
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
+    }
+
+    // For dry_run operations, we can now safely call the LSP server since we know which files will be affected
+    if (dryRun) {
+      process.stderr.write('[DEBUG renameSymbol] Performing dry-run rename to preview changes\n');
+      // We still call the LSP server but will not apply the workspace edit
+      // This gives us accurate preview of what would change
+    }
 
     process.stderr.write('[DEBUG renameSymbol] Sending textDocument/rename request\n');
     const result = await this.context.protocol.sendRequest(

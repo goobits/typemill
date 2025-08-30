@@ -292,15 +292,23 @@ function applyEditsToContent(content: string, edits: TextEdit[], validate: boole
  * Find all TypeScript/JavaScript files that might import the target file
  * @param rootDir Root directory to search from
  * @param targetPath Path to the file being renamed
+ * @param useGitignore Whether to respect gitignore patterns (default: true)
  * @returns Array of file paths that might import the target
  */
-async function findPotentialImporters(rootDir: string, targetPath: string): Promise<string[]> {
+async function findPotentialImporters(
+  rootDir: string,
+  targetPath: string,
+  useGitignore = true
+): Promise<string[]> {
   const files: string[] = [];
   const extensions = new Set(['ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs']);
 
-  // Load gitignore patterns
-  const { loadGitignore } = await import('./file-scanner.js');
-  const ignoreFilter = await loadGitignore(rootDir);
+  // Load gitignore patterns if requested
+  let ignoreFilter: any = null;
+  if (useGitignore) {
+    const { loadGitignore } = await import('./file-scanner.js');
+    ignoreFilter = await loadGitignore(rootDir);
+  }
 
   async function* getFiles(dir: string, baseDir: string = dir): AsyncGenerator<string> {
     const entries = await readdir(dir, { withFileTypes: true });
@@ -308,8 +316,8 @@ async function findPotentialImporters(rootDir: string, targetPath: string): Prom
       const fullPath = resolve(dir, entry.name);
       const relativePath = relative(baseDir, fullPath);
 
-      // Skip ignored paths
-      if (ignoreFilter.ignores(relativePath.replace(/\\/g, '/'))) {
+      // Skip ignored paths if using gitignore
+      if (ignoreFilter?.ignores(relativePath.replace(/\\/g, '/'))) {
         continue;
       }
 
@@ -415,9 +423,10 @@ export async function renameFile(
   options: {
     dry_run?: boolean;
     rootDir?: string;
+    useGitignore?: boolean;
   } = {}
 ): Promise<ApplyEditResult & { importUpdates?: WorkspaceEdit }> {
-  const { dry_run = false, rootDir = process.cwd() } = options;
+  const { dry_run = false, rootDir = process.cwd(), useGitignore = true } = options;
 
   // Resolve absolute paths
   const absoluteOldPath = resolve(oldPath);
@@ -445,7 +454,7 @@ export async function renameFile(
   try {
     // Step 1: Find all files that might import this file
     process.stderr.write(`[DEBUG] Finding files that import ${absoluteOldPath}\n`);
-    const importingFiles = await findPotentialImporters(rootDir, absoluteOldPath);
+    const importingFiles = await findPotentialImporters(rootDir, absoluteOldPath, useGitignore);
     process.stderr.write(`[DEBUG] Found ${importingFiles.length} potential importing files\n`);
 
     // Step 2: Build WorkspaceEdit for import updates

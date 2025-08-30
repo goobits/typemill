@@ -340,7 +340,7 @@ export class ServerManager {
   ): Promise<unknown> {
     const initializeParams = {
       processId: serverState.process.pid || null,
-      clientInfo: { name: 'cclsp', version: '0.5.12' },
+      clientInfo: { name: 'cclsp', version: '0.5.13' },
       capabilities: {
         textDocument: {
           synchronization: {

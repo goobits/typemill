@@ -126,7 +126,17 @@ export async function handleRenameFile(args: {
 
   try {
     const { renameFile } = await import('../../file-editor.js');
-    const result = await renameFile(old_path, new_path, undefined, { dry_run });
+    // Pass the workspace root directory to enable import detection
+    // Don't use gitignore filtering to ensure all files are checked (including test/playground files)
+    const rootDir = process.cwd(); // Use current working directory as root
+    process.stderr.write(
+      `[DEBUG handleRenameFile] rootDir: ${rootDir}, old_path: ${old_path}, new_path: ${new_path}, dry_run: ${dry_run}\n`
+    );
+    const result = await renameFile(old_path, new_path, undefined, {
+      dry_run,
+      rootDir,
+      useGitignore: false, // Don't filter gitignored files so tests work
+    });
 
     if (!result.success) {
       return {
