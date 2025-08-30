@@ -96,11 +96,37 @@ When using AI-powered coding assistants like Claude, you often need to navigate 
 
 ## ⚡ Setup
 
-cclsp provides an interactive setup wizard that automates the entire configuration process. Choose your preferred method:
+### Zero Configuration (NEW!)
 
-### Automated Setup (Recommended)
+**cclsp now works out of the box with zero configuration!** TypeScript/JavaScript support is bundled and works immediately. Other languages work automatically if their servers are installed.
 
-Run the interactive setup wizard:
+```bash
+# Just install and run - no config needed!
+npm install -g cclsp
+cclsp  # Starts MCP server with smart defaults
+```
+
+### Configuration Options
+
+While cclsp works without configuration, you can customize it using these methods:
+
+#### 1. Generate Configuration File (NEW!)
+
+Generate a well-commented configuration file tailored to your project:
+
+```bash
+cclsp init
+```
+
+This command:
+- Scans your project for file types
+- Creates a cclsp.json with relevant servers enabled
+- Includes helpful comments and installation instructions
+- Disables auto-restart by default (opt-in via config)
+
+#### 2. Interactive Setup Wizard
+
+For a guided setup experience:
 
 ```bash
 # One-time setup (no installation required)
@@ -651,7 +677,7 @@ Get language diagnostics (errors, warnings, hints) for a file. Uses LSP textDocu
 
 #### `restart_server`
 
-Manually restart LSP servers. Can restart servers for specific file extensions or all running servers.
+Manually restart LSP servers and retry any previously failed servers. Can restart servers for specific file extensions or all running servers.
 
 **Parameters:**
 - `extensions`: Array of file extensions to restart servers for (e.g., ["ts", "tsx"]). If not provided, all servers will be restarted (optional)
@@ -759,7 +785,9 @@ Claude: The TypeScript server seems unresponsive, let me restart it
 
 Result: Successfully restarted 1 LSP server(s)
 Restarted servers:
-• typescript-language-server --stdio (ts, tsx)
+• typescript-language-server --stdio
+
+Note: Any previously failed servers have been cleared and will be retried on next access.
 ```
 
 Or restart all servers:
@@ -772,6 +800,8 @@ Result: Successfully restarted 2 LSP server(s)
 Restarted servers:
 • typescript-language-server --stdio (ts, tsx)
 • pylsp (py)
+
+Note: Any previously failed servers have been cleared and will be retried on next access.
 ```
 
 ## 🔍 Troubleshooting
@@ -804,13 +834,14 @@ Add `restartInterval` to your Python server configuration:
 }
 ```
 
-This will automatically restart the Python LSP server every 5 minutes, maintaining optimal performance for long coding sessions.
+**Auto-restart is now opt-in**: To enable automatic server restarts, add `"restartInterval": 30` to your server configuration in cclsp.json.
 
-**Alternative**: You can also manually restart servers using the `restart_server` tool when needed:
-- Restart specific server: `restart_server` with `extensions: ["py"]`
+**Manual restart**: You can manually restart servers using the `restart_server` tool when needed:
+- Restart specific server: `restart_server` with `extensions: ["py"]`  
 - Restart all servers: `restart_server` without parameters
+- This also clears any failed servers, allowing them to be retried
 
-**Note**: The setup wizard automatically configures this for Python servers when detected.
+**Retry failed servers**: If a language server fails to start (e.g., not installed), it won't be retried automatically. Use the `restart_server` tool to clear failed servers and retry them after installation.
 
 </details>
 

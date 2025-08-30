@@ -104,16 +104,42 @@ export class LSPClient {
   }
 
   /**
-   * Load default configuration with available language servers
+   * Load default configuration with all potential language servers
+   * Actual availability will be checked when servers are started
    */
   private loadDefaultConfig(): Config {
     const defaultConfig = createDefaultConfig();
     process.stderr.write(
-      `Using default configuration with ${defaultConfig.servers.length} language servers\n`
+      `Using default configuration with support for ${defaultConfig.servers.length} languages\n`
     );
-    process.stderr.write('Available for: TypeScript, JavaScript, Python, Go, Rust, and more\n');
+    process.stderr.write('TypeScript/JavaScript works out of the box (bundled dependency)\n');
+    process.stderr.write('Other languages work if their servers are installed\n');
     process.stderr.write('To customize, create a cclsp.json file or run: cclsp setup\n');
     return defaultConfig;
+  }
+
+  private getLanguageName(extension: string): string | null {
+    const languageMap: Record<string, string> = {
+      ts: 'TypeScript',
+      tsx: 'TypeScript',
+      js: 'JavaScript',
+      jsx: 'JavaScript',
+      py: 'Python',
+      go: 'Go',
+      rs: 'Rust',
+      java: 'Java',
+      rb: 'Ruby',
+      php: 'PHP',
+      c: 'C',
+      cpp: 'C++',
+      css: 'CSS',
+      html: 'HTML',
+      json: 'JSON',
+      yaml: 'YAML',
+      vue: 'Vue',
+      svelte: 'Svelte',
+    };
+    return languageMap[extension] || null;
   }
 
   /**

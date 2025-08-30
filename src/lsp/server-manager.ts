@@ -13,6 +13,7 @@ import type { LSPProtocol } from './protocol.js';
 export class ServerManager {
   private servers: Map<string, ServerState> = new Map();
   private serversStarting: Map<string, Promise<ServerState>> = new Map();
+  private failedServers: Set<string> = new Set();
   private protocol: LSPProtocol;
 
   constructor(protocol: LSPProtocol) {
@@ -36,6 +37,14 @@ export class ServerManager {
     }
 
     const serverKey = JSON.stringify(serverConfig.command);
+
+    // Don't try to start servers that have already failed
+    if (this.failedServers.has(serverKey)) {
+      throw new Error(
+        `Language server for ${serverConfig.extensions.join(', ')} files is not available. ` +
+          `Install it with: ${this.getInstallInstructions(serverConfig.command[0])}`
+      );
+    }
 
     // Return existing server if available
     const existingServer = this.servers.get(serverKey);
@@ -64,6 +73,19 @@ export class ServerManager {
       return serverState;
     } finally {
       this.serversStarting.delete(serverKey);
+    }
+  }
+
+  /**
+   * Clear failed servers to allow retry
+   */
+  clearFailedServers(): void {
+    const count = this.failedServers.size;
+    this.failedServers.clear();
+    if (count > 0) {
+      process.stderr.write(
+        `Cleared ${count} failed server(s). They will be retried on next access.\n`
+      );
     }
   }
 
@@ -166,18 +188,46 @@ export class ServerManager {
       }
     }
 
-    let childProcess;
-    try {
-      childProcess = spawn(command, args, {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        cwd: serverConfig.rootDir || process.cwd(),
-      });
-    } catch (error) {
+    const childProcess = spawn(command, args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      cwd: serverConfig.rootDir || process.cwd(),
+    });
+
+    // Immediately attach error handler to catch ENOENT (command not found)
+    let startupFailed = false;
+    const startupErrorHandler = (error: Error) => {
+      startupFailed = true;
       const extensions = serverConfig.extensions.join(', ');
-      throw new Error(
-        `Failed to start language server for ${extensions} files.\nCommand: ${serverConfig.command.join(' ')}\nError: ${error instanceof Error ? error.message : String(error)}\n\nTo fix this:\n1. Install the language server: ${this.getInstallInstructions(command)}\n2. Or disable support for these files in cclsp.json\n3. Or run: cclsp setup`
-      );
+
+      if (error.message.includes('ENOENT')) {
+        process.stderr.write(
+          `⚠️  Language server not found for ${extensions} files\n` +
+            `   Command: ${serverConfig.command.join(' ')}\n` +
+            `   To enable: ${this.getInstallInstructions(command)}\n`
+        );
+      } else {
+        process.stderr.write(
+          `⚠️  Failed to start language server for ${extensions} files\n` +
+            `   Error: ${error.message}\n`
+        );
+      }
+
+      // Mark this server as failed to prevent retry storms
+      const serverKey = JSON.stringify(serverConfig.command);
+      this.failedServers.add(serverKey);
+    };
+
+    childProcess.once('error', startupErrorHandler);
+
+    // Give it a moment to fail if command doesn't exist
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    if (startupFailed) {
+      throw new Error(`Language server for ${serverConfig.extensions.join(', ')} is not available`);
     }
+
+    // Remove the startup error handler since we're past the critical period
+    childProcess.removeListener('error', startupErrorHandler);
 
     let initializationResolve: (() => void) | undefined;
     const initializationPromise = new Promise<void>((resolve) => {

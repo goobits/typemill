@@ -9,103 +9,103 @@ export const DEFAULT_SERVERS: LSPServerConfig[] = [
     // TypeScript/JavaScript - Already bundled as dependency!
     extensions: ['ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs'],
     command: ['npx', '--', 'typescript-language-server', '--stdio'],
-    restartInterval: 10,
+    // restartInterval removed - opt-in only
   },
   {
     // Python - Try common installations
     extensions: ['py', 'pyi'],
     command: ['pylsp'],
-    restartInterval: 5,
+    // restartInterval removed - opt-in only
   },
   {
     // Go - Standard installation
     extensions: ['go'],
     command: ['gopls'],
-    restartInterval: 15,
+    // restartInterval removed - opt-in only
   },
   {
     // Rust - Via rustup
     extensions: ['rs'],
     command: ['rust-analyzer'],
-    restartInterval: 15,
+    // restartInterval removed - opt-in only
   },
   {
     // JSON/YAML - Via vscode-json-languageserver
     extensions: ['json', 'jsonc'],
     command: ['npx', '--', 'vscode-json-languageserver', '--stdio'],
-    restartInterval: 5,
+    // restartInterval removed - opt-in only
   },
   {
     // HTML/CSS - Via vscode-css-languageserver
     extensions: ['html', 'htm'],
     command: ['npx', '--', 'vscode-html-languageserver', '--stdio'],
-    restartInterval: 5,
+    // restartInterval removed - opt-in only
   },
   {
     // CSS/SCSS/LESS
     extensions: ['css', 'scss', 'sass', 'less'],
     command: ['npx', '--', 'vscode-css-languageserver', '--stdio'],
-    restartInterval: 5,
+    // restartInterval removed - opt-in only
   },
   {
     // Vue
     extensions: ['vue'],
     command: ['npx', '--', 'vue-language-server', '--stdio'],
-    restartInterval: 10,
+    // restartInterval removed - opt-in only
   },
   {
     // Svelte
     extensions: ['svelte'],
     command: ['npx', '--', 'svelteserver', '--stdio'],
-    restartInterval: 10,
+    // restartInterval removed - opt-in only
   },
   {
     // C/C++ via clangd
     extensions: ['c', 'cpp', 'cc', 'cxx', 'h', 'hpp'],
     command: ['clangd'],
-    restartInterval: 15,
+    // restartInterval removed - opt-in only
   },
   {
     // Java
     extensions: ['java'],
     command: ['jdtls'],
-    restartInterval: 20,
+    // restartInterval removed - opt-in only
   },
   {
     // Ruby
     extensions: ['rb', 'ruby'],
     command: ['solargraph', 'stdio'],
-    restartInterval: 10,
+    // restartInterval removed - opt-in only
   },
   {
     // PHP
     extensions: ['php'],
     command: ['intelephense', '--stdio'],
-    restartInterval: 10,
+    // restartInterval removed - opt-in only
   },
   {
     // Shell scripts
     extensions: ['sh', 'bash', 'zsh'],
     command: ['npx', '--', 'bash-language-server', 'start'],
-    restartInterval: 5,
+    // restartInterval removed - opt-in only
   },
   {
     // Dockerfile
     extensions: ['dockerfile', 'Dockerfile'],
     command: ['docker-langserver', '--stdio'],
-    restartInterval: 5,
+    // restartInterval removed - opt-in only
   },
   {
     // YAML
     extensions: ['yaml', 'yml'],
     command: ['npx', '--', 'yaml-language-server', '--stdio'],
-    restartInterval: 5,
+    // restartInterval removed - opt-in only
   },
   {
     // Markdown
     extensions: ['md', 'markdown'],
     command: ['npx', '--', 'markdownlint-language-server', '--stdio'],
-    restartInterval: 5,
+    // restartInterval removed - opt-in only
   },
 ];
 

@@ -70,6 +70,9 @@ export async function handleRestartServer(
   const { extensions } = args;
 
   try {
+    // Clear failed servers to allow retry
+    newLspClient.serverManager.clearFailedServers();
+
     const restartedServers = await newLspClient.restartServer(extensions);
 
     let response = `Successfully restarted ${restartedServers.length} LSP server(s)`;
@@ -77,6 +80,9 @@ export async function handleRestartServer(
     if (restartedServers.length > 0) {
       response += `\n\nRestarted servers:\n${restartedServers.map((s) => `• ${s}`).join('\n')}`;
     }
+
+    response +=
+      '\n\nNote: Any previously failed servers have been cleared and will be retried on next access.';
 
     return {
       content: [

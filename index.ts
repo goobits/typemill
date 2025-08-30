@@ -89,10 +89,21 @@ if (args.length > 0) {
     const { main } = await import('./src/setup.js');
     await main();
     process.exit(0);
+  } else if (subcommand === 'init') {
+    const { main } = await import('./src/init.js');
+    await main();
+    process.exit(0);
+  } else if (subcommand === 'retry') {
+    console.log('🔄 Retrying failed language servers...');
+    console.log('   Note: Start the MCP server to retry failed servers.');
+    console.log('   Failed servers will be retried on next file access.');
+    process.exit(0);
   } else {
     console.error(`Unknown subcommand: ${subcommand}`);
     console.error('Available subcommands:');
-    console.error('  setup    Configure cclsp for your project');
+    console.error('  init     Generate a well-commented configuration file');
+    console.error('  setup    Interactive setup wizard for your project');
+    console.error('  retry    Information about retrying failed servers');
     console.error('');
     console.error('Run without arguments to start the MCP server.');
     process.exit(1);
