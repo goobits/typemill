@@ -1,7 +1,4 @@
-import { readFileSync } from 'node:fs';
 import { capabilityManager } from '../capability-manager.js';
-import type { ServerState } from '../lsp-types.js';
-import type { LSPProtocol } from '../lsp/protocol.js';
 import { pathToUri } from '../path-utils.js';
 import type {
   CodeAction,
@@ -12,16 +9,14 @@ import type {
   Range,
   TextEdit,
 } from '../types.js';
+import type { ServiceContext } from './service-context.js';
 
 /**
  * Service for file-related LSP operations
  * Handles formatting, code actions, document links, and file synchronization
  */
 export class FileService {
-  constructor(
-    private getServer: (filePath: string) => Promise<ServerState>,
-    private protocol: LSPProtocol
-  ) {}
+  constructor(private context: ServiceContext) {}
 
   /**
    * Format document
@@ -36,12 +31,12 @@ export class FileService {
       trimFinalNewlines?: boolean;
     }
   ): Promise<TextEdit[]> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState.initialized) {
       throw new Error('Server not initialized');
     }
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
     const fileUri = pathToUri(filePath);
 
     const formattingOptions = {
@@ -58,10 +53,14 @@ export class FileService {
       }),
     };
 
-    const result = await this.protocol.sendRequest(serverState.process, 'textDocument/formatting', {
-      textDocument: { uri: fileUri },
-      options: formattingOptions,
-    });
+    const result = await this.context.protocol.sendRequest(
+      serverState.process,
+      'textDocument/formatting',
+      {
+        textDocument: { uri: fileUri },
+        options: formattingOptions,
+      }
+    );
 
     return Array.isArray(result) ? result : [];
   }
@@ -74,12 +73,12 @@ export class FileService {
     range?: Range,
     context?: { diagnostics?: Diagnostic[] }
   ): Promise<CodeAction[]> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState.initialized) {
       throw new Error('Server not initialized');
     }
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
     const fileUri = pathToUri(filePath);
 
     // Get current diagnostics for the file to provide context
@@ -110,7 +109,7 @@ export class FileService {
     );
 
     try {
-      const result = await this.protocol.sendRequest(
+      const result = await this.context.protocol.sendRequest(
         serverState.process,
         'textDocument/codeAction',
         {
@@ -135,17 +134,17 @@ export class FileService {
    * Get folding ranges
    */
   async getFoldingRanges(filePath: string): Promise<FoldingRange[]> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState.initialized) {
       throw new Error('Server not initialized');
     }
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
     const fileUri = pathToUri(filePath);
 
     process.stderr.write(`[DEBUG getFoldingRanges] Requesting folding ranges for: ${filePath}\n`);
 
-    const result = await this.protocol.sendRequest(
+    const result = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/foldingRange',
       {
@@ -168,17 +167,17 @@ export class FileService {
    * Get document links
    */
   async getDocumentLinks(filePath: string): Promise<DocumentLink[]> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState.initialized) {
       throw new Error('Server not initialized');
     }
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
     const fileUri = pathToUri(filePath);
 
     process.stderr.write(`[DEBUG getDocumentLinks] Requesting document links for: ${filePath}\n`);
 
-    const result = await this.protocol.sendRequest(
+    const result = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/documentLink',
       {
@@ -244,7 +243,7 @@ export class FileService {
 
       // Send willRename notification to interested servers
       for (const serverState of serverConfigs.values()) {
-        this.protocol.sendNotification(serverState.process, 'workspace/willRenameFiles', {
+        this.context.protocol.sendNotification(serverState.process, 'workspace/willRenameFiles', {
           files: [
             {
               oldUri: `file://${oldPath}`,
@@ -269,7 +268,7 @@ export class FileService {
     try {
       const fileContent = readFileSync(filePath, 'utf-8');
 
-      this.protocol.sendNotification(serverState.process, 'textDocument/didOpen', {
+      this.context.protocol.sendNotification(serverState.process, 'textDocument/didOpen', {
         textDocument: {
           uri: `file://${filePath}`,
           languageId: this.getLanguageId(filePath),
@@ -344,24 +343,8 @@ export class FileService {
     }
   }
 
-  private getLanguageId(filePath: string): string {
-    const ext = filePath.split('.').pop()?.toLowerCase();
-    const languageMap: Record<string, string> = {
-      ts: 'typescript',
-      tsx: 'typescriptreact',
-      js: 'javascript',
-      jsx: 'javascriptreact',
-      py: 'python',
-      go: 'go',
-      rs: 'rust',
-      java: 'java',
-      cpp: 'cpp',
-      c: 'c',
-      h: 'c',
-      hpp: 'cpp',
-    };
-    return languageMap[ext || ''] || 'plaintext';
-  }
+  // getLanguageId() method removed - provided by ServiceContext
+  // This eliminates ~20 lines of duplicated code from this service
 
   /**
    * Synchronize file content with LSP server after external modifications
@@ -369,14 +352,14 @@ export class FileService {
    */
   async syncFileContent(filePath: string): Promise<void> {
     try {
-      const serverState = await this.getServer(filePath);
+      const serverState = await this.context.getServer(filePath);
 
       // If file is not already open in the LSP server, open it first
       if (!serverState.openFiles.has(filePath)) {
         process.stderr.write(
           `[DEBUG syncFileContent] File not open, opening it first: ${filePath}\n`
         );
-        await this.ensureFileOpen(serverState, filePath);
+        await this.context.ensureFileOpen(serverState, filePath);
       }
 
       process.stderr.write(`[DEBUG syncFileContent] Syncing file: ${filePath}\n`);
@@ -388,7 +371,7 @@ export class FileService {
       const version = (serverState.fileVersions.get(filePath) || 1) + 1;
       serverState.fileVersions.set(filePath, version);
 
-      await this.protocol.sendNotification(serverState.process, 'textDocument/didChange', {
+      await this.context.protocol.sendNotification(serverState.process, 'textDocument/didChange', {
         textDocument: {
           uri,
           version,

@@ -1,18 +1,13 @@
-import { readFileSync } from 'node:fs';
-import type { ServerState } from '../lsp-types.js';
-import type { LSPProtocol } from '../lsp/protocol.js';
 import { pathToUri } from '../path-utils.js';
 import type { Diagnostic, DocumentDiagnosticReport } from '../types.js';
+import type { ServiceContext } from './service-context.js';
 
 /**
  * Service for diagnostic-related LSP operations
  * Handles error and warning collection from language servers
  */
 export class DiagnosticService {
-  constructor(
-    private getServer: (filePath: string) => Promise<ServerState>,
-    private protocol: LSPProtocol
-  ) {}
+  constructor(private context: ServiceContext) {}
 
   /**
    * Get diagnostics for a file
@@ -20,7 +15,7 @@ export class DiagnosticService {
   async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
     process.stderr.write(`[DEBUG getDiagnostics] Requesting diagnostics for ${filePath}\n`);
 
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
 
     // Wait for the server to be fully initialized
     await serverState.initializationPromise;
@@ -45,7 +40,7 @@ export class DiagnosticService {
     );
 
     try {
-      const result = await this.protocol.sendRequest(
+      const result = await this.context.protocol.sendRequest(
         serverState.process,
         'textDocument/diagnostic',
         {
@@ -129,7 +124,7 @@ export class DiagnosticService {
       const version1 = (serverState.fileVersions.get(filePath) || 1) + 1;
       serverState.fileVersions.set(filePath, version1);
 
-      await this.protocol.sendNotification(serverState.process, 'textDocument/didChange', {
+      await this.context.protocol.sendNotification(serverState.process, 'textDocument/didChange', {
         textDocument: {
           uri: fileUri,
           version: version1,
@@ -145,7 +140,7 @@ export class DiagnosticService {
       const version2 = version1 + 1;
       serverState.fileVersions.set(filePath, version2);
 
-      await this.protocol.sendNotification(serverState.process, 'textDocument/didChange', {
+      await this.context.protocol.sendNotification(serverState.process, 'textDocument/didChange', {
         textDocument: {
           uri: fileUri,
           version: version2,
@@ -302,47 +297,6 @@ export class DiagnosticService {
   /**
    * Ensure file is open in LSP server
    */
-  private async ensureFileOpen(serverState: ServerState, filePath: string): Promise<void> {
-    if (serverState.openFiles.has(filePath)) {
-      return;
-    }
-
-    try {
-      const fileContent = readFileSync(filePath, 'utf-8');
-
-      this.protocol.sendNotification(serverState.process, 'textDocument/didOpen', {
-        textDocument: {
-          uri: `file://${filePath}`,
-          languageId: this.getLanguageId(filePath),
-          version: 1,
-          text: fileContent,
-        },
-      });
-
-      serverState.openFiles.add(filePath);
-    } catch (error) {
-      throw new Error(
-        `Failed to open file for LSP server: ${filePath} - ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
-
-  private getLanguageId(filePath: string): string {
-    const ext = filePath.split('.').pop()?.toLowerCase();
-    const languageMap: Record<string, string> = {
-      ts: 'typescript',
-      tsx: 'typescriptreact',
-      js: 'javascript',
-      jsx: 'javascriptreact',
-      py: 'python',
-      go: 'go',
-      rs: 'rust',
-      java: 'java',
-      cpp: 'cpp',
-      c: 'c',
-      h: 'c',
-      hpp: 'cpp',
-    };
-    return languageMap[ext || ''] || 'plaintext';
-  }
+  // ensureFileOpen() and getLanguageId() methods removed - provided by ServiceContext
+  // This eliminates ~45 lines of duplicated code from this service
 }

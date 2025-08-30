@@ -1,7 +1,4 @@
-import { readFileSync } from 'node:fs';
 import { capabilityManager } from '../capability-manager.js';
-import type { ServerState } from '../lsp-types.js';
-import type { LSPProtocol } from '../lsp/protocol.js';
 import { pathToUri } from '../path-utils.js';
 import type {
   DocumentSymbol,
@@ -12,16 +9,14 @@ import type {
   SymbolMatch,
 } from '../types.js';
 import { SymbolKind } from '../types.js';
+import type { ServiceContext } from './service-context.js';
 
 /**
  * Service for symbol-related LSP operations
  * Handles definition, references, renaming, and symbol search
  */
 export class SymbolService {
-  constructor(
-    private getServer: (filePath: string) => Promise<ServerState>,
-    private protocol: LSPProtocol
-  ) {}
+  constructor(private context: ServiceContext) {}
 
   /**
    * Find definition of symbol at position
@@ -31,19 +26,23 @@ export class SymbolService {
       `[DEBUG findDefinition] Requesting definition for ${filePath} at ${position.line}:${position.character}\n`
     );
 
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
 
     // Wait for the server to be fully initialized
     await serverState.initializationPromise;
 
     // Ensure the file is opened and synced with the LSP server
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
 
     process.stderr.write('[DEBUG findDefinition] Sending textDocument/definition request\n');
-    const result = await this.protocol.sendRequest(serverState.process, 'textDocument/definition', {
-      textDocument: { uri: pathToUri(filePath) },
-      position,
-    });
+    const result = await this.context.protocol.sendRequest(
+      serverState.process,
+      'textDocument/definition',
+      {
+        textDocument: { uri: pathToUri(filePath) },
+        position,
+      }
+    );
 
     process.stderr.write(
       `[DEBUG findDefinition] Result type: ${typeof result}, isArray: ${Array.isArray(result)}\n`
@@ -88,23 +87,27 @@ export class SymbolService {
     position: Position,
     includeDeclaration = false
   ): Promise<Location[]> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
 
     // Wait for the server to be fully initialized
     await serverState.initializationPromise;
 
     // Ensure the file is opened and synced with the LSP server
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
 
     process.stderr.write(
       `[DEBUG] findReferences for ${filePath} at ${position.line}:${position.character}, includeDeclaration: ${includeDeclaration}\n`
     );
 
-    const result = await this.protocol.sendRequest(serverState.process, 'textDocument/references', {
-      textDocument: { uri: pathToUri(filePath) },
-      position,
-      context: { includeDeclaration },
-    });
+    const result = await this.context.protocol.sendRequest(
+      serverState.process,
+      'textDocument/references',
+      {
+        textDocument: { uri: pathToUri(filePath) },
+        position,
+        context: { includeDeclaration },
+      }
+    );
 
     process.stderr.write(
       `[DEBUG] findReferences result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}\n`
@@ -163,20 +166,24 @@ export class SymbolService {
       };
     }
 
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
 
     // Wait for the server to be fully initialized
     await serverState.initializationPromise;
 
     // Ensure the file is opened and synced with the LSP server
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
 
     process.stderr.write('[DEBUG renameSymbol] Sending textDocument/rename request\n');
-    const result = await this.protocol.sendRequest(serverState.process, 'textDocument/rename', {
-      textDocument: { uri: pathToUri(filePath) },
-      position,
-      newName,
-    });
+    const result = await this.context.protocol.sendRequest(
+      serverState.process,
+      'textDocument/rename',
+      {
+        textDocument: { uri: pathToUri(filePath) },
+        position,
+        newName,
+      }
+    );
 
     process.stderr.write(
       `[DEBUG renameSymbol] Result type: ${typeof result}, hasChanges: ${result && typeof result === 'object' && 'changes' in result}, hasDocumentChanges: ${result && typeof result === 'object' && 'documentChanges' in result}\n`
@@ -303,7 +310,7 @@ export class SymbolService {
               `[DEBUG searchWorkspaceSymbols] Opening ${tsFile} to establish project context\n`
             );
             const serverState = await this.getServer(tsFile);
-            await this.ensureFileOpen(serverState, tsFile);
+            await this.context.ensureFileOpen(serverState, tsFile);
           }
         }
       } catch (error) {
@@ -332,9 +339,13 @@ export class SymbolService {
           `[DEBUG searchWorkspaceSymbols] Sending workspace/symbol request for "${query}"\n`
         );
 
-        const result = await this.protocol.sendRequest(serverState.process, 'workspace/symbol', {
-          query: query,
-        });
+        const result = await this.context.protocol.sendRequest(
+          serverState.process,
+          'workspace/symbol',
+          {
+            query: query,
+          }
+        );
 
         process.stderr.write(
           `[DEBUG searchWorkspaceSymbols] Workspace symbol result: ${JSON.stringify(result)}\n`
@@ -364,17 +375,17 @@ export class SymbolService {
    * Get document symbols
    */
   async getDocumentSymbols(filePath: string): Promise<DocumentSymbol[] | SymbolInformation[]> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
 
     // Wait for the server to be fully initialized
     await serverState.initializationPromise;
 
     // Ensure the file is opened and synced with the LSP server
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
 
     process.stderr.write(`[DEBUG] Requesting documentSymbol for: ${filePath}\n`);
 
-    const result = await this.protocol.sendRequest(
+    const result = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/documentSymbol',
       {
@@ -615,50 +626,6 @@ export class SymbolService {
     return kindMap[kindStr.toLowerCase()] || null;
   }
 
-  /**
-   * Ensure file is open in LSP server
-   */
-  private async ensureFileOpen(serverState: ServerState, filePath: string): Promise<void> {
-    if (serverState.openFiles.has(filePath)) {
-      return;
-    }
-
-    try {
-      const fileContent = readFileSync(filePath, 'utf-8');
-
-      this.protocol.sendNotification(serverState.process, 'textDocument/didOpen', {
-        textDocument: {
-          uri: `file://${filePath}`,
-          languageId: this.getLanguageId(filePath),
-          version: 1,
-          text: fileContent,
-        },
-      });
-
-      serverState.openFiles.add(filePath);
-    } catch (error) {
-      throw new Error(
-        `Failed to open file for LSP server: ${filePath} - ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
-
-  private getLanguageId(filePath: string): string {
-    const ext = filePath.split('.').pop()?.toLowerCase();
-    const languageMap: Record<string, string> = {
-      ts: 'typescript',
-      tsx: 'typescriptreact',
-      js: 'javascript',
-      jsx: 'javascriptreact',
-      py: 'python',
-      go: 'go',
-      rs: 'rust',
-      java: 'java',
-      cpp: 'cpp',
-      c: 'c',
-      h: 'c',
-      hpp: 'cpp',
-    };
-    return languageMap[ext || ''] || 'plaintext';
-  }
+  // ensureFileOpen() and getLanguageId() methods removed - provided by ServiceContext
+  // This eliminates ~45 lines of duplicated code from this service
 }

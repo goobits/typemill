@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import type { ServerState } from '../lsp-types.js';
-import type { LSPProtocol } from '../lsp/protocol.js';
 import type {
   CompletionItem,
   Hover,
@@ -11,29 +8,27 @@ import type {
   SemanticTokensParams,
   SignatureHelp,
 } from '../types.js';
+import type { ServiceContext } from './service-context.js';
 
 /**
  * Service for intelligence-related LSP operations
  * Handles hover, completions, signature help, inlay hints, and semantic tokens
  */
 export class IntelligenceService {
-  constructor(
-    private getServer: (filePath: string) => Promise<ServerState>,
-    private protocol: LSPProtocol
-  ) {}
+  constructor(private context: ServiceContext) {}
 
   /**
    * Get hover information at position
    */
   async getHover(filePath: string, position: Position): Promise<Hover | null> {
     console.error('[DEBUG getHover] Starting hover request for', filePath);
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
     console.error('[DEBUG getHover] Got server state');
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
     console.error('[DEBUG getHover] File opened');
 
     // Give TypeScript Language Server time to process the file
@@ -43,7 +38,7 @@ export class IntelligenceService {
     console.error('[DEBUG getHover] Calling sendRequest with 30s timeout');
 
     try {
-      const response = await this.protocol.sendRequest(
+      const response = await this.context.protocol.sendRequest(
         serverState.process,
         'textDocument/hover',
         {
@@ -80,12 +75,12 @@ export class IntelligenceService {
     position: Position,
     triggerCharacter?: string
   ): Promise<CompletionItem[]> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
 
     // Give TypeScript Language Server time to process the file
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -104,7 +99,7 @@ export class IntelligenceService {
     };
 
     try {
-      const response = await this.protocol.sendRequest(
+      const response = await this.context.protocol.sendRequest(
         serverState.process,
         'textDocument/completion',
         completionParams,
@@ -140,12 +135,12 @@ export class IntelligenceService {
     position: Position,
     triggerCharacter?: string
   ): Promise<SignatureHelp | null> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
 
     const signatureHelpParams = {
       textDocument: { uri: `file://${filePath}` },
@@ -162,7 +157,7 @@ export class IntelligenceService {
           },
     };
 
-    const response = await this.protocol.sendRequest(
+    const response = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/signatureHelp',
       signatureHelpParams
@@ -180,19 +175,19 @@ export class IntelligenceService {
     filePath: string,
     range: { start: Position; end: Position }
   ): Promise<InlayHint[]> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
 
     const inlayHintParams: InlayHintParams = {
       textDocument: { uri: `file://${filePath}` },
       range,
     };
 
-    const response = await this.protocol.sendRequest(
+    const response = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/inlayHint',
       inlayHintParams
@@ -205,18 +200,18 @@ export class IntelligenceService {
    * Get semantic tokens for file
    */
   async getSemanticTokens(filePath: string): Promise<SemanticTokens | null> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
 
     const semanticTokensParams: SemanticTokensParams = {
       textDocument: { uri: `file://${filePath}` },
     };
 
-    const response = await this.protocol.sendRequest(
+    const response = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/semanticTokens/full',
       semanticTokensParams
@@ -227,50 +222,6 @@ export class IntelligenceService {
       : null;
   }
 
-  /**
-   * Ensure file is open in LSP server
-   */
-  private async ensureFileOpen(serverState: ServerState, filePath: string): Promise<void> {
-    if (serverState.openFiles.has(filePath)) {
-      return;
-    }
-
-    try {
-      const fileContent = readFileSync(filePath, 'utf-8');
-
-      this.protocol.sendNotification(serverState.process, 'textDocument/didOpen', {
-        textDocument: {
-          uri: `file://${filePath}`,
-          languageId: this.getLanguageId(filePath),
-          version: 1,
-          text: fileContent,
-        },
-      });
-
-      serverState.openFiles.add(filePath);
-    } catch (error) {
-      throw new Error(
-        `Failed to open file for LSP server: ${filePath} - ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
-
-  private getLanguageId(filePath: string): string {
-    const ext = filePath.split('.').pop()?.toLowerCase();
-    const languageMap: Record<string, string> = {
-      ts: 'typescript',
-      tsx: 'typescriptreact',
-      js: 'javascript',
-      jsx: 'javascriptreact',
-      py: 'python',
-      go: 'go',
-      rs: 'rust',
-      java: 'java',
-      cpp: 'cpp',
-      c: 'c',
-      h: 'c',
-      hpp: 'cpp',
-    };
-    return languageMap[ext || ''] || 'plaintext';
-  }
+  // ensureFileOpen() and getLanguageId() methods removed - provided by ServiceContext
+  // This eliminates ~45 lines of duplicated code from this service
 }

@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import type { ServerState } from '../lsp-types.js';
-import type { LSPProtocol } from '../lsp/protocol.js';
 import type {
   CallHierarchyIncomingCall,
   CallHierarchyItem,
@@ -9,29 +6,27 @@ import type {
   SelectionRange,
   TypeHierarchyItem,
 } from '../types.js';
+import type { ServiceContext } from './service-context.js';
 
 /**
  * Service for hierarchy and navigation-related LSP operations
  * Handles call hierarchy, type hierarchy, and selection ranges
  */
 export class HierarchyService {
-  constructor(
-    private getServer: (filePath: string) => Promise<ServerState>,
-    private protocol: LSPProtocol
-  ) {}
+  constructor(private context: ServiceContext) {}
 
   /**
    * Prepare call hierarchy at position
    */
   async prepareCallHierarchy(filePath: string, position: Position): Promise<CallHierarchyItem[]> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
 
-    const response = await this.protocol.sendRequest(
+    const response = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/prepareCallHierarchy',
       {
@@ -51,12 +46,12 @@ export class HierarchyService {
   ): Promise<CallHierarchyIncomingCall[]> {
     // Extract the file path from the item's URI to determine the correct server
     const filePath = item.uri.replace('file://', '');
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
 
-    const response = await this.protocol.sendRequest(
+    const response = await this.context.protocol.sendRequest(
       serverState.process,
       'callHierarchy/incomingCalls',
       {
@@ -75,12 +70,12 @@ export class HierarchyService {
   ): Promise<CallHierarchyOutgoingCall[]> {
     // Extract the file path from the item's URI to determine the correct server
     const filePath = item.uri.replace('file://', '');
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
 
-    const response = await this.protocol.sendRequest(
+    const response = await this.context.protocol.sendRequest(
       serverState.process,
       'callHierarchy/outgoingCalls',
       {
@@ -95,14 +90,14 @@ export class HierarchyService {
    * Prepare type hierarchy at position
    */
   async prepareTypeHierarchy(filePath: string, position: Position): Promise<TypeHierarchyItem[]> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
 
-    const response = await this.protocol.sendRequest(
+    const response = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/prepareTypeHierarchy',
       {
@@ -120,12 +115,12 @@ export class HierarchyService {
   async getTypeHierarchySupertypes(item: TypeHierarchyItem): Promise<TypeHierarchyItem[]> {
     // Extract the file path from the item's URI to determine the correct server
     const filePath = item.uri.replace('file://', '');
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
 
-    const response = await this.protocol.sendRequest(
+    const response = await this.context.protocol.sendRequest(
       serverState.process,
       'typeHierarchy/supertypes',
       {
@@ -142,12 +137,12 @@ export class HierarchyService {
   async getTypeHierarchySubtypes(item: TypeHierarchyItem): Promise<TypeHierarchyItem[]> {
     // Extract the file path from the item's URI to determine the correct server
     const filePath = item.uri.replace('file://', '');
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
 
-    const response = await this.protocol.sendRequest(
+    const response = await this.context.protocol.sendRequest(
       serverState.process,
       'typeHierarchy/subtypes',
       {
@@ -162,15 +157,15 @@ export class HierarchyService {
    * Get selection ranges for positions
    */
   async getSelectionRange(filePath: string, positions: Position[]): Promise<SelectionRange[]> {
-    const serverState = await this.getServer(filePath);
+    const serverState = await this.context.getServer(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
     }
 
-    await this.ensureFileOpen(serverState, filePath);
+    await this.context.ensureFileOpen(serverState, filePath);
 
     try {
-      const response = await this.protocol.sendRequest(
+      const response = await this.context.protocol.sendRequest(
         serverState.process,
         'textDocument/selectionRange',
         {
@@ -189,50 +184,6 @@ export class HierarchyService {
     }
   }
 
-  /**
-   * Ensure file is open in LSP server
-   */
-  private async ensureFileOpen(serverState: ServerState, filePath: string): Promise<void> {
-    if (serverState.openFiles.has(filePath)) {
-      return;
-    }
-
-    try {
-      const fileContent = readFileSync(filePath, 'utf-8');
-
-      this.protocol.sendNotification(serverState.process, 'textDocument/didOpen', {
-        textDocument: {
-          uri: `file://${filePath}`,
-          languageId: this.getLanguageId(filePath),
-          version: 1,
-          text: fileContent,
-        },
-      });
-
-      serverState.openFiles.add(filePath);
-    } catch (error) {
-      throw new Error(
-        `Failed to open file for LSP server: ${filePath} - ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
-
-  private getLanguageId(filePath: string): string {
-    const ext = filePath.split('.').pop()?.toLowerCase();
-    const languageMap: Record<string, string> = {
-      ts: 'typescript',
-      tsx: 'typescriptreact',
-      js: 'javascript',
-      jsx: 'javascriptreact',
-      py: 'python',
-      go: 'go',
-      rs: 'rust',
-      java: 'java',
-      cpp: 'cpp',
-      c: 'c',
-      h: 'c',
-      hpp: 'cpp',
-    };
-    return languageMap[ext || ''] || 'plaintext';
-  }
+  // ensureFileOpen() and getLanguageId() methods removed - provided by ServiceContext
+  // This eliminates ~45 lines of duplicated code from this service
 }

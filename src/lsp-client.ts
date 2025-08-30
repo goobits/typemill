@@ -9,6 +9,7 @@ import { DiagnosticService } from './services/diagnostic-service.js';
 import { FileService } from './services/file-service.js';
 import { HierarchyService } from './services/hierarchy-service.js';
 import { IntelligenceService } from './services/intelligence-service.js';
+import { ServiceContextUtils } from './services/service-context.js';
 import { SymbolService } from './services/symbol-service.js';
 import type {
   CodeAction,
@@ -45,13 +46,16 @@ export class LSPClient {
     this.protocol = this.newClient.protocol;
     this.serverManager = this.newClient.serverManager;
 
-    // Initialize services with getServer wrapper
-    const getServerWrapper = (filePath: string) => this.newClient.getServer(filePath);
-    this.symbolService = new SymbolService(getServerWrapper, this.protocol);
-    this.fileService = new FileService(getServerWrapper, this.protocol);
-    this.diagnosticService = new DiagnosticService(getServerWrapper, this.protocol);
-    this.intelligenceService = new IntelligenceService(getServerWrapper, this.protocol);
-    this.hierarchyService = new HierarchyService(getServerWrapper, this.protocol);
+    // Initialize services with ServiceContext
+    const context = ServiceContextUtils.createServiceContext(
+      (filePath: string) => this.newClient.getServer(filePath),
+      this.protocol
+    );
+    this.symbolService = new SymbolService(context);
+    this.fileService = new FileService(context);
+    this.diagnosticService = new DiagnosticService(context);
+    this.intelligenceService = new IntelligenceService(context);
+    this.hierarchyService = new HierarchyService(context);
   }
 
   // Delegate core methods to services
