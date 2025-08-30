@@ -1,4 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
+import {
+  createDefaultConfig,
+  getAvailableDefaultServers,
+  mergeWithDefaults,
+} from '../default-config.js';
 import { scanDirectoryForExtensions } from '../file-scanner.js';
 import type { ServerState } from '../lsp-types.js';
 import type { Config } from '../types.js';
@@ -29,7 +34,7 @@ export class LSPClient {
   }
 
   /**
-   * Load configuration from environment or file
+   * Load configuration from environment, file, or use defaults
    */
   private loadConfig(configPath?: string): Config {
     // Try environment variable first (MCP config)
@@ -39,42 +44,76 @@ export class LSPClient {
       );
 
       if (!existsSync(process.env.CCLSP_CONFIG_PATH)) {
-        throw new Error(
-          `Config file specified in CCLSP_CONFIG_PATH does not exist: ${process.env.CCLSP_CONFIG_PATH}`
+        process.stderr.write(
+          `Warning: Config file specified in CCLSP_CONFIG_PATH does not exist: ${process.env.CCLSP_CONFIG_PATH}\n`
         );
+        process.stderr.write('Falling back to default configuration...\n');
+        return this.loadDefaultConfig();
       }
 
       try {
         const configData = readFileSync(process.env.CCLSP_CONFIG_PATH, 'utf-8');
         const config = JSON.parse(configData);
         process.stderr.write(`Loaded ${config.servers.length} server configurations from env\n`);
-        return config;
+        return mergeWithDefaults(config);
       } catch (error) {
-        throw new Error(
-          `Failed to load config from CCLSP_CONFIG_PATH: ${error instanceof Error ? error.message : String(error)}`
+        process.stderr.write(
+          `Warning: Failed to load config from CCLSP_CONFIG_PATH: ${error instanceof Error ? error.message : String(error)}\n`
+        );
+        process.stderr.write('Falling back to default configuration...\n');
+        return this.loadDefaultConfig();
+      }
+    }
+
+    // Try loading from provided path
+    if (configPath) {
+      try {
+        process.stderr.write(`Loading config from file: ${configPath}\n`);
+        const configData = readFileSync(configPath, 'utf-8');
+        const config = JSON.parse(configData);
+        process.stderr.write(`Loaded ${config.servers.length} server configurations\n`);
+        return mergeWithDefaults(config);
+      } catch (error) {
+        process.stderr.write(
+          `Warning: Failed to load config from ${configPath}: ${error instanceof Error ? error.message : String(error)}\n`
+        );
+        process.stderr.write('Falling back to default configuration...\n');
+        return this.loadDefaultConfig();
+      }
+    }
+
+    // Try to find cclsp.json in current directory
+    const defaultConfigPath = 'cclsp.json';
+    if (existsSync(defaultConfigPath)) {
+      try {
+        process.stderr.write('Found cclsp.json in current directory, loading...\n');
+        const configData = readFileSync(defaultConfigPath, 'utf-8');
+        const config = JSON.parse(configData);
+        process.stderr.write(`Loaded ${config.servers.length} server configurations\n`);
+        return mergeWithDefaults(config);
+      } catch (error) {
+        process.stderr.write(
+          `Warning: Failed to load cclsp.json: ${error instanceof Error ? error.message : String(error)}\n`
         );
       }
     }
 
-    // configPath must be provided if CCLSP_CONFIG_PATH is not set
-    if (!configPath) {
-      throw new Error(
-        'configPath is required when CCLSP_CONFIG_PATH environment variable is not set'
-      );
-    }
+    // Use default configuration
+    process.stderr.write('No configuration found, using smart defaults...\n');
+    return this.loadDefaultConfig();
+  }
 
-    // Load from config file
-    try {
-      process.stderr.write(`Loading config from file: ${configPath}\n`);
-      const configData = readFileSync(configPath, 'utf-8');
-      const config = JSON.parse(configData);
-      process.stderr.write(`Loaded ${config.servers.length} server configurations\n`);
-      return config;
-    } catch (error) {
-      throw new Error(
-        `Failed to load config from ${configPath}: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+  /**
+   * Load default configuration with available language servers
+   */
+  private loadDefaultConfig(): Config {
+    const defaultConfig = createDefaultConfig();
+    process.stderr.write(
+      `Using default configuration with ${defaultConfig.servers.length} language servers\n`
+    );
+    process.stderr.write('Available for: TypeScript, JavaScript, Python, Go, Rust, and more\n');
+    process.stderr.write('To customize, create a cclsp.json file or run: cclsp setup\n');
+    return defaultConfig;
   }
 
   /**

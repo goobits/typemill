@@ -154,10 +154,30 @@ export class ServerManager {
       throw new Error('No command specified in server config');
     }
 
-    const childProcess = spawn(command, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      cwd: serverConfig.rootDir || process.cwd(),
-    });
+    // For npx commands, provide helpful error message if npm is not installed
+    if (command === 'npx') {
+      try {
+        const { execSync } = await import('node:child_process');
+        execSync('npm --version', { stdio: 'ignore' });
+      } catch {
+        throw new Error(
+          'npm is required for TypeScript/JavaScript support. Please install Node.js from https://nodejs.org'
+        );
+      }
+    }
+
+    let childProcess;
+    try {
+      childProcess = spawn(command, args, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: serverConfig.rootDir || process.cwd(),
+      });
+    } catch (error) {
+      const extensions = serverConfig.extensions.join(', ');
+      throw new Error(
+        `Failed to start language server for ${extensions} files.\nCommand: ${serverConfig.command.join(' ')}\nError: ${error instanceof Error ? error.message : String(error)}\n\nTo fix this:\n1. Install the language server: ${this.getInstallInstructions(command)}\n2. Or disable support for these files in cclsp.json\n3. Or run: cclsp setup`
+      );
+    }
 
     let initializationResolve: (() => void) | undefined;
     const initializationPromise = new Promise<void>((resolve) => {
@@ -413,6 +433,21 @@ export class ServerManager {
 
   private isPylspServer(serverConfig: LSPServerConfig): boolean {
     return serverConfig.command.some((cmd) => cmd.includes('pylsp'));
+  }
+
+  private getInstallInstructions(command: string): string {
+    const instructions: Record<string, string> = {
+      'typescript-language-server': 'npm install -g typescript-language-server typescript',
+      pylsp: 'pip install python-lsp-server',
+      gopls: 'go install golang.org/x/tools/gopls@latest',
+      'rust-analyzer': 'rustup component add rust-analyzer',
+      clangd: 'apt install clangd OR brew install llvm',
+      jdtls: 'Download from Eclipse JDT releases',
+      solargraph: 'gem install solargraph',
+      intelephense: 'npm install -g intelephense',
+    };
+
+    return instructions[command] || `Install ${command} for your system`;
   }
 
   private isTypeScriptServer(serverConfig: LSPServerConfig): boolean {
