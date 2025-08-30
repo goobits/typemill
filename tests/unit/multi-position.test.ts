@@ -297,7 +297,7 @@ describe('Multi-Position Tool Calls', () => {
       const mockResults = {
         '4:9': [
           {
-            uri: 'file:///test',
+            uri: 'file:///test.ts',
             range: {
               start: { line: 10, character: 5 },
               end: { line: 10, character: 15 },
@@ -310,7 +310,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_definition',
         {
-          file_path: 'test',
+          file_path: 'test.ts',
           line: 5,
           character: 10,
         },
@@ -326,7 +326,7 @@ describe('Multi-Position Tool Calls', () => {
       const mockResults = {
         '4:9': [
           {
-            uri: 'file:///test',
+            uri: 'file:///test.ts',
             range: {
               start: { line: 10, character: 5 },
               end: { line: 10, character: 15 },
@@ -335,7 +335,7 @@ describe('Multi-Position Tool Calls', () => {
         ],
         '5:9': [
           {
-            uri: 'file:///other',
+            uri: 'file:///other.ts',
             range: {
               start: { line: 15, character: 8 },
               end: { line: 15, character: 18 },
@@ -348,7 +348,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_definition',
         {
-          file_path: 'test',
+          file_path: 'test.ts',
           line: 5,
           character: 10,
         },
@@ -367,7 +367,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_definition',
         {
-          file_path: 'test',
+          file_path: 'test.ts',
           line: 5,
           character: 10,
         },
@@ -385,7 +385,7 @@ describe('Multi-Position Tool Calls', () => {
       const mockResults = {
         '4:10': [
           {
-            uri: 'file:///test',
+            uri: 'file:///test.ts',
             range: {
               start: { line: 20, character: 3 },
               end: { line: 20, character: 13 },
@@ -398,7 +398,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_references',
         {
-          file_path: 'test',
+          file_path: 'test.ts',
           line: 5,
           character: 11,
           include_declaration: false,
@@ -416,7 +416,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_references',
         {
-          file_path: 'test',
+          file_path: 'test.ts',
           line: 5,
           character: 10,
         },
@@ -434,7 +434,7 @@ describe('Multi-Position Tool Calls', () => {
       const mockResults = {
         '5:10': [
           {
-            uri: 'file:///test',
+            uri: 'file:///test.ts',
             range: {
               start: { line: 5, character: 10 },
               end: { line: 5, character: 20 },
@@ -447,7 +447,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'rename_symbol',
         {
-          file_path: 'test',
+          file_path: 'test.ts',
           line: 6,
           character: 11,
           new_name: 'newSymbolName',
@@ -468,7 +468,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'rename_symbol',
         {
-          file_path: 'test',
+          file_path: 'test.ts',
           line: 5,
           character: 10,
           new_name: 'newName',
@@ -494,7 +494,7 @@ describe('Multi-Position Tool Calls', () => {
           if (key === '5:9') {
             return Promise.resolve([
               {
-                uri: 'file:///test',
+                uri: 'file:///test.ts',
                 range: {
                   start: { line: 10, character: 5 },
                   end: { line: 10, character: 15 },
@@ -509,7 +509,7 @@ describe('Multi-Position Tool Calls', () => {
       const response = await handleMultiPositionToolCall(
         'find_definition',
         {
-          file_path: 'test',
+          file_path: 'test.ts',
           line: 5,
           character: 10,
         },

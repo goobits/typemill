@@ -97,7 +97,9 @@ describe('MCP Error Case Tests', () => {
       expect(toolResult.content).toBeDefined();
 
       const content = toolResult.content?.[0]?.text || '';
-      expect(content).toMatch(/(not found|no definition|no matches|0 definitions)/i);
+      expect(content).toMatch(
+        /(not found|no definition|no matches|0 definitions|no symbols found)/i
+      );
     });
 
     it('should handle empty symbol name', async () => {
