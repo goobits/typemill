@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { resolve } from 'node:path';
-import type { LSPClient } from '../../src/lsp-client.js';
+import type { LSPClient } from '../../src/lsp-client-facade.js';
 import type { Diagnostic } from '../../src/types.js';
 
 // Create a function that executes the handler logic
