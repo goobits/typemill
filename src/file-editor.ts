@@ -227,7 +227,7 @@ function applyEditsToContent(content: string, edits: TextEdit[], validate: boole
       if (start.line < 0 || start.line >= lines.length) {
         throw new Error(`Invalid start line ${start.line} (file has ${lines.length} lines)`);
       }
-      if (end.line < 0 || end.line >= lines.length) {
+      if (end.line < 0 || end.line > lines.length) {
         throw new Error(`Invalid end line ${end.line} (file has ${lines.length} lines)`);
       }
 

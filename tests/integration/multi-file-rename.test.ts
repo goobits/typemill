@@ -17,6 +17,45 @@ describe('Multi-File Rename Integration Tests', () => {
     }
     mkdirSync(TEST_DIR, { recursive: true });
 
+    // Create TypeScript project configuration for proper cross-file analysis
+    writeFileSync(
+      join(TEST_DIR, 'tsconfig.json'),
+      JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'ES2022',
+            module: 'ESNext',
+            moduleResolution: 'node',
+            esModuleInterop: true,
+            allowSyntheticDefaultImports: true,
+            strict: true,
+            skipLibCheck: true,
+            forceConsistentCasingInFileNames: true,
+            resolveJsonModule: true,
+            isolatedModules: true,
+            noEmit: true,
+          },
+          include: ['**/*'],
+          exclude: ['node_modules'],
+        },
+        null,
+        2
+      )
+    );
+
+    writeFileSync(
+      join(TEST_DIR, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'multi-file-rename-test',
+          type: 'module',
+          version: '1.0.0',
+        },
+        null,
+        2
+      )
+    );
+
     // Create a simple service that will be renamed
     writeFileSync(
       join(TEST_DIR, 'service.ts'),
@@ -62,6 +101,10 @@ export const PROCESSOR_INSTANCE = new DataProcessor();`
     // Initialize MCP client
     client = new MCPTestClient();
     await client.start();
+
+    // Allow extra time for TypeScript LSP to index the new project
+    console.log('⏳ Waiting for TypeScript LSP to index project files...');
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     console.log('✅ Setup complete\n');
   });
 

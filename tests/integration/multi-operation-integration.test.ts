@@ -27,6 +27,45 @@ describe('Multi-Operation Integration Tests', () => {
     }
     mkdirSync(TEST_DIR, { recursive: true });
 
+    // Create TypeScript project configuration for proper cross-file analysis
+    writeFileSync(
+      join(TEST_DIR, 'tsconfig.json'),
+      JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'ES2022',
+            module: 'ESNext',
+            moduleResolution: 'node',
+            esModuleInterop: true,
+            allowSyntheticDefaultImports: true,
+            strict: true,
+            skipLibCheck: true,
+            forceConsistentCasingInFileNames: true,
+            resolveJsonModule: true,
+            isolatedModules: true,
+            noEmit: true,
+          },
+          include: ['**/*'],
+          exclude: ['node_modules'],
+        },
+        null,
+        2
+      )
+    );
+
+    writeFileSync(
+      join(TEST_DIR, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'multi-operation-integration-test',
+          type: 'module',
+          version: '1.0.0',
+        },
+        null,
+        2
+      )
+    );
+
     // Create a service file that will be modified by multiple operations
     writeFileSync(
       join(TEST_DIR, 'user-service.ts'),
@@ -98,6 +137,10 @@ export function createService(): UserService {
     // Initialize MCP client
     client = new MCPTestClient();
     await client.start();
+
+    // Allow extra time for TypeScript LSP to index the new project
+    console.log('⏳ Waiting for TypeScript LSP to index project files...');
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     console.log('✅ Multi-operation integration test ready');
   });
 
@@ -254,8 +297,17 @@ export function createService(): UserService {
       },
     ];
 
+    // Transform test data to match API specification
+    const changes: Record<string, Array<{ range: any; newText: string }>> = {};
+    for (const edit of edits) {
+      changes[edit.file_path] = edit.edits.map((e) => ({
+        range: e.range,
+        newText: e.new_text,
+      }));
+    }
+
     const workspaceEditResult = await client.callTool('apply_workspace_edit', {
-      edits: edits,
+      changes: changes,
     });
 
     const editResponse = workspaceEditResult.content?.[0]?.text || '';
