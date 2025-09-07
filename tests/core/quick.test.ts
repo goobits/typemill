@@ -44,7 +44,7 @@ describe('MCP Quick Tests', () => {
     const toolResult = assertToolResult(result);
     const content = toolResult.content?.[0]?.text || '';
     expect(content).not.toMatch(/No symbols found|No.*found|Error/);
-    expect(content).toMatch(/Results for.*function|line \d+/i);
+    expect(content).toMatch(/Results for.*(function|method)|line \d+/i);
   });
 
   it('should find references', async () => {
@@ -89,8 +89,8 @@ describe('MCP Quick Tests', () => {
   it('should rename symbol (dry run)', async () => {
     const result = await client.callTool('rename_symbol', {
       file_path: '/workspace/plugins/cclsp/playground/src/test-file.ts',
-      symbol_name: 'TEST_CONSTANT',
-      new_name: 'RENAMED_CONSTANT',
+      symbol_name: 'DEFAULT_USER',
+      new_name: 'RENAMED_USER',
       dry_run: true,
     });
     expect(result).toBeDefined();

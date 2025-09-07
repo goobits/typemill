@@ -274,6 +274,7 @@ export class ProjectScanner {
 
       for (const pattern of importPatterns) {
         let match: RegExpExecArray | null;
+        // biome-ignore lint/suspicious/noAssignInExpressions: standard regex pattern matching
         while ((match = pattern.exec(content)) !== null) {
           const importPath = match[1];
           // Only track relative imports within the project
