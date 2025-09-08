@@ -2,8 +2,11 @@
 import { resolve } from 'node:path';
 import type { IntelligenceService } from '../../services/intelligence-service.js';
 import {
+  createContextualErrorResponse,
   createLimitedSupportResponse,
+  createListResponse,
   createMCPResponse,
+  createNoResultsResponse,
   createUnsupportedFeatureResponse,
 } from '../utils.js';
 
@@ -12,22 +15,19 @@ export async function handleGetHover(
   intelligenceService: IntelligenceService,
   args: { file_path: string; line: number; character: number }
 ) {
-  console.error('[DEBUG handleGetHover] Called with args:', args);
   const { file_path, line, character } = args;
   const absolutePath = resolve(file_path);
-  console.error('[DEBUG handleGetHover] Resolved path:', absolutePath);
 
   try {
-    console.error('[DEBUG handleGetHover] Calling intelligenceService.getHover');
     const hover = await intelligenceService.getHover(absolutePath, {
       line: line - 1, // Convert to 0-indexed
       character,
     });
-    console.error('[DEBUG handleGetHover] Got hover result:', hover);
 
     if (!hover) {
-      return createMCPResponse(
-        `No hover information available for position ${line}:${character} in ${file_path}`
+      return createNoResultsResponse(
+        'hover information',
+        `position ${line}:${character} in ${file_path}`
       );
     }
 
@@ -64,9 +64,15 @@ export async function handleGetHover(
       `## Hover Information for ${file_path}:${line}:${character}${rangeInfo}\n\n${content}`
     );
   } catch (error) {
-    return createMCPResponse(
-      `Error getting hover information: ${error instanceof Error ? error.message : String(error)}`
-    );
+    return createContextualErrorResponse(error, {
+      operation: 'get hover information',
+      filePath: file_path,
+      suggestions: [
+        'Ensure the file is supported by the language server',
+        'Check that the position is valid',
+        'Try a different position in the file',
+      ],
+    });
   }
 }
 
@@ -89,8 +95,9 @@ export async function handleGetCompletions(
     );
 
     if (completions.length === 0) {
-      return createMCPResponse(
-        `No completions available for position ${line}:${character} in ${file_path}`
+      return createNoResultsResponse(
+        'completions',
+        `position ${line}:${character} in ${file_path}`
       );
     }
 
@@ -110,14 +117,23 @@ export async function handleGetCompletions(
     });
 
     const triggerInfo = trigger_character ? ` (triggered by '${trigger_character}')` : '';
+    const title = `Code Completions for ${file_path}:${line}:${character}${triggerInfo}`;
 
-    return createMCPResponse(
-      `## Code Completions for ${file_path}:${line}:${character}${triggerInfo}\n\nFound ${completions.length} completion${completions.length === 1 ? '' : 's'}:\n\n${completionItems.join('\n')}`
-    );
+    return createListResponse(title, completionItems, {
+      singular: 'completion',
+      plural: 'completions',
+      showTotal: true,
+    });
   } catch (error) {
-    return createMCPResponse(
-      `Error getting completions: ${error instanceof Error ? error.message : String(error)}`
-    );
+    return createContextualErrorResponse(error, {
+      operation: 'get code completions',
+      filePath: file_path,
+      suggestions: [
+        'Ensure the file is supported by the language server',
+        'Check that the position is valid for completions',
+        'Try a different position or trigger character',
+      ],
+    });
   }
 }
 
@@ -148,8 +164,9 @@ export async function handleGetInlayHints(
     });
 
     if (hints.length === 0) {
-      return createMCPResponse(
-        `No inlay hints available for range ${start_line}:${start_character} - ${end_line}:${end_character} in ${file_path}`
+      return createNoResultsResponse(
+        'inlay hints',
+        `range ${start_line}:${start_character} - ${end_line}:${end_character} in ${file_path}`
       );
     }
 
@@ -166,13 +183,22 @@ export async function handleGetInlayHints(
       return `${index + 1}. **${label}** at ${position} (${kindName})${tooltip}`;
     });
 
-    return createMCPResponse(
-      `## Inlay Hints for ${file_path} (${start_line}:${start_character} - ${end_line}:${end_character})\n\nFound ${hints.length} hint${hints.length === 1 ? '' : 's'}:\n\n${hintItems.join('\n')}`
-    );
+    const title = `Inlay Hints for ${file_path} (${start_line}:${start_character} - ${end_line}:${end_character})`;
+    return createListResponse(title, hintItems, {
+      singular: 'hint',
+      plural: 'hints',
+      showTotal: true,
+    });
   } catch (error) {
-    return createMCPResponse(
-      `Error getting inlay hints: ${error instanceof Error ? error.message : String(error)}`
-    );
+    return createContextualErrorResponse(error, {
+      operation: 'get inlay hints',
+      filePath: file_path,
+      suggestions: [
+        'Ensure the language server supports inlay hints',
+        'Check that the range is valid',
+        'Try a smaller range',
+      ],
+    });
   }
 }
 
@@ -188,7 +214,7 @@ export async function handleGetSemanticTokens(
     const tokens = await intelligenceService.getSemanticTokens(absolutePath);
 
     if (!tokens || !tokens.data || tokens.data.length === 0) {
-      return createMCPResponse(`No semantic tokens available for ${file_path}`);
+      return createNoResultsResponse('semantic tokens', file_path);
     }
 
     // Semantic tokens are encoded as a flat array of integers
@@ -225,9 +251,15 @@ export async function handleGetSemanticTokens(
       `## Semantic Tokens for ${file_path}${resultId}\n\nFound ${tokenCount} semantic tokens.\n\nFirst ${Math.min(10, tokenCount)} tokens:\n${exampleTokens.join('\n')}\n\n*Note: Semantic tokens provide detailed syntax and semantic information for enhanced code understanding and highlighting.*`
     );
   } catch (error) {
-    return createMCPResponse(
-      `Error getting semantic tokens: ${error instanceof Error ? error.message : String(error)}`
-    );
+    return createContextualErrorResponse(error, {
+      operation: 'get semantic tokens',
+      filePath: file_path,
+      suggestions: [
+        'Ensure the language server supports semantic tokens',
+        'Check that the file is not too large',
+        'Try with a smaller file first',
+      ],
+    });
   }
 }
 
@@ -282,8 +314,9 @@ export async function handleGetSignatureHelp(
     );
 
     if (!signatureHelp || !signatureHelp.signatures || signatureHelp.signatures.length === 0) {
-      return createMCPResponse(
-        `No signature help available for position ${line}:${character} in ${file_path}`
+      return createNoResultsResponse(
+        'signature help',
+        `position ${line}:${character} in ${file_path}`
       );
     }
 
@@ -300,8 +333,9 @@ export async function handleGetSignatureHelp(
     // Show the active signature prominently
     const signature = signatures[activeSignature] || signatures[0];
     if (!signature) {
-      return createMCPResponse(
-        `No valid signature available for position ${line}:${character} in ${file_path}`
+      return createNoResultsResponse(
+        'valid signature',
+        `position ${line}:${character} in ${file_path}`
       );
     }
 
@@ -370,8 +404,14 @@ export async function handleGetSignatureHelp(
       );
     }
 
-    return createMCPResponse(
-      `Error getting signature help: ${error instanceof Error ? error.message : String(error)}`
-    );
+    return createContextualErrorResponse(error, {
+      operation: 'get signature help',
+      filePath: file_path,
+      suggestions: [
+        'Ensure you are inside a function call',
+        'Check that the language server supports signature help',
+        'Try a different position in the function call',
+      ],
+    });
   }
 }

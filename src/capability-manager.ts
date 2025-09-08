@@ -2,6 +2,7 @@
 // Ensures graceful degradation when servers don't support specific features
 
 import type { ServerState } from './lsp-types.js';
+import { debugLog } from './utils/debug-logger.js';
 
 // LSP capability types - simplified version without external dependencies
 type ProviderOption = boolean | Record<string, unknown>;
@@ -136,11 +137,9 @@ class CapabilityManager {
         serverKey,
         (initResult as { capabilities: ServerCapabilities }).capabilities
       );
-      process.stderr.write(`[DEBUG CapabilityManager] Cached capabilities for ${serverKey}\n`);
+      debugLog('CapabilityManager', `Cached capabilities for ${serverKey}`);
     } else {
-      process.stderr.write(
-        `[DEBUG CapabilityManager] No capabilities found in init result for ${serverKey}\n`
-      );
+      debugLog('CapabilityManager', `No capabilities found in init result for ${serverKey}`);
     }
   }
 
@@ -164,7 +163,7 @@ class CapabilityManager {
   hasCapability(serverState: ServerState, capabilityPath: string): boolean {
     const capabilities = this.getCapabilities(serverState);
     if (!capabilities) {
-      process.stderr.write('[DEBUG CapabilityManager] No capabilities found for server\n');
+      debugLog('CapabilityManager', 'No capabilities found for server');
       return false;
     }
 
@@ -176,7 +175,7 @@ class CapabilityManager {
       if (current && typeof current === 'object' && part in current) {
         current = (current as Record<string, unknown>)[part];
       } else {
-        process.stderr.write(`[DEBUG CapabilityManager] Capability ${capabilityPath} not found\n`);
+        debugLog('CapabilityManager', `Capability ${capabilityPath} not found`);
         return false;
       }
     }
@@ -190,8 +189,9 @@ class CapabilityManager {
       return true; // Provider object exists
     }
 
-    process.stderr.write(
-      `[DEBUG CapabilityManager] Capability ${capabilityPath} has unexpected type: ${typeof current}\n`
+    debugLog(
+      'CapabilityManager',
+      `Capability ${capabilityPath} has unexpected type: ${typeof current}`
     );
     return false;
   }
@@ -209,9 +209,7 @@ class CapabilityManager {
     // In practice, you might need to maintain a mapping of serverKey to ServerState
     const capabilities = this.getCapabilities(serverKey);
     if (!capabilities) {
-      process.stderr.write(
-        `[DEBUG CapabilityManager] No capabilities found for server ${serverKey}\n`
-      );
+      debugLog('CapabilityManager', `No capabilities found for server ${serverKey}`);
       return false;
     }
 
@@ -228,9 +226,7 @@ class CapabilityManager {
       if (current && typeof current === 'object' && part in current) {
         current = (current as Record<string, unknown>)[part];
       } else {
-        process.stderr.write(
-          `[DEBUG CapabilityManager] Capability ${fullPath} not found for server ${serverKey}\n`
-        );
+        debugLog('CapabilityManager', `Capability ${fullPath} not found for server ${serverKey}`);
         return false;
       }
     }
@@ -244,8 +240,9 @@ class CapabilityManager {
       return true; // Provider object exists
     }
 
-    process.stderr.write(
-      `[DEBUG CapabilityManager] Capability ${fullPath} has unexpected type: ${typeof current} for server ${serverKey}\n`
+    debugLog(
+      'CapabilityManager',
+      `Capability ${fullPath} has unexpected type: ${typeof current} for server ${serverKey}`
     );
     return false;
   }

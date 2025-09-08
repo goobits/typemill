@@ -10,7 +10,12 @@ import type {
   Range,
   TextEdit,
 } from '../types.js';
+import { debugLog } from '../utils/debug-logger.js';
+import { handleFileSystemError, logError } from '../utils/error-utils.js';
 import type { ServiceContext } from './service-context.js';
+
+// File service constants
+const MAX_LINE_NUMBER = 999999; // Maximum line number for file operations
 
 /**
  * Service for file-related LSP operations
@@ -34,7 +39,7 @@ export class FileService {
   ): Promise<TextEdit[]> {
     const serverState = await this.context.prepareFile(filePath);
     if (!serverState.initialized) {
-      throw new Error('Server not initialized');
+      throw new Error('Server not initialized for formatting document');
     }
     const fileUri = pathToUri(filePath);
 
@@ -74,7 +79,7 @@ export class FileService {
   ): Promise<CodeAction[]> {
     const serverState = await this.context.prepareFile(filePath);
     if (!serverState.initialized) {
-      throw new Error('Server not initialized');
+      throw new Error('Server not initialized for getting code actions');
     }
     const fileUri = pathToUri(filePath);
 
@@ -84,7 +89,7 @@ export class FileService {
     // Create a proper range - use a smaller, more realistic range
     const requestRange = range || {
       start: { line: 0, character: 0 },
-      end: { line: Math.min(100, 999999), character: 0 },
+      end: { line: Math.min(100, MAX_LINE_NUMBER), character: 0 },
     };
 
     // Ensure context includes diagnostics and only property
@@ -93,17 +98,11 @@ export class FileService {
       only: undefined, // Don't filter by specific code action kinds
     };
 
-    process.stderr.write(
-      `[DEBUG getCodeActions] Request params: ${JSON.stringify(
-        {
-          textDocument: { uri: fileUri },
-          range: requestRange,
-          context: codeActionContext,
-        },
-        null,
-        2
-      )}\n`
-    );
+    debugLog('FileService', 'Request params:', {
+      textDocument: { uri: fileUri },
+      range: requestRange,
+      context: codeActionContext,
+    });
 
     try {
       const result = await this.context.protocol.sendRequest(
@@ -116,13 +115,16 @@ export class FileService {
         }
       );
 
-      process.stderr.write(`[DEBUG getCodeActions] Raw result: ${JSON.stringify(result)}\n`);
+      debugLog('FileService', 'Raw result:', result);
 
       if (!result) return [];
       if (Array.isArray(result)) return result.filter((action) => action != null);
       return [];
     } catch (error) {
-      process.stderr.write(`[DEBUG getCodeActions] Error: ${error}\n`);
+      logError('FileService', 'Failed to get code actions', error, {
+        filePath,
+        range,
+      });
       return [];
     }
   }
@@ -133,11 +135,11 @@ export class FileService {
   async getFoldingRanges(filePath: string): Promise<FoldingRange[]> {
     const serverState = await this.context.prepareFile(filePath);
     if (!serverState.initialized) {
-      throw new Error('Server not initialized');
+      throw new Error('Server not initialized for getting folding ranges');
     }
     const fileUri = pathToUri(filePath);
 
-    process.stderr.write(`[DEBUG getFoldingRanges] Requesting folding ranges for: ${filePath}\n`);
+    debugLog('FileService', `Requesting folding ranges for: ${filePath}`);
 
     const result = await this.context.protocol.sendRequest(
       serverState.process,
@@ -147,8 +149,9 @@ export class FileService {
       }
     );
 
-    process.stderr.write(
-      `[DEBUG getFoldingRanges] Result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}\n`
+    debugLog(
+      'FileService',
+      `Result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}`
     );
 
     if (Array.isArray(result)) {
@@ -164,11 +167,11 @@ export class FileService {
   async getDocumentLinks(filePath: string): Promise<DocumentLink[]> {
     const serverState = await this.context.prepareFile(filePath);
     if (!serverState.initialized) {
-      throw new Error('Server not initialized');
+      throw new Error('Server not initialized for getting document links');
     }
     const fileUri = pathToUri(filePath);
 
-    process.stderr.write(`[DEBUG getDocumentLinks] Requesting document links for: ${filePath}\n`);
+    debugLog('FileService', `Requesting document links for: ${filePath}`);
 
     const result = await this.context.protocol.sendRequest(
       serverState.process,
@@ -178,8 +181,9 @@ export class FileService {
       }
     );
 
-    process.stderr.write(
-      `[DEBUG getDocumentLinks] Result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}\n`
+    debugLog(
+      'FileService',
+      `Result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}`
     );
 
     if (Array.isArray(result)) {
@@ -246,7 +250,7 @@ export class FileService {
         });
       }
     } catch (error) {
-      process.stderr.write(`[ERROR renameFile] ${error}\n`);
+      debugLog('FileService', `ERROR renameFile: ${error}`);
     }
   }
 
@@ -275,9 +279,7 @@ export class FileService {
 
       serverState.openFiles.add(filePath);
     } catch (error) {
-      throw new Error(
-        `Failed to open file for LSP server: ${filePath} - ${error instanceof Error ? error.message : String(error)}`
-      );
+      handleFileSystemError(error, filePath, 'open file for LSP server');
     }
   }
 
@@ -318,8 +320,9 @@ export class FileService {
           endLine >= lines.length ||
           startLine > endLine
         ) {
-          process.stderr.write(
-            `[WARNING applyTextEdits] Invalid range in ${filePath}: ${startLine}:${startChar}-${endLine}:${endChar}\n`
+          debugLog(
+            'FileService',
+            `WARNING applyTextEdits - Invalid range in ${filePath}: ${startLine}:${startChar}-${endLine}:${endChar}`
           );
           continue;
         }
@@ -336,8 +339,9 @@ export class FileService {
           lines[startLine] =
             line.substring(0, safeStartChar) + edit.newText + line.substring(safeEndChar);
 
-          process.stderr.write(
-            `[DEBUG applyTextEdits] Single-line edit at ${startLine}:${safeStartChar}-${safeEndChar} -> "${edit.newText}"\n`
+          debugLog(
+            'FileService',
+            `Single-line edit at ${startLine}:${safeStartChar}-${safeEndChar} -> "${edit.newText}"`
           );
         } else {
           // Multi-line edit
@@ -366,8 +370,9 @@ export class FileService {
 
           lines.splice(startLine, endLine - startLine + 1, ...replacement);
 
-          process.stderr.write(
-            `[DEBUG applyTextEdits] Multi-line edit at ${startLine}:${safeStartChar}-${endLine}:${safeEndChar} -> "${edit.newText}"\n`
+          debugLog(
+            'FileService',
+            `Multi-line edit at ${startLine}:${safeStartChar}-${endLine}:${safeEndChar} -> "${edit.newText}"`
           );
         }
       }
@@ -376,7 +381,7 @@ export class FileService {
       const modifiedContent = lines.join('\n');
       writeFileSync(filePath, modifiedContent, 'utf-8');
 
-      process.stderr.write(`[DEBUG applyTextEdits] Applied ${edits.length} edits to ${filePath}\n`);
+      debugLog('FileService', `Applied ${edits.length} edits to ${filePath}`);
     } catch (error) {
       throw new Error(`Failed to apply text edits to ${filePath}: ${error}`);
     }
@@ -395,13 +400,11 @@ export class FileService {
 
       // If file is not already open in the LSP server, open it first
       if (!serverState.openFiles.has(filePath)) {
-        process.stderr.write(
-          `[DEBUG syncFileContent] File not open, opening it first: ${filePath}\n`
-        );
+        debugLog('FileService', `File not open, opening it first: ${filePath}`);
         await this.context.ensureFileOpen(serverState, filePath);
       }
 
-      process.stderr.write(`[DEBUG syncFileContent] Syncing file: ${filePath}\n`);
+      debugLog('FileService', `Syncing file: ${filePath}`);
 
       const fileContent = readFileSync(filePath, 'utf-8');
       const uri = pathToUri(filePath);
@@ -422,11 +425,9 @@ export class FileService {
         ],
       });
 
-      process.stderr.write(
-        `[DEBUG syncFileContent] File synced with version ${version}: ${filePath}\n`
-      );
+      debugLog('FileService', `File synced with version ${version}: ${filePath}`);
     } catch (error) {
-      process.stderr.write(`[DEBUG syncFileContent] Failed to sync file ${filePath}: ${error}\n`);
+      debugLog('FileService', `Failed to sync file ${filePath}: ${error}`);
       // Don't throw - syncing is best effort
     }
   }

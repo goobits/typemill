@@ -10,6 +10,11 @@ import type {
 } from '../types.js';
 import type { ServiceContext } from './service-context.js';
 
+// Intelligence service constants
+const SERVER_PROCESSING_DELAY_MS = 500; // Time for server to process files
+const HOVER_TIMEOUT_MS = 30000; // Timeout for hover requests
+const COMPLETION_TIMEOUT_MS = 5000; // Timeout for completion requests
+
 /**
  * Service for intelligence-related LSP operations
  * Handles hover, completions, signature help, inlay hints, and semantic tokens
@@ -27,7 +32,7 @@ export class IntelligenceService {
     }
 
     // Give TypeScript Language Server time to process the file
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, SERVER_PROCESSING_DELAY_MS));
 
     try {
       const response = await this.context.protocol.sendRequest(
@@ -37,7 +42,7 @@ export class IntelligenceService {
           textDocument: { uri: `file://${filePath}` },
           position,
         },
-        30000 // 30 second timeout - give it plenty of time
+        HOVER_TIMEOUT_MS // Give hover requests plenty of time
       );
       return response && typeof response === 'object' && 'contents' in response
         ? (response as Hover)
@@ -70,7 +75,7 @@ export class IntelligenceService {
     }
 
     // Give TypeScript Language Server time to process the file
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, SERVER_PROCESSING_DELAY_MS));
 
     const completionParams = {
       textDocument: { uri: `file://${filePath}` },
@@ -90,7 +95,7 @@ export class IntelligenceService {
         serverState.process,
         'textDocument/completion',
         completionParams,
-        5000 // 5 second timeout
+        COMPLETION_TIMEOUT_MS // Timeout for completion requests
       );
 
       if (!response || typeof response !== 'object') return [];

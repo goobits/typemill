@@ -79,6 +79,7 @@ import { FileService } from './src/services/file-service.js';
 import { HierarchyService } from './src/services/hierarchy-service.js';
 import { IntelligenceService } from './src/services/intelligence-service.js';
 import { SymbolService } from './src/services/symbol-service.js';
+import { getPackageVersion } from './src/utils/version.js';
 
 // Handle subcommands
 const args = process.argv.slice(2);
@@ -145,7 +146,7 @@ try {
 const server = new Server(
   {
     name: 'cclsp',
-    version: '1.0.0',
+    version: getPackageVersion(),
   },
   {
     capabilities: {
@@ -162,8 +163,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-
-  console.error('[DEBUG] Tool request received:', name, args);
 
   try {
     switch (name) {

@@ -6,7 +6,12 @@ import type {
   SelectionRange,
   TypeHierarchyItem,
 } from '../types.js';
+import { debugLog } from '../utils/debug-logger.js';
 import type { ServiceContext } from './service-context.js';
+
+// Hierarchy service constants
+const RELATED_FILES_LIMIT = 30; // Maximum related files to open for context
+const SELECTION_RANGE_TIMEOUT_MS = 5000; // Timeout for selection range requests
 
 /**
  * Service for hierarchy and navigation-related LSP operations
@@ -27,12 +32,10 @@ export class HierarchyService {
     // Use ProjectScanner to open related files for better cross-file support
     try {
       const { projectScanner } = await import('../utils/project-scanner.js');
-      await projectScanner.openRelatedFiles(filePath, this.context, 30);
-      process.stderr.write(
-        '[DEBUG prepareCallHierarchy] Opened related files for better context\n'
-      );
+      await projectScanner.openRelatedFiles(filePath, this.context, RELATED_FILES_LIMIT);
+      debugLog('HierarchyService', 'Opened related files for better context');
     } catch (error) {
-      process.stderr.write(`[DEBUG prepareCallHierarchy] Could not open related files: ${error}\n`);
+      debugLog('HierarchyService', `Could not open related files: ${error}`);
     }
 
     const response = await this.context.protocol.sendRequest(
@@ -107,12 +110,10 @@ export class HierarchyService {
     // Use ProjectScanner to open related files for better cross-file type resolution
     try {
       const { projectScanner } = await import('../utils/project-scanner.js');
-      await projectScanner.openRelatedFiles(filePath, this.context, 30);
-      process.stderr.write(
-        '[DEBUG prepareTypeHierarchy] Opened related files for better context\n'
-      );
+      await projectScanner.openRelatedFiles(filePath, this.context, RELATED_FILES_LIMIT);
+      debugLog('HierarchyService', 'Opened related files for better context');
     } catch (error) {
-      process.stderr.write(`[DEBUG prepareTypeHierarchy] Could not open related files: ${error}\n`);
+      debugLog('HierarchyService', `Could not open related files: ${error}`);
     }
 
     const response = await this.context.protocol.sendRequest(
@@ -188,8 +189,8 @@ export class HierarchyService {
           textDocument: { uri: `file://${filePath}` },
           positions,
         },
-        5000
-      ); // 5 second timeout
+        SELECTION_RANGE_TIMEOUT_MS
+      ); // Selection range timeout
 
       return Array.isArray(response) ? response : [];
     } catch (error: unknown) {

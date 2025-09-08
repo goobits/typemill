@@ -14,8 +14,8 @@ export async function main(): Promise<void> {
 
   // Check if config already exists
   if (existsSync(configPath)) {
-    console.log('⚠️  Configuration file already exists: cclsp.json');
-    console.log('   To regenerate, please remove the existing file first.');
+    console.error('⚠️  Configuration file already exists: cclsp.json');
+    console.error('   To regenerate, please remove the existing file first.');
     process.exit(1);
   }
 

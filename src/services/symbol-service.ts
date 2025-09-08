@@ -11,7 +11,16 @@ import type {
   SymbolMatch,
 } from '../types.js';
 import { SymbolKind } from '../types.js';
+import { debugLog } from '../utils/debug-logger.js';
 import type { ServiceContext } from './service-context.js';
+
+// Symbol service constants
+const PROJECT_FILES_LIMIT = 50; // Maximum project files to open for cross-file operations
+const DIRECTORY_DEPTH_LIMIT = 5; // Maximum depth when scanning directories
+const CROSS_FILE_PROCESSING_DELAY_MS = 1000; // Delay for cross-file operations
+const SERVER_PROCESSING_DELAY_MS = 1000; // Delay for server processing
+const BRIEF_PAUSE_MS = 100; // Brief pause for minimal operations
+const CONTEXT_FILES_LIMIT = 3; // Maximum context files to open
 
 /**
  * Service for symbol-related LSP operations
@@ -24,13 +33,14 @@ export class SymbolService {
    * Find definition of symbol at position
    */
   async findDefinition(filePath: string, position: Position): Promise<Location[]> {
-    process.stderr.write(
-      `[DEBUG findDefinition] Requesting definition for ${filePath} at ${position.line}:${position.character}\n`
+    debugLog(
+      'SymbolService',
+      `Requesting definition for ${filePath} at ${position.line}:${position.character}`
     );
 
     const serverState = await this.context.prepareFile(filePath);
 
-    process.stderr.write('[DEBUG findDefinition] Sending textDocument/definition request\n');
+    debugLog('SymbolService', 'Sending textDocument/definition request');
     const result = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/definition',
@@ -40,16 +50,12 @@ export class SymbolService {
       }
     );
 
-    process.stderr.write(
-      `[DEBUG findDefinition] Result type: ${typeof result}, isArray: ${Array.isArray(result)}\n`
-    );
+    debugLog('SymbolService', `Result type: ${typeof result}, isArray: ${Array.isArray(result)}`);
 
     if (Array.isArray(result)) {
-      process.stderr.write(`[DEBUG findDefinition] Array result with ${result.length} locations\n`);
+      debugLog('SymbolService', `Array result with ${result.length} locations`);
       if (result.length > 0) {
-        process.stderr.write(
-          `[DEBUG findDefinition] First location: ${JSON.stringify(result[0], null, 2)}\n`
-        );
+        debugLog('SymbolService', 'First location:', result[0]);
       }
       return result.map((loc: LSPLocation) => ({
         uri: loc.uri,
@@ -57,9 +63,7 @@ export class SymbolService {
       }));
     }
     if (result && typeof result === 'object' && 'uri' in result) {
-      process.stderr.write(
-        `[DEBUG findDefinition] Single location result: ${JSON.stringify(result, null, 2)}\n`
-      );
+      debugLog('SymbolService', 'Single location result:', result);
       const location = result as LSPLocation;
       return [
         {
@@ -69,9 +73,7 @@ export class SymbolService {
       ];
     }
 
-    process.stderr.write(
-      '[DEBUG findDefinition] No definition found or unexpected result format\n'
-    );
+    debugLog('SymbolService', 'No definition found or unexpected result format');
     return [];
   }
 
@@ -85,8 +87,9 @@ export class SymbolService {
   ): Promise<Location[]> {
     const serverState = await this.context.prepareFile(filePath);
 
-    process.stderr.write(
-      `[DEBUG] findReferences for ${filePath} at ${position.line}:${position.character}, includeDeclaration: ${includeDeclaration}\n`
+    debugLog(
+      'SymbolService',
+      `findReferences for ${filePath} at ${position.line}:${position.character}, includeDeclaration: ${includeDeclaration}`
     );
 
     const result = await this.context.protocol.sendRequest(
@@ -99,18 +102,17 @@ export class SymbolService {
       }
     );
 
-    process.stderr.write(
-      `[DEBUG] findReferences result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}\n`
+    debugLog(
+      'SymbolService',
+      `findReferences result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}`
     );
 
     if (result && Array.isArray(result) && result.length > 0) {
-      process.stderr.write(`[DEBUG] First reference: ${JSON.stringify(result[0], null, 2)}\n`);
+      debugLog('SymbolService', 'First reference:', result[0]);
     } else if (result === null || result === undefined) {
-      process.stderr.write('[DEBUG] findReferences returned null/undefined\n');
+      debugLog('SymbolService', 'findReferences returned null/undefined');
     } else {
-      process.stderr.write(
-        `[DEBUG] findReferences returned unexpected result: ${JSON.stringify(result)}\n`
-      );
+      debugLog('SymbolService', 'findReferences returned unexpected result:', result);
     }
 
     if (Array.isArray(result)) {
@@ -134,8 +136,9 @@ export class SymbolService {
   ): Promise<{
     changes?: Record<string, Array<{ range: { start: Position; end: Position }; newText: string }>>;
   }> {
-    process.stderr.write(
-      `[DEBUG renameSymbol] Requesting rename for ${filePath} at ${position.line}:${position.character} to "${newName}", dryRun: ${dryRun}\n`
+    debugLog(
+      'SymbolService',
+      `Requesting rename for ${filePath} at ${position.line}:${position.character} to "${newName}", dryRun: ${dryRun}`
     );
 
     const serverState = await this.context.prepareFile(filePath);
@@ -149,9 +152,7 @@ export class SymbolService {
     const projectFiles = new Set<string>();
     const fileExt = filePath.match(/\.(tsx?|jsx?|mjs|cjs)$/)?.[1];
     if (fileExt) {
-      process.stderr.write(
-        '[DEBUG renameSymbol] Opening project files to enable cross-file rename...\n'
-      );
+      debugLog('SymbolService', 'Opening project files to enable cross-file rename...');
 
       // Find project root (go up until we find package.json or .git)
       const { dirname, join } = await import('node:path');
@@ -205,7 +206,7 @@ export class SymbolService {
 
       // Open all project files (up to a reasonable limit)
       const filesToOpen = Array.from(projectFiles).slice(0, 50); // Limit to 50 files
-      process.stderr.write(`[DEBUG renameSymbol] Opening ${filesToOpen.length} project files...\n`);
+      debugLog('SymbolService', `Opening ${filesToOpen.length} project files...`);
 
       for (const projectFile of filesToOpen) {
         try {
@@ -219,21 +220,15 @@ export class SymbolService {
     // Step 2: Now find references (this should work across all opened files)
     const referencingFiles = new Set<string>();
     try {
-      process.stderr.write(
-        '[DEBUG renameSymbol] Finding cross-file references for multi-file rename\n'
-      );
+      debugLog('SymbolService', 'Finding cross-file references for multi-file rename');
       const references = await this.findReferences(filePath, position, true);
       for (const ref of references) {
         const refFilePath = uriToPath(ref.uri);
         referencingFiles.add(refFilePath);
       }
-      process.stderr.write(
-        `[DEBUG renameSymbol] Found references in ${referencingFiles.size} files\n`
-      );
+      debugLog('SymbolService', `Found references in ${referencingFiles.size} files`);
     } catch (error) {
-      process.stderr.write(
-        `[DEBUG renameSymbol] Could not find references for pre-opening: ${error}\n`
-      );
+      debugLog('SymbolService', `Could not find references for pre-opening: ${error}`);
       // Fallback to just the main file
       referencingFiles.add(filePath);
     }
@@ -242,31 +237,27 @@ export class SymbolService {
     for (const refFilePath of referencingFiles) {
       try {
         const fileServerState = await this.context.prepareFile(refFilePath);
-        process.stderr.write(
-          `[DEBUG renameSymbol] Ensured file is open for rename: ${refFilePath}\n`
-        );
+        debugLog('SymbolService', `Ensured file is open for rename: ${refFilePath}`);
       } catch (error) {
-        process.stderr.write(`[DEBUG renameSymbol] Failed to open ${refFilePath}: ${error}\n`);
+        debugLog('SymbolService', `Failed to open ${refFilePath}: ${error}`);
       }
     }
 
     // Give LSP server time to process the newly opened files
     // This is critical for the server to establish proper cross-file relationships
     if (referencingFiles.size > 1) {
-      process.stderr.write(
-        '[DEBUG renameSymbol] Waiting for LSP server to process opened files...\n'
-      );
+      debugLog('SymbolService', 'Waiting for LSP server to process opened files...');
       await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
     }
 
     // For dry_run operations, we can now safely call the LSP server since we know which files will be affected
     if (dryRun) {
-      process.stderr.write('[DEBUG renameSymbol] Performing dry-run rename to preview changes\n');
+      debugLog('SymbolService', 'Performing dry-run rename to preview changes');
       // We still call the LSP server but will not apply the workspace edit
       // This gives us accurate preview of what would change
     }
 
-    process.stderr.write('[DEBUG renameSymbol] Sending textDocument/rename request\n');
+    debugLog('SymbolService', 'Sending textDocument/rename request');
     const result = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/rename',
@@ -277,8 +268,9 @@ export class SymbolService {
       }
     );
 
-    process.stderr.write(
-      `[DEBUG renameSymbol] Result type: ${typeof result}, hasChanges: ${result && typeof result === 'object' && 'changes' in result}, hasDocumentChanges: ${result && typeof result === 'object' && 'documentChanges' in result}\n`
+    debugLog(
+      'SymbolService',
+      `Result type: ${typeof result}, hasChanges: ${result && typeof result === 'object' && 'changes' in result}, hasDocumentChanges: ${result && typeof result === 'object' && 'documentChanges' in result}`
     );
 
     if (result && typeof result === 'object') {
@@ -292,9 +284,7 @@ export class SymbolService {
         };
 
         const changeCount = Object.keys(workspaceEdit.changes || {}).length;
-        process.stderr.write(
-          `[DEBUG renameSymbol] WorkspaceEdit has changes for ${changeCount} files\n`
-        );
+        debugLog('SymbolService', `WorkspaceEdit has changes for ${changeCount} files`);
 
         return workspaceEdit;
       }
@@ -308,8 +298,9 @@ export class SymbolService {
           }>;
         };
 
-        process.stderr.write(
-          `[DEBUG renameSymbol] WorkspaceEdit has documentChanges with ${workspaceEdit.documentChanges?.length || 0} entries\n`
+        debugLog(
+          'SymbolService',
+          `WorkspaceEdit has documentChanges with ${workspaceEdit.documentChanges?.length || 0} entries`
         );
 
         // Convert documentChanges to changes format for compatibility
@@ -327,9 +318,7 @@ export class SymbolService {
                 changes[uri] = [];
               }
               changes[uri].push(...change.edits);
-              process.stderr.write(
-                `[DEBUG renameSymbol] Added ${change.edits.length} edits for ${uri}\n`
-              );
+              debugLog('SymbolService', `Added ${change.edits.length} edits for ${uri}`);
             }
           }
         }
@@ -338,7 +327,7 @@ export class SymbolService {
       }
     }
 
-    process.stderr.write('[DEBUG renameSymbol] No rename changes available\n');
+    debugLog('SymbolService', 'No rename changes available');
     return {};
   }
 
@@ -351,25 +340,22 @@ export class SymbolService {
     preloadServers: (verbose?: boolean) => Promise<void>,
     workspacePath?: string
   ): Promise<SymbolInformation[]> {
-    process.stderr.write(
-      `[DEBUG searchWorkspaceSymbols] servers.size=${servers.size}, server keys: [${Array.from(servers.keys()).join(', ')}]\n`
+    debugLog(
+      'SymbolService',
+      `servers.size=${servers.size}, server keys: [${Array.from(servers.keys()).join(', ')}]`
     );
 
     // Check if we have any initialized servers first
     const initializedServers = Array.from(servers.values()).filter((s) => s.initialized);
-    process.stderr.write(
-      `[DEBUG searchWorkspaceSymbols] initialized servers: ${initializedServers.length}/${servers.size}\n`
-    );
+    debugLog('SymbolService', `initialized servers: ${initializedServers.length}/${servers.size}`);
 
     // Only preload if we have no servers at all (not even uninitialized ones)
     // This prevents redundant preloading when servers are already starting up
     if (servers.size === 0) {
-      process.stderr.write('[DEBUG searchWorkspaceSymbols] No servers found, preloading...\n');
+      debugLog('SymbolService', 'No servers found, preloading...');
       await preloadServers(false);
     } else if (initializedServers.length === 0) {
-      process.stderr.write(
-        '[DEBUG searchWorkspaceSymbols] Servers exist but none initialized, waiting briefly...\n'
-      );
+      debugLog('SymbolService', 'Servers exist but none initialized, waiting briefly...');
       // Brief wait for existing servers to finish initializing instead of preloading again
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
@@ -380,9 +366,7 @@ export class SymbolService {
 
     if (!hasAnyOpenFiles && workspacePath) {
       try {
-        process.stderr.write(
-          '[DEBUG searchWorkspaceSymbols] Opening minimal files for workspace context\n'
-        );
+        debugLog('SymbolService', 'Opening minimal files for workspace context');
 
         // Just open a few key files instead of scanning the entire project
         const { existsSync, readdirSync } = await import('node:fs');
@@ -391,7 +375,7 @@ export class SymbolService {
         if (existsSync(workspacePath)) {
           const files = readdirSync(workspacePath)
             .filter((f) => f.match(/\.(ts|js|tsx|jsx)$/))
-            .slice(0, 3) // Open maximum 3 files for context
+            .slice(0, CONTEXT_FILES_LIMIT) // Open maximum files for context
             .map((f) => join(workspacePath, f));
 
           for (const filePath of files) {
@@ -402,40 +386,33 @@ export class SymbolService {
             }
           }
 
-          process.stderr.write(
-            `[DEBUG searchWorkspaceSymbols] Opened ${files.length} context files\n`
-          );
+          debugLog('SymbolService', `Opened ${files.length} context files`);
 
           // Brief pause to let files process
           if (files.length > 0) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, BRIEF_PAUSE_MS));
           }
         }
       } catch (error) {
-        process.stderr.write(
-          `[DEBUG searchWorkspaceSymbols] Failed to establish minimal context: ${error}\n`
-        );
+        debugLog('SymbolService', `Failed to establish minimal context: ${error}`);
       }
     }
 
     // For workspace/symbol, we need to try all running servers
     const results: SymbolInformation[] = [];
 
-    process.stderr.write(
-      `[DEBUG searchWorkspaceSymbols] Searching for "${query}" across ${servers.size} servers\n`
-    );
+    debugLog('SymbolService', `Searching for "${query}" across ${servers.size} servers`);
 
     for (const [serverKey, serverState] of servers.entries()) {
-      process.stderr.write(
-        `[DEBUG searchWorkspaceSymbols] Checking server: ${serverKey}, initialized: ${serverState.initialized}\n`
+      debugLog(
+        'SymbolService',
+        `Checking server: ${serverKey}, initialized: ${serverState.initialized}`
       );
 
       if (!serverState.initialized) continue;
 
       try {
-        process.stderr.write(
-          `[DEBUG searchWorkspaceSymbols] Sending workspace/symbol request for "${query}"\n`
-        );
+        debugLog('SymbolService', `Sending workspace/symbol request for "${query}"`);
 
         const result = await this.context.protocol.sendRequest(
           serverState.process,
@@ -445,27 +422,21 @@ export class SymbolService {
           }
         );
 
-        process.stderr.write(
-          `[DEBUG searchWorkspaceSymbols] Workspace symbol result: ${JSON.stringify(result)}\n`
-        );
+        debugLog('SymbolService', 'Workspace symbol result:', result);
 
         if (Array.isArray(result)) {
           results.push(...result);
-          process.stderr.write(
-            `[DEBUG searchWorkspaceSymbols] Added ${result.length} symbols from server\n`
-          );
+          debugLog('SymbolService', `Added ${result.length} symbols from server`);
         } else if (result !== null && result !== undefined) {
-          process.stderr.write(
-            `[DEBUG searchWorkspaceSymbols] Non-array result: ${typeof result}\n`
-          );
+          debugLog('SymbolService', `Non-array result: ${typeof result}`);
         }
       } catch (error) {
         // Some servers might not support workspace/symbol, continue with others
-        process.stderr.write(`[DEBUG searchWorkspaceSymbols] Server error: ${error}\n`);
+        debugLog('SymbolService', `Server error: ${error}`);
       }
     }
 
-    process.stderr.write(`[DEBUG searchWorkspaceSymbols] Total results found: ${results.length}\n`);
+    debugLog('SymbolService', `Total results found: ${results.length}`);
     return results;
   }
 
@@ -475,7 +446,7 @@ export class SymbolService {
   async getDocumentSymbols(filePath: string): Promise<DocumentSymbol[] | SymbolInformation[]> {
     const serverState = await this.context.prepareFile(filePath);
 
-    process.stderr.write(`[DEBUG] Requesting documentSymbol for: ${filePath}\n`);
+    debugLog('SymbolService', `Requesting documentSymbol for: ${filePath}`);
 
     const result = await this.context.protocol.sendRequest(
       serverState.process,
@@ -485,18 +456,17 @@ export class SymbolService {
       }
     );
 
-    process.stderr.write(
-      `[DEBUG] documentSymbol result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}\n`
+    debugLog(
+      'SymbolService',
+      `documentSymbol result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}`
     );
 
     if (result && Array.isArray(result) && result.length > 0) {
-      process.stderr.write(`[DEBUG] First symbol: ${JSON.stringify(result[0], null, 2)}\n`);
+      debugLog('SymbolService', 'First symbol:', result[0]);
     } else if (result === null || result === undefined) {
-      process.stderr.write('[DEBUG] documentSymbol returned null/undefined\n');
+      debugLog('SymbolService', 'documentSymbol returned null/undefined');
     } else {
-      process.stderr.write(
-        `[DEBUG] documentSymbol returned unexpected result: ${JSON.stringify(result)}\n`
-      );
+      debugLog('SymbolService', 'documentSymbol returned unexpected result:', result);
     }
 
     if (Array.isArray(result)) {
@@ -554,7 +524,7 @@ export class SymbolService {
 
       return matches;
     } catch (error) {
-      process.stderr.write(`[ERROR findSymbolMatches] ${error}\n`);
+      debugLog('SymbolService', `ERROR findSymbolMatches: ${error}`);
       return [];
     }
   }

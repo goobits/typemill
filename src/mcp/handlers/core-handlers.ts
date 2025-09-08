@@ -2,6 +2,13 @@ import { resolve } from 'node:path';
 import { applyWorkspaceEdit } from '../../file-editor.js';
 import { uriToPath } from '../../path-utils.js';
 import type { SymbolService } from '../../services/symbol-service.js';
+import {
+  createContextualErrorResponse,
+  createFileModificationResponse,
+  createMCPResponse,
+  createNoChangesResponse,
+  createNoResultsResponse,
+} from '../utils.js';
 
 // Handler for find_definition tool
 export async function handleFindDefinition(
@@ -23,14 +30,11 @@ export async function handleFindDefinition(
   );
 
   if (symbolMatches.length === 0) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `No symbols found with name "${symbol_name}"${symbol_kind ? ` and kind "${symbol_kind}"` : ''} in ${file_path}. Please verify the symbol name and ensure the language server is properly configured.`,
-        },
-      ],
-    };
+    return createNoResultsResponse(
+      'symbols',
+      `"${symbol_name}"${symbol_kind ? ` (${symbol_kind})` : ''} in ${file_path}`,
+      ['Please verify the symbol name and ensure the language server is properly configured.']
+    );
   }
 
   const results = [];
@@ -70,26 +74,11 @@ export async function handleFindDefinition(
 
   if (results.length === 0) {
     const responseText = warning ? warning : 'No definitions found for the specified symbol.';
-    return {
-      content: [
-        {
-          type: 'text',
-          text: responseText,
-        },
-      ],
-    };
+    return createMCPResponse(responseText);
   }
 
   const responseText = warning ? `${warning}\n\n${results.join('\n\n')}` : results.join('\n\n');
-
-  return {
-    content: [
-      {
-        type: 'text',
-        text: responseText,
-      },
-    ],
-  };
+  return createMCPResponse(responseText);
 }
 
 // Handler for find_references tool
@@ -117,14 +106,11 @@ export async function handleFindReferences(
   );
 
   if (symbolMatches.length === 0) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `No symbols found with name "${symbol_name}"${symbol_kind ? ` and kind "${symbol_kind}"` : ''} in ${file_path}. Please verify the symbol name and ensure the language server is properly configured.`,
-        },
-      ],
-    };
+    return createNoResultsResponse(
+      'symbols',
+      `"${symbol_name}"${symbol_kind ? ` (${symbol_kind})` : ''} in ${file_path}`,
+      ['Please verify the symbol name and ensure the language server is properly configured.']
+    );
   }
 
   const results = [];
@@ -170,26 +156,11 @@ export async function handleFindReferences(
     const responseText = warning
       ? `${warning}\n\nNo references found for the specified symbol.`
       : 'No references found for the specified symbol.';
-    return {
-      content: [
-        {
-          type: 'text',
-          text: responseText,
-        },
-      ],
-    };
+    return createMCPResponse(responseText);
   }
 
   const responseText = warning ? `${warning}\n\n${results.join('\n\n')}` : results.join('\n\n');
-
-  return {
-    content: [
-      {
-        type: 'text',
-        text: responseText,
-      },
-    ],
-  };
+  return createMCPResponse(responseText);
 }
 
 // Handler for rename_symbol tool
@@ -218,14 +189,7 @@ export async function handleRenameSymbol(
       ? `${warning}\n\nNo symbols found with name "${symbol_name}"${symbol_kind ? ` and kind "${symbol_kind}"` : ''} in ${file_path}. Please verify the symbol name and ensure the language server is properly configured.`
       : `No symbols found with name "${symbol_name}"${symbol_kind ? ` and kind "${symbol_kind}"` : ''} in ${file_path}. Please verify the symbol name and ensure the language server is properly configured.`;
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: responseText,
-        },
-      ],
-    };
+    return createMCPResponse(responseText);
   }
 
   if (symbolMatches.length > 1) {
@@ -240,14 +204,7 @@ export async function handleRenameSymbol(
       ? `${warning}\n\nMultiple symbols found with name "${symbol_name}". Please use rename_symbol_strict to specify which one to rename:\n\n${matchDescriptions}`
       : `Multiple symbols found with name "${symbol_name}". Please use rename_symbol_strict to specify which one to rename:\n\n${matchDescriptions}`;
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: responseText,
-        },
-      ],
-    };
+    return createMCPResponse(responseText);
   }
 
   // Single match - proceed with rename
@@ -258,14 +215,10 @@ export async function handleRenameSymbol(
 
   // Check if the new name is the same as the old name
   if (symbol_name === new_name) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `No changes needed - symbol "${symbol_name}" is already named "${new_name}".`,
-        },
-      ],
-    };
+    return createNoChangesResponse(
+      'rename symbol',
+      `symbol "${symbol_name}" is already named "${new_name}"`
+    );
   }
 
   try {
@@ -277,27 +230,15 @@ export async function handleRenameSymbol(
     );
 
     if (!workspaceEdit.changes || Object.keys(workspaceEdit.changes).length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `No changes needed for renaming "${symbol_name}" to "${new_name}".`,
-          },
-        ],
-      };
+      return createNoChangesResponse(`renaming "${symbol_name}" to "${new_name}"`);
     }
 
     const changedFileCount = Object.keys(workspaceEdit.changes).length;
 
     if (dry_run) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `[DRY RUN] Would rename "${symbol_name}" to "${new_name}" across ${changedFileCount} file${changedFileCount === 1 ? '' : 's'}`,
-          },
-        ],
-      };
+      return createMCPResponse(
+        `[DRY RUN] Would rename "${symbol_name}" to "${new_name}" across ${changedFileCount} file${changedFileCount === 1 ? '' : 's'}`
+      );
     }
 
     const editResult = await applyWorkspaceEdit(workspaceEdit, {
@@ -305,33 +246,22 @@ export async function handleRenameSymbol(
     });
 
     if (!editResult.success) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to rename symbol: ${editResult.error}`,
-          },
-        ],
-      };
+      return createMCPResponse(`Failed to rename symbol: ${editResult.error}`);
     }
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `✅ Successfully renamed "${symbol_name}" to "${new_name}" across ${changedFileCount} file${changedFileCount === 1 ? '' : 's'}`,
-        },
-      ],
-    };
+    return createFileModificationResponse(`renamed "${symbol_name}" to "${new_name}"`, file_path, {
+      fileCount: changedFileCount,
+    });
   } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error renaming symbol: ${error instanceof Error ? error.message : String(error)}`,
-        },
+    return createContextualErrorResponse(error, {
+      operation: 'rename symbol',
+      filePath: file_path,
+      suggestions: [
+        'Ensure the symbol exists in the file',
+        'Check that the language server supports renaming',
+        'Try using rename_symbol_strict for precise positioning',
       ],
-    };
+    });
   }
 }
 
@@ -361,27 +291,17 @@ export async function handleRenameSymbolStrict(
     );
 
     if (!workspaceEdit.changes || Object.keys(workspaceEdit.changes).length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `No changes needed for renaming symbol at ${file_path}:${line}:${character} to "${new_name}".`,
-          },
-        ],
-      };
+      return createNoChangesResponse(
+        `renaming symbol at ${file_path}:${line}:${character} to "${new_name}"`
+      );
     }
 
     const changedFileCount = Object.keys(workspaceEdit.changes).length;
 
     if (dry_run) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `[DRY RUN] Would rename symbol at ${file_path}:${line}:${character} to "${new_name}" across ${changedFileCount} file${changedFileCount === 1 ? '' : 's'}`,
-          },
-        ],
-      };
+      return createMCPResponse(
+        `[DRY RUN] Would rename symbol at ${file_path}:${line}:${character} to "${new_name}" across ${changedFileCount} file${changedFileCount === 1 ? '' : 's'}`
+      );
     }
 
     const editResult = await applyWorkspaceEdit(workspaceEdit, {
@@ -389,32 +309,23 @@ export async function handleRenameSymbolStrict(
     });
 
     if (!editResult.success) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to rename symbol: ${editResult.error}`,
-          },
-        ],
-      };
+      return createMCPResponse(`Failed to rename symbol: ${editResult.error}`);
     }
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `✅ Successfully renamed symbol at ${file_path}:${line}:${character} to "${new_name}" across ${changedFileCount} file${changedFileCount === 1 ? '' : 's'}`,
-        },
-      ],
-    };
+    return createFileModificationResponse(
+      `renamed symbol at ${file_path}:${line}:${character} to "${new_name}"`,
+      file_path,
+      { fileCount: changedFileCount }
+    );
   } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error renaming symbol: ${error instanceof Error ? error.message : String(error)}`,
-        },
+    return createContextualErrorResponse(error, {
+      operation: 'rename symbol at specific position',
+      filePath: file_path,
+      suggestions: [
+        'Verify the line and character position are correct',
+        'Check that there is a symbol at the specified position',
+        'Ensure the language server supports renaming',
       ],
-    };
+    });
   }
 }

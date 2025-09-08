@@ -1,5 +1,8 @@
 import type { Config, LSPServerConfig } from './types.js';
 
+// Configuration constants
+const SERVER_AVAILABILITY_CHECK_TIMEOUT_MS = 2000; // Timeout for checking server availability
+
 /**
  * Default configurations for common language servers
  * These are carefully chosen to work on most systems
@@ -146,7 +149,7 @@ async function isCommandAvailable(command: string[]): Promise<boolean> {
       setTimeout(() => {
         proc.kill();
         resolve(false);
-      }, 2000);
+      }, SERVER_AVAILABILITY_CHECK_TIMEOUT_MS);
     });
   } catch {
     return false;

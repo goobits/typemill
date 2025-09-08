@@ -1,5 +1,11 @@
 import type { ChildProcess } from 'node:child_process';
 import type { LSPError } from '../types.js';
+import { debugLog } from '../utils/debug-logger.js';
+import { getErrorMessage, handleLSPError, logError } from '../utils/error-utils.js';
+
+// Protocol constants
+const DEFAULT_REQUEST_TIMEOUT_MS = 30000; // Default timeout for LSP requests
+const LSP_METHOD_NOT_FOUND_ERROR = -32601; // LSP error code for method not found
 
 interface LSPMessage {
   jsonrpc: string;
@@ -30,7 +36,7 @@ export class LSPProtocol {
     process: ChildProcess,
     method: string,
     params: unknown,
-    timeout = 30000
+    timeout = DEFAULT_REQUEST_TIMEOUT_MS
   ): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const id = this.nextId++;
@@ -46,7 +52,9 @@ export class LSPProtocol {
       // Set up timeout
       const timeoutId = setTimeout(() => {
         this.pendingRequests.delete(id);
-        reject(new Error(`Request timed out after ${timeout}ms: ${method}`));
+        const timeoutError = new Error(`Request timed out after ${timeout}ms: ${method}`);
+        logError('LSPProtocol', `Request timeout for ${method}`, timeoutError, { timeout, method });
+        reject(timeoutError);
       }, timeout);
 
       // Clear timeout on response
@@ -93,15 +101,21 @@ export class LSPProtocol {
         // Check if this is a "method not found" error (LSP error code -32601)
         // or if the error message indicates an unhandled/unsupported method
         if (
-          message.error.code === -32601 ||
+          message.error.code === LSP_METHOD_NOT_FOUND_ERROR ||
           message.error.message?.toLowerCase().includes('unhandled method') ||
           message.error.message?.toLowerCase().includes('method not found')
         ) {
           // For unsupported methods, resolve with null instead of rejecting
           resolve(null);
         } else {
-          // For actual LSP errors, reject as before
-          reject(new Error(message.error.message || 'LSP Error'));
+          // For actual LSP errors, create detailed error with context
+          const lspError = new Error(message.error.message || 'LSP Error');
+          logError('LSPProtocol', 'LSP server error', lspError, {
+            code: message.error.code,
+            data: message.error.data,
+            method: message.method,
+          });
+          reject(lspError);
         }
       } else {
         resolve(message.result);
@@ -144,7 +158,9 @@ export class LSPProtocol {
         const message = JSON.parse(messageContent) as LSPMessage;
         messages.push(message);
       } catch (error) {
-        process.stderr.write(`[ERROR] Failed to parse LSP message: ${error}\n`);
+        logError('LSPProtocol', 'Failed to parse LSP message', error, {
+          messageContent: `${messageContent.substring(0, 100)}...`,
+        });
       }
 
       remaining = remaining.substring(messageStart + contentLength);
@@ -172,9 +188,12 @@ export class LSPProtocol {
         throw new Error('LSP process stdin is not writable');
       }
     } catch (error) {
-      throw new Error(
-        `Failed to send LSP message: ${error instanceof Error ? error.message : String(error)}`
-      );
+      const errorMessage = getErrorMessage(error);
+      logError('LSPProtocol', 'Failed to send LSP message', error, {
+        method: message.method,
+        processAlive: !process.killed,
+      });
+      throw new Error(`Failed to send LSP message: ${errorMessage}`);
     }
   }
 
@@ -186,7 +205,7 @@ export class LSPProtocol {
     serverState: import('../lsp-types.js').ServerState
   ): void {
     if (message.method === 'initialized') {
-      process.stderr.write('[DEBUG] Received initialized notification from server\n');
+      debugLog('LSPProtocol', 'Received initialized notification from server');
       serverState.initialized = true;
       if (serverState.initializationResolve) {
         serverState.initializationResolve();
@@ -199,8 +218,9 @@ export class LSPProtocol {
         version?: number;
       };
       if (params?.uri) {
-        process.stderr.write(
-          `[DEBUG] Received publishDiagnostics for ${params.uri} with ${params.diagnostics?.length || 0} diagnostics${params.version !== undefined ? ` (version: ${params.version})` : ''}\n`
+        debugLog(
+          'LSPProtocol',
+          `Received publishDiagnostics for ${params.uri} with ${params.diagnostics?.length || 0} diagnostics${params.version !== undefined ? ` (version: ${params.version})` : ''}`
         );
         serverState.diagnostics.set(params.uri, params.diagnostics || []);
         serverState.lastDiagnosticUpdate.set(params.uri, Date.now());
@@ -215,6 +235,13 @@ export class LSPProtocol {
    * Clean up pending requests on disposal
    */
   dispose(): void {
+    const pendingCount = this.pendingRequests.size;
+    if (pendingCount > 0) {
+      logError('LSPProtocol', 'Disposing with pending requests', new Error('LSP client disposed'), {
+        pendingRequestCount: pendingCount,
+      });
+    }
+
     for (const [id, request] of this.pendingRequests) {
       request.reject(new Error('LSP client disposed'));
     }

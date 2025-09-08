@@ -6,8 +6,12 @@ import type { FileService } from '../../services/file-service.js';
 import type { SymbolService } from '../../services/symbol-service.js';
 import type { DocumentSymbol, SymbolInformation } from '../../types.js';
 import {
+  createFileModificationResponse,
   createLimitedSupportResponse,
+  createListResponse,
   createMCPResponse,
+  createNoChangesResponse,
+  createNoResultsResponse,
   createUnsupportedFeatureResponse,
 } from '../utils.js';
 
@@ -29,14 +33,10 @@ export async function handleGetCodeActions(
     const codeActions = await fileService.getCodeActions(absolutePath, range);
 
     if (codeActions.length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `No code actions available for ${file_path}${range ? ` at lines ${range.start.line + 1}-${range.end.line + 1}` : ''}.`,
-          },
-        ],
-      };
+      return createNoResultsResponse(
+        'code actions',
+        `${file_path}${range ? ` at lines ${range.start.line + 1}-${range.end.line + 1}` : ''}`
+      );
     }
 
     const actionDescriptions = codeActions
@@ -48,23 +48,26 @@ export async function handleGetCodeActions(
         return `${index + 1}. Code action (${action.kind || 'unknown'})`;
       });
 
+    const noteText =
+      "\n\nNote: These actions show what's available but cannot be applied directly through this tool. Use your editor's code action functionality to apply them.";
+    const listResponse = createListResponse(`for ${file_path}`, actionDescriptions, {
+      singular: 'code action',
+      plural: 'code actions',
+      showTotal: true,
+    });
+
     return {
       content: [
         {
           type: 'text',
-          text: `Found ${codeActions.length} code action${codeActions.length === 1 ? '' : 's'} for ${file_path}:\n\n${actionDescriptions.join('\n')}\n\nNote: These actions show what's available but cannot be applied directly through this tool. Use your editor's code action functionality to apply them.`,
+          text: (listResponse.content[0]?.text || '') + noteText,
         },
       ],
     };
   } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error getting code actions: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ],
-    };
+    return createMCPResponse(
+      `Error getting code actions: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
@@ -100,14 +103,7 @@ export async function handleFormatDocument(
     const formatEdits = await fileService.formatDocument(absolutePath, lspOptions);
 
     if (formatEdits.length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `No formatting changes needed for ${file_path}. The file is already properly formatted.`,
-          },
-        ],
-      };
+      return createNoChangesResponse('formatting', `${file_path} is already properly formatted`);
     }
 
     // Apply the formatting edits using the existing infrastructure
@@ -120,33 +116,16 @@ export async function handleFormatDocument(
     const editResult = await applyWorkspaceEdit(workspaceEdit);
 
     if (!editResult.success) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to apply formatting: ${editResult.error}`,
-          },
-        ],
-      };
+      return createMCPResponse(`Failed to apply formatting: ${editResult.error}`);
     }
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `✅ Successfully formatted ${file_path} with ${formatEdits.length} change${formatEdits.length === 1 ? '' : 's'}.`,
-        },
-      ],
-    };
+    return createFileModificationResponse('formatted', file_path, {
+      changeCount: formatEdits.length,
+    });
   } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error formatting document: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ],
-    };
+    return createMCPResponse(
+      `Error formatting document: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
@@ -167,14 +146,9 @@ export async function handleSearchWorkspaceSymbols(
     );
 
     if (symbols.length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `No symbols found matching "${query}". Try a different search term or ensure the language server is properly configured.`,
-          },
-        ],
-      };
+      return createNoResultsResponse('symbols', `matching "${query}"`, [
+        'Try a different search term or ensure the language server is properly configured.',
+      ]);
     }
 
     const symbolDescriptions = symbols
@@ -189,28 +163,16 @@ export async function handleSearchWorkspaceSymbols(
         return `${index + 1}. ${symbol.name} (${symbolKind}) - ${filePath}:${line}:${character}`;
       });
 
-    const resultText =
-      symbols.length > 50
-        ? `Found ${symbols.length} symbols matching "${query}" (showing first 50):\n\n${symbolDescriptions.join('\n')}`
-        : `Found ${symbols.length} symbol${symbols.length === 1 ? '' : 's'} matching "${query}":\n\n${symbolDescriptions.join('\n')}`;
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: resultText,
-        },
-      ],
-    };
+    return createListResponse(`matching "${query}"`, symbolDescriptions, {
+      singular: 'symbol',
+      plural: 'symbols',
+      maxItems: 50,
+      showTotal: true,
+    });
   } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error searching workspace symbols: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ],
-    };
+    return createMCPResponse(
+      `Error searching workspace symbols: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
@@ -226,14 +188,9 @@ export async function handleGetDocumentSymbols(
     const symbols = await symbolService.getDocumentSymbols(absolutePath);
 
     if (symbols.length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `No symbols found in ${file_path}. The file may be empty or the language server may not support this file type.`,
-          },
-        ],
-      };
+      return createNoResultsResponse('symbols', file_path, [
+        'The file may be empty or the language server may not support this file type.',
+      ]);
     }
 
     // Check if we have DocumentSymbols (hierarchical) or SymbolInformation (flat)
@@ -275,23 +232,13 @@ export async function handleGetDocumentSymbols(
       });
     }
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Document outline for ${file_path}:\n\n${symbolDescriptions.join('\n')}`,
-        },
-      ],
-    };
+    return createMCPResponse(
+      `Document outline for ${file_path}:\n\n${symbolDescriptions.join('\n')}`
+    );
   } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error getting document symbols: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ],
-    };
+    return createMCPResponse(
+      `Error getting document symbols: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
@@ -477,14 +424,7 @@ export async function handleApplyWorkspaceEdit(
   const { validate_before_apply = true, dry_run = false } = args;
 
   if (!changes) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: 'No changes provided. Please specify changes to apply.',
-        },
-      ],
-    };
+    return createMCPResponse('No changes provided. Please specify changes to apply.');
   }
 
   try {
@@ -512,7 +452,7 @@ export async function handleApplyWorkspaceEdit(
 
     // Validate that we have at least one change
     if (!workspaceEdit.changes || Object.keys(workspaceEdit.changes).length === 0) {
-      return createMCPResponse('No changes to apply. The workspace edit is empty.');
+      return createNoChangesResponse('workspace edit', 'the workspace edit is empty');
     }
 
     const fileCount = Object.keys(workspaceEdit.changes).length;

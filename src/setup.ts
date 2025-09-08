@@ -145,7 +145,7 @@ async function runCommand(
 
     const [cmd, ...args] = command;
     if (!cmd) {
-      console.log(`❌ No command specified for ${name}`);
+      console.error(`❌ No command specified for ${name}`);
       resolve(false);
       return;
     }
@@ -169,8 +169,8 @@ async function runCommand(
 
     process.on('error', (err: NodeJS.ErrnoException) => {
       hasErrored = true;
-      console.log(`❌ Failed to install ${name}`);
-      console.log(`   Error: ${err.message}`);
+      console.error(`❌ Failed to install ${name}`);
+      console.error(`   Error: ${err.message}`);
       resolve(false);
     });
 
@@ -181,14 +181,14 @@ async function runCommand(
           console.log(`✅ ${name} installed successfully`);
           resolve(true);
         } else {
-          console.log(`❌ Failed to install ${name}`);
+          console.error(`❌ Failed to install ${name}`);
           if (error) {
-            console.log(`   Error output: ${error.trim()}`);
+            console.error(`   Error output: ${error.trim()}`);
           }
           if (output) {
             console.log(`   Output: ${output.trim()}`);
           }
-          console.log(`   Exit code: ${code}`);
+          console.error(`   Exit code: ${code}`);
           resolve(false);
         }
       }
@@ -662,7 +662,7 @@ async function main() {
               : [claudeCmd, 'mcp', 'remove', 'cclsp', scopeFlag].filter(Boolean);
           const removeSuccess = await runCommand(removeCommand, 'remove existing cclsp MCP', false);
           if (!removeSuccess) {
-            console.log('⚠️ Failed to remove existing cclsp configuration, continuing with add...');
+            console.log('⚠️  Failed to remove existing cclsp configuration, continuing with add...');
           }
         }
 
@@ -685,7 +685,7 @@ async function main() {
           console.log(`   ${mcpCommand}`);
         }
       } catch (error) {
-        console.log(`\n❌ Failed to configure cclsp in MCP: ${error}`);
+        console.error(`\n❌ Failed to configure cclsp in MCP: ${error}`);
         console.log('\n💡 You can manually add cclsp to your MCP configuration using:');
         console.log(`   ${mcpCommand}`);
       }

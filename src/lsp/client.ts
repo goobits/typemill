@@ -7,6 +7,7 @@ import {
 import { scanDirectoryForExtensions } from '../file-scanner.js';
 import type { ServerState } from '../lsp-types.js';
 import type { Config } from '../types.js';
+import { handleConfigurationError, logError } from '../utils/error-utils.js';
 import { LSPProtocol } from './protocol.js';
 import { ServerManager } from './server-manager.js';
 
@@ -57,6 +58,9 @@ export class LSPClient {
         process.stderr.write(`Loaded ${config.servers.length} server configurations from env\n`);
         return mergeWithDefaults(config);
       } catch (error) {
+        logError('LSPClient', 'Failed to load config from CCLSP_CONFIG_PATH', error, {
+          configPath: process.env.CCLSP_CONFIG_PATH,
+        });
         process.stderr.write(
           `Warning: Failed to load config from CCLSP_CONFIG_PATH: ${error instanceof Error ? error.message : String(error)}\n`
         );
@@ -74,6 +78,9 @@ export class LSPClient {
         process.stderr.write(`Loaded ${config.servers.length} server configurations\n`);
         return mergeWithDefaults(config);
       } catch (error) {
+        logError('LSPClient', 'Failed to load config from provided path', error, {
+          configPath,
+        });
         process.stderr.write(
           `Warning: Failed to load config from ${configPath}: ${error instanceof Error ? error.message : String(error)}\n`
         );
@@ -92,6 +99,9 @@ export class LSPClient {
         process.stderr.write(`Loaded ${config.servers.length} server configurations\n`);
         return mergeWithDefaults(config);
       } catch (error) {
+        logError('LSPClient', 'Failed to load cclsp.json', error, {
+          configPath: defaultConfigPath,
+        });
         process.stderr.write(
           `Warning: Failed to load cclsp.json: ${error instanceof Error ? error.message : String(error)}\n`
         );
@@ -183,6 +193,9 @@ export class LSPClient {
       const extensions = await scanDirectoryForExtensions(process.cwd());
       await this._serverManager.preloadServers(this.config, Array.from(extensions));
     } catch (error) {
+      logError('LSPClient', 'Failed to scan directory for extensions', error, {
+        workingDirectory: process.cwd(),
+      });
       process.stderr.write(`Failed to scan directory for extensions: ${error}\n`);
     }
   }

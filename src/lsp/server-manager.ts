@@ -4,7 +4,24 @@ import { capabilityManager } from '../capability-manager.js';
 import type { ServerState } from '../lsp-types.js';
 import { pathToUri } from '../path-utils.js';
 import type { Config, LSPServerConfig } from '../types.js';
+import { ServerNotAvailableError, getErrorMessage, logError } from '../utils/error-utils.js';
 import type { LSPProtocol } from './protocol.js';
+import { getPackageVersion } from '../utils/version.js';
+
+// Server lifecycle constants
+const SERVER_STARTUP_DELAY_MS = 100; // Delay to check for startup failures
+const SERVER_PROCESSING_DELAY_MS = 500; // Delay for server to process initialization
+const SERVER_INITIALIZE_TIMEOUT_MS = 10000; // Timeout for server initialization
+const MINUTES_TO_MS = 60 * 1000; // Conversion factor
+
+// Memory cleanup constants
+const DIAGNOSTIC_CLEANUP_AGE_MS = 5 * MINUTES_TO_MS; // Clean diagnostics older than 5 minutes
+const MAX_OPEN_FILES = 100; // Maximum number of open files to track (LRU cleanup)
+const CLEANUP_INTERVAL_MS = 2 * MINUTES_TO_MS; // Run cleanup every 2 minutes
+
+// Retry logic constants
+const MAX_RETRY_ATTEMPTS = 1; // Maximum number of retry attempts per server
+const RETRY_BACKOFF_MS = 2000; // 2 second backoff before retry attempt
 
 /**
  * Manages LSP server processes and lifecycle
@@ -14,10 +31,14 @@ export class ServerManager {
   private servers: Map<string, ServerState> = new Map();
   private serversStarting: Map<string, Promise<ServerState>> = new Map();
   private failedServers: Set<string> = new Set();
+  private retryAttempts: Map<string, number> = new Map(); // Track retry attempts per server
+  private lastRetryTime: Map<string, number> = new Map(); // Track last retry timestamp per server
   private protocol: LSPProtocol;
+  private cleanupTimer?: NodeJS.Timeout;
 
   constructor(protocol: LSPProtocol) {
     this.protocol = protocol;
+    this.startCleanupTimer();
   }
 
   /**
@@ -33,16 +54,45 @@ export class ServerManager {
   async getServer(filePath: string, config: Config): Promise<ServerState> {
     const serverConfig = this.getServerForFile(filePath, config);
     if (!serverConfig) {
-      throw new Error(`No language server configured for file: ${filePath}`);
+      const extension = filePath.split('.').pop() || 'unknown';
+      throw new ServerNotAvailableError(
+        `No language server configured for file: ${filePath}`,
+        [extension],
+        [],
+        undefined
+      );
     }
 
     const serverKey = JSON.stringify(serverConfig.command);
 
-    // Don't try to start servers that have already failed
+    // Check if server has failed and attempt recovery before giving up
     if (this.failedServers.has(serverKey)) {
-      throw new Error(
+      // Try to recover the server if possible
+      try {
+        const recoveredServer = await this.attemptServerRecovery(
+          serverKey,
+          serverConfig,
+          new Error(`Server previously failed: ${serverConfig.command.join(' ')}`)
+        );
+
+        if (recoveredServer) {
+          return recoveredServer;
+        }
+      } catch (recoveryError) {
+        // Recovery failed, log and continue to throw original error
+        logError('ServerManager', 'Server recovery failed', recoveryError, {
+          serverKey,
+          command: serverConfig.command,
+        });
+      }
+
+      // Recovery failed or not attempted, throw original error
+      throw new ServerNotAvailableError(
         `Language server for ${serverConfig.extensions.join(', ')} files is not available. ` +
-          `Install it with: ${this.getInstallInstructions(serverConfig.command[0] || '')}`
+          `Install it with: ${this.getInstallInstructions(serverConfig.command[0] || '')}`,
+        serverConfig.extensions,
+        serverConfig.command,
+        undefined
       );
     }
 
@@ -82,6 +132,11 @@ export class ServerManager {
   clearFailedServers(): void {
     const count = this.failedServers.size;
     this.failedServers.clear();
+
+    // Also clear retry tracking data for a fresh start
+    this.retryAttempts.clear();
+    this.lastRetryTime.clear();
+
     if (count > 0) {
       process.stderr.write(
         `Cleared ${count} failed server(s). They will be retried on next access.\n`
@@ -139,8 +194,14 @@ export class ServerManager {
         await this.startServer(serverConfig);
         process.stderr.write(`Preloaded server: ${serverConfig.command.join(' ')}\n`);
       } catch (error) {
-        process.stderr.write(
-          `Failed to preload server ${serverConfig.command.join(' ')}: ${error}\n`
+        logError(
+          'ServerManager',
+          `Failed to preload server ${serverConfig.command.join(' ')}`,
+          error,
+          {
+            serverCommand: serverConfig.command,
+            extensions: serverConfig.extensions,
+          }
         );
       }
     });
@@ -173,7 +234,12 @@ export class ServerManager {
   private async startServer(serverConfig: LSPServerConfig): Promise<ServerState> {
     const [command, ...args] = serverConfig.command;
     if (!command) {
-      throw new Error('No command specified in server config');
+      throw new ServerNotAvailableError(
+        'No command specified in server config',
+        serverConfig.extensions,
+        serverConfig.command,
+        undefined
+      );
     }
 
     // For npx commands, provide helpful error message if npm is not installed
@@ -181,9 +247,12 @@ export class ServerManager {
       try {
         const { execSync } = await import('node:child_process');
         execSync('npm --version', { stdio: 'ignore' });
-      } catch {
-        throw new Error(
-          'npm is required for TypeScript/JavaScript support. Please install Node.js from https://nodejs.org'
+      } catch (npmError) {
+        throw new ServerNotAvailableError(
+          'npm is required for TypeScript/JavaScript support. Please install Node.js from https://nodejs.org',
+          ['ts', 'tsx', 'js', 'jsx'],
+          serverConfig.command,
+          npmError
         );
       }
     }
@@ -198,6 +267,12 @@ export class ServerManager {
     const startupErrorHandler = (error: Error) => {
       startupFailed = true;
       const extensions = serverConfig.extensions.join(', ');
+
+      logError('ServerManager', 'Language server startup failed', error, {
+        extensions,
+        command: serverConfig.command,
+        isENOENT: error.message.includes('ENOENT'),
+      });
 
       if (error.message.includes('ENOENT')) {
         process.stderr.write(
@@ -220,10 +295,15 @@ export class ServerManager {
     childProcess.once('error', startupErrorHandler);
 
     // Give it a moment to fail if command doesn't exist
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, SERVER_STARTUP_DELAY_MS));
 
     if (startupFailed) {
-      throw new Error(`Language server for ${serverConfig.extensions.join(', ')} is not available`);
+      throw new ServerNotAvailableError(
+        `Language server for ${serverConfig.extensions.join(', ')} is not available`,
+        serverConfig.extensions,
+        serverConfig.command,
+        undefined
+      );
     }
 
     // Remove the startup error handler since we're past the critical period
@@ -269,7 +349,7 @@ export class ServerManager {
     this.protocol.sendNotification(childProcess, 'initialized', {});
 
     // Give server time to process
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, SERVER_PROCESSING_DELAY_MS));
 
     serverState.initialized = true;
     if (serverState.initializationResolve) {
@@ -307,6 +387,11 @@ export class ServerManager {
 
     // CRITICAL FIX: Handle process errors to prevent crashes
     serverState.process.on('error', (error: Error) => {
+      logError('ServerManager', 'LSP server process error', error, {
+        serverCommand: serverState.config?.command,
+        serverKey,
+        pid: serverState.process.pid,
+      });
       process.stderr.write(
         `LSP server process error (${serverState.config?.command.join(' ')}): ${error.message}\n`
       );
@@ -340,7 +425,7 @@ export class ServerManager {
   ): Promise<unknown> {
     const initializeParams = {
       processId: serverState.process.pid || null,
-      clientInfo: { name: 'cclsp', version: '1.0.0' },
+      clientInfo: { name: 'cclsp', version: getPackageVersion() },
       capabilities: {
         textDocument: {
           synchronization: {
@@ -396,7 +481,7 @@ export class ServerManager {
       serverState.process,
       'initialize',
       initializeParams,
-      10000
+      SERVER_INITIALIZE_TIMEOUT_MS
     );
   }
 
@@ -449,7 +534,7 @@ export class ServerManager {
    */
   private setupRestartTimer(serverState: ServerState, serverConfig: LSPServerConfig): void {
     if (serverConfig.restartInterval && serverConfig.restartInterval > 0) {
-      const intervalMs = serverConfig.restartInterval * 60 * 1000; // Convert minutes to milliseconds
+      const intervalMs = serverConfig.restartInterval * MINUTES_TO_MS; // Convert minutes to milliseconds
       serverState.restartTimer = setTimeout(() => {
         process.stderr.write(
           `Auto-restarting server ${serverConfig.command.join(' ')} after ${serverConfig.restartInterval} minutes\n`
@@ -475,8 +560,13 @@ export class ServerManager {
       }
     } catch (error) {
       // Process might already be dead or permissions issue - log but don't throw
+      const errorMessage = getErrorMessage(error);
+      logError('ServerManager', 'Failed to kill server process', error, {
+        pid: serverState.process.pid,
+        serverCommand: serverState.config?.command,
+      });
       process.stderr.write(
-        `Warning: Failed to kill server process (PID: ${serverState.process.pid}): ${error instanceof Error ? error.message : String(error)}\n`
+        `Warning: Failed to kill server process (PID: ${serverState.process.pid}): ${errorMessage}\n`
       );
     }
   }
@@ -507,14 +597,216 @@ export class ServerManager {
   }
 
   /**
+   * Check if an error is transient and worth retrying
+   */
+  private isTransientError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+
+    // Transient errors that are worth retrying
+    const transientPatterns = [
+      'enoent', // Command not found (might be temporary PATH issue)
+      'eacces', // Permission denied (might be temporary)
+      'econnrefused', // Connection refused (network/service issues)
+      'timeout', // Timeout errors
+      'network', // Network-related errors
+      'temporary', // Explicitly temporary errors
+      'busy', // Resource busy
+      'eagain', // Resource temporarily unavailable
+    ];
+
+    // Permanent errors that should not be retried
+    const permanentPatterns = [
+      'eisdir', // Is a directory error
+      'enotdir', // Not a directory error
+      'enomem', // Out of memory
+      'configuration', // Configuration errors
+      'syntax', // Syntax errors
+      'parse', // Parse errors
+      'invalid', // Invalid configuration/arguments
+    ];
+
+    // Check for permanent errors first (they take precedence)
+    if (permanentPatterns.some((pattern) => message.includes(pattern))) {
+      return false;
+    }
+
+    // Check for transient error patterns
+    return transientPatterns.some((pattern) => message.includes(pattern));
+  }
+
+  /**
+   * Attempt to recover a failed server by retrying startup
+   */
+  private async attemptServerRecovery(
+    serverKey: string,
+    serverConfig: LSPServerConfig,
+    lastError: Error
+  ): Promise<ServerState | null> {
+    // Check if error is worth retrying
+    if (!this.isTransientError(lastError)) {
+      logError('ServerManager', 'Server failure not recoverable', lastError, {
+        serverKey,
+        command: serverConfig.command,
+        reason: 'Non-transient error',
+      });
+      return null;
+    }
+
+    // Check retry limits
+    const currentAttempts = this.retryAttempts.get(serverKey) || 0;
+    if (currentAttempts >= MAX_RETRY_ATTEMPTS) {
+      logError('ServerManager', 'Maximum retry attempts reached', lastError, {
+        serverKey,
+        command: serverConfig.command,
+        attempts: currentAttempts,
+        maxAttempts: MAX_RETRY_ATTEMPTS,
+      });
+      return null;
+    }
+
+    // Check backoff timing
+    const lastRetry = this.lastRetryTime.get(serverKey) || 0;
+    const timeSinceLastRetry = Date.now() - lastRetry;
+    if (timeSinceLastRetry < RETRY_BACKOFF_MS) {
+      logError('ServerManager', 'Retry attempted too soon', lastError, {
+        serverKey,
+        timeSinceLastRetry,
+        requiredBackoff: RETRY_BACKOFF_MS,
+      });
+      return null;
+    }
+
+    // Update retry tracking
+    this.retryAttempts.set(serverKey, currentAttempts + 1);
+    this.lastRetryTime.set(serverKey, Date.now());
+
+    // Remove from failed servers to allow retry
+    this.failedServers.delete(serverKey);
+
+    process.stderr.write(
+      `🔄 Attempting server recovery (attempt ${currentAttempts + 1}/${MAX_RETRY_ATTEMPTS}): ${serverConfig.command.join(' ')}\n`
+    );
+
+    // Wait for backoff period
+    await new Promise((resolve) => setTimeout(resolve, RETRY_BACKOFF_MS));
+
+    try {
+      // Attempt to start the server again
+      const startupPromise = this.startServer(serverConfig);
+      this.serversStarting.set(serverKey, startupPromise);
+
+      try {
+        const serverState = await startupPromise;
+        this.servers.set(serverKey, serverState);
+
+        // Clear retry tracking on successful recovery
+        this.retryAttempts.delete(serverKey);
+        this.lastRetryTime.delete(serverKey);
+
+        process.stderr.write(`✅ Server recovery successful: ${serverConfig.command.join(' ')}\n`);
+        return serverState;
+      } finally {
+        this.serversStarting.delete(serverKey);
+      }
+    } catch (retryError) {
+      const retryErrorMessage = getErrorMessage(retryError);
+      logError('ServerManager', 'Server recovery attempt failed', retryError, {
+        serverKey,
+        command: serverConfig.command,
+        attempt: currentAttempts + 1,
+        originalError: lastError.message,
+        retryError: retryErrorMessage,
+      });
+
+      process.stderr.write(
+        `❌ Server recovery failed (attempt ${currentAttempts + 1}/${MAX_RETRY_ATTEMPTS}): ${retryErrorMessage}\n`
+      );
+
+      // Re-add to failed servers
+      this.failedServers.add(serverKey);
+      return null;
+    }
+  }
+
+  /**
+   * Manually trigger memory cleanup (useful for testing or immediate cleanup)
+   */
+  cleanupMemory(): void {
+    this.cleanupStaleData();
+  }
+
+  /**
+   * Start background cleanup timer to prevent memory leaks
+   */
+  private startCleanupTimer(): void {
+    this.cleanupTimer = setInterval(() => {
+      this.cleanupStaleData();
+    }, CLEANUP_INTERVAL_MS);
+  }
+
+  /**
+   * Clean up stale diagnostic data and limit open files to prevent memory leaks
+   */
+  private cleanupStaleData(): void {
+    const currentTime = Date.now();
+    let diagnosticsCleared = 0;
+    let filesLimited = 0;
+
+    for (const serverState of this.servers.values()) {
+      // Clean up stale diagnostics (older than DIAGNOSTIC_CLEANUP_AGE_MS)
+      for (const [fileUri, lastUpdateTime] of serverState.lastDiagnosticUpdate.entries()) {
+        if (currentTime - lastUpdateTime > DIAGNOSTIC_CLEANUP_AGE_MS) {
+          serverState.diagnostics.delete(fileUri);
+          serverState.lastDiagnosticUpdate.delete(fileUri);
+          serverState.diagnosticVersions.delete(fileUri);
+          diagnosticsCleared++;
+        }
+      }
+
+      // Implement LRU cleanup for open files if we exceed MAX_OPEN_FILES
+      if (serverState.openFiles.size > MAX_OPEN_FILES) {
+        // Convert Set to Array to be able to slice it
+        const openFilesArray = Array.from(serverState.openFiles);
+        // Keep the most recent MAX_OPEN_FILES (assuming newer files are added later)
+        const filesToKeep = openFilesArray.slice(-MAX_OPEN_FILES);
+        const filesToRemove = openFilesArray.slice(0, -MAX_OPEN_FILES);
+
+        // Clear and re-add the files to keep
+        serverState.openFiles.clear();
+        for (const file of filesToKeep) {
+          serverState.openFiles.add(file);
+        }
+
+        filesLimited += filesToRemove.length;
+      }
+    }
+
+    // Log cleanup activity if any cleanup was performed
+    if (diagnosticsCleared > 0 || filesLimited > 0) {
+      process.stderr.write(
+        `Memory cleanup: cleared ${diagnosticsCleared} stale diagnostics, limited ${filesLimited} open files\n`
+      );
+    }
+  }
+
+  /**
    * Clean up all servers
    */
   dispose(): void {
+    // Clean up background cleanup timer
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = undefined;
+    }
+
     for (const serverState of this.servers.values()) {
       this.killServer(serverState);
     }
     this.servers.clear();
     this.serversStarting.clear();
+    this.failedServers.clear();
+    this.retryAttempts.clear();
+    this.lastRetryTime.clear();
     this.protocol.dispose();
   }
 }

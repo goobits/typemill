@@ -1,7 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { pathToUri } from '../path-utils.js';
 import type { Diagnostic, DocumentDiagnosticReport } from '../types.js';
+import { debugLog } from '../utils/debug-logger.js';
 import type { ServiceContext } from './service-context.js';
+
+// Diagnostic service constants
+const DIAGNOSTIC_WAIT_TIMEOUT_MS = 5000; // Max wait time for diagnostics
+const DIAGNOSTIC_IDLE_TIME_MS = 300; // Idle time to ensure all diagnostics received
+const DIAGNOSTIC_POST_CHANGE_TIMEOUT_MS = 3000; // Timeout after triggering changes
+const DIAGNOSTIC_MAX_WAIT_TIME_MS = 10000; // Maximum wait time for idle state
+const DIAGNOSTIC_IDLE_LONG_MS = 1000; // Longer idle time for general waiting
+const DIAGNOSTIC_CHECK_INTERVAL_MS = 100; // How often to check for diagnostic updates
 
 /**
  * Service for diagnostic-related LSP operations
@@ -14,7 +23,7 @@ export class DiagnosticService {
    * Get diagnostics for a file
    */
   async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
-    process.stderr.write(`[DEBUG getDiagnostics] Requesting diagnostics for ${filePath}\n`);
+    debugLog('DiagnosticService', `Requesting diagnostics for ${filePath}`);
 
     const serverState = await this.context.prepareFile(filePath);
 
@@ -23,16 +32,15 @@ export class DiagnosticService {
     const cachedDiagnostics = serverState.diagnostics.get(fileUri);
 
     if (cachedDiagnostics !== undefined) {
-      process.stderr.write(
-        `[DEBUG getDiagnostics] Returning ${cachedDiagnostics.length} cached diagnostics from publishDiagnostics\n`
+      debugLog(
+        'DiagnosticService',
+        `Returning ${cachedDiagnostics.length} cached diagnostics from publishDiagnostics`
       );
       return cachedDiagnostics;
     }
 
     // If no cached diagnostics, try the pull-based textDocument/diagnostic
-    process.stderr.write(
-      '[DEBUG getDiagnostics] No cached diagnostics, trying textDocument/diagnostic request\n'
-    );
+    debugLog('DiagnosticService', 'No cached diagnostics, trying textDocument/diagnostic request');
 
     try {
       const result = await this.context.protocol.sendRequest(
@@ -43,71 +51,70 @@ export class DiagnosticService {
         }
       );
 
-      process.stderr.write(
-        `[DEBUG getDiagnostics] Result type: ${typeof result}, has kind: ${result && typeof result === 'object' && 'kind' in result}\n`
+      debugLog(
+        'DiagnosticService',
+        `Result type: ${typeof result}, has kind: ${result && typeof result === 'object' && 'kind' in result}`
       );
-      process.stderr.write(`[DEBUG getDiagnostics] Full result: ${JSON.stringify(result)}\n`);
+      debugLog('DiagnosticService', 'Full result:', result);
 
       // Handle LSP 3.17+ DocumentDiagnosticReport format
       if (result && typeof result === 'object' && 'kind' in result) {
         const report = result as DocumentDiagnosticReport;
 
         if (report.kind === 'full' && report.items) {
-          process.stderr.write(
-            `[DEBUG getDiagnostics] Full report with ${report.items.length} diagnostics\n`
-          );
+          debugLog('DiagnosticService', `Full report with ${report.items.length} diagnostics`);
           return report.items;
         }
         if (report.kind === 'unchanged') {
-          process.stderr.write('[DEBUG getDiagnostics] Unchanged report (no new diagnostics)\n');
+          debugLog('DiagnosticService', 'Unchanged report (no new diagnostics)');
           return [];
         }
       }
 
       // Handle direct diagnostic array (legacy format)
       if (Array.isArray(result)) {
-        process.stderr.write(
-          `[DEBUG getDiagnostics] Direct diagnostic array with ${result.length} diagnostics\n`
-        );
+        debugLog('DiagnosticService', `Direct diagnostic array with ${result.length} diagnostics`);
         return result as Diagnostic[];
       }
 
       // Handle null/empty responses (server may not have diagnostics yet)
       // Fall through to publishDiagnostics waiting logic below
-      process.stderr.write(
-        '[DEBUG getDiagnostics] textDocument/diagnostic returned null/invalid result, falling back to publishDiagnostics\n'
+      debugLog(
+        'DiagnosticService',
+        'textDocument/diagnostic returned null/invalid result, falling back to publishDiagnostics'
       );
     } catch (error) {
       // Some LSP servers may not support textDocument/diagnostic
-      process.stderr.write(
-        `[DEBUG getDiagnostics] textDocument/diagnostic not supported or failed: ${error}. Falling back to publishDiagnostics...\n`
+      debugLog(
+        'DiagnosticService',
+        `textDocument/diagnostic not supported or failed: ${error}. Falling back to publishDiagnostics...`
       );
     }
 
     // Fallback: Wait for publishDiagnostics notifications (works for most LSP servers)
-    process.stderr.write(
-      '[DEBUG getDiagnostics] Waiting for publishDiagnostics notifications...\n'
-    );
+    debugLog('DiagnosticService', 'Waiting for publishDiagnostics notifications...');
 
     // Wait for the server to become idle and publish diagnostics
     // MCP tools can afford longer wait times for better reliability
     await this.waitForDiagnosticsIdle(serverState, fileUri, {
-      maxWaitTime: 5000, // 5 seconds - generous timeout for MCP usage
-      idleTime: 300, // 300ms idle time to ensure all diagnostics are received
+      maxWaitTime: DIAGNOSTIC_WAIT_TIMEOUT_MS, // Generous timeout for MCP usage
+      idleTime: DIAGNOSTIC_IDLE_TIME_MS, // Idle time to ensure all diagnostics are received
     });
 
     // Check again for cached diagnostics
     const diagnosticsAfterWait = serverState.diagnostics.get(fileUri);
     if (diagnosticsAfterWait !== undefined) {
-      process.stderr.write(
-        `[DEBUG getDiagnostics] Returning ${diagnosticsAfterWait.length} diagnostics after waiting for idle state\n`
+      debugLog(
+        'DiagnosticService',
+        `Returning ${diagnosticsAfterWait.length} diagnostics after waiting for idle state`
       );
       return diagnosticsAfterWait;
     }
 
     // If still no diagnostics, try triggering publishDiagnostics by making a no-op change
-    process.stderr.write(
-      '[DEBUG getDiagnostics] No diagnostics yet, triggering publishDiagnostics with no-op change\n'
+    debugLog(
+      'DiagnosticService',
+      'No diagnostics yet, triggering publishDiagnostics with no-op change'
     );
 
     try {
@@ -150,22 +157,21 @@ export class DiagnosticService {
       // Wait for the server to process the changes and become idle
       // After making changes, servers may need time to re-analyze
       await this.waitForDiagnosticsIdle(serverState, fileUri, {
-        maxWaitTime: 3000, // 3 seconds after triggering changes
-        idleTime: 300, // Consistent idle time for reliability
+        maxWaitTime: DIAGNOSTIC_POST_CHANGE_TIMEOUT_MS, // Timeout after triggering changes
+        idleTime: DIAGNOSTIC_IDLE_TIME_MS, // Consistent idle time for reliability
       });
 
       // Check one more time
       const diagnosticsAfterTrigger = serverState.diagnostics.get(fileUri);
       if (diagnosticsAfterTrigger !== undefined) {
-        process.stderr.write(
-          `[DEBUG getDiagnostics] Returning ${diagnosticsAfterTrigger.length} diagnostics after triggering publishDiagnostics\n`
+        debugLog(
+          'DiagnosticService',
+          `Returning ${diagnosticsAfterTrigger.length} diagnostics after triggering publishDiagnostics`
         );
         return diagnosticsAfterTrigger;
       }
     } catch (triggerError) {
-      process.stderr.write(
-        `[DEBUG getDiagnostics] Failed to trigger publishDiagnostics: ${triggerError}\n`
-      );
+      debugLog('DiagnosticService', `Failed to trigger publishDiagnostics: ${triggerError}`);
     }
 
     return [];
@@ -243,9 +249,9 @@ export class DiagnosticService {
     options: { maxWaitTime?: number; idleTime?: number; checkInterval?: number } = {}
   ): Promise<void> {
     const {
-      maxWaitTime = 10000, // 10 seconds max wait
-      idleTime = 1000, // 1 second of no updates = idle
-      checkInterval = 100, // Check every 100ms
+      maxWaitTime = DIAGNOSTIC_MAX_WAIT_TIME_MS, // Max wait for idle state
+      idleTime = DIAGNOSTIC_IDLE_LONG_MS, // No updates = idle
+      checkInterval = DIAGNOSTIC_CHECK_INTERVAL_MS, // How often to check
     } = options;
 
     const startTime = Date.now();
@@ -258,9 +264,7 @@ export class DiagnosticService {
 
         // Check if we've exceeded max wait time
         if (now - startTime >= maxWaitTime) {
-          process.stderr.write(
-            `[DEBUG waitForDiagnosticsIdle] Max wait time reached for ${fileUri}\n`
-          );
+          debugLog('DiagnosticService', `Max wait time reached for ${fileUri}`);
           resolve();
           return;
         }
@@ -275,7 +279,7 @@ export class DiagnosticService {
 
         // Check if we've been idle long enough
         if (now - lastUpdateTime >= idleTime) {
-          process.stderr.write(`[DEBUG waitForDiagnosticsIdle] Diagnostics idle for ${fileUri}\n`);
+          debugLog('DiagnosticService', `Diagnostics idle for ${fileUri}`);
           resolve();
           return;
         }

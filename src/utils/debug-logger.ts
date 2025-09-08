@@ -1,47 +1,92 @@
 /**
- * Centralized debug logging utility for consistent logging across the application
+ * Centralized debug logging utility for CCLSP
+ *
+ * Provides component-based debug logging that respects DEBUG environment variables.
+ * Only logs when DEBUG or CCLSP_DEBUG environment variables are set.
  */
-export const DebugLogger = {
-  /**
-   * Log a request operation with file path and optional parameters
-   */
-  logRequest(operation: string, filePath: string, params?: unknown): void {
-    const paramsStr = params ? ` ${JSON.stringify(params)}` : '';
-    process.stderr.write(`[DEBUG ${operation}] ${filePath}${paramsStr}\n`);
-  },
+
+/**
+ * Debug logger instance that writes to stderr in the same format as existing debug statements
+ */
+export class DebugLogger {
+  private static instance: DebugLogger;
+  private debugEnabled: boolean;
+
+  private constructor() {
+    // Enable debug if DEBUG or CCLSP_DEBUG environment variables are set
+    this.debugEnabled = !!(process.env.DEBUG || process.env.CCLSP_DEBUG);
+  }
+
+  public static getInstance(): DebugLogger {
+    if (!DebugLogger.instance) {
+      DebugLogger.instance = new DebugLogger();
+    }
+    return DebugLogger.instance;
+  }
 
   /**
-   * Log operation results with type and length information
+   * Log a debug message with component context
+   * @param component - Component name (e.g., 'LSP', 'MCP', 'SymbolService')
+   * @param message - Debug message
+   * @param data - Optional data to stringify and include
    */
-  logResult(operation: string, result: unknown): void {
-    const resultType = typeof result;
-    const length = Array.isArray(result) ? result.length : 'N/A';
-    process.stderr.write(`[DEBUG ${operation}] Result: ${resultType}, length: ${length}\n`);
-  },
+  public log(component: string, message: string, data?: unknown): void {
+    if (!this.debugEnabled) {
+      return;
+    }
+
+    let logMessage = `[DEBUG ${component}] ${message}`;
+
+    if (data !== undefined) {
+      if (typeof data === 'object' && data !== null) {
+        logMessage += ` ${JSON.stringify(data)}`;
+      } else {
+        logMessage += ` ${data}`;
+      }
+    }
+
+    process.stderr.write(`${logMessage}\n`);
+  }
 
   /**
-   * Log symbol matches found during operations
+   * Log a debug message without component prefix (for backward compatibility)
+   * @param message - Debug message
+   * @param data - Optional data to stringify and include
    */
-  logSymbolMatches(operation: string, symbolName: string, count: number): void {
-    process.stderr.write(
-      `[DEBUG ${operation}] Found ${count} symbol matches for "${symbolName}"\n`
-    );
-  },
+  public logPlain(message: string, data?: unknown): void {
+    if (!this.debugEnabled) {
+      return;
+    }
+
+    let logMessage = message;
+
+    if (data !== undefined) {
+      if (typeof data === 'object' && data !== null) {
+        logMessage += ` ${JSON.stringify(data)}`;
+      } else {
+        logMessage += ` ${data}`;
+      }
+    }
+
+    process.stderr.write(`${logMessage}\n`);
+  }
 
   /**
-   * Log errors during operations
+   * Check if debug logging is enabled
    */
-  logError(operation: string, error: unknown, context?: string): void {
-    const message = error instanceof Error ? error.message : String(error);
-    const contextStr = context ? ` (${context})` : '';
-    process.stderr.write(`[ERROR ${operation}]${contextStr} ${message}\n`);
-  },
+  public isEnabled(): boolean {
+    return this.debugEnabled;
+  }
 
   /**
-   * Log server operations and status
+   * Enable/disable debug logging programmatically
    */
-  logServerOperation(operation: string, serverCommand: string, status?: string): void {
-    const statusStr = status ? ` - ${status}` : '';
-    process.stderr.write(`[DEBUG ServerManager] ${operation}: ${serverCommand}${statusStr}\n`);
-  },
-} as const;
+  public setEnabled(enabled: boolean): void {
+    this.debugEnabled = enabled;
+  }
+}
+
+// Export convenience function
+export const debugLog = (component: string, message: string, data?: unknown) => {
+  DebugLogger.getInstance().log(component, message, data);
+};

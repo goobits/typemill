@@ -13,6 +13,7 @@ import { readdir } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import type { LSPClient } from './lsp-client-facade.js';
 import { pathToUri, uriToPath } from './path-utils.js';
+import { debugLog } from './utils/debug-logger.js';
 
 export interface TextEdit {
   range: {
@@ -116,9 +117,7 @@ export async function applyWorkspaceEdit(
       const originalStats = lstatSync(originalPath);
       if (originalStats.isSymbolicLink()) {
         targetPath = realpathSync(originalPath);
-        process.stderr.write(
-          `[DEBUG] Editing symlink target: ${targetPath} (via ${originalPath})\n`
-        );
+        debugLog('FileEditor', `Editing symlink target: ${targetPath} (via ${originalPath})`);
       }
 
       // Read content from the actual file (symlink target or regular file)
@@ -453,9 +452,9 @@ export async function renameFile(
 
   try {
     // Step 1: Find all files that might import this file
-    process.stderr.write(`[DEBUG] Finding files that import ${absoluteOldPath}\n`);
+    debugLog('FileEditor', `Finding files that import ${absoluteOldPath}`);
     const importingFiles = await findPotentialImporters(rootDir, absoluteOldPath, useGitignore);
-    process.stderr.write(`[DEBUG] Found ${importingFiles.length} potential importing files\n`);
+    debugLog('FileEditor', `Found ${importingFiles.length} potential importing files`);
 
     // Step 2: Build WorkspaceEdit for import updates
     const changes: Record<string, TextEdit[]> = {};
@@ -466,7 +465,7 @@ export async function renameFile(
       if (edits.length > 0) {
         changes[pathToUri(file)] = edits;
         totalEdits += edits.length;
-        process.stderr.write(`[DEBUG] Found ${edits.length} imports in ${file}\n`);
+        debugLog('FileEditor', `Found ${edits.length} imports in ${file}`);
       }
     }
 
@@ -492,7 +491,7 @@ export async function renameFile(
     };
 
     if (totalEdits > 0) {
-      process.stderr.write(`[DEBUG] Applying ${totalEdits} import updates\n`);
+      debugLog('FileEditor', `Applying ${totalEdits} import updates`);
       result = await applyWorkspaceEdit(workspaceEdit, {
         lspClient,
       });
@@ -506,7 +505,7 @@ export async function renameFile(
     }
 
     // Step 4: Move the actual file
-    process.stderr.write(`[DEBUG] Renaming file from ${absoluteOldPath} to ${absoluteNewPath}\n`);
+    debugLog('FileEditor', `Renaming file from ${absoluteOldPath} to ${absoluteNewPath}`);
 
     // Create parent directory if needed
     const newDir = dirname(absoluteNewPath);
