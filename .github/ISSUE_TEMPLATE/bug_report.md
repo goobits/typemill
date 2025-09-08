@@ -31,13 +31,13 @@ Paste any error messages or logs here
 ## Environment
 - **OS**: [e.g. macOS 14.0, Ubuntu 22.04, Windows 11]
 - **Node.js version**: [e.g. 20.10.0]
-- **cclsp version**: [e.g. 1.0.0]
+- **codebuddy version**: [e.g. 1.0.0]
 - **Language server**: [e.g. typescript-language-server 4.1.0]
 - **MCP client**: [e.g. Claude Code 0.2.0]
 
 ## Configuration
 ```json
-// Your cclsp.json configuration
+// Your codebuddy.json configuration
 ```
 
 ## Additional context

@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **MCP Command Argument Order**: Fixed `claude mcp add` command argument order
-  - Corrected to: `claude mcp add cclsp <command> [args...] --env <env>`
+  - Corrected to: `claude mcp add codebuddy <command> [args...] --env <env>`
   - Server name and command are now properly positioned as positional arguments
   - Options are placed after the command as required by the CLI
   - Resolves "missing required argument 'commandOrUrl'" error
@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Platform-specific Path Quoting**: Fixed config path quoting based on platform (#14)
   - Windows: Paths with spaces are quoted in environment variables
   - macOS/Linux: Paths are not quoted to avoid literal quotes in values
-  - Resolves "Config file specified in CCLSP_CONFIG_PATH does not exist" error on Unix systems
+  - Resolves "Config file specified in CODEBUDDY_CONFIG_PATH does not exist" error on Unix systems
 
 ### Enhanced
 
@@ -133,7 +133,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Acknowledgements
 
-Special thanks to @secondcircle for the major enhancement that transforms cclsp from a read-only query tool into a functional refactoring tool with actual file editing capabilities (#13). This change significantly improves the user experience from preview-only to actually applying changes.
+Special thanks to @secondcircle for the major enhancement that transforms codebuddy from a read-only query tool into a functional refactoring tool with actual file editing capabilities (#13). This change significantly improves the user experience from preview-only to actually applying changes.
 
 ## [0.5.3] - 2025-08-16
 
@@ -156,7 +156,7 @@ Special thanks to the contributors of recent enhancements and fixes.
 - @lwsinclair for adding the MseeP.ai badge to improve project visibility (#4)
 - @maschwenk for the rootDir preloading fix in the previous release (#5)
 
-Your contributions help make cclsp better for everyone! 🙏
+Your contributions help make codebuddy better for everyone! 🙏
 
 ## [0.5.2] - 2025-08-04
 
@@ -304,8 +304,8 @@ Your contributions help make cclsp better for everyone! 🙏
 
 ### Fixed
 
-- Fixed setup command to use `npx cclsp@latest` instead of `npx cclsp` for MCP configuration
-- Updated all documentation to consistently use `npx cclsp@latest` for better version control
+- Fixed setup command to use `npx @goobits/codebuddy@latest` instead of `npx @goobits/codebuddy` for MCP configuration
+- Updated all documentation to consistently use `npx @goobits/codebuddy@latest` for better version control
 
 ## [0.3.3] - 2025-06-28
 
@@ -334,7 +334,7 @@ Your contributions help make cclsp better for everyone! 🙏
 
 ### Fixed
 
-- `npx cclsp@latest setup` command now executes properly without hanging
+- `npx @goobits/codebuddy@latest setup` command now executes properly without hanging
 - Setup subcommand execution flow and error handling
 - Eliminated duplicate execution when running setup via `node dist/index.js setup`
 - Streamlined build process by removing separate setup.js compilation
@@ -343,7 +343,7 @@ Your contributions help make cclsp better for everyone! 🙏
 
 ### Added
 
-- Interactive configuration generator with `cclsp setup` command
+- Interactive configuration generator with `codebuddy setup` command
 - Support for 15 language servers (TypeScript, Python, Go, Rust, C/C++, Java, Ruby, PHP, C#, Swift, Kotlin, Dart, Elixir, Haskell, Lua)
 - Emacs-style keyboard navigation (Ctrl+P/Ctrl+N) for setup interface
 - Automatic installation instructions display for selected language servers
@@ -381,13 +381,13 @@ Your contributions help make cclsp better for everyone! 🙏
 ### Added
 
 - npm publishing configuration
-- Executable binary support (`cclsp` command)
+- Executable binary support (`codebuddy` command)
 - Proper package.json metadata
 - Installation instructions in README
 
 ### Changed
 
-- Project renamed from `lsmcp` to `cclsp` for better clarity
+- Project renamed from `lsmcp` to `codebuddy` for better clarity
 - Updated all references and documentation
 
 ## [0.1.0]
@@ -403,6 +403,6 @@ Your contributions help make cclsp better for everyone! 🙏
 - Test suite with Bun
 - Documentation for setup and usage
 
-[0.2.1]: https://github.com/ktnyt/cclsp/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/ktnyt/cclsp/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/ktnyt/cclsp/releases/tag/v0.1.0
+[0.2.1]: https://github.com/ktnyt/codebuddy/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/ktnyt/codebuddy/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/ktnyt/codebuddy/releases/tag/v0.1.0

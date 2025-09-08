@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Ask a question about cclsp
+about: Ask a question about codebuddy
 title: '[QUESTION] '
 labels: question
 assignees: ''
@@ -19,7 +19,7 @@ assignees: ''
 ## Environment (if relevant)
 - **OS**: 
 - **Node.js version**: 
-- **cclsp version**: 
+- **codebuddy version**: 
 - **MCP client**: 
 
 ## Related documentation

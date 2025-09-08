@@ -1,8 +1,8 @@
 /**
- * Centralized debug logging utility for CCLSP
+ * Centralized debug logging utility for Codebuddy
  *
  * Provides component-based debug logging that respects DEBUG environment variables.
- * Only logs when DEBUG or CCLSP_DEBUG environment variables are set.
+ * Only logs when DEBUG or CODEBUDDY_DEBUG environment variables are set.
  */
 
 /**
@@ -13,8 +13,8 @@ export class DebugLogger {
   private debugEnabled: boolean;
 
   private constructor() {
-    // Enable debug if DEBUG or CCLSP_DEBUG environment variables are set
-    this.debugEnabled = !!(process.env.DEBUG || process.env.CCLSP_DEBUG);
+    // Enable debug if DEBUG or CODEBUDDY_DEBUG environment variables are set
+    this.debugEnabled = !!(process.env.DEBUG || process.env.CODEBUDDY_DEBUG);
   }
 
   public static getInstance(): DebugLogger {

@@ -40,8 +40,8 @@ export class MCPTestClient {
   private initPromise: Promise<void> | null = null;
 
   constructor(
-    private configPath = '/workspace/plugins/cclsp/cclsp.json',
-    private cwd = '/workspace/plugins/cclsp'
+    private configPath = '/workspace/plugins/codebuddy/codebuddy.json',
+    private cwd = '/workspace/plugins/codebuddy'
   ) {}
 
   async start(): Promise<void> {
@@ -50,7 +50,7 @@ export class MCPTestClient {
     this.initPromise = new Promise((resolve, reject) => {
       this.process = spawn('node', ['dist/index.js'], {
         cwd: this.cwd,
-        env: { ...process.env, CCLSP_CONFIG_PATH: this.configPath },
+        env: { ...process.env, CODEBUDDY_CONFIG_PATH: this.configPath },
       });
 
       this.process.stdout?.on('data', (data) => {
@@ -193,10 +193,10 @@ export class MCPTestClient {
 
 // Test data paths
 export const TEST_FILES = {
-  testFile: '/workspace/plugins/cclsp/playground/src/test-file.ts',
-  errorsFile: '/workspace/plugins/cclsp/playground/src/errors-file.ts',
-  componentsDir: '/workspace/plugins/cclsp/playground/src/components',
-  userForm: '/workspace/plugins/cclsp/playground/src/components/user-form.ts',
+  testFile: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+  errorsFile: '/workspace/plugins/codebuddy/playground/src/errors-file.ts',
+  componentsDir: '/workspace/plugins/codebuddy/playground/src/components',
+  userForm: '/workspace/plugins/codebuddy/playground/src/components/user-form.ts',
 } as const;
 
 // Common test tool calls
@@ -332,13 +332,20 @@ export const ALL_TESTS: MCPToolCall[] = [
   // File Operations (3)
   {
     name: 'create_file',
-    arguments: { file_path: '/tmp/cclsp-test.ts', content: '// Test file\nconsole.log("test");' },
+    arguments: {
+      file_path: '/tmp/codebuddy-test.ts',
+      content: '// Test file\nconsole.log("test");',
+    },
   },
   {
     name: 'rename_file',
-    arguments: { old_path: '/tmp/cclsp-test.ts', new_path: '/tmp/cclsp-renamed.ts', dry_run: true },
+    arguments: {
+      old_path: '/tmp/codebuddy-test.ts',
+      new_path: '/tmp/codebuddy-renamed.ts',
+      dry_run: true,
+    },
   },
-  { name: 'delete_file', arguments: { file_path: '/tmp/cclsp-renamed.ts', dry_run: true } },
+  { name: 'delete_file', arguments: { file_path: '/tmp/codebuddy-renamed.ts', dry_run: true } },
 
   // Server Management (1) - Test this last with longer timeout
   { name: 'restart_server', arguments: { extensions: ['ts', 'tsx'] } },
@@ -348,7 +355,7 @@ export const ALL_TESTS: MCPToolCall[] = [
     name: 'apply_workspace_edit',
     arguments: {
       changes: {
-        '/tmp/cclsp-workspace-edit.ts': [
+        '/tmp/codebuddy-workspace-edit.ts': [
           {
             range: {
               start: { line: 0, character: 0 },
@@ -367,7 +374,7 @@ export const ALL_TESTS: MCPToolCall[] = [
       item: {
         name: 'calculateAge',
         kind: 12, // Function kind
-        uri: 'file:///workspace/plugins/cclsp/playground/src/test-file.ts',
+        uri: 'file:///workspace/plugins/codebuddy/playground/src/test-file.ts',
         range: {
           start: { line: 12, character: 0 },
           end: { line: 14, character: 1 },
@@ -385,7 +392,7 @@ export const ALL_TESTS: MCPToolCall[] = [
       item: {
         name: 'calculateAge',
         kind: 12, // Function kind
-        uri: 'file:///workspace/plugins/cclsp/playground/src/test-file.ts',
+        uri: 'file:///workspace/plugins/codebuddy/playground/src/test-file.ts',
         range: {
           start: { line: 12, character: 0 },
           end: { line: 14, character: 1 },
@@ -403,7 +410,7 @@ export const ALL_TESTS: MCPToolCall[] = [
       item: {
         name: 'TestProcessor',
         kind: 5, // Class kind
-        uri: 'file:///workspace/plugins/cclsp/playground/src/test-file.ts',
+        uri: 'file:///workspace/plugins/codebuddy/playground/src/test-file.ts',
         range: {
           start: { line: 17, character: 0 },
           end: { line: 41, character: 1 },
@@ -421,7 +428,7 @@ export const ALL_TESTS: MCPToolCall[] = [
       item: {
         name: 'TestProcessor',
         kind: 5, // Class kind
-        uri: 'file:///workspace/plugins/cclsp/playground/src/test-file.ts',
+        uri: 'file:///workspace/plugins/codebuddy/playground/src/test-file.ts',
         range: {
           start: { line: 17, character: 0 },
           end: { line: 41, character: 1 },

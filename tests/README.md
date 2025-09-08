@@ -1,6 +1,6 @@
-# CCLSP Test Suite
+# Codebuddy Test Suite
 
-This directory contains the comprehensive test suite for CCLSP's MCP (Model Context Protocol) server implementation.
+This directory contains the comprehensive test suite for Codebuddy's MCP (Model Context Protocol) server implementation.
 
 ## 📁 Test Structure
 
@@ -170,7 +170,7 @@ npm run test:mcp:restart    # Test server restart functionality
 
 1. **"No LSP server available"**
    - Ensure TypeScript Language Server is installed: `npx typescript-language-server --version`
-   - Check config file exists: `/workspace/plugins/cclsp/cclsp.json`
+   - Check config file exists: `/workspace/plugins/codebuddy/codebuddy.json`
 
 2. **Test timeouts**
    - Individual tests have different timeout settings
@@ -190,9 +190,9 @@ npm run test:mcp:restart    # Test server restart functionality
 4. Add npm script to package.json if needed
 
 ### Test Data Location
-- Playground files: `/workspace/plugins/cclsp/playground/src/`
-- Config: `/workspace/plugins/cclsp/cclsp.json`
-- Test fixtures: `/workspace/plugins/cclsp/tests/fixtures/`
+- Playground files: `/workspace/plugins/codebuddy/playground/src/`
+- Config: `/workspace/plugins/codebuddy/codebuddy.json`
+- Test fixtures: `/workspace/plugins/codebuddy/tests/fixtures/`
 
 ## 📝 Historical Note
 
@@ -209,4 +209,4 @@ This test suite has evolved through multiple reorganizations:
 - **Structural organization**: Logical subdirectories (handlers/, file-operations/, integration/)
 - **Coverage expansion**: Added edge case testing, lifecycle management, and index conversion validation
 
-The current 17-file structure represents comprehensive, non-redundant test coverage with each test serving a specific, validated purpose for CCLSP functionality.
+The current 17-file structure represents comprehensive, non-redundant test coverage with each test serving a specific, validated purpose for Codebuddy functionality.

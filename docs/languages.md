@@ -9,7 +9,7 @@ Complete installation instructions for 15+ supported languages.
 # Global installation (recommended)
 npm install -g typescript-language-server typescript
 
-# Alternative: npx usage (bundled with cclsp by default)
+# Alternative: npx usage (bundled with codebuddy by default)
 npx typescript-language-server --stdio
 ```
 
@@ -399,4 +399,4 @@ Many more languages have community LSP servers:
 - **Dart** - dart language server (built-in)
 - **OCaml** - ocaml-lsp-server
 
-Use `cclsp setup` to see the full list with installation instructions.
+Use `codebuddy setup` to see the full list with installation instructions.

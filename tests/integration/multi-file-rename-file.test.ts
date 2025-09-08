@@ -14,12 +14,12 @@ describe('Multi-File Rename File Path Tests', () => {
 
   // Test files for file rename
   const testFiles = [
-    '/workspace/plugins/cclsp/playground/src/services/user-service.ts',
-    '/workspace/plugins/cclsp/playground/src/index.ts',
-    '/workspace/plugins/cclsp/playground/src/components/user-list.ts',
-    '/workspace/plugins/cclsp/playground/src/components/user-form.ts',
-    '/workspace/plugins/cclsp/playground/src/utils/user-helpers.ts',
-    '/workspace/plugins/cclsp/playground/src/test-file.ts',
+    '/workspace/plugins/codebuddy/playground/src/services/user-service.ts',
+    '/workspace/plugins/codebuddy/playground/src/index.ts',
+    '/workspace/plugins/codebuddy/playground/src/components/user-list.ts',
+    '/workspace/plugins/codebuddy/playground/src/components/user-form.ts',
+    '/workspace/plugins/codebuddy/playground/src/utils/user-helpers.ts',
+    '/workspace/plugins/codebuddy/playground/src/test-file.ts',
   ];
 
   beforeAll(async () => {
@@ -66,8 +66,8 @@ describe('Multi-File Rename File Path Tests', () => {
       console.log('🔍 Testing dry-run file rename preview...');
 
       const result = await client.callTool('rename_file', {
-        old_path: '/workspace/plugins/cclsp/playground/src/services/user-service.ts',
-        new_path: '/workspace/plugins/cclsp/playground/src/core/account-service.ts',
+        old_path: '/workspace/plugins/codebuddy/playground/src/services/user-service.ts',
+        new_path: '/workspace/plugins/codebuddy/playground/src/core/account-service.ts',
         dry_run: true,
       });
 
@@ -88,12 +88,12 @@ describe('Multi-File Rename File Path Tests', () => {
       expect(content).toMatch(/user-service\.ts.*account-service\.ts/);
 
       // Verify no actual file changes occurred
-      expect(existsSync('/workspace/plugins/cclsp/playground/src/services/user-service.ts')).toBe(
-        true
-      );
-      expect(existsSync('/workspace/plugins/cclsp/playground/src/core/account-service.ts')).toBe(
-        false
-      );
+      expect(
+        existsSync('/workspace/plugins/codebuddy/playground/src/services/user-service.ts')
+      ).toBe(true);
+      expect(
+        existsSync('/workspace/plugins/codebuddy/playground/src/core/account-service.ts')
+      ).toBe(false);
 
       console.log('✅ Dry-run preview successful - no files modified');
     });
@@ -109,7 +109,7 @@ describe('Multi-File Rename File Path Tests', () => {
       for (const file of testFiles) {
         if (
           existsSync(file) &&
-          file !== '/workspace/plugins/cclsp/playground/src/services/user-service.ts'
+          file !== '/workspace/plugins/codebuddy/playground/src/services/user-service.ts'
         ) {
           const content = readFileSync(file, 'utf-8');
           const imports = content.match(/from ['"].*user-service['"]/g) || [];
@@ -122,8 +122,8 @@ describe('Multi-File Rename File Path Tests', () => {
 
       // Execute the file rename
       const result = await client.callTool('rename_file', {
-        old_path: '/workspace/plugins/cclsp/playground/src/services/user-service.ts',
-        new_path: '/workspace/plugins/cclsp/playground/src/core/account-service.ts',
+        old_path: '/workspace/plugins/codebuddy/playground/src/services/user-service.ts',
+        new_path: '/workspace/plugins/codebuddy/playground/src/core/account-service.ts',
         dry_run: false,
       });
 
@@ -144,10 +144,10 @@ describe('Multi-File Rename File Path Tests', () => {
 
       // Verify file was moved
       const oldFileExists = existsSync(
-        '/workspace/plugins/cclsp/playground/src/services/user-service.ts'
+        '/workspace/plugins/codebuddy/playground/src/services/user-service.ts'
       );
       const newFileExists = existsSync(
-        '/workspace/plugins/cclsp/playground/src/core/account-service.ts'
+        '/workspace/plugins/codebuddy/playground/src/core/account-service.ts'
       );
 
       console.log(`Old file exists: ${oldFileExists ? '❌ Still present' : '✅ Removed'}`);
@@ -160,7 +160,7 @@ describe('Multi-File Rename File Path Tests', () => {
       console.log('\n🔍 Verifying exact import statement updates...');
 
       // Check index.ts - should have path updated from services to core
-      const indexFile = '/workspace/plugins/cclsp/playground/src/index.ts';
+      const indexFile = '/workspace/plugins/codebuddy/playground/src/index.ts';
       if (existsSync(indexFile)) {
         console.log('\n📄 Verifying index.ts imports...');
         const indexContent = readFileSync(indexFile, 'utf-8');
@@ -183,7 +183,7 @@ describe('Multi-File Rename File Path Tests', () => {
       }
 
       // Check user-list.ts - verify exact import change
-      const userListFile = '/workspace/plugins/cclsp/playground/src/components/user-list.ts';
+      const userListFile = '/workspace/plugins/codebuddy/playground/src/components/user-list.ts';
       if (existsSync(userListFile)) {
         console.log('\n📄 Verifying user-list.ts imports...');
         verifyImportStatement(
@@ -195,7 +195,7 @@ describe('Multi-File Rename File Path Tests', () => {
       }
 
       // Check user-form.ts - verify exact import change
-      const userFormFile = '/workspace/plugins/cclsp/playground/src/components/user-form.ts';
+      const userFormFile = '/workspace/plugins/codebuddy/playground/src/components/user-form.ts';
       if (existsSync(userFormFile)) {
         console.log('\n📄 Verifying user-form.ts imports...');
         verifyImportStatement(
@@ -207,7 +207,7 @@ describe('Multi-File Rename File Path Tests', () => {
       }
 
       // Check user-helpers.ts - verify exact import change
-      const userHelpersFile = '/workspace/plugins/cclsp/playground/src/utils/user-helpers.ts';
+      const userHelpersFile = '/workspace/plugins/codebuddy/playground/src/utils/user-helpers.ts';
       if (existsSync(userHelpersFile)) {
         console.log('\n📄 Verifying user-helpers.ts imports...');
         verifyImportStatement(
@@ -239,8 +239,8 @@ describe('Multi-File Rename File Path Tests', () => {
       console.log('🔍 Testing rename of non-existent file...');
 
       const result = await client.callTool('rename_file', {
-        old_path: '/workspace/plugins/cclsp/playground/src/services/non-existent.ts',
-        new_path: '/workspace/plugins/cclsp/playground/src/services/new-name.ts',
+        old_path: '/workspace/plugins/codebuddy/playground/src/services/non-existent.ts',
+        new_path: '/workspace/plugins/codebuddy/playground/src/services/new-name.ts',
         dry_run: true,
       });
 
@@ -261,8 +261,8 @@ describe('Multi-File Rename File Path Tests', () => {
       console.log('🔍 Testing rename to existing file...');
 
       const result = await client.callTool('rename_file', {
-        old_path: '/workspace/plugins/cclsp/playground/src/test-file.ts',
-        new_path: '/workspace/plugins/cclsp/playground/src/index.ts', // Already exists
+        old_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+        new_path: '/workspace/plugins/codebuddy/playground/src/index.ts', // Already exists
         dry_run: true,
       });
 

@@ -300,7 +300,7 @@ export function createUserFriendlyErrorMessage(
   }
 
   if (error instanceof ConfigurationError) {
-    return `Configuration error: ${error.message}. Please check your cclsp.json file or run 'cclsp setup'.`;
+    return `Configuration error: ${error.message}. Please check your codebuddy.json file or run 'codebuddy setup'.`;
   }
 
   if (error instanceof FileSystemError) {

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-cclsp is an MCP (Model Context Protocol) server that bridges Language Server Protocol (LSP) functionality to MCP tools. It allows MCP clients to access LSP features like "go to definition" and "find references" through a standardized interface.
+codebuddy is an MCP (Model Context Protocol) server that bridges Language Server Protocol (LSP) functionality to MCP tools. It allows MCP clients to access LSP features like "go to definition" and "find references" through a standardized interface.
 
 ## Development Commands
 
@@ -24,7 +24,7 @@ bun run start
 node dist/index.js
 
 # Run setup wizard to configure LSP servers
-cclsp setup
+codebuddy setup
 
 # Quality assurance
 bun run lint         # Check code style and issues
@@ -47,7 +47,7 @@ bun run prepublishOnly  # build + test + typecheck
 - Entry point that implements MCP protocol
 - Exposes 28 MCP tools covering navigation, refactoring, intelligence, and diagnostics
 - Handles MCP client requests and delegates to LSP layer
-- Includes subcommand handling for `cclsp setup`
+- Includes subcommand handling for `codebuddy setup`
 
 **LSP Client Layer** (`src/lsp-client.ts`)
 
@@ -56,11 +56,11 @@ bun run prepublishOnly  # build + test + typecheck
 - Maps file extensions to appropriate language servers
 - Maintains process lifecycle and request/response correlation
 
-**Configuration System** (`cclsp.json` or via `CCLSP_CONFIG_PATH`)
+**Configuration System** (`codebuddy.json` or via `CODEBUDDY_CONFIG_PATH`)
 
 - Defines which LSP servers to use for different file extensions
-- Supports environment-based config via `CCLSP_CONFIG_PATH` env var
-- Interactive setup wizard via `cclsp setup` command
+- Supports environment-based config via `CODEBUDDY_CONFIG_PATH` env var
+- Interactive setup wizard via `codebuddy setup` command
 - File scanning with gitignore support for project structure detection
 
 ### Data Flow
@@ -91,17 +91,17 @@ Supported language servers (configurable):
 
 The server loads configuration in this order:
 
-1. `CCLSP_CONFIG_PATH` environment variable pointing to config file
-2. `cclsp.json` file in working directory
+1. `CODEBUDDY_CONFIG_PATH` environment variable pointing to config file
+2. `codebuddy.json` file in working directory
 3. Fails if neither is found (no default fallback)
 
 ### Interactive Setup
 
-Use `cclsp setup` to configure LSP servers interactively:
+Use `codebuddy setup` to configure LSP servers interactively:
 
 - Scans project for file extensions (respects .gitignore)
 - Presents pre-configured language server options
-- Generates `cclsp.json` configuration file
+- Generates `codebuddy.json` configuration file
 - Validates server availability before configuration
 
 Each server config requires:

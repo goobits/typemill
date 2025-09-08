@@ -100,9 +100,9 @@ if (args.length > 0) {
     console.log('   Failed servers will be retried on next file access.');
     process.exit(0);
   } else if (subcommand === '--help' || subcommand === '-h' || subcommand === 'help') {
-    console.log('cclsp - MCP server for accessing LSP functionality');
+    console.log('codebuddy - MCP server for accessing LSP functionality');
     console.log('');
-    console.log('Usage: cclsp [subcommand]');
+    console.log('Usage: codebuddy [subcommand]');
     console.log('');
     console.log('Available subcommands:');
     console.log('  init     Generate a well-commented configuration file');
@@ -159,7 +159,7 @@ try {
 
 const server = new Server(
   {
-    name: 'cclsp',
+    name: 'codebuddy',
     version: getPackageVersion(),
   },
   {
@@ -331,7 +331,7 @@ process.on('SIGTERM', () => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  process.stderr.write('CCLSP Server running on stdio\n');
+  process.stderr.write('Codebuddy Server running on stdio\n');
 
   // Preload LSP servers for file types found in the project
   try {

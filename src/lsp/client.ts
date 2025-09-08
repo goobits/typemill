@@ -39,30 +39,30 @@ export class LSPClient {
    */
   private loadConfig(configPath?: string): Config {
     // Try environment variable first (MCP config)
-    if (process.env.CCLSP_CONFIG_PATH) {
+    if (process.env.CODEBUDDY_CONFIG_PATH) {
       process.stderr.write(
-        `Loading config from CCLSP_CONFIG_PATH: ${process.env.CCLSP_CONFIG_PATH}\n`
+        `Loading config from CODEBUDDY_CONFIG_PATH: ${process.env.CODEBUDDY_CONFIG_PATH}\n`
       );
 
-      if (!existsSync(process.env.CCLSP_CONFIG_PATH)) {
+      if (!existsSync(process.env.CODEBUDDY_CONFIG_PATH)) {
         process.stderr.write(
-          `Warning: Config file specified in CCLSP_CONFIG_PATH does not exist: ${process.env.CCLSP_CONFIG_PATH}\n`
+          `Warning: Config file specified in CODEBUDDY_CONFIG_PATH does not exist: ${process.env.CODEBUDDY_CONFIG_PATH}\n`
         );
         process.stderr.write('Falling back to default configuration...\n');
         return this.loadDefaultConfig();
       }
 
       try {
-        const configData = readFileSync(process.env.CCLSP_CONFIG_PATH, 'utf-8');
+        const configData = readFileSync(process.env.CODEBUDDY_CONFIG_PATH, 'utf-8');
         const config = JSON.parse(configData);
         process.stderr.write(`Loaded ${config.servers.length} server configurations from env\n`);
         return mergeWithDefaults(config);
       } catch (error) {
-        logError('LSPClient', 'Failed to load config from CCLSP_CONFIG_PATH', error, {
-          configPath: process.env.CCLSP_CONFIG_PATH,
+        logError('LSPClient', 'Failed to load config from CODEBUDDY_CONFIG_PATH', error, {
+          configPath: process.env.CODEBUDDY_CONFIG_PATH,
         });
         process.stderr.write(
-          `Warning: Failed to load config from CCLSP_CONFIG_PATH: ${error instanceof Error ? error.message : String(error)}\n`
+          `Warning: Failed to load config from CODEBUDDY_CONFIG_PATH: ${error instanceof Error ? error.message : String(error)}\n`
         );
         process.stderr.write('Falling back to default configuration...\n');
         return this.loadDefaultConfig();
@@ -89,21 +89,21 @@ export class LSPClient {
       }
     }
 
-    // Try to find cclsp.json in current directory
-    const defaultConfigPath = 'cclsp.json';
+    // Try to find codebuddy.json in current directory
+    const defaultConfigPath = 'codebuddy.json';
     if (existsSync(defaultConfigPath)) {
       try {
-        process.stderr.write('Found cclsp.json in current directory, loading...\n');
+        process.stderr.write('Found codebuddy.json in current directory, loading...\n');
         const configData = readFileSync(defaultConfigPath, 'utf-8');
         const config = JSON.parse(configData);
         process.stderr.write(`Loaded ${config.servers.length} server configurations\n`);
         return mergeWithDefaults(config);
       } catch (error) {
-        logError('LSPClient', 'Failed to load cclsp.json', error, {
+        logError('LSPClient', 'Failed to load codebuddy.json', error, {
           configPath: defaultConfigPath,
         });
         process.stderr.write(
-          `Warning: Failed to load cclsp.json: ${error instanceof Error ? error.message : String(error)}\n`
+          `Warning: Failed to load codebuddy.json: ${error instanceof Error ? error.message : String(error)}\n`
         );
       }
     }
@@ -124,7 +124,7 @@ export class LSPClient {
     );
     process.stderr.write('TypeScript/JavaScript works out of the box (bundled dependency)\n');
     process.stderr.write('Other languages work if their servers are installed\n');
-    process.stderr.write('To customize, create a cclsp.json file or run: cclsp setup\n');
+    process.stderr.write('To customize, create a codebuddy.json file or run: codebuddy setup\n');
     return defaultConfig;
   }
 

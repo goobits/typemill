@@ -1,16 +1,16 @@
 # ⚙️ Configuration Reference
 
-Complete guide to configuring cclsp for your development environment.
+Complete guide to configuring codebuddy for your development environment.
 
 ## 🚀 Configuration Methods
 
 ### 1. Zero Configuration (Default)
-cclsp works immediately with TypeScript/JavaScript - no setup required.
+codebuddy works immediately with TypeScript/JavaScript - no setup required.
 
 ```bash
 # Just install and use
-npm install -g cclsp
-cclsp  # Starts with TypeScript support
+npm install -g @goobits/codebuddy
+codebuddy  # Starts with TypeScript support
 ```
 
 ### 2. Generate Configuration
@@ -18,25 +18,25 @@ Create a well-commented config tailored to your project.
 
 ```bash
 # Generate config file with detected languages
-cclsp init
+codebuddy init
 
 # Interactive setup wizard
-cclsp setup
+codebuddy setup
 
 # User-wide configuration
-cclsp setup --user
+codebuddy setup --user
 ```
 
 ### 3. Manual Configuration
-Create `cclsp.json` manually for full control.
+Create `codebuddy.json` manually for full control.
 
 ## 📋 Configuration File Location
 
-cclsp looks for configuration in this order:
+codebuddy looks for configuration in this order:
 
-1. **Environment variable**: `CCLSP_CONFIG_PATH=/path/to/config.json`
-2. **Project config**: `./cclsp.json` (current directory)
-3. **User config**: `~/.config/claude/cclsp.json` (with `--user`)
+1. **Environment variable**: `CODEBUDDY_CONFIG_PATH=/path/to/config.json`
+2. **Project config**: `./codebuddy.json` (current directory)
+3. **User config**: `~/.config/claude/codebuddy.json` (with `--user`)
 4. **Default**: Built-in TypeScript configuration
 
 ## 🔧 Configuration Schema
@@ -353,10 +353,10 @@ Auto-restart helps with long-running LSP servers that may degrade over time.
 ```json
 {
   "mcpServers": {
-    "cclsp": {
-      "command": "cclsp",
+    "codebuddy": {
+      "command": "codebuddy",
       "env": {
-        "CCLSP_CONFIG_PATH": "/absolute/path/to/cclsp.json"
+        "CODEBUDDY_CONFIG_PATH": "/absolute/path/to/codebuddy.json"
       }
     }
   }
@@ -367,16 +367,16 @@ Auto-restart helps with long-running LSP servers that may degrade over time.
 ```json
 {
   "mcpServers": {
-    "cclsp-python": {
-      "command": "cclsp",  
+    "codebuddy-python": {
+      "command": "codebuddy",  
       "env": {
-        "CCLSP_CONFIG_PATH": "/path/to/python-only-config.json"
+        "CODEBUDDY_CONFIG_PATH": "/path/to/python-only-config.json"
       }
     },
-    "cclsp-web": {
-      "command": "cclsp",
+    "codebuddy-web": {
+      "command": "codebuddy",
       "env": {
-        "CCLSP_CONFIG_PATH": "/path/to/web-config.json" 
+        "CODEBUDDY_CONFIG_PATH": "/path/to/web-config.json" 
       }
     }
   }
@@ -389,10 +389,10 @@ Auto-restart helps with long-running LSP servers that may degrade over time.
 
 ```bash
 # Test configuration loading
-cclsp --env CCLSP_CONFIG_PATH=/path/to/cclsp.json
+codebuddy --env CODEBUDDY_CONFIG_PATH=/path/to/codebuddy.json
 
 # Interactive validation
-cclsp setup --validate-only
+codebuddy setup --validate-only
 
 # Check server availability
 which pylsp typescript-language-server gopls
@@ -403,7 +403,7 @@ which pylsp typescript-language-server gopls
 **Invalid JSON syntax:**
 ```bash
 # Check JSON validity
-cat cclsp.json | python -m json.tool
+cat codebuddy.json | python -m json.tool
 ```
 
 **Missing language servers:**
@@ -429,21 +429,21 @@ cat cclsp.json | python -m json.tool
 ### Debug Configuration Loading
 ```bash
 # Enable debug output
-export CCLSP_DEBUG=1
-cclsp
+export CODEBUDDY_DEBUG=1
+codebuddy
 
 # Check which config file is loaded
-cclsp --debug-config
+codebuddy --debug-config
 ```
 
 ### Reset to Defaults
 ```bash
 # Remove custom configuration
-rm cclsp.json
-rm ~/.config/claude/cclsp.json
+rm codebuddy.json
+rm ~/.config/claude/codebuddy.json
 
 # Use built-in TypeScript configuration
-cclsp  # Will use defaults
+codebuddy  # Will use defaults
 ```
 
 ### Performance Tuning

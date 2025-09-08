@@ -20,7 +20,7 @@ How to install the language server:
 ```
 
 ## Configuration
-Suggested configuration for `cclsp.json`:
+Suggested configuration for `codebuddy.json`:
 ```json
 {
   "extensions": ["rs"],

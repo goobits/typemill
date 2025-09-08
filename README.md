@@ -1,4 +1,4 @@
-# 🔗 cclsp
+# 🔗 codebuddy
 MCP server that bridges Language Server Protocol functionality to AI coding assistants
 
 ## ✨ Key Features
@@ -11,17 +11,17 @@ MCP server that bridges Language Server Protocol functionality to AI coding assi
 
 ## 🚀 Quick Start
 ```bash
-# Install globally (provides `cclsp` in PATH)
-npm install -g @goobits/cclsp
+# Install globally (provides `codebuddy` in PATH)
+npm install -g @goobits/codebuddy
 
 # Generate project configuration
-cclsp init
+codebuddy init
 
 # Interactive setup wizard for multi-language projects
-npx @goobits/cclsp@latest setup
+npx @goobits/codebuddy@latest setup
 
 # Start MCP server (for manual testing)
-cclsp --env CCLSP_CONFIG_PATH=/path/to/cclsp.json
+codebuddy --env CODEBUDDY_CONFIG_PATH=/path/to/codebuddy.json
 ```
 
 ## 📚 MCP Integration
@@ -29,10 +29,10 @@ cclsp --env CCLSP_CONFIG_PATH=/path/to/cclsp.json
 # Add to your MCP client configuration (e.g., Claude Code)
 {
   "mcpServers": {
-    "cclsp": {
-      "command": "cclsp",
+    "codebuddy": {
+      "command": "codebuddy",
       "env": {
-        "CCLSP_CONFIG_PATH": "/path/to/your/cclsp.json"
+        "CODEBUDDY_CONFIG_PATH": "/path/to/your/codebuddy.json"
       }
     }
   }
@@ -55,19 +55,19 @@ go install golang.org/x/tools/gopls@latest
 rustup component add rust-analyzer
 
 # View all supported languages
-cclsp setup
+codebuddy setup
 ```
 
 ## ⚙️ Configuration
 ```bash
 # Generate commented config file
-cclsp init
+codebuddy init
 
 # Interactive setup with language detection
-cclsp setup
+codebuddy setup
 
 # Manual configuration
-cat > cclsp.json << 'EOF'
+cat > codebuddy.json << 'EOF'
 {
   "servers": [
     {
@@ -117,5 +117,5 @@ bun run typecheck    # Type checking
 MIT - see [LICENSE](LICENSE) for details
 
 ## 💡 Support
-- **[GitHub Issues](https://github.com/ktnyt/cclsp/issues)** - Bug reports and feature requests
-- **[Discussions](https://github.com/ktnyt/cclsp/discussions)** - Questions and community support
+- **[GitHub Issues](https://github.com/ktnyt/codebuddy/issues)** - Bug reports and feature requests
+- **[Discussions](https://github.com/ktnyt/codebuddy/discussions)** - Questions and community support

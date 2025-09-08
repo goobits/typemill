@@ -65,7 +65,7 @@ export function createUnsupportedFeatureResponse(
 
   text += `**Missing capabilities:** ${missingCapabilities.join(', ')}\n\n`;
 
-  text += `**What this means:** The language server for this file type doesn't provide ${featureName.toLowerCase()} functionality. This is a limitation of the server, not CCLSP.\n\n`;
+  text += `**What this means:** The language server for this file type doesn't provide ${featureName.toLowerCase()} functionality. This is a limitation of the server, not Codebuddy.\n\n`;
 
   if (alternativeSuggestions && alternativeSuggestions.length > 0) {
     text += `**Alternatives:**\n${alternativeSuggestions.map((suggestion) => `• ${suggestion}`).join('\n')}\n\n`;
@@ -125,7 +125,7 @@ export function createContextualErrorResponse(
 ): MCPResponse {
   if (error instanceof ServerNotAvailableError) {
     const suggestions = context.suggestions || [
-      'Run `cclsp setup` to configure language servers',
+      'Run `codebuddy setup` to configure language servers',
       `Install the required language server: ${error.command.join(' ')}`,
       'Check that the language server is in your PATH',
     ];
@@ -143,8 +143,8 @@ export function createContextualErrorResponse(
 
   if (error instanceof ConfigurationError) {
     const suggestions = context.suggestions || [
-      'Run `cclsp setup` to reconfigure',
-      'Check your cclsp.json file syntax',
+      'Run `codebuddy setup` to reconfigure',
+      'Check your codebuddy.json file syntax',
       'Verify configuration paths are correct',
     ];
     return createMCPErrorWithSuggestions(error, context.operation, suggestions);

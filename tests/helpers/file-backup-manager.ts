@@ -11,7 +11,7 @@ export class FileBackupManager {
   private backups: BackupEntry[] = [];
   private backupDir: string;
 
-  constructor(backupDir = '/tmp/cclsp-test-backups') {
+  constructor(backupDir = '/tmp/codebuddy-test-backups') {
     this.backupDir = backupDir;
     this.ensureBackupDir();
   }

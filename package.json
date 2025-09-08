@@ -1,10 +1,10 @@
 {
-  "name": "@goobits/cclsp",
+  "name": "@goobits/codebuddy",
   "version": "1.0.0",
   "description": "MCP server for accessing LSP functionality",
   "main": "dist/index.js",
   "bin": {
-    "cclsp": "dist/index.js"
+    "codebuddy": "dist/index.js"
   },
   "type": "module",
   "scripts": {
@@ -52,11 +52,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ktnyt/cclsp.git"
+    "url": "https://github.com/ktnyt/codebuddy.git"
   },
-  "homepage": "https://github.com/ktnyt/cclsp#readme",
+  "homepage": "https://github.com/ktnyt/codebuddy#readme",
   "bugs": {
-    "url": "https://github.com/ktnyt/cclsp/issues"
+    "url": "https://github.com/ktnyt/codebuddy/issues"
   },
   "files": [
     "dist",
@@ -64,7 +64,7 @@
     "CHANGELOG.md",
     "LICENSE",
     "CLAUDE.md",
-    "cclsp.json"
+    "codebuddy.json"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.3",

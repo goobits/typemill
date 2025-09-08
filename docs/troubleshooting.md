@@ -95,40 +95,40 @@ Solutions for common issues and debugging techniques.
 
 ### Configuration Not Loading
 
-**Problem**: cclsp uses only default TypeScript configuration
+**Problem**: codebuddy uses only default TypeScript configuration
 
 **Solutions**:
 
 1. **Check configuration file location**:
    ```bash
    # Verify file exists and has correct name
-   ls -la cclsp.json
-   ls -la ~/.config/claude/cclsp.json
+   ls -la codebuddy.json
+   ls -la ~/.config/claude/codebuddy.json
    ```
 
-2. **Verify CCLSP_CONFIG_PATH**:
+2. **Verify CODEBUDDY_CONFIG_PATH**:
    ```bash
    # Check environment variable
-   echo $CCLSP_CONFIG_PATH
+   echo $CODEBUDDY_CONFIG_PATH
    
    # Use absolute path
-   export CCLSP_CONFIG_PATH="/absolute/path/to/cclsp.json"
+   export CODEBUDDY_CONFIG_PATH="/absolute/path/to/codebuddy.json"
    ```
 
 3. **Validate JSON syntax**:
    ```bash
    # Check JSON validity
-   cat cclsp.json | python -m json.tool
+   cat codebuddy.json | python -m json.tool
    
    # Or use jq
-   jq . cclsp.json
+   jq . codebuddy.json
    ```
 
 4. **Debug configuration loading**:
    ```bash
    # Enable debug output
-   export CCLSP_DEBUG=1
-   cclsp
+   export CODEBUDDY_DEBUG=1
+   codebuddy
    ```
 
 ### Symbol Not Found Errors
@@ -158,7 +158,7 @@ Solutions for common issues and debugging techniques.
 3. **LSP server doesn't support the file type**:
    ```bash
    # Check server capabilities
-   cclsp --debug-capabilities
+   codebuddy --debug-capabilities
    ```
 
 4. **Project structure issues**:
@@ -171,14 +171,14 @@ Solutions for common issues and debugging techniques.
 
 ```bash
 # Enable verbose logging
-export CCLSP_DEBUG=1
-export CCLSP_TRACE=1
-cclsp
+export CODEBUDDY_DEBUG=1
+export CODEBUDDY_TRACE=1
+codebuddy
 
 # Debug specific components
-export CCLSP_DEBUG_LSP=1      # LSP communication
-export CCLSP_DEBUG_MCP=1      # MCP protocol
-export CCLSP_DEBUG_TOOLS=1    # Tool execution
+export CODEBUDDY_DEBUG_LSP=1      # LSP communication
+export CODEBUDDY_DEBUG_MCP=1      # MCP protocol
+export CODEBUDDY_DEBUG_TOOLS=1    # Tool execution
 ```
 
 ### Check Server Status
@@ -188,7 +188,7 @@ export CCLSP_DEBUG_TOOLS=1    # Tool execution
 ps aux | grep -E "(typescript-language-server|pylsp|gopls|rust-analyzer)"
 
 # Check server logs (if available)
-tail -f ~/.cache/cclsp/logs/server.log
+tail -f ~/.cache/codebuddy/logs/server.log
 ```
 
 ### Manual LSP Server Testing
@@ -205,9 +205,9 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"rootUri":"file://
 
 ```bash
 # Test individual MCP tools
-cclsp --test-tool find_definition --file test.py --symbol main
-cclsp --test-tool get_diagnostics --file test.py
-cclsp --test-tool restart_server --extensions py
+codebuddy --test-tool find_definition --file test.py --symbol main
+codebuddy --test-tool get_diagnostics --file test.py
+codebuddy --test-tool restart_server --extensions py
 ```
 
 ## 🔄 Recovery Procedures
@@ -222,23 +222,23 @@ pkill -f "gopls"
 pkill -f "rust-analyzer"
 
 # Clear any cached state
-rm -rf ~/.cache/cclsp/
+rm -rf ~/.cache/codebuddy/
 
-# Restart cclsp
-cclsp
+# Restart codebuddy
+codebuddy
 ```
 
 ### Reset Configuration
 
 ```bash
 # Back up current config
-cp cclsp.json cclsp.json.backup
+cp codebuddy.json codebuddy.json.backup
 
 # Generate fresh configuration
-cclsp init --overwrite
+codebuddy init --overwrite
 
 # Or use interactive setup
-cclsp setup --reset
+codebuddy setup --reset
 ```
 
 ### Manual Server Restart
@@ -335,7 +335,7 @@ pipx install python-lsp-server
 # Fix config directory permissions
 mkdir -p ~/.config/claude
 chmod 755 ~/.config/claude
-chmod 644 ~/.config/claude/cclsp.json
+chmod 644 ~/.config/claude/codebuddy.json
 ```
 
 ## 📱 Platform-Specific Issues
@@ -385,8 +385,8 @@ setsebool -P allow_execheap 1
 ### Check Versions
 
 ```bash
-# Check cclsp version
-cclsp --version
+# Check codebuddy version
+codebuddy --version
 
 # Check language server versions
 typescript-language-server --version
@@ -398,8 +398,8 @@ rust-analyzer --version
 ### Update Everything
 
 ```bash
-# Update cclsp
-npm install -g cclsp@latest
+# Update codebuddy
+npm install -g @goobits/codebuddy@latest
 
 # Update language servers
 npm update -g typescript-language-server
@@ -412,8 +412,8 @@ rustup update
 
 ### Before Reporting Issues
 
-1. **Enable debug logging**: `export CCLSP_DEBUG=1`
-2. **Check configuration**: `cclsp --debug-config`
+1. **Enable debug logging**: `export CODEBUDDY_DEBUG=1`
+2. **Check configuration**: `codebuddy --debug-config`
 3. **Test individual servers**: Manual LSP server testing (see above)
 4. **Check system resources**: Memory, CPU usage
 5. **Try minimal configuration**: Test with single language server
@@ -422,36 +422,36 @@ rustup update
 
 Include this information:
 
-- **cclsp version**: `cclsp --version`
+- **codebuddy version**: `codebuddy --version`
 - **Operating system**: `uname -a` (Linux/macOS) or Windows version
 - **Node.js version**: `node --version`
 - **Language server versions**: Output of version commands
-- **Configuration file**: Contents of `cclsp.json`
-- **Debug output**: With `CCLSP_DEBUG=1`
+- **Configuration file**: Contents of `codebuddy.json`
+- **Debug output**: With `CODEBUDDY_DEBUG=1`
 - **Steps to reproduce**: Exact sequence of actions
 
 ### Community Support
 
-- **GitHub Issues**: [https://github.com/ktnyt/cclsp/issues](https://github.com/ktnyt/cclsp/issues)
-- **GitHub Discussions**: [https://github.com/ktnyt/cclsp/discussions](https://github.com/ktnyt/cclsp/discussions)
-- **Stack Overflow**: Tag your question with `cclsp` and `language-server-protocol`
+- **GitHub Issues**: [https://github.com/ktnyt/codebuddy/issues](https://github.com/ktnyt/codebuddy/issues)
+- **GitHub Discussions**: [https://github.com/ktnyt/codebuddy/discussions](https://github.com/ktnyt/codebuddy/discussions)
+- **Stack Overflow**: Tag your question with `codebuddy` and `language-server-protocol`
 
 ### Emergency Recovery
 
-If cclsp becomes completely unresponsive:
+If codebuddy becomes completely unresponsive:
 
 ```bash
 # Nuclear option: Kill everything and start fresh
-pkill -f cclsp
+pkill -f codebuddy
 pkill -f "language-server"
 pkill -f pylsp
 pkill -f gopls
 pkill -f rust-analyzer
-rm -rf ~/.cache/cclsp/
-rm cclsp.json
+rm -rf ~/.cache/codebuddy/
+rm codebuddy.json
 
 # Reinstall and reconfigure
-npm uninstall -g cclsp
-npm install -g cclsp@latest
-cclsp setup
+npm uninstall -g @goobits/codebuddy
+npm install -g @goobits/codebuddy@latest
+codebuddy setup
 ```

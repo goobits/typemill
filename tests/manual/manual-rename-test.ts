@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const TEST_DIR = '/tmp/cclsp-rename-test';
+const TEST_DIR = '/tmp/codebuddy-rename-test';
 const FIXTURES_DIR = join(__dirname, 'fixtures');
 
 interface TestCase {
@@ -162,7 +162,7 @@ async function setupTestEnvironment() {
     ],
   };
 
-  const configPath = join(TEST_DIR, 'cclsp.json');
+  const configPath = join(TEST_DIR, 'codebuddy.json');
   writeFileSync(configPath, JSON.stringify(config, null, 2));
   console.log('Created LSP config file');
 }

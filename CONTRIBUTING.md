@@ -1,6 +1,6 @@
-# Contributing to cclsp
+# Contributing to codebuddy
 
-First off, thank you for considering contributing to cclsp! It's people like you that make cclsp such a great tool.
+First off, thank you for considering contributing to codebuddy! It's people like you that make codebuddy such a great tool.
 
 ## Code of Conduct
 
@@ -53,8 +53,8 @@ Unsure where to begin contributing? You can start by looking through these issue
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/your-username/cclsp.git
-   cd cclsp
+   git clone https://github.com/your-username/codebuddy.git
+   cd codebuddy
    ```
 
 3. Install dependencies:
@@ -93,7 +93,7 @@ Unsure where to begin contributing? You can start by looking through these issue
 When adding support for a new language server:
 
 1. Install the language server locally
-2. Add configuration to `cclsp.json`
+2. Add configuration to `codebuddy.json`
 3. Create test files in the target language
 4. Test all three main features:
    - Go to definition
@@ -139,7 +139,7 @@ Example:
 ## Project Structure
 
 ```
-cclsp/
+codebuddy/
 ├── src/
 │   ├── index.ts          # MCP server entry point
 │   ├── lsp-client.ts     # LSP client implementation
@@ -177,6 +177,6 @@ Contributors will be recognized in the following ways:
 
 ## Questions?
 
-Feel free to open an issue with the `question` label or start a discussion in [GitHub Discussions](https://github.com/ktnyt/cclsp/discussions).
+Feel free to open an issue with the `question` label or start a discussion in [GitHub Discussions](https://github.com/ktnyt/codebuddy/discussions).
 
 Thank you for contributing! 🎉

@@ -11,7 +11,7 @@ We release patches for security vulnerabilities. Currently supported versions:
 
 ## Reporting a Vulnerability
 
-We take the security of cclsp seriously. If you believe you have found a security vulnerability, please report it to us as described below.
+We take the security of codebuddy seriously. If you believe you have found a security vulnerability, please report it to us as described below.
 
 ### Please do NOT:
 - Open a public issue
@@ -33,29 +33,29 @@ We take the security of cclsp seriously. If you believe you have found a securit
 
 ### Language Server Protocol (LSP) Servers
 
-cclsp spawns external LSP server processes based on configuration. Users should:
+codebuddy spawns external LSP server processes based on configuration. Users should:
 
 1. **Trust your LSP servers**: Only use LSP servers from trusted sources
-2. **Review configurations**: Carefully review any shared `cclsp.json` configurations
+2. **Review configurations**: Carefully review any shared `codebuddy.json` configurations
 3. **Use official servers**: Prefer official language servers when available
 
 ### Configuration Security
 
-- Never include sensitive information in `cclsp.json`
+- Never include sensitive information in `codebuddy.json`
 - Be cautious with configurations that execute arbitrary commands
 - Review command arguments carefully
 
 ### MCP Protocol Security
 
-cclsp follows MCP protocol security best practices:
+codebuddy follows MCP protocol security best practices:
 - No arbitrary code execution without explicit configuration
 - Clear boundaries between tool capabilities
 - Transparent operation logging
 
 ## Best Practices for Users
 
-1. **Keep cclsp updated**: Always use the latest version
-2. **Audit configurations**: Review `cclsp.json` before using
+1. **Keep codebuddy updated**: Always use the latest version
+2. **Audit configurations**: Review `codebuddy.json` before using
 3. **Use trusted sources**: Only install language servers from official sources
 4. **Report issues**: If something seems wrong, report it immediately
 

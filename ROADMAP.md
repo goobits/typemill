@@ -1,10 +1,10 @@
-# cclsp Roadmap
+# codebuddy Roadmap
 
-This document outlines the future direction and planned features for cclsp.
+This document outlines the future direction and planned features for codebuddy.
 
 ## Vision
 
-Make cclsp the go-to MCP server for Language Server Protocol integration, enabling AI assistants to understand and navigate codebases as effectively as human developers.
+Make codebuddy the go-to MCP server for Language Server Protocol integration, enabling AI assistants to understand and navigate codebases as effectively as human developers.
 
 ## Current Status (v1.x)
 

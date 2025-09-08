@@ -20,8 +20,8 @@ os: ubuntu  # Options: ubuntu, debian, alpine, macos (on Apple Silicon)
 
 # Project settings (auto-generated)
 project:
-  name: cclsp
-  hostname: dev.cclsp.local
+  name: codebuddy
+  hostname: dev.codebuddy.local
 
 # Port range for this project
 port_range: 3020-3029

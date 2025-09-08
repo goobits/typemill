@@ -1,6 +1,6 @@
 # 🔧 API Reference
 
-Complete documentation for all 28 MCP tools provided by cclsp.
+Complete documentation for all 28 MCP tools provided by codebuddy.
 
 ## Core Navigation & Analysis
 
@@ -354,7 +354,7 @@ When Claude needs to understand how a function works:
 
 ```
 Claude: Let me find the definition of the `processRequest` function
-> Using cclsp.find_definition with symbol_name="processRequest", symbol_kind="function"
+> Using codebuddy.find_definition with symbol_name="processRequest", symbol_kind="function"
 
 Result: Found definition at src/handlers/request.ts:127:1
 ```
@@ -365,7 +365,7 @@ When refactoring or understanding code impact:
 
 ```
 Claude: I'll find all places where `CONFIG_PATH` is used
-> Using cclsp.find_references with symbol_name="CONFIG_PATH"
+> Using codebuddy.find_references with symbol_name="CONFIG_PATH"
 
 Results: Found 5 references:
 - src/config.ts:10:1 (declaration)
@@ -381,7 +381,7 @@ Preview changes before applying:
 
 ```
 Claude: Let me first preview what will be renamed
-> Using cclsp.rename_symbol with symbol_name="getUserData", new_name="fetchUserProfile", dry_run=true
+> Using codebuddy.rename_symbol with symbol_name="getUserData", new_name="fetchUserProfile", dry_run=true
 
 Result: [DRY RUN] Would rename getUserData (function) to "fetchUserProfile":
 File: src/api/user.ts
@@ -395,7 +395,7 @@ Apply the rename:
 
 ```
 Claude: I'll rename `getUserData` to `fetchUserProfile`
-> Using cclsp.rename_symbol with symbol_name="getUserData", new_name="fetchUserProfile"
+> Using codebuddy.rename_symbol with symbol_name="getUserData", new_name="fetchUserProfile"
 
 Result: Successfully renamed getUserData (function) to "fetchUserProfile".
 
@@ -412,14 +412,14 @@ When multiple symbols match:
 
 ```
 Claude: I'll rename the `data` variable to `userData`
-> Using cclsp.rename_symbol with symbol_name="data", new_name="userData"
+> Using codebuddy.rename_symbol with symbol_name="data", new_name="userData"
 
 Result: Multiple symbols found matching "data". Please use rename_symbol_strict with one of these positions:
 - data (variable) at line 45, character 10
 - data (parameter) at line 89, character 25
 - data (property) at line 112, character 5
 
-> Using cclsp.rename_symbol_strict with line=45, character=10, new_name="userData"
+> Using codebuddy.rename_symbol_strict with line=45, character=10, new_name="userData"
 
 Result: Successfully renamed symbol at line 45, character 10 to "userData".
 
@@ -433,7 +433,7 @@ When analyzing code quality:
 
 ```
 Claude: Let me check for any errors or warnings in this file
-> Using cclsp.get_diagnostics
+> Using codebuddy.get_diagnostics
 
 Results: Found 3 diagnostics:
 - Error [TS2304]: Cannot find name 'undefinedVar' (Line 10, Column 5)
@@ -447,7 +447,7 @@ When LSP servers become unresponsive:
 
 ```
 Claude: The TypeScript server seems unresponsive, let me restart it
-> Using cclsp.restart_server with extensions ["ts", "tsx"]
+> Using codebuddy.restart_server with extensions ["ts", "tsx"]
 
 Result: Successfully restarted 1 LSP server(s)
 Restarted servers:
@@ -460,7 +460,7 @@ Or restart all servers:
 
 ```
 Claude: I'll restart all LSP servers to ensure they're working properly
-> Using cclsp.restart_server
+> Using codebuddy.restart_server
 
 Result: Successfully restarted 2 LSP server(s)
 Restarted servers:

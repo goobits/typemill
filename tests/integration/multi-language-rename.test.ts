@@ -10,16 +10,16 @@ describe('Multi-Language Rename Integration Tests', () => {
 
   // Test files for multi-language renaming
   const pythonFiles = [
-    '/workspace/plugins/cclsp/playground/python/math_utils.py',
-    '/workspace/plugins/cclsp/playground/python/main.py',
-    '/workspace/plugins/cclsp/playground/python/helpers.py',
+    '/workspace/plugins/codebuddy/playground/python/math_utils.py',
+    '/workspace/plugins/codebuddy/playground/python/main.py',
+    '/workspace/plugins/codebuddy/playground/python/helpers.py',
   ];
 
   const rustFiles = [
-    '/workspace/plugins/cclsp/playground/rust/src/processor.rs',
-    '/workspace/plugins/cclsp/playground/rust/src/utils.rs',
-    '/workspace/plugins/cclsp/playground/rust/src/main.rs',
-    '/workspace/plugins/cclsp/playground/rust/src/lib.rs',
+    '/workspace/plugins/codebuddy/playground/rust/src/processor.rs',
+    '/workspace/plugins/codebuddy/playground/rust/src/utils.rs',
+    '/workspace/plugins/codebuddy/playground/rust/src/main.rs',
+    '/workspace/plugins/codebuddy/playground/rust/src/lib.rs',
   ];
 
   beforeAll(async () => {
@@ -39,7 +39,7 @@ describe('Multi-Language Rename Integration Tests', () => {
     }
 
     // Initialize MCP client with playground config
-    process.env.CCLSP_CONFIG_PATH = '/workspace/plugins/cclsp/playground/cclsp.json';
+    process.env.CODEBUDDY_CONFIG_PATH = '/workspace/plugins/codebuddy/playground/codebuddy.json';
     client = new MCPTestClient();
     await client.start();
 
@@ -68,7 +68,7 @@ describe('Multi-Language Rename Integration Tests', () => {
 
       // First test dry run
       const dryRunResult = await client.callTool('rename_symbol', {
-        file_path: '/workspace/plugins/cclsp/playground/python/math_utils.py',
+        file_path: '/workspace/plugins/codebuddy/playground/python/math_utils.py',
         symbol_name: 'DataProcessor',
         new_name: 'Calculator',
         dry_run: true,
@@ -88,7 +88,7 @@ describe('Multi-Language Rename Integration Tests', () => {
       // Execute the actual rename
       console.log('🔧 Executing Python class rename...');
       const result = await client.callTool('rename_symbol', {
-        file_path: '/workspace/plugins/cclsp/playground/python/math_utils.py',
+        file_path: '/workspace/plugins/codebuddy/playground/python/math_utils.py',
         symbol_name: 'DataProcessor',
         new_name: 'Calculator',
         dry_run: false,
@@ -154,7 +154,7 @@ describe('Multi-Language Rename Integration Tests', () => {
       console.log('⏳ Allowing time for LSP re-indexing after file restore...');
 
       const result = await client.callTool('rename_symbol', {
-        file_path: '/workspace/plugins/cclsp/playground/python/math_utils.py',
+        file_path: '/workspace/plugins/codebuddy/playground/python/math_utils.py',
         symbol_name: 'process_data',
         new_name: 'transform_data',
         dry_run: false,
@@ -199,7 +199,7 @@ describe('Multi-Language Rename Integration Tests', () => {
 
       // First test dry run
       const dryRunResult = await client.callTool('rename_symbol', {
-        file_path: '/workspace/plugins/cclsp/playground/rust/src/processor.rs',
+        file_path: '/workspace/plugins/codebuddy/playground/rust/src/processor.rs',
         symbol_name: 'DataProcessor',
         new_name: 'InfoProcessor',
         dry_run: true,
@@ -219,7 +219,7 @@ describe('Multi-Language Rename Integration Tests', () => {
       // Execute the actual rename
       console.log('🔧 Executing Rust struct rename...');
       const result = await client.callTool('rename_symbol', {
-        file_path: '/workspace/plugins/cclsp/playground/rust/src/processor.rs',
+        file_path: '/workspace/plugins/codebuddy/playground/rust/src/processor.rs',
         symbol_name: 'DataProcessor',
         new_name: 'InfoProcessor',
         dry_run: false,
@@ -264,7 +264,7 @@ describe('Multi-Language Rename Integration Tests', () => {
       // Verify main.rs changes
       const mainContent = readFileSync(rustFiles[2], 'utf-8');
       console.log('📄 main.rs changes:');
-      if (mainContent.includes('use cclsp_playground::{InfoProcessor')) {
+      if (mainContent.includes('use codebuddy_playground::{InfoProcessor')) {
         console.log('  ✅ Import statement updated');
       }
       if (mainContent.includes('InfoProcessor::new(4)')) {
@@ -294,7 +294,7 @@ describe('Multi-Language Rename Integration Tests', () => {
       console.log('⏳ Allowing time for LSP re-indexing after file restore...');
 
       const result = await client.callTool('rename_symbol', {
-        file_path: '/workspace/plugins/cclsp/playground/rust/src/utils.rs',
+        file_path: '/workspace/plugins/codebuddy/playground/rust/src/utils.rs',
         symbol_name: 'process_data',
         new_name: 'transform_data',
         dry_run: false,
@@ -338,7 +338,7 @@ describe('Multi-Language Rename Integration Tests', () => {
       console.log('⏳ Allowing time for LSP re-indexing after file restore...');
 
       const result = await client.callTool('find_references', {
-        file_path: '/workspace/plugins/cclsp/playground/python/math_utils.py',
+        file_path: '/workspace/plugins/codebuddy/playground/python/math_utils.py',
         symbol_name: 'DataProcessor',
         include_declaration: true,
       });
@@ -363,7 +363,7 @@ describe('Multi-Language Rename Integration Tests', () => {
 
       // First try with position-based approach (line 3, character 11 for "DataProcessor")
       const result = await client.callTool('find_references', {
-        file_path: '/workspace/plugins/cclsp/playground/rust/src/processor.rs',
+        file_path: '/workspace/plugins/codebuddy/playground/rust/src/processor.rs',
         symbol_name: 'DataProcessor',
         include_declaration: true,
       });
@@ -384,7 +384,7 @@ describe('Multi-Language Rename Integration Tests', () => {
         console.log('⚠️ Rust references not found - may need more indexing time');
         // Fallback: try symbol-name approach
         const fallbackResult = await client.callTool('find_references', {
-          file_path: '/workspace/plugins/cclsp/playground/rust/src/processor.rs',
+          file_path: '/workspace/plugins/codebuddy/playground/rust/src/processor.rs',
           symbol_name: 'DataProcessor',
           include_declaration: true,
         });
@@ -408,21 +408,21 @@ describe('Multi-Language Rename Integration Tests', () => {
 
       // Test TypeScript server
       const tsResult = await client.callTool('get_diagnostics', {
-        file_path: '/workspace/plugins/cclsp/playground/src/index.ts',
+        file_path: '/workspace/plugins/codebuddy/playground/src/index.ts',
       });
       expect(tsResult).toBeDefined();
       console.log('  ✅ TypeScript LSP responding');
 
       // Test Python server
       const pyResult = await client.callTool('get_diagnostics', {
-        file_path: '/workspace/plugins/cclsp/playground/python/math_utils.py',
+        file_path: '/workspace/plugins/codebuddy/playground/python/math_utils.py',
       });
       expect(pyResult).toBeDefined();
       console.log('  ✅ Python LSP responding');
 
       // Test Rust server
       const rsResult = await client.callTool('get_diagnostics', {
-        file_path: '/workspace/plugins/cclsp/playground/rust/src/lib.rs',
+        file_path: '/workspace/plugins/codebuddy/playground/rust/src/lib.rs',
       });
       expect(rsResult).toBeDefined();
       console.log('  ✅ Rust LSP responding');

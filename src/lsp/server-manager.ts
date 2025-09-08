@@ -425,7 +425,7 @@ export class ServerManager {
   ): Promise<unknown> {
     const initializeParams = {
       processId: serverState.process.pid || null,
-      clientInfo: { name: 'cclsp', version: getPackageVersion() },
+      clientInfo: { name: 'codebuddy', version: getPackageVersion() },
       capabilities: {
         textDocument: {
           synchronization: {
@@ -518,7 +518,7 @@ export class ServerManager {
 
     if (this.isTypeScriptServer(serverConfig)) {
       return {
-        hostInfo: 'cclsp',
+        hostInfo: 'codebuddy',
         preferences: {
           includeCompletionsForModuleExports: true,
           includeCompletionsWithInsertText: true,

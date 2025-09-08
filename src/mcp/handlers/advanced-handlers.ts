@@ -506,7 +506,7 @@ export async function handleApplyWorkspaceEdit(
     }
 
     if (!serverSupportsWorkspaceEdit) {
-      response += `\n⚠️ **Note:** ${serverDescription} doesn't fully support workspace edits, but changes were applied successfully using CCLSP's built-in editor.`;
+      response += `\n⚠️ **Note:** ${serverDescription} doesn't fully support workspace edits, but changes were applied successfully using Codebuddy's built-in editor.`;
     }
 
     // Note: FileService doesn't currently create backup files

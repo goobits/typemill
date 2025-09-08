@@ -15,10 +15,10 @@ describe('LSP Client Unit Tests', () => {
     console.log('🔧 Testing LSP Client directly...');
 
     // Set the config path
-    process.env.CCLSP_CONFIG_PATH = join('/workspace/plugins/cclsp', 'cclsp.json');
+    process.env.CODEBUDDY_CONFIG_PATH = join('/workspace/plugins/codebuddy', 'codebuddy.json');
 
     lspClient = new LSPClient();
-    const testFile = join('/workspace/plugins/cclsp', 'playground/src/components/user-form.ts');
+    const testFile = join('/workspace/plugins/codebuddy', 'playground/src/components/user-form.ts');
 
     console.log('📁 Test file:', testFile);
 
@@ -67,19 +67,22 @@ describe('LSP Client Unit Tests', () => {
   });
 
   it('should handle multiple file types', async () => {
-    process.env.CCLSP_CONFIG_PATH = join('/workspace/plugins/cclsp', 'cclsp.json');
+    process.env.CODEBUDDY_CONFIG_PATH = join('/workspace/plugins/codebuddy', 'codebuddy.json');
 
     const client = new LSPClient();
 
     try {
       // Test TypeScript file
-      const tsFile = join('/workspace/plugins/cclsp', 'playground/src/test-file.ts');
+      const tsFile = join('/workspace/plugins/codebuddy', 'playground/src/test-file.ts');
       const tsSymbols = await client.getDocumentSymbols(tsFile);
       expect(tsSymbols).toBeDefined();
       console.log(`TypeScript file: ${tsSymbols?.length || 0} symbols found`);
 
       // Test another TypeScript file
-      const tsFile2 = join('/workspace/plugins/cclsp', 'playground/src/components/user-form.ts');
+      const tsFile2 = join(
+        '/workspace/plugins/codebuddy',
+        'playground/src/components/user-form.ts'
+      );
       const tsSymbols2 = await client.getDocumentSymbols(tsFile2);
       expect(tsSymbols2).toBeDefined();
       console.log(`Another TypeScript file: ${tsSymbols2?.length || 0} symbols found`);

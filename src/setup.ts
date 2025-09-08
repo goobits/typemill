@@ -270,7 +270,7 @@ function generateMCPCommand(
     : absoluteConfigPath;
 
   // Server name, then command, then options
-  return `claude mcp add cclsp ${commandPrefix}npx cclsp@latest${scopeFlag} --env CCLSP_CONFIG_PATH=${quotedPath}`;
+  return `claude mcp add codebuddy ${commandPrefix}npx codebuddy@latest${scopeFlag} --env CODEBUDDY_CONFIG_PATH=${quotedPath}`;
 }
 
 function buildMCPArgs(
@@ -282,13 +282,13 @@ function buildMCPArgs(
   const isWindows = platform === 'win32';
 
   // Add the server name first
-  mcpArgs.push('cclsp');
+  mcpArgs.push('codebuddy');
 
   // Add the full command and its arguments
   if (isWindows) {
-    mcpArgs.push('cmd', '/c', 'npx', 'cclsp@latest');
+    mcpArgs.push('cmd', '/c', 'npx', 'codebuddy@latest');
   } else {
-    mcpArgs.push('npx', 'cclsp@latest');
+    mcpArgs.push('npx', 'codebuddy@latest');
   }
 
   // Add options after the command
@@ -304,12 +304,12 @@ function buildMCPArgs(
       ? `"${absoluteConfigPath}"`
       : absoluteConfigPath.replace(/ /g, '\\ ')
     : absoluteConfigPath;
-  mcpArgs.push('--env', `CCLSP_CONFIG_PATH=${quotedPath}`);
+  mcpArgs.push('--env', `CODEBUDDY_CONFIG_PATH=${quotedPath}`);
 
   return mcpArgs;
 }
 
-async function checkExistingCclspMCP(isUser: boolean): Promise<boolean> {
+async function checkExistingCodebuddyMCP(isUser: boolean): Promise<boolean> {
   try {
     // Check if claude command exists, otherwise use npx
     const { success: claudeExists } = await runCommandSilent(['which', 'claude']);
@@ -330,8 +330,8 @@ async function checkExistingCclspMCP(isUser: boolean): Promise<boolean> {
       return false;
     }
 
-    // Check if cclsp is in the output
-    return result.output.toLowerCase().includes('cclsp');
+    // Check if codebuddy is in the output
+    return result.output.toLowerCase().includes('codebuddy');
   } catch (error) {
     return false;
   }
@@ -392,7 +392,7 @@ async function main() {
   // Check for --user flag
   const isUser = process.argv.includes('--user');
 
-  console.log('🚀 cclsp Configuration Generator\n');
+  console.log('🚀 codebuddy Configuration Generator\n');
 
   if (isUser) {
     console.log('👤 User configuration mode\n');
@@ -458,7 +458,7 @@ async function main() {
     const noInstallServers = selectedServers.filter((server) => server.installRequired === false);
 
     if (installRequiredServers.length > 0) {
-      console.log('\n📋 The following LSPs must be installed before using cclsp:\n');
+      console.log('\n📋 The following LSPs must be installed before using codebuddy:\n');
       for (const server of installRequiredServers) {
         console.log(`  • ${server.displayName}`);
         console.log(`    ${server.installInstructions}\n`);
@@ -475,8 +475,8 @@ async function main() {
   }
 
   const defaultConfigPath = isUser
-    ? join(homedir(), '.config', 'claude', 'cclsp.json')
-    : join(process.cwd(), '.claude', 'cclsp.json');
+    ? join(homedir(), '.config', 'claude', 'codebuddy.json')
+    : join(process.cwd(), '.claude', 'codebuddy.json');
 
   const { configPath } = await inquirer.prompt([
     {
@@ -525,14 +525,14 @@ async function main() {
 
     const hasInstallRequired = selectedServers.some((server) => server.installRequired !== false);
     if (hasInstallRequired) {
-      console.log('\n⚠️  Please ensure the required LSPs are installed before using cclsp.');
+      console.log('\n⚠️  Please ensure the required LSPs are installed before using codebuddy.');
     }
 
     // Show Claude MCP setup instructions
     const absoluteConfigPath = resolve(configPath);
     const mcpCommand = generateMCPCommand(configPath, isUser);
 
-    console.log('\n🔗 To use cclsp with Claude Code, add it to your MCP configuration:');
+    console.log('\n🔗 To use codebuddy with Claude Code, add it to your MCP configuration:');
     console.log(mcpCommand);
 
     const { viewConfig } = await inquirer.prompt([
@@ -625,18 +625,18 @@ async function main() {
       }
     }
 
-    // Ask if user wants to add cclsp to MCP configuration
+    // Ask if user wants to add codebuddy to MCP configuration
     const { shouldAddToMCP } = await inquirer.prompt([
       {
         type: 'confirm',
         name: 'shouldAddToMCP',
-        message: 'Do you want to add cclsp to your Claude MCP configuration now?',
+        message: 'Do you want to add codebuddy to your Claude MCP configuration now?',
         default: true,
       },
     ]);
 
     if (shouldAddToMCP) {
-      console.log('\n🔄 Configuring cclsp in Claude MCP...');
+      console.log('\n🔄 Configuring codebuddy in Claude MCP...');
 
       try {
         // Check if claude command exists, otherwise use npx
@@ -648,49 +648,55 @@ async function main() {
           console.log('   Claude CLI not found, using npx @anthropic-ai/claude-code@latest');
         }
 
-        // Check if cclsp already exists
-        const cclspExists = await checkExistingCclspMCP(isUser);
+        // Check if codebuddy already exists
+        const codebuddyExists = await checkExistingCodebuddyMCP(isUser);
 
-        if (cclspExists) {
-          console.log('🔍 Found existing cclsp MCP configuration');
-          console.log('🗑️ Removing existing cclsp configuration...');
+        if (codebuddyExists) {
+          console.log('🔍 Found existing codebuddy MCP configuration');
+          console.log('🗑️ Removing existing codebuddy configuration...');
 
           const scopeFlag = isUser ? '--scope user' : '';
           const removeCommand =
             claudeArgs.length > 0
-              ? [claudeCmd, ...claudeArgs, 'mcp', 'remove', 'cclsp', scopeFlag].filter(Boolean)
-              : [claudeCmd, 'mcp', 'remove', 'cclsp', scopeFlag].filter(Boolean);
-          const removeSuccess = await runCommand(removeCommand, 'remove existing cclsp MCP', false);
+              ? [claudeCmd, ...claudeArgs, 'mcp', 'remove', 'codebuddy', scopeFlag].filter(Boolean)
+              : [claudeCmd, 'mcp', 'remove', 'codebuddy', scopeFlag].filter(Boolean);
+          const removeSuccess = await runCommand(
+            removeCommand,
+            'remove existing codebuddy MCP',
+            false
+          );
           if (!removeSuccess) {
-            console.log('⚠️  Failed to remove existing cclsp configuration, continuing with add...');
+            console.log(
+              '⚠️  Failed to remove existing codebuddy configuration, continuing with add...'
+            );
           }
         }
 
-        console.log('➕ Adding cclsp to Claude MCP configuration...');
+        console.log('➕ Adding codebuddy to Claude MCP configuration...');
 
         // Build the MCP add command arguments
         const mcpArgs = buildMCPArgs(absoluteConfigPath, isUser);
         const fullCommand =
           claudeArgs.length > 0 ? [claudeCmd, ...claudeArgs, ...mcpArgs] : [claudeCmd, ...mcpArgs];
-        const success = await runCommand(fullCommand, 'cclsp MCP configuration', false);
+        const success = await runCommand(fullCommand, 'codebuddy MCP configuration', false);
 
         if (success) {
-          console.log('🎉 cclsp has been successfully added to your Claude MCP configuration!');
-          console.log('\n✨ You can now use cclsp tools in Claude Code:');
+          console.log('🎉 codebuddy has been successfully added to your Claude MCP configuration!');
+          console.log('\n✨ You can now use codebuddy tools in Claude Code:');
           console.log('   • find_definition - Find symbol definitions');
           console.log('   • find_references - Find symbol references');
           console.log('   • rename_symbol - Rename symbols across the codebase');
         } else {
-          console.log('\n💡 You can manually add cclsp to your MCP configuration using:');
+          console.log('\n💡 You can manually add codebuddy to your MCP configuration using:');
           console.log(`   ${mcpCommand}`);
         }
       } catch (error) {
-        console.error(`\n❌ Failed to configure cclsp in MCP: ${error}`);
-        console.log('\n💡 You can manually add cclsp to your MCP configuration using:');
+        console.error(`\n❌ Failed to configure codebuddy in MCP: ${error}`);
+        console.log('\n💡 You can manually add codebuddy to your MCP configuration using:');
         console.log(`   ${mcpCommand}`);
       }
     } else {
-      console.log('\n💡 You can add cclsp to your MCP configuration later using:');
+      console.log('\n💡 You can add codebuddy to your MCP configuration later using:');
       console.log(`   ${mcpCommand}`);
     }
   } catch (error) {
