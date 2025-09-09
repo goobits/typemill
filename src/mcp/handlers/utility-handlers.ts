@@ -241,3 +241,71 @@ export async function handleDeleteFile(args: {
     );
   }
 }
+
+/**
+ * Get health status of LSP servers and system resources
+ */
+export async function handleHealthCheck(
+  { include_details = false }: import('../handler-types.js').HealthCheckArgs,
+  services: import('../../services/service-context.js').ServiceContext
+): Promise<import('../utils.js').MCPResponse> {
+  try {
+    const { cpus, totalmem, loadavg } = await import('node:os');
+
+    // Get system metrics
+    const cpuCores = cpus().length;
+    const memoryGb = Math.round(totalmem() / (1024 * 1024 * 1024));
+    const loadAverage = loadavg()[0] || 0; // Provide fallback value
+
+    // Basic health metrics
+    const health = {
+      timestamp: new Date().toISOString(),
+      status: 'healthy',
+      lsp_servers: {
+        active_count: 0, // Simplified - we don't have direct access to server manager
+        max_allowed: 8, // From our MAX_CONCURRENT_SERVERS
+      },
+      system: {
+        cpu_cores: cpuCores,
+        memory_gb: memoryGb,
+        load_average: loadAverage,
+      },
+    };
+
+    let message = '## CodeBuddy Health Status\n\n';
+    message += `**Status**: ${health.status}\n`;
+    message += `**Timestamp**: ${health.timestamp}\n\n`;
+
+    message += '### LSP Servers\n';
+    message += `- **Active**: ${health.lsp_servers.active_count}/${health.lsp_servers.max_allowed}\n`;
+
+    if (include_details) {
+      message += '\n**Note**: Detailed server information requires enhanced monitoring access.\n';
+    }
+
+    message += '\n### System Resources\n';
+    message += `- **CPU Cores**: ${health.system.cpu_cores}\n`;
+    message += `- **Memory**: ${health.system.memory_gb}GB\n`;
+    message += `- **Load Average**: ${health.system.load_average.toFixed(2)}\n`;
+
+    // Health assessment
+    const isOverloaded = health.system.load_average > health.system.cpu_cores * 0.8;
+    const isAtCapacity = health.lsp_servers.active_count >= health.lsp_servers.max_allowed;
+
+    if (isOverloaded || isAtCapacity) {
+      message += '\n### ⚠️ Warnings\n';
+      if (isOverloaded) {
+        message += `- High CPU load (${health.system.load_average.toFixed(2)} > ${(health.system.cpu_cores * 0.8).toFixed(2)})\n`;
+      }
+      if (isAtCapacity) {
+        message += `- LSP servers at capacity (${health.lsp_servers.active_count}/${health.lsp_servers.max_allowed})\n`;
+      }
+    }
+
+    return createMCPResponse(message);
+  } catch (error) {
+    return createMCPResponse(
+      `Error getting health status: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}

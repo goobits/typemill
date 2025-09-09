@@ -89,18 +89,37 @@ export class LSPClient {
       }
     }
 
-    // Try to find codebuddy.json in current directory
-    const defaultConfigPath = 'codebuddy.json';
-    if (existsSync(defaultConfigPath)) {
+    // Try .codebuddy/config.json first (new location)
+    const newConfigPath = '.codebuddy/config.json';
+    if (existsSync(newConfigPath)) {
       try {
-        process.stderr.write('Found codebuddy.json in current directory, loading...\n');
-        const configData = readFileSync(defaultConfigPath, 'utf-8');
+        process.stderr.write('Found .codebuddy/config.json, loading...\n');
+        const configData = readFileSync(newConfigPath, 'utf-8');
+        const config = JSON.parse(configData);
+        process.stderr.write(`Loaded ${config.servers.length} server configurations\n`);
+        return mergeWithDefaults(config);
+      } catch (error) {
+        logError('LSPClient', 'Failed to load .codebuddy/config.json', error, {
+          configPath: newConfigPath,
+        });
+        process.stderr.write(
+          `Warning: Failed to load .codebuddy/config.json: ${error instanceof Error ? error.message : String(error)}\n`
+        );
+      }
+    }
+
+    // Try to find codebuddy.json in current directory (legacy)
+    const oldConfigPath = 'codebuddy.json';
+    if (existsSync(oldConfigPath)) {
+      try {
+        process.stderr.write('Found legacy codebuddy.json, consider running: codebuddy init\n');
+        const configData = readFileSync(oldConfigPath, 'utf-8');
         const config = JSON.parse(configData);
         process.stderr.write(`Loaded ${config.servers.length} server configurations\n`);
         return mergeWithDefaults(config);
       } catch (error) {
         logError('LSPClient', 'Failed to load codebuddy.json', error, {
-          configPath: defaultConfigPath,
+          configPath: oldConfigPath,
         });
         process.stderr.write(
           `Warning: Failed to load codebuddy.json: ${error instanceof Error ? error.message : String(error)}\n`
@@ -110,6 +129,7 @@ export class LSPClient {
 
     // Use default configuration
     process.stderr.write('No configuration found, using smart defaults...\n');
+    process.stderr.write('Run: codebuddy init\n');
     return this.loadDefaultConfig();
   }
 

@@ -15,15 +15,9 @@ export const DEFAULT_SERVERS: LSPServerConfig[] = [
     // restartInterval removed - opt-in only
   },
   {
-    // Python - Try common installations
+    // Python - Via pipx
     extensions: ['py', 'pyi'],
     command: ['pylsp'],
-    // restartInterval removed - opt-in only
-  },
-  {
-    // Go - Standard installation
-    extensions: ['go'],
-    command: ['gopls'],
     // restartInterval removed - opt-in only
   },
   {
@@ -35,19 +29,40 @@ export const DEFAULT_SERVERS: LSPServerConfig[] = [
   {
     // JSON/YAML - Via vscode-json-languageserver
     extensions: ['json', 'jsonc'],
-    command: ['npx', '--', 'vscode-json-languageserver', '--stdio'],
+    command: [
+      'npx',
+      '--',
+      'vscode-langservers-extracted',
+      '--',
+      'vscode-json-language-server',
+      '--stdio',
+    ],
     // restartInterval removed - opt-in only
   },
   {
     // HTML/CSS - Via vscode-css-languageserver
     extensions: ['html', 'htm'],
-    command: ['npx', '--', 'vscode-html-languageserver', '--stdio'],
+    command: [
+      'npx',
+      '--',
+      'vscode-langservers-extracted',
+      '--',
+      'vscode-html-language-server',
+      '--stdio',
+    ],
     // restartInterval removed - opt-in only
   },
   {
     // CSS/SCSS/LESS
     extensions: ['css', 'scss', 'sass', 'less'],
-    command: ['npx', '--', 'vscode-css-languageserver', '--stdio'],
+    command: [
+      'npx',
+      '--',
+      'vscode-langservers-extracted',
+      '--',
+      'vscode-css-language-server',
+      '--stdio',
+    ],
     // restartInterval removed - opt-in only
   },
   {
@@ -102,12 +117,6 @@ export const DEFAULT_SERVERS: LSPServerConfig[] = [
     // YAML
     extensions: ['yaml', 'yml'],
     command: ['npx', '--', 'yaml-language-server', '--stdio'],
-    // restartInterval removed - opt-in only
-  },
-  {
-    // Markdown
-    extensions: ['md', 'markdown'],
-    command: ['npx', '--', 'markdownlint-language-server', '--stdio'],
     // restartInterval removed - opt-in only
   },
 ];

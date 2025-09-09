@@ -27,13 +27,14 @@ export const hierarchyToolDefinitions = [
   {
     name: 'get_call_hierarchy_incoming_calls',
     description:
-      'Get all incoming calls to a function/method. Shows where this function is called from throughout the codebase. Can use either a prepared call hierarchy item or file position.',
+      'Get all incoming calls to a function/method. Shows where this function is called from throughout the codebase. Provide EITHER: 1) an "item" from prepare_call_hierarchy, OR 2) "file_path", "line", and "character".',
     inputSchema: {
       type: 'object',
       properties: {
         item: {
           type: 'object',
-          description: 'The call hierarchy item (from prepare_call_hierarchy)',
+          description:
+            'The call hierarchy item (from prepare_call_hierarchy) - use this OR file_path/line/character',
           properties: {
             name: { type: 'string' },
             kind: { type: 'number' },
@@ -87,30 +88,31 @@ export const hierarchyToolDefinitions = [
         },
         file_path: {
           type: 'string',
-          description: 'The path to the file (alternative to item)',
+          description: 'The path to the file - use with line and character',
         },
         line: {
           type: 'number',
-          description: 'The line number (1-indexed, alternative to item)',
+          description: 'The line number (1-indexed) - use with file_path and character',
         },
         character: {
           type: 'number',
-          description: 'The character position in the line (0-indexed, alternative to item)',
+          description: 'The character position (0-indexed) - use with file_path and line',
         },
       },
-      oneOf: [{ required: ['item'] }, { required: ['file_path', 'line', 'character'] }],
+      required: [],
     },
   },
   {
     name: 'get_call_hierarchy_outgoing_calls',
     description:
-      'Get all outgoing calls from a function/method. Shows what functions this function calls. Can use either a prepared call hierarchy item or file position.',
+      'Get all outgoing calls from a function/method. Shows what functions this function calls. Provide EITHER: 1) an "item" from prepare_call_hierarchy, OR 2) "file_path", "line", and "character".',
     inputSchema: {
       type: 'object',
       properties: {
         item: {
           type: 'object',
-          description: 'The call hierarchy item (from prepare_call_hierarchy)',
+          description:
+            'The call hierarchy item (from prepare_call_hierarchy) - use this OR file_path/line/character',
           properties: {
             name: { type: 'string' },
             kind: { type: 'number' },
@@ -164,18 +166,18 @@ export const hierarchyToolDefinitions = [
         },
         file_path: {
           type: 'string',
-          description: 'The path to the file (alternative to item)',
+          description: 'The path to the file - use with line and character',
         },
         line: {
           type: 'number',
-          description: 'The line number (1-indexed, alternative to item)',
+          description: 'The line number (1-indexed) - use with file_path and character',
         },
         character: {
           type: 'number',
-          description: 'The character position in the line (0-indexed, alternative to item)',
+          description: 'The character position (0-indexed) - use with file_path and line',
         },
       },
-      oneOf: [{ required: ['item'] }, { required: ['file_path', 'line', 'character'] }],
+      required: [],
     },
   },
   {

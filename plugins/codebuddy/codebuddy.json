@@ -9,16 +9,12 @@
       "command": ["pylsp"]
     },
     {
-      "extensions": ["go"],
-      "command": ["gopls"]
-    },
-    {
       "extensions": ["json", "jsonc"],
-      "command": ["npx", "--", "vscode-json-languageserver", "--stdio"]
+      "command": ["npx", "--", "vscode-langservers-extracted", "--", "vscode-json-language-server", "--stdio"]
     },
     {
       "extensions": ["html", "htm"],
-      "command": ["npx", "--", "vscode-html-languageserver", "--stdio"]
+      "command": ["npx", "--", "vscode-langservers-extracted", "--", "vscode-html-language-server", "--stdio"]
     },
     {
       "extensions": ["sh", "bash", "zsh"],
@@ -27,10 +23,6 @@
     {
       "extensions": ["yaml", "yml"],
       "command": ["npx", "--", "yaml-language-server", "--stdio"]
-    },
-    {
-      "extensions": ["md", "markdown"],
-      "command": ["npx", "--", "markdownlint-language-server", "--stdio"]
     }
   ]
 }

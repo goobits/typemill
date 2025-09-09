@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MCPTestClient } from '../helpers/mcp-test-client';
+import { getTestConfig, getTestModeFromEnv } from '../helpers/test-mode-detector';
 
 /**
  * Enhanced test for search_workspace_symbols with isolated test files
@@ -10,12 +11,13 @@ import { MCPTestClient } from '../helpers/mcp-test-client';
  */
 
 const TEST_DIR = '/tmp/workspace-symbols-simple';
+const testConfig = getTestConfig(getTestModeFromEnv() || undefined);
 
-describe('Workspace Symbols Search - Enhanced', () => {
+describe(`Workspace Symbols Search - Enhanced (${testConfig.mode.toUpperCase()} mode)`, () => {
   let client: MCPTestClient;
 
   beforeAll(async () => {
-    console.log('🔧 Setting up simplified workspace symbols test...');
+    console.log(`🔧 Setting up simplified workspace symbols test (${testConfig.mode} mode)...`);
 
     // Clean and create test directory
     if (existsSync(TEST_DIR)) {
@@ -74,8 +76,13 @@ export function processUser(data: UserData): UserData {
     // Initialize MCP client
     client = new MCPTestClient();
     await client.start();
+
+    // Allow extra time for LSP initialization based on system speed
+    const initTime = testConfig.mode === 'slow' ? 8000 : 3000;
+    console.log(`⏳ Waiting ${initTime / 1000}s for LSP initialization...`);
+    await new Promise((resolve) => setTimeout(resolve, initTime));
     console.log('✅ Simplified workspace symbols test ready');
-  });
+  }, testConfig.timeouts.initialization);
 
   afterAll(async () => {
     if (client) {
@@ -87,181 +94,217 @@ export function processUser(data: UserData): UserData {
     console.log('🧹 Cleaned up workspace symbols test');
   });
 
-  it('should find Service classes in the workspace', async () => {
-    console.log('🔍 Testing search for "Service" classes...');
+  it(
+    'should find Service classes in the workspace',
+    async () => {
+      console.log('🔍 Testing search for "Service" classes...');
 
-    const result = await client.callTool('search_workspace_symbols', {
-      query: 'Service',
-      workspace_path: TEST_DIR,
-    });
+      const result = await client.callTool('search_workspace_symbols', {
+        query: 'Service',
+        workspace_path: TEST_DIR,
+      });
 
-    const response = result.content?.[0]?.text || '';
-    console.log('📋 Symbol search result for "Service":');
-    console.log(`${response.substring(0, 300)}`);
+      const response = result.content?.[0]?.text || '';
+      console.log('📋 Symbol search result for "Service":');
+      console.log(`${response.substring(0, 300)}`);
 
-    // Should find service classes
-    expect(response).toContain('TestService');
-
-    // Should include file path
-    expect(response).toContain('service.ts');
-
-    console.log('✅ Found Service classes correctly');
-  });
-
-  it('should find interfaces across files', async () => {
-    console.log('🔍 Testing search for interfaces...');
-
-    const result = await client.callTool('search_workspace_symbols', {
-      query: 'Data',
-      workspace_path: TEST_DIR,
-    });
-
-    const response = result.content?.[0]?.text || '';
-    console.log('📋 Interface search result:');
-
-    // Should find at least one interface
-    const interfaceMatches = ['TestData', 'UserData'];
-    let foundCount = 0;
-    for (const interfaceName of interfaceMatches) {
-      if (response.includes(interfaceName)) {
-        foundCount++;
-      }
-    }
-
-    console.log(`  Found ${foundCount} interfaces`);
-    expect(foundCount).toBeGreaterThan(0);
-
-    console.log('✅ Interface search working');
-  });
-
-  it('should find enum symbols', async () => {
-    console.log('🔍 Testing search for enums...');
-
-    const result = await client.callTool('search_workspace_symbols', {
-      query: 'TestStatus',
-      workspace_path: TEST_DIR,
-    });
-
-    const response = result.content?.[0]?.text || '';
-    console.log('📋 Enum search result for "TestStatus":');
-    console.log(response.substring(0, 300));
-
-    // Should find TestStatus enum
-    expect(response).toContain('TestStatus');
-
-    console.log('✅ Enum symbols found');
-  });
-
-  it('should find function symbols', async () => {
-    console.log('🔍 Testing search for functions...');
-
-    const result = await client.callTool('search_workspace_symbols', {
-      query: 'validate',
-      workspace_path: TEST_DIR,
-    });
-
-    const response = result.content?.[0]?.text || '';
-    console.log('📋 Function search result for "validate":');
-
-    // Should find validation function
-    if (response.includes('validateTest')) {
-      console.log('  ✓ Found function: validateTest');
-      expect(response).toContain('validateTest');
-    }
-
-    console.log('✅ Function search working');
-  });
-
-  it('should find type aliases', async () => {
-    console.log('🔍 Testing search for type aliases...');
-
-    const result = await client.callTool('search_workspace_symbols', {
-      query: 'TestFilter',
-      workspace_path: TEST_DIR,
-    });
-
-    const response = result.content?.[0]?.text || '';
-    console.log('📋 Type alias search result:');
-
-    // Should find TestFilter type
-    if (response.includes('TestFilter')) {
-      console.log('  ✓ Found TestFilter type alias');
-      expect(response).toContain('TestFilter');
-    }
-
-    console.log('✅ Type alias search working');
-  });
-
-  it('should find constants and variables', async () => {
-    console.log('🔍 Testing search for constants...');
-
-    const result = await client.callTool('search_workspace_symbols', {
-      query: 'TEST_CONSTANT',
-      workspace_path: TEST_DIR,
-    });
-
-    const response = result.content?.[0]?.text || '';
-    console.log('📋 Constant search result:');
-
-    // Should find TEST_CONSTANT
-    if (response.includes('TEST_CONSTANT')) {
-      console.log('  ✓ Found TEST_CONSTANT');
-      expect(response).toContain('TEST_CONSTANT');
-      expect(response).toContain('service.ts');
-    }
-
-    console.log('✅ Constant search working');
-  });
-
-  it('should handle empty query gracefully', async () => {
-    console.log('🔍 Testing empty query handling...');
-
-    const result = await client.callTool('search_workspace_symbols', {
-      query: '',
-      workspace_path: TEST_DIR,
-    });
-
-    const response = result.content?.[0]?.text || '';
-    console.log('📋 Empty query result:', response);
-
-    expect(response.toLowerCase()).toContain('provide');
-
-    console.log('✅ Empty query handled gracefully');
-  });
-
-  it('should return empty results for non-existent symbols', async () => {
-    console.log('🔍 Testing non-existent symbol search...');
-
-    const result = await client.callTool('search_workspace_symbols', {
-      query: 'NonExistentSymbol123',
-      workspace_path: TEST_DIR,
-    });
-
-    const response = result.content?.[0]?.text || '';
-    console.log('📋 Non-existent symbol result:', response);
-
-    expect(response.toLowerCase()).toMatch(/no.*found|not found|no symbols/i);
-
-    console.log('✅ Non-existent symbols handled correctly');
-  });
-
-  it('should find symbols case-insensitively', async () => {
-    console.log('🔍 Testing case-insensitive search...');
-
-    const result = await client.callTool('search_workspace_symbols', {
-      query: 'testservice', // lowercase
-      workspace_path: TEST_DIR,
-    });
-
-    const response = result.content?.[0]?.text || '';
-    console.log('📋 Case-insensitive search result:');
-
-    // Should still find TestService even with different case
-    if (response.includes('TestService')) {
-      console.log('  ✓ Found TestService with lowercase query');
+      // Should find service classes
       expect(response).toContain('TestService');
-    }
 
-    console.log('✅ Case-insensitive search working');
-  });
+      // Should include file path
+      expect(response).toContain('service.ts');
+
+      console.log('✅ Found Service classes correctly');
+    },
+    testConfig.timeouts.testCase
+  );
+
+  it(
+    'should find interfaces across files',
+    async () => {
+      console.log('🔍 Testing search for interfaces...');
+
+      const result = await client.callTool('search_workspace_symbols', {
+        query: 'Data',
+        workspace_path: TEST_DIR,
+      });
+
+      const response = result.content?.[0]?.text || '';
+      console.log('📋 Interface search result:');
+
+      // Should find at least one interface
+      const interfaceMatches = ['TestData', 'UserData'];
+      let foundCount = 0;
+      for (const interfaceName of interfaceMatches) {
+        if (response.includes(interfaceName)) {
+          foundCount++;
+        }
+      }
+
+      console.log(`  Found ${foundCount} interfaces`);
+      expect(foundCount).toBeGreaterThan(0);
+
+      console.log('✅ Interface search working');
+    },
+    testConfig.timeouts.testCase
+  );
+
+  it(
+    'should find enum symbols',
+    async () => {
+      console.log('🔍 Testing search for enums...');
+
+      const result = await client.callTool('search_workspace_symbols', {
+        query: 'TestStatus',
+        workspace_path: TEST_DIR,
+      });
+
+      const response = result.content?.[0]?.text || '';
+      console.log('📋 Enum search result for "TestStatus":');
+      console.log(response.substring(0, 300));
+
+      // Should find TestStatus enum
+      expect(response).toContain('TestStatus');
+
+      console.log('✅ Enum symbols found');
+    },
+    testConfig.timeouts.testCase
+  );
+
+  it(
+    'should find function symbols',
+    async () => {
+      console.log('🔍 Testing search for functions...');
+
+      const result = await client.callTool('search_workspace_symbols', {
+        query: 'validate',
+        workspace_path: TEST_DIR,
+      });
+
+      const response = result.content?.[0]?.text || '';
+      console.log('📋 Function search result for "validate":');
+
+      // Should find validation function
+      if (response.includes('validateTest')) {
+        console.log('  ✓ Found function: validateTest');
+        expect(response).toContain('validateTest');
+      }
+
+      console.log('✅ Function search working');
+    },
+    testConfig.timeouts.testCase
+  );
+
+  it(
+    'should find type aliases',
+    async () => {
+      console.log('🔍 Testing search for type aliases...');
+
+      const result = await client.callTool('search_workspace_symbols', {
+        query: 'TestFilter',
+        workspace_path: TEST_DIR,
+      });
+
+      const response = result.content?.[0]?.text || '';
+      console.log('📋 Type alias search result:');
+
+      // Should find TestFilter type
+      if (response.includes('TestFilter')) {
+        console.log('  ✓ Found TestFilter type alias');
+        expect(response).toContain('TestFilter');
+      }
+
+      console.log('✅ Type alias search working');
+    },
+    testConfig.timeouts.testCase
+  );
+
+  it(
+    'should find constants and variables',
+    async () => {
+      console.log('🔍 Testing search for constants...');
+
+      const result = await client.callTool('search_workspace_symbols', {
+        query: 'TEST_CONSTANT',
+        workspace_path: TEST_DIR,
+      });
+
+      const response = result.content?.[0]?.text || '';
+      console.log('📋 Constant search result:');
+
+      // Should find TEST_CONSTANT
+      if (response.includes('TEST_CONSTANT')) {
+        console.log('  ✓ Found TEST_CONSTANT');
+        expect(response).toContain('TEST_CONSTANT');
+        expect(response).toContain('service.ts');
+      }
+
+      console.log('✅ Constant search working');
+    },
+    testConfig.timeouts.testCase
+  );
+
+  it(
+    'should handle empty query gracefully',
+    async () => {
+      console.log('🔍 Testing empty query handling...');
+
+      const result = await client.callTool('search_workspace_symbols', {
+        query: '',
+        workspace_path: TEST_DIR,
+      });
+
+      const response = result.content?.[0]?.text || '';
+      console.log('📋 Empty query result:', response);
+
+      expect(response.toLowerCase()).toContain('provide');
+
+      console.log('✅ Empty query handled gracefully');
+    },
+    testConfig.timeouts.testCase
+  );
+
+  it(
+    'should return empty results for non-existent symbols',
+    async () => {
+      console.log('🔍 Testing non-existent symbol search...');
+
+      const result = await client.callTool('search_workspace_symbols', {
+        query: 'NonExistentSymbol123',
+        workspace_path: TEST_DIR,
+      });
+
+      const response = result.content?.[0]?.text || '';
+      console.log('📋 Non-existent symbol result:', response);
+
+      expect(response.toLowerCase()).toMatch(/no.*found|not found|no symbols/i);
+
+      console.log('✅ Non-existent symbols handled correctly');
+    },
+    testConfig.timeouts.testCase
+  );
+
+  it(
+    'should find symbols case-insensitively',
+    async () => {
+      console.log('🔍 Testing case-insensitive search...');
+
+      const result = await client.callTool('search_workspace_symbols', {
+        query: 'testservice', // lowercase
+        workspace_path: TEST_DIR,
+      });
+
+      const response = result.content?.[0]?.text || '';
+      console.log('📋 Case-insensitive search result:');
+
+      // Should still find TestService even with different case
+      if (response.includes('TestService')) {
+        console.log('  ✓ Found TestService with lowercase query');
+        expect(response).toContain('TestService');
+      }
+
+      console.log('✅ Case-insensitive search working');
+    },
+    testConfig.timeouts.testCase
+  );
 });

@@ -23,8 +23,12 @@ bun run start
 # or directly
 node dist/index.js
 
-# Run setup wizard to configure LSP servers
-codebuddy setup
+# CLI commands for configuration and management
+codebuddy init     # Smart setup with auto-detection  
+codebuddy status   # Show what's working right now
+codebuddy fix      # Actually fix problems (auto-install when possible)
+codebuddy config   # Show/edit configuration
+codebuddy logs     # Debug output when things go wrong
 
 # Quality assurance
 bun run lint         # Check code style and issues
@@ -47,7 +51,7 @@ bun run prepublishOnly  # build + test + typecheck
 - Entry point that implements MCP protocol
 - Exposes 28 MCP tools covering navigation, refactoring, intelligence, and diagnostics
 - Handles MCP client requests and delegates to LSP layer
-- Includes subcommand handling for `codebuddy setup`
+- Includes CLI subcommand handling for `init`, `status`, `fix`, `config`, `logs`
 
 **LSP Client Layer** (`src/lsp-client.ts`)
 
@@ -56,12 +60,12 @@ bun run prepublishOnly  # build + test + typecheck
 - Maps file extensions to appropriate language servers
 - Maintains process lifecycle and request/response correlation
 
-**Configuration System** (`codebuddy.json` or via `CODEBUDDY_CONFIG_PATH`)
+**Configuration System** (`.codebuddy/config.json`)
 
-- Defines which LSP servers to use for different file extensions
-- Supports environment-based config via `CODEBUDDY_CONFIG_PATH` env var
-- Interactive setup wizard via `codebuddy setup` command
+- Defines which LSP servers to use for different file extensions  
+- Smart setup with auto-detection via `codebuddy init` command
 - File scanning with gitignore support for project structure detection
+- Automatic migration from old `codebuddy.json` format
 
 ### Data Flow
 
@@ -89,20 +93,16 @@ Supported language servers (configurable):
 
 ## Configuration
 
-The server loads configuration in this order:
+The server loads configuration from `.codebuddy/config.json` in the current working directory. If no configuration exists, run `codebuddy init` to create one.
 
-1. `CODEBUDDY_CONFIG_PATH` environment variable pointing to config file
-2. `codebuddy.json` file in working directory
-3. Fails if neither is found (no default fallback)
+### Smart Setup  
 
-### Interactive Setup
-
-Use `codebuddy setup` to configure LSP servers interactively:
+Use `codebuddy init` to configure LSP servers with auto-detection:
 
 - Scans project for file extensions (respects .gitignore)
-- Presents pre-configured language server options
-- Generates `codebuddy.json` configuration file
-- Validates server availability before configuration
+- Presents pre-configured language server options for detected languages
+- Generates `.codebuddy/config.json` configuration file  
+- Tests server availability during setup
 
 Each server config requires:
 

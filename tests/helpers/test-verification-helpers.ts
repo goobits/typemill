@@ -2,6 +2,30 @@ import { expect } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 
 /**
+ * Polls an async function until it returns true or a timeout is reached.
+ * @param action The function to poll. It should return a promise that resolves to a boolean.
+ * @param timeout The total time to wait in milliseconds.
+ * @param interval The time to wait between polls in milliseconds.
+ * @returns A promise that resolves to true if the action succeeds, or rejects on timeout.
+ */
+export async function poll(
+  action: () => Promise<boolean>,
+  timeout: number,
+  interval: number
+): Promise<boolean> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    if (await action()) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(`Polling timed out after ${timeout}ms`);
+}
+
+/**
  * Helper utilities for thorough test verification of multi-file operations
  */
 

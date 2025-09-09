@@ -176,3 +176,7 @@ export interface DeleteFileArgs {
   file_path: string;
   force?: boolean;
 }
+
+export interface HealthCheckArgs {
+  include_details?: boolean;
+}

@@ -8,7 +8,7 @@ import {
   logError,
 } from '../utils/error-utils.js';
 
-interface MCPResponse {
+export interface MCPResponse {
   content: Array<{
     type: 'text';
     text: string;

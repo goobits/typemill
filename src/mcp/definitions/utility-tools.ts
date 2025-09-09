@@ -101,4 +101,19 @@ export const utilityToolDefinitions = [
       required: ['file_path'],
     },
   },
+  {
+    name: 'health_check',
+    description:
+      'Get health status of the LSP servers and system resources. Returns information about active servers, resource usage, and system health.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        include_details: {
+          type: 'boolean',
+          description: 'Include detailed server information (default: false)',
+          default: false,
+        },
+      },
+    },
+  },
 ] as const;

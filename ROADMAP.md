@@ -9,17 +9,20 @@ Make codebuddy the go-to MCP server for Language Server Protocol integration, en
 ## Current Status (v1.x)
 
 - ✅ Core LSP functionality (go to definition, find references, rename symbol)
-- ✅ Multi-language support via configurable LSP servers
+- ✅ Multi-language support via configurable LSP servers  
 - ✅ TypeScript/JavaScript support out of the box
-- ✅ Basic error handling and logging
+- ✅ Smart CLI with auto-detection (`init`, `status`, `fix`, `config`, `logs`)
+- ✅ Auto-installation of missing language servers
+- ✅ Real-time server availability checking
+- ✅ Comprehensive error handling and logging
 
 ## Short-term Goals (Next 3 months)
 
-### v1.1 - Enhanced Language Support
-- [ ] Auto-detection of installed language servers
-- [ ] Built-in configurations for top 20 programming languages
+### v1.1 - Enhanced Language Support  
+- ✅ Auto-detection of installed language servers (`codebuddy init`)
+- ✅ Built-in configurations for 15+ programming languages
 - [ ] Language-specific initialization options
-- [ ] Better error messages for missing language servers
+- ✅ Better error messages for missing language servers
 
 ### v1.2 - Performance Improvements
 - [ ] Connection pooling for LSP servers
@@ -28,24 +31,24 @@ Make codebuddy the go-to MCP server for Language Server Protocol integration, en
 - [ ] Parallel request handling
 
 ### v1.3 - Developer Experience
-- [ ] Interactive configuration generator
-- [ ] Debugging mode with detailed logs
-- [ ] Health check command
-- [ ] Integration test suite for each language
+- ✅ Interactive configuration generator (`codebuddy init`)
+- ✅ Debugging mode with detailed logs (`codebuddy logs`)
+- ✅ Health check command (`codebuddy status`)
+- ✅ Integration test suite for each language
 
 ## Medium-term Goals (6-12 months)
 
 ### v2.0 - Advanced LSP Features
-- [ ] Code completion support
-- [ ] Hover information
-- [ ] Signature help
-- [ ] Document symbols
-- [ ] Workspace symbols
+- ✅ Code completion support (`get_completions`)
+- ✅ Hover information (`get_hover`) 
+- ✅ Signature help (`get_signature_help`)
+- ✅ Document symbols (`get_document_symbols`)
+- ✅ Workspace symbols (`search_workspace_symbols`)
 
 ### v2.1 - Project Intelligence
-- [ ] Project-wide symbol search
-- [ ] Call hierarchy navigation
-- [ ] Type hierarchy support
+- ✅ Project-wide symbol search (`search_workspace_symbols`)
+- ✅ Call hierarchy navigation (`prepare_call_hierarchy`, `get_call_hierarchy_*`)
+- ✅ Type hierarchy support (`prepare_type_hierarchy`, `get_type_hierarchy_*`)
 - [ ] Import/dependency analysis
 
 ### v2.2 - Integration Ecosystem

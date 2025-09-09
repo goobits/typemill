@@ -28,6 +28,7 @@ import type {
   GetSignatureHelpArgs,
   GetTypeHierarchySubtypesArgs,
   GetTypeHierarchySupertypesArgs,
+  HealthCheckArgs,
   PrepareCallHierarchyArgs,
   PrepareTypeHierarchyArgs,
   RenameFileArgs,
@@ -58,6 +59,7 @@ import {
   handleGetSignatureHelp,
   handleGetTypeHierarchySubtypes,
   handleGetTypeHierarchySupertypes,
+  handleHealthCheck,
   handlePrepareCallHierarchy,
   handlePrepareTypeHierarchy,
   handleRenameFile,
@@ -86,39 +88,78 @@ const args = process.argv.slice(2);
 if (args.length > 0) {
   const subcommand = args[0];
 
-  if (subcommand === 'setup') {
-    const { main } = await import('./src/setup.js');
-    await main();
+  if (subcommand === 'init') {
+    const { initCommand } = await import('./src/cli/commands/init.js');
+    await initCommand();
     process.exit(0);
-  } else if (subcommand === 'init') {
-    const { main } = await import('./src/init.js');
-    await main();
+  } else if (subcommand === 'status') {
+    const { statusCommand } = await import('./src/cli/commands/status.js');
+    await statusCommand();
     process.exit(0);
-  } else if (subcommand === 'retry') {
-    console.log('🔄 Retrying failed language servers...');
-    console.log('   Note: Start the MCP server to retry failed servers.');
-    console.log('   Failed servers will be retried on next file access.');
+  } else if (subcommand === 'fix') {
+    const { fixCommand } = await import('./src/cli/commands/fix.js');
+    const options = {
+      auto: args.includes('--auto'),
+      manual: args.includes('--manual'),
+    };
+    await fixCommand(options);
+    process.exit(0);
+  } else if (subcommand === 'config') {
+    const { configCommand } = await import('./src/cli/commands/config.js');
+    const options = {
+      show: args.includes('--show'),
+      edit: args.includes('--edit'),
+    };
+    await configCommand(options);
+    process.exit(0);
+  } else if (subcommand === 'logs') {
+    const { logsCommand } = await import('./src/cli/commands/logs.js');
+    const linesIndex = args.indexOf('--lines');
+    const options = {
+      tail: args.includes('--tail'),
+      lines:
+        linesIndex >= 0 && linesIndex + 1 < args.length
+          ? Number.parseInt(args[linesIndex + 1] || '50')
+          : undefined,
+    };
+    await logsCommand(options);
     process.exit(0);
   } else if (subcommand === '--help' || subcommand === '-h' || subcommand === 'help') {
     console.log('codebuddy - MCP server for accessing LSP functionality');
     console.log('');
-    console.log('Usage: codebuddy [subcommand]');
+    console.log('Usage: codebuddy [command] [options]');
     console.log('');
-    console.log('Available subcommands:');
-    console.log('  init     Generate a well-commented configuration file');
-    console.log('  setup    Interactive setup wizard for your project');
-    console.log('  retry    Information about retrying failed servers');
-    console.log('  help     Show this help message');
+    console.log('Commands:');
+    console.log('  init          Smart setup with auto-detection');
+    console.log("  status        Show what's working right now");
+    console.log('  fix           Actually fix problems (auto-install when possible)');
+    console.log('  config        Show/edit configuration');
+    console.log('  logs          Debug output when things go wrong');
+    console.log('  help          Show this help message');
+    console.log('');
+    console.log('Fix options:');
+    console.log('  --auto        Auto-install without prompting');
+    console.log('  --manual      Show manual installation commands');
+    console.log('');
+    console.log('Config options:');
+    console.log('  --show        Print configuration to stdout');
+    console.log('  --edit        Open configuration in $EDITOR');
+    console.log('');
+    console.log('Logs options:');
+    console.log('  --tail        Follow logs in real-time');
+    console.log('  --lines N     Show last N lines (default: 50)');
     console.log('');
     console.log('Run without arguments to start the MCP server.');
     process.exit(0);
   } else {
-    console.error(`Unknown subcommand: ${subcommand}`);
-    console.error('Available subcommands:');
-    console.error('  init     Generate a well-commented configuration file');
-    console.error('  setup    Interactive setup wizard for your project');
-    console.error('  retry    Information about retrying failed servers');
-    console.error('  help     Show this help message');
+    console.error(`Unknown command: ${subcommand}`);
+    console.error('Available commands:');
+    console.error('  init     Smart setup with auto-detection');
+    console.error("  status   Show what's working right now");
+    console.error('  fix      Actually fix problems');
+    console.error('  config   Show/edit configuration');
+    console.error('  logs     Debug output');
+    console.error('  help     Show help message');
     console.error('');
     console.error('Run without arguments to start the MCP server.');
     process.exit(1);
@@ -310,6 +351,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return await handleCreateFile(args as unknown as CreateFileArgs);
       case 'delete_file':
         return await handleDeleteFile(args as unknown as DeleteFileArgs);
+      case 'health_check': {
+        const { ServiceContextUtils } = await import('./src/services/service-context.js');
+        const serviceContext = ServiceContextUtils.createServiceContext(
+          newLspClient.getServer.bind(newLspClient),
+          newLspClient.protocol
+        );
+        return await handleHealthCheck(args as unknown as HealthCheckArgs, serviceContext);
+      }
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
@@ -329,17 +378,26 @@ process.on('SIGTERM', () => {
 });
 
 async function main() {
+  // Initialize logging
+  const { appendLog } = await import('./src/cli/directory-utils.js');
+  appendLog('Codebuddy MCP server starting...');
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
   process.stderr.write('Codebuddy Server running on stdio\n');
+  appendLog('MCP server connected and ready');
 
   // Preload LSP servers for file types found in the project
   try {
     process.stderr.write('Starting LSP server preload...\n');
+    appendLog('Starting LSP server preload');
     await newLspClient.preloadServers();
     process.stderr.write('LSP servers preloaded successfully\n');
+    appendLog('LSP servers preloaded successfully');
   } catch (error) {
-    process.stderr.write(`Failed to preload LSP servers: ${error}\n`);
+    const errorMsg = `Failed to preload LSP servers: ${error}`;
+    process.stderr.write(`${errorMsg}\n`);
+    appendLog(errorMsg);
   }
 }
 
