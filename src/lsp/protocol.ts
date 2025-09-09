@@ -323,7 +323,9 @@ export class LSPProtocol {
       this.connectionHealth.set(pid, { lastSuccessfulWrite: Date.now(), errorCount: 0 });
     }
 
-    const health = this.connectionHealth.get(pid)!;
+    const health = this.connectionHealth.get(pid);
+    if (!health) return;
+
     if (success) {
       health.lastSuccessfulWrite = Date.now();
       health.errorCount = 0; // Reset error count on successful write
@@ -341,7 +343,9 @@ export class LSPProtocol {
     const pid = process.pid;
     if (!pid || !this.connectionHealth.has(pid)) return null;
 
-    const health = this.connectionHealth.get(pid)!;
+    const health = this.connectionHealth.get(pid);
+    if (!health) return null;
+
     const timeSinceLastSuccess = Date.now() - health.lastSuccessfulWrite;
     const isHealthy = health.errorCount < 3 && timeSinceLastSuccess < 30000; // Healthy if <3 errors and success within 30s
 
