@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join } from 'node:path';
 import {
   getFileLines,
+  poll,
   verifyFileContainsAll,
   verifyLineContent,
 } from '../helpers/test-verification-helpers';
@@ -12,12 +13,14 @@ import {
  */
 
 const TEST_DIR = '/tmp/call-hierarchy-test';
+const USE_SHARED_SERVER = process.env.TEST_SHARED_SERVER === 'true';
 
 describe('Call Hierarchy - Multi-file', () => {
   let client: any;
 
   beforeAll(async () => {
     console.log('🔧 Setting up call hierarchy test...');
+    console.log(`   Mode: ${USE_SHARED_SERVER ? 'Shared Server' : 'Individual Server'}`);
 
     // Create test directory
     if (existsSync(TEST_DIR)) {
@@ -100,10 +103,42 @@ export function adminValidate(input: string): boolean {
 `.trim()
     );
 
-    // Initialize MCP client
+    // Initialize MCP client (shared or individual based on environment)
     const { MCPTestClient } = await import('../helpers/mcp-test-client');
-    client = new MCPTestClient();
+    client = USE_SHARED_SERVER ? MCPTestClient.getShared() : new MCPTestClient();
     await client.start();
+    console.log('✅ MCP server started');
+
+    // Progressive warm-up for TypeScript server
+    console.log('⏳ Warming up TypeScript server...');
+    const warmupFiles = [
+      join(TEST_DIR, 'base-service.ts'),
+      join(TEST_DIR, 'user-handler.ts'),
+      join(TEST_DIR, 'product-handler.ts'),
+      join(TEST_DIR, 'admin-handler.ts'),
+    ];
+
+    // Check if files exist before warm-up (they're created in beforeAll)
+    if (existsSync(warmupFiles[0])) {
+      for (const file of warmupFiles) {
+        try {
+          // Open each file to trigger indexing
+          await client.callTool('get_document_symbols', { file_path: file });
+          console.log(`   ✅ Indexed ${file.split('/').pop()}`);
+        } catch (e) {
+          console.log(`   ⚠️ Could not warm up ${file.split('/').pop()}`);
+        }
+      }
+
+      // Give TypeScript server time to build full index
+      const isSlowSystem = require('node:os').cpus().length <= 4;
+      const warmupDelay = isSlowSystem ? 15000 : 5000;
+      console.log(`⏳ Waiting ${warmupDelay / 1000}s for TypeScript indexing...`);
+      await new Promise((resolve) => setTimeout(resolve, warmupDelay));
+    } else {
+      console.log('   ⚠️ Test files not created yet, warm-up will happen after file creation');
+    }
+
     console.log('✅ Call hierarchy test ready');
   });
 
@@ -115,6 +150,14 @@ export function adminValidate(input: string): boolean {
       rmSync(TEST_DIR, { recursive: true });
     }
     console.log('🧹 Cleaned up call hierarchy test');
+
+    // Clean up shared server at process exit
+    if (USE_SHARED_SERVER) {
+      process.on('exit', () => {
+        const { MCPTestClient } = require('../helpers/mcp-test-client');
+        MCPTestClient.cleanup();
+      });
+    }
   });
 
   it('should prepare call hierarchy for a method', async () => {
@@ -239,16 +282,33 @@ export function adminValidate(input: string): boolean {
   it('should find outgoing calls from a method', async () => {
     console.log('🔍 Testing get_call_hierarchy_outgoing_calls...');
 
+    const productHandlerFile = join(TEST_DIR, 'product-handler.ts');
+
+    // Find the actual line with handleProduct method
+    const content = readFileSync(productHandlerFile, 'utf-8');
+    const lines = content.split('\n');
+    let handleProductLine = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes('handleProduct') && lines[i].includes('(')) {
+        handleProductLine = i + 1; // Convert to 1-based line number
+        console.log(
+          `  Found handleProduct method at line ${handleProductLine}: "${lines[i].trim()}"`
+        );
+        break;
+      }
+    }
+    expect(handleProductLine).toBeGreaterThan(0);
+
     // Prepare call hierarchy for handleProduct which calls multiple methods
     await client.callTool('prepare_call_hierarchy', {
-      file_path: join(TEST_DIR, 'product-handler.ts'),
-      line: 7, // handleProduct method
+      file_path: productHandlerFile,
+      line: handleProductLine,
       character: 3,
     });
 
     const result = await client.callTool('get_call_hierarchy_outgoing_calls', {
-      file_path: join(TEST_DIR, 'product-handler.ts'),
-      line: 7,
+      file_path: productHandlerFile,
+      line: handleProductLine,
       character: 3,
     });
 
@@ -266,26 +326,81 @@ export function adminValidate(input: string): boolean {
   it('should handle validateData incoming calls', async () => {
     console.log('🔍 Testing incoming calls for validateData...');
 
+    const baseServiceFile = join(TEST_DIR, 'base-service.ts');
+
+    // Ensure ALL test files are opened in the LSP server for proper indexing
+    const testFiles = [
+      join(TEST_DIR, 'base-service.ts'),
+      join(TEST_DIR, 'user-handler.ts'),
+      join(TEST_DIR, 'product-handler.ts'),
+      join(TEST_DIR, 'admin-handler.ts'),
+    ];
+
+    console.log('📂 Opening all test files in LSP server for indexing...');
+
+    // TypeScript server already warmed up in beforeAll
+
+    // No additional wait needed - warm-up already done in beforeAll
+
+    // Find the actual line with validateData method
+    const content = readFileSync(baseServiceFile, 'utf-8');
+    const lines = content.split('\n');
+    let validateDataLine = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes('validateData') && lines[i].includes('(')) {
+        validateDataLine = i + 1; // Convert to 1-based line number
+        console.log(
+          `  Found validateData method at line ${validateDataLine}: "${lines[i].trim()}"`
+        );
+        break;
+      }
+    }
+    expect(validateDataLine).toBeGreaterThan(0);
+
     await client.callTool('prepare_call_hierarchy', {
-      file_path: join(TEST_DIR, 'base-service.ts'),
-      line: 7, // validateData method
+      file_path: baseServiceFile,
+      line: validateDataLine,
       character: 3,
     });
 
-    const result = await client.callTool('get_call_hierarchy_incoming_calls', {
-      file_path: join(TEST_DIR, 'base-service.ts'),
-      line: 7,
-      character: 3,
-    });
+    let response = '';
+    let foundAllCalls = false;
 
-    const response = result.content?.[0]?.text || '';
+    // Poll for up to 10 seconds for the LSP server to find all references
+    try {
+      await poll(
+        async () => {
+          const result = await client.callTool('get_call_hierarchy_incoming_calls', {
+            file_path: baseServiceFile,
+            line: validateDataLine,
+            character: 3,
+          });
+
+          response = result.content?.[0]?.text || '';
+
+          const foundUser = response.includes('handleUser');
+          const foundProduct = response.includes('handleProduct');
+          const foundAdmin = response.includes('adminValidate');
+
+          foundAllCalls = foundUser && foundProduct && foundAdmin;
+          return foundAllCalls;
+        },
+        10000, // 10 second timeout
+        1000 // 1 second interval
+      );
+    } catch (error) {
+      // If polling fails, we'll just use the last response for analysis
+      console.log('Polling for call hierarchy timed out. Analyzing last response.');
+    }
+
     console.log('📋 Incoming calls to validateData:');
     console.log(response);
 
-    // Should find calls from multiple handlers
-    expect(response).toContain('handleUser');
-    expect(response).toContain('handleProduct');
-    expect(response).toContain('adminValidate');
+    // Final verification
+    expect(foundAllCalls).toBe(
+      true,
+      'Expected to find all 3 incoming calls from handleUser, handleProduct, and adminValidate'
+    );
 
     console.log('✅ validateData is called from multiple locations');
   });
