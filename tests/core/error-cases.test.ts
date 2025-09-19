@@ -56,7 +56,7 @@ describe('MCP Error Case Tests', () => {
     it('should handle out-of-bounds line numbers', async () => {
       try {
         const result = await client.callTool('get_hover', {
-          file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+          file_path: '/workspace/playground/src/test-file.ts',
           line: 9999, // Way beyond file bounds
           character: 10,
         });
@@ -75,7 +75,7 @@ describe('MCP Error Case Tests', () => {
     it('should handle negative positions', async () => {
       try {
         await client.callTool('get_completions', {
-          file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+          file_path: '/workspace/playground/src/test-file.ts',
           line: -1,
           character: -5,
         });
@@ -88,7 +88,7 @@ describe('MCP Error Case Tests', () => {
   describe('Invalid Symbol Names', () => {
     it('should handle non-existent symbol names', async () => {
       const result = await client.callTool('find_definition', {
-        file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+        file_path: '/workspace/playground/src/test-file.ts',
         symbol_name: 'ThisSymbolDoesNotExist',
       });
 
@@ -105,7 +105,7 @@ describe('MCP Error Case Tests', () => {
     it('should handle empty symbol name', async () => {
       try {
         await client.callTool('find_references', {
-          file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+          file_path: '/workspace/playground/src/test-file.ts',
           symbol_name: '', // Empty symbol name
         });
       } catch (error) {
@@ -118,7 +118,7 @@ describe('MCP Error Case Tests', () => {
     it('should handle rename with same name', async () => {
       try {
         await client.callTool('rename_symbol', {
-          file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+          file_path: '/workspace/playground/src/test-file.ts',
           symbol_name: 'calculateAge',
           new_name: 'calculateAge', // Same name
           dry_run: true,
@@ -131,7 +131,7 @@ describe('MCP Error Case Tests', () => {
     it('should handle rename with invalid identifier', async () => {
       try {
         await client.callTool('rename_symbol', {
-          file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+          file_path: '/workspace/playground/src/test-file.ts',
           symbol_name: 'calculateAge',
           new_name: '123InvalidName', // Invalid JavaScript identifier
           dry_run: true,
@@ -227,7 +227,7 @@ describe('MCP Error Case Tests', () => {
     it('should handle multiple concurrent requests without corruption', async () => {
       const promises = Array.from({ length: 5 }, (_, i) =>
         client.callTool('get_diagnostics', {
-          file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+          file_path: '/workspace/playground/src/test-file.ts',
         })
       );
 
@@ -250,7 +250,7 @@ describe('MCP Error Case Tests', () => {
     it('should handle extremely large position numbers gracefully', async () => {
       try {
         const result = await client.callTool('get_hover', {
-          file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+          file_path: '/workspace/playground/src/test-file.ts',
           line: Number.MAX_SAFE_INTEGER,
           character: Number.MAX_SAFE_INTEGER,
         });

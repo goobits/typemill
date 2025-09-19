@@ -37,7 +37,7 @@ describe('MCP Quick Tests', () => {
   // Individual test cases for better granularity
   it('should find definition', async () => {
     const result = await client.callTool('find_definition', {
-      file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+      file_path: '/workspace/playground/src/test-file.ts',
       symbol_name: '_calculateAge',
     });
     expect(result).toBeDefined();
@@ -49,7 +49,7 @@ describe('MCP Quick Tests', () => {
 
   it('should find references', async () => {
     const result = await client.callTool('find_references', {
-      file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+      file_path: '/workspace/playground/src/test-file.ts',
       symbol_name: 'TestProcessor',
     });
     expect(result).toBeDefined();
@@ -61,7 +61,7 @@ describe('MCP Quick Tests', () => {
 
   it('should get diagnostics', async () => {
     const result = await client.callTool('get_diagnostics', {
-      file_path: '/workspace/plugins/codebuddy/playground/src/errors-file.ts',
+      file_path: '/workspace/playground/src/errors-file.ts',
     });
     expect(result).toBeDefined();
     const toolResult = assertToolResult(result);
@@ -75,7 +75,7 @@ describe('MCP Quick Tests', () => {
 
   it('should get hover information', async () => {
     const result = await client.callTool('get_hover', {
-      file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+      file_path: '/workspace/playground/src/test-file.ts',
       line: 13,
       character: 10,
     });
@@ -88,7 +88,7 @@ describe('MCP Quick Tests', () => {
 
   it('should rename symbol (dry run)', async () => {
     const result = await client.callTool('rename_symbol', {
-      file_path: '/workspace/plugins/codebuddy/playground/src/test-file.ts',
+      file_path: '/workspace/playground/src/test-file.ts',
       symbol_name: 'DEFAULT_USER',
       new_name: 'RENAMED_USER',
       dry_run: true,

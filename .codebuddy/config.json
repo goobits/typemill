@@ -10,19 +10,8 @@
         "cjs"
       ],
       "command": [
-        "npx",
-        "--",
-        "typescript-language-server",
+        "/workspace/node_modules/.bin/typescript-language-server",
         "--stdio"
-      ]
-    },
-    {
-      "extensions": [
-        "py",
-        "pyi"
-      ],
-      "command": [
-        "pylsp"
       ]
     },
     {
@@ -31,51 +20,8 @@
         "jsonc"
       ],
       "command": [
-        "npx",
-        "--",
-        "vscode-langservers-extracted",
-        "--",
-        "vscode-json-language-server",
+        "/workspace/node_modules/.bin/vscode-json-language-server",
         "--stdio"
-      ]
-    },
-    {
-      "extensions": [
-        "html",
-        "htm"
-      ],
-      "command": [
-        "npx",
-        "--",
-        "vscode-langservers-extracted",
-        "--",
-        "vscode-html-language-server",
-        "--stdio"
-      ]
-    },
-    {
-      "extensions": [
-        "yaml",
-        "yml"
-      ],
-      "command": [
-        "npx",
-        "--",
-        "yaml-language-server",
-        "--stdio"
-      ]
-    },
-    {
-      "extensions": [
-        "sh",
-        "bash",
-        "zsh"
-      ],
-      "command": [
-        "npx",
-        "--",
-        "bash-language-server",
-        "start"
       ]
     }
   ]
