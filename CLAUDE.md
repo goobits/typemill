@@ -2,9 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## Project Information
 
-codebuddy is an MCP (Model Context Protocol) server that bridges Language Server Protocol (LSP) functionality to MCP tools. It allows MCP clients to access LSP features like "go to definition" and "find references" through a standardized interface.
+**Package**: `@goobits/codebuddy` | **Command**: `codebuddy` | **Runtime**: Bun/Node.js
+
+MCP server bridging Language Server Protocol (LSP) functionality to AI coding assistants with 38 MCP tools for navigation, refactoring, and code intelligence.
 
 ## Development Commands
 
