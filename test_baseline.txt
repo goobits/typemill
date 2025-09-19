@@ -1,0 +1,94 @@
+$ bun test tests/unit
+bun test v1.2.22 (6bafe260)
+⏱️  Testing restart_server timing and response...
+ServerManager: Max concurrent servers set to 8 (based on 24 CPU cores)
+Looking for server for extension: md
+No server found for extension: md
+Looking for server for extension: json
+Found server for json: /workspace/node_modules/.bin/vscode-json-language-server --stdio
+Looking for server for extension: py
+Found server for py: pylsp
+Looking for server for extension: toml
+No server found for extension: toml
+Looking for server for extension: rs
+Found server for rs: rust-analyzer
+Looking for server for extension: ts
+Found server for ts: /workspace/node_modules/.bin/typescript-language-server --stdio
+Looking for server for extension: js
+Found server for js: /workspace/node_modules/.bin/typescript-language-server --stdio
+Looking for server for extension: cjs
+Found server for cjs: /workspace/node_modules/.bin/typescript-language-server --stdio
+Looking for server for extension: cts
+No server found for extension: cts
+Looking for server for extension: txt
+No server found for extension: txt
+Looking for server for extension: cmd
+No server found for extension: cmd
+Looking for server for extension: yml
+Found server for yml: npx -- yaml-language-server --stdio
+Looking for server for extension: lock
+No server found for extension: lock
+Looking for server for extension: nix
+No server found for extension: nix
+Looking for server for extension: map
+No server found for extension: map
+Looking for server for extension: mjs
+Found server for mjs: /workspace/node_modules/.bin/typescript-language-server --stdio
+Looking for server for extension: mts
+No server found for extension: mts
+Looking for server for extension: flow
+No server found for extension: flow
+Looking for server for extension: html
+Found server for html: npx -- vscode-langservers-extracted -- vscode-html-language-server --stdio
+Looking for server for extension: 1
+No server found for extension: 1
+Looking for server for extension: xml
+No server found for extension: xml
+Looking for server for extension: iml
+No server found for extension: iml
+Looking for server for extension: node
+No server found for extension: node
+Looking for server for extension: tsbuildinfo
+No server found for extension: tsbuildinfo
+Looking for server for extension: info
+No server found for extension: info
+Looking for server for extension: wasm
+No server found for extension: wasm
+Looking for server for extension: sh
+Found server for sh: npx -- bash-language-server start
+Looking for server for extension: bnf
+No server found for extension: bnf
+Looking for server for extension: markdown
+No server found for extension: markdown
+Looking for server for extension: go
+No server found for extension: go
+Looking for server for extension: yaml
+Found server for yaml: npx -- yaml-language-server --stdio
+Looking for server for extension: rev
+No server found for extension: rev
+Looking for server for extension: pack
+No server found for extension: pack
+Looking for server for extension: idx
+No server found for extension: idx
+Looking for server for extension: sample
+No server found for extension: sample
+[2025-09-19T08:16:40.578Z] ERROR [ServerManager] Language server startup failed: Executable not found in $PATH: "rust-analyzer" {"component":"MCP-Server","operation":"Language server startup failed","error_type":"Error","extensions":"rs","command":["rust-analyzer"],"isENOENT":false,"error_message":"Executable not found in $PATH: \"rust-analyzer\"","stack_trace":"Error: Executable not found in $PATH: \"rust-analyzer\"\n    at spawn (unknown)\n    at spawn (node:child_process:669:35)\n    at spawn (node:child_process:14:39)\n    at startServer (/workspace/dist/index.js:9254:26)\n    at startServer (/workspace/dist/index.js:9241:21)\n    at <anonymous> (/workspace/dist/index.js:9213:20)\n    at <anonymous> (/workspace/dist/index.js:9211:73)\n    at map (native:1:11)\n    at preloadServers (/workspace/dist/index.js:9211:62)\n    at preloadServers (/workspace/dist/index.js:9202:24)"}
+⚠️  Failed to start language server for rs files
+   Error: Executable not found in $PATH: "rust-analyzer"
+[2025-09-19T08:16:40.679Z] ERROR [ServerManager] Failed to preload server rust-analyzer: Language server for rs is not available {"component":"MCP-Server","operation":"Failed to preload server rust-analyzer","error_type":"ServerNotAvailableError","serverCommand":["rust-analyzer"],"extensions":["rs"],"error_message":"Language server for rs is not available","stack_trace":"ServerNotAvailableError: Language server for rs is not available\n    at startServer (/workspace/dist/index.js:9283:17)\n    at processTicksAndRejections (native:7:39)"}
+npm error could not determine executable to run
+npm error A complete log of this run can be found in: /home/developer/.npm/_logs/2025-09-19T08_16_40_653Z-debug-0.log
+LSP server exited (npx -- vscode-langservers-extracted -- vscode-html-language-server --stdio): code=1, signal=null
+Server initialized successfully: pylsp
+Preloaded server: pylsp
+Server initialized successfully: /workspace/node_modules/.bin/typescript-language-server --stdio
+Preloaded server: /workspace/node_modules/.bin/typescript-language-server --stdio
+[2025-09-19T08:16:41.274Z] ERROR [LSPProtocol] Failed to parse LSP message: JSON Parse error: Unable to parse JSON string {"component":"MCP-Server","operation":"Failed to parse LSP message","error_type":"SyntaxError","messageContent":"{\"jsonrpc\":\"2.0\",\"method\":\"window/logMessage\",\"params\":{\"type\":2,\"message\":\"08:16:41.274 WARNING ⛔️ ...","error_message":"JSON Parse error: Unable to parse JSON string","stack_trace":"SyntaxError: JSON Parse error: Unable to parse JSON string\n    at <parse> (:0)\n    at parse (unknown)\n    at parseMessages (/workspace/dist/index.js:8706:30)\n    at <anonymous> (/workspace/dist/index.js:9329:59)\n    at emit (node:events:95:22)\n    at addChunk (internal:streams/readable:265:47)\n    at readableAddChunkPushByteMode (internal:streams/readable:243:18)\n    at handleNumberResult (internal:streams/native-readable:69:18)\n    at <anonymous> (internal:streams/native-readable:43:68)\n    at processTicksAndRejections (native:7:39)"}
+Server initialized successfully: /workspace/node_modules/.bin/vscode-json-language-server --stdio
+Preloaded server: /workspace/node_modules/.bin/vscode-json-language-server --stdio
+Server initialized successfully: npx -- bash-language-server start
+Preloaded server: npx -- bash-language-server start
+Server initialized successfully: npx -- yaml-language-server --stdio
+Preloaded server: npx -- yaml-language-server --stdio
+[2025-09-19T08:16:50.729Z] ERROR [LSPProtocol] Request timeout for initialize: Request timed out after 10000ms: initialize {"component":"MCP-Server","operation":"Request timeout for initialize","error_type":"Error","timeout":10000,"method":"initialize","error_message":"Request timed out after 10000ms: initialize","stack_trace":"Error: Request timed out after 10000ms: initialize\n    at <anonymous> (/workspace/dist/index.js:8631:34)"}
+[2025-09-19T08:16:50.729Z] ERROR [ServerManager] Failed to preload server npx -- vscode-langservers-extracted -- vscode-html-language-server --stdio: Request timed out after 10000ms: initialize {"component":"MCP-Server","operation":"Failed to preload server npx -- vscode-langservers-extracted -- vscode-html-language-server --stdio","error_type":"Error","serverCommand":["npx","--","vscode-langservers-extracted","--","vscode-html-language-server","--stdio"],"extensions":["html","htm"],"error_message":"Request timed out after 10000ms: initialize","stack_trace":"Error: Request timed out after 10000ms: initialize\n    at <anonymous> (/workspace/dist/index.js:8631:34)"}

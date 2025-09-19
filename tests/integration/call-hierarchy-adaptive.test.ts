@@ -91,7 +91,7 @@ export class UserHandler {
 
     // Initialize MCP client with adaptive configuration
     client = new MCPTestClient();
-    await client.start();
+    await client.start({ skipLSPPreload: true });
 
     // Allow time for LSP server initialization (adaptive)
     const initTime = testConfig.mode === 'slow' ? 10000 : 3000;

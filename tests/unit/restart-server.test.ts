@@ -7,7 +7,7 @@ describe('Server Restart Tests', () => {
   beforeAll(async () => {
     console.log('⏱️  Testing restart_server timing and response...');
     client = new MCPTestClient();
-    await client.start();
+    await client.start({ skipLSPPreload: true });
 
     // Wait for LSP servers to fully initialize
     console.log('⏳ Waiting for LSP servers to initialize...');
@@ -38,8 +38,8 @@ describe('Server Restart Tests', () => {
       console.log(`✅ restart_server completed in ${elapsed}ms`);
 
       expect(result).toBeDefined();
-      const toolResult = assertToolResult(result);
-      expect(toolResult.content).toBeDefined();
+      assertToolResult(result);
+      expect(result.content).toBeDefined();
 
       console.log('✅ Got result:', JSON.stringify(result, null, 2));
     } catch (error: any) {
@@ -60,8 +60,8 @@ describe('Server Restart Tests', () => {
     console.log(`✅ restart_server (all) completed in ${elapsed}ms`);
 
     expect(result).toBeDefined();
-    const toolResult = assertToolResult(result);
-    expect(toolResult.content).toBeDefined();
+    assertToolResult(result);
+    expect(result.content).toBeDefined();
   }, 30000);
 
   it('should handle restart with non-existent extension gracefully', async () => {
@@ -72,8 +72,8 @@ describe('Server Restart Tests', () => {
     });
 
     expect(result).toBeDefined();
-    const toolResult = assertToolResult(result);
-    expect(toolResult.content).toBeDefined();
+    assertToolResult(result);
+    expect(result.content).toBeDefined();
 
     // Should complete without error even if no servers match
     console.log('✅ Handled non-existent extension gracefully');

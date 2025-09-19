@@ -37,7 +37,7 @@ describe('Multi-File Rename File Path Tests', () => {
 
     // Initialize MCP client
     client = new MCPTestClient();
-    await client.start();
+    await client.start({ skipLSPPreload: true });
 
     // Wait for LSP servers to initialize
     console.log('⏳ Waiting for LSP servers to initialize...');

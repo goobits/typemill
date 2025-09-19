@@ -93,7 +93,7 @@ export class UserService {
 
     // Initialize MCP client
     client = new MCPTestClient();
-    await client.start();
+    await client.start({ skipLSPPreload: true });
     console.log('✅ Enhanced test environment ready');
   });
 

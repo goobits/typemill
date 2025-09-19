@@ -136,7 +136,7 @@ export function createService(): UserService {
 
     // Initialize MCP client
     client = new MCPTestClient();
-    await client.start();
+    await client.start({ skipLSPPreload: true });
 
     // Allow extra time for TypeScript LSP to index the new project
     console.log('⏳ Waiting for TypeScript LSP to index project files...');

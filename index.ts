@@ -500,6 +500,9 @@ async function main() {
 
       logger.info('MCP server connected and ready');
 
+      // Output message that tests expect to detect server readiness
+      console.error('Codebuddy Server running on stdio');
+
       // Preload LSP servers for file types found in the project (unless disabled)
       if (process.env.SKIP_LSP_PRELOAD !== 'true') {
         try {

@@ -140,11 +140,24 @@ class StructuredLogger {
     const isError = entry.level === 'ERROR' || entry.level === 'WARN';
 
     if (this.output === 'console' || this.output === 'both') {
-      // Container-native: INFO/DEBUG → stdout, WARN/ERROR → stderr
-      if (isError) {
+      // When running as MCP server, all logs go to stderr to keep stdout clean for protocol
+      // MCP protocol requires exclusive use of stdout for communication
+      const isMCPMode = !process.argv
+        .slice(2)
+        .some((arg) =>
+          ['init', 'status', 'fix', 'config', 'logs', 'help', '--help', '-h'].includes(arg)
+        );
+
+      if (isMCPMode) {
+        // All logs to stderr in MCP mode
         console.error(message);
       } else {
-        console.log(message);
+        // Normal mode: INFO/DEBUG → stdout, WARN/ERROR → stderr
+        if (isError) {
+          console.error(message);
+        } else {
+          console.log(message);
+        }
       }
     }
 

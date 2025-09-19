@@ -106,7 +106,7 @@ export function adminValidate(input: string): boolean {
     // Initialize MCP client (shared or individual based on environment)
     const { MCPTestClient } = await import('../helpers/mcp-test-client');
     client = USE_SHARED_SERVER ? MCPTestClient.getShared() : new MCPTestClient();
-    await client.start();
+    await client.start({ skipLSPPreload: true });
     console.log('✅ MCP server started');
 
     // Progressive warm-up for TypeScript server

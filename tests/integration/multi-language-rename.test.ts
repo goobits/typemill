@@ -41,7 +41,7 @@ describe('Multi-Language Rename Integration Tests', () => {
     // Initialize MCP client with playground config
     process.env.CODEBUDDY_CONFIG_PATH = '/workspace/playground/codebuddy.json';
     client = new MCPTestClient();
-    await client.start();
+    await client.start({ skipLSPPreload: true });
 
     // Extended wait for multiple LSP servers to initialize
     console.log('⏳ Waiting for multiple LSP servers to initialize...');

@@ -16,35 +16,20 @@ interface MCPMessage {
   params?: unknown;
 }
 
-// A robust message parser that handles Content-Length headers, adapted from the project's own LSP protocol parser.
+// A message parser for newline-delimited JSON (NDJSON) as used by MCP protocol
 function createMessageParser() {
   let buffer = '';
   const subscribers = new Set<(message: MCPMessage) => void>();
 
   function parse() {
-    while (true) {
-      const headerEndIndex = buffer.indexOf('\r\n\r\n');
-      if (headerEndIndex === -1) break;
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-      const headers = buffer.substring(0, headerEndIndex);
-      const contentLengthMatch = headers.match(/Content-Length: (\d+)/);
-
-      if (!contentLengthMatch) {
-        // Malformed header, discard and continue
-        buffer = buffer.substring(headerEndIndex + 4);
-        continue;
-      }
-
-      const contentLength = Number.parseInt(contentLengthMatch[1], 10);
-      const messageStartIndex = headerEndIndex + 4;
-
-      if (buffer.length < messageStartIndex + contentLength) break;
-
-      const messageContent = buffer.substring(messageStartIndex, messageStartIndex + contentLength);
-      buffer = buffer.substring(messageStartIndex + contentLength);
+    for (const line of lines) {
+      if (!line.trim()) continue; // Skip empty lines
 
       try {
-        const message = JSON.parse(messageContent) as MCPMessage;
+        const message = JSON.parse(line) as MCPMessage;
         for (const sub of subscribers) {
           sub(message);
         }
@@ -74,6 +59,8 @@ export class MCPTestClient {
   private isShared = false;
   private initPromise: Promise<void> | null = null;
   public isClosed = false;
+  private static requestCounter = 0;
+  private static instanceId = Math.floor(Math.random() * 10000);
 
   constructor() {
     this.parser.subscribe((message) => {
@@ -82,10 +69,20 @@ export class MCPTestClient {
         if (message.error) {
           this.responseEmitter.emit(message.id, { error: message.error });
         } else {
+          // Ensure we always emit a valid result, even if it's undefined
+          // This prevents the race condition where no event is emitted at all
           this.responseEmitter.emit(message.id, message.result);
         }
       }
     });
+  }
+
+  private generateUniqueId(): string {
+    // Generate truly unique ID using timestamp + counter + instance ID + random
+    const timestamp = Date.now();
+    const counter = ++MCPTestClient.requestCounter;
+    const random = Math.floor(Math.random() * 1000);
+    return `${MCPTestClient.instanceId}-${timestamp}-${counter}-${random}`;
   }
 
   static getShared(): MCPTestClient {
@@ -123,7 +120,7 @@ export class MCPTestClient {
       env: {
         ...process.env,
         TEST_MODE: getSystemCapabilities().isSlowSystem ? 'slow' : 'fast',
-        SKIP_LSP_PRELOAD: options?.skipLSPPreload ? 'true' : 'false',
+        SKIP_LSP_PRELOAD: options?.skipLSPPreload !== false ? 'true' : undefined,
         TEST_MINIMAL_CONFIG: options?.minimalConfig ? 'true' : 'false',
       },
     });
@@ -142,8 +139,28 @@ export class MCPTestClient {
 
       this.process.stderr?.on('data', (data) => {
         if (data.toString().includes('Codebuddy Server running on stdio')) {
-          clearTimeout(timeout);
-          resolve();
+          // Send initialize request immediately after server starts
+          const initRequest = `${JSON.stringify({
+            jsonrpc: '2.0',
+            id: 'init',
+            method: 'initialize',
+            params: {
+              protocolVersion: '2024-11-05',
+              capabilities: {},
+              clientInfo: { name: 'mcp-test-client', version: '1.0.0' },
+            },
+          })}\n`;
+
+          this.process.stdin?.write(initRequest);
+
+          // Wait for initialize response before resolving
+          const unsubscribe = this.parser.subscribe((message) => {
+            if (message.id === 'init' && message.result) {
+              unsubscribe();
+              clearTimeout(timeout);
+              resolve();
+            }
+          });
         }
       });
     });
@@ -173,7 +190,7 @@ export class MCPTestClient {
   }
 
   async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
-    const id = Math.floor(Math.random() * 100000);
+    const id = this.generateUniqueId();
     const request = {
       jsonrpc: '2.0',
       id,
@@ -181,23 +198,36 @@ export class MCPTestClient {
       params: { name, arguments: args },
     };
 
-    const requestString = `Content-Length: ${Buffer.byteLength(JSON.stringify(request))}\r\n\r\n${JSON.stringify(request)}`;
+    // MCP uses newline-delimited JSON, not Content-Length headers
+    const requestString = `${JSON.stringify(request)}\n`;
 
     return new Promise((resolve, reject) => {
       const capabilities = getSystemCapabilities();
       const requestTimeout = capabilities.baseTimeout * capabilities.timeoutMultiplier;
 
       const timeout = setTimeout(() => {
+        // Clean up listener on timeout
+        this.responseEmitter.removeAllListeners(id);
         reject(new Error(`Request ${name} (${id}) timed out after ${requestTimeout / 1000}s.`));
       }, requestTimeout);
 
+      // Add defensive check for response handling
       this.responseEmitter.once(id, (result) => {
         clearTimeout(timeout);
-        resolve(result);
+
+        // Handle error responses properly
+        if (result && typeof result === 'object' && 'error' in result) {
+          reject(new Error(`Tool error: ${JSON.stringify(result.error)}`));
+        } else if (result === undefined) {
+          reject(new Error(`Received undefined result for ${name} (${id})`));
+        } else {
+          resolve(result);
+        }
       });
 
       if (!this.process || !this.process.stdin) {
         clearTimeout(timeout);
+        this.responseEmitter.removeAllListeners(id);
         reject(new Error('Process not started or stdin not available'));
         return;
       }
@@ -205,6 +235,7 @@ export class MCPTestClient {
       this.process.stdin.write(requestString, (err) => {
         if (err) {
           clearTimeout(timeout);
+          this.responseEmitter.removeAllListeners(id);
           reject(err);
         }
       });
@@ -263,11 +294,26 @@ export const QUICK_TESTS = [
   },
 ];
 
+// For now, ALL_TESTS is the same as QUICK_TESTS
+// TODO: Add comprehensive tests for all 28+ tools
+export const ALL_TESTS = QUICK_TESTS;
+
 export function assertToolResult(
   result: unknown
 ): asserts result is { content: Array<{ type: 'text'; text: string }> } {
-  if (!result || !result.content || !Array.isArray(result.content)) {
-    console.error('Invalid tool result:', result);
-    throw new Error('Invalid tool result format');
+  if (!result || typeof result !== 'object') {
+    console.error('Invalid tool result - not an object:', result);
+    throw new Error('Invalid tool result format: expected object');
+  }
+
+  const resultObj = result as Record<string, unknown>;
+  if (!resultObj.content) {
+    console.error('Invalid tool result - no content property:', result);
+    throw new Error('Invalid tool result format: missing content property');
+  }
+
+  if (!Array.isArray(resultObj.content)) {
+    console.error('Invalid tool result - content not array:', result);
+    throw new Error('Invalid tool result format: content must be array');
   }
 }

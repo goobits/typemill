@@ -75,7 +75,7 @@ export function processUser(data: UserData): UserData {
 
     // Initialize MCP client
     client = new MCPTestClient();
-    await client.start();
+    await client.start({ skipLSPPreload: true });
 
     // Allow extra time for LSP initialization based on system speed
     const initTime = testConfig.mode === 'slow' ? 8000 : 3000;

@@ -9,8 +9,14 @@ describe('MCP Error Case Tests', () => {
     console.log('============================\n');
     console.log('Testing error handling and edge cases...\n');
 
-    client = new MCPTestClient();
-    await client.start();
+    // Use shared client when running in fast mode to reduce server overhead
+    if (process.env.TEST_MODE === 'fast') {
+      client = MCPTestClient.getShared();
+      await client.start({ skipLSPPreload: true });
+    } else {
+      client = new MCPTestClient();
+      await client.start({ skipLSPPreload: true });
+    }
 
     // Wait for LSP servers to fully initialize
     console.log('⏳ Waiting for LSP servers to initialize...');
@@ -30,9 +36,9 @@ describe('MCP Error Case Tests', () => {
         });
 
         // Should either fail or return meaningful error message
-        const toolResult = assertToolResult(result);
-        if (toolResult.content) {
-          const content = toolResult.content?.[0]?.text || '';
+        assertToolResult(result);
+        if (result.content) {
+          const content = result.content?.[0]?.text || '';
           expect(content).toMatch(/(not found|does not exist|no such file|error)/i);
         }
       } catch (error) {
@@ -62,9 +68,9 @@ describe('MCP Error Case Tests', () => {
         });
 
         // Should handle gracefully
-        const toolResult = assertToolResult(result);
-        if (toolResult.content) {
-          const content = toolResult.content?.[0]?.text || '';
+        assertToolResult(result);
+        if (result.content) {
+          const content = result.content?.[0]?.text || '';
           expect(content).toMatch(/(out of bounds|invalid position|no hover|error)/i);
         }
       } catch (error) {
@@ -93,10 +99,10 @@ describe('MCP Error Case Tests', () => {
       });
 
       expect(result).toBeDefined();
-      const toolResult = assertToolResult(result);
-      expect(toolResult.content).toBeDefined();
+      assertToolResult(result);
+      expect(result.content).toBeDefined();
 
-      const content = toolResult.content?.[0]?.text || '';
+      const content = result.content?.[0]?.text || '';
       expect(content).toMatch(
         /(not found|no definition|no matches|0 definitions|no symbols found)/i
       );
@@ -190,9 +196,9 @@ describe('MCP Error Case Tests', () => {
         });
 
         // Should handle gracefully
-        const toolResult = assertToolResult(result);
-        if (toolResult.content) {
-          const content = toolResult.content?.[0]?.text || '';
+        assertToolResult(result);
+        if (result.content) {
+          const content = result.content?.[0]?.text || '';
           expect(content).toMatch(/(unsupported|no server|no diagnostics|error)/i);
         }
       } catch (error) {
@@ -236,8 +242,8 @@ describe('MCP Error Case Tests', () => {
       // All should either succeed or fail gracefully
       results.forEach((result, index) => {
         if (result.status === 'fulfilled') {
-          const toolResult = assertToolResult(result.value);
-          expect(toolResult.content).toBeDefined();
+          assertToolResult(result.value);
+          expect(result.value.content).toBeDefined();
         } else {
           // Failed requests should have meaningful error messages
           expect(result.reason).toBeDefined();
@@ -255,9 +261,9 @@ describe('MCP Error Case Tests', () => {
           character: Number.MAX_SAFE_INTEGER,
         });
 
-        const toolResult = assertToolResult(result);
-        if (toolResult.content) {
-          const content = toolResult.content?.[0]?.text || '';
+        assertToolResult(result);
+        if (result.content) {
+          const content = result.content?.[0]?.text || '';
           expect(content).toMatch(/(out of bounds|invalid|no hover|error)/i);
         }
       } catch (error) {
@@ -284,9 +290,9 @@ describe('MCP Error Case Tests', () => {
         });
 
         // Should handle or reject gracefully
-        const toolResult = assertToolResult(result);
-        if (toolResult.content) {
-          const content = toolResult.content?.[0]?.text || '';
+        assertToolResult(result);
+        if (result.content) {
+          const content = result.content?.[0]?.text || '';
           expect(content).toMatch(/(applied|too large|error)/i);
         }
       } catch (error) {

@@ -82,7 +82,7 @@ describe('Calculator', () => {
 
     // Initialize MCP client
     client = new MCPTestClient();
-    await client.start();
+    await client.start({ skipLSPPreload: true });
     console.log('✅ Workspace edit test environment ready');
   });
 
