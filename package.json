@@ -82,7 +82,7 @@
     "knip": "^5.63.1",
     "memfs": "^4.42.0",
     "typescript": "^5.9.2",
-    "typescript-language-server": "^4.4.0",
+    "typescript-language-server": "^5.0.0",
     "vscode-langservers-extracted": "^4.10.0",
     "yaml-language-server": "^1.18.0"
   },
