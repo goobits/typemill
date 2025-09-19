@@ -56,13 +56,19 @@ describe('LSP Client Unit Tests', () => {
       console.log(`✅ Signature help result: ${sigHelp ? 'Available' : 'None'}`);
       if (sigHelp) {
         console.log(`   Signatures: ${sigHelp.signatures?.length || 0}`);
+        // Verify signature help structure when available
+        expect(sigHelp).toHaveProperty('signatures');
+        expect(Array.isArray(sigHelp.signatures)).toBe(true);
       }
-      // May return null for some positions, which is valid
-      expect(true).toBe(true);
+      // Signature help can be null at many positions - this is expected LSP behavior
+      // The test validates the tool doesn't crash and returns proper structure when available
+      expect(sigHelp === null || (sigHelp && Array.isArray(sigHelp.signatures))).toBe(true);
     } catch (sigError: any) {
       console.log(`⚠️ Signature help failed (expected for some positions): ${sigError.message}`);
-      // This can fail for some positions, which is expected
-      expect(true).toBe(true);
+      // LSP can legitimately fail signature help at certain positions
+      // Verify we get a proper error message, not a crash
+      expect(sigError.message).toBeDefined();
+      expect(typeof sigError.message).toBe('string');
     }
   });
 

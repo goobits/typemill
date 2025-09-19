@@ -315,6 +315,18 @@ describe('MCP Error Case Tests', () => {
     console.log('✅ Resource limit handling');
     console.log('\n✨ Codebuddy demonstrates robust error handling across all scenarios!');
 
-    expect(true).toBe(true); // Placeholder assertion
+    // Verify the test client is still responsive after all error scenarios
+    const healthCheck = await client.callTool('get_diagnostics', {
+      file_path: '/workspace/playground/src/test-file.ts',
+    });
+
+    // Should still be able to make successful tool calls after error testing
+    expect(healthCheck).toBeDefined();
+    assertToolResult(healthCheck);
+    expect(healthCheck.content).toBeDefined();
+
+    // Verify error test coverage completed by checking client state
+    expect(client).toBeDefined();
+    console.log('✅ System remains responsive after comprehensive error testing');
   });
 });
