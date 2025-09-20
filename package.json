@@ -70,10 +70,12 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.3",
+    "@types/inquirer": "^9.0.9",
+    "bash-language-server": "^5.4.0",
     "ignore": "^7.0.5",
+    "inquirer": "^12.9.6",
     "vscode-langservers-extracted": "^4.10.0",
-    "yaml-language-server": "^1.15.0",
-    "bash-language-server": "^5.4.0"
+    "yaml-language-server": "^1.15.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

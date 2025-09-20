@@ -1,8 +1,37 @@
 #!/usr/bin/env node
 
 import { type ChildProcess, spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 
 const TIMEOUT_MS = 2000;
+
+/**
+ * Get the full path for a command, checking common installation locations
+ */
+export function getCommandPath(cmd: string): string {
+  // Special paths for common tools
+  const specialPaths: Record<string, string[]> = {
+    gopls: [join(homedir(), 'go', 'bin', 'gopls'), '/usr/local/go/bin/gopls', '/opt/go/bin/gopls'],
+    'rust-analyzer': [
+      join(homedir(), '.cargo', 'bin', 'rust-analyzer'),
+      '/usr/local/bin/rust-analyzer',
+    ],
+  };
+
+  // Check special paths first
+  if (specialPaths[cmd]) {
+    for (const path of specialPaths[cmd]) {
+      if (existsSync(path)) {
+        return path;
+      }
+    }
+  }
+
+  // Return original command (will use PATH)
+  return cmd;
+}
 
 /**
  * Test if a command is available and working
@@ -26,9 +55,14 @@ export async function testCommand(command: string[]): Promise<boolean> {
     return true;
   }
 
+  // Get the full path for the command
+  const fullCmd = getCommandPath(cmd);
+
   return new Promise((resolve) => {
-    const testArgs = getTestArgs(cmd);
-    const proc = spawn(cmd, testArgs, {
+    // Extract basename for getting test args
+    const basename = fullCmd.split('/').pop() || cmd;
+    const testArgs = getTestArgs(basename);
+    const proc = spawn(fullCmd, testArgs, {
       stdio: 'ignore',
       shell: false,
     }) as ChildProcess;
@@ -64,9 +98,12 @@ export async function testCommand(command: string[]): Promise<boolean> {
  * Get appropriate test arguments for a command
  */
 function getTestArgs(command: string): string[] {
+  // Commands that use 'version' without dashes
+  const versionNoDash = new Set(['gopls']);
+
+  // Commands that use '--version'
   const versionCommands = new Set([
     'pylsp',
-    'gopls',
     'rust-analyzer',
     'clangd',
     'jdtls',
@@ -77,6 +114,9 @@ function getTestArgs(command: string): string[] {
 
   const helpCommands = new Set(['docker-langserver']);
 
+  if (versionNoDash.has(command)) {
+    return ['version'];
+  }
   if (versionCommands.has(command)) {
     return ['--version'];
   }

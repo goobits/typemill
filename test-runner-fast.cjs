@@ -52,6 +52,16 @@ const defaultTests = [
 const testsToRun = testFiles.length > 0 ? testFiles : defaultTests;
 
 async function runTests() {
+  // Run pre-test validation first
+  try {
+    console.log('Running pre-test validation...');
+    require('node:child_process').execSync('node scripts/pre-test-check.cjs', { stdio: 'inherit' });
+    console.log('');
+  } catch (error) {
+    console.error('❌ Pre-test validation failed. Please fix the issues above.');
+    process.exit(1);
+  }
+
   console.log(`🔥 Starting tests with ${config.prewarming ? 'prewarming' : 'minimal'} mode...\n`);
 
   printSlowSystemInfo(capabilities);

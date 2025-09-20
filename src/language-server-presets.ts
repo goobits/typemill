@@ -1,9 +1,12 @@
+import { getCommandPath } from './cli/server-utils.js';
+
 export interface LanguageServerConfig {
   name: string;
   displayName: string;
   extensions: string[];
   command: string[];
   installInstructions: string;
+  installCommand?: string[]; // Command to auto-install the server
   rootDir?: string;
   description?: string;
   installRequired?: boolean;
@@ -18,6 +21,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     extensions: ['js', 'ts', 'jsx', 'tsx'],
     command: ['npx', '--', 'typescript-language-server', '--stdio'],
     installInstructions: 'npm install -g typescript-language-server',
+    installCommand: ['npm', 'install', '-g', 'typescript-language-server', 'typescript'],
     description: 'TypeScript and JavaScript language server',
     installRequired: false,
   },
@@ -27,6 +31,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     extensions: ['py', 'pyi'],
     command: ['pylsp'],
     installInstructions: 'pip install python-lsp-server',
+    installCommand: ['pip', 'install', 'python-lsp-server[all]'],
     description: 'Python Language Server Protocol implementation',
     installRequired: false,
     restartInterval: 5, // Auto-restart every 5 minutes to prevent performance degradation
@@ -56,6 +61,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     extensions: ['go'],
     command: ['gopls'],
     installInstructions: 'go install golang.org/x/tools/gopls@latest',
+    installCommand: ['go', 'install', 'golang.org/x/tools/gopls@latest'],
     description: 'Official language server for the Go language',
     installRequired: true,
   },
@@ -65,8 +71,59 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     extensions: ['rs'],
     command: ['rust-analyzer'],
     installInstructions: 'rustup component add rust-analyzer',
+    installCommand: ['rustup', 'component', 'add', 'rust-analyzer'],
     description: 'Rust language server providing IDE-like features',
     installRequired: true,
+  },
+  {
+    name: 'json',
+    displayName: 'JSON',
+    extensions: ['json', 'jsonc'],
+    command: ['npx', '--', 'vscode-json-language-server', '--stdio'],
+    installInstructions: 'npm install -g vscode-langservers-extracted',
+    installCommand: ['npm', 'install', '-g', 'vscode-langservers-extracted'],
+    description: 'JSON language server with schema validation',
+    installRequired: false,
+  },
+  {
+    name: 'html',
+    displayName: 'HTML',
+    extensions: ['html', 'htm'],
+    command: ['npx', '--', 'vscode-html-language-server', '--stdio'],
+    installInstructions: 'npm install -g vscode-langservers-extracted',
+    installCommand: ['npm', 'install', '-g', 'vscode-langservers-extracted'],
+    description: 'HTML language server with IntelliSense',
+    installRequired: false,
+  },
+  {
+    name: 'css',
+    displayName: 'CSS',
+    extensions: ['css', 'scss', 'sass', 'less'],
+    command: ['npx', '--', 'vscode-css-language-server', '--stdio'],
+    installInstructions: 'npm install -g vscode-langservers-extracted',
+    installCommand: ['npm', 'install', '-g', 'vscode-langservers-extracted'],
+    description: 'CSS/SCSS/LESS language server',
+    installRequired: false,
+  },
+  {
+    name: 'yaml',
+    displayName: 'YAML',
+    extensions: ['yaml', 'yml'],
+    command: ['npx', '--', 'yaml-language-server', '--stdio'],
+    installInstructions: 'npm install -g yaml-language-server',
+    installCommand: ['npm', 'install', '-g', 'yaml-language-server'],
+    description: 'YAML language server with schema support',
+    installRequired: false,
+  },
+  {
+    name: 'bash',
+    displayName: 'Bash/Shell',
+    extensions: ['sh', 'bash', 'zsh'],
+    command: ['npx', '--', 'bash-language-server', 'start'],
+    installInstructions: 'npm install -g bash-language-server',
+    installCommand: ['npm', 'install', '-g', 'bash-language-server'],
+    description: 'Bash language server for shell scripts',
+    installRequired: false,
   },
   {
     name: 'c-cpp',
@@ -92,6 +149,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     extensions: ['rb'],
     command: ['solargraph', 'stdio'],
     installInstructions: 'gem install solargraph',
+    installCommand: ['gem', 'install', 'solargraph'],
     description: 'Ruby language server providing IntelliSense',
     installRequired: true,
   },
@@ -101,6 +159,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     extensions: ['php'],
     command: ['intelephense', '--stdio'],
     installInstructions: 'npm install -g intelephense',
+    installCommand: ['npm', 'install', '-g', 'intelephense'],
     description: 'PHP language server with advanced features',
     installRequired: true,
   },
@@ -173,6 +232,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     extensions: ['vue'],
     command: ['npx', '--', 'vue-language-server', '--stdio'],
     installInstructions: 'npm install -g @vue/language-server',
+    installCommand: ['npm', 'install', '-g', '@vue/language-server'],
     description: 'Official Vue.js language server (Volar)',
     installRequired: false,
   },
@@ -182,6 +242,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     extensions: ['svelte'],
     command: ['npx', '--', 'svelteserver', '--stdio'],
     installInstructions: 'npm install -g svelte-language-server',
+    installCommand: ['npm', 'install', '-g', 'svelte-language-server'],
     description: 'Language server for Svelte framework',
     installRequired: false,
   },
@@ -194,6 +255,12 @@ export function generateConfig(selectedLanguages: string[]): object {
 
   return {
     servers: selectedServers.map((server) => {
+      // For commands that might be in non-standard locations, update the command path
+      const command = [...server.command];
+      if (command[0] === 'gopls' || command[0] === 'rust-analyzer') {
+        command[0] = getCommandPath(command[0]);
+      }
+
       const config: {
         extensions: string[];
         command: string[];
@@ -202,7 +269,7 @@ export function generateConfig(selectedLanguages: string[]): object {
         initializationOptions?: unknown;
       } = {
         extensions: server.extensions,
-        command: server.command,
+        command,
         rootDir: server.rootDir || '.',
       };
 

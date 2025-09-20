@@ -26,7 +26,7 @@ export async function statusCommand(): Promise<void> {
 
   if (!config || !config.servers?.length) {
     console.log('  No configuration found');
-    console.log('  Run: codebuddy init');
+    console.log('  Run: codeflow-buddy setup');
     return;
   }
 
@@ -67,7 +67,7 @@ export async function statusCommand(): Promise<void> {
     const status = server.available ? '✓' : '✗';
     const extList = `(${server.extensions.map((ext) => `.${ext}`).join(' ')})`;
     const runningInfo = server.running ? ` [PID: ${server.pid}]` : '';
-    const fixHint = server.available ? '' : " - run 'codebuddy fix'";
+    const fixHint = server.available ? '' : " - run 'codeflow-buddy setup' to install";
 
     console.log(`  ${status} ${server.name}  ${extList}${runningInfo}${fixHint}`);
   }
@@ -75,7 +75,7 @@ export async function statusCommand(): Promise<void> {
   console.log('');
   console.log(`Active: ${activeCount} servers`);
   if (issueCount > 0) {
-    console.log(`Issues: ${issueCount} (fixable)`);
+    console.log(`Issues: ${issueCount} - run 'codeflow-buddy setup' to install missing servers`);
   }
   console.log(`Config: ${DirectoryUtils.getConfigPath()}`);
 }
