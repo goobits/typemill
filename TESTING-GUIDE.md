@@ -3,20 +3,20 @@
 ## 🚀 Quick Start
 
 ```bash
-# Clone and setup
+# Clone and run tests
 git clone <repo>
 cd codeflow-buddy
 bun install
-bun run build
-
-# Run tests
 bun test:fast
 ```
 
-That's it! No setup script needed. The system:
-- Uses smart defaults when no config exists
-- Auto-installs language servers via npx when needed
-- Tests work immediately
+That's it! The test runner automatically:
+- ✅ **Checks dependencies** and installs if missing
+- ✅ **Builds the project** if needed or outdated
+- ✅ **Validates language servers** and gives helpful install instructions
+- ✅ **Runs tests** with everything ready
+
+No manual setup needed!
 
 ## 🎯 Test Commands
 
@@ -29,30 +29,36 @@ bun test:all          # Everything
 
 ## 📊 How It Works
 
-1. **`bun install`** - Installs all npm dependencies (including TypeScript language server)
-2. **`bun run build`** - Builds the TypeScript project to dist/
-3. **Tests run** - System auto-configures with sensible defaults
+1. **Pre-test validation** - Checks and auto-fixes common issues
+2. **Auto-build** - Builds project if `dist/index.js` is missing or outdated
+3. **Language server check** - Validates TypeScript LSP and lists optional servers
+4. **Smart defaults** - Uses `npx` for language servers from node_modules
 
-No config needed! The system uses `npx` to run language servers, so they're installed on-demand from your node_modules.
+The system ensures everything needed for tests is ready before running them.
 
 ## 🔧 Troubleshooting
-
-### Tests fail on first run
-Run again - LSP servers need a moment to warm up.
 
 ### "Command not found: bun"
 Install Bun: `curl -fsSL https://bun.sh/install | bash`
 
-### Custom configuration needed?
-Create `.codebuddy/config.json` or run `node dist/index.js init`
+### Pre-test validation fails
+The test runner will show you exactly what's wrong and how to fix it. Common issues:
+- Missing dependencies: Run `bun install`
+- TypeScript LSP missing: Already handled automatically
+- Build issues: Auto-fixed by the system
 
-But honestly, you probably don't need it - the defaults work great!
+### Tests fail on first run
+LSP servers need a moment to warm up - run again.
+
+### Want more language servers?
+The pre-test check shows install commands for Python, Rust, Go, C++, etc.
 
 ## 💡 Why So Simple?
 
-- **Bun** handles all package management
-- **NPX** auto-runs language servers from node_modules
-- **Smart defaults** mean no config needed
-- **TypeScript** is the only language in this codebase
+- **Pre-test validation** auto-fixes common issues
+- **Auto-build** handles the required build step
+- **Bun + NPX** handle all package management
+- **Smart defaults** work out of the box
+- **Clear guidance** when manual action is needed
 
-No complex setup scripts, no global installs, no manual configuration. Just `bun install`, `bun run build`, and go!
+The system is designed to eliminate friction for new contributors. Tests "just work" after `bun install`!

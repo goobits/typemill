@@ -42,6 +42,16 @@ const essentialTests = [
 const testsToRun = process.argv.slice(2).length > 0 ? process.argv.slice(2) : essentialTests;
 
 async function runTests() {
+  // Run pre-test validation first
+  try {
+    console.log('Running pre-test validation...');
+    require('node:child_process').execSync('node scripts/pre-test-check.cjs', { stdio: 'inherit' });
+    console.log('');
+  } catch (error) {
+    console.error('❌ Pre-test validation failed. Please fix the issues above.');
+    process.exit(1);
+  }
+
   console.log('🐌 SLOW SYSTEM MODE ENABLED:');
   console.log('   - LSP preload: DISABLED');
   console.log('   - Config: Minimal (TypeScript only)');

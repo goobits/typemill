@@ -87,57 +87,85 @@ const logger = getLogger('MCP-Server');
 
 // Handle subcommands and help flags
 const args = process.argv.slice(2);
-if (args.length > 0) {
-  const subcommand = args[0];
 
-  if (subcommand === 'init') {
-    const { initCommand } = await import('./src/cli/commands/init.js');
-    await initCommand();
-    process.exit(0);
-  } else if (subcommand === 'status') {
-    const { statusCommand } = await import('./src/cli/commands/status.js');
-    await statusCommand();
-    process.exit(0);
-  } else if (subcommand === 'fix') {
-    const { fixCommand } = await import('./src/cli/commands/fix.js');
-    const options = {
-      auto: args.includes('--auto'),
-      manual: args.includes('--manual'),
-    };
-    await fixCommand(options);
-    process.exit(0);
-  } else if (subcommand === '--help' || subcommand === '-h' || subcommand === 'help') {
-    console.log('codebuddy - MCP server for accessing LSP functionality');
-    console.log('');
-    console.log('Usage: codebuddy [command] [options]');
-    console.log('');
-    console.log('Commands:');
-    console.log('  init          Smart setup with auto-detection');
-    console.log("  status        Show what's working right now");
-    console.log('  fix           Actually fix problems (auto-install when possible)');
-    console.log('  help          Show this help message');
-    console.log('');
-    console.log('Fix options:');
-    console.log('  --auto        Auto-install without prompting');
-    console.log('  --manual      Show manual installation commands');
-    console.log('');
-    console.log('Configuration & Logs:');
-    console.log('  Config file: .codebuddy/config.json');
-    console.log('  Log file: .codebuddy/logs/debug.log (use tail -f to follow)');
-    console.log('');
-    console.log('Run without arguments to start the MCP server.');
-    process.exit(0);
-  } else {
-    console.error(`Unknown command: ${subcommand}`);
-    console.error('Available commands:');
-    console.error('  init     Smart setup with auto-detection');
-    console.error("  status   Show what's working right now");
-    console.error('  fix      Actually fix problems');
-    console.error('  help     Show help message');
-    console.error('');
-    console.error('Run without arguments to start the MCP server.');
-    process.exit(1);
-  }
+// Show help if no arguments provided
+if (args.length === 0) {
+  console.log('codeflow-buddy - MCP server for accessing LSP functionality');
+  console.log('');
+  console.log('Usage: codeflow-buddy <command> [options]');
+  console.log('');
+  console.log('Commands:');
+  console.log('  setup         Interactive setup with language server selection');
+  console.log("  status        Show what's working right now");
+  console.log('  server        Start the MCP server for Claude Code');
+  console.log('  help          Show this help message');
+  console.log('');
+  console.log('Setup options:');
+  console.log('  --all         Auto-install all language servers for detected file types');
+  console.log('');
+  console.log('Quick start:');
+  console.log('  codeflow-buddy setup        # Interactive setup');
+  console.log('  codeflow-buddy setup --all  # Auto-install all servers');
+  console.log('  codeflow-buddy status       # Check server status');
+  console.log('  codeflow-buddy server       # Start MCP server for Claude Code');
+  console.log('');
+  console.log('Configuration:');
+  console.log('  Config file: .codebuddy/config.json');
+  console.log('  Log file: .codebuddy/logs/debug.log');
+  process.exit(0);
+}
+
+const subcommand = args[0];
+
+if (subcommand === 'setup') {
+  const { setupCommand } = await import('./src/cli/commands/setup.js');
+  const options = {
+    all: args.includes('--all'),
+  };
+  await setupCommand(options);
+  process.exit(0);
+} else if (subcommand === 'status') {
+  const { statusCommand } = await import('./src/cli/commands/status.js');
+  await statusCommand();
+  process.exit(0);
+} else if (subcommand === 'server') {
+  // Continue to start MCP server below
+  console.log('Starting MCP server for Claude Code...');
+} else if (subcommand === '--help' || subcommand === '-h' || subcommand === 'help') {
+  console.log('codeflow-buddy - MCP server for accessing LSP functionality');
+  console.log('');
+  console.log('Usage: codeflow-buddy <command> [options]');
+  console.log('');
+  console.log('Commands:');
+  console.log('  setup         Interactive setup with language server selection');
+  console.log("  status        Show what's working right now");
+  console.log('  server        Start the MCP server for Claude Code');
+  console.log('  help          Show this help message');
+  console.log('');
+  console.log('Setup options:');
+  console.log('  --all         Auto-install all language servers for detected file types');
+  console.log('');
+  console.log('Quick start:');
+  console.log('  codeflow-buddy setup        # Interactive setup');
+  console.log('  codeflow-buddy setup --all  # Auto-install all servers');
+  console.log('  codeflow-buddy status       # Check server status');
+  console.log('  codeflow-buddy server       # Start MCP server for Claude Code');
+  console.log('');
+  console.log('Configuration:');
+  console.log('  Config file: .codebuddy/config.json');
+  console.log('  Log file: .codebuddy/logs/debug.log');
+  process.exit(0);
+} else {
+  console.error(`Unknown command: ${subcommand}`);
+  console.error('');
+  console.error('Available commands:');
+  console.error('  setup    Interactive setup with language server selection');
+  console.error("  status   Show what's working right now");
+  console.error('  server   Start the MCP server for Claude Code');
+  console.error('  help     Show help message');
+  console.error('');
+  console.error('Run "codeflow-buddy help" for more information.');
+  process.exit(1);
 }
 
 // Create LSP clients and services with proper error handling

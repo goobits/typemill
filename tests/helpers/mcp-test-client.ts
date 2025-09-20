@@ -34,7 +34,11 @@ function createMessageParser() {
           sub(message);
         }
       } catch (e) {
-        console.error('Failed to parse message JSON:', e);
+        // Only log errors for lines that look like they should be JSON
+        // (ignore log output that starts with timestamp or other non-JSON)
+        if (line.trim().startsWith('{') || line.trim().startsWith('[')) {
+          console.error('Failed to parse message JSON:', e);
+        }
       }
     }
   }
@@ -114,7 +118,7 @@ export class MCPTestClient {
     minimalConfig?: boolean;
     skipLSPPreload?: boolean;
   }): Promise<void> {
-    this.process = spawn(process.execPath, ['dist/index.js'], {
+    this.process = spawn(process.execPath, ['dist/index.js', 'server'], {
       cwd: process.cwd(),
       stdio: ['pipe', 'pipe', 'pipe'],
       env: {
