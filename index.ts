@@ -106,26 +106,6 @@ if (args.length > 0) {
     };
     await fixCommand(options);
     process.exit(0);
-  } else if (subcommand === 'config') {
-    const { configCommand } = await import('./src/cli/commands/config.js');
-    const options = {
-      show: args.includes('--show'),
-      edit: args.includes('--edit'),
-    };
-    await configCommand(options);
-    process.exit(0);
-  } else if (subcommand === 'logs') {
-    const { logsCommand } = await import('./src/cli/commands/logs.js');
-    const linesIndex = args.indexOf('--lines');
-    const options = {
-      tail: args.includes('--tail'),
-      lines:
-        linesIndex >= 0 && linesIndex + 1 < args.length
-          ? Number.parseInt(args[linesIndex + 1] || '50')
-          : undefined,
-    };
-    await logsCommand(options);
-    process.exit(0);
   } else if (subcommand === '--help' || subcommand === '-h' || subcommand === 'help') {
     console.log('codebuddy - MCP server for accessing LSP functionality');
     console.log('');
@@ -135,21 +115,15 @@ if (args.length > 0) {
     console.log('  init          Smart setup with auto-detection');
     console.log("  status        Show what's working right now");
     console.log('  fix           Actually fix problems (auto-install when possible)');
-    console.log('  config        Show/edit configuration');
-    console.log('  logs          Debug output when things go wrong');
     console.log('  help          Show this help message');
     console.log('');
     console.log('Fix options:');
     console.log('  --auto        Auto-install without prompting');
     console.log('  --manual      Show manual installation commands');
     console.log('');
-    console.log('Config options:');
-    console.log('  --show        Print configuration to stdout');
-    console.log('  --edit        Open configuration in $EDITOR');
-    console.log('');
-    console.log('Logs options:');
-    console.log('  --tail        Follow logs in real-time');
-    console.log('  --lines N     Show last N lines (default: 50)');
+    console.log('Configuration & Logs:');
+    console.log('  Config file: .codebuddy/config.json');
+    console.log('  Log file: .codebuddy/logs/debug.log (use tail -f to follow)');
     console.log('');
     console.log('Run without arguments to start the MCP server.');
     process.exit(0);
@@ -159,8 +133,6 @@ if (args.length > 0) {
     console.error('  init     Smart setup with auto-detection');
     console.error("  status   Show what's working right now");
     console.error('  fix      Actually fix problems');
-    console.error('  config   Show/edit configuration');
-    console.error('  logs     Debug output');
     console.error('  help     Show help message');
     console.error('');
     console.error('Run without arguments to start the MCP server.');
