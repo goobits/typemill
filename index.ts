@@ -86,7 +86,7 @@ import {
   StructuredLogger,
   createRequestContext,
   getLogger,
-} from './src/utils/structured-logger.js';
+} from './src/core/diagnostics/structured-logger.js';
 import { getPackageVersion } from './src/utils/version.js';
 
 // Initialize module logger

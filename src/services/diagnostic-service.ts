@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { pathToUri } from '../core/file-operations/path-utils.js';
 import type { Diagnostic, DocumentDiagnosticReport } from '../types.js';
-import { debugLog } from '../utils/debug-logger.js';
+import { debugLog } from '../core/diagnostics/debug-logger.js';
 import type { ServiceContext } from './service-context.js';
 
 // Diagnostic service constants

@@ -1,7 +1,7 @@
 import type { ChildProcess } from 'node:child_process';
 import type { LSPError } from '../types.js';
-import { debugLog } from '../utils/debug-logger.js';
-import { getErrorMessage, handleLSPError, logError } from '../utils/error-utils.js';
+import { debugLog } from '../core/diagnostics/debug-logger.js';
+import { getErrorMessage, handleLSPError, logError } from '../core/diagnostics/error-utils.js';
 
 // Protocol constants
 const DEFAULT_REQUEST_TIMEOUT_MS = 30000; // Default timeout for LSP requests

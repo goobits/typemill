@@ -12,7 +12,7 @@ import {
 import { readdir } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import type { LSPClient } from '../../lsp/client.js';
-import { debugLog } from '../../utils/debug-logger.js';
+import { debugLog } from '../diagnostics/debug-logger.js';
 import { pathToUri, uriToPath } from './path-utils.js';
 
 export interface TextEdit {

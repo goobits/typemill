@@ -10,8 +10,8 @@ import type {
   Range,
   TextEdit,
 } from '../types.js';
-import { debugLog } from '../utils/debug-logger.js';
-import { handleFileSystemError, logError } from '../utils/error-utils.js';
+import { debugLog } from '../core/diagnostics/debug-logger.js';
+import { handleFileSystemError, logError } from '../core/diagnostics/error-utils.js';
 import type { ServiceContext } from './service-context.js';
 
 // File service constants

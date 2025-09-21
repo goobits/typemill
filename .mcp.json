@@ -1,11 +1,13 @@
 {
   "mcpServers": {
     "codeflow-buddy": {
+      "type": "stdio",
       "command": "node",
-      "args": ["/workspace/dist/index.js", "start"],
-      "env": {
-        "CODEBUDDY_CONFIG_PATH": "/workspace/.codebuddy/config.json"
-      }
+      "args": [
+        "/workspace/dist/index.js",
+        "start"
+      ],
+      "env": {}
     }
   }
 }

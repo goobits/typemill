@@ -6,7 +6,7 @@ import {
   ServerNotAvailableError,
   createUserFriendlyErrorMessage,
   logError,
-} from '../utils/error-utils.js';
+} from '../core/diagnostics/error-utils.js';
 
 export interface MCPResponse {
   content: Array<{

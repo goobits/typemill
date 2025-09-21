@@ -2,7 +2,7 @@
 // Ensures graceful degradation when servers don't support specific features
 
 import type { ServerState } from '../lsp/types.js';
-import { debugLog } from '../utils/debug-logger.js';
+import { debugLog } from './diagnostics/debug-logger.js';
 
 // LSP capability types - simplified version without external dependencies
 type ProviderOption = boolean | Record<string, unknown>;

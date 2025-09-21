@@ -4,7 +4,7 @@ import { relative, resolve } from 'node:path';
 import { dirname } from 'node:path';
 import type { WorkspaceEdit } from '../../core/file-operations/editor.js';
 import type { DiagnosticService } from '../../services/diagnostic-service.js';
-import { debugLog } from '../../utils/debug-logger.js';
+import { debugLog } from '../../core/diagnostics/debug-logger.js';
 import {
   createFileModificationResponse,
   createListResponse,

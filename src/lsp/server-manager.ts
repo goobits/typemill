@@ -4,7 +4,7 @@ import type { ServerCapabilities } from '../core/capability-manager.js';
 import { capabilityManager } from '../core/capability-manager.js';
 import { pathToUri } from '../core/file-operations/path-utils.js';
 import type { Config, LSPServerConfig } from '../types.js';
-import { ServerNotAvailableError, getErrorMessage, logError } from '../utils/error-utils.js';
+import { ServerNotAvailableError, getErrorMessage, logError } from '../core/diagnostics/error-utils.js';
 import { terminateProcess } from '../utils/platform-utils.js';
 import { getPackageVersion } from '../utils/version.js';
 import type { LSPProtocol } from './protocol.js';

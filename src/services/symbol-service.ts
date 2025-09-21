@@ -11,7 +11,7 @@ import type {
   SymbolMatch,
 } from '../types.js';
 import { SymbolKind } from '../types.js';
-import { debugLog } from '../utils/debug-logger.js';
+import { debugLog } from '../core/diagnostics/debug-logger.js';
 import type { ServiceContext } from './service-context.js';
 
 // Symbol service constants
