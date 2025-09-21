@@ -17,7 +17,7 @@ interface ProjectScanResult {
  * Utility class for scanning project files and managing dependencies
  */
 class ProjectScanner {
-  private static readonly EXCLUDED_DIRS = new Set([
+  private static readonly IGNORED_DIRECTORY_PATTERNS = new Set([
     'node_modules',
     'dist',
     'build',
@@ -222,7 +222,7 @@ class ProjectScanner {
         const fullPath = join(dir, entry.name);
 
         if (entry.isDirectory()) {
-          if (!ProjectScanner.EXCLUDED_DIRS.has(entry.name) && !entry.name.startsWith('.')) {
+          if (!ProjectScanner.IGNORED_DIRECTORY_PATTERNS.has(entry.name) && !entry.name.startsWith('.')) {
             this.scanDirectory(fullPath, files, depth + 1, maxDepth, extensions);
           }
         } else if (entry.isFile()) {
