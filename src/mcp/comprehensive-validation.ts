@@ -4,7 +4,9 @@
  */
 
 import type {
+  AnalyzeRefactorImpactArgs,
   ApplyWorkspaceEditArgs,
+  BatchMoveFilesArgs,
   CreateFileArgs,
   DeleteFileArgs,
   FindDefinitionArgs,
@@ -28,6 +30,7 @@ import type {
   HealthCheckArgs,
   PrepareCallHierarchyArgs,
   PrepareTypeHierarchyArgs,
+  PreviewBatchOperationArgs,
   RenameFileArgs,
   RenameSymbolArgs,
   RenameSymbolStrictArgs,
@@ -511,6 +514,80 @@ export function validateApplyWorkspaceEditArgs(args: unknown): args is ApplyWork
   }
 
   return !('validate_before_apply' in obj) || isOptionalBoolean(obj.validate_before_apply);
+}
+
+// Orchestration handlers validation
+export function validateAnalyzeRefactorImpactArgs(
+  args: unknown
+): args is AnalyzeRefactorImpactArgs {
+  if (!isObject(args)) return false;
+
+  // Validate operations array
+  if (!Array.isArray(args.operations)) return false;
+
+  for (const op of args.operations) {
+    if (!isObject(op)) return false;
+    if (!isString(op.type) || !['move_file', 'rename_symbol'].includes(op.type)) return false;
+
+    if (op.type === 'move_file') {
+      if (!isNonEmptyString(op.old_path) || !isNonEmptyString(op.new_path)) return false;
+    } else if (op.type === 'rename_symbol') {
+      if (
+        !isNonEmptyString(op.file_path) ||
+        !isNonEmptyString(op.symbol_name) ||
+        !isNonEmptyString(op.new_name)
+      )
+        return false;
+    }
+  }
+
+  return !('include_recommendations' in args) || isOptionalBoolean(args.include_recommendations);
+}
+
+export function validateBatchMoveFilesArgs(args: unknown): args is BatchMoveFilesArgs {
+  if (!isObject(args)) return false;
+
+  // Validate moves array
+  if (!Array.isArray(args.moves)) return false;
+
+  for (const move of args.moves) {
+    if (!isObject(move)) return false;
+    if (!isNonEmptyString(move.old_path) || !isNonEmptyString(move.new_path)) return false;
+  }
+
+  const validStrategy =
+    !('strategy' in args) || (isString(args.strategy) && ['safe', 'force'].includes(args.strategy));
+  const validDryRun = !('dry_run' in args) || isOptionalBoolean(args.dry_run);
+
+  return validStrategy && validDryRun;
+}
+
+export function validatePreviewBatchOperationArgs(
+  args: unknown
+): args is PreviewBatchOperationArgs {
+  if (!isObject(args)) return false;
+
+  // Validate operations array
+  if (!Array.isArray(args.operations)) return false;
+
+  for (const op of args.operations) {
+    if (!isObject(op)) return false;
+    if (!isString(op.type) || !['move_file', 'rename_symbol', 'rename_file'].includes(op.type))
+      return false;
+
+    if (op.type === 'move_file' || op.type === 'rename_file') {
+      if (!isNonEmptyString(op.old_path) || !isNonEmptyString(op.new_path)) return false;
+    } else if (op.type === 'rename_symbol') {
+      if (
+        !isNonEmptyString(op.file_path) ||
+        !isNonEmptyString(op.symbol_name) ||
+        !isNonEmptyString(op.new_name)
+      )
+        return false;
+    }
+  }
+
+  return !('detailed' in args) || isOptionalBoolean(args.detailed);
 }
 
 // Error creation helper

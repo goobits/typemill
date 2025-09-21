@@ -180,3 +180,39 @@ export interface DeleteFileArgs {
 export interface HealthCheckArgs {
   include_details?: boolean;
 }
+
+// Orchestration handlers
+export interface AnalyzeRefactorImpactArgs {
+  operations: Array<{
+    type: 'move_file' | 'rename_symbol';
+    old_path?: string;
+    new_path?: string;
+    file_path?: string;
+    symbol_name?: string;
+    symbol_kind?: string;
+    new_name?: string;
+  }>;
+  include_recommendations?: boolean;
+}
+
+export interface BatchMoveFilesArgs {
+  moves: Array<{
+    old_path: string;
+    new_path: string;
+  }>;
+  dry_run?: boolean;
+  strategy?: 'safe' | 'force';
+}
+
+export interface PreviewBatchOperationArgs {
+  operations: Array<{
+    type: 'move_file' | 'rename_symbol' | 'rename_file';
+    old_path?: string;
+    new_path?: string;
+    file_path?: string;
+    symbol_name?: string;
+    symbol_kind?: string;
+    new_name?: string;
+  }>;
+  detailed?: boolean;
+}
