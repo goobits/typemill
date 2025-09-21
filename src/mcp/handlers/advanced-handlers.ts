@@ -427,7 +427,8 @@ export async function handleApplyWorkspaceEdit(
     >;
     validate_before_apply?: boolean;
     dry_run?: boolean;
-  }
+  },
+  lspClient?: import('../../lsp/client.js').LSPClient
 ) {
   // Support both formats: { changes: {...} } and { edit: { changes: {...} } }
   const changes = args.changes || args.edit?.changes;
@@ -490,20 +491,21 @@ export async function handleApplyWorkspaceEdit(
     const serverSupportsWorkspaceEdit = true; // Assume support for file-based edits
     const serverDescription = 'File-based workspace edit';
 
-    // Apply the workspace edit using the file service
-    const result = await fileService.applyWorkspaceEdit({
-      changes: workspaceEdit.changes,
+    // Apply the workspace edit with LSP synchronization
+    const result = await applyWorkspaceEdit(workspaceEdit, {
+      validateBeforeApply: true,
+      lspClient,
     });
 
-    if (!result.applied) {
+    if (!result.success) {
       return createMCPResponse(
-        `❌ **Workspace edit failed**\n\n**Error:** ${result.failureReason || 'Unknown error'}\n\n**Files targeted:** ${fileCount}\n**Total edits:** ${editCount}\n\n*No changes were applied due to the error. All files remain unchanged.*`
+        `❌ **Workspace edit failed**\n\n**Error:** ${result.error || 'Unknown error'}\n\n**Files targeted:** ${fileCount}\n**Total edits:** ${editCount}\n\n*No changes were applied due to the error. All files remain unchanged.*`
       );
     }
 
     // Success response
     let response = '✅ **Workspace edit applied successfully**\n\n';
-    const modifiedFiles = Object.keys(workspaceEdit.changes);
+    const modifiedFiles = result.filesModified;
     response += `**Files modified:** ${modifiedFiles.length}\n`;
     response += `**Total edits applied:** ${editCount}\n\n`;
 
