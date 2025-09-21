@@ -51,7 +51,7 @@ export async function handleAnalyzeRefactorImpact(
   const { operations, include_recommendations = true } = args;
 
   try {
-    const { projectScanner } = await import('../../utils/project-scanner.js');
+    const { projectScanner } = await import('../../services/project-analyzer.js');
     const analyses: ImpactAnalysis[] = [];
 
     for (const operation of operations) {

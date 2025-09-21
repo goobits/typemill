@@ -234,7 +234,7 @@ export async function handleDeleteFile(args: {
     }
 
     // Import the project scanner for impact analysis
-    const { projectScanner } = await import('../../utils/project-scanner.js');
+    const { projectScanner } = await import('../../services/project-analyzer.js');
 
     // Find all files that import this file
     debugLog('UtilityHandlers', `Analyzing impact of deleting ${absolutePath}`);
