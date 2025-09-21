@@ -1,27 +1,27 @@
-# 🔗 codebuddy
-MCP server that bridges Language Server Protocol functionality to AI coding assistants
+# 🤖 codeflow-buddy
+MCP server bridging Language Server Protocol functionality to AI coding assistants with 38 MCP tools
 
 ## ✨ Key Features
 - **🎯 Symbol Navigation** - Go to definition and find references with intelligent position resolution
-- **🔧 Safe Refactoring** - Rename symbols and files across entire codebases with confidence
-- **🧠 Code Intelligence** - Hover info, completions, diagnostics, and semantic analysis
-- **🌐 Universal Language Support** - Works with any LSP-compatible server (TypeScript, Python, Go, Rust, etc.)
-- **🤖 AI-Optimized** - Robust symbol resolution that handles imprecise line/column numbers from LLMs
-- **⚡ Zero Configuration** - Works out of the box with TypeScript, configurable for other languages
+- **🔧 Safe Refactoring** - Rename symbols and files across entire codebases with LSP validation
+- **🧠 Code Intelligence** - Hover info, completions, diagnostics, and semantic analysis via LSP
+- **🌐 Multi-Language Support** - TypeScript, Python, Go, Rust, and 15+ languages via configurable LSP servers
+- **🤖 AI-Optimized Protocol** - Robust symbol resolution handling imprecise positions from LLMs
+- **⚡ Smart Configuration** - Auto-detection and setup with `codeflow-buddy init` command
 
 ## 🚀 Quick Start
 ```bash
-# Install globally (provides `codebuddy` in PATH)
-npm install -g @goobits/codebuddy
+# Install globally (provides `codeflow-buddy` command)
+npm install -g @goobits/codeflow-buddy
 
 # Smart setup with auto-detection
-codebuddy init
+codeflow-buddy init
 
 # Check status of language servers
-codebuddy status
+codeflow-buddy status
 
-# Fix any missing language servers  
-codebuddy fix
+# Fix any missing language servers
+codeflow-buddy fix
 ```
 
 ## 📚 MCP Integration
@@ -29,8 +29,8 @@ codebuddy fix
 # Add to your MCP client configuration (e.g., Claude Code)
 {
   "mcpServers": {
-    "codebuddy": {
-      "command": "codebuddy",
+    "codeflow-buddy": {
+      "command": "codeflow-buddy",
       "cwd": "/path/to/your/project"
     }
   }
@@ -39,9 +39,9 @@ codebuddy fix
 
 ## 🛠️ Language Server Setup
 ```bash
-# TypeScript/JavaScript
-# Works out of the box via npx. Optional explicit install:
-# npm install -g typescript-language-server typescript
+# TypeScript/JavaScript (works out of the box via npx)
+# Optional explicit install:
+npm install -g typescript-language-server typescript
 
 # Python
 pip install "python-lsp-server[all]"
@@ -49,27 +49,27 @@ pip install "python-lsp-server[all]"
 # Go
 go install golang.org/x/tools/gopls@latest
 
-# Rust  
+# Rust
 rustup component add rust-analyzer
 
 # View configuration and status
-codebuddy status
+codeflow-buddy status
 ```
 
 ## ⚙️ Configuration
 ```bash
 # Smart setup with auto-detection
-codebuddy init
+codeflow-buddy init
 
 # Show current configuration
-codebuddy config --show
+codeflow-buddy config
 
 # Manual configuration (creates .codebuddy/config.json)
 cat > .codebuddy/config.json << 'EOF'
 {
   "servers": [
     {
-      "extensions": ["py", "pyi"], 
+      "extensions": ["py", "pyi"],
       "command": ["pylsp"],
       "restartInterval": 30
     },
@@ -83,10 +83,11 @@ EOF
 ```
 
 ## 📖 Documentation
-- **[Full API Reference](docs/api.md)** - Complete tool documentation with examples
-- **[Language Setup Guide](docs/languages.md)** - Installation for 15+ languages
-- **[Configuration Reference](docs/configuration.md)** - Advanced settings and options
-- **[Troubleshooting Guide](docs/troubleshooting.md)** - Common issues and solutions
+- **[API Reference](docs/api.md)** - Complete tool documentation with examples
+- **[Language Setup](docs/languages.md)** - Installation for 15+ languages
+- **[Configuration](docs/configuration.md)** - Advanced settings and options
+- **[Testing Guide](docs/testing_guide.md)** - Development and testing instructions
+- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 
 ## 🔗 Related Projects
 - **[Model Context Protocol](https://github.com/modelcontextprotocol/servers)** - Protocol specification and ecosystem

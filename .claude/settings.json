@@ -6,11 +6,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path' | xargs npx biome check --fix --unsafe"
+            "command": "FILE_PATH=$(echo '$TOOL_INPUT' | jq -r '.file_path'); if [[ \"$FILE_PATH\" =~ \\.(ts|js|tsx|jsx)$ ]]; then npx biome check --fix --unsafe \"$FILE_PATH\" 2>/dev/null || true; fi"
           },
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path' | xargs npx biome format --write"
+            "command": "FILE_PATH=$(echo '$TOOL_INPUT' | jq -r '.file_path'); if [[ \"$FILE_PATH\" =~ \\.(ts|js|tsx|jsx)$ ]]; then npx biome format --write \"$FILE_PATH\" 2>/dev/null || true; fi"
           }
         ]
       }

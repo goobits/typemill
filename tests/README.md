@@ -6,9 +6,8 @@ This directory contains the comprehensive test suite for Codebuddy's MCP (Model 
 
 ```
 tests/
-├── core/                 # Core functionality tests (4 files)
-│   ├── quick.test.ts     # Quick validation (5 tools, ~10s)
-│   ├── comprehensive.test.ts   # All 23 tools test (~60s)
+├── core/                 # Core functionality tests (3 files)
+│   ├── comprehensive.test.ts   # All 28 tools test (~60s)
 │   ├── intelligence.test.ts    # Intelligence features focus
 │   └── playground.test.ts      # Playground validation
 ├── unit/                 # Unit tests with logical organization (11 files)
@@ -25,25 +24,24 @@ tests/
 │   ├── restart-server.test.ts      # Server restart timing
 │   ├── server-lifecycle.test.ts    # LSP server lifecycle management
 │   └── server-management.test.ts   # Server management operations
-├── integration/          # Integration tests (1 file)
-│   └── lsp-client.test.ts         # LSP client integration
+├── integration/          # Integration tests (6 files)
+│   ├── call-hierarchy-adaptive.test.ts # Adaptive call hierarchy testing
+│   ├── delete-file-enhanced.test.ts    # Enhanced file deletion with impact analysis
+│   ├── edge-cases.test.ts              # Unicode, large files, boundary conditions
+│   ├── error-cases.test.ts             # Error handling scenarios
+│   ├── error-recovery.test.ts          # Server crash recovery testing
+│   └── lsp-client.test.ts              # LSP client integration
 └── helpers/
     └── mcp-test-client.ts  # Shared MCP testing utilities
 ```
 
 ## 🚀 Running Tests
 
-### Quick Validation
-```bash
-npm run test:mcp:quick      # Run 5 core tools (fastest)
-npm run test:mcp            # Alias for quick test
-```
-
 ### Comprehensive Testing
 ```bash
-npm run test:mcp:full       # Test all 23 MCP tools
-npm run test:mcp:intelligence  # Test 5 intelligence features
-npm run test:mcp:playground    # Validate playground functionality
+npm run test:comprehensive  # Test all 28 MCP tools
+npm run test               # Run default test suite
+npm run test:all           # Run all tests
 ```
 
 ### Unit Testing
@@ -56,20 +54,9 @@ npm run test:mcp:restart    # Test server restart functionality
 
 ### Core Tests (`/core`)
 
-#### `quick.test.ts` ⚡
-- **Purpose**: Fast validation of core functionality
-- **Coverage**: 5 essential tools
-- **Duration**: ~10 seconds
-- **Tools tested**:
-  - `find_definition` - Navigate to definitions
-  - `find_references` - Find all references
-  - `get_diagnostics` - TypeScript errors/warnings
-  - `get_hover` - Type information on hover
-  - `rename_symbol` - Refactor across codebase
-
 #### `comprehensive.test.ts` 🔬
 - **Purpose**: Complete validation of all MCP tools
-- **Coverage**: All 23 MCP tools
+- **Coverage**: All 28 MCP tools
 - **Duration**: ~60 seconds
 - **Categories tested**:
   - Core Tools (4/4)
@@ -78,6 +65,7 @@ npm run test:mcp:restart    # Test server restart functionality
   - Hierarchy Tools (3/3)
   - File Operations (3/3)
   - Server Management (1/1)
+  - Advanced Workflow Tools (5/5)
 
 #### `intelligence.test.ts` 🧠
 - **Purpose**: Validate TypeScript intelligence features
@@ -119,13 +107,31 @@ npm run test:mcp:restart    # Test server restart functionality
 - **`server-lifecycle.test.ts`** ♻️ - LSP server process lifecycle management
 - **`server-management.test.ts`** ⚙️ - Server configuration and management
 
-### Integration Tests (`/integration` - 1 file)
+### Integration Tests (`/integration` - 6 files)
+
+#### `call-hierarchy-adaptive.test.ts` 🔗
+- **Purpose**: Call hierarchy testing with system adaptation
+- **Features**: Cross-file function call analysis, adaptive timeouts
+
+#### `delete-file-enhanced.test.ts` 🗑️
+- **Purpose**: Enhanced file deletion with impact analysis
+- **Features**: Import impact detection, force deletion warnings
+
+#### `edge-cases.test.ts` 🎯
+- **Purpose**: Edge case and boundary condition testing
+- **Features**: Unicode handling, large files, position boundaries
+
+#### `error-cases.test.ts` ⚠️
+- **Purpose**: Comprehensive error handling validation
+- **Features**: Invalid inputs, malformed requests, resource limits
+
+#### `error-recovery.test.ts` 🔄
+- **Purpose**: Server crash recovery and resilience testing
+- **Features**: LSP server crash simulation, memory management
 
 #### `lsp-client.test.ts` 🔗
 - **Purpose**: LSP client integration testing
-- **Type**: Full integration test
-- **Tests**: Direct LSP client functionality across file types
-- **Coverage**: Folding ranges, document links, symbols, multi-language support
+- **Features**: Direct LSP client functionality across file types
 
 ## 🎯 Test Philosophy
 
@@ -143,10 +149,12 @@ npm run test:mcp:restart    # Test server restart functionality
 
 ### Coverage Goals
 
-- ✅ **100% Tool Coverage**: All 23 MCP tools tested
+- ✅ **100% Tool Coverage**: All 28 MCP tools tested
 - ✅ **Real Data Validation**: Tests verify actual TypeScript LSP data
 - ✅ **Performance Monitoring**: Timing tracked for all operations
-- ✅ **Error Handling**: Tests include error scenarios
+- ✅ **Error Handling**: Comprehensive error scenario coverage
+- ✅ **Edge Cases**: Unicode, boundaries, large files
+- ✅ **Recovery Testing**: Server crash and memory management
 
 ## 📈 Expected Results
 
@@ -154,11 +162,15 @@ npm run test:mcp:restart    # Test server restart functionality
 
 | Test | Expected Result |
 |------|-----------------|
-| `quick.test.ts` | 5/5 passed |
-| `comprehensive.test.ts` | 22-23/23 passed* |
+| `comprehensive.test.ts` | 27-28/28 passed* |
 | `intelligence.test.ts` | 5/5 with real TS data |
 | `playground.test.ts` | All features operational |
 | `handlers.test.ts` | All handlers functional |
+| `call-hierarchy-adaptive.test.ts` | Cross-file calls detected |
+| `delete-file-enhanced.test.ts` | Impact analysis working |
+| `edge-cases.test.ts` | Unicode & boundaries handled |
+| `error-cases.test.ts` | All error scenarios covered |
+| `error-recovery.test.ts` | Server recovery functional |
 | `lsp-client.test.ts` | Client operations working |
 | `restart-server.test.ts` | ~700ms restart time |
 
@@ -203,10 +215,10 @@ This test suite has evolved through multiple reorganizations:
 - Removed 11 duplicate or superseded tests
 - Eliminated experimental and one-off test scripts
 
-**August 2025**: Expanded to 17 comprehensive tests with logical organization
-- **Growth rationale**: Each test serves distinct, complementary purposes
-- **Quality improvements**: Enhanced assertions, better error handling
-- **Structural organization**: Logical subdirectories (handlers/, file-operations/, integration/)
-- **Coverage expansion**: Added edge case testing, lifecycle management, and index conversion validation
+**September 2025**: Optimized to 16 focused tests by removing redundancy
+- **Redundancy removal**: Eliminated `quick.test.ts` (duplicate of comprehensive) and `call-hierarchy.test.ts` (superseded by adaptive version)
+- **Quality focus**: Each remaining test serves a distinct, validated purpose
+- **Enhanced coverage**: All 28 MCP tools tested with comprehensive error handling, edge cases, and recovery scenarios
+- **Structural clarity**: Logical organization with no overlapping functionality
 
-The current 17-file structure represents comprehensive, non-redundant test coverage with each test serving a specific, validated purpose for Codebuddy functionality.
+The current 16-file structure represents optimized, non-redundant test coverage with maximum efficiency and comprehensive validation of Codebuddy functionality.
