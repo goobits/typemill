@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 /**
  * Pre-test validation and setup
@@ -6,9 +6,8 @@
  * Auto-fixes what it can, prompts for what it can't
  */
 
-const { execSync, spawn } = require('node:child_process');
-const { existsSync, statSync } = require('node:fs');
-const { join } = require('node:path');
+import { execSync } from 'node:child_process';
+import { existsSync, statSync } from 'node:fs';
 
 // Colors for output
 const colors = {
@@ -19,13 +18,15 @@ const colors = {
   blue: '\x1b[34m',
   cyan: '\x1b[36m',
   bold: '\x1b[1m',
-};
+} as const;
 
-function log(message, color = 'reset') {
+type ColorName = keyof typeof colors;
+
+function log(message: string, color: ColorName = 'reset'): void {
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
-function checkCommand(command) {
+function checkCommand(command: string): boolean {
   try {
     execSync(`${command} --version`, { stdio: 'pipe', timeout: 5000 });
     return true;
@@ -34,12 +35,12 @@ function checkCommand(command) {
   }
 }
 
-function isNewer(file1, file2) {
+function isNewer(file1: string, file2: string): boolean {
   if (!existsSync(file1) || !existsSync(file2)) return false;
   return statSync(file1).mtime > statSync(file2).mtime;
 }
 
-async function checkBuild() {
+async function checkBuild(): Promise<boolean> {
   const distFile = 'dist/index.js';
   const sourceFile = 'index.ts';
 
@@ -75,7 +76,7 @@ async function checkBuild() {
   return true;
 }
 
-async function checkDependencies() {
+async function checkDependencies(): Promise<boolean> {
   // Check if node_modules exists
   if (!existsSync('node_modules')) {
     log('❌ Dependencies not installed', 'red');
@@ -102,8 +103,15 @@ async function checkDependencies() {
   return true;
 }
 
-async function checkOptionalLanguageServers() {
-  const servers = [
+interface LanguageServer {
+  name: string;
+  command: string;
+  required?: boolean;
+  install?: string;
+}
+
+async function checkOptionalLanguageServers(): Promise<boolean> {
+  const servers: LanguageServer[] = [
     { name: 'TypeScript', command: 'npx typescript-language-server --version', required: true },
     { name: 'Python LSP', command: 'pylsp --version', install: 'pip install python-lsp-server' },
     {
@@ -123,8 +131,8 @@ async function checkOptionalLanguageServers() {
     },
   ];
 
-  const available = [];
-  const missing = [];
+  const available: string[] = [];
+  const missing: LanguageServer[] = [];
 
   for (const server of servers) {
     if (checkCommand(server.command.split(' ')[0])) {
@@ -146,7 +154,9 @@ async function checkOptionalLanguageServers() {
     log('', 'reset');
     log('📋 Optional language servers not installed:', 'cyan');
     for (const server of missing) {
-      log(`   ${server.name}: ${server.install}`, 'yellow');
+      if (server.install) {
+        log(`   ${server.name}: ${server.install}`, 'yellow');
+      }
     }
     log('   (Tests will work with TypeScript only)', 'cyan');
   }
@@ -154,7 +164,7 @@ async function checkOptionalLanguageServers() {
   return true;
 }
 
-async function main() {
+async function main(): Promise<void> {
   log('', 'reset');
   log('🔍 Pre-test validation...', 'blue');
   log('', 'reset');
@@ -174,7 +184,7 @@ async function main() {
         allPassed = false;
       }
     } catch (error) {
-      log(`❌ ${check.name} check failed: ${error.message}`, 'red');
+      log(`❌ ${check.name} check failed: ${(error as Error).message}`, 'red');
       allPassed = false;
     }
   }
@@ -193,6 +203,6 @@ async function main() {
 
 // Run the checks
 main().catch((error) => {
-  log(`💥 Pre-test check failed: ${error.message}`, 'red');
+  log(`💥 Pre-test check failed: ${(error as Error).message}`, 'red');
   process.exit(1);
 });
