@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { writeFileSync } from 'node:fs';
 import { MCPTestClient, assertToolResult } from '../helpers/mcp-test-client.js';
 import {
   findLSPServers,
@@ -404,7 +405,7 @@ describe('Error Recovery Tests', () => {
 
         // Create file with invalid UTF-8 sequences (using Buffer)
         const buffer = Buffer.from([0xff, 0xfe, 0x00, 0x00]); // Invalid UTF-8
-        require('node:fs').writeFileSync(corruptFile, buffer);
+        writeFileSync(corruptFile, buffer);
 
         try {
           const result = await client.callTool('get_diagnostics', {

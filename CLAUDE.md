@@ -28,6 +28,8 @@ node dist/index.js
 # CLI commands for configuration and management
 codeflow-buddy init     # Smart setup with auto-detection
 codeflow-buddy status   # Show what's working right now
+codeflow-buddy start    # Start the MCP server for Claude Code
+codeflow-buddy stop     # Stop the running MCP server
 codeflow-buddy fix      # Actually fix problems (auto-install when possible)
 codeflow-buddy config   # Show/edit configuration
 codeflow-buddy logs     # Debug output when things go wrong

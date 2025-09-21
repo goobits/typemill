@@ -60,10 +60,7 @@
                 "enabled": false
               },
               "rope_completion": {
-                "enabled": true
-              },
-              "rope_rename": {
-                "enabled": true
+                "enabled": false
               }
             }
           }
