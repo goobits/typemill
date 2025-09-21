@@ -1,4 +1,5 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 export interface BackupEntry {
@@ -11,7 +12,7 @@ export class FileBackupManager {
   private backups: BackupEntry[] = [];
   private backupDir: string;
 
-  constructor(backupDir = '/tmp/codebuddy-test-backups') {
+  constructor(backupDir = join(tmpdir(), 'codebuddy-test-backups')) {
     this.backupDir = backupDir;
     this.ensureBackupDir();
   }

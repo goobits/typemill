@@ -1,11 +1,16 @@
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 /**
  * Creates a unique test directory that won't conflict with parallel tests
  */
 export function createTestDir(prefix: string): string {
-  const dir = `/tmp/${prefix}-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  const dir = join(
+    tmpdir(),
+    `${prefix}-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  );
   if (existsSync(dir)) {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MCPTestClient, assertToolResult } from '../helpers/mcp-test-client.js';
 import {
@@ -17,7 +18,7 @@ import {
  * Adaptive Call Hierarchy Test - works on both fast and slow systems
  */
 
-const TEST_DIR = '/tmp/call-hierarchy-adaptive-test';
+const TEST_DIR = join(tmpdir(), 'call-hierarchy-adaptive-test');
 const testConfig = getTestConfig(getTestModeFromEnv() || undefined);
 
 describe(`Call Hierarchy - Adaptive (${testConfig.mode.toUpperCase()} mode)`, () => {

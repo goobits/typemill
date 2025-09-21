@@ -2,8 +2,10 @@
 
 import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { getLSPServerPaths, isProcessRunning } from '../utils/platform-utils.js';
+
+// Re-export for backward compatibility
+export { isProcessRunning };
 
 const TIMEOUT_MS = 2000;
 
@@ -11,21 +13,13 @@ const TIMEOUT_MS = 2000;
  * Get the full path for a command, checking common installation locations
  */
 export function getCommandPath(cmd: string): string {
-  // Special paths for common tools
-  const specialPaths: Record<string, string[]> = {
-    gopls: [join(homedir(), 'go', 'bin', 'gopls'), '/usr/local/go/bin/gopls', '/opt/go/bin/gopls'],
-    'rust-analyzer': [
-      join(homedir(), '.cargo', 'bin', 'rust-analyzer'),
-      '/usr/local/bin/rust-analyzer',
-    ],
-  };
+  // Get platform-specific paths
+  const paths = getLSPServerPaths(cmd);
 
-  // Check special paths first
-  if (specialPaths[cmd]) {
-    for (const path of specialPaths[cmd]) {
-      if (existsSync(path)) {
-        return path;
-      }
+  // Check each path for existence
+  for (const path of paths) {
+    if (existsSync(path)) {
+      return path;
     }
   }
 
@@ -124,19 +118,6 @@ function getTestArgs(command: string): string[] {
     return ['--help'];
   }
   return ['--version']; // Default
-}
-
-/**
- * Check if a process with given PID is running
- */
-export function isProcessRunning(pid: number): boolean {
-  try {
-    // process.kill with signal 0 doesn't kill, just tests if process exists
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return false;
-  }
 }
 
 /**

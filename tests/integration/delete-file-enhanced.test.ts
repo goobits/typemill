@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MCPTestClient, assertToolResult } from '../helpers/mcp-test-client';
 import {
@@ -12,7 +13,7 @@ import {
  * Test delete_file command with enhanced impact analysis
  */
 
-const TEST_DIR = '/tmp/delete-file-enhanced-test';
+const TEST_DIR = join(tmpdir(), 'delete-file-enhanced-test');
 
 describe('Delete File with Impact Analysis', () => {
   let client: MCPTestClient;

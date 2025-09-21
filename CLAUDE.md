@@ -26,13 +26,10 @@ bun run start
 node dist/index.js
 
 # CLI commands for configuration and management
-codeflow-buddy init     # Smart setup with auto-detection
+codeflow-buddy setup    # Smart setup with auto-detection
 codeflow-buddy status   # Show what's working right now
 codeflow-buddy start    # Start the MCP server for Claude Code
 codeflow-buddy stop     # Stop the running MCP server
-codeflow-buddy fix      # Actually fix problems (auto-install when possible)
-codeflow-buddy config   # Show/edit configuration
-codeflow-buddy logs     # Debug output when things go wrong
 
 # Quality assurance
 bun run lint         # Check code style and issues
@@ -61,7 +58,7 @@ bun run prepublishOnly  # build + test + typecheck
 - Entry point that implements MCP protocol
 - Exposes 38 MCP tools covering navigation, refactoring, intelligence, and diagnostics
 - Handles MCP client requests and delegates to LSP layer
-- Includes CLI subcommand handling for `init`, `status`, `fix`, `config`, `logs`
+- Includes CLI subcommand handling for `setup`, `status`, `start`, `stop`
 
 **LSP Client Layer** (`src/lsp/client.ts`)
 
@@ -73,7 +70,7 @@ bun run prepublishOnly  # build + test + typecheck
 **Configuration System** (`.codebuddy/config.json`)
 
 - Defines which LSP servers to use for different file extensions  
-- Smart setup with auto-detection via `codeflow-buddy init` command
+- Smart setup with auto-detection via `codeflow-buddy setup` command
 - File scanning with gitignore support for project structure detection
 - Automatic migration from old `codebuddy.json` format
 
@@ -103,11 +100,11 @@ Supported language servers (configurable):
 
 ## Configuration
 
-The server loads configuration from `.codebuddy/config.json` in the current working directory. If no configuration exists, run `codeflow-buddy init` to create one.
+The server loads configuration from `.codebuddy/config.json` in the current working directory. If no configuration exists, run `codeflow-buddy setup` to create one.
 
 ### Smart Setup  
 
-Use `codeflow-buddy init` to configure LSP servers with auto-detection:
+Use `codeflow-buddy setup` to configure LSP servers with auto-detection:
 
 - Scans project for file extensions (respects .gitignore)
 - Presents pre-configured language server options for detected languages

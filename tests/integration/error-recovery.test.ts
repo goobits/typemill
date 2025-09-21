@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { MCPTestClient, assertToolResult } from '../helpers/mcp-test-client.js';
 import {
   findLSPServers,
@@ -263,7 +265,7 @@ describe('Error Recovery Tests', () => {
       'should handle request timeout gracefully',
       async () => {
         // Create a very large file to cause potential timeout
-        const largeFile = '/tmp/huge-test-file.ts';
+        const largeFile = join(tmpdir(), 'huge-test-file.ts');
         const hugeContent = 'const x = 1;\n'.repeat(50000); // 50k lines
 
         await client.callTool('create_file', {
@@ -366,7 +368,7 @@ describe('Error Recovery Tests', () => {
 
         // Create multiple test files
         for (let i = 0; i < 10; i++) {
-          const filePath = `/tmp/mem-test-${i}.ts`;
+          const filePath = join(tmpdir(), `mem-test-${i}.ts`);
           await client.callTool('create_file', {
             file_path: filePath,
             content: `export const value${i} = ${i};\n`.repeat(100),
@@ -401,7 +403,7 @@ describe('Error Recovery Tests', () => {
     it(
       'should handle corrupted file content gracefully',
       async () => {
-        const corruptFile = '/tmp/corrupt-test.ts';
+        const corruptFile = join(tmpdir(), 'corrupt-test.ts');
 
         // Create file with invalid UTF-8 sequences (using Buffer)
         const buffer = Buffer.from([0xff, 0xfe, 0x00, 0x00]); // Invalid UTF-8
@@ -457,7 +459,7 @@ describe('Error Recovery Tests', () => {
       'should handle missing LSP server gracefully',
       async () => {
         // Try to work with a file type that might not have LSP server
-        const unsupportedFile = '/tmp/test.unknown_extension';
+        const unsupportedFile = join(tmpdir(), 'test.unknown_extension');
 
         const result = await client.callTool('create_file', {
           file_path: unsupportedFile,

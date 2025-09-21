@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -498,17 +498,17 @@ const cleanupPidFile = () => {
   }
 };
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   logger.info('Received SIGINT, shutting down gracefully');
   cleanupPidFile();
-  newLspClient.dispose();
+  await newLspClient.dispose();
   process.exit(0);
 });
 
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   logger.info('Received SIGTERM, shutting down gracefully');
   cleanupPidFile();
-  newLspClient.dispose();
+  await newLspClient.dispose();
   process.exit(0);
 });
 
@@ -530,6 +530,24 @@ async function main() {
         if (!existsSync(PID_DIR)) {
           mkdirSync(PID_DIR, { recursive: true });
         }
+
+        // Check if another server is already running
+        if (existsSync(PID_FILE)) {
+          const existingPid = parseInt(readFileSync(PID_FILE, 'utf-8').trim(), 10);
+          if (!Number.isNaN(existingPid)) {
+            // Check if the process is actually running
+            const { isProcessRunning } = await import('./src/utils/platform-utils.js');
+            if (isProcessRunning(existingPid)) {
+              console.error(`Error: MCP server is already running (PID: ${existingPid})`);
+              console.error('Use "codeflow-buddy stop" to stop it first.');
+              process.exit(1);
+            } else {
+              // Clean up stale PID file
+              logger.info('Removing stale PID file', { pid: existingPid });
+            }
+          }
+        }
+
         writeFileSync(PID_FILE, process.pid.toString());
         logger.info('PID file created', { pid: process.pid, file: PID_FILE });
       } catch (error) {
@@ -560,8 +578,8 @@ async function main() {
   );
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
   logger.error('Server startup error', error);
-  newLspClient.dispose();
+  await newLspClient.dispose();
   process.exit(1);
 });

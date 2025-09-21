@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve } from 'node:path';
-import type { LSPClient } from './lsp-client-facade.js';
+import type { LSPClient } from './lsp/client.js';
 import { pathToUri, uriToPath } from './path-utils.js';
 import { debugLog } from './utils/debug-logger.js';
 
