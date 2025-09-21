@@ -1,19 +1,40 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 /**
- * Shared system detection utilities for test runners
+ * Shared utilities for test runners
  */
 
-const { cpus } = require('node:os');
+import { cpus, freemem, loadavg, totalmem } from 'node:os';
+
+export interface SystemCapabilities {
+  // Raw metrics
+  cpuCount: number;
+  totalMemory: number;
+  freeMemory: number;
+  loadAverage: number;
+
+  // Calculated metrics
+  cpuUtilization: number;
+  memoryUtilization: number;
+  freeMemoryGB: number;
+  totalMemoryGB: number;
+
+  // Decision
+  isSlowSystem: boolean;
+
+  // Test timeouts
+  timeoutMultiplier: number;
+  baseTimeout: number;
+}
 
 /**
  * Analyze current system capabilities and load
  */
-function getSystemCapabilities() {
+export function getSystemCapabilities(): SystemCapabilities {
   const cpuCount = cpus().length;
-  const totalMemory = require('node:os').totalmem();
-  const freeMemory = require('node:os').freemem();
-  const loadAverage = require('node:os').loadavg()[0]; // 1-minute load average
+  const totalMemory = totalmem();
+  const freeMemory = freemem();
+  const loadAverage = loadavg()[0]; // 1-minute load average
 
   // Check available resources vs total
   const memoryUtilization = (totalMemory - freeMemory) / totalMemory;
@@ -54,7 +75,7 @@ function getSystemCapabilities() {
 /**
  * Get human-readable reason why system is considered slow
  */
-function getSlowSystemReason(capabilities) {
+export function getSlowSystemReason(capabilities: SystemCapabilities): string | null {
   if (!capabilities.isSlowSystem) return null;
 
   if (capabilities.cpuCount <= 4) return 'Low CPU count';
@@ -68,7 +89,7 @@ function getSlowSystemReason(capabilities) {
 /**
  * Print system diagnostics
  */
-function printSystemInfo(capabilities, title = 'System Info') {
+export function printSystemInfo(capabilities: SystemCapabilities, title = 'System Info'): void {
   console.log(`🚀 ${title}`);
   console.log(
     `System: ${capabilities.cpuCount} CPUs, ${capabilities.totalMemoryGB.toFixed(1)}GB total, ${capabilities.freeMemoryGB.toFixed(1)}GB free`
@@ -82,7 +103,7 @@ function printSystemInfo(capabilities, title = 'System Info') {
 /**
  * Print slow system diagnostics
  */
-function printSlowSystemInfo(capabilities) {
+export function printSlowSystemInfo(capabilities: SystemCapabilities): void {
   if (!capabilities.isSlowSystem) return;
 
   console.log('⚠️  SLOW SYSTEM MODE: Optimized for reliability over speed');
@@ -91,10 +112,3 @@ function printSlowSystemInfo(capabilities) {
   console.log('   - Timeouts: 5+ minutes');
   console.log('   - Memory: Reduced limits');
 }
-
-module.exports = {
-  getSystemCapabilities,
-  getSlowSystemReason,
-  printSystemInfo,
-  printSlowSystemInfo,
-};
