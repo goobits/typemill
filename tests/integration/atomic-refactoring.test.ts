@@ -1,11 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MCPTestClient, assertToolResult } from '../helpers/mcp-test-client.js';
 
 describe('Atomic Refactoring Integration Tests', () => {
   let client: MCPTestClient;
-  const TEST_DIR = '/workspace/playground/atomic-refactoring-test';
+  const TEST_DIR = join(tmpdir(), 'atomic-refactoring-test');
 
   beforeAll(async () => {
     console.log('🔍 Atomic Refactoring Integration Test');
