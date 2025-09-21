@@ -9,7 +9,9 @@ import { LSPClient as NewLSPClient } from './src/lsp/client.js';
 import * as Validation from './src/mcp/comprehensive-validation.js';
 import { allToolDefinitions } from './src/mcp/definitions/index.js';
 import type {
+  AnalyzeRefactorImpactArgs,
   ApplyWorkspaceEditArgs,
+  BatchMoveFilesArgs,
   CreateFileArgs,
   DeleteFileArgs,
   FindDefinitionArgs,
@@ -33,6 +35,7 @@ import type {
   HealthCheckArgs,
   PrepareCallHierarchyArgs,
   PrepareTypeHierarchyArgs,
+  PreviewBatchOperationArgs,
   RenameFileArgs,
   RenameSymbolArgs,
   RenameSymbolStrictArgs,
@@ -40,7 +43,9 @@ import type {
   SearchWorkspaceSymbolsArgs,
 } from './src/mcp/handler-types.js';
 import {
+  handleAnalyzeRefactorImpact,
   handleApplyWorkspaceEdit,
+  handleBatchMoveFiles,
   handleCreateFile,
   handleDeleteFile,
   handleFindDefinition,
@@ -64,6 +69,7 @@ import {
   handleHealthCheck,
   handlePrepareCallHierarchy,
   handlePrepareTypeHierarchy,
+  handlePreviewBatchOperation,
   handleRenameFile,
   handleRenameSymbol,
   handleRenameSymbolStrict,
@@ -469,6 +475,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             );
             return await handleHealthCheck(args, serviceContext);
           }
+          case 'analyze_refactor_impact':
+            if (!Validation.validateAnalyzeRefactorImpactArgs(args)) {
+              throw Validation.createValidationError(
+                'analyze_refactor_impact',
+                'object with operations array and optional include_recommendations boolean'
+              );
+            }
+            return await handleAnalyzeRefactorImpact(symbolService, args);
+          case 'batch_move_files':
+            if (!Validation.validateBatchMoveFilesArgs(args)) {
+              throw Validation.createValidationError(
+                'batch_move_files',
+                'object with moves array, optional dry_run boolean, and optional strategy string'
+              );
+            }
+            return await handleBatchMoveFiles(args);
+          case 'preview_batch_operation':
+            if (!Validation.validatePreviewBatchOperationArgs(args)) {
+              throw Validation.createValidationError(
+                'preview_batch_operation',
+                'object with operations array and optional detailed boolean'
+              );
+            }
+            return await handlePreviewBatchOperation(symbolService, args);
           default: {
             const { createUnknownToolMessage } = await import(
               './src/utils/enhanced-error-messages.js'
