@@ -77,22 +77,9 @@ class ProjectScanner {
     const projectRoot = rootDir || this.findProjectRoot(dirname(absolutePath));
     const scanResult = await this.scanProject(projectRoot);
 
-    const importers: string[] = [];
-    const filePathNoExt = absolutePath.replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, '');
+    const fileInfo = scanResult.dependencies.get(absolutePath);
 
-    for (const [file, deps] of scanResult.dependencies) {
-      for (const importPath of deps.imports) {
-        const resolvedImport = this.resolveImportPath(importPath, file);
-        const resolvedImportNoExt = resolvedImport?.replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, '');
-
-        if (resolvedImportNoExt === filePathNoExt) {
-          importers.push(file);
-          break;
-        }
-      }
-    }
-
-    return importers;
+    return fileInfo ? Array.from(fileInfo.importedBy) : [];
   }
 
   /**
