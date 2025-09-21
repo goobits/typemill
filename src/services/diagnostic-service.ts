@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { pathToUri } from '../path-utils.js';
+import { pathToUri } from '../core/file-operations/path-utils.js';
 import type { Diagnostic, DocumentDiagnosticReport } from '../types.js';
 import { debugLog } from '../utils/debug-logger.js';
 import type { ServiceContext } from './service-context.js';
@@ -244,7 +244,7 @@ export class DiagnosticService {
    * Wait for diagnostics to stabilize after file changes
    */
   private async waitForDiagnosticsIdle(
-    serverState: import('../lsp-types.js').ServerState,
+    serverState: import('../lsp/types.js').ServerState,
     fileUri: string,
     options: { maxWaitTime?: number; idleTime?: number; checkInterval?: number } = {}
   ): Promise<void> {

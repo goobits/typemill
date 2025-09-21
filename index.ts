@@ -533,7 +533,7 @@ async function main() {
 
         // Check if another server is already running
         if (existsSync(PID_FILE)) {
-          const existingPid = parseInt(readFileSync(PID_FILE, 'utf-8').trim(), 10);
+          const existingPid = Number.parseInt(readFileSync(PID_FILE, 'utf-8').trim(), 10);
           if (!Number.isNaN(existingPid)) {
             // Check if the process is actually running
             const { isProcessRunning } = await import('./src/utils/platform-utils.js');

@@ -3,9 +3,8 @@
  */
 
 import type { ChildProcess } from 'node:child_process';
-import type { ServerCapabilities } from './capability-manager.js';
-import type { LSPServerConfig } from './types.js';
-import type { Diagnostic } from './types.js';
+import type { ServerCapabilities } from '../core/capability-manager.js';
+import type { Diagnostic, LSPServerConfig } from '../types.js';
 
 /**
  * Represents the state of an LSP server instance

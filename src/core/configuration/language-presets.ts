@@ -1,5 +1,5 @@
-import { getCommandPath } from './cli/server-utils.js';
-import type { Config as CLIConfig } from './types.js';
+import { getCommandPath } from '../../cli/utils/server-utils.js';
+import type { Config as CLIConfig } from '../../types.js';
 
 export interface LanguageServerConfig {
   name: string;

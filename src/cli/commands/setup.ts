@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 import inquirer from 'inquirer';
-import { scanDirectoryForExtensions } from '../../file-scanner.js';
-import { LANGUAGE_SERVERS, generateConfig } from '../../language-server-presets.js';
-import * as DirectoryUtils from '../directory-utils.js';
-import { getPipCommand, runInstallCommand } from '../install-utils.js';
-import * as ServerUtils from '../server-utils.js';
-import { getCommandPath } from '../server-utils.js';
+import { LANGUAGE_SERVERS, generateConfig } from '../../core/configuration/language-presets.js';
+import { scanDirectoryForExtensions } from '../../core/file-operations/scanner.js';
+import * as DirectoryUtils from '../utils/directory-utils.js';
+import { getPipCommand, runInstallCommand } from '../utils/install-utils.js';
+import * as ServerUtils from '../utils/server-utils.js';
+import { getCommandPath } from '../utils/server-utils.js';
 
 interface ServerChoice {
   name: string;
@@ -60,7 +60,10 @@ export async function setupCommand(options: SetupOptions = {}): Promise<void> {
             return;
           }
         } catch (error) {
-          if (error instanceof Error && (error.message?.includes('SIGINT') || error.name === 'ExitPromptError')) {
+          if (
+            error instanceof Error &&
+            (error.message?.includes('SIGINT') || error.name === 'ExitPromptError')
+          ) {
             console.log('\n\n👋 Setup cancelled by user');
             process.exit(0);
           }
@@ -177,7 +180,10 @@ export async function setupCommand(options: SetupOptions = {}): Promise<void> {
           return;
         }
       } catch (error) {
-        if (error instanceof Error && (error.message?.includes('SIGINT') || error.name === 'ExitPromptError')) {
+        if (
+          error instanceof Error &&
+          (error.message?.includes('SIGINT') || error.name === 'ExitPromptError')
+        ) {
           console.log('\n\n👋 Setup cancelled by user');
           process.exit(0);
         }

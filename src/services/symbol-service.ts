@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
-import { capabilityManager } from '../capability-manager.js';
-import type { ServerState } from '../lsp-types.js';
-import { pathToUri, uriToPath } from '../path-utils.js';
+import { capabilityManager } from '../core/capability-manager.js';
+import { pathToUri, uriToPath } from '../core/file-operations/path-utils.js';
+import type { ServerState } from '../lsp/types.js';
 import type {
   DocumentSymbol,
   LSPLocation,

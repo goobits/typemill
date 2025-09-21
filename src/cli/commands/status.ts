@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import * as DirectoryUtils from '../directory-utils.js';
-import * as ServerUtils from '../server-utils.js';
+import * as DirectoryUtils from '../utils/directory-utils.js';
+import * as ServerUtils from '../utils/server-utils.js';
 
 interface ServerInfo {
   name: string;

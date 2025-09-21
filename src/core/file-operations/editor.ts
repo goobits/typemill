@@ -11,9 +11,9 @@ import {
 } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve } from 'node:path';
-import type { LSPClient } from './lsp/client.js';
+import type { LSPClient } from '../../lsp/client.js';
+import { debugLog } from '../../utils/debug-logger.js';
 import { pathToUri, uriToPath } from './path-utils.js';
-import { debugLog } from './utils/debug-logger.js';
 
 export interface TextEdit {
   range: {
@@ -305,7 +305,7 @@ async function findPotentialImporters(
   // Load gitignore patterns if requested
   let ignoreFilter: ReturnType<typeof import('ignore')> | null = null;
   if (useGitignore) {
-    const { loadGitignore } = await import('./file-scanner.js');
+    const { loadGitignore } = await import('./scanner.js');
     ignoreFilter = await loadGitignore(rootDir);
   }
 

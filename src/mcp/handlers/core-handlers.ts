@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
-import { applyWorkspaceEdit } from '../../file-editor.js';
-import { uriToPath } from '../../path-utils.js';
+import { applyWorkspaceEdit } from '../../core/file-operations/editor.js';
+import { uriToPath } from '../../core/file-operations/path-utils.js';
 import type { SymbolService } from '../../services/symbol-service.js';
 import {
   createContextualErrorResponse,

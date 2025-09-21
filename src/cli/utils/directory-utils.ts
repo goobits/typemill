@@ -2,7 +2,7 @@
 
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { CLIConfig, StateFile } from './types.js';
+import type { CLIConfig, StateFile } from '../types.js';
 
 const CODEBUDDY_DIR = '.codebuddy';
 

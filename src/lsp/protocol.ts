@@ -93,7 +93,7 @@ export class LSPProtocol {
   /**
    * Handle incoming LSP message
    */
-  handleMessage(message: LSPMessage, serverState?: import('../lsp-types.js').ServerState): void {
+  handleMessage(message: LSPMessage, serverState?: import('./types.js').ServerState): void {
     if (message.id && this.pendingRequests.has(message.id)) {
       const request = this.pendingRequests.get(message.id);
       if (!request) return;
@@ -375,7 +375,7 @@ export class LSPProtocol {
    */
   private handleServerNotification(
     message: LSPMessage,
-    serverState: import('../lsp-types.js').ServerState
+    serverState: import('./types.js').ServerState
   ): void {
     if (message.method === 'initialized') {
       debugLog('LSPProtocol', 'Received initialized notification from server');

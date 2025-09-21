@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { capabilityManager } from '../capability-manager.js';
-import { pathToUri } from '../path-utils.js';
+import { capabilityManager } from '../core/capability-manager.js';
+import { pathToUri } from '../core/file-operations/path-utils.js';
 import type {
   CodeAction,
   Diagnostic,
@@ -258,7 +258,7 @@ export class FileService {
    * Ensure file is open in LSP server
    */
   async ensureFileOpen(
-    serverState: import('../lsp-types.js').ServerState,
+    serverState: import('../lsp/types.js').ServerState,
     filePath: string
   ): Promise<void> {
     if (serverState.openFiles.has(filePath)) {

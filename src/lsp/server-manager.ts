@@ -1,14 +1,14 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { cpus } from 'node:os';
-import type { ServerCapabilities } from '../capability-manager.js';
-import { capabilityManager } from '../capability-manager.js';
-import type { ServerState } from '../lsp-types.js';
-import { pathToUri } from '../path-utils.js';
+import type { ServerCapabilities } from '../core/capability-manager.js';
+import { capabilityManager } from '../core/capability-manager.js';
+import { pathToUri } from '../core/file-operations/path-utils.js';
 import type { Config, LSPServerConfig } from '../types.js';
 import { ServerNotAvailableError, getErrorMessage, logError } from '../utils/error-utils.js';
 import { terminateProcess } from '../utils/platform-utils.js';
 import { getPackageVersion } from '../utils/version.js';
 import type { LSPProtocol } from './protocol.js';
+import type { ServerState } from './types.js';
 
 // Server lifecycle constants
 const SERVER_STARTUP_DELAY_MS = 100; // Delay to check for startup failures
