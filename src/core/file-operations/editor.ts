@@ -27,7 +27,18 @@ export interface WorkspaceEdit {
   changes?: Record<string, TextEdit[]>;
 }
 
-interface ApplyEditResult {
+export interface WorkspaceEditPreview {
+  summary: string;
+  totalEdits: number;
+  filesAffected: number;
+  details: Array<{
+    filePath: string;
+    editCount: number;
+    preview: string;
+  }>;
+}
+
+export interface ApplyEditResult {
   success: boolean;
   filesModified: string[];
   backupFiles: string[];
@@ -535,4 +546,88 @@ export async function renameFile(
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+/**
+ * Merge multiple WorkspaceEdit objects into a single WorkspaceEdit
+ * @param edits Array of WorkspaceEdit objects to merge
+ * @returns Single merged WorkspaceEdit
+ */
+export function mergeWorkspaceEdits(edits: WorkspaceEdit[]): WorkspaceEdit {
+  const merged: WorkspaceEdit = { changes: {} };
+
+  for (const edit of edits) {
+    if (!edit.changes) continue;
+
+    for (const [uri, textEdits] of Object.entries(edit.changes)) {
+      if (!merged.changes) {
+        merged.changes = {};
+      }
+
+      if (!merged.changes[uri]) {
+        merged.changes[uri] = [];
+      }
+
+      merged.changes[uri].push(...textEdits);
+    }
+  }
+
+  return merged;
+}
+
+/**
+ * Generate a human-readable preview of a WorkspaceEdit
+ * @param edit WorkspaceEdit to preview
+ * @returns Preview summary
+ */
+export function previewWorkspaceEdit(edit: WorkspaceEdit): WorkspaceEditPreview {
+  if (!edit.changes || Object.keys(edit.changes).length === 0) {
+    return {
+      summary: 'No changes to apply',
+      totalEdits: 0,
+      filesAffected: 0,
+      details: [],
+    };
+  }
+
+  const details: WorkspaceEditPreview['details'] = [];
+  let totalEdits = 0;
+
+  for (const [uri, textEdits] of Object.entries(edit.changes)) {
+    const filePath = uriToPath(uri);
+    const editCount = textEdits.length;
+    totalEdits += editCount;
+
+    // Generate a preview of the changes for this file
+    let preview = '';
+    if (editCount === 1) {
+      const edit = textEdits[0];
+      if (!edit)
+        return { summary: 'No edits available', totalEdits: 0, filesAffected: 0, details: [] };
+      const { start, end } = edit.range;
+      if (start.line === end.line) {
+        preview = `Line ${start.line + 1}: Replace characters ${start.character}-${end.character} with "${edit.newText}"`;
+      } else {
+        preview = `Lines ${start.line + 1}-${end.line + 1}: Replace with "${edit.newText}"`;
+      }
+    } else {
+      preview = `${editCount} text replacements across multiple lines`;
+    }
+
+    details.push({
+      filePath: relative(process.cwd(), filePath),
+      editCount,
+      preview,
+    });
+  }
+
+  const filesAffected = details.length;
+  const summary = `${totalEdits} edit${totalEdits === 1 ? '' : 's'} across ${filesAffected} file${filesAffected === 1 ? '' : 's'}`;
+
+  return {
+    summary,
+    totalEdits,
+    filesAffected,
+    details,
+  };
 }

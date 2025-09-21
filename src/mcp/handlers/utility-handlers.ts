@@ -2,6 +2,7 @@ import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { mkdirSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { dirname } from 'node:path';
+import type { WorkspaceEdit } from '../../core/file-operations/editor.js';
 import type { DiagnosticService } from '../../services/diagnostic-service.js';
 import { debugLog } from '../../utils/debug-logger.js';
 import {
@@ -143,6 +144,39 @@ export async function handleRenameFile(args: {
     return createMCPResponse(
       `Error renaming file: ${error instanceof Error ? error.message : String(error)}`
     );
+  }
+}
+
+/**
+ * Internal helper for getting raw WorkspaceEdit data from rename operations
+ * Used by orchestration handlers for atomic operations
+ */
+export async function getRenameFileWorkspaceEdit(args: {
+  old_path: string;
+  new_path: string;
+}): Promise<{ success: boolean; workspaceEdit?: WorkspaceEdit; error?: string }> {
+  const { old_path, new_path } = args;
+
+  try {
+    const { renameFile } = await import('../../core/file-operations/editor.js');
+    const rootDir = process.cwd();
+
+    const result = await renameFile(old_path, new_path, undefined, {
+      dry_run: true, // Always dry run for workspace edit extraction
+      rootDir,
+      useGitignore: false,
+    });
+
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    return { success: true, workspaceEdit: result.importUpdates };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 

@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { applyWorkspaceEdit } from '../../core/file-operations/editor.js';
+import { type WorkspaceEdit, applyWorkspaceEdit } from '../../core/file-operations/editor.js';
 import { uriToPath } from '../../core/file-operations/path-utils.js';
 import type { SymbolService } from '../../services/symbol-service.js';
 import {
@@ -331,5 +331,108 @@ export async function handleRenameSymbolStrict(
         'Ensure the language server supports renaming',
       ],
     });
+  }
+}
+
+/**
+ * Internal helper for getting raw WorkspaceEdit data from symbol rename operations
+ * Used by orchestration handlers for atomic operations
+ */
+export async function getRenameSymbolWorkspaceEdit(
+  symbolService: SymbolService,
+  args: {
+    file_path: string;
+    symbol_name: string;
+    symbol_kind?: string;
+    new_name: string;
+  }
+): Promise<{ success: boolean; workspaceEdit?: WorkspaceEdit; error?: string }> {
+  const { file_path, symbol_name, symbol_kind, new_name } = args;
+
+  try {
+    const absolutePath = resolve(file_path);
+    const symbolMatches = await symbolService.findSymbolMatches(
+      absolutePath,
+      symbol_name,
+      symbol_kind
+    );
+
+    if (symbolMatches.length === 0) {
+      return {
+        success: false,
+        error: `No symbols found with name "${symbol_name}"${symbol_kind ? ` and kind "${symbol_kind}"` : ''} in ${file_path}`,
+      };
+    }
+
+    if (symbolMatches.length > 1) {
+      return {
+        success: false,
+        error: `Multiple symbols found with name "${symbol_name}". Use rename_symbol_strict for precise positioning.`,
+      };
+    }
+
+    // Single match - proceed with rename
+    const match = symbolMatches[0];
+    if (!match) {
+      return { success: false, error: 'Symbol match is undefined' };
+    }
+
+    // Check if the new name is the same as the old name
+    if (symbol_name === new_name) {
+      return {
+        success: true,
+        workspaceEdit: { changes: {} }, // Empty workspace edit for no-op
+      };
+    }
+
+    const workspaceEdit = await symbolService.renameSymbol(
+      absolutePath,
+      match.position,
+      new_name,
+      true // Always dry run for workspace edit extraction
+    );
+
+    return { success: true, workspaceEdit };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Internal helper for getting raw WorkspaceEdit data from strict symbol rename operations
+ * Used by orchestration handlers for atomic operations
+ */
+export async function getRenameSymbolWorkspaceEditStrict(
+  symbolService: SymbolService,
+  args: {
+    file_path: string;
+    line: number;
+    character: number;
+    new_name: string;
+  }
+): Promise<{ success: boolean; workspaceEdit?: WorkspaceEdit; error?: string }> {
+  const { file_path, line, character, new_name } = args;
+
+  try {
+    const absolutePath = resolve(file_path);
+    // Convert 1-indexed to 0-indexed for LSP
+    const position = { line: line - 1, character: character - 1 };
+
+    const workspaceEdit = await symbolService.renameSymbol(
+      absolutePath,
+      position,
+      new_name,
+      true // Always dry run for workspace edit extraction
+    );
+
+    return { success: true, workspaceEdit };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
