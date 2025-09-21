@@ -35,6 +35,14 @@ describe('Multi-File Rename File Path Tests', () => {
       }
     }
 
+    // Clean up any existing test target files that might interfere
+    const targetFile = '/workspace/playground/src/core/test-service.ts';
+    if (existsSync(targetFile)) {
+      const { unlinkSync } = await import('node:fs');
+      unlinkSync(targetFile);
+      console.log(`  ✓ Cleaned up existing: ${targetFile}`);
+    }
+
     // Initialize MCP client
     client = new MCPTestClient();
     await client.start({ skipLSPPreload: true });
@@ -48,6 +56,14 @@ describe('Multi-File Rename File Path Tests', () => {
   afterAll(async () => {
     // Stop MCP client
     await client.stop();
+
+    // Clean up any renamed files that might exist
+    const renamedFile = '/workspace/playground/src/core/test-service.ts';
+    if (existsSync(renamedFile)) {
+      const { unlinkSync } = await import('node:fs');
+      unlinkSync(renamedFile);
+      console.log(`✓ Cleaned up renamed file: ${renamedFile}`);
+    }
 
     // Restore all files from backups
     console.log('\n🔄 Restoring original files...');
@@ -155,15 +171,16 @@ describe('Multi-File Rename File Path Tests', () => {
         expect(indexContent).not.toContain('./services/user-service');
 
         // Should contain new path - verify exact import statements
-        if (indexContent.includes('../core/account-service')) {
+        if (indexContent.includes('../core/test-service')) {
           // Path adjusted for new location
-          verifyFileContainsAll(indexFile, ['../core/account-service']);
-          console.log('  ✅ Import path correctly updated to ../core/account-service');
-        } else if (indexContent.includes('./core/account-service')) {
+          verifyFileContainsAll(indexFile, ['../core/test-service']);
+          console.log('  ✅ Import path correctly updated to ../core/test-service');
+        } else if (indexContent.includes('./core/test-service')) {
           // Or might be relative to same level
-          verifyFileContainsAll(indexFile, ['./core/account-service']);
-          console.log('  ✅ Import path correctly updated to ./core/account-service');
+          verifyFileContainsAll(indexFile, ['./core/test-service']);
+          console.log('  ✅ Import path correctly updated to ./core/test-service');
         } else {
+          console.log('  ⚠️ Current content:', indexContent.substring(0, 200));
           throw new Error('index.ts import path not properly updated');
         }
       }
@@ -175,7 +192,7 @@ describe('Multi-File Rename File Path Tests', () => {
         verifyImportStatement(
           userListFile,
           /from ['"].*services\/user-service['"]/,
-          '../core/account-service'
+          '../core/test-service'
         );
         console.log('  ✅ Import path correctly updated from services to core directory');
       }
@@ -187,7 +204,7 @@ describe('Multi-File Rename File Path Tests', () => {
         verifyImportStatement(
           userFormFile,
           /from ['"].*services\/user-service['"]/,
-          '../core/account-service'
+          '../core/test-service'
         );
         console.log('  ✅ Import path correctly updated from services to core directory');
       }
@@ -199,7 +216,7 @@ describe('Multi-File Rename File Path Tests', () => {
         verifyImportStatement(
           userHelpersFile,
           /from ['"].*services\/user-service['"]/,
-          '../core/account-service'
+          '../core/test-service'
         );
         console.log('  ✅ Import path correctly updated from services to core directory');
       }
@@ -209,7 +226,7 @@ describe('Multi-File Rename File Path Tests', () => {
       for (const file of [indexFile, userListFile, userFormFile, userHelpersFile]) {
         if (existsSync(file)) {
           const content = readFileSync(file, 'utf-8');
-          if (content.includes('account-service') && !content.includes('user-service')) {
+          if (content.includes('test-service') && !content.includes('user-service')) {
             verifiedFiles++;
           }
         }

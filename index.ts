@@ -436,7 +436,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 'object with either "changes" mapping file paths to text edits or "edit" containing the workspace edit'
               );
             }
-            return await handleApplyWorkspaceEdit(fileService, args);
+            return await handleApplyWorkspaceEdit(fileService, args, newLspClient);
           case 'create_file':
             if (!Validation.validateCreateFileArgs(args)) {
               throw Validation.createValidationError('create_file', 'object with file_path string');

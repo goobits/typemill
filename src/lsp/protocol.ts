@@ -162,8 +162,14 @@ export class LSPProtocol {
         messages.push(message);
       } catch (error) {
         logError('LSPProtocol', 'Failed to parse LSP message', error, {
-          messageContent: `${messageContent.substring(0, 100)}...`,
+          messageContent:
+            messageContent.length > 200 ? `${messageContent.substring(0, 200)}...` : messageContent,
+          messageLength: messageContent.length,
+          contentLength,
+          headerEndIndex,
+          messageStart,
         });
+        // Continue processing other messages instead of breaking the entire parsing
       }
 
       remaining = remaining.substring(messageStart + contentLength);
@@ -347,7 +353,13 @@ export class LSPProtocol {
     if (!health) return null;
 
     const timeSinceLastSuccess = Date.now() - health.lastSuccessfulWrite;
-    const isHealthy = health.errorCount < 3 && timeSinceLastSuccess < 30000; // Healthy if <3 errors and success within 30s
+    // Check if there are pending requests - if so, don't mark as unhealthy yet
+    const hasPendingRequests = this.pendingRequests.size > 0;
+
+    // If there are pending requests, allow up to 60s for them to complete
+    // Otherwise use the standard 30s timeout
+    const healthyTimeout = hasPendingRequests ? 60000 : 30000;
+    const isHealthy = health.errorCount < 3 && timeSinceLastSuccess < healthyTimeout; // Healthy if <3 errors and success within timeout
 
     return {
       healthy: isHealthy,

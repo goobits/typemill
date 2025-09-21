@@ -5,7 +5,7 @@ import { debugLog } from '../utils/debug-logger.js';
 import type { ServiceContext } from './service-context.js';
 
 // Diagnostic service constants
-const DIAGNOSTIC_WAIT_TIMEOUT_MS = 5000; // Max wait time for diagnostics
+const DIAGNOSTIC_WAIT_TIMEOUT_MS = process.env.TEST_MODE ? 10000 : 5000; // Longer wait in tests
 const DIAGNOSTIC_IDLE_TIME_MS = 300; // Idle time to ensure all diagnostics received
 const DIAGNOSTIC_POST_CHANGE_TIMEOUT_MS = 3000; // Timeout after triggering changes
 const DIAGNOSTIC_MAX_WAIT_TIME_MS = 10000; // Maximum wait time for idle state

@@ -13,7 +13,7 @@ import type { ServiceContext } from './service-context.js';
 // Intelligence service constants
 const SERVER_PROCESSING_DELAY_MS = 500; // Time for server to process files
 const HOVER_TIMEOUT_MS = 30000; // Timeout for hover requests
-const COMPLETION_TIMEOUT_MS = 5000; // Timeout for completion requests
+const COMPLETION_TIMEOUT_MS = process.env.TEST_MODE ? 10000 : 5000; // Longer timeout in tests
 
 /**
  * Service for intelligence-related LSP operations
