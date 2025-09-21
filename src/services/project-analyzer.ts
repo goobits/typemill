@@ -299,12 +299,20 @@ class ProjectScanner {
     }
 
     const dir = dirname(fromFile);
-    const withoutExt = join(dir, importPath);
+    let basePath = join(dir, importPath);
+
+    // Handle TypeScript convention where imports use .js but files are .ts
+    // Strip .js/.mjs extensions and try with TypeScript extensions
+    if (basePath.endsWith('.js')) {
+      basePath = basePath.slice(0, -3);
+    } else if (basePath.endsWith('.mjs')) {
+      basePath = basePath.slice(0, -4);
+    }
 
     // Try different extensions
     const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
     for (const ext of extensions) {
-      const fullPath = withoutExt + ext;
+      const fullPath = basePath + ext;
       if (existsSync(fullPath) && statSync(fullPath).isFile()) {
         return fullPath;
       }
@@ -313,7 +321,7 @@ class ProjectScanner {
     // Try index file in directory
     const indexFiles = ['index.ts', 'index.tsx', 'index.js', 'index.jsx'];
     for (const indexFile of indexFiles) {
-      const fullPath = join(withoutExt, indexFile);
+      const fullPath = join(basePath, indexFile);
       if (existsSync(fullPath)) {
         return fullPath;
       }

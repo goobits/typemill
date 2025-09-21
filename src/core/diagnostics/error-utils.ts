@@ -3,7 +3,7 @@
  * and improved debugging across the codebase.
  */
 
-import { allToolDefinitions } from '../mcp/definitions/index.js';
+import { allToolDefinitions } from '../../mcp/definitions/index.js';
 import { getLogger } from './structured-logger.js';
 
 const logger = getLogger('ErrorUtils');
