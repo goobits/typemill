@@ -3,14 +3,14 @@ import {
   createDefaultConfig,
   getAvailableDefaultServers,
   mergeWithDefaults,
-} from '../default-config.js';
-import { scanDirectoryForExtensions } from '../file-scanner.js';
-import type { ServerState } from '../lsp-types.js';
+} from '../core/configuration/default-config.js';
+import { scanDirectoryForExtensions } from '../core/file-operations/scanner.js';
 import type { Config } from '../types.js';
 import { handleConfigurationError, logError } from '../utils/error-utils.js';
 import { getLogger } from '../utils/structured-logger.js';
 import { LSPProtocol } from './protocol.js';
 import { ServerManager } from './server-manager.js';
+import type { ServerState } from './types.js';
 
 const logger = getLogger('LSPClient');
 

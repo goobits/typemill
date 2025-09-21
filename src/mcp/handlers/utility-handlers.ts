@@ -103,7 +103,7 @@ export async function handleRenameFile(args: {
   const { old_path, new_path, dry_run = false } = args;
 
   try {
-    const { renameFile } = await import('../../file-editor.js');
+    const { renameFile } = await import('../../core/file-operations/editor.js');
     // Pass the workspace root directory to enable import detection
     // Don't use gitignore filtering to ensure all files are checked (including test/playground files)
     const rootDir = process.cwd(); // Use current working directory as root

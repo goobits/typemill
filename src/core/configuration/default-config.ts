@@ -1,4 +1,4 @@
-import type { Config, LSPServerConfig } from './types.js';
+import type { Config, LSPServerConfig } from '../../types.js';
 
 // Configuration constants
 const SERVER_AVAILABILITY_CHECK_TIMEOUT_MS = 2000; // Timeout for checking server availability

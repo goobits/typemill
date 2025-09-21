@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
-import { applyWorkspaceEdit } from '../../file-editor.js';
-import type { TextEdit, WorkspaceEdit } from '../../file-editor.js';
-import { pathToUri, uriToPath } from '../../path-utils.js';
+import { applyWorkspaceEdit } from '../../core/file-operations/editor.js';
+import type { TextEdit, WorkspaceEdit } from '../../core/file-operations/editor.js';
+import { pathToUri, uriToPath } from '../../core/file-operations/path-utils.js';
 import type { FileService } from '../../services/file-service.js';
 import type { SymbolService } from '../../services/symbol-service.js';
 import type { DocumentSymbol, SymbolInformation } from '../../types.js';

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
-import type { ServerState } from '../lsp-types.js';
 import type { LSPProtocol } from '../lsp/protocol.js';
+import type { ServerState } from '../lsp/types.js';
 
 /**
  * Service Context Interface

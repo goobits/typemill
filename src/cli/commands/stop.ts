@@ -64,10 +64,7 @@ export async function stopCommand(): Promise<void> {
     } catch (error) {
       if (error instanceof Error && 'code' in error) {
         const errorCode = (error as NodeJS.ErrnoException).code;
-        if (
-          errorCode === 'EPERM' ||
-          (error.message && error.message.includes('Access is denied'))
-        ) {
+        if (errorCode === 'EPERM' || error.message?.includes('Access is denied')) {
           console.error(
             'Permission denied: Cannot stop the server (different user or insufficient permissions)'
           );

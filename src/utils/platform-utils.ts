@@ -45,7 +45,11 @@ export function terminateProcess(pid: number, force = false): Promise<void> {
         process.kill(pid, force ? 'SIGKILL' : 'SIGTERM');
         resolve();
       } catch (err) {
-        if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ESRCH') {
+        if (
+          err instanceof Error &&
+          'code' in err &&
+          (err as NodeJS.ErrnoException).code === 'ESRCH'
+        ) {
           // Process doesn't exist, consider it success
           resolve();
         } else {
