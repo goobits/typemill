@@ -6,7 +6,7 @@ import type {
   SelectionRange,
   TypeHierarchyItem,
 } from '../types.js';
-import { debugLog } from '../core/diagnostics/debug-logger.js';
+import { logDebugMessage } from '../core/diagnostics/debug-logger.js';
 import type { ServiceContext } from './service-context.js';
 
 // Hierarchy service constants
@@ -33,9 +33,9 @@ export class HierarchyService {
     try {
       const { projectScanner } = await import('./project-analyzer.js');
       await projectScanner.openRelatedFiles(filePath, this.context, RELATED_FILES_LIMIT);
-      debugLog('HierarchyService', 'Opened related files for better context');
+      logDebugMessage('HierarchyService', 'Opened related files for better context');
     } catch (error) {
-      debugLog('HierarchyService', `Could not open related files: ${error}`);
+      logDebugMessage('HierarchyService', `Could not open related files: ${error}`);
     }
 
     const response = await this.context.protocol.sendRequest(
@@ -111,9 +111,9 @@ export class HierarchyService {
     try {
       const { projectScanner } = await import('./project-analyzer.js');
       await projectScanner.openRelatedFiles(filePath, this.context, RELATED_FILES_LIMIT);
-      debugLog('HierarchyService', 'Opened related files for better context');
+      logDebugMessage('HierarchyService', 'Opened related files for better context');
     } catch (error) {
-      debugLog('HierarchyService', `Could not open related files: ${error}`);
+      logDebugMessage('HierarchyService', `Could not open related files: ${error}`);
     }
 
     const response = await this.context.protocol.sendRequest(

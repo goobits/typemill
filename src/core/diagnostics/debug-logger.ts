@@ -87,6 +87,6 @@ export class DebugLogger {
 }
 
 // Export convenience function
-export const debugLog = (component: string, message: string, data?: unknown) => {
+export const logDebugMessage = (component: string, message: string, data?: unknown) => {
   DebugLogger.getInstance().log(component, message, data);
 };

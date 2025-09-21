@@ -1,6 +1,6 @@
 import type { ChildProcess } from 'node:child_process';
 import type { LSPError } from '../types.js';
-import { debugLog } from '../core/diagnostics/debug-logger.js';
+import { logDebugMessage } from '../core/diagnostics/debug-logger.js';
 import { getErrorMessage, handleLSPError, logError } from '../core/diagnostics/error-utils.js';
 
 // Protocol constants
@@ -161,7 +161,7 @@ export class LSPProtocol {
         // Validate that messageContent looks like valid JSON before parsing
         const trimmed = messageContent.trim();
         if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
-          debugLog('LSPProtocol', `Skipping malformed LSP message: ${trimmed.substring(0, 50)}...`);
+          logDebugMessage('LSPProtocol', `Skipping malformed LSP message: ${trimmed.substring(0, 50)}...`);
           // Skip this malformed message and continue to next
           remaining = remaining.substring(messageStart + contentLength);
           continue;
@@ -170,7 +170,7 @@ export class LSPProtocol {
         const message = JSON.parse(messageContent) as LSPMessage;
         messages.push(message);
       } catch (error) {
-        debugLog('LSPProtocol', `Failed to parse LSP message: ${getErrorMessage(error)}`);
+        logDebugMessage('LSPProtocol', `Failed to parse LSP message: ${getErrorMessage(error)}`);
         // Continue processing other messages instead of breaking the entire parsing
       }
 
@@ -250,7 +250,7 @@ export class LSPProtocol {
 
     if (errorCode === 'EPIPE' || errorMessage.includes('EPIPE') || errorMessage.includes('write')) {
       // EPIPE indicates broken pipe - LSP server process died
-      debugLog(
+      logDebugMessage(
         'LSPProtocol',
         `EPIPE error detected for ${message.method || 'unknown'} - LSP server process died`
       );
@@ -288,7 +288,7 @@ export class LSPProtocol {
       });
 
       // Don't throw to prevent process crash - just log and continue
-      debugLog('LSPProtocol', `Non-EPIPE write error handled gracefully: ${errorMessage}`);
+      logDebugMessage('LSPProtocol', `Non-EPIPE write error handled gracefully: ${errorMessage}`);
     }
   }
 
@@ -313,7 +313,7 @@ export class LSPProtocol {
     }
 
     if (cleanedCount > 0) {
-      debugLog(
+      logDebugMessage(
         'LSPProtocol',
         `Cleaned up ${cleanedCount} pending requests for dead process ${deadPid}`
       );
@@ -378,7 +378,7 @@ export class LSPProtocol {
     serverState: import('./types.js').ServerState
   ): void {
     if (message.method === 'initialized') {
-      debugLog('LSPProtocol', 'Received initialized notification from server');
+      logDebugMessage('LSPProtocol', 'Received initialized notification from server');
       serverState.initialized = true;
       if (serverState.initializationResolve) {
         serverState.initializationResolve();
@@ -391,7 +391,7 @@ export class LSPProtocol {
         version?: number;
       };
       if (params?.uri) {
-        debugLog(
+        logDebugMessage(
           'LSPProtocol',
           `Received publishDiagnostics for ${params.uri} with ${params.diagnostics?.length || 0} diagnostics${params.version !== undefined ? ` (version: ${params.version})` : ''}`
         );

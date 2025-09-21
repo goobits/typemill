@@ -4,7 +4,7 @@ import { relative, resolve } from 'node:path';
 import { dirname } from 'node:path';
 import type { WorkspaceEdit } from '../../core/file-operations/editor.js';
 import type { DiagnosticService } from '../../services/diagnostic-service.js';
-import { debugLog } from '../../core/diagnostics/debug-logger.js';
+import { logDebugMessage } from '../../core/diagnostics/debug-logger.js';
 import {
   createFileModificationResponse,
   createListResponse,
@@ -108,7 +108,7 @@ export async function handleRenameFile(args: {
     // Pass the workspace root directory to enable import detection
     // Don't use gitignore filtering to ensure all files are checked (including test/playground files)
     const rootDir = process.cwd(); // Use current working directory as root
-    debugLog(
+    logDebugMessage(
       'UtilityHandlers',
       `rootDir: ${rootDir}, old_path: ${old_path}, new_path: ${new_path}, dry_run: ${dry_run}`
     );
@@ -237,7 +237,7 @@ export async function handleDeleteFile(args: {
     const { projectScanner } = await import('../../services/project-analyzer.js');
 
     // Find all files that import this file
-    debugLog('UtilityHandlers', `Analyzing impact of deleting ${absolutePath}`);
+    logDebugMessage('UtilityHandlers', `Analyzing impact of deleting ${absolutePath}`);
     const importers = await projectScanner.findImporters(absolutePath);
 
     if (importers.length > 0 && !force) {
@@ -251,7 +251,7 @@ export async function handleDeleteFile(args: {
 
     // If force is true or no importers, proceed with deletion
     if (importers.length > 0 && force) {
-      debugLog(
+      logDebugMessage(
         'UtilityHandlers',
         `Force deleting ${absolutePath} despite ${importers.length} importers`
       );
