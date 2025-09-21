@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { pathToUri } from '../core/file-operations/path-utils.js';
 import type { Diagnostic, DocumentDiagnosticReport } from '../types.js';
-import { debugLog } from '../core/diagnostics/debug-logger.js';
+import { logDebugMessage } from '../core/diagnostics/debug-logger.js';
 import type { ServiceContext } from './service-context.js';
 
 // Diagnostic service constants
@@ -23,7 +23,7 @@ export class DiagnosticService {
    * Get diagnostics for a file
    */
   async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
-    debugLog('DiagnosticService', `Requesting diagnostics for ${filePath}`);
+    logDebugMessage('DiagnosticService', `Requesting diagnostics for ${filePath}`);
 
     const serverState = await this.context.prepareFile(filePath);
 
@@ -32,7 +32,7 @@ export class DiagnosticService {
     const cachedDiagnostics = serverState.diagnostics.get(fileUri);
 
     if (cachedDiagnostics !== undefined) {
-      debugLog(
+      logDebugMessage(
         'DiagnosticService',
         `Returning ${cachedDiagnostics.length} cached diagnostics from publishDiagnostics`
       );
@@ -40,7 +40,7 @@ export class DiagnosticService {
     }
 
     // If no cached diagnostics, try the pull-based textDocument/diagnostic
-    debugLog('DiagnosticService', 'No cached diagnostics, trying textDocument/diagnostic request');
+    logDebugMessage('DiagnosticService', 'No cached diagnostics, trying textDocument/diagnostic request');
 
     try {
       const result = await this.context.protocol.sendRequest(
@@ -51,48 +51,48 @@ export class DiagnosticService {
         }
       );
 
-      debugLog(
+      logDebugMessage(
         'DiagnosticService',
         `Result type: ${typeof result}, has kind: ${result && typeof result === 'object' && 'kind' in result}`
       );
-      debugLog('DiagnosticService', 'Full result:', result);
+      logDebugMessage('DiagnosticService', 'Full result:', result);
 
       // Handle LSP 3.17+ DocumentDiagnosticReport format
       if (result && typeof result === 'object' && 'kind' in result) {
         const report = result as DocumentDiagnosticReport;
 
         if (report.kind === 'full' && report.items) {
-          debugLog('DiagnosticService', `Full report with ${report.items.length} diagnostics`);
+          logDebugMessage('DiagnosticService', `Full report with ${report.items.length} diagnostics`);
           return report.items;
         }
         if (report.kind === 'unchanged') {
-          debugLog('DiagnosticService', 'Unchanged report (no new diagnostics)');
+          logDebugMessage('DiagnosticService', 'Unchanged report (no new diagnostics)');
           return [];
         }
       }
 
       // Handle direct diagnostic array (legacy format)
       if (Array.isArray(result)) {
-        debugLog('DiagnosticService', `Direct diagnostic array with ${result.length} diagnostics`);
+        logDebugMessage('DiagnosticService', `Direct diagnostic array with ${result.length} diagnostics`);
         return result as Diagnostic[];
       }
 
       // Handle null/empty responses (server may not have diagnostics yet)
       // Fall through to publishDiagnostics waiting logic below
-      debugLog(
+      logDebugMessage(
         'DiagnosticService',
         'textDocument/diagnostic returned null/invalid result, falling back to publishDiagnostics'
       );
     } catch (error) {
       // Some LSP servers may not support textDocument/diagnostic
-      debugLog(
+      logDebugMessage(
         'DiagnosticService',
         `textDocument/diagnostic not supported or failed: ${error}. Falling back to publishDiagnostics...`
       );
     }
 
     // Fallback: Wait for publishDiagnostics notifications (works for most LSP servers)
-    debugLog('DiagnosticService', 'Waiting for publishDiagnostics notifications...');
+    logDebugMessage('DiagnosticService', 'Waiting for publishDiagnostics notifications...');
 
     // Wait for the server to become idle and publish diagnostics
     // MCP tools can afford longer wait times for better reliability
@@ -104,7 +104,7 @@ export class DiagnosticService {
     // Check again for cached diagnostics
     const diagnosticsAfterWait = serverState.diagnostics.get(fileUri);
     if (diagnosticsAfterWait !== undefined) {
-      debugLog(
+      logDebugMessage(
         'DiagnosticService',
         `Returning ${diagnosticsAfterWait.length} diagnostics after waiting for idle state`
       );
@@ -112,7 +112,7 @@ export class DiagnosticService {
     }
 
     // If still no diagnostics, try triggering publishDiagnostics by making a no-op change
-    debugLog(
+    logDebugMessage(
       'DiagnosticService',
       'No diagnostics yet, triggering publishDiagnostics with no-op change'
     );
@@ -164,14 +164,14 @@ export class DiagnosticService {
       // Check one more time
       const diagnosticsAfterTrigger = serverState.diagnostics.get(fileUri);
       if (diagnosticsAfterTrigger !== undefined) {
-        debugLog(
+        logDebugMessage(
           'DiagnosticService',
           `Returning ${diagnosticsAfterTrigger.length} diagnostics after triggering publishDiagnostics`
         );
         return diagnosticsAfterTrigger;
       }
     } catch (triggerError) {
-      debugLog('DiagnosticService', `Failed to trigger publishDiagnostics: ${triggerError}`);
+      logDebugMessage('DiagnosticService', `Failed to trigger publishDiagnostics: ${triggerError}`);
     }
 
     return [];
@@ -264,7 +264,7 @@ export class DiagnosticService {
 
         // Check if we've exceeded max wait time
         if (now - startTime >= maxWaitTime) {
-          debugLog('DiagnosticService', `Max wait time reached for ${fileUri}`);
+          logDebugMessage('DiagnosticService', `Max wait time reached for ${fileUri}`);
           resolve();
           return;
         }
@@ -279,7 +279,7 @@ export class DiagnosticService {
 
         // Check if we've been idle long enough
         if (now - lastUpdateTime >= idleTime) {
-          debugLog('DiagnosticService', `Diagnostics idle for ${fileUri}`);
+          logDebugMessage('DiagnosticService', `Diagnostics idle for ${fileUri}`);
           resolve();
           return;
         }

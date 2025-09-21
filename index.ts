@@ -501,7 +501,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             return await handlePreviewBatchOperation(symbolService, args);
           default: {
             const { createUnknownToolMessage } = await import(
-              './src/utils/error-utils.js'
+              './src/core/diagnostics/error-utils.js'
             );
             const enhancedMessage = createUnknownToolMessage(name);
             throw new Error(enhancedMessage);

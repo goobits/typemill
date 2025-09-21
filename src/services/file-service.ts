@@ -10,7 +10,7 @@ import type {
   Range,
   TextEdit,
 } from '../types.js';
-import { debugLog } from '../core/diagnostics/debug-logger.js';
+import { logDebugMessage } from '../core/diagnostics/debug-logger.js';
 import { handleFileSystemError, logError } from '../core/diagnostics/error-utils.js';
 import type { ServiceContext } from './service-context.js';
 
@@ -98,7 +98,7 @@ export class FileService {
       only: undefined, // Don't filter by specific code action kinds
     };
 
-    debugLog('FileService', 'Request params:', {
+    logDebugMessage('FileService', 'Request params:', {
       textDocument: { uri: fileUri },
       range: requestRange,
       context: codeActionContext,
@@ -115,7 +115,7 @@ export class FileService {
         }
       );
 
-      debugLog('FileService', 'Raw result:', result);
+      logDebugMessage('FileService', 'Raw result:', result);
 
       if (!result) return [];
       if (Array.isArray(result)) return result.filter((action) => action != null);
@@ -139,7 +139,7 @@ export class FileService {
     }
     const fileUri = pathToUri(filePath);
 
-    debugLog('FileService', `Requesting folding ranges for: ${filePath}`);
+    logDebugMessage('FileService', `Requesting folding ranges for: ${filePath}`);
 
     const result = await this.context.protocol.sendRequest(
       serverState.process,
@@ -149,7 +149,7 @@ export class FileService {
       }
     );
 
-    debugLog(
+    logDebugMessage(
       'FileService',
       `Result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}`
     );
@@ -171,7 +171,7 @@ export class FileService {
     }
     const fileUri = pathToUri(filePath);
 
-    debugLog('FileService', `Requesting document links for: ${filePath}`);
+    logDebugMessage('FileService', `Requesting document links for: ${filePath}`);
 
     const result = await this.context.protocol.sendRequest(
       serverState.process,
@@ -181,7 +181,7 @@ export class FileService {
       }
     );
 
-    debugLog(
+    logDebugMessage(
       'FileService',
       `Result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}`
     );
@@ -250,7 +250,7 @@ export class FileService {
         });
       }
     } catch (error) {
-      debugLog('FileService', `ERROR renameFile: ${error}`);
+      logDebugMessage('FileService', `ERROR renameFile: ${error}`);
     }
   }
 
@@ -320,7 +320,7 @@ export class FileService {
           endLine >= lines.length ||
           startLine > endLine
         ) {
-          debugLog(
+          logDebugMessage(
             'FileService',
             `WARNING applyTextEdits - Invalid range in ${filePath}: ${startLine}:${startChar}-${endLine}:${endChar}`
           );
@@ -339,7 +339,7 @@ export class FileService {
           lines[startLine] =
             line.substring(0, safeStartChar) + edit.newText + line.substring(safeEndChar);
 
-          debugLog(
+          logDebugMessage(
             'FileService',
             `Single-line edit at ${startLine}:${safeStartChar}-${safeEndChar} -> "${edit.newText}"`
           );
@@ -370,7 +370,7 @@ export class FileService {
 
           lines.splice(startLine, endLine - startLine + 1, ...replacement);
 
-          debugLog(
+          logDebugMessage(
             'FileService',
             `Multi-line edit at ${startLine}:${safeStartChar}-${endLine}:${safeEndChar} -> "${edit.newText}"`
           );
@@ -381,7 +381,7 @@ export class FileService {
       const modifiedContent = lines.join('\n');
       writeFileSync(filePath, modifiedContent, 'utf-8');
 
-      debugLog('FileService', `Applied ${edits.length} edits to ${filePath}`);
+      logDebugMessage('FileService', `Applied ${edits.length} edits to ${filePath}`);
     } catch (error) {
       throw new Error(`Failed to apply text edits to ${filePath}: ${error}`);
     }
@@ -400,11 +400,11 @@ export class FileService {
 
       // If file is not already open in the LSP server, open it first
       if (!serverState.openFiles.has(filePath)) {
-        debugLog('FileService', `File not open, opening it first: ${filePath}`);
+        logDebugMessage('FileService', `File not open, opening it first: ${filePath}`);
         await this.context.ensureFileOpen(serverState, filePath);
       }
 
-      debugLog('FileService', `Syncing file: ${filePath}`);
+      logDebugMessage('FileService', `Syncing file: ${filePath}`);
 
       const fileContent = readFileSync(filePath, 'utf-8');
       const uri = pathToUri(filePath);
@@ -425,9 +425,9 @@ export class FileService {
         ],
       });
 
-      debugLog('FileService', `File synced with version ${version}: ${filePath}`);
+      logDebugMessage('FileService', `File synced with version ${version}: ${filePath}`);
     } catch (error) {
-      debugLog('FileService', `Failed to sync file ${filePath}: ${error}`);
+      logDebugMessage('FileService', `Failed to sync file ${filePath}: ${error}`);
       // Don't throw - syncing is best effort
     }
   }

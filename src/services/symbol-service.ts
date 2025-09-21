@@ -11,7 +11,7 @@ import type {
   SymbolMatch,
 } from '../types.js';
 import { SymbolKind } from '../types.js';
-import { debugLog } from '../core/diagnostics/debug-logger.js';
+import { logDebugMessage } from '../core/diagnostics/debug-logger.js';
 import type { ServiceContext } from './service-context.js';
 
 // Symbol service constants
@@ -33,14 +33,14 @@ export class SymbolService {
    * Find definition of symbol at position
    */
   async findDefinition(filePath: string, position: Position): Promise<Location[]> {
-    debugLog(
+    logDebugMessage(
       'SymbolService',
       `Requesting definition for ${filePath} at ${position.line}:${position.character}`
     );
 
     const serverState = await this.context.prepareFile(filePath);
 
-    debugLog('SymbolService', 'Sending textDocument/definition request');
+    logDebugMessage('SymbolService', 'Sending textDocument/definition request');
     const result = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/definition',
@@ -50,12 +50,12 @@ export class SymbolService {
       }
     );
 
-    debugLog('SymbolService', `Result type: ${typeof result}, isArray: ${Array.isArray(result)}`);
+    logDebugMessage('SymbolService', `Result type: ${typeof result}, isArray: ${Array.isArray(result)}`);
 
     if (Array.isArray(result)) {
-      debugLog('SymbolService', `Array result with ${result.length} locations`);
+      logDebugMessage('SymbolService', `Array result with ${result.length} locations`);
       if (result.length > 0) {
-        debugLog('SymbolService', 'First location:', result[0]);
+        logDebugMessage('SymbolService', 'First location:', result[0]);
       }
       return result.map((loc: LSPLocation) => ({
         uri: loc.uri,
@@ -63,7 +63,7 @@ export class SymbolService {
       }));
     }
     if (result && typeof result === 'object' && 'uri' in result) {
-      debugLog('SymbolService', 'Single location result:', result);
+      logDebugMessage('SymbolService', 'Single location result:', result);
       const location = result as LSPLocation;
       return [
         {
@@ -73,7 +73,7 @@ export class SymbolService {
       ];
     }
 
-    debugLog('SymbolService', 'No definition found or unexpected result format');
+    logDebugMessage('SymbolService', 'No definition found or unexpected result format');
     return [];
   }
 
@@ -87,7 +87,7 @@ export class SymbolService {
   ): Promise<Location[]> {
     const serverState = await this.context.prepareFile(filePath);
 
-    debugLog(
+    logDebugMessage(
       'SymbolService',
       `findReferences for ${filePath} at ${position.line}:${position.character}, includeDeclaration: ${includeDeclaration}`
     );
@@ -102,17 +102,17 @@ export class SymbolService {
       }
     );
 
-    debugLog(
+    logDebugMessage(
       'SymbolService',
       `findReferences result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}`
     );
 
     if (result && Array.isArray(result) && result.length > 0) {
-      debugLog('SymbolService', 'First reference:', result[0]);
+      logDebugMessage('SymbolService', 'First reference:', result[0]);
     } else if (result === null || result === undefined) {
-      debugLog('SymbolService', 'findReferences returned null/undefined');
+      logDebugMessage('SymbolService', 'findReferences returned null/undefined');
     } else {
-      debugLog('SymbolService', 'findReferences returned unexpected result:', result);
+      logDebugMessage('SymbolService', 'findReferences returned unexpected result:', result);
     }
 
     if (Array.isArray(result)) {
@@ -136,7 +136,7 @@ export class SymbolService {
   ): Promise<{
     changes?: Record<string, Array<{ range: { start: Position; end: Position }; newText: string }>>;
   }> {
-    debugLog(
+    logDebugMessage(
       'SymbolService',
       `Requesting rename for ${filePath} at ${position.line}:${position.character} to "${newName}", dryRun: ${dryRun}`
     );
@@ -152,7 +152,7 @@ export class SymbolService {
     const projectFiles = new Set<string>();
     const fileExt = filePath.match(/\.(tsx?|jsx?|mjs|cjs)$/)?.[1];
     if (fileExt) {
-      debugLog('SymbolService', 'Opening project files to enable cross-file rename...');
+      logDebugMessage('SymbolService', 'Opening project files to enable cross-file rename...');
 
       // Find project root (go up until we find package.json or .git)
       const { dirname, join } = await import('node:path');
@@ -206,7 +206,7 @@ export class SymbolService {
 
       // Open all project files (up to a reasonable limit)
       const filesToOpen = Array.from(projectFiles).slice(0, 50); // Limit to 50 files
-      debugLog('SymbolService', `Opening ${filesToOpen.length} project files...`);
+      logDebugMessage('SymbolService', `Opening ${filesToOpen.length} project files...`);
 
       for (const projectFile of filesToOpen) {
         try {
@@ -220,15 +220,15 @@ export class SymbolService {
     // Step 2: Now find references (this should work across all opened files)
     const referencingFiles = new Set<string>();
     try {
-      debugLog('SymbolService', 'Finding cross-file references for multi-file rename');
+      logDebugMessage('SymbolService', 'Finding cross-file references for multi-file rename');
       const references = await this.findReferences(filePath, position, true);
       for (const ref of references) {
         const refFilePath = uriToPath(ref.uri);
         referencingFiles.add(refFilePath);
       }
-      debugLog('SymbolService', `Found references in ${referencingFiles.size} files`);
+      logDebugMessage('SymbolService', `Found references in ${referencingFiles.size} files`);
     } catch (error) {
-      debugLog('SymbolService', `Could not find references for pre-opening: ${error}`);
+      logDebugMessage('SymbolService', `Could not find references for pre-opening: ${error}`);
       // Fallback to just the main file
       referencingFiles.add(filePath);
     }
@@ -237,27 +237,27 @@ export class SymbolService {
     for (const refFilePath of referencingFiles) {
       try {
         const fileServerState = await this.context.prepareFile(refFilePath);
-        debugLog('SymbolService', `Ensured file is open for rename: ${refFilePath}`);
+        logDebugMessage('SymbolService', `Ensured file is open for rename: ${refFilePath}`);
       } catch (error) {
-        debugLog('SymbolService', `Failed to open ${refFilePath}: ${error}`);
+        logDebugMessage('SymbolService', `Failed to open ${refFilePath}: ${error}`);
       }
     }
 
     // Give LSP server time to process the newly opened files
     // This is critical for the server to establish proper cross-file relationships
     if (referencingFiles.size > 1) {
-      debugLog('SymbolService', 'Waiting for LSP server to process opened files...');
+      logDebugMessage('SymbolService', 'Waiting for LSP server to process opened files...');
       await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
     }
 
     // For dry_run operations, we can now safely call the LSP server since we know which files will be affected
     if (dryRun) {
-      debugLog('SymbolService', 'Performing dry-run rename to preview changes');
+      logDebugMessage('SymbolService', 'Performing dry-run rename to preview changes');
       // We still call the LSP server but will not apply the workspace edit
       // This gives us accurate preview of what would change
     }
 
-    debugLog('SymbolService', 'Sending textDocument/rename request');
+    logDebugMessage('SymbolService', 'Sending textDocument/rename request');
     const result = await this.context.protocol.sendRequest(
       serverState.process,
       'textDocument/rename',
@@ -268,7 +268,7 @@ export class SymbolService {
       }
     );
 
-    debugLog(
+    logDebugMessage(
       'SymbolService',
       `Result type: ${typeof result}, hasChanges: ${result && typeof result === 'object' && 'changes' in result}, hasDocumentChanges: ${result && typeof result === 'object' && 'documentChanges' in result}`
     );
@@ -284,7 +284,7 @@ export class SymbolService {
         };
 
         const changeCount = Object.keys(workspaceEdit.changes || {}).length;
-        debugLog('SymbolService', `WorkspaceEdit has changes for ${changeCount} files`);
+        logDebugMessage('SymbolService', `WorkspaceEdit has changes for ${changeCount} files`);
 
         return workspaceEdit;
       }
@@ -298,7 +298,7 @@ export class SymbolService {
           }>;
         };
 
-        debugLog(
+        logDebugMessage(
           'SymbolService',
           `WorkspaceEdit has documentChanges with ${workspaceEdit.documentChanges?.length || 0} entries`
         );
@@ -318,7 +318,7 @@ export class SymbolService {
                 changes[uri] = [];
               }
               changes[uri].push(...change.edits);
-              debugLog('SymbolService', `Added ${change.edits.length} edits for ${uri}`);
+              logDebugMessage('SymbolService', `Added ${change.edits.length} edits for ${uri}`);
             }
           }
         }
@@ -327,7 +327,7 @@ export class SymbolService {
       }
     }
 
-    debugLog('SymbolService', 'No rename changes available');
+    logDebugMessage('SymbolService', 'No rename changes available');
     return {};
   }
 
@@ -340,22 +340,22 @@ export class SymbolService {
     preloadServers: (verbose?: boolean) => Promise<void>,
     workspacePath?: string
   ): Promise<SymbolInformation[]> {
-    debugLog(
+    logDebugMessage(
       'SymbolService',
       `servers.size=${servers.size}, server keys: [${Array.from(servers.keys()).join(', ')}]`
     );
 
     // Check if we have any initialized servers first
     const initializedServers = Array.from(servers.values()).filter((s) => s.initialized);
-    debugLog('SymbolService', `initialized servers: ${initializedServers.length}/${servers.size}`);
+    logDebugMessage('SymbolService', `initialized servers: ${initializedServers.length}/${servers.size}`);
 
     // Only preload if we have no servers at all (not even uninitialized ones)
     // This prevents redundant preloading when servers are already starting up
     if (servers.size === 0) {
-      debugLog('SymbolService', 'No servers found, preloading...');
+      logDebugMessage('SymbolService', 'No servers found, preloading...');
       await preloadServers(false);
     } else if (initializedServers.length === 0) {
-      debugLog('SymbolService', 'Servers exist but none initialized, waiting briefly...');
+      logDebugMessage('SymbolService', 'Servers exist but none initialized, waiting briefly...');
       // Brief wait for existing servers to finish initializing instead of preloading again
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
@@ -366,7 +366,7 @@ export class SymbolService {
 
     if (!hasAnyOpenFiles && workspacePath) {
       try {
-        debugLog('SymbolService', 'Opening minimal files for workspace context');
+        logDebugMessage('SymbolService', 'Opening minimal files for workspace context');
 
         // Just open a few key files instead of scanning the entire project
         const { existsSync, readdirSync } = await import('node:fs');
@@ -386,7 +386,7 @@ export class SymbolService {
             }
           }
 
-          debugLog('SymbolService', `Opened ${files.length} context files`);
+          logDebugMessage('SymbolService', `Opened ${files.length} context files`);
 
           // Brief pause to let files process
           if (files.length > 0) {
@@ -394,17 +394,17 @@ export class SymbolService {
           }
         }
       } catch (error) {
-        debugLog('SymbolService', `Failed to establish minimal context: ${error}`);
+        logDebugMessage('SymbolService', `Failed to establish minimal context: ${error}`);
       }
     }
 
     // For workspace/symbol, we need to try all running servers
     const results: SymbolInformation[] = [];
 
-    debugLog('SymbolService', `Searching for "${query}" across ${servers.size} servers`);
+    logDebugMessage('SymbolService', `Searching for "${query}" across ${servers.size} servers`);
 
     for (const [serverKey, serverState] of servers.entries()) {
-      debugLog(
+      logDebugMessage(
         'SymbolService',
         `Checking server: ${serverKey}, initialized: ${serverState.initialized}`
       );
@@ -412,7 +412,7 @@ export class SymbolService {
       if (!serverState.initialized) continue;
 
       try {
-        debugLog('SymbolService', `Sending workspace/symbol request for "${query}"`);
+        logDebugMessage('SymbolService', `Sending workspace/symbol request for "${query}"`);
 
         const result = await this.context.protocol.sendRequest(
           serverState.process,
@@ -422,21 +422,21 @@ export class SymbolService {
           }
         );
 
-        debugLog('SymbolService', 'Workspace symbol result:', result);
+        logDebugMessage('SymbolService', 'Workspace symbol result:', result);
 
         if (Array.isArray(result)) {
           results.push(...result);
-          debugLog('SymbolService', `Added ${result.length} symbols from server`);
+          logDebugMessage('SymbolService', `Added ${result.length} symbols from server`);
         } else if (result !== null && result !== undefined) {
-          debugLog('SymbolService', `Non-array result: ${typeof result}`);
+          logDebugMessage('SymbolService', `Non-array result: ${typeof result}`);
         }
       } catch (error) {
         // Some servers might not support workspace/symbol, continue with others
-        debugLog('SymbolService', `Server error: ${error}`);
+        logDebugMessage('SymbolService', `Server error: ${error}`);
       }
     }
 
-    debugLog('SymbolService', `Total results found: ${results.length}`);
+    logDebugMessage('SymbolService', `Total results found: ${results.length}`);
     return results;
   }
 
@@ -446,7 +446,7 @@ export class SymbolService {
   async getDocumentSymbols(filePath: string): Promise<DocumentSymbol[] | SymbolInformation[]> {
     const serverState = await this.context.prepareFile(filePath);
 
-    debugLog('SymbolService', `Requesting documentSymbol for: ${filePath}`);
+    logDebugMessage('SymbolService', `Requesting documentSymbol for: ${filePath}`);
 
     // Use a reasonable timeout for documentSymbol requests to prevent long hangs
     // This is especially important for edge cases with Unicode content
@@ -462,17 +462,17 @@ export class SymbolService {
         timeout
       );
 
-      debugLog(
+      logDebugMessage(
         'SymbolService',
         `documentSymbol result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}`
       );
 
       if (result && Array.isArray(result) && result.length > 0) {
-        debugLog('SymbolService', 'First symbol:', result[0]);
+        logDebugMessage('SymbolService', 'First symbol:', result[0]);
       } else if (result === null || result === undefined) {
-        debugLog('SymbolService', 'documentSymbol returned null/undefined');
+        logDebugMessage('SymbolService', 'documentSymbol returned null/undefined');
       } else {
-        debugLog('SymbolService', 'documentSymbol returned unexpected result:', result);
+        logDebugMessage('SymbolService', 'documentSymbol returned unexpected result:', result);
       }
 
       if (Array.isArray(result)) {
@@ -483,7 +483,7 @@ export class SymbolService {
     } catch (error) {
       // Handle timeout gracefully, especially for edge cases with Unicode content
       if (error instanceof Error && error.message.includes('Request timed out')) {
-        debugLog(
+        logDebugMessage(
           'SymbolService',
           `documentSymbol timed out for ${filePath}, attempting fallback parsing`
         );
@@ -534,10 +534,10 @@ export class SymbolService {
               }
             });
 
-            debugLog('SymbolService', `Fallback parsing found ${symbols.length} symbols`);
+            logDebugMessage('SymbolService', `Fallback parsing found ${symbols.length} symbols`);
             return symbols;
           } catch (parseError) {
-            debugLog('SymbolService', `Fallback parsing failed: ${parseError}`);
+            logDebugMessage('SymbolService', `Fallback parsing failed: ${parseError}`);
           }
         }
 
@@ -595,7 +595,7 @@ export class SymbolService {
 
       return matches;
     } catch (error) {
-      debugLog('SymbolService', `ERROR findSymbolMatches: ${error}`);
+      logDebugMessage('SymbolService', `ERROR findSymbolMatches: ${error}`);
       return [];
     }
   }
