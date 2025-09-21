@@ -6,13 +6,14 @@
 
 import { execSync, spawn } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const TEST_DIR = '/tmp/codebuddy-rename-test';
+const TEST_DIR = join(tmpdir(), 'codebuddy-rename-test');
 const FIXTURES_DIR = join(__dirname, 'fixtures');
 
 interface TestCase {

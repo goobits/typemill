@@ -297,7 +297,7 @@ export class LSPClient {
   /**
    * Clean up all resources
    */
-  dispose(): void {
-    this._serverManager.dispose();
+  async dispose(): Promise<void> {
+    await this._serverManager.dispose();
   }
 }

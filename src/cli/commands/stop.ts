@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { isProcessRunning } from '../server-utils.js';
+import { isProcessRunning, terminateProcess } from '../../utils/platform-utils.js';
 
 const PID_FILE = join('.codebuddy', 'server.pid');
 
@@ -31,7 +31,7 @@ export async function stopCommand(): Promise<void> {
 
     // Try to stop the server gracefully
     try {
-      process.kill(pid, 'SIGTERM');
+      await terminateProcess(pid, false);
       console.log(`Stopping server (PID: ${pid})...`);
 
       // Wait a bit to check if it stopped
@@ -58,13 +58,16 @@ export async function stopCommand(): Promise<void> {
 
       // If still running after timeout, force kill
       console.log('Server did not stop gracefully, forcing shutdown...');
-      process.kill(pid, 'SIGKILL');
+      await terminateProcess(pid, true);
       unlinkSync(PID_FILE);
       console.log('Server forcefully stopped');
     } catch (error) {
       if (error instanceof Error && 'code' in error) {
         const errorCode = (error as NodeJS.ErrnoException).code;
-        if (errorCode === 'EPERM') {
+        if (
+          errorCode === 'EPERM' ||
+          (error.message && error.message.includes('Access is denied'))
+        ) {
           console.error(
             'Permission denied: Cannot stop the server (different user or insufficient permissions)'
           );

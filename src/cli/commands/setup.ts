@@ -60,7 +60,7 @@ export async function setupCommand(options: SetupOptions = {}): Promise<void> {
             return;
           }
         } catch (error) {
-          if (error.message?.includes('SIGINT') || error.name === 'ExitPromptError') {
+          if (error instanceof Error && (error.message?.includes('SIGINT') || error.name === 'ExitPromptError')) {
             console.log('\n\n👋 Setup cancelled by user');
             process.exit(0);
           }
@@ -177,7 +177,7 @@ export async function setupCommand(options: SetupOptions = {}): Promise<void> {
           return;
         }
       } catch (error) {
-        if (error.message?.includes('SIGINT') || error.name === 'ExitPromptError') {
+        if (error instanceof Error && (error.message?.includes('SIGINT') || error.name === 'ExitPromptError')) {
           console.log('\n\n👋 Setup cancelled by user');
           process.exit(0);
         }

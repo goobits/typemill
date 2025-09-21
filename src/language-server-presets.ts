@@ -1,4 +1,5 @@
 import { getCommandPath } from './cli/server-utils.js';
+import type { Config as CLIConfig } from './types.js';
 
 export interface LanguageServerConfig {
   name: string;
@@ -248,7 +249,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
   },
 ];
 
-export function generateConfig(selectedLanguages: string[]): object {
+export function generateConfig(selectedLanguages: string[]): CLIConfig {
   const selectedServers = LANGUAGE_SERVERS.filter((server) =>
     selectedLanguages.includes(server.name)
   );

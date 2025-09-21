@@ -6,6 +6,7 @@ import type { ServerState } from '../lsp-types.js';
 import { pathToUri } from '../path-utils.js';
 import type { Config, LSPServerConfig } from '../types.js';
 import { ServerNotAvailableError, getErrorMessage, logError } from '../utils/error-utils.js';
+import { terminateProcess } from '../utils/platform-utils.js';
 import { getPackageVersion } from '../utils/version.js';
 import type { LSPProtocol } from './protocol.js';
 
@@ -126,7 +127,7 @@ export class ServerManager {
           console.warn(
             `⚠️ LSP server ${serverKey} is unhealthy (errors: ${health.errorCount}), restarting...`
           );
-          this.killServer(existingServer);
+          await this.killServer(existingServer);
           this.servers.delete(serverKey);
           // Continue to start new server below
         } else {
@@ -235,7 +236,7 @@ export class ServerManager {
       // Restart all servers - fix iterator invalidation by collecting entries first
       const serversToRestart = Array.from(this.servers.entries());
       for (const [serverKey, serverState] of serversToRestart) {
-        this.killServer(serverState);
+        await this.killServer(serverState);
         this.servers.delete(serverKey);
         restartedServers.push(serverState.config?.command?.join(' ') || 'unknown');
       }
@@ -247,7 +248,7 @@ export class ServerManager {
       });
 
       for (const [serverKey, serverState] of serversToRestart) {
-        this.killServer(serverState);
+        await this.killServer(serverState);
         this.servers.delete(serverKey);
         restartedServers.push(serverState.config?.command.join(' '));
       }
@@ -297,14 +298,8 @@ export class ServerManager {
     const extension = filePath.split('.').pop();
     if (!extension) return null;
 
-    process.stderr.write(`Looking for server for extension: ${extension}\n`);
+    // Look for server configuration for this file extension
     const server = config.servers.find((server) => server.extensions.includes(extension));
-
-    if (server) {
-      process.stderr.write(`Found server for ${extension}: ${server.command.join(' ')}\n`);
-    } else {
-      process.stderr.write(`No server found for extension: ${extension}\n`);
-    }
 
     return server || null;
   }
@@ -634,11 +629,11 @@ export class ServerManager {
   private setupRestartTimer(serverState: ServerState, serverConfig: LSPServerConfig): void {
     if (serverConfig.restartInterval && serverConfig.restartInterval > 0) {
       const intervalMs = serverConfig.restartInterval * MINUTES_TO_MS; // Convert minutes to milliseconds
-      serverState.restartTimer = setTimeout(() => {
+      serverState.restartTimer = setTimeout(async () => {
         process.stderr.write(
           `Auto-restarting server ${serverConfig.command.join(' ')} after ${serverConfig.restartInterval} minutes\n`
         );
-        this.killServer(serverState);
+        await this.killServer(serverState);
         const serverKey = JSON.stringify(serverConfig.command);
         this.servers.delete(serverKey);
       }, intervalMs);
@@ -648,14 +643,14 @@ export class ServerManager {
   /**
    * Kill a server process and clean up
    */
-  private killServer(serverState: ServerState): void {
+  private async killServer(serverState: ServerState): Promise<void> {
     if (serverState.restartTimer) {
       clearTimeout(serverState.restartTimer);
     }
 
     try {
-      if (!serverState.process.killed) {
-        serverState.process.kill('SIGTERM');
+      if (!serverState.process.killed && serverState.process.pid) {
+        await terminateProcess(serverState.process.pid, false);
       }
     } catch (error) {
       // Process might already be dead or permissions issue - log but don't throw
@@ -891,7 +886,7 @@ export class ServerManager {
   /**
    * Clean up all servers
    */
-  dispose(): void {
+  async dispose(): Promise<void> {
     // Clean up background cleanup timer
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
@@ -899,7 +894,7 @@ export class ServerManager {
     }
 
     for (const serverState of this.servers.values()) {
-      this.killServer(serverState);
+      await this.killServer(serverState);
     }
     this.servers.clear();
     this.serversStarting.clear();

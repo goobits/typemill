@@ -17,14 +17,11 @@ codebuddy  # Starts with TypeScript support
 Create a well-commented config tailored to your project.
 
 ```bash
-# Generate config file with detected languages
-codebuddy init
+# Interactive setup with auto-detection
+codeflow-buddy setup
 
-# Interactive setup wizard
-codebuddy setup
-
-# User-wide configuration
-codebuddy setup --user
+# Auto-install all detected language servers
+codeflow-buddy setup --all
 ```
 
 ### 3. Manual Configuration

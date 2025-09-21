@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { MCPTestClient, assertToolResult } from '../helpers/mcp-test-client.js';
 
 describe('MCP Error Case Tests', () => {
@@ -153,7 +155,7 @@ describe('MCP Error Case Tests', () => {
       try {
         await client.callTool('apply_workspace_edit', {
           changes: {
-            '/tmp/test.ts': [
+            [join(tmpdir(), 'test.ts')]: [
               {
                 range: {
                   start: { line: 10, character: 0 },
@@ -186,13 +188,13 @@ describe('MCP Error Case Tests', () => {
     it('should handle requests to unsupported file types', async () => {
       // Create a file with unsupported extension
       await client.callTool('create_file', {
-        file_path: '/tmp/test.xyz',
+        file_path: join(tmpdir(), 'test.xyz'),
         content: 'unsupported file type',
       });
 
       try {
         const result = await client.callTool('get_diagnostics', {
-          file_path: '/tmp/test.xyz',
+          file_path: join(tmpdir(), 'test.xyz'),
         });
 
         // Should handle gracefully
@@ -208,7 +210,7 @@ describe('MCP Error Case Tests', () => {
       // Clean up
       try {
         await client.callTool('delete_file', {
-          file_path: '/tmp/test.xyz',
+          file_path: join(tmpdir(), 'test.xyz'),
         });
       } catch {
         // Ignore cleanup errors
@@ -276,7 +278,7 @@ describe('MCP Error Case Tests', () => {
         const largeText = 'x'.repeat(100000); // 100KB of text
         const result = await client.callTool('apply_workspace_edit', {
           changes: {
-            '/tmp/large-edit.ts': [
+            [join(tmpdir(), 'large-edit.ts')]: [
               {
                 range: {
                   start: { line: 0, character: 0 },

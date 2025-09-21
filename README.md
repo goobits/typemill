@@ -7,7 +7,7 @@ MCP server bridging Language Server Protocol functionality to AI coding assistan
 - **🧠 Code Intelligence** - Hover info, completions, diagnostics, and semantic analysis via LSP
 - **🌐 Multi-Language Support** - TypeScript, Python, Go, Rust, and 15+ languages via configurable LSP servers
 - **🤖 AI-Optimized Protocol** - Robust symbol resolution handling imprecise positions from LLMs
-- **⚡ Smart Configuration** - Auto-detection and setup with `codeflow-buddy init` command
+- **⚡ Smart Configuration** - Auto-detection and setup with `codeflow-buddy setup` command
 
 ## 🚀 Quick Start
 ```bash
@@ -15,13 +15,13 @@ MCP server bridging Language Server Protocol functionality to AI coding assistan
 npm install -g @goobits/codeflow-buddy
 
 # Smart setup with auto-detection
-codeflow-buddy init
+codeflow-buddy setup
 
 # Check status of language servers
 codeflow-buddy status
 
-# Fix any missing language servers
-codeflow-buddy fix
+# Start the MCP server for Claude Code
+codeflow-buddy start
 ```
 
 ## 📚 MCP Integration
@@ -59,10 +59,10 @@ codeflow-buddy status
 ## ⚙️ Configuration
 ```bash
 # Smart setup with auto-detection
-codeflow-buddy init
+codeflow-buddy setup
 
-# Show current configuration
-codeflow-buddy config
+# Check status of language servers
+codeflow-buddy status
 
 # Manual configuration (creates .codebuddy/config.json)
 cat > .codebuddy/config.json << 'EOF'

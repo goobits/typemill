@@ -235,10 +235,10 @@ codebuddy
 cp codebuddy.json codebuddy.json.backup
 
 # Generate fresh configuration
-codebuddy init --overwrite
+codeflow-buddy setup
 
-# Or use interactive setup
-codebuddy setup --reset
+# Or force re-setup with all servers
+codeflow-buddy setup --all
 ```
 
 ### Manual Server Restart

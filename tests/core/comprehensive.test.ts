@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { ALL_TESTS, MCPTestClient, assertToolResult } from '../helpers/mcp-test-client.js';
 
 describe('MCP Comprehensive Tests - All 28 Tools', () => {
@@ -72,7 +74,7 @@ describe('MCP Comprehensive Tests - All 28 Tools', () => {
 
     it('should execute actual rename on temporary file', async () => {
       // Create a temporary test file for actual rename testing
-      const tempFile = '/tmp/codebuddy-rename-test.ts';
+      const tempFile = join(tmpdir(), 'codebuddy-rename-test.ts');
       await client.callTool('create_file', {
         file_path: tempFile,
         content: `export const TEMP_CONSTANT = 'test';
@@ -288,7 +290,7 @@ export function useTempConstant() {
   describe('File Operations', () => {
     it('should create file', async () => {
       const result = await client.callTool('create_file', {
-        file_path: '/tmp/codebuddy-test.ts',
+        file_path: join(tmpdir(), 'codebuddy-test.ts'),
         content: '// Test file\nconsole.log("test");',
       });
       expect(result).toBeDefined();
@@ -296,8 +298,8 @@ export function useTempConstant() {
 
     it('should rename file', async () => {
       const result = await client.callTool('rename_file', {
-        old_path: '/tmp/codebuddy-test.ts',
-        new_path: '/tmp/codebuddy-renamed.ts',
+        old_path: join(tmpdir(), 'codebuddy-test.ts'),
+        new_path: join(tmpdir(), 'codebuddy-renamed.ts'),
         dry_run: true,
       });
       expect(result).toBeDefined();
@@ -305,7 +307,7 @@ export function useTempConstant() {
 
     it('should delete file', async () => {
       const result = await client.callTool('delete_file', {
-        file_path: '/tmp/codebuddy-renamed.ts',
+        file_path: join(tmpdir(), 'codebuddy-renamed.ts'),
         dry_run: true,
       });
       expect(result).toBeDefined();
@@ -329,7 +331,7 @@ export function useTempConstant() {
     it('should apply workspace edit', async () => {
       const result = await client.callTool('apply_workspace_edit', {
         changes: {
-          '/tmp/codebuddy-workspace-edit.ts': [
+          [join(tmpdir(), 'codebuddy-workspace-edit.ts')]: [
             {
               range: {
                 start: { line: 0, character: 0 },
