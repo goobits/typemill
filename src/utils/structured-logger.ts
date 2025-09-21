@@ -10,6 +10,8 @@
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { appendFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 // Log levels in order of severity
 export enum LogLevel {
@@ -166,8 +168,6 @@ class StructuredLogger {
       // For now, skip in container environments
       if (!process.env.CONTAINER && !process.env.NODE_ENV?.includes('production')) {
         try {
-          const { appendFileSync } = require('node:fs');
-          const { join } = require('node:path');
           const logPath = join(process.cwd(), '.codebuddy', 'structured.log');
           appendFileSync(logPath, `${message}\n`);
         } catch {

@@ -3,6 +3,11 @@
  * and improved debugging across the codebase.
  */
 
+import {
+  createFileNotFoundMessage,
+  createLSPServerUnavailableMessage,
+  createServerInitializationMessage,
+} from './enhanced-error-messages.js';
 import { getLogger } from './structured-logger.js';
 
 const logger = getLogger('ErrorUtils');
@@ -299,13 +304,6 @@ export function createUserFriendlyErrorMessage(
   suggestions?: string[],
   context?: { filePath?: string }
 ): string {
-  // Import enhanced error messages
-  const {
-    createLSPServerUnavailableMessage,
-    createServerInitializationMessage,
-    createFileNotFoundMessage,
-  } = require('./enhanced-error-messages.js');
-
   if (error instanceof ServerNotAvailableError) {
     if (context?.filePath) {
       return createLSPServerUnavailableMessage(context.filePath, operation);

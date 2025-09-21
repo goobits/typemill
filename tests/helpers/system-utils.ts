@@ -1,4 +1,4 @@
-import { cpus } from 'node:os';
+import { cpus, freemem, loadavg, totalmem } from 'node:os';
 
 /**
  * System capabilities for test optimization
@@ -29,9 +29,9 @@ export interface SystemCapabilities {
  */
 export function getSystemCapabilities(): SystemCapabilities {
   const cpuCount = cpus().length;
-  const totalMemory = require('node:os').totalmem();
-  const freeMemory = require('node:os').freemem();
-  const loadAverage = require('node:os').loadavg()[0]; // 1-minute load average
+  const totalMemory = totalmem();
+  const freeMemory = freemem();
+  const loadAverage = loadavg()[0]; // 1-minute load average
 
   // Check available resources vs total
   const memoryUtilization = (totalMemory - freeMemory) / totalMemory;

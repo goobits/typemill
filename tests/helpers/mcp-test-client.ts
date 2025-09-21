@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import { getSystemCapabilities } from './system-utils.js';
 
 // Shared server instance for test suite
@@ -58,7 +59,7 @@ function createMessageParser() {
 export class MCPTestClient {
   private process!: ChildProcess;
   private parser = createMessageParser();
-  private responseEmitter = new (require('node:events').EventEmitter)();
+  private responseEmitter = new EventEmitter();
   private static sharedMode = process.env.TEST_SHARED_SERVER === 'true';
   private isShared = false;
   private initPromise: Promise<void> | null = null;

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { resolve } from 'node:path';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -97,7 +98,8 @@ if (args.length === 0) {
   console.log('Commands:');
   console.log('  setup         Interactive setup with language server selection');
   console.log("  status        Show what's working right now");
-  console.log('  server        Start the MCP server for Claude Code');
+  console.log('  start         Start the MCP server for Claude Code');
+  console.log('  stop          Stop the running MCP server');
   console.log('  help          Show this help message');
   console.log('');
   console.log('Setup options:');
@@ -107,7 +109,7 @@ if (args.length === 0) {
   console.log('  codeflow-buddy setup        # Interactive setup');
   console.log('  codeflow-buddy setup --all  # Auto-install all servers');
   console.log('  codeflow-buddy status       # Check server status');
-  console.log('  codeflow-buddy server       # Start MCP server for Claude Code');
+  console.log('  codeflow-buddy start        # Start MCP server for Claude Code');
   console.log('');
   console.log('Configuration:');
   console.log('  Config file: .codebuddy/config.json');
@@ -128,9 +130,13 @@ if (subcommand === 'setup') {
   const { statusCommand } = await import('./src/cli/commands/status.js');
   await statusCommand();
   process.exit(0);
-} else if (subcommand === 'server') {
+} else if (subcommand === 'start') {
   // Continue to start MCP server below
   console.log('Starting MCP server for Claude Code...');
+} else if (subcommand === 'stop') {
+  const { stopCommand } = await import('./src/cli/commands/stop.js');
+  await stopCommand();
+  process.exit(0);
 } else if (subcommand === '--help' || subcommand === '-h' || subcommand === 'help') {
   console.log('codeflow-buddy - MCP server for accessing LSP functionality');
   console.log('');
@@ -139,7 +145,8 @@ if (subcommand === 'setup') {
   console.log('Commands:');
   console.log('  setup         Interactive setup with language server selection');
   console.log("  status        Show what's working right now");
-  console.log('  server        Start the MCP server for Claude Code');
+  console.log('  start         Start the MCP server for Claude Code');
+  console.log('  stop          Stop the running MCP server');
   console.log('  help          Show this help message');
   console.log('');
   console.log('Setup options:');
@@ -149,7 +156,7 @@ if (subcommand === 'setup') {
   console.log('  codeflow-buddy setup        # Interactive setup');
   console.log('  codeflow-buddy setup --all  # Auto-install all servers');
   console.log('  codeflow-buddy status       # Check server status');
-  console.log('  codeflow-buddy server       # Start MCP server for Claude Code');
+  console.log('  codeflow-buddy start        # Start MCP server for Claude Code');
   console.log('');
   console.log('Configuration:');
   console.log('  Config file: .codebuddy/config.json');
@@ -161,7 +168,8 @@ if (subcommand === 'setup') {
   console.error('Available commands:');
   console.error('  setup    Interactive setup with language server selection');
   console.error("  status   Show what's working right now");
-  console.error('  server   Start the MCP server for Claude Code');
+  console.error('  start    Start the MCP server for Claude Code');
+  console.error('  stop     Stop the running MCP server');
   console.error('  help     Show help message');
   console.error('');
   console.error('Run "codeflow-buddy help" for more information.');
@@ -477,16 +485,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   );
 });
 
+// Cleanup function for PID file
+const cleanupPidFile = () => {
+  try {
+    const PID_FILE = join('.codebuddy', 'server.pid');
+    if (existsSync(PID_FILE)) {
+      unlinkSync(PID_FILE);
+      logger.info('PID file removed');
+    }
+  } catch (error) {
+    logger.warn('Could not remove PID file', { error: String(error) });
+  }
+};
+
 process.on('SIGINT', () => {
   logger.info('Received SIGINT, shutting down gracefully');
+  cleanupPidFile();
   newLspClient.dispose();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
   logger.info('Received SIGTERM, shutting down gracefully');
+  cleanupPidFile();
   newLspClient.dispose();
   process.exit(0);
+});
+
+process.on('exit', () => {
+  cleanupPidFile();
 });
 
 async function main() {
@@ -494,6 +521,20 @@ async function main() {
     { operation: 'server_startup', component: 'MCP-Server' },
     async () => {
       logger.info('Codebuddy MCP server starting');
+
+      // Save PID file for stop command
+      const PID_DIR = '.codebuddy';
+      const PID_FILE = join(PID_DIR, 'server.pid');
+
+      try {
+        if (!existsSync(PID_DIR)) {
+          mkdirSync(PID_DIR, { recursive: true });
+        }
+        writeFileSync(PID_FILE, process.pid.toString());
+        logger.info('PID file created', { pid: process.pid, file: PID_FILE });
+      } catch (error) {
+        logger.warn('Could not create PID file', { error: String(error) });
+      }
 
       const transport = new StdioServerTransport();
       await server.connect(transport);
