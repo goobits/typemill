@@ -95,30 +95,29 @@ EOF
 
 ## 🧪 Development
 ```bash
-# Install dependencies  
+# Install dependencies
 bun install
 
-# Run in development mode
+# Development with hot reload
 bun run dev
 
-# Run tests
-bun run test:fast    # Quick unit tests (~8s)
-bun run test:slow    # Full integration tests
-bun run test:ci      # All tests for CI
-
-# Adaptive test runner for slow systems
-node test-runner.cjs              # Auto-detects system capabilities
-TEST_SHARED_SERVER=true bun test  # Use shared server for faster tests
+# Testing
+bun run test:fast     # Quick unit tests (~8s)
+bun run test          # Full test suite
+bun run test:minimal  # Minimal runner for slow systems
 
 # Code quality
-bun run lint         # Check issues
-bun run format       # Format code  
-bun run typecheck    # Type checking
+bun run lint         # Check code style and issues
+bun run format       # Format code with Biome
+bun run typecheck    # TypeScript type checking
+
+# Build for production
+bun run build
 ```
 
 ## 📝 License
 MIT - see [LICENSE](LICENSE) for details
 
 ## 💡 Support
-- **[GitHub Issues](https://github.com/ktnyt/codebuddy/issues)** - Bug reports and feature requests
-- **[Discussions](https://github.com/ktnyt/codebuddy/discussions)** - Questions and community support
+- **[GitHub Issues](https://github.com/goobits/codeflow-buddy/issues)** - Bug reports and feature requests
+- **[Discussions](https://github.com/goobits/codeflow-buddy/discussions)** - Questions and community support
