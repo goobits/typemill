@@ -31,7 +31,7 @@ export class HierarchyService {
 
     // Use ProjectScanner to open related files for better cross-file support
     try {
-      const { projectScanner } = await import('../utils/project-scanner.js');
+      const { projectScanner } = await import('./project-analyzer.js');
       await projectScanner.openRelatedFiles(filePath, this.context, RELATED_FILES_LIMIT);
       debugLog('HierarchyService', 'Opened related files for better context');
     } catch (error) {
@@ -109,7 +109,7 @@ export class HierarchyService {
 
     // Use ProjectScanner to open related files for better cross-file type resolution
     try {
-      const { projectScanner } = await import('../utils/project-scanner.js');
+      const { projectScanner } = await import('./project-analyzer.js');
       await projectScanner.openRelatedFiles(filePath, this.context, RELATED_FILES_LIMIT);
       debugLog('HierarchyService', 'Opened related files for better context');
     } catch (error) {
