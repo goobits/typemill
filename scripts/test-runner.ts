@@ -92,7 +92,7 @@ const testEnv = {
 // Get test files from command line or use defaults
 const defaultTests = [
   'tests/unit/restart-server.test.ts',
-  'tests/core/quick.test.ts',
+  'tests/core/comprehensive.test.ts',
   'tests/integration/lsp-client.test.ts',
 ];
 
