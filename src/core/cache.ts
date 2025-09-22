@@ -1,51 +1,84 @@
 /**
- * Simple in-memory cache with TTL for file operations
- * Helps reduce redundant file read requests to clients
+ * Advanced in-memory cache with event-driven invalidation for file operations
+ * Maximizes cache hits while ensuring data consistency through file change events
  */
 
 export interface CacheEntry<T> {
   value: T;
   timestamp: Date;
-  ttl: number; // Time to live in milliseconds
+  ttl?: number; // Optional TTL - for fallback expiration only
+  persistent?: boolean; // If true, only manual invalidation will remove
 }
 
-export class SimpleCache<T> {
+export interface CacheStats {
+  size: number;
+  hitRate?: number;
+  totalHits: number;
+  totalMisses: number;
+  entries: Array<{
+    key: string;
+    age: number;
+    ttl?: number;
+    isExpired: boolean;
+    isPersistent: boolean;
+  }>;
+}
+
+export class AdvancedCache<T> {
   private cache = new Map<string, CacheEntry<T>>();
   private cleanupInterval: NodeJS.Timeout;
+  private hitCount = 0;
+  private missCount = 0;
 
-  constructor(private defaultTTL: number = 5000) {
-    // Clean up expired entries every 30 seconds
+  constructor(private defaultTTL?: number) {
+    // Clean up expired entries every 60 seconds (less frequent for persistent cache)
     this.cleanupInterval = setInterval(() => {
       this.cleanup();
-    }, 30000);
+    }, 60000);
   }
 
-  set(key: string, value: T, ttl?: number): void {
+  set(key: string, value: T, options?: { ttl?: number; persistent?: boolean }): void {
     const entry: CacheEntry<T> = {
       value,
       timestamp: new Date(),
-      ttl: ttl || this.defaultTTL
+      ttl: options?.ttl || this.defaultTTL,
+      persistent: options?.persistent || false
     };
 
     this.cache.set(key, entry);
+  }
+
+  setPersistent(key: string, value: T): void {
+    this.set(key, value, { persistent: true });
   }
 
   get(key: string): T | null {
     const entry = this.cache.get(key);
 
     if (!entry) {
+      this.missCount++;
       return null;
     }
 
-    // Check if entry has expired
-    const now = Date.now();
-    const entryTime = entry.timestamp.getTime();
-
-    if (now - entryTime > entry.ttl) {
-      this.cache.delete(key);
-      return null;
+    // For persistent entries, don't check TTL expiration
+    if (entry.persistent) {
+      this.hitCount++;
+      return entry.value;
     }
 
+    // Check if entry has expired (only for non-persistent entries)
+    if (entry.ttl) {
+      const now = Date.now();
+      const entryTime = entry.timestamp.getTime();
+
+      if (now - entryTime > entry.ttl) {
+        this.cache.delete(key);
+        this.missCount++;
+        return null;
+      }
+    }
+
+    this.hitCount++;
     return entry.value;
   }
 
@@ -66,17 +99,26 @@ export class SimpleCache<T> {
   }
 
   /**
-   * Remove expired entries from cache
+   * Force invalidate a cache entry regardless of persistence
+   */
+  invalidate(key: string): boolean {
+    return this.cache.delete(key);
+  }
+
+  /**
+   * Remove expired entries from cache (only affects non-persistent entries)
    */
   private cleanup(): void {
     const now = Date.now();
     const keysToDelete: string[] = [];
 
     for (const [key, entry] of this.cache.entries()) {
-      const entryTime = entry.timestamp.getTime();
-
-      if (now - entryTime > entry.ttl) {
-        keysToDelete.push(key);
+      // Only clean up non-persistent entries with TTL
+      if (!entry.persistent && entry.ttl) {
+        const entryTime = entry.timestamp.getTime();
+        if (now - entryTime > entry.ttl) {
+          keysToDelete.push(key);
+        }
       }
     }
 
@@ -90,30 +132,31 @@ export class SimpleCache<T> {
   }
 
   /**
-   * Get cache statistics
+   * Get comprehensive cache statistics
    */
-  getStats(): {
-    size: number;
-    entries: Array<{
-      key: string;
-      age: number;
-      ttl: number;
-      isExpired: boolean;
-    }>;
-  } {
+  getStats(): CacheStats {
     const now = Date.now();
     const entries = Array.from(this.cache.entries()).map(([key, entry]) => {
       const age = now - entry.timestamp.getTime();
+      const isExpired = !entry.persistent && entry.ttl ? age > entry.ttl : false;
+
       return {
         key,
         age,
         ttl: entry.ttl,
-        isExpired: age > entry.ttl
+        isExpired,
+        isPersistent: entry.persistent || false
       };
     });
 
+    const totalRequests = this.hitCount + this.missCount;
+    const hitRate = totalRequests > 0 ? this.hitCount / totalRequests : undefined;
+
     return {
       size: this.cache.size,
+      hitRate,
+      totalHits: this.hitCount,
+      totalMisses: this.missCount,
       entries
     };
   }
@@ -130,16 +173,16 @@ export class SimpleCache<T> {
 }
 
 /**
- * File-specific cache implementation
+ * Advanced file-specific cache implementation with event-driven invalidation
  */
 export interface FileContent {
   content: string;
   mtime: number;
 }
 
-export class FileCache extends SimpleCache<FileContent> {
+export class PersistentFileCache extends AdvancedCache<FileContent> {
   constructor() {
-    super(5000); // 5 second TTL for file reads
+    super(); // No default TTL - files are persistent until explicitly invalidated
   }
 
   /**
@@ -150,27 +193,28 @@ export class FileCache extends SimpleCache<FileContent> {
   }
 
   /**
-   * Cache file content with validation
+   * Cache file content persistently (until explicitly invalidated)
    */
   setFile(sessionId: string, filePath: string, content: string, mtime: number): void {
-    const key = FileCache.getFileKey(sessionId, filePath);
-    this.set(key, { content, mtime });
+    const key = PersistentFileCache.getFileKey(sessionId, filePath);
+    this.setPersistent(key, { content, mtime });
   }
 
   /**
-   * Get cached file content if not expired and mtime matches
+   * Get cached file content with mtime validation
    */
   getFile(sessionId: string, filePath: string, currentMtime?: number): FileContent | null {
-    const key = FileCache.getFileKey(sessionId, filePath);
+    const key = PersistentFileCache.getFileKey(sessionId, filePath);
     const cached = this.get(key);
 
     if (!cached) {
       return null;
     }
 
-    // If mtime is provided, check if file was modified
-    if (currentMtime && cached.mtime !== currentMtime) {
-      this.delete(key); // Remove stale cache entry
+    // If mtime is provided, validate it matches cached version
+    if (currentMtime !== undefined && cached.mtime !== currentMtime) {
+      // File was modified externally - invalidate cache
+      this.invalidate(key);
       return null;
     }
 
@@ -178,11 +222,33 @@ export class FileCache extends SimpleCache<FileContent> {
   }
 
   /**
-   * Invalidate cache for a specific file
+   * Event-driven invalidation for specific file
    */
   invalidateFile(sessionId: string, filePath: string): boolean {
-    const key = FileCache.getFileKey(sessionId, filePath);
-    return this.delete(key);
+    const key = PersistentFileCache.getFileKey(sessionId, filePath);
+    return this.invalidate(key);
+  }
+
+  /**
+   * Bulk invalidation for file patterns (e.g., directory changes)
+   */
+  invalidatePattern(sessionId: string, pattern: string): number {
+    let deletedCount = 0;
+    const stats = this.getStats();
+    const prefix = `file:${sessionId}:`;
+
+    for (const entry of stats.entries) {
+      if (entry.key.startsWith(prefix)) {
+        const filePath = entry.key.slice(prefix.length);
+        if (filePath.includes(pattern)) {
+          if (this.invalidate(entry.key)) {
+            deletedCount++;
+          }
+        }
+      }
+    }
+
+    return deletedCount;
   }
 
   /**
@@ -190,22 +256,20 @@ export class FileCache extends SimpleCache<FileContent> {
    */
   invalidateSession(sessionId: string): number {
     let deletedCount = 0;
-    const keysToDelete: string[] = [];
-
-    // Use the parent class's getStats method to get all entries
     const stats = this.getStats();
+
     for (const entry of stats.entries) {
       if (entry.key.startsWith(`file:${sessionId}:`)) {
-        keysToDelete.push(entry.key);
-      }
-    }
-
-    for (const key of keysToDelete) {
-      if (this.delete(key)) {
-        deletedCount++;
+        if (this.invalidate(entry.key)) {
+          deletedCount++;
+        }
       }
     }
 
     return deletedCount;
   }
 }
+
+// Maintain backward compatibility
+export type FileCache = PersistentFileCache;
+export const FileCache = PersistentFileCache;
