@@ -1,0 +1,44 @@
+# Dockerfile.service - CodeFlow Buddy WebSocket Service
+FROM node:20-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json bun.lockb* ./
+
+# Install dependencies using npm (available in node image)
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Create non-root user for security
+RUN useradd -r -s /bin/false codeflow
+RUN chown -R codeflow:codeflow /app
+USER codeflow
+
+# Expose the WebSocket port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/healthz || exit 1
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV MAX_CLIENTS=50
+
+# Start the service
+CMD ["node", "dist/index.js", "serve", "--port", "3000", "--max-clients", "50"]

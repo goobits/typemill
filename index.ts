@@ -101,6 +101,7 @@ if (args.length === 0) {
   console.log('  setup         Interactive setup with language server selection');
   console.log("  status        Show what's working right now");
   console.log('  start         Start the MCP server for Claude Code');
+  console.log('  serve         Start WebSocket server for multi-client support');
   console.log('  stop          Stop the running MCP server');
   console.log('  help          Show this help message');
   console.log('');
@@ -135,6 +136,25 @@ if (subcommand === 'setup') {
 } else if (subcommand === 'start') {
   // Continue to start MCP server below
   console.log('Starting MCP server for Claude Code...');
+} else if (subcommand === 'serve') {
+  const { serveCommand } = await import('./src/cli/commands/serve.js');
+
+  // Parse serve options
+  const portIndex = args.indexOf('--port');
+  const maxClientsIndex = args.indexOf('--max-clients');
+
+  const options = {
+    port:
+      portIndex !== -1 && args[portIndex + 1] ? Number.parseInt(args[portIndex + 1]!, 10) : 3000,
+    maxClients:
+      maxClientsIndex !== -1 && args[maxClientsIndex + 1]
+        ? Number.parseInt(args[maxClientsIndex + 1]!, 10)
+        : 10,
+  };
+
+  await serveCommand(options);
+  // The serve command handles its own process lifecycle
+  process.exit(0);
 } else if (subcommand === 'stop') {
   const { stopCommand } = await import('./src/cli/commands/stop.js');
   await stopCommand();
@@ -148,6 +168,7 @@ if (subcommand === 'setup') {
   console.log('  setup         Interactive setup with language server selection');
   console.log("  status        Show what's working right now");
   console.log('  start         Start the MCP server for Claude Code');
+  console.log('  serve         Start WebSocket server for multi-client support');
   console.log('  stop          Stop the running MCP server');
   console.log('  help          Show this help message');
   console.log('');
