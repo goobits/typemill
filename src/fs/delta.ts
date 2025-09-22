@@ -54,7 +54,7 @@ export class DeltaProcessor {
           component: 'DeltaProcessor',
           filePath,
           fileSize: newContent.length,
-          minSize: this.MIN_DELTA_SIZE
+          minSize: this.MIN_DELTA_SIZE,
         });
         return null;
       }
@@ -79,7 +79,7 @@ export class DeltaProcessor {
           fullSize,
           deltaSize,
           compressionRatio,
-          maxRatio: this.MAX_PATCH_SIZE_RATIO
+          maxRatio: this.MAX_PATCH_SIZE_RATIO,
         });
         return null;
       }
@@ -93,7 +93,7 @@ export class DeltaProcessor {
         newVersion: this.generateContentHash(newContent),
         fullSize,
         deltaSize,
-        compressionRatio
+        compressionRatio,
       };
 
       logger.info('Delta generated successfully', {
@@ -103,17 +103,16 @@ export class DeltaProcessor {
         deltaSize,
         compressionRatio: Math.round((1 - compressionRatio) * 100) / 100,
         spaceSaved: fullSize - deltaSize,
-        processingTimeMs: processingTime
+        processingTimeMs: processingTime,
       });
 
       return delta;
-
     } catch (error) {
       logger.error('Failed to generate delta', error as Error, {
         component: 'DeltaProcessor',
         filePath,
         oldContentLength: oldContent.length,
-        newContentLength: newContent.length
+        newContentLength: newContent.length,
       });
       return null;
     }
@@ -133,7 +132,7 @@ export class DeltaProcessor {
           component: 'DeltaProcessor',
           filePath: delta.filePath,
           expectedBaseVersion: delta.baseVersion,
-          actualBaseVersion: baseVersion
+          actualBaseVersion: baseVersion,
         });
         return null;
       }
@@ -149,7 +148,7 @@ export class DeltaProcessor {
           component: 'DeltaProcessor',
           filePath: delta.filePath,
           totalPatches: results.length,
-          failedPatches
+          failedPatches,
         });
         return null;
       }
@@ -157,12 +156,16 @@ export class DeltaProcessor {
       // Verify resulting content version
       const resultVersion = this.generateContentHash(newContent);
       if (resultVersion !== delta.newVersion) {
-        logger.error('Result version mismatch after applying delta', new Error('Version verification failed'), {
-          component: 'DeltaProcessor',
-          filePath: delta.filePath,
-          expectedVersion: delta.newVersion,
-          actualVersion: resultVersion
-        });
+        logger.error(
+          'Result version mismatch after applying delta',
+          new Error('Version verification failed'),
+          {
+            component: 'DeltaProcessor',
+            filePath: delta.filePath,
+            expectedVersion: delta.newVersion,
+            actualVersion: resultVersion,
+          }
+        );
         return null;
       }
 
@@ -172,16 +175,15 @@ export class DeltaProcessor {
         component: 'DeltaProcessor',
         filePath: delta.filePath,
         compressionRatio: Math.round((1 - delta.compressionRatio) * 100) / 100,
-        processingTimeMs: processingTime
+        processingTimeMs: processingTime,
       });
 
       return newContent;
-
     } catch (error) {
       logger.error('Failed to apply delta', error as Error, {
         component: 'DeltaProcessor',
         filePath: delta.filePath,
-        baseContentLength: baseContent.length
+        baseContentLength: baseContent.length,
       });
       return null;
     }
@@ -194,7 +196,7 @@ export class DeltaProcessor {
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
       const char = content.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return hash.toString(36);
@@ -210,7 +212,9 @@ export class DeltaProcessor {
     }
 
     // Quick heuristic: if content is >90% similar by length, likely beneficial
-    const lengthRatio = Math.abs(oldContent.length - newContent.length) / Math.max(oldContent.length, newContent.length);
+    const lengthRatio =
+      Math.abs(oldContent.length - newContent.length) /
+      Math.max(oldContent.length, newContent.length);
     return lengthRatio < 0.5; // Use delta if length difference is <50%
   }
 
@@ -227,7 +231,7 @@ export class DeltaProcessor {
       diffTimeout: this.dmp.Diff_Timeout,
       editCost: this.dmp.Diff_EditCost,
       minDeltaSize: this.MIN_DELTA_SIZE,
-      maxPatchSizeRatio: this.MAX_PATCH_SIZE_RATIO
+      maxPatchSizeRatio: this.MAX_PATCH_SIZE_RATIO,
     };
   }
 }

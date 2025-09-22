@@ -25,7 +25,10 @@ export class SessionManager {
   /**
    * Handle session disconnection with recovery grace period
    */
-  handleDisconnection(sessionId: string, onSessionExpired?: (session: ClientSession) => void): void {
+  handleDisconnection(
+    sessionId: string,
+    onSessionExpired?: (session: ClientSession) => void
+  ): void {
     const session = this.sessions.get(sessionId);
     if (!session) {
       return;
@@ -46,10 +49,12 @@ export class SessionManager {
     this.disconnectedSessions.set(sessionId, {
       session,
       disconnectedAt: new Date(),
-      timeoutId
+      timeoutId,
     });
 
-    console.log(`Session ${sessionId} (project: ${session.projectId}) disconnected. Grace period: ${this.RECONNECTION_TIMEOUT_MS}ms`);
+    console.log(
+      `Session ${sessionId} (project: ${session.projectId}) disconnected. Grace period: ${this.RECONNECTION_TIMEOUT_MS}ms`
+    );
   }
 
   /**
@@ -69,14 +74,16 @@ export class SessionManager {
     const reconnectedSession: ClientSession = {
       ...disconnectedSession.session,
       socket: newSocket,
-      initialized: true
+      initialized: true,
     };
 
     // Add back to active sessions
     this.sessions.set(sessionId, reconnectedSession);
 
     const reconnectionDuration = Date.now() - disconnectedSession.disconnectedAt.getTime();
-    console.log(`Session ${sessionId} (project: ${reconnectedSession.projectId}) reconnected after ${reconnectionDuration}ms`);
+    console.log(
+      `Session ${sessionId} (project: ${reconnectedSession.projectId}) reconnected after ${reconnectionDuration}ms`
+    );
 
     return reconnectedSession;
   }
@@ -86,9 +93,10 @@ export class SessionManager {
    */
   findReconnectableSession(projectId: string, projectRoot: string): ClientSession | null {
     for (const [sessionId, disconnectedSession] of this.disconnectedSessions.entries()) {
-      if (disconnectedSession.session.projectId === projectId &&
-          disconnectedSession.session.projectRoot === projectRoot) {
-
+      if (
+        disconnectedSession.session.projectId === projectId &&
+        disconnectedSession.session.projectRoot === projectRoot
+      ) {
         // Clear the timeout
         clearTimeout(disconnectedSession.timeoutId);
         this.disconnectedSessions.delete(sessionId);
@@ -118,7 +126,9 @@ export class SessionManager {
         }
       }
 
-      console.log(`Session ${sessionId} (project: ${disconnectedSession.session.projectId}) permanently removed after timeout`);
+      console.log(
+        `Session ${sessionId} (project: ${disconnectedSession.session.projectId}) permanently removed after timeout`
+      );
     }
   }
 
@@ -191,7 +201,7 @@ export class SessionManager {
       activeSessions: this.sessions.size,
       disconnectedSessions: this.disconnectedSessions.size,
       activeProjects: this.projectSessions.size,
-      oldestDisconnection
+      oldestDisconnection,
     };
   }
 

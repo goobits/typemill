@@ -16,7 +16,7 @@ export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,
-  ERROR = 3
+  ERROR = 3,
 }
 
 export interface LogEntry {
@@ -67,7 +67,7 @@ export class StructuredLogger {
       timestamp: new Date().toISOString(),
       level: LogLevel[level],
       message,
-      context
+      context,
     };
   }
 
@@ -117,9 +117,9 @@ export class StructuredLogger {
           error: {
             name: error.name,
             message: error.message,
-            stack: error.stack
-          }
-        })
+            stack: error.stack,
+          },
+        }),
       };
       this.writeLog(this.formatLogEntry(LogLevel.ERROR, message, errorContext));
     }
@@ -143,7 +143,7 @@ export class StructuredLogger {
       this.info(`Completed ${operation}`, {
         ...operationContext,
         duration,
-        success: true
+        success: true,
       });
 
       return result;
@@ -153,7 +153,7 @@ export class StructuredLogger {
       this.error(`Failed ${operation}`, error as Error, {
         ...operationContext,
         duration,
-        success: false
+        success: false,
       });
 
       throw error;
@@ -164,7 +164,7 @@ export class StructuredLogger {
   logConnection(event: 'connect' | 'disconnect' | 'reconnect', context: LogContext): void {
     this.info(`Client ${event}`, {
       ...context,
-      event_type: 'connection'
+      event_type: 'connection',
     });
   }
 
@@ -175,12 +175,16 @@ export class StructuredLogger {
       event_type: 'mcp_tool',
       tool,
       duration,
-      success
+      success,
     });
   }
 
   // Method for logging LSP server events
-  logLSPServer(event: 'start' | 'stop' | 'crash' | 'restart', serverKey: string, context: LogContext = {}): void {
+  logLSPServer(
+    event: 'start' | 'stop' | 'crash' | 'restart',
+    serverKey: string,
+    context: LogContext = {}
+  ): void {
     const level = event === 'crash' ? LogLevel.ERROR : LogLevel.INFO;
     const message = `LSP server ${event}: ${serverKey}`;
 

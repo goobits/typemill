@@ -1,21 +1,25 @@
+import { readFileSync } from 'node:fs';
+import { type IncomingMessage, type ServerResponse, createServer } from 'node:http';
+import { type Server as HttpsServer, createServer as createHttpsServer } from 'node:https';
 import type WebSocket from 'ws';
 import { WebSocketServer } from 'ws';
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { createServer as createHttpsServer, type Server as HttpsServer } from 'node:https';
-import { readFileSync } from 'node:fs';
+import { type AuthRequest, type AuthResponse, JWTAuthenticator } from '../auth/jwt-auth.js';
+import { logger } from '../core/logger.js';
+import { FuseMount } from '../fs/fuse-mount.js';
 import { StreamingFileAccess } from '../fs/stream.js';
 import { LSPClient } from '../lsp/client.js';
 import { toolRegistry } from '../mcp/tool-registry.js';
 import { WebSocketTransport } from '../transports/websocket.js';
 import type { ClientSession, MCPMessage } from '../transports/websocket.js';
-import type { EnhancedClientSession, WorkspaceInfo, FuseOperationResponse } from '../types/enhanced-session.js';
-import { WorkspaceManager } from './workspace-manager.js';
-import { FuseMount } from '../fs/fuse-mount.js';
+import type {
+  EnhancedClientSession,
+  FuseOperationResponse,
+  WorkspaceInfo,
+} from '../types/enhanced-session.js';
+import { getPackageVersion } from '../utils/version.js';
 import { LSPServerPool } from './lsp-pool.js';
 import { SessionManager } from './session.js';
-import { logger } from '../core/logger.js';
-import { getPackageVersion } from '../utils/version.js';
-import { JWTAuthenticator, type AuthRequest, type AuthResponse } from '../auth/jwt-auth.js';
+import { WorkspaceManager } from './workspace-manager.js';
 
 // Import handlers to ensure they register themselves
 import '../mcp/handlers/core-handlers.js';
@@ -72,7 +76,7 @@ export class CodeFlowWebSocketServer {
       this.workspaceManager = new WorkspaceManager(options.workspaceConfig);
       logger.info('FUSE workspace manager enabled', {
         component: 'CodeFlowWebSocketServer',
-        config: options.workspaceConfig
+        config: options.workspaceConfig,
       });
     }
 
@@ -131,8 +135,8 @@ export class CodeFlowWebSocketServer {
         ...(this.options.tls.caPath && {
           ca: readFileSync(this.options.tls.caPath),
           requestCert: true,
-          rejectUnauthorized: true
-        })
+          rejectUnauthorized: true,
+        }),
       };
 
       logger.info('Creating HTTPS server with TLS configuration', {
@@ -140,18 +144,19 @@ export class CodeFlowWebSocketServer {
         keyPath: this.options.tls.keyPath,
         certPath: this.options.tls.certPath,
         caPath: this.options.tls.caPath,
-        clientCertValidation: !!this.options.tls.caPath
+        clientCertValidation: !!this.options.tls.caPath,
       });
 
       return createHttpsServer(tlsOptions, this.handleHttpRequest.bind(this));
-
     } catch (error) {
       logger.error('Failed to create HTTPS server', error as Error, {
         component: 'WebSocketServer',
-        tlsOptions: this.options.tls
+        tlsOptions: this.options.tls,
       });
 
-      throw new Error(`Failed to create HTTPS server: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create HTTPS server: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -163,7 +168,7 @@ export class CodeFlowWebSocketServer {
         component: 'WebSocketServer',
         clientCount: this.clientCount,
         remoteAddress: req.socket.remoteAddress,
-        userAgent: req.headers['user-agent']
+        userAgent: req.headers['user-agent'],
       });
 
       // Check client limit
@@ -171,7 +176,7 @@ export class CodeFlowWebSocketServer {
         logger.warn('Server at capacity, rejecting connection', {
           component: 'WebSocketServer',
           clientCount: this.clientCount,
-          maxClients: this.options.maxClients
+          maxClients: this.options.maxClients,
         });
         ws.close(1008, 'Server at capacity');
         this.clientCount--;
@@ -185,14 +190,14 @@ export class CodeFlowWebSocketServer {
         this.clientCount--;
         logger.logConnection('disconnect', {
           component: 'WebSocketServer',
-          clientCount: this.clientCount
+          clientCount: this.clientCount,
         });
       });
     });
 
     this.wss.on('error', (error) => {
       logger.error('WebSocket server error', error, {
-        component: 'WebSocketServer'
+        component: 'WebSocketServer',
       });
     });
 
@@ -204,13 +209,13 @@ export class CodeFlowWebSocketServer {
         maxClients: this.options.maxClients,
         secure: this.isSecure,
         protocol: this.isSecure ? 'wss' : 'ws',
-        authentication: !!this.authenticator
+        authentication: !!this.authenticator,
       });
     });
 
     this.httpServer.on('error', (error) => {
       logger.error('HTTP server error', error, {
-        component: 'HTTPServer'
+        component: 'HTTPServer',
       });
     });
   }
@@ -264,42 +269,43 @@ export class CodeFlowWebSocketServer {
         connections: {
           active: sessionStats.activeSessions,
           disconnected: sessionStats.disconnectedSessions,
-          total: this.clientCount
+          total: this.clientCount,
         },
         sessions: {
           active: sessionStats.activeSessions,
           disconnected: sessionStats.disconnectedSessions,
           projects: sessionStats.activeProjects,
           ...(sessionStats.oldestDisconnection && {
-            oldestDisconnection: sessionStats.oldestDisconnection.toISOString()
-          })
+            oldestDisconnection: sessionStats.oldestDisconnection.toISOString(),
+          }),
         },
         lspServers: {
           active: lspServers.length,
-          crashed: lspServers.filter(s => s.refCount === 0).length,
-          projects: [...new Set(lspServers.map(s => s.projectId))].length,
-          languages: [...new Set(lspServers.map(s => s.language))].length
+          crashed: lspServers.filter((s) => s.refCount === 0).length,
+          projects: [...new Set(lspServers.map((s) => s.projectId))].length,
+          languages: [...new Set(lspServers.map((s) => s.language))].length,
         },
         cache: {
-          ...this.streamingFS.getCacheStats()
+          ...this.streamingFS.getCacheStats(),
         },
         deltaProcessor: {
-          ...this.streamingFS.getDeltaStats()
+          ...this.streamingFS.getDeltaStats(),
         },
         authentication: {
           enabled: !!this.authenticator,
           ...(this.authenticator && {
             issuer: this.authenticator['config'].issuer,
-            audience: this.authenticator['config'].audience
-          })
+            audience: this.authenticator['config'].audience,
+          }),
         },
         security: {
           tls: this.isSecure,
           protocol: this.isSecure ? 'wss' : 'ws',
-          ...(this.isSecure && this.options.tls && {
-            clientCertValidation: !!this.options.tls.caPath
-          })
-        }
+          ...(this.isSecure &&
+            this.options.tls && {
+              clientCertValidation: !!this.options.tls.caPath,
+            }),
+        },
       };
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -308,20 +314,21 @@ export class CodeFlowWebSocketServer {
       logger.debug('Health check requested', {
         component: 'HTTPServer',
         userAgent: req.headers['user-agent'],
-        remoteAddress: req.socket.remoteAddress
+        remoteAddress: req.socket.remoteAddress,
       });
-
     } catch (error) {
       logger.error('Health check failed', error as Error, {
-        component: 'HTTPServer'
+        component: 'HTTPServer',
       });
 
       res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        error: 'Internal server error'
-      }));
+      res.end(
+        JSON.stringify({
+          status: 'unhealthy',
+          timestamp: new Date().toISOString(),
+          error: 'Internal server error',
+        })
+      );
     }
   }
 
@@ -351,15 +358,14 @@ export class CodeFlowWebSocketServer {
         `# HELP codeflow_uptime_seconds Server uptime in seconds`,
         `# TYPE codeflow_uptime_seconds counter`,
         `codeflow_uptime_seconds ${Math.floor((Date.now() - this.startTime) / 1000)}`,
-        ``
+        ``,
       ].join('\n');
 
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end(metrics);
-
     } catch (error) {
       logger.error('Metrics request failed', error as Error, {
-        component: 'HTTPServer'
+        component: 'HTTPServer',
       });
 
       res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -371,17 +377,41 @@ export class CodeFlowWebSocketServer {
     return this.sessionManager.reconnectSession(sessionId, socket);
   }
 
-  private handleSessionDisconnect(sessionId: string): void {
-    this.sessionManager.handleDisconnection(sessionId, (expiredSession) => {
-      // Clean up cache for expired session
+  private async handleSessionDisconnect(sessionId: string): Promise<void> {
+    try {
+      // Unmount FUSE filesystem if exists
+      const fuseMount = this.fuseMounts.get(sessionId);
+      if (fuseMount) {
+        await fuseMount.unmount();
+        this.fuseMounts.delete(sessionId);
+        logger.info('FUSE filesystem unmounted for session', {
+          component: 'CodeFlowWebSocketServer',
+          sessionId,
+        });
+      }
+
+      // Cleanup workspace if exists
+      if (this.workspaceManager) {
+        await this.workspaceManager.cleanupWorkspace(sessionId);
+      }
+
+      // Clean up streaming FS cache
       this.streamingFS.cleanupSession(sessionId);
 
-      logger.info('Session expired and cleaned up', {
-        component: 'WebSocketServer',
-        sessionId,
-        projectId: expiredSession.projectId
+      // Notify session manager
+      this.sessionManager.handleDisconnection(sessionId, (expiredSession) => {
+        logger.info('Session expired and cleaned up', {
+          component: 'WebSocketServer',
+          sessionId,
+          projectId: expiredSession.projectId,
+        });
       });
-    });
+    } catch (error) {
+      logger.error('Error during session disconnect cleanup', error as Error, {
+        component: 'CodeFlowWebSocketServer',
+        sessionId,
+      });
+    }
   }
 
   private handleAuth(req: IncomingMessage, res: ServerResponse): void {
@@ -416,27 +446,28 @@ export class CodeFlowWebSocketServer {
           projectId: authRequest.projectId,
           sessionId: authRequest.sessionId,
           userAgent: req.headers['user-agent'],
-          remoteAddress: req.socket.remoteAddress
+          remoteAddress: req.socket.remoteAddress,
         });
-
       } catch (error) {
         logger.error('Authentication failed', error as Error, {
           component: 'HTTPServer',
           userAgent: req.headers['user-agent'],
-          remoteAddress: req.socket.remoteAddress
+          remoteAddress: req.socket.remoteAddress,
         });
 
         res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          error: 'Authentication failed',
-          message: error instanceof Error ? error.message : 'Unknown error'
-        }));
+        res.end(
+          JSON.stringify({
+            error: 'Authentication failed',
+            message: error instanceof Error ? error.message : 'Unknown error',
+          })
+        );
       }
     });
 
     req.on('error', (error) => {
       logger.error('Authentication request error', error, {
-        component: 'HTTPServer'
+        component: 'HTTPServer',
       });
 
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -457,7 +488,7 @@ export class CodeFlowWebSocketServer {
         logger.warn('Token project ID mismatch', {
           component: 'WebSocketServer',
           tokenProjectId: payload.projectId,
-          requestedProjectId: projectId
+          requestedProjectId: projectId,
         });
         return false;
       }
@@ -469,18 +500,17 @@ export class CodeFlowWebSocketServer {
           logger.warn('Token missing required permission', {
             component: 'WebSocketServer',
             projectId,
-            missingPermission: permission
+            missingPermission: permission,
           });
           return false;
         }
       }
 
       return true;
-
     } catch (error) {
       logger.error('Token validation failed', error as Error, {
         component: 'WebSocketServer',
-        projectId
+        projectId,
       });
       return false;
     }
@@ -502,7 +532,7 @@ export class CodeFlowWebSocketServer {
           // Convert client absolute path to project-relative path
           const notification = {
             ...message.params,
-            path: this.streamingFS.toProjectPath(session, message.params.path)
+            path: this.streamingFS.toProjectPath(session, message.params.path),
           };
           this.streamingFS.handleFileChanged(session, notification);
           return {};
@@ -514,67 +544,71 @@ export class CodeFlowWebSocketServer {
           throw new Error(`Unknown tool: ${message.method}`);
         }
 
-      // Prepare services for the handler
-      const services: any = {};
+        // Prepare services for the handler
+        const services: any = {};
 
-      if (toolInfo.requiresService === 'symbol' || toolInfo.requiresService === 'file') {
-        // For LSP-based tools, we need the appropriate LSP server
-        const clientFilePath = message.params.file_path;
-        if (clientFilePath && typeof clientFilePath === 'string') {
-          // Convert client absolute path to project-relative path
-          const projectPath = this.streamingFS.toProjectPath(session, clientFilePath);
-          const extension = this.getFileExtension(projectPath);
+        if (toolInfo.requiresService === 'symbol' || toolInfo.requiresService === 'file') {
+          // For LSP-based tools, we need the appropriate LSP server
+          const clientFilePath = message.params.file_path;
+          if (clientFilePath && typeof clientFilePath === 'string') {
+            // Convert client absolute path to project-relative path
+            const projectPath = this.streamingFS.toProjectPath(session, clientFilePath);
+            const extension = this.getFileExtension(projectPath);
 
-          // Get workspace directory for enhanced sessions with FUSE support
-          const enhancedSession = this.transport.getEnhancedSession(session.id);
-          const workspaceDir = enhancedSession?.workspaceDir;
+            // Get workspace directory for enhanced sessions with FUSE support
+            const enhancedSession = this.transport.getEnhancedSession(session.id);
+            const workspaceDir = enhancedSession?.workspaceDir;
 
-          const server = await this.lspServerPool.getServer(session.projectId, extension, workspaceDir);
+            const server = await this.lspServerPool.getServer(
+              session.projectId,
+              extension,
+              workspaceDir
+            );
+            services.lspClient = this.lspClient;
+            services.server = server;
+
+            // Update the message params to use project-relative path for LSP operations
+            message.params = {
+              ...message.params,
+              file_path: projectPath,
+            };
+          }
+        }
+
+        if (toolInfo.requiresService === 'file') {
+          // For file-based tools, provide streaming file access
+          services.fileAccess = this.streamingFS;
+          services.session = session;
+        }
+
+        if (toolInfo.requiresService === 'batch') {
+          // For batch tools, provide the tool registry and other services
+          services.toolRegistry = toolRegistry;
           services.lspClient = this.lspClient;
-          services.server = server;
-
-          // Update the message params to use project-relative path for LSP operations
-          message.params = {
-            ...message.params,
-            file_path: projectPath
-          };
+          services.lspServerPool = this.lspServerPool;
+          services.fileAccess = this.streamingFS;
+          services.session = session;
         }
-      }
 
-      if (toolInfo.requiresService === 'file') {
-        // For file-based tools, provide streaming file access
-        services.fileAccess = this.streamingFS;
-        services.session = session;
-      }
+        // Execute the tool handler
+        const result = await toolInfo.handler(message.params, services);
 
-      if (toolInfo.requiresService === 'batch') {
-        // For batch tools, provide the tool registry and other services
-        services.toolRegistry = toolRegistry;
-        services.lspClient = this.lspClient;
-        services.lspServerPool = this.lspServerPool;
-        services.fileAccess = this.streamingFS;
-        services.session = session;
-      }
-
-      // Execute the tool handler
-      const result = await toolInfo.handler(message.params, services);
-
-      // Release server reference if we used one
-      if (services.server) {
-        const filePath = message.params.file_path;
-        if (filePath && typeof filePath === 'string') {
-          const extension = this.getFileExtension(filePath);
-          this.lspServerPool.releaseServer(session.projectId, extension);
+        // Release server reference if we used one
+        if (services.server) {
+          const filePath = message.params.file_path;
+          if (filePath && typeof filePath === 'string') {
+            const extension = this.getFileExtension(filePath);
+            this.lspServerPool.releaseServer(session.projectId, extension);
+          }
         }
-      }
 
-      return result;
+        return result;
       },
       {
         component: 'WebSocketServer',
         sessionId: session.id,
         projectId: session.projectId,
-        method: message.method
+        method: message.method,
       }
     );
   }
@@ -619,7 +653,7 @@ export class CodeFlowWebSocketServer {
           {
             debugFuse: process.env.DEBUG_FUSE === 'true',
             allowOther: false,
-            defaultPermissions: true
+            defaultPermissions: true,
           }
         );
 
@@ -630,7 +664,7 @@ export class CodeFlowWebSocketServer {
           component: 'CodeFlowWebSocketServer',
           sessionId: session.id,
           workspaceId: workspaceInfo.workspaceId,
-          fuseMount: workspaceInfo.fuseMount
+          fuseMount: workspaceInfo.fuseMount,
         });
       }
 
@@ -639,7 +673,7 @@ export class CodeFlowWebSocketServer {
       logger.error('Failed to create workspace', error as Error, {
         component: 'CodeFlowWebSocketServer',
         sessionId: session.id,
-        projectId: session.projectId
+        projectId: session.projectId,
       });
       throw error;
     }
@@ -656,38 +690,7 @@ export class CodeFlowWebSocketServer {
       logger.warn('Received FUSE response for session without mount', {
         component: 'CodeFlowWebSocketServer',
         sessionId,
-        correlationId: response.correlationId
-      });
-    }
-  }
-
-  /**
-   * Handle session disconnection - cleanup workspace and FUSE mount
-   */
-  private async handleSessionDisconnect(sessionId: string): Promise<void> {
-    try {
-      // Unmount FUSE filesystem
-      const fuseMount = this.fuseMounts.get(sessionId);
-      if (fuseMount) {
-        await fuseMount.unmount();
-        this.fuseMounts.delete(sessionId);
-        logger.info('FUSE filesystem unmounted for session', {
-          component: 'CodeFlowWebSocketServer',
-          sessionId
-        });
-      }
-
-      // Cleanup workspace
-      if (this.workspaceManager) {
-        await this.workspaceManager.cleanupWorkspace(sessionId);
-      }
-
-      // Notify session manager
-      this.sessionManager.disconnectSession(sessionId);
-    } catch (error) {
-      logger.error('Error during session disconnect cleanup', error as Error, {
-        component: 'CodeFlowWebSocketServer',
-        sessionId
+        correlationId: response.correlationId,
       });
     }
   }
@@ -699,10 +702,10 @@ export class CodeFlowWebSocketServer {
     const unmountPromises: Promise<void>[] = [];
     for (const [sessionId, fuseMount] of this.fuseMounts) {
       unmountPromises.push(
-        fuseMount.unmount().catch(error => {
+        fuseMount.unmount().catch((error) => {
           logger.error('Error unmounting FUSE during shutdown', error as Error, {
             component: 'WebSocketServer',
-            sessionId
+            sessionId,
           });
         })
       );

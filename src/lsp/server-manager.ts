@@ -315,7 +315,10 @@ export class ServerManager {
   /**
    * Start a new LSP server process
    */
-  private async startServer(serverConfig: LSPServerConfig, workspaceDir?: string): Promise<ServerState> {
+  private async startServer(
+    serverConfig: LSPServerConfig,
+    workspaceDir?: string
+  ): Promise<ServerState> {
     const [command, ...args] = serverConfig.command;
     if (!command) {
       throw new ServerNotAvailableError(

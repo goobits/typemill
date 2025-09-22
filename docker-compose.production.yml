@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  fuse-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    ports:
+      - "3000:3000"  # WebSocket
+      - "8080:8080"  # HTTP API (if added)
+    environment:
+      - NODE_ENV=production
+      - WS_PORT=3000
+      - ENABLE_FUSE=true
+      - MAX_CLIENTS=100
+      - WORKSPACE_BASE=/data/workspaces
+      - FUSE_MOUNT_BASE=/data/mounts
+      - AUTH_ENABLED=true
+      - AUTH_SECRET=${JWT_SECRET}
+    volumes:
+      - /dev/fuse:/dev/fuse:rw
+      - tenant-data:/data
+      - ./config:/app/config:ro
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse
+    privileged: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - fuse-service
+    restart: unless-stopped
+
+volumes:
+  tenant-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/persistent-storage
+      o: bind

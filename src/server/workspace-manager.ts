@@ -4,11 +4,11 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { mkdir, rmdir, access } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { access, mkdir, rmdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import type { EnhancedClientSession, WorkspaceInfo } from '../types/enhanced-session.js';
+import { join, resolve } from 'node:path';
 import { logger } from '../core/logger.js';
+import type { EnhancedClientSession, WorkspaceInfo } from '../types/enhanced-session.js';
 
 export interface WorkspaceManagerConfig {
   baseWorkspaceDir: string;
@@ -31,7 +31,7 @@ export class WorkspaceManager {
       maxWorkspaces: config.maxWorkspaces || 50,
       workspaceTimeoutMs: config.workspaceTimeoutMs || 3600000, // 1 hour
       enableCleanupTimer: config.enableCleanupTimer ?? true,
-      ...config
+      ...config,
     };
 
     if (this.config.enableCleanupTimer) {
@@ -42,7 +42,9 @@ export class WorkspaceManager {
   /**
    * Create a new isolated workspace for a session
    */
-  async createWorkspace(session: Pick<EnhancedClientSession, 'id' | 'projectId'>): Promise<WorkspaceInfo> {
+  async createWorkspace(
+    session: Pick<EnhancedClientSession, 'id' | 'projectId'>
+  ): Promise<WorkspaceInfo> {
     // Check workspace limit
     if (this.workspaces.size >= this.config.maxWorkspaces) {
       await this.cleanupOldestWorkspace();
@@ -66,7 +68,7 @@ export class WorkspaceManager {
         sessionId: session.id,
         globalProjectId,
         createdAt: new Date(),
-        lastAccessed: new Date()
+        lastAccessed: new Date(),
       };
 
       // Store workspace info
@@ -79,7 +81,7 @@ export class WorkspaceManager {
         workspaceId,
         globalProjectId,
         workspaceDir,
-        fuseMount
+        fuseMount,
       });
 
       return workspaceInfo;
@@ -89,7 +91,7 @@ export class WorkspaceManager {
         sessionId: session.id,
         workspaceId,
         workspaceDir,
-        fuseMount
+        fuseMount,
       });
       throw error;
     }
@@ -146,14 +148,14 @@ export class WorkspaceManager {
         sessionId,
         workspaceId,
         workspaceDir: workspace.workspaceDir,
-        fuseMount: workspace.fuseMount
+        fuseMount: workspace.fuseMount,
       });
     } catch (error) {
       logger.error('Failed to cleanup workspace', error as Error, {
         component: 'WorkspaceManager',
         sessionId,
         workspaceId,
-        workspace
+        workspace,
       });
     }
   }
@@ -176,7 +178,7 @@ export class WorkspaceManager {
       logger.info('Cleaning up oldest workspace to make room', {
         component: 'WorkspaceManager',
         workspaceId: oldestWorkspaceId,
-        lastAccessed: oldestWorkspace.lastAccessed
+        lastAccessed: oldestWorkspace.lastAccessed,
       });
       await this.cleanupWorkspace(oldestWorkspace.sessionId);
     }
@@ -189,9 +191,9 @@ export class WorkspaceManager {
     const interval = Math.min(this.config.workspaceTimeoutMs / 4, 300000); // Check every 5 minutes max
 
     this.cleanupTimer = setInterval(() => {
-      this.cleanupExpiredWorkspaces().catch(error => {
+      this.cleanupExpiredWorkspaces().catch((error) => {
         logger.error('Failed to cleanup expired workspaces', error as Error, {
-          component: 'WorkspaceManager'
+          component: 'WorkspaceManager',
         });
       });
     }, interval);
@@ -215,7 +217,7 @@ export class WorkspaceManager {
       logger.info('Cleaning up expired workspaces', {
         component: 'WorkspaceManager',
         count: expiredWorkspaces.length,
-        expiredWorkspaces
+        expiredWorkspaces,
       });
 
       for (const sessionId of expiredWorkspaces) {
@@ -262,7 +264,7 @@ export class WorkspaceManager {
       totalWorkspaces: this.workspaces.size,
       activeSessions: this.sessions.size,
       oldestWorkspaceAge: oldestAge,
-      newestWorkspaceAge: newestAge
+      newestWorkspaceAge: newestAge,
     };
   }
 
@@ -278,7 +280,7 @@ export class WorkspaceManager {
     const sessionIds = Array.from(this.sessions.keys());
     logger.info('Shutting down workspace manager', {
       component: 'WorkspaceManager',
-      totalWorkspaces: sessionIds.length
+      totalWorkspaces: sessionIds.length,
     });
 
     for (const sessionId of sessionIds) {

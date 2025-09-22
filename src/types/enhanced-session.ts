@@ -5,10 +5,10 @@
 import type { ClientSession } from '../transports/websocket.js';
 
 export interface EnhancedClientSession extends ClientSession {
-  globalProjectId: string;    // Server-generated unique ID for true isolation
-  workspaceId: string;       // Isolated workspace identifier
-  fuseMount?: string;        // FUSE mount point path
-  workspaceDir?: string;     // Isolated working directory for LSP servers
+  globalProjectId: string; // Server-generated unique ID for true isolation
+  workspaceId: string; // Isolated workspace identifier
+  fuseMount?: string; // FUSE mount point path
+  workspaceDir?: string; // Isolated working directory for LSP servers
 }
 
 export interface WorkspaceInfo {

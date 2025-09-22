@@ -34,7 +34,11 @@ export class LSPServerPool {
     this.startIdleCleanup();
   }
 
-  async getServer(projectId: string, extension: string, workspaceDir?: string): Promise<PooledLSPServer> {
+  async getServer(
+    projectId: string,
+    extension: string,
+    workspaceDir?: string
+  ): Promise<PooledLSPServer> {
     const language = this.getLanguageFromExtension(extension);
     // Include workspace directory in key for isolation
     const key = workspaceDir
@@ -137,7 +141,9 @@ export class LSPServerPool {
   private setupCrashMonitoring(serverKey: string, server: PooledLSPServer): void {
     server.process.on('exit', (code, signal) => {
       if (code !== 0 && code !== null) {
-        console.error(`LSP server crashed for ${serverKey} (exit code: ${code}, signal: ${signal})`);
+        console.error(
+          `LSP server crashed for ${serverKey} (exit code: ${code}, signal: ${signal})`
+        );
         this.handleServerCrash(serverKey, server);
       }
     });
@@ -151,14 +157,19 @@ export class LSPServerPool {
   /**
    * Handle LSP server crash with auto-restart and request replay
    */
-  private async handleServerCrash(serverKey: string, crashedServer: PooledLSPServer): Promise<void> {
+  private async handleServerCrash(
+    serverKey: string,
+    crashedServer: PooledLSPServer
+  ): Promise<void> {
     crashedServer.crashCount++;
 
     console.log(`Handling crash for ${serverKey} (crash count: ${crashedServer.crashCount})`);
 
     // Don't restart if we've crashed too many times
     if (crashedServer.crashCount > this.MAX_RETRIES) {
-      console.error(`LSP server ${serverKey} has crashed ${crashedServer.crashCount} times. Not restarting.`);
+      console.error(
+        `LSP server ${serverKey} has crashed ${crashedServer.crashCount} times. Not restarting.`
+      );
 
       // Reject all pending requests
       const pendingRequests = this.pendingRequests.get(serverKey) || [];
@@ -176,7 +187,7 @@ export class LSPServerPool {
 
     try {
       // Wait before restarting to avoid rapid restart loops
-      await new Promise(resolve => setTimeout(resolve, this.CRASH_RESTART_DELAY_MS));
+      await new Promise((resolve) => setTimeout(resolve, this.CRASH_RESTART_DELAY_MS));
 
       // Get the extension for this language
       const extension = this.getExtensionFromLanguage(crashedServer.language);
@@ -208,14 +219,17 @@ export class LSPServerPool {
 
       // Replay pending requests
       await this.replayPendingRequests(serverKey, newServer);
-
     } catch (error) {
       console.error(`Failed to restart LSP server ${serverKey}:`, error);
 
       // Reject all pending requests
       const pendingRequests = this.pendingRequests.get(serverKey) || [];
       for (const request of pendingRequests) {
-        request.reject(new Error(`Failed to restart LSP server: ${error instanceof Error ? error.message : 'Unknown error'}`));
+        request.reject(
+          new Error(
+            `Failed to restart LSP server: ${error instanceof Error ? error.message : 'Unknown error'}`
+          )
+        );
       }
       this.pendingRequests.delete(serverKey);
 
@@ -253,13 +267,16 @@ export class LSPServerPool {
         // Send the request to the new server
         const result = await this.lspClient.sendRequest(server, request.method, request.params);
         request.resolve(result);
-
       } catch (error) {
         // Re-queue for retry if not max retries
         if (request.retryCount < this.MAX_RETRIES) {
           this.addPendingRequest(serverKey, request);
         } else {
-          request.reject(new Error(`Request failed after restart: ${error instanceof Error ? error.message : 'Unknown error'}`));
+          request.reject(
+            new Error(
+              `Request failed after restart: ${error instanceof Error ? error.message : 'Unknown error'}`
+            )
+          );
         }
       }
     }
@@ -289,7 +306,7 @@ export class LSPServerPool {
         return;
       }
 
-      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      await new Promise((resolve) => setTimeout(resolve, checkInterval));
       waitTime += checkInterval;
     }
 
@@ -315,7 +332,7 @@ export class LSPServerPool {
           resolve,
           reject,
           timestamp: new Date(),
-          retryCount: 0
+          retryCount: 0,
         };
         this.addPendingRequest(serverKey, request);
       });

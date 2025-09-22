@@ -30,7 +30,7 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
     tls = {
       keyPath: options.tlsKey,
       certPath: options.tlsCert,
-      caPath: options.tlsCa
+      caPath: options.tlsCa,
     };
   }
 
@@ -50,7 +50,9 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
   }
 
   if (requireAuth && !jwtSecret) {
-    console.log('Warning: Authentication enabled but no JWT secret provided. Using auto-generated secret.');
+    console.log(
+      'Warning: Authentication enabled but no JWT secret provided. Using auto-generated secret.'
+    );
   }
 
   const server = new CodeFlowWebSocketServer({

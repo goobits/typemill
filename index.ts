@@ -164,7 +164,8 @@ if (subcommand === 'setup') {
         : 10,
     enableFuse: enableFuseIndex !== -1,
     requireAuth: requireAuthIndex !== -1,
-    jwtSecret: jwtSecretIndex !== -1 && args[jwtSecretIndex + 1] ? args[jwtSecretIndex + 1] : undefined,
+    jwtSecret:
+      jwtSecretIndex !== -1 && args[jwtSecretIndex + 1] ? args[jwtSecretIndex + 1] : undefined,
   };
 
   await serveCommand(options);
