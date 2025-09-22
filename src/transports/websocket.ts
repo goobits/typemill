@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type WebSocket from 'ws';
+import type { FileDelta } from '../fs/delta.js';
 
 export interface ClientSession {
   id: string;
@@ -13,6 +14,7 @@ export interface InitializeMessage {
   method: 'initialize';
   project: string;
   projectRoot: string;
+  token?: string; // JWT authentication token
   id?: string;
 }
 
@@ -30,6 +32,17 @@ export interface MCPMessage {
   error?: any;
 }
 
+export interface DeltaWriteRequest {
+  path: string;
+  delta: FileDelta;
+}
+
+export interface DeltaWriteResponse {
+  success: boolean;
+  usedDelta: boolean;
+  finalSize?: number;
+}
+
 export class WebSocketTransport {
   private sessions = new Map<string, ClientSession>();
   private pendingRequests = new Map<string, { resolve: Function; reject: Function }>();
@@ -37,7 +50,8 @@ export class WebSocketTransport {
   constructor(
     private onMessage: (session: ClientSession, message: MCPMessage) => Promise<any>,
     private onSessionReconnect?: (sessionId: string, socket: WebSocket) => ClientSession | null,
-    private onSessionDisconnect?: (sessionId: string) => void
+    private onSessionDisconnect?: (sessionId: string) => void,
+    private validateToken?: (token: string, projectId: string) => Promise<boolean>
   ) {}
 
   handleConnection(socket: WebSocket): void {
@@ -49,6 +63,43 @@ export class WebSocketTransport {
 
         if (!session && message.method === 'initialize') {
           const initMsg = message as unknown as InitializeMessage;
+
+          // Validate JWT token if authentication is enabled
+          if (this.validateToken && initMsg.token) {
+            try {
+              const isValid = await this.validateToken(initMsg.token, initMsg.project);
+              if (!isValid) {
+                socket.send(
+                  JSON.stringify({
+                    id: message.id,
+                    error: { code: -32000, message: 'Authentication failed: Invalid token' },
+                  })
+                );
+                socket.close(1008, 'Authentication failed');
+                return;
+              }
+            } catch (error) {
+              socket.send(
+                JSON.stringify({
+                  id: message.id,
+                  error: { code: -32000, message: 'Authentication failed: Token validation error' },
+                })
+              );
+              socket.close(1008, 'Authentication error');
+              return;
+            }
+          } else if (this.validateToken) {
+            // Authentication required but no token provided
+            socket.send(
+              JSON.stringify({
+                id: message.id,
+                error: { code: -32000, message: 'Authentication required: No token provided' },
+              })
+            );
+            socket.close(1008, 'Authentication required');
+            return;
+          }
+
           session = {
             id: randomUUID(),
             projectId: initMsg.project,

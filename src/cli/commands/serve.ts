@@ -1,20 +1,55 @@
-import { CodeFlowWebSocketServer } from '../../server/ws-server.js';
+import { CodeFlowWebSocketServer, type TLSOptions } from '../../server/ws-server.js';
 
 export interface ServeOptions {
   port?: number;
   maxClients?: number;
+  requireAuth?: boolean;
+  jwtSecret?: string;
+  tlsKey?: string;
+  tlsCert?: string;
+  tlsCa?: string;
 }
 
 export async function serveCommand(options: ServeOptions = {}): Promise<void> {
   const port = options.port || 3000;
   const maxClients = options.maxClients || 10;
+  const requireAuth = options.requireAuth || false;
+  const jwtSecret = options.jwtSecret;
 
-  console.log(`Starting CodeFlow WebSocket server on port ${port}`);
+  // Configure TLS if both key and cert are provided
+  let tls: TLSOptions | undefined;
+  if (options.tlsKey && options.tlsCert) {
+    tls = {
+      keyPath: options.tlsKey,
+      certPath: options.tlsCert,
+      caPath: options.tlsCa
+    };
+  }
+
+  const protocol = tls ? 'WSS (Secure WebSocket)' : 'WS (WebSocket)';
+  console.log(`Starting CodeFlow ${protocol} server on port ${port}`);
   console.log(`Maximum clients: ${maxClients}`);
+  console.log(`Authentication: ${requireAuth ? 'Enabled' : 'Disabled'}`);
+  console.log(`TLS/SSL: ${tls ? 'Enabled' : 'Disabled'}`);
+
+  if (tls) {
+    console.log(`TLS Key: ${tls.keyPath}`);
+    console.log(`TLS Certificate: ${tls.certPath}`);
+    if (tls.caPath) {
+      console.log(`CA Certificate: ${tls.caPath} (Client cert validation enabled)`);
+    }
+  }
+
+  if (requireAuth && !jwtSecret) {
+    console.log('Warning: Authentication enabled but no JWT secret provided. Using auto-generated secret.');
+  }
 
   const server = new CodeFlowWebSocketServer({
     port,
     maxClients,
+    requireAuth,
+    jwtSecret,
+    tls,
   });
 
   // Handle graceful shutdown

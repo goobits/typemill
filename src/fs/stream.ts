@@ -1,7 +1,8 @@
 import type { ClientSession } from '../transports/websocket.js';
-import type { WebSocketTransport } from '../transports/websocket.js';
-import { FileCache } from '../core/cache.js';
+import type { WebSocketTransport, DeltaWriteRequest, DeltaWriteResponse } from '../transports/websocket.js';
+import { PersistentFileCache } from '../core/cache.js';
 import { logger } from '../core/logger.js';
+import { DeltaProcessor, type FileDelta } from './delta.js';
 
 export interface FileReadRequest {
   path: string;
@@ -18,7 +19,8 @@ export interface FileChangedNotification {
 }
 
 export class StreamingFileAccess {
-  private fileCache = new FileCache();
+  private fileCache = new PersistentFileCache();
+  private deltaProcessor = new DeltaProcessor();
 
   constructor(private transport: WebSocketTransport) {}
 
@@ -78,17 +80,62 @@ export class StreamingFileAccess {
 
   async writeFile(session: ClientSession, path: string, content: string): Promise<void> {
     try {
-      await this.transport.sendRequest(session, 'client/writeFile', { path, content });
+      // Check if we can use delta update
+      const cachedFile = this.fileCache.getFile(session.id, path);
+      let usedDelta = false;
 
-      // Invalidate cache for this file since it was modified
-      this.fileCache.invalidateFile(session.id, path);
+      if (cachedFile && this.deltaProcessor.shouldUseDelta(cachedFile.content, content)) {
+        // Try delta update
+        const delta = this.deltaProcessor.generateDelta(cachedFile.content, content, path);
 
-      logger.debug('File write completed, cache invalidated', {
+        if (delta) {
+          try {
+            const deltaResponse = await this.transport.sendRequest(session, 'client/writeDelta', {
+              path,
+              delta
+            } as DeltaWriteRequest) as DeltaWriteResponse;
+
+            if (deltaResponse.success && deltaResponse.usedDelta) {
+              usedDelta = true;
+
+              logger.info('Delta write successful', {
+                component: 'StreamingFileAccess',
+                sessionId: session.id,
+                projectId: session.projectId,
+                path,
+                fullSize: content.length,
+                deltaSize: delta.deltaSize,
+                compressionRatio: Math.round((1 - delta.compressionRatio) * 100) / 100
+              });
+            }
+          } catch (deltaError) {
+            logger.warn('Delta write failed, falling back to full write', {
+              component: 'StreamingFileAccess',
+              sessionId: session.id,
+              projectId: session.projectId,
+              path,
+              error: deltaError instanceof Error ? deltaError.message : 'Unknown error'
+            });
+          }
+        }
+      }
+
+      // Fallback to full file write if delta wasn't used
+      if (!usedDelta) {
+        await this.transport.sendRequest(session, 'client/writeFile', { path, content });
+      }
+
+      // Update cache with new content (always do this)
+      const mtime = Date.now();
+      this.fileCache.setFile(session.id, path, content, mtime);
+
+      logger.debug('File write completed', {
         component: 'StreamingFileAccess',
         sessionId: session.id,
         projectId: session.projectId,
         path,
-        contentLength: content.length
+        contentLength: content.length,
+        usedDelta
       });
 
     } catch (error) {
@@ -158,29 +205,56 @@ export class StreamingFileAccess {
     return `${session.projectRoot}/${cleanPath}`.replace(/\/+/g, '/');
   }
 
-  // Handle file change notifications from client
+  // Handle file change notifications from client with intelligent invalidation
   handleFileChanged(session: ClientSession, notification: FileChangedNotification): void {
-    // Invalidate cache for changed/deleted files
-    if (notification.changeType === 'changed' || notification.changeType === 'deleted') {
-      const wasInvalidated = this.fileCache.invalidateFile(session.id, notification.path);
+    let invalidatedCount = 0;
 
-      logger.debug('File change notification processed', {
-        component: 'StreamingFileAccess',
-        sessionId: session.id,
-        projectId: session.projectId,
-        path: notification.path,
-        changeType: notification.changeType,
-        cacheInvalidated: wasInvalidated
-      });
-    } else {
-      logger.debug('File change notification processed', {
-        component: 'StreamingFileAccess',
-        sessionId: session.id,
-        projectId: session.projectId,
-        path: notification.path,
-        changeType: notification.changeType
-      });
+    switch (notification.changeType) {
+      case 'changed':
+      case 'deleted':
+        // Invalidate the specific file
+        const wasInvalidated = this.fileCache.invalidateFile(session.id, notification.path);
+        invalidatedCount = wasInvalidated ? 1 : 0;
+        break;
+
+      case 'created':
+        // For new files, no cache invalidation needed
+        // But we might want to invalidate directory listings if we cached them
+        invalidatedCount = 0;
+        break;
     }
+
+    logger.debug('File change notification processed with event-driven invalidation', {
+      component: 'StreamingFileAccess',
+      sessionId: session.id,
+      projectId: session.projectId,
+      path: notification.path,
+      changeType: notification.changeType,
+      cacheEntriesInvalidated: invalidatedCount,
+      cacheStats: this.fileCache.getStats()
+    });
+  }
+
+  // Handle bulk file changes (e.g., git operations, build processes)
+  handleBulkFileChanges(session: ClientSession, notifications: FileChangedNotification[]): void {
+    let totalInvalidated = 0;
+
+    for (const notification of notifications) {
+      if (notification.changeType === 'changed' || notification.changeType === 'deleted') {
+        if (this.fileCache.invalidateFile(session.id, notification.path)) {
+          totalInvalidated++;
+        }
+      }
+    }
+
+    logger.info('Bulk file changes processed with event-driven invalidation', {
+      component: 'StreamingFileAccess',
+      sessionId: session.id,
+      projectId: session.projectId,
+      changedFiles: notifications.length,
+      cacheEntriesInvalidated: totalInvalidated,
+      cacheStats: this.fileCache.getStats()
+    });
   }
 
   // Clean up cache for a disconnected session
@@ -194,18 +268,14 @@ export class StreamingFileAccess {
     });
   }
 
-  // Get cache statistics for monitoring
-  getCacheStats(): {
-    size: number;
-    hitRate?: number;
-    entries: Array<{
-      key: string;
-      age: number;
-      ttl: number;
-      isExpired: boolean;
-    }>;
-  } {
+  // Get enhanced cache statistics for monitoring
+  getCacheStats() {
     return this.fileCache.getStats();
+  }
+
+  // Get delta processor statistics for monitoring
+  getDeltaStats() {
+    return this.deltaProcessor.getStats();
   }
 
   // Clean up resources
