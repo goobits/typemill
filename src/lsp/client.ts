@@ -201,8 +201,8 @@ export class LSPClient {
   /**
    * Get LSP server for a file path
    */
-  async getServer(filePath: string): Promise<ServerState> {
-    return await this._serverManager.getServer(filePath, this.config);
+  async getServer(filePath: string, workspaceDir?: string): Promise<ServerState> {
+    return await this._serverManager.getServer(filePath, this.config, workspaceDir);
   }
 
   /**

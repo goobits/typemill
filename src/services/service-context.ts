@@ -7,11 +7,11 @@ import type { ServerState } from '../lsp/types.js';
  * Provides shared infrastructure for all LSP service classes
  */
 export interface ServiceContext {
-  getServer: (filePath: string) => Promise<ServerState>;
+  getServer: (filePath: string, workspaceDir?: string) => Promise<ServerState>;
   protocol: LSPProtocol;
   ensureFileOpen: (serverState: ServerState, filePath: string) => Promise<void>;
   getLanguageId: (filePath: string) => string;
-  prepareFile: (filePath: string) => Promise<ServerState>;
+  prepareFile: (filePath: string, workspaceDir?: string) => Promise<ServerState>;
 }
 
 /**
@@ -82,10 +82,11 @@ export const ServiceContextUtils = {
    */
   async prepareFile(
     filePath: string,
-    getServer: (filePath: string) => Promise<ServerState>,
-    ensureFileOpen: (serverState: ServerState, filePath: string) => Promise<void>
+    getServer: (filePath: string, workspaceDir?: string) => Promise<ServerState>,
+    ensureFileOpen: (serverState: ServerState, filePath: string) => Promise<void>,
+    workspaceDir?: string
   ): Promise<ServerState> {
-    const serverState = await getServer(filePath);
+    const serverState = await getServer(filePath, workspaceDir);
 
     // Wait for the server to be fully initialized
     await serverState.initializationPromise;
@@ -101,7 +102,7 @@ export const ServiceContextUtils = {
    * Factory function for creating consistent service contexts
    */
   createServiceContext(
-    getServer: (filePath: string) => Promise<ServerState>,
+    getServer: (filePath: string, workspaceDir?: string) => Promise<ServerState>,
     protocol: LSPProtocol
   ): ServiceContext {
     return {
@@ -110,12 +111,13 @@ export const ServiceContextUtils = {
       ensureFileOpen: async (serverState: ServerState, filePath: string) =>
         ServiceContextUtils.ensureFileOpen(serverState, filePath, protocol),
       getLanguageId: ServiceContextUtils.getLanguageId,
-      prepareFile: async (filePath: string) =>
+      prepareFile: async (filePath: string, workspaceDir?: string) =>
         ServiceContextUtils.prepareFile(
           filePath,
           getServer,
           async (serverState: ServerState, filePath: string) =>
-            ServiceContextUtils.ensureFileOpen(serverState, filePath, protocol)
+            ServiceContextUtils.ensureFileOpen(serverState, filePath, protocol),
+          workspaceDir
         ),
     };
   },

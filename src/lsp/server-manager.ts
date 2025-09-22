@@ -76,7 +76,7 @@ export class ServerManager {
   /**
    * Get or start LSP server for a file
    */
-  async getServer(filePath: string, config: Config): Promise<ServerState> {
+  async getServer(filePath: string, config: Config, workspaceDir?: string): Promise<ServerState> {
     const serverConfig = this.getServerForFile(filePath, config);
     if (!serverConfig) {
       const extension = filePath.split('.').pop() || 'unknown';
@@ -88,7 +88,10 @@ export class ServerManager {
       );
     }
 
-    const serverKey = JSON.stringify(serverConfig.command);
+    // Include workspace directory in server key for isolation
+    const serverKey = workspaceDir
+      ? `${JSON.stringify(serverConfig.command)}:${workspaceDir}`
+      : JSON.stringify(serverConfig.command);
 
     // Check if server has failed and attempt recovery before giving up
     if (this.failedServers.has(serverKey)) {
@@ -97,7 +100,8 @@ export class ServerManager {
         const recoveredServer = await this.attemptServerRecovery(
           serverKey,
           serverConfig,
-          new Error(`Server previously failed: ${serverConfig.command.join(' ')}`)
+          new Error(`Server previously failed: ${serverConfig.command.join(' ')}`),
+          workspaceDir
         );
 
         if (recoveredServer) {
@@ -159,7 +163,7 @@ export class ServerManager {
     }
 
     // Start new server
-    const startupPromise = this.startServer(serverConfig);
+    const startupPromise = this.startServer(serverConfig, workspaceDir);
     this.serversStarting.set(serverKey, startupPromise);
 
     try {
@@ -311,7 +315,7 @@ export class ServerManager {
   /**
    * Start a new LSP server process
    */
-  private async startServer(serverConfig: LSPServerConfig): Promise<ServerState> {
+  private async startServer(serverConfig: LSPServerConfig, workspaceDir?: string): Promise<ServerState> {
     const [command, ...args] = serverConfig.command;
     if (!command) {
       throw new ServerNotAvailableError(
@@ -337,9 +341,12 @@ export class ServerManager {
       }
     }
 
+    // Use workspace directory if provided (for FUSE isolation), otherwise use configured rootDir
+    const workingDirectory = workspaceDir || serverConfig.rootDir || process.cwd();
+
     const childProcess = spawn(command, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      cwd: serverConfig.rootDir || process.cwd(),
+      cwd: workingDirectory,
     });
 
     // Immediately attach error handler to catch ENOENT (command not found)
@@ -738,7 +745,8 @@ export class ServerManager {
   private async attemptServerRecovery(
     serverKey: string,
     serverConfig: LSPServerConfig,
-    lastError: Error
+    lastError: Error,
+    workspaceDir?: string
   ): Promise<ServerState | null> {
     // Check if error is worth retrying
     if (!this.isTransientError(lastError)) {
@@ -790,7 +798,7 @@ export class ServerManager {
 
     try {
       // Attempt to start the server again
-      const startupPromise = this.startServer(serverConfig);
+      const startupPromise = this.startServer(serverConfig, workspaceDir);
       this.serversStarting.set(serverKey, startupPromise);
 
       try {

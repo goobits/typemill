@@ -34,15 +34,18 @@ export class LSPServerPool {
     this.startIdleCleanup();
   }
 
-  async getServer(projectId: string, extension: string): Promise<PooledLSPServer> {
+  async getServer(projectId: string, extension: string, workspaceDir?: string): Promise<PooledLSPServer> {
     const language = this.getLanguageFromExtension(extension);
-    const key = `${projectId}:${language}`;
+    // Include workspace directory in key for isolation
+    const key = workspaceDir
+      ? `${projectId}:${language}:${workspaceDir}`
+      : `${projectId}:${language}`;
 
     let server = this.pools.get(key);
 
     if (!server) {
       // Create new server for this project/language combination
-      const lspServer = await this.lspClient.getServer(extension);
+      const lspServer = await this.lspClient.getServer(extension, workspaceDir);
 
       server = {
         ...lspServer,

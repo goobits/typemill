@@ -8,6 +8,9 @@ import { LSPClient } from '../lsp/client.js';
 import { toolRegistry } from '../mcp/tool-registry.js';
 import { WebSocketTransport } from '../transports/websocket.js';
 import type { ClientSession, MCPMessage } from '../transports/websocket.js';
+import type { EnhancedClientSession, WorkspaceInfo, FuseOperationResponse } from '../types/enhanced-session.js';
+import { WorkspaceManager } from './workspace-manager.js';
+import { FuseMount } from '../fs/fuse-mount.js';
 import { LSPServerPool } from './lsp-pool.js';
 import { SessionManager } from './session.js';
 import { logger } from '../core/logger.js';
@@ -34,6 +37,13 @@ export interface WebSocketServerOptions {
   requireAuth?: boolean;
   jwtSecret?: string;
   tls?: TLSOptions;
+  enableFuse?: boolean;
+  workspaceConfig?: {
+    baseWorkspaceDir?: string;
+    fuseMountPrefix?: string;
+    maxWorkspaces?: number;
+    workspaceTimeoutMs?: number;
+  };
 }
 
 export class CodeFlowWebSocketServer {
@@ -49,9 +59,22 @@ export class CodeFlowWebSocketServer {
   private clientCount = 0;
   private startTime = Date.now();
 
+  // FUSE and workspace management
+  private workspaceManager?: WorkspaceManager;
+  private fuseMounts = new Map<string, FuseMount>(); // sessionId -> FuseMount
+
   constructor(private options: WebSocketServerOptions) {
     this.sessionManager = new SessionManager();
     this.isSecure = !!options.tls;
+
+    // Initialize FUSE workspace manager if enabled
+    if (options.enableFuse) {
+      this.workspaceManager = new WorkspaceManager(options.workspaceConfig);
+      logger.info('FUSE workspace manager enabled', {
+        component: 'CodeFlowWebSocketServer',
+        config: options.workspaceConfig
+      });
+    }
 
     // Initialize authentication if required
     if (options.requireAuth) {
@@ -71,7 +94,9 @@ export class CodeFlowWebSocketServer {
       this.handleMCPMessage.bind(this),
       this.handleSessionReconnect.bind(this),
       this.handleSessionDisconnect.bind(this),
-      this.authenticator ? this.validateToken.bind(this) : undefined
+      this.authenticator ? this.validateToken.bind(this) : undefined,
+      this.workspaceManager ? this.handleWorkspaceCreate.bind(this) : undefined,
+      this.handleFuseResponse.bind(this)
     );
     this.streamingFS = new StreamingFileAccess(this.transport);
 
@@ -499,7 +524,12 @@ export class CodeFlowWebSocketServer {
           // Convert client absolute path to project-relative path
           const projectPath = this.streamingFS.toProjectPath(session, clientFilePath);
           const extension = this.getFileExtension(projectPath);
-          const server = await this.lspServerPool.getServer(session.projectId, extension);
+
+          // Get workspace directory for enhanced sessions with FUSE support
+          const enhancedSession = this.transport.getEnhancedSession(session.id);
+          const workspaceDir = enhancedSession?.workspaceDir;
+
+          const server = await this.lspServerPool.getServer(session.projectId, extension, workspaceDir);
           services.lspClient = this.lspClient;
           services.server = server;
 
@@ -569,8 +599,122 @@ export class CodeFlowWebSocketServer {
     };
   }
 
+  /**
+   * Handle workspace creation for enhanced sessions with FUSE support
+   */
+  private async handleWorkspaceCreate(session: ClientSession): Promise<WorkspaceInfo> {
+    if (!this.workspaceManager) {
+      throw new Error('Workspace manager not initialized - FUSE not enabled');
+    }
+
+    try {
+      const workspaceInfo = await this.workspaceManager.createWorkspace(session);
+
+      // Create and mount FUSE filesystem for this session
+      if (workspaceInfo.fuseMount) {
+        const fuseMount = new FuseMount(
+          session as EnhancedClientSession,
+          this.transport,
+          workspaceInfo.fuseMount,
+          {
+            debugFuse: process.env.DEBUG_FUSE === 'true',
+            allowOther: false,
+            defaultPermissions: true
+          }
+        );
+
+        await fuseMount.mount();
+        this.fuseMounts.set(session.id, fuseMount);
+
+        logger.info('FUSE filesystem mounted for session', {
+          component: 'CodeFlowWebSocketServer',
+          sessionId: session.id,
+          workspaceId: workspaceInfo.workspaceId,
+          fuseMount: workspaceInfo.fuseMount
+        });
+      }
+
+      return workspaceInfo;
+    } catch (error) {
+      logger.error('Failed to create workspace', error as Error, {
+        component: 'CodeFlowWebSocketServer',
+        sessionId: session.id,
+        projectId: session.projectId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Handle FUSE operation responses from clients
+   */
+  private handleFuseResponse(sessionId: string, response: FuseOperationResponse): void {
+    const fuseMount = this.fuseMounts.get(sessionId);
+    if (fuseMount) {
+      fuseMount.handleFuseResponse(response);
+    } else {
+      logger.warn('Received FUSE response for session without mount', {
+        component: 'CodeFlowWebSocketServer',
+        sessionId,
+        correlationId: response.correlationId
+      });
+    }
+  }
+
+  /**
+   * Handle session disconnection - cleanup workspace and FUSE mount
+   */
+  private async handleSessionDisconnect(sessionId: string): Promise<void> {
+    try {
+      // Unmount FUSE filesystem
+      const fuseMount = this.fuseMounts.get(sessionId);
+      if (fuseMount) {
+        await fuseMount.unmount();
+        this.fuseMounts.delete(sessionId);
+        logger.info('FUSE filesystem unmounted for session', {
+          component: 'CodeFlowWebSocketServer',
+          sessionId
+        });
+      }
+
+      // Cleanup workspace
+      if (this.workspaceManager) {
+        await this.workspaceManager.cleanupWorkspace(sessionId);
+      }
+
+      // Notify session manager
+      this.sessionManager.disconnectSession(sessionId);
+    } catch (error) {
+      logger.error('Error during session disconnect cleanup', error as Error, {
+        component: 'CodeFlowWebSocketServer',
+        sessionId
+      });
+    }
+  }
+
   async shutdown(): Promise<void> {
     logger.info('Starting server shutdown', { component: 'WebSocketServer' });
+
+    // Unmount all FUSE filesystems
+    const unmountPromises: Promise<void>[] = [];
+    for (const [sessionId, fuseMount] of this.fuseMounts) {
+      unmountPromises.push(
+        fuseMount.unmount().catch(error => {
+          logger.error('Error unmounting FUSE during shutdown', error as Error, {
+            component: 'WebSocketServer',
+            sessionId
+          });
+        })
+      );
+    }
+
+    await Promise.allSettled(unmountPromises);
+    this.fuseMounts.clear();
+
+    // Shutdown workspace manager
+    if (this.workspaceManager) {
+      await this.workspaceManager.shutdown();
+    }
 
     // Close all client connections
     this.wss.clients.forEach((ws) => {

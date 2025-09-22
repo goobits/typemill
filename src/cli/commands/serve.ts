@@ -8,6 +8,13 @@ export interface ServeOptions {
   tlsKey?: string;
   tlsCert?: string;
   tlsCa?: string;
+  enableFuse?: boolean;
+  workspaceConfig?: {
+    baseWorkspaceDir?: string;
+    fuseMountPrefix?: string;
+    maxWorkspaces?: number;
+    workspaceTimeoutMs?: number;
+  };
 }
 
 export async function serveCommand(options: ServeOptions = {}): Promise<void> {
@@ -15,6 +22,7 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
   const maxClients = options.maxClients || 10;
   const requireAuth = options.requireAuth || false;
   const jwtSecret = options.jwtSecret;
+  const enableFuse = options.enableFuse || process.env.ENABLE_FUSE === 'true';
 
   // Configure TLS if both key and cert are provided
   let tls: TLSOptions | undefined;
@@ -31,6 +39,7 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
   console.log(`Maximum clients: ${maxClients}`);
   console.log(`Authentication: ${requireAuth ? 'Enabled' : 'Disabled'}`);
   console.log(`TLS/SSL: ${tls ? 'Enabled' : 'Disabled'}`);
+  console.log(`FUSE Isolation: ${enableFuse ? 'Enabled' : 'Disabled'}`);
 
   if (tls) {
     console.log(`TLS Key: ${tls.keyPath}`);
@@ -50,6 +59,8 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
     requireAuth,
     jwtSecret,
     tls,
+    enableFuse,
+    workspaceConfig: options.workspaceConfig,
   });
 
   // Handle graceful shutdown
