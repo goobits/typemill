@@ -25,16 +25,15 @@ codeflow-buddy setup --all
 ```
 
 ### 3. Manual Configuration
-Create `codebuddy.json` manually for full control.
+Create `.codebuddy/config.json` manually for full control.
 
 ## 📋 Configuration File Location
 
-codebuddy looks for configuration in this order:
+codeflow-buddy looks for configuration in this order:
 
 1. **Environment variable**: `CODEBUDDY_CONFIG_PATH=/path/to/config.json`
-2. **Project config**: `./codebuddy.json` (current directory)
-3. **User config**: `~/.config/claude/codebuddy.json` (with `--user`)
-4. **Default**: Built-in TypeScript configuration
+2. **Project config**: `./.codebuddy/config.json` (current directory)
+3. **Default**: Built-in TypeScript configuration
 
 ## 🔧 Configuration Schema
 

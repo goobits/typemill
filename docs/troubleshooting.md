@@ -95,15 +95,14 @@ Solutions for common issues and debugging techniques.
 
 ### Configuration Not Loading
 
-**Problem**: codebuddy uses only default TypeScript configuration
+**Problem**: codeflow-buddy uses only default TypeScript configuration
 
 **Solutions**:
 
 1. **Check configuration file location**:
    ```bash
    # Verify file exists and has correct name
-   ls -la codebuddy.json
-   ls -la ~/.config/claude/codebuddy.json
+   ls -la .codebuddy/config.json
    ```
 
 2. **Verify CODEBUDDY_CONFIG_PATH**:

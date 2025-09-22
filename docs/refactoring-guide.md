@@ -1,5 +1,7 @@
 # CodeFlow Buddy: Advanced Refactoring Guide
 
+> **⚠️ Note**: This guide documents the legacy batch tools (`analyze_refactor_impact`, `batch_move_files`, `preview_batch_operation`) which have been replaced by the universal `batch_execute` tool. For the latest batch functionality, see the `batch_execute` documentation in [api.md](./api.md#batch_execute).
+
 This guide explains how to use CodeFlow Buddy's powerful orchestration tools for safe, atomic refactoring operations.
 
 ## Overview
