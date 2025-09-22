@@ -1,7 +1,11 @@
-import type { ClientSession } from '../transports/websocket.js';
-import type { WebSocketTransport, DeltaWriteRequest, DeltaWriteResponse } from '../transports/websocket.js';
 import { PersistentFileCache } from '../core/cache.js';
 import { logger } from '../core/logger.js';
+import type { ClientSession } from '../transports/websocket.js';
+import type {
+  DeltaWriteRequest,
+  DeltaWriteResponse,
+  WebSocketTransport,
+} from '../transports/websocket.js';
 import { DeltaProcessor, type FileDelta } from './delta.js';
 
 export interface FileReadRequest {
@@ -34,7 +38,7 @@ export class StreamingFileAccess {
           sessionId: session.id,
           projectId: session.projectId,
           path,
-          mtime: cached.mtime
+          mtime: cached.mtime,
         });
         return cached.content;
       }
@@ -44,7 +48,7 @@ export class StreamingFileAccess {
         component: 'StreamingFileAccess',
         sessionId: session.id,
         projectId: session.projectId,
-        path
+        path,
       });
 
       const response = (await this.transport.sendRequest(session, 'client/readFile', {
@@ -60,7 +64,7 @@ export class StreamingFileAccess {
         projectId: session.projectId,
         path,
         contentLength: response.content.length,
-        mtime: response.mtime
+        mtime: response.mtime,
       });
 
       return response.content;
@@ -69,7 +73,7 @@ export class StreamingFileAccess {
         component: 'StreamingFileAccess',
         sessionId: session.id,
         projectId: session.projectId,
-        path
+        path,
       });
 
       throw new Error(
@@ -90,10 +94,10 @@ export class StreamingFileAccess {
 
         if (delta) {
           try {
-            const deltaResponse = await this.transport.sendRequest(session, 'client/writeDelta', {
+            const deltaResponse = (await this.transport.sendRequest(session, 'client/writeDelta', {
               path,
-              delta
-            } as DeltaWriteRequest) as DeltaWriteResponse;
+              delta,
+            } as DeltaWriteRequest)) as DeltaWriteResponse;
 
             if (deltaResponse.success && deltaResponse.usedDelta) {
               usedDelta = true;
@@ -105,7 +109,7 @@ export class StreamingFileAccess {
                 path,
                 fullSize: content.length,
                 deltaSize: delta.deltaSize,
-                compressionRatio: Math.round((1 - delta.compressionRatio) * 100) / 100
+                compressionRatio: Math.round((1 - delta.compressionRatio) * 100) / 100,
               });
             }
           } catch (deltaError) {
@@ -114,7 +118,7 @@ export class StreamingFileAccess {
               sessionId: session.id,
               projectId: session.projectId,
               path,
-              error: deltaError instanceof Error ? deltaError.message : 'Unknown error'
+              error: deltaError instanceof Error ? deltaError.message : 'Unknown error',
             });
           }
         }
@@ -135,15 +139,14 @@ export class StreamingFileAccess {
         projectId: session.projectId,
         path,
         contentLength: content.length,
-        usedDelta
+        usedDelta,
       });
-
     } catch (error) {
       logger.error('File write failed', error as Error, {
         component: 'StreamingFileAccess',
         sessionId: session.id,
         projectId: session.projectId,
-        path
+        path,
       });
 
       throw new Error(
@@ -231,7 +234,7 @@ export class StreamingFileAccess {
       path: notification.path,
       changeType: notification.changeType,
       cacheEntriesInvalidated: invalidatedCount,
-      cacheStats: this.fileCache.getStats()
+      cacheStats: this.fileCache.getStats(),
     });
   }
 
@@ -253,7 +256,7 @@ export class StreamingFileAccess {
       projectId: session.projectId,
       changedFiles: notifications.length,
       cacheEntriesInvalidated: totalInvalidated,
-      cacheStats: this.fileCache.getStats()
+      cacheStats: this.fileCache.getStats(),
     });
   }
 
@@ -264,7 +267,7 @@ export class StreamingFileAccess {
     logger.debug('Session cache cleanup completed', {
       component: 'StreamingFileAccess',
       sessionId,
-      deletedEntries: deletedCount
+      deletedEntries: deletedCount,
     });
   }
 

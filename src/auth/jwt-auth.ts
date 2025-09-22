@@ -3,8 +3,8 @@
  * Provides secure token-based authentication for client connections
  */
 
-import jwt from 'jsonwebtoken';
 import { randomBytes } from 'node:crypto';
+import jwt from 'jsonwebtoken';
 import { logger } from '../core/logger.js';
 
 export interface AuthConfig {
@@ -47,7 +47,7 @@ export class JWTAuthenticator {
     'file:write',
     'lsp:query',
     'lsp:symbol',
-    'session:manage'
+    'session:manage',
   ];
 
   constructor(private config: AuthConfig) {
@@ -59,7 +59,7 @@ export class JWTAuthenticator {
       component: 'JWTAuthenticator',
       issuer: config.issuer,
       audience: config.audience,
-      tokenExpiry: config.tokenExpiry
+      tokenExpiry: config.tokenExpiry,
     });
   }
 
@@ -81,33 +81,32 @@ export class JWTAuthenticator {
         iat: now,
         exp: now + this.parseExpiry(this.config.tokenExpiry),
         iss: this.config.issuer,
-        aud: this.config.audience
+        aud: this.config.audience,
       };
 
       const token = jwt.sign(payload, this.config.secretKey, {
-        algorithm: 'HS256'
+        algorithm: 'HS256',
       });
 
-      const expiresAt = new Date((payload.exp) * 1000);
+      const expiresAt = new Date(payload.exp * 1000);
 
       logger.info('JWT token generated', {
         component: 'JWTAuthenticator',
         projectId: request.projectId,
         sessionId: request.sessionId,
         expiresAt: expiresAt.toISOString(),
-        permissions: payload.permissions
+        permissions: payload.permissions,
       });
 
       return {
         token,
         expiresAt,
-        permissions: payload.permissions
+        permissions: payload.permissions,
       };
-
     } catch (error) {
       logger.error('Failed to generate JWT token', error as Error, {
         component: 'JWTAuthenticator',
-        projectId: request.projectId
+        projectId: request.projectId,
       });
       throw new Error('Authentication failed');
     }
@@ -121,23 +120,22 @@ export class JWTAuthenticator {
       const decoded = jwt.verify(token, this.config.secretKey, {
         algorithms: ['HS256'],
         issuer: this.config.issuer,
-        audience: this.config.audience
+        audience: this.config.audience,
       }) as TokenPayload;
 
       logger.debug('JWT token verified', {
         component: 'JWTAuthenticator',
         projectId: decoded.projectId,
         sessionId: decoded.sessionId,
-        expiresAt: new Date(decoded.exp * 1000).toISOString()
+        expiresAt: new Date(decoded.exp * 1000).toISOString(),
       });
 
       return decoded;
-
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
         logger.warn('JWT token expired', {
           component: 'JWTAuthenticator',
-          expiredAt: error.expiredAt?.toISOString()
+          expiredAt: error.expiredAt?.toISOString(),
         });
         throw new Error('Token expired');
       }
@@ -145,13 +143,13 @@ export class JWTAuthenticator {
       if (error instanceof jwt.JsonWebTokenError) {
         logger.warn('Invalid JWT token', {
           component: 'JWTAuthenticator',
-          error: error.message
+          error: error.message,
         });
         throw new Error('Invalid token');
       }
 
       logger.error('JWT verification failed', error as Error, {
-        component: 'JWTAuthenticator'
+        component: 'JWTAuthenticator',
       });
       throw new Error('Token verification failed');
     }
@@ -200,17 +198,21 @@ export class JWTAuthenticator {
    */
   private parseExpiry(expiry: string): number {
     const unit = expiry.slice(-1);
-    const value = parseInt(expiry.slice(0, -1), 10);
+    const value = Number.parseInt(expiry.slice(0, -1), 10);
 
     if (isNaN(value)) {
       throw new Error(`Invalid expiry format: ${expiry}`);
     }
 
     switch (unit) {
-      case 's': return value;
-      case 'm': return value * 60;
-      case 'h': return value * 60 * 60;
-      case 'd': return value * 24 * 60 * 60;
+      case 's':
+        return value;
+      case 'm':
+        return value * 60;
+      case 'h':
+        return value * 60 * 60;
+      case 'd':
+        return value * 24 * 60 * 60;
       default:
         throw new Error(`Invalid expiry unit: ${unit}. Use s, m, h, or d`);
     }
@@ -231,7 +233,7 @@ export class JWTAuthenticator {
       secretKey: process.env.JWT_SECRET || JWTAuthenticator.generateSecretKey(),
       tokenExpiry: process.env.JWT_EXPIRY || '24h',
       issuer: process.env.JWT_ISSUER || 'codeflow-buddy',
-      audience: process.env.JWT_AUDIENCE || 'codeflow-clients'
+      audience: process.env.JWT_AUDIENCE || 'codeflow-clients',
     };
   }
 }

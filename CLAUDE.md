@@ -38,7 +38,10 @@ bun run lint:fix     # Auto-fix safe issues
 bun run format       # Format code with Biome
 bun run typecheck    # Run TypeScript type checking
 bun run test         # Run unit tests
-bun run test:mcp     # Run MCP integration tests
+bun run test:all     # Run all tests
+bun run test:integration  # Run integration tests
+bun run test:fuse    # Run FUSE-specific tests (includes real FUSE tests)
+bun run test:fuse:real    # Run real FUSE tests (requires FUSE installed)
 
 # Test Performance Optimizations (for slow systems)
 bun run test:fast     # Optimized test runner with system detection
@@ -273,7 +276,7 @@ curl http://localhost:3000/metrics
 ### WebSocket Server Configuration
 ```bash
 # Basic server
-node dist/index.js serve --port 3000 --max-clients 50
+node dist/index.js serve --port 3000 --max-clients 10
 
 # With authentication
 node dist/index.js serve --require-auth --jwt-secret "your-secret"
@@ -283,7 +286,7 @@ node dist/index.js serve --tls-key server.key --tls-cert server.crt
 
 # Enterprise setup
 node dist/index.js serve \
-  --port 3000 --max-clients 100 \
+  --port 3000 --max-clients 10 \
   --require-auth --jwt-secret "enterprise-key" \
   --tls-key /etc/ssl/server.key --tls-cert /etc/ssl/server.crt
 ```

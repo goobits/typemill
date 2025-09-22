@@ -3,11 +3,11 @@
  * Provides native filesystem access through FUSE with WebSocket backend
  */
 
-import Fuse from 'fuse-native';
-import type { EnhancedClientSession } from '../types/enhanced-session.js';
-import type { WebSocketTransport } from '../transports/websocket.js';
-import { FuseOperations } from './fuse-operations.js';
+import Fuse from '@cocalc/fuse-native';
 import { logger } from '../core/logger.js';
+import type { WebSocketTransport } from '../transports/websocket.js';
+import type { EnhancedClientSession } from '../types/enhanced-session.js';
+import { FuseOperations } from './fuse-operations.js';
 
 export interface FuseMountConfig {
   mountOptions?: string[];
@@ -52,26 +52,73 @@ export class FuseMount {
         component: 'FuseMount',
         sessionId: this.session.id,
         mountPath: this.mountPath,
-        config: this.config
+        config: this.config,
       });
 
       // Build mount options
       const options = this.buildMountOptions();
 
       // Create FUSE instance with operations
-      this.fuse = new Fuse(this.mountPath, {
-        readdir: this.operations.readdir.bind(this.operations),
-        getattr: this.operations.getattr.bind(this.operations),
-        open: this.operations.open.bind(this.operations),
-        read: this.operations.read.bind(this.operations),
-        write: this.operations.write.bind(this.operations),
-        release: this.operations.release.bind(this.operations),
-        truncate: this.operations.truncate.bind(this.operations),
-        mkdir: this.operations.mkdir.bind(this.operations),
-        rmdir: this.operations.rmdir.bind(this.operations),
-        unlink: this.operations.unlink.bind(this.operations),
-        rename: this.operations.rename.bind(this.operations)
-      }, options);
+      // Note: @cocalc/fuse-native expects callback-style operations
+      this.fuse = new Fuse(
+        this.mountPath,
+        {
+          readdir: (path: string, cb: Function) => {
+            this.operations.readdir(path).then(
+              (result) => cb(0, result),
+              (error) => cb(error.errno || -1)
+            );
+          },
+          getattr: (path: string, cb: Function) => {
+            this.operations.getattr(path).then(
+              (result) => cb(0, result),
+              (error) => cb(error.errno || -1)
+            );
+          },
+          open: (path: string, flags: number, cb: Function) => {
+            this.operations.open(path, flags).then(
+              (result) => cb(0, result),
+              (error) => cb(error.errno || -1)
+            );
+          },
+          read: (
+            path: string,
+            fd: number,
+            buffer: Buffer,
+            length: number,
+            position: number,
+            cb: Function
+          ) => {
+            this.operations.read(path, fd, length, position).then(
+              (result) => {
+                result.copy(buffer, 0, 0, Math.min(result.length, length));
+                cb(Math.min(result.length, length));
+              },
+              (error) => cb(error.errno || -1)
+            );
+          },
+          write: (
+            path: string,
+            fd: number,
+            buffer: Buffer,
+            length: number,
+            position: number,
+            cb: Function
+          ) => {
+            this.operations.write(path, fd, buffer, position).then(
+              (result) => cb(result),
+              (error) => cb(error.errno || -1)
+            );
+          },
+          release: (path: string, fd: number, cb: Function) => {
+            this.operations.release(path, fd).then(
+              () => cb(0),
+              (error) => cb(error.errno || -1)
+            );
+          },
+        },
+        options
+      );
 
       // Mount the filesystem
       await new Promise<void>((resolve, reject) => {
@@ -88,13 +135,13 @@ export class FuseMount {
       logger.info('FUSE filesystem mounted successfully', {
         component: 'FuseMount',
         sessionId: this.session.id,
-        mountPath: this.mountPath
+        mountPath: this.mountPath,
       });
     } catch (error) {
       logger.error('Failed to mount FUSE filesystem', error as Error, {
         component: 'FuseMount',
         sessionId: this.session.id,
-        mountPath: this.mountPath
+        mountPath: this.mountPath,
       });
       throw error;
     }
@@ -108,7 +155,7 @@ export class FuseMount {
       logger.warn('FUSE filesystem not mounted, skipping unmount', {
         component: 'FuseMount',
         sessionId: this.session.id,
-        mountPath: this.mountPath
+        mountPath: this.mountPath,
       });
       return;
     }
@@ -117,7 +164,7 @@ export class FuseMount {
       logger.info('Unmounting FUSE filesystem', {
         component: 'FuseMount',
         sessionId: this.session.id,
-        mountPath: this.mountPath
+        mountPath: this.mountPath,
       });
 
       // Cleanup pending operations first
@@ -130,7 +177,7 @@ export class FuseMount {
             logger.error('Error during FUSE unmount', error, {
               component: 'FuseMount',
               sessionId: this.session.id,
-              mountPath: this.mountPath
+              mountPath: this.mountPath,
             });
             // Don't reject - we want to continue cleanup
           }
@@ -144,13 +191,13 @@ export class FuseMount {
       logger.info('FUSE filesystem unmounted successfully', {
         component: 'FuseMount',
         sessionId: this.session.id,
-        mountPath: this.mountPath
+        mountPath: this.mountPath,
       });
     } catch (error) {
       logger.error('Failed to unmount FUSE filesystem', error as Error, {
         component: 'FuseMount',
         sessionId: this.session.id,
-        mountPath: this.mountPath
+        mountPath: this.mountPath,
       });
       throw error;
     }
@@ -182,7 +229,7 @@ export class FuseMount {
    */
   private buildMountOptions(): object {
     const options: any = {
-      debug: this.config.debugFuse || false
+      debug: this.config.debugFuse || false,
     };
 
     // Add FUSE-specific options
@@ -202,10 +249,12 @@ export class FuseMount {
     if (this.config.mountOptions) {
       for (const option of this.config.mountOptions) {
         const [key, value] = option.split('=');
-        if (value !== undefined) {
-          options[key] = value;
-        } else {
-          options[key] = true;
+        if (key) {
+          if (value !== undefined) {
+            options[key] = value;
+          } else {
+            options[key] = true;
+          }
         }
       }
     }
@@ -228,7 +277,7 @@ export class FuseMount {
       mountPath: this.mountPath,
       sessionId: this.session.id,
       pendingOperations: (this.operations as any).pendingOperations?.size || 0,
-      openFiles: (this.operations as any).fileDescriptors?.size || 0
+      openFiles: (this.operations as any).fileDescriptors?.size || 0,
     };
   }
 
@@ -240,7 +289,7 @@ export class FuseMount {
       logger.warn('Force cleaning up FUSE mount', {
         component: 'FuseMount',
         sessionId: this.session.id,
-        mountPath: this.mountPath
+        mountPath: this.mountPath,
       });
 
       // Cleanup operations first
@@ -260,7 +309,7 @@ export class FuseMount {
             logger.error('Failed to force unmount FUSE filesystem', lazyError as Error, {
               component: 'FuseMount',
               sessionId: this.session.id,
-              mountPath: this.mountPath
+              mountPath: this.mountPath,
             });
           }
         }
@@ -272,7 +321,7 @@ export class FuseMount {
       logger.error('Error during force cleanup', error as Error, {
         component: 'FuseMount',
         sessionId: this.session.id,
-        mountPath: this.mountPath
+        mountPath: this.mountPath,
       });
     }
   }

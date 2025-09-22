@@ -42,7 +42,7 @@ export class AdvancedCache<T> {
       value,
       timestamp: new Date(),
       ttl: options?.ttl || this.defaultTTL,
-      persistent: options?.persistent || false
+      persistent: options?.persistent || false,
     };
 
     this.cache.set(key, entry);
@@ -145,7 +145,7 @@ export class AdvancedCache<T> {
         age,
         ttl: entry.ttl,
         isExpired,
-        isPersistent: entry.persistent || false
+        isPersistent: entry.persistent || false,
       };
     });
 
@@ -157,7 +157,7 @@ export class AdvancedCache<T> {
       hitRate,
       totalHits: this.hitCount,
       totalMisses: this.missCount,
-      entries
+      entries,
     };
   }
 

@@ -1,6 +1,6 @@
 {
   "name": "@goobits/codeflow-buddy",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "MCP server for accessing LSP functionality",
   "main": "dist/index.js",
   "bin": {
@@ -18,9 +18,10 @@
     "test:comprehensive": "bun scripts/test-runner.ts tests/core/comprehensive.test.ts",
     "test:fast": "bun scripts/test-runner.ts --fast",
     "test:minimal": "bun scripts/test-runner.ts --minimal",
-    "test:fuse": "bun scripts/test-runner.ts tests/integration/fuse-integration.test.ts tests/unit/workspace-manager.test.ts tests/integration/websocket-fuse.test.ts",
+    "test:fuse": "bun scripts/test-runner.ts tests/integration/fuse-integration.test.ts tests/unit/workspace-manager.test.ts tests/integration/websocket-fuse.test.ts tests/integration/fuse-native-real.test.ts",
     "test:fuse:unit": "bun scripts/test-runner.ts tests/unit/workspace-manager.test.ts",
     "test:fuse:integration": "bun scripts/test-runner.ts tests/integration/fuse-integration.test.ts tests/integration/websocket-fuse.test.ts",
+    "test:fuse:real": "bun scripts/test-runner.ts tests/integration/fuse-native-real.test.ts",
     "test:ci": "npm run build && npm run test:all",
     "lint": "biome check .",
     "lint:fix": "biome check --fix .",
@@ -58,20 +59,16 @@
     "codebuddy.json"
   ],
   "dependencies": {
+    "@cocalc/fuse-native": "^2.4.3",
     "@modelcontextprotocol/sdk": "^1.12.3",
     "@types/diff-match-patch": "^1.0.36",
     "@types/inquirer": "^9.0.9",
     "@types/jsonwebtoken": "^9.0.10",
-    "bash-language-server": "^5.4.0",
     "diff-match-patch": "^1.0.5",
-    "fuse-native": "^2.2.0",
     "ignore": "^7.0.5",
     "inquirer": "^12.9.6",
     "jsonwebtoken": "^9.0.2",
-    "uuid": "^9.0.0",
-    "vscode-langservers-extracted": "^4.10.0",
-    "ws": "^8.18.0",
-    "yaml-language-server": "^1.15.0"
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

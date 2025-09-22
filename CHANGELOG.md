@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.1.0] - 2025-09-22
+
+### Changed
+- **FUSE Implementation**: Replaced mock FUSE implementation with native `@cocalc/fuse-native` for ARM64 compatibility
+- Updated FUSE mount operations to use callback-style API for compatibility with native library
+- Removed all mock FUSE fallback code paths for cleaner architecture
+
+### Fixed
+- Fixed FUSE native library compatibility issues on ARM64 systems
+- Resolved TypeScript type errors in FUSE mount operations
+- Fixed test isolation issues in WebSocket FUSE integration tests
+- Fixed duplicate `handleSessionDisconnect` method in WebSocket server
+- Fixed incorrect `disconnectSession` method call in session cleanup
+
+### Added
+- Full ARM64 architecture support for FUSE operations
+- Production-ready Docker Compose configuration for multi-tenant deployments
+- Tenant client example implementation
+- Quick-start script for multi-tenant FUSE service
+
 ## [1.0.1] - 2025-09-21
 
 ### Changed

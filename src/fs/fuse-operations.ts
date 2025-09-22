@@ -3,10 +3,14 @@
  * Implements all necessary FUSE callbacks for LSP server filesystem access
  */
 
-import type { EnhancedClientSession, FuseOperationRequest, FuseOperationResponse } from '../types/enhanced-session.js';
-import type { WebSocketTransport } from '../transports/websocket.js';
-import { logger } from '../core/logger.js';
 import { randomUUID } from 'node:crypto';
+import { logger } from '../core/logger.js';
+import type { WebSocketTransport } from '../transports/websocket.js';
+import type {
+  EnhancedClientSession,
+  FuseOperationRequest,
+  FuseOperationResponse,
+} from '../types/enhanced-session.js';
 
 export interface FuseStats {
   mode: number;
@@ -41,7 +45,10 @@ export interface FuseOperationHandlers {
 export class FuseOperations implements FuseOperationHandlers {
   private session: EnhancedClientSession;
   private transport: WebSocketTransport;
-  private pendingOperations = new Map<string, { resolve: Function; reject: Function; timeout: NodeJS.Timeout }>();
+  private pendingOperations = new Map<
+    string,
+    { resolve: Function; reject: Function; timeout: NodeJS.Timeout }
+  >();
   private readonly OPERATION_TIMEOUT_MS = 30000; // 30 seconds
   private fileDescriptors = new Map<number, string>(); // fd -> path mapping
   private nextFd = 1;
@@ -49,6 +56,61 @@ export class FuseOperations implements FuseOperationHandlers {
   constructor(session: EnhancedClientSession, transport: WebSocketTransport) {
     this.session = session;
     this.transport = transport;
+  }
+
+  /**
+   * Validate session has required permissions for the operation
+   */
+  private validatePermissions(operation: string, path?: string): void {
+    // Check if session is authenticated
+    if (!this.session.initialized) {
+      throw new Error('Session not initialized');
+    }
+
+    // Check if session has required permissions
+    const permissions = (this.session as any).permissions || [];
+
+    // Map operations to required permissions
+    const requiredPermissions: Record<string, string> = {
+      readdir: 'file:read',
+      getattr: 'file:read',
+      open: 'file:read',
+      read: 'file:read',
+      write: 'file:write',
+      truncate: 'file:write',
+      mkdir: 'file:write',
+      rmdir: 'file:write',
+      unlink: 'file:write',
+      rename: 'file:write',
+      release: 'file:read',
+    };
+
+    const required = requiredPermissions[operation];
+    if (required && !permissions.includes(required)) {
+      logger.warn('Permission denied for FUSE operation', {
+        component: 'FuseOperations',
+        sessionId: this.session.id,
+        operation,
+        required,
+        path,
+        hasPermissions: permissions,
+      });
+      throw new Error(`Permission denied: ${operation} requires ${required}`);
+    }
+
+    // Validate path is within session workspace
+    if (path && this.session.workspaceDir) {
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      // Basic path traversal check
+      if (normalizedPath.includes('..')) {
+        logger.warn('Path traversal attempt blocked', {
+          component: 'FuseOperations',
+          sessionId: this.session.id,
+          path,
+        });
+        throw new Error('Path traversal not allowed');
+      }
+    }
   }
 
   /**
@@ -65,7 +127,7 @@ export class FuseOperations implements FuseOperationHandlers {
       method,
       path,
       correlationId,
-      ...options
+      ...options,
     };
 
     return new Promise((resolve, reject) => {
@@ -78,12 +140,11 @@ export class FuseOperations implements FuseOperationHandlers {
       this.pendingOperations.set(correlationId, { resolve, reject, timeout });
 
       // Send request to client
-      this.transport.sendRequest(this.session, method, request)
-        .catch(error => {
-          clearTimeout(timeout);
-          this.pendingOperations.delete(correlationId);
-          reject(error);
-        });
+      this.transport.sendRequest(this.session, method, request).catch((error) => {
+        clearTimeout(timeout);
+        this.pendingOperations.delete(correlationId);
+        reject(error);
+      });
     });
   }
 
@@ -98,7 +159,7 @@ export class FuseOperations implements FuseOperationHandlers {
       logger.warn('Received FUSE response for unknown correlation ID', {
         component: 'FuseOperations',
         correlationId,
-        sessionId: this.session.id
+        sessionId: this.session.id,
       });
       return;
     }
@@ -119,11 +180,12 @@ export class FuseOperations implements FuseOperationHandlers {
    * Read directory contents
    */
   async readdir(path: string): Promise<string[]> {
+    this.validatePermissions('readdir', path);
     try {
       logger.debug('FUSE readdir operation', {
         component: 'FuseOperations',
         sessionId: this.session.id,
-        path
+        path,
       });
 
       const entries = await this.sendFuseOperation<string[]>('fuse/readdir', path);
@@ -132,7 +194,7 @@ export class FuseOperations implements FuseOperationHandlers {
       logger.error('FUSE readdir failed', error as Error, {
         component: 'FuseOperations',
         sessionId: this.session.id,
-        path
+        path,
       });
       throw error;
     }
@@ -142,11 +204,12 @@ export class FuseOperations implements FuseOperationHandlers {
    * Get file/directory attributes
    */
   async getattr(path: string): Promise<FuseStats> {
+    this.validatePermissions('getattr', path);
     try {
       logger.debug('FUSE getattr operation', {
         component: 'FuseOperations',
         sessionId: this.session.id,
-        path
+        path,
       });
 
       const stats = await this.sendFuseOperation<FuseStats>('fuse/stat', path);
@@ -167,7 +230,7 @@ export class FuseOperations implements FuseOperationHandlers {
       logger.error('FUSE getattr failed', error as Error, {
         component: 'FuseOperations',
         sessionId: this.session.id,
-        path
+        path,
       });
       throw error;
     }
@@ -177,12 +240,15 @@ export class FuseOperations implements FuseOperationHandlers {
    * Open file and return file descriptor
    */
   async open(path: string, flags: number): Promise<number> {
+    // Check if write mode requires write permission
+    const isWrite = flags & 0x0001 || flags & 0x0002; // O_WRONLY or O_RDWR
+    this.validatePermissions(isWrite ? 'write' : 'open', path);
     try {
       logger.debug('FUSE open operation', {
         component: 'FuseOperations',
         sessionId: this.session.id,
         path,
-        flags
+        flags,
       });
 
       // Request client to prepare file for reading
@@ -198,7 +264,7 @@ export class FuseOperations implements FuseOperationHandlers {
         component: 'FuseOperations',
         sessionId: this.session.id,
         path,
-        flags
+        flags,
       });
       throw error;
     }
@@ -208,6 +274,7 @@ export class FuseOperations implements FuseOperationHandlers {
    * Read file content
    */
   async read(path: string, fd: number, size: number, offset: number): Promise<Buffer> {
+    this.validatePermissions('read', path);
     try {
       logger.debug('FUSE read operation', {
         component: 'FuseOperations',
@@ -215,12 +282,12 @@ export class FuseOperations implements FuseOperationHandlers {
         path,
         fd,
         size,
-        offset
+        offset,
       });
 
       const data = await this.sendFuseOperation<Buffer>('fuse/read', path, {
         flags: fd,
-        data: Buffer.from([size, offset])
+        data: Buffer.from([size, offset]),
       });
 
       return Buffer.isBuffer(data) ? data : Buffer.from(data);
@@ -229,7 +296,7 @@ export class FuseOperations implements FuseOperationHandlers {
         component: 'FuseOperations',
         sessionId: this.session.id,
         path,
-        fd
+        fd,
       });
       throw error;
     }
@@ -239,6 +306,7 @@ export class FuseOperations implements FuseOperationHandlers {
    * Write file content
    */
   async write(path: string, fd: number, buffer: Buffer, offset: number): Promise<number> {
+    this.validatePermissions('write', path);
     try {
       logger.debug('FUSE write operation', {
         component: 'FuseOperations',
@@ -246,12 +314,12 @@ export class FuseOperations implements FuseOperationHandlers {
         path,
         fd,
         size: buffer.length,
-        offset
+        offset,
       });
 
       const bytesWritten = await this.sendFuseOperation<number>('fuse/write', path, {
         flags: fd,
-        data: buffer
+        data: buffer,
       });
 
       return bytesWritten || buffer.length;
@@ -260,7 +328,7 @@ export class FuseOperations implements FuseOperationHandlers {
         component: 'FuseOperations',
         sessionId: this.session.id,
         path,
-        fd
+        fd,
       });
       throw error;
     }
@@ -270,12 +338,13 @@ export class FuseOperations implements FuseOperationHandlers {
    * Release (close) file descriptor
    */
   async release(path: string, fd: number): Promise<void> {
+    this.validatePermissions('release', path);
     try {
       logger.debug('FUSE release operation', {
         component: 'FuseOperations',
         sessionId: this.session.id,
         path,
-        fd
+        fd,
       });
 
       await this.sendFuseOperation('fuse/release', path, { flags: fd });
@@ -285,7 +354,7 @@ export class FuseOperations implements FuseOperationHandlers {
         component: 'FuseOperations',
         sessionId: this.session.id,
         path,
-        fd
+        fd,
       });
       // Don't throw on release failures - clean up anyway
       this.fileDescriptors.delete(fd);
@@ -296,16 +365,17 @@ export class FuseOperations implements FuseOperationHandlers {
    * Truncate file to specified size
    */
   async truncate(path: string, size: number): Promise<void> {
+    this.validatePermissions('truncate', path);
     try {
       await this.sendFuseOperation('fuse/write', path, {
-        data: Buffer.from([size])
+        data: Buffer.from([size]),
       });
     } catch (error) {
       logger.error('FUSE truncate failed', error as Error, {
         component: 'FuseOperations',
         sessionId: this.session.id,
         path,
-        size
+        size,
       });
       throw error;
     }
@@ -315,10 +385,11 @@ export class FuseOperations implements FuseOperationHandlers {
    * Create directory
    */
   async mkdir(path: string, mode: number): Promise<void> {
+    this.validatePermissions('mkdir', path);
     logger.warn('FUSE mkdir operation not implemented - read-only filesystem', {
       component: 'FuseOperations',
       path,
-      mode
+      mode,
     });
     throw new Error('Read-only filesystem');
   }
@@ -327,9 +398,10 @@ export class FuseOperations implements FuseOperationHandlers {
    * Remove directory
    */
   async rmdir(path: string): Promise<void> {
+    this.validatePermissions('rmdir', path);
     logger.warn('FUSE rmdir operation not implemented - read-only filesystem', {
       component: 'FuseOperations',
-      path
+      path,
     });
     throw new Error('Read-only filesystem');
   }
@@ -338,9 +410,10 @@ export class FuseOperations implements FuseOperationHandlers {
    * Delete file
    */
   async unlink(path: string): Promise<void> {
+    this.validatePermissions('unlink', path);
     logger.warn('FUSE unlink operation not implemented - read-only filesystem', {
       component: 'FuseOperations',
-      path
+      path,
     });
     throw new Error('Read-only filesystem');
   }
@@ -349,10 +422,12 @@ export class FuseOperations implements FuseOperationHandlers {
    * Rename file
    */
   async rename(oldPath: string, newPath: string): Promise<void> {
+    this.validatePermissions('rename', oldPath);
+    this.validatePermissions('rename', newPath);
     logger.warn('FUSE rename operation not implemented - read-only filesystem', {
       component: 'FuseOperations',
       oldPath,
-      newPath
+      newPath,
     });
     throw new Error('Read-only filesystem');
   }

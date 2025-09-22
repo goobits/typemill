@@ -11,7 +11,7 @@ This document demonstrates the Phase 1 implementation of the multi-client WebSoc
 codeflow-buddy serve
 
 # Start server on custom port with max clients
-codeflow-buddy serve --port 3001 --max-clients 20
+codeflow-buddy serve --port 3001 --max-clients 10
 ```
 
 ### Client Connection Example

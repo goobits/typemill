@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type WebSocket from 'ws';
 import type { FileDelta } from '../fs/delta.js';
-import type { EnhancedClientSession, WorkspaceInfo, FuseOperationResponse } from '../types/enhanced-session.js';
+import type {
+  EnhancedClientSession,
+  FuseOperationResponse,
+  WorkspaceInfo,
+} from '../types/enhanced-session.js';
 
 export interface ClientSession {
   id: string;
@@ -126,7 +130,7 @@ export class WebSocketTransport {
                 globalProjectId: workspaceInfo.globalProjectId,
                 workspaceId: workspaceInfo.workspaceId,
                 fuseMount: workspaceInfo.fuseMount,
-                workspaceDir: workspaceInfo.workspaceDir
+                workspaceDir: workspaceInfo.workspaceDir,
               };
 
               this.enhancedSessions.set(session.id, enhancedSession);
@@ -142,11 +146,13 @@ export class WebSocketTransport {
               id: message.id,
               result: {
                 sessionId: session.id,
-                workspace: workspaceInfo ? {
-                  workspaceId: workspaceInfo.workspaceId,
-                  globalProjectId: workspaceInfo.globalProjectId,
-                  fuseMount: workspaceInfo.fuseMount
-                } : undefined
+                workspace: workspaceInfo
+                  ? {
+                      workspaceId: workspaceInfo.workspaceId,
+                      globalProjectId: workspaceInfo.globalProjectId,
+                      fuseMount: workspaceInfo.fuseMount,
+                    }
+                  : undefined,
               },
             })
           );
@@ -171,7 +177,7 @@ export class WebSocketTransport {
                   result: {
                     sessionId: session.id,
                     reconnected: true,
-                    projectId: session.projectId
+                    projectId: session.projectId,
                   },
                 })
               );
