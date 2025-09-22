@@ -1,5 +1,5 @@
 # 🤖 codeflow-buddy
-MCP server bridging Language Server Protocol functionality to AI coding assistants with 38 MCP tools
+MCP server bridging Language Server Protocol functionality to AI coding assistants with 29 MCP tools
 
 ## ✨ Key Features
 - **🎯 Symbol Navigation** - Go to definition and find references with intelligent position resolution

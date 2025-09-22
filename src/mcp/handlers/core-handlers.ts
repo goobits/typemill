@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { type WorkspaceEdit, applyWorkspaceEdit } from '../../core/file-operations/editor.js';
 import { uriToPath } from '../../core/file-operations/path-utils.js';
 import type { SymbolService } from '../../services/symbol-service.js';
+import { registerTools } from '../tool-registry.js';
 import {
   createContextualErrorResponse,
   createFileModificationResponse,

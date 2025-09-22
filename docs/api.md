@@ -1,6 +1,6 @@
 # 🔧 API Reference
 
-Complete documentation for all 28 MCP tools provided by codebuddy.
+Complete documentation for all 29 MCP tools provided by codeflow-buddy.
 
 ## Core Navigation & Analysis
 
@@ -301,6 +301,75 @@ Search for symbols across the entire workspace.
 
 **Parameters:**
 - `query`: Search query string
+
+## Batch Operations
+
+### `batch_execute`
+
+Execute multiple MCP operations in a single transaction with options for parallel execution, dry-run previews, and automatic rollback on failure.
+
+**Parameters:**
+- `operations`: Array of tool operations to execute
+  - `tool`: Name of the MCP tool to execute (e.g., "find_definition", "rename_file", "get_diagnostics")
+  - `args`: Arguments for the specific tool (same as individual tool arguments)
+  - `id`: Optional identifier for correlating results
+- `options`: Execution options for the batch operation
+  - `atomic`: If true, all operations succeed or all fail with automatic rollback (default: false)
+  - `parallel`: If true, execute operations in parallel for better performance (default: false)
+  - `dry_run`: If true, preview what would happen without executing (default: false)
+  - `stop_on_error`: If true, stop execution when first error occurs (default: true)
+
+**Examples:**
+```bash
+# Execute multiple operations sequentially
+{
+  "tool": "batch_execute",
+  "arguments": {
+    "operations": [
+      {
+        "tool": "find_definition",
+        "args": {"file_path": "src/index.ts", "symbol_name": "main"},
+        "id": "find-main"
+      },
+      {
+        "tool": "rename_file",
+        "args": {"old_path": "old.ts", "new_path": "new.ts"},
+        "id": "rename-1"
+      },
+      {
+        "tool": "get_diagnostics",
+        "args": {"file_path": "new.ts"},
+        "id": "check-errors"
+      }
+    ],
+    "options": {
+      "atomic": true,
+      "parallel": false,
+      "dry_run": false
+    }
+  }
+}
+
+# Preview operations without executing
+{
+  "tool": "batch_execute",
+  "arguments": {
+    "operations": [
+      {
+        "tool": "format_document",
+        "args": {"file_path": "src/utils.ts"}
+      },
+      {
+        "tool": "get_diagnostics",
+        "args": {"file_path": "src/utils.ts"}
+      }
+    ],
+    "options": {
+      "dry_run": true
+    }
+  }
+}
+```
 
 ## System Operations
 
