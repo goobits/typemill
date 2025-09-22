@@ -30,6 +30,7 @@ codeflow-buddy setup    # Smart setup with auto-detection
 codeflow-buddy status   # Show what's working right now
 codeflow-buddy start    # Start the MCP server for Claude Code
 codeflow-buddy stop     # Stop the running MCP server
+codeflow-buddy serve    # Start WebSocket server (Phase 2+)
 
 # Quality assurance
 bun run lint         # Check code style and issues
@@ -47,6 +48,12 @@ bun run test:minimal  # Ultra-minimal runner for very slow systems
 
 # Full pre-publish check
 bun run prepublishOnly  # build + test + typecheck
+
+# WebSocket Server Commands (Phase 2+)
+node dist/index.js serve --port 3000                    # Basic WebSocket server
+node dist/index.js serve --require-auth --jwt-secret KEY # With JWT authentication
+node dist/index.js serve --tls-key key.pem --tls-cert cert.pem # With TLS/WSS
+docker-compose up -d                                     # Full Docker deployment
 ```
 
 ## Architecture
@@ -81,8 +88,44 @@ bun run prepublishOnly  # build + test + typecheck
 - File scanning with gitignore support for project structure detection
 - Automatic migration from old `codebuddy.json` format
 
+**WebSocket Server Layer** (`src/server/ws-server.ts`) - *Phase 2+*
+
+- Production-ready WebSocket server with HTTP health endpoints
+- Session management with connection recovery (60-second grace periods)
+- JWT authentication and TLS/WSS support for enterprise security
+- Structured logging and comprehensive monitoring
+
+**Authentication System** (`src/auth/jwt-auth.ts`) - *Phase 3*
+
+- JWT-based authentication with configurable expiry and permissions
+- Project-based access control with granular permissions
+- `/auth` HTTP endpoint for token generation
+- Token validation during WebSocket initialization
+
+**Delta Update System** (`src/fs/delta.ts`) - *Phase 3*
+
+- diff-match-patch integration for efficient file synchronization
+- Automatic compression ratio analysis (only uses delta if >20% savings)
+- Graceful fallback to full updates when delta is inefficient
+- Network bandwidth optimization for large file modifications
+
+**Advanced Caching** (`src/core/cache.ts`) - *Phase 3*
+
+- Event-driven cache invalidation replacing TTL-based expiration
+- Persistent file cache until explicit invalidation events
+- Hit rate tracking and comprehensive cache statistics
+- Pattern-based bulk invalidation for directory changes
+
+**Streaming File Access** (`src/fs/stream.ts`)
+
+- Enhanced with delta updates and intelligent caching
+- Real-time file change notification handling
+- Cache invalidation on file modification events
+- Performance monitoring and statistics
+
 ### Data Flow
 
+**Traditional MCP Flow:**
 1. MCP client sends tool request (e.g., `find_definition`)
 2. Main server looks up tool handler in central registry
 3. Tool handler is executed with appropriate service injection
@@ -90,6 +133,15 @@ bun run prepublishOnly  # build + test + typecheck
 5. If server not running, spawns new LSP server process
 6. Sends LSP request to server and correlates response
 7. Transforms LSP response back to MCP format
+
+**WebSocket Server Flow (Phase 2+):**
+1. Client connects via WebSocket (with optional JWT authentication)
+2. Session manager creates/recovers client session with project context
+3. WebSocket transport receives MCP message and validates permissions
+4. Streaming file access provides cached content or requests from client
+5. Delta processor optimizes file updates using diff-match-patch
+6. LSP servers process requests with intelligent crash recovery
+7. Response sent back through WebSocket with structured logging
 
 ### Tool Registration Pattern
 
@@ -196,6 +248,73 @@ The implementation handles LSP protocol specifics:
 - Preloading of servers for detected file types
 - Automatic server restart based on configured intervals
 - Manual server restart via MCP tool
+
+## Production Deployment (Phase 2+)
+
+### Docker Deployment
+```bash
+# Build and start full stack
+docker-compose up -d
+
+# Production service only
+docker build -f Dockerfile.service -t codeflow-buddy:latest .
+docker run -d -p 3000:3000 codeflow-buddy:latest
+```
+
+### Health Monitoring
+```bash
+# Health check endpoint
+curl http://localhost:3000/healthz
+
+# Prometheus metrics
+curl http://localhost:3000/metrics
+```
+
+### WebSocket Server Configuration
+```bash
+# Basic server
+node dist/index.js serve --port 3000 --max-clients 50
+
+# With authentication
+node dist/index.js serve --require-auth --jwt-secret "your-secret"
+
+# With TLS/WSS
+node dist/index.js serve --tls-key server.key --tls-cert server.crt
+
+# Enterprise setup
+node dist/index.js serve \
+  --port 3000 --max-clients 100 \
+  --require-auth --jwt-secret "enterprise-key" \
+  --tls-key /etc/ssl/server.key --tls-cert /etc/ssl/server.crt
+```
+
+### Environment Variables
+- `NODE_ENV` - Environment mode (development/production)
+- `LOG_LEVEL` - Logging level (debug/info/warn/error)
+- `JWT_SECRET` - JWT signing secret for authentication
+- `JWT_EXPIRY` - Token expiry time (default: 24h)
+- `JWT_ISSUER` - Token issuer (default: codeflow-buddy)
+- `JWT_AUDIENCE` - Token audience (default: codeflow-clients)
+
+## Performance Features (Phase 3)
+
+### Advanced Caching
+- **Event-driven invalidation** - Files cached until explicit change notifications
+- **Hit rate tracking** - Comprehensive cache statistics and monitoring
+- **Pattern invalidation** - Bulk invalidation for directory changes
+- **Cache statistics** - Available via `/healthz` endpoint
+
+### Delta Updates
+- **diff-match-patch integration** - Efficient file synchronization
+- **Automatic optimization** - Only uses delta if >20% bandwidth savings
+- **Compression ratio analysis** - Real-time efficiency monitoring
+- **Graceful fallback** - Full updates when delta is inefficient
+
+### Security Features
+- **JWT Authentication** - Token-based project access control
+- **TLS/WSS Support** - Encrypted WebSocket connections
+- **Permission System** - Granular access controls per project
+- **Client Certificate Validation** - Enhanced security for enterprise
 
 ## Dead Code Detection
 

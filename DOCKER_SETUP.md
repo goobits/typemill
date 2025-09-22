@@ -52,6 +52,17 @@ docker-compose exec postgres-dev psql -U devuser -d devdb
 - `NODE_ENV`: Environment mode (development/production)
 - `LOG_LEVEL`: Logging level (debug/info/warn/error)
 
+**Authentication (Phase 3):**
+- `JWT_SECRET`: JWT signing secret for authentication
+- `JWT_EXPIRY`: Token expiry time (default: 24h)
+- `JWT_ISSUER`: Token issuer (default: codeflow-buddy)
+- `JWT_AUDIENCE`: Token audience (default: codeflow-clients)
+
+**TLS/Security:**
+- `TLS_KEY_PATH`: Path to TLS private key file
+- `TLS_CERT_PATH`: Path to TLS certificate file
+- `TLS_CA_PATH`: Path to CA certificate for client validation
+
 **Development Containers:**
 - `MCP_SERVER`: WebSocket server URL (ws://codeflow-service:3000)
 - `PROJECT_ID`: Unique project identifier
@@ -67,8 +78,7 @@ docker-compose exec postgres-dev psql -U devuser -d devdb
 
 ## Client Connection Example
 
-From within a development container:
-
+### Basic Connection (No Auth)
 ```javascript
 // Connect to CodeFlow service
 const ws = new WebSocket('ws://codeflow-service:3000');
@@ -79,8 +89,34 @@ ws.send(JSON.stringify({
   project: process.env.PROJECT_ID,
   projectRoot: process.env.PROJECT_ROOT
 }));
+```
 
-// Use MCP tools
+### With JWT Authentication (Phase 3)
+```javascript
+// 1. Get authentication token
+const authResponse = await fetch('http://codeflow-service:3000/auth', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    projectId: process.env.PROJECT_ID,
+    secretKey: process.env.PROJECT_SECRET
+  })
+});
+const { token } = await authResponse.json();
+
+// 2. Connect with token
+const ws = new WebSocket('ws://codeflow-service:3000');
+ws.send(JSON.stringify({
+  method: 'initialize',
+  project: process.env.PROJECT_ID,
+  projectRoot: process.env.PROJECT_ROOT,
+  token: token
+}));
+```
+
+### Using MCP Tools
+```javascript
+// Use MCP tools (same for both auth modes)
 ws.send(JSON.stringify({
   method: 'find_definition',
   params: {
@@ -100,6 +136,7 @@ docker build -f Dockerfile.service -t codeflow-buddy:latest .
 
 ### 2. Run in production mode:
 
+**Basic Production:**
 ```bash
 docker run -d \
   --name codeflow-service \
@@ -107,6 +144,31 @@ docker run -d \
   -e NODE_ENV=production \
   -e MAX_CLIENTS=100 \
   codeflow-buddy:latest
+```
+
+**With JWT Authentication:**
+```bash
+docker run -d \
+  --name codeflow-service \
+  -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e MAX_CLIENTS=100 \
+  -e JWT_SECRET=your-super-secret-key \
+  codeflow-buddy:latest serve --require-auth
+```
+
+**Enterprise with TLS/WSS:**
+```bash
+docker run -d \
+  --name codeflow-service \
+  -p 3000:3000 \
+  -v /etc/ssl/certs:/app/certs:ro \
+  -e NODE_ENV=production \
+  -e MAX_CLIENTS=100 \
+  -e JWT_SECRET=enterprise-secret \
+  -e TLS_KEY_PATH=/app/certs/server.key \
+  -e TLS_CERT_PATH=/app/certs/server.crt \
+  codeflow-buddy:latest serve --require-auth --tls-key /app/certs/server.key --tls-cert /app/certs/server.crt
 ```
 
 ### 3. Using Docker Swarm:
@@ -149,17 +211,77 @@ curl http://localhost:3000/healthz
 {
   "status": "healthy",
   "timestamp": "2025-01-01T00:00:00Z",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "uptime": 3600,
   "connections": {
     "active": 5,
-    "disconnected": 2
+    "disconnected": 2,
+    "total": 7
+  },
+  "sessions": {
+    "active": 5,
+    "disconnected": 2,
+    "projects": 3
   },
   "lspServers": {
     "active": 8,
-    "crashed": 0
+    "crashed": 0,
+    "projects": 3,
+    "languages": 4
+  },
+  "cache": {
+    "size": 42,
+    "hitRate": 0.85,
+    "totalHits": 1250,
+    "totalMisses": 220
+  },
+  "deltaProcessor": {
+    "diffTimeout": 1,
+    "editCost": 4,
+    "minDeltaSize": 1024,
+    "maxPatchSizeRatio": 0.8
+  },
+  "authentication": {
+    "enabled": true,
+    "issuer": "codeflow-buddy",
+    "audience": "codeflow-clients"
+  },
+  "security": {
+    "tls": true,
+    "protocol": "wss",
+    "clientCertValidation": false
   }
 }
+```
+
+### Authentication Endpoint (Phase 3)
+
+```bash
+# Get JWT token
+curl -X POST http://localhost:3000/auth \
+  -H "Content-Type: application/json" \
+  -d '{"projectId": "my-project", "secretKey": "my-secret"}'
+
+# Expected response
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresAt": "2025-01-02T00:00:00Z",
+  "permissions": ["file:read", "file:write", "lsp:query", "lsp:symbol", "session:manage"]
+}
+```
+
+### Prometheus Metrics
+
+```bash
+# Get metrics in Prometheus format
+curl http://localhost:3000/metrics
+
+# Sample metrics
+codeflow_connections_active 5
+codeflow_connections_disconnected 2
+codeflow_projects_active 3
+codeflow_lsp_servers_active 8
+codeflow_uptime_seconds 3600
 ```
 
 ### Container Logs

@@ -1,7 +1,7 @@
 # 🤖 codeflow-buddy
-MCP server bridging Language Server Protocol functionality to AI coding assistants with 29 MCP tools
+**Enterprise-grade MCP server** bridging Language Server Protocol functionality to AI coding assistants with **30+ MCP tools** and **WebSocket deployment**
 
-## ✨ Key Features
+## ✨ Core Features
 - **🎯 Symbol Navigation** - Go to definition and find references with intelligent position resolution
 - **🔧 Safe Refactoring** - Rename symbols and files across entire codebases with LSP validation
 - **🧠 Code Intelligence** - Hover info, completions, diagnostics, and semantic analysis via LSP
@@ -9,7 +9,17 @@ MCP server bridging Language Server Protocol functionality to AI coding assistan
 - **🤖 AI-Optimized Protocol** - Robust symbol resolution handling imprecise positions from LLMs
 - **⚡ Smart Configuration** - Auto-detection and setup with `codeflow-buddy setup` command
 
+## 🚀 Enterprise Features
+- **🔒 JWT Authentication** - Secure token-based project access control
+- **🛡️ TLS/WSS Support** - Encrypted WebSocket connections for production
+- **⚡ Advanced Caching** - Event-driven invalidation with hit rate tracking
+- **📦 Delta Updates** - diff-match-patch for 80% bandwidth reduction on large files
+- **🐳 Docker Ready** - Complete containerization with health monitoring
+- **📊 Production Monitoring** - Structured logging, metrics, and health endpoints
+
 ## 🚀 Quick Start
+
+### Traditional MCP Server
 ```bash
 # Install globally (provides `codeflow-buddy` command)
 npm install -g @goobits/codeflow-buddy
@@ -24,6 +34,22 @@ codeflow-buddy status
 codeflow-buddy start
 ```
 
+### WebSocket Server (Production)
+```bash
+# Clone and build
+git clone https://github.com/goobits/codeflow-buddy
+cd codeflow-buddy && bun install && bun run build
+
+# Start basic WebSocket server
+node dist/index.js serve --port 3000
+
+# With authentication
+node dist/index.js serve --require-auth --jwt-secret "your-secret"
+
+# Docker deployment
+docker-compose up -d
+```
+
 ## 📚 MCP Integration
 ```json
 # Add to your MCP client configuration (e.g., Claude Code)
@@ -35,6 +61,20 @@ codeflow-buddy start
     }
   }
 }
+```
+
+## 📊 Production Monitoring
+```bash
+# Health check
+curl http://localhost:3000/healthz
+
+# Prometheus metrics
+curl http://localhost:3000/metrics
+
+# Authentication endpoint (if enabled)
+curl -X POST http://localhost:3000/auth \
+  -H "Content-Type: application/json" \
+  -d '{"projectId": "my-project", "secretKey": "my-secret"}'
 ```
 
 ## 🛠️ Language Server Setup
@@ -100,6 +140,11 @@ bun install
 
 # Development with hot reload
 bun run dev
+
+# WebSocket server development
+node dist/index.js serve --port 3000                    # Basic server
+node dist/index.js serve --require-auth --jwt-secret KEY # With auth
+docker-compose up -d                                     # Full stack
 
 # Testing
 bun run test:fast     # Fast mode with optimizations
