@@ -13,9 +13,22 @@ services:
       - NODE_ENV=development
       - MAX_CLIENTS=20
       - LOG_LEVEL=debug
+      - ENABLE_FUSE=true
     volumes:
       # Mount logs directory for persistence
       - ./logs:/app/logs
+      # FUSE mount directories
+      - /tmp/codeflow-workspaces:/tmp/codeflow-workspaces:shared
+      - /tmp/codeflow-mounts:/tmp/codeflow-mounts:shared
+    devices:
+      # Required for FUSE operations
+      - /dev/fuse:/dev/fuse
+    cap_add:
+      # Required capabilities for FUSE
+      - SYS_ADMIN
+    security_opt:
+      # Allow access to FUSE devices
+      - apparmor:unconfined
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
       interval: 30s

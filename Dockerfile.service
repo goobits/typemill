@@ -1,11 +1,16 @@
 # Dockerfile.service - CodeFlow Buddy WebSocket Service
 FROM node:20-slim
 
-# Install system dependencies
+# Install system dependencies including FUSE
 RUN apt-get update && apt-get install -y \
     git \
     curl \
     unzip \
+    fuse \
+    libfuse-dev \
+    pkg-config \
+    build-essential \
+    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app directory
@@ -23,9 +28,16 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Create non-root user for security
+# Create directories for FUSE mounts
+RUN mkdir -p /tmp/codeflow-workspaces /tmp/codeflow-mounts
+
+# Create non-root user for security and add to fuse group
 RUN useradd -r -s /bin/false codeflow
-RUN chown -R codeflow:codeflow /app
+RUN usermod -a -G fuse codeflow
+RUN chown -R codeflow:codeflow /app /tmp/codeflow-workspaces /tmp/codeflow-mounts
+
+# Note: Container will need to run in privileged mode for FUSE to work
+# or with specific capabilities and device access
 USER codeflow
 
 # Expose the WebSocket port
@@ -40,5 +52,5 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV MAX_CLIENTS=50
 
-# Start the service
-CMD ["node", "dist/index.js", "serve", "--port", "3000", "--max-clients", "50"]
+# Start the service with FUSE support
+CMD ["node", "dist/index.js", "serve", "--port", "3000", "--max-clients", "50", "--enable-fuse"]

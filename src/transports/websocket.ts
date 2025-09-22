@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type WebSocket from 'ws';
 import type { FileDelta } from '../fs/delta.js';
+import type { EnhancedClientSession, WorkspaceInfo, FuseOperationResponse } from '../types/enhanced-session.js';
 
 export interface ClientSession {
   id: string;
@@ -45,13 +46,16 @@ export interface DeltaWriteResponse {
 
 export class WebSocketTransport {
   private sessions = new Map<string, ClientSession>();
+  private enhancedSessions = new Map<string, EnhancedClientSession>();
   private pendingRequests = new Map<string, { resolve: Function; reject: Function }>();
 
   constructor(
     private onMessage: (session: ClientSession, message: MCPMessage) => Promise<any>,
     private onSessionReconnect?: (sessionId: string, socket: WebSocket) => ClientSession | null,
     private onSessionDisconnect?: (sessionId: string) => void,
-    private validateToken?: (token: string, projectId: string) => Promise<boolean>
+    private validateToken?: (token: string, projectId: string) => Promise<boolean>,
+    private onWorkspaceCreate?: (session: ClientSession) => Promise<WorkspaceInfo>,
+    private onFuseResponse?: (sessionId: string, response: FuseOperationResponse) => void
   ) {}
 
   handleConnection(socket: WebSocket): void {
@@ -110,11 +114,40 @@ export class WebSocketTransport {
 
           this.sessions.set(session.id, session);
 
+          // Create workspace and enhanced session if workspace manager available
+          let workspaceInfo: WorkspaceInfo | undefined;
+          if (this.onWorkspaceCreate) {
+            try {
+              workspaceInfo = await this.onWorkspaceCreate(session);
+
+              // Create enhanced session
+              const enhancedSession: EnhancedClientSession = {
+                ...session,
+                globalProjectId: workspaceInfo.globalProjectId,
+                workspaceId: workspaceInfo.workspaceId,
+                fuseMount: workspaceInfo.fuseMount,
+                workspaceDir: workspaceInfo.workspaceDir
+              };
+
+              this.enhancedSessions.set(session.id, enhancedSession);
+            } catch (error) {
+              console.error('Failed to create workspace for session:', error);
+              // Continue without workspace - fallback to basic session
+            }
+          }
+
           // Send initialize response
           socket.send(
             JSON.stringify({
               id: message.id,
-              result: { sessionId: session.id },
+              result: {
+                sessionId: session.id,
+                workspace: workspaceInfo ? {
+                  workspaceId: workspaceInfo.workspaceId,
+                  globalProjectId: workspaceInfo.globalProjectId,
+                  fuseMount: workspaceInfo.fuseMount
+                } : undefined
+              },
             })
           );
 
@@ -173,6 +206,12 @@ export class WebSocketTransport {
           return;
         }
 
+        // Handle FUSE operation responses
+        if (message.method?.startsWith('fuse/') && this.onFuseResponse) {
+          this.onFuseResponse(session.id, message as unknown as FuseOperationResponse);
+          return;
+        }
+
         // Handle response to our request
         if (message.id && this.pendingRequests.has(message.id)) {
           const pending = this.pendingRequests.get(message.id)!;
@@ -226,6 +265,7 @@ export class WebSocketTransport {
     socket.on('close', () => {
       if (session) {
         this.sessions.delete(session.id);
+        this.enhancedSessions.delete(session.id);
         // Notify session manager about disconnection
         if (this.onSessionDisconnect) {
           this.onSessionDisconnect(session.id);
@@ -237,6 +277,7 @@ export class WebSocketTransport {
       console.error('WebSocket error:', error);
       if (session) {
         this.sessions.delete(session.id);
+        this.enhancedSessions.delete(session.id);
         // Notify session manager about disconnection
         if (this.onSessionDisconnect) {
           this.onSessionDisconnect(session.id);
@@ -275,5 +316,13 @@ export class WebSocketTransport {
 
   getSession(id: string): ClientSession | undefined {
     return this.sessions.get(id);
+  }
+
+  getEnhancedSession(id: string): EnhancedClientSession | undefined {
+    return this.enhancedSessions.get(id);
+  }
+
+  getEnhancedSessions(): EnhancedClientSession[] {
+    return Array.from(this.enhancedSessions.values());
   }
 }

@@ -108,11 +108,20 @@ if (args.length === 0) {
   console.log('Setup options:');
   console.log('  --all         Auto-install all language servers for detected file types');
   console.log('');
+  console.log('Serve options:');
+  console.log('  --port N                Port number (default: 3000)');
+  console.log('  --max-clients N         Maximum concurrent clients (default: 10)');
+  console.log('  --enable-fuse           Enable FUSE filesystem isolation');
+  console.log('  --require-auth          Require JWT authentication');
+  console.log('  --jwt-secret SECRET     JWT signing secret');
+  console.log('');
   console.log('Quick start:');
   console.log('  codeflow-buddy setup        # Interactive setup');
   console.log('  codeflow-buddy setup --all  # Auto-install all servers');
   console.log('  codeflow-buddy status       # Check server status');
   console.log('  codeflow-buddy start        # Start MCP server for Claude Code');
+  console.log('  codeflow-buddy serve        # Start WebSocket server');
+  console.log('  codeflow-buddy serve --enable-fuse  # With FUSE isolation');
   console.log('');
   console.log('Configuration:');
   console.log('  Config file: .codebuddy/config.json');
@@ -142,6 +151,9 @@ if (subcommand === 'setup') {
   // Parse serve options
   const portIndex = args.indexOf('--port');
   const maxClientsIndex = args.indexOf('--max-clients');
+  const enableFuseIndex = args.indexOf('--enable-fuse');
+  const requireAuthIndex = args.indexOf('--require-auth');
+  const jwtSecretIndex = args.indexOf('--jwt-secret');
 
   const options = {
     port:
@@ -150,6 +162,9 @@ if (subcommand === 'setup') {
       maxClientsIndex !== -1 && args[maxClientsIndex + 1]
         ? Number.parseInt(args[maxClientsIndex + 1]!, 10)
         : 10,
+    enableFuse: enableFuseIndex !== -1,
+    requireAuth: requireAuthIndex !== -1,
+    jwtSecret: jwtSecretIndex !== -1 && args[jwtSecretIndex + 1] ? args[jwtSecretIndex + 1] : undefined,
   };
 
   await serveCommand(options);
