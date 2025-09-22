@@ -12,6 +12,7 @@ export type ServiceType =
   | 'hierarchy'
   | 'lsp'
   | 'serviceContext'
+  | 'batch'
   | 'none';
 
 export interface ToolRegistryEntry {
