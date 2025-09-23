@@ -2,6 +2,7 @@
 import { resolve } from 'node:path';
 import type { HierarchyService } from '../../services/intelligence/hierarchy-service.js';
 import type { CallHierarchyItem, TypeHierarchyItem } from '../../types.js';
+import { formatHumanRange, toHumanPosition, toLSPPosition } from '../../utils/index.js';
 import { registerTools } from '../tool-registry.js';
 import { createMCPResponse } from '../utils.js';
 
@@ -14,10 +15,9 @@ export async function handlePrepareCallHierarchy(
   const absolutePath = resolve(file_path);
 
   try {
-    const items = await hierarchyService.prepareCallHierarchy(absolutePath, {
-      line: line - 1, // Convert to 0-indexed
-      character,
-    });
+    const humanPos = { line, character };
+    const lspPos = toLSPPosition(humanPos);
+    const items = await hierarchyService.prepareCallHierarchy(absolutePath, lspPos);
 
     if (items.length === 0) {
       return createMCPResponse(
@@ -27,10 +27,10 @@ export async function handlePrepareCallHierarchy(
 
     const itemDescriptions = items.map((item, index) => {
       const kindName = getSymbolKindName(item.kind);
-      const range = `${item.range.start.line + 1}:${item.range.start.character} - ${item.range.end.line + 1}:${item.range.end.character}`;
+      const humanRange = formatHumanRange({ start: toHumanPosition(item.range.start), end: toHumanPosition(item.range.end) }, 'short');
       const detail = item.detail ? ` - ${item.detail}` : '';
 
-      return `${index + 1}. **${item.name}** (${kindName}) at ${range}${detail}\n   URI: ${item.uri}`;
+      return `${index + 1}. **${item.name}** (${kindName}) at ${humanRange}${detail}\n   URI: ${item.uri}`;
     });
 
     return createMCPResponse(
@@ -57,10 +57,9 @@ export async function handleGetCallHierarchyIncomingCalls(
     // First prepare call hierarchy to get the item
     const absolutePath = resolve(args.file_path);
     try {
-      const items = await hierarchyService.prepareCallHierarchy(absolutePath, {
-        line: args.line - 1, // Convert to 0-indexed
-        character: args.character,
-      });
+      const humanPos = { line: args.line, character: args.character };
+      const lspPos = toLSPPosition(humanPos);
+      const items = await hierarchyService.prepareCallHierarchy(absolutePath, lspPos);
 
       if (items.length === 0 || !items[0]) {
         return createMCPResponse(
@@ -95,7 +94,7 @@ export async function handleGetCallHierarchyIncomingCalls(
       const ranges = call.fromRanges
         .map(
           (range) =>
-            `${range.start.line + 1}:${range.start.character} - ${range.end.line + 1}:${range.end.character}`
+            formatHumanRange({ start: toHumanPosition(range.start), end: toHumanPosition(range.end) }, 'short')
         )
         .join(', ');
 
@@ -126,10 +125,9 @@ export async function handleGetCallHierarchyOutgoingCalls(
     // First prepare call hierarchy to get the item
     const absolutePath = resolve(args.file_path);
     try {
-      const items = await hierarchyService.prepareCallHierarchy(absolutePath, {
-        line: args.line - 1, // Convert to 0-indexed
-        character: args.character,
-      });
+      const humanPos = { line: args.line, character: args.character };
+      const lspPos = toLSPPosition(humanPos);
+      const items = await hierarchyService.prepareCallHierarchy(absolutePath, lspPos);
 
       if (items.length === 0 || !items[0]) {
         return createMCPResponse(
@@ -164,7 +162,7 @@ export async function handleGetCallHierarchyOutgoingCalls(
       const ranges = call.fromRanges
         .map(
           (range) =>
-            `${range.start.line + 1}:${range.start.character} - ${range.end.line + 1}:${range.end.character}`
+            formatHumanRange({ start: toHumanPosition(range.start), end: toHumanPosition(range.end) }, 'short')
         )
         .join(', ');
 

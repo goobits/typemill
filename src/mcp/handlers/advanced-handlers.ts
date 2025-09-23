@@ -5,6 +5,7 @@ import { pathToUri, uriToPath } from '../../core/file-operations/path-utils.js';
 import type { FileService } from '../../services/file-service.js';
 import type { SymbolService } from '../../services/lsp/symbol-service.js';
 import type { DocumentSymbol, SymbolInformation } from '../../types.js';
+import { formatLSPLocation, toHumanPosition } from '../../utils/index.js';
 import { registerTools } from '../tool-registry.js';
 import {
   createFileModificationResponse,
@@ -36,7 +37,7 @@ export async function handleGetCodeActions(
     if (codeActions.length === 0) {
       return createNoResultsResponse(
         'code actions',
-        `${file_path}${range ? ` at lines ${range.start.line + 1}-${range.end.line + 1}` : ''}`
+        `${file_path}${range ? ` at lines ${toHumanPosition(range.start).line}-${toHumanPosition(range.end).line}` : ''}`
       );
     }
 
@@ -166,12 +167,10 @@ export async function handleSearchWorkspaceSymbols(
       .slice(0, 50) // Limit to first 50 results
       .map((symbol, index) => {
         const location = symbol.location;
-        const filePath = uriToPath(location.uri);
-        const line = location.range.start.line + 1;
-        const character = location.range.start.character + 1;
         const symbolKind = symbol.kind ? String(symbol.kind) : 'unknown';
+        const locationString = formatLSPLocation(location);
 
-        return `${index + 1}. ${symbol.name} (${symbolKind}) - ${filePath}:${line}:${character}`;
+        return `${index + 1}. ${symbol.name} (${symbolKind}) - ${locationString}`;
       });
 
     return createListResponse(`matching "${query}"`, symbolDescriptions, {
@@ -213,11 +212,10 @@ export async function handleGetDocumentSymbols(
       // Handle hierarchical DocumentSymbol[]
       const formatDocumentSymbol = (symbol: DocumentSymbol, indent = 0): string[] => {
         const prefix = '  '.repeat(indent);
-        const line = symbol.range.start.line + 1;
-        const character = symbol.range.start.character + 1;
+        const humanPos = toHumanPosition(symbol.range.start);
         const symbolKind = symbolService.symbolKindToString(symbol.kind);
 
-        const result = [`${prefix}${symbol.name} (${symbolKind}) - Line ${line}:${character}`];
+        const result = [`${prefix}${symbol.name} (${symbolKind}) - Line ${humanPos.line}:${humanPos.character}`];
 
         if (symbol.children && symbol.children.length > 0) {
           for (const child of symbol.children) {
@@ -235,11 +233,10 @@ export async function handleGetDocumentSymbols(
     } else {
       // Handle flat SymbolInformation[]
       symbolDescriptions = symbols.map((symbol: SymbolInformation, index: number) => {
-        const line = symbol.location.range.start.line + 1;
-        const character = symbol.location.range.start.character + 1;
+        const humanPos = toHumanPosition(symbol.location.range.start);
         const symbolKind = symbol.kind ? symbolService.symbolKindToString(symbol.kind) : 'unknown';
 
-        return `${index + 1}. ${symbol.name} (${symbolKind}) - Line ${line}:${character}`;
+        return `${index + 1}. ${symbol.name} (${symbolKind}) - Line ${humanPos.line}:${humanPos.character}`;
       });
     }
 
@@ -273,11 +270,11 @@ export async function handleGetFoldingRanges(
 
     const rangeDescriptions = foldingRanges.map((range, index) => {
       const startLine = range.startLine + 1; // Convert to 1-indexed
-      const endLine = range.endLine + 1;
+      const endLine = range.endLine + 1; // Convert to 1-indexed
       const kind = range.kind || 'code';
       const characterInfo =
         range.startCharacter !== undefined && range.endCharacter !== undefined
-          ? ` (chars ${range.startCharacter}-${range.endCharacter})`
+          ? ` (chars ${range.startCharacter + 1}-${range.endCharacter + 1})`
           : '';
 
       return `${index + 1}. **${kind}** block: Lines ${startLine}-${endLine}${characterInfo}${range.collapsedText ? ` ("${range.collapsedText}")` : ''}`;
@@ -335,14 +332,12 @@ export async function handleGetDocumentLinks(
     }
 
     const linkDescriptions = documentLinks.map((link, index) => {
-      const startLine = link.range.start.line + 1; // Convert to 1-indexed
-      const startChar = link.range.start.character + 1;
-      const endLine = link.range.end.line + 1;
-      const endChar = link.range.end.character + 1;
+      const startPos = toHumanPosition(link.range.start);
+      const endPos = toHumanPosition(link.range.end);
 
-      let description = `${index + 1}. **Link** at Line ${startLine}:${startChar}`;
-      if (startLine !== endLine || startChar !== endChar) {
-        description += ` to ${endLine}:${endChar}`;
+      let description = `${index + 1}. **Link** at Line ${startPos.line}:${startPos.character}`;
+      if (startPos.line !== endPos.line || startPos.character !== endPos.character) {
+        description += ` to ${endPos.line}:${endPos.character}`;
       }
 
       if (link.target) {

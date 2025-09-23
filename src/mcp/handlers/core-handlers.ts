@@ -1,14 +1,15 @@
 import { resolve } from 'node:path';
 import { logger } from '../../core/diagnostics/logger.js';
 import { applyWorkspaceEdit, type WorkspaceEdit } from '../../core/file-operations/editor.js';
-import { uriToPath } from '../../core/file-operations/path-utils.js';
 import type { SymbolService } from '../../services/lsp/symbol-service.js';
 import {
   assertValidFilePath,
   assertValidSymbolName,
   formatFileLocation,
+  formatLSPLocation,
   measureAndTrack,
   toHumanPosition,
+  toLSPPosition,
   ValidationError,
 } from '../../utils/index.js';
 import { registerTools } from '../tool-registry.js';
@@ -86,11 +87,7 @@ export async function handleFindDefinition(
 
           if (locations.length > 0) {
             const locationResults = locations
-              .map((loc) => {
-                const filePath = uriToPath(loc.uri);
-                const humanPos = toHumanPosition(loc.range.start);
-                return formatFileLocation(filePath, humanPos);
-              })
+              .map((loc) => formatLSPLocation(loc))
               .join('\n');
 
             const matchHumanPos = toHumanPosition(match.position);
@@ -200,11 +197,7 @@ export async function handleFindReferences(
 
           if (locations.length > 0) {
             const locationResults = locations
-              .map((loc) => {
-                const filePath = uriToPath(loc.uri);
-                const humanPos = toHumanPosition(loc.range.start);
-                return formatFileLocation(filePath, humanPos);
-              })
+              .map((loc) => formatLSPLocation(loc))
               .join('\n');
 
             const matchHumanPos = toHumanPosition(match.position);
@@ -268,8 +261,10 @@ export async function handleRenameSymbol(
   if (symbolMatches.length > 1) {
     const matchDescriptions = symbolMatches
       .map(
-        (match, index) =>
-          `${index + 1}. ${match.name} (${symbolService.symbolKindToString(match.kind)}) at line ${match.position.line + 1}, character ${match.position.character + 1}`
+        (match, index) => {
+          const humanPos = toHumanPosition(match.position);
+          return `${index + 1}. ${match.name} (${symbolService.symbolKindToString(match.kind)}) at line ${humanPos.line}, character ${humanPos.character}`;
+        }
       )
       .join('\n');
 
@@ -354,7 +349,8 @@ export async function handleRenameSymbolStrict(
   const absolutePath = resolve(file_path);
 
   // Convert 1-indexed to 0-indexed for LSP
-  const position = { line: line - 1, character: character - 1 };
+  const humanPos = { line, character };
+  const position = toLSPPosition(humanPos);
 
   try {
     const workspaceEdit = await symbolService.renameSymbol(
@@ -490,7 +486,8 @@ export async function getRenameSymbolWorkspaceEditStrict(
   try {
     const absolutePath = resolve(file_path);
     // Convert 1-indexed to 0-indexed for LSP
-    const position = { line: line - 1, character: character - 1 };
+    const humanPos = { line, character };
+    const position = toLSPPosition(humanPos);
 
     const workspaceEdit = await symbolService.renameSymbol(
       absolutePath,
