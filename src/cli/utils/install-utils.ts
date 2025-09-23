@@ -12,6 +12,38 @@ export async function runInstallCommand(
   serverName: string,
   onOutput?: (data: string) => void
 ): Promise<boolean> {
+  const [cmd, ...args] = command;
+
+  if (!cmd) {
+    return false;
+  }
+
+  // For pip commands, try multiple strategies
+  if ((cmd === 'pip' || cmd === 'pip3') && args.includes('--user')) {
+    // First try with --user (safer)
+    const userSuccess = await tryInstallCommand([cmd, ...args], serverName, onOutput);
+    if (userSuccess) {
+      return true;
+    }
+
+    // If --user fails due to externally-managed-environment, try --break-system-packages
+    const sysArgs = args.filter(arg => arg !== '--user').concat(['--break-system-packages']);
+    console.log('    Retrying with --break-system-packages...');
+    return await tryInstallCommand([cmd, ...sysArgs], serverName, onOutput);
+  }
+
+  // For all other commands, run normally
+  return await tryInstallCommand(command, serverName, onOutput);
+}
+
+/**
+ * Try running a single install command
+ */
+async function tryInstallCommand(
+  command: string[],
+  serverName: string,
+  onOutput?: (data: string) => void
+): Promise<boolean> {
   return new Promise((resolve) => {
     const [cmd, ...args] = command;
 
@@ -65,6 +97,12 @@ export async function runInstallCommand(
           }
         } else if (cmd === 'rustup') {
           console.log('    Install Rust first: https://rustup.rs/');
+        } else if (cmd === 'pipx') {
+          if (process.platform === 'darwin') {
+            console.log('    Install pipx first: brew install pipx');
+          } else {
+            console.log('    Install pipx first: pip install --user pipx');
+          }
         }
       } else {
         console.log(`    Error: ${err.message}`);
@@ -94,16 +132,12 @@ export function getPipCommand(baseCommand: string[]): string[] {
     const pipCommand = findBestPipCommand();
     const result = [pipCommand, ...baseCommand.slice(1)];
 
-    // Add appropriate flags based on platform and pip version
+    // Only add flags for pip/pip3, not pipx
     if (pipCommand === 'pip' || pipCommand === 'pip3') {
-      if (process.platform === 'darwin') {
-        // macOS: prefer --user to avoid system Python issues
-        result.push('--user');
-      } else {
-        // Linux: use --break-system-packages for externally managed environments
-        result.push('--break-system-packages');
-      }
+      // Try --user first (safer), fallback to --break-system-packages if needed
+      result.push('--user');
     }
+    // pipx doesn't need any additional flags - it handles isolation automatically
 
     return result;
   }
@@ -111,11 +145,11 @@ export function getPipCommand(baseCommand: string[]): string[] {
 }
 
 /**
- * Find the best available pip command (pip, pip3, pipx)
+ * Find the best available pip command (pipx first, then pip3, then pip)
  */
 function findBestPipCommand(): string {
-  // Prefer pip3 over pip for better Python 3 compatibility
-  const commands = ['pip3', 'pip', 'pipx'];
+  // Prefer pipx for isolated installs, especially on macOS with externally-managed Python
+  const commands = ['pipx', 'pip3', 'pip'];
 
   for (const cmd of commands) {
     try {

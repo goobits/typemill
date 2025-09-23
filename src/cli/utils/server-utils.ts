@@ -59,6 +59,10 @@ export async function testCommand(command: string[]): Promise<boolean> {
     const proc = spawn(fullCmd, testArgs, {
       stdio: 'ignore',
       shell: false,
+      env: {
+        ...process.env,
+        PATH: '/opt/homebrew/bin:/usr/local/bin:' + (process.env.PATH || ''),
+      },
     }) as ChildProcess;
 
     let resolved = false;
