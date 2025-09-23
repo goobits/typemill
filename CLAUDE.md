@@ -39,7 +39,7 @@ bun run format       # Format code with Biome
 bun run typecheck    # Run TypeScript type checking
 bun run test         # Run unit tests
 bun run test:all     # Run all tests
-bun run test:integration  # Run integration tests
+bun run test:e2e          # Run end-to-end tests
 bun run test:fuse    # Run FUSE-specific tests (includes real FUSE tests)
 bun run test:fuse:real    # Run real FUSE tests (requires FUSE installed)
 

@@ -93,7 +93,7 @@ const testEnv = {
 const defaultTests = [
   'tests/unit/restart-server.test.ts',
   'tests/core/comprehensive.test.ts',
-  'tests/integration/lsp-client.test.ts',
+  'tests/e2e/lsp-client.test.ts',
 ];
 
 const testsToRun = bunArgs.length > 0 ? bunArgs : defaultTests;
