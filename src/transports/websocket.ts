@@ -86,7 +86,7 @@ export class WebSocketTransport {
                 socket.close(1008, 'Authentication failed');
                 return;
               }
-            } catch (error) {
+            } catch (_error) {
               socket.send(
                 JSON.stringify({
                   id: message.id,
@@ -256,7 +256,7 @@ export class WebSocketTransport {
             );
           }
         }
-      } catch (parseError) {
+      } catch (_parseError) {
         socket.send(
           JSON.stringify({
             error: {

@@ -262,7 +262,7 @@ class StructuredLogger {
   }
 
   // Child logger for component-specific context
-  child(additionalContext: Partial<LogContext>): StructuredLogger {
+  child(_additionalContext: Partial<LogContext>): StructuredLogger {
     const childLogger = new StructuredLogger(this.moduleName);
     childLogger.level = this.level;
     childLogger.output = this.output;

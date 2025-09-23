@@ -3,11 +3,7 @@
  * Phase 3: Advanced features using MCP tools
  */
 
-import {
-  createUserFriendlyErrorMessage,
-  getErrorMessage,
-  MCPError,
-} from '../../core/diagnostics/error-utils.js';
+import { createUserFriendlyErrorMessage, MCPError } from '../../core/diagnostics/error-utils.js';
 import { logger } from '../../core/diagnostics/logger.js';
 import { measureAndTrack, toHumanPosition } from '../../utils/index.js';
 import { registerTools } from '../tool-registry.js';

@@ -11,7 +11,6 @@ import type {
   EnhancedClientSession,
   FuseOperationRequest,
   FuseOperationResponse,
-  SessionContext,
 } from '../types/session.js';
 
 export interface FuseStats {
@@ -442,7 +441,7 @@ export class FuseOperations implements FuseOperationHandlers {
    * Cleanup all pending operations
    */
   cleanup(): void {
-    for (const [correlationId, pending] of this.pendingOperations) {
+    for (const [_correlationId, pending] of this.pendingOperations) {
       clearTimeout(pending.timeout);
       pending.reject(new Error('FUSE operations cleanup - session ending'));
     }

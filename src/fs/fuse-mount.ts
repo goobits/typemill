@@ -19,7 +19,6 @@ export interface FuseMountConfig {
 
 export class FuseMount {
   private session: EnhancedClientSession;
-  private transport: WebSocketTransport;
   private operations: FuseOperations;
   private fuse?: Fuse;
   private mountPath: string;
@@ -101,7 +100,7 @@ export class FuseMount {
             path: string,
             fd: number,
             buffer: Buffer,
-            length: number,
+            _length: number,
             position: number,
             cb: Function
           ) => {
@@ -171,7 +170,7 @@ export class FuseMount {
       this.operations.cleanup();
 
       // Unmount the filesystem
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve, _reject) => {
         this.fuse?.unmount((error) => {
           if (error) {
             logger.error('Error during FUSE unmount', error, {
@@ -301,7 +300,7 @@ export class FuseMount {
         const { execFileSync } = await import('node:child_process');
         try {
           execFileSync('fusermount', ['-u', this.mountPath], { timeout: 5000 });
-        } catch (error) {
+        } catch (_error) {
           // Try lazy unmount
           try {
             execFileSync('fusermount', ['-uz', this.mountPath], { timeout: 5000 });

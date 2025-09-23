@@ -106,7 +106,7 @@ export function createLimitedSupportResponse(
 /**
  * Safely handle MCP operation with consistent error handling
  */
-async function withMCPErrorHandling<T>(
+async function _withMCPErrorHandling<_T>(
   operation: () => Promise<MCPResponse>,
   operationName: string
 ): Promise<MCPResponse> {
@@ -205,7 +205,7 @@ export function createNoResultsResponse(
 /**
  * Create a response for operations with a dry-run mode
  */
-function createDryRunResponse(operation: string, details: string): MCPResponse {
+function _createDryRunResponse(operation: string, details: string): MCPResponse {
   return createMCPResponse(`[DRY RUN] Would ${operation}. ${details}`);
 }
 
@@ -281,7 +281,7 @@ export function createFileModificationResponse(
 /**
  * Create a response for location/position-based operations
  */
-function createLocationResponse(
+function _createLocationResponse(
   operation: string,
   filePath: string,
   position: { line: number; character: number },

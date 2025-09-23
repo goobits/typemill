@@ -1,5 +1,4 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { capabilityManager } from '../core/capability-manager.js';
 import { logDebugMessage } from '../core/diagnostics/debug-logger.js';
 import { handleFileSystemError, logError } from '../core/diagnostics/error-utils.js';
 import { pathToUri } from '../core/file-operations/path-utils.js';
@@ -8,7 +7,6 @@ import type {
   Diagnostic,
   DocumentLink,
   FoldingRange,
-  Position,
   Range,
   TextEdit,
 } from '../types.js';

@@ -1,10 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
-import {
-  createDefaultConfig,
-  getAvailableDefaultServers,
-  mergeWithDefaults,
-} from '../core/configuration/default-config.js';
-import { handleConfigurationError, logError } from '../core/diagnostics/error-utils.js';
+import { createDefaultConfig, mergeWithDefaults } from '../core/configuration/default-config.js';
+import { logError } from '../core/diagnostics/error-utils.js';
 import { getLogger } from '../core/diagnostics/structured-logger.js';
 import { scanDirectoryForExtensions } from '../core/file-operations/scanner.js';
 import type { Config } from '../types.js';
@@ -105,7 +101,7 @@ export class LSPClient {
           const config = JSON.parse(configData);
           logger.info('Loaded test server configurations', { server_count: config.servers.length });
           return mergeWithDefaults(config);
-        } catch (error) {
+        } catch (_error) {
           logger.warn('Failed to load test config, falling back to normal config');
         }
       }
@@ -172,30 +168,6 @@ export class LSPClient {
     });
     logger.info('To customize, create a codebuddy.json file or run: codebuddy setup');
     return defaultConfig;
-  }
-
-  private getLanguageName(extension: string): string | null {
-    const languageMap: Record<string, string> = {
-      ts: 'TypeScript',
-      tsx: 'TypeScript',
-      js: 'JavaScript',
-      jsx: 'JavaScript',
-      py: 'Python',
-      go: 'Go',
-      rs: 'Rust',
-      java: 'Java',
-      rb: 'Ruby',
-      php: 'PHP',
-      c: 'C',
-      cpp: 'C++',
-      css: 'CSS',
-      html: 'HTML',
-      json: 'JSON',
-      yaml: 'YAML',
-      vue: 'Vue',
-      svelte: 'Svelte',
-    };
-    return languageMap[extension] || null;
   }
 
   /**

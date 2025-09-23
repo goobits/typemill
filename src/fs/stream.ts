@@ -6,7 +6,7 @@ import type {
   DeltaWriteResponse,
   WebSocketTransport,
 } from '../transports/websocket.js';
-import { DeltaProcessor, type FileDelta } from './delta.js';
+import { DeltaProcessor } from './delta.js';
 
 export interface FileReadRequest {
   path: string;
@@ -159,7 +159,7 @@ export class StreamingFileAccess {
     try {
       const response = await this.transport.sendRequest(session, 'client/fileExists', { path });
       return response.exists;
-    } catch (error) {
+    } catch (_error) {
       // If the request fails, assume file doesn't exist
       return false;
     }

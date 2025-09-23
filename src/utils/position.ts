@@ -137,7 +137,7 @@ export function parsePositionString(input: string): HumanPosition | null {
   const line = parseInt(parts[0]!, 10);
   const character = parseInt(parts[1]!, 10);
 
-  if (isNaN(line) || isNaN(character) || line < 1 || character < 1) {
+  if (Number.isNaN(line) || Number.isNaN(character) || line < 1 || character < 1) {
     return null;
   }
 
@@ -169,7 +169,7 @@ export function ensureLSPPosition(pos: any): LSPPosition {
   const line = typeof pos.line === 'number' ? pos.line : parseInt(pos.line, 10);
   const character = typeof pos.character === 'number' ? pos.character : parseInt(pos.character, 10);
 
-  if (isNaN(line) || isNaN(character)) {
+  if (Number.isNaN(line) || Number.isNaN(character)) {
     throw new Error('Position line and character must be numbers');
   }
 
@@ -193,7 +193,7 @@ export function ensureHumanPosition(pos: any): HumanPosition {
   const line = typeof pos.line === 'number' ? pos.line : parseInt(pos.line, 10);
   const character = typeof pos.character === 'number' ? pos.character : parseInt(pos.character, 10);
 
-  if (isNaN(line) || isNaN(character)) {
+  if (Number.isNaN(line) || Number.isNaN(character)) {
     throw new Error('Position line and character must be numbers');
   }
 

@@ -1,6 +1,6 @@
 import type { ChildProcess } from 'node:child_process';
 import { logDebugMessage } from '../core/diagnostics/debug-logger.js';
-import { getErrorMessage, handleLSPError, logError } from '../core/diagnostics/error-utils.js';
+import { getErrorMessage, logError } from '../core/diagnostics/error-utils.js';
 import type { LSPError } from '../types.js';
 
 // Protocol constants
@@ -418,7 +418,7 @@ export class LSPProtocol {
       });
     }
 
-    for (const [id, request] of this.pendingRequests) {
+    for (const [_id, request] of this.pendingRequests) {
       request.reject(new Error('LSP client disposed'));
     }
     this.pendingRequests.clear();

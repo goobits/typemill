@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -14,38 +14,6 @@ import { LSPClient as NewLSPClient } from './src/lsp/lsp-client.js';
 import * as Validation from './src/mcp/comprehensive-validation.js';
 import { allToolDefinitions } from './src/mcp/definitions/index.js';
 import { allWorkflowDefinitions } from './src/mcp/definitions/workflow-definitions.js';
-import type {
-  ApplyWorkspaceEditArgs,
-  BatchExecuteArgs,
-  CreateFileArgs,
-  DeleteFileArgs,
-  FindDefinitionArgs,
-  FindReferencesArgs,
-  FormatDocumentArgs,
-  GetCallHierarchyIncomingCallsArgs,
-  GetCallHierarchyOutgoingCallsArgs,
-  GetCodeActionsArgs,
-  GetCompletionsArgs,
-  GetDiagnosticsArgs,
-  GetDocumentLinksArgs,
-  GetDocumentSymbolsArgs,
-  GetFoldingRangesArgs,
-  GetHoverArgs,
-  GetInlayHintsArgs,
-  GetSelectionRangeArgs,
-  GetSemanticTokensArgs,
-  GetSignatureHelpArgs,
-  GetTypeHierarchySubtypesArgs,
-  GetTypeHierarchySupertypesArgs,
-  HealthCheckArgs,
-  PrepareCallHierarchyArgs,
-  PrepareTypeHierarchyArgs,
-  RenameFileArgs,
-  RenameSymbolArgs,
-  RenameSymbolStrictArgs,
-  RestartServerArgs,
-  SearchWorkspaceSymbolsArgs,
-} from './src/mcp/handler-types.js';
 import {
   handleApplyWorkspaceEdit,
   handleBatchExecute,
@@ -155,7 +123,7 @@ if (subcommand === 'setup') {
   const { setupCommand } = await import('./src/cli/commands/setup.js');
 
   // Parse server list from --servers flag
-  const serversIndex = args.findIndex((arg) => arg === '--servers');
+  const serversIndex = args.indexOf('--servers');
   const servers =
     serversIndex !== -1 && args[serversIndex + 1]
       ? args[serversIndex + 1]
@@ -368,7 +336,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           // Create a tool executor function for the workflow
           const toolExecutor = async (toolName: string, toolArgs: Record<string, unknown>) => {
             // Recursively call the main tool dispatcher for each step
-            const stepRequest = {
+            const _stepRequest = {
               method: 'tools/call' as const,
               params: {
                 name: toolName,

@@ -1,5 +1,4 @@
 import {
-  copyFileSync,
   existsSync,
   lstatSync,
   readFileSync,
@@ -10,7 +9,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { readdir } from 'node:fs/promises';
-import { dirname, extname, join, relative, resolve } from 'node:path';
+import { dirname, extname, relative, resolve } from 'node:path';
 import type { LSPClient } from '../../lsp/lsp-client.js';
 import { logDebugMessage } from '../diagnostics/debug-logger.js';
 import { pathToUri, uriToPath } from './path-utils.js';
@@ -81,7 +80,7 @@ export async function applyWorkspaceEdit(
 
   try {
     // Pre-flight checks
-    for (const [uri, edits] of Object.entries(workspaceEdit.changes)) {
+    for (const [uri, _edits] of Object.entries(workspaceEdit.changes)) {
       const filePath = uriToPath(uri);
 
       // Check file exists
@@ -377,8 +376,8 @@ function findImportsInFile(
   // Calculate relative paths for both extension patterns
   let oldRelativeNoExt = relative(fileDir, oldPathNoExt).replace(/\\/g, '/');
   let newRelativeNoExt = relative(fileDir, newPathNoExt).replace(/\\/g, '/');
-  let oldRelativeWithJs = relative(fileDir, oldPathNoExt + '.js').replace(/\\/g, '/');
-  let newRelativeWithJs = relative(fileDir, newPathNoExt + '.js').replace(/\\/g, '/');
+  let oldRelativeWithJs = relative(fileDir, `${oldPathNoExt}.js`).replace(/\\/g, '/');
+  let newRelativeWithJs = relative(fileDir, `${newPathNoExt}.js`).replace(/\\/g, '/');
 
   // Add ./ prefix if needed for relative paths
   const addPrefix = (path: string) =>
@@ -565,7 +564,7 @@ export async function renameFile(
       const importRegex = /(from\s+['"]|require\s*\(\s*['"])(\.\.\/[^'"]+|\.\/[^'"]+)(['"]\s*\)?)/g;
 
       // Replace paths
-      content = content.replace(importRegex, (match, prefix, importPath, suffix) => {
+      content = content.replace(importRegex, (_match, prefix, importPath, suffix) => {
         let newPath = importPath;
         if (depthChange > 0) {
           // Moved deeper, add ../

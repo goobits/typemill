@@ -10,7 +10,7 @@ export function isProcessRunning(pid: number): boolean {
     // Sending signal 0 doesn't kill the process, just checks if it exists
     process.kill(pid, 0);
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }

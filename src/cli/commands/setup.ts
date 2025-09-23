@@ -106,7 +106,7 @@ export async function setupCommand(options: SetupOptions = {}): Promise<void> {
         const more = extArray.length > 10 ? ` (+${extArray.length - 10} more)` : '';
         console.log(`Found: ${displayExts}${more}\n`);
       }
-    } catch (error) {
+    } catch (_error) {
       console.log('Could not scan project files\n');
       detectedExtensions = new Set();
     }
