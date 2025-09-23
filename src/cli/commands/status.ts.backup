@@ -1,7 +1,7 @@
-import type { StatusOutput } from '../types.js';
-import { findInstalledAssistants } from '../utils/assistant-utils.js';
 import * as DirectoryUtils from '../utils/directory-utils.js';
 import * as ServerUtils from '../utils/server-utils.js';
+import { findInstalledAssistants } from '../utils/assistant-utils.js';
+import type { StatusOutput } from '../types.js';
 
 interface ServerInfo {
   name: string;
@@ -25,7 +25,6 @@ export async function statusCommand(): Promise<void> {
 
   if (!jsonMode) {
     console.log('Language Servers:');
-  }
 
   const config = DirectoryUtils.readConfig();
 
@@ -133,9 +132,7 @@ export async function statusCommand(): Promise<void> {
     const unlinkedAssistants = assistants.filter((a) => a.installed && !a.linked);
     if (unlinkedAssistants.length > 0) {
       console.log('');
-      console.log(
-        `→ Tip: run \`codeflow-buddy link ${unlinkedAssistants[0]?.name}\` to add ${unlinkedAssistants[0]?.displayName}`
-      );
+      console.log(`→ Tip: run \`codeflow-buddy link ${unlinkedAssistants[0].name}\` to add ${unlinkedAssistants[0].displayName}`);
     }
   }
 }
@@ -165,3 +162,4 @@ function getServerName(command: string): string {
 
   return nameMap[command] || command;
 }
+

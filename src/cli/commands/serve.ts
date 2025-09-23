@@ -25,7 +25,8 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
   const requireAuth = options.requireAuth || false;
   const jwtSecret = options.jwtSecret;
   const enableFuse = options.enableFuse || process.env.ENABLE_FUSE === 'true';
-  const allowedOrigins = options.allowedOrigins ||
+  const allowedOrigins =
+    options.allowedOrigins ||
     (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : undefined);
   const allowedCorsOrigins = options.allowedCorsOrigins || allowedOrigins;
 
