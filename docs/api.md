@@ -1,6 +1,6 @@
-# 🔧 API Reference
+# MCP Tools Reference
 
-Complete documentation for all 29 MCP tools provided by codeflow-buddy.
+All 30 MCP tools with practical examples for AI assistants.
 
 ## Core Navigation & Analysis
 
@@ -13,18 +13,11 @@ Find the definition of a symbol by name and kind in a file. Returns definitions 
 - `symbol_name`: The name of the symbol
 - `symbol_kind`: The kind of symbol (function, class, variable, method, etc.) (optional)
 
-**Example:**
-```bash
-# Find definition of _calculateAge function
-{
-  "tool": "find_definition",
-  "arguments": {
-    "file_path": "/path/to/file.ts",
-    "symbol_name": "_calculateAge",
-    "symbol_kind": "function"
-  }
-}
-```
+**When to use:** Finding where functions, classes, or variables are defined
+
+**Example prompt:** "Find the definition of handleLogin function"
+
+**Returns:** File path and exact line number where symbol is defined
 
 ### `find_references`
 
@@ -36,18 +29,11 @@ Find all references to a symbol by name and kind in a file. Returns references f
 - `symbol_kind`: The kind of symbol (function, class, variable, method, etc.) (optional)
 - `include_declaration`: Whether to include the declaration (optional, default: true)
 
-**Example:**
-```bash
-# Find all references to TestProcessor class
-{
-  "tool": "find_references", 
-  "arguments": {
-    "file_path": "/path/to/file.ts",
-    "symbol_name": "TestProcessor",
-    "include_declaration": true
-  }
-}
-```
+**When to use:** Finding all places where a symbol is used
+
+**Example prompt:** "Find all references to UserService class"
+
+**Returns:** List of all files and line numbers using the symbol
 
 ## Code Modification
 

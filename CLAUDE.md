@@ -30,7 +30,7 @@ codeflow-buddy setup    # Smart setup with auto-detection
 codeflow-buddy status   # Show what's working right now
 codeflow-buddy start    # Start the MCP server for Claude Code
 codeflow-buddy stop     # Stop the running MCP server
-codeflow-buddy serve    # Start WebSocket server (Phase 2+)
+codeflow-buddy serve    # Start WebSocket server
 
 # Quality assurance
 bun run lint         # Check code style and issues
@@ -52,7 +52,7 @@ bun run test:minimal  # Ultra-minimal runner for very slow systems
 # Full pre-publish check
 bun run prepublishOnly  # build + test + typecheck
 
-# WebSocket Server Commands (Phase 2+)
+# WebSocket Server Commands
 node dist/index.js serve --port 3000                    # Basic WebSocket server
 node dist/index.js serve --require-auth --jwt-secret KEY # With JWT authentication
 node dist/index.js serve --tls-key key.pem --tls-cert cert.pem # With TLS/WSS
@@ -91,7 +91,7 @@ docker-compose up -d                                     # Full Docker deploymen
 - File scanning with gitignore support for project structure detection
 - Automatic migration from old `codebuddy.json` format
 
-**WebSocket Server Layer** (`src/server/ws-server.ts`) - *Phase 2+*
+**WebSocket Server Layer** (`src/server/ws-server.ts`)
 
 - Production-ready WebSocket server with HTTP health endpoints
 - Session management with connection recovery (60-second grace periods)

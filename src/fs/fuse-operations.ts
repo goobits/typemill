@@ -4,6 +4,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 import { logger } from '../core/logger.js';
 import type { WebSocketTransport } from '../transports/websocket.js';
 import type {
@@ -98,17 +99,21 @@ export class FuseOperations implements FuseOperationHandlers {
       throw new Error(`Permission denied: ${operation} requires ${required}`);
     }
 
-    // Validate path is within session workspace
+    // Validate path is within session workspace using proper path resolution
     if (path && this.session.workspaceDir) {
-      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-      // Basic path traversal check
-      if (normalizedPath.includes('..')) {
+      // Resolve the path to an absolute path within the workspace
+      const resolvedPath = resolve(this.session.workspaceDir, path);
+
+      // Ensure the resolved path is still within the workspace directory
+      if (!resolvedPath.startsWith(this.session.workspaceDir)) {
         logger.warn('Path traversal attempt blocked', {
           component: 'FuseOperations',
           sessionId: this.session.id,
           path,
+          resolvedPath,
+          workspaceDir: this.session.workspaceDir,
         });
-        throw new Error('Path traversal not allowed');
+        throw new Error('Path traversal not allowed - path must remain within workspace');
       }
     }
   }

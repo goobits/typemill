@@ -1,21 +1,14 @@
 # 🤖 codeflow-buddy
 **Enterprise-grade MCP server** bridging Language Server Protocol functionality to AI coding assistants with **30+ MCP tools** and **WebSocket deployment**
 
-## ✨ Core Features
-- **🎯 Symbol Navigation** - Go to definition and find references with intelligent position resolution
-- **🔧 Safe Refactoring** - Rename symbols and files across entire codebases with LSP validation
-- **🧠 Code Intelligence** - Hover info, completions, diagnostics, and semantic analysis via LSP
-- **🌐 Multi-Language Support** - TypeScript, Python, Go, Rust, and 15+ languages via configurable LSP servers
-- **🤖 AI-Optimized Protocol** - Robust symbol resolution handling imprecise positions from LLMs
-- **⚡ Smart Configuration** - Auto-detection and setup with `codeflow-buddy setup` command
+## ✨ What It Does
 
-## 🚀 Enterprise Features
-- **🔒 JWT Authentication** - Secure token-based project access control
-- **🛡️ TLS/WSS Support** - Encrypted WebSocket connections for production
-- **⚡ Advanced Caching** - Event-driven invalidation with hit rate tracking
-- **📦 Delta Updates** - diff-match-patch for 80% bandwidth reduction on large files
-- **🐳 Docker Ready** - Complete containerization with health monitoring
-- **📊 Production Monitoring** - Structured logging, metrics, and health endpoints
+**30 MCP tools** that give AI assistants LSP superpowers:
+- **Find & Navigate** - Jump to definitions, find all references, search symbols
+- **Refactor Safely** - Rename across entire codebase, with undo safety
+- **Code Intelligence** - Hover docs, completions, diagnostics, call hierarchies
+- **Multi-Language** - TypeScript, Python, Go, Rust + 15 more languages
+- **WebSocket Mode** - Multi-client support for team deployments
 
 ## 🚀 Quick Start
 
@@ -34,17 +27,7 @@ codeflow-buddy status
 codeflow-buddy start
 ```
 
-### Zero-Setup NPX + Docker Deployment
-```bash
-# Ultra-quick deployment (always latest version)
-curl -fsSL https://raw.githubusercontent.com/goobits/codeflow-buddy/main/scripts/quick-npx.sh | bash
-
-# Or with Docker Compose
-git clone https://github.com/goobits/codeflow-buddy.git
-cd codeflow-buddy && ./scripts/deploy-npx.sh
-```
-
-### Traditional WebSocket Server
+### WebSocket Server (Optional)
 ```bash
 # Clone and build
 git clone https://github.com/goobits/codeflow-buddy
@@ -53,8 +36,8 @@ cd codeflow-buddy && bun install && bun run build
 # Start basic WebSocket server
 node dist/index.js serve --port 3000
 
-# With authentication
-node dist/index.js serve --require-auth --jwt-secret "your-secret"
+# With authentication (requires 32+ character secret)
+node dist/index.js serve --require-auth --jwt-secret "your-32-character-secret-key-here"
 ```
 
 ## 📚 MCP Integration
@@ -73,7 +56,7 @@ node dist/index.js serve --require-auth --jwt-secret "your-secret"
 ## 📊 Production Monitoring
 ```bash
 # Health check
-curl http://localhost:3000/healthz
+curl http://localhost:3000/health
 
 # Prometheus metrics
 curl http://localhost:3000/metrics
@@ -130,10 +113,9 @@ EOF
 ```
 
 ## 📖 Documentation
-- **[API Reference](docs/api.md)** - Complete tool documentation with examples
-- **[Language Setup](docs/languages.md)** - Installation for 15+ languages
-- **[Configuration](docs/configuration.md)** - Advanced settings and options
-- **[Testing Guide](docs/testing_guide.md)** - Development and testing instructions
+- **[Quick Start Guide](docs/quick-start.md)** - Get running in 2 minutes
+- **[MCP Tools Reference](docs/api.md)** - All 30 tools with examples
+- **[Language Setup](docs/languages.md)** - TypeScript, Python, Go, and more
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 
 ## 🔗 Related Projects
