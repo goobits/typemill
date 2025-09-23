@@ -189,7 +189,7 @@ export class JWTAuthenticator {
   /**
    * Get permissions for a specific project
    */
-  private getProjectPermissions(projectId: string): string[] {
+  private getProjectPermissions(_projectId: string): string[] {
     // In production, this would be fetched from a database based on project settings
     // For now, return default permissions for all projects
     return [...this.defaultPermissions];

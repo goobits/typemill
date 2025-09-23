@@ -142,7 +142,7 @@ export function logError(
 /**
  * Wrap try-catch with consistent error handling
  */
-async function withErrorHandling<T>(
+export async function withErrorHandling<T>(
   operation: () => Promise<T>,
   context: {
     component: string;
@@ -154,6 +154,9 @@ async function withErrorHandling<T>(
   try {
     return await operation();
   } catch (error) {
+    logger.debug(`Error caught in withErrorHandling: ${context.operation}`, {
+      component: context.component,
+    });
     logError(context.component, context.operation, error, context.additionalContext);
 
     if (context.fallbackValue !== undefined) {
@@ -167,7 +170,7 @@ async function withErrorHandling<T>(
 /**
  * Wrap sync operations with consistent error handling
  */
-function withSyncErrorHandling<T>(
+export function withSyncErrorHandling<T>(
   operation: () => T,
   context: {
     component: string;
@@ -388,7 +391,7 @@ function getInstallInstructions(command: string): string {
 /**
  * Chain error handling for nested operations
  */
-function chainError(
+function _chainError(
   error: unknown,
   parentOperation: string,
   additionalContext?: Record<string, unknown>
@@ -493,7 +496,7 @@ export function createFileNotFoundMessage(filePath: string, operation: string): 
   // Try to suggest similar files in the directory
   try {
     const dir = filePath.substring(0, filePath.lastIndexOf('/')) || '.';
-    const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
+    const _fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
     message += `**Tip:** Check if similar files exist in \`${dir}/\`\n`;
   } catch {
     // Ignore path parsing errors

@@ -10,7 +10,7 @@ import type {
 import type { ServiceContext } from '../service-context.js';
 
 // Hierarchy service constants
-const RELATED_FILES_LIMIT = 30; // Maximum related files to open for context
+const _RELATED_FILES_LIMIT = 30; // Maximum related files to open for context
 const SELECTION_RANGE_TIMEOUT_MS = process.env.TEST_MODE ? 10000 : 5000; // Longer timeout in tests
 
 /**

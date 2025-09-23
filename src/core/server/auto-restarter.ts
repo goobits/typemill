@@ -1,6 +1,5 @@
 import { spawn } from 'node:child_process';
 import { watch } from 'node:fs';
-import { join } from 'node:path';
 
 interface WatcherOptions {
   pathsToWatch: string[];

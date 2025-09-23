@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, extname, join, relative, resolve } from 'node:path';
+import { dirname, extname, join, resolve } from 'node:path';
 import type { ServiceContext } from '../services/service-context.js';
 
 interface DependencyInfo {
@@ -114,7 +114,7 @@ class ProjectScanner {
             const serverState = await context.getServer(file);
             await context.ensureFileOpen(serverState, file);
             openedFiles.add(file);
-          } catch (error) {
+          } catch (_error) {
             // Ignore individual file errors
           }
         }
@@ -140,7 +140,7 @@ class ProjectScanner {
             const serverState = await context.getServer(resolvedImport);
             await context.ensureFileOpen(serverState, resolvedImport);
             openedFiles.add(resolvedImport);
-          } catch (error) {
+          } catch (_error) {
             // Continue with other files
           }
         }
@@ -154,7 +154,7 @@ class ProjectScanner {
           const serverState = await context.getServer(importer);
           await context.ensureFileOpen(serverState, importer);
           openedFiles.add(importer);
-        } catch (error) {
+        } catch (_error) {
           // Continue with other files
         }
       }
@@ -193,7 +193,7 @@ class ProjectScanner {
         const serverState = await context.getServer(file);
         await context.ensureFileOpen(serverState, file);
         openedFiles.add(file);
-      } catch (error) {
+      } catch (_error) {
         // Continue with other files
       }
     }
@@ -235,7 +235,7 @@ class ProjectScanner {
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors reading directories (permissions, etc.)
     }
   }
@@ -243,7 +243,7 @@ class ProjectScanner {
   /**
    * Extract import statements from a file
    */
-  private extractImports(filePath: string, rootDir: string): DependencyInfo {
+  private extractImports(filePath: string, _rootDir: string): DependencyInfo {
     const imports = new Set<string>();
     const importedBy = new Set<string>();
 
@@ -273,7 +273,7 @@ class ProjectScanner {
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Ignore files that can't be read
     }
 

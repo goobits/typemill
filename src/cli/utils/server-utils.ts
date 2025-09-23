@@ -34,7 +34,7 @@ export function getCommandPath(cmd: string): string {
 export async function testCommand(command: string[]): Promise<boolean> {
   if (!command.length) return false;
 
-  const [cmd, ...args] = command;
+  const [cmd, ..._args] = command;
 
   if (!cmd) return false;
 
@@ -62,7 +62,7 @@ export async function testCommand(command: string[]): Promise<boolean> {
       shell: false,
       env: {
         ...process.env,
-        PATH: '/opt/homebrew/bin:/usr/local/bin:' + (process.env.PATH || ''),
+        PATH: `/opt/homebrew/bin:/usr/local/bin:${process.env.PATH || ''}`,
       },
     }) as ChildProcess;
 

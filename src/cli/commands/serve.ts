@@ -137,7 +137,7 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
   }
 
   // Keep the process alive until explicitly shut down
-  await new Promise<void>((resolve) => {
+  await new Promise<void>((_resolve) => {
     // This promise never resolves, keeping the process alive
     // The shutdown handlers or auto-restart will exit the process
   });

@@ -121,7 +121,7 @@ export function readState(): StateFile {
   try {
     const content = readFileSync(statePath, 'utf-8');
     return JSON.parse(content);
-  } catch (error) {
+  } catch (_error) {
     return {};
   }
 }

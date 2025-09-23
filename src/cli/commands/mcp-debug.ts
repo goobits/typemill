@@ -29,7 +29,7 @@ export async function mcpDebugCommand(toolName: string, toolArgs: string): Promi
   let parsedArgs: Record<string, unknown>;
   try {
     parsedArgs = JSON.parse(toolArgs);
-  } catch (error) {
+  } catch (_error) {
     console.error('Error: Invalid JSON in tool_args');
     console.error('Arguments must be valid JSON string');
     console.error('Example: \'{"file_path": "src/index.ts", "symbol_name": "main"}\'');

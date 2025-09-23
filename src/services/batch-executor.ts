@@ -1,5 +1,5 @@
 import type { LSPClient } from '../lsp/lsp-client.js';
-import { getAllTools, getTool, getToolNames } from '../mcp/tool-registry.js';
+import { getTool, getToolNames } from '../mcp/tool-registry.js';
 import { createMCPResponse } from '../mcp/utils.js';
 import type { FileService } from './file-service.js';
 import type { HierarchyService } from './intelligence/hierarchy-service.js';
@@ -271,7 +271,7 @@ export class BatchExecutor {
   private async executeParallel(
     operations: BatchOperation[],
     result: BatchResult,
-    stopOnError: boolean
+    _stopOnError: boolean
   ): Promise<BatchResult> {
     const promises = operations.map(async (operation) => {
       try {

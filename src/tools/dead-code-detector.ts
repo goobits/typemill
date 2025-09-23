@@ -103,7 +103,7 @@ export async function findDeadCode(): Promise<{
 /**
  * Get document symbols using MCP (simulated since we can't call MCP from inside MCP)
  */
-async function getDocumentSymbols(filePath: string): Promise<any[]> {
+async function getDocumentSymbols(_filePath: string): Promise<any[]> {
   // This would use mcp__codeflow-buddy__get_document_symbols
   // For now, return mock data to demonstrate the concept
   return [
@@ -123,7 +123,7 @@ async function getDocumentSymbols(filePath: string): Promise<any[]> {
 /**
  * Find references to a symbol using MCP
  */
-async function findSymbolReferences(filePath: string, symbolName: string): Promise<any[]> {
+async function findSymbolReferences(_filePath: string, _symbolName: string): Promise<any[]> {
   // This would use mcp__codeflow-buddy__find_references
   // Return mock data for demonstration
   return Math.random() > 0.7 ? [] : [{ file: 'some-file.ts', line: 5 }];
@@ -132,7 +132,7 @@ async function findSymbolReferences(filePath: string, symbolName: string): Promi
 /**
  * Check if a symbol is exported (public)
  */
-function isExportedSymbol(symbol: any): boolean {
+function isExportedSymbol(_symbol: any): boolean {
   // Logic to determine if symbol is exported
   // In real implementation, would check if symbol is exported from the module
   return true; // Simplified for demo

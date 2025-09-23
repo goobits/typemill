@@ -29,7 +29,7 @@ const DEFAULT_IGNORE_PATTERNS = [
   'Thumbs.db',
 ];
 
-interface FileScanResult {
+export interface FileScanResult {
   extensions: Set<string>;
   recommendedServers: string[];
 }
@@ -49,7 +49,7 @@ export async function loadGitignore(projectPath: string): Promise<ReturnType<typ
     await access(gitignorePath, constants.F_OK);
     const gitignoreContent = await readFile(gitignorePath, 'utf-8');
     ig.add(gitignoreContent);
-  } catch (error) {
+  } catch (_error) {
     // File doesn't exist or can't be read - that's ok
   }
 
@@ -139,7 +139,7 @@ export async function scanDirectoryForExtensions(
  * Get recommended language servers based on found extensions
  * Internal helper - not exposed in public API
  */
-function getRecommendedLanguageServers(
+function _getRecommendedLanguageServers(
   extensions: Set<string>,
   languageServers: LanguageServerConfig[]
 ): string[] {

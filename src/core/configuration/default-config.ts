@@ -137,7 +137,7 @@ export function createDefaultConfig(): Config {
 async function isCommandAvailable(command: string[]): Promise<boolean> {
   try {
     const { spawn } = await import('node:child_process');
-    const [cmd, ...args] = command;
+    const [cmd, ..._args] = command;
 
     // Special handling for npx commands - check if npm is available
     if (cmd === 'npx') {

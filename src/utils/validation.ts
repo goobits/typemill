@@ -3,8 +3,8 @@
  * Centralizes common validation logic and provides consistent error messages
  */
 
-import { promises as fs } from 'fs';
-import path from 'path';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import {
   ensureHumanPosition,
   ensureLSPPosition,
@@ -55,7 +55,7 @@ export function assertValidNumber(
   fieldName: string,
   options: { min?: number; max?: number; integer?: boolean } = {}
 ): asserts value is number {
-  if (typeof value !== 'number' || isNaN(value)) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
     throw new ValidationError(`${fieldName} must be a valid number`, fieldName);
   }
 

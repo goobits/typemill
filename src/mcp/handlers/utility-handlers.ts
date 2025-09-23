@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { logger } from '../../core/diagnostics/logger.js';
 import type { WorkspaceEdit } from '../../core/file-operations/editor.js';
@@ -7,7 +7,6 @@ import {
   assertValidFilePath,
   formatHumanRange,
   measureAndTrack,
-  toHumanPosition,
   toHumanRange,
   ValidationError,
 } from '../../utils/index.js';
@@ -317,7 +316,7 @@ export async function handleDeleteFile(args: { file_path: string; force?: boolea
  */
 export async function handleHealthCheck(
   { include_details = false }: import('../handler-types.js').HealthCheckArgs,
-  services: import('../../services/service-context.js').ServiceContext
+  _services: import('../../services/service-context.js').ServiceContext
 ): Promise<import('../utils.js').MCPResponse> {
   try {
     const { cpus, totalmem, loadavg } = await import('node:os');

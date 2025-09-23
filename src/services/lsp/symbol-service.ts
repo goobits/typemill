@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { capabilityManager } from '../../core/capability-manager.js';
 import { logDebugMessage } from '../../core/diagnostics/debug-logger.js';
 import { pathToUri, uriToPath } from '../../core/file-operations/path-utils.js';
 import type { ServerState } from '../../lsp/types.js';
@@ -15,10 +14,10 @@ import { SymbolKind } from '../../types.js';
 import type { ServiceContext } from '../service-context.js';
 
 // Symbol service constants
-const PROJECT_FILES_LIMIT = 50; // Maximum project files to open for cross-file operations
-const DIRECTORY_DEPTH_LIMIT = 5; // Maximum depth when scanning directories
-const CROSS_FILE_PROCESSING_DELAY_MS = 1000; // Delay for cross-file operations
-const SERVER_PROCESSING_DELAY_MS = 1000; // Delay for server processing
+const _PROJECT_FILES_LIMIT = 50; // Maximum project files to open for cross-file operations
+const _DIRECTORY_DEPTH_LIMIT = 5; // Maximum depth when scanning directories
+const _CROSS_FILE_PROCESSING_DELAY_MS = 1000; // Delay for cross-file operations
+const _SERVER_PROCESSING_DELAY_MS = 1000; // Delay for server processing
 const BRIEF_PAUSE_MS = 100; // Brief pause for minimal operations
 const CONTEXT_FILES_LIMIT = 3; // Maximum context files to open
 
@@ -200,7 +199,7 @@ export class SymbolService {
               projectFiles.add(fullPath);
             }
           }
-        } catch (error) {
+        } catch (_error) {
           // Ignore errors reading directories
         }
       };
@@ -213,8 +212,8 @@ export class SymbolService {
 
       for (const projectFile of filesToOpen) {
         try {
-          const fileServerState = await this.context.prepareFile(projectFile);
-        } catch (error) {
+          const _fileServerState = await this.context.prepareFile(projectFile);
+        } catch (_error) {
           // Ignore errors opening individual files
         }
       }
@@ -239,7 +238,7 @@ export class SymbolService {
     // Step 3: Ensure all referencing files are opened (some may already be open from step 1)
     for (const refFilePath of referencingFiles) {
       try {
-        const fileServerState = await this.context.prepareFile(refFilePath);
+        const _fileServerState = await this.context.prepareFile(refFilePath);
         logDebugMessage('SymbolService', `Ensured file is open for rename: ${refFilePath}`);
       } catch (error) {
         logDebugMessage('SymbolService', `Failed to open ${refFilePath}: ${error}`);
@@ -387,7 +386,7 @@ export class SymbolService {
           for (const filePath of files) {
             try {
               await this.context.prepareFile(filePath);
-            } catch (error) {
+            } catch (_error) {
               // Ignore individual file errors
             }
           }
@@ -736,33 +735,9 @@ export class SymbolService {
       }
 
       return range.start;
-    } catch (error) {
+    } catch (_error) {
       return symbol.location.range.start;
     }
-  }
-
-  private stringToSymbolKind(kindStr: string): SymbolKind | null {
-    const kindMap: Record<string, SymbolKind> = {
-      file: SymbolKind.File,
-      module: SymbolKind.Module,
-      namespace: SymbolKind.Namespace,
-      package: SymbolKind.Package,
-      class: SymbolKind.Class,
-      method: SymbolKind.Method,
-      property: SymbolKind.Property,
-      field: SymbolKind.Field,
-      constructor: SymbolKind.Constructor,
-      enum: SymbolKind.Enum,
-      interface: SymbolKind.Interface,
-      function: SymbolKind.Function,
-      variable: SymbolKind.Variable,
-      constant: SymbolKind.Constant,
-      string: SymbolKind.String,
-      number: SymbolKind.Number,
-      boolean: SymbolKind.Boolean,
-      array: SymbolKind.Array,
-    };
-    return kindMap[kindStr.toLowerCase()] || null;
   }
 
   // ensureFileOpen() and getLanguageId() methods removed - provided by ServiceContext

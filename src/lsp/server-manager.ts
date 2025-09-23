@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { cpus } from 'node:os';
 import type { ServerCapabilities } from '../core/capability-manager.js';
 import { capabilityManager } from '../core/capability-manager.js';
@@ -199,7 +199,7 @@ export class ServerManager {
    * Queue a server request when at capacity
    */
   private async queueServerRequest(
-    serverKey: string,
+    _serverKey: string,
     serverConfig: LSPServerConfig
   ): Promise<ServerState> {
     return new Promise((resolve, reject) => {
@@ -238,7 +238,7 @@ export class ServerManager {
   /**
    * Restart servers for specified extensions
    */
-  async restartServer(extensions?: string[], config?: Config): Promise<string[]> {
+  async restartServer(extensions?: string[], _config?: Config): Promise<string[]> {
     const restartedServers: string[] = [];
 
     if (!extensions || extensions.length === 0) {

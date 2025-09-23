@@ -14,7 +14,6 @@ import {
   createMCPResponse,
   createNoChangesResponse,
   createNoResultsResponse,
-  createUnsupportedFeatureResponse,
 } from '../utils.js';
 
 // Handler for get_code_actions tool
@@ -256,7 +255,7 @@ export async function handleGetDocumentSymbols(
 export async function handleGetFoldingRanges(
   fileService: FileService,
   args: { file_path: string },
-  lspClient: import('../../lsp/lsp-client.js').LSPClient
+  _lspClient: import('../../lsp/lsp-client.js').LSPClient
 ) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
@@ -322,7 +321,7 @@ export async function handleGetFoldingRanges(
 export async function handleGetDocumentLinks(
   fileService: FileService,
   args: { file_path: string },
-  lspClient: import('../../lsp/lsp-client.js').LSPClient
+  _lspClient: import('../../lsp/lsp-client.js').LSPClient
 ) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
@@ -402,7 +401,7 @@ export async function handleGetDocumentLinks(
 
 // Handler for apply_workspace_edit tool
 export async function handleApplyWorkspaceEdit(
-  fileService: FileService,
+  _fileService: FileService,
   args: {
     edit?: {
       changes: Record<

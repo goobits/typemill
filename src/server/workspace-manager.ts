@@ -6,7 +6,7 @@
 import { randomUUID } from 'node:crypto';
 import { access, mkdir, rmdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { logger } from '../core/diagnostics/logger.js';
 import type { EnhancedClientSession, WorkspaceInfo } from '../types/session.js';
 
@@ -206,7 +206,7 @@ export class WorkspaceManager {
     const now = new Date();
     const expiredWorkspaces: string[] = [];
 
-    for (const [workspaceId, workspace] of this.workspaces) {
+    for (const [_workspaceId, workspace] of this.workspaces) {
       const timeSinceAccess = now.getTime() - workspace.lastAccessed.getTime();
       if (timeSinceAccess > this.config.workspaceTimeoutMs) {
         expiredWorkspaces.push(workspace.sessionId);

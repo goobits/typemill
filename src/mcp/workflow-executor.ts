@@ -5,7 +5,7 @@
 
 import { createUserFriendlyErrorMessage, MCPError } from '../core/diagnostics/error-utils.js';
 import { getLogger } from '../core/diagnostics/structured-logger.js';
-import type { WorkflowStep, WorkflowToolDefinition } from './handler-types.js';
+import type { WorkflowToolDefinition } from './handler-types.js';
 import { createMCPResponse } from './utils.js';
 
 const logger = getLogger('WorkflowExecutor');

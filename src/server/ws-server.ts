@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { createServer as createHttpsServer, type Server as HttpsServer } from 'node:https';
 import type WebSocket from 'ws';
 import { WebSocketServer } from 'ws';
-import { type AuthRequest, type AuthResponse, JWTAuthenticator } from '../auth/jwt-auth.js';
+import { type AuthRequest, JWTAuthenticator } from '../auth/jwt-auth.js';
 import { logger } from '../core/diagnostics/logger.js';
 import { FuseMount } from '../fs/fuse-mount.js';
 import { StreamingFileAccess } from '../fs/stream.js';
@@ -375,7 +375,7 @@ export class CodeFlowWebSocketServer {
     }
   }
 
-  private handleMetrics(req: IncomingMessage, res: ServerResponse): void {
+  private handleMetrics(_req: IncomingMessage, res: ServerResponse): void {
     try {
       const sessionStats = this.sessionManager.getStats();
       const lspServers = this.lspServerPool.getActiveServers();
@@ -560,7 +560,7 @@ export class CodeFlowWebSocketServer {
   }
 
   private async handleMCPMessage(session: ClientSession, message: MCPMessage): Promise<any> {
-    const startTime = Date.now();
+    const _startTime = Date.now();
 
     return logger.withTiming(
       `MCP ${message.method}`,

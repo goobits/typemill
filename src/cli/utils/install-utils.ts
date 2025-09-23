@@ -68,7 +68,7 @@ async function tryPipFallback(
     try {
       // Check if this pip command exists
       const checkCommand = process.platform === 'win32' ? `where ${pipCmd}` : `which ${pipCmd}`;
-      require('child_process').execSync(checkCommand, { stdio: 'ignore' });
+      require('node:child_process').execSync(checkCommand, { stdio: 'ignore' });
 
       // Try --user first (safer)
       console.log(`    Trying ${pipCmd} --user...`);
@@ -104,7 +104,7 @@ async function tryPipFallback(
  */
 async function tryInstallCommand(
   command: string[],
-  serverName: string,
+  _serverName: string,
   onOutput?: (data: string) => void
 ): Promise<boolean> {
   return new Promise((resolve) => {
@@ -131,12 +131,12 @@ async function tryInstallCommand(
       env,
     }) as ChildProcess;
 
-    let output = '';
+    let _output = '';
     let error = '';
 
     proc.stdout?.on('data', (data: Buffer) => {
       const text = data.toString();
-      output += text;
+      _output += text;
       if (onOutput) {
         onOutput(text);
       }
@@ -218,7 +218,7 @@ function findBestPipCommand(): string {
     try {
       // Cross-platform command existence check
       const checkCommand = process.platform === 'win32' ? `where ${cmd}` : `which ${cmd}`;
-      require('child_process').execSync(checkCommand, { stdio: 'ignore' });
+      require('node:child_process').execSync(checkCommand, { stdio: 'ignore' });
       return cmd;
     } catch {
       // Command not found, try next

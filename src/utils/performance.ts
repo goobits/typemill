@@ -256,7 +256,7 @@ export class PerformanceTracker {
       if (!byTool[measurement.toolName]) {
         byTool[measurement.toolName] = [];
       }
-      byTool[measurement.toolName]!.push(measurement);
+      byTool[measurement.toolName]?.push(measurement);
     }
 
     const toolStats: Record<
@@ -286,12 +286,12 @@ export class PerformanceTracker {
       successRate: successCount / this.measurements.length,
       averageDuration: totalDuration / this.measurements.length,
       slowestTool:
-        sorted.length > 0 ? { name: sorted[0]!.toolName, duration: sorted[0]!.duration } : null,
+        sorted.length > 0 ? { name: sorted[0]?.toolName, duration: sorted[0]?.duration } : null,
       fastestTool:
         sorted.length > 0
           ? {
-              name: sorted[sorted.length - 1]!.toolName,
-              duration: sorted[sorted.length - 1]!.duration,
+              name: sorted[sorted.length - 1]?.toolName,
+              duration: sorted[sorted.length - 1]?.duration,
             }
           : null,
       byTool: toolStats,

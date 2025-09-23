@@ -14,7 +14,6 @@ import {
   createListResponse,
   createMCPResponse,
   createNoResultsResponse,
-  createUnsupportedFeatureResponse,
 } from '../utils.js';
 
 // Handler for get_hover tool

@@ -1,6 +1,5 @@
 import type { LSPClient } from '../lsp/lsp-client.js';
 import type { ServerState } from '../lsp/types.js';
-import type { LSPServerConfig } from '../types.js';
 
 export interface PooledLSPServer extends ServerState {
   projectId: string;
@@ -121,7 +120,7 @@ export class LSPServerPool {
 
   async shutdown(): Promise<void> {
     // Reject all pending requests
-    for (const [serverKey, requests] of this.pendingRequests.entries()) {
+    for (const [_serverKey, requests] of this.pendingRequests.entries()) {
       for (const request of requests) {
         request.reject(new Error('Server shutting down'));
       }
