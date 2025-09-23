@@ -665,7 +665,7 @@ export class ServerManager {
 
     try {
       if (!serverState.process.killed && serverState.process.pid) {
-        await terminateProcess(serverState.process.pid, false);
+        await terminateProcess(serverState.process.pid);
       }
     } catch (error) {
       // Process might already be dead or permissions issue - log but don't throw

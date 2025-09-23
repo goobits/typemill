@@ -1,6 +1,7 @@
 // MCP handlers for LLM agent intelligence features
 import { resolve } from 'node:path';
 import type { IntelligenceService } from '../../services/intelligence/intelligence-service.js';
+import { formatHumanPosition, formatHumanRange, toHumanPosition, toLSPPosition } from '../../utils/index.js';
 import { registerTools } from '../tool-registry.js';
 import {
   createContextualErrorResponse,
@@ -20,10 +21,9 @@ export async function handleGetHover(
   const absolutePath = resolve(file_path);
 
   try {
-    const hover = await intelligenceService.getHover(absolutePath, {
-      line: line - 1, // Convert to 0-indexed
-      character,
-    });
+    const humanPos = { line, character };
+    const lspPos = toLSPPosition(humanPos);
+    const hover = await intelligenceService.getHover(absolutePath, lspPos);
 
     if (!hover) {
       return createNoResultsResponse(
@@ -58,7 +58,7 @@ export async function handleGetHover(
     }
 
     const rangeInfo = hover.range
-      ? ` (range: ${hover.range.start.line + 1}:${hover.range.start.character} - ${hover.range.end.line + 1}:${hover.range.end.character})`
+      ? ` (range: ${formatHumanRange({ start: toHumanPosition(hover.range.start), end: toHumanPosition(hover.range.end) }, 'short')})`
       : '';
 
     return createMCPResponse(
@@ -86,12 +86,11 @@ export async function handleGetCompletions(
   const absolutePath = resolve(file_path);
 
   try {
+    const humanPos = { line, character };
+    const lspPos = toLSPPosition(humanPos);
     const completions = await intelligenceService.getCompletions(
       absolutePath,
-      {
-        line: line - 1, // Convert to 0-indexed
-        character,
-      },
+      lspPos,
       trigger_character
     );
 
@@ -154,14 +153,8 @@ export async function handleGetInlayHints(
 
   try {
     const hints = await intelligenceService.getInlayHints(absolutePath, {
-      start: {
-        line: start_line - 1, // Convert to 0-indexed
-        character: start_character,
-      },
-      end: {
-        line: end_line - 1, // Convert to 0-indexed
-        character: end_character,
-      },
+      start: toLSPPosition({ line: start_line, character: start_character }),
+      end: toLSPPosition({ line: end_line, character: end_character }),
     });
 
     if (hints.length === 0) {
@@ -172,7 +165,7 @@ export async function handleGetInlayHints(
     }
 
     const hintItems = hints.map((hint, index) => {
-      const position = `${hint.position.line + 1}:${hint.position.character}`;
+      const position = formatHumanPosition(toHumanPosition(hint.position), 'short');
       const label = Array.isArray(hint.label)
         ? hint.label.map((part) => part.value).join('')
         : hint.label;
@@ -243,8 +236,9 @@ export async function handleGetSemanticTokens(
         currentChar = deltaChar;
       }
 
+      const humanPos = toHumanPosition({ line: currentLine, character: currentChar });
       exampleTokens.push(
-        `  Token ${i + 1}: Line ${currentLine + 1}, Col ${currentChar + 1}, Length ${length}, Type ${tokenType}, Modifiers ${tokenModifiers}`
+        `  Token ${i + 1}: Line ${humanPos.line}, Col ${humanPos.character}, Length ${length}, Type ${tokenType}, Modifiers ${tokenModifiers}`
       );
     }
 
@@ -305,12 +299,11 @@ export async function handleGetSignatureHelp(
   const absolutePath = resolve(file_path);
 
   try {
+    const humanPos = { line, character };
+    const lspPos = toLSPPosition(humanPos);
     const signatureHelp = await intelligenceService.getSignatureHelp(
       absolutePath,
-      {
-        line: line - 1, // Convert to 0-indexed
-        character,
-      },
+      lspPos,
       trigger_character
     );
 

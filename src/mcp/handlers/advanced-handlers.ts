@@ -269,15 +269,15 @@ export async function handleGetFoldingRanges(
     }
 
     const rangeDescriptions = foldingRanges.map((range, index) => {
-      const startLine = range.startLine + 1; // Convert to 1-indexed
-      const endLine = range.endLine + 1; // Convert to 1-indexed
+      const startPos = toHumanPosition({ line: range.startLine, character: range.startCharacter || 0 });
+      const endPos = toHumanPosition({ line: range.endLine, character: range.endCharacter || 0 });
       const kind = range.kind || 'code';
       const characterInfo =
         range.startCharacter !== undefined && range.endCharacter !== undefined
-          ? ` (chars ${range.startCharacter + 1}-${range.endCharacter + 1})`
+          ? ` (chars ${startPos.character}-${endPos.character})`
           : '';
 
-      return `${index + 1}. **${kind}** block: Lines ${startLine}-${endLine}${characterInfo}${range.collapsedText ? ` ("${range.collapsedText}")` : ''}`;
+      return `${index + 1}. **${kind}** block: Lines ${startPos.line}-${endPos.line}${characterInfo}${range.collapsedText ? ` ("${range.collapsedText}")` : ''}`;
     });
 
     const kindCount = foldingRanges.reduce(

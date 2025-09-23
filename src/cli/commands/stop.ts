@@ -31,7 +31,7 @@ export async function stopCommand(): Promise<void> {
 
     // Try to stop the server gracefully
     try {
-      await terminateProcess(pid, false);
+      await terminateProcess(pid);
       console.log(`Stopping server (PID: ${pid})...`);
 
       // Wait a bit to check if it stopped
@@ -58,7 +58,7 @@ export async function stopCommand(): Promise<void> {
 
       // If still running after timeout, force kill
       console.log('Server did not stop gracefully, forcing shutdown...');
-      await terminateProcess(pid, true);
+      await terminateProcess(pid);
       unlinkSync(PID_FILE);
       console.log('Server forcefully stopped');
     } catch (error) {
