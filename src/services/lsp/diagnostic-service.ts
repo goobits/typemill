@@ -253,7 +253,7 @@ export class DiagnosticService {
    * Wait for diagnostics to stabilize after file changes
    */
   private async waitForDiagnosticsIdle(
-    serverState: import('../lsp/types.js').ServerState,
+    serverState: import('../../lsp/types.js').ServerState,
     fileUri: string,
     options: { maxWaitTime?: number; idleTime?: number; checkInterval?: number } = {}
   ): Promise<void> {

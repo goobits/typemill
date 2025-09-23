@@ -3,6 +3,7 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { isProcessRunning } from '../../utils/platform/process.js';
+import { getLSPServerPaths } from '../../utils/platform/system.js';
 
 // Re-export for backward compatibility
 export { isProcessRunning };
@@ -14,7 +15,7 @@ const TIMEOUT_MS = 2000;
  */
 export function getCommandPath(cmd: string): string {
   // Get platform-specific paths
-  const paths = getLSPServerPaths(cmd);
+  const paths = getLSPServerPaths();
 
   // Check each path for existence
   for (const path of paths) {

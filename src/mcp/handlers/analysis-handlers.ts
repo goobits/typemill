@@ -4,7 +4,7 @@
  */
 
 import { logger } from '../../core/diagnostics/logger.js';
-import { measureAndTrack } from '../../utils/index.js';
+import { measureAndTrack, toHumanPosition } from '../../utils/index.js';
 import { registerTools } from '../tool-registry.js';
 import { createMCPResponse } from '../utils.js';
 
@@ -51,7 +51,7 @@ export async function handleFindDeadCode(
         for (const file of targetFiles) {
           try {
             // Use MCP to get document symbols
-            const symbolsResponse = await global.mcpClient?.request({
+            const symbolsResponse = await (global as any).mcpClient?.request({
               method: 'tools/call',
               params: {
                 name: 'get_document_symbols',
@@ -78,7 +78,7 @@ export async function handleFindDeadCode(
               // Only check exported symbols (functions, classes, etc.)
               if (isExportedSymbol(symbol)) {
                 // Use MCP to find references
-                const referencesResponse = await global.mcpClient?.request({
+                const referencesResponse = await (global as any).mcpClient?.request({
                   method: 'tools/call',
                   params: {
                     name: 'find_references',
@@ -99,7 +99,7 @@ export async function handleFindDeadCode(
                     file,
                     symbol: symbol.name,
                     symbolKind: getSymbolKindName(symbol.kind),
-                    line: symbol.range?.start?.line + 1 || 0,
+                    line: symbol.range?.start ? toHumanPosition(symbol.range.start).line : 0,
                     references: referenceCount,
                     reason: referenceCount === 0 ? 'no-references' : 'only-declaration',
                   });
@@ -206,7 +206,6 @@ registerTools(
     find_dead_code: {
       handler: handleFindDeadCode,
       requiresService: 'symbol',
-      description: 'Find potentially dead (unused) code in the codebase',
     },
   },
   'analysis-handlers'

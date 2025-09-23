@@ -28,10 +28,7 @@ export function terminateProcess(pid: number): Promise<void> {
         process.platform === 'win32'
           ? ['taskkill', '/PID', pid.toString(), '/F']
           : ['kill', '-TERM', pid.toString()];
-      const proc = exec(args.join(' '), {
-        detached: true,
-        stdio: 'ignore',
-      });
+      const proc = exec(args.join(' '));
 
       proc.on('error', (err) => {
         // If SIGTERM fails on Unix, try SIGKILL

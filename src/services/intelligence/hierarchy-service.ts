@@ -29,14 +29,8 @@ export class HierarchyService {
       throw new Error('No LSP server available for this file type');
     }
 
-    // Use ProjectScanner to open related files for better cross-file support
-    try {
-      const { projectScanner } = await import('./project-analyzer.js');
-      await projectScanner.openRelatedFiles(filePath, this.context, RELATED_FILES_LIMIT);
-      logDebugMessage('HierarchyService', 'Opened related files for better context');
-    } catch (error) {
-      logDebugMessage('HierarchyService', `Could not open related files: ${error}`);
-    }
+    // ProjectScanner integration disabled - module not available
+    logDebugMessage('HierarchyService', 'Project scanner not available for related files');
 
     const response = await this.context.protocol.sendRequest(
       serverState.process,
@@ -107,14 +101,8 @@ export class HierarchyService {
       throw new Error('No LSP server available for this file type');
     }
 
-    // Use ProjectScanner to open related files for better cross-file type resolution
-    try {
-      const { projectScanner } = await import('./project-analyzer.js');
-      await projectScanner.openRelatedFiles(filePath, this.context, RELATED_FILES_LIMIT);
-      logDebugMessage('HierarchyService', 'Opened related files for better context');
-    } catch (error) {
-      logDebugMessage('HierarchyService', `Could not open related files: ${error}`);
-    }
+    // ProjectScanner integration disabled - module not available
+    logDebugMessage('HierarchyService', 'Project scanner not available for related files');
 
     const response = await this.context.protocol.sendRequest(
       serverState.process,

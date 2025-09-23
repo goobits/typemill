@@ -88,7 +88,7 @@ export async function handleGetCallHierarchyIncomingCalls(
 
     const callDescriptions = incomingCalls.map((call, index) => {
       const fromKind = getSymbolKindName(call.from.kind);
-      const fromRange = `${call.from.range.start.line + 1}:${call.from.range.start.character} - ${call.from.range.end.line + 1}:${call.from.range.end.character}`;
+      const fromRange = formatHumanRange({ start: toHumanPosition(call.from.range.start), end: toHumanPosition(call.from.range.end) }, 'short');
       const fromDetail = call.from.detail ? ` - ${call.from.detail}` : '';
 
       const ranges = call.fromRanges
@@ -156,7 +156,7 @@ export async function handleGetCallHierarchyOutgoingCalls(
 
     const callDescriptions = outgoingCalls.map((call, index) => {
       const toKind = getSymbolKindName(call.to.kind);
-      const toRange = `${call.to.range.start.line + 1}:${call.to.range.start.character} - ${call.to.range.end.line + 1}:${call.to.range.end.character}`;
+      const toRange = formatHumanRange({ start: toHumanPosition(call.to.range.start), end: toHumanPosition(call.to.range.end) }, 'short');
       const toDetail = call.to.detail ? ` - ${call.to.detail}` : '';
 
       const ranges = call.fromRanges
@@ -188,10 +188,9 @@ export async function handlePrepareTypeHierarchy(
   const absolutePath = resolve(file_path);
 
   try {
-    const items = await hierarchyService.prepareTypeHierarchy(absolutePath, {
-      line: line - 1, // Convert to 0-indexed
-      character,
-    });
+    const humanPos = { line, character };
+    const lspPos = toLSPPosition(humanPos);
+    const items = await hierarchyService.prepareTypeHierarchy(absolutePath, lspPos);
 
     if (items.length === 0) {
       return createMCPResponse(
@@ -201,10 +200,10 @@ export async function handlePrepareTypeHierarchy(
 
     const itemDescriptions = items.map((item, index) => {
       const kindName = getSymbolKindName(item.kind);
-      const range = `${item.range.start.line + 1}:${item.range.start.character} - ${item.range.end.line + 1}:${item.range.end.character}`;
+      const humanRange = formatHumanRange({ start: toHumanPosition(item.range.start), end: toHumanPosition(item.range.end) }, 'short');
       const detail = item.detail ? ` - ${item.detail}` : '';
 
-      return `${index + 1}. **${item.name}** (${kindName}) at ${range}${detail}\n   URI: ${item.uri}`;
+      return `${index + 1}. **${item.name}** (${kindName}) at ${humanRange}${detail}\n   URI: ${item.uri}`;
     });
 
     return createMCPResponse(
@@ -233,10 +232,10 @@ export async function handleGetTypeHierarchySupertypes(
 
     const supertypeDescriptions = supertypes.map((supertype, index) => {
       const kindName = getSymbolKindName(supertype.kind);
-      const range = `${supertype.range.start.line + 1}:${supertype.range.start.character} - ${supertype.range.end.line + 1}:${supertype.range.end.character}`;
+      const humanRange = formatHumanRange({ start: toHumanPosition(supertype.range.start), end: toHumanPosition(supertype.range.end) }, 'short');
       const detail = supertype.detail ? ` - ${supertype.detail}` : '';
 
-      return `${index + 1}. **${supertype.name}** (${kindName}) at ${range}${detail}\n   URI: ${supertype.uri}`;
+      return `${index + 1}. **${supertype.name}** (${kindName}) at ${humanRange}${detail}\n   URI: ${supertype.uri}`;
     });
 
     return createMCPResponse(
@@ -265,10 +264,10 @@ export async function handleGetTypeHierarchySubtypes(
 
     const subtypeDescriptions = subtypes.map((subtype, index) => {
       const kindName = getSymbolKindName(subtype.kind);
-      const range = `${subtype.range.start.line + 1}:${subtype.range.start.character} - ${subtype.range.end.line + 1}:${subtype.range.end.character}`;
+      const humanRange = formatHumanRange({ start: toHumanPosition(subtype.range.start), end: toHumanPosition(subtype.range.end) }, 'short');
       const detail = subtype.detail ? ` - ${subtype.detail}` : '';
 
-      return `${index + 1}. **${subtype.name}** (${kindName}) at ${range}${detail}\n   URI: ${subtype.uri}`;
+      return `${index + 1}. **${subtype.name}** (${kindName}) at ${humanRange}${detail}\n   URI: ${subtype.uri}`;
     });
 
     return createMCPResponse(
@@ -290,10 +289,7 @@ export async function handleGetSelectionRange(
   const absolutePath = resolve(file_path);
 
   try {
-    const lspPositions = positions.map((pos) => ({
-      line: pos.line - 1, // Convert to 0-indexed
-      character: pos.character,
-    }));
+    const lspPositions = positions.map((pos) => toLSPPosition(pos));
 
     const selectionRanges = await hierarchyService.getSelectionRange(absolutePath, lspPositions);
 
@@ -316,8 +312,8 @@ export async function handleGetSelectionRange(
 
       while (current && level < 10) {
         // Limit depth to prevent infinite loops
-        const range = `${current.range.start.line + 1}:${current.range.start.character} - ${current.range.end.line + 1}:${current.range.end.character}`;
-        ranges.push(`   Level ${level}: ${range}`);
+        const humanRange = formatHumanRange({ start: toHumanPosition(current.range.start), end: toHumanPosition(current.range.end) }, 'short');
+        ranges.push(`   Level ${level}: ${humanRange}`);
         current = current.parent;
         level++;
       }
