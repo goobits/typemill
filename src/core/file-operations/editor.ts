@@ -570,7 +570,13 @@ export async function renameFile(
         let newPath = importPath;
         if (depthChange > 0) {
           // Moved deeper, add ../
-          newPath = '../'.repeat(depthChange) + newPath;
+          const prefixPath = '../'.repeat(depthChange);
+          // If the original path started with './', remove it.
+          if (newPath.startsWith('./')) {
+            newPath = prefixPath + newPath.substring(2);
+          } else {
+            newPath = prefixPath + newPath;
+          }
         } else {
           // Moved shallower, remove ../
           const levelsToRemove = Math.abs(depthChange);
