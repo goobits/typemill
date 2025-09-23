@@ -1,7 +1,5 @@
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
-import { mkdirSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
-import { dirname } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { dirname, relative, resolve } from 'node:path';
 import { logDebugMessage } from '../../core/diagnostics/debug-logger.js';
 import type { WorkspaceEdit } from '../../core/file-operations/editor.js';
 import type { DiagnosticService } from '../../services/diagnostic-service.js';
@@ -68,7 +66,7 @@ export async function handleGetDiagnostics(
 
 // Handler for restart_server tool
 export async function handleRestartServer(
-  newLspClient: import('../../lsp/client.js').LSPClient,
+  newLspClient: import('../../lsp/lsp-client.js').LSPClient,
   args: { extensions?: string[] }
 ) {
   const { extensions } = args;
@@ -82,7 +80,7 @@ export async function handleRestartServer(
     let response = `Successfully restarted ${restartedServers.length} LSP server(s)`;
 
     if (restartedServers.length > 0) {
-      response += `\n\nRestarted servers:\n${restartedServers.map((s) => `• ${s}`).join('\n')}`;
+      response += `\n\nRestarted servers:\n${restartedServers.map((s: string) => `• ${s}`).join('\n')}`;
     }
 
     response +=
@@ -221,10 +219,7 @@ export async function handleCreateFile(args: {
 }
 
 // Handler for delete_file tool
-export async function handleDeleteFile(args: {
-  file_path: string;
-  force?: boolean;
-}) {
+export async function handleDeleteFile(args: { file_path: string; force?: boolean }) {
   const { file_path, force = false } = args;
   const absolutePath = resolve(file_path);
 

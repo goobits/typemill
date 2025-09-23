@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
-import { applyWorkspaceEdit } from '../../core/file-operations/editor.js';
 import type { TextEdit, WorkspaceEdit } from '../../core/file-operations/editor.js';
+import { applyWorkspaceEdit } from '../../core/file-operations/editor.js';
 import { pathToUri, uriToPath } from '../../core/file-operations/path-utils.js';
 import type { FileService } from '../../services/file-service.js';
 import type { SymbolService } from '../../services/symbol-service.js';
@@ -85,7 +85,7 @@ export async function handleFormatDocument(
       trim_final_newlines?: boolean;
     };
   },
-  lspClient?: import('../../lsp/client.js').LSPClient
+  lspClient?: import('../../lsp/lsp-client.js').LSPClient
 ) {
   const { file_path, options } = args;
   const absolutePath = resolve(file_path);
@@ -137,7 +137,7 @@ export async function handleFormatDocument(
 export async function handleSearchWorkspaceSymbols(
   symbolService: SymbolService,
   args: { query: string; workspace_path?: string },
-  lspClient: import('../../lsp/client.js').LSPClient
+  lspClient: import('../../lsp/lsp-client.js').LSPClient
 ) {
   const { query, workspace_path } = args;
 
@@ -257,7 +257,7 @@ export async function handleGetDocumentSymbols(
 export async function handleGetFoldingRanges(
   fileService: FileService,
   args: { file_path: string },
-  lspClient: import('../../lsp/client.js').LSPClient
+  lspClient: import('../../lsp/lsp-client.js').LSPClient
 ) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
@@ -320,7 +320,7 @@ export async function handleGetFoldingRanges(
 export async function handleGetDocumentLinks(
   fileService: FileService,
   args: { file_path: string },
-  lspClient: import('../../lsp/client.js').LSPClient
+  lspClient: import('../../lsp/lsp-client.js').LSPClient
 ) {
   const { file_path } = args;
   const absolutePath = resolve(file_path);
@@ -429,7 +429,7 @@ export async function handleApplyWorkspaceEdit(
     validate_before_apply?: boolean;
     dry_run?: boolean;
   },
-  lspClient?: import('../../lsp/client.js').LSPClient
+  lspClient?: import('../../lsp/lsp-client.js').LSPClient
 ) {
   // Support both formats: { changes: {...} } and { edit: { changes: {...} } }
   const changes = args.changes || args.edit?.changes;

@@ -1,20 +1,20 @@
-import type { LSPClient } from '../../lsp/lsp-client.js';
-import type { DiagnosticService } from '../../services/diagnostic-service.js';
-import type { FileService } from '../../services/file-service.js';
-import type { HierarchyService } from '../../services/hierarchy-service.js';
-import type { IntelligenceService } from '../../services/intelligence-service.js';
-import type { ServiceContext } from '../../services/service-context.js';
-import type { SymbolService } from '../../services/symbol-service.js';
-import { getAllTools, getTool, getToolNames } from '../tool-registry.js';
-import { createMCPResponse } from '../utils.js';
+import type { LSPClient } from '../lsp/lsp-client.js';
+import { getAllTools, getTool, getToolNames } from '../mcp/tool-registry.js';
+import { createMCPResponse } from '../mcp/utils.js';
+import type { DiagnosticService } from './diagnostic-service.js';
+import type { FileService } from './file-service.js';
+import type { HierarchyService } from './hierarchy-service.js';
+import type { IntelligenceService } from './intelligence-service.js';
+import type { ServiceContext } from './service-context.js';
+import type { SymbolService } from './symbol-service.js';
 
 // Import handlers to trigger their registration
 // These imports only have side effects (registering tools)
-import '../handlers/core-handlers.js';
-import '../handlers/advanced-handlers.js';
-import '../handlers/hierarchy-handlers.js';
-import '../handlers/intelligence-handlers.js';
-import '../handlers/utility-handlers.js';
+import '../mcp/handlers/core-handlers.js';
+import '../mcp/handlers/advanced-handlers.js';
+import '../mcp/handlers/hierarchy-handlers.js';
+import '../mcp/handlers/intelligence-handlers.js';
+import '../mcp/handlers/utility-handlers.js';
 
 export interface BatchOperation {
   tool: string;

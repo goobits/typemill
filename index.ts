@@ -6,9 +6,9 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
-  StructuredLogger,
   createRequestContext,
   getLogger,
+  StructuredLogger,
 } from './src/core/diagnostics/structured-logger.js';
 import { LSPClient as NewLSPClient } from './src/lsp/lsp-client.js';
 import * as Validation from './src/mcp/comprehensive-validation.js';
@@ -237,30 +237,6 @@ if (subcommand === 'setup') {
 } else if (subcommand === '--version' || subcommand === '-v') {
   const packageJson = await import('./package.json', { assert: { type: 'json' } });
   console.log(packageJson.default.version);
-  process.exit(0);
-  console.log('');
-  console.log('Usage: codeflow-buddy <command> [options]');
-  console.log('');
-  console.log('Commands:');
-  console.log('  setup         Interactive setup with language server selection');
-  console.log("  status        Show what's working right now");
-  console.log('  start         Start the MCP server for Claude Code');
-  console.log('  serve         Start WebSocket server for multi-client support');
-  console.log('  stop          Stop the running MCP server');
-  console.log('  help          Show this help message');
-  console.log('');
-  console.log('Setup options:');
-  console.log('  --all         Auto-install all language servers for detected file types');
-  console.log('');
-  console.log('Quick start:');
-  console.log('  codeflow-buddy setup        # Interactive setup');
-  console.log('  codeflow-buddy setup --all  # Auto-install all servers');
-  console.log('  codeflow-buddy status       # Check server status');
-  console.log('  codeflow-buddy start        # Start MCP server for Claude Code');
-  console.log('');
-  console.log('Configuration:');
-  console.log('  Config file: .codebuddy/config.json');
-  console.log('  Log file: .codebuddy/logs/debug.log');
   process.exit(0);
 } else {
   console.error(`Unknown command: ${subcommand}`);

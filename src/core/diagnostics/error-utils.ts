@@ -421,7 +421,6 @@ export function createLSPServerUnavailableMessage(filePath: string, operation: s
   return message;
 }
 
-
 /**
  * Create helpful message for unknown tool errors with suggestions
  */

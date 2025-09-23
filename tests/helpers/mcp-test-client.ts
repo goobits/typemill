@@ -119,7 +119,7 @@ export class MCPTestClient {
     minimalConfig?: boolean;
     skipLSPPreload?: boolean;
   }): Promise<void> {
-    this.process = spawn(process.execPath, ['dist/index.js', 'server'], {
+    this.process = spawn(process.execPath, ['dist/index.js', 'start'], {
       cwd: process.cwd(),
       stdio: ['pipe', 'pipe', 'pipe'],
       env: {

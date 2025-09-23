@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { type WorkspaceEdit, applyWorkspaceEdit } from '../../core/file-operations/editor.js';
+import { applyWorkspaceEdit, type WorkspaceEdit } from '../../core/file-operations/editor.js';
 import { uriToPath } from '../../core/file-operations/path-utils.js';
 import type { SymbolService } from '../../services/symbol-service.js';
 import { registerTools } from '../tool-registry.js';
@@ -24,7 +24,6 @@ export async function handleFindDefinition(
     symbol_name,
     symbol_kind
   );
-  const warning = undefined; // Remove warning handling for now
 
   process.stderr.write(
     `[DEBUG find_definition] Found ${symbolMatches.length} symbol matches for "${symbol_name}"\n`
@@ -74,11 +73,11 @@ export async function handleFindDefinition(
   }
 
   if (results.length === 0) {
-    const responseText = warning ? warning : 'No definitions found for the specified symbol.';
+    const responseText = 'No definitions found for the specified symbol.';
     return createMCPResponse(responseText);
   }
 
-  const responseText = warning ? `${warning}\n\n${results.join('\n\n')}` : results.join('\n\n');
+  const responseText = results.join('\n\n');
   return createMCPResponse(responseText);
 }
 
@@ -100,7 +99,6 @@ export async function handleFindReferences(
     symbol_name,
     symbol_kind
   );
-  const warning = undefined; // Remove warning handling for now
 
   process.stderr.write(
     `[DEBUG find_references] Found ${symbolMatches.length} symbol matches for "${symbol_name}"\n`
@@ -154,13 +152,11 @@ export async function handleFindReferences(
   }
 
   if (results.length === 0) {
-    const responseText = warning
-      ? `${warning}\n\nNo references found for the specified symbol.`
-      : 'No references found for the specified symbol.';
+    const responseText = 'No references found for the specified symbol.';
     return createMCPResponse(responseText);
   }
 
-  const responseText = warning ? `${warning}\n\n${results.join('\n\n')}` : results.join('\n\n');
+  const responseText = results.join('\n\n');
   return createMCPResponse(responseText);
 }
 
@@ -174,7 +170,7 @@ export async function handleRenameSymbol(
     new_name: string;
     dry_run?: boolean;
   },
-  lspClient?: import('../../lsp/client.js').LSPClient
+  lspClient?: import('../../lsp/lsp-client.js').LSPClient
 ) {
   const { file_path, symbol_name, symbol_kind, new_name, dry_run = false } = args;
   const absolutePath = resolve(file_path);
@@ -184,12 +180,9 @@ export async function handleRenameSymbol(
     symbol_name,
     symbol_kind
   );
-  const warning = undefined; // Remove warning handling for now
 
   if (symbolMatches.length === 0) {
-    const responseText = warning
-      ? `${warning}\n\nNo symbols found with name "${symbol_name}"${symbol_kind ? ` and kind "${symbol_kind}"` : ''} in ${file_path}. Please verify the symbol name and ensure the language server is properly configured.`
-      : `No symbols found with name "${symbol_name}"${symbol_kind ? ` and kind "${symbol_kind}"` : ''} in ${file_path}. Please verify the symbol name and ensure the language server is properly configured.`;
+    const responseText = `No symbols found with name "${symbol_name}"${symbol_kind ? ` and kind "${symbol_kind}"` : ''} in ${file_path}. Please verify the symbol name and ensure the language server is properly configured.`;
 
     return createMCPResponse(responseText);
   }
@@ -202,9 +195,7 @@ export async function handleRenameSymbol(
       )
       .join('\n');
 
-    const responseText = warning
-      ? `${warning}\n\nMultiple symbols found with name "${symbol_name}". Please use rename_symbol_strict to specify which one to rename:\n\n${matchDescriptions}`
-      : `Multiple symbols found with name "${symbol_name}". Please use rename_symbol_strict to specify which one to rename:\n\n${matchDescriptions}`;
+    const responseText = `Multiple symbols found with name "${symbol_name}". Please use rename_symbol_strict to specify which one to rename:\n\n${matchDescriptions}`;
 
     return createMCPResponse(responseText);
   }
@@ -278,7 +269,7 @@ export async function handleRenameSymbolStrict(
     new_name: string;
     dry_run?: boolean;
   },
-  lspClient?: import('../../lsp/client.js').LSPClient
+  lspClient?: import('../../lsp/lsp-client.js').LSPClient
 ) {
   const { file_path, line, character, new_name, dry_run = false } = args;
   const absolutePath = resolve(file_path);

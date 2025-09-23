@@ -5,8 +5,8 @@ import { pathToUri, uriToPath } from '../core/file-operations/path-utils.js';
 import type { ServerState } from '../lsp/types.js';
 import type {
   DocumentSymbol,
-  LSPLocation,
   Location,
+  LSPLocation,
   Position,
   SymbolInformation,
   SymbolMatch,

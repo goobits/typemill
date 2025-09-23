@@ -3,9 +3,9 @@ import { cpus } from 'node:os';
 import type { ServerCapabilities } from '../core/capability-manager.js';
 import { capabilityManager } from '../core/capability-manager.js';
 import {
-  ServerNotAvailableError,
   getErrorMessage,
   logError,
+  ServerNotAvailableError,
 } from '../core/diagnostics/error-utils.js';
 import { pathToUri } from '../core/file-operations/path-utils.js';
 import type { Config, LSPServerConfig } from '../types.js';

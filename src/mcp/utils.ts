@@ -1,11 +1,11 @@
 // Shared MCP utilities
 import {
   ConfigurationError,
+  createUserFriendlyErrorMessage,
   FileSystemError,
   LSPError,
-  ServerNotAvailableError,
-  createUserFriendlyErrorMessage,
   logError,
+  ServerNotAvailableError,
 } from '../core/diagnostics/error-utils.js';
 
 export interface MCPResponse {

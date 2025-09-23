@@ -399,7 +399,7 @@ function findImportsInFile(
   // Define import patterns to check (both with and without .js extensions)
   const importPatterns = [
     { oldPath: oldRelativeNoExt, newPath: newRelativeNoExt },
-    { oldPath: oldRelativeWithJs, newPath: newRelativeWithJs }
+    { oldPath: oldRelativeWithJs, newPath: newRelativeWithJs },
   ];
 
   // Track processed ranges to avoid duplicates
@@ -570,4 +570,3 @@ export async function renameFile(
     };
   }
 }
-

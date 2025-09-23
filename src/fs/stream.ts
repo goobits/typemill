@@ -1,7 +1,7 @@
 import { PersistentFileCache } from '../core/cache.js';
 import { logger } from '../core/diagnostics/logger.js';
-import type { ClientSession } from '../transports/websocket.js';
 import type {
+  ClientSession,
   DeltaWriteRequest,
   DeltaWriteResponse,
   WebSocketTransport,
