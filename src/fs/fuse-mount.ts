@@ -297,14 +297,14 @@ export class FuseMount {
 
       // Force unmount if still mounted
       if (this.mounted && this.fuse) {
-        // Use system unmount as fallback
-        const { execSync } = await import('node:child_process');
+        // Use system unmount as fallback (using execFileSync to prevent injection)
+        const { execFileSync } = await import('node:child_process');
         try {
-          execSync(`fusermount -u "${this.mountPath}"`, { timeout: 5000 });
+          execFileSync('fusermount', ['-u', this.mountPath], { timeout: 5000 });
         } catch (error) {
           // Try lazy unmount
           try {
-            execSync(`fusermount -uz "${this.mountPath}"`, { timeout: 5000 });
+            execFileSync('fusermount', ['-uz', this.mountPath], { timeout: 5000 });
           } catch (lazyError) {
             logger.error('Failed to force unmount FUSE filesystem', lazyError as Error, {
               component: 'FuseMount',

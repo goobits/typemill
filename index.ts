@@ -154,6 +154,8 @@ if (subcommand === 'setup') {
   const enableFuseIndex = args.indexOf('--enable-fuse');
   const requireAuthIndex = args.indexOf('--require-auth');
   const jwtSecretIndex = args.indexOf('--jwt-secret');
+  const allowedOriginsIndex = args.indexOf('--allowed-origins');
+  const allowedCorsOriginsIndex = args.indexOf('--allowed-cors-origins');
 
   const options = {
     port:
@@ -166,6 +168,14 @@ if (subcommand === 'setup') {
     requireAuth: requireAuthIndex !== -1,
     jwtSecret:
       jwtSecretIndex !== -1 && args[jwtSecretIndex + 1] ? args[jwtSecretIndex + 1] : undefined,
+    allowedOrigins:
+      allowedOriginsIndex !== -1 && args[allowedOriginsIndex + 1]
+        ? args[allowedOriginsIndex + 1]!.split(',')
+        : undefined,
+    allowedCorsOrigins:
+      allowedCorsOriginsIndex !== -1 && args[allowedCorsOriginsIndex + 1]
+        ? args[allowedCorsOriginsIndex + 1]!.split(',')
+        : undefined,
   };
 
   await serveCommand(options);

@@ -9,6 +9,8 @@ export interface ServeOptions {
   tlsCert?: string;
   tlsCa?: string;
   enableFuse?: boolean;
+  allowedOrigins?: string[];
+  allowedCorsOrigins?: string[];
   workspaceConfig?: {
     baseWorkspaceDir?: string;
     fuseMountPrefix?: string;
@@ -23,6 +25,9 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
   const requireAuth = options.requireAuth || false;
   const jwtSecret = options.jwtSecret;
   const enableFuse = options.enableFuse || process.env.ENABLE_FUSE === 'true';
+  const allowedOrigins = options.allowedOrigins ||
+    (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : undefined);
+  const allowedCorsOrigins = options.allowedCorsOrigins || allowedOrigins;
 
   // Configure TLS if both key and cert are provided
   let tls: TLSOptions | undefined;
@@ -62,6 +67,8 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
     jwtSecret,
     tls,
     enableFuse,
+    allowedOrigins,
+    allowedCorsOrigins,
     workspaceConfig: options.workspaceConfig,
   });
 

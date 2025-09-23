@@ -42,6 +42,8 @@ export interface WebSocketServerOptions {
   jwtSecret?: string;
   tls?: TLSOptions;
   enableFuse?: boolean;
+  allowedOrigins?: string[];  // WebSocket origin validation
+  allowedCorsOrigins?: string[];  // HTTP CORS origins
   workspaceConfig?: {
     baseWorkspaceDir?: string;
     fuseMountPrefix?: string;
@@ -110,9 +112,41 @@ export class CodeFlowWebSocketServer {
     this.wss = new WebSocketServer({
       server: this.httpServer,
       clientTracking: true,
+      verifyClient: this.verifyWebSocketOrigin.bind(this),
     });
 
     this.setupServer();
+  }
+
+  private verifyWebSocketOrigin(info: { origin: string; req: IncomingMessage }): boolean {
+    // If no origins specified, allow all (backward compatibility)
+    if (!this.options.allowedOrigins || this.options.allowedOrigins.length === 0) {
+      return true;
+    }
+
+    // Check if origin is in allowed list
+    const origin = info.origin || (info.req.headers.origin as string);
+    if (!origin) {
+      // No origin header - reject for security
+      logger.warn('WebSocket connection rejected - no origin header', {
+        component: 'WebSocketServer',
+        remoteAddress: info.req.socket.remoteAddress,
+      });
+      return false;
+    }
+
+    const isAllowed = this.options.allowedOrigins.includes(origin) ||
+                     this.options.allowedOrigins.includes('*');
+
+    if (!isAllowed) {
+      logger.warn('WebSocket connection rejected - unauthorized origin', {
+        component: 'WebSocketServer',
+        origin,
+        allowedOrigins: this.options.allowedOrigins,
+      });
+    }
+
+    return isAllowed;
   }
 
   private createServer(): ReturnType<typeof createServer> | HttpsServer {
@@ -220,10 +254,20 @@ export class CodeFlowWebSocketServer {
   }
 
   private handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    // Set CORS headers based on configuration
+    const origin = req.headers.origin as string;
+    const corsOrigin = this.options.allowedCorsOrigins?.length
+      ? (this.options.allowedCorsOrigins.includes('*')
+         ? '*'
+         : origin && this.options.allowedCorsOrigins.includes(origin)
+           ? origin
+           : this.options.allowedCorsOrigins[0])
+      : '*';
+
+    res.setHeader('Access-Control-Allow-Origin', corsOrigin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
 
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
