@@ -42,6 +42,7 @@ export interface AuthResponse {
 }
 
 export class JWTAuthenticator {
+  public readonly config: AuthConfig;
   private readonly defaultPermissions = [
     'file:read',
     'file:write',
@@ -50,7 +51,8 @@ export class JWTAuthenticator {
     'session:manage',
   ];
 
-  constructor(private config: AuthConfig) {
+  constructor(config: AuthConfig) {
+    this.config = config;
     if (!config.secretKey || config.secretKey.length < 32) {
       throw new Error('JWT secret key must be at least 32 characters long');
     }
