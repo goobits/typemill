@@ -133,4 +133,3 @@ export function getLSPServerPaths(serverName: string): string[] {
 
   return paths;
 }
-

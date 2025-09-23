@@ -2,9 +2,15 @@
 
 import { spawn } from 'node:child_process';
 import inquirer from 'inquirer';
-import { LANGUAGE_SERVERS, generateConfig } from '../../core/configuration/language-presets.js';
+import { generateConfig, LANGUAGE_SERVERS } from '../../core/configuration/language-presets.js';
 import { scanDirectoryForExtensions } from '../../core/file-operations/scanner.js';
-import { getConfigPath, migrateOldConfig, readConfig, readConfigSilent, writeConfig } from '../utils/directory-utils.js';
+import {
+  getConfigPath,
+  migrateOldConfig,
+  readConfig,
+  readConfigSilent,
+  writeConfig,
+} from '../utils/directory-utils.js';
 import { getPipCommand, runInstallCommand } from '../utils/install-utils.js';
 import { getCommandPath, testCommand } from '../utils/server-utils.js';
 

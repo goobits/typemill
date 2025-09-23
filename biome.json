@@ -1,8 +1,5 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
-  "organizeImports": {
-    "enabled": true
-  },
   "linter": {
     "enabled": true,
     "rules": {
@@ -18,7 +15,7 @@
   },
   "overrides": [
     {
-      "include": ["**/*.test.ts"],
+      "includes": ["**/*.test.ts"],
       "linter": {
         "rules": {
           "suspicious": {
@@ -47,6 +44,8 @@
     }
   },
   "files": {
-    "ignore": ["node_modules/**", "dist/**", "*.json", "plugins/**", "examples/playground/**"]
+    "ignoreUnknown": false,
+    "includes": ["src/**/*.ts", "*.ts", "*.js"],
+    "maxSize": 1048576
   }
 }

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { type IncomingMessage, type ServerResponse, createServer } from 'node:http';
-import { type Server as HttpsServer, createServer as createHttpsServer } from 'node:https';
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createServer as createHttpsServer, type Server as HttpsServer } from 'node:https';
 import type WebSocket from 'ws';
 import { WebSocketServer } from 'ws';
 import { type AuthRequest, type AuthResponse, JWTAuthenticator } from '../auth/jwt-auth.js';
@@ -9,8 +9,8 @@ import { FuseMount } from '../fs/fuse-mount.js';
 import { StreamingFileAccess } from '../fs/stream.js';
 import { LSPClient } from '../lsp/lsp-client.js';
 import { toolRegistry } from '../mcp/tool-registry.js';
-import { WebSocketTransport } from '../transports/websocket.js';
 import type { ClientSession, MCPMessage } from '../transports/websocket.js';
+import { WebSocketTransport } from '../transports/websocket.js';
 import type {
   EnhancedClientSession,
   FuseOperationResponse,

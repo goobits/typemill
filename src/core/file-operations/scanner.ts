@@ -1,5 +1,4 @@
-import { readFile, readdir, stat } from 'node:fs/promises';
-import { constants, access } from 'node:fs/promises';
+import { access, constants, readdir, readFile, stat } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import ignore from 'ignore';
 import type { LanguageServerConfig } from '../configuration/language-presets.js';
@@ -155,4 +154,3 @@ function getRecommendedLanguageServers(
 
   return recommended;
 }
-

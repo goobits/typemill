@@ -18,7 +18,6 @@ export function getStatePath(): string {
   return join(getCodebuddyDir(), 'state.json');
 }
 
-
 export function getControlDir(): string {
   return join(getCodebuddyDir(), 'control');
 }
@@ -126,4 +125,3 @@ export function readState(): StateFile {
     return {};
   }
 }
-

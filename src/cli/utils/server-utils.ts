@@ -123,4 +123,3 @@ function getTestArgs(command: string): string[] {
   }
   return ['--version']; // Default
 }
-

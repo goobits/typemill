@@ -93,10 +93,7 @@ async function tryPipFallback(
           return true;
         }
       }
-    } catch {
-      // This pip command not found, try next
-      continue;
-    }
+    } catch {}
   }
 
   return false;
