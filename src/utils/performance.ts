@@ -40,12 +40,7 @@ export async function measurePerformance<T>(
   operation: () => Promise<T>,
   options: PerformanceOptions = {}
 ): Promise<PerformanceResult<T>> {
-  const {
-    logResult = true,
-    logThreshold = 0,
-    context = {},
-    logStatus = true,
-  } = options;
+  const { logResult = true, logThreshold = 0, context = {}, logStatus = true } = options;
 
   const startTime = performance.now();
   let success = false;
@@ -112,12 +107,7 @@ export function measureSyncPerformance<T>(
   operation: () => T,
   options: PerformanceOptions = {}
 ): PerformanceResult<T> {
-  const {
-    logResult = true,
-    logThreshold = 0,
-    context = {},
-    logStatus = true,
-  } = options;
+  const { logResult = true, logThreshold = 0, context = {}, logStatus = true } = options;
 
   const startTime = performance.now();
   let success = false;
@@ -185,17 +175,13 @@ export function withPerformanceMeasurement<TArgs, TResult>(
   options: PerformanceOptions = {}
 ): (args: TArgs) => Promise<TResult> {
   return async (args: TArgs): Promise<TResult> => {
-    const result = await measurePerformance(
-      toolName,
-      () => handler(args),
-      {
-        ...options,
-        context: {
-          ...options.context,
-          args: typeof args === 'object' && args !== null ? Object.keys(args) : undefined,
-        },
-      }
-    );
+    const result = await measurePerformance(toolName, () => handler(args), {
+      ...options,
+      context: {
+        ...options.context,
+        args: typeof args === 'object' && args !== null ? Object.keys(args) : undefined,
+      },
+    });
     return result.result;
   };
 }
@@ -239,12 +225,15 @@ export class PerformanceTracker {
     averageDuration: number;
     slowestTool: { name: string; duration: number } | null;
     fastestTool: { name: string; duration: number } | null;
-    byTool: Record<string, {
-      count: number;
-      avgDuration: number;
-      successRate: number;
-      totalDuration: number;
-    }>;
+    byTool: Record<
+      string,
+      {
+        count: number;
+        avgDuration: number;
+        successRate: number;
+        totalDuration: number;
+      }
+    >;
   } {
     if (this.measurements.length === 0) {
       return {
@@ -258,11 +247,11 @@ export class PerformanceTracker {
     }
 
     const totalDuration = this.measurements.reduce((sum, m) => sum + m.duration, 0);
-    const successCount = this.measurements.filter(m => m.success).length;
+    const successCount = this.measurements.filter((m) => m.success).length;
     const sorted = [...this.measurements].sort((a, b) => b.duration - a.duration);
 
     // Group by tool
-    const byTool: Record<string, Array<typeof this.measurements[0]>> = {};
+    const byTool: Record<string, Array<(typeof this.measurements)[0]>> = {};
     for (const measurement of this.measurements) {
       if (!byTool[measurement.toolName]) {
         byTool[measurement.toolName] = [];
@@ -270,16 +259,19 @@ export class PerformanceTracker {
       byTool[measurement.toolName]!.push(measurement);
     }
 
-    const toolStats: Record<string, {
-      count: number;
-      avgDuration: number;
-      successRate: number;
-      totalDuration: number;
-    }> = {};
+    const toolStats: Record<
+      string,
+      {
+        count: number;
+        avgDuration: number;
+        successRate: number;
+        totalDuration: number;
+      }
+    > = {};
 
     for (const [toolName, measurements] of Object.entries(byTool)) {
       const toolTotalDuration = measurements.reduce((sum, m) => sum + m.duration, 0);
-      const toolSuccessCount = measurements.filter(m => m.success).length;
+      const toolSuccessCount = measurements.filter((m) => m.success).length;
 
       toolStats[toolName] = {
         count: measurements.length,
@@ -293,8 +285,15 @@ export class PerformanceTracker {
       totalMeasurements: this.measurements.length,
       successRate: successCount / this.measurements.length,
       averageDuration: totalDuration / this.measurements.length,
-      slowestTool: sorted.length > 0 ? { name: sorted[0]!.toolName, duration: sorted[0]!.duration } : null,
-      fastestTool: sorted.length > 0 ? { name: sorted[sorted.length - 1]!.toolName, duration: sorted[sorted.length - 1]!.duration } : null,
+      slowestTool:
+        sorted.length > 0 ? { name: sorted[0]!.toolName, duration: sorted[0]!.duration } : null,
+      fastestTool:
+        sorted.length > 0
+          ? {
+              name: sorted[sorted.length - 1]!.toolName,
+              duration: sorted[sorted.length - 1]!.duration,
+            }
+          : null,
       byTool: toolStats,
     };
   }
@@ -309,7 +308,7 @@ export class PerformanceTracker {
   /**
    * Get recent measurements (last N measurements)
    */
-  getRecent(count: number): Array<typeof this.measurements[0]> {
+  getRecent(count: number): Array<(typeof this.measurements)[0]> {
     return this.measurements.slice(-count);
   }
 

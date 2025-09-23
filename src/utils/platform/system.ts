@@ -17,17 +17,21 @@ export function getLSPServerPaths(): string[] {
       join(process.env.APPDATA || '', 'npm', 'node_modules'),
       join(process.env.LOCALAPPDATA || '', 'npm', 'node_modules'),
       'C:\\Program Files\\nodejs\\node_modules',
-      'C:\\Program Files (x86)\\nodejs\\node_modules',
+      'C:\\Program Files (x86)\\nodejs\\node_modules'
     );
   } else if (plat === 'darwin') {
     paths.push(
       '/usr/local/lib/node_modules',
       '/opt/homebrew/lib/node_modules',
-      join(home, '.npm-global', 'lib', 'node_modules'),
+      join(home, '.npm-global', 'lib', 'node_modules')
     );
   } else {
     // Linux
-    paths.push('/usr/local/lib/node_modules', '/usr/lib/node_modules', join(home, '.npm-global', 'lib', 'node_modules'));
+    paths.push(
+      '/usr/local/lib/node_modules',
+      '/usr/lib/node_modules',
+      join(home, '.npm-global', 'lib', 'node_modules')
+    );
   }
 
   // User-specific locations

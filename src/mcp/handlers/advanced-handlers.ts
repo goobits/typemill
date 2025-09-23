@@ -495,9 +495,9 @@ export async function handleApplyWorkspaceEdit(
     // Apply the workspace edit with LSP synchronization
     const result = await applyWorkspaceEdit(workspaceEdit, {
       validateBeforeApply: true,
-      createBackupFiles: false,  // Disable backup file creation
+      createBackupFiles: false, // Disable backup file creation
       lspClient,
-    });;
+    });
 
     if (!result.success) {
       return createMCPResponse(

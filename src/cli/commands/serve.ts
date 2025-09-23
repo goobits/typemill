@@ -1,5 +1,6 @@
-import { CodeFlowWebSocketServer, type TLSOptions } from '../../server/ws-server.js';
 import { logger } from '../../core/diagnostics/logger.js';
+import { startWatcher } from '../../core/server/auto-restarter.js';
+import { CodeFlowWebSocketServer, type TLSOptions } from '../../server/ws-server.js';
 
 export interface ServeOptions {
   port?: number;
@@ -13,6 +14,7 @@ export interface ServeOptions {
   allowedOrigins?: string[];
   allowedCorsOrigins?: string[];
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
+  autoRestart?: boolean;
   workspaceConfig?: {
     baseWorkspaceDir?: string;
     fuseMountPrefix?: string;
@@ -34,6 +36,7 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
   const requireAuth = options.requireAuth || false;
   const jwtSecret = options.jwtSecret;
   const enableFuse = options.enableFuse || process.env.ENABLE_FUSE === 'true';
+  const autoRestart = options.autoRestart ?? process.env.NODE_ENV === 'development';
   const allowedOrigins =
     options.allowedOrigins ||
     (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : undefined);
@@ -59,6 +62,7 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
     authentication: requireAuth ? 'Enabled' : 'Disabled',
     tls: tls ? 'Enabled' : 'Disabled',
     fuse_isolation: enableFuse ? 'Enabled' : 'Disabled',
+    auto_restart: autoRestart ? 'Enabled' : 'Disabled',
     log_level: logLevel || 'default',
   });
 
@@ -95,11 +99,16 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
   const shutdown = async () => {
     logger.info('Shutting down server', { component: 'server' });
     await server.shutdown();
-    process.exit(0);
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', async () => {
+    await shutdown();
+    process.exit(0);
+  });
+  process.on('SIGTERM', async () => {
+    await shutdown();
+    process.exit(0);
+  });
 
   // Keep the process alive
   process.on('exit', () => {
@@ -117,4 +126,19 @@ export async function serveCommand(options: ServeOptions = {}): Promise<void> {
       stats_type: 'periodic',
     });
   }, 30000); // Every 30 seconds
+
+  // Enable auto-restart if configured
+  if (autoRestart) {
+    const pathsToWatch = ['src', 'package.json', 'tsconfig.json'];
+    startWatcher({
+      pathsToWatch,
+      shutdownServer: shutdown,
+    });
+  }
+
+  // Keep the process alive until explicitly shut down
+  await new Promise<void>((resolve) => {
+    // This promise never resolves, keeping the process alive
+    // The shutdown handlers or auto-restart will exit the process
+  });
 }

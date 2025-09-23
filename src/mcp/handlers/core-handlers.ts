@@ -1,8 +1,16 @@
 import { resolve } from 'node:path';
+import { logger } from '../../core/diagnostics/logger.js';
 import { applyWorkspaceEdit, type WorkspaceEdit } from '../../core/file-operations/editor.js';
 import { uriToPath } from '../../core/file-operations/path-utils.js';
-import { logger } from '../../core/diagnostics/logger.js';
 import type { SymbolService } from '../../services/lsp/symbol-service.js';
+import {
+  assertValidFilePath,
+  assertValidSymbolName,
+  formatFileLocation,
+  measureAndTrack,
+  toHumanPosition,
+  ValidationError,
+} from '../../utils/index.js';
 import { registerTools } from '../tool-registry.js';
 import {
   createContextualErrorResponse,
@@ -11,14 +19,6 @@ import {
   createNoChangesResponse,
   createNoResultsResponse,
 } from '../utils.js';
-import {
-  assertValidFilePath,
-  assertValidSymbolName,
-  toHumanPosition,
-  formatFileLocation,
-  measureAndTrack,
-  ValidationError,
-} from '../../utils/index.js';
 
 // Handler for find_definition tool
 export async function handleFindDefinition(
@@ -27,98 +27,101 @@ export async function handleFindDefinition(
 ) {
   const { file_path, symbol_name, symbol_kind } = args;
 
-  return measureAndTrack('find_definition', async () => {
-
-    // Validate inputs
-    try {
-      assertValidFilePath(file_path);
-      assertValidSymbolName(symbol_name);
-    } catch (error) {
-      if (error instanceof ValidationError) {
-        return createContextualErrorResponse(error, {
-          operation: 'find_definition',
-          filePath: file_path,
-        });
+  return measureAndTrack(
+    'find_definition',
+    async () => {
+      // Validate inputs
+      try {
+        assertValidFilePath(file_path);
+        assertValidSymbolName(symbol_name);
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          return createContextualErrorResponse(error, {
+            operation: 'find_definition',
+            filePath: file_path,
+          });
+        }
+        throw error;
       }
-      throw error;
-    }
 
-    const absolutePath = resolve(file_path);
+      const absolutePath = resolve(file_path);
 
-  const symbolMatches = await symbolService.findSymbolMatches(
-    absolutePath,
-    symbol_name,
-    symbol_kind
-  );
+      const symbolMatches = await symbolService.findSymbolMatches(
+        absolutePath,
+        symbol_name,
+        symbol_kind
+      );
 
-  logger.debug('Symbol matches found', {
-    tool: 'find_definition',
-    symbol_name,
-    match_count: symbolMatches.length,
-    file_path,
-  });
-
-  if (symbolMatches.length === 0) {
-    return createNoResultsResponse(
-      'symbols',
-      `"${symbol_name}"${symbol_kind ? ` (${symbol_kind})` : ''} in ${file_path}`,
-      ['Please verify the symbol name and ensure the language server is properly configured.']
-    );
-  }
-
-  const results = [];
-  for (const match of symbolMatches) {
-    const humanPos = toHumanPosition(match.position);
-    logger.debug('Processing symbol match', {
-      tool: 'find_definition',
-      match_name: match.name,
-      match_kind: symbolService.symbolKindToString(match.kind),
-      position: formatFileLocation(file_path, humanPos),
-    });
-    try {
-      const locations = await symbolService.findDefinition(absolutePath, match.position);
-      logger.debug('Definition search completed', {
+      logger.debug('Symbol matches found', {
         tool: 'find_definition',
-        match_name: match.name,
-        location_count: locations.length,
+        symbol_name,
+        match_count: symbolMatches.length,
+        file_path,
       });
 
-      if (locations.length > 0) {
-        const locationResults = locations
-          .map((loc) => {
-            const filePath = uriToPath(loc.uri);
-            const humanPos = toHumanPosition(loc.range.start);
-            return formatFileLocation(filePath, humanPos);
-          })
-          .join('\n');
-
-        const matchHumanPos = toHumanPosition(match.position);
-        results.push(
-          `Results for ${match.name} (${symbolService.symbolKindToString(match.kind)}) at ${formatFileLocation(file_path, matchHumanPos)}:\n${locationResults}`
-        );
-      } else {
-        const matchHumanPos = toHumanPosition(match.position);
-        results.push(
-          `No definition found for ${match.name} (${symbolService.symbolKindToString(match.kind)}) at ${formatFileLocation(file_path, matchHumanPos)}`
+      if (symbolMatches.length === 0) {
+        return createNoResultsResponse(
+          'symbols',
+          `"${symbol_name}"${symbol_kind ? ` (${symbol_kind})` : ''} in ${file_path}`,
+          ['Please verify the symbol name and ensure the language server is properly configured.']
         );
       }
-    } catch (error) {
-      results.push(
-        `Error finding definition for ${match.name}: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
 
-    if (results.length === 0) {
-      const responseText = 'No definitions found for the specified symbol.';
+      const results = [];
+      for (const match of symbolMatches) {
+        const humanPos = toHumanPosition(match.position);
+        logger.debug('Processing symbol match', {
+          tool: 'find_definition',
+          match_name: match.name,
+          match_kind: symbolService.symbolKindToString(match.kind),
+          position: formatFileLocation(file_path, humanPos),
+        });
+        try {
+          const locations = await symbolService.findDefinition(absolutePath, match.position);
+          logger.debug('Definition search completed', {
+            tool: 'find_definition',
+            match_name: match.name,
+            location_count: locations.length,
+          });
+
+          if (locations.length > 0) {
+            const locationResults = locations
+              .map((loc) => {
+                const filePath = uriToPath(loc.uri);
+                const humanPos = toHumanPosition(loc.range.start);
+                return formatFileLocation(filePath, humanPos);
+              })
+              .join('\n');
+
+            const matchHumanPos = toHumanPosition(match.position);
+            results.push(
+              `Results for ${match.name} (${symbolService.symbolKindToString(match.kind)}) at ${formatFileLocation(file_path, matchHumanPos)}:\n${locationResults}`
+            );
+          } else {
+            const matchHumanPos = toHumanPosition(match.position);
+            results.push(
+              `No definition found for ${match.name} (${symbolService.symbolKindToString(match.kind)}) at ${formatFileLocation(file_path, matchHumanPos)}`
+            );
+          }
+        } catch (error) {
+          results.push(
+            `Error finding definition for ${match.name}: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      }
+
+      if (results.length === 0) {
+        const responseText = 'No definitions found for the specified symbol.';
+        return createMCPResponse(responseText);
+      }
+
+      const responseText = results.join('\n\n');
       return createMCPResponse(responseText);
+    },
+    {
+      context: { file_path, symbol_name, symbol_kind },
     }
-
-    const responseText = results.join('\n\n');
-    return createMCPResponse(responseText);
-  }, {
-    context: { file_path, symbol_name, symbol_kind },
-  });
+  );
 }
 
 // Handler for find_references tool
@@ -133,102 +136,106 @@ export async function handleFindReferences(
 ) {
   const { file_path, symbol_name, symbol_kind, include_declaration = true } = args;
 
-  return measureAndTrack('find_references', async () => {
-    // Validate inputs
-    try {
-      assertValidFilePath(file_path);
-      assertValidSymbolName(symbol_name);
-    } catch (error) {
-      if (error instanceof ValidationError) {
-        return createContextualErrorResponse(error, {
-          operation: 'find_references',
-          filePath: file_path,
-        });
+  return measureAndTrack(
+    'find_references',
+    async () => {
+      // Validate inputs
+      try {
+        assertValidFilePath(file_path);
+        assertValidSymbolName(symbol_name);
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          return createContextualErrorResponse(error, {
+            operation: 'find_references',
+            filePath: file_path,
+          });
+        }
+        throw error;
       }
-      throw error;
-    }
 
-    const absolutePath = resolve(file_path);
+      const absolutePath = resolve(file_path);
 
-  const symbolMatches = await symbolService.findSymbolMatches(
-    absolutePath,
-    symbol_name,
-    symbol_kind
-  );
-
-  logger.debug('Symbol matches found', {
-    tool: 'find_references',
-    symbol_name,
-    match_count: symbolMatches.length,
-    file_path,
-    include_declaration,
-  });
-
-  if (symbolMatches.length === 0) {
-    return createNoResultsResponse(
-      'symbols',
-      `"${symbol_name}"${symbol_kind ? ` (${symbol_kind})` : ''} in ${file_path}`,
-      ['Please verify the symbol name and ensure the language server is properly configured.']
-    );
-  }
-
-    const results = [];
-    for (const match of symbolMatches) {
-      const humanPos = toHumanPosition(match.position);
-      logger.debug('Processing symbol match', {
-        tool: 'find_references',
-        match_name: match.name,
-        match_kind: symbolService.symbolKindToString(match.kind),
-        position: formatFileLocation(file_path, humanPos),
-      });
-    try {
-      const locations = await symbolService.findReferences(
+      const symbolMatches = await symbolService.findSymbolMatches(
         absolutePath,
-        match.position,
-        include_declaration
+        symbol_name,
+        symbol_kind
       );
-      logger.debug('References search completed', {
+
+      logger.debug('Symbol matches found', {
         tool: 'find_references',
-        match_name: match.name,
-        location_count: locations.length,
+        symbol_name,
+        match_count: symbolMatches.length,
+        file_path,
+        include_declaration,
       });
 
-      if (locations.length > 0) {
-        const locationResults = locations
-          .map((loc) => {
-            const filePath = uriToPath(loc.uri);
-            const humanPos = toHumanPosition(loc.range.start);
-            return formatFileLocation(filePath, humanPos);
-          })
-          .join('\n');
-
-        const matchHumanPos = toHumanPosition(match.position);
-        results.push(
-          `References for ${match.name} (${symbolService.symbolKindToString(match.kind)}) at ${formatFileLocation(file_path, matchHumanPos)}:\n${locationResults}`
-        );
-      } else {
-        const matchHumanPos = toHumanPosition(match.position);
-        results.push(
-          `No references found for ${match.name} (${symbolService.symbolKindToString(match.kind)}) at ${formatFileLocation(file_path, matchHumanPos)}`
+      if (symbolMatches.length === 0) {
+        return createNoResultsResponse(
+          'symbols',
+          `"${symbol_name}"${symbol_kind ? ` (${symbol_kind})` : ''} in ${file_path}`,
+          ['Please verify the symbol name and ensure the language server is properly configured.']
         );
       }
-    } catch (error) {
-      results.push(
-        `Error finding references for ${match.name}: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-    }
 
-    if (results.length === 0) {
-      const responseText = 'No references found for the specified symbol.';
+      const results = [];
+      for (const match of symbolMatches) {
+        const humanPos = toHumanPosition(match.position);
+        logger.debug('Processing symbol match', {
+          tool: 'find_references',
+          match_name: match.name,
+          match_kind: symbolService.symbolKindToString(match.kind),
+          position: formatFileLocation(file_path, humanPos),
+        });
+        try {
+          const locations = await symbolService.findReferences(
+            absolutePath,
+            match.position,
+            include_declaration
+          );
+          logger.debug('References search completed', {
+            tool: 'find_references',
+            match_name: match.name,
+            location_count: locations.length,
+          });
+
+          if (locations.length > 0) {
+            const locationResults = locations
+              .map((loc) => {
+                const filePath = uriToPath(loc.uri);
+                const humanPos = toHumanPosition(loc.range.start);
+                return formatFileLocation(filePath, humanPos);
+              })
+              .join('\n');
+
+            const matchHumanPos = toHumanPosition(match.position);
+            results.push(
+              `References for ${match.name} (${symbolService.symbolKindToString(match.kind)}) at ${formatFileLocation(file_path, matchHumanPos)}:\n${locationResults}`
+            );
+          } else {
+            const matchHumanPos = toHumanPosition(match.position);
+            results.push(
+              `No references found for ${match.name} (${symbolService.symbolKindToString(match.kind)}) at ${formatFileLocation(file_path, matchHumanPos)}`
+            );
+          }
+        } catch (error) {
+          results.push(
+            `Error finding references for ${match.name}: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      }
+
+      if (results.length === 0) {
+        const responseText = 'No references found for the specified symbol.';
+        return createMCPResponse(responseText);
+      }
+
+      const responseText = results.join('\n\n');
       return createMCPResponse(responseText);
+    },
+    {
+      context: { file_path, symbol_name, symbol_kind, include_declaration },
     }
-
-    const responseText = results.join('\n\n');
-    return createMCPResponse(responseText);
-  }, {
-    context: { file_path, symbol_name, symbol_kind, include_declaration },
-  });
+  );
 }
 
 // Handler for rename_symbol tool
@@ -307,9 +314,9 @@ export async function handleRenameSymbol(
 
     const editResult = await applyWorkspaceEdit(workspaceEdit, {
       validateBeforeApply: true,
-      createBackupFiles: false,  // Disable backup file creation
+      createBackupFiles: false, // Disable backup file creation
       lspClient,
-    });;
+    });
 
     if (!editResult.success) {
       return createMCPResponse(`Failed to rename symbol: ${editResult.error}`);
@@ -372,7 +379,7 @@ export async function handleRenameSymbolStrict(
     }
     const editResult = await applyWorkspaceEdit(workspaceEdit, {
       validateBeforeApply: true,
-      createBackupFiles: false,  // Disable backup file creation
+      createBackupFiles: false, // Disable backup file creation
       lspClient,
     });
 

@@ -3,23 +3,23 @@ import { dirname, relative, resolve } from 'node:path';
 import { logger } from '../../core/diagnostics/logger.js';
 import type { WorkspaceEdit } from '../../core/file-operations/editor.js';
 import type { DiagnosticService } from '../../services/lsp/diagnostic-service.js';
+import {
+  assertValidFilePath,
+  formatHumanRange,
+  measureAndTrack,
+  toHumanPosition,
+  toHumanRange,
+  ValidationError,
+} from '../../utils/index.js';
 import { registerTools } from '../tool-registry.js';
 import {
+  createContextualErrorResponse,
   createFileModificationResponse,
   createListResponse,
   createMCPResponse,
   createNoResultsResponse,
   createSuccessResponse,
-  createContextualErrorResponse,
 } from '../utils.js';
-import {
-  assertValidFilePath,
-  toHumanPosition,
-  toHumanRange,
-  formatHumanRange,
-  measureAndTrack,
-  ValidationError,
-} from '../../utils/index.js';
 
 // Handler for get_diagnostics tool
 export async function handleGetDiagnostics(
@@ -28,68 +28,72 @@ export async function handleGetDiagnostics(
 ) {
   const { file_path } = args;
 
-  return measureAndTrack('get_diagnostics', async () => {
-    // Validate inputs
-    try {
-      assertValidFilePath(file_path);
-    } catch (error) {
-      if (error instanceof ValidationError) {
-        return createContextualErrorResponse(error, {
-          operation: 'get_diagnostics',
-          filePath: file_path,
-        });
+  return measureAndTrack(
+    'get_diagnostics',
+    async () => {
+      // Validate inputs
+      try {
+        assertValidFilePath(file_path);
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          return createContextualErrorResponse(error, {
+            operation: 'get_diagnostics',
+            filePath: file_path,
+          });
+        }
+        throw error;
       }
-      throw error;
+
+      const absolutePath = resolve(file_path);
+
+      try {
+        const diagnostics = await diagnosticService.getDiagnostics(absolutePath);
+
+        // Handle undefined return (should not happen, but defensive coding)
+        if (!diagnostics || !Array.isArray(diagnostics)) {
+          return createMCPResponse(
+            `Error getting diagnostics: Diagnostic service returned invalid result (${typeof diagnostics})`
+          );
+        }
+
+        if (diagnostics.length === 0) {
+          return createNoResultsResponse('diagnostics', file_path, [
+            'The file has no errors, warnings, or hints.',
+          ]);
+        }
+
+        const severityMap = {
+          1: 'Error',
+          2: 'Warning',
+          3: 'Information',
+          4: 'Hint',
+        };
+
+        const diagnosticMessages = diagnostics.map((diag) => {
+          const severity = diag.severity ? severityMap[diag.severity] || 'Unknown' : 'Unknown';
+          const code = diag.code ? ` [${diag.code}]` : '';
+          const source = diag.source ? ` (${diag.source})` : '';
+          const { start, end } = diag.range;
+
+          const humanRange = toHumanRange(diag.range);
+          return `• ${severity}${code}${source}: ${diag.message}\n  Location: ${formatHumanRange(humanRange)}`;
+        });
+
+        return createListResponse(`in ${file_path}`, diagnosticMessages, {
+          singular: 'diagnostic',
+          plural: 'diagnostics',
+          showTotal: true,
+        });
+      } catch (error) {
+        return createMCPResponse(
+          `Error getting diagnostics: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    },
+    {
+      context: { file_path },
     }
-
-    const absolutePath = resolve(file_path);
-
-  try {
-    const diagnostics = await diagnosticService.getDiagnostics(absolutePath);
-
-    // Handle undefined return (should not happen, but defensive coding)
-    if (!diagnostics || !Array.isArray(diagnostics)) {
-      return createMCPResponse(
-        `Error getting diagnostics: Diagnostic service returned invalid result (${typeof diagnostics})`
-      );
-    }
-
-    if (diagnostics.length === 0) {
-      return createNoResultsResponse('diagnostics', file_path, [
-        'The file has no errors, warnings, or hints.',
-      ]);
-    }
-
-    const severityMap = {
-      1: 'Error',
-      2: 'Warning',
-      3: 'Information',
-      4: 'Hint',
-    };
-
-    const diagnosticMessages = diagnostics.map((diag) => {
-      const severity = diag.severity ? severityMap[diag.severity] || 'Unknown' : 'Unknown';
-      const code = diag.code ? ` [${diag.code}]` : '';
-      const source = diag.source ? ` (${diag.source})` : '';
-      const { start, end } = diag.range;
-
-      const humanRange = toHumanRange(diag.range);
-      return `• ${severity}${code}${source}: ${diag.message}\n  Location: ${formatHumanRange(humanRange)}`;
-    });
-
-    return createListResponse(`in ${file_path}`, diagnosticMessages, {
-      singular: 'diagnostic',
-      plural: 'diagnostics',
-      showTotal: true,
-    });
-  } catch (error) {
-    return createMCPResponse(
-      `Error getting diagnostics: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-  }, {
-    context: { file_path },
-  });
+  );
 }
 
 // Handler for restart_server tool

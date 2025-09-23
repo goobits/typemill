@@ -65,11 +65,7 @@ export async function applyWorkspaceEdit(
     lspClient?: LSPClient;
   } = {}
 ): Promise<ApplyEditResult> {
-  const {
-    validateBeforeApply = true,
-    createBackupFiles = false,
-    lspClient,
-  } = options;
+  const { validateBeforeApply = true, createBackupFiles = false, lspClient } = options;
 
   const backups: FileBackup[] = [];
   const filesModified: string[] = [];
@@ -557,7 +553,10 @@ export async function renameFile(
     const depthChange = newDepth - oldDepth;
 
     if (depthChange !== 0) {
-      logDebugMessage('FileEditor', `Adjusting relative imports in ${absoluteNewPath} by depth ${depthChange}`);
+      logDebugMessage(
+        'FileEditor',
+        `Adjusting relative imports in ${absoluteNewPath} by depth ${depthChange}`
+      );
 
       // Read the content of the newly moved file
       let content = readFileSync(absoluteNewPath, 'utf-8');

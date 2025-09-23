@@ -2,7 +2,7 @@
  * Path utilities
  */
 
-import { resolve, normalize, join, relative } from 'node:path';
+import { join, normalize, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**

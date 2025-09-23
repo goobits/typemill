@@ -81,10 +81,7 @@ export function toLSPRange(humanRange: HumanRange): LSPRange {
  * @param format Format style
  * @returns Formatted string like "Line 15, Col 23" or "15:23"
  */
-export function formatHumanPosition(
-  pos: HumanPosition,
-  format: 'long' | 'short' = 'long'
-): string {
+export function formatHumanPosition(pos: HumanPosition, format: 'long' | 'short' = 'long'): string {
   if (format === 'short') {
     return `${pos.line}:${pos.character}`;
   }
@@ -97,10 +94,7 @@ export function formatHumanPosition(
  * @param format Format style
  * @returns Formatted string like "Line 15, Col 23 - Line 20, Col 30" or "15:23-20:30"
  */
-export function formatHumanRange(
-  range: HumanRange,
-  format: 'long' | 'short' = 'long'
-): string {
+export function formatHumanRange(range: HumanRange, format: 'long' | 'short' = 'long'): string {
   const startStr = formatHumanPosition(range.start, format);
   const endStr = formatHumanPosition(range.end, format);
 
