@@ -1,0 +1,16 @@
+{
+  "name": "@goobits/codeflow-buddy-client",
+  "version": "1.0.0",
+  "description": "Codeflow Buddy Client",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist"
+  },
+  "dependencies": {
+    "ws": "^8.17.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}
