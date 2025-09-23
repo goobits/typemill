@@ -1,7 +1,7 @@
+import { isProcessRunning } from '../../utils/platform/process.js';
 import type { StatusOutput } from '../types.js';
 import { findInstalledAssistants } from '../utils/assistant-utils.js';
 import { migrateOldConfig, readConfig, readState } from '../utils/directory-utils.js';
-import { isProcessRunning } from '../../utils/platform/process.js';
 
 interface ServerInfo {
   name: string;

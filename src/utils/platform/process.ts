@@ -24,7 +24,10 @@ export function terminateProcess(pid: number): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     // First try SIGTERM (graceful shutdown)
     try {
-      const args = process.platform === 'win32' ? ['taskkill', '/PID', pid.toString(), '/F'] : ['kill', '-TERM', pid.toString()];
+      const args =
+        process.platform === 'win32'
+          ? ['taskkill', '/PID', pid.toString(), '/F']
+          : ['kill', '-TERM', pid.toString()];
       const proc = exec(args.join(' '), {
         detached: true,
         stdio: 'ignore',

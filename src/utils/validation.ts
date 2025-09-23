@@ -6,12 +6,12 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import {
-  type LSPPosition,
-  type HumanPosition,
-  isValidLSPPosition,
-  isValidHumanPosition,
-  ensureLSPPosition,
   ensureHumanPosition,
+  ensureLSPPosition,
+  type HumanPosition,
+  isValidHumanPosition,
+  isValidLSPPosition,
+  type LSPPosition,
 } from './position.js';
 
 /**
@@ -26,7 +26,10 @@ export interface ValidationResult {
  * Validation error class for consistent error handling
  */
 export class ValidationError extends Error {
-  constructor(message: string, public readonly field: string) {
+  constructor(
+    message: string,
+    public readonly field: string
+  ) {
     super(message);
     this.name = 'ValidationError';
   }
@@ -77,7 +80,18 @@ export function validateFilePath(filePath: unknown): ValidationResult {
     assertNonEmptyString(filePath, 'file_path');
 
     // Check for valid file extensions
-    const supportedExtensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs', '.java', '.cpp', '.c'];
+    const supportedExtensions = [
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '.py',
+      '.go',
+      '.rs',
+      '.java',
+      '.cpp',
+      '.c',
+    ];
     const ext = path.extname(filePath).toLowerCase();
 
     if (!supportedExtensions.includes(ext)) {
@@ -239,7 +253,10 @@ export function validateLineAndCharacter(line: unknown, character: unknown): Val
 /**
  * Assert that line and character are valid
  */
-export function assertValidLineAndCharacter(line: unknown, character: unknown): asserts line is number {
+export function assertValidLineAndCharacter(
+  line: unknown,
+  character: unknown
+): asserts line is number {
   const validation = validateLineAndCharacter(line, character);
   if (!validation.valid) {
     throw new ValidationError(validation.error!, 'line_character');
@@ -276,7 +293,9 @@ export function validateWorkspacePath(workspacePath: unknown): ValidationResult 
 /**
  * Assert that workspace path is valid
  */
-export function assertValidWorkspacePath(workspacePath: unknown): asserts workspacePath is string | undefined {
+export function assertValidWorkspacePath(
+  workspacePath: unknown
+): asserts workspacePath is string | undefined {
   const validation = validateWorkspacePath(workspacePath);
   if (!validation.valid) {
     throw new ValidationError(validation.error!, 'workspace_path');
@@ -308,7 +327,10 @@ export function validateBoolean(value: unknown, fieldName: string): ValidationRe
 /**
  * Assert that a value is a valid boolean
  */
-export function assertValidBoolean(value: unknown, fieldName: string): asserts value is boolean | undefined {
+export function assertValidBoolean(
+  value: unknown,
+  fieldName: string
+): asserts value is boolean | undefined {
   const validation = validateBoolean(value, fieldName);
   if (!validation.valid) {
     throw new ValidationError(validation.error!, fieldName);
@@ -341,7 +363,10 @@ export function validateStringArray(value: unknown, fieldName: string): Validati
 /**
  * Assert that a value is a valid string array
  */
-export function assertValidStringArray(value: unknown, fieldName: string): asserts value is string[] {
+export function assertValidStringArray(
+  value: unknown,
+  fieldName: string
+): asserts value is string[] {
   const validation = validateStringArray(value, fieldName);
   if (!validation.valid) {
     throw new ValidationError(validation.error!, fieldName);

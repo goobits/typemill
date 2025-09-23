@@ -78,10 +78,10 @@ import {
   handleSearchWorkspaceSymbols,
 } from './src/mcp/handlers/index.js';
 import { createMCPError } from './src/mcp/utils.js';
-import { DiagnosticService } from './src/services/lsp/diagnostic-service.js';
 import { FileService } from './src/services/file-service.js';
 import { HierarchyService } from './src/services/intelligence/hierarchy-service.js';
 import { IntelligenceService } from './src/services/intelligence/intelligence-service.js';
+import { DiagnosticService } from './src/services/lsp/diagnostic-service.js';
 import { SymbolService } from './src/services/lsp/symbol-service.js';
 import { getPackageVersion } from './src/utils/version.js';
 
@@ -136,6 +136,8 @@ if (args.length === 0 || args[0] === '--help' || args[0] === '-h' || args[0] ===
     console.log('  --enable-fuse           Enable FUSE filesystem isolation');
     console.log('  --require-auth          Require JWT authentication');
     console.log('  --jwt-secret SECRET     JWT signing secret');
+    console.log('  --auto-restart          Enable auto-restart on file changes');
+    console.log('  --no-auto-restart       Disable auto-restart');
   }
 
   console.log('');
@@ -184,6 +186,8 @@ if (subcommand === 'setup') {
   const jwtSecretIndex = args.indexOf('--jwt-secret');
   const allowedOriginsIndex = args.indexOf('--allowed-origins');
   const allowedCorsOriginsIndex = args.indexOf('--allowed-cors-origins');
+  const autoRestartIndex = args.indexOf('--auto-restart');
+  const noAutoRestartIndex = args.indexOf('--no-auto-restart');
 
   const options = {
     port:
@@ -194,6 +198,7 @@ if (subcommand === 'setup') {
         : 10,
     enableFuse: enableFuseIndex !== -1,
     requireAuth: requireAuthIndex !== -1,
+    autoRestart: autoRestartIndex !== -1 ? true : noAutoRestartIndex !== -1 ? false : undefined,
     jwtSecret:
       jwtSecretIndex !== -1 && args[jwtSecretIndex + 1] ? args[jwtSecretIndex + 1] : undefined,
     allowedOrigins:
@@ -634,7 +639,7 @@ async function main() {
             const existingPid = Number.parseInt(readFileSync(PID_FILE, 'utf-8').trim(), 10);
             if (!Number.isNaN(existingPid)) {
               // Check if the process is actually running
-        const { isProcessRunning } = await import('./src/utils/platform/process.js');
+              const { isProcessRunning } = await import('./src/utils/platform/process.js');
               if (isProcessRunning(existingPid)) {
                 console.error(`Error: MCP server is already running (PID: ${existingPid})`);
                 console.error('Use "codeflow-buddy stop" to stop it first.');

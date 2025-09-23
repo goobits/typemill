@@ -27,7 +27,7 @@ export class FuseMount {
   private config: FuseMountConfig;
 
   constructor(
-    session:SessionContext,
+    session: SessionContext,
     transport: WebSocketTransport,
     mountPath: string,
     config: FuseMountConfig = {}
