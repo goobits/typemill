@@ -156,21 +156,3 @@ function getRecommendedLanguageServers(
   return recommended;
 }
 
-/**
- * Scan project files and get recommendations
- */
-export async function scanProjectFiles(
-  projectPath: string,
-  languageServers: LanguageServerConfig[],
-  maxDepth = 3,
-  debug = false
-): Promise<FileScanResult> {
-  const ignoreFilter = await loadGitignore(projectPath);
-  const extensions = await scanDirectoryForExtensions(projectPath, maxDepth, ignoreFilter, debug);
-  const recommendedServers = getRecommendedLanguageServers(extensions, languageServers);
-
-  return {
-    extensions,
-    recommendedServers,
-  };
-}
