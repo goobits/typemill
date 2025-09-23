@@ -34,7 +34,7 @@
         "go"
       ],
       "command": [
-        "/Users/miko/go/bin/gopls"
+        "gopls"
       ],
       "rootDir": "."
     },
