@@ -421,37 +421,6 @@ export function createLSPServerUnavailableMessage(filePath: string, operation: s
   return message;
 }
 
-/**
- * Create contextual error message for server initialization failures
- */
-export function createServerInitializationMessage(
-  filePath: string,
-  operation: string,
-  serverCommand?: string
-): string {
-  const extension = filePath.split('.').pop()?.toLowerCase() || 'unknown';
-  const languageInfo = getLanguageInfo(extension);
-
-  let message = `⚠️ **${operation} temporarily unavailable**\n\n`;
-  message += `**What happened:** The ${languageInfo.name} language server is starting up or encountered an error\n\n`;
-  message += '**Quick fixes to try:**\n';
-  message +=
-    '1. **Wait a moment** - Language servers need time to initialize (especially TypeScript)\n';
-  message += `2. **Restart the server:** \`codebuddy restart ${extension}\` or restart Codebuddy\n`;
-  message += '3. **Check installation:** Verify the language server is installed correctly\n\n';
-
-  if (serverCommand) {
-    message += `**Server command:** \`${serverCommand}\`\n`;
-    message += '**Manual test:** Run the above command to check if it works\n\n';
-  }
-
-  message += '**If this persists:**\n';
-  message += '• Check `codebuddy logs` for error details\n';
-  message += '• Run `codebuddy status` to see server health\n';
-  message += '• Try `codebuddy fix` to auto-repair configuration\n';
-
-  return message;
-}
 
 /**
  * Create helpful message for unknown tool errors with suggestions
