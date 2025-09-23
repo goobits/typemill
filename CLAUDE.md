@@ -52,6 +52,8 @@ bun run test:minimal  # Ultra-minimal runner for very slow systems
 # Full pre-publish check
 bun run prepublishOnly  # build + test + typecheck
 
+# IMPORTANT: After modifying codeflow-buddy's own source code, restart the MCP server to load changes!
+
 # WebSocket Server Commands
 node dist/index.js serve --port 3000                    # Basic WebSocket server
 node dist/index.js serve --require-auth --jwt-secret KEY # With JWT authentication
