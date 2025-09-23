@@ -328,17 +328,37 @@ export async function setupCommand(options: SetupOptions = {}): Promise<void> {
       }
     }
 
-    console.log(
-      `🚀 ${workingServers.length} language server${workingServers.length !== 1 ? 's' : ''} ready`
-    );
+    // Check if this is a re-run with no changes
+    const finalConfig = DirectoryUtils.readConfig();
+    const configUnchanged = finalConfig && JSON.stringify(finalConfig) === JSON.stringify(config);
 
-    if (workingServers.length < selectedServers.length) {
-      const notWorking = selectedServers.length - workingServers.length;
-      console.log(`⚠️  ${notWorking} server${notWorking !== 1 ? 's' : ''} need manual installation`);
-      console.log('\nRun "codeflow-buddy status" to check server status');
+    if (configUnchanged) {
+      console.log('Already set up—nothing changed.');
+    } else {
+      const lspNames = workingServers
+        .map((s) => {
+          const cmd = s.command[0] || 'unknown';
+          const nameMap: Record<string, string> = {
+            'typescript-language-server': 'TypeScript',
+            pylsp: 'Python',
+            gopls: 'Go',
+            'rust-analyzer': 'Rust',
+          };
+          return nameMap[cmd] || cmd;
+        })
+        .join(', ');
+
+      console.log(
+        `\n✅ LSPs ready: ${lspNames || 'None'}. Next: \`codeflow-buddy link\` to choose assistants.`
+      );
+
+      if (workingServers.length < selectedServers.length) {
+        const notWorking = selectedServers.length - workingServers.length;
+        console.log(
+          `⚠️  ${notWorking} server${notWorking !== 1 ? 's' : ''} need manual installation`
+        );
+      }
     }
-
-    console.log('\n✅ Ready to use with Claude Code!');
   } finally {
     // Restore original SIGINT handlers
     process.removeAllListeners('SIGINT');

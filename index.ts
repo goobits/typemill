@@ -92,40 +92,48 @@ const logger = getLogger('MCP-Server');
 const args = process.argv.slice(2);
 
 // Show help if no arguments provided
-if (args.length === 0) {
+if (args.length === 0 || args[0] === '--help' || args[0] === '-h' || args[0] === 'help') {
+  const showAdvanced = args.includes('--advanced');
+
   console.log('codeflow-buddy - MCP server for accessing LSP functionality');
   console.log('');
   console.log('Usage: codeflow-buddy <command> [options]');
   console.log('');
   console.log('Commands:');
-  console.log('  setup         Interactive setup with language server selection');
-  console.log("  status        Show what's working right now");
-  console.log('  start         Start the MCP server for Claude Code');
-  console.log('  serve         Start WebSocket server for multi-client support');
-  console.log('  stop          Stop the running MCP server');
-  console.log('  help          Show this help message');
-  console.log('');
-  console.log('Setup options:');
-  console.log('  --all         Auto-install all language servers for detected file types');
-  console.log('');
-  console.log('Serve options:');
-  console.log('  --port N                Port number (default: 3000)');
-  console.log('  --max-clients N         Maximum concurrent clients (default: 10)');
-  console.log('  --enable-fuse           Enable FUSE filesystem isolation');
-  console.log('  --require-auth          Require JWT authentication');
-  console.log('  --jwt-secret SECRET     JWT signing secret');
+  console.log('  setup         Configure LSP servers');
+  console.log('  link          Link to AI assistants');
+  console.log('  unlink        Remove AI from config');
+  console.log('  start         Start the server');
+  console.log('  stop          Stop the server');
+  console.log('  status        Show everything');
   console.log('');
   console.log('Quick start:');
-  console.log('  codeflow-buddy setup        # Interactive setup');
-  console.log('  codeflow-buddy setup --all  # Auto-install all servers');
-  console.log('  codeflow-buddy status       # Check server status');
-  console.log('  codeflow-buddy start        # Start MCP server for Claude Code');
-  console.log('  codeflow-buddy serve        # Start WebSocket server');
-  console.log('  codeflow-buddy serve --enable-fuse  # With FUSE isolation');
+  console.log('  npm install -g @goobits/codeflow-buddy');
+  console.log('  codeflow-buddy setup         # Configure LSP servers');
+  console.log('  codeflow-buddy link          # Link to AI assistants');
+  console.log('  codeflow-buddy status        # Verify everything');
+
+  if (showAdvanced) {
+    console.log('');
+    console.log('Advanced Commands:');
+    console.log('  serve         Start WebSocket server');
+    console.log('');
+    console.log('Hidden Flags:');
+    console.log('  link --all              Link all available assistants');
+    console.log('  unlink --all            Unlink all assistants');
+    console.log('  start --foreground      Run in foreground with logs');
+    console.log('  status --json           Machine-readable output');
+    console.log('');
+    console.log('Serve options:');
+    console.log('  --port N                Port number (default: 3000)');
+    console.log('  --max-clients N         Maximum concurrent clients (default: 10)');
+    console.log('  --enable-fuse           Enable FUSE filesystem isolation');
+    console.log('  --require-auth          Require JWT authentication');
+    console.log('  --jwt-secret SECRET     JWT signing secret');
+  }
+
   console.log('');
-  console.log('Configuration:');
-  console.log('  Config file: .codebuddy/config.json');
-  console.log('  Log file: .codebuddy/logs/debug.log');
+  console.log('For more options: codeflow-buddy help --advanced');
   process.exit(0);
 }
 
@@ -181,12 +189,35 @@ if (subcommand === 'setup') {
   await serveCommand(options);
   // The serve command handles its own process lifecycle
   process.exit(0);
+} else if (subcommand === 'link') {
+  const { linkCommand } = await import('./src/cli/commands/link.js');
+  const assistants = args.slice(1).filter((arg) => !arg.startsWith('-'));
+  const options = {
+    assistants: assistants.length > 0 ? assistants : undefined,
+    all: args.includes('--all'),
+  };
+  await linkCommand(options);
+  process.exit(0);
+} else if (subcommand === 'unlink') {
+  const { unlinkCommand } = await import('./src/cli/commands/unlink.js');
+  const assistants = args.slice(1).filter((arg) => !arg.startsWith('-'));
+  const options = {
+    assistants: assistants.length > 0 ? assistants : undefined,
+    all: args.includes('--all'),
+  };
+  await unlinkCommand(options);
+  process.exit(0);
 } else if (subcommand === 'stop') {
   const { stopCommand } = await import('./src/cli/commands/stop.js');
   await stopCommand();
   process.exit(0);
 } else if (subcommand === '--help' || subcommand === '-h' || subcommand === 'help') {
-  console.log('codeflow-buddy - MCP server for accessing LSP functionality');
+  // Help is handled at the top
+  process.exit(0);
+} else if (subcommand === '--version' || subcommand === '-v') {
+  const packageJson = await import('./package.json', { assert: { type: 'json' } });
+  console.log(packageJson.default.version);
+  process.exit(0);
   console.log('');
   console.log('Usage: codeflow-buddy <command> [options]');
   console.log('');

@@ -42,8 +42,8 @@ export interface WebSocketServerOptions {
   jwtSecret?: string;
   tls?: TLSOptions;
   enableFuse?: boolean;
-  allowedOrigins?: string[];  // WebSocket origin validation
-  allowedCorsOrigins?: string[];  // HTTP CORS origins
+  allowedOrigins?: string[]; // WebSocket origin validation
+  allowedCorsOrigins?: string[]; // HTTP CORS origins
   workspaceConfig?: {
     baseWorkspaceDir?: string;
     fuseMountPrefix?: string;
@@ -135,8 +135,8 @@ export class CodeFlowWebSocketServer {
       return false;
     }
 
-    const isAllowed = this.options.allowedOrigins.includes(origin) ||
-                     this.options.allowedOrigins.includes('*');
+    const isAllowed =
+      this.options.allowedOrigins.includes(origin) || this.options.allowedOrigins.includes('*');
 
     if (!isAllowed) {
       logger.warn('WebSocket connection rejected - unauthorized origin', {
@@ -257,11 +257,11 @@ export class CodeFlowWebSocketServer {
     // Set CORS headers based on configuration
     const origin = req.headers.origin as string;
     const corsOrigin = this.options.allowedCorsOrigins?.length
-      ? (this.options.allowedCorsOrigins.includes('*')
-         ? '*'
-         : origin && this.options.allowedCorsOrigins.includes(origin)
-           ? origin
-           : this.options.allowedCorsOrigins[0])
+      ? this.options.allowedCorsOrigins.includes('*')
+        ? '*'
+        : origin && this.options.allowedCorsOrigins.includes(origin)
+          ? origin
+          : this.options.allowedCorsOrigins[0]
       : '*';
 
     res.setHeader('Access-Control-Allow-Origin', corsOrigin || '*');
