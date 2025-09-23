@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
-import { LSPClient } from '../../src/lsp/client.js';
+import { LSPClient } from '../../src/lsp/lsp-client.js';
 import { FileService } from '../../src/services/file-service.js';
 import { IntelligenceService } from '../../src/services/intelligence-service.js';
 import { ServiceContextUtils } from '../../src/services/service-context.js';

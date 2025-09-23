@@ -1,4 +1,4 @@
-import type { LSPClient } from '../../lsp/client.js';
+import type { LSPClient } from '../../lsp/lsp-client.js';
 import type { DiagnosticService } from '../../services/diagnostic-service.js';
 import type { FileService } from '../../services/file-service.js';
 import type { HierarchyService } from '../../services/hierarchy-service.js';

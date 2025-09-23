@@ -7,7 +7,7 @@ import { type AuthRequest, type AuthResponse, JWTAuthenticator } from '../auth/j
 import { logger } from '../core/diagnostics/logger.js';
 import { FuseMount } from '../fs/fuse-mount.js';
 import { StreamingFileAccess } from '../fs/stream.js';
-import { LSPClient } from '../lsp/client.js';
+import { LSPClient } from '../lsp/lsp-client.js';
 import { toolRegistry } from '../mcp/tool-registry.js';
 import { WebSocketTransport } from '../transports/websocket.js';
 import type { ClientSession, MCPMessage } from '../transports/websocket.js';

@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve } from 'node:path';
-import type { LSPClient } from '../../lsp/client.js';
+import type { LSPClient } from '../../lsp/lsp-client.js';
 import { logDebugMessage } from '../diagnostics/debug-logger.js';
 import { pathToUri, uriToPath } from './path-utils.js';
 
@@ -374,48 +374,67 @@ function findImportsInFile(
   // Calculate the relative paths from this file to the old and new targets
   const fileDir = dirname(filePath);
 
-  // Remove extensions for comparison
+  // Calculate paths both with and without .js extensions
   const oldPathNoExt = oldTargetPath.replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, '');
   const newPathNoExt = newTargetPath.replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, '');
 
-  // Calculate relative paths
-  let oldRelative = relative(fileDir, oldPathNoExt).replace(/\\/g, '/');
-  let newRelative = relative(fileDir, newPathNoExt).replace(/\\/g, '/');
+  // Calculate relative paths for both extension patterns
+  let oldRelativeNoExt = relative(fileDir, oldPathNoExt).replace(/\\/g, '/');
+  let newRelativeNoExt = relative(fileDir, newPathNoExt).replace(/\\/g, '/');
+  let oldRelativeWithJs = relative(fileDir, oldPathNoExt + '.js').replace(/\\/g, '/');
+  let newRelativeWithJs = relative(fileDir, newPathNoExt + '.js').replace(/\\/g, '/');
 
   // Add ./ prefix if needed for relative paths
-  if (!oldRelative.startsWith('.') && !oldRelative.startsWith('/')) {
-    oldRelative = `./${oldRelative}`;
-  }
-  if (!newRelative.startsWith('.') && !newRelative.startsWith('/')) {
-    newRelative = `./${newRelative}`;
-  }
+  const addPrefix = (path: string) =>
+    !path.startsWith('.') && !path.startsWith('/') ? `./${path}` : path;
+
+  oldRelativeNoExt = addPrefix(oldRelativeNoExt);
+  newRelativeNoExt = addPrefix(newRelativeNoExt);
+  oldRelativeWithJs = addPrefix(oldRelativeWithJs);
+  newRelativeWithJs = addPrefix(newRelativeWithJs);
 
   // Escape special regex characters
   const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const oldPattern = escapeRegex(oldRelative);
 
-  // Single comprehensive pattern to avoid double-matching
-  const importPattern = new RegExp(
-    `((?:from|require\\s*\\(|import\\s*\\(|export\\s+.*?from)\\s+['"\`])${oldPattern}(['"\`])`,
-    'g'
-  );
+  // Define import patterns to check (both with and without .js extensions)
+  const importPatterns = [
+    { oldPath: oldRelativeNoExt, newPath: newRelativeNoExt },
+    { oldPath: oldRelativeWithJs, newPath: newRelativeWithJs }
+  ];
+
+  // Track processed ranges to avoid duplicates
+  const processedRanges = new Set<string>();
 
   lines.forEach((line, lineIndex) => {
-    let match: RegExpExecArray | null;
-    importPattern.lastIndex = 0; // Reset regex state
-    // biome-ignore lint/suspicious/noAssignInExpressions: Common regex pattern
-    while ((match = importPattern.exec(line)) !== null) {
-      const startCol = match.index + (match[1]?.length || 0);
-      const endCol = startCol + oldRelative.length;
+    importPatterns.forEach(({ oldPath, newPath }) => {
+      const pattern = new RegExp(
+        `((?:from|require\\s*\\(|import\\s*\\(|export\\s+.*?from)\\s+['"\`])${escapeRegex(oldPath)}(['"\`])`,
+        'g'
+      );
 
-      edits.push({
-        range: {
-          start: { line: lineIndex, character: startCol },
-          end: { line: lineIndex, character: endCol },
-        },
-        newText: newRelative,
-      });
-    }
+      let match: RegExpExecArray | null;
+      pattern.lastIndex = 0; // Reset regex state
+      // biome-ignore lint/suspicious/noAssignInExpressions: Common regex pattern
+      while ((match = pattern.exec(line)) !== null) {
+        const startCol = match.index + (match[1]?.length || 0);
+        const endCol = startCol + oldPath.length;
+        const rangeKey = `${lineIndex}:${startCol}:${endCol}`;
+
+        // Skip if we've already processed this range
+        if (processedRanges.has(rangeKey)) {
+          continue;
+        }
+        processedRanges.add(rangeKey);
+
+        edits.push({
+          range: {
+            start: { line: lineIndex, character: startCol },
+            end: { line: lineIndex, character: endCol },
+          },
+          newText: newPath,
+        });
+      }
+    });
   });
 
   return edits;
@@ -476,6 +495,7 @@ export async function renameFile(
 
     for (const file of importingFiles) {
       const edits = findImportsInFile(file, absoluteOldPath, absoluteNewPath);
+      logDebugMessage('FileEditor', `Checking ${file}: found ${edits.length} imports`);
       if (edits.length > 0) {
         changes[pathToUri(file)] = edits;
         totalEdits += edits.length;
