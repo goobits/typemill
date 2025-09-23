@@ -106,6 +106,7 @@ if (args.length === 0 || args[0] === '--help' || args[0] === '-h' || args[0] ===
   console.log('  start         Start the server');
   console.log('  stop          Stop the server');
   console.log('  status        Show everything');
+  console.log('  mcp-debug     Debug MCP tools directly');
   console.log('');
   console.log('Setup options:');
   console.log('  --all                Install all available servers');
@@ -236,6 +237,12 @@ if (subcommand === 'setup') {
   const { stopCommand } = await import('./src/cli/commands/stop.js');
   await stopCommand();
   process.exit(0);
+} else if (subcommand === 'mcp-debug') {
+  const { mcpDebugCommand } = await import('./src/cli/commands/mcp-debug.js');
+  const toolName = args[1] || '';
+  const toolArgs = args[2] || '';
+  await mcpDebugCommand(toolName, toolArgs);
+  process.exit(0);
 } else if (subcommand === '--help' || subcommand === '-h' || subcommand === 'help') {
   // Help is handled at the top
   process.exit(0);
@@ -247,11 +254,12 @@ if (subcommand === 'setup') {
   console.error(`Unknown command: ${subcommand}`);
   console.error('');
   console.error('Available commands:');
-  console.error('  setup    Interactive setup with language server selection');
-  console.error("  status   Show what's working right now");
-  console.error('  start    Start the MCP server for Claude Code');
-  console.error('  stop     Stop the running MCP server');
-  console.error('  help     Show help message');
+  console.error('  setup      Interactive setup with language server selection');
+  console.error("  status     Show what's working right now");
+  console.error('  start      Start the MCP server for Claude Code');
+  console.error('  stop       Stop the running MCP server');
+  console.error('  mcp-debug  Debug MCP tools directly');
+  console.error('  help       Show help message');
   console.error('');
   console.error('Run "codeflow-buddy help" for more information.');
   process.exit(1);
@@ -309,29 +317,42 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   const requestId = `mcp_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 
+  // Check for trace flag in arguments for enhanced debugging
+  const isTraceEnabled = args && typeof args === 'object' && 'trace' in args && args.trace === true;
+
   return await StructuredLogger.withContextAsync(
     createRequestContext(requestId, 'MCP_CALL', `tool:${name}`),
     async () => {
-      logger.info('MCP tool request', { tool: name, request_id: requestId });
+      if (isTraceEnabled) {
+        logger.info('🔧 MCP TRACE: Full request received', {
+          tool: name,
+          request_id: requestId,
+          full_request: JSON.stringify(request, null, 2),
+          args: JSON.stringify(args, null, 2)
+        });
+      } else {
+        logger.info('MCP tool request', { tool: name, request_id: requestId });
+      }
 
       try {
-        switch (name) {
-          case 'find_definition':
-            if (!Validation.validateFindDefinitionArgs(args)) {
-              throw Validation.createValidationError(
-                'find_definition',
-                'object with file_path and symbol_name strings'
-              );
-            }
-            return await handleFindDefinition(symbolService, args);
-          case 'find_references':
-            if (!Validation.validateFindReferencesArgs(args)) {
-              throw Validation.createValidationError(
-                'find_references',
-                'object with file_path and symbol_name strings'
-              );
-            }
-            return await handleFindReferences(symbolService, args);
+        const result = await (async () => {
+          switch (name) {
+            case 'find_definition':
+              if (!Validation.validateFindDefinitionArgs(args)) {
+                throw Validation.createValidationError(
+                  'find_definition',
+                  'object with file_path and symbol_name strings'
+                );
+              }
+              return await handleFindDefinition(symbolService, args);
+            case 'find_references':
+              if (!Validation.validateFindReferencesArgs(args)) {
+                throw Validation.createValidationError(
+                  'find_references',
+                  'object with file_path and symbol_name strings'
+                );
+              }
+              return await handleFindReferences(symbolService, args);
           case 'rename_symbol':
             if (!Validation.validateRenameSymbolArgs(args)) {
               throw Validation.createValidationError(
@@ -574,6 +595,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             throw new Error(enhancedMessage);
           }
         }
+        })();
+
+        // Log the response if trace is enabled
+        if (isTraceEnabled) {
+          logger.info('🔧 MCP TRACE: Tool execution completed', {
+            tool: name,
+            request_id: requestId,
+            response_type: typeof result,
+            response: JSON.stringify(result, null, 2)
+          });
+        }
+
+        return result;
       } catch (error) {
         logger.error('MCP tool request failed', error, { tool: name, request_id: requestId });
         return createMCPError(error);

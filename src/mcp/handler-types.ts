@@ -4,8 +4,13 @@
 
 import type { CallHierarchyItem, TypeHierarchyItem } from '../types.js';
 
+// Base interface for all MCP tool requests
+export interface MCPToolRequest {
+  trace?: boolean; // Optional trace flag for enhanced debugging
+}
+
 // Core handlers
-export interface FindDefinitionArgs {
+export interface FindDefinitionArgs extends MCPToolRequest {
   file_path: string;
   symbol_name: string;
   symbol_kind?: string;

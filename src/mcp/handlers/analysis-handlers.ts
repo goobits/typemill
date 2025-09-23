@@ -4,6 +4,7 @@
  */
 
 import { logger } from '../../core/diagnostics/logger.js';
+import { MCPError, createUserFriendlyErrorMessage, getErrorMessage } from '../../core/diagnostics/error-utils.js';
 import { measureAndTrack, toHumanPosition } from '../../utils/index.js';
 import { registerTools } from '../tool-registry.js';
 import { createMCPResponse } from '../utils.js';
@@ -124,7 +125,15 @@ export async function handleFindDeadCode(
 
         return createMCPResponse(report);
       } catch (error) {
-        return createMCPResponse(`Dead code analysis failed: ${error}`);
+        const mcpError = new MCPError(
+          'The analysis process encountered an unexpected issue.',
+          'find_dead_code',
+          'INTERNAL_ERROR',
+          undefined,
+          error
+        );
+        const friendlyMessage = createUserFriendlyErrorMessage(mcpError, 'find_dead_code');
+        return createMCPResponse(friendlyMessage);
       }
     },
     {

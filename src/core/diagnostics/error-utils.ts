@@ -59,6 +59,19 @@ export class ServerNotAvailableError extends Error {
   }
 }
 
+export class MCPError extends Error {
+  constructor(
+    message: string,
+    public readonly tool: string,
+    public readonly code: 'INVALID_ARGUMENT' | 'OPERATION_FAILED' | 'INTERNAL_ERROR',
+    public readonly details?: Record<string, unknown>,
+    public readonly originalError?: unknown
+  ) {
+    super(message);
+    this.name = 'MCPError';
+  }
+}
+
 /**
  * Utility functions for consistent error handling
  */
@@ -300,6 +313,21 @@ export function createUserFriendlyErrorMessage(
   suggestions?: string[],
   context?: { filePath?: string }
 ): string {
+  if (error instanceof MCPError) {
+    let friendlyMessage = `❌ **Tool Error (${error.tool}):** ${error.message}\n\n`;
+    friendlyMessage += `**Code:** ${error.code}\n`;
+    if (error.details) {
+      const detailsString = Object.entries(error.details)
+        .map(([key, value]) => `• **${key}:** ${JSON.stringify(value, null, 2)}`)
+        .join('\n');
+      friendlyMessage += `**Details:**\n${detailsString}`;
+    }
+    if (error.originalError) {
+      friendlyMessage += `\n\n**Original Error:** ${getErrorMessage(error.originalError)}`;
+    }
+    return friendlyMessage;
+  }
+
   if (error instanceof ServerNotAvailableError) {
     if (context?.filePath) {
       return createLSPServerUnavailableMessage(context.filePath, operation);
