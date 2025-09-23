@@ -236,8 +236,9 @@ export async function handleRenameSymbol(
 
     const editResult = await applyWorkspaceEdit(workspaceEdit, {
       validateBeforeApply: true,
+      createBackupFiles: false,  // Disable backup file creation
       lspClient,
-    });
+    });;
 
     if (!editResult.success) {
       return createMCPResponse(`Failed to rename symbol: ${editResult.error}`);
@@ -298,9 +299,9 @@ export async function handleRenameSymbolStrict(
         `[DRY RUN] Would rename symbol at ${file_path}:${line}:${character} to "${new_name}" across ${changedFileCount} file${changedFileCount === 1 ? '' : 's'}`
       );
     }
-
     const editResult = await applyWorkspaceEdit(workspaceEdit, {
       validateBeforeApply: true,
+      createBackupFiles: false,  // Disable backup file creation
       lspClient,
     });
 
