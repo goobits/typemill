@@ -516,13 +516,7 @@ async function detectMissingPrerequisites(selectedServers: string[]): Promise<Pr
 
     // Check for Go
     if (baseCommand === 'go' && !(await ServerUtils.testCommand(['go', 'version']))) {
-      const existing = prereqs.get('go') || {
-        name: 'Go',
-        command: 'go',
-        installCommand: process.platform === 'darwin' ? 'brew install go' : 'Download from https://golang.org/dl/',
-        servers: [],
-        autoInstallable: process.platform === 'darwin'
-      };
+      const existing = prereqs.get('go') || getPrerequisiteInfo('go', 'Go');
       existing.servers.push(server.displayName);
       prereqs.set('go', existing);
     }
@@ -531,13 +525,7 @@ async function detectMissingPrerequisites(selectedServers: string[]): Promise<Pr
     if ((baseCommand === 'pip' || baseCommand === 'pip3')) {
       const pipCommand = getPipCommand(['pip', '--version'])[0];
       if (!(await ServerUtils.testCommand([pipCommand, '--version']))) {
-        const existing = prereqs.get('python') || {
-          name: 'Python/pip',
-          command: 'pip',
-          installCommand: process.platform === 'darwin' ? 'brew install python' : 'Install from https://python.org/downloads/',
-          servers: [],
-          autoInstallable: process.platform === 'darwin'
-        };
+        const existing = prereqs.get('python') || getPrerequisiteInfo('python', 'Python/pip');
         existing.servers.push(server.displayName);
         prereqs.set('python', existing);
       }
@@ -545,32 +533,75 @@ async function detectMissingPrerequisites(selectedServers: string[]): Promise<Pr
 
     // Check for Ruby/gem
     if (baseCommand === 'gem' && !(await ServerUtils.testCommand(['gem', '--version']))) {
-      const existing = prereqs.get('ruby') || {
-        name: 'Ruby/gem',
-        command: 'gem',
-        installCommand: process.platform === 'darwin' ? 'brew install ruby' : 'Install from https://ruby-lang.org/',
-        servers: [],
-        autoInstallable: process.platform === 'darwin'
-      };
+      const existing = prereqs.get('ruby') || getPrerequisiteInfo('ruby', 'Ruby/gem');
       existing.servers.push(server.displayName);
       prereqs.set('ruby', existing);
     }
 
     // Check for npm (should be rare since we're running in Node.js)
     if (baseCommand === 'npm' && !(await ServerUtils.testCommand(['npm', '--version']))) {
-      const existing = prereqs.get('npm') || {
-        name: 'npm',
-        command: 'npm',
-        installCommand: process.platform === 'darwin' ? 'brew install node' : 'Install from https://nodejs.org/',
-        servers: [],
-        autoInstallable: process.platform === 'darwin'
-      };
+      const existing = prereqs.get('npm') || getPrerequisiteInfo('npm', 'npm');
       existing.servers.push(server.displayName);
       prereqs.set('npm', existing);
     }
   }
 
   return Array.from(prereqs.values());
+}
+
+/**
+ * Get platform-specific prerequisite information
+ */
+function getPrerequisiteInfo(command: string, displayName: string): Prerequisite {
+  const platform = process.platform;
+
+  const prereqInfo: Record<string, {
+    darwin: { cmd: string, autoInstallable: boolean },
+    linux: { cmd: string, autoInstallable: boolean },
+    win32: { cmd: string, autoInstallable: boolean }
+  }> = {
+    go: {
+      darwin: { cmd: 'brew install go', autoInstallable: true },
+      linux: { cmd: 'sudo apt install golang-go', autoInstallable: true },
+      win32: { cmd: 'Download from https://golang.org/dl/', autoInstallable: false }
+    },
+    python: {
+      darwin: { cmd: 'brew install python', autoInstallable: true },
+      linux: { cmd: 'sudo apt install python3 python3-pip', autoInstallable: true },
+      win32: { cmd: 'Download from https://python.org/downloads/', autoInstallable: false }
+    },
+    ruby: {
+      darwin: { cmd: 'brew install ruby', autoInstallable: true },
+      linux: { cmd: 'sudo apt install ruby ruby-dev', autoInstallable: true },
+      win32: { cmd: 'Download from https://rubyinstaller.org/', autoInstallable: false }
+    },
+    npm: {
+      darwin: { cmd: 'brew install node', autoInstallable: true },
+      linux: { cmd: 'sudo apt install nodejs npm', autoInstallable: true },
+      win32: { cmd: 'Download from https://nodejs.org/', autoInstallable: false }
+    }
+  };
+
+  const info = prereqInfo[command];
+  if (!info) {
+    return {
+      name: displayName,
+      command,
+      installCommand: `Install ${displayName}`,
+      servers: [],
+      autoInstallable: false
+    };
+  }
+
+  const platformInfo = info[platform as keyof typeof info] || info.win32;
+
+  return {
+    name: displayName,
+    command,
+    installCommand: platformInfo.cmd,
+    servers: [],
+    autoInstallable: platformInfo.autoInstallable
+  };
 }
 
 /**
