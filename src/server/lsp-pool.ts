@@ -1,4 +1,4 @@
-import type { LSPClient } from '../lsp/client.js';
+import type { LSPClient } from '../lsp/lsp-client.js';
 import type { ServerState } from '../lsp/types.js';
 import type { LSPServerConfig } from '../types.js';
 

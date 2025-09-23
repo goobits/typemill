@@ -10,7 +10,7 @@ import {
   createRequestContext,
   getLogger,
 } from './src/core/diagnostics/structured-logger.js';
-import { LSPClient as NewLSPClient } from './src/lsp/client.js';
+import { LSPClient as NewLSPClient } from './src/lsp/lsp-client.js';
 import * as Validation from './src/mcp/comprehensive-validation.js';
 import { allToolDefinitions } from './src/mcp/definitions/index.js';
 import type {
