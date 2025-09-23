@@ -1,4 +1,5 @@
 import { advancedToolDefinitions } from './advanced-tools.js';
+import { ANALYSIS_TOOLS } from './analysis-tools.js';
 import { batchToolDefinitions } from './batch-tools.js';
 // All MCP tool definitions
 import { coreToolDefinitions } from './core-tools.js';
@@ -14,5 +15,6 @@ export const allToolDefinitions = [
   ...intelligenceToolDefinitions,
   ...hierarchyToolDefinitions,
   ...batchToolDefinitions,
+  ...ANALYSIS_TOOLS,
 ] as const;
 // Re-export individual categories for convenience
