@@ -3,6 +3,9 @@
  * This eliminates the constant +1/-1 position conversion bugs throughout the codebase
  */
 
+import type { Location } from '../types/lsp.js';
+import { uriToPath } from '../core/file-operations/path-utils.js';
+
 /**
  * LSP Position (0-indexed line and character)
  */
@@ -201,4 +204,16 @@ export function ensureHumanPosition(pos: any): HumanPosition {
   }
 
   return humanPos;
+}
+
+/**
+ * Format LSP Location to human-readable string
+ * @param location LSP Location object with uri and range
+ * @param format Format style
+ * @returns Formatted string like "src/file.ts:15:23" or "src/file.ts at Line 15, Col 23"
+ */
+export function formatLSPLocation(location: Location, format: 'short' | 'long' = 'short'): string {
+  const filePath = uriToPath(location.uri);
+  const humanPos = toHumanPosition(location.range.start);
+  return formatFileLocation(filePath, humanPos, format);
 }
