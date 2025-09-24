@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LSPClient } from '../../src/lsp/lsp-client.js';
 import { FileService } from '../../src/services/file-service.js';
@@ -17,12 +19,122 @@ describe('Predictive Loading Performance', () => {
   let lspClient: LSPClient;
   let fileService: FileService;
   let symbolService: SymbolService;
-
-  const testMainFile = join(process.cwd(), 'tests/fixtures/perf-test/main.ts');
-  const testUtilsFile = join(process.cwd(), 'tests/fixtures/perf-test/utils.ts');
+  let tempTestDir: string;
+  let testMainFile: string;
+  let testUtilsFile: string;
+  let testTypesFile: string;
 
   beforeAll(async () => {
     console.log('🚀 Setting up LSP client for performance testing...');
+
+    // Create temporary directory for test files
+    tempTestDir = await mkdtemp(join(tmpdir(), 'predictive-perf-test-'));
+    console.log(`📁 Created temporary test directory: ${tempTestDir}`);
+
+    // Define file paths within the temp directory
+    testMainFile = join(tempTestDir, 'main.ts');
+    testUtilsFile = join(tempTestDir, 'utils.ts');
+    testTypesFile = join(tempTestDir, 'types.ts');
+
+    // Create test files programmatically
+    await writeFile(testTypesFile, `export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'user' | 'guest';
+}
+
+export interface UserSearchCriteria {
+  name?: string;
+  email?: string;
+  role?: string;
+}
+
+export interface UserStats {
+  totalUsers: number;
+  activeUsers: number;
+  usersByRole: Record<string, number>;
+}
+
+export type UserRole = User['role'];
+
+export interface CreateUserRequest {
+  name: string;
+  email: string;
+  role: UserRole;
+}`);
+
+    await writeFile(testUtilsFile, `import type { User } from './types';
+
+const mockDatabase: User[] = [
+  { id: '1', name: 'John Doe', email: 'john@example.com', role: 'admin' },
+  { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'user' },
+  { id: '3', name: 'Bob Wilson', email: 'bob@example.com', role: 'user' },
+];
+
+export async function findUser(id: string): Promise<User | null> {
+  // Simulate database lookup
+  await new Promise(resolve => setTimeout(resolve, 10));
+
+  const user = mockDatabase.find(u => u.id === id);
+  return user || null;
+}
+
+export function validateUser(user: User): boolean {
+  if (!user.id || !user.name || !user.email) {
+    return false;
+  }
+
+  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+  return emailRegex.test(user.email);
+}
+
+export function getUsersByRole(role: string): User[] {
+  return mockDatabase.filter(user => user.role === role);
+}
+
+export function formatUserName(user: User): string {
+  return \`\${user.name} (\${user.email})\`;
+}`);
+
+    await writeFile(testMainFile, `import { findUser, validateUser } from './utils';
+import type { User } from './types';
+
+export class UserManager {
+  private users: Map<string, User> = new Map();
+
+  async getUser(id: string): Promise<User | null> {
+    const cached = this.users.get(id);
+    if (cached) {
+      return cached;
+    }
+
+    // This is the function we'll test find_definition on
+    const user = await findUser(id);
+    if (user && validateUser(user)) {
+      this.users.set(id, user);
+      return user;
+    }
+
+    return null;
+  }
+
+  async createUser(userData: Omit<User, 'id'>): Promise<User> {
+    const user: User = {
+      id: Math.random().toString(36),
+      ...userData
+    };
+
+    if (validateUser(user)) {
+      this.users.set(user.id, user);
+      return user;
+    }
+
+    throw new Error('Invalid user data');
+  }
+}`);
+
+    console.log('📝 Created test files with realistic import structure');
 
     // Initialize LSP client
     lspClient = new LSPClient();
@@ -61,6 +173,12 @@ describe('Predictive Loading Performance', () => {
   afterAll(async () => {
     if (lspClient) {
       await lspClient.dispose();
+    }
+
+    // Clean up the temporary directory
+    if (tempTestDir) {
+      console.log(`🧹 Cleaning up temporary test directory: ${tempTestDir}`);
+      await rm(tempTestDir, { recursive: true, force: true });
     }
   });
 
