@@ -75,6 +75,29 @@ export class ServerManager {
   }
 
   /**
+   * Create a new server process for the pool system
+   * This method is called by LSPServerPool when it needs a new server instance
+   */
+  async spawnServerProcess(
+    filePath: string,
+    config: Config,
+    workspaceDir?: string
+  ): Promise<ServerState> {
+    const serverConfig = this.getServerForFile(filePath, config);
+    if (!serverConfig) {
+      const extension = filePath.split('.').pop() || 'unknown';
+      throw new ServerNotAvailableError(
+        `No language server configured for file: ${filePath}`,
+        [extension],
+        [],
+        undefined
+      );
+    }
+
+    return await this.startServer(serverConfig, workspaceDir);
+  }
+
+  /**
    * Get or start LSP server for a file
    */
   async getServer(filePath: string, config: Config, workspaceDir?: string): Promise<ServerState> {

@@ -1,4 +1,5 @@
 import type { LSPClient } from '../lsp/lsp-client.js';
+import type { ServerManager } from '../lsp/server-manager.js';
 import type { ServerState } from '../lsp/types.js';
 
 export interface PooledLSPServer extends ServerState {
@@ -21,8 +22,14 @@ export interface PendingRequest {
 }
 
 export class LSPServerPool {
-  private pools = new Map<string, PooledLSPServer>();
+  // True pooling system properties
+  private serverPool = new Map<string, PooledLSPServer[]>(); // language -> array of servers
+  private leasedServers = new Map<string, PooledLSPServer>(); // serverKey -> server
+  private maxServersPerLanguage = 2; // Max 2 servers per language (e.g., 2 for TS, 2 for Python)
+
+  // Core dependencies
   private lspClient: LSPClient;
+  private serverManager: ServerManager;
   private idleTimeoutMs = 60000; // 60 seconds idle timeout
   private pendingRequests = new Map<string, PendingRequest[]>(); // serverKey -> pending requests
   private readonly MAX_RETRIES = 3;
@@ -30,6 +37,7 @@ export class LSPServerPool {
 
   constructor(lspClient: LSPClient) {
     this.lspClient = lspClient;
+    this.serverManager = lspClient.serverManager;
     this.startIdleCleanup();
   }
 
@@ -44,63 +52,155 @@ export class LSPServerPool {
       ? `${projectId}:${language}:${workspaceDir}`
       : `${projectId}:${language}`;
 
-    let server = this.pools.get(key);
+    // Check if we already have a leased server for this specific key
+    let server = this.leasedServers.get(key);
+    if (server) {
+      // Check if server is currently restarting
+      if (server.isRestarting) {
+        await this.waitForRestart(key);
+        server = this.leasedServers.get(key)!;
+      }
+      // Update usage tracking
+      server.lastUsed = new Date();
+      server.refCount++;
+      return server;
+    }
 
-    if (!server) {
-      // Create new server for this project/language combination
-      const lspServer = await this.lspClient.getServer(extension, workspaceDir);
+    // Try to lease an available server from the pool
+    const pool = this.serverPool.get(language) || [];
+
+    // Look for an idle server in the pool
+    const idleServer = pool.find(s => s.refCount === 0 && !s.isRestarting);
+
+    if (idleServer) {
+      // Lease the idle server
+      server = {
+        ...idleServer,
+        projectId,
+        lastUsed: new Date(),
+        refCount: 1,
+      };
+
+      // Remove from pool and add to leased servers
+      const serverIndex = pool.indexOf(idleServer);
+      pool.splice(serverIndex, 1);
+      this.leasedServers.set(key, server);
+
+      return server;
+    }
+
+    // If no idle server and pool is not at capacity, create a new one
+    if (pool.length < this.maxServersPerLanguage) {
+      const dummyFilePath = `dummy.${extension}`;
+      const lspServer = await this.serverManager.spawnServerProcess(
+        dummyFilePath,
+        this.getServerManagerConfig(),
+        workspaceDir
+      );
 
       server = {
         ...lspServer,
         projectId,
         language,
         lastUsed: new Date(),
-        refCount: 0,
+        refCount: 1,
         crashCount: 0,
       };
 
-      this.pools.set(key, server);
+      // Add to leased servers
+      this.leasedServers.set(key, server);
 
       // Set up crash monitoring
       this.setupCrashMonitoring(key, server);
+
+      return server;
     }
 
-    // Check if server is currently restarting
-    if (server.isRestarting) {
-      // Wait for restart to complete
-      await this.waitForRestart(key);
-      server = this.pools.get(key)!;
-    }
+    // Pool is full - wait for a server to be released
+    // This is a simplified implementation - in production you might want a more sophisticated queuing system
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(`Timeout waiting for available ${language} server`));
+      }, 30000); // 30 second timeout
 
-    // Update usage tracking
+      const checkForAvailableServer = async () => {
+        const updatedPool = this.serverPool.get(language) || [];
+        const availableServer = updatedPool.find(s => s.refCount === 0 && !s.isRestarting);
+
+        if (availableServer) {
+          clearTimeout(timeout);
+          try {
+            const result = await this.getServer(projectId, extension, workspaceDir);
+            resolve(result);
+          } catch (error) {
+            reject(error);
+          }
+        } else {
+          setTimeout(checkForAvailableServer, 1000); // Check every second
+        }
+      };
+
+      setTimeout(checkForAvailableServer, 1000);
+    });
+  }
+
+  releaseServer(projectId: string, extension: string, workspaceDir?: string): void {
+    const language = this.getLanguageFromExtension(extension);
+    const key = workspaceDir
+      ? `${projectId}:${language}:${workspaceDir}`
+      : `${projectId}:${language}`;
+
+    const server = this.leasedServers.get(key);
+    if (!server) return;
+
+    // Decrease reference count
+    server.refCount--;
     server.lastUsed = new Date();
-    server.refCount++;
 
-    return server;
-  }
+    // If no more references, return server to pool
+    if (server.refCount === 0) {
+      // Remove from leased servers
+      this.leasedServers.delete(key);
 
-  releaseServer(projectId: string, extension: string): void {
-    const language = this.getLanguageFromExtension(extension);
-    const key = `${projectId}:${language}`;
+      // Reset project-specific information
+      const pooledServer: PooledLSPServer = {
+        ...server,
+        projectId: '', // Clear project assignment
+        refCount: 0,
+        lastUsed: new Date(),
+      };
 
-    const server = this.pools.get(key);
-    if (server && server.refCount > 0) {
-      server.refCount--;
-      server.lastUsed = new Date();
+      // Add back to pool
+      const pool = this.serverPool.get(language) || [];
+      pool.push(pooledServer);
+      this.serverPool.set(language, pool);
     }
   }
 
-  async restartServer(projectId: string, extension: string): Promise<void> {
+  async restartServer(projectId: string, extension: string, workspaceDir?: string): Promise<void> {
     const language = this.getLanguageFromExtension(extension);
-    const key = `${projectId}:${language}`;
+    const key = workspaceDir
+      ? `${projectId}:${language}:${workspaceDir}`
+      : `${projectId}:${language}`;
 
-    const server = this.pools.get(key);
-    if (server) {
+    // Check if server is currently leased
+    const leasedServer = this.leasedServers.get(key);
+    if (leasedServer) {
       // Use LSP client's restart method
       await this.lspClient.restartServer([extension]);
-      this.pools.delete(key);
+      this.leasedServers.delete(key);
+      return;
+    }
 
-      // Force creation of new server on next request
+    // Check if any servers in the pool need restarting
+    const pool = this.serverPool.get(language) || [];
+    for (let i = pool.length - 1; i >= 0; i--) {
+      const server = pool[i];
+      if (server.projectId === projectId || !projectId) {
+        // Use LSP client's restart method
+        await this.lspClient.restartServer([extension]);
+        pool.splice(i, 1);
+      }
     }
   }
 
@@ -109,13 +209,41 @@ export class LSPServerPool {
     language: string;
     refCount: number;
     lastUsed: Date;
+    status: 'leased' | 'pooled';
   }> {
-    return Array.from(this.pools.values()).map((server) => ({
-      projectId: server.projectId,
-      language: server.language,
-      refCount: server.refCount,
-      lastUsed: server.lastUsed,
-    }));
+    const active: Array<{
+      projectId: string;
+      language: string;
+      refCount: number;
+      lastUsed: Date;
+      status: 'leased' | 'pooled';
+    }> = [];
+
+    // Add leased servers
+    for (const server of this.leasedServers.values()) {
+      active.push({
+        projectId: server.projectId,
+        language: server.language,
+        refCount: server.refCount,
+        lastUsed: server.lastUsed,
+        status: 'leased',
+      });
+    }
+
+    // Add pooled servers
+    for (const [language, pool] of this.serverPool.entries()) {
+      for (const server of pool) {
+        active.push({
+          projectId: server.projectId || '(available)',
+          language,
+          refCount: server.refCount,
+          lastUsed: server.lastUsed,
+          status: 'pooled',
+        });
+      }
+    }
+
+    return active;
   }
 
   async shutdown(): Promise<void> {
@@ -129,7 +257,10 @@ export class LSPServerPool {
 
     // Dispose the LSP client which will handle shutting down all servers
     await this.lspClient.dispose();
-    this.pools.clear();
+
+    // Clear all pool data structures
+    this.serverPool.clear();
+    this.leasedServers.clear();
 
     console.log('LSP server pool shutdown complete');
   }
@@ -177,7 +308,9 @@ export class LSPServerPool {
       }
       this.pendingRequests.delete(serverKey);
 
-      this.pools.delete(serverKey);
+      // Remove from both leased servers and pool
+      this.leasedServers.delete(serverKey);
+      this.removeServerFromPool(crashedServer);
       return;
     }
 
@@ -196,7 +329,11 @@ export class LSPServerPool {
       await this.lspClient.restartServer([extension]);
 
       // Get the new server instance
-      const newLspServer = await this.lspClient.getServer(extension);
+      const dummyFilePath = `dummy.${extension}`;
+      const newLspServer = await this.serverManager.spawnServerProcess(
+        dummyFilePath,
+        this.getServerManagerConfig()
+      );
 
       // Update the pooled server with new process
       const newServer: PooledLSPServer = {
@@ -209,7 +346,17 @@ export class LSPServerPool {
         isRestarting: false,
       };
 
-      this.pools.set(serverKey, newServer);
+      // Update the server reference in the appropriate location
+      const isLeased = this.leasedServers.has(serverKey);
+      if (isLeased) {
+        this.leasedServers.set(serverKey, newServer);
+      } else {
+        // Replace in pool
+        this.removeServerFromPool(crashedServer);
+        const pool = this.serverPool.get(newServer.language) || [];
+        pool.push(newServer);
+        this.serverPool.set(newServer.language, pool);
+      }
 
       // Set up crash monitoring for the new server
       this.setupCrashMonitoring(serverKey, newServer);
@@ -232,8 +379,9 @@ export class LSPServerPool {
       }
       this.pendingRequests.delete(serverKey);
 
-      // Remove from pool
-      this.pools.delete(serverKey);
+      // Remove from both leased servers and pool
+      this.leasedServers.delete(serverKey);
+      this.removeServerFromPool(crashedServer);
     }
   }
 
@@ -300,7 +448,17 @@ export class LSPServerPool {
     let waitTime = 0;
 
     while (waitTime < maxWaitTime) {
-      const server = this.pools.get(serverKey);
+      // Check leased servers first
+      let server = this.leasedServers.get(serverKey);
+
+      // If not leased, check pools
+      if (!server) {
+        for (const [_language, pool] of this.serverPool.entries()) {
+          server = pool.find(s => s.projectId && serverKey.includes(s.projectId));
+          if (server) break;
+        }
+      }
+
       if (!server || !server.isRestarting) {
         return;
       }
@@ -316,7 +474,17 @@ export class LSPServerPool {
    * Send request with crash handling
    */
   async sendRequest(serverKey: string, method: string, params: any): Promise<any> {
-    const server = this.pools.get(serverKey);
+    // Check if server is leased
+    let server = this.leasedServers.get(serverKey);
+
+    if (!server) {
+      // Check if it's in any pool
+      for (const [_language, pool] of this.serverPool.entries()) {
+        server = pool.find(s => s.projectId && serverKey.includes(s.projectId));
+        if (server) break;
+      }
+    }
+
     if (!server) {
       throw new Error(`Server not found: ${serverKey}`);
     }
@@ -377,28 +545,52 @@ export class LSPServerPool {
     return extensionMap[language] || language;
   }
 
+  /**
+   * Remove a server from the pool (helper method for crash handling)
+   */
+  private removeServerFromPool(server: PooledLSPServer): void {
+    const pool = this.serverPool.get(server.language) || [];
+    const serverIndex = pool.indexOf(server);
+    if (serverIndex >= 0) {
+      pool.splice(serverIndex, 1);
+    }
+  }
+
+  /**
+   * Get the server manager config (delegated through LSPClient)
+   */
+  private getServerManagerConfig() {
+    // Access the config through the LSPClient's private field
+    // This is a temporary solution - in a real refactor, we'd pass the config more cleanly
+    return (this.lspClient as any).config;
+  }
+
   private startIdleCleanup(): void {
     setInterval(() => {
       const now = new Date();
-      const toRemove: string[] = [];
 
-      for (const [key, server] of this.pools.entries()) {
-        const idleTime = now.getTime() - server.lastUsed.getTime();
+      // Clean up idle servers from pools
+      for (const [language, pool] of this.serverPool.entries()) {
+        const serversToRemove: PooledLSPServer[] = [];
 
-        // Remove servers that are idle and have no active references
-        if (idleTime > this.idleTimeoutMs && server.refCount === 0) {
-          toRemove.push(key);
+        for (const server of pool) {
+          const idleTime = now.getTime() - server.lastUsed.getTime();
+
+          // Remove servers that are idle and have no active references
+          if (idleTime > this.idleTimeoutMs && server.refCount === 0) {
+            serversToRemove.push(server);
+          }
         }
-      }
 
-      // Stop and remove idle servers
-      for (const key of toRemove) {
-        const server = this.pools.get(key);
-        if (server) {
-          this.lspClient
-            .restartServer([this.getExtensionFromLanguage(server.language)])
-            .catch((error: any) => console.error(`Error stopping idle server ${key}:`, error));
-          this.pools.delete(key);
+        // Stop and remove idle servers
+        for (const server of serversToRemove) {
+          const serverIndex = pool.indexOf(server);
+          if (serverIndex >= 0) {
+            pool.splice(serverIndex, 1);
+            this.lspClient
+              .restartServer([this.getExtensionFromLanguage(server.language)])
+              .catch((error: any) => console.error(`Error stopping idle ${language} server:`, error));
+          }
         }
       }
     }, 30000); // Check every 30 seconds

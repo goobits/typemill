@@ -641,7 +641,10 @@ export class CodeFlowWebSocketServer {
           const filePath = message.params.file_path;
           if (filePath && typeof filePath === 'string') {
             const extension = this.getFileExtension(filePath);
-            this.lspServerPool.releaseServer(session.projectId, extension);
+            // Get workspace directory for enhanced sessions with FUSE support
+            const enhancedSession = this.transport.getEnhancedSession(session.id);
+            const workspaceDir = enhancedSession?.workspaceDir;
+            this.lspServerPool.releaseServer(session.projectId, extension, workspaceDir);
           }
         }
 
