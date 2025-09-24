@@ -263,6 +263,7 @@ describe('FUSE Integration Tests (Native FUSE Only)', () => {
   describe('FuseOperations', () => {
     let fuseOps: FuseOperations;
     let mockEnhancedSession: EnhancedClientSession;
+    let workspacePath: (relativePath: string) => string;
 
     beforeEach(() => {
       mockEnhancedSession = {
@@ -278,17 +279,21 @@ describe('FUSE Integration Tests (Native FUSE Only)', () => {
         permissions: ['file:read', 'file:write', 'lsp:query', 'lsp:symbol', 'session:manage'],
       } as any;
 
+      // Helper to create workspace-relative paths
+      workspacePath = (relativePath: string) =>
+        require('path').join(mockEnhancedSession.workspaceDir, relativePath);
+
       fuseOps = new FuseOperations(mockEnhancedSession, mockTransport as any);
       mockTransport.setFuseOperations(fuseOps);
     });
 
     test('should handle readdir operation', async () => {
-      const entries = await fuseOps.readdir('/test/path');
+      const entries = await fuseOps.readdir(workspacePath('path'));
       expect(entries).toEqual(['test-file.txt', 'another-file.js']);
     });
 
     test('should handle getattr operation', async () => {
-      const stats = await fuseOps.getattr('/test/file.txt');
+      const stats = await fuseOps.getattr(workspacePath('file.txt'));
 
       expect(stats).toMatchObject({
         mode: 33188,
@@ -302,31 +307,33 @@ describe('FUSE Integration Tests (Native FUSE Only)', () => {
     });
 
     test('should handle file operations (open/read/write/release)', async () => {
+      const filePath = workspacePath('file.txt');
+
       // Open file
-      const fd = await fuseOps.open('/test/file.txt', 0);
+      const fd = await fuseOps.open(filePath, 0);
       expect(typeof fd).toBe('number');
       expect(fd).toBeGreaterThan(0);
 
       // Read file
-      const content = await fuseOps.read('/test/file.txt', fd, 1024, 0);
+      const content = await fuseOps.read(filePath, fd, 1024, 0);
       expect(Buffer.isBuffer(content)).toBe(true);
       expect(content.toString()).toBe('Hello, FUSE world!');
 
       // Write file
       const testData = Buffer.from('Test write data');
-      const bytesWritten = await fuseOps.write('/test/file.txt', fd, testData, 0);
+      const bytesWritten = await fuseOps.write(filePath, fd, testData, 0);
       expect(bytesWritten).toBe(testData.length);
 
       // Release file
-      await expect(fuseOps.release('/test/file.txt', fd)).resolves.toBeUndefined();
+      await expect(fuseOps.release(filePath, fd)).resolves.toBeUndefined();
     });
 
     test('should handle read-only filesystem operations', async () => {
       // These operations should throw "Read-only filesystem" error
-      await expect(fuseOps.mkdir('/test/newdir', 0o755)).rejects.toThrow('Read-only filesystem');
-      await expect(fuseOps.rmdir('/test/dir')).rejects.toThrow('Read-only filesystem');
-      await expect(fuseOps.unlink('/test/file.txt')).rejects.toThrow('Read-only filesystem');
-      await expect(fuseOps.rename('/test/old.txt', '/test/new.txt')).rejects.toThrow(
+      await expect(fuseOps.mkdir(workspacePath('newdir'), 0o755)).rejects.toThrow('Read-only filesystem');
+      await expect(fuseOps.rmdir(workspacePath('dir'))).rejects.toThrow('Read-only filesystem');
+      await expect(fuseOps.unlink(workspacePath('file.txt'))).rejects.toThrow('Read-only filesystem');
+      await expect(fuseOps.rename(workspacePath('old.txt'), workspacePath('new.txt'))).rejects.toThrow(
         'Read-only filesystem'
       );
     });
@@ -349,7 +356,7 @@ describe('FUSE Integration Tests (Native FUSE Only)', () => {
       slowTransport.setFuseOperations(slowFuseOps);
 
       // This should timeout quickly for testing
-      await expect(slowFuseOps.readdir('/test')).rejects.toThrow('Operation timed out');
+      await expect(slowFuseOps.readdir(workspacePath('test'))).rejects.toThrow('Operation timed out');
     });
 
     test('should cleanup pending operations', () => {
@@ -448,7 +455,7 @@ describe('FUSE Integration Tests (Native FUSE Only)', () => {
       mockTransport.setFuseOperations(fuseOps);
 
       // Test basic operations work
-      const entries = await fuseOps.readdir('/test');
+      const entries = await fuseOps.readdir(require('path').join(enhancedSession.workspaceDir, 'test'));
       expect(entries).toEqual(['test-file.txt', 'another-file.js']);
 
       // Cleanup
@@ -500,8 +507,8 @@ describe('FUSE Integration Tests (Native FUSE Only)', () => {
 
       // Test that both can operate independently
       const results = await Promise.all([
-        fuseOperations[0]!.readdir('/test1'),
-        fuseOperations[1]!.readdir('/test2'),
+        fuseOperations[0]!.readdir(require('path').join(workspaces[0]!.workspaceDir, 'test1')),
+        fuseOperations[1]!.readdir(require('path').join(workspaces[1]!.workspaceDir, 'test2')),
       ]);
 
       expect(results[0]).toEqual(['test-file.txt', 'another-file.js']);
@@ -557,7 +564,7 @@ describe('FUSE Integration Tests (Native FUSE Only)', () => {
       const errorFuseOps = new FuseOperations(mockEnhancedSession, errorTransport as any);
       errorTransport.setFuseOperations(errorFuseOps);
 
-      await expect(errorFuseOps.readdir('/test')).rejects.toThrow('Network error');
+      await expect(errorFuseOps.readdir(require('path').join(mockEnhancedSession.workspaceDir, 'test'))).rejects.toThrow('Network error');
     });
 
     test('should handle missing workspace gracefully', () => {
