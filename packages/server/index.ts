@@ -239,9 +239,10 @@ if (subcommand === 'setup') {
   process.exit(1);
 }
 
-// Configuration with predictive loading enabled
-const serverConfig = {
-  server: {
+// Load configuration with server options
+// The actual config is loaded by LSPClient, but we can set defaults here
+const defaultServerOptions = {
+  serverOptions: {
     enablePredictiveLoading: true, // Enable predictive loading by default
   }
 };
@@ -264,12 +265,19 @@ try {
   const { TransactionManager } = await import('./src/core/transaction/index.js');
   const transactionManager = new TransactionManager();
 
+  // Get the loaded config from the LSP client (which loads it from file)
+  const loadedConfig = (newLspClient as any).config || {};
+  const configWithDefaults = {
+    ...loadedConfig,
+    ...defaultServerOptions, // Merge in our defaults
+  };
+
   const serviceContext = ServiceContextUtils.createServiceContext(
     newLspClient.getServer.bind(newLspClient),
     newLspClient.protocol,
     transactionManager,
     logger,
-    serverConfig
+    configWithDefaults
   );
 
   // Initialize services with ServiceContext
@@ -283,7 +291,7 @@ try {
   predictiveLoaderService = new PredictiveLoaderService({
     logger,
     openFile: (filePath: string) => fileService.openFileInternal(filePath),
-    config: serverConfig
+    config: configWithDefaults
   });
 
   // Add predictive loader and fileService references to the context

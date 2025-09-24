@@ -4,14 +4,12 @@ import { constants } from 'node:fs';
 import ts from 'typescript';
 import type { StructuredLogger } from '../core/diagnostics/structured-logger.js';
 
+import type { Config } from '../types/config.js';
+
 interface PredictiveLoaderContext {
   logger: StructuredLogger;
   openFile: (filePath: string) => Promise<void>;
-  config?: {
-    server?: {
-      enablePredictiveLoading?: boolean;
-    };
-  };
+  config?: Config;
 }
 
 export class PredictiveLoaderService {
