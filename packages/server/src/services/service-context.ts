@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs';
 import type { TransactionManager } from '../core/transaction/index.js';
 import type { LSPProtocol } from '../lsp/protocol.js';
 import type { ServerState } from '../lsp/types.js';
+import type { PredictiveLoaderService } from './predictive-loader.js';
+import type { FileService } from './file-service.js';
+import type { StructuredLogger } from '../core/diagnostics/structured-logger.js';
 
 /**
  * Service Context Interface
@@ -14,6 +17,14 @@ export interface ServiceContext {
   getLanguageId: (filePath: string) => string;
   prepareFile: (filePath: string, workspaceDir?: string) => Promise<ServerState>;
   transactionManager: TransactionManager;
+  predictiveLoader?: PredictiveLoaderService;
+  fileService?: FileService;
+  logger: StructuredLogger;
+  config?: {
+    server?: {
+      enablePredictiveLoading?: boolean;
+    };
+  };
 }
 
 /**
@@ -106,7 +117,9 @@ export const ServiceContextUtils = {
   createServiceContext(
     getServer: (filePath: string, workspaceDir?: string) => Promise<ServerState>,
     protocol: LSPProtocol,
-    transactionManager: TransactionManager
+    transactionManager: TransactionManager,
+    logger: StructuredLogger,
+    config?: any
   ): ServiceContext {
     return {
       getServer,
@@ -123,6 +136,8 @@ export const ServiceContextUtils = {
           workspaceDir
         ),
       transactionManager,
+      logger,
+      config,
     };
   },
 };

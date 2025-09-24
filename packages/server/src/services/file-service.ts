@@ -9,7 +9,6 @@ import type {
   DocumentLink,
   FoldingRange,
   Range,
-  TextDocumentContentChangeEvent,
   TextEdit,
 } from '../types.js';
 import type { ServiceContext } from './service-context.js';
@@ -228,6 +227,41 @@ export class FileService {
         failureReason: error instanceof Error ? error.message : String(error),
       };
     }
+  }
+
+  /**
+   * Open a file in the LSP server
+   * This ensures the file is tracked and ready for LSP operations
+   */
+  async openFile(filePath: string, skipPredictiveLoading = false): Promise<void> {
+    try {
+      const serverState = await this.context.prepareFile(filePath);
+
+      // Trigger predictive loading if enabled and we have a predictive loader
+      // Skip if explicitly requested (to avoid infinite recursion)
+      if (!skipPredictiveLoading &&
+          this.context.config?.server?.enablePredictiveLoading &&
+          this.context.predictiveLoader) {
+        // Run predictive loading in the background
+        this.context.predictiveLoader.preloadImports(filePath).catch((err: any) => {
+          this.context.logger?.warn('Predictive loading failed', {
+            file: filePath,
+            error: err.message
+          });
+        });
+      }
+    } catch (error) {
+      logError('FileService.openFile', error, { filePath });
+      throw error;
+    }
+  }
+
+  /**
+   * Internal method to open a file without triggering predictive loading
+   * Used by the predictive loader itself to avoid infinite recursion
+   */
+  async openFileInternal(filePath: string): Promise<void> {
+    return this.openFile(filePath, true);
   }
 
   /**

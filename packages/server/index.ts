@@ -54,6 +54,7 @@ import { HierarchyService } from './src/services/intelligence/hierarchy-service.
 import { IntelligenceService } from './src/services/intelligence/intelligence-service.js';
 import { DiagnosticService } from './src/services/lsp/diagnostic-service.js';
 import { SymbolService } from './src/services/lsp/symbol-service.js';
+import { PredictiveLoaderService } from './src/services/predictive-loader.js';
 import { getPackageVersion } from './src/utils/version.js';
 
 // Initialize module logger
@@ -238,6 +239,13 @@ if (subcommand === 'setup') {
   process.exit(1);
 }
 
+// Configuration with predictive loading enabled
+const serverConfig = {
+  server: {
+    enablePredictiveLoading: true, // Enable predictive loading by default
+  }
+};
+
 // Create LSP clients and services with proper error handling
 let newLspClient: NewLSPClient;
 let symbolService: SymbolService;
@@ -245,6 +253,7 @@ let fileService: FileService;
 let diagnosticService: DiagnosticService;
 let intelligenceService: IntelligenceService;
 let hierarchyService: HierarchyService;
+let predictiveLoaderService: PredictiveLoaderService;
 
 try {
   // Create new LSP client
@@ -252,9 +261,15 @@ try {
 
   // Create ServiceContext for all services
   const { ServiceContextUtils } = await import('./src/services/service-context.js');
+  const { TransactionManager } = await import('./src/core/transaction/index.js');
+  const transactionManager = new TransactionManager();
+
   const serviceContext = ServiceContextUtils.createServiceContext(
     newLspClient.getServer.bind(newLspClient),
-    newLspClient.protocol
+    newLspClient.protocol,
+    transactionManager,
+    logger,
+    serverConfig
   );
 
   // Initialize services with ServiceContext
@@ -263,6 +278,17 @@ try {
   diagnosticService = new DiagnosticService(serviceContext);
   intelligenceService = new IntelligenceService(serviceContext);
   hierarchyService = new HierarchyService(serviceContext);
+
+  // Create PredictiveLoaderService with context that includes fileService
+  predictiveLoaderService = new PredictiveLoaderService({
+    logger,
+    openFile: (filePath: string) => fileService.openFileInternal(filePath),
+    config: serverConfig
+  });
+
+  // Add predictive loader and fileService references to the context
+  serviceContext.predictiveLoader = predictiveLoaderService;
+  serviceContext.fileService = fileService;
 } catch (error) {
   logger.error('Failed to initialize LSP clients', error);
   process.exit(1);
