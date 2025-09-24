@@ -5,6 +5,7 @@ import type { ServerState } from '../lsp/types.js';
 import type { PredictiveLoaderService } from './predictive-loader.js';
 import type { FileService } from './file-service.js';
 import type { StructuredLogger } from '../core/diagnostics/structured-logger.js';
+import type { Config } from '../types/config.js';
 
 /**
  * Service Context Interface
@@ -20,11 +21,7 @@ export interface ServiceContext {
   predictiveLoader?: PredictiveLoaderService;
   fileService?: FileService;
   logger: StructuredLogger;
-  config?: {
-    server?: {
-      enablePredictiveLoading?: boolean;
-    };
-  };
+  config?: Config;
 }
 
 /**

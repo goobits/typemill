@@ -240,7 +240,7 @@ export class FileService {
       // Trigger predictive loading if enabled and we have a predictive loader
       // Skip if explicitly requested (to avoid infinite recursion)
       if (!skipPredictiveLoading &&
-          this.context.config?.server?.enablePredictiveLoading &&
+          this.context.config?.serverOptions?.enablePredictiveLoading !== false && // Default to true
           this.context.predictiveLoader) {
         // Run predictive loading in the background
         this.context.predictiveLoader.preloadImports(filePath).catch((err: any) => {
