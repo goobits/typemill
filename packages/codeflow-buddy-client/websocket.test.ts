@@ -1,20 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import type WebSocket from 'ws';
 import { WebSocketServer } from 'ws';
-import type { MCPRequest, MCPResponse } from './websocket.js';
-import { WebSocketClient } from './websocket.js';
+import type { MCPRequest, MCPResponse } from './websocket';
+import { WebSocketClient } from './websocket';
 
 describe('WebSocketClient', () => {
   let server: WebSocketServer;
   let serverUrl: string;
   const serverClients: Set<WebSocket> = new Set();
 
-  beforeEach((done) => {
+  beforeEach(async () => {
     // Create mock WebSocket server
-    server = new WebSocketServer({ port: 0 }, () => {
-      const address = server.address() as any;
-      serverUrl = `ws://localhost:${address.port}`;
-      done();
+    await new Promise<void>((resolve) => {
+      server = new WebSocketServer({ port: 0 }, () => {
+        const address = server.address() as any;
+        serverUrl = `ws://localhost:${address.port}`;
+        resolve();
+      });
     });
 
     server.on('connection', (ws, req) => {
