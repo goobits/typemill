@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { AnalysisCache } from '../../core/cache/index.js';
 import { logDebugMessage } from '../../core/diagnostics/debug-logger.js';
 import { pathToUri, uriToPath } from '../../core/file-operations/path-utils.js';
 import type { ServerState } from '../../lsp/types.js';
@@ -26,6 +27,8 @@ const CONTEXT_FILES_LIMIT = 3; // Maximum context files to open
  * Handles definition, references, renaming, and symbol search
  */
 export class SymbolService {
+  private workspaceSymbolCache = new AnalysisCache<SymbolInformation[]>();
+
   constructor(private context: ServiceContext) {}
 
   /**
@@ -347,6 +350,15 @@ export class SymbolService {
       `servers.size=${servers.size}, server keys: [${Array.from(servers.keys()).join(', ')}]`
     );
 
+    // Check cache first
+    const workspaceContent = await this.getWorkspaceContent(workspacePath);
+    const cacheKey = `${query}:${workspacePath || 'default'}`;
+    const cachedResults = this.workspaceSymbolCache.get(cacheKey, workspaceContent);
+    if (cachedResults) {
+      logDebugMessage('SymbolService', `Cache hit for workspace symbols query "${query}"`);
+      return cachedResults;
+    }
+
     // Check if we have any initialized servers first
     const initializedServers = Array.from(servers.values()).filter((s) => s.initialized);
     logDebugMessage(
@@ -442,6 +454,11 @@ export class SymbolService {
     }
 
     logDebugMessage('SymbolService', `Total results found: ${results.length}`);
+
+    // Cache the results
+    this.workspaceSymbolCache.set(cacheKey, results, workspaceContent);
+    logDebugMessage('SymbolService', `Cached workspace symbols for query "${query}"`);
+
     return results;
   }
 
@@ -737,6 +754,48 @@ export class SymbolService {
       return range.start;
     } catch (_error) {
       return symbol.location.range.start;
+    }
+  }
+
+  /**
+   * Generate content hash for workspace caching
+   * Uses modification times and file sizes for efficient cache invalidation
+   */
+  private async getWorkspaceContent(workspacePath?: string): Promise<string> {
+    if (!workspacePath) {
+      return 'default-workspace';
+    }
+
+    try {
+      const { existsSync, readdirSync, statSync } = await import('node:fs');
+      const { join } = await import('node:path');
+      const { createHash } = await import('node:crypto');
+
+      if (!existsSync(workspacePath)) {
+        return 'no-workspace';
+      }
+
+      const hash = createHash('sha256');
+      const files = readdirSync(workspacePath)
+        .filter((f) => f.match(/\.(ts|js|tsx|jsx)$/))
+        .slice(0, CONTEXT_FILES_LIMIT) // Same files used for context
+        .sort(); // Ensure consistent ordering
+
+      for (const file of files) {
+        const filePath = join(workspacePath, file);
+        try {
+          const stats = statSync(filePath);
+          // Use modification time and size as content fingerprint
+          hash.update(`${file}:${stats.mtime.getTime()}:${stats.size}`);
+        } catch (_error) {
+          // Ignore individual file stat errors
+        }
+      }
+
+      return hash.digest('hex');
+    } catch (error) {
+      logDebugMessage('SymbolService', `Failed to generate workspace content hash: ${error}`);
+      return `error-${Date.now()}`;
     }
   }
 
