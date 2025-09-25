@@ -1,3 +1,4 @@
+import { pathToUri } from '../../core/file-operations/path-utils.js';
 import type {
   CompletionItem,
   Hover,
@@ -40,7 +41,7 @@ export class IntelligenceService {
         serverState.process,
         'textDocument/hover',
         {
-          textDocument: { uri: `file://${filePath}` },
+          textDocument: { uri: pathToUri(filePath) },
           position,
         },
         HOVER_TIMEOUT_MS // Give hover requests plenty of time

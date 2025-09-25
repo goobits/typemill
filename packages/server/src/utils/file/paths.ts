@@ -3,7 +3,7 @@
  */
 
 import { join, normalize, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /**
  * Resolve a path to an absolute path
@@ -41,7 +41,7 @@ export function urlToPath(url: string): string {
  * @returns File URL
  */
 export function pathToUrl(filePath: string): string {
-  return `file://${resolve(filePath)}`;
+  return pathToFileURL(resolve(filePath)).toString();
 }
 
 /**

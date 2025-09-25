@@ -1,4 +1,5 @@
 import { logDebugMessage } from '../../core/diagnostics/debug-logger.js';
+import { pathToUri, uriToPath } from '../../core/file-operations/path-utils.js';
 import type {
   CallHierarchyIncomingCall,
   CallHierarchyItem,
@@ -36,7 +37,7 @@ export class HierarchyService {
       serverState.process,
       'textDocument/prepareCallHierarchy',
       {
-        textDocument: { uri: `file://${filePath}` },
+        textDocument: { uri: pathToUri(filePath) },
         position,
       }
     );
@@ -51,7 +52,7 @@ export class HierarchyService {
     item: CallHierarchyItem
   ): Promise<CallHierarchyIncomingCall[]> {
     // Extract the file path from the item's URI to determine the correct server
-    const filePath = item.uri.replace('file://', '');
+    const filePath = uriToPath(item.uri);
     const serverState = await this.context.prepareFile(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
@@ -75,7 +76,7 @@ export class HierarchyService {
     item: CallHierarchyItem
   ): Promise<CallHierarchyOutgoingCall[]> {
     // Extract the file path from the item's URI to determine the correct server
-    const filePath = item.uri.replace('file://', '');
+    const filePath = uriToPath(item.uri);
     const serverState = await this.context.prepareFile(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
@@ -108,7 +109,7 @@ export class HierarchyService {
       serverState.process,
       'textDocument/prepareTypeHierarchy',
       {
-        textDocument: { uri: `file://${filePath}` },
+        textDocument: { uri: pathToUri(filePath) },
         position,
       }
     );
@@ -121,7 +122,7 @@ export class HierarchyService {
    */
   async getTypeHierarchySupertypes(item: TypeHierarchyItem): Promise<TypeHierarchyItem[]> {
     // Extract the file path from the item's URI to determine the correct server
-    const filePath = item.uri.replace('file://', '');
+    const filePath = uriToPath(item.uri);
     const serverState = await this.context.prepareFile(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
@@ -143,7 +144,7 @@ export class HierarchyService {
    */
   async getTypeHierarchySubtypes(item: TypeHierarchyItem): Promise<TypeHierarchyItem[]> {
     // Extract the file path from the item's URI to determine the correct server
-    const filePath = item.uri.replace('file://', '');
+    const filePath = uriToPath(item.uri);
     const serverState = await this.context.prepareFile(filePath);
     if (!serverState) {
       throw new Error('No LSP server available for this file type');
@@ -174,7 +175,7 @@ export class HierarchyService {
         serverState.process,
         'textDocument/selectionRange',
         {
-          textDocument: { uri: `file://${filePath}` },
+          textDocument: { uri: pathToUri(filePath) },
           positions,
         },
         SELECTION_RANGE_TIMEOUT_MS
