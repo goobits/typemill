@@ -1,7 +1,9 @@
 {
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/@codeflow/*",
+    "apps/*"
   ],
   "scripts": {
     "build": "bun run --filter \"@goobits/*\" build",
