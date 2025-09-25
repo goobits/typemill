@@ -1,3 +1,5 @@
+import { logger } from '../../core/diagnostics/logger.js';
+import { TransactionManager } from '../../core/transaction/TransactionManager.js';
 import type { LSPClient } from '../../lsp/lsp-client.js';
 import { type BatchExecuteArgs, BatchExecutor } from '../../services/batch-executor.js';
 import type { FileService } from '../../services/file-service.js';
@@ -23,11 +25,19 @@ export async function handleBatchExecute(
   args: BatchExecuteArgs
 ) {
   try {
-    // Create service context for operations that need it
+    // Create transaction manager for atomic operations
+    const transactionManager = new TransactionManager(fileService);
+
+    // Create service context with transaction support
     const serviceContext = ServiceContextUtils.createServiceContext(
       lspClient.getServer.bind(lspClient),
-      lspClient.protocol
+      lspClient.protocol,
+      transactionManager,
+      fileService.logger ?? logger
     );
+
+    // Add fileService to context
+    serviceContext.fileService = fileService;
 
     // Create batch executor with all required services
     const batchExecutor = new BatchExecutor(

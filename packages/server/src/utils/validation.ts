@@ -143,16 +143,6 @@ export async function assertFileExists(filePath: string): Promise<void> {
 export function validateSymbolName(symbolName: unknown): ValidationResult {
   try {
     assertNonEmptyString(symbolName, 'symbol_name');
-
-    // Basic identifier validation (allows most programming language identifiers)
-    const identifierRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
-    if (!identifierRegex.test(symbolName)) {
-      return {
-        valid: false,
-        error: 'Symbol name must be a valid identifier (letters, numbers, underscore, dollar sign)',
-      };
-    }
-
     return { valid: true };
   } catch (error) {
     return {

@@ -728,6 +728,49 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 newLspClient,
                 args
               );
+            // Atomic refactoring tools (compatibility wrappers)
+            case 'analyze_refactor_impact': {
+              const { handleAnalyzeRefactorImpact } = await import(
+                './src/mcp/handlers/atomic-refactoring-handlers.js'
+              );
+              return await handleAnalyzeRefactorImpact(
+                symbolService,
+                fileService,
+                diagnosticService,
+                intelligenceService,
+                hierarchyService,
+                newLspClient,
+                args
+              );
+            }
+            case 'batch_move_files': {
+              const { handleBatchMoveFiles } = await import(
+                './src/mcp/handlers/atomic-refactoring-handlers.js'
+              );
+              return await handleBatchMoveFiles(
+                symbolService,
+                fileService,
+                diagnosticService,
+                intelligenceService,
+                hierarchyService,
+                newLspClient,
+                args
+              );
+            }
+            case 'preview_batch_operation': {
+              const { handlePreviewBatchOperation } = await import(
+                './src/mcp/handlers/atomic-refactoring-handlers.js'
+              );
+              return await handlePreviewBatchOperation(
+                symbolService,
+                fileService,
+                diagnosticService,
+                intelligenceService,
+                hierarchyService,
+                newLspClient,
+                args
+              );
+            }
             default: {
               const { createUnknownToolMessage } = await import(
                 './src/core/diagnostics/error-utils.js'
