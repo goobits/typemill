@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToUri } from '../../src/core/file-operations/path-utils';
 import { assertToolResult, MCPTestClient } from '../helpers/mcp-test-client';
 import {
   captureFileStates,
@@ -112,7 +113,7 @@ describe('Calculator', () => {
     // 4. Updates imports in test file
     const workspaceEdit = {
       changes: {
-        [`file://${TEST_DIR}/src/main.ts`]: [
+        [pathToUri(`${TEST_DIR}/src/main.ts`)]: [
           {
             range: {
               start: { line: 0, character: 13 },
@@ -146,7 +147,7 @@ describe('Calculator', () => {
   `,
           },
         ],
-        [`file://${TEST_DIR}/tests/calculator.test.ts`]: [
+        [pathToUri(`${TEST_DIR}/tests/calculator.test.ts`)]: [
           {
             range: {
               start: { line: 0, character: 9 },
@@ -162,7 +163,7 @@ describe('Calculator', () => {
             newText: 'MathEngine',
           },
         ],
-        [`file://${TEST_DIR}/src/utils.ts`]: [
+        [pathToUri(`${TEST_DIR}/src/utils.ts`)]: [
           {
             range: {
               start: { line: 7, character: 0 },
@@ -274,7 +275,7 @@ export function clamp(value: number, min: number, max: number): number {
 
     const workspaceEdit = {
       changes: {
-        [`file://${TEST_DIR}/src/utils.ts`]: [
+        [pathToUri(`${TEST_DIR}/src/utils.ts`)]: [
           {
             range: {
               start: { line: 0, character: 0 },
@@ -340,7 +341,7 @@ export { oldFunction, oldVariable };`
 
     const workspaceEdit = {
       changes: {
-        [`file://${seqFile}`]: [
+        [pathToUri(seqFile)]: [
           // First edit: rename function
           {
             range: {

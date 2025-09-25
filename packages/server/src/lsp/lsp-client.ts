@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { pathToUri } from '../core/file-operations/path-utils.js';
 import { createDefaultConfig, mergeWithDefaults } from '../core/configuration/default-config.js';
 import { logError } from '../core/diagnostics/error-utils.js';
 import { getLogger } from '../core/diagnostics/structured-logger.js';
@@ -209,7 +210,7 @@ export class LSPClient {
 
       // Read current file content
       const fileContent = readFileSync(filePath, 'utf-8');
-      const fileUri = `file://${filePath}`;
+      const fileUri = pathToUri(filePath);
 
       // Increment version for didChange notification
       const version = (serverState.fileVersions.get(filePath) || 1) + 1;

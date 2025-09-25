@@ -476,7 +476,7 @@ export async function handleApplyWorkspaceEdit(
     if (dry_run) {
       const fileList = Object.keys(workspaceEdit.changes)
         .map((uri) => {
-          const path = uri.replace('file://', '');
+          const path = uriToPath(uri);
           const edits = workspaceEdit.changes?.[uri];
           return `  - ${path}: ${edits?.length || 0} edit(s)`;
         })

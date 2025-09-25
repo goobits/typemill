@@ -2,7 +2,7 @@ import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from 'diff-match-patch';
 import { logDebugMessage } from '../core/diagnostics/debug-logger.js';
 import { handleFileSystemError, logError } from '../core/diagnostics/error-utils.js';
-import { pathToUri } from '../core/file-operations/path-utils.js';
+import { pathToUri, uriToPath } from '../core/file-operations/path-utils.js';
 import type {
   CodeAction,
   Diagnostic,
@@ -208,14 +208,14 @@ export class FileService {
     try {
       if (edit.changes) {
         for (const [uri, edits] of Object.entries(edit.changes)) {
-          const filePath = uri.replace('file://', '');
+          const filePath = uriToPath(uri);
           await this.applyTextEdits(filePath, edits);
         }
       }
 
       if (edit.documentChanges) {
         for (const change of edit.documentChanges) {
-          const filePath = change.textDocument.uri.replace('file://', '');
+          const filePath = uriToPath(change.textDocument.uri);
           await this.applyTextEdits(filePath, change.edits);
         }
       }
@@ -282,8 +282,8 @@ export class FileService {
         this.context.protocol.sendNotification(serverState.process, 'workspace/willRenameFiles', {
           files: [
             {
-              oldUri: `file://${oldPath}`,
-              newUri: `file://${newPath}`,
+              oldUri: pathToUri(oldPath),
+              newUri: pathToUri(newPath),
             },
           ],
         });
@@ -309,7 +309,7 @@ export class FileService {
 
       this.context.protocol.sendNotification(serverState.process, 'textDocument/didOpen', {
         textDocument: {
-          uri: `file://${filePath}`,
+          uri: pathToUri(filePath),
           languageId: this.context.getLanguageId(filePath),
           version: 1,
           text: fileContent,

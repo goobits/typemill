@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { pathToUri } from '../core/file-operations/path-utils.js';
 import type { StructuredLogger } from '../core/diagnostics/structured-logger.js';
 import type { TransactionManager } from '../core/transaction/index.js';
 import type { LSPProtocol } from '../lsp/protocol.js';
@@ -72,7 +73,7 @@ export const ServiceContextUtils = {
 
       protocol.sendNotification(serverState.process, 'textDocument/didOpen', {
         textDocument: {
-          uri: `file://${filePath}`,
+          uri: pathToUri(filePath),
           languageId: ServiceContextUtils.getLanguageId(filePath),
           version: 1,
           text: fileContent,
