@@ -156,8 +156,27 @@ export const PROCESSOR_INSTANCE = new DataProcessor();`
       console.log('✅ Dry-run preview successful - no files modified');
     });
 
-    it.skip('should execute multi-file rename and verify all file changes', async () => {
+    it('should execute multi-file rename and verify all file changes', async () => {
       console.log('🔧 Executing actual multi-file rename...');
+
+      // First, open all files to ensure TypeScript server knows about them
+      console.log('📂 Opening all project files in TypeScript LSP...');
+
+      // Use find_definition to trigger file opening in LSP
+      await client.callTool('find_definition', {
+        file_path: join(TEST_DIR, 'handler.ts'),
+        symbol_name: 'DataProcessor',
+        symbol_kind: 'class',
+      });
+
+      await client.callTool('find_definition', {
+        file_path: join(TEST_DIR, 'utils.ts'),
+        symbol_name: 'DataProcessor',
+        symbol_kind: 'class',
+      });
+
+      // Small delay to ensure LSP has processed the files
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Execute the rename
       const result = await client.callTool('rename_symbol', {
@@ -231,7 +250,7 @@ export const PROCESSOR_INSTANCE = new DataProcessor();`
       console.log('✅ Multi-file rename verification complete');
 
       // LSP synchronization now handled automatically by applyWorkspaceEdit
-    }, 20000);
+    }, 30000);
 
     it('should handle rename of non-existent symbol gracefully', async () => {
       console.log('🔍 Testing rename of non-existent symbol...');

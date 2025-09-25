@@ -218,13 +218,17 @@ export class BatchExecutor {
   ): Promise<BatchResult> {
     if (atomic) {
       // Start a new transaction
+      console.log('[BatchExecutor] Starting atomic transaction');
       this.serviceContext.transactionManager.beginTransaction();
       await this.serviceContext.transactionManager.saveCheckpoint('before-batch');
+      console.log('[BatchExecutor] Transaction started and checkpoint saved');
     }
 
     for (const operation of operations) {
       try {
+        console.log(`[BatchExecutor] Executing operation ${operation.id}: ${operation.tool}`);
         const operationResult = await this.executeOperation(operation);
+        console.log(`[BatchExecutor] Operation ${operation.id} succeeded`);
 
         result.results.push({
           operation,
@@ -233,6 +237,7 @@ export class BatchExecutor {
         });
         result.summary.successful++;
       } catch (error) {
+        console.log(`[BatchExecutor] Operation ${operation.id} failed:`, error);
         result.results.push({
           operation,
           success: false,
@@ -243,9 +248,11 @@ export class BatchExecutor {
 
         if (atomic) {
           // Rollback to checkpoint
+          console.log('[BatchExecutor] Rolling back atomic transaction');
           await this.serviceContext.transactionManager.rollbackToCheckpoint('before-batch');
           this.serviceContext.transactionManager.commit(); // End the transaction
           result.summary.successful = 0; // Reset successful count after rollback
+          console.log('[BatchExecutor] Rollback complete');
           break;
         }
 
@@ -270,9 +277,12 @@ export class BatchExecutor {
 
     // Commit transaction if atomic and successful
     if (atomic && result.success) {
+      console.log('[BatchExecutor] Committing successful atomic transaction');
       this.serviceContext.transactionManager.commit();
+      console.log('[BatchExecutor] Transaction committed');
     }
 
+    console.log(`[BatchExecutor] Batch execution complete - Success: ${result.success}`);
     return result;
   }
 

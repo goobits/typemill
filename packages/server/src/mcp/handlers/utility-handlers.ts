@@ -137,9 +137,52 @@ export async function handleRenameFile(args: {
 
   try {
     const { renameFile } = await import('../../core/file-operations/editor.js');
-    // Pass the workspace root directory to enable import detection
-    // Don't use gitignore filtering to ensure all files are checked (including test/examples/playground files)
-    const rootDir = process.cwd(); // Use current working directory as root
+
+    // Calculate a smart rootDir based on the file paths
+    const absoluteOldPath = resolve(old_path);
+    const absoluteNewPath = resolve(new_path);
+
+    // Get the directories containing the files
+    const oldDir = dirname(absoluteOldPath);
+    const newDir = dirname(absoluteNewPath);
+
+    // Function to find common parent path
+    const findCommonParent = (path1: string, path2: string): string => {
+      const parts1 = path1.split('/').filter(p => p);
+      const parts2 = path2.split('/').filter(p => p);
+      const commonParts = [];
+
+      for (let i = 0; i < Math.min(parts1.length, parts2.length); i++) {
+        if (parts1[i] === parts2[i]) {
+          commonParts.push(parts1[i]);
+        } else {
+          break;
+        }
+      }
+
+      return commonParts;
+    };
+
+    // Build the common path
+    const commonParts = findCommonParent(absoluteOldPath, absoluteNewPath);
+    let rootDir = commonParts.length ? `/${commonParts.join('/')}` : dirname(absoluteOldPath);
+
+    // If files are in different directories, go up one level to catch all imports
+    const sameDir = oldDir === newDir;
+    if (!sameDir) {
+      rootDir = dirname(rootDir);
+    }
+
+    // Ensure rootDir exists, walk up if needed
+    while (rootDir !== '/' && !existsSync(rootDir)) {
+      rootDir = dirname(rootDir);
+    }
+
+    // Final fallback: if we hit root and it doesn't exist, use the old file's directory
+    if (rootDir === '/' && !existsSync(rootDir)) {
+      rootDir = dirname(absoluteOldPath);
+    }
+
     logger.debug('File rename operation started', {
       tool: 'rename_file',
       root_dir: rootDir,
@@ -194,7 +237,50 @@ export async function getRenameFileWorkspaceEdit(args: {
 
   try {
     const { renameFile } = await import('../../core/file-operations/editor.js');
-    const rootDir = process.cwd();
+
+    // Use the same smart rootDir calculation as handleRenameFile
+    const absoluteOldPath = resolve(old_path);
+    const absoluteNewPath = resolve(new_path);
+
+    // Get the directories containing the files
+    const oldDir = dirname(absoluteOldPath);
+    const newDir = dirname(absoluteNewPath);
+
+    const findCommonParent = (path1: string, path2: string): string => {
+      const parts1 = path1.split('/').filter(p => p);
+      const parts2 = path2.split('/').filter(p => p);
+      const commonParts = [];
+
+      for (let i = 0; i < Math.min(parts1.length, parts2.length); i++) {
+        if (parts1[i] === parts2[i]) {
+          commonParts.push(parts1[i]);
+        } else {
+          break;
+        }
+      }
+
+      return commonParts;
+    };
+
+    // Build the common path
+    const commonParts = findCommonParent(absoluteOldPath, absoluteNewPath);
+    let rootDir = commonParts.length ? `/${commonParts.join('/')}` : dirname(absoluteOldPath);
+
+    // If files are in different directories, go up one level
+    const sameDir = oldDir === newDir;
+    if (!sameDir) {
+      rootDir = dirname(rootDir);
+    }
+
+    // Ensure rootDir exists, walk up if needed
+    while (rootDir !== '/' && !existsSync(rootDir)) {
+      rootDir = dirname(rootDir);
+    }
+
+    // Final fallback: if we hit root and it doesn't exist, use the old file's directory
+    if (rootDir === '/' && !existsSync(rootDir)) {
+      rootDir = dirname(absoluteOldPath);
+    }
 
     const result = await renameFile(old_path, new_path, undefined, {
       dry_run: true, // Always dry run for workspace edit extraction
