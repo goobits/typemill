@@ -448,13 +448,12 @@ async function updateImportsInMovedFile(
   const lines = content.split('\n');
   const edits: TextEdit[] = [];
 
-
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
 
     // Match all relative import patterns (including backticks for template literals)
     // This regex matches: from, require(), import(), export...from with relative paths
-    const importRegex = /((?:from|require\s*\(|import\s*\(|export\s+.*?from)\s+['"`])(\.\.?\/[^'"`]+)(['"`])/g;
+    const importRegex = /((?:from|require\s*\(|import\s*\(|export\s+.*?from)\s*['"`])(\.\.?\/[^'"`]+)(['"`])/g;
 
     // CRITICAL: Reset regex state for each line to avoid skipping matches
     importRegex.lastIndex = 0;
@@ -462,11 +461,8 @@ async function updateImportsInMovedFile(
     let match: RegExpExecArray | null;
     while ((match = importRegex.exec(line)) !== null) {
       const oldImportPath = match[2];
-
-
       // Resolve to absolute path from OLD location
       const targetFile = resolve(dirname(oldPath), oldImportPath);
-
 
       // Check if target exists, handling extension variations for TS files
       let resolvedTarget = targetFile;

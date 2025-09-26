@@ -229,7 +229,7 @@ export async function handleFixImports(args: { file_path: string; old_path: stri
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
           const line = lines[lineIndex];
-          const importRegex = /((?:from|require\s*\(|import\s*\(|export\s+.*?from)\s+['"`])(\.\.?\/[^'"`]+)(['"`])/g;
+          const importRegex = /((?:from|require\s*\(|import\s*\(|export\s+.*?from)\s*['"`])(\.\.?\/[^'"`]+)(['"`])/g;
           importRegex.lastIndex = 0;
 
           let match;
