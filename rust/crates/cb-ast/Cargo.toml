@@ -11,7 +11,12 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
-# Enhanced parsing with regex (SWC integration deferred due to compatibility issues)
+# SWC dependencies for true AST parsing (latest compatible versions)
+swc_common = "14"
+swc_ecma_parser = "24"
+swc_ecma_ast = "15"
+swc_ecma_visit = "15"
+# Enhanced parsing with regex (kept for fallback)
 regex = "1.10"
 # Additional utilities
 indexmap = "2.0"

@@ -22,6 +22,9 @@ pub enum ServerError {
     #[error("Unsupported operation: {0}")]
     Unsupported(String),
 
+    #[error("Authentication error: {0}")]
+    Auth(String),
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 

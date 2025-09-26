@@ -3,6 +3,12 @@
 pub mod mocks;
 pub mod helpers;
 
+#[cfg(test)]
+pub mod contract_tests;
+
+#[cfg(test)]
+pub mod resilience_tests;
+
 pub use mocks::{MockAstService, MockLspService};
 pub use helpers::*;
 

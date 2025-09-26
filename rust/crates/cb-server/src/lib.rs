@@ -1,8 +1,11 @@
 //! cb-server: Codeflow Buddy server implementation
 
+pub mod auth;
 pub mod error;
 pub mod handlers;
 pub mod interfaces;
+pub mod systems;
+pub mod transport;
 
 pub use error::{ServerError, ServerResult};
 pub use interfaces::{AstService, LspService};

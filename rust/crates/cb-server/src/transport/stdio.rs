@@ -1,0 +1,97 @@
+//! Stdio transport implementation for MCP
+
+use crate::handlers::McpDispatcher;
+use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, McpError};
+use std::sync::Arc;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+/// Start the stdio MCP server
+pub async fn start_stdio_server(dispatcher: Arc<McpDispatcher>) -> Result<(), Box<dyn std::error::Error>> {
+    tracing::info!("Starting stdio MCP server");
+
+    let stdin = tokio::io::stdin();
+    let mut stdout = tokio::io::stdout();
+    let mut reader = BufReader::new(stdin);
+    let mut line = String::new();
+
+    tracing::info!("Codebuddy Server running on stdio");
+    eprintln!("Codebuddy Server running on stdio");
+
+    loop {
+        line.clear();
+        match reader.read_line(&mut line).await {
+            Ok(0) => {
+                // EOF reached
+                tracing::info!("EOF reached, shutting down stdio server");
+                break;
+            }
+            Ok(_) => {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+
+                tracing::debug!("Received line: {}", trimmed);
+
+                // Parse the JSON-RPC message
+                let mcp_message: McpMessage = match serde_json::from_str(trimmed) {
+                    Ok(msg) => msg,
+                    Err(e) => {
+                        tracing::error!("Failed to parse MCP message: {}", e);
+                        let error_response = McpResponse {
+                            id: None,
+                            result: None,
+                            error: Some(McpError {
+                                code: -32700,
+                                message: "Parse error".to_string(),
+                                data: None,
+                            }),
+                        };
+
+                        let response_json = serde_json::to_string(&McpMessage::Response(error_response))?;
+                        stdout.write_all(response_json.as_bytes()).await?;
+                        stdout.write_all(b"\n").await?;
+                        stdout.flush().await?;
+                        continue;
+                    }
+                };
+
+                // Extract the ID from the original message for error responses
+                let message_id = match &mcp_message {
+                    McpMessage::Request(req) => req.id.clone(),
+                    _ => None,
+                };
+
+                // Handle the message
+                let response = match dispatcher.dispatch(mcp_message).await {
+                    Ok(response) => response,
+                    Err(e) => {
+                        tracing::error!("Failed to handle message: {}", e);
+                        McpMessage::Response(McpResponse {
+                            id: message_id,
+                            result: None,
+                            error: Some(McpError {
+                                code: -1,
+                                message: e.to_string(),
+                                data: None,
+                            }),
+                        })
+                    }
+                };
+
+                // Send response
+                let response_json = serde_json::to_string(&response)?;
+                stdout.write_all(response_json.as_bytes()).await?;
+                stdout.write_all(b"\n").await?;
+                stdout.flush().await?;
+            }
+            Err(e) => {
+                tracing::error!("Error reading from stdin: {}", e);
+                break;
+            }
+        }
+    }
+
+    tracing::info!("Stdio server stopped");
+    Ok(())
+}
