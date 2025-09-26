@@ -136,31 +136,8 @@ export function createDefaultConfig(): Config {
  */
 async function isCommandAvailable(command: string[]): Promise<boolean> {
   try {
-    const { spawn } = await import('node:child_process');
-    const [cmd, ..._args] = command;
-
-    // Special handling for npx commands - check if npm is available
-    if (cmd === 'npx') {
-      return await isCommandAvailable(['npm', '--version']);
-    }
-
-    // Try to run the command with --version or --help
-    return new Promise((resolve) => {
-      const testArgs = cmd === 'npm' ? ['--version'] : ['--version'];
-      const proc = spawn(cmd || '', testArgs, {
-        stdio: 'ignore',
-        shell: false,
-      });
-
-      proc.on('error', () => resolve(false));
-      proc.on('exit', (code) => resolve(code === 0));
-
-      // Timeout after 2 seconds
-      setTimeout(() => {
-        proc.kill();
-        resolve(false);
-      }, SERVER_AVAILABILITY_CHECK_TIMEOUT_MS);
-    });
+    const { isCommandAvailable: checkCommand } = await import('../../utils/platform/command-utils.js');
+    return await checkCommand(command, SERVER_AVAILABILITY_CHECK_TIMEOUT_MS);
   } catch {
     return false;
   }
