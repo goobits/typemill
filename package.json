@@ -8,6 +8,9 @@
   "scripts": {
     "build": "bun run --filter \"@goobits/*\" build",
     "test": "bun run --filter \"@goobits/codeflow-buddy\" test",
+    "test:rust": "cd rust && cargo test --workspace",
+    "test:e2e:rust": "TEST_RUST_BACKEND=true bun run --filter \"@goobits/codeflow-buddy\" test:e2e",
+    "build:rust": "cd rust && cargo build --release",
     "lint": "biome check .",
     "lint:fix": "biome check --fix .",
     "format": "biome format --write .",

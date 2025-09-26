@@ -1,0 +1,15 @@
+{
+  "id": 1,
+  "result": {
+    "definitions": [
+      {
+        "filePath": "src/config.ts",
+        "line": 42,
+        "column": 10,
+        "symbolName": "AppConfig",
+        "symbolKind": "class"
+      }
+    ],
+    "status": "found"
+  }
+}

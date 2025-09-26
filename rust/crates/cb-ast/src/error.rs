@@ -1,0 +1,54 @@
+//! AST error types
+
+use thiserror::Error;
+use cb_core::CoreError;
+
+/// AST operation errors
+#[derive(Error, Debug)]
+#[non_exhaustive]
+pub enum AstError {
+    #[error("Parse error: {message}")]
+    Parse { message: String },
+
+    #[error("Analysis error: {message}")]
+    Analysis { message: String },
+
+    #[error("Transformation error: {message}")]
+    Transformation { message: String },
+
+    #[error("Unsupported syntax: {feature}")]
+    UnsupportedSyntax { feature: String },
+
+    #[error("Core error: {0}")]
+    Core(#[from] CoreError),
+}
+
+impl AstError {
+    pub fn parse(message: impl Into<String>) -> Self {
+        Self::Parse { message: message.into() }
+    }
+
+    pub fn analysis(message: impl Into<String>) -> Self {
+        Self::Analysis { message: message.into() }
+    }
+
+    pub fn transformation(message: impl Into<String>) -> Self {
+        Self::Transformation { message: message.into() }
+    }
+
+    pub fn unsupported_syntax(feature: impl Into<String>) -> Self {
+        Self::UnsupportedSyntax { feature: feature.into() }
+    }
+}
+
+impl From<AstError> for CoreError {
+    fn from(err: AstError) -> Self {
+        match err {
+            AstError::Core(core_err) => core_err,
+            _ => CoreError::internal(format!("AST error: {}", err)),
+        }
+    }
+}
+
+/// Result type alias for AST operations
+pub type AstResult<T> = Result<T, AstError>;

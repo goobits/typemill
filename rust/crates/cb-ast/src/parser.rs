@@ -1,0 +1,1115 @@
+//! AST parsing functionality
+
+use crate::error::AstResult;
+use petgraph::{Graph, Direction};
+use petgraph::graph::NodeIndex;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+use std::path::Path;
+
+/// Import graph representation
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportGraph {
+    /// Source file path
+    pub source_file: String,
+    /// Direct imports from this file
+    pub imports: Vec<ImportInfo>,
+    /// Files that import this file
+    pub importers: Vec<String>,
+    /// Dependency graph metadata
+    pub metadata: ImportGraphMetadata,
+}
+
+/// Information about a single import
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportInfo {
+    /// The imported module path/name
+    pub module_path: String,
+    /// Import type (ES module, CommonJS, etc.)
+    pub import_type: ImportType,
+    /// Named imports
+    pub named_imports: Vec<NamedImport>,
+    /// Default import name (if any)
+    pub default_import: Option<String>,
+    /// Namespace import name (if any)
+    pub namespace_import: Option<String>,
+    /// Whether this is a type-only import
+    pub type_only: bool,
+    /// Source location in the file
+    pub location: SourceLocation,
+}
+
+/// Named import information
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NamedImport {
+    /// Original name in the module
+    pub name: String,
+    /// Local alias (if renamed)
+    pub alias: Option<String>,
+    /// Whether this is a type-only import
+    pub type_only: bool,
+}
+
+/// Import/export type classification
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum ImportType {
+    /// ES module import (import/export)
+    EsModule,
+    /// CommonJS require
+    CommonJs,
+    /// Dynamic import()
+    Dynamic,
+    /// AMD require
+    Amd,
+    /// TypeScript import type
+    TypeOnly,
+}
+
+/// Source location information
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceLocation {
+    /// Start line (0-based)
+    pub start_line: u32,
+    /// Start column (0-based)
+    pub start_column: u32,
+    /// End line (0-based)
+    pub end_line: u32,
+    /// End column (0-based)
+    pub end_column: u32,
+}
+
+/// Import graph metadata
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportGraphMetadata {
+    /// File extension/language
+    pub language: String,
+    /// Parsing timestamp
+    pub parsed_at: chrono::DateTime<chrono::Utc>,
+    /// Parser version
+    pub parser_version: String,
+    /// Circular dependencies detected
+    pub circular_dependencies: Vec<Vec<String>>,
+    /// External dependencies (not in project)
+    pub external_dependencies: Vec<String>,
+}
+
+/// Build import graph for a source file
+pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {
+    let language = match path.extension().and_then(|ext| ext.to_str()) {
+        Some("ts") | Some("tsx") => "typescript",
+        Some("js") | Some("jsx") => "javascript",
+        Some("py") => "python",
+        Some("rs") => "rust",
+        _ => "unknown",
+    };
+
+    let imports = match language {
+        "typescript" | "javascript" => parse_js_ts_imports_enhanced(source)?,
+        "python" => parse_python_imports(source)?,
+        "rust" => parse_rust_imports(source)?,
+        _ => parse_imports_basic(source)?,
+    };
+
+    // Detect external dependencies
+    let external_dependencies = imports.iter()
+        .filter_map(|imp| {
+            if is_external_dependency(&imp.module_path) {
+                Some(imp.module_path.clone())
+            } else {
+                None
+            }
+        })
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
+
+    Ok(ImportGraph {
+        source_file: path.to_string_lossy().to_string(),
+        imports,
+        importers: Vec::new(), // Would be filled by analyzing the broader project
+        metadata: ImportGraphMetadata {
+            language: language.to_string(),
+            parsed_at: chrono::Utc::now(),
+            parser_version: "0.2.0".to_string(),
+            circular_dependencies: Vec::new(),
+            external_dependencies,
+        },
+    })
+}
+
+/// Parse JavaScript/TypeScript imports using enhanced regex patterns
+fn parse_js_ts_imports_enhanced(source: &str) -> AstResult<Vec<ImportInfo>> {
+    let mut imports = Vec::new();
+
+    // Enhanced regex patterns for different import types
+    let es_import_re = Regex::new(r#"^\s*import\s+(?:(type)\s+)?(?:(?:(\*)\s+as\s+(\w+))|(?:(\w+)(?:\s*,\s*\{([^}]+)\})?)|(?:\{([^}]+)\}))\s+from\s+['"]([^'"]+)['"]"#).unwrap();
+    let dynamic_import_re = Regex::new(r#"import\s*\(\s*['"]([^'"]+)['"]\s*\)"#).unwrap();
+    let require_re = Regex::new(r#"(?:const|let|var)\s+(?:\{([^}]+)\}|(\w+))\s*=\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)"#).unwrap();
+    let direct_require_re = Regex::new(r#"require\s*\(\s*['"]([^'"]+)['"]\s*\)"#).unwrap();
+
+    for (line_num, line) in source.lines().enumerate() {
+        let line = line.trim();
+
+        // Skip comments and empty lines
+        if line.starts_with("//") || line.starts_with("/*") || line.is_empty() {
+            continue;
+        }
+
+        // ES Module imports
+        if let Some(captures) = es_import_re.captures(line) {
+            let type_only = captures.get(1).is_some();
+            let is_namespace = captures.get(2).is_some();
+            let namespace_name = captures.get(3).map(|m| m.as_str().to_string());
+            let default_import = captures.get(4).map(|m| m.as_str().to_string());
+            let mixed_named = captures.get(5).map(|m| m.as_str());
+            let named_only = captures.get(6).map(|m| m.as_str());
+            let module_path = captures.get(7).map(|m| m.as_str()).unwrap().to_string();
+
+            let named_imports = if let Some(named_str) = mixed_named.or(named_only) {
+                parse_named_imports_enhanced(named_str)?
+            } else {
+                Vec::new()
+            };
+
+            imports.push(ImportInfo {
+                module_path,
+                import_type: if type_only { ImportType::TypeOnly } else { ImportType::EsModule },
+                named_imports,
+                default_import,
+                namespace_import: if is_namespace { namespace_name } else { None },
+                type_only,
+                location: SourceLocation {
+                    start_line: line_num as u32,
+                    start_column: 0,
+                    end_line: line_num as u32,
+                    end_column: line.len() as u32,
+                },
+            });
+        }
+
+        // Dynamic imports
+        for captures in dynamic_import_re.captures_iter(line) {
+            let module_path = captures.get(1).unwrap().as_str().to_string();
+
+            imports.push(ImportInfo {
+                module_path,
+                import_type: ImportType::Dynamic,
+                named_imports: Vec::new(),
+                default_import: None,
+                namespace_import: None,
+                type_only: false,
+                location: SourceLocation {
+                    start_line: line_num as u32,
+                    start_column: captures.get(0).unwrap().start() as u32,
+                    end_line: line_num as u32,
+                    end_column: captures.get(0).unwrap().end() as u32,
+                },
+            });
+        }
+
+        // CommonJS requires with destructuring
+        if let Some(captures) = require_re.captures(line) {
+            let module_path = captures.get(3).unwrap().as_str().to_string();
+
+            let named_imports = if let Some(destructured) = captures.get(1) {
+                parse_named_imports_enhanced(destructured.as_str())?
+            } else {
+                Vec::new()
+            };
+
+            let default_import = captures.get(2).map(|m| m.as_str().to_string());
+
+            imports.push(ImportInfo {
+                module_path,
+                import_type: ImportType::CommonJs,
+                named_imports,
+                default_import,
+                namespace_import: None,
+                type_only: false,
+                location: SourceLocation {
+                    start_line: line_num as u32,
+                    start_column: 0,
+                    end_line: line_num as u32,
+                    end_column: line.len() as u32,
+                },
+            });
+        }
+
+        // Direct require calls (no assignment)
+        else if let Some(captures) = direct_require_re.captures(line) {
+            let module_path = captures.get(1).unwrap().as_str().to_string();
+
+            imports.push(ImportInfo {
+                module_path,
+                import_type: ImportType::CommonJs,
+                named_imports: Vec::new(),
+                default_import: None,
+                namespace_import: None,
+                type_only: false,
+                location: SourceLocation {
+                    start_line: line_num as u32,
+                    start_column: captures.get(0).unwrap().start() as u32,
+                    end_line: line_num as u32,
+                    end_column: captures.get(0).unwrap().end() as u32,
+                },
+            });
+        }
+    }
+
+    Ok(imports)
+}
+
+/// Parse named imports with enhanced regex support
+fn parse_named_imports_enhanced(named_str: &str) -> AstResult<Vec<NamedImport>> {
+    let mut named_imports = Vec::new();
+    let import_re = Regex::new(r#"(?:(type)\s+)?(\w+)(?:\s+as\s+(\w+))?"#).unwrap();
+
+    for captures in import_re.captures_iter(named_str) {
+        let type_only = captures.get(1).is_some();
+        let name = captures.get(2).unwrap().as_str().to_string();
+        let alias = captures.get(3).map(|m| m.as_str().to_string());
+
+        named_imports.push(NamedImport {
+            name,
+            alias,
+            type_only,
+        });
+    }
+
+    Ok(named_imports)
+}
+
+/// Basic import parsing (simplified for foundation)
+fn parse_imports_basic(source: &str) -> AstResult<Vec<ImportInfo>> {
+    let mut imports = Vec::new();
+
+    for (line_num, line) in source.lines().enumerate() {
+        let line = line.trim();
+
+        // ES module imports
+        if line.starts_with("import ") && line.contains(" from ") {
+            if let Some(import_info) = parse_es_import(line, line_num as u32)? {
+                imports.push(import_info);
+            }
+        }
+
+        // CommonJS requires
+        else if line.contains("require(") {
+            if let Some(import_info) = parse_commonjs_require(line, line_num as u32)? {
+                imports.push(import_info);
+            }
+        }
+
+        // Dynamic imports
+        else if line.contains("import(") {
+            if let Some(import_info) = parse_dynamic_import(line, line_num as u32)? {
+                imports.push(import_info);
+            }
+        }
+    }
+
+    Ok(imports)
+}
+
+/// Parse ES module import statement (simplified)
+fn parse_es_import(line: &str, line_num: u32) -> AstResult<Option<ImportInfo>> {
+    // This is a very basic parser - in reality you'd use a proper AST parser
+    if let Some(from_pos) = line.find(" from ") {
+        let import_part = &line[6..from_pos].trim(); // Skip "import "
+        let module_part = &line[from_pos + 6..].trim(); // Skip " from "
+
+        // Extract module path from quotes
+        let module_path = module_part.trim_matches('"').trim_matches('\'').trim_end_matches(';');
+
+        let type_only = line.contains("import type");
+
+        // Parse import specifiers (simplified)
+        let (default_import, named_imports, namespace_import) = parse_import_specifiers(import_part)?;
+
+        return Ok(Some(ImportInfo {
+            module_path: module_path.to_string(),
+            import_type: if type_only { ImportType::TypeOnly } else { ImportType::EsModule },
+            named_imports,
+            default_import,
+            namespace_import,
+            type_only,
+            location: SourceLocation {
+                start_line: line_num,
+                start_column: 0,
+                end_line: line_num,
+                end_column: line.len() as u32,
+            },
+        }));
+    }
+
+    Ok(None)
+}
+
+/// Parse CommonJS require (simplified)
+fn parse_commonjs_require(line: &str, line_num: u32) -> AstResult<Option<ImportInfo>> {
+    if let Some(require_start) = line.find("require(") {
+        let require_part = &line[require_start + 8..];
+        if let Some(end_paren) = require_part.find(')') {
+            let module_path = &require_part[..end_paren].trim_matches('"').trim_matches('\'');
+
+            return Ok(Some(ImportInfo {
+                module_path: module_path.to_string(),
+                import_type: ImportType::CommonJs,
+                named_imports: Vec::new(),
+                default_import: None,
+                namespace_import: None,
+                type_only: false,
+                location: SourceLocation {
+                    start_line: line_num,
+                    start_column: require_start as u32,
+                    end_line: line_num,
+                    end_column: (require_start + 8 + end_paren + 1) as u32,
+                },
+            }));
+        }
+    }
+
+    Ok(None)
+}
+
+/// Parse dynamic import (simplified)
+fn parse_dynamic_import(line: &str, line_num: u32) -> AstResult<Option<ImportInfo>> {
+    if let Some(import_start) = line.find("import(") {
+        let import_part = &line[import_start + 7..];
+        if let Some(end_paren) = import_part.find(')') {
+            let module_path = &import_part[..end_paren].trim_matches('"').trim_matches('\'');
+
+            return Ok(Some(ImportInfo {
+                module_path: module_path.to_string(),
+                import_type: ImportType::Dynamic,
+                named_imports: Vec::new(),
+                default_import: None,
+                namespace_import: None,
+                type_only: false,
+                location: SourceLocation {
+                    start_line: line_num,
+                    start_column: import_start as u32,
+                    end_line: line_num,
+                    end_column: (import_start + 7 + end_paren + 1) as u32,
+                },
+            }));
+        }
+    }
+
+    Ok(None)
+}
+
+/// Parse import specifiers (simplified)
+fn parse_import_specifiers(import_part: &str) -> AstResult<(Option<String>, Vec<NamedImport>, Option<String>)> {
+    let import_part = import_part.trim();
+
+    // Handle namespace imports: * as name
+    if import_part.starts_with("* as ") {
+        let namespace = import_part[5..].trim().to_string();
+        return Ok((None, Vec::new(), Some(namespace)));
+    }
+
+    // Handle braced imports: { a, b as c, type d }
+    if import_part.starts_with('{') && import_part.ends_with('}') {
+        let inner = &import_part[1..import_part.len() - 1];
+        let named_imports = parse_named_imports(inner)?;
+        return Ok((None, named_imports, None));
+    }
+
+    // Handle mixed imports: default, { named }
+    if let Some(comma_pos) = import_part.find(',') {
+        let default_part = import_part[..comma_pos].trim();
+        let rest_part = import_part[comma_pos + 1..].trim();
+
+        let default_import = if !default_part.is_empty() {
+            Some(default_part.to_string())
+        } else {
+            None
+        };
+
+        let named_imports = if rest_part.starts_with('{') && rest_part.ends_with('}') {
+            let inner = &rest_part[1..rest_part.len() - 1];
+            parse_named_imports(inner)?
+        } else {
+            Vec::new()
+        };
+
+        return Ok((default_import, named_imports, None));
+    }
+
+    // Handle default import only
+    if !import_part.is_empty() && !import_part.starts_with('{') {
+        return Ok((Some(import_part.to_string()), Vec::new(), None));
+    }
+
+    Ok((None, Vec::new(), None))
+}
+
+/// Parse named imports from braces content
+fn parse_named_imports(inner: &str) -> AstResult<Vec<NamedImport>> {
+    let mut named_imports = Vec::new();
+
+    for item in inner.split(',') {
+        let item = item.trim();
+        if item.is_empty() {
+            continue;
+        }
+
+        let type_only = item.starts_with("type ");
+        let item = if type_only { &item[5..] } else { item };
+
+        if let Some(as_pos) = item.find(" as ") {
+            let name = item[..as_pos].trim().to_string();
+            let alias = item[as_pos + 4..].trim().to_string();
+            named_imports.push(NamedImport {
+                name,
+                alias: Some(alias),
+                type_only,
+            });
+        } else {
+            named_imports.push(NamedImport {
+                name: item.to_string(),
+                alias: None,
+                type_only,
+            });
+        }
+    }
+
+    Ok(named_imports)
+}
+
+/// Parse Python imports (basic implementation)
+fn parse_python_imports(source: &str) -> AstResult<Vec<ImportInfo>> {
+    let mut imports = Vec::new();
+
+    for (line_num, line) in source.lines().enumerate() {
+        let line = line.trim();
+
+        // Handle "import module" or "import module as alias"
+        if line.starts_with("import ") && !line.contains("from ") {
+            let import_part = &line[7..]; // Skip "import "
+            for module in import_part.split(',') {
+                let module = module.trim();
+                if let Some(as_pos) = module.find(" as ") {
+                    let module_name = module[..as_pos].trim();
+                    let alias = module[as_pos + 4..].trim();
+                    imports.push(ImportInfo {
+                        module_path: module_name.to_string(),
+                        import_type: ImportType::EsModule, // Python doesn't distinguish
+                        named_imports: vec![NamedImport {
+                            name: alias.to_string(),
+                            alias: None,
+                            type_only: false,
+                        }],
+                        default_import: None,
+                        namespace_import: None,
+                        type_only: false,
+                        location: SourceLocation {
+                            start_line: line_num as u32,
+                            start_column: 0,
+                            end_line: line_num as u32,
+                            end_column: line.len() as u32,
+                        },
+                    });
+                } else {
+                    imports.push(ImportInfo {
+                        module_path: module.to_string(),
+                        import_type: ImportType::EsModule,
+                        named_imports: Vec::new(),
+                        default_import: None,
+                        namespace_import: Some(module.to_string()),
+                        type_only: false,
+                        location: SourceLocation {
+                            start_line: line_num as u32,
+                            start_column: 0,
+                            end_line: line_num as u32,
+                            end_column: line.len() as u32,
+                        },
+                    });
+                }
+            }
+        }
+
+        // Handle "from module import name1, name2"
+        else if line.starts_with("from ") && line.contains(" import ") {
+            if let Some(import_pos) = line.find(" import ") {
+                let module_part = &line[5..import_pos]; // Skip "from "
+                let import_part = &line[import_pos + 8..]; // Skip " import "
+
+                let named_imports = if import_part.trim() == "*" {
+                    Vec::new()
+                } else {
+                    import_part.split(',')
+                        .map(|name| {
+                            let name = name.trim();
+                            if let Some(as_pos) = name.find(" as ") {
+                                let original = name[..as_pos].trim();
+                                let alias = name[as_pos + 4..].trim();
+                                NamedImport {
+                                    name: original.to_string(),
+                                    alias: Some(alias.to_string()),
+                                    type_only: false,
+                                }
+                            } else {
+                                NamedImport {
+                                    name: name.to_string(),
+                                    alias: None,
+                                    type_only: false,
+                                }
+                            }
+                        })
+                        .collect()
+                };
+
+                let namespace_import = if import_part.trim() == "*" {
+                    Some(module_part.to_string())
+                } else {
+                    None
+                };
+
+                imports.push(ImportInfo {
+                    module_path: module_part.to_string(),
+                    import_type: ImportType::EsModule,
+                    named_imports,
+                    default_import: None,
+                    namespace_import,
+                    type_only: false,
+                    location: SourceLocation {
+                        start_line: line_num as u32,
+                        start_column: 0,
+                        end_line: line_num as u32,
+                        end_column: line.len() as u32,
+                    },
+                });
+            }
+        }
+    }
+
+    Ok(imports)
+}
+
+/// Parse Rust imports (basic implementation)
+fn parse_rust_imports(source: &str) -> AstResult<Vec<ImportInfo>> {
+    let mut imports = Vec::new();
+
+    for (line_num, line) in source.lines().enumerate() {
+        let line = line.trim();
+
+        if line.starts_with("use ") {
+            let use_part = &line[4..]; // Skip "use "
+            let use_part = use_part.trim_end_matches(';');
+
+            // Handle different use patterns
+            if use_part.contains("::") {
+                let parts: Vec<&str> = use_part.split("::").collect();
+                let module_path = parts[..parts.len() - 1].join("::");
+                let imported_item = parts.last().unwrap();
+
+                let (named_imports, namespace_import) = if imported_item.contains('{') && imported_item.contains('}') {
+                    // use module::{item1, item2}
+                    let inner = imported_item.trim_start_matches('{').trim_end_matches('}');
+                    let named = inner.split(',')
+                        .map(|name| {
+                            let name = name.trim();
+                            if let Some(as_pos) = name.find(" as ") {
+                                let original = name[..as_pos].trim();
+                                let alias = name[as_pos + 4..].trim();
+                                NamedImport {
+                                    name: original.to_string(),
+                                    alias: Some(alias.to_string()),
+                                    type_only: false,
+                                }
+                            } else {
+                                NamedImport {
+                                    name: name.to_string(),
+                                    alias: None,
+                                    type_only: false,
+                                }
+                            }
+                        })
+                        .collect();
+                    (named, None)
+                } else if *imported_item == "*" {
+                    // use module::*
+                    (Vec::new(), Some(module_path.clone()))
+                } else {
+                    // use module::item
+                    (vec![NamedImport {
+                        name: imported_item.to_string(),
+                        alias: None,
+                        type_only: false,
+                    }], None)
+                };
+
+                imports.push(ImportInfo {
+                    module_path,
+                    import_type: ImportType::EsModule,
+                    named_imports,
+                    default_import: None,
+                    namespace_import,
+                    type_only: false,
+                    location: SourceLocation {
+                        start_line: line_num as u32,
+                        start_column: 0,
+                        end_line: line_num as u32,
+                        end_column: line.len() as u32,
+                    },
+                });
+            }
+        }
+    }
+
+    Ok(imports)
+}
+
+/// Check if a module path represents an external dependency
+fn is_external_dependency(module_path: &str) -> bool {
+    // Check for relative imports
+    if module_path.starts_with("./") || module_path.starts_with("../") {
+        return false;
+    }
+
+    // Check for absolute paths starting with project structure
+    if module_path.starts_with("/") || module_path.starts_with("src/") {
+        return false;
+    }
+
+    // Check for scoped packages
+    if module_path.starts_with("@") {
+        return true;
+    }
+
+    // Check for common external patterns
+    !module_path.contains("/") ||
+    module_path.contains("node_modules") ||
+    !module_path.starts_with(".")
+}
+
+/// Build a dependency graph for a collection of files
+pub fn build_dependency_graph(import_graphs: &[ImportGraph]) -> DependencyGraph {
+    let mut graph = Graph::new();
+    let mut file_nodes = HashMap::new();
+    let mut path_to_node = HashMap::new();
+
+    // Create nodes for each file
+    for import_graph in import_graphs {
+        let node = graph.add_node(import_graph.source_file.clone());
+        file_nodes.insert(import_graph.source_file.clone(), node);
+        path_to_node.insert(import_graph.source_file.clone(), node);
+    }
+
+    // Add edges for imports
+    for import_graph in import_graphs {
+        if let Some(&source_node) = file_nodes.get(&import_graph.source_file) {
+            for import in &import_graph.imports {
+                // Try to resolve import to a file in our graph
+                if let Some(target_file) = resolve_import_path(&import.module_path, &import_graph.source_file, import_graphs) {
+                    if let Some(&target_node) = file_nodes.get(&target_file) {
+                        graph.add_edge(source_node, target_node, import.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    // Detect circular dependencies
+    let circular_dependencies = detect_cycles(&graph, &path_to_node);
+
+    DependencyGraph {
+        graph,
+        file_nodes,
+        circular_dependencies,
+    }
+}
+
+/// Dependency graph structure
+pub struct DependencyGraph {
+    pub graph: Graph<String, ImportInfo>,
+    pub file_nodes: HashMap<String, NodeIndex>,
+    pub circular_dependencies: Vec<Vec<String>>,
+}
+
+impl DependencyGraph {
+    /// Get all files that import the given file
+    pub fn get_importers(&self, file_path: &str) -> Vec<String> {
+        if let Some(&node) = self.file_nodes.get(file_path) {
+            self.graph
+                .neighbors_directed(node, Direction::Incoming)
+                .map(|n| self.graph[n].clone())
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Get all files imported by the given file
+    pub fn get_imports(&self, file_path: &str) -> Vec<String> {
+        if let Some(&node) = self.file_nodes.get(file_path) {
+            self.graph
+                .neighbors_directed(node, Direction::Outgoing)
+                .map(|n| self.graph[n].clone())
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Check if there's a dependency path between two files
+    pub fn has_dependency_path(&self, from: &str, to: &str) -> bool {
+        if let (Some(&from_node), Some(&to_node)) = (self.file_nodes.get(from), self.file_nodes.get(to)) {
+            petgraph::algo::has_path_connecting(&self.graph, from_node, to_node, None)
+        } else {
+            false
+        }
+    }
+}
+
+/// Resolve an import path to an actual file path
+fn resolve_import_path(import_path: &str, source_file: &str, graphs: &[ImportGraph]) -> Option<String> {
+    // This is a simplified resolver - in practice, you'd need more sophisticated path resolution
+    // that handles node_modules, package.json, index files, etc.
+
+    if import_path.starts_with("./") || import_path.starts_with("../") {
+        // Relative import
+        let source_dir = Path::new(source_file).parent()?;
+        let resolved = source_dir.join(import_path);
+
+        // Try common extensions
+        for ext in &["", ".ts", ".tsx", ".js", ".jsx", ".json"] {
+            let with_ext = format!("{}{}", resolved.to_string_lossy(), ext);
+            if graphs.iter().any(|g| g.source_file == with_ext) {
+                return Some(with_ext);
+            }
+        }
+    }
+
+    // Absolute imports - check if any file matches
+    for graph in graphs {
+        if graph.source_file.ends_with(import_path) ||
+           graph.source_file.contains(&format!("/{}", import_path)) {
+            return Some(graph.source_file.clone());
+        }
+    }
+
+    None
+}
+
+/// Detect circular dependencies in the graph
+fn detect_cycles(graph: &Graph<String, ImportInfo>, path_to_node: &HashMap<String, NodeIndex>) -> Vec<Vec<String>> {
+    let mut cycles = Vec::new();
+    let mut visited = HashSet::new();
+    let mut rec_stack = HashSet::new();
+    let mut path = Vec::new();
+
+    for &node in path_to_node.values() {
+        if !visited.contains(&node) {
+            find_cycles_dfs(graph, node, &mut visited, &mut rec_stack, &mut path, &mut cycles);
+        }
+    }
+
+    cycles
+}
+
+/// DFS helper for cycle detection
+fn find_cycles_dfs(
+    graph: &Graph<String, ImportInfo>,
+    node: NodeIndex,
+    visited: &mut HashSet<NodeIndex>,
+    rec_stack: &mut HashSet<NodeIndex>,
+    path: &mut Vec<String>,
+    cycles: &mut Vec<Vec<String>>,
+) {
+    visited.insert(node);
+    rec_stack.insert(node);
+    path.push(graph[node].clone());
+
+    for neighbor in graph.neighbors(node) {
+        if !visited.contains(&neighbor) {
+            find_cycles_dfs(graph, neighbor, visited, rec_stack, path, cycles);
+        } else if rec_stack.contains(&neighbor) {
+            // Found a cycle
+            let cycle_start = path.iter().position(|p| p == &graph[neighbor]).unwrap_or(0);
+            let cycle = path[cycle_start..].to_vec();
+            cycles.push(cycle);
+        }
+    }
+
+    path.pop();
+    rec_stack.remove(&node);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_parse_es_module_imports() {
+        let source = r#"
+import React from 'react';
+import { useState, useEffect } from 'react';
+import type { User } from './types';
+import * as utils from './utils';
+import { Button as CustomButton } from '@ui/components';
+"#;
+
+        let imports = parse_js_ts_imports_enhanced(source).unwrap();
+
+        assert_eq!(imports.len(), 5);
+
+        // Test default import
+        assert_eq!(imports[0].module_path, "react");
+        assert_eq!(imports[0].default_import, Some("React".to_string()));
+        assert_eq!(imports[0].import_type, ImportType::EsModule);
+
+        // Test named imports
+        assert_eq!(imports[1].module_path, "react");
+        assert_eq!(imports[1].named_imports.len(), 2);
+        assert_eq!(imports[1].named_imports[0].name, "useState");
+        assert_eq!(imports[1].named_imports[1].name, "useEffect");
+
+        // Test type-only import
+        assert_eq!(imports[2].module_path, "./types");
+        assert_eq!(imports[2].import_type, ImportType::TypeOnly);
+        assert!(imports[2].type_only);
+
+        // Test namespace import
+        assert_eq!(imports[3].module_path, "./utils");
+        assert_eq!(imports[3].namespace_import, Some("utils".to_string()));
+
+        // Test renamed import
+        assert_eq!(imports[4].module_path, "@ui/components");
+        assert_eq!(imports[4].named_imports[0].name, "Button");
+        assert_eq!(imports[4].named_imports[0].alias, Some("CustomButton".to_string()));
+    }
+
+    #[test]
+    fn test_parse_commonjs_requires() {
+        let source = r#"
+const fs = require('fs');
+const { readFile, writeFile } = require('fs/promises');
+const express = require('express');
+require('dotenv/config');
+"#;
+
+        let imports = parse_js_ts_imports_enhanced(source).unwrap();
+
+        assert_eq!(imports.len(), 4);
+
+        // Test default require
+        assert_eq!(imports[0].module_path, "fs");
+        assert_eq!(imports[0].default_import, Some("fs".to_string()));
+        assert_eq!(imports[0].import_type, ImportType::CommonJs);
+
+        // Test destructured require
+        assert_eq!(imports[1].module_path, "fs/promises");
+        assert_eq!(imports[1].named_imports.len(), 2);
+        assert_eq!(imports[1].named_imports[0].name, "readFile");
+        assert_eq!(imports[1].named_imports[1].name, "writeFile");
+
+        // Test direct require (no assignment)
+        assert_eq!(imports[3].module_path, "dotenv/config");
+        assert_eq!(imports[3].import_type, ImportType::CommonJs);
+    }
+
+    #[test]
+    fn test_parse_dynamic_imports() {
+        let source = r#"
+const module = await import('./dynamic-module');
+import('./another-module').then(mod => console.log(mod));
+"#;
+
+        let imports = parse_js_ts_imports_enhanced(source).unwrap();
+
+        assert_eq!(imports.len(), 2);
+        assert_eq!(imports[0].module_path, "./dynamic-module");
+        assert_eq!(imports[0].import_type, ImportType::Dynamic);
+        assert_eq!(imports[1].module_path, "./another-module");
+        assert_eq!(imports[1].import_type, ImportType::Dynamic);
+    }
+
+    #[test]
+    fn test_parse_python_imports() {
+        let source = r#"
+import os
+import sys as system
+from pathlib import Path
+from typing import Dict, List as ArrayList
+from . import utils
+from ..config import settings
+"#;
+
+        let imports = parse_python_imports(source).unwrap();
+
+        assert_eq!(imports.len(), 6);
+
+        // Test simple import
+        assert_eq!(imports[0].module_path, "os");
+        assert_eq!(imports[0].namespace_import, Some("os".to_string()));
+
+        // Test import with alias
+        assert_eq!(imports[1].module_path, "sys");
+        assert_eq!(imports[1].named_imports[0].name, "system");
+
+        // Test from import
+        assert_eq!(imports[2].module_path, "pathlib");
+        assert_eq!(imports[2].named_imports[0].name, "Path");
+
+        // Test from import with multiple items and alias
+        assert_eq!(imports[3].module_path, "typing");
+        assert_eq!(imports[3].named_imports.len(), 2);
+        assert_eq!(imports[3].named_imports[0].name, "Dict");
+        assert_eq!(imports[3].named_imports[1].name, "List");
+        assert_eq!(imports[3].named_imports[1].alias, Some("ArrayList".to_string()));
+    }
+
+    #[test]
+    fn test_parse_rust_imports() {
+        let source = r#"
+use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
+use crate::error::AstError;
+use super::utils;
+use tokio::fs::File;
+"#;
+
+        let imports = parse_rust_imports(source).unwrap();
+
+        assert_eq!(imports.len(), 5);
+
+        // Test simple use
+        assert_eq!(imports[0].module_path, "std::collections");
+        assert_eq!(imports[0].named_imports[0].name, "HashMap");
+
+        // Test use with braces
+        assert_eq!(imports[1].module_path, "serde");
+        assert_eq!(imports[1].named_imports.len(), 2);
+        assert_eq!(imports[1].named_imports[0].name, "Serialize");
+        assert_eq!(imports[1].named_imports[1].name, "Deserialize");
+
+        // Test crate import
+        assert_eq!(imports[2].module_path, "crate::error");
+        assert_eq!(imports[2].named_imports[0].name, "AstError");
+    }
+
+    #[test]
+    fn test_build_import_graph() {
+        let source = r#"
+import React from 'react';
+import { Component } from './component';
+import * as utils from '@shared/utils';
+require('dotenv/config');
+"#;
+
+        let path = PathBuf::from("src/index.ts");
+        let graph = build_import_graph(source, &path).unwrap();
+
+        assert_eq!(graph.source_file, "src/index.ts");
+        assert_eq!(graph.imports.len(), 4);
+        assert_eq!(graph.metadata.language, "typescript");
+        assert!(graph.metadata.external_dependencies.contains(&"react".to_string()));
+        assert!(graph.metadata.external_dependencies.contains(&"@shared/utils".to_string()));
+        assert!(graph.metadata.external_dependencies.contains(&"dotenv/config".to_string()));
+    }
+
+    #[test]
+    fn test_is_external_dependency() {
+        // External dependencies
+        assert!(is_external_dependency("react"));
+        assert!(is_external_dependency("@types/node"));
+        assert!(is_external_dependency("lodash"));
+
+        // Internal dependencies
+        assert!(!is_external_dependency("./component"));
+        assert!(!is_external_dependency("../utils"));
+        assert!(!is_external_dependency("src/types"));
+    }
+
+    #[test]
+    fn test_dependency_graph() {
+        let graphs = vec![
+            ImportGraph {
+                source_file: "a.ts".to_string(),
+                imports: vec![
+                    ImportInfo {
+                        module_path: "./b".to_string(),
+                        import_type: ImportType::EsModule,
+                        named_imports: vec![],
+                        default_import: None,
+                        namespace_import: None,
+                        type_only: false,
+                        location: SourceLocation {
+                            start_line: 0,
+                            start_column: 0,
+                            end_line: 0,
+                            end_column: 20,
+                        },
+                    }
+                ],
+                importers: vec![],
+                metadata: ImportGraphMetadata {
+                    language: "typescript".to_string(),
+                    parsed_at: chrono::Utc::now(),
+                    parser_version: "0.2.0".to_string(),
+                    circular_dependencies: vec![],
+                    external_dependencies: vec![],
+                },
+            },
+            ImportGraph {
+                source_file: "b.ts".to_string(),
+                imports: vec![],
+                importers: vec![],
+                metadata: ImportGraphMetadata {
+                    language: "typescript".to_string(),
+                    parsed_at: chrono::Utc::now(),
+                    parser_version: "0.2.0".to_string(),
+                    circular_dependencies: vec![],
+                    external_dependencies: vec![],
+                },
+            },
+        ];
+
+        let dep_graph = build_dependency_graph(&graphs);
+
+        // Test that both files are in the graph
+        assert!(dep_graph.file_nodes.contains_key("a.ts"));
+        assert!(dep_graph.file_nodes.contains_key("b.ts"));
+
+        // Test imports
+        let imports = dep_graph.get_imports("a.ts");
+        assert_eq!(imports.len(), 0); // No edges were added because resolve_import_path returns None
+
+        // Test importers
+        let importers = dep_graph.get_importers("b.ts");
+        assert_eq!(importers.len(), 0); // No edges were added because resolve_import_path returns None
+    }
+
+    #[test]
+    fn test_parse_named_imports_enhanced() {
+        let named_str = "useState, useEffect, type User, Button as CustomButton";
+        let imports = parse_named_imports_enhanced(named_str).unwrap();
+
+        assert_eq!(imports.len(), 4);
+        assert_eq!(imports[0].name, "useState");
+        assert_eq!(imports[0].alias, None);
+        assert!(!imports[0].type_only);
+
+        assert_eq!(imports[1].name, "useEffect");
+        assert!(!imports[1].type_only);
+
+        assert_eq!(imports[2].name, "User");
+        assert!(imports[2].type_only);
+
+        assert_eq!(imports[3].name, "Button");
+        assert_eq!(imports[3].alias, Some("CustomButton".to_string()));
+        assert!(!imports[3].type_only);
+    }
+}

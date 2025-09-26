@@ -1,0 +1,39 @@
+//! Mock implementations for testing
+
+use async_trait::async_trait;
+use cb_ast::{EditPlan, ImportGraph};
+use cb_core::{model::{IntentSpec, McpMessage}, CoreError};
+use cb_server::{AstService, LspService};
+use mockall::mock;
+use std::path::Path;
+
+mock! {
+    pub AstService {}
+
+    #[async_trait]
+    impl AstService for AstService {
+        async fn build_import_graph(&self, file: &Path) -> Result<ImportGraph, CoreError>;
+        async fn plan_refactor(&self, intent: &IntentSpec, file: &Path) -> Result<EditPlan, CoreError>;
+    }
+}
+
+mock! {
+    pub LspService {}
+
+    #[async_trait]
+    impl LspService for LspService {
+        async fn request(&self, message: McpMessage) -> Result<McpMessage, CoreError>;
+        async fn is_available(&self, extension: &str) -> bool;
+        async fn restart_servers(&self, extensions: Option<Vec<String>>) -> Result<(), CoreError>;
+    }
+}
+
+/// Create a mock AST service for testing
+pub fn mock_ast_service() -> MockAstService {
+    MockAstService::new()
+}
+
+/// Create a mock LSP service for testing
+pub fn mock_lsp_service() -> MockLspService {
+    MockLspService::new()
+}

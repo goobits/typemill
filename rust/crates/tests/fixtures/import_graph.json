@@ -1,0 +1,52 @@
+{
+  "sourceFile": "src/index.ts",
+  "imports": [
+    {
+      "modulePath": "react",
+      "importType": "es_module",
+      "namedImports": [
+        {
+          "name": "useState",
+          "alias": null,
+          "typeOnly": false
+        },
+        {
+          "name": "useEffect",
+          "alias": null,
+          "typeOnly": false
+        }
+      ],
+      "defaultImport": "React",
+      "namespaceImport": null,
+      "typeOnly": false,
+      "location": {
+        "startLine": 1,
+        "startColumn": 0,
+        "endLine": 1,
+        "endColumn": 45
+      }
+    },
+    {
+      "modulePath": "./components/App",
+      "importType": "es_module",
+      "namedImports": [],
+      "defaultImport": "App",
+      "namespaceImport": null,
+      "typeOnly": false,
+      "location": {
+        "startLine": 2,
+        "startColumn": 0,
+        "endLine": 2,
+        "endColumn": 35
+      }
+    }
+  ],
+  "importers": ["src/main.ts", "tests/index.test.ts"],
+  "metadata": {
+    "language": "typescript",
+    "parsedAt": "2024-01-15T10:30:00Z",
+    "parserVersion": "0.2.0",
+    "circularDependencies": [],
+    "externalDependencies": ["react"]
+  }
+}

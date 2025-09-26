@@ -1,0 +1,12 @@
+{
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "find_definition",
+    "arguments": {
+      "file_path": "src/main.ts",
+      "symbol_name": "AppConfig",
+      "symbol_kind": "class"
+    }
+  }
+}

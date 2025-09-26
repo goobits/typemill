@@ -1,0 +1,20 @@
+[package]
+name = "tests"
+version = "0.1.0"
+edition = "2021"
+description = "Integration tests and test utilities for Codeflow Buddy"
+license = "MIT"
+
+[dependencies]
+cb-core = { path = "../cb-core" }
+cb-ast = { path = "../cb-ast" }
+cb-server = { path = "../cb-server" }
+cb-client = { path = "../cb-client" }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+mockall = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tempfile = "3.8"
+chrono = { version = "0.4", features = ["serde"] }
