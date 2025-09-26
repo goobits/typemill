@@ -69,13 +69,15 @@ pub struct ToolCall {
 
 // LSP Models
 pub struct LspRequest {
-    pub id: MessageId,
+    pub jsonrpc: String,
+    pub id: Value,
     pub method: String,
     pub params: Option<Value>,
 }
 
 pub struct LspResponse {
-    pub id: MessageId,
+    pub jsonrpc: String,
+    pub id: Value,
     pub result: Option<Value>,
     pub error: Option<LspError>,
 }
@@ -257,10 +259,9 @@ pub enum Commands {
         url: String,
         method: String,
         params: Option<String>,
+        token: Option<String>,
     },
-    Status {
-        url: String,
-    },
+    Status,
 }
 
 // Entry Point
@@ -268,10 +269,11 @@ pub async fn run_cli() -> Result<(), ClientError>;
 
 // Session Report
 pub struct SessionReport {
-    pub requests_sent: u32,
-    pub responses_received: u32,
+    pub success_count: usize,
+    pub failure_count: usize,
+    pub duration_ms: u64,
+    pub operations: Vec<String>,
     pub errors: Vec<String>,
-    pub duration: std::time::Duration,
 }
 
 // Error Handling
