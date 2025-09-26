@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { AssistantInfo } from '../types.js';
+import { pathManager } from '../../utils/platform/path-manager.js';
 
 /**
  * AI Assistant configuration management utilities
@@ -53,29 +54,10 @@ const SUPPORTED_ASSISTANTS: AssistantDefinition[] = [
 
 /**
  * Expand path with environment variables, home directory, and project-relative paths
+ * Now delegated to pathManager for cross-platform consistency
  */
 function expandPath(filepath: string): string {
-  // Handle project-relative paths (like .cursor/mcp.json)
-  if (filepath.startsWith('./') || (!filepath.includes('/') && !filepath.includes('\\'))) {
-    if (filepath.startsWith('./')) {
-      filepath = path.join(process.cwd(), filepath.slice(2));
-    } else if (filepath.startsWith('.')) {
-      filepath = path.join(process.cwd(), filepath);
-    }
-  }
-  // Expand home directory
-  else if (filepath.startsWith('~/')) {
-    filepath = path.join(os.homedir(), filepath.slice(2));
-  }
-
-  // Expand environment variables on Windows
-  if (process.platform === 'win32') {
-    filepath = filepath.replace(/%([^%]+)%/g, (_, name) => {
-      return process.env[name] || '';
-    });
-  }
-
-  return path.resolve(filepath);
+  return pathManager.expandPath(filepath);
 }
 
 /**

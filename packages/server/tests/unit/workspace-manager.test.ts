@@ -8,6 +8,7 @@ import { mkdir, rmdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WorkspaceManager } from '../../src/server/workspace-manager.js';
+import { waitForCondition } from '../helpers/polling-helpers.js';
 
 describe('WorkspaceManager Unit Tests', () => {
   let testBaseDir: string;
@@ -134,7 +135,7 @@ describe('WorkspaceManager Unit Tests', () => {
       const initialAccessTime = created.lastAccessed;
 
       // Wait a bit to ensure time difference
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await waitForCondition(() => true, { timeout: 10, interval: 5 });
 
       const retrieved = workspaceManager.getWorkspace('access-time-test');
       expect(retrieved!.lastAccessed.getTime()).toBeGreaterThan(initialAccessTime.getTime());
@@ -230,7 +231,7 @@ describe('WorkspaceManager Unit Tests', () => {
         });
 
         // Wait to ensure different creation times
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await waitForCondition(() => true, { timeout: 10, interval: 5 });
 
         const _workspace2 = await limitedManager.createWorkspace({
           id: 'oldest-2',
@@ -238,7 +239,7 @@ describe('WorkspaceManager Unit Tests', () => {
         });
 
         // Wait again
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await waitForCondition(() => true, { timeout: 10, interval: 5 });
 
         const _workspace3 = await limitedManager.createWorkspace({
           id: 'oldest-3',

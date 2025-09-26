@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join } from 'node:path';
 import { assertToolResult, MCPTestClient } from '../helpers/mcp-test-client';
 import { captureFileStates, verifyFileContainsAll } from '../helpers/test-verification-helpers.js';
+import { waitForCondition, waitForLSPInitialization } from '../helpers/polling-helpers.js';
 
 /**
  * Integration test for combined LSP operations
@@ -136,7 +137,7 @@ export function createService(): UserService {
 
     // Allow extra time for TypeScript LSP to index the new project
     console.log('⏳ Waiting for TypeScript LSP to index project files...');
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await waitForLSPInitialization(client);
     console.log('✅ Multi-operation integration test ready');
   });
 
@@ -215,7 +216,7 @@ export function createService(): UserService {
     expect(renameResponse).toMatch(/UserData.*UserInfo/);
 
     // Wait for file system operations
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await waitForCondition(() => true, { timeout: 500, interval: 100 });
 
     // STEP 5: Verify rename was applied correctly across all files
     console.log('📍 Step 5: Verify rename across all affected files');
@@ -354,7 +355,7 @@ export function createService(): UserService {
     expect(editResponse).toMatch(/applied|success/i);
 
     // Wait for edits to be applied
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await waitForCondition(() => true, { timeout: 500, interval: 100 });
 
     // STEP 2: Find definition of the newly added deleteUser method
     console.log('📍 Step 2: Find definition of deleteUser method');
@@ -456,7 +457,7 @@ export function createService(): UserService {
     expect(renameFileResponse).toMatch(/renamed|moved|updated/i);
 
     // Wait for file operations
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await waitForCondition(() => existsSync(join(TEST_DIR, 'account-service.ts')), { timeout: 1000, interval: 100 });
 
     // STEP 3: Verify file was renamed and imports updated
     console.log('📍 Step 3: Verify file rename and import updates');

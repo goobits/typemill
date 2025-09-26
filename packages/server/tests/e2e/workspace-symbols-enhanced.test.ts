@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MCPTestClient } from '../helpers/mcp-test-client';
 import { getTestConfig, getTestModeFromEnv } from '../helpers/test-mode-detector';
+import { waitForLSPInitialization } from '../helpers/polling-helpers.js';
 
 /**
  * Enhanced test for search_workspace_symbols with isolated test files
@@ -92,9 +93,8 @@ export function processUser(data: UserData): UserData {
     await client.start({ skipLSPPreload: true });
 
     // Allow extra time for LSP initialization based on system speed
-    const initTime = testConfig.mode === 'slow' ? 8000 : 3000;
-    console.log(`⏳ Waiting ${initTime / 1000}s for LSP initialization...`);
-    await new Promise((resolve) => setTimeout(resolve, initTime));
+    console.log('⏳ Waiting for LSP initialization...');
+    await waitForLSPInitialization(client);
     console.log('✅ Simplified workspace symbols test ready');
   }, testConfig.timeouts.initialization);
 

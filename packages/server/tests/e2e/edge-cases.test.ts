@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { assertToolResult, MCPTestClient } from '../helpers/mcp-test-client.js';
 import { getSystemCapabilities } from '../helpers/system-utils.js';
 import { waitForLSP, waitForCondition } from '../helpers/test-verification-helpers.js';
+import { waitForCondition as pollingWaitForCondition } from '../helpers/polling-helpers.js';
 
 describe('Edge Case Tests', () => {
   let client: MCPTestClient;
@@ -140,7 +141,7 @@ describe('Edge Case Tests', () => {
 
     beforeEach(async () => {
       // Ensure previous test is fully complete and server is stable
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await pollingWaitForCondition(() => true, { timeout: 2000, interval: 500 });
 
       // Warm up TypeScript server with the Unicode file using the resolved path
       console.log(`Warming up LSP server with: ${unicodeFile}`);
@@ -291,7 +292,7 @@ describe('Edge Case Tests', () => {
       'should handle large file symbols efficiently',
       async () => {
         // Add delay before large file operations
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await pollingWaitForCondition(() => true, { timeout: 1000, interval: 200 });
 
         const startTime = Date.now();
         const result = await client.callTool('get_document_symbols', {

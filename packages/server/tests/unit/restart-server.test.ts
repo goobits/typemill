@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { assertToolResult, MCPTestClient } from '../helpers/mcp-test-client';
 import { testLog } from '../helpers/quiet-logger';
+import { waitForLSPInitialization, waitForCondition } from '../helpers/polling-helpers.js';
 
 describe('Server Restart Tests', () => {
   let client: MCPTestClient;
@@ -12,7 +13,7 @@ describe('Server Restart Tests', () => {
 
     // Wait for LSP servers to fully initialize
     testLog('⏳ Waiting for LSP servers to initialize...');
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await waitForLSPInitialization(client);
   });
 
   afterAll(async () => {
@@ -91,7 +92,7 @@ describe('Server Restart Tests', () => {
     console.log('✅ First restart completed');
 
     // Wait a bit
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await waitForCondition(() => true, { timeout: 1000, interval: 200 });
 
     // Second restart
     const result2 = await client.callTool('restart_server', {
