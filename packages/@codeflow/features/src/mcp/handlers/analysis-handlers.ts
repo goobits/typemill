@@ -382,7 +382,8 @@ export async function handleAnalyzeImports(
  * Rename a directory and update all imports
  */
 export async function handleRenameDirectory(
-  args: { old_path: string; new_path: string; dry_run?: boolean }
+  args: { old_path: string; new_path: string; dry_run?: boolean },
+  serviceContext: import('../../../../../server/src/services/service-context.js').ServiceContext
 ) {
   const { old_path, new_path, dry_run = false } = args;
 
@@ -526,6 +527,9 @@ export async function handleRenameDirectory(
           const newFile = join(absoluteNewPath, relativePath);
 
           try {
+            // Record the file move operation for transaction rollback
+            serviceContext.transactionManager.recordFileMove(oldFile, newFile);
+
             const result = await renameFile(oldFile, newFile, undefined, { dry_run: false });
             if (result.success) {
               successCount++;
@@ -573,7 +577,7 @@ registerTools(
     },
     rename_directory: {
       handler: handleRenameDirectory,
-      requiresService: 'none',
+      requiresService: 'serviceContext',
     },
   },
   'analysis-handlers'

@@ -2,6 +2,6 @@
   "files": [],
   "references": [
     { "path": "packages/server" },
-    { "path": "packages/client" }
+    { "path": "packages/codeflow-buddy-client" }
   ]
 }
