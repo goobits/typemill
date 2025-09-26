@@ -4,7 +4,7 @@
       "type": "stdio",
       "command": "node",
       "args": [
-        "/workspace/dist/index.js",
+        "/workspace/packages/server/dist/index.js",
         "start"
       ],
       "env": {}
