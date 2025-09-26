@@ -16,3 +16,20 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
+# Transport & Authentication dependencies
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+jsonwebtoken = "8"
+url = "2"
+# LSP dependencies
+lsp-types = "0.94"
+# Utilities
+uuid = { version = "1.0", features = ["v4"] }
+ignore = "0.4"
+clap = { version = "4.0", features = ["derive"] }
+# FUSE filesystem
+fuser = "0.14"
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3.0"

@@ -9,9 +9,9 @@ use serde_json::json;
 #[serde(rename_all = "snake_case")]
 struct RenameSymbolArgs {
     file_path: String,
-    symbol_name: String,
+    line: u32,
+    character: u32,
     new_name: String,
-    symbol_kind: Option<String>,
     dry_run: Option<bool>,
 }
 
@@ -79,54 +79,52 @@ struct Position {
 /// Register editing tools
 pub fn register_tools(dispatcher: &mut McpDispatcher) {
     // rename_symbol tool
-    dispatcher.register_tool("rename_symbol".to_string(), |args| async move {
+    dispatcher.register_tool("rename_symbol".to_string(), |app_state, args| async move {
         let params: RenameSymbolArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
         tracing::debug!(
-            "Renaming {} to {} in {}",
-            params.symbol_name,
-            params.new_name,
-            params.file_path
+            "Renaming symbol at {}:{}:{} to {}",
+            params.file_path,
+            params.line,
+            params.character,
+            params.new_name
         );
 
-        let is_dry_run = params.dry_run.unwrap_or(false);
-
-        // Mock rename operation
-        let edits = vec![
-            FileEdit {
-                file_path: params.file_path.clone(),
-                edits: vec![
-                    TextEdit {
-                        range: TextRange {
-                            start: Position { line: 10, character: 5 },
-                            end: Position { line: 10, character: 5 + params.symbol_name.len() as u32 },
-                        },
-                        new_text: params.new_name.clone(),
-                    },
-                    TextEdit {
-                        range: TextRange {
-                            start: Position { line: 25, character: 10 },
-                            end: Position { line: 25, character: 10 + params.symbol_name.len() as u32 },
-                        },
-                        new_text: params.new_name.clone(),
-                    },
-                ],
-            },
-        ];
-
-        let result = EditResult {
-            success: !is_dry_run,
-            files_modified: if is_dry_run { vec![] } else { vec![params.file_path] },
-            edits_count: 2,
-            preview: if is_dry_run { Some(edits) } else { None },
+        // Create LSP request for textDocument/rename
+        let lsp_request = cb_core::model::mcp::McpRequest {
+            id: Some(serde_json::Value::Number(serde_json::Number::from(1))),
+            method: "textDocument/rename".to_string(),
+            params: Some(json!({
+                "textDocument": {
+                    "uri": format!("file://{}", params.file_path)
+                },
+                "position": {
+                    "line": params.line,
+                    "character": params.character
+                },
+                "newName": params.new_name
+            })),
         };
 
-        Ok(serde_json::to_value(result)?)
+        // Send request to LSP service
+        match app_state.lsp.request(cb_core::model::mcp::McpMessage::Request(lsp_request)).await {
+            Ok(cb_core::model::mcp::McpMessage::Response(response)) => {
+                if let Some(result) = response.result {
+                    Ok(result)
+                } else if let Some(error) = response.error {
+                    Err(crate::error::ServerError::runtime(format!("LSP error: {}", error.message)))
+                } else {
+                    Err(crate::error::ServerError::runtime("Empty LSP response"))
+                }
+            }
+            Ok(_) => Err(crate::error::ServerError::runtime("Unexpected LSP message type")),
+            Err(e) => Err(crate::error::ServerError::runtime(format!("LSP request failed: {}", e))),
+        }
     });
 
     // format_document tool
-    dispatcher.register_tool("format_document".to_string(), |args| async move {
+    dispatcher.register_tool("format_document".to_string(), |_app_state, args| async move {
         let params: FormatDocumentArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
@@ -164,7 +162,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
     });
 
     // get_code_actions tool
-    dispatcher.register_tool("get_code_actions".to_string(), |args| async move {
+    dispatcher.register_tool("get_code_actions".to_string(), |_app_state, args| async move {
         let file_path = args["file_path"].as_str()
             .ok_or_else(|| crate::error::ServerError::InvalidRequest("Missing file_path".into()))?;
 
@@ -208,7 +206,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
     });
 
     // apply_workspace_edit tool
-    dispatcher.register_tool("apply_workspace_edit".to_string(), |args| async move {
+    dispatcher.register_tool("apply_workspace_edit".to_string(), |_app_state, args| async move {
         let changes = args["changes"].as_object()
             .ok_or_else(|| crate::error::ServerError::InvalidRequest("Missing changes".into()))?;
 
@@ -244,14 +242,16 @@ mod tests {
     async fn test_rename_symbol_args() {
         let args = json!({
             "file_path": "test.ts",
-            "symbol_name": "oldName",
+            "line": 10,
+            "character": 5,
             "new_name": "newName",
             "dry_run": true
         });
 
         let parsed: RenameSymbolArgs = serde_json::from_value(args).unwrap();
         assert_eq!(parsed.file_path, "test.ts");
-        assert_eq!(parsed.symbol_name, "oldName");
+        assert_eq!(parsed.line, 10);
+        assert_eq!(parsed.character, 5);
         assert_eq!(parsed.new_name, "newName");
         assert_eq!(parsed.dry_run, Some(true));
     }

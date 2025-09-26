@@ -1,7 +1,142 @@
-# Crate API Contracts
+# API Contracts - Final Implementation
 
-## Overview
-This document defines the public API contracts for each crate in the Rust workspace. These contracts ensure compatibility and proper integration between crates.
+This document describes the complete API contracts for the production-ready Rust MCP server implementation, including transport protocols, CLI interface, and internal crate contracts.
+
+## Transport Layer Contracts
+
+### WebSocket Transport (Default)
+- **Endpoint**: `ws://127.0.0.1:3040`
+- **Protocol**: JSON-RPC 2.0 over WebSocket
+- **Command**: `cb-server serve` or `cb-server` (default)
+- **Features**: Session management, concurrent connections, health endpoints
+
+### Stdio Transport
+- **Protocol**: JSON-RPC 2.0 over stdin/stdout (newline-delimited)
+- **Command**: `cb-server start`
+- **Features**: MCP protocol compatibility, editor integration support
+- **Usage**: Designed for MCP clients like Claude Code
+
+## CLI Interface Contract
+
+```bash
+# WebSocket server (production mode)
+cb-server serve
+
+# Stdio server (MCP client mode)
+cb-server start
+
+# Help and version
+cb-server --help
+cb-server --version
+```
+
+## MCP Tools Contract
+
+The server implements 21 MCP tools across 5 categories:
+
+### Navigation Tools (4)
+- `find_definition` - Find symbol definitions via LSP
+- `find_references` - Find all references to a symbol via LSP
+- `get_document_symbols` - Get document outline via LSP
+- `search_workspace_symbols` - Search symbols across workspace via LSP
+
+### Intelligence Tools (4)
+- `get_hover` - Get hover information via LSP
+- `get_completions` - Get code completions via LSP
+- `get_signature_help` - Get function signature help via LSP
+- `get_diagnostics` - Get syntax/semantic errors via LSP
+
+### Editing Tools (4)
+- `rename_symbol` - Rename symbol across workspace via LSP
+- `format_document` - Format code via LSP
+- `get_code_actions` - Get available code actions via LSP
+- `apply_workspace_edit` - Apply multi-file edits via LSP
+
+### Filesystem Tools (5)
+- `list_files` - List files and directories
+- `read_file` - Read file contents
+- `write_file` - Write file contents
+- `create_file` - Create new files
+- `delete_file` - Delete files
+- `rename_file` - Rename/move files
+- `update_package_json` - Update package.json files
+
+### Analysis Tools (4)
+- `analyze_imports` - Analyze import relationships using cb-ast
+- `find_dead_code` - Find potentially unused code via LSP
+- `health_check` - Check system and LSP server health
+- `restart_server` - Restart LSP servers
+
+## Request/Response Format Contract
+
+### Standard MCP Request
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "unique-request-id",
+  "method": "tools/call",
+  "params": {
+    "name": "tool_name",
+    "arguments": {
+      "file_path": "/absolute/path/to/file",
+      "line": 10,
+      "character": 5
+    }
+  }
+}
+```
+
+### Standard MCP Response
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "unique-request-id",
+  "result": {
+    "content": {
+      // Tool-specific response data
+    }
+  }
+}
+```
+
+### Error Response Contract
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "unique-request-id",
+  "error": {
+    "code": -1,
+    "message": "Error description",
+    "data": null
+  }
+}
+```
+
+## FUSE Filesystem Contract
+
+### Mount Configuration
+```toml
+[fuse]
+enabled = true
+mount_point = "/tmp/codeflow-workspace"
+permissions = "755"
+```
+
+### Filesystem Operations
+- **Read-only** virtual filesystem
+- **1-second TTL** for metadata caching
+- **Inode-based** file identification
+- **Background mounting** via dedicated thread
+
+### File Attributes
+- Proper file type detection (regular files vs directories)
+- Accurate file sizes and modification times
+- POSIX-compliant permission bits
+- Stable inode numbers for consistent access
+
+---
+
+## Internal Crate Contracts
 
 ## cb-core
 

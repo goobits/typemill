@@ -18,3 +18,8 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tempfile = "3.8"
 chrono = { version = "0.4", features = ["serde"] }
+tokio-tungstenite = "0.21"
+url = "2.5"
+jsonwebtoken = "9.0"
+uuid = "1.0"
+futures-util = "0.3"

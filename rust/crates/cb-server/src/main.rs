@@ -1,34 +1,104 @@
 //! cb-server main binary
 
 use cb_core::AppConfig;
-use cb_server::{bootstrap, ServerOptions};
+use cb_server::handlers::{McpDispatcher, AppState};
+use cb_server::systems::{LspManager, fuse::start_fuse_mount};
+use cb_server::transport;
+use clap::{Parser, Subcommand};
+use std::sync::Arc;
+use std::path::Path;
 use tracing_subscriber;
+
+#[derive(Parser)]
+#[command(name = "cb-server")]
+#[command(about = "Codeflow Buddy Server")]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Start MCP server on stdio
+    Start,
+    /// Start WebSocket server (default)
+    Serve,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
+    // Parse command line arguments
+    let cli = Cli::parse();
+
     tracing::info!("Starting Codeflow Buddy Server");
 
     // Load configuration
-    let config = AppConfig::load()?;
+    let config = Arc::new(AppConfig::load()?);
 
-    // Create server options
-    let options = ServerOptions::from_config(config).with_debug(true);
+    // Create LSP manager
+    let lsp_manager = Arc::new(LspManager::new(config.lsp.clone()));
 
-    // Bootstrap the server
-    let handle = bootstrap(options).await?;
+    // Create application state
+    let app_state = Arc::new(AppState { lsp: lsp_manager });
 
-    // Start the server
-    handle.start().await?;
+    // Create MCP dispatcher with app state
+    let mut dispatcher = McpDispatcher::new(app_state);
 
-    // In a real implementation, we'd wait for shutdown signals
-    // For now, just run briefly and then shutdown
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Register filesystem tools
+    cb_server::handlers::mcp_tools::filesystem::register_tools(&mut dispatcher);
 
-    // Shutdown gracefully
-    handle.shutdown().await?;
+    // Register navigation tools
+    cb_server::handlers::mcp_tools::navigation::register_tools(&mut dispatcher);
+
+    // Register editing tools
+    cb_server::handlers::mcp_tools::editing::register_tools(&mut dispatcher);
+
+    // Register intelligence tools
+    cb_server::handlers::mcp_tools::intelligence::register_tools(&mut dispatcher);
+
+    // Register analysis tools
+    cb_server::handlers::mcp_tools::analysis::register_tools(&mut dispatcher);
+
+    let dispatcher = Arc::new(dispatcher);
+
+    // Start FUSE filesystem if enabled (only for WebSocket server)
+    if matches!(cli.command, Some(Commands::Serve) | None) {
+        if let Some(fuse_config) = &config.fuse {
+            let workspace_path = Path::new(".");
+            tracing::info!("FUSE enabled, mounting filesystem at {:?}", fuse_config.mount_point);
+
+            if let Err(e) = start_fuse_mount(fuse_config, workspace_path) {
+                tracing::error!("Failed to start FUSE mount: {}", e);
+                // Continue without FUSE - it's not critical for core functionality
+            } else {
+                tracing::info!("FUSE filesystem mounted successfully");
+            }
+        }
+    }
+
+    // Execute based on command
+    match cli.command {
+        Some(Commands::Start) => {
+            // Start stdio MCP server
+            tracing::info!("Starting stdio MCP server");
+            if let Err(e) = transport::start_stdio_server(dispatcher).await {
+                tracing::error!("Failed to start stdio server: {}", e);
+                return Err(e);
+            }
+        }
+        Some(Commands::Serve) | None => {
+            // Start WebSocket server (default)
+            tracing::info!("Starting WebSocket server on {}:{}", config.server.host, config.server.port);
+
+            if let Err(e) = transport::start_ws_server(config, dispatcher).await {
+                tracing::error!("Failed to start WebSocket server: {}", e);
+                return Err(e.into());
+            }
+        }
+    }
 
     tracing::info!("Server stopped");
     Ok(())

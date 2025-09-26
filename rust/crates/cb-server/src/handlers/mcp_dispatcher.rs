@@ -6,34 +6,44 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 
-/// Tool handler function type
+/// Application state containing services
+#[derive(Clone)]
+pub struct AppState {
+    /// LSP service for code intelligence
+    pub lsp: Arc<dyn crate::interfaces::LspService>,
+}
+
+/// Tool handler function type that receives app state
 pub type ToolHandler = Box<
-    dyn Fn(Value) -> Pin<Box<dyn Future<Output = ServerResult<Value>> + Send>> + Send + Sync
+    dyn Fn(Arc<AppState>, Value) -> Pin<Box<dyn Future<Output = ServerResult<Value>> + Send>> + Send + Sync
 >;
 
 /// MCP message dispatcher
 pub struct McpDispatcher {
     tools: HashMap<String, ToolHandler>,
+    app_state: Arc<AppState>,
 }
 
 impl McpDispatcher {
-    /// Create a new dispatcher
-    pub fn new() -> Self {
+    /// Create a new dispatcher with app state
+    pub fn new(app_state: Arc<AppState>) -> Self {
         Self {
             tools: HashMap::new(),
+            app_state,
         }
     }
 
     /// Register a tool handler
     pub fn register_tool<F, Fut>(&mut self, name: String, handler: F)
     where
-        F: Fn(Value) -> Fut + Send + Sync + 'static,
+        F: Fn(Arc<AppState>, Value) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ServerResult<Value>> + Send + 'static,
     {
         self.tools.insert(
             name,
-            Box::new(move |args| Box::pin(handler(args))),
+            Box::new(move |app_state, args| Box::pin(handler(app_state, args))),
         );
     }
 
@@ -105,7 +115,7 @@ impl McpDispatcher {
         let handler = self.tools.get(&tool_call.name)
             .ok_or_else(|| ServerError::Unsupported(format!("Unknown tool: {}", tool_call.name)))?;
 
-        let result = handler(tool_call.arguments.unwrap_or(json!({}))).await?;
+        let result = handler(self.app_state.clone(), tool_call.arguments.unwrap_or(json!({}))).await?;
 
         Ok(json!({
             "content": result
@@ -113,22 +123,29 @@ impl McpDispatcher {
     }
 }
 
-impl Default for McpDispatcher {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::systems::LspManager;
+    use cb_core::config::LspConfig;
+
+    fn create_test_app_state() -> Arc<AppState> {
+        let lsp_config = LspConfig::default();
+        let lsp_manager = Arc::new(LspManager::new(lsp_config));
+
+        Arc::new(AppState {
+            lsp: lsp_manager,
+        })
+    }
 
     #[tokio::test]
     async fn test_dispatcher_list_tools() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state);
 
         // Register a test tool
-        dispatcher.register_tool("test_tool".to_string(), |_args| async move {
+        dispatcher.register_tool("test_tool".to_string(), |_app_state, _args| async move {
             Ok(json!({"result": "success"}))
         });
 
@@ -151,10 +168,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatcher_call_tool() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state);
 
         // Register a test tool that echoes its input
-        dispatcher.register_tool("echo".to_string(), |args| async move {
+        dispatcher.register_tool("echo".to_string(), |_app_state, args| async move {
             Ok(json!({
                 "echoed": args
             }))

@@ -4,6 +4,8 @@ use crate::handlers::McpDispatcher;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::Path;
+use tokio::fs;
+use ignore::WalkBuilder;
 
 /// Arguments for create_file tool
 #[derive(Debug, Deserialize)]
@@ -45,6 +47,32 @@ struct UpdatePackageJsonArgs {
     dry_run: Option<bool>,
 }
 
+/// Arguments for read_file tool
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+struct ReadFileArgs {
+    file_path: String,
+}
+
+/// Arguments for write_file tool
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+struct WriteFileArgs {
+    file_path: String,
+    content: String,
+    create_directories: Option<bool>,
+}
+
+/// Arguments for list_files tool
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+struct ListFilesArgs {
+    path: Option<String>,
+    recursive: Option<bool>,
+    include_hidden: Option<bool>,
+    pattern: Option<String>,
+}
+
 /// File operation result
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,8 +103,124 @@ struct ImportChange {
 
 /// Register filesystem tools
 pub fn register_tools(dispatcher: &mut McpDispatcher) {
+    // read_file tool
+    dispatcher.register_tool("read_file".to_string(), |_app_state, args| async move {
+        let params: ReadFileArgs = serde_json::from_value(args)
+            .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
+
+        tracing::debug!("Reading file: {}", params.file_path);
+
+        match fs::read_to_string(&params.file_path).await {
+            Ok(content) => {
+                Ok(json!({
+                    "content": content,
+                    "file_path": params.file_path,
+                    "size": content.len(),
+                    "status": "success"
+                }))
+            }
+            Err(e) => {
+                tracing::error!("Failed to read file {}: {}", params.file_path, e);
+                Err(crate::error::ServerError::runtime(format!("Failed to read file: {}", e)))
+            }
+        }
+    });
+
+    // write_file tool
+    dispatcher.register_tool("write_file".to_string(), |_app_state, args| async move {
+        let params: WriteFileArgs = serde_json::from_value(args)
+            .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
+
+        tracing::debug!("Writing file: {}", params.file_path);
+
+        // Create parent directories if requested
+        if params.create_directories.unwrap_or(false) {
+            if let Some(parent) = Path::new(&params.file_path).parent() {
+                if let Err(e) = fs::create_dir_all(parent).await {
+                    tracing::error!("Failed to create directories for {}: {}", params.file_path, e);
+                    return Err(crate::error::ServerError::runtime(format!("Failed to create directories: {}", e)));
+                }
+            }
+        }
+
+        match fs::write(&params.file_path, &params.content).await {
+            Ok(()) => {
+                Ok(json!({
+                    "file_path": params.file_path,
+                    "bytes_written": params.content.len(),
+                    "status": "success"
+                }))
+            }
+            Err(e) => {
+                tracing::error!("Failed to write file {}: {}", params.file_path, e);
+                Err(crate::error::ServerError::runtime(format!("Failed to write file: {}", e)))
+            }
+        }
+    });
+
+    // list_files tool
+    dispatcher.register_tool("list_files".to_string(), |_app_state, args| async move {
+        let params: ListFilesArgs = serde_json::from_value(args)
+            .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
+
+        let path = params.path.unwrap_or_else(|| ".".to_string());
+        let recursive = params.recursive.unwrap_or(false);
+        let include_hidden = params.include_hidden.unwrap_or(false);
+
+        tracing::debug!("Listing files in: {} (recursive: {})", path, recursive);
+
+        // Use ignore::WalkBuilder to respect .gitignore and other ignore files
+        let mut files = Vec::new();
+        let walker = WalkBuilder::new(&path)
+            .hidden(!include_hidden)
+            .max_depth(if recursive { None } else { Some(1) })
+            .build();
+
+        for result in walker {
+            match result {
+                Ok(entry) => {
+                    let file_path = entry.path();
+                    let file_name = file_path.file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string();
+
+                    // Get metadata
+                    match entry.metadata() {
+                        Ok(metadata) => {
+                            let file_info = json!({
+                                "name": file_name,
+                                "path": file_path.to_string_lossy(),
+                                "is_directory": metadata.is_dir(),
+                                "is_file": metadata.is_file(),
+                                "size": if metadata.is_file() { Some(metadata.len()) } else { None },
+                                "modified": metadata.modified().ok()
+                                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                                    .map(|d| d.as_secs())
+                            });
+                            files.push(file_info);
+                        }
+                        Err(e) => {
+                            tracing::warn!("Failed to read metadata for {}: {}", file_path.display(), e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to read directory entry: {}", e);
+                }
+            }
+        }
+
+        Ok(json!({
+            "files": files,
+            "path": path,
+            "count": files.len(),
+            "recursive": recursive,
+            "status": "success"
+        }))
+    });
     // create_file tool
-    dispatcher.register_tool("create_file".to_string(), |args| async move {
+    dispatcher.register_tool("create_file".to_string(), |_app_state, args| async move {
         let params: CreateFileArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
@@ -107,7 +251,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
     });
 
     // delete_file tool
-    dispatcher.register_tool("delete_file".to_string(), |args| async move {
+    dispatcher.register_tool("delete_file".to_string(), |_app_state, args| async move {
         let params: DeleteFileArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
@@ -123,7 +267,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
     });
 
     // rename_file tool
-    dispatcher.register_tool("rename_file".to_string(), |args| async move {
+    dispatcher.register_tool("rename_file".to_string(), |_app_state, args| async move {
         let params: RenameFileArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
@@ -164,7 +308,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
     });
 
     // update_package_json tool
-    dispatcher.register_tool("update_package_json".to_string(), |args| async move {
+    dispatcher.register_tool("update_package_json".to_string(), |_app_state, args| async move {
         let params: UpdatePackageJsonArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
@@ -212,7 +356,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
     });
 
     // health_check tool
-    dispatcher.register_tool("health_check".to_string(), |args| async move {
+    dispatcher.register_tool("health_check".to_string(), |_app_state, args| async move {
         let include_details = args["include_details"].as_bool().unwrap_or(false);
 
         tracing::debug!("Performing health check");

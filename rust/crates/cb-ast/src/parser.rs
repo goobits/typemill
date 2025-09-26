@@ -8,6 +8,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
+// SWC imports for true AST parsing
+use swc_common::{SourceMap, FileName, FilePathMapping, sync::Lrc};
+use swc_ecma_parser::{Parser, Syntax, lexer::Lexer, StringInput, TsSyntax};
+use swc_ecma_ast::{ImportDecl, ExportDecl, CallExpr, Expr, Lit, Str};
+use swc_ecma_visit::{Visit, VisitWith};
+use crate::error::AstError;
+
 /// Import graph representation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -112,7 +119,16 @@ pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {
     };
 
     let imports = match language {
-        "typescript" | "javascript" => parse_js_ts_imports_enhanced(source)?,
+        "typescript" | "javascript" => {
+            // Try SWC parsing first, fallback to regex if it fails
+            match parse_js_ts_imports_swc(source, path) {
+                Ok(swc_imports) => swc_imports,
+                Err(_) => {
+                    eprintln!("SWC parsing failed, falling back to regex for: {}", path.display());
+                    parse_js_ts_imports_enhanced(source)?
+                }
+            }
+        },
         "python" => parse_python_imports(source)?,
         "rust" => parse_rust_imports(source)?,
         _ => parse_imports_basic(source)?,
@@ -138,11 +154,183 @@ pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {
         metadata: ImportGraphMetadata {
             language: language.to_string(),
             parsed_at: chrono::Utc::now(),
-            parser_version: "0.2.0".to_string(),
+            parser_version: "0.3.0-swc".to_string(),
             circular_dependencies: Vec::new(),
             external_dependencies,
         },
     })
+}
+
+/// Parse JavaScript/TypeScript imports using SWC AST
+fn parse_js_ts_imports_swc(source: &str, path: &Path) -> AstResult<Vec<ImportInfo>> {
+    // Set up source map
+    let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+    let file_name = Lrc::new(FileName::Real(path.to_path_buf()));
+    let source_file = cm.new_source_file(file_name, source.to_string());
+
+    // Create lexer
+    let lexer = Lexer::new(
+        Syntax::Typescript(TsSyntax {
+            tsx: path.extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| ext == "tsx")
+                .unwrap_or(false),
+            decorators: false,
+            dts: false,
+            no_early_errors: true,
+            disallow_ambiguous_jsx_like: true,
+        }),
+        Default::default(),
+        StringInput::from(&*source_file),
+        None,
+    );
+
+    // Parse the source
+    let mut parser = Parser::new_from(lexer);
+    let module = parser.parse_module().map_err(|e| {
+        AstError::parse(format!("SWC parsing failed: {:?}", e))
+    })?;
+
+    // Create a visitor to extract imports
+    let mut visitor = ImportVisitor::new();
+    module.visit_with(&mut visitor);
+
+    Ok(visitor.imports)
+}
+
+/// Visitor that extracts import information from SWC AST
+struct ImportVisitor {
+    imports: Vec<ImportInfo>,
+    current_line: u32,
+}
+
+impl ImportVisitor {
+    fn new() -> Self {
+        Self {
+            imports: Vec::new(),
+            current_line: 0,
+        }
+    }
+
+    fn extract_string_literal(expr: &Expr) -> Option<String> {
+        match expr {
+            Expr::Lit(Lit::Str(Str { value, .. })) => Some(value.to_string()),
+            _ => None,
+        }
+    }
+}
+
+impl Visit for ImportVisitor {
+    fn visit_import_decl(&mut self, n: &ImportDecl) {
+        let module_path = n.src.value.to_string();
+        let type_only = n.type_only;
+
+        let mut named_imports = Vec::new();
+        let mut default_import = None;
+        let mut namespace_import = None;
+
+        for spec in &n.specifiers {
+            match spec {
+                swc_ecma_ast::ImportSpecifier::Named(named) => {
+                    let import_name = match &named.imported {
+                        Some(name) => match name {
+                            swc_ecma_ast::ModuleExportName::Ident(ident) => ident.sym.to_string(),
+                            swc_ecma_ast::ModuleExportName::Str(str_lit) => str_lit.value.to_string(),
+                        },
+                        None => named.local.sym.to_string(),
+                    };
+
+                    let alias = if named.local.sym.to_string() != import_name {
+                        Some(named.local.sym.to_string())
+                    } else {
+                        None
+                    };
+
+                    named_imports.push(NamedImport {
+                        name: import_name,
+                        alias,
+                        type_only: named.is_type_only,
+                    });
+                }
+                swc_ecma_ast::ImportSpecifier::Default(default) => {
+                    default_import = Some(default.local.sym.to_string());
+                }
+                swc_ecma_ast::ImportSpecifier::Namespace(namespace) => {
+                    namespace_import = Some(namespace.local.sym.to_string());
+                }
+            }
+        }
+
+        self.imports.push(ImportInfo {
+            module_path,
+            import_type: if type_only { ImportType::TypeOnly } else { ImportType::EsModule },
+            named_imports,
+            default_import,
+            namespace_import,
+            type_only,
+            location: SourceLocation {
+                start_line: self.current_line,
+                start_column: 0,
+                end_line: self.current_line,
+                end_column: 0, // TODO: Get actual column positions from SWC span
+            },
+        });
+    }
+
+    fn visit_call_expr(&mut self, n: &CallExpr) {
+        // Check for dynamic imports and require calls
+        if let swc_ecma_ast::Callee::Expr(callee_expr) = &n.callee {
+            if let Expr::Ident(ident) = &**callee_expr {
+                // Dynamic imports: import('module')
+                if ident.sym == "import" && n.args.len() == 1 {
+                    if let Some(module_path) = Self::extract_string_literal(&n.args[0].expr) {
+                        self.imports.push(ImportInfo {
+                            module_path,
+                            import_type: ImportType::Dynamic,
+                            named_imports: Vec::new(),
+                            default_import: None,
+                            namespace_import: None,
+                            type_only: false,
+                            location: SourceLocation {
+                                start_line: self.current_line,
+                                start_column: 0,
+                                end_line: self.current_line,
+                                end_column: 0,
+                            },
+                        });
+                    }
+                }
+
+                // CommonJS require: require('module')
+                if ident.sym == "require" && n.args.len() == 1 {
+                    if let Some(module_path) = Self::extract_string_literal(&n.args[0].expr) {
+                        self.imports.push(ImportInfo {
+                            module_path,
+                            import_type: ImportType::CommonJs,
+                            named_imports: Vec::new(),
+                            default_import: None,
+                            namespace_import: None,
+                            type_only: false,
+                            location: SourceLocation {
+                                start_line: self.current_line,
+                                start_column: 0,
+                                end_line: self.current_line,
+                                end_column: 0,
+                            },
+                        });
+                    }
+                }
+            }
+        }
+
+        // Continue visiting child nodes
+        n.visit_children_with(self);
+    }
+
+    fn visit_export_decl(&mut self, n: &ExportDecl) {
+        // Handle export declarations if needed
+        n.visit_children_with(self);
+    }
 }
 
 /// Parse JavaScript/TypeScript imports using enhanced regex patterns
