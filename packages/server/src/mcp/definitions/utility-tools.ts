@@ -116,4 +116,65 @@ export const utilityToolDefinitions = [
       },
     },
   },
+  {
+    name: 'update_package_json',
+    description:
+      'Update package.json files by adding, removing, or modifying dependencies, devDependencies, scripts, and other package configuration. Preserves formatting and validates changes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file_path: {
+          type: 'string',
+          description: 'Path to the package.json file to modify',
+          default: './package.json',
+        },
+        add_dependencies: {
+          type: 'object',
+          description: 'Dependencies to add to the "dependencies" section',
+          additionalProperties: { type: 'string' },
+        },
+        add_dev_dependencies: {
+          type: 'object',
+          description: 'Dependencies to add to the "devDependencies" section',
+          additionalProperties: { type: 'string' },
+        },
+        remove_dependencies: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Dependency names to remove from both dependencies and devDependencies',
+        },
+        add_scripts: {
+          type: 'object',
+          description: 'Scripts to add to the "scripts" section',
+          additionalProperties: { type: 'string' },
+        },
+        remove_scripts: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Script names to remove from the "scripts" section',
+        },
+        update_version: {
+          type: 'string',
+          description: 'Update the version field (e.g., "1.2.3")',
+        },
+        workspace_config: {
+          type: 'object',
+          description: 'Add or update workspace configuration',
+          properties: {
+            workspaces: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Array of workspace glob patterns',
+            },
+          },
+        },
+        dry_run: {
+          type: 'boolean',
+          description: 'Preview changes without applying them',
+          default: false,
+        },
+      },
+      required: ['file_path'],
+    },
+  },
 ] as const;
