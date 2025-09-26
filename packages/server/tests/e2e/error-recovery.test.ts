@@ -11,6 +11,7 @@ import {
 } from '../helpers/server-process-manager.js';
 import { getSystemCapabilities } from '../helpers/system-utils.js';
 import { waitForLSP, waitForCondition } from '../helpers/test-verification-helpers.js';
+import { waitForCondition as pollingWaitForCondition } from '../helpers/polling-helpers.js';
 
 describe('Error Recovery Tests', () => {
   let client: MCPTestClient;
@@ -133,9 +134,10 @@ describe('Error Recovery Tests', () => {
         ];
 
         // Crash server while requests are in flight
-        setTimeout(() => {
+        pollingWaitForCondition(() => {
           simulateServerCrash('typescript-language-server');
-        }, 100);
+          return true;
+        }, { timeout: 100, interval: 100 });
 
         // All requests should either succeed or fail gracefully
         const results = await Promise.allSettled(promises);

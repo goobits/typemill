@@ -8,6 +8,7 @@ import { SymbolService } from '../../../@codeflow/features/src/services/lsp/symb
 import { ServiceContextUtils } from '../../src/services/service-context.js';
 import { PredictiveLoaderService } from '../../src/services/predictive-loader.js';
 import { logger } from '../../src/core/diagnostics/logger.js';
+import { waitForCondition } from '../helpers/polling-helpers.js';
 
 /**
  * Performance test for Predictive Loading
@@ -74,7 +75,7 @@ const mockDatabase: User[] = [
 
 export async function findUser(id: string): Promise<User | null> {
   // Simulate database lookup
-  await new Promise(resolve => setTimeout(resolve, 10));
+  await waitForCondition(() => true, { timeout: 10, interval: 5 });
 
   const user = mockDatabase.find(u => u.id === id);
   return user || null;
@@ -198,7 +199,7 @@ export class UserManager {
       times.push(duration);
 
       // Small delay between iterations
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await waitForCondition(() => true, { timeout: 100, interval: 50 });
     }
 
     const average = times.reduce((sum, time) => sum + time, 0) / times.length;
@@ -302,7 +303,7 @@ export class UserManager {
     console.log(`   Open main file (triggers predictive loading): ${mainFileTime.toFixed(1)}ms`);
 
     // Give predictive loading time to complete
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await waitForCondition(() => true, { timeout: 100, interval: 50 });
 
     console.log('2. Finding symbol in imported file (should be fast due to preloading)');
     const start2 = performance.now();

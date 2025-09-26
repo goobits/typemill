@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { FuseMount } from '../../src/fs/fuse-mount.js';
 import { WorkspaceManager } from '../../src/server/workspace-manager.js';
 import type { EnhancedClientSession } from '../../src/types/enhanced-session.js';
+import { waitForCondition } from '../helpers/polling-helpers.js';
 
 // Helper to check FUSE availability
 const checkFuseAvailability = () => {
@@ -163,7 +164,7 @@ testSuite('Real FUSE Native Integration Tests', () => {
         expect(fuseMount.isMounted()).toBe(true);
 
         // Wait for mount to be stable
-        await new Promise(r => setTimeout(r, 1000));
+        await waitForCondition(() => fuseMount.isMounted(), { timeout: 1000, interval: 100 });
 
         // 1. Read initial file through FUSE
         const mountedInitialFile = join(workspace.fuseMount, 'initial.txt');

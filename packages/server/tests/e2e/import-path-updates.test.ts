@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { MCPTestClient } from '../helpers/mcp-test-client.js';
+import { waitForCondition } from '../helpers/polling-helpers.js';
 
 describe('Import Path Update Tests - Critical Fix Verification', () => {
   let client: MCPTestClient;
@@ -98,7 +99,7 @@ export class UserService {
       expect(result.content?.[0]?.text).toContain('renamed');
 
       // Wait for file operations
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await waitForCondition(() => existsSync(movedFile) && !existsSync(originalFile), { timeout: 500, interval: 100 });
 
       // Verify file was moved
       expect(existsSync(originalFile)).toBe(false);
@@ -251,7 +252,7 @@ export class LSPClient {
       });
 
       expect(result).toBeDefined();
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await waitForCondition(() => existsSync(scopedFile) && !existsSync(serverFile), { timeout: 500, interval: 100 });
 
       // Verify file was moved
       expect(existsSync(serverFile)).toBe(false);

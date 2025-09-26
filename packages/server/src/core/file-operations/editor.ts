@@ -11,6 +11,7 @@ import {
 import { readdir } from 'node:fs/promises';
 import { dirname, extname, relative, resolve } from 'node:path';
 import type { LSPClient } from '../../../../@codeflow/features/src/lsp/lsp-client.js';
+import { pathManager } from '../../utils/platform/path-manager.js';
 import { logDebugMessage } from '../diagnostics/debug-logger.js';
 import { pathToUri, uriToPath } from './path-utils.js';
 
@@ -325,7 +326,7 @@ async function findPotentialImporters(
       const relativePath = relative(baseDir, fullPath);
 
       // Skip ignored paths if using gitignore
-      if (ignoreFilter?.ignores(relativePath.replace(/\\/g, '/'))) {
+      if (ignoreFilter?.ignores(pathManager.normalizePosix(relativePath))) {
         continue;
       }
 
@@ -374,10 +375,10 @@ function findImportsInFile(
   const newPathNoExt = newTargetPath.replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, '');
 
   // Calculate relative paths for both extension patterns
-  let oldRelativeNoExt = relative(fileDir, oldPathNoExt).replace(/\\/g, '/');
-  let newRelativeNoExt = relative(fileDir, newPathNoExt).replace(/\\/g, '/');
-  let oldRelativeWithJs = relative(fileDir, `${oldPathNoExt}.js`).replace(/\\/g, '/');
-  let newRelativeWithJs = relative(fileDir, `${newPathNoExt}.js`).replace(/\\/g, '/');
+  let oldRelativeNoExt = pathManager.normalizePosix(relative(fileDir, oldPathNoExt));
+  let newRelativeNoExt = pathManager.normalizePosix(relative(fileDir, newPathNoExt));
+  let oldRelativeWithJs = pathManager.normalizePosix(relative(fileDir, `${oldPathNoExt}.js`));
+  let newRelativeWithJs = pathManager.normalizePosix(relative(fileDir, `${newPathNoExt}.js`));
 
   // Add ./ prefix if needed for relative paths
   const addPrefix = (path: string) =>
@@ -487,7 +488,7 @@ async function updateImportsInMovedFile(
       }
 
       // Calculate new relative path from NEW location
-      let newImportPath = relative(dirname(newPath), resolvedTarget).replace(/\\/g, '/');
+      let newImportPath = pathManager.normalizePosix(relative(dirname(newPath), resolvedTarget));
 
 
       // Preserve .js extension if original had it (for TypeScript projects)

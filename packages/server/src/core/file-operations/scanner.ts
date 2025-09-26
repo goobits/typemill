@@ -2,6 +2,7 @@ import { access, constants, readdir, readFile, stat } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import ignore from 'ignore';
 import type { LanguageServerConfig } from '../configuration/language-presets.js';
+import { pathManager } from '../../utils/platform/path-manager.js';
 
 // Default ignore patterns
 const DEFAULT_IGNORE_PATTERNS = [
@@ -87,7 +88,7 @@ export async function scanDirectoryForExtensions(
         const entryRelativePath = relativePath ? join(relativePath, entry) : entry;
 
         // Skip if ignored - normalize path separators for cross-platform compatibility
-        const normalizedPath = entryRelativePath.replace(/\\/g, '/');
+        const normalizedPath = pathManager.normalizePosix(entryRelativePath);
         if (ignoreFilter?.ignores(normalizedPath)) {
           if (debug) {
             process.stderr.write(`Skipping ignored entry: ${entryRelativePath}\n`);

@@ -6,6 +6,7 @@ import {
   verifyFileContainsAll,
   verifyImportStatement,
 } from '../helpers/test-verification-helpers.js';
+import { waitForLSPInitialization, waitForFileOperation } from '../helpers/polling-helpers.js';
 
 describe('Multi-File Rename File Path Tests', () => {
   let client: MCPTestClient;
@@ -48,7 +49,7 @@ describe('Multi-File Rename File Path Tests', () => {
 
     // Wait for LSP servers to initialize
     console.log('⏳ Waiting for LSP servers to initialize...');
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await waitForLSPInitialization(client);
     console.log('✅ Setup complete\n');
   });
 
@@ -143,7 +144,10 @@ describe('Multi-File Rename File Path Tests', () => {
       expect(content).toMatch(/success|renamed/i);
 
       // Wait for file system operations
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await waitForFileOperation(() =>
+        existsSync('/workspace/examples/playground/src/core/test-service.ts') &&
+        !existsSync('/workspace/examples/playground/src/test-file.ts')
+      );
 
       console.log('\n🔍 Verifying file changes...');
 
