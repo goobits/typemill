@@ -132,13 +132,13 @@ describe('WorkspaceManager Unit Tests', () => {
     test('should update last accessed time on retrieval', async () => {
       const session = { id: 'access-time-test', projectId: 'test-project' };
       const created = await workspaceManager.createWorkspace(session);
-      const initialAccessTime = created.lastAccessed;
+      const initialAccessTime = created.lastAccessed.getTime();
 
-      // Wait a bit to ensure time difference
-      await waitForCondition(() => true, { timeout: 10, interval: 5 });
+      // Wait for a timestamp change by polling until time actually advances
+      await waitForCondition(() => Date.now() > initialAccessTime, { timeout: 100, interval: 1 });
 
       const retrieved = workspaceManager.getWorkspace('access-time-test');
-      expect(retrieved!.lastAccessed.getTime()).toBeGreaterThan(initialAccessTime.getTime());
+      expect(retrieved!.lastAccessed.getTime()).toBeGreaterThan(initialAccessTime);
     });
   });
 
