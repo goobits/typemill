@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { assertToolResult, MCPTestClient } from '../helpers/mcp-test-client.js';
+import { waitForLSP } from '../helpers/test-verification-helpers.js';
 
 describe('MCP Error Case Tests', () => {
   let client: MCPTestClient;
@@ -20,9 +21,13 @@ describe('MCP Error Case Tests', () => {
       await client.start({ skipLSPPreload: true });
     }
 
-    // Wait for LSP servers to fully initialize
-    console.log('⏳ Waiting for LSP servers to initialize...');
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    // Wait for LSP servers to be ready for test files
+    const testFile = join(tmpdir(), 'error-test.ts');
+    await client.callTool('create_file', {
+      file_path: testFile,
+      content: '// Test file for error cases\nexport const test = 1;'
+    });
+    await waitForLSP(client, testFile);
   });
 
   afterAll(async () => {

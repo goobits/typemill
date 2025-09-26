@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MCPTestClient } from '../helpers/mcp-test-client.js';
+import { waitForFile } from '../helpers/test-verification-helpers.js';
 
 /**
  * CRITICAL TEST: This specifically tests the bug fix for internal import path updates
@@ -132,8 +133,8 @@ export class LSPClient {
     expect(result).toBeDefined();
     expect(result.content?.[0]?.text).toContain('renamed');
 
-    // Wait for file operations
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Wait for file operations to complete
+    await waitForFile(targetFile, { timeout: 5000 });
 
     // Verify the file was moved
     expect(existsSync(originalFile)).toBe(false);
@@ -228,7 +229,9 @@ export function helper() {
     });
 
     expect(result).toBeDefined();
-    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Wait for file to be created at new location
+    await waitForFile(movedFile, { timeout: 5000 });
 
     const content = readFileSync(movedFile, 'utf-8');
     const hasCorrectPath = content.includes('../../../../server/src/data/config.js');

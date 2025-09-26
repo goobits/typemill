@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ALL_TESTS, assertToolResult, MCPTestClient } from '../helpers/mcp-test-client.js';
+import { waitForLSP } from '../helpers/test-verification-helpers.js';
 
 describe('MCP Comprehensive Tests - All 28 Tools', () => {
   let client: MCPTestClient;
@@ -20,9 +21,13 @@ describe('MCP Comprehensive Tests - All 28 Tools', () => {
       await client.start({ skipLSPPreload: true });
     }
 
-    // Wait for LSP servers to fully initialize
-    console.log('⏳ Waiting for LSP servers to initialize...');
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    // Wait for LSP servers to be ready for test files
+    const testFiles = [
+      '/workspace/examples/playground/src/test-file.ts'
+    ];
+    for (const file of testFiles.filter(f => require('fs').existsSync(f))) {
+      await waitForLSP(client, file);
+    }
   });
 
   afterAll(async () => {
@@ -83,8 +88,8 @@ export function useTempConstant() {
 }`,
       });
 
-      // Wait for LSP server to process the new file (longer wait for slow systems)
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // Wait for LSP server to process the new file
+      await waitForLSP(client, tempFile);
 
       // Execute actual rename (not dry-run)
       const result = await client.callTool('rename_symbol', {

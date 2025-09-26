@@ -27,6 +27,65 @@ export async function poll(
 }
 
 /**
+ * More flexible waiting helper that can handle sync or async conditions
+ * @param condition The condition to wait for (can be sync or async)
+ * @param options Options for timeout, interval, and custom error message
+ * @returns A promise that resolves when condition is met
+ */
+export async function waitForCondition(
+  condition: () => boolean | Promise<boolean>,
+  options: {
+    timeout?: number;
+    interval?: number;
+    message?: string;
+  } = {}
+): Promise<void> {
+  const { timeout = 10000, interval = 100, message } = options;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    const result = await condition();
+    if (result) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(message || `Condition not met within ${timeout}ms`);
+}
+
+/**
+ * Wait for a file to exist
+ */
+export async function waitForFile(
+  filePath: string,
+  options: { timeout?: number; interval?: number } = {}
+): Promise<void> {
+  await waitForCondition(
+    () => existsSync(filePath),
+    { ...options, message: `File ${filePath} did not appear within timeout` }
+  );
+}
+
+/**
+ * Wait for file content to match a condition
+ */
+export async function waitForFileContent(
+  filePath: string,
+  condition: (content: string) => boolean,
+  options: { timeout?: number; interval?: number } = {}
+): Promise<void> {
+  await waitForCondition(
+    () => {
+      if (!existsSync(filePath)) return false;
+      const content = readFileSync(filePath, 'utf-8');
+      return condition(content);
+    },
+    { ...options, message: `File ${filePath} content condition not met within timeout` }
+  );
+}
+
+/**
  * Waits for the LSP server to be ready for a specific file by polling a lightweight tool.
  * @param client The MCPTestClient instance.
  * @param filePath The absolute path to the file to check.

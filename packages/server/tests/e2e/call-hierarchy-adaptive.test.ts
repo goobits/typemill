@@ -8,6 +8,7 @@ import {
   getTestConfig,
   getTestModeFromEnv,
 } from '../helpers/test-mode-detector.js';
+import { waitForLSP } from '../helpers/test-verification-helpers.js';
 import { verifyFileContainsAll } from '../helpers/test-verification-helpers';
 
 /**
@@ -91,9 +92,9 @@ export class UserHandler {
     await client.start({ skipLSPPreload: true });
 
     // Allow time for LSP server initialization (adaptive)
-    const initTime = testConfig.mode === 'slow' ? 10000 : 3000;
-    console.log(`⏳ Waiting ${initTime / 1000}s for LSP initialization...`);
-    await new Promise((resolve) => setTimeout(resolve, initTime));
+    console.log('⏳ Waiting for LSP initialization...');
+    const baseServiceFile = join(TEST_DIR, 'base-service.ts');
+    await waitForLSP(client, baseServiceFile);
     console.log('✅ Adaptive test setup complete');
   }, testConfig.timeouts.initialization + 15000); // Extra time for setup
 
