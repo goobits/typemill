@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { assertToolResult, MCPTestClient } from '../helpers/mcp-test-client.js';
 import { getSystemCapabilities } from '../helpers/system-utils.js';
+import { waitForLSP, waitForCondition } from '../helpers/test-verification-helpers.js';
 
 describe('Edge Case Tests', () => {
   let client: MCPTestClient;
@@ -71,8 +72,15 @@ describe('Edge Case Tests', () => {
       await client.start({ skipLSPPreload: false });
     }
 
-    // Wait for LSP servers to initialize
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Wait for LSP servers to be ready
+    const testFiles = [
+      `${fixturesPath}/empty-file.ts`,
+      `${fixturesPath}/unicode-symbols.ts`,
+      `${fixturesPath}/large-file.ts`
+    ];
+    for (const file of testFiles.filter(f => existsSync(f))) {
+      await waitForLSP(client, file);
+    }
   });
 
   afterAll(async () => {
@@ -305,8 +313,8 @@ describe('Edge Case Tests', () => {
     it(
       'should find definitions in large file',
       async () => {
-        // Add delay to reduce server load
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Ensure server is ready for the operation
+        await waitForLSP(client, largeFile);
 
         const result = await client.callTool('find_definition', {
           file_path: largeFile,
@@ -322,8 +330,8 @@ describe('Edge Case Tests', () => {
     it(
       'should handle hover at end of large file',
       async () => {
-        // Add delay to reduce server load
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Ensure server is ready for the operation
+        await waitForLSP(client, largeFile);
 
         const result = await client.callTool('get_hover', {
           file_path: largeFile,

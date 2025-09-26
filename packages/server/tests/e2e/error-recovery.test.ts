@@ -10,6 +10,7 @@ import {
   waitForLSPServer,
 } from '../helpers/server-process-manager.js';
 import { getSystemCapabilities } from '../helpers/system-utils.js';
+import { waitForLSP, waitForCondition } from '../helpers/test-verification-helpers.js';
 
 describe('Error Recovery Tests', () => {
   let client: MCPTestClient;
@@ -27,7 +28,7 @@ describe('Error Recovery Tests', () => {
     await client.start({ skipLSPPreload: false });
 
     // Ensure LSP servers are running
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await waitForLSP(client, testFile);
   });
 
   afterAll(async () => {
@@ -52,8 +53,14 @@ describe('Error Recovery Tests', () => {
         const crashed = await simulateServerCrash('typescript-language-server');
         expect(crashed).toBe(true);
 
-        // Wait a moment for the crash to be detected
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Wait for the crash to be detected by checking server count
+        await waitForCondition(
+          () => {
+            const currentServers = findLSPServers('typescript-language-server');
+            return currentServers.length < serversBefore.length;
+          },
+          { timeout: 5000, message: 'Server crash not detected' }
+        );
 
         // Make a request that should trigger auto-recovery
         const afterResult = await client.callTool('get_diagnostics', {
@@ -78,8 +85,13 @@ describe('Error Recovery Tests', () => {
 
         for (let i = 0; i < attempts; i++) {
           // Crash the server
+          const beforeCrashCount = findLSPServers('typescript-language-server').length;
           await simulateServerCrash('typescript-language-server');
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          // Wait for server to be gone
+          await waitForCondition(
+            () => findLSPServers('typescript-language-server').length < beforeCrashCount,
+            { timeout: 2000, message: 'Server did not crash' }
+          );
 
           // Try to use it (should auto-recover)
           try {
@@ -93,8 +105,11 @@ describe('Error Recovery Tests', () => {
             console.log(`Attempt ${i + 1} failed:`, error);
           }
 
-          // Wait between attempts
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          // Wait between attempts for server to stabilize
+          await waitForCondition(
+            () => findLSPServers('typescript-language-server').length > 0,
+            { timeout: 3000, message: 'Server did not recover' }
+          );
         }
 
         // Should recover from at least some crashes
@@ -167,8 +182,13 @@ describe('Error Recovery Tests', () => {
         assertToolResult(beforeHealth);
 
         // Crash the server
+        const serversBeforeCrash = findLSPServers('typescript-language-server').length;
         await simulateServerCrash('typescript-language-server');
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Wait for crash to be detected
+        await waitForCondition(
+          () => findLSPServers('typescript-language-server').length < serversBeforeCrash,
+          { timeout: 5000, message: 'Server crash not detected' }
+        );
 
         // Check health again - should detect issue or recovery
         const afterHealth = await client.callTool('health_check', {
@@ -204,8 +224,18 @@ describe('Error Recovery Tests', () => {
         assertToolResult(restartResult);
         console.log('Server restart command completed');
 
-        // Wait for restart to settle
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Wait for server to be ready after restart
+        await waitForCondition(
+          async () => {
+            try {
+              const result = await client.callTool('get_folding_ranges', { file_path: testFile });
+              return result?.content?.[0]?.text ? !result.content[0].text.includes('Error') : true;
+            } catch {
+              return false;
+            }
+          },
+          { timeout: 5000, message: 'Server not ready after restart' }
+        );
 
         // Trigger server startup by making a request (servers start lazily)
         const afterResult = await client.callTool('get_diagnostics', {
@@ -215,7 +245,7 @@ describe('Error Recovery Tests', () => {
         expect(afterResult.content).toBeDefined();
 
         // Wait for new server to fully initialize
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await waitForLSP(client, testFile);
 
         // Verify new server is running and functional
         const finalResult = await client.callTool('find_definition', {
@@ -244,8 +274,8 @@ describe('Error Recovery Tests', () => {
         const content = restartResult.content?.[0]?.text || '';
         expect(content).toMatch(/(restart|success|server)/i);
 
-        // Wait for servers to restart
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        // Wait for servers to restart and be ready
+        await waitForLSP(client, testFile);
 
         // All operations should still work
         const result = await client.callTool('get_diagnostics', {
