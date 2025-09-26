@@ -2,6 +2,53 @@
 
 This guide explains how to use CodeFlow Buddy's powerful batch execution system for safe, atomic refactoring operations.
 
+## 🚨 Best Practices - READ THIS FIRST
+
+### Critical Guidelines for Safe Refactoring
+
+1. **ALWAYS use `batch_execute` for multiple operations**
+   - `batch_execute` is the ONLY tool designed for running multiple operations safely
+   - It provides atomic rollback if any operation fails
+   - Other tools are designed for single operations only
+
+2. **Use the correct tool for your task**:
+   - **`rename_directory`** - For moving entire directories and all their contents
+   - **`rename_file`** - For moving individual files
+   - **`batch_execute`** - For combining multiple operations atomically
+
+3. **Follow the three-step safety process**:
+   - Step 1: Preview with `dry_run: true`
+   - Step 2: Test execution logic
+   - Step 3: Execute with `atomic: true`
+
+4. **Large-scale refactoring example**:
+```json
+{
+  "operations": [
+    {
+      "tool": "rename_directory",
+      "args": {
+        "old_path": "src/old-feature",
+        "new_path": "lib/new-feature"
+      }
+    },
+    {
+      "tool": "rename_directory",
+      "args": {
+        "old_path": "src/utils",
+        "new_path": "lib/shared"
+      }
+    }
+  ],
+  "options": {
+    "atomic": true,
+    "stop_on_error": true
+  }
+}
+```
+
+**⚠️ WARNING**: Never run individual file operations outside of `batch_execute` when you need to move multiple files. The individual tools lack the coordination needed for complex refactoring.
+
 ## Overview
 
 CodeFlow Buddy provides a powerful `batch_execute` tool that enables you to perform complex refactoring operations safely and efficiently. This tool leverages your existing Language Server Protocol (LSP) infrastructure to provide intelligent dependency analysis and automatic import updates.
@@ -249,6 +296,51 @@ Finally, execute the actual refactoring:
 ```
 
 **Tip**: Use `parallel: false` for interdependent operations to ensure correct execution order.
+
+### Example 4: Multiple Directory Moves (Recommended Approach)
+
+**Scenario**: Restructuring project organization by moving multiple directories
+
+```json
+{
+  "operations": [
+    {
+      "tool": "rename_directory",
+      "args": {
+        "old_path": "src/components",
+        "new_path": "lib/ui/components"
+      }
+    },
+    {
+      "tool": "rename_directory",
+      "args": {
+        "old_path": "src/utils",
+        "new_path": "lib/shared/utils"
+      }
+    },
+    {
+      "tool": "rename_directory",
+      "args": {
+        "old_path": "src/services",
+        "new_path": "lib/core/services"
+      }
+    }
+  ],
+  "options": {
+    "atomic": true,
+    "parallel": false,
+    "stop_on_error": true
+  }
+}
+```
+
+**Why this works**:
+- Each `rename_directory` operation handles all files in the directory atomically
+- Import paths are updated across the entire project scope
+- If any directory move fails, all previous moves are rolled back
+- Sequential execution prevents conflicts between directory moves
+
+**❌ What NOT to do**: Never try to move directories by moving individual files - this misses cross-references and creates inconsistent states.
 
 ## Error Handling and Recovery
 
