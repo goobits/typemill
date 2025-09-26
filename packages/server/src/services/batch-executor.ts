@@ -1,6 +1,7 @@
 import type { LSPClient } from '../../../@codeflow/features/src/lsp/lsp-client.js';
 import { getTool, getToolNames } from '../mcp/tool-registry.js';
 import { createMCPResponse } from '../mcp/utils.js';
+import { logger } from '../core/diagnostics/logger.js';
 import type { FileService } from './file-service.js';
 import type { HierarchyService } from './intelligence/hierarchy-service.js';
 import type { IntelligenceService } from './intelligence/intelligence-service.js';
@@ -214,17 +215,24 @@ export class BatchExecutor {
   ): Promise<BatchResult> {
     if (atomic) {
       // Start a new transaction
-      console.log('[BatchExecutor] Starting atomic transaction');
+      logger.debug('Starting atomic transaction', { component: 'BatchExecutor' });
       this.serviceContext.transactionManager.beginTransaction();
       await this.serviceContext.transactionManager.saveCheckpoint('before-batch');
-      console.log('[BatchExecutor] Transaction started and checkpoint saved');
+      logger.debug('Transaction started and checkpoint saved', { component: 'BatchExecutor' });
     }
 
     for (const operation of operations) {
       try {
-        console.log(`[BatchExecutor] Executing operation ${operation.id}: ${operation.tool}`);
+        logger.debug('Executing operation', {
+          component: 'BatchExecutor',
+          operationId: operation.id,
+          tool: operation.tool
+        });
         const operationResult = await this.executeOperation(operation);
-        console.log(`[BatchExecutor] Operation ${operation.id} succeeded`);
+        logger.debug('Operation succeeded', {
+          component: 'BatchExecutor',
+          operationId: operation.id
+        });
 
         result.results.push({
           operation,
@@ -233,7 +241,11 @@ export class BatchExecutor {
         });
         result.summary.successful++;
       } catch (error) {
-        console.log(`[BatchExecutor] Operation ${operation.id} failed:`, error);
+        logger.error('Operation failed', {
+          component: 'BatchExecutor',
+          operationId: operation.id,
+          error: error instanceof Error ? error.message : String(error)
+        });
         result.results.push({
           operation,
           success: false,
@@ -244,11 +256,11 @@ export class BatchExecutor {
 
         if (atomic) {
           // Rollback to checkpoint
-          console.log('[BatchExecutor] Rolling back atomic transaction');
+          logger.info('Rolling back atomic transaction', { component: 'BatchExecutor' });
           await this.serviceContext.transactionManager.rollbackToCheckpoint('before-batch');
           this.serviceContext.transactionManager.commit(); // End the transaction
           result.summary.successful = 0; // Reset successful count after rollback
-          console.log('[BatchExecutor] Rollback complete');
+          logger.info('Rollback complete', { component: 'BatchExecutor' });
           break;
         }
 
@@ -273,12 +285,18 @@ export class BatchExecutor {
 
     // Commit transaction if atomic and successful
     if (atomic && result.success) {
-      console.log('[BatchExecutor] Committing successful atomic transaction');
+      logger.debug('Committing successful atomic transaction', { component: 'BatchExecutor' });
       this.serviceContext.transactionManager.commit();
-      console.log('[BatchExecutor] Transaction committed');
+      logger.debug('Transaction committed', { component: 'BatchExecutor' });
     }
 
-    console.log(`[BatchExecutor] Batch execution complete - Success: ${result.success}`);
+    logger.info('Batch execution complete', {
+      component: 'BatchExecutor',
+      success: result.success,
+      successful: result.summary.successful,
+      failed: result.summary.failed,
+      skipped: result.summary.skipped
+    });
     return result;
   }
 
