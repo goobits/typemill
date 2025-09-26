@@ -1,0 +1,18 @@
+[package]
+name = "cb-ast"
+version = "0.1.0"
+edition = "2021"
+description = "AST parsing and transformation for Codeflow Buddy"
+license = "MIT"
+
+[dependencies]
+cb-core = { path = "../cb-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+# Enhanced parsing with regex (SWC integration deferred due to compatibility issues)
+regex = "1.10"
+# Additional utilities
+indexmap = "2.0"
+petgraph = "0.6" # For dependency graph analysis
