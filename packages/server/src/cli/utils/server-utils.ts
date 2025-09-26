@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-import { type ChildProcess, spawn } from 'node:child_process';
+import { type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { isProcessRunning } from '../../utils/platform/process.js';
 import { getLSPServerPaths } from '../../utils/platform/system.js';
+import { spawnCommand } from '../../utils/platform/command-utils.js';
 
 // Re-export for backward compatibility
 export { isProcessRunning };
@@ -57,9 +58,8 @@ export async function testCommand(command: string[]): Promise<boolean> {
     // Extract basename for getting test args
     const basename = fullCmd.split('/').pop() || cmd;
     const testArgs = getTestArgs(basename);
-    const proc = spawn(fullCmd, testArgs, {
+    const proc = spawnCommand(fullCmd, testArgs, {
       stdio: 'ignore',
-      shell: false,
       env: {
         ...process.env,
         PATH: `/opt/homebrew/bin:/usr/local/bin:${process.env.PATH || ''}`,

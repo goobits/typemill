@@ -61,6 +61,7 @@ import { IntelligenceService } from './src/services/intelligence/intelligence-se
 import { DiagnosticService } from '../@codeflow/features/src/services/lsp/diagnostic-service.js';
 import { SymbolService } from '../@codeflow/features/src/services/lsp/symbol-service.js';
 import { PredictiveLoaderService } from './src/services/predictive-loader.js';
+import { ServiceContainer } from './src/services/service-container.js';
 import { getPackageVersion } from './src/utils/version.js';
 
 // Initialize module logger
@@ -268,11 +269,7 @@ const defaultServerOptions = {
 
 // Create LSP clients and services with proper error handling
 let newLspClient: NewLSPClient;
-let symbolService: SymbolService;
-let fileService: FileService;
-let diagnosticService: DiagnosticService;
-let intelligenceService: IntelligenceService;
-let hierarchyService: HierarchyService;
+let serviceContainer: ServiceContainer;
 let predictiveLoaderService: PredictiveLoaderService;
 
 try {
@@ -300,11 +297,11 @@ try {
   );
 
   // Initialize services with ServiceContext
-  symbolService = new SymbolService(serviceContext);
-  fileService = new FileService(serviceContext);
-  diagnosticService = new DiagnosticService(serviceContext);
-  intelligenceService = new IntelligenceService(serviceContext);
-  hierarchyService = new HierarchyService(serviceContext);
+  const symbolService = new SymbolService(serviceContext);
+  const fileService = new FileService(serviceContext);
+  const diagnosticService = new DiagnosticService(serviceContext);
+  const intelligenceService = new IntelligenceService(serviceContext);
+  const hierarchyService = new HierarchyService(serviceContext);
 
   // Create PredictiveLoaderService with context that includes fileService
   predictiveLoaderService = new PredictiveLoaderService({
@@ -316,6 +313,20 @@ try {
   // Add predictive loader and fileService references to the context
   serviceContext.predictiveLoader = predictiveLoaderService;
   serviceContext.fileService = fileService;
+
+  // Create ServiceContainer with all services
+  serviceContainer = ServiceContainer.create({
+    symbolService,
+    fileService,
+    diagnosticService,
+    intelligenceService,
+    hierarchyService,
+    lspClient: newLspClient,
+    serviceContext,
+    predictiveLoader: predictiveLoaderService,
+    transactionManager,
+    logger,
+  });
 } catch (error) {
   logger.error('Failed to initialize LSP clients', error);
   process.exit(1);
@@ -409,7 +420,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                       'object with file_path and symbol_name strings'
                     );
                   }
-                  return await handleFindDefinition(symbolService, toolArgs);
+                  return await handleFindDefinition(serviceContainer.symbolService, toolArgs);
                 case 'find_references':
                   if (!Validation.validateFindReferencesArgs(toolArgs)) {
                     throw Validation.createValidationError(
@@ -417,7 +428,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                       'object with file_path and symbol_name strings'
                     );
                   }
-                  return await handleFindReferences(symbolService, toolArgs);
+                  return await handleFindReferences(serviceContainer.symbolService, toolArgs);
                 case 'get_document_symbols':
                   if (!Validation.validateGetDocumentSymbolsArgs(toolArgs)) {
                     throw Validation.createValidationError(
@@ -425,7 +436,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                       'object with file_path string'
                     );
                   }
-                  return await handleGetDocumentSymbols(symbolService, toolArgs);
+                  return await handleGetDocumentSymbols(serviceContainer.symbolService, toolArgs);
                 case 'get_diagnostics':
                   if (!Validation.validateGetDiagnosticsArgs(toolArgs)) {
                     throw Validation.createValidationError(
@@ -433,7 +444,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                       'object with file_path string'
                     );
                   }
-                  return await handleGetDiagnostics(diagnosticService, toolArgs);
+                  return await handleGetDiagnostics(serviceContainer.diagnosticService, toolArgs);
                 case 'get_code_actions':
                   if (!Validation.validateGetCodeActionsArgs(toolArgs)) {
                     throw Validation.createValidationError(
@@ -441,7 +452,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                       'object with file_path string'
                     );
                   }
-                  return await handleGetCodeActions(fileService, toolArgs);
+                  return await handleGetCodeActions(serviceContainer.fileService, toolArgs);
                 case 'get_folding_ranges':
                   if (!Validation.validateGetFoldingRangesArgs(toolArgs)) {
                     throw Validation.createValidationError(
@@ -449,7 +460,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                       'object with file_path string'
                     );
                   }
-                  return await handleGetFoldingRanges(fileService, toolArgs, newLspClient);
+                  return await handleGetFoldingRanges(serviceContainer.fileService, toolArgs, serviceContainer.lspClient);
                 case 'get_hover':
                   if (!Validation.validateGetHoverArgs(toolArgs)) {
                     throw Validation.createValidationError(
@@ -457,7 +468,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                       'object with file_path, line, and character'
                     );
                   }
-                  return await handleGetHover(intelligenceService, toolArgs);
+                  return await handleGetHover(serviceContainer.intelligenceService, toolArgs);
                 case 'get_signature_help':
                   if (!Validation.validateGetSignatureHelpArgs(toolArgs)) {
                     throw Validation.createValidationError(
@@ -465,7 +476,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                       'object with file_path, line, and character'
                     );
                   }
-                  return await handleGetSignatureHelp(intelligenceService, toolArgs);
+                  return await handleGetSignatureHelp(serviceContainer.intelligenceService, toolArgs);
                 case 'prepare_call_hierarchy':
                   if (!Validation.validatePrepareCallHierarchyArgs(toolArgs)) {
                     throw Validation.createValidationError(
@@ -473,7 +484,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                       'object with file_path, line, and character'
                     );
                   }
-                  return await handlePrepareCallHierarchy(hierarchyService, toolArgs);
+                  return await handlePrepareCallHierarchy(serviceContainer.hierarchyService, toolArgs);
                 default:
                   throw new Error(`Unsupported tool in workflow: ${toolName}`);
               }
@@ -504,49 +515,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             throw new Error(enhancedMessage);
           }
 
-          // Get the required service for this tool
-          const serviceMap = {
-            symbol: symbolService,
-            file: fileService,
-            diagnostic: diagnosticService,
-            intelligence: intelligenceService,
-            hierarchy: hierarchyService,
-            lsp: newLspClient,
-            serviceContext: async () => {
-              const { ServiceContextUtils } = await import('./src/services/service-context.js');
-              return ServiceContextUtils.createServiceContext(
-                newLspClient.getServer.bind(newLspClient),
-                newLspClient.protocol
-              );
-            },
-            batch: { /* batch executor services */ },
-            workflow: { /* workflow services */ },
-            none: null,
-          };
-
           // Prepare arguments based on tool requirements
           const toolArgs = [];
           if (toolEntry.requiresService !== 'none') {
-            const service = serviceMap[toolEntry.requiresService];
-            if (typeof service === 'function') {
-              toolArgs.push(await service());
-            } else {
-              toolArgs.push(service);
-            }
+            const service = serviceContainer.getService(toolEntry.requiresService);
+            toolArgs.push(service);
           }
           toolArgs.push(args);
-
-          // Add additional service arguments for specific tools that need multiple services
-          if (name === 'batch_execute') {
-            toolArgs.splice(-1, 0,
-              symbolService,
-              fileService,
-              diagnosticService,
-              intelligenceService,
-              hierarchyService,
-              newLspClient
-            );
-          }
 
           // Execute the tool via registry
           return await toolEntry.handler(...toolArgs);
