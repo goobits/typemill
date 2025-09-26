@@ -40,11 +40,13 @@ import {
   handleHealthCheck,
   handlePrepareCallHierarchy,
   handlePrepareTypeHierarchy,
+  handleRenameDirectory,
   handleRenameFile,
   handleRenameSymbol,
   handleRenameSymbolStrict,
   handleRestartServer,
   handleSearchWorkspaceSymbols,
+  handleUpdatePackageJson,
 } from './src/mcp/handlers/index.js';
 import { getWorkflow, isWorkflowTool, registerWorkflows } from './src/mcp/tool-registry.js';
 import { createMCPError } from './src/mcp/utils.js';
@@ -784,6 +786,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 args
               );
             }
+            case 'rename_directory':
+              if (!Validation.validateRenameDirectoryArgs || !Validation.validateRenameDirectoryArgs(args)) {
+                throw Validation.createValidationError(
+                  'rename_directory',
+                  'object with old_path and new_path strings'
+                );
+              }
+              return await handleRenameDirectory(args);
+            case 'update_package_json':
+              if (!Validation.validateUpdatePackageJsonArgs || !Validation.validateUpdatePackageJsonArgs(args)) {
+                throw Validation.createValidationError(
+                  'update_package_json',
+                  'object with file_path and update parameters'
+                );
+              }
+              return await handleUpdatePackageJson(args);
             default: {
               const { createUnknownToolMessage } = await import(
                 './src/core/diagnostics/error-utils.js'
