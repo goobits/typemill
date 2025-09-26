@@ -148,12 +148,56 @@ Delete a file from the filesystem.
 
 ### `rename_file`
 
-Rename a file and update all import statements that reference it.
+Rename a file and update all import statements that reference it. Includes circular dependency detection to prevent unsafe moves.
 
 **Parameters:**
 - `old_path`: Current file path
 - `new_path`: New file path
 - `dry_run`: If true, only preview changes without applying them (optional, default: false)
+
+**When to use:** Moving individual files with automatic import updates
+
+**Example prompt:** "Rename user-service.ts to account-service.ts"
+
+**Safety features:** Automatically detects and prevents circular dependencies
+
+### `rename_directory`
+
+Rename an entire directory and update all import statements that reference files within it. Includes circular dependency detection for safe directory moves.
+
+**Parameters:**
+- `old_path`: Current directory path
+- `new_path`: New directory path
+- `dry_run`: If true, only preview changes without applying them (optional, default: false)
+
+**When to use:** Moving entire folders/packages with automatic import updates for all contained files
+
+**Example prompt:** "Move the utils directory to lib/utilities"
+
+**Safety features:** Checks for circular dependencies across all files in the directory before moving
+
+**Returns:** Summary of all files moved and import updates applied
+
+### `update_package_json`
+
+Update package.json files by adding, removing, or modifying dependencies, scripts, and configuration. Preserves formatting and validates changes.
+
+**Parameters:**
+- `file_path`: Path to package.json file (default: "./package.json")
+- `add_dependencies`: Object of dependencies to add to "dependencies" section (optional)
+- `add_dev_dependencies`: Object of dependencies to add to "devDependencies" section (optional)
+- `remove_dependencies`: Array of dependency names to remove (optional)
+- `add_scripts`: Object of scripts to add to "scripts" section (optional)
+- `remove_scripts`: Array of script names to remove (optional)
+- `update_version`: New version string (optional)
+- `workspace_config`: Workspace configuration with workspaces array (optional)
+- `dry_run`: If true, only preview changes without applying them (optional, default: false)
+
+**When to use:** Managing project dependencies, scripts, and workspace configuration
+
+**Example prompt:** "Add lodash as a dependency and a build script"
+
+**Returns:** Summary of all changes made to the package.json file
 
 ## Code Intelligence
 

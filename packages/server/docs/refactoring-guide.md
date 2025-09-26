@@ -17,6 +17,16 @@ The tools use your language server to understand dependencies, analyze symbol us
 ### Safe-by-Default
 The default strategy is "safe" - operations abort on the first error. You can optionally use "force" strategy to continue despite non-critical errors.
 
+### Circular Dependency Prevention
+Both `rename_file` and `rename_directory` include automatic circular dependency detection:
+
+- **Before moving files or directories**, the tools analyze import relationships
+- **Prevents moves** that would create circular dependencies between packages
+- **Provides clear warnings** with suggestions for alternative approaches
+- **Maintains code health** by preventing architectural problems
+
+This safety feature addresses a common source of refactoring mistakes where moving code creates unexpected circular imports.
+
 ## Complete Refactoring Workflow
 
 Here's the recommended workflow for complex refactoring operations using the `batch_execute` tool:
@@ -25,11 +35,24 @@ Here's the recommended workflow for complex refactoring operations using the `ba
 
 First, identify the operations you want to perform. You can batch any MCP tool operations including:
 
-- **File operations**: rename_file, create_file, delete_file
+- **File operations**: rename_file, rename_directory, create_file, delete_file
 - **Symbol operations**: rename_symbol, find_references
+- **Project management**: update_package_json
 - **Diagnostics**: get_diagnostics
 - **Code intelligence**: find_definition, get_symbols
 - And any other available MCP tools
+
+#### Directory vs File Operations
+
+**Use `rename_file`** for:
+- Moving individual files between directories
+- Renaming single files in place
+- When you need fine-grained control over specific files
+
+**Use `rename_directory`** for:
+- Moving entire packages/modules
+- Restructuring directory hierarchies
+- When all files in a directory should move together
 
 ### Step 2: Execute with Preview
 
@@ -39,18 +62,22 @@ Use `batch_execute` with preview mode to understand what will happen:
 {
   "operations": [
     {
-      "tool": "rename_file",
+      "tool": "rename_directory",
       "args": {
-        "old_path": "src/utils/string-helpers.ts",
-        "new_path": "lib/utilities/string-utils.ts"
+        "old_path": "src/utils",
+        "new_path": "lib/utilities"
       }
     },
     {
-      "tool": "rename_symbol",
+      "tool": "update_package_json",
       "args": {
-        "file_path": "lib/utilities/string-utils.ts",
-        "symbol_name": "formatString",
-        "new_name": "formatText"
+        "file_path": "./package.json",
+        "add_dev_dependencies": {
+          "@types/lodash": "^4.14.195"
+        },
+        "add_scripts": {
+          "build:utils": "tsc --project lib/utilities/tsconfig.json"
+        }
       }
     }
   ],

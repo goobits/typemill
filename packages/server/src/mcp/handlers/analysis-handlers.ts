@@ -391,7 +391,7 @@ export async function handleRenameDirectory(
     async () => {
       try {
         const { readdirSync, statSync, existsSync } = await import('node:fs');
-        const { join, resolve, relative } = await import('node:path');
+        const { join, resolve, relative, dirname } = await import('node:path');
         const { renameFile } = await import('../../core/file-operations/editor.js');
 
         const absoluteOldPath = resolve(old_path);
@@ -407,6 +407,77 @@ export async function handleRenameDirectory(
 
         if (existsSync(absoluteNewPath)) {
           return createMCPResponse(`Error: Target directory already exists: ${new_path}`);
+        }
+
+        // Circular dependency safety check for directory move
+        const { projectScanner } = await import('../../services/project-analyzer.js');
+        const oldDir = dirname(absoluteOldPath);
+        const newDir = dirname(absoluteNewPath);
+
+        // Only check for circular dependencies if moving between different parent directories
+        if (oldDir !== newDir) {
+          logger.debug('Checking for circular dependencies before directory rename', {
+            tool: 'rename_directory',
+            old_path,
+            new_path,
+          });
+
+          // Quick scan to find files in the directory that might have external importers
+          const filesToCheck: string[] = [];
+          function collectFilesForCheck(dir: string) {
+            try {
+              for (const entry of readdirSync(dir)) {
+                const fullPath = join(dir, entry);
+                const stat = statSync(fullPath);
+                if (stat.isDirectory()) {
+                  if (!entry.startsWith('.') && entry !== 'node_modules') {
+                    collectFilesForCheck(fullPath);
+                  }
+                } else if (stat.isFile() && /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(entry)) {
+                  filesToCheck.push(fullPath);
+                }
+              }
+            } catch (err) {
+              logger.warn('Error scanning directory for circular dependency check', { dir, error: err });
+            }
+          }
+
+          collectFilesForCheck(absoluteOldPath);
+
+          // Check for potential circular dependencies (sample a few files for performance)
+          const samplesToCheck = filesToCheck.slice(0, Math.min(5, filesToCheck.length));
+          for (const fileToCheck of samplesToCheck) {
+            const importers = await projectScanner.findImporters(fileToCheck);
+
+            for (const importer of importers) {
+              // Skip importers within the same directory being moved
+              if (importer.startsWith(absoluteOldPath)) {
+                continue;
+              }
+
+              const importerDir = dirname(importer);
+              const relativePath = relative(absoluteNewPath, importerDir);
+
+              // If the importer is in a subdirectory of the new location, this could create a circular dependency
+              if (!relativePath.startsWith('..') && relativePath !== '' && !relativePath.startsWith('/')) {
+                const relativeImporter = relative(process.cwd(), importer);
+                const relativeFile = relative(process.cwd(), fileToCheck);
+                const relativeOld = relative(process.cwd(), old_path);
+                const relativeNew = relative(process.cwd(), new_path);
+
+                return createMCPResponse(
+                  `⚠️ Cannot rename directory ${relativeOld} to ${relativeNew} - this would create circular dependencies.\n\n` +
+                  `The file ${relativeImporter} imports ${relativeFile} from within the directory being moved.\n` +
+                  `Moving the directory to ${relativeNew} would place it in a parent directory of its importer, ` +
+                  `potentially creating circular import relationships.\n\n` +
+                  `Consider:\n` +
+                  `• Moving the directory to a different location that doesn't create circular dependencies\n` +
+                  `• Refactoring the imports to break the circular dependency first\n` +
+                  `• Restructuring the code organization to avoid circular dependencies`
+                );
+              }
+            }
+          }
         }
 
         // Collect all files in the directory recursively

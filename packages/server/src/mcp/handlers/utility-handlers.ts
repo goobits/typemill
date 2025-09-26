@@ -136,15 +136,56 @@ export async function handleRenameFile(args: {
   const { old_path, new_path, dry_run = false } = args;
 
   try {
-    const { renameFile } = await import('../../core/file-operations/editor.js');
+    // Circular dependency safety check
+    const { projectScanner } = await import('../../services/project-analyzer.js');
+    const { dirname, relative, resolve } = await import('node:path');
 
-    // Calculate a smart rootDir based on the file paths
     const absoluteOldPath = resolve(old_path);
     const absoluteNewPath = resolve(new_path);
-
-    // Get the directories containing the files
     const oldDir = dirname(absoluteOldPath);
     const newDir = dirname(absoluteNewPath);
+
+    // Only check for circular dependencies if moving between different directories
+    if (oldDir !== newDir) {
+      logger.debug('Checking for circular dependencies before file rename', {
+        tool: 'rename_file',
+        old_path,
+        new_path,
+      });
+
+      // Find all files that import the file being moved
+      const importers = await projectScanner.findImporters(absoluteOldPath);
+
+      if (importers.length > 0) {
+        // Check if any importer is in a directory that would create a circular dependency
+        for (const importer of importers) {
+          const importerDir = dirname(importer);
+          const relativePath = relative(newDir, importerDir);
+
+          // If the importer is in a subdirectory of the new location, this could create a circular dependency
+          if (!relativePath.startsWith('..') && relativePath !== '' && !relativePath.startsWith('/')) {
+            const relativeImporter = relative(process.cwd(), importer);
+            const relativeOld = relative(process.cwd(), old_path);
+            const relativeNew = relative(process.cwd(), new_path);
+
+            return createMCPResponse(
+              `⚠️ Cannot rename ${relativeOld} to ${relativeNew} - this would create a circular dependency.\n\n` +
+              `The file ${relativeImporter} imports ${relativeOld}.\n` +
+              `Moving ${relativeOld} to ${relativeNew} would place it in a parent directory of its importer, ` +
+              `potentially creating circular import relationships.\n\n` +
+              `Consider:\n` +
+              `• Moving the file to a different location that doesn't create circular dependencies\n` +
+              `• Refactoring the imports to break the circular dependency first\n` +
+              `• Using a shared utilities directory that both can import from`
+            );
+          }
+        }
+      }
+    }
+
+    const { renameFile } = await import('../../core/file-operations/editor.js');
+
+    // Calculate a smart rootDir based on the file paths (reuse already calculated paths)
 
     // Function to find common parent path
     const findCommonParent = (path1: string, path2: string): string => {
@@ -486,6 +527,154 @@ export async function handleExecuteWorkflow(
   }
 }
 
+// Handler for update_package_json tool
+export async function handleUpdatePackageJson(args: {
+  file_path: string;
+  add_dependencies?: Record<string, string>;
+  add_dev_dependencies?: Record<string, string>;
+  remove_dependencies?: string[];
+  add_scripts?: Record<string, string>;
+  remove_scripts?: string[];
+  update_version?: string;
+  workspace_config?: { workspaces?: string[] };
+  dry_run?: boolean;
+}) {
+  const {
+    file_path,
+    add_dependencies = {},
+    add_dev_dependencies = {},
+    remove_dependencies = [],
+    add_scripts = {},
+    remove_scripts = [],
+    update_version,
+    workspace_config,
+    dry_run = false,
+  } = args;
+
+  try {
+    const { existsSync, readFileSync, writeFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+
+    const absolutePath = resolve(file_path);
+
+    if (!existsSync(absolutePath)) {
+      return createMCPResponse(`Error: File does not exist: ${file_path}`);
+    }
+
+    // Read and parse the package.json
+    const content = readFileSync(absolutePath, 'utf8');
+    let packageJson: any;
+
+    try {
+      packageJson = JSON.parse(content);
+    } catch (parseError) {
+      return createMCPResponse(`Error: Invalid JSON in ${file_path}: ${parseError}`);
+    }
+
+    // Track changes for reporting
+    const changes: string[] = [];
+
+    // Add dependencies
+    if (Object.keys(add_dependencies).length > 0) {
+      if (!packageJson.dependencies) {
+        packageJson.dependencies = {};
+      }
+      for (const [name, version] of Object.entries(add_dependencies)) {
+        packageJson.dependencies[name] = version;
+        changes.push(`Added dependency: ${name}@${version}`);
+      }
+    }
+
+    // Add dev dependencies
+    if (Object.keys(add_dev_dependencies).length > 0) {
+      if (!packageJson.devDependencies) {
+        packageJson.devDependencies = {};
+      }
+      for (const [name, version] of Object.entries(add_dev_dependencies)) {
+        packageJson.devDependencies[name] = version;
+        changes.push(`Added devDependency: ${name}@${version}`);
+      }
+    }
+
+    // Remove dependencies
+    for (const name of remove_dependencies) {
+      let removed = false;
+      if (packageJson.dependencies && packageJson.dependencies[name]) {
+        delete packageJson.dependencies[name];
+        changes.push(`Removed dependency: ${name}`);
+        removed = true;
+      }
+      if (packageJson.devDependencies && packageJson.devDependencies[name]) {
+        delete packageJson.devDependencies[name];
+        changes.push(`Removed devDependency: ${name}`);
+        removed = true;
+      }
+      if (!removed) {
+        changes.push(`Warning: ${name} not found in dependencies`);
+      }
+    }
+
+    // Add scripts
+    if (Object.keys(add_scripts).length > 0) {
+      if (!packageJson.scripts) {
+        packageJson.scripts = {};
+      }
+      for (const [name, script] of Object.entries(add_scripts)) {
+        packageJson.scripts[name] = script;
+        changes.push(`Added script: ${name}`);
+      }
+    }
+
+    // Remove scripts
+    for (const name of remove_scripts) {
+      if (packageJson.scripts && packageJson.scripts[name]) {
+        delete packageJson.scripts[name];
+        changes.push(`Removed script: ${name}`);
+      } else {
+        changes.push(`Warning: Script ${name} not found`);
+      }
+    }
+
+    // Update version
+    if (update_version) {
+      const oldVersion = packageJson.version || 'not set';
+      packageJson.version = update_version;
+      changes.push(`Updated version: ${oldVersion} → ${update_version}`);
+    }
+
+    // Update workspace configuration
+    if (workspace_config?.workspaces) {
+      packageJson.workspaces = workspace_config.workspaces;
+      changes.push(`Updated workspaces configuration`);
+    }
+
+    if (changes.length === 0) {
+      return createMCPResponse(`No changes specified for ${file_path}`);
+    }
+
+    if (dry_run) {
+      return createMCPResponse(
+        `[DRY RUN] Would make the following changes to ${file_path}:\n\n` +
+        changes.map(change => `• ${change}`).join('\n')
+      );
+    }
+
+    // Write the updated package.json with proper formatting
+    const updatedContent = JSON.stringify(packageJson, null, 2) + '\n';
+    writeFileSync(absolutePath, updatedContent, 'utf8');
+
+    return createMCPResponse(
+      `✅ Successfully updated ${file_path}\n\n` +
+      `Changes made:\n` +
+      changes.map(change => `• ${change}`).join('\n')
+    );
+  } catch (error) {
+    return createMCPResponse(
+      `Error updating package.json: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
 // Register utility tools with the central registry
 registerTools(
   {
@@ -496,6 +685,7 @@ registerTools(
     delete_file: { handler: handleDeleteFile, requiresService: 'none' },
     health_check: { handler: handleHealthCheck, requiresService: 'serviceContext' },
     execute_workflow: { handler: handleExecuteWorkflow, requiresService: 'serviceContext' },
+    update_package_json: { handler: handleUpdatePackageJson, requiresService: 'none' },
   },
   'utility-handlers'
 );
