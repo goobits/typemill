@@ -519,9 +519,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           const toolArgs = [];
           if (toolEntry.requiresService !== 'none') {
             const service = serviceContainer.getService(toolEntry.requiresService);
-            toolArgs.push(service);
+            if (toolEntry.requiresService === 'serviceContext') {
+              // Special handling for serviceContext: args first, service second
+              // This matches the batch executor's behavior and the handler signatures
+              toolArgs.push(args, service);
+            } else {
+              // Standard handling: service first, args second
+              toolArgs.push(service, args);
+            }
+          } else {
+            toolArgs.push(args);
           }
-          toolArgs.push(args);
 
           // Execute the tool via registry
           return await toolEntry.handler(...toolArgs);
