@@ -20,6 +20,10 @@ mod refactoring_tests;
 #[cfg(test)]
 mod debug_refactoring;
 
+#[cfg(test)]
+#[path = "editing_integration_tests.rs"]
+mod editing_integration_tests;
+
 use crate::handlers::McpDispatcher;
 
 /// Register all MCP tools with the dispatcher
