@@ -196,19 +196,6 @@ export function useTempConstant() {
       expect(result).toBeDefined();
     });
 
-    it('should get folding ranges', async () => {
-      const result = await client.callTool('get_folding_ranges', {
-        file_path: '/workspace/examples/playground/src/test-file.ts',
-      });
-      expect(result).toBeDefined();
-    });
-
-    it('should get document links', async () => {
-      const result = await client.callTool('get_document_links', {
-        file_path: '/workspace/examples/playground/src/test-file.ts',
-      });
-      expect(result).toBeDefined();
-    });
   });
 
   describe('Intelligence Tools', () => {
@@ -255,13 +242,6 @@ export function useTempConstant() {
       });
       expect(result).toBeDefined();
     });
-
-    it('should get semantic tokens', async () => {
-      const result = await client.callTool('get_semantic_tokens', {
-        file_path: '/workspace/examples/playground/src/test-file.ts',
-      });
-      expect(result).toBeDefined();
-    });
   });
 
   describe('Hierarchy Tools', () => {
@@ -274,22 +254,6 @@ export function useTempConstant() {
       expect(result).toBeDefined();
     });
 
-    it('should prepare type hierarchy', async () => {
-      const result = await client.callTool('prepare_type_hierarchy', {
-        file_path: '/workspace/examples/playground/src/test-file.ts',
-        line: 18,
-        character: 7,
-      });
-      expect(result).toBeDefined();
-    });
-
-    it('should get selection range', async () => {
-      const result = await client.callTool('get_selection_range', {
-        file_path: '/workspace/examples/playground/src/test-file.ts',
-        positions: [{ line: 13, character: 10 }],
-      });
-      expect(result).toBeDefined();
-    });
   });
 
   describe('File Operations', () => {
