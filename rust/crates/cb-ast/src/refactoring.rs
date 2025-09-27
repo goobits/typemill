@@ -4,6 +4,7 @@ use crate::error::{AstError, AstResult};
 use crate::analyzer::{EditPlan, TextEdit, EditType, EditLocation, EditPlanMetadata, ValidationRule, ValidationType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use swc_common::{SourceMap, FileName, FilePathMapping, sync::Lrc};
 use swc_ecma_parser::{Parser, Syntax, lexer::Lexer, StringInput, TsSyntax};
 use swc_ecma_ast::*;
@@ -240,6 +241,225 @@ pub fn plan_inline_variable(
             created_at: chrono::Utc::now(),
             complexity: (analysis.usage_locations.len().min(10)) as u8,
             impact_areas: vec!["variable_inlining".to_string()],
+        },
+    })
+}
+
+/// Analysis result for extract variable refactoring
+#[derive(Debug, Clone)]
+pub struct ExtractVariableAnalysis {
+    pub expression: String,
+    pub expression_range: CodeRange,
+    pub can_extract: bool,
+    pub suggested_name: String,
+    pub insertion_point: CodeRange,
+    pub blocking_reasons: Vec<String>,
+    pub scope_type: String,
+}
+
+/// Analyze a selected expression for extraction into a variable
+pub fn analyze_extract_variable(
+    source: &str,
+    start_line: u32,
+    start_col: u32,
+    end_line: u32,
+    end_col: u32,
+    file_path: &str,
+) -> AstResult<ExtractVariableAnalysis> {
+    let cm: Lrc<SourceMap> = Default::default();
+
+    let fm = cm.new_source_file(
+        FileName::Real(PathBuf::from(file_path)).into(),
+        source.to_string(),
+    );
+
+    let lexer = Lexer::new(
+        Syntax::Typescript(TsSyntax {
+            tsx: file_path.ends_with(".tsx"),
+            decorators: true,
+            ..Default::default()
+        }),
+        Default::default(),
+        StringInput::from(&*fm),
+        None,
+    );
+
+    let mut parser = Parser::new_from(lexer);
+
+    match parser.parse_module() {
+        Ok(module) => {
+            // Extract the selected expression text
+            let expression_range = CodeRange {
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+            };
+
+            let expression = extract_range_text(source, &expression_range)?;
+
+            // Check if this is a valid expression (not a statement, declaration, etc.)
+            let mut can_extract = true;
+            let mut blocking_reasons = Vec::new();
+
+            // Simple heuristics for what can be extracted
+            if expression.starts_with("function ") || expression.starts_with("class ") {
+                can_extract = false;
+                blocking_reasons.push("Cannot extract function or class declarations".to_string());
+            }
+
+            if expression.starts_with("const ") || expression.starts_with("let ") || expression.starts_with("var ") {
+                can_extract = false;
+                blocking_reasons.push("Cannot extract variable declarations".to_string());
+            }
+
+            if expression.contains(';') && !expression.starts_with('(') {
+                can_extract = false;
+                blocking_reasons.push("Selection contains multiple statements".to_string());
+            }
+
+            // Generate a suggested variable name based on the expression
+            let suggested_name = suggest_variable_name(&expression);
+
+            // Find the best insertion point (beginning of current scope)
+            // For simplicity, we'll insert at the beginning of the line containing the expression
+            let insertion_point = CodeRange {
+                start_line,
+                start_col: 0,
+                end_line: start_line,
+                end_col: 0,
+            };
+
+            Ok(ExtractVariableAnalysis {
+                expression,
+                expression_range,
+                can_extract,
+                suggested_name,
+                insertion_point,
+                blocking_reasons,
+                scope_type: "function".to_string(), // Simplified for now
+            })
+        }
+        Err(e) => {
+            Err(AstError::parse(format!("Failed to parse file: {:?}", e)))
+        }
+    }
+}
+
+/// Suggest a variable name based on the expression
+fn suggest_variable_name(expression: &str) -> String {
+    // Simple heuristics for variable naming
+    let expr = expression.trim();
+
+    if expr.contains("getElementById") {
+        return "element".to_string();
+    }
+
+    if expr.contains(".length") {
+        return "length".to_string();
+    }
+
+    if expr.starts_with('"') || expr.starts_with('\'') || expr.starts_with('`') {
+        return "text".to_string();
+    }
+
+    if expr.parse::<f64>().is_ok() {
+        return "value".to_string();
+    }
+
+    if expr == "true" || expr == "false" {
+        return "flag".to_string();
+    }
+
+    if expr.contains('+') || expr.contains('-') || expr.contains('*') || expr.contains('/') {
+        return "result".to_string();
+    }
+
+    if expr.starts_with('[') {
+        return "items".to_string();
+    }
+
+    if expr.starts_with('{') {
+        return "obj".to_string();
+    }
+
+    // Default
+    "extracted".to_string()
+}
+
+/// Generate edit plan for extract variable refactoring
+pub fn plan_extract_variable(
+    source: &str,
+    start_line: u32,
+    start_col: u32,
+    end_line: u32,
+    end_col: u32,
+    variable_name: Option<String>,
+    file_path: &str,
+) -> AstResult<EditPlan> {
+    let analysis = analyze_extract_variable(source, start_line, start_col, end_line, end_col, file_path)?;
+
+    if !analysis.can_extract {
+        return Err(AstError::analysis(format!(
+            "Cannot extract expression: {}",
+            analysis.blocking_reasons.join(", ")
+        )));
+    }
+
+    let var_name = variable_name.unwrap_or_else(|| analysis.suggested_name.clone());
+
+    // Get the indentation of the current line
+    let lines: Vec<&str> = source.lines().collect();
+    let current_line = lines.get((start_line - 1) as usize).unwrap_or(&"");
+    let indent = current_line.chars().take_while(|c| c.is_whitespace()).collect::<String>();
+
+    let mut edits = Vec::new();
+
+    // Insert the variable declaration
+    let declaration = format!("const {} = {};\n{}", var_name, analysis.expression, indent);
+    edits.push(TextEdit {
+        edit_type: EditType::Insert,
+        location: analysis.insertion_point.clone().into(),
+        original_text: String::new(),
+        new_text: declaration,
+        priority: 100,
+        description: format!("Extract '{}' into variable '{}'", analysis.expression, var_name),
+    });
+
+    // Replace the original expression with the variable name
+    edits.push(TextEdit {
+        edit_type: EditType::Replace,
+        location: analysis.expression_range.clone().into(),
+        original_text: analysis.expression.clone(),
+        new_text: var_name.clone(),
+        priority: 90,
+        description: format!("Replace expression with '{}'", var_name),
+    });
+
+    Ok(EditPlan {
+        source_file: file_path.to_string(),
+        edits,
+        dependency_updates: Vec::new(),
+        validations: vec![
+            ValidationRule {
+                rule_type: ValidationType::SyntaxCheck,
+                description: "Verify syntax is valid after extraction".to_string(),
+                parameters: HashMap::new(),
+            },
+        ],
+        metadata: EditPlanMetadata {
+            intent_name: "extract_variable".to_string(),
+            intent_arguments: serde_json::json!({
+                "expression": analysis.expression,
+                "variableName": var_name,
+                "startLine": start_line,
+                "startCol": start_col,
+                "endLine": end_line,
+                "endCol": end_col
+            }),
+            created_at: chrono::Utc::now(),
+            complexity: 2,
+            impact_areas: vec!["variable_extraction".to_string()],
         },
     })
 }

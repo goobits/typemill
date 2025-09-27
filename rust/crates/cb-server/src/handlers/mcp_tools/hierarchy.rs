@@ -334,3 +334,8 @@ mod tests {
         assert!(parsed.file_path.is_none());
     }
 }
+
+// Include integration tests
+#[cfg(test)]
+#[path = "hierarchy_tests.rs"]
+mod hierarchy_tests;
