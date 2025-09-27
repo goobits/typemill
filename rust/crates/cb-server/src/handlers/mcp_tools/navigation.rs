@@ -1,9 +1,10 @@
 //! Navigation MCP tools (find_definition, find_references, etc.)
 
 use crate::handlers::McpDispatcher;
+use crate::utils::{SimdJsonParser, create_paginated_response};
 use super::util::forward_lsp_request;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 
 /// Arguments for find_definition tool
 #[derive(Debug, Deserialize)]
@@ -22,6 +23,9 @@ struct FindReferencesArgs {
     symbol_name: String,
     symbol_kind: Option<String>,
     include_declaration: Option<bool>,
+    // Pagination parameters for performance optimization
+    page: Option<usize>,
+    page_size: Option<usize>,
 }
 
 /// Arguments for search workspace symbols
@@ -30,6 +34,9 @@ struct FindReferencesArgs {
 struct SearchWorkspaceArgs {
     query: String,
     workspace_path: Option<String>,
+    // Pagination parameters for performance optimization
+    page: Option<usize>,
+    page_size: Option<usize>,
 }
 
 /// Symbol location result
@@ -66,13 +73,13 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
 
     // find_references tool
     dispatcher.register_tool("find_references".to_string(), |app_state, args| async move {
-        let params: FindReferencesArgs = serde_json::from_value(args)
-            .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
+        let params: FindReferencesArgs = SimdJsonParser::from_value(args)?;
 
-        tracing::debug!("Finding references for {} in {}", params.symbol_name, params.file_path);
+        tracing::debug!("Finding references for {} in {} (page: {:?}, size: {:?})",
+                       params.symbol_name, params.file_path, params.page, params.page_size);
 
-        // Use helper function to forward request
-        forward_lsp_request(
+        // Get all references from LSP
+        let lsp_result = forward_lsp_request(
             app_state.lsp.as_ref(),
             "find_references".to_string(),
             Some(json!({
@@ -81,25 +88,89 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
                 "symbol_kind": params.symbol_kind,
                 "include_declaration": params.include_declaration
             }))
-        ).await
+        ).await?;
+
+        // Apply pagination for performance optimization
+        let page = params.page.unwrap_or(0);
+        let page_size = params.page_size.unwrap_or(50); // Default to 50 items per page
+
+        if let Some(references) = lsp_result.get("references") {
+            if let Some(ref_array) = references.as_array() {
+                let total_count = ref_array.len();
+
+                if page_size < total_count {
+                    // Use pagination for large result sets
+                    let paginated_response = create_paginated_response(
+                        ref_array.clone(),
+                        page_size,
+                        page,
+                        total_count
+                    );
+
+                    tracing::debug!("Paginated {} references into page {} of {} items",
+                                  total_count, page, page_size);
+
+                    Ok(paginated_response)
+                } else {
+                    // Return all results if small enough
+                    Ok(lsp_result)
+                }
+            } else {
+                Ok(lsp_result)
+            }
+        } else {
+            Ok(lsp_result)
+        }
     });
 
     // search_workspace_symbols tool
     dispatcher.register_tool("search_workspace_symbols".to_string(), |app_state, args| async move {
-        let params: SearchWorkspaceArgs = serde_json::from_value(args)
-            .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
+        let params: SearchWorkspaceArgs = SimdJsonParser::from_value(args)?;
 
-        tracing::debug!("Searching workspace for: {}", params.query);
+        tracing::debug!("Searching workspace for: {} (page: {:?}, size: {:?})",
+                       params.query, params.page, params.page_size);
 
-        // Use helper function to forward request
-        forward_lsp_request(
+        // Get all symbols from LSP
+        let lsp_result = forward_lsp_request(
             app_state.lsp.as_ref(),
             "search_workspace_symbols".to_string(),
             Some(json!({
                 "query": params.query,
                 "workspace_path": params.workspace_path
             }))
-        ).await
+        ).await?;
+
+        // Apply pagination for performance optimization
+        let page = params.page.unwrap_or(0);
+        let page_size = params.page_size.unwrap_or(100); // Default to 100 symbols per page
+
+        if let Some(symbols) = lsp_result.get("symbols") {
+            if let Some(symbol_array) = symbols.as_array() {
+                let total_count = symbol_array.len();
+
+                if page_size < total_count {
+                    // Use pagination for large result sets
+                    let paginated_response = create_paginated_response(
+                        symbol_array.clone(),
+                        page_size,
+                        page,
+                        total_count
+                    );
+
+                    tracing::debug!("Paginated {} workspace symbols into page {} of {} items",
+                                  total_count, page, page_size);
+
+                    Ok(paginated_response)
+                } else {
+                    // Return all results if small enough
+                    Ok(lsp_result)
+                }
+            } else {
+                Ok(lsp_result)
+            }
+        } else {
+            Ok(lsp_result)
+        }
     });
 
     // get_document_symbols tool
