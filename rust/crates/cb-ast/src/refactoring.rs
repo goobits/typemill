@@ -2,6 +2,7 @@
 
 use crate::error::{AstError, AstResult};
 use crate::analyzer::{EditPlan, TextEdit, EditType, EditLocation, EditPlanMetadata, ValidationRule, ValidationType};
+use crate::python_parser::{extract_python_functions, extract_python_variables, PythonFunction, PythonVariable, PythonValueType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -17,6 +18,19 @@ pub struct CodeRange {
     pub start_col: u32,
     pub end_line: u32,
     pub end_col: u32,
+}
+
+/// Detect file language from file path
+fn detect_language(file_path: &str) -> &str {
+    if file_path.ends_with(".py") {
+        "python"
+    } else if file_path.ends_with(".ts") || file_path.ends_with(".tsx") {
+        "typescript"
+    } else if file_path.ends_with(".js") || file_path.ends_with(".jsx") {
+        "javascript"
+    } else {
+        "unknown"
+    }
 }
 
 /// Variable usage information for refactoring analysis
@@ -99,6 +113,20 @@ pub fn analyze_inline_variable(
 
 /// Generate edit plan for extract function refactoring
 pub fn plan_extract_function(
+    source: &str,
+    range: &CodeRange,
+    new_function_name: &str,
+    file_path: &str,
+) -> AstResult<EditPlan> {
+    match detect_language(file_path) {
+        "python" => plan_extract_function_python(source, range, new_function_name, file_path),
+        "typescript" | "javascript" => plan_extract_function_ts_js(source, range, new_function_name, file_path),
+        _ => Err(AstError::analysis(format!("Unsupported language for file: {}", file_path))),
+    }
+}
+
+/// Generate edit plan for extract function refactoring (TypeScript/JavaScript)
+fn plan_extract_function_ts_js(
     source: &str,
     range: &CodeRange,
     new_function_name: &str,
