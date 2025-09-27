@@ -2,6 +2,7 @@
 
 pub mod mocks;
 pub mod helpers;
+pub mod harness;
 
 #[cfg(test)]
 pub mod contract_tests;
@@ -11,6 +12,7 @@ pub mod resilience_tests;
 
 pub use mocks::{MockAstService, MockLspService};
 pub use helpers::*;
+pub use harness::{TestClient, TestWorkspace};
 
 use thiserror::Error;
 

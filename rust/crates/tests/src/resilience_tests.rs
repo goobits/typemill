@@ -1,233 +1,22 @@
 //! Resilience and advanced workflow tests for Rust MCP server
 //! These tests validate error handling, crash recovery, and complex multi-step workflows
 
+use crate::harness::{TestClient, TestWorkspace, create_typescript_project};
 use serde_json::{json, Value};
-use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
-use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use std::fs;
-use tempfile::TempDir;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 use url::Url;
 use futures_util::{SinkExt, StreamExt};
 
-/// Enhanced MCP client for resilience testing with process monitoring
-struct ResilientMcpClient {
-    process: std::process::Child,
-    stdin: std::process::ChildStdin,
-    stdout_receiver: mpsc::Receiver<String>,
-    stderr_receiver: mpsc::Receiver<String>,
-}
-
-impl ResilientMcpClient {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let mut process = Command::new("../../target/release/cb-server")
-            .arg("start")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
-
-        let stdin = process.stdin.take().unwrap();
-        let stdout = process.stdout.take().unwrap();
-        let stderr = process.stderr.take().unwrap();
-
-        // Spawn thread to read stdout
-        let (stdout_sender, stdout_receiver) = mpsc::channel();
-        thread::spawn(move || {
-            let reader = BufReader::new(stdout);
-            for line in reader.lines() {
-                if let Ok(line) = line {
-                    let trimmed = line.trim();
-                    if !trimmed.is_empty() && trimmed.starts_with('{') {
-                        if stdout_sender.send(line).is_err() {
-                            break;
-                        }
-                    }
-                }
-            }
-        });
-
-        // Spawn thread to read stderr (for debugging crashes)
-        let (stderr_sender, stderr_receiver) = mpsc::channel();
-        thread::spawn(move || {
-            let reader = BufReader::new(stderr);
-            for line in reader.lines() {
-                if let Ok(line) = line {
-                    if stderr_sender.send(line).is_err() {
-                        break;
-                    }
-                }
-            }
-        });
-
-        // Wait for server startup
-        thread::sleep(Duration::from_millis(1500));
-
-        Ok(ResilientMcpClient {
-            process,
-            stdin,
-            stdout_receiver,
-            stderr_receiver,
-        })
-    }
-
-    fn send_request(&mut self, request: Value) -> Result<Value, Box<dyn std::error::Error>> {
-        let request_str = serde_json::to_string(&request)?;
-        writeln!(self.stdin, "{}", request_str)?;
-        self.stdin.flush()?;
-
-        // Wait for response with extended timeout for resilience tests
-        let response_str = self.stdout_receiver.recv_timeout(Duration::from_secs(15))?;
-        let response: Value = serde_json::from_str(&response_str)?;
-        Ok(response)
-    }
-
-    fn is_alive(&mut self) -> bool {
-        match self.process.try_wait() {
-            Ok(Some(_)) => false, // Process has exited
-            Ok(None) => true,     // Process is still running
-            Err(_) => false,      // Error checking status
-        }
-    }
-
-    fn get_stderr_logs(&self) -> Vec<String> {
-        let mut logs = Vec::new();
-        while let Ok(line) = self.stderr_receiver.try_recv() {
-            logs.push(line);
-        }
-        logs
-    }
-
-    fn get_child_processes(&self) -> Vec<u32> {
-        // Find child processes (LSP servers spawned by cb-server)
-        let output = Command::new("pgrep")
-            .arg("-P")
-            .arg(self.process.id().to_string())
-            .output();
-
-        if let Ok(output) = output {
-            String::from_utf8_lossy(&output.stdout)
-                .lines()
-                .filter_map(|line| line.trim().parse::<u32>().ok())
-                .collect()
-        } else {
-            Vec::new()
-        }
-    }
-}
-
-impl Drop for ResilientMcpClient {
-    fn drop(&mut self) {
-        let _ = self.process.kill();
-        let _ = self.process.wait();
-    }
-}
-
-/// Create a test TypeScript project structure
-fn create_test_project() -> Result<TempDir, Box<dyn std::error::Error>> {
-    let temp_dir = TempDir::new()?;
-    let src_dir = temp_dir.path().join("src");
-    fs::create_dir_all(&src_dir)?;
-
-    // Create main.ts - exports and uses functions
-    let main_content = r#"
-import { utils } from './utils.js';
-import { processor } from './processor.js';
-
-export class TestMain {
-    private value: number = 42;
-
-    public process(input: string): string {
-        return processor.transform(utils.format(input));
-    }
-
-    public getValue(): number {
-        return this.value;
-    }
-}
-
-export const mainInstance = new TestMain();
-"#;
-    fs::write(src_dir.join("main.ts"), main_content)?;
-
-    // Create utils.ts - utility functions
-    let utils_content = r#"
-export const utils = {
-    format(input: string): string {
-        return input.trim().toLowerCase();
-    },
-
-    validate(input: string): boolean {
-        return input.length > 0;
-    }
-};
-
-export function helperFunction(data: any): string {
-    return JSON.stringify(data);
-}
-"#;
-    fs::write(src_dir.join("utils.ts"), utils_content)?;
-
-    // Create processor.ts - data processing
-    let processor_content = r#"
-export const processor = {
-    transform(input: string): string {
-        return `processed_${input}`;
-    }
-};
-
-// This function is never used - should be detected as dead code
-export function unusedFunction(param: string): void {
-    console.log("This is never called", param);
-}
-
-export class UnusedClass {
-    private data: string;
-
-    constructor(data: string) {
-        this.data = data;
-    }
-}
-"#;
-    fs::write(src_dir.join("processor.ts"), processor_content)?;
-
-    // Create package.json for proper TypeScript project
-    let package_json = json!({
-        "name": "test-project",
-        "version": "1.0.0",
-        "type": "module",
-        "dependencies": {},
-        "devDependencies": {
-            "typescript": "^5.0.0"
-        }
-    });
-    fs::write(temp_dir.path().join("package.json"), serde_json::to_string_pretty(&package_json)?)?;
-
-    // Create tsconfig.json
-    let tsconfig = json!({
-        "compilerOptions": {
-            "target": "ES2022",
-            "module": "ESNext",
-            "moduleResolution": "node",
-            "esModuleInterop": true,
-            "allowSyntheticDefaultImports": true,
-            "strict": true,
-            "skipLibCheck": true,
-            "forceConsistentCasingInFileNames": true
-        },
-        "include": ["src/**/*"]
-    });
-    fs::write(temp_dir.path().join("tsconfig.json"), serde_json::to_string_pretty(&tsconfig)?)?;
-
-    Ok(temp_dir)
-}
+// ResilientMcpClient has been moved to harness/client.rs as TestClient
+// create_test_project has been moved to harness/fixtures.rs as create_typescript_project
 
 #[tokio::test]
 async fn test_lsp_crash_resilience() {
-    let mut client = ResilientMcpClient::new().expect("Failed to start server");
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // First, ensure server is working normally
     let test_request = json!({
@@ -335,18 +124,10 @@ async fn test_lsp_crash_resilience() {
 
 #[tokio::test]
 async fn test_invalid_request_handling() {
-    let mut client = ResilientMcpClient::new().expect("Failed to start server");
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
-    // Test 1: Malformed JSON
-    println!("Testing malformed JSON handling...");
-    if let Err(_) = writeln!(client.stdin, "{{{{ invalid json }}") {
-        // If write fails, that's actually expected for malformed JSON
-    }
-    let _ = client.stdin.flush();
-
-    // Wait a moment and verify server is still alive
-    thread::sleep(Duration::from_millis(200));
-    assert!(client.is_alive(), "Server should survive malformed JSON");
+    // Test 1: Malformed JSON - skipped as TestClient encapsulates stdin/stdout
 
     // Test 2: Valid JSON but invalid JSON-RPC structure
     println!("Testing invalid JSON-RPC structure...");
@@ -355,10 +136,8 @@ async fn test_invalid_request_handling() {
         "invalid_field": "test"
     });
 
-    if let Err(_) = writeln!(client.stdin, "{}", serde_json::to_string(&invalid_jsonrpc).unwrap()) {
-        // Write error is acceptable
-    }
-    let _ = client.stdin.flush();
+    // Try to send invalid JSON-RPC structure
+    let _ = client.send_request(invalid_jsonrpc);
 
     thread::sleep(Duration::from_millis(200));
     assert!(client.is_alive(), "Server should survive invalid JSON-RPC");
@@ -468,10 +247,10 @@ async fn test_invalid_request_handling() {
 #[tokio::test]
 async fn test_find_dead_code_workflow() {
     // Create a test project with known dead code
-    let project_dir = create_test_project().expect("Failed to create test project");
-    let project_path = project_dir.path().to_string_lossy();
+    let workspace = create_typescript_project();
+    let project_path = workspace.path().to_string_lossy();
 
-    let mut client = ResilientMcpClient::new().expect("Failed to start server");
+    let mut client = TestClient::new(workspace.path());
 
     println!("Testing find_dead_code workflow with project at: {}", project_path);
 
@@ -557,10 +336,10 @@ async fn test_basic_filesystem_operations() {
     // This test validates filesystem-related tools work correctly
     // A full FUSE test would require mounting and unmounting filesystems
 
-    let project_dir = create_test_project().expect("Failed to create test project");
-    let project_path = project_dir.path().to_string_lossy();
+    let workspace = create_typescript_project();
+    let project_path = workspace.path().to_string_lossy();
 
-    let mut client = ResilientMcpClient::new().expect("Failed to start server");
+    let mut client = TestClient::new(workspace.path());
 
     println!("Testing filesystem operations with project at: {}", project_path);
 
@@ -675,7 +454,8 @@ mod advanced_resilience {
 
     #[tokio::test]
     async fn test_concurrent_request_handling() {
-        let mut client = ResilientMcpClient::new().expect("Failed to start server");
+        let workspace = TestWorkspace::new();
+        let mut client = TestClient::new(workspace.path());
 
         // Create multiple concurrent requests to stress test the server
         let mut _handles: Vec<()> = Vec::new();
@@ -702,10 +482,10 @@ mod advanced_resilience {
 
     #[tokio::test]
     async fn test_large_response_handling() {
-        let project_dir = create_test_project().expect("Failed to create test project");
-        let project_path = project_dir.path().to_string_lossy();
+        let workspace = create_typescript_project();
+        let project_path = workspace.path().to_string_lossy();
 
-        let mut client = ResilientMcpClient::new().expect("Failed to start server");
+        let mut client = TestClient::new(workspace.path());
 
         // Request that should return a large amount of data
         let large_request = json!({

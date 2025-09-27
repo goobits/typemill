@@ -321,7 +321,13 @@ mod tests {
     async fn test_initialize_without_auth() {
         let config = create_test_config(false);
         let lsp_manager = Arc::new(crate::systems::LspManager::new(config.lsp.clone()));
-        let app_state = Arc::new(crate::handlers::AppState { lsp: lsp_manager });
+        let project_root = std::path::PathBuf::from(".");
+        let file_service = Arc::new(crate::services::FileService::new(&project_root));
+        let app_state = Arc::new(crate::handlers::AppState {
+            lsp: lsp_manager,
+            file_service,
+            project_root,
+        });
         let _dispatcher = Arc::new(McpDispatcher::new(app_state));
         let mut session = Session::new();
 

@@ -103,19 +103,24 @@ struct ImportChange {
 
 /// Register filesystem tools
 pub fn register_tools(dispatcher: &mut McpDispatcher) {
+    eprintln!("DEBUG: Registering filesystem tools including rename_file");
     // read_file tool
-    dispatcher.register_tool("read_file".to_string(), |_app_state, args| async move {
+    dispatcher.register_tool("read_file".to_string(), |app_state, args| async move {
         let params: ReadFileArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
         tracing::debug!("Reading file: {}", params.file_path);
 
-        match fs::read_to_string(&params.file_path).await {
+        let path = std::path::Path::new(&params.file_path);
+
+        match app_state.file_service.read_file(path).await {
             Ok(content) => {
                 Ok(json!({
-                    "content": content,
+                    "content": {
+                        "type": "text",
+                        "content": content
+                    },
                     "file_path": params.file_path,
-                    "size": content.len(),
                     "status": "success"
                 }))
             }
@@ -127,23 +132,15 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
     });
 
     // write_file tool
-    dispatcher.register_tool("write_file".to_string(), |_app_state, args| async move {
+    dispatcher.register_tool("write_file".to_string(), |app_state, args| async move {
         let params: WriteFileArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
         tracing::debug!("Writing file: {}", params.file_path);
 
-        // Create parent directories if requested
-        if params.create_directories.unwrap_or(false) {
-            if let Some(parent) = Path::new(&params.file_path).parent() {
-                if let Err(e) = fs::create_dir_all(parent).await {
-                    tracing::error!("Failed to create directories for {}: {}", params.file_path, e);
-                    return Err(crate::error::ServerError::runtime(format!("Failed to create directories: {}", e)));
-                }
-            }
-        }
+        let path = std::path::Path::new(&params.file_path);
 
-        match fs::write(&params.file_path, &params.content).await {
+        match app_state.file_service.write_file(path, &params.content).await {
             Ok(()) => {
                 Ok(json!({
                     "file_path": params.file_path,
@@ -153,7 +150,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
             }
             Err(e) => {
                 tracing::error!("Failed to write file {}: {}", params.file_path, e);
-                Err(crate::error::ServerError::runtime(format!("Failed to write file: {}", e)))
+                Err(e)
             }
         }
     });
@@ -220,91 +217,114 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
         }))
     });
     // create_file tool
-    dispatcher.register_tool("create_file".to_string(), |_app_state, args| async move {
+    dispatcher.register_tool("create_file".to_string(), |app_state, args| async move {
         let params: CreateFileArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
         tracing::debug!("Creating file: {}", params.file_path);
 
         let overwrite = params.overwrite.unwrap_or(false);
-        let content = params.content.unwrap_or_default();
+        let content = params.content.as_deref();
+        let path = std::path::Path::new(&params.file_path);
 
-        // In a real implementation, this would actually create the file
-        // For now, mock the result
-        let exists = Path::new(&params.file_path).exists();
-
-        if exists && !overwrite {
-            return Ok(serde_json::to_value(FileOperationResult {
-                success: false,
-                operation: "create".to_string(),
-                file_path: params.file_path,
-                message: Some("File already exists and overwrite is false".to_string()),
-            })?);
+        match app_state.file_service.create_file(path, content, overwrite).await {
+            Ok(_) => {
+                Ok(serde_json::to_value(FileOperationResult {
+                    success: true,
+                    operation: "create".to_string(),
+                    file_path: params.file_path,
+                    message: Some(format!("Created with {} bytes", content.map(|c| c.len()).unwrap_or(0))),
+                })?)
+            }
+            Err(e) => {
+                tracing::error!("Failed to create file: {}", e);
+                Ok(serde_json::to_value(FileOperationResult {
+                    success: false,
+                    operation: "create".to_string(),
+                    file_path: params.file_path,
+                    message: Some(e.to_string()),
+                })?)
+            }
         }
-
-        Ok(serde_json::to_value(FileOperationResult {
-            success: true,
-            operation: "create".to_string(),
-            file_path: params.file_path.clone(),
-            message: Some(format!("Created with {} bytes", content.len())),
-        })?)
     });
 
     // delete_file tool
-    dispatcher.register_tool("delete_file".to_string(), |_app_state, args| async move {
+    dispatcher.register_tool("delete_file".to_string(), |app_state, args| async move {
         let params: DeleteFileArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
-        tracing::debug!("Deleting file: {}", params.file_path);
+        let force = params.force.unwrap_or(false);
+        let path = std::path::Path::new(&params.file_path);
 
-        // Mock deletion
-        Ok(serde_json::to_value(FileOperationResult {
-            success: true,
-            operation: "delete".to_string(),
-            file_path: params.file_path,
-            message: Some("File deleted successfully".to_string()),
-        })?)
+        tracing::debug!("Deleting file: {} (force: {})", params.file_path, force);
+
+        match app_state.file_service.delete_file(path, force).await {
+            Ok(_) => {
+                Ok(serde_json::to_value(FileOperationResult {
+                    success: true,
+                    operation: "delete".to_string(),
+                    file_path: params.file_path,
+                    message: Some("File deleted successfully".to_string()),
+                })?)
+            }
+            Err(e) => {
+                tracing::error!("Failed to delete file: {}", e);
+                Ok(serde_json::to_value(FileOperationResult {
+                    success: false,
+                    operation: "delete".to_string(),
+                    file_path: params.file_path,
+                    message: Some(e.to_string()),
+                })?)
+            }
+        }
     });
 
     // rename_file tool
-    dispatcher.register_tool("rename_file".to_string(), |_app_state, args| async move {
+    dispatcher.register_tool("rename_file".to_string(), |app_state, args| async move {
         let params: RenameFileArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
         tracing::debug!("Renaming {} to {}", params.old_path, params.new_path);
+        eprintln!("DEBUG: rename_file handler called with old_path: {}, new_path: {}", params.old_path, params.new_path);
 
         let is_dry_run = params.dry_run.unwrap_or(false);
 
-        // Mock import updates that would happen
-        let import_changes = vec![
-            ImportChange {
-                file: "src/index.ts".to_string(),
-                old_import: format!("import {{ Component }} from '{}'", params.old_path),
-                new_import: format!("import {{ Component }} from '{}'", params.new_path),
-            },
-            ImportChange {
-                file: "tests/test.ts".to_string(),
-                old_import: format!("require('{}')", params.old_path),
-                new_import: format!("require('{}')", params.new_path),
-            },
-        ];
+        // Use the FileService to perform rename with import updates
+        let old_path = std::path::Path::new(&params.old_path);
+        let new_path = std::path::Path::new(&params.new_path);
 
-        let result = ImportUpdateResult {
-            files_updated: if is_dry_run {
-                vec![]
-            } else {
-                vec!["src/index.ts".to_string(), "tests/test.ts".to_string()]
-            },
-            imports_fixed: 2,
-            preview: if is_dry_run { Some(import_changes) } else { None },
-        };
+        match app_state.file_service.rename_file_with_imports(old_path, new_path, is_dry_run).await {
+            Ok(result) => {
+                // Convert FileRenameResult to MCP response format
+                let import_updates = if let Some(report) = result.import_updates {
+                    json!({
+                        "filesUpdated": report.updated_paths,
+                        "importsFielsUpdated": report.files_updated,
+                        "importsFixed": report.imports_updated,
+                        "failedFiles": report.failed_files,
+                        "errors": report.errors
+                    })
+                } else {
+                    json!({
+                        "filesUpdated": [],
+                        "importsFielsUpdated": 0,
+                        "importsFixed": 0
+                    })
+                };
 
-        Ok(json!({
-            "renamed": !is_dry_run,
-            "oldPath": params.old_path,
-            "newPath": params.new_path,
-            "importUpdates": result
-        }))
+                Ok(json!({
+                    "renamed": result.success && !is_dry_run,
+                    "oldPath": result.old_path,
+                    "newPath": result.new_path,
+                    "importUpdates": import_updates,
+                    "error": result.error
+                }))
+            }
+            Err(e) => {
+                tracing::error!("Failed to rename file: {}", e);
+                Err(e)
+            }
+        }
     });
 
     // update_package_json tool

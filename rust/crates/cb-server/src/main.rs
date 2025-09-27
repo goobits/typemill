@@ -3,10 +3,11 @@
 use cb_core::AppConfig;
 use cb_server::handlers::{McpDispatcher, AppState};
 use cb_server::systems::{LspManager, fuse::start_fuse_mount};
+use cb_server::services::FileService;
 use cb_server::transport;
 use clap::{Parser, Subcommand};
 use std::sync::Arc;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tracing_subscriber;
 
 #[derive(Parser)]
@@ -41,8 +42,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create LSP manager
     let lsp_manager = Arc::new(LspManager::new(config.lsp.clone()));
 
+    // Get project root
+    let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+
+    // Create file service
+    let file_service = Arc::new(FileService::new(&project_root));
+
     // Create application state
-    let app_state = Arc::new(AppState { lsp: lsp_manager });
+    let app_state = Arc::new(AppState {
+        lsp: lsp_manager,
+        file_service,
+        project_root,
+    });
 
     // Create MCP dispatcher with app state
     let mut dispatcher = McpDispatcher::new(app_state);

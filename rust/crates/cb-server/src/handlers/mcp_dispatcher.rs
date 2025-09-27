@@ -13,6 +13,10 @@ use std::sync::Arc;
 pub struct AppState {
     /// LSP service for code intelligence
     pub lsp: Arc<dyn crate::interfaces::LspService>,
+    /// File service for file operations with import awareness
+    pub file_service: Arc<crate::services::FileService>,
+    /// Project root directory
+    pub project_root: std::path::PathBuf,
 }
 
 /// Tool handler function type that receives app state

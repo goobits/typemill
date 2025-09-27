@@ -25,6 +25,15 @@ pub enum ServerError {
     #[error("Authentication error: {0}")]
     Auth(String),
 
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    #[error("Already exists: {0}")]
+    AlreadyExists(String),
+
+    #[error("Internal error: {0}")]
+    Internal(String),
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 

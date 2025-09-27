@@ -4,6 +4,7 @@ pub mod auth;
 pub mod error;
 pub mod handlers;
 pub mod interfaces;
+pub mod services;
 pub mod systems;
 pub mod transport;
 
