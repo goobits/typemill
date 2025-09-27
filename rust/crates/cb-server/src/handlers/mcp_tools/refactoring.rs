@@ -81,6 +81,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
             params.end_line, params.end_col
         );
 
+        let preview_mode = params.preview.unwrap_or(false);
         match execute_extract_function(params).await {
             Ok(result) => Ok(serde_json::to_value(result).unwrap()),
             Err(e) => {
@@ -88,7 +89,8 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
                 Ok(json!({
                     "success": false,
                     "error": e.to_string(),
-                    "preview_mode": false
+                    "previewMode": preview_mode,
+                    "analysis": serde_json::Value::Null
                 }))
             }
         }
@@ -103,6 +105,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
             params.file_path, params.line, params.col
         );
 
+        let preview_mode = params.preview.unwrap_or(false);
         match execute_inline_variable(params).await {
             Ok(result) => Ok(serde_json::to_value(result).unwrap()),
             Err(e) => {
@@ -110,7 +113,8 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
                 Ok(json!({
                     "success": false,
                     "error": e.to_string(),
-                    "preview_mode": false
+                    "previewMode": preview_mode,
+                    "analysis": serde_json::Value::Null
                 }))
             }
         }
@@ -127,9 +131,9 @@ async fn execute_extract_function(
 
     // Create the selection range
     let range = CodeRange {
-        start_line: params.start_line,
+        start_line: params.start_line.saturating_sub(1), // Convert to 0-based
         start_col: params.start_col,
-        end_line: params.end_line,
+        end_line: params.end_line.saturating_sub(1),     // Convert to 0-based
         end_col: params.end_col,
     };
 
@@ -209,12 +213,12 @@ async fn execute_inline_variable(
         .map_err(|e| format!("Failed to read file {}: {}", params.file_path, e))?;
 
     // Validate the position
-    validate_position(&source, params.line, params.col)?;
+    validate_position(&source, params.line.saturating_sub(1), params.col)?;
 
     // Generate the edit plan
     let edit_plan = plan_inline_variable(
         &source,
-        params.line,
+        params.line.saturating_sub(1), // Convert to 0-based
         params.col,
         &params.file_path,
     ).map_err(|e| format!("Failed to plan inline variable: {}", e))?;
@@ -396,7 +400,7 @@ pub async fn preview_inline_variable(
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
     let source = fs::read_to_string(file_path).await?;
 
-    let edit_plan = plan_inline_variable(&source, line, col, file_path)?;
+    let edit_plan = plan_inline_variable(&source, line.saturating_sub(1), col, file_path)?;
 
     Ok(json!({
         "analysis": {
