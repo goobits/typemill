@@ -6,7 +6,7 @@ import {
   toLSPPosition,
 } from '../../../../@codeflow/core/src/utils/index.js';
 import type { HierarchyService } from '../../services/intelligence/hierarchy-service.js';
-import type { CallHierarchyItem, TypeHierarchyItem } from '../../types.js';
+import type { CallHierarchyItem } from '../../types.js';
 import { registerTools } from '../tool-registry.js';
 import { createMCPResponse } from '../utils.js';
 

@@ -8,7 +8,7 @@ import { ServiceContextUtils } from '../../src/services/service-context.js';
 
 describe('LSP Client Unit Tests', () => {
   let lspClient: LSPClient;
-  let fileService: FileService;
+  let _fileService: FileService;
   let symbolService: SymbolService;
   let intelligenceService: IntelligenceService;
 
@@ -29,7 +29,7 @@ describe('LSP Client Unit Tests', () => {
       lspClient.getServer.bind(lspClient),
       lspClient.protocol
     );
-    fileService = new FileService(serviceContext);
+    _fileService = new FileService(serviceContext);
     symbolService = new SymbolService(serviceContext);
     intelligenceService = new IntelligenceService(serviceContext);
     const testFile = join('/workspace', 'examples/playground/src/components/user-form.ts');

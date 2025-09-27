@@ -281,7 +281,7 @@ export class BatchExecutor {
 
             // Add rollback message to the last failed operation
             const lastResult = result.results[result.results.length - 1];
-            if (lastResult && lastResult.error) {
+            if (lastResult?.error) {
               lastResult.error +=
                 '\n\n**Note**: Rolling back atomic transaction - all operations have been reverted.';
             }

@@ -36,7 +36,6 @@ export class FuseMount {
   private mountPath: string;
   private mounted = false;
   private config: FuseMountConfig;
-  private transport: WebSocketTransport;
 
   constructor(
     session: EnhancedClientSession,

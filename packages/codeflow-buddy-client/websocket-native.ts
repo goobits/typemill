@@ -142,7 +142,7 @@ export class WebSocketClient extends EventEmitter {
         timeout,
       });
 
-      this.ws!.send(JSON.stringify(request));
+      this.ws?.send(JSON.stringify(request));
     });
   }
 

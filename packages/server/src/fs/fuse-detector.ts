@@ -6,7 +6,6 @@
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { logger } from '../core/diagnostics/logger.js';
-import { executableManager } from '../utils/platform/executable-manager.js';
 import { getPlatformInfo } from '../utils/platform/platform-detector.js';
 
 export interface FuseStatus {

@@ -82,7 +82,7 @@ export function spawnCommand(command: string, args: string[] = [], options?: Spa
  */
 export async function isCommandAvailable(command: string[], timeout = 2000): Promise<boolean> {
   try {
-    const [cmd, ...args] = command;
+    const [cmd, ..._args] = command;
 
     if (!cmd) return false;
 

@@ -1,12 +1,5 @@
 import { pathToUri } from '../../core/file-operations/path-utils.js';
-import type {
-  CompletionItem,
-  Hover,
-  Position,
-  SemanticTokens,
-  SemanticTokensParams,
-  SignatureHelp,
-} from '../../types.js';
+import type { CompletionItem, Hover, Position, SignatureHelp } from '../../types.js';
 import { toHumanPosition } from '../../utils/position.js';
 import type { ServiceContext } from '../service-context.js';
 

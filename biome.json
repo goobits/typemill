@@ -13,22 +13,6 @@
       }
     }
   },
-  "overrides": [
-    {
-      "includes": ["**/*.test.ts"],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noExplicitAny": "off",
-            "noAssignInExpressions": "off"
-          },
-          "style": {
-            "noNonNullAssertion": "off"
-          }
-        }
-      }
-    }
-  ],
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -47,5 +31,30 @@
     "ignoreUnknown": false,
     "includes": ["src/**/*.ts", "*.ts", "*.js", "**/*.ts"],
     "maxSize": 1048576
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off",
+            "noAssignInExpressions": "off"
+          },
+          "style": {
+            "noNonNullAssertion": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/dist/**", "**/*.d.ts", "tests/fixtures/**", "examples/playground/**"],
+      "linter": {
+        "enabled": false
+      },
+      "formatter": {
+        "enabled": false
+      }
+    }
+  ]
 }

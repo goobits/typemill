@@ -1,4 +1,3 @@
-import { logger } from '../../core/diagnostics/logger.js';
 import { type BatchExecuteArgs, BatchExecutor } from '../../services/batch-executor.js';
 import type { ServiceContainer } from '../../services/service-container.js';
 import { registerTools } from '../tool-registry.js';

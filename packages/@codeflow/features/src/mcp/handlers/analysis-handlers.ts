@@ -280,7 +280,7 @@ export async function handleFixImports(args: { file_path: string; old_path: stri
 
               // Add ./ prefix if needed
               if (!newImportPath.startsWith('.') && !newImportPath.startsWith('/')) {
-                newImportPath = './' + newImportPath;
+                newImportPath = `./${newImportPath}`;
               }
 
               // Only add update if path changed
@@ -325,7 +325,7 @@ export async function handleFixImports(args: { file_path: string; old_path: stri
 
             let newImportPath = relative(dirname(file_path), resolvedTarget).replace(/\\/g, '/');
             if (!newImportPath.startsWith('.')) {
-              newImportPath = './' + newImportPath;
+              newImportPath = `./${newImportPath}`;
             }
 
             if (importPath !== newImportPath) {

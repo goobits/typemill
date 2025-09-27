@@ -7,7 +7,7 @@
 
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { access, mkdir, readdir, readFile, rmdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rmdir, stat, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FuseMount } from '../../src/fs/fuse-mount.js';

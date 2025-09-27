@@ -1,0 +1,316 @@
+//! Plugin capability definitions
+//!
+//! Capabilities allow plugins to declare what functionality they support,
+//! enabling the plugin manager to route requests appropriately.
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
+
+/// Complete set of capabilities a plugin can provide
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Capabilities {
+    /// Navigation capabilities (go-to-definition, find references, etc.)
+    pub navigation: NavigationCapabilities,
+    /// Code editing capabilities (rename, format, etc.)
+    pub editing: EditingCapabilities,
+    /// Refactoring capabilities (extract function, inline variable, etc.)
+    pub refactoring: RefactoringCapabilities,
+    /// Code intelligence capabilities (hover, completions, etc.)
+    pub intelligence: IntelligenceCapabilities,
+    /// Diagnostic capabilities (errors, warnings, linting)
+    pub diagnostics: DiagnosticCapabilities,
+    /// Language-specific custom capabilities
+    pub custom: HashMap<String, Value>,
+}
+
+impl Default for Capabilities {
+    fn default() -> Self {
+        Self {
+            navigation: NavigationCapabilities::default(),
+            editing: EditingCapabilities::default(),
+            refactoring: RefactoringCapabilities::default(),
+            intelligence: IntelligenceCapabilities::default(),
+            diagnostics: DiagnosticCapabilities::default(),
+            custom: HashMap::new(),
+        }
+    }
+}
+
+/// Navigation-related capabilities
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NavigationCapabilities {
+    /// Go to definition support
+    pub go_to_definition: bool,
+    /// Find references support
+    pub find_references: bool,
+    /// Find implementations support
+    pub find_implementations: bool,
+    /// Find type definition support
+    pub find_type_definition: bool,
+    /// Workspace symbol search support
+    pub workspace_symbols: bool,
+    /// Document symbol support
+    pub document_symbols: bool,
+    /// Call hierarchy support
+    pub call_hierarchy: bool,
+}
+
+impl Default for NavigationCapabilities {
+    fn default() -> Self {
+        Self {
+            go_to_definition: false,
+            find_references: false,
+            find_implementations: false,
+            find_type_definition: false,
+            workspace_symbols: false,
+            document_symbols: false,
+            call_hierarchy: false,
+        }
+    }
+}
+
+/// Code editing capabilities
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EditingCapabilities {
+    /// Symbol renaming support
+    pub rename: bool,
+    /// Document formatting support
+    pub format_document: bool,
+    /// Range formatting support
+    pub format_range: bool,
+    /// Code actions support (quick fixes)
+    pub code_actions: bool,
+    /// Import organization support
+    pub organize_imports: bool,
+    /// Auto-import support
+    pub auto_imports: bool,
+}
+
+impl Default for EditingCapabilities {
+    fn default() -> Self {
+        Self {
+            rename: false,
+            format_document: false,
+            format_range: false,
+            code_actions: false,
+            organize_imports: false,
+            auto_imports: false,
+        }
+    }
+}
+
+/// Refactoring capabilities
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RefactoringCapabilities {
+    /// Extract function/method support
+    pub extract_function: bool,
+    /// Extract variable support
+    pub extract_variable: bool,
+    /// Inline variable support
+    pub inline_variable: bool,
+    /// Inline function support
+    pub inline_function: bool,
+    /// Move refactoring support
+    pub move_refactor: bool,
+}
+
+impl Default for RefactoringCapabilities {
+    fn default() -> Self {
+        Self {
+            extract_function: false,
+            extract_variable: false,
+            inline_variable: false,
+            inline_function: false,
+            move_refactor: false,
+        }
+    }
+}
+
+/// Code intelligence capabilities
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IntelligenceCapabilities {
+    /// Hover information support
+    pub hover: bool,
+    /// Code completion support
+    pub completions: bool,
+    /// Signature help support
+    pub signature_help: bool,
+    /// Inlay hints support
+    pub inlay_hints: bool,
+    /// Semantic highlighting support
+    pub semantic_highlighting: bool,
+}
+
+impl Default for IntelligenceCapabilities {
+    fn default() -> Self {
+        Self {
+            hover: false,
+            completions: false,
+            signature_help: false,
+            inlay_hints: false,
+            semantic_highlighting: false,
+        }
+    }
+}
+
+/// Diagnostic capabilities
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiagnosticCapabilities {
+    /// Error/warning diagnostics
+    pub diagnostics: bool,
+    /// Custom linting rules
+    pub linting: bool,
+    /// Pull diagnostics support
+    pub pull_diagnostics: bool,
+}
+
+impl Default for DiagnosticCapabilities {
+    fn default() -> Self {
+        Self {
+            diagnostics: false,
+            linting: false,
+            pull_diagnostics: false,
+        }
+    }
+}
+
+impl Capabilities {
+    /// Create capabilities with all features enabled (for testing)
+    pub fn all_enabled() -> Self {
+        Self {
+            navigation: NavigationCapabilities {
+                go_to_definition: true,
+                find_references: true,
+                find_implementations: true,
+                find_type_definition: true,
+                workspace_symbols: true,
+                document_symbols: true,
+                call_hierarchy: true,
+            },
+            editing: EditingCapabilities {
+                rename: true,
+                format_document: true,
+                format_range: true,
+                code_actions: true,
+                organize_imports: true,
+                auto_imports: true,
+            },
+            refactoring: RefactoringCapabilities {
+                extract_function: true,
+                extract_variable: true,
+                inline_variable: true,
+                inline_function: true,
+                move_refactor: true,
+            },
+            intelligence: IntelligenceCapabilities {
+                hover: true,
+                completions: true,
+                signature_help: true,
+                inlay_hints: true,
+                semantic_highlighting: true,
+            },
+            diagnostics: DiagnosticCapabilities {
+                diagnostics: true,
+                linting: true,
+                pull_diagnostics: true,
+            },
+            custom: HashMap::new(),
+        }
+    }
+
+    /// Check if a specific capability is supported
+    pub fn supports(&self, method: &str) -> bool {
+        match method {
+            // Navigation capabilities
+            "find_definition" => self.navigation.go_to_definition,
+            "find_references" => self.navigation.find_references,
+            "find_implementations" => self.navigation.find_implementations,
+            "find_type_definition" => self.navigation.find_type_definition,
+            "search_workspace_symbols" => self.navigation.workspace_symbols,
+            "get_document_symbols" => self.navigation.document_symbols,
+            "prepare_call_hierarchy" => self.navigation.call_hierarchy,
+            "get_call_hierarchy_incoming_calls" => self.navigation.call_hierarchy,
+            "get_call_hierarchy_outgoing_calls" => self.navigation.call_hierarchy,
+
+            // Editing capabilities
+            "rename_symbol" => self.editing.rename,
+            "format_document" => self.editing.format_document,
+            "format_range" => self.editing.format_range,
+            "get_code_actions" => self.editing.code_actions,
+            "organize_imports" => self.editing.organize_imports,
+
+            // Refactoring capabilities
+            "extract_function" => self.refactoring.extract_function,
+            "extract_variable" => self.refactoring.extract_variable,
+            "inline_variable" => self.refactoring.inline_variable,
+
+            // Intelligence capabilities
+            "get_hover" => self.intelligence.hover,
+            "get_completions" => self.intelligence.completions,
+            "get_signature_help" => self.intelligence.signature_help,
+
+            // Diagnostic capabilities
+            "get_diagnostics" => self.diagnostics.diagnostics,
+
+            // Custom capabilities
+            method if method.contains('.') => {
+                self.custom.contains_key(method)
+            }
+
+            _ => false,
+        }
+    }
+
+    /// Add a custom capability
+    pub fn add_custom(&mut self, name: String, value: Value) {
+        self.custom.insert(name, value);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_default_capabilities() {
+        let caps = Capabilities::default();
+        assert!(!caps.navigation.go_to_definition);
+        assert!(!caps.editing.rename);
+        assert!(!caps.refactoring.extract_function);
+        assert!(!caps.intelligence.hover);
+        assert!(!caps.diagnostics.diagnostics);
+    }
+
+    #[test]
+    fn test_all_enabled_capabilities() {
+        let caps = Capabilities::all_enabled();
+        assert!(caps.navigation.go_to_definition);
+        assert!(caps.editing.rename);
+        assert!(caps.refactoring.extract_function);
+        assert!(caps.intelligence.hover);
+        assert!(caps.diagnostics.diagnostics);
+    }
+
+    #[test]
+    fn test_supports_method() {
+        let mut caps = Capabilities::default();
+        caps.navigation.go_to_definition = true;
+        caps.custom.insert("typescript.infer_types".to_string(), json!(true));
+
+        assert!(caps.supports("find_definition"));
+        assert!(!caps.supports("find_references"));
+        assert!(caps.supports("typescript.infer_types"));
+        assert!(!caps.supports("unknown_method"));
+    }
+
+    #[test]
+    fn test_custom_capabilities() {
+        let mut caps = Capabilities::default();
+        caps.add_custom("rust.expand_macros".to_string(), json!({"supported": true}));
+
+        assert!(caps.supports("rust.expand_macros"));
+        assert_eq!(caps.custom.get("rust.expand_macros"), Some(&json!({"supported": true})));
+    }
+}

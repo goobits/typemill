@@ -64,7 +64,7 @@ class ExecutableManagerImpl implements ExecutableManager {
       // Cache successful results
       this.cache.set(executable, info);
       return info;
-    } catch (error) {
+    } catch (_error) {
       const info: ExecutableInfo = {
         path: '',
         exists: false,
@@ -105,7 +105,7 @@ class ExecutableManagerImpl implements ExecutableManager {
       }
 
       return null;
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
