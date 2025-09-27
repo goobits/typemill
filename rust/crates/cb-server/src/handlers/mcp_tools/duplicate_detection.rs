@@ -2,7 +2,7 @@
 
 use crate::handlers::McpDispatcher;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::process::Command;
 use std::path::Path;
 
@@ -133,7 +133,7 @@ pub fn register(dispatcher: &mut McpDispatcher) {
                 tracing::warn!("Could not read report file, trying stdout: {}", e);
 
                 // Try parsing stdout as JSON
-                if let Ok(json_data) = serde_json::from_str::<Value>(&stdout) {
+                if let Ok(_json_data) = serde_json::from_str::<Value>(&stdout) {
                     return crate::error::ServerError::runtime(
                         format!("Report file not found, but got data from stdout")
                     );
