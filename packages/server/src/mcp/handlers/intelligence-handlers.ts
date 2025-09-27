@@ -1,7 +1,6 @@
 // MCP handlers for LLM agent intelligence features
 import { resolve } from 'node:path';
 import {
-  formatHumanPosition,
   formatHumanRange,
   toHumanPosition,
   toLSPPosition,

@@ -4,7 +4,6 @@
  */
 
 import treeKill from 'tree-kill';
-import { getPlatformInfo } from './platform-detector.js';
 
 /**
  * Process termination options

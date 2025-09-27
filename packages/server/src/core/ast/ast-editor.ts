@@ -273,7 +273,7 @@ export function findImportUpdatesForRename(
     }
 
     findImports(sourceFile);
-  } catch (error) {
+  } catch (_error) {
     // Return empty updates on error
   }
 

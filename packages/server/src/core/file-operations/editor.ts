@@ -499,7 +499,7 @@ async function updateImportsInMovedFile(oldPath: string, newPath: string): Promi
 
           // Add ./ prefix if needed
           if (!newImportPath.startsWith('.') && !newImportPath.startsWith('/')) {
-            newImportPath = './' + newImportPath;
+            newImportPath = `./${newImportPath}`;
           }
 
           // Only add update if path changed
@@ -562,7 +562,7 @@ async function updateImportsWithPatterns(oldPath: string, newPath: string): Prom
 
         let newImportPath = pathManager.normalizePosix(relative(dirname(newPath), resolvedTarget));
         if (!newImportPath.startsWith('.')) {
-          newImportPath = './' + newImportPath;
+          newImportPath = `./${newImportPath}`;
         }
 
         if (importPath !== newImportPath) {

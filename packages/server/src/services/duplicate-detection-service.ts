@@ -1,5 +1,4 @@
 import { promises as fs } from 'node:fs';
-import * as path from 'node:path';
 import type { IClone } from '@jscpd/core';
 import { detectClones } from 'jscpd';
 

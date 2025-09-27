@@ -254,7 +254,7 @@ class ProjectScanner {
       const allImports = await astService.getImports(filePath);
       const relativeImports = new Set(allImports.filter((p) => p.startsWith('.')));
       return { imports: relativeImports, importedBy };
-    } catch (error) {
+    } catch (_error) {
       // Handle or log the error appropriately
       return { imports: new Set<string>(), importedBy };
     }

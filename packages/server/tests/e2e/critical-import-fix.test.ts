@@ -124,7 +124,7 @@ export class LSPClient {
     console.log('   /packages/@codeflow/features/lsp/src/client.ts\n');
 
     // Read original content to verify starting point
-    const originalContent = readFileSync(originalFile, 'utf-8');
+    const _originalContent = readFileSync(originalFile, 'utf-8');
     console.log('📄 Original imports in the file:');
     console.log('  ../core/file-operations/path-utils.js');
     console.log('  ../core/diagnostics/logger.js');

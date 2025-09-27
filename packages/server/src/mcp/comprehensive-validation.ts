@@ -648,8 +648,8 @@ export function validateExecuteWorkflowArgs(args: unknown): args is ExecuteWorkf
 }
 
 // Helper function for validating optional number
-function isOptionalNumber(value: unknown): value is number | undefined {
-  return value === undefined || (typeof value === 'number' && !isNaN(value));
+function _isOptionalNumber(value: unknown): value is number | undefined {
+  return value === undefined || (typeof value === 'number' && !Number.isNaN(value));
 }
 
 // Helper function for validating object with string values

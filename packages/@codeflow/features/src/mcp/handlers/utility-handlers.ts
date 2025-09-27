@@ -166,11 +166,11 @@ async function fixDynamicImportsInProject(
               filesToScan.push(fullPath);
             }
           }
-        } catch (statError) {
+        } catch (_statError) {
           // Skip files we can't stat
         }
       }
-    } catch (readError) {
+    } catch (_readError) {
       // Skip directories we can't read
     }
   }
@@ -264,7 +264,7 @@ async function fixDynamicImportsInProject(
 
             // Ensure relative paths start with ./ or ../
             if (!newImportPath.startsWith('.') && !newImportPath.startsWith('/')) {
-              newImportPath = './' + newImportPath;
+              newImportPath = `./${newImportPath}`;
             }
 
             // Only make changes if the path actually needs updating
@@ -482,7 +482,7 @@ export async function getRenameFileWorkspaceEdit(args: {
 
     // Use the same rootDir calculation as handleRenameFile
     const absoluteOldPath = resolve(old_path);
-    const absoluteNewPath = resolve(new_path);
+    const _absoluteNewPath = resolve(new_path);
 
     // Set rootDir to project root to ensure comprehensive import updates
     // This fixes the issue where files outside the immediate scope are missed
@@ -774,12 +774,12 @@ export async function handleUpdatePackageJson(args: {
     // Remove dependencies
     for (const name of remove_dependencies) {
       let removed = false;
-      if (packageJson.dependencies && packageJson.dependencies[name]) {
+      if (packageJson.dependencies?.[name]) {
         delete packageJson.dependencies[name];
         changes.push(`Removed dependency: ${name}`);
         removed = true;
       }
-      if (packageJson.devDependencies && packageJson.devDependencies[name]) {
+      if (packageJson.devDependencies?.[name]) {
         delete packageJson.devDependencies[name];
         changes.push(`Removed devDependency: ${name}`);
         removed = true;
@@ -802,7 +802,7 @@ export async function handleUpdatePackageJson(args: {
 
     // Remove scripts
     for (const name of remove_scripts) {
-      if (packageJson.scripts && packageJson.scripts[name]) {
+      if (packageJson.scripts?.[name]) {
         delete packageJson.scripts[name];
         changes.push(`Removed script: ${name}`);
       } else {
@@ -835,7 +835,7 @@ export async function handleUpdatePackageJson(args: {
     }
 
     // Write the updated package.json with proper formatting
-    const updatedContent = JSON.stringify(packageJson, null, 2) + '\n';
+    const updatedContent = `${JSON.stringify(packageJson, null, 2)}\n`;
     writeFileSync(absolutePath, updatedContent, 'utf8');
 
     return createMCPResponse(

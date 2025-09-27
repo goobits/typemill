@@ -1,5 +1,3 @@
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 import globalModules from 'global-modules';
 import { pathManager } from './path-manager.js';
 

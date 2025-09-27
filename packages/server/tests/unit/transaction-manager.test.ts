@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,9 +8,9 @@ import type { FileService } from '../../src/services/file-service.js';
 // Mock FileService for testing
 const mockFileService: FileService = {
   getTrackedFiles: () => [],
-  readFile: async (path: string) => null,
-  writeFile: async (path: string, content: string) => {},
-  deleteFile: async (path: string) => {},
+  readFile: async (_path: string) => null,
+  writeFile: async (_path: string, _content: string) => {},
+  deleteFile: async (_path: string) => {},
 } as any;
 
 describe('TransactionManager', () => {
@@ -25,7 +25,7 @@ describe('TransactionManager', () => {
     transactionManager = new TransactionManager(mockFileService);
 
     // Setup test directory
-    testDir = join(tmpdir(), 'transaction-test-' + Date.now());
+    testDir = join(tmpdir(), `transaction-test-${Date.now()}`);
     rmSync(testDir, { recursive: true, force: true });
     mkdirSync(testDir, { recursive: true });
 
@@ -71,7 +71,7 @@ describe('TransactionManager', () => {
 
     it('should rollback file moves in reverse order', async () => {
       // Start transaction and create checkpoint
-      const transaction = transactionManager.beginTransaction();
+      const _transaction = transactionManager.beginTransaction();
       await transactionManager.saveCheckpoint('test');
 
       // Simulate a file move and record it
@@ -91,7 +91,7 @@ describe('TransactionManager', () => {
     });
 
     it('should handle rollback of file creation', async () => {
-      const transaction = transactionManager.beginTransaction();
+      const _transaction = transactionManager.beginTransaction();
       await transactionManager.saveCheckpoint('test');
 
       // Create a new file and record it
@@ -108,7 +108,7 @@ describe('TransactionManager', () => {
     });
 
     it('should handle rollback of file deletion', async () => {
-      const transaction = transactionManager.beginTransaction();
+      const _transaction = transactionManager.beginTransaction();
       await transactionManager.saveCheckpoint('test');
 
       // Record file deletion with original content

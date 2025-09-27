@@ -87,7 +87,7 @@ export class UserService {
 
       // Verify original file exists and has expected imports
       expect(existsSync(originalFile)).toBe(true);
-      const originalContent = readFileSync(originalFile, 'utf-8');
+      const _originalContent = readFileSync(originalFile, 'utf-8');
 
       console.log('📄 Original file imports:');
       console.log('  - ../../utils/helper.js');

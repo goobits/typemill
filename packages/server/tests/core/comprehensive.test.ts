@@ -23,7 +23,7 @@ describe('MCP Comprehensive Tests - All 28 Tools', () => {
 
     // Wait for LSP servers to be ready for test files
     const testFiles = ['/workspace/examples/playground/src/test-file.ts'];
-    for (const file of testFiles.filter((f) => require('fs').existsSync(f))) {
+    for (const file of testFiles.filter((f) => require('node:fs').existsSync(f))) {
       await waitForLSP(client, file);
     }
   });

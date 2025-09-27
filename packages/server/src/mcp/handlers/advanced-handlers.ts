@@ -9,7 +9,6 @@ import type { DocumentSymbol, SymbolInformation } from '../../types.js';
 import { registerTools } from '../tool-registry.js';
 import {
   createFileModificationResponse,
-  createLimitedSupportResponse,
   createListResponse,
   createMCPResponse,
   createNoChangesResponse,

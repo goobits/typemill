@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { assertToolResult, MCPTestClient } from '../helpers/mcp-test-client.js';
 import { waitForCondition as pollingWaitForCondition } from '../helpers/polling-helpers.js';
 import { getSystemCapabilities } from '../helpers/system-utils.js';
-import { waitForCondition, waitForLSP } from '../helpers/test-verification-helpers.js';
+import { waitForLSP } from '../helpers/test-verification-helpers.js';
 
 describe('Edge Case Tests', () => {
   let client: MCPTestClient;
@@ -32,7 +32,7 @@ describe('Edge Case Tests', () => {
           const srcFile = join(fixturesPath, file);
           const destFile = join(altPath, file);
           if (existsSync(srcFile) && !existsSync(destFile)) {
-            const content = require('fs').readFileSync(srcFile, 'utf-8');
+            const content = require('node:fs').readFileSync(srcFile, 'utf-8');
             writeFileSync(destFile, content);
           }
         }

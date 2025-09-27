@@ -100,7 +100,7 @@ export async function waitForLSP(client: MCPTestClient, filePath: string, timeou
         const result = await client.callTool('get_document_symbols', { file_path: filePath });
         // Check for a valid, non-error response
         return result?.content?.[0]?.text ? !result.content[0].text.includes('Error') : true;
-      } catch (e) {
+      } catch (_e) {
         return false;
       }
     },
