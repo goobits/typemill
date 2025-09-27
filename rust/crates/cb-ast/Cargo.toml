@@ -18,6 +18,8 @@ swc_ecma_ast = "15"
 swc_ecma_visit = "15"
 # Enhanced parsing with regex (kept for fallback)
 regex = "1.10"
+# Python AST parsing
+rustpython-parser = "0.3"
 # Additional utilities
 indexmap = "2.0"
 petgraph = "0.6" # For dependency graph analysis
