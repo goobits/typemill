@@ -118,16 +118,31 @@ export class MCPTestClient {
     minimalConfig?: boolean;
     skipLSPPreload?: boolean;
   }): Promise<void> {
-    // Run against source during development, dist in CI/production
-    const useSource = process.env.NODE_ENV !== 'production' && process.env.CI !== 'true';
-    const args = useSource
-      ? ['index.ts', 'start']  // Run source with Bun
-      : ['dist/index.js', 'start']; // Run bundled with Node
-    const executable = useSource ? 'bun' : process.execPath;
+    // Check if we should use the Rust backend
+    const useRustBackend = process.env.TEST_RUST_BACKEND === 'true';
+
+    let executable: string;
+    let args: string[];
+    let cwd: string;
+
+    if (useRustBackend) {
+      // Use the Rust server binary
+      executable = '/workspace/rust/target/release/cb-server';
+      args = ['start'];
+      cwd = '/workspace/rust';
+    } else {
+      // Run against source during development, dist in CI/production
+      const useSource = process.env.NODE_ENV !== 'production' && process.env.CI !== 'true';
+      args = useSource
+        ? ['index.ts', 'start']  // Run source with Bun
+        : ['dist/index.js', 'start']; // Run bundled with Node
+      executable = useSource ? 'bun' : process.execPath;
+      cwd = '/workspace/packages/server';
+    }
 
 
     this.process = spawn(executable, args, {
-      cwd: '/workspace/packages/server',
+      cwd,
       stdio: ['pipe', 'pipe', 'pipe'],
       env: {
         ...process.env,
@@ -151,7 +166,10 @@ export class MCPTestClient {
       }, startupTimeout);
 
       this.process.stderr?.on('data', (data) => {
-        if (data.toString().includes('Codebuddy Server running on stdio')) {
+        const output = data.toString();
+        const isServerReady = output.includes('Codebuddy Server running on stdio');
+
+        if (isServerReady) {
           // Send initialize request immediately after server starts
           const initRequest = `${JSON.stringify({
             jsonrpc: '2.0',
