@@ -276,7 +276,6 @@ export interface Command {
   arguments?: unknown[];
 }
 
-
 export interface SemanticTokens {
   resultId?: string;
   data: number[];

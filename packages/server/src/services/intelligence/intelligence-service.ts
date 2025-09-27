@@ -158,7 +158,6 @@ export class IntelligenceService {
       : null;
   }
 
-
   // ensureFileOpen() and getLanguageId() methods removed - provided by ServiceContext
   // This eliminates ~45 lines of duplicated code from this service
 }

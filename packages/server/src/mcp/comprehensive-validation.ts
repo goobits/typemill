@@ -273,7 +273,6 @@ export function validateGetCompletionsArgs(args: unknown): args is GetCompletion
   );
 }
 
-
 export function validateGetSemanticTokensArgs(args: unknown): args is GetSemanticTokensArgs {
   if (!isObject(args)) return false;
   const obj = args as Record<string, unknown>;
