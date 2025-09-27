@@ -1,7 +1,7 @@
-import { detectClones } from 'jscpd';
-import type { IClone } from '@jscpd/core';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import type { IClone } from '@jscpd/core';
+import { detectClones } from 'jscpd';
 
 export interface DuplicateInstance {
   file: string;
@@ -116,7 +116,7 @@ export class DuplicateDetectionService {
           hash,
           instances: [],
           tokenCount: clone.duplicationA.tokens || 0,
-          lineCount: (clone.duplicationA.end.line - clone.duplicationA.start.line) + 1,
+          lineCount: clone.duplicationA.end.line - clone.duplicationA.start.line + 1,
           format: clone.format,
         });
       }
@@ -158,13 +158,11 @@ export class DuplicateDetectionService {
       }
 
       // Check if instances already exist in group
-      const existsA = group.instances.some(i =>
-        i.file === instanceA.file &&
-        i.startLine === instanceA.startLine
+      const existsA = group.instances.some(
+        (i) => i.file === instanceA.file && i.startLine === instanceA.startLine
       );
-      const existsB = group.instances.some(i =>
-        i.file === instanceB.file &&
-        i.startLine === instanceB.startLine
+      const existsB = group.instances.some(
+        (i) => i.file === instanceB.file && i.startLine === instanceB.startLine
       );
 
       if (!existsA) group.instances.push(instanceA);
@@ -181,7 +179,7 @@ export class DuplicateDetectionService {
     // Use token count and line count as a simple hash
     // In a real implementation, you might hash the actual content
     const tokenCount = clone.duplicationA.tokens || 0;
-    const lineCount = (clone.duplicationA.end.line - clone.duplicationA.start.line) + 1;
+    const lineCount = clone.duplicationA.end.line - clone.duplicationA.start.line + 1;
     return `${clone.format}_${tokenCount}_${lineCount}_${clone.duplicationA.start.line}`;
   }
 
@@ -210,7 +208,7 @@ export class DuplicateDetectionService {
       filesWithDuplicates.add(clone.duplicationA.sourceId);
       filesWithDuplicates.add(clone.duplicationB.sourceId);
 
-      const lines = (clone.duplicationA.end.line - clone.duplicationA.start.line) + 1;
+      const lines = clone.duplicationA.end.line - clone.duplicationA.start.line + 1;
       totalDuplicatedLines += lines * 2; // Count both instances
       totalDuplicatedTokens += (clone.duplicationA.tokens || 0) * 2;
     }

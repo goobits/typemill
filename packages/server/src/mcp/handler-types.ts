@@ -103,7 +103,6 @@ export interface GetCompletionsArgs {
   trigger_character?: string;
 }
 
-
 export interface GetSemanticTokensArgs {
   file_path: string;
 }

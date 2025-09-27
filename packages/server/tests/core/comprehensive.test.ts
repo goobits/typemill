@@ -228,7 +228,6 @@ export function useTempConstant() {
       });
       expect(result).toBeDefined();
     });
-
   });
 
   describe('Hierarchy Tools', () => {
