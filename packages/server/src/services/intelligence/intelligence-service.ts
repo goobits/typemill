@@ -186,30 +186,6 @@ export class IntelligenceService {
     return Array.isArray(response) ? response : [];
   }
 
-  /**
-   * Get semantic tokens for file
-   */
-  async getSemanticTokens(filePath: string): Promise<SemanticTokens | null> {
-    const serverState = await this.context.prepareFile(filePath);
-    if (!serverState) {
-      throw new Error('No LSP server available for this file type');
-    }
-
-    const semanticTokensParams: SemanticTokensParams = {
-      textDocument: { uri: `file://${filePath}` },
-    };
-
-    const response = await this.context.protocol.sendRequest(
-      serverState.process,
-      'textDocument/semanticTokens/full',
-      semanticTokensParams
-    );
-
-    return response && typeof response === 'object' && 'data' in response
-      ? (response as SemanticTokens)
-      : null;
-  }
-
   // ensureFileOpen() and getLanguageId() methods removed - provided by ServiceContext
   // This eliminates ~45 lines of duplicated code from this service
 }

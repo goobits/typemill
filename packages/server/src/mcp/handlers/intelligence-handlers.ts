@@ -200,68 +200,6 @@ export async function handleGetInlayHints(
   }
 }
 
-// Handler for get_semantic_tokens tool
-export async function handleGetSemanticTokens(
-  intelligenceService: IntelligenceService,
-  args: { file_path: string }
-) {
-  const { file_path } = args;
-  const absolutePath = resolve(file_path);
-
-  try {
-    const tokens = await intelligenceService.getSemanticTokens(absolutePath);
-
-    if (!tokens || !tokens.data || tokens.data.length === 0) {
-      return createNoResultsResponse('semantic tokens', file_path);
-    }
-
-    // Semantic tokens are encoded as a flat array of integers
-    // Each token is 5 integers: deltaLine, deltaChar, length, tokenType, tokenModifiers
-    const tokenCount = tokens.data.length / 5;
-    const resultId = tokens.resultId ? ` (result ID: ${tokens.resultId})` : '';
-
-    // Decode the first few tokens as examples
-    const exampleTokens = [];
-    let currentLine = 0;
-    let currentChar = 0;
-
-    for (let i = 0; i < Math.min(10, tokenCount); i++) {
-      const offset = i * 5;
-      const deltaLine = tokens.data[offset] || 0;
-      const deltaChar = tokens.data[offset + 1] || 0;
-      const length = tokens.data[offset + 2] || 0;
-      const tokenType = tokens.data[offset + 3];
-      const tokenModifiers = tokens.data[offset + 4];
-
-      currentLine += deltaLine;
-      if (deltaLine === 0) {
-        currentChar += deltaChar;
-      } else {
-        currentChar = deltaChar;
-      }
-
-      const humanPos = toHumanPosition({ line: currentLine, character: currentChar });
-      exampleTokens.push(
-        `  Token ${i + 1}: Line ${humanPos.line}, Col ${humanPos.character}, Length ${length}, Type ${tokenType}, Modifiers ${tokenModifiers}`
-      );
-    }
-
-    return createMCPResponse(
-      `## Semantic Tokens for ${file_path}${resultId}\n\nFound ${tokenCount} semantic tokens.\n\nFirst ${Math.min(10, tokenCount)} tokens:\n${exampleTokens.join('\n')}\n\n*Note: Semantic tokens provide detailed syntax and semantic information for enhanced code understanding and highlighting.*`
-    );
-  } catch (error) {
-    return createContextualErrorResponse(error, {
-      operation: 'get semantic tokens',
-      filePath: file_path,
-      suggestions: [
-        'Ensure the language server supports semantic tokens',
-        'Check that the file is not too large',
-        'Try with a smaller file first',
-      ],
-    });
-  }
-}
-
 // Helper function to get completion kind name
 function getCompletionKindName(kind?: number): string {
   const kindMap: Record<number, string> = {
@@ -420,7 +358,6 @@ registerTools(
     get_hover: { handler: handleGetHover, requiresService: 'intelligence' },
     get_completions: { handler: handleGetCompletions, requiresService: 'intelligence' },
     get_inlay_hints: { handler: handleGetInlayHints, requiresService: 'intelligence' },
-    get_semantic_tokens: { handler: handleGetSemanticTokens, requiresService: 'intelligence' },
     get_signature_help: { handler: handleGetSignatureHelp, requiresService: 'intelligence' },
   },
   'intelligence-handlers'

@@ -105,36 +105,6 @@ export const advancedToolDefinitions = [
     },
   },
   {
-    name: 'get_folding_ranges',
-    description:
-      'Get folding ranges for code structure understanding. Shows logical code blocks that can be folded/collapsed (functions, classes, comments, imports). Helps AI agents understand code organization and nesting levels.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        file_path: {
-          type: 'string',
-          description: 'The path to the file',
-        },
-      },
-      required: ['file_path'],
-    },
-  },
-  {
-    name: 'get_document_links',
-    description:
-      'Get clickable links in a document (URLs, file references, imports, documentation links). Helps AI agents understand project relationships and external dependencies. Different language servers provide different types of links.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        file_path: {
-          type: 'string',
-          description: 'The path to the file',
-        },
-      },
-      required: ['file_path'],
-    },
-  },
-  {
     name: 'apply_workspace_edit',
     description:
       'Apply a workspace edit (multi-file text changes) atomically. This is the most powerful editing tool for AI agents, allowing safe modification of multiple files in a single atomic operation with rollback capability. Essential for large refactoring operations.',

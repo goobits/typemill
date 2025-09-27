@@ -84,21 +84,6 @@ export const intelligenceToolDefinitions = [
     },
   },
   {
-    name: 'get_semantic_tokens',
-    description:
-      'Get semantic token information for syntax highlighting and code understanding. Provides detailed token types and modifiers for enhanced code analysis.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        file_path: {
-          type: 'string',
-          description: 'The path to the file',
-        },
-      },
-      required: ['file_path'],
-    },
-  },
-  {
     name: 'get_signature_help',
     description:
       'Get function signature help at a specific position. Shows function signatures, parameter information, and documentation for the function being called. Critical for AI agents when generating function calls with correct parameters.',

@@ -457,14 +457,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                     );
                   }
                   return await handleGetCodeActions(serviceContainer.fileService, toolArgs);
-                case 'get_folding_ranges':
-                  if (!Validation.validateGetFoldingRangesArgs(toolArgs)) {
-                    throw Validation.createValidationError(
-                      'get_folding_ranges',
-                      'object with file_path string'
-                    );
-                  }
-                  return await handleGetFoldingRanges(serviceContainer.fileService, toolArgs, serviceContainer.lspClient);
                 case 'get_hover':
                   if (!Validation.validateGetHoverArgs(toolArgs)) {
                     throw Validation.createValidationError(
