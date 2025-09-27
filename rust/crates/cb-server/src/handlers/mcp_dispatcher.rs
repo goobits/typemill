@@ -4,6 +4,7 @@ use crate::error::{ServerError, ServerResult};
 use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
 use crate::services::{LockManager, OperationQueue, FileOperation, OperationType};
 use crate::services::operation_queue::OperationTransaction;
+use crate::utils::SimdJsonParser;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::future::Future;
@@ -158,8 +159,7 @@ impl McpDispatcher {
     async fn handle_tool_call(&self, params: Option<Value>) -> ServerResult<Value> {
         let params = params.ok_or_else(|| ServerError::InvalidRequest("Missing params".into()))?;
 
-        let tool_call: ToolCall = serde_json::from_value(params)
-            .map_err(|e| ServerError::InvalidRequest(format!("Invalid tool call: {}", e)))?;
+        let tool_call: ToolCall = SimdJsonParser::from_value(params)?;
 
         let handler = self.tools.get(&tool_call.name)
             .ok_or_else(|| ServerError::Unsupported(format!("Unknown tool: {}", tool_call.name)))?;

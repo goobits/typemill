@@ -7,6 +7,7 @@ pub mod interfaces;
 pub mod services;
 pub mod systems;
 pub mod transport;
+pub mod utils;
 
 pub use error::{ServerError, ServerResult};
 pub use interfaces::{AstService, LspService};
