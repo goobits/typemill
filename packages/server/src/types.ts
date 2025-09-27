@@ -276,38 +276,6 @@ export interface Command {
   arguments?: unknown[];
 }
 
-export interface InlayHint {
-  position: Position;
-  label: string | InlayHintLabelPart[];
-  kind?: InlayHintKind;
-  textEdits?: TextEdit[];
-  tooltip?: string | MarkupContent;
-  paddingLeft?: boolean;
-  paddingRight?: boolean;
-  data?: unknown;
-}
-
-export interface InlayHintLabelPart {
-  value: string;
-  tooltip?: string | MarkupContent;
-  location?: Location;
-  command?: Command;
-}
-
-export enum InlayHintKind {
-  Type = 1,
-  Parameter = 2,
-}
-
-export interface InlayHintParams {
-  textDocument: {
-    uri: string;
-  };
-  range: {
-    start: Position;
-    end: Position;
-  };
-}
 
 export interface SemanticTokens {
   resultId?: string;

@@ -100,7 +100,7 @@ impl TestClient {
     }
 
     /// Send a tools/call request with the given tool name and arguments.
-    pub fn call_tool(&mut self, tool_name: &str, arguments: Value) -> Result<Value, Box<dyn std::error::Error>> {
+    pub async fn call_tool(&mut self, tool_name: &str, arguments: Value) -> Result<Value, Box<dyn std::error::Error>> {
         static mut REQUEST_ID: i32 = 0;
         let id = unsafe {
             REQUEST_ID += 1;
@@ -182,9 +182,9 @@ impl TestClient {
     }
 
     /// Call a tool with performance timing.
-    pub fn call_tool_with_timing(&mut self, tool_name: &str, arguments: Value) -> Result<(Value, Duration), Box<dyn std::error::Error>> {
+    pub async fn call_tool_with_timing(&mut self, tool_name: &str, arguments: Value) -> Result<(Value, Duration), Box<dyn std::error::Error>> {
         let start = Instant::now();
-        let result = self.call_tool(tool_name, arguments)?;
+        let result = self.call_tool(tool_name, arguments).await?;
         let duration = start.elapsed();
         Ok((result, duration))
     }
@@ -202,7 +202,7 @@ impl TestClient {
     }
 
     /// Call a tool with a custom timeout.
-    pub fn call_tool_with_timeout(&mut self, tool_name: &str, arguments: Value, timeout: Duration) -> Result<Value, Box<dyn std::error::Error>> {
+    pub async fn call_tool_with_timeout(&mut self, tool_name: &str, arguments: Value, timeout: Duration) -> Result<Value, Box<dyn std::error::Error>> {
         static mut REQUEST_ID: i32 = 0;
         let id = unsafe {
             REQUEST_ID += 1;

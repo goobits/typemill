@@ -103,13 +103,6 @@ export interface GetCompletionsArgs {
   trigger_character?: string;
 }
 
-export interface GetInlayHintsArgs {
-  file_path: string;
-  start_line: number;
-  start_character: number;
-  end_line: number;
-  end_character: number;
-}
 
 export interface GetSemanticTokensArgs {
   file_path: string;

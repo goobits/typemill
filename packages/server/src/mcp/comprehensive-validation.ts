@@ -25,7 +25,6 @@ import type {
   GetDocumentSymbolsArgs,
   GetFoldingRangesArgs,
   GetHoverArgs,
-  GetInlayHintsArgs,
   GetSelectionRangeArgs,
   GetSemanticTokensArgs,
   GetSignatureHelpArgs,
@@ -274,23 +273,6 @@ export function validateGetCompletionsArgs(args: unknown): args is GetCompletion
   );
 }
 
-export function validateGetInlayHintsArgs(args: unknown): args is GetInlayHintsArgs {
-  if (!isObject(args)) return false;
-  const obj = args as Record<string, unknown>;
-
-  return (
-    'file_path' in obj &&
-    isNonEmptyString(obj.file_path) &&
-    'start_line' in obj &&
-    isNonNegativeInteger(obj.start_line) &&
-    'start_character' in obj &&
-    isNonNegativeInteger(obj.start_character) &&
-    'end_line' in obj &&
-    isNonNegativeInteger(obj.end_line) &&
-    'end_character' in obj &&
-    isNonNegativeInteger(obj.end_character)
-  );
-}
 
 export function validateGetSemanticTokensArgs(args: unknown): args is GetSemanticTokensArgs {
   if (!isObject(args)) return false;
