@@ -84,7 +84,6 @@ const SUPPORTED_TOOLS: &[&str] = &[
     // Intelligence tools
     "get_hover",
     "get_completions",
-    "get_inlay_hints",
     "get_signature_help",
     // Hierarchy tools
     "prepare_call_hierarchy",
