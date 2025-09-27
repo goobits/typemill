@@ -96,7 +96,7 @@ export async function waitForLSP(client: MCPTestClient, filePath: string, timeou
   await poll(async () => {
     try {
       // Use a lightweight command to check if the server is responsive for the file
-      const result = await client.callTool('get_folding_ranges', { file_path: filePath });
+      const result = await client.callTool('get_document_symbols', { file_path: filePath });
       // Check for a valid, non-error response
       return result?.content?.[0]?.text ? !result.content[0].text.includes('Error') : true;
     } catch (e) {
