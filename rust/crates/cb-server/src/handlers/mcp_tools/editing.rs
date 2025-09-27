@@ -135,7 +135,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
     });
 
     // format_document tool
-    dispatcher.register_tool("format_document".to_string(), |_app_state, args| async move {
+    dispatcher.register_tool("format_document".to_string(), |app_state, args| async move {
         let params: FormatDocumentArgs = serde_json::from_value(args)
             .map_err(|e| crate::error::ServerError::InvalidRequest(format!("Invalid args: {}", e)))?;
 
@@ -149,25 +149,45 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
             trim_final_newlines: Some(true),
         });
 
-        // Mock formatting result
-        let edits = vec![
-            TextEdit {
-                range: TextRange {
-                    start: Position { line: 0, character: 0 },
-                    end: Position { line: 0, character: 0 },
+        // Create LSP formatting options
+        let mut lsp_options = json!({
+            "tabSize": options.tab_size.unwrap_or(2),
+            "insertSpaces": options.insert_spaces.unwrap_or(true)
+        });
+
+        // Add optional formatting properties if specified
+        if let Some(trim_trailing) = options.trim_trailing_whitespace {
+            lsp_options["trimTrailingWhitespace"] = json!(trim_trailing);
+        }
+        if let Some(insert_final) = options.insert_final_newline {
+            lsp_options["insertFinalNewline"] = json!(insert_final);
+        }
+        if let Some(trim_final) = options.trim_final_newlines {
+            lsp_options["trimFinalNewlines"] = json!(trim_final);
+        }
+
+        // Request formatting from LSP service
+        let format_result = forward_lsp_request(
+            app_state.lsp.as_ref(),
+            "textDocument/formatting".to_string(),
+            Some(json!({
+                "textDocument": {
+                    "uri": format!("file://{}", params.file_path)
                 },
-                new_text: "// Formatted\n".to_string(),
-            },
-        ];
+                "options": lsp_options
+            }))
+        ).await?;
 
         Ok(json!({
             "formatted": true,
             "file": params.file_path,
-            "edits": edits,
+            "edits": format_result,
             "options": {
                 "tabSize": options.tab_size.unwrap_or(2),
                 "insertSpaces": options.insert_spaces.unwrap_or(true),
                 "trimTrailingWhitespace": options.trim_trailing_whitespace.unwrap_or(true),
+                "insertFinalNewline": options.insert_final_newline.unwrap_or(true),
+                "trimFinalNewlines": options.trim_final_newlines.unwrap_or(true)
             }
         }))
     });
@@ -178,7 +198,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
             .and_then(|v| v.as_str())
             .ok_or_else(|| crate::error::ServerError::InvalidRequest("Missing file_path".into()))?;
 
-        tracing::debug!("Getting WorkspaceEdit for organize imports: {}", file_path);
+        tracing::debug!("Getting code actions for organize imports: {}", file_path);
 
         // Request code action from LSP for organizing imports
         let organize_result = forward_lsp_request(
@@ -198,9 +218,37 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
             }))
         ).await?;
 
-        // Return the WorkspaceEdit for transaction processing
+        // Validate and process the code action result
+        let actions = organize_result.as_array()
+            .ok_or_else(|| crate::error::ServerError::runtime("LSP returned invalid code actions format"))?;
+
+        if actions.is_empty() {
+            return Ok(json!({
+                "success": true,
+                "message": "No import organization needed",
+                "actions": [],
+                "file": file_path
+            }));
+        }
+
+        // Extract workspace edits from code actions
+        let mut workspace_edits = Vec::new();
+        for action in actions {
+            if let Some(edit) = action.get("edit") {
+                workspace_edits.push(edit.clone());
+            }
+        }
+
+        // Return structured result for better error handling and debugging
         Ok(json!({
-            "workspace_edit": organize_result,
+            "success": true,
+            "file": file_path,
+            "actions": actions.len(),
+            "workspace_edit": if workspace_edits.len() == 1 {
+                workspace_edits.into_iter().next()
+            } else {
+                json!({"changes": workspace_edits})
+            },
             "operation_type": "refactor",
             "original_args": args,
             "tool": "organize_imports"
