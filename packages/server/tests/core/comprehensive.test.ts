@@ -383,7 +383,7 @@ export function useTempConstant() {
     console.log(`❌ FAILED: ${failed.length}/${results.length}\n`);
 
     if (failed.length === 0) {
-      console.log('🎉 ALL 26 TOOLS VERIFIED WORKING! 🎉');
+      console.log('🎉 ALL 25 TOOLS VERIFIED WORKING! 🎉');
       console.log('Codebuddy is fully operational with complete LSP functionality.');
     } else {
       console.log(`⚠️  ${failed.length} tools still need attention:`);
