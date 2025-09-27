@@ -230,7 +230,7 @@ describe('Error Recovery Tests', () => {
         await waitForCondition(
           async () => {
             try {
-              const result = await client.callTool('get_folding_ranges', { file_path: testFile });
+              const result = await client.callTool('get_document_symbols', { file_path: testFile });
               return result?.content?.[0]?.text ? !result.content[0].text.includes('Error') : true;
             } catch {
               return false;
