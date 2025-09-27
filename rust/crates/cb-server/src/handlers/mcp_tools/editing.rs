@@ -207,22 +207,106 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
         }))
     });
 
-    // extract_variable tool - Placeholder for future implementation
-    // TODO: Implement full AST-based extraction similar to extract_function
+    // extract_variable tool - Full implementation using AST analysis
     dispatcher.register_tool("extract_variable".to_string(), |_app_state, args| async move {
-        tracing::debug!("Extract variable requested (placeholder implementation)");
+        use cb_ast::plan_extract_variable;
+        use crate::handlers::mcp_tools::util::{validate_code_range, validate_position};
 
-        // For now, return a simple workspace edit
-        // In a real implementation, this would analyze the expression and create a variable
-        Ok(json!({
-            "workspace_edit": {
-                "changes": {}
-            },
-            "operation_type": "refactor",
-            "original_args": args,
-            "tool": "extract_variable",
-            "message": "Extract variable not yet fully implemented"
-        }))
+        let file_path = args["file_path"].as_str()
+            .ok_or_else(|| crate::error::ServerError::InvalidRequest("Missing file_path".into()))?;
+
+        let start_line = args["start_line"].as_u64()
+            .ok_or_else(|| crate::error::ServerError::InvalidRequest("Missing start_line".into()))? as u32;
+
+        let start_col = args["start_col"].as_u64()
+            .ok_or_else(|| crate::error::ServerError::InvalidRequest("Missing start_col".into()))? as u32;
+
+        let end_line = args["end_line"].as_u64()
+            .ok_or_else(|| crate::error::ServerError::InvalidRequest("Missing end_line".into()))? as u32;
+
+        let end_col = args["end_col"].as_u64()
+            .ok_or_else(|| crate::error::ServerError::InvalidRequest("Missing end_col".into()))? as u32;
+
+        let variable_name = args["variable_name"].as_str().map(|s| s.to_string());
+
+        let is_preview = args["preview_mode"].as_bool().unwrap_or(false);
+
+        tracing::debug!(
+            "Extract variable in {}:{}:{} to {}:{} (preview: {})",
+            file_path, start_line, start_col, end_line, end_col, is_preview
+        );
+
+        // Read the file content
+        let source = match tokio::fs::read_to_string(file_path).await {
+            Ok(content) => content,
+            Err(e) => {
+                return Ok(json!({
+                    "success": false,
+                    "error": format!("Failed to read file: {}", e),
+                    "previewMode": is_preview
+                }));
+            }
+        };
+
+        // Validate the range
+        if let Err(e) = validate_code_range(&source, start_line, start_col, end_line, end_col) {
+            return Ok(json!({
+                "success": false,
+                "error": format!("Invalid range: {}", e),
+                "previewMode": is_preview
+            }));
+        }
+
+        // Generate the edit plan
+        match plan_extract_variable(&source, start_line, start_col, end_line, end_col, variable_name, file_path) {
+            Ok(edit_plan) => {
+                // If preview mode, return analysis without applying
+                if is_preview {
+                    return Ok(json!({
+                        "success": true,
+                        "previewMode": true,
+                        "editPlan": edit_plan,
+                        "message": "Extract variable analysis complete - ready to apply"
+                    }));
+                }
+
+                // Apply the edits using the transformer
+                match cb_ast::apply_edit_plan(&edit_plan) {
+                    Ok(modified_source) => {
+                        // Write the modified source back to file
+                        if let Err(e) = tokio::fs::write(file_path, &modified_source).await {
+                            return Ok(json!({
+                                "success": false,
+                                "error": format!("Failed to write file: {}", e),
+                                "previewMode": false
+                            }));
+                        }
+
+                        Ok(json!({
+                            "success": true,
+                            "previewMode": false,
+                            "modifiedSource": modified_source,
+                            "editPlan": edit_plan,
+                            "message": "Variable extracted successfully"
+                        }))
+                    }
+                    Err(e) => {
+                        Ok(json!({
+                            "success": false,
+                            "error": format!("Failed to apply edits: {}", e),
+                            "previewMode": false
+                        }))
+                    }
+                }
+            }
+            Err(e) => {
+                Ok(json!({
+                    "success": false,
+                    "error": format!("Failed to analyze extraction: {}", e),
+                    "previewMode": is_preview
+                }))
+            }
+        }
     });
 
     // Note: extract_function and inline_variable are implemented in refactoring.rs
@@ -272,8 +356,8 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
         }))
     });
 
-    // apply_workspace_edit tool
-    dispatcher.register_tool("apply_workspace_edit".to_string(), |_app_state, args| async move {
+    // apply_workspace_edit tool - Full implementation with atomic operations
+    dispatcher.register_tool("apply_workspace_edit".to_string(), |app_state, args| async move {
         let changes = args["changes"].as_object()
             .ok_or_else(|| crate::error::ServerError::InvalidRequest("Missing changes".into()))?;
 
@@ -281,14 +365,187 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
 
         tracing::debug!("Applying workspace edit to {} files", changes.len());
 
-        // Count total edits
-        let mut total_edits = 0;
+        // Store original file contents for rollback
+        let mut original_contents: std::collections::HashMap<String, String> = std::collections::HashMap::new();
         let mut files_modified = vec![];
+        let mut total_edits = 0;
+        let mut applied_changes: std::collections::HashMap<String, Vec<serde_json::Value>> = std::collections::HashMap::new();
 
-        for (file_path, edits) in changes {
+        // Phase 1: Validation and backup
+        for (file_path, edits) in changes.iter() {
+            let path = std::path::Path::new(file_path);
+
+            // Read original content
+            let original_content = match app_state.file_service.read_file(path).await {
+                Ok(content) => content,
+                Err(e) => {
+                    tracing::error!("Failed to read file {}: {}", file_path, e);
+                    return Ok(json!({
+                        "success": false,
+                        "error": format!("Failed to read file {}: {}", file_path, e),
+                        "filesModified": files_modified,
+                        "totalEdits": total_edits
+                    }));
+                }
+            };
+
+            original_contents.insert(file_path.clone(), original_content.clone());
+
+            // Validate edits if requested
+            if validate {
+                if let Some(edits_array) = edits.as_array() {
+                    let lines: Vec<&str> = original_content.lines().collect();
+
+                    for edit in edits_array {
+                        // Validate range
+                        if let Some(range) = edit["range"].as_object() {
+                            if let (Some(start), Some(end)) = (range["start"].as_object(), range["end"].as_object()) {
+                                let start_line = start["line"].as_u64().unwrap_or(0) as usize;
+                                let end_line = end["line"].as_u64().unwrap_or(0) as usize;
+
+                                if start_line >= lines.len() || end_line >= lines.len() {
+                                    return Ok(json!({
+                                        "success": false,
+                                        "error": format!("Invalid range in {}: line {} out of bounds (file has {} lines)",
+                                                       file_path, std::cmp::max(start_line, end_line), lines.len()),
+                                        "filesModified": files_modified,
+                                        "totalEdits": total_edits
+                                    }));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Phase 2: Apply edits
+        for (file_path, edits) in changes.iter() {
             if let Some(edits_array) = edits.as_array() {
-                total_edits += edits_array.len();
-                files_modified.push(file_path.clone());
+                let mut content = original_contents[file_path].clone();
+                let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+
+                // Sort edits by position (reverse order to apply from end to start)
+                let mut sorted_edits = edits_array.clone();
+                sorted_edits.sort_by(|a, b| {
+                    let a_line = a["range"]["start"]["line"].as_u64().unwrap_or(0);
+                    let b_line = b["range"]["start"]["line"].as_u64().unwrap_or(0);
+                    b_line.cmp(&a_line) // Reverse order
+                });
+
+                // Apply each edit
+                for edit in sorted_edits.iter() {
+                    if let (Some(range), Some(new_text)) = (edit["range"].as_object(), edit["newText"].as_str()) {
+                        if let (Some(start), Some(end)) = (range["start"].as_object(), range["end"].as_object()) {
+                            let start_line = start["line"].as_u64().unwrap_or(0) as usize;
+                            let start_char = start["character"].as_u64().unwrap_or(0) as usize;
+                            let end_line = end["line"].as_u64().unwrap_or(0) as usize;
+                            let end_char = end["character"].as_u64().unwrap_or(0) as usize;
+
+                            // Apply the edit
+                            if start_line == end_line {
+                                // Single line edit
+                                if start_line < lines.len() {
+                                    let line = &lines[start_line];
+                                    let mut new_line = String::new();
+
+                                    // Keep text before the edit
+                                    if start_char <= line.len() {
+                                        new_line.push_str(&line[..start_char.min(line.len())]);
+                                    }
+
+                                    // Add new text
+                                    new_line.push_str(new_text);
+
+                                    // Keep text after the edit
+                                    if end_char < line.len() {
+                                        new_line.push_str(&line[end_char..]);
+                                    }
+
+                                    lines[start_line] = new_line;
+                                }
+                            } else {
+                                // Multi-line edit
+                                let new_lines: Vec<String> = new_text.lines().map(|s| s.to_string()).collect();
+
+                                // Keep the part before start_char on the start line
+                                if start_line < lines.len() {
+                                    let start_part = if start_char <= lines[start_line].len() {
+                                        &lines[start_line][..start_char]
+                                    } else {
+                                        &lines[start_line]
+                                    };
+
+                                    // Keep the part after end_char on the end line
+                                    let end_part = if end_line < lines.len() && end_char < lines[end_line].len() {
+                                        &lines[end_line][end_char..]
+                                    } else {
+                                        ""
+                                    };
+
+                                    // Combine with new text
+                                    let mut replacement = vec![];
+                                    if new_lines.is_empty() {
+                                        replacement.push(format!("{}{}", start_part, end_part));
+                                    } else {
+                                        replacement.push(format!("{}{}", start_part, new_lines[0]));
+                                        for line in new_lines.iter().skip(1).take(new_lines.len().saturating_sub(2)) {
+                                            replacement.push(line.clone());
+                                        }
+                                        if new_lines.len() > 1 {
+                                            replacement.push(format!("{}{}", new_lines.last().unwrap(), end_part));
+                                        }
+                                    }
+
+                                    // Replace the lines
+                                    lines.splice(start_line..=end_line.min(lines.len() - 1), replacement);
+                                }
+                            }
+                            total_edits += 1;
+                        }
+                    }
+                }
+
+                // Write the modified content back to file
+                let modified_content = lines.join("\n");
+                let path = std::path::Path::new(file_path);
+
+                match app_state.file_service.write_file(path, &modified_content).await {
+                    Ok(_) => {
+                        files_modified.push(file_path.clone());
+                        applied_changes.insert(file_path.clone(), sorted_edits);
+                    }
+                    Err(e) => {
+                        // Rollback previous changes
+                        tracing::error!("Failed to write file {}: {}. Rolling back changes...", file_path, e);
+
+                        for modified_file in &files_modified {
+                            if let Some(original) = original_contents.get(modified_file) {
+                                let rollback_path = std::path::Path::new(modified_file);
+                                if let Err(rollback_err) = app_state.file_service.write_file(rollback_path, original).await {
+                                    tracing::error!("Failed to rollback {}: {}", modified_file, rollback_err);
+                                }
+                            }
+                        }
+
+                        return Ok(json!({
+                            "success": false,
+                            "error": format!("Failed to write file {}: {}. Changes rolled back.", file_path, e),
+                            "filesModified": [],
+                            "totalEdits": 0
+                        }));
+                    }
+                }
+            }
+        }
+
+        // Notify LSP servers about file changes
+        if !files_modified.is_empty() {
+            for file_path in &files_modified {
+                let path = std::path::Path::new(file_path);
+                if let Err(e) = app_state.lsp_service.did_change_file(path).await {
+                    tracing::warn!("Failed to notify LSP about file change {}: {}", file_path, e);
+                }
             }
         }
 
@@ -296,7 +553,8 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
             "success": true,
             "filesModified": files_modified,
             "totalEdits": total_edits,
-            "validated": validate
+            "validated": validate,
+            "changes": applied_changes
         }))
     });
 

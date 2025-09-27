@@ -36,9 +36,9 @@ This document provides a comprehensive overview of language support across all M
 | `find_references` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | 🔗 Integration | Full LSP support, tested |
 | `search_workspace_symbols` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | 🔗 Integration | Full LSP support, tested |
 | `get_document_symbols` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | ✅ 🔗 Integration | **NEW**: Added comprehensive tests |
-| `prepare_call_hierarchy` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | 🔬 Unit | Unit tests only |
-| `get_call_hierarchy_incoming` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | 🔬 Unit | Unit tests only |
-| `get_call_hierarchy_outgoing` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | 🔬 Unit | Unit tests only |
+| `prepare_call_hierarchy` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | ✅ 🔗 Integration | **NEW**: Added 8 comprehensive test scenarios |
+| `get_call_hierarchy_incoming` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | ✅ 🔗 Integration | **NEW**: Added integration tests with item/position modes |
+| `get_call_hierarchy_outgoing` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | ✅ 🔗 Integration | **NEW**: Added integration tests with error handling |
 
 ### Editing Tools
 
@@ -48,7 +48,7 @@ This document provides a comprehensive overview of language support across all M
 | `rename_symbol_strict` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | 🔗 Integration | Includes dry-run tests |
 | `get_code_actions` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | 🔗 E2E | Auto-fixes, organize imports |
 | `format_document` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | 🔬 Unit | Language-specific formatters |
-| `apply_workspace_edit` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | ⭕ No Tests | Multi-file edits untested |
+| `apply_workspace_edit` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | ✅ 🔗 Integration | **NEW**: Full atomic operations with rollback |
 
 ### Intelligence Tools
 
@@ -86,6 +86,7 @@ This document provides a comprehensive overview of language support across all M
 |------|--------------|--------|-----|------|--------------|-------|
 | `extract_function` | ✅ Full AST | ❌ None | ❌ None | ❌ None | 🔗 Integration | 13 tests, fully tested |
 | `inline_variable` | ✅ Full AST | ❌ None | ❌ None | ❌ None | 🔗 Integration | 13 tests, fully tested |
+| `extract_variable` | ✅ Full AST | ❌ None | ❌ None | ❌ None | ✅ 🔗 Integration | **NEW**: Full AST implementation with smart naming |
 | `rename_directory` | ✅ Full | ⚠️ Basic | ⚠️ Basic | ⚠️ Basic | 🔬 Unit | Import updates for TS/JS only |
 
 ### Package Management Tools
@@ -204,19 +205,16 @@ Tools requiring full AST parsing (currently TS/JS only):
 2. **Intelligence Tools Tests** - **FIXED**: Added comprehensive integration tests for all three tools
 3. **delete_file Tests** - **FIXED**: Added 10+ test scenarios including error cases
 4. **get_document_symbols Tests** - **FIXED**: Added 8 test scenarios covering hierarchical and flat symbols
+5. **apply_workspace_edit Implementation** - **FIXED**: Full atomic operations with rollback and LSP notification
+6. **extract_variable Implementation** - **FIXED**: Complete AST-based implementation with smart variable naming
+7. **Call Hierarchy Integration Tests** - **FIXED**: Added 8 comprehensive test scenarios for all call hierarchy tools
+8. **Rust LSP Validation** - **FIXED**: Added 8 validation tests for Rust language server integration
 
 ### Critical Missing Features (Updated)
-1. **Workspace Editing**:
-   - `apply_workspace_edit` - Placeholder implementation, needs real multi-file editing logic
-
-2. **Call Hierarchy Tools**:
-   - Need integration tests (currently unit tests only)
-
-3. **Format Document**:
+1. **Format Document**:
    - Needs integration tests with actual formatters
 
 ### Additional Unimplemented Tools
-- `extract_variable` - Has placeholder implementation only (editing.rs)
 - `organize_imports` - Registered but returns code actions instead of direct implementation
 
 ### Language-Specific Gaps
@@ -235,31 +233,31 @@ Tools requiring full AST parsing (currently TS/JS only):
 - No AST-based refactoring
 - Import analysis uses basic regex
 - No Cargo.toml management tools
-- Newly added LSP support needs validation
+- ~~Newly added LSP support needs validation~~ ✅ **VALIDATED**: Added comprehensive Rust LSP integration tests
 
-### Test Coverage Summary (Improved!)
+### Test Coverage Summary (Significantly Improved!)
 
 | Coverage Level | Count | Percentage | Tools |
 |---------------|-------|------------|-------|
-| 🔗 Full Tests | **12** | **33%** (+11%) | find_definition, find_references, rename_symbol, extract_function, inline_variable, **get_hover**, **get_completions**, **get_signature_help**, **delete_file**, **get_document_symbols**, etc. |
-| 🔬 Unit Only | **11** | **31%** (-2%) | prepare_call_hierarchy, format_document, create_file, analyze_imports, etc. |
-| ⭕ No Tests | **13** | **36%** (-9%) | apply_workspace_edit, extract_variable, some batch operations, etc. |
+| 🔗 Full Tests | **17** | **47%** (+14%) | find_definition, find_references, rename_symbol, extract_function, inline_variable, **get_hover**, **get_completions**, **get_signature_help**, **delete_file**, **get_document_symbols**, **apply_workspace_edit**, **extract_variable**, **prepare_call_hierarchy**, **get_call_hierarchy_incoming**, **get_call_hierarchy_outgoing**, etc. |
+| 🔬 Unit Only | **11** | **31%** (-2%) | format_document, create_file, analyze_imports, etc. |
+| ⭕ No Tests | **8** | **22%** (-14%) | organize_imports, some batch operations, etc. |
 
-**Improvement**: Test coverage increased from 55% to 64% of all tools!
+**Major Improvement**: Test coverage increased from 55% to **78%** of all tools!
 
 ### Priority Fixes
 
 1. **Immediate** (Blocking Production):
    - ~~Add tests for intelligence tools~~ ✅ **DONE**
    - ~~Fix duplicate tool registration bug~~ ✅ **DONE**
-   - Implement real `apply_workspace_edit` (currently placeholder)
+   - ~~Implement real `apply_workspace_edit` (currently placeholder)~~ ✅ **DONE**
 
 2. **Short Term** (Within Sprint):
    - ~~Add tests for delete_file~~ ✅ **DONE**
    - ~~Add tests for get_document_symbols~~ ✅ **DONE**
-   - Add integration tests for call hierarchy tools
-   - Implement `extract_variable` tool
-   - Validate Rust LSP integration with real projects
+   - ~~Add integration tests for call hierarchy tools~~ ✅ **DONE**
+   - ~~Implement `extract_variable` tool~~ ✅ **DONE**
+   - ~~Validate Rust LSP integration with real projects~~ ✅ **DONE**
 
 3. **Medium Term** (Next Quarter):
    - Implement Python AST parser for refactoring
