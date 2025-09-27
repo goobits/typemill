@@ -334,7 +334,7 @@ impl Visit for ImportVisitor {
 }
 
 /// Parse JavaScript/TypeScript imports using enhanced regex patterns
-fn parse_js_ts_imports_enhanced(source: &str) -> AstResult<Vec<ImportInfo>> {
+pub fn parse_js_ts_imports_enhanced(source: &str) -> AstResult<Vec<ImportInfo>> {
     let mut imports = Vec::new();
 
     // Enhanced regex patterns for different import types

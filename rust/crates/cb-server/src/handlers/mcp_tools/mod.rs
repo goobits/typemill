@@ -11,6 +11,10 @@ pub mod batch;
 pub mod diagnostics;
 pub mod server_management;
 pub mod monitoring;
+pub mod refactoring;
+
+#[cfg(test)]
+mod refactoring_tests;
 
 use crate::handlers::McpDispatcher;
 
@@ -26,4 +30,5 @@ pub fn register_all_tools(dispatcher: &mut McpDispatcher) {
     diagnostics::register_tools(dispatcher);
     server_management::register_tools(dispatcher);
     monitoring::register_tools(dispatcher);
+    refactoring::register_tools(dispatcher);
 }

@@ -97,6 +97,15 @@ impl McpDispatcher {
         );
     }
 
+    /// Test helper to directly call a tool (only available in test builds)
+    #[cfg(test)]
+    pub async fn call_tool_for_test(&self, tool_name: &str, args: Value) -> ServerResult<Value> {
+        let handler = self.tools.get(tool_name)
+            .ok_or_else(|| ServerError::Unsupported(format!("Unknown tool: {}", tool_name)))?;
+
+        handler(self.app_state.clone(), args).await
+    }
+
     /// Dispatch an MCP message
     pub async fn dispatch(&self, message: McpMessage) -> ServerResult<McpMessage> {
         match message {
