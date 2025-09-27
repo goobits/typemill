@@ -350,7 +350,6 @@ function transformLSPError(lspError: LSPResponseError): ErrorResponse {
 - `get_hover` - Hover information
 - `get_completions` - Code completion
 - `get_signature_help` - Parameter hints
-- `get_inlay_hints` - Inline annotations
 
 ### 4. Code Quality Tools
 - `get_diagnostics` - Errors and warnings

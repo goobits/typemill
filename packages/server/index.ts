@@ -35,7 +35,6 @@ import {
   handleGetDiagnostics,
   handleGetDocumentSymbols,
   handleGetHover,
-  handleGetInlayHints,
   handleGetSignatureHelp,
   handleHealthCheck,
   handlePrepareCallHierarchy,

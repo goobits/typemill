@@ -87,7 +87,6 @@ npm run test:mcp:restart   # Test server restart functionality
   - `get_hover` - Type information
   - `get_completions` - Code suggestions
   - `get_signature_help` - Function signatures
-  - `get_inlay_hints` - Parameter hints
   - `get_semantic_tokens` - Syntax highlighting
 
 #### `playground.test.ts` 🎮
