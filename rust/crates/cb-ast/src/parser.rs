@@ -76,6 +76,10 @@ pub enum ImportType {
     Amd,
     /// TypeScript import type
     TypeOnly,
+    /// Python import statement
+    PythonImport,
+    /// Python from...import statement
+    PythonFromImport,
 }
 
 /// Source location information
@@ -130,7 +134,16 @@ pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {
                 }
             }
         },
-        "python" => parse_python_imports(source)?,
+        "python" => {
+            // Try AST parsing first, fall back to regex on failure
+            match crate::python_parser::parse_python_imports_ast(source) {
+                Ok(ast_imports) => ast_imports,
+                Err(_) => {
+                    eprintln!("Python AST parsing failed, falling back to regex for: {}", path.display());
+                    parse_python_imports(source)?
+                }
+            }
+        },
         "rust" => parse_rust_imports(source)?,
         "go" => parse_go_imports(source)?,
         _ => parse_imports_basic(source)?,
