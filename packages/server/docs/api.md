@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-All 31 MCP tools with practical examples for AI assistants.
+All 26 MCP tools with practical examples for AI assistants.
 
 ## Core Navigation & Analysis
 
@@ -301,13 +301,6 @@ Get inlay hints (parameter names, type annotations) for a range in a file.
 - `end_line`: End line number (1-indexed)  
 - `end_character`: End character position (0-indexed)
 
-### `get_semantic_tokens`
-
-Get semantic tokens (detailed syntax analysis) for enhanced code understanding.
-
-**Parameters:**
-- `file_path`: The path to the file
-
 ### `get_signature_help`
 
 Get function signature help at a specific position in the code.
@@ -347,20 +340,6 @@ Get outgoing calls for a call hierarchy item.
 ### `get_document_symbols`
 
 Get all symbols in a document for code outline and navigation.
-
-**Parameters:**
-- `file_path`: The path to the file
-
-### `get_folding_ranges`
-
-Get folding ranges for code collapse/expand functionality.
-
-**Parameters:**
-- `file_path`: The path to the file
-
-### `get_document_links`
-
-Get document links (URLs, imports, references) found in the file.
 
 **Parameters:**
 - `file_path`: The path to the file
