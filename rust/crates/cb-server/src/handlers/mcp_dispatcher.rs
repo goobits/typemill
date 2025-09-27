@@ -137,9 +137,13 @@ mod tests {
     fn create_test_app_state() -> Arc<AppState> {
         let lsp_config = LspConfig::default();
         let lsp_manager = Arc::new(LspManager::new(lsp_config));
+        let file_service = Arc::new(crate::services::FileService::new(std::path::PathBuf::from("/tmp")));
+        let project_root = std::path::PathBuf::from("/tmp");
 
         Arc::new(AppState {
             lsp: lsp_manager,
+            file_service,
+            project_root,
         })
     }
 
