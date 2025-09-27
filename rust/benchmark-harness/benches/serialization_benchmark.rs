@@ -1,26 +1,25 @@
 use cb_core::model::mcp::{
-    McpError, McpMessage, McpRequest, McpResponse, ToolCall, ToolInfo,
+    McpError, McpRequest, McpResponse, ToolCall,
 };
-use cb_core::model::lsp::{Position, Range, Location, Diagnostic, DiagnosticSeverity};
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use serde_json::{json, Value};
 
 fn create_simple_request() -> McpRequest {
     McpRequest {
-        id: "bench-123".to_string(),
+        id: Some(json!("bench-123")),
         method: "tools/call".to_string(),
-        params: json!({
+        params: Some(json!({
             "tool": "get_project_info",
             "arguments": {}
-        }),
+        })),
     }
 }
 
 fn create_complex_request() -> McpRequest {
     McpRequest {
-        id: "bench-456".to_string(),
+        id: Some(json!("bench-456")),
         method: "tools/call".to_string(),
-        params: json!({
+        params: Some(json!({
             "tool": "find_references",
             "arguments": {
                 "file_path": "/tmp/very/long/path/to/some/deeply/nested/source/file.rs",
@@ -33,17 +32,18 @@ fn create_complex_request() -> McpRequest {
                     "search_depth": 10
                 }
             }
-        }),
+        })),
     }
 }
 
 fn create_simple_response() -> McpResponse {
-    McpResponse::Success {
-        id: "bench-123".to_string(),
-        result: json!({
+    McpResponse {
+        id: Some(json!("bench-123")),
+        result: Some(json!({
             "project": "codeflow-buddy",
             "version": "0.1.0"
-        }),
+        })),
+        error: None,
     }
 }
 
@@ -59,20 +59,22 @@ fn create_complex_response() -> McpResponse {
         }));
     }
 
-    McpResponse::Success {
-        id: "bench-456".to_string(),
-        result: json!({
+    McpResponse {
+        id: Some(json!("bench-456")),
+        result: Some(json!({
             "references": locations,
             "total_count": 50,
             "search_time_ms": 125
-        }),
+        })),
+        error: None,
     }
 }
 
 fn create_error_response() -> McpResponse {
-    McpResponse::Error {
-        id: "bench-789".to_string(),
-        error: McpError {
+    McpResponse {
+        id: Some(json!("bench-789")),
+        result: None,
+        error: Some(McpError {
             code: -32603,
             message: "Internal server error: Failed to connect to language server after 3 attempts".to_string(),
             data: Some(json!({
@@ -81,7 +83,7 @@ fn create_error_response() -> McpResponse {
                 "server": "typescript-language-server",
                 "file_type": "typescript"
             })),
-        },
+        }),
     }
 }
 

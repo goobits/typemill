@@ -1,5 +1,5 @@
 use cb_core::config::LspConfig;
-use cb_core::model::mcp::{McpRequest, ToolCall};
+use cb_core::model::mcp::{McpMessage, McpRequest, ToolCall};
 use cb_server::handlers::{AppState, McpDispatcher};
 use cb_server::services::{FileService, LockManager, OperationQueue};
 use cb_server::systems::LspManager;
@@ -47,12 +47,25 @@ fn create_complex_tool_call() -> ToolCall {
 fn bench_dispatch_simple(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
     let app_state = create_test_app_state();
-    let dispatcher = McpDispatcher::new(app_state);
-    let tool_call = create_simple_tool_call();
+    let mut dispatcher = McpDispatcher::new(app_state);
+
+    // Register a simple mock tool
+    dispatcher.register_tool("get_project_info".to_string(), |_app_state, _args| async move {
+        Ok(json!({"status": "success"}))
+    });
 
     c.bench_function("dispatch_simple_tool", |b| {
         b.to_async(&rt).iter(|| async {
-            let _ = dispatcher.call_tool(black_box(&tool_call)).await;
+            let request = McpRequest {
+                id: Some(json!("bench-123")),
+                method: "tools/call".to_string(),
+                params: Some(json!({
+                    "name": "get_project_info",
+                    "arguments": {}
+                })),
+            };
+            let message = McpMessage::Request(request);
+            let _ = dispatcher.dispatch(black_box(message)).await;
         });
     });
 }
@@ -60,12 +73,39 @@ fn bench_dispatch_simple(c: &mut Criterion) {
 fn bench_dispatch_complex(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
     let app_state = create_test_app_state();
-    let dispatcher = McpDispatcher::new(app_state);
-    let tool_call = create_complex_tool_call();
+    let mut dispatcher = McpDispatcher::new(app_state);
+
+    // Register a complex mock tool
+    dispatcher.register_tool("find_references".to_string(), |_app_state, _args| async move {
+        let mut references = Vec::new();
+        for i in 0..50 {
+            references.push(json!({
+                "uri": format!("file:///tmp/file_{}.rs", i),
+                "range": {
+                    "start": { "line": i, "character": 0 },
+                    "end": { "line": i, "character": 10 }
+                }
+            }));
+        }
+        Ok(json!({ "references": references }))
+    });
 
     c.bench_function("dispatch_complex_tool", |b| {
         b.to_async(&rt).iter(|| async {
-            let _ = dispatcher.call_tool(black_box(&tool_call)).await;
+            let request = McpRequest {
+                id: Some(json!("bench-456")),
+                method: "tools/call".to_string(),
+                params: Some(json!({
+                    "name": "find_references",
+                    "arguments": {
+                        "file_path": "/tmp/test.rs",
+                        "symbol_name": "main",
+                        "include_declaration": true
+                    }
+                })),
+            };
+            let message = McpMessage::Request(request);
+            let _ = dispatcher.dispatch(black_box(message)).await;
         });
     });
 }
@@ -73,7 +113,16 @@ fn bench_dispatch_complex(c: &mut Criterion) {
 fn bench_dispatch_parallel(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
     let app_state = create_test_app_state();
-    let dispatcher = Arc::new(McpDispatcher::new(app_state));
+    let mut dispatcher = McpDispatcher::new(app_state);
+
+    // Register a simple tool for parallel testing
+    dispatcher.register_tool("parallel_test".to_string(), |_app_state, _args| async move {
+        // Small delay to make concurrency visible
+        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+        Ok(json!({"status": "parallel_success"}))
+    });
+
+    let dispatcher = Arc::new(dispatcher);
 
     c.bench_function("dispatch_parallel_tools", |b| {
         b.to_async(&rt).iter(|| {
@@ -82,9 +131,17 @@ fn bench_dispatch_parallel(c: &mut Criterion) {
                 let mut handles = vec![];
                 for _ in 0..10 {
                     let dispatcher = dispatcher.clone();
-                    let tool_call = create_simple_tool_call();
                     let handle = tokio::spawn(async move {
-                        let _ = dispatcher.call_tool(&tool_call).await;
+                        let request = McpRequest {
+                            id: Some(json!("bench-parallel")),
+                            method: "tools/call".to_string(),
+                            params: Some(json!({
+                                "name": "parallel_test",
+                                "arguments": {}
+                            })),
+                        };
+                        let message = McpMessage::Request(request);
+                        let _ = dispatcher.dispatch(message).await;
                     });
                     handles.push(handle);
                 }
