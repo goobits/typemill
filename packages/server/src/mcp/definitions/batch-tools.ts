@@ -31,25 +31,18 @@ export const batchToolDefinitions = [
                   'format_document',
                   'search_workspace_symbols',
                   'get_document_symbols',
-                  'get_folding_ranges',
-                  'get_document_links',
                   'apply_workspace_edit',
 
                   // Intelligence tools
                   'get_hover',
                   'get_completions',
                   'get_inlay_hints',
-                  'get_semantic_tokens',
                   'get_signature_help',
 
                   // Hierarchy tools
                   'prepare_call_hierarchy',
                   'get_call_hierarchy_incoming_calls',
                   'get_call_hierarchy_outgoing_calls',
-                  'prepare_type_hierarchy',
-                  'get_type_hierarchy_supertypes',
-                  'get_type_hierarchy_subtypes',
-                  'get_selection_range',
 
                   // Utility tools
                   'get_diagnostics',

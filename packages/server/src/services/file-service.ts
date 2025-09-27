@@ -6,8 +6,6 @@ import { pathToUri, uriToPath } from '../core/file-operations/path-utils.js';
 import type {
   CodeAction,
   Diagnostic,
-  DocumentLink,
-  FoldingRange,
   Range,
   TextEdit,
 } from '../types.js';
@@ -129,70 +127,6 @@ export class FileService {
       });
       return [];
     }
-  }
-
-  /**
-   * Get folding ranges
-   */
-  async getFoldingRanges(filePath: string): Promise<FoldingRange[]> {
-    const serverState = await this.context.prepareFile(filePath);
-    if (!serverState.initialized) {
-      throw new Error('Server not initialized for getting folding ranges');
-    }
-    const fileUri = pathToUri(filePath);
-
-    logDebugMessage('FileService', `Requesting folding ranges for: ${filePath}`);
-
-    const result = await this.context.protocol.sendRequest(
-      serverState.process,
-      'textDocument/foldingRange',
-      {
-        textDocument: { uri: fileUri },
-      }
-    );
-
-    logDebugMessage(
-      'FileService',
-      `Result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}`
-    );
-
-    if (Array.isArray(result)) {
-      return result as FoldingRange[];
-    }
-
-    return [];
-  }
-
-  /**
-   * Get document links
-   */
-  async getDocumentLinks(filePath: string): Promise<DocumentLink[]> {
-    const serverState = await this.context.prepareFile(filePath);
-    if (!serverState.initialized) {
-      throw new Error('Server not initialized for getting document links');
-    }
-    const fileUri = pathToUri(filePath);
-
-    logDebugMessage('FileService', `Requesting document links for: ${filePath}`);
-
-    const result = await this.context.protocol.sendRequest(
-      serverState.process,
-      'textDocument/documentLink',
-      {
-        textDocument: { uri: fileUri },
-      }
-    );
-
-    logDebugMessage(
-      'FileService',
-      `Result type: ${typeof result}, isArray: ${Array.isArray(result)}, length: ${Array.isArray(result) ? result.length : 'N/A'}`
-    );
-
-    if (Array.isArray(result)) {
-      return result as DocumentLink[];
-    }
-
-    return [];
   }
 
   /**
