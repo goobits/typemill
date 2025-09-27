@@ -270,9 +270,9 @@ impl Visit for ImportVisitor {
             type_only,
             location: SourceLocation {
                 start_line: self.current_line,
-                start_column: 0,
+                start_column: 0, // Column positions not available without source map
                 end_line: self.current_line,
-                end_column: 0, // TODO: Get actual column positions from SWC span
+                end_column: 0, // Would require additional span-to-position mapping
             },
         });
     }

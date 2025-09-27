@@ -16,6 +16,9 @@ pub mod refactoring;
 #[cfg(test)]
 mod refactoring_tests;
 
+#[cfg(test)]
+mod debug_refactoring;
+
 use crate::handlers::McpDispatcher;
 
 /// Register all MCP tools with the dispatcher
