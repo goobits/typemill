@@ -7,20 +7,32 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum ClientError {
-    #[error("Configuration error: {message}")]
-    Config { message: String },
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
 
-    #[error("Connection error: {message}")]
-    Connection { message: String },
+    #[error("Connection error: {0}")]
+    ConnectionError(String),
 
-    #[error("Transport error: {message}")]
-    Transport { message: String },
+    #[error("Transport error: {0}")]
+    TransportError(String),
 
-    #[error("Protocol error: {message}")]
-    Protocol { message: String },
+    #[error("Protocol error: {0}")]
+    ProtocolError(String),
 
-    #[error("Authentication error: {message}")]
-    Authentication { message: String },
+    #[error("Authentication error: {0}")]
+    AuthError(String),
+
+    #[error("Request error: {0}")]
+    RequestError(String),
+
+    #[error("Timeout error: {0}")]
+    TimeoutError(String),
+
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
+
+    #[error("I/O error: {0}")]
+    IoError(String),
 
     #[error("Core error: {0}")]
     Core(#[from] CoreError),
@@ -29,37 +41,47 @@ pub enum ClientError {
 impl ClientError {
     /// Create a new configuration error
     pub fn config(message: impl Into<String>) -> Self {
-        Self::Config {
-            message: message.into(),
-        }
+        Self::ConfigError(message.into())
     }
 
     /// Create a new connection error
     pub fn connection(message: impl Into<String>) -> Self {
-        Self::Connection {
-            message: message.into(),
-        }
+        Self::ConnectionError(message.into())
     }
 
     /// Create a new transport error
     pub fn transport(message: impl Into<String>) -> Self {
-        Self::Transport {
-            message: message.into(),
-        }
+        Self::TransportError(message.into())
     }
 
     /// Create a new protocol error
     pub fn protocol(message: impl Into<String>) -> Self {
-        Self::Protocol {
-            message: message.into(),
-        }
+        Self::ProtocolError(message.into())
     }
 
     /// Create a new authentication error
     pub fn authentication(message: impl Into<String>) -> Self {
-        Self::Authentication {
-            message: message.into(),
-        }
+        Self::AuthError(message.into())
+    }
+
+    /// Create a new request error
+    pub fn request(message: impl Into<String>) -> Self {
+        Self::RequestError(message.into())
+    }
+
+    /// Create a new timeout error
+    pub fn timeout(message: impl Into<String>) -> Self {
+        Self::TimeoutError(message.into())
+    }
+
+    /// Create a new serialization error
+    pub fn serialization(message: impl Into<String>) -> Self {
+        Self::SerializationError(message.into())
+    }
+
+    /// Create a new I/O error
+    pub fn io(message: impl Into<String>) -> Self {
+        Self::IoError(message.into())
     }
 }
 
