@@ -129,6 +129,9 @@ fn test_config_load_from_json() {
 
 #[test]
 fn test_config_env_override() {
+    // Clear any environment variables that might affect the test
+    clean_env();
+
     let temp_dir = TempDir::new().unwrap();
     let original_dir = env::current_dir().unwrap();
     env::set_current_dir(temp_dir.path()).unwrap();
