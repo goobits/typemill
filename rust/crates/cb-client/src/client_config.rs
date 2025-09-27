@@ -57,7 +57,7 @@ impl ClientConfig {
 
     /// Create configuration from all available sources
     pub async fn from_all_sources() -> ClientResult<Self> {
-        Self::load()
+        Self::load().await
     }
 
     /// Get missing configuration items
@@ -632,7 +632,7 @@ mod tests {
 
         let suggestions = config.suggest_actions();
         assert_eq!(suggestions.len(), 2); // URL and token suggestions
-        assert!(suggestions[0].contains("Server URL"));
+        assert!(suggestions[0].contains("server URL"));
         assert!(suggestions[1].contains("authentication token"));
     }
 

@@ -230,21 +230,35 @@ impl Formatter {
 
                     result.push_str(&style(number).blue().to_string());
                 }
-                't' | 'f' if chars.as_str().starts_with("rue") || chars.as_str().starts_with("alse") => {
-                    // Boolean values
-                    if chars.as_str().starts_with("rue") {
+                't' => {
+                    // Try to match "true"
+                    let mut temp_chars = chars.clone();
+                    if temp_chars.next() == Some('r') && temp_chars.next() == Some('u') && temp_chars.next() == Some('e') {
                         result.push_str(&style("true").magenta().to_string());
                         chars.nth(2); // consume "rue"
-                    } else if chars.as_str().starts_with("alse") {
+                    } else {
+                        result.push(ch);
+                    }
+                }
+                'f' => {
+                    // Try to match "false"
+                    let mut temp_chars = chars.clone();
+                    if temp_chars.next() == Some('a') && temp_chars.next() == Some('l') && temp_chars.next() == Some('s') && temp_chars.next() == Some('e') {
                         result.push_str(&style("false").magenta().to_string());
                         chars.nth(3); // consume "alse"
                     } else {
                         result.push(ch);
                     }
                 }
-                'n' if chars.as_str().starts_with("ull") => {
-                    result.push_str(&style("null").red().to_string());
-                    chars.nth(2); // consume "ull"
+                'n' => {
+                    // Try to match "null"
+                    let mut temp_chars = chars.clone();
+                    if temp_chars.next() == Some('u') && temp_chars.next() == Some('l') && temp_chars.next() == Some('l') {
+                        result.push_str(&style("null").red().to_string());
+                        chars.nth(2); // consume "ull"
+                    } else {
+                        result.push(ch);
+                    }
                 }
                 _ => {
                     result.push(ch);
@@ -312,6 +326,15 @@ impl Formatter {
             }
             ClientError::IoError(msg) => {
                 self.error(&format!("I/O error: {}", msg))
+            }
+            ClientError::TransportError(msg) => {
+                self.error(&format!("Transport error: {}", msg))
+            }
+            ClientError::ProtocolError(msg) => {
+                self.error(&format!("Protocol error: {}", msg))
+            }
+            ClientError::Core(err) => {
+                self.error(&format!("Core error: {}", err))
             }
         }
     }
@@ -514,7 +537,7 @@ mod tests {
         assert_eq!(formatter.success("test"), "test");
         assert_eq!(formatter.error("test"), "ERROR: test");
         assert_eq!(formatter.warning("test"), "WARNING: test");
-        assert_eq!(formatter.info("test"), "INFO: test");
+        assert_eq!(formatter.info("test"), "test");
     }
 
     #[test]

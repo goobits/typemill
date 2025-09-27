@@ -174,7 +174,7 @@ fn test_error_implements_std_error() {
     let core_error: CoreError = io_error.into();
 
     match core_error {
-        CoreError::Io(ref inner) => {
+        CoreError::Io(ref _inner) => {
             let core_error_ref: &dyn std::error::Error = &core_error;
             let source = core_error_ref.source();
             assert!(source.is_some());

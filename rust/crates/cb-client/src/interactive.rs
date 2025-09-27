@@ -71,13 +71,13 @@ impl Interactive {
     /// Prompt for a string input with validation
     pub fn input<F>(&self, prompt: &str, default: Option<&str>, validator: F) -> ClientResult<String>
     where
-        F: Fn(&str) -> Result<(), String> + 'static,
+        F: Fn(&String) -> Result<(), String> + 'static,
     {
         let mut input_prompt = Input::with_theme(&self.theme);
-        input_prompt.with_prompt(prompt);
+        input_prompt = input_prompt.with_prompt(prompt);
 
         if let Some(default_value) = default {
-            input_prompt.default(default_value.to_string());
+            input_prompt = input_prompt.default(default_value.to_string());
         }
 
         input_prompt
@@ -89,7 +89,7 @@ impl Interactive {
     /// Prompt for a URL with validation
     pub fn url_input(&self, prompt: &str, default: Option<&str>) -> ClientResult<String> {
         self.input(prompt, default, |input| {
-            Url::parse(input)
+            Url::parse(input.as_str())
                 .map(|_| ())
                 .map_err(|e| format!("Invalid URL: {}", e))
         })
@@ -119,10 +119,10 @@ impl Interactive {
     /// Prompt for a password
     pub fn password(&self, prompt: &str, confirm: bool) -> ClientResult<String> {
         let mut password_prompt = Password::with_theme(&self.theme);
-        password_prompt.with_prompt(prompt);
+        password_prompt = password_prompt.with_prompt(prompt);
 
         if confirm {
-            password_prompt.with_confirmation("Confirm password", "Passwords don't match");
+            password_prompt = password_prompt.with_confirmation("Confirm password", "Passwords don't match");
         }
 
         password_prompt
@@ -132,12 +132,14 @@ impl Interactive {
 
     /// Prompt for a confirmation (yes/no)
     pub fn confirm(&self, prompt: &str, default: Option<bool>) -> ClientResult<bool> {
-        let mut confirm_prompt = Confirm::with_theme(&self.theme);
-        confirm_prompt.with_prompt(prompt);
+        let confirm_prompt = Confirm::with_theme(&self.theme);
+        let confirm_prompt = confirm_prompt.with_prompt(prompt);
 
-        if let Some(default_value) = default {
-            confirm_prompt.default(default_value);
-        }
+        let confirm_prompt = if let Some(default_value) = default {
+            confirm_prompt.default(default_value)
+        } else {
+            confirm_prompt
+        };
 
         confirm_prompt
             .interact()
