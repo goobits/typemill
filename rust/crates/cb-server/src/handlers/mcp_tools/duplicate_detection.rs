@@ -179,16 +179,20 @@ async fn transform_jscpd_output(
                 instances.push(DuplicateInstance {
                     file: first_file["name"].as_str().unwrap_or("")
                         .replace("file://", ""), // Remove file:// prefix
-                    start_line: first_file["startLine"].as_u64().unwrap_or(1) as u32,
-                    end_line: first_file["endLine"].as_u64().unwrap_or(1) as u32,
+                    start_line: first_file["startLoc"]["line"].as_u64()
+                        .or_else(|| first_file["start"].as_u64()).unwrap_or(1) as u32,
+                    end_line: first_file["endLoc"]["line"].as_u64()
+                        .or_else(|| first_file["end"].as_u64()).unwrap_or(1) as u32,
                     token_count: dup["tokens"].as_u64().unwrap_or(0) as u32,
                     content: if include_content {
                         // Read file content if requested
                         let file_path = first_file["name"].as_str().unwrap_or("")
                             .replace("file://", "");
                         read_file_lines(&file_path,
-                                      first_file["startLine"].as_u64().unwrap_or(1) as u32,
-                                      first_file["endLine"].as_u64().unwrap_or(1) as u32).await.ok()
+                                      first_file["startLoc"]["line"].as_u64()
+                                          .or_else(|| first_file["start"].as_u64()).unwrap_or(1) as u32,
+                                      first_file["endLoc"]["line"].as_u64()
+                                          .or_else(|| first_file["end"].as_u64()).unwrap_or(1) as u32).await.ok()
                     } else {
                         None
                     },
@@ -197,28 +201,33 @@ async fn transform_jscpd_output(
                 instances.push(DuplicateInstance {
                     file: second_file["name"].as_str().unwrap_or("")
                         .replace("file://", ""), // Remove file:// prefix
-                    start_line: second_file["startLine"].as_u64().unwrap_or(1) as u32,
-                    end_line: second_file["endLine"].as_u64().unwrap_or(1) as u32,
+                    start_line: second_file["startLoc"]["line"].as_u64()
+                        .or_else(|| second_file["start"].as_u64()).unwrap_or(1) as u32,
+                    end_line: second_file["endLoc"]["line"].as_u64()
+                        .or_else(|| second_file["end"].as_u64()).unwrap_or(1) as u32,
                     token_count: dup["tokens"].as_u64().unwrap_or(0) as u32,
                     content: if include_content {
                         let file_path = second_file["name"].as_str().unwrap_or("")
                             .replace("file://", "");
                         read_file_lines(&file_path,
-                                      second_file["startLine"].as_u64().unwrap_or(1) as u32,
-                                      second_file["endLine"].as_u64().unwrap_or(1) as u32).await.ok()
+                                      second_file["startLoc"]["line"].as_u64()
+                                          .or_else(|| second_file["start"].as_u64()).unwrap_or(1) as u32,
+                                      second_file["endLoc"]["line"].as_u64()
+                                          .or_else(|| second_file["end"].as_u64()).unwrap_or(1) as u32).await.ok()
                     } else {
                         None
                     },
                 });
             }
 
+            let token_count = dup["tokens"].as_u64().unwrap_or(0);
+            let line_count = dup["lines"].as_u64().unwrap_or(0);
+
             duplicate_groups.push(DuplicateGroup {
-                hash: format!("{}_{}",
-                    dup["tokens"].as_u64().unwrap_or(0),
-                    dup["lines"].as_u64().unwrap_or(0)),
+                hash: format!("{}_{}", token_count, line_count),
                 instances,
-                token_count: dup["tokens"].as_u64().unwrap_or(0) as u32,
-                line_count: dup["lines"].as_u64().unwrap_or(0) as u32,
+                token_count: token_count as u32,
+                line_count: line_count as u32,
             });
         }
     }
