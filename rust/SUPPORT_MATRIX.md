@@ -236,9 +236,9 @@ Tools requiring full AST parsing (currently TS/JS only):
 ### Language-Specific Gaps
 
 #### Python Support Gaps
-- No AST-based refactoring (extract_function, inline_variable)
-- Import analysis uses regex only (less accurate than AST)
-- No Python-specific package management tools
+- ~~No AST-based refactoring (extract_function, inline_variable)~~ ✅ **PARTIALLY FIXED**: extract_function now has full AST support
+- ~~Import analysis uses regex only (less accurate than AST)~~ ✅ **FIXED**: Now uses RustPython AST parsing with regex fallback
+- No Python-specific package management tools (requirements.txt, pyproject.toml)
 
 #### Go Support Gaps
 - No AST-based refactoring despite enhanced import parser
@@ -276,9 +276,9 @@ Tools requiring full AST parsing (currently TS/JS only):
    - ~~Validate Rust LSP integration with real projects~~ ✅ **DONE**
 
 3. **Medium Term** (Next Quarter):
-   - Implement Python AST parser for refactoring
+   - ~~Implement Python AST parser for refactoring~~ ✅ **DONE**: RustPython AST parser implemented
    - Implement Go AST parser or CGO bridge
-   - Add language-specific package management tools
+   - Add language-specific package management tools (Python: requirements.txt/pyproject.toml, Go: go.mod, Rust: Cargo.toml)
    - ~~Implement direct `organize_imports` instead of delegation~~ ✅ **DONE**
 
 ## Testing Coverage
