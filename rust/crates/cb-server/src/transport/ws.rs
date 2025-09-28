@@ -140,6 +140,7 @@ async fn handle_connection(
                     Err(e) => {
                         tracing::error!("Failed to handle message: {}", e);
                         McpMessage::Response(McpResponse {
+            jsonrpc: "2.0".to_string(),
                             id: None,
                             result: None,
                             error: Some(McpError {
@@ -196,6 +197,7 @@ async fn handle_message(
             } else if !session.initialized {
                 // Reject non-initialize requests before initialization
                 Ok(McpMessage::Response(McpResponse {
+            jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: None,
                     error: Some(McpError {
@@ -245,6 +247,7 @@ async fn handle_initialize(
             tracing::info!("Authentication successful for project: {}", project_id);
         } else {
             return Ok(McpMessage::Response(McpResponse {
+            jsonrpc: "2.0".to_string(),
                 id: request.id,
                 result: None,
                 error: Some(McpError {
@@ -280,6 +283,7 @@ async fn handle_initialize(
     };
 
     Ok(McpMessage::Response(McpResponse {
+            jsonrpc: "2.0".to_string(),
         id: request.id,
         result: Some(serde_json::to_value(response)?),
         error: None,

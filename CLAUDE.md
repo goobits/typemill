@@ -4,175 +4,138 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Information
 
-**Package**: `@goobits/codeflow-buddy` | **Command**: `codeflow-buddy` | **Runtime**: Bun/Node.js
+**Package**: `codeflow-buddy` | **Command**: `codeflow-buddy` | **Runtime**: Rust
 
-MCP server bridging Language Server Protocol (LSP) functionality to AI coding assistants with 31 MCP tools for navigation, refactoring, code intelligence, and batch operations.
+Pure Rust MCP server bridging Language Server Protocol (LSP) functionality to AI coding assistants with comprehensive tools for navigation, refactoring, code intelligence, and batch operations.
 
 ## Development Commands
 
 ```bash
-# Install dependencies
-bun install
+# Build the project
+cargo build
 
-# Development with hot reload
-bun run dev
+# Development build with debug info
+cargo build --release
 
-# Build for production
-bun run build
+# Run the server directly
+cargo run
 
-# Run the built server
-bun run start
-# or directly
-node packages/server/dist/index.js start
+# Run tests
+cargo test
 
-# CLI commands for configuration and management (from project root)
-node packages/server/dist/index.js setup    # Smart setup with auto-detection
-node packages/server/dist/index.js status   # Show what's working right now
-node packages/server/dist/index.js start    # Start the MCP server for Claude Code
-node packages/server/dist/index.js stop     # Stop the running MCP server
-node packages/server/dist/index.js serve    # Start WebSocket server
-node packages/server/dist/index.js link     # Link to AI assistants
-node packages/server/dist/index.js unlink   # Remove AI from config
+# Run tests with output
+cargo test -- --nocapture
 
-# Quality assurance
-bun run lint         # Check code style and issues
-bun run lint:fix     # Auto-fix safe issues
-bun run format       # Format code with Biome
-bun run typecheck    # Run TypeScript type checking
-bun run test         # Run unit tests
-bun run test:all     # Run all tests
-bun run test:e2e          # Run end-to-end tests
-bun run test:fuse    # Run FUSE-specific tests (includes real FUSE tests)
-bun run test:fuse:real    # Run real FUSE tests (requires FUSE installed)
+# Run clippy for linting
+cargo clippy
 
-# Test Performance Optimizations (for slow systems)
-bun run test:fast     # Optimized test runner with system detection
-bun run test:minimal  # Ultra-minimal runner for very slow systems
-# Fast runner: 5min timeout, parallel on fast systems, LSP preload optional
-# Minimal runner: 10min timeout, sequential only, no LSP preload, minimal config
+# Format code
+cargo fmt
 
-# Full pre-publish check
-bun run prepublishOnly  # build + test + typecheck
+# Check code without building
+cargo check
 
-# IMPORTANT: After modifying codeflow-buddy's own source code, restart the MCP server to load changes!
-
-# WebSocket Server Commands
-node packages/server/dist/index.js serve --port 3000                    # Basic WebSocket server
-node packages/server/dist/index.js serve --require-auth --jwt-secret KEY # With JWT authentication
-node packages/server/dist/index.js serve --tls-key key.pem --tls-cert cert.pem # With TLS/WSS
-docker-compose up -d                                     # Full Docker deployment
+# CLI commands for configuration and management
+./target/release/codeflow-buddy setup    # Smart setup with auto-detection
+./target/release/codeflow-buddy status   # Show what's working right now
+./target/release/codeflow-buddy start    # Start the MCP server for Claude Code
+./target/release/codeflow-buddy stop     # Stop the running MCP server
+./target/release/codeflow-buddy serve    # Start WebSocket server
+./target/release/codeflow-buddy link     # Link to AI assistants
+./target/release/codeflow-buddy unlink   # Remove AI from config
 ```
 
 ## Architecture
 
 ### Core Components
 
-**MCP Server Layer** (`index.ts`)
+**MCP Server Layer** (`src/main.rs`)
 
 - Entry point that implements MCP protocol
-- Exposes 31 MCP tools covering navigation, refactoring, intelligence, diagnostics, and batch operations
+- Exposes comprehensive MCP tools covering navigation, refactoring, intelligence, diagnostics, and batch operations
 - Handles MCP client requests and delegates to LSP layer
 - Includes CLI subcommand handling for `setup`, `status`, `start`, `stop`
 
-**LSP Client Layer** (`src/lsp/client.ts`)
+**LSP Client Layer** (`src/lsp/`)
 
 - Manages multiple LSP server processes concurrently
 - Handles LSP protocol communication (JSON-RPC over stdio)
 - Maps file extensions to appropriate language servers
 - Maintains process lifecycle and request/response correlation
 
-**Tool Registry** (`src/mcp/tool-registry.ts`)
+**Tool Registry** (`src/mcp/`)
 
 - Central registry for all MCP tool handlers
 - Decouples batch executor from handler implementations
-- Supports dynamic tool registration at module load time
-- Tracks which module registered each tool for debugging
+- Native Rust tool definitions and handlers
+- Comprehensive error handling and validation
 
 **Configuration System** (`.codebuddy/config.json`)
 
 - Defines which LSP servers to use for different file extensions
 - Smart setup with auto-detection via `codeflow-buddy setup` command
 - File scanning with gitignore support for project structure detection
-- Automatic migration from old `codebuddy.json` format
+- Native Rust configuration parsing and validation
 
-**WebSocket Server Layer** (`src/server/ws-server.ts`)
+**WebSocket Server Layer** (`src/server/`)
 
 - Production-ready WebSocket server with HTTP health endpoints
-- Session management with connection recovery (60-second grace periods)
+- Session management with connection recovery
 - JWT authentication and TLS/WSS support for enterprise security
 - Structured logging and comprehensive monitoring
 
-**Authentication System** (`src/auth/jwt-auth.ts`) - *Phase 3*
+**File System Operations** (`src/fs/`)
 
-- JWT-based authentication with configurable expiry and permissions
-- Project-based access control with granular permissions
-- `/auth` HTTP endpoint for token generation
-- Token validation during WebSocket initialization
-
-**Delta Update System** (`src/fs/delta.ts`) - *Phase 3*
-
-- diff-match-patch integration for efficient file synchronization
-- Automatic compression ratio analysis (only uses delta if >20% savings)
-- Graceful fallback to full updates when delta is inefficient
-- Network bandwidth optimization for large file modifications
-
-**Advanced Caching** (`src/core/cache.ts`) - *Phase 3*
-
-- Event-driven cache invalidation replacing TTL-based expiration
-- Persistent file cache until explicit invalidation events
-- Hit rate tracking and comprehensive cache statistics
-- Pattern-based bulk invalidation for directory changes
-
-**Streaming File Access** (`src/fs/stream.ts`)
-
-- Enhanced with delta updates and intelligent caching
-- Real-time file change notification handling
-- Cache invalidation on file modification events
-- Performance monitoring and statistics
+- Native file system access and manipulation
+- Efficient file reading and writing operations
+- Directory traversal and pattern matching
+- Cross-platform compatibility
 
 ### Data Flow
 
-**Traditional MCP Flow:**
+**MCP Flow:**
 1. MCP client sends tool request (e.g., `find_definition`)
-2. Main server looks up tool handler in central registry
-3. Tool handler is executed with appropriate service injection
+2. Main server looks up tool handler in registry
+3. Tool handler is executed with appropriate LSP client
 4. LSP client determines appropriate language server for file extension
 5. If server not running, spawns new LSP server process
 6. Sends LSP request to server and correlates response
 7. Transforms LSP response back to MCP format
 
-**WebSocket Server Flow (Phase 2+):**
+**WebSocket Server Flow:**
 1. Client connects via WebSocket (with optional JWT authentication)
 2. Session manager creates/recovers client session with project context
 3. WebSocket transport receives MCP message and validates permissions
-4. Streaming file access provides cached content or requests from client
-5. Delta processor optimizes file updates using diff-match-patch
-6. LSP servers process requests with intelligent crash recovery
-7. Response sent back through WebSocket with structured logging
+4. File system operations provide direct file access
+5. LSP servers process requests with intelligent crash recovery
+6. Response sent back through WebSocket with structured logging
 
 ### Tool Registration Pattern
 
-Each handler module self-registers its tools with the central registry:
+Tools are registered as native Rust functions with compile-time type safety:
 
-```typescript
-// At the end of each handler file (e.g., core-handlers.ts)
-import { registerTools } from '../tool-registry.js';
+```rust
+// Tool handlers are defined as async functions
+pub async fn find_definition(
+    params: FindDefinitionParams,
+    lsp_client: &LspClient,
+) -> Result<FindDefinitionResult, McpError> {
+    // Implementation
+}
 
-registerTools(
-  {
-    find_definition: { handler: handleFindDefinition, requiresService: 'symbol' },
-    find_references: { handler: handleFindReferences, requiresService: 'symbol' },
+// Tools are registered in the main MCP server setup
+let tools = vec![
+    Tool::new("find_definition", find_definition),
+    Tool::new("find_references", find_references),
     // ... other tools
-  },
-  'core-handlers' // module name for tracking
-);
+];
 ```
 
-This pattern eliminates circular dependencies and enables:
-- Clean separation of concerns
-- Easy addition/removal of tools
-- Better testability (registry can be mocked)
-- Plugin-style extensibility
+This approach provides:
+- Compile-time type safety
+- Zero-cost abstractions
+- Memory safety guarantees
+- High performance native execution
 
 ### LSP Server Management
 
@@ -230,17 +193,17 @@ Each server config requires:
 
 ## Code Quality & Testing
 
-The project uses Biome for linting and formatting:
+The project uses Rust's built-in tooling for code quality:
 
-- **Linting**: Enabled with recommended rules + custom strictness
-- **Formatting**: 2-space indents, single quotes, semicolons always, LF endings
-- **TypeScript**: Strict type checking with `--noEmit`
-- **Testing**: Bun test framework with unit tests in `src/*.test.ts`
+- **Linting**: Clippy with strict rules and custom configurations
+- **Formatting**: rustfmt with standard Rust formatting conventions
+- **Type Safety**: Rust's compile-time type checking and borrow checker
+- **Testing**: Built-in Rust test framework with unit and integration tests
 
 Run quality checks before committing:
 
 ```bash
-bun run lint:fix && bun run format && bun run typecheck && bun run test
+cargo fmt && cargo clippy && cargo test
 ```
 
 ## LSP Protocol Details
@@ -256,101 +219,71 @@ The implementation handles LSP protocol specifics:
 - Automatic server restart based on configured intervals
 - Manual server restart via MCP tool
 
-## Production Deployment (Phase 2+)
+## Production Deployment
 
-### Docker Deployment
+### Binary Distribution
 ```bash
-# Build and start full stack
-docker-compose up -d
+# Build optimized release binary
+cargo build --release
 
-# Production service only
-docker build -f Dockerfile.service -t codeflow-buddy:latest .
-docker run -d -p 3000:3000 codeflow-buddy:latest
-```
-
-### Health Monitoring
-```bash
-# Health check endpoint
-curl http://localhost:3000/healthz
-
-# Prometheus metrics
-curl http://localhost:3000/metrics
+# The resulting binary is self-contained and ready for deployment
+./target/release/codeflow-buddy serve --port 3000
 ```
 
 ### WebSocket Server Configuration
 ```bash
 # Basic server
-node packages/server/dist/index.js serve --port 3000 --max-clients 10
+./target/release/codeflow-buddy serve --port 3000 --max-clients 10
 
 # With authentication
-node packages/server/dist/index.js serve --require-auth --jwt-secret "your-secret"
+./target/release/codeflow-buddy serve --require-auth --jwt-secret "your-secret"
 
 # With TLS/WSS
-node packages/server/dist/index.js serve --tls-key server.key --tls-cert server.crt
+./target/release/codeflow-buddy serve --tls-key server.key --tls-cert server.crt
 
 # Enterprise setup
-node packages/server/dist/index.js serve \
+./target/release/codeflow-buddy serve \
   --port 3000 --max-clients 10 \
   --require-auth --jwt-secret "enterprise-key" \
   --tls-key /etc/ssl/server.key --tls-cert /etc/ssl/server.crt
 ```
 
 ### Environment Variables
-- `NODE_ENV` - Environment mode (development/production)
-- `LOG_LEVEL` - Logging level (debug/info/warn/error)
+- `RUST_LOG` - Logging level (debug/info/warn/error)
 - `JWT_SECRET` - JWT signing secret for authentication
 - `JWT_EXPIRY` - Token expiry time (default: 24h)
 - `JWT_ISSUER` - Token issuer (default: codeflow-buddy)
 - `JWT_AUDIENCE` - Token audience (default: codeflow-clients)
 
-## Performance Features (Phase 3)
+## Performance Features
 
-### Advanced Caching
-- **Event-driven invalidation** - Files cached until explicit change notifications
-- **Hit rate tracking** - Comprehensive cache statistics and monitoring
-- **Pattern invalidation** - Bulk invalidation for directory changes
-- **Cache statistics** - Available via `/healthz` endpoint
-
-### Delta Updates
-- **diff-match-patch integration** - Efficient file synchronization
-- **Automatic optimization** - Only uses delta if >20% bandwidth savings
-- **Compression ratio analysis** - Real-time efficiency monitoring
-- **Graceful fallback** - Full updates when delta is inefficient
+### Native Performance
+- **Zero-cost abstractions** - Rust's compile-time optimizations
+- **Memory safety** - No garbage collection overhead
+- **Async runtime** - Efficient tokio-based concurrency
+- **Native compilation** - Platform-optimized machine code
 
 ### Security Features
+- **Memory safety** - Rust's ownership system prevents common vulnerabilities
 - **JWT Authentication** - Token-based project access control
 - **TLS/WSS Support** - Encrypted WebSocket connections
-- **Permission System** - Granular access controls per project
-- **Client Certificate Validation** - Enhanced security for enterprise
-
-## Dead Code Detection
-
-Run dead code detection with:
-- `bun run dead-code` - Check for dead code
-- `bun run dead-code:fix` - Auto-fix where possible
-- `bun run dead-code:ci` - CI-friendly output
-
-Tool: Knip (detects unused files, dependencies, exports)
-Config: knip.json
+- **Type safety** - Compile-time prevention of data races and null pointer errors
 
 ## Adding New MCP Tools (For Contributors)
 
 To add a new MCP tool to the system:
 
-1. **Define the tool schema** in the appropriate `src/mcp/definitions/*.ts` file
-2. **Implement the handler** in the corresponding `src/mcp/handlers/*.ts` file
-3. **Register the tool** at the end of your handler file:
-   ```typescript
-   registerTools(
-     { your_tool: { handler: handleYourTool, requiresService: 'symbol' } },
-     'your-handler-module'
-   );
+1. **Define the tool schema** in `src/mcp/tools.rs`
+2. **Implement the handler** in the appropriate handler module
+3. **Register the tool** in the main server setup:
+   ```rust
+   tools.push(Tool::new("your_tool", handle_your_tool));
    ```
-4. **Update tool count** in CLAUDE.md if adding to existing categories
+4. **Add tests** for the new functionality
 
 The tool will be automatically available through:
 - Direct MCP calls
-- Batch execution system (`batch_execute` tool)
-- Tool discovery (`/tools` command)
+- Batch execution system
+- Tool discovery
 
-No need to modify the batch executor or main server - the registry handles everything!
+All tools benefit from Rust's compile-time guarantees for safety and performance!

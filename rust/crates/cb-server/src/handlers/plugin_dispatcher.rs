@@ -225,6 +225,7 @@ impl PluginDispatcher {
             McpMessage::Notification(notification) => {
                 debug!("Received notification: {:?}", notification);
                 Ok(McpMessage::Response(McpResponse {
+                    jsonrpc: "2.0".to_string(),
                     id: None,
                     result: Some(json!({"status": "ok"})),
                     error: None,
@@ -240,6 +241,8 @@ impl PluginDispatcher {
         debug!("Handling request: {:?}", request.method);
 
         let response = match request.method.as_str() {
+            "initialize" => self.handle_initialize(request.params).await?,
+            "initialized" | "notifications/initialized" => self.handle_initialized().await?,
             "tools/list" => self.handle_list_tools().await?,
             "tools/call" => self.handle_tool_call(request.params).await?,
             _ => {
@@ -251,6 +254,7 @@ impl PluginDispatcher {
         };
 
         Ok(McpMessage::Response(McpResponse {
+                    jsonrpc: "2.0".to_string(),
             id: request.id,
             result: Some(response),
             error: None,
@@ -408,6 +412,31 @@ impl PluginDispatcher {
         request = request.with_params(args);
 
         Ok(request)
+    }
+
+    /// Handle MCP initialize request
+    async fn handle_initialize(&self, _params: Option<Value>) -> ServerResult<Value> {
+        debug!("Handling MCP initialize request");
+
+        // Return server capabilities - using latest protocol version
+        Ok(json!({
+            "protocolVersion": "2025-06-18",
+            "capabilities": {
+                "tools": {}
+            },
+            "serverInfo": {
+                "name": "codeflow-buddy",
+                "version": "0.1.0"
+            }
+        }))
+    }
+
+    /// Handle MCP initialized notification
+    async fn handle_initialized(&self) -> ServerResult<Value> {
+        debug!("Handling MCP initialized notification");
+
+        // Server is ready - return empty response for notification
+        Ok(json!({}))
     }
 
     /// Convert plugin error to server error

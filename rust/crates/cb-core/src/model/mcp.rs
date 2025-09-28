@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// MCP protocol version
-pub const MCP_PROTOCOL_VERSION: &str = "2024-11-05";
+pub const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
 
 /// MCP message envelope - simplified for easier use
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -19,6 +19,8 @@ pub enum McpMessage {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct McpRequest {
+    #[serde(default = "default_jsonrpc_version")]
+    pub jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<serde_json::Value>,
     pub method: String,
@@ -26,10 +28,16 @@ pub struct McpRequest {
     pub params: Option<serde_json::Value>,
 }
 
+fn default_jsonrpc_version() -> String {
+    "2.0".to_string()
+}
+
 /// MCP response message
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct McpResponse {
+    #[serde(default = "default_jsonrpc_version")]
+    pub jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -51,6 +59,8 @@ pub struct ToolCall {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct McpNotification {
+    #[serde(default = "default_jsonrpc_version")]
+    pub jsonrpc: String,
     pub method: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<serde_json::Value>,
@@ -221,6 +231,7 @@ impl McpMessage {
     /// Create a new request message
     pub fn request(id: impl Into<serde_json::Value>, method: impl Into<String>) -> Self {
         Self::Request(McpRequest {
+            jsonrpc: "2.0".to_string(),
             id: Some(id.into()),
             method: method.into(),
             params: None,
@@ -234,6 +245,7 @@ impl McpMessage {
         params: serde_json::Value,
     ) -> Self {
         Self::Request(McpRequest {
+            jsonrpc: "2.0".to_string(),
             id: Some(id.into()),
             method: method.into(),
             params: Some(params),
@@ -243,6 +255,7 @@ impl McpMessage {
     /// Create a new success response
     pub fn success_response(id: impl Into<serde_json::Value>, result: serde_json::Value) -> Self {
         Self::Response(McpResponse {
+            jsonrpc: "2.0".to_string(),
             id: Some(id.into()),
             result: Some(result),
             error: None,
@@ -252,6 +265,7 @@ impl McpMessage {
     /// Create a new error response
     pub fn error_response(id: impl Into<serde_json::Value>, error: McpError) -> Self {
         Self::Response(McpResponse {
+            jsonrpc: "2.0".to_string(),
             id: Some(id.into()),
             result: None,
             error: Some(error),
@@ -261,6 +275,7 @@ impl McpMessage {
     /// Create a new notification
     pub fn notification(method: impl Into<String>) -> Self {
         Self::Notification(McpNotification {
+            jsonrpc: "2.0".to_string(),
             method: method.into(),
             params: None,
         })
@@ -272,6 +287,7 @@ impl McpMessage {
         params: serde_json::Value,
     ) -> Self {
         Self::Notification(McpNotification {
+            jsonrpc: "2.0".to_string(),
             method: method.into(),
             params: Some(params),
         })

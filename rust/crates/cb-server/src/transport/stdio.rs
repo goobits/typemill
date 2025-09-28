@@ -39,6 +39,7 @@ pub async fn start_stdio_server(dispatcher: Arc<PluginDispatcher>) -> Result<(),
                     Err(e) => {
                         tracing::error!("Failed to parse MCP message: {}", e);
                         let error_response = McpResponse {
+                            jsonrpc: "2.0".to_string(),
                             id: None,
                             result: None,
                             error: Some(McpError {
@@ -68,6 +69,7 @@ pub async fn start_stdio_server(dispatcher: Arc<PluginDispatcher>) -> Result<(),
                     Err(e) => {
                         tracing::error!("Failed to handle message: {}", e);
                         McpMessage::Response(McpResponse {
+                            jsonrpc: "2.0".to_string(),
                             id: message_id,
                             result: None,
                             error: Some(McpError {

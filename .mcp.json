@@ -2,9 +2,8 @@
   "mcpServers": {
     "codeflow-buddy": {
       "type": "stdio",
-      "command": "node",
+      "command": "/usr/local/bin/codeflow-buddy",
       "args": [
-        "/workspace/packages/server/dist/index.js",
         "start"
       ],
       "env": {}

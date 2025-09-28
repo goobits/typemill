@@ -1,53 +1,76 @@
-# 🤖 codeflow-buddy
-**Enterprise-grade MCP server** bridging Language Server Protocol functionality to AI coding assistants with **31 MCP tools** and **WebSocket deployment**
+# 🤖 Codeflow Buddy
+
+**Pure Rust MCP server** bridging Language Server Protocol functionality to AI coding assistants with comprehensive tools for navigation, refactoring, code intelligence, and batch operations.
 
 ## ✨ What It Does
 
-**31 MCP tools** that give AI assistants LSP superpowers:
+**Comprehensive MCP tools** that give AI assistants LSP superpowers:
 - **Find & Navigate** - Jump to definitions, find all references, search symbols
-- **Refactor Safely** - Rename across entire codebase, with undo safety
+- **Refactor Safely** - Rename across entire codebase, with compile-time safety
 - **Code Intelligence** - Hover docs, completions, diagnostics, call hierarchies
 - **Batch Operations** - Execute multiple tools atomically with parallel processing
 - **Advanced Analysis** - Directory renaming, import fixing, package.json management
 - **Multi-Language** - TypeScript, Python, Go, Rust + 15 more languages
-- **WebSocket Mode** - Multi-client support for team deployments
+- **WebSocket Mode** - Production-ready server with authentication
 
-## 🚀 Quick Start
+## 🚀 Quick Install
 
-### Development Setup (Package Not Published)
+### Option 1: One-Liner Install (Recommended)
 ```bash
-# Clone and build from source
-git clone https://github.com/goobits/codeflow-buddy.git
-cd codeflow-buddy
-bun install && bun run build
-
-# Use node to run commands directly
-node packages/server/dist/index.js setup
-node packages/server/dist/index.js status
-node packages/server/dist/index.js start
+curl -fsSL https://raw.githubusercontent.com/goobits/codeflow-buddy/main/install.sh | bash
 ```
 
-### WebSocket Server (Optional)
+### Option 2: Cargo Install
 ```bash
-# From the cloned repository
-bun run build
+cargo install codeflow-buddy
+```
 
-# Start basic WebSocket server
-node packages/server/dist/index.js serve --port 3000
+### Option 3: Download Pre-built Binary
+1. Download from [GitHub Releases](https://github.com/goobits/codeflow-buddy/releases/latest)
+2. Extract and place in your PATH
+3. Run `codeflow-buddy setup`
 
-# With authentication (requires 32+ character secret)
-node packages/server/dist/index.js serve --require-auth --jwt-secret "your-32-character-secret-key-here"
+### Option 4: Package Managers
+
+#### Homebrew (macOS/Linux)
+```bash
+brew install goobits/tap/codeflow-buddy
+```
+
+#### Chocolatey (Windows)
+```bash
+choco install codeflow-buddy
+```
+
+## ⚡ Usage
+
+```bash
+# Smart setup with auto-detection
+codeflow-buddy setup
+
+# Start MCP server for Claude Code
+codeflow-buddy start
+
+# Check status
+codeflow-buddy status
+
+# WebSocket server (advanced)
+codeflow-buddy serve --port 3000
+
+# With authentication
+codeflow-buddy serve --require-auth --jwt-secret "your-secret"
 ```
 
 ## 📚 MCP Integration
+
+The installer automatically configures Claude Code. Manual setup:
+
 ```json
-# Add to your MCP client configuration (e.g., Claude Code)
 {
   "mcpServers": {
     "codeflow-buddy": {
-      "command": "node",
-      "args": ["/path/to/codeflow-buddy/packages/server/dist/index.js", "start"],
-      "cwd": "/path/to/your/project"
+      "command": "codeflow-buddy",
+      "args": ["start"]
     }
   }
 }
