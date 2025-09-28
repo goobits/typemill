@@ -8,6 +8,7 @@ license = "MIT"
 [dependencies]
 cb-core = { path = "../cb-core" }
 cb-ast = { path = "../cb-ast" }
+cb-plugins = { path = "../cb-plugins" }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 serde = { workspace = true }
