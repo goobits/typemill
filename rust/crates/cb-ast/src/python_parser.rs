@@ -221,6 +221,167 @@ fn infer_python_value_type_simple(value: &str) -> PythonValueType {
     }
 }
 
+/// Find variables in scope for a given line
+pub fn find_python_scope_variables(source: &str, target_line: u32) -> AstResult<Vec<PythonVariable>> {
+    let variables = extract_python_variables(source)?;
+
+    // For Python, variables are in scope if they're declared before the target line
+    // and at the same or lower indentation level
+    let target_indent = get_python_indentation_at_line(source, target_line);
+
+    Ok(variables.into_iter()
+        .filter(|var| var.line < target_line)
+        .filter(|var| {
+            let var_indent = get_python_indentation_at_line(source, var.line);
+            var_indent <= target_indent
+        })
+        .collect())
+}
+
+/// Analyze a selected Python expression range
+pub fn analyze_python_expression_range(
+    source: &str,
+    start_line: u32,
+    start_col: u32,
+    end_line: u32,
+    end_col: u32,
+) -> AstResult<String> {
+    let lines: Vec<&str> = source.lines().collect();
+
+    if start_line == end_line {
+        // Single line
+        let line = lines.get(start_line as usize)
+            .ok_or_else(|| AstError::analysis("Invalid line number"))?;
+        Ok(line[start_col as usize..end_col as usize].to_string())
+    } else {
+        // Multi-line
+        let mut result = String::new();
+
+        // First line
+        if let Some(first_line) = lines.get(start_line as usize) {
+            result.push_str(&first_line[start_col as usize..]);
+            result.push('\n');
+        }
+
+        // Middle lines
+        for line_idx in (start_line + 1)..end_line {
+            if let Some(line) = lines.get(line_idx as usize) {
+                result.push_str(line);
+                result.push('\n');
+            }
+        }
+
+        // Last line
+        if let Some(last_line) = lines.get(end_line as usize) {
+            result.push_str(&last_line[..end_col as usize]);
+        }
+
+        Ok(result)
+    }
+}
+
+/// Find variable declaration at specific position
+pub fn find_variable_at_position(source: &str, line: u32, col: u32) -> AstResult<Option<PythonVariable>> {
+    let variables = extract_python_variables(source)?;
+
+    for var in variables {
+        if var.line == line {
+            let line_text = source.lines().nth(line as usize)
+                .ok_or_else(|| AstError::analysis("Invalid line number"))?;
+
+            // Check if the column position is within the variable name
+            if let Some(var_pos) = line_text.find(&var.name) {
+                let var_end = var_pos + var.name.len();
+                if col >= var_pos as u32 && col <= var_end as u32 {
+                    return Ok(Some(var));
+                }
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+/// Get all usages of a variable within scope
+pub fn get_variable_usages_in_scope(source: &str, variable_name: &str, from_line: u32) -> AstResult<Vec<(u32, u32, u32)>> {
+    let mut usages = Vec::new();
+    let lines: Vec<&str> = source.lines().collect();
+
+    for (line_idx, line_text) in lines.iter().enumerate() {
+        let line_idx = line_idx as u32;
+
+        // Skip lines before the variable declaration
+        if line_idx < from_line {
+            continue;
+        }
+
+        // Find all occurrences of the variable name in this line
+        let mut start = 0;
+        while let Some(pos) = line_text[start..].find(variable_name) {
+            let actual_pos = start + pos;
+
+            // Check if this is a whole word (not part of another identifier)
+            let is_word_boundary = (actual_pos == 0 || !line_text.chars().nth(actual_pos - 1).unwrap_or(' ').is_alphanumeric()) &&
+                                  (actual_pos + variable_name.len() >= line_text.len() || !line_text.chars().nth(actual_pos + variable_name.len()).unwrap_or(' ').is_alphanumeric());
+
+            if is_word_boundary {
+                usages.push((line_idx, actual_pos as u32, (actual_pos + variable_name.len()) as u32));
+            }
+
+            start = actual_pos + 1;
+        }
+    }
+
+    Ok(usages)
+}
+
+/// Find the end line of a Python function
+pub fn find_python_function_end(source: &str, function_start_line: u32) -> AstResult<u32> {
+    let lines: Vec<&str> = source.lines().collect();
+    let start_line = function_start_line as usize;
+
+    if start_line >= lines.len() {
+        return Err(AstError::analysis("Invalid function start line"));
+    }
+
+    // Get the indentation of the function definition
+    let func_line = lines[start_line];
+    let func_indent = func_line.chars().take_while(|c| c.is_whitespace()).count();
+
+    // Find the next line with same or less indentation, or a new function/class
+    for (idx, line) in lines.iter().enumerate().skip(start_line + 1) {
+        if line.trim().is_empty() {
+            continue; // Skip empty lines
+        }
+
+        let line_indent = line.chars().take_while(|c| c.is_whitespace()).count();
+
+        // If we find a line with same or less indentation that's not part of the function body
+        if line_indent <= func_indent {
+            // Check if it's a new function, class, or other top-level construct
+            let trimmed = line.trim();
+            if trimmed.starts_with("def ") || trimmed.starts_with("class ") ||
+               trimmed.starts_with("if __name__") || line_indent < func_indent {
+                return Ok(idx as u32 - 1);
+            }
+        }
+    }
+
+    // If we reach the end of the file, the function ends at the last line
+    Ok(lines.len() as u32 - 1)
+}
+
+/// Get indentation level at specific line
+pub fn get_python_indentation_at_line(source: &str, line: u32) -> u32 {
+    let lines: Vec<&str> = source.lines().collect();
+
+    if let Some(line_text) = lines.get(line as usize) {
+        line_text.chars().take_while(|c| c.is_whitespace()).count() as u32
+    } else {
+        0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
