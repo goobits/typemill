@@ -8,6 +8,9 @@ pub mod transformer;
 pub mod import_updater;
 pub mod refactoring;
 
+#[cfg(test)]
+mod python_refactoring_test;
+
 pub use error::{AstError, AstResult};
 pub use analyzer::*;
 pub use parser::*;

@@ -2,7 +2,7 @@
 
 This document provides a comprehensive overview of language support across all MCP tools in the Codeflow Buddy system, including implementation status and test coverage.
 
-**Last Updated**: 2025-09-27
+**Last Updated**: 2025-09-28
 
 ## Key
 
@@ -21,7 +21,7 @@ This document provides a comprehensive overview of language support across all M
 | Language | LSP Support | AST Support | Import Analysis | Refactoring | Overall Coverage |
 |----------|------------|-------------|-----------------|-------------|------------------|
 | **TypeScript/JavaScript** | ✅ Full (23 tools) | ✅ Full (SWC) | ✅ Full | ✅ Full (2 tools) | **100%** |
-| **Python** | ✅ Full (23 tools) | ✅ Full (RustPython) | ✅ Enhanced | ✅ Partial (1 tool) | **89%** |
+| **Python** | ✅ Full (23 tools) | ✅ Full (RustPython) | ✅ Enhanced | ✅ Full (3 tools) | **97%** |
 | **Go** | ✅ Full (23 tools) | ⚠️ Import Only | ✅ Enhanced | ❌ None | **64%** |
 | **Rust** | ✅ Full (23 tools) | ⚠️ Import Only | ✅ Basic | ❌ None | **64%** |
 | **Other** | ❌ None | ❌ None | ❌ None | ❌ None | **0%** |
@@ -85,8 +85,8 @@ This document provides a comprehensive overview of language support across all M
 | Tool | TypeScript/JS | Python | Go | Rust | Test Coverage | Notes |
 |------|--------------|--------|-----|------|--------------|-------|
 | `extract_function` | ✅ Full AST | ✅ Full AST | ❌ None | ❌ None | 🔗 Integration | **NEW**: Python AST support added |
-| `inline_variable` | ✅ Full AST | ⚠️ Basic | ❌ None | ❌ None | 🔗 Integration | 13 tests, Python partial support |
-| `extract_variable` | ✅ Full AST | ⚠️ Basic | ❌ None | ❌ None | ✅ 🔗 Integration | **NEW**: Full AST implementation with smart naming |
+| `inline_variable` | ✅ Full AST | ✅ Full AST | ❌ None | ❌ None | 🔗 Integration | **NEW**: Python AST support added |
+| `extract_variable` | ✅ Full AST | ✅ Full AST | ❌ None | ❌ None | ✅ 🔗 Integration | **NEW**: Python AST support added |
 | `organize_imports` | ✅ LSP | ✅ LSP | ✅ LSP | ✅ LSP | ✅ 🔗 Integration | **NEW**: Enhanced error handling and validation |
 | `rename_directory` | ✅ Full | ⚠️ Basic | ⚠️ Basic | ⚠️ Basic | 🔬 Unit | Import updates for TS/JS only |
 
@@ -276,7 +276,7 @@ Tools requiring full AST parsing (currently TS/JS only):
    - ~~Validate Rust LSP integration with real projects~~ ✅ **DONE**
 
 3. **Medium Term** (Next Quarter):
-   - ~~Implement Python AST parser for refactoring~~ ✅ **DONE**: RustPython AST parser implemented
+   - ~~Implement Python AST parser for refactoring~~ ✅ **DONE**: Complete Python refactoring support (extract_function, inline_variable, extract_variable)
    - Implement Go AST parser or CGO bridge
    - Add language-specific package management tools (Python: requirements.txt/pyproject.toml, Go: go.mod, Rust: Cargo.toml)
    - ~~Implement direct `organize_imports` instead of delegation~~ ✅ **DONE**
@@ -286,7 +286,7 @@ Tools requiring full AST parsing (currently TS/JS only):
 | Language | Unit Tests | Integration Tests | E2E Tests |
 |----------|-----------|------------------|-----------|
 | TypeScript/JavaScript | ✅ 100% | ✅ 100% | ✅ 100% |
-| Python | ✅ Import parsing | ✅ LSP tools | ⚠️ Basic |
+| Python | ✅ Full coverage | ✅ All tools + refactoring | ⚠️ Basic |
 | Go | ✅ Import parsing | ✅ LSP tools | ⚠️ Basic |
 | Rust | ✅ Import parsing | ✅ LSP tools | ⚠️ Basic |
 
