@@ -70,7 +70,7 @@ export class FileService {
   async getCodeActions(
     filePath: string,
     range?: Range,
-    context?: { diagnostics?: Diagnostic[] }
+    context?: { diagnostics?: Diagnostic[]; only?: string[] }
   ): Promise<CodeAction[]> {
     const serverState = await this.context.prepareFile(filePath);
     if (!serverState.initialized) {
@@ -90,7 +90,7 @@ export class FileService {
     // Ensure context includes diagnostics and only property
     const codeActionContext = {
       diagnostics: context?.diagnostics || diagnostics,
-      only: undefined, // Don't filter by specific code action kinds
+      only: context?.only, // Filter by specific code action kinds if provided
     };
 
     logDebugMessage('FileService', 'Request params:', {
