@@ -26,4 +26,7 @@ pub trait LspService: Send + Sync {
 
     /// Restart LSP server for given extensions
     async fn restart_servers(&self, extensions: Option<Vec<String>>) -> Result<(), CoreError>;
+
+    /// Notify LSP server that a file has been opened
+    async fn notify_file_opened(&self, file_path: &Path) -> Result<(), CoreError>;
 }

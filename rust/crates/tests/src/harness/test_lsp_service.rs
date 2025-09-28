@@ -201,6 +201,11 @@ impl LspService for TestLspService {
         // No-op for testing
         Ok(())
     }
+
+    async fn notify_file_opened(&self, _file_path: &std::path::Path) -> Result<(), CoreError> {
+        // No-op for testing - the test LSP service doesn't need actual file notifications
+        Ok(())
+    }
 }
 
 impl Default for TestLspService {

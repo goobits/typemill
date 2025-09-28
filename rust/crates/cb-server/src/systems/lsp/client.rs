@@ -274,6 +274,8 @@ impl LspClient {
             }]
         });
 
+        debug!("LSP initialize params: {:?}", initialize_params);
+
         // Send initialize request
         let result = timeout(
             LSP_INIT_TIMEOUT,
@@ -327,6 +329,52 @@ impl LspClient {
     /// Get the server configuration
     pub fn config(&self) -> &LspServerConfig {
         &self.config
+    }
+
+    /// Notify the LSP server that a file has been opened
+    pub async fn notify_file_opened(&self, file_path: &std::path::Path) -> ServerResult<()> {
+        if !self.is_initialized().await {
+            return Err(ServerError::runtime("LSP client not initialized"));
+        }
+
+        // Read file content
+        let content = match tokio::fs::read_to_string(file_path).await {
+            Ok(content) => content,
+            Err(e) => {
+                warn!("Failed to read file for didOpen notification: {}", e);
+                return Ok(()); // Don't fail the whole operation
+            }
+        };
+
+        // Get file extension for language ID
+        let language_id = file_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| match ext {
+                "ts" => "typescript",
+                "tsx" => "typescriptreact",
+                "js" => "javascript",
+                "jsx" => "javascriptreact",
+                "py" => "python",
+                "rs" => "rust",
+                "go" => "go",
+                _ => ext,
+            })
+            .unwrap_or("plaintext");
+
+        let params = json!({
+            "textDocument": {
+                "uri": format!("file://{}", file_path.display()),
+                "languageId": language_id,
+                "version": 1,
+                "text": content
+            }
+        });
+
+        self.send_notification("textDocument/didOpen", params).await?;
+        debug!("Sent didOpen notification for file: {}", file_path.display());
+
+        Ok(())
     }
 
     /// Kill the LSP server process

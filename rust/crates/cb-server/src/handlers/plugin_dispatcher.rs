@@ -100,15 +100,30 @@ impl DirectLspAdapter {
     }
 
     /// Extract file extension from LSP params
-    fn extract_extension_from_params(&self, params: &Value) -> Option<String> {
-        // Try to get from textDocument.uri
-        if let Some(uri) = params.get("textDocument")?.get("uri")?.as_str() {
-            if uri.starts_with("file://") {
-                let path = uri.trim_start_matches("file://");
-                return std::path::Path::new(path).extension()?.to_str().map(|s| s.to_string());
+    fn extract_extension_from_params(&self, params: &Value, method: &str) -> Option<String> {
+        // For workspace-level operations, return the first supported extension
+        // since they don't operate on specific files
+        match method {
+            "workspace/symbol" => {
+                // Workspace symbol search - use TypeScript client as default
+                if self.extensions.contains(&"ts".to_string()) {
+                    return Some("ts".to_string());
+                } else if !self.extensions.is_empty() {
+                    return Some(self.extensions[0].clone());
+                }
+                return None;
+            }
+            _ => {
+                // For file-specific operations, extract from textDocument.uri
+                if let Some(uri) = params.get("textDocument")?.get("uri")?.as_str() {
+                    if uri.starts_with("file://") {
+                        let path = uri.trim_start_matches("file://");
+                        return std::path::Path::new(path).extension()?.to_str().map(|s| s.to_string());
+                    }
+                }
+                None
             }
         }
-        None
     }
 }
 
@@ -116,8 +131,8 @@ impl DirectLspAdapter {
 impl LspService for DirectLspAdapter {
     async fn request(&self, method: &str, params: Value) -> Result<Value, String> {
         // Extract extension from params
-        let extension = self.extract_extension_from_params(&params)
-            .ok_or_else(|| "Could not extract file extension from params".to_string())?;
+        let extension = self.extract_extension_from_params(&params, method)
+            .ok_or_else(|| format!("Could not extract file extension from params for method '{}'", method))?;
 
         // Get appropriate LSP client
         let client = self.get_or_create_client(&extension).await?;
@@ -150,25 +165,38 @@ impl PluginDispatcher {
     /// Initialize the plugin system with default plugins
     #[instrument(skip(self))]
     pub async fn initialize(&self) -> ServerResult<()> {
+        eprintln!("DEBUG: PluginDispatcher::initialize() called");
         self.initialized.get_or_try_init(|| async {
+            eprintln!("DEBUG: Inside initialize - loading app config");
             info!("Initializing plugin system with DirectLspAdapter (bypassing hard-coded mappings)");
 
             // Get LSP configuration from app config
             let app_config = cb_core::config::AppConfig::load()
-                .map_err(|e| ServerError::Internal(format!("Failed to load app config: {}", e)))?;
+                .map_err(|e| {
+                    eprintln!("DEBUG: Failed to load app config: {}", e);
+                    ServerError::Internal(format!("Failed to load app config: {}", e))
+                })?;
+            eprintln!("DEBUG: App config loaded successfully");
             let lsp_config = app_config.lsp;
 
             // Register TypeScript/JavaScript plugin with DirectLspAdapter
+            eprintln!("DEBUG: Creating TypeScript LSP adapter");
             let ts_lsp_adapter = Arc::new(DirectLspAdapter::new(
                 lsp_config.clone(),
                 vec!["ts".to_string(), "tsx".to_string(), "js".to_string(), "jsx".to_string()],
                 "typescript-lsp-direct".to_string(),
             ));
+            eprintln!("DEBUG: Creating TypeScript plugin");
             let ts_plugin = Arc::new(LspAdapterPlugin::typescript(ts_lsp_adapter));
+            eprintln!("DEBUG: Registering TypeScript plugin with manager");
             self.plugin_manager
                 .register_plugin("typescript", ts_plugin)
                 .await
-                .map_err(|e| ServerError::Internal(format!("Failed to register TypeScript plugin: {}", e)))?;
+                .map_err(|e| {
+                    eprintln!("DEBUG: Failed to register TypeScript plugin: {}", e);
+                    ServerError::Internal(format!("Failed to register TypeScript plugin: {}", e))
+                })?;
+            eprintln!("DEBUG: TypeScript plugin registered successfully");
 
             // Register Python plugin with DirectLspAdapter
             let py_lsp_adapter = Arc::new(DirectLspAdapter::new(
@@ -356,6 +384,11 @@ impl PluginDispatcher {
             return self.handle_file_operation(tool_call).await;
         }
 
+        // Check if this is an LSP notification tool
+        if tool_call.name == "notify_file_opened" {
+            return self.handle_notify_file_opened(tool_call).await;
+        }
+
         // Check if this is a system tool
         if self.is_system_tool(&tool_call.name) {
             return self.handle_system_tool(tool_call).await;
@@ -389,13 +422,23 @@ impl PluginDispatcher {
     fn convert_tool_call_to_plugin_request(&self, tool_call: ToolCall) -> ServerResult<PluginRequest> {
         let args = tool_call.arguments.unwrap_or(json!({}));
 
-        // Extract file path
-        let file_path = args
-            .get("file_path")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing file_path parameter".into()))?;
+        // Handle workspace-level operations that don't require a file path
+        let file_path = match tool_call.name.as_str() {
+            "search_workspace_symbols" => {
+                // Use a dummy file path for workspace symbols
+                PathBuf::from(".")
+            }
+            _ => {
+                // Extract file path for file-specific operations
+                let file_path_str = args
+                    .get("file_path")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| ServerError::InvalidRequest("Missing file_path parameter".into()))?;
+                PathBuf::from(file_path_str)
+            }
+        };
 
-        let mut request = PluginRequest::new(tool_call.name, PathBuf::from(file_path));
+        let mut request = PluginRequest::new(tool_call.name, file_path);
 
         // Extract position if available
         if let (Some(line), Some(character)) = (
@@ -516,6 +559,35 @@ impl PluginDispatcher {
                 warn!("System tool error: {}", e);
                 Err(ServerError::Runtime {
                     message: format!("Tool '{}' failed: {}", tool_call.name, e),
+                })
+            }
+        }
+    }
+
+    /// Handle LSP file notification tool
+    async fn handle_notify_file_opened(&self, tool_call: ToolCall) -> ServerResult<Value> {
+        debug!("Handling notify_file_opened: {}", tool_call.name);
+
+        let args = tool_call.arguments.unwrap_or(json!({}));
+        let file_path_str = args.get("file_path")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+
+        let file_path = PathBuf::from(file_path_str);
+
+        // Notify the LSP service about the file opening
+        match self.app_state.lsp.notify_file_opened(&file_path).await {
+            Ok(()) => {
+                debug!("Successfully notified LSP server about file: {}", file_path.display());
+                Ok(json!({
+                    "success": true,
+                    "message": format!("Notified LSP server about file: {}", file_path.display())
+                }))
+            }
+            Err(e) => {
+                warn!("Failed to notify LSP server about file {}: {}", file_path.display(), e);
+                Err(ServerError::Runtime {
+                    message: format!("Failed to notify LSP server: {}", e),
                 })
             }
         }
