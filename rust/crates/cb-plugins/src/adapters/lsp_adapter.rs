@@ -117,20 +117,6 @@ impl LspAdapterPlugin {
         // Apply standard capabilities
         Self::apply_standard_capabilities(&mut adapter);
 
-        // Add TypeScript-specific custom capabilities
-        adapter.capabilities.custom.insert(
-            "typescript.infer_types".to_string(),
-            json!(true),
-        );
-        adapter.capabilities.custom.insert(
-            "typescript.organize_imports".to_string(),
-            json!(true),
-        );
-        adapter.capabilities.custom.insert(
-            "typescript.suggest_imports".to_string(),
-            json!(true),
-        );
-
         adapter
     }
 
@@ -144,16 +130,6 @@ impl LspAdapterPlugin {
 
         // Apply standard capabilities
         Self::apply_standard_capabilities(&mut adapter);
-
-        // Add Python-specific custom capabilities
-        adapter.capabilities.custom.insert(
-            "python.format_imports".to_string(),
-            json!(true),
-        );
-        adapter.capabilities.custom.insert(
-            "python.type_checking".to_string(),
-            json!(true),
-        );
 
         adapter
     }
@@ -170,10 +146,6 @@ impl LspAdapterPlugin {
         Self::apply_standard_capabilities(&mut adapter);
 
         // Add Go-specific custom capabilities
-        adapter.capabilities.custom.insert(
-            "go.organize_imports".to_string(),
-            json!(true),
-        );
         adapter.capabilities.custom.insert(
             "go.generate".to_string(),
             json!(true),
@@ -196,10 +168,6 @@ impl LspAdapterPlugin {
         // Add Rust-specific custom capabilities
         adapter.capabilities.custom.insert(
             "rust.expand_macro".to_string(),
-            json!(true),
-        );
-        adapter.capabilities.custom.insert(
-            "rust.inlay_hints".to_string(),
             json!(true),
         );
 
