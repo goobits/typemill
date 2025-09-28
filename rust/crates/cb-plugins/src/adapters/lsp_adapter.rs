@@ -114,11 +114,8 @@ impl LspAdapterPlugin {
             lsp_service,
         );
 
-        // Enable TypeScript-specific capabilities
-        adapter.capabilities.editing.auto_imports = true;
-        adapter.capabilities.refactoring.extract_function = true; // If AST support is available
-        adapter.capabilities.refactoring.extract_variable = true;
-        adapter.capabilities.refactoring.inline_variable = true;
+        // Apply standard capabilities
+        Self::apply_standard_capabilities(&mut adapter);
 
         // Add TypeScript-specific custom capabilities
         adapter.capabilities.custom.insert(
@@ -145,6 +142,9 @@ impl LspAdapterPlugin {
             lsp_service,
         );
 
+        // Apply standard capabilities
+        Self::apply_standard_capabilities(&mut adapter);
+
         // Add Python-specific custom capabilities
         adapter.capabilities.custom.insert(
             "python.format_imports".to_string(),
@@ -165,6 +165,9 @@ impl LspAdapterPlugin {
             vec!["go".to_string()],
             lsp_service,
         );
+
+        // Apply standard capabilities
+        Self::apply_standard_capabilities(&mut adapter);
 
         // Add Go-specific custom capabilities
         adapter.capabilities.custom.insert(
@@ -187,6 +190,9 @@ impl LspAdapterPlugin {
             lsp_service,
         );
 
+        // Apply standard capabilities
+        Self::apply_standard_capabilities(&mut adapter);
+
         // Add Rust-specific custom capabilities
         adapter.capabilities.custom.insert(
             "rust.expand_macro".to_string(),
@@ -198,6 +204,18 @@ impl LspAdapterPlugin {
         );
 
         adapter
+    }
+
+    /// Apply a standard set of capabilities that should work for most modern LSP servers.
+    fn apply_standard_capabilities(adapter: &mut Self) {
+        // Enable common editing capabilities
+        adapter.capabilities.editing.auto_imports = true;
+        adapter.capabilities.editing.organize_imports = true;
+
+        // Enable common refactoring capabilities
+        adapter.capabilities.refactoring.extract_function = true;
+        adapter.capabilities.refactoring.extract_variable = true;
+        adapter.capabilities.refactoring.inline_variable = true;
     }
 
     /// Convert plugin request to LSP method and params
@@ -615,5 +633,29 @@ mod tests {
         let rust_adapter = LspAdapterPlugin::rust(lsp_service);
         assert_eq!(rust_adapter.metadata().name, "rust-lsp-adapter");
         assert!(rust_adapter.capabilities().custom.contains_key("rust.expand_macro"));
+    }
+
+    #[tokio::test]
+    async fn test_consistent_capabilities() {
+        let lsp_service = Arc::new(MockLspService {
+            name: "test-consistency-lsp".to_string(),
+            extensions: vec!["ts".to_string(), "py".to_string(), "go".to_string(), "rs".to_string()],
+        });
+
+        let ts_adapter = LspAdapterPlugin::typescript(lsp_service.clone());
+        let py_adapter = LspAdapterPlugin::python(lsp_service.clone());
+        let go_adapter = LspAdapterPlugin::go(lsp_service.clone());
+        let rs_adapter = LspAdapterPlugin::rust(lsp_service.clone());
+
+        let adapters = vec![ts_adapter, py_adapter, go_adapter, rs_adapter];
+
+        for adapter in adapters {
+            let caps = adapter.capabilities();
+            assert!(caps.editing.auto_imports, "auto_imports should be enabled for {}", adapter.metadata.name);
+            assert!(caps.editing.organize_imports, "organize_imports should be enabled for {}", adapter.metadata.name);
+            assert!(caps.refactoring.extract_function, "extract_function should be enabled for {}", adapter.metadata.name);
+            assert!(caps.refactoring.extract_variable, "extract_variable should be enabled for {}", adapter.metadata.name);
+            assert!(caps.refactoring.inline_variable, "inline_variable should be enabled for {}", adapter.metadata.name);
+        }
     }
 }
