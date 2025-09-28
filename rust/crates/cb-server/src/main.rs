@@ -1,7 +1,7 @@
 //! cb-server main binary
 
 use cb_core::AppConfig;
-use cb_server::handlers::{McpDispatcher, AppState};
+use cb_server::handlers::{PluginDispatcher, AppState};
 use cb_server::systems::{LspManager, fuse::start_fuse_mount};
 use cb_server::services::{FileService, LockManager, OperationQueue};
 use cb_server::transport;
@@ -61,11 +61,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         operation_queue,
     });
 
-    // Create MCP dispatcher with app state
-    let mut dispatcher = McpDispatcher::new(app_state);
-
-    // Register all MCP tools
-    cb_server::handlers::register_all_tools(&mut dispatcher);
+    // Create Plugin dispatcher with app state
+    let dispatcher = PluginDispatcher::new(app_state);
 
     let dispatcher = Arc::new(dispatcher);
 
