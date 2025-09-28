@@ -4,6 +4,7 @@
 //! dispatcher with a flexible plugin system.
 
 use crate::error::{ServerError, ServerResult};
+use crate::mcp_tools;
 use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
 use cb_plugins::{
     PluginManager, LspAdapterPlugin, LspService, PluginRequest, PluginError
@@ -256,81 +257,10 @@ impl PluginDispatcher {
         }))
     }
 
-    /// Handle tools/list request using plugin capabilities
+    /// Handle tools/list request using Rust-native tool definitions
     #[instrument(skip(self))]
     async fn handle_list_tools(&self) -> ServerResult<Value> {
-        let all_capabilities = self.plugin_manager.get_all_capabilities().await;
-        let all_metadata = self.plugin_manager.get_all_metadata().await;
-
-        let mut tools = Vec::new();
-
-        // Collect tools from all plugins
-        for (plugin_name, capabilities) in all_capabilities {
-            let metadata = all_metadata.get(&plugin_name);
-
-            // Add standard tools based on capabilities
-            if capabilities.navigation.go_to_definition {
-                tools.push(self.create_tool_description(
-                    "find_definition",
-                    "Find the definition of a symbol",
-                    &plugin_name,
-                    metadata,
-                ));
-            }
-
-            if capabilities.navigation.find_references {
-                tools.push(self.create_tool_description(
-                    "find_references",
-                    "Find all references to a symbol",
-                    &plugin_name,
-                    metadata,
-                ));
-            }
-
-            if capabilities.editing.rename {
-                tools.push(self.create_tool_description(
-                    "rename_symbol",
-                    "Rename a symbol throughout the codebase",
-                    &plugin_name,
-                    metadata,
-                ));
-            }
-
-            if capabilities.intelligence.hover {
-                tools.push(self.create_tool_description(
-                    "get_hover",
-                    "Get hover information for a symbol",
-                    &plugin_name,
-                    metadata,
-                ));
-            }
-
-            if capabilities.intelligence.completions {
-                tools.push(self.create_tool_description(
-                    "get_completions",
-                    "Get code completions at a position",
-                    &plugin_name,
-                    metadata,
-                ));
-            }
-
-            // Add more capabilities as needed...
-
-            // Add custom capabilities
-            for custom_method in capabilities.custom.keys() {
-                tools.push(self.create_tool_description(
-                    custom_method,
-                    &format!("Custom {} method", custom_method),
-                    &plugin_name,
-                    metadata,
-                ));
-            }
-        }
-
-        // Remove duplicates (multiple plugins might support the same tool)
-        tools.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
-        tools.dedup_by(|a, b| a["name"] == b["name"]);
-
+        let tools = mcp_tools::get_tool_definitions();
         Ok(json!({ "tools": tools }))
     }
 
