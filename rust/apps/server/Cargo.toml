@@ -1,0 +1,20 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cb-server = { path = "../../crates/cb-server" }
+cb-core = { path = "../../crates/cb-core" }
+
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.7", features = ["ws"] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+
+serde = "1.0"
+serde_json = "1.0"
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
