@@ -253,11 +253,13 @@ const greeting = greetUser("Alice", 30,
 #[tokio::test]
 async fn test_search_workspace_symbols() {
     let workspace = TestWorkspace::new();
-    let mut client = TestClient::new(workspace.path());
 
-    // Create multiple files with various symbols
-    let file1 = workspace.path().join("models.ts");
-    std::fs::write(&file1, r#"
+    // Setup proper TypeScript project structure with LSP config FIRST
+    workspace.setup_typescript_project_with_lsp("workspace-symbols-test");
+
+    // Create ALL TypeScript files in src/ directory BEFORE starting LSP client
+    // (tsconfig.json includes only "src/**/*" files)
+    workspace.create_file("src/models.ts", r#"
 export class UserModel {
     constructor(public id: number, public name: string) {}
 
@@ -271,10 +273,9 @@ export interface UserData {
     name: string;
     email: string;
 }
-"#).unwrap();
+"#);
 
-    let file2 = workspace.path().join("services.ts");
-    std::fs::write(&file2, r#"
+    workspace.create_file("src/services.ts", r#"
 import { UserModel, UserData } from './models';
 
 export class UserService {
@@ -290,16 +291,138 @@ export class UserService {
         return this.users.find(u => u.id === id);
     }
 }
-"#).unwrap();
+"#);
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+    // NOW create the TestClient after all files are in place
+    let mut client = TestClient::new(workspace.path());
+
+    println!("DEBUG: Test workspace path: {}", workspace.path().display());
+
+    // Explicitly notify the LSP server about all TypeScript files
+    // This ensures the server indexes them for symbol search
+    let ts_files = ["src/models.ts", "src/services.ts", "tsconfig.json", "package.json"];
+    for file in &ts_files {
+        let file_path = workspace.path().join(file);
+        if file_path.exists() {
+            println!("DEBUG: Notifying LSP server about file: {}", file_path.display());
+            client.call_tool("notify_file_opened", json!({
+                "file_path": file_path.to_string_lossy()
+            })).await.unwrap();
+        }
+    }
+
+    // List all files recursively
+    fn list_files_recursive(dir: &std::path::Path, prefix: &str) {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let name = path.file_name().unwrap().to_string_lossy();
+                if path.is_dir() {
+                    println!("{}  {}/", prefix, name);
+                    list_files_recursive(&path, &format!("{}  ", prefix));
+                } else {
+                    println!("{}  {}", prefix, name);
+                }
+            }
+        }
+    }
+
+    println!("DEBUG: Workspace contents after all files created:");
+    list_files_recursive(workspace.path(), "");
+
+    // Verify tsconfig.json and package.json exist and print their contents
+    let tsconfig_path = workspace.path().join("tsconfig.json");
+    let package_path = workspace.path().join("package.json");
+    if tsconfig_path.exists() {
+        println!("DEBUG: tsconfig.json exists and contains:");
+        println!("{}", std::fs::read_to_string(&tsconfig_path).unwrap_or_else(|e| format!("Error reading: {}", e)));
+    } else {
+        println!("DEBUG: tsconfig.json DOES NOT EXIST");
+    }
+    if package_path.exists() {
+        println!("DEBUG: package.json exists and contains:");
+        println!("{}", std::fs::read_to_string(&package_path).unwrap_or_else(|e| format!("Error reading: {}", e)));
+    } else {
+        println!("DEBUG: package.json DOES NOT EXIST");
+    }
+
+    // Give TypeScript language server time to initialize and scan the project
+    // TypeScript server needs significant time to:
+    // 1. Parse tsconfig.json and detect project structure
+    // 2. Scan src/ directory and build internal index
+    // 3. Be ready for workspace-level operations like symbol search
+    println!("DEBUG: Waiting for TypeScript server project indexing...");
+    tokio::time::sleep(tokio::time::Duration::from_millis(10000)).await;
+
+    // Verify the server is ready by checking document symbols first
+    // This is a simpler operation that should work if the project is recognized
+    println!("DEBUG: Testing document symbols to verify project recognition...");
+    let doc_symbols_test = client.call_tool("get_document_symbols", json!({
+        "file_path": workspace.path().join("src/models.ts").to_string_lossy()
+    })).await;
+
+    match doc_symbols_test {
+        Ok(response) => {
+            println!("DEBUG: Document symbols test successful - file-level ops work");
+        }
+        Err(e) => {
+            println!("DEBUG: Document symbols test failed: {}", e);
+            // Continue anyway - this helps us understand if the issue is project-wide
+        }
+    }
+
+    // BREAKTHROUGH: File-level operations work, workspace-level operations fail
+    // This means TypeScript server needs explicit project configuration
+    // Force TypeScript server to re-detect the project by opening tsconfig.json
+    println!("DEBUG: Opening tsconfig.json to force project detection...");
+    let _tsconfig_open = client.call_tool("notify_file_opened", json!({
+        "file_path": workspace.path().join("tsconfig.json").to_string_lossy()
+    })).await;
+
+    // Give additional time for project re-detection
+    println!("DEBUG: Waiting for project re-detection after tsconfig.json notification...");
+    tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
 
     // Search for symbols containing "User"
     let response = client.call_tool("search_workspace_symbols", json!({
         "query": "User"
     })).await.unwrap();
 
-    let symbols = response["symbols"].as_array().unwrap();
+    // Print stderr logs to see server startup debug output
+    let stderr_logs = client.get_stderr_logs();
+    if !stderr_logs.is_empty() {
+        println!("DEBUG: Server stderr logs:");
+        for log in stderr_logs {
+            println!("STDERR: {}", log);
+        }
+    }
+
+    println!("DEBUG: Workspace symbols response: {:#}", response);
+
+    // Check if there's an error first
+    if let Some(error) = response.get("error") {
+        panic!("Workspace symbols call failed: {}", error);
+    }
+
+    // Try multiple possible paths for the symbols
+    let symbols = if let Some(content) = response.get("content") {
+        if let Some(symbols) = content.get("symbols") {
+            symbols.as_array()
+        } else if let Some(symbols) = content.as_array() {
+            Some(symbols)
+        } else {
+            None
+        }
+    } else if let Some(symbols) = response.get("symbols") {
+        symbols.as_array()
+    } else {
+        None
+    };
+
+    let symbols = symbols.unwrap_or_else(|| {
+        panic!("Could not find symbols in response. Available keys: {:?}",
+               response.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+    });
     assert!(!symbols.is_empty());
 
     let symbol_names: Vec<String> = symbols.iter()

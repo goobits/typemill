@@ -526,6 +526,19 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 },
                 "required": ["workspace_path"]
             }
+        }),
+
+        // LSP Notification Tools
+        json!({
+            "name": "notify_file_opened",
+            "description": "Notify the LSP server that a file has been opened. This helps ensure the language server is aware of files for proper project indexing and symbol resolution.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "file_path": { "type": "string", "description": "Path to the file that was opened" }
+                },
+                "required": ["file_path"]
+            }
         })
     ]
 }

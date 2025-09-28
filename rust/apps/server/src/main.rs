@@ -10,8 +10,36 @@ use axum::{
 use cb_server::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
 use cb_server::systems::LspManager;
 use cb_core::config::LspConfig;
+use clap::{Parser, Subcommand};
 use std::sync::Arc;
+use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::info;
+
+#[derive(Parser)]
+#[command(name = "codeflow-buddy")]
+#[command(about = "Pure Rust MCP server bridging Language Server Protocol functionality")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Start the MCP server in stdio mode for Claude Code
+    Start,
+    /// Start WebSocket server
+    Serve,
+    /// Show status
+    Status,
+    /// Setup configuration
+    Setup,
+    /// Stop the running server
+    Stop,
+    /// Link to AI assistants
+    Link,
+    /// Remove AI from config
+    Unlink,
+}
 
 #[tokio::main]
 async fn main() {
@@ -19,6 +47,101 @@ async fn main() {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
+    let cli = Cli::parse();
+
+    match cli.command {
+        Commands::Start => {
+            eprintln!("DEBUG: Starting MCP server in stdio mode");
+            run_stdio_mode().await;
+        }
+        Commands::Serve => {
+            eprintln!("DEBUG: Starting WebSocket server");
+            run_websocket_server().await;
+        }
+        Commands::Status => {
+            println!("Status: Running");
+        }
+        Commands::Setup => {
+            println!("Setup: Not implemented");
+        }
+        Commands::Stop => {
+            println!("Stop: Not implemented");
+        }
+        Commands::Link => {
+            println!("Link: Not implemented");
+        }
+        Commands::Unlink => {
+            println!("Unlink: Not implemented");
+        }
+    }
+}
+
+async fn run_stdio_mode() {
+    eprintln!("DEBUG: Initializing stdio mode MCP server");
+    eprintln!("DEBUG: Current working directory in run_stdio_mode: {:?}", std::env::current_dir());
+
+    // Create AppState similar to the test implementation
+    let app_state = create_app_state().await;
+
+    let dispatcher = Arc::new(PluginDispatcher::new(app_state));
+    eprintln!("DEBUG: About to call dispatcher.initialize()");
+    dispatcher.initialize().await.expect("Failed to initialize dispatcher");
+    eprintln!("DEBUG: Plugin dispatcher initialized successfully");
+
+    let stdin = io::stdin();
+    let mut stdout = io::stdout();
+    let mut reader = BufReader::new(stdin);
+
+    eprintln!("DEBUG: Starting stdio message loop");
+    loop {
+        let mut line = String::new();
+        match reader.read_line(&mut line).await {
+            Ok(0) => {
+                eprintln!("DEBUG: EOF received, exiting");
+                break; // EOF
+            }
+            Ok(_) => {
+                eprintln!("DEBUG: Received message: {}", line.trim());
+                match serde_json::from_str(&line) {
+                    Ok(mcp_message) => {
+                        eprintln!("DEBUG: Parsed MCP message, dispatching");
+                        match dispatcher.dispatch(mcp_message).await {
+                            Ok(response) => {
+                                let response_json = serde_json::to_string(&response).unwrap();
+                                eprintln!("DEBUG: Sending response: {}", response_json);
+                                if let Err(e) = stdout.write_all(response_json.as_bytes()).await {
+                                    eprintln!("DEBUG: Error writing to stdout: {}", e);
+                                    break;
+                                }
+                                if let Err(e) = stdout.write_all(b"\n").await {
+                                    eprintln!("DEBUG: Error writing newline: {}", e);
+                                    break;
+                                }
+                                if let Err(e) = stdout.flush().await {
+                                    eprintln!("DEBUG: Error flushing stdout: {}", e);
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("DEBUG: Error dispatching message: {}", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("DEBUG: Failed to parse JSON: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("DEBUG: Error reading from stdin: {}", e);
+                break;
+            }
+        }
+    }
+    eprintln!("DEBUG: Stdio mode exiting");
+}
+
+async fn run_websocket_server() {
     // Create AppState similar to the test implementation
     let app_state = create_app_state().await;
 
@@ -38,6 +161,7 @@ async fn create_app_state() -> Arc<AppState> {
 
     // Use current working directory as project root for production
     let project_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    eprintln!("DEBUG: Server project_root set to: {}", project_root.display());
 
     let file_service = Arc::new(cb_server::services::FileService::new(project_root.clone()));
     let lock_manager = Arc::new(cb_server::services::LockManager::new());

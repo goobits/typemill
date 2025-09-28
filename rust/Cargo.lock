@@ -657,6 +657,7 @@ dependencies = [
  "axum-extra",
  "cb-core",
  "cb-server",
+ "clap",
  "futures-util",
  "serde",
  "serde_json",

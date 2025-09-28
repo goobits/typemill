@@ -25,6 +25,7 @@ mock! {
         async fn request(&self, message: McpMessage) -> Result<McpMessage, CoreError>;
         async fn is_available(&self, extension: &str) -> bool;
         async fn restart_servers(&self, extensions: Option<Vec<String>>) -> Result<(), CoreError>;
+        async fn notify_file_opened(&self, file_path: &Path) -> Result<(), CoreError>;
     }
 }
 

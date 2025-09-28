@@ -444,8 +444,11 @@ impl LanguagePlugin for LspAdapterPlugin {
     async fn handle_request(&self, request: PluginRequest) -> PluginResult<PluginResponse> {
         debug!("LSP adapter handling request: {}", request.method);
 
-        // Check if we support the file extension
-        if !self.can_handle_file(&request.file_path) {
+        // Skip file extension check for workspace-level operations
+        let is_workspace_operation = matches!(request.method.as_str(), "search_workspace_symbols");
+
+        // Check if we support the file extension (skip for workspace operations)
+        if !is_workspace_operation && !self.can_handle_file(&request.file_path) {
             return Err(PluginError::plugin_not_found(
                 request.file_path.to_string_lossy(),
                 &request.method,

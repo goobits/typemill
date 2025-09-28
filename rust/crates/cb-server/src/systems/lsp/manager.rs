@@ -223,6 +223,29 @@ impl LspService for LspManager {
 
         Ok(())
     }
+
+    /// Notify LSP server that a file has been opened
+    async fn notify_file_opened(&self, file_path: &Path) -> Result<(), CoreError> {
+        // Get file extension to determine which client to use
+        let extension = file_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("");
+
+        // Get the appropriate client
+        match self.get_client_for_extension(extension).await {
+            Ok(client) => {
+                client.notify_file_opened(file_path).await
+                    .map_err(|e| CoreError::internal(e.to_string()))?;
+            }
+            Err(e) => {
+                debug!("No LSP client available for extension '{}': {}", extension, e);
+                // Don't fail the operation if there's no client for this extension
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]

@@ -104,6 +104,39 @@ impl TestWorkspace {
         self.create_directory("src");
     }
 
+    /// Create a TypeScript project with LSP configuration
+    pub fn setup_typescript_project_with_lsp(&self, name: &str) {
+        self.setup_typescript_project(name);
+        self.setup_lsp_config();
+    }
+
+    /// Create LSP configuration file for the workspace
+    pub fn setup_lsp_config(&self) {
+        self.create_directory(".codebuddy");
+
+        let config = serde_json::json!({
+            "servers": [
+                {
+                    "extensions": ["ts", "tsx", "js", "jsx"],
+                    "command": ["typescript-language-server", "--stdio"],
+                    "rootDir": null,
+                    "restartInterval": 5
+                },
+                {
+                    "extensions": ["py"],
+                    "command": ["pylsp"],
+                    "rootDir": null,
+                    "restartInterval": 5
+                }
+            ]
+        });
+
+        self.create_file(
+            ".codebuddy/config.json",
+            &serde_json::to_string_pretty(&config).unwrap()
+        );
+    }
+
     /// Create a Python project structure.
     pub fn setup_python_project(&self, name: &str) {
         self.create_pyproject_toml(name);
