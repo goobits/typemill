@@ -515,7 +515,7 @@ impl PluginDispatcher {
 
         match tool_call.name.as_str() {
             "rename_file" => {
-                let args = tool_call.arguments;
+                let args = tool_call.arguments.unwrap_or(json!({}));
                 let old_path = args.get("old_path")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| ServerError::InvalidRequest("Missing 'old_path' parameter".into()))?;
@@ -535,12 +535,12 @@ impl PluginDispatcher {
                     "success": true,
                     "old_path": old_path,
                     "new_path": new_path,
-                    "imports_updated": result.import_report.imports_updated,
-                    "files_affected": result.import_report.files_updated
+                    "imports_updated": result.import_updates.as_ref().map(|r| r.imports_updated).unwrap_or(0),
+                    "files_affected": result.import_updates.as_ref().map(|r| r.files_updated).unwrap_or(0)
                 }))
             }
             "create_file" => {
-                let args = tool_call.arguments;
+                let args = tool_call.arguments.unwrap_or(json!({}));
                 let file_path = args.get("file_path")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
@@ -558,7 +558,7 @@ impl PluginDispatcher {
                 }))
             }
             "delete_file" => {
-                let args = tool_call.arguments;
+                let args = tool_call.arguments.unwrap_or(json!({}));
                 let file_path = args.get("file_path")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
