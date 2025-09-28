@@ -103,6 +103,7 @@ impl LspManager {
     /// Convert LSP response to MCP response
     fn lsp_to_mcp_response(lsp_result: Value, request_id: Option<Value>) -> McpResponse {
         McpResponse {
+            jsonrpc: "2.0".to_string(),
             id: request_id,
             result: Some(lsp_result),
             error: None,
@@ -112,6 +113,7 @@ impl LspManager {
     /// Create MCP error response
     fn create_error_response(request_id: Option<Value>, message: String) -> McpResponse {
         McpResponse {
+            jsonrpc: "2.0".to_string(),
             id: request_id,
             result: None,
             error: Some(McpError {
