@@ -148,7 +148,7 @@ impl LspService for LspManager {
                 })?;
 
                 // Get LSP client for this extension
-                let _client = match self.get_client_for_extension(extension).await {
+                let client = match self.get_client_for_extension(extension).await {
                     Ok(client) => client,
                     Err(e) => {
                         error!("Failed to get LSP client for extension {}: {}", extension, e);

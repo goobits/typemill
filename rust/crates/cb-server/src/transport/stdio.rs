@@ -1,7 +1,7 @@
 //! Stdio transport implementation for MCP
 
 use crate::handlers::PluginDispatcher;
-use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, McpError};
+use cb_core::model::mcp::{McpMessage, McpResponse, McpError};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 

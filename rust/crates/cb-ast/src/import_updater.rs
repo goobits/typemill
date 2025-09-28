@@ -1,8 +1,9 @@
 //! Import path resolution and updating functionality
 
 use crate::error::{AstError, AstResult};
-use crate::parser::ImportGraph;
-use std::collections::HashMap;
+// TODO: Re-add when import graph caching is implemented
+// use crate::parser::ImportGraph;
+// use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
@@ -10,8 +11,8 @@ use tracing::{debug, info, warn};
 pub struct ImportPathResolver {
     /// Project root directory
     project_root: PathBuf,
-    /// Cache of parsed import graphs
-    import_cache: HashMap<PathBuf, ImportGraph>,
+    // TODO: Add import graph caching for performance
+    // import_cache: HashMap<PathBuf, ImportGraph>,
 }
 
 impl ImportPathResolver {
@@ -19,7 +20,6 @@ impl ImportPathResolver {
     pub fn new(project_root: impl AsRef<Path>) -> Self {
         Self {
             project_root: project_root.as_ref().to_path_buf(),
-            import_cache: HashMap::new(),
         }
     }
 
