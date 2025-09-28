@@ -4,7 +4,6 @@
 //! dispatcher with a flexible plugin system.
 
 use crate::error::{ServerError, ServerResult};
-use crate::handlers::AppState;
 use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
 use cb_plugins::{
     PluginManager, LspAdapterPlugin, LspService, PluginRequest, PluginError
@@ -17,6 +16,21 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::{Mutex, OnceCell};
 use tracing::{debug, error, info, instrument};
+
+/// Application state containing services
+#[derive(Clone)]
+pub struct AppState {
+    /// LSP service for code intelligence
+    pub lsp: Arc<dyn crate::interfaces::LspService>,
+    /// File service for file operations with import awareness
+    pub file_service: Arc<crate::services::FileService>,
+    /// Project root directory
+    pub project_root: std::path::PathBuf,
+    /// Lock manager for file-level locking
+    pub lock_manager: Arc<crate::services::LockManager>,
+    /// Operation queue for serializing file operations
+    pub operation_queue: Arc<crate::services::OperationQueue>,
+}
 
 /// Plugin-based MCP dispatcher
 pub struct PluginDispatcher {
