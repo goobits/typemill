@@ -1,8 +1,9 @@
-//! Integration tests for refactored MCP handlers
-//! Tests the actual handler implementations with minimal test LSP service
-#![cfg(skip_integration_tests)] // TODO: Update for new architecture
+//! Integration tests for refactored MCP handlers - OBSOLETE
+//! These tests were for the old McpDispatcher which has been replaced by the plugin system
+#![cfg(skip_integration_tests)] // Tests disabled - need rewrite for plugin architecture
 
-use cb_server::handlers::{McpDispatcher, AppState};
+// NOTE: McpDispatcher no longer exists - replaced by PluginDispatcher
+// use cb_server::handlers::{McpDispatcher, AppState};
 use cb_server::interfaces::{LspService, FileService, AstService};
 use tests::harness::test_lsp_service::TestLspService;
 use tests::mocks::{mock_ast_service, mock_lsp_service, MockAstService, MockLspService};
