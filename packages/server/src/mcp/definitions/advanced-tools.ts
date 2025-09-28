@@ -70,6 +70,21 @@ export const advancedToolDefinitions = [
     },
   },
   {
+    name: 'organize_imports',
+    description:
+      'Automatically organizes and sorts import statements in a file according to the language-specific conventions. It removes unused imports, groups them, and sorts them.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file_path: {
+          type: 'string',
+          description: 'The absolute path to the file to organize imports for.',
+        },
+      },
+      required: ['file_path'],
+    },
+  },
+  {
     name: 'search_workspace_symbols',
     description:
       'Search for symbols (functions, classes, variables, etc.) across the entire workspace. Useful for finding symbols by name across multiple files.',

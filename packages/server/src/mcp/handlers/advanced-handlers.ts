@@ -71,6 +71,96 @@ export async function handleGetCodeActions(
   }
 }
 
+// Handler for organize_imports tool
+export async function handleOrganizeImports(
+  fileService: FileService,
+  args: { file_path: string },
+  lspClient?: import('../../lsp/lsp-client.js').LSPClient
+) {
+  const { file_path } = args;
+  const absolutePath = resolve(file_path);
+
+  try {
+    // Request specific organize imports code actions
+    const organizeImportsActions = await fileService.getCodeActions(absolutePath, undefined, {
+      only: ['source.organizeImports'],
+    });
+
+
+    if (organizeImportsActions.length === 0) {
+      // Try broader patterns if the specific request doesn't work
+      const allCodeActions = await fileService.getCodeActions(absolutePath);
+      const fallbackActions = allCodeActions.filter(
+        (action) =>
+          action.kind === 'source.organizeImports' ||
+          action.kind === 'source.organizeImports.ts' ||
+          action.kind === 'source.organizeImports.js' ||
+          (action.title && action.title.toLowerCase().includes('organize import')) ||
+          (action.title && action.title.toLowerCase().includes('sort import')) ||
+          (action.title && action.title.toLowerCase().includes('remove unused'))
+      );
+
+      if (fallbackActions.length === 0) {
+        const availableKinds = allCodeActions.map(a => a.kind || 'no-kind').join(', ');
+        return createNoResultsResponse('organize imports actions', file_path, [
+          'The language server may not support organizing imports for this file type.',
+          'Ensure the file contains import statements that can be organized.',
+          `Available code action kinds: ${availableKinds || 'none'}`,
+        ]);
+      }
+
+      // Use fallback actions
+      organizeImportsActions.push(...fallbackActions);
+    }
+
+    // Apply the organize imports code actions
+    let totalChanges = 0;
+    let appliedActions = 0;
+
+    for (const action of organizeImportsActions) {
+      if (action.edit?.changes || action.edit?.documentChanges) {
+        const editResult = await applyWorkspaceEdit(action.edit, {
+          lspClient,
+        });
+
+        if (editResult.success) {
+          appliedActions++;
+          // Count changes from all files
+          if (action.edit.changes) {
+            totalChanges += Object.values(action.edit.changes).reduce(
+              (sum, edits) => sum + edits.length,
+              0
+            );
+          }
+          if (action.edit.documentChanges) {
+            totalChanges += action.edit.documentChanges.length;
+          }
+        } else {
+          return createMCPResponse(
+            `Failed to apply organize imports action: ${editResult.error}`
+          );
+        }
+      }
+    }
+
+    if (appliedActions === 0 || totalChanges === 0) {
+      return createNoChangesResponse(
+        'organizing imports',
+        `${file_path} imports are already properly organized`
+      );
+    }
+
+    return createFileModificationResponse('organized imports for', file_path, {
+      changeCount: totalChanges,
+      actionCount: appliedActions,
+    });
+  } catch (error) {
+    return createMCPResponse(
+      `Error organizing imports: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
 // Handler for format_document tool
 export async function handleFormatDocument(
   fileService: FileService,
@@ -390,6 +480,7 @@ export async function handleApplyWorkspaceEdit(
 registerTools(
   {
     get_code_actions: { handler: handleGetCodeActions, requiresService: 'file' },
+    organize_imports: { handler: handleOrganizeImports, requiresService: 'file' },
     format_document: { handler: handleFormatDocument, requiresService: 'file' },
     search_workspace_symbols: { handler: handleSearchWorkspaceSymbols, requiresService: 'symbol' },
     get_document_symbols: { handler: handleGetDocumentSymbols, requiresService: 'symbol' },
