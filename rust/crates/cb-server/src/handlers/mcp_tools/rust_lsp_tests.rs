@@ -39,7 +39,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_rust_hover_function_signature() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_hover()
@@ -102,7 +103,8 @@ fn main() {
 
     #[tokio::test]
     async fn test_rust_completions_std_library() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_completions()
@@ -193,7 +195,8 @@ use std::collections::{Ve
 
     #[tokio::test]
     async fn test_rust_document_symbols_struct_and_impl() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_document_symbols()
@@ -365,7 +368,8 @@ impl Point {
 
     #[tokio::test]
     async fn test_rust_find_definition_across_modules() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_find_definition()
@@ -418,7 +422,8 @@ fn main() {
 
     #[tokio::test]
     async fn test_rust_error_handling_syntax_error() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_get_diagnostics()
@@ -477,7 +482,8 @@ fn main() {
 
     #[tokio::test]
     async fn test_rust_format_document_rustfmt() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_format_document()
@@ -576,7 +582,8 @@ fn main() {
 }
 "#).unwrap();
 
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_hover()

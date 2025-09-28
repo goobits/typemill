@@ -1,4 +1,4 @@
-use cb_tests::harness::{TestClient, TestWorkspace};
+use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
 
@@ -7,7 +7,7 @@ use std::path::Path;
 #[tokio::test]
 #[ignore = "FUSE filesystem not yet implemented"]
 async fn test_fuse_filesystem_integration() {
-    let workspace = TestWorkspace::new().await;
+    let workspace = TestWorkspace::new();
 
     // This test would verify FUSE filesystem integration
     // when the FUSE layer is implemented
@@ -25,8 +25,8 @@ async fn test_fuse_filesystem_integration() {
 #[tokio::test]
 #[ignore = "Call hierarchy not yet implemented"]
 async fn test_lsp_call_hierarchy() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // This test would verify LSP call hierarchy features
     // when call hierarchy tools are implemented
@@ -65,8 +65,8 @@ function deeperFunction() {
 #[tokio::test]
 #[ignore = "Type hierarchy not yet implemented"]
 async fn test_lsp_type_hierarchy() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // This test would verify LSP type hierarchy features
 
@@ -101,8 +101,8 @@ class ExtendedClass extends BaseClass implements ExtendedInterface {
 
 #[tokio::test]
 async fn test_advanced_lsp_features_availability() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test what advanced LSP features are currently available
 
@@ -202,8 +202,8 @@ function createProcessor<T>(type: string): DataProcessor<T> | null {
 
 #[tokio::test]
 async fn test_complex_refactoring_scenarios() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test complex refactoring that requires multiple tools working together
 
@@ -370,8 +370,8 @@ export class UserController {
 
 #[tokio::test]
 async fn test_cross_language_project() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test handling of a project with multiple languages
 
@@ -484,8 +484,8 @@ def validate_user_data(user_data):
 
 #[tokio::test]
 async fn test_large_scale_project_simulation() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Simulate a large-scale project structure
 
@@ -585,8 +585,8 @@ export function {}Function{}(param: {}Interface{}): boolean {{
 
 #[tokio::test]
 async fn test_advanced_error_recovery() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test advanced error recovery scenarios
 

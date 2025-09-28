@@ -40,7 +40,7 @@ impl TestFileBuilder {
         }
     }
 
-    pub async fn create_typescript_class(&self, client: &TestClient, name: &str, methods: &[&str]) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    pub async fn create_typescript_class(&mut self, client: &mut TestClient, name: &str, methods: &[&str]) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
         let file_path = self.workspace.join(format!("{}.ts", name.to_lowercase()));
 
         let mut content = format!("export class {} {{\n", name);
@@ -66,7 +66,7 @@ impl TestFileBuilder {
         Ok(file_path)
     }
 
-    pub async fn create_interface_file(&self, client: &TestClient, name: &str, properties: &[(&str, &str)]) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    pub async fn create_interface_file(&mut self, client: &mut TestClient, name: &str, properties: &[(&str, &str)]) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
         let file_path = self.workspace.join(format!("{}.ts", name.to_lowercase()));
 
         let mut content = format!("export interface {} {{\n", name);
@@ -89,7 +89,7 @@ impl TestFileBuilder {
         Ok(file_path)
     }
 
-    pub async fn create_import_chain(&self, client: &TestClient, chain_length: usize) -> Result<Vec<std::path::PathBuf>, Box<dyn std::error::Error>> {
+    pub async fn create_import_chain(&mut self, client: &mut TestClient, chain_length: usize) -> Result<Vec<std::path::PathBuf>, Box<dyn std::error::Error>> {
         let mut files = Vec::new();
 
         for i in 0..chain_length {
@@ -150,7 +150,7 @@ impl BatchOperationHelper {
         Self { client }
     }
 
-    pub async fn create_multiple_files(&self, files: &[(&str, &str)]) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    pub async fn create_multiple_files(&mut self, files: &[(&str, &str)]) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         let mut results = Vec::new();
 
         for (file_path, content) in files {
@@ -165,7 +165,7 @@ impl BatchOperationHelper {
         Ok(results)
     }
 
-    pub async fn read_multiple_files(&self, file_paths: &[&str]) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    pub async fn read_multiple_files(&mut self, file_paths: &[&str]) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         let mut results = Vec::new();
 
         for file_path in file_paths {
@@ -179,7 +179,7 @@ impl BatchOperationHelper {
         Ok(results)
     }
 
-    pub async fn find_definitions_batch(&self, queries: &[(&str, usize, usize)]) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    pub async fn find_definitions_batch(&mut self, queries: &[(&str, usize, usize)]) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         let mut results = Vec::new();
 
         for (file_path, line, character) in queries {
@@ -206,7 +206,7 @@ impl LspTestHelper {
         Self { client }
     }
 
-    pub async fn wait_for_lsp_ready(&self, timeout: Duration) -> bool {
+    pub async fn wait_for_lsp_ready(&mut self, timeout: Duration) -> bool {
         let start = Instant::now();
 
         while start.elapsed() < timeout {
@@ -221,7 +221,7 @@ impl LspTestHelper {
         false
     }
 
-    pub async fn verify_symbol_exists(&self, file_path: &str, symbol_name: &str) -> Result<bool, Box<dyn std::error::Error>> {
+    pub async fn verify_symbol_exists(&mut self, file_path: &str, symbol_name: &str) -> Result<bool, Box<dyn std::error::Error>> {
         let response = self.client.call_tool("get_document_symbols", json!({
             "file_path": file_path
         })).await?;
@@ -235,7 +235,7 @@ impl LspTestHelper {
         Ok(exists)
     }
 
-    pub async fn find_symbol_location(&self, file_path: &str, symbol_name: &str) -> Result<Option<(usize, usize)>, Box<dyn std::error::Error>> {
+    pub async fn find_symbol_location(&mut self, file_path: &str, symbol_name: &str) -> Result<Option<(usize, usize)>, Box<dyn std::error::Error>> {
         let response = self.client.call_tool("get_document_symbols", json!({
             "file_path": file_path
         })).await?;
@@ -255,7 +255,7 @@ impl LspTestHelper {
         Ok(None)
     }
 
-    pub async fn test_cross_file_navigation(&self, from_file: &str, to_file: &str, line: usize, character: usize) -> Result<bool, Box<dyn std::error::Error>> {
+    pub async fn test_cross_file_navigation(&mut self, from_file: &str, to_file: &str, line: usize, character: usize) -> Result<bool, Box<dyn std::error::Error>> {
         let response = self.client.call_tool("find_definition", json!({
             "file_path": from_file,
             "line": line,
@@ -285,7 +285,7 @@ impl ErrorTestHelper {
         Self { client }
     }
 
-    pub async fn test_operation_with_timeout(&self, operation: impl std::future::Future<Output = Result<Value, Box<dyn std::error::Error>>>, timeout: Duration) -> Result<Value, String> {
+    pub async fn test_operation_with_timeout(&mut self, operation: impl std::future::Future<Output = Result<Value, Box<dyn std::error::Error>>>, timeout: Duration) -> Result<Value, String> {
         match tokio::time::timeout(timeout, operation).await {
             Ok(Ok(result)) => Ok(result),
             Ok(Err(e)) => Err(format!("Operation failed: {}", e)),
@@ -293,7 +293,7 @@ impl ErrorTestHelper {
         }
     }
 
-    pub async fn test_invalid_file_path(&self) -> bool {
+    pub async fn test_invalid_file_path(&mut self) -> bool {
         let invalid_paths = vec![
             "/absolutely/nonexistent/path/file.txt",
             "",
@@ -314,7 +314,7 @@ impl ErrorTestHelper {
         true
     }
 
-    pub async fn test_malformed_parameters(&self) -> bool {
+    pub async fn test_malformed_parameters(&mut self) -> bool {
         let malformed_calls = vec![
             ("read_file", json!({})), // Missing file_path
             ("find_definition", json!({"file_path": "test.ts"})), // Missing line/character
@@ -343,14 +343,14 @@ impl PerformanceTestHelper {
         Self { client }
     }
 
-    pub async fn measure_operation_latency(&self, operation: impl std::future::Future<Output = Result<Value, Box<dyn std::error::Error>>>) -> Result<(Value, Duration), Box<dyn std::error::Error>> {
+    pub async fn measure_operation_latency(&mut self, operation: impl std::future::Future<Output = Result<Value, Box<dyn std::error::Error>>>) -> Result<(Value, Duration), Box<dyn std::error::Error>> {
         let start = Instant::now();
         let result = operation.await?;
         let duration = start.elapsed();
         Ok((result, duration))
     }
 
-    pub async fn stress_test_operation(&self, operation_factory: impl Fn() -> Box<dyn std::future::Future<Output = Result<Value, Box<dyn std::error::Error>>> + Unpin>, iterations: usize) -> (usize, Duration, Duration, Duration) {
+    pub async fn stress_test_operation(&mut self, operation_factory: impl Fn() -> Box<dyn std::future::Future<Output = Result<Value, Box<dyn std::error::Error>>> + Unpin>, iterations: usize) -> (usize, Duration, Duration, Duration) {
         let mut successful = 0;
         let mut durations = Vec::new();
 
@@ -384,7 +384,7 @@ impl PerformanceTestHelper {
         (successful, avg_time, min_time, max_time)
     }
 
-    pub async fn concurrent_operation_test(&self, operation_count: usize, operation_factory: impl Fn(usize) -> Box<dyn std::future::Future<Output = Result<Value, Box<dyn std::error::Error>>> + Unpin + Send>) -> (usize, Duration) {
+    pub async fn concurrent_operation_test(&mut self, operation_count: usize, operation_factory: impl Fn(usize) -> Box<dyn std::future::Future<Output = Result<Value, Box<dyn std::error::Error + Send>>> + Unpin + Send>) -> (usize, Duration) {
         let start = Instant::now();
         let mut handles = Vec::new();
 
@@ -470,7 +470,7 @@ impl ResultVerifier {
 pub mod utils {
     use super::*;
 
-    pub async fn create_simple_typescript_project(workspace: &TestWorkspace, client: &TestClient) -> Result<Vec<std::path::PathBuf>, Box<dyn std::error::Error>> {
+    pub async fn create_simple_typescript_project(workspace: &TestWorkspace, client: &mut TestClient) -> Result<Vec<std::path::PathBuf>, Box<dyn std::error::Error>> {
         let files = vec![
             ("types.ts", r#"
 export interface User {

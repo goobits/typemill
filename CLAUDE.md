@@ -23,14 +23,16 @@ bun run build
 # Run the built server
 bun run start
 # or directly
-node dist/index.js
+node packages/server/dist/index.js start
 
-# CLI commands for configuration and management
-codeflow-buddy setup    # Smart setup with auto-detection
-codeflow-buddy status   # Show what's working right now
-codeflow-buddy start    # Start the MCP server for Claude Code
-codeflow-buddy stop     # Stop the running MCP server
-codeflow-buddy serve    # Start WebSocket server
+# CLI commands for configuration and management (from project root)
+node packages/server/dist/index.js setup    # Smart setup with auto-detection
+node packages/server/dist/index.js status   # Show what's working right now
+node packages/server/dist/index.js start    # Start the MCP server for Claude Code
+node packages/server/dist/index.js stop     # Stop the running MCP server
+node packages/server/dist/index.js serve    # Start WebSocket server
+node packages/server/dist/index.js link     # Link to AI assistants
+node packages/server/dist/index.js unlink   # Remove AI from config
 
 # Quality assurance
 bun run lint         # Check code style and issues
@@ -55,9 +57,9 @@ bun run prepublishOnly  # build + test + typecheck
 # IMPORTANT: After modifying codeflow-buddy's own source code, restart the MCP server to load changes!
 
 # WebSocket Server Commands
-node dist/index.js serve --port 3000                    # Basic WebSocket server
-node dist/index.js serve --require-auth --jwt-secret KEY # With JWT authentication
-node dist/index.js serve --tls-key key.pem --tls-cert cert.pem # With TLS/WSS
+node packages/server/dist/index.js serve --port 3000                    # Basic WebSocket server
+node packages/server/dist/index.js serve --require-auth --jwt-secret KEY # With JWT authentication
+node packages/server/dist/index.js serve --tls-key key.pem --tls-cert cert.pem # With TLS/WSS
 docker-compose up -d                                     # Full Docker deployment
 ```
 
@@ -278,16 +280,16 @@ curl http://localhost:3000/metrics
 ### WebSocket Server Configuration
 ```bash
 # Basic server
-node dist/index.js serve --port 3000 --max-clients 10
+node packages/server/dist/index.js serve --port 3000 --max-clients 10
 
 # With authentication
-node dist/index.js serve --require-auth --jwt-secret "your-secret"
+node packages/server/dist/index.js serve --require-auth --jwt-secret "your-secret"
 
 # With TLS/WSS
-node dist/index.js serve --tls-key server.key --tls-cert server.crt
+node packages/server/dist/index.js serve --tls-key server.key --tls-cert server.crt
 
 # Enterprise setup
-node dist/index.js serve \
+node packages/server/dist/index.js serve \
   --port 3000 --max-clients 10 \
   --require-auth --jwt-secret "enterprise-key" \
   --tls-key /etc/ssl/server.key --tls-cert /etc/ssl/server.crt

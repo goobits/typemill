@@ -1,4 +1,5 @@
 import { WebSocketClient, type WebSocketClientOptions } from './websocket.js';
+import type { EventHandler, EventMap, HttpProxyServer, ToolListResponse } from './types.js';
 
 export interface ProxyOptions extends Omit<WebSocketClientOptions, 'reconnect'> {
   autoConnect?: boolean;
@@ -51,9 +52,9 @@ export class MCPProxy {
   }
 
   // Event emitter methods (simplified delegation)
-  private eventHandlers = new Map<string, Set<(...args: any[]) => void>>();
+  private eventHandlers = new Map<string, Set<EventHandler>>();
 
-  on(event: string, handler: (...args: any[]) => void): this {
+  on(event: string, handler: EventHandler): this {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
@@ -61,12 +62,12 @@ export class MCPProxy {
     return this;
   }
 
-  off(event: string, handler: (...args: any[]) => void): this {
+  off(event: string, handler: EventHandler): this {
     this.eventHandlers.get(event)?.delete(handler);
     return this;
   }
 
-  private emit(event: string, ...args: any[]): void {
+  private emit(event: string, ...args: unknown[]): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
       for (const handler of handlers) {
@@ -139,7 +140,7 @@ export class MCPProxy {
   /**
    * List available tools from the server.
    */
-  async listTools(): Promise<any> {
+  async listTools(): Promise<ToolListResponse> {
     return this.send({ method: 'tools/list' });
   }
 
@@ -176,7 +177,7 @@ export class MCPProxy {
    * Create an HTTP proxy server that forwards requests to the WebSocket.
    * Useful for integrating with tools that only support HTTP.
    */
-  createHttpProxy(port: number = 3001): any {
+  createHttpProxy(port: number = 3001): HttpProxyServer {
     // Lazy load to avoid importing express if not needed
     const { createProxyServer } = require('./http-proxy.js');
     return createProxyServer(this, port);

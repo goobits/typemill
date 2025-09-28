@@ -59,7 +59,7 @@ The server implements 21 MCP tools across 5 categories:
 - `create_file` - Create new files
 - `delete_file` - Delete files
 - `rename_file` - Rename/move files
-- `update_package_json` - Update package.json files
+- `update_dependencies` - Universal dependency management across languages
 
 ### Analysis Tools (4)
 - `analyze_imports` - Analyze import relationships using cb-ast

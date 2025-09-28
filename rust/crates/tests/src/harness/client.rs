@@ -190,11 +190,11 @@ impl TestClient {
     }
 
     /// Call multiple tools sequentially and return results with timings.
-    pub fn call_multiple_tools(&mut self, calls: Vec<(&str, Value)>) -> Vec<Result<(Value, Duration), Box<dyn std::error::Error>>> {
+    pub async fn call_multiple_tools(&mut self, calls: Vec<(&str, Value)>) -> Vec<Result<(Value, Duration), Box<dyn std::error::Error>>> {
         let mut results = Vec::new();
 
         for (tool_name, arguments) in calls {
-            let result = self.call_tool_with_timing(tool_name, arguments);
+            let result = self.call_tool_with_timing(tool_name, arguments).await;
             results.push(result);
         }
 
@@ -255,17 +255,17 @@ impl TestClient {
     }
 
     /// Batch execute multiple tool calls concurrently (simulated).
-    pub fn batch_execute_tools(&mut self, calls: Vec<(&str, Value)>) -> Vec<Result<Value, Box<dyn std::error::Error>>> {
+    pub async fn batch_execute_tools(&mut self, calls: Vec<(&str, Value)>) -> Vec<Result<Value, Box<dyn std::error::Error>>> {
         // Since we can't truly parallelize with a single stdin/stdout,
         // we'll execute them rapidly in sequence to simulate batch execution
         let mut results = Vec::new();
 
         for (tool_name, arguments) in calls {
-            let result = self.call_tool(tool_name, arguments);
+            let result = self.call_tool(tool_name, arguments).await;
             results.push(result);
 
             // Small delay to prevent overwhelming the server
-            thread::sleep(Duration::from_millis(10));
+            tokio::time::sleep(Duration::from_millis(10)).await;
         }
 
         results
@@ -331,7 +331,7 @@ impl TestClient {
     }
 
     /// Stress test the server with rapid requests.
-    pub fn stress_test(&mut self, request_count: usize, delay_ms: u64) -> StressTestResults {
+    pub async fn stress_test(&mut self, request_count: usize, delay_ms: u64) -> StressTestResults {
         let mut results = StressTestResults {
             total_requests: request_count,
             successful_requests: 0,
@@ -345,10 +345,10 @@ impl TestClient {
         let start = Instant::now();
         let mut response_times = Vec::new();
 
-        for i in 0..request_count {
+        for _i in 0..request_count {
             let request_start = Instant::now();
 
-            let result = self.call_tool("health_check", json!({}));
+            let result = self.call_tool("health_check", json!({})).await;
             let request_duration = request_start.elapsed();
 
             match result {
@@ -369,7 +369,7 @@ impl TestClient {
             }
 
             if delay_ms > 0 {
-                thread::sleep(Duration::from_millis(delay_ms));
+                tokio::time::sleep(Duration::from_millis(delay_ms)).await;
             }
         }
 

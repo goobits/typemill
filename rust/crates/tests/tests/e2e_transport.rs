@@ -1,4 +1,4 @@
-use cb_tests::harness::{TestClient, TestWorkspace};
+use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
 
@@ -8,7 +8,7 @@ use std::path::Path;
 #[tokio::test]
 #[ignore = "WebSocket transport not yet implemented"]
 async fn test_websocket_connection() {
-    let workspace = TestWorkspace::new().await;
+    let workspace = TestWorkspace::new();
 
     // This test would verify WebSocket connection establishment
     // when the WebSocket transport layer is implemented
@@ -27,7 +27,7 @@ async fn test_websocket_connection() {
 #[tokio::test]
 #[ignore = "JWT authentication not yet implemented"]
 async fn test_jwt_authentication() {
-    let workspace = TestWorkspace::new().await;
+    let workspace = TestWorkspace::new();
 
     // This test would verify JWT-based authentication
     // when the authentication system is implemented
@@ -45,7 +45,7 @@ async fn test_jwt_authentication() {
 #[tokio::test]
 #[ignore = "Session management not yet implemented"]
 async fn test_session_management() {
-    let workspace = TestWorkspace::new().await;
+    let workspace = TestWorkspace::new();
 
     // This test would verify session management and recovery
     // when the session system is implemented
@@ -63,7 +63,7 @@ async fn test_session_management() {
 #[tokio::test]
 #[ignore = "Multi-client support not yet implemented"]
 async fn test_multi_client_scenarios() {
-    let workspace = TestWorkspace::new().await;
+    let workspace = TestWorkspace::new();
 
     // This test would verify multi-client support
     // when concurrent client handling is implemented
@@ -81,7 +81,7 @@ async fn test_multi_client_scenarios() {
 #[tokio::test]
 #[ignore = "TLS/WSS not yet implemented"]
 async fn test_secure_transport() {
-    let workspace = TestWorkspace::new().await;
+    let workspace = TestWorkspace::new();
 
     // This test would verify TLS/WSS secure transport
     // when secure transport is implemented
@@ -100,8 +100,8 @@ async fn test_secure_transport() {
 
 #[tokio::test]
 async fn test_connection_resilience() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test that the system handles connection-like errors gracefully
     // This can work even with current stdio transport
@@ -147,8 +147,8 @@ async fn test_connection_resilience() {
 
 #[tokio::test]
 async fn test_message_ordering() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test that messages are processed in order
     // Even with stdio transport, we can verify ordering
@@ -184,8 +184,8 @@ async fn test_message_ordering() {
 
 #[tokio::test]
 async fn test_error_propagation() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test that errors are properly propagated through transport layer
 
@@ -214,8 +214,8 @@ async fn test_error_propagation() {
 
 #[tokio::test]
 async fn test_large_message_handling() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test handling of large messages (important for any transport)
 
@@ -257,8 +257,8 @@ async fn test_large_message_handling() {
 
 #[tokio::test]
 async fn test_concurrent_transport_operations() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test concurrent operations through transport layer
 
@@ -308,8 +308,8 @@ async fn test_concurrent_transport_operations() {
 
 #[tokio::test]
 async fn test_transport_health_monitoring() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test transport health through health check endpoint
 

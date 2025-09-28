@@ -14,11 +14,11 @@
 
 ## 🚀 Quick Start
 
-### Traditional MCP Server
+### Development Setup (Package Not Published)
 ```bash
-# Clone and build (package not yet published to npm)
-# git clone <repository-url>
-# cd codeflow-buddy &&
+# Clone and build from source
+git clone https://github.com/goobits/codeflow-buddy.git
+cd codeflow-buddy
 bun install && bun run build
 
 # Use node to run commands directly
@@ -83,16 +83,19 @@ go install golang.org/x/tools/gopls@latest
 rustup component add rust-analyzer
 
 # View configuration and status
-codeflow-buddy status
+node packages/server/dist/index.js status
 ```
 
 ## ⚙️ Configuration
 ```bash
 # Smart setup with auto-detection
-codeflow-buddy setup
+node packages/server/dist/index.js setup
 
 # Check status of language servers
-codeflow-buddy status
+node packages/server/dist/index.js status
+
+# Link to AI assistants
+node packages/server/dist/index.js link
 
 # Manual configuration (creates .codebuddy/config.json)
 cat > .codebuddy/config.json << 'EOF'
@@ -158,7 +161,7 @@ brew install --cask macfuse
 ### Verify Installation
 ```bash
 # Check FUSE availability
-codeflow-buddy check-fuse
+node packages/server/dist/index.js check-fuse
 
 # The system will automatically detect FUSE on startup
 # and provide platform-specific instructions if needed
@@ -167,10 +170,10 @@ codeflow-buddy check-fuse
 ### Using FUSE with WebSocket Server
 ```bash
 # Start server with FUSE enabled
-node dist/index.js serve --port 3000 --enable-fuse
+node packages/server/dist/index.js serve --port 3000 --enable-fuse
 
 # Mount path configuration
-node dist/index.js serve --fuse-mount-path /tmp/codeflow-mount
+node packages/server/dist/index.js serve --fuse-mount-path /tmp/codeflow-mount
 ```
 
 ### Troubleshooting
@@ -198,8 +201,8 @@ bun install
 bun run dev
 
 # WebSocket server development
-node dist/index.js serve --port 3000                    # Basic server
-node dist/index.js serve --require-auth --jwt-secret KEY # With auth
+node packages/server/dist/index.js serve --port 3000                    # Basic server
+node packages/server/dist/index.js serve --require-auth --jwt-secret KEY # With auth
 docker-compose up -d                                     # Full stack
 
 # Testing (from packages/server/)
@@ -221,8 +224,8 @@ bun run build
 MIT - see [LICENSE](LICENSE) for details
 
 ## 💡 Support
-- Bug reports and feature requests (repository to be published)
-- Questions and community support (repository to be published)
+- [Bug reports and feature requests](https://github.com/goobits/codeflow-buddy/issues)
+- [Discussions and community support](https://github.com/goobits/codeflow-buddy/discussions)
 
 ---
 

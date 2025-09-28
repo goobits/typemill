@@ -13,20 +13,30 @@ mod tests {
 
     /// Create a test AppState with mock services
     fn create_test_app_state() -> Arc<AppState> {
-        let mock_lsp = MockLspService::new();
+        use crate::services::{LockManager, OperationQueue};
+        use crate::interfaces::LspService;
+        use crate::lsp::{LspConfig, LspManager};
+
+        let lsp_config = LspConfig::default();
+        let lsp_manager = Arc::new(LspManager::new(lsp_config));
+        let file_service = Arc::new(crate::services::FileService::new(std::path::PathBuf::from("/tmp")));
+        let project_root = std::path::PathBuf::from("/tmp");
+        let lock_manager = Arc::new(LockManager::new());
+        let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
+
         Arc::new(AppState {
-            file_service: Arc::new(FileService::new()),
-            symbol_service: Arc::new(SymbolService::new(Arc::new(mock_lsp.clone()))),
-            editing_service: Arc::new(EditingService::new(Arc::new(mock_lsp.clone()))),
-            import_service: Arc::new(ImportService::new()),
-            lsp_service: Arc::new(mock_lsp),
+            lsp: lsp_manager,
+            file_service,
+            project_root,
+            lock_manager,
+            operation_queue,
         })
     }
 
     #[tokio::test]
     async fn test_batch_execute_single_operation() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         // Register all required tools
         super::super::batch::register_tools(&mut dispatcher);
@@ -65,8 +75,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_execute_multiple_operations() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::batch::register_tools(&mut dispatcher);
         super::super::filesystem::register_tools(&mut dispatcher);
@@ -118,8 +128,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_execute_parallel_operations() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::batch::register_tools(&mut dispatcher);
         super::super::filesystem::register_tools(&mut dispatcher);
@@ -179,8 +189,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_execute_dry_run() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::batch::register_tools(&mut dispatcher);
         super::super::filesystem::register_tools(&mut dispatcher);
@@ -224,8 +234,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_execute_atomic_rollback() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::batch::register_tools(&mut dispatcher);
         super::super::filesystem::register_tools(&mut dispatcher);
@@ -273,8 +283,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_execute_stop_on_error() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::batch::register_tools(&mut dispatcher);
         super::super::filesystem::register_tools(&mut dispatcher);
@@ -333,8 +343,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_execute_continue_on_error() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::batch::register_tools(&mut dispatcher);
         super::super::filesystem::register_tools(&mut dispatcher);
@@ -394,8 +404,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_execute_empty_operations() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::batch::register_tools(&mut dispatcher);
 
@@ -424,8 +434,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_execute_invalid_tool() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::batch::register_tools(&mut dispatcher);
 
@@ -459,8 +469,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_execute_large_batch() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::batch::register_tools(&mut dispatcher);
         super::super::filesystem::register_tools(&mut dispatcher);
@@ -508,8 +518,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_execute_mixed_tools() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::batch::register_tools(&mut dispatcher);
         super::super::filesystem::register_tools(&mut dispatcher);

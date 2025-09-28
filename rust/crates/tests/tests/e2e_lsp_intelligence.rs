@@ -1,11 +1,11 @@
-use cb_tests::harness::{TestClient, TestWorkspace};
+use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
 
 #[tokio::test]
 async fn test_find_definition_function() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create main file that imports from another file
     let main_file = workspace.path().join("main.ts");
@@ -50,8 +50,8 @@ console.log(`Result: ${result}, PI: ${PI}`);
 
 #[tokio::test]
 async fn test_find_definition_interface() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let types_file = workspace.path().join("types.ts");
     let main_file = workspace.path().join("main.ts");
@@ -97,8 +97,8 @@ const role: UserRole = 'admin';
 
 #[tokio::test]
 async fn test_find_references_function() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let util_file = workspace.path().join("utils.ts");
     let main_file = workspace.path().join("main.ts");
@@ -153,8 +153,8 @@ describe('formatName', () => {
 
 #[tokio::test]
 async fn test_get_hover_function() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("hover_test.ts");
 
@@ -188,8 +188,8 @@ const area = calculateArea(10, 5);
 
 #[tokio::test]
 async fn test_get_hover_variable() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("variable_hover.ts");
 
@@ -218,8 +218,8 @@ const distance = Math.sqrt(origin.x ** 2 + origin.y ** 2);
 
 #[tokio::test]
 async fn test_get_signature_help() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("signature_test.ts");
 
@@ -252,8 +252,8 @@ const greeting = greetUser("Alice", 30,
 
 #[tokio::test]
 async fn test_search_workspace_symbols() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create multiple files with various symbols
     let file1 = workspace.path().join("models.ts");
@@ -313,8 +313,8 @@ export class UserService {
 
 #[tokio::test]
 async fn test_get_document_symbols() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("symbols.ts");
 
@@ -388,8 +388,8 @@ export function createClient(config: Config): ApiClient {
 
 #[tokio::test]
 async fn test_cross_file_intelligence() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a more complex project structure
     let types_file = workspace.path().join("types.ts");
@@ -490,8 +490,8 @@ console.log(sortedElectronics);
 
 #[tokio::test]
 async fn test_lsp_intelligence_with_errors() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("errors.ts");
 

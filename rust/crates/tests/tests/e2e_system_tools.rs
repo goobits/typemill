@@ -1,11 +1,11 @@
-use cb_tests::harness::{TestClient, TestWorkspace};
+use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
 
 #[tokio::test]
 async fn test_health_check_basic() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let response = client.call_tool("health_check", json!({})).await.unwrap();
 
@@ -29,8 +29,8 @@ async fn test_health_check_basic() {
 
 #[tokio::test]
 async fn test_health_check_with_active_lsp() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a TypeScript file to trigger LSP server startup
     let ts_file = workspace.path().join("trigger.ts");
@@ -73,8 +73,8 @@ const test: Test = { id: 1 };
 
 #[tokio::test]
 async fn test_health_check_detailed() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let response = client.call_tool("health_check", json!({
         "include_details": true
@@ -109,8 +109,8 @@ async fn test_health_check_detailed() {
 
 #[tokio::test]
 async fn test_update_dependencies_package_json() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a package.json file
     let package_json = workspace.path().join("package.json");
@@ -174,8 +174,8 @@ async fn test_update_dependencies_package_json() {
 
 #[tokio::test]
 async fn test_update_dependencies_cargo_toml() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a Cargo.toml file
     let cargo_toml = workspace.path().join("Cargo.toml");
@@ -232,8 +232,8 @@ assert_cmd = "2.0"
 
 #[tokio::test]
 async fn test_update_dependencies_requirements_txt() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a requirements.txt file
     let requirements_txt = workspace.path().join("requirements.txt");
@@ -276,8 +276,8 @@ flask==2.0.1
 
 #[tokio::test]
 async fn test_update_dependencies_dry_run() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let package_json = workspace.path().join("package.json");
     let initial_content = json!({
@@ -312,8 +312,8 @@ async fn test_update_dependencies_dry_run() {
 
 #[tokio::test]
 async fn test_update_dependencies_scripts_management() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let package_json = workspace.path().join("package.json");
     let initial_content = json!({
@@ -358,8 +358,8 @@ async fn test_update_dependencies_scripts_management() {
 
 #[tokio::test]
 async fn test_update_dependencies_error_handling() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Try to update non-existent file
     let nonexistent_file = workspace.path().join("nonexistent.json");
@@ -376,8 +376,8 @@ async fn test_update_dependencies_error_handling() {
 
 #[tokio::test]
 async fn test_update_dependencies_invalid_json() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create invalid JSON file
     let invalid_json = workspace.path().join("invalid.json");
@@ -395,8 +395,8 @@ async fn test_update_dependencies_invalid_json() {
 
 #[tokio::test]
 async fn test_system_tools_integration() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Step 1: Check initial health
     let health_response = client.call_tool("health_check", json!({})).await.unwrap();

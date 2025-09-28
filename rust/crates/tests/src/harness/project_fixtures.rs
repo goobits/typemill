@@ -9,7 +9,7 @@ impl ProjectFixtures {
     /// Create a large TypeScript project for performance testing
     pub async fn create_large_typescript_project(
         workspace: &TestWorkspace,
-        client: &TestClient,
+        client: &mut TestClient,
         file_count: usize,
     ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
         let mut created_files = Vec::new();
@@ -132,7 +132,7 @@ export function createEntity{}(name: string, metadata: Record<string, any> = {{}
 export async function batchCreateEntities{}(names: string[]): Promise<Entity{}[]> {{
     return names.map(name => createEntity{}(name));
 }}
-"#, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+"#, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
 
             client.call_tool("create_file", json!({
                 "file_path": file_path.to_string_lossy(),
@@ -220,7 +220,7 @@ export class EntityService{} {{
         }};
     }}
 }}
-"#, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+"#, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
 
             client.call_tool("create_file", json!({
                 "file_path": file_path.to_string_lossy(),
@@ -312,7 +312,7 @@ export class EntityComponent{} {{
 export function createComponent{}(entities: Entity{}[], filter?: EntityFilter{}): EntityComponent{} {{
     return new EntityComponent{}({{ entities, filter }});
 }}
-"#, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+"#, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
 
             client.call_tool("create_file", json!({
                 "file_path": file_path.to_string_lossy(),
@@ -328,7 +328,7 @@ export function createComponent{}(entities: Entity{}[], filter?: EntityFilter{})
     /// Create a Python project for multi-language testing
     pub async fn create_python_project(
         workspace: &TestWorkspace,
-        client: &TestClient,
+        client: &mut TestClient,
     ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
         let mut created_files = Vec::new();
 
@@ -667,7 +667,7 @@ class CircularBuffer:
     /// Create a Rust project for multi-language testing
     pub async fn create_rust_project(
         workspace: &TestWorkspace,
-        client: &TestClient,
+        client: &mut TestClient,
     ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
         let mut created_files = Vec::new();
 
@@ -890,7 +890,7 @@ mod tests {
     /// Create a monorepo project structure
     pub async fn create_monorepo_project(
         workspace: &TestWorkspace,
-        client: &TestClient,
+        client: &mut TestClient,
     ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
         let mut created_files = Vec::new();
 
@@ -1148,7 +1148,7 @@ export default App;
     /// Create an error-prone project for testing error handling
     pub async fn create_error_project(
         workspace: &TestWorkspace,
-        client: &TestClient,
+        client: &mut TestClient,
     ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
         let mut created_files = Vec::new();
 
@@ -1262,7 +1262,7 @@ export function workingFunction(): number {
     /// Create a performance test project with configurable complexity
     pub async fn create_performance_project(
         workspace: &TestWorkspace,
-        client: &TestClient,
+        client: &mut TestClient,
         complexity_level: usize,
     ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
         let mut created_files = Vec::new();

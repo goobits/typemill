@@ -18,13 +18,23 @@ mod tests {
 
     /// Create a test AppState with mock services
     fn create_test_app_state() -> Arc<AppState> {
-        let mock_lsp = MockLspService::new();
+        use crate::services::{LockManager, OperationQueue};
+        use crate::interfaces::LspService;
+        use crate::lsp::{LspConfig, LspManager};
+
+        let lsp_config = LspConfig::default();
+        let lsp_manager = Arc::new(LspManager::new(lsp_config));
+        let file_service = Arc::new(crate::services::FileService::new(std::path::PathBuf::from("/tmp")));
+        let project_root = std::path::PathBuf::from("/tmp");
+        let lock_manager = Arc::new(LockManager::new());
+        let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
+
         Arc::new(AppState {
-            file_service: Arc::new(FileService::new()),
-            symbol_service: Arc::new(SymbolService::new(Arc::new(mock_lsp.clone()))),
-            editing_service: Arc::new(EditingService::new(Arc::new(mock_lsp.clone()))),
-            import_service: Arc::new(ImportService::new()),
-            lsp_service: Arc::new(mock_lsp),
+            lsp: lsp_manager,
+            file_service,
+            project_root,
+            lock_manager,
+            operation_queue,
         })
     }
 
@@ -38,7 +48,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_document_symbols_hierarchical() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_document_symbols()
@@ -169,7 +180,8 @@ function helperFunction() {
 
     #[tokio::test]
     async fn test_get_document_symbols_flat() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_document_symbols()
@@ -266,7 +278,8 @@ interface MyInterface {
 
     #[tokio::test]
     async fn test_get_document_symbols_empty_file() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_document_symbols()
@@ -301,7 +314,8 @@ interface MyInterface {
 
     #[tokio::test]
     async fn test_get_document_symbols_invalid_file() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_document_symbols()
@@ -329,7 +343,8 @@ interface MyInterface {
 
     #[tokio::test]
     async fn test_get_document_symbols_with_deprecated_symbols() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_document_symbols()
@@ -415,8 +430,8 @@ function newFunction() {
 
     #[tokio::test]
     async fn test_get_document_symbols_invalid_args() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::register_tools(&mut dispatcher);
 
@@ -442,7 +457,8 @@ function newFunction() {
 
     #[tokio::test]
     async fn test_get_document_symbols_complex_hierarchy() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_document_symbols()

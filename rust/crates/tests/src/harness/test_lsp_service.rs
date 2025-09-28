@@ -186,7 +186,7 @@ impl LspService for TestLspService {
 
                 Ok(McpMessage::Response(response))
             }
-            _ => Err(CoreError::InvalidRequest("Expected request message".to_string())),
+            _ => Err(CoreError::invalid_data("Expected request message")),
         }
     }
 

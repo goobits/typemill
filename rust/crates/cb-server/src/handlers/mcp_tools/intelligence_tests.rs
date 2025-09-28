@@ -19,18 +19,23 @@ mod tests {
 
     /// Create a test AppState with mock services
     fn create_test_app_state() -> Arc<AppState> {
-        let mut mock_lsp = MockLspService::new();
+        use crate::services::{LockManager, OperationQueue};
+        use crate::interfaces::LspService;
+        use crate::lsp::{LspConfig, LspManager};
 
-        // Setup default mock responses
-        mock_lsp.expect_is_initialized()
-            .returning(|_| true);
+        let lsp_config = LspConfig::default();
+        let lsp_manager = Arc::new(LspManager::new(lsp_config));
+        let file_service = Arc::new(crate::services::FileService::new(std::path::PathBuf::from("/tmp")));
+        let project_root = std::path::PathBuf::from("/tmp");
+        let lock_manager = Arc::new(LockManager::new());
+        let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
 
         Arc::new(AppState {
-            file_service: Arc::new(FileService::new()),
-            symbol_service: Arc::new(SymbolService::new(Arc::new(mock_lsp.clone()))),
-            editing_service: Arc::new(EditingService::new(Arc::new(mock_lsp.clone()))),
-            import_service: Arc::new(ImportService::new()),
-            lsp_service: Arc::new(mock_lsp),
+            lsp: lsp_manager,
+            file_service,
+            project_root,
+            lock_manager,
+            operation_queue,
         })
     }
 
@@ -44,8 +49,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_hover_success() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         // Setup mock LSP response for hover
         let mock_lsp = MockLspService::new();
@@ -94,7 +99,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_hover_no_info() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_hover()
@@ -128,7 +134,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_completions_success() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_completions()
@@ -207,7 +214,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_completions_with_trigger_character() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_completions()
@@ -268,7 +276,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_signature_help_success() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_signature_help()
@@ -336,7 +345,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_signature_help_no_signature() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
         mock_lsp.expect_signature_help()
@@ -371,8 +381,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_intelligence_tools_invalid_args() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::register_tools(&mut dispatcher);
 
@@ -405,7 +415,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_intelligence_tools_with_errors() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
 

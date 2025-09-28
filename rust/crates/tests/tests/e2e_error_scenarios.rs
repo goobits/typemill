@@ -1,12 +1,12 @@
-use cb_tests::harness::{TestClient, TestWorkspace};
+use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
 use std::fs;
 
 #[tokio::test]
 async fn test_file_operations_permission_errors() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Try to read a non-existent file
     let nonexistent_file = workspace.path().join("does_not_exist.txt");
@@ -36,8 +36,8 @@ async fn test_file_operations_permission_errors() {
 
 #[tokio::test]
 async fn test_lsp_operations_with_invalid_files() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Try LSP operations on non-existent file
     let nonexistent_file = workspace.path().join("nonexistent.ts");
@@ -77,8 +77,8 @@ async fn test_lsp_operations_with_invalid_files() {
 
 #[tokio::test]
 async fn test_malformed_tool_requests() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test missing required parameters
     let response = client.call_tool("read_file", json!({})).await;
@@ -106,8 +106,8 @@ async fn test_malformed_tool_requests() {
 
 #[tokio::test]
 async fn test_file_corruption_scenarios() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a file with invalid UTF-8
     let invalid_utf8_file = workspace.path().join("invalid_utf8.txt");
@@ -153,8 +153,8 @@ async fn test_file_corruption_scenarios() {
 
 #[tokio::test]
 async fn test_concurrent_file_access_errors() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("concurrent_test.txt");
     fs::write(&file_path, "initial content").unwrap();
@@ -203,8 +203,8 @@ async fn test_concurrent_file_access_errors() {
 
 #[tokio::test]
 async fn test_workspace_edit_rollback_on_failure() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file1 = workspace.path().join("file1.ts");
     let file2 = workspace.path().join("file2.ts");
@@ -261,8 +261,8 @@ async fn test_workspace_edit_rollback_on_failure() {
 
 #[tokio::test]
 async fn test_lsp_server_unavailable() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a file with extension that has no LSP server configured
     let unknown_file = workspace.path().join("test.unknownext");
@@ -291,8 +291,8 @@ async fn test_lsp_server_unavailable() {
 
 #[tokio::test]
 async fn test_dependency_update_errors() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test with completely invalid JSON
     let invalid_json = workspace.path().join("invalid.json");
@@ -332,8 +332,8 @@ async fn test_dependency_update_errors() {
 
 #[tokio::test]
 async fn test_timeout_scenarios() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a very large TypeScript file that might cause LSP timeouts
     let large_ts_file = workspace.path().join("large.ts");
@@ -401,8 +401,8 @@ export class Class{} implements Interface{} {{
 
 #[tokio::test]
 async fn test_resource_exhaustion() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Try to create many files rapidly to test resource limits
     let mut handles = vec![];
@@ -464,8 +464,8 @@ async fn test_resource_exhaustion() {
 
 #[tokio::test]
 async fn test_invalid_characters_in_paths() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Test various problematic characters in file paths
     let problematic_paths = vec![
@@ -505,8 +505,8 @@ async fn test_invalid_characters_in_paths() {
 
 #[tokio::test]
 async fn test_error_recovery_and_continuity() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Step 1: Perform a successful operation
     let good_file = workspace.path().join("good.ts");

@@ -1,12 +1,12 @@
-use cb_tests::harness::{TestClient, TestWorkspace};
+use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
 use tempfile::TempDir;
 
 #[tokio::test]
 async fn test_create_file_basic() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("new_file.txt");
     let content = "Hello, World!";
@@ -25,8 +25,8 @@ async fn test_create_file_basic() {
 
 #[tokio::test]
 async fn test_create_file_with_directories() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("nested/deep/new_file.js");
     let content = "export const greeting = 'Hello from nested file!';";
@@ -46,8 +46,8 @@ async fn test_create_file_with_directories() {
 
 #[tokio::test]
 async fn test_create_file_overwrite_protection() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("existing.txt");
     std::fs::write(&file_path, "original content").unwrap();
@@ -66,8 +66,8 @@ async fn test_create_file_overwrite_protection() {
 
 #[tokio::test]
 async fn test_create_file_with_overwrite() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("existing.txt");
     std::fs::write(&file_path, "original content").unwrap();
@@ -86,8 +86,8 @@ async fn test_create_file_with_overwrite() {
 
 #[tokio::test]
 async fn test_read_file_basic() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("test_file.txt");
     let content = "This is test content\nwith multiple lines\nand unicode: 🚀";
@@ -102,8 +102,8 @@ async fn test_read_file_basic() {
 
 #[tokio::test]
 async fn test_read_file_nonexistent() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("nonexistent.txt");
 
@@ -116,8 +116,8 @@ async fn test_read_file_nonexistent() {
 
 #[tokio::test]
 async fn test_read_file_with_range() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("large_file.txt");
     let lines: Vec<String> = (1..=100).map(|i| format!("Line {}", i)).collect();
@@ -137,8 +137,8 @@ async fn test_read_file_with_range() {
 
 #[tokio::test]
 async fn test_write_file_basic() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("write_test.txt");
     let content = "Written content with special chars: @#$%^&*()";
@@ -157,8 +157,8 @@ async fn test_write_file_basic() {
 
 #[tokio::test]
 async fn test_write_file_overwrites_existing() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("overwrite_test.txt");
     std::fs::write(&file_path, "original").unwrap();
@@ -177,8 +177,8 @@ async fn test_write_file_overwrites_existing() {
 
 #[tokio::test]
 async fn test_delete_file_basic() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("to_delete.txt");
     std::fs::write(&file_path, "content to be deleted").unwrap();
@@ -194,8 +194,8 @@ async fn test_delete_file_basic() {
 
 #[tokio::test]
 async fn test_delete_file_nonexistent() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("nonexistent.txt");
 
@@ -208,8 +208,8 @@ async fn test_delete_file_nonexistent() {
 
 #[tokio::test]
 async fn test_list_files_basic() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create test files
     let files = vec!["file1.txt", "file2.js", "file3.py"];
@@ -241,8 +241,8 @@ async fn test_list_files_basic() {
 
 #[tokio::test]
 async fn test_list_files_recursive() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create nested structure
     std::fs::write(workspace.path().join("root.txt"), "root").unwrap();
@@ -272,8 +272,8 @@ async fn test_list_files_recursive() {
 
 #[tokio::test]
 async fn test_list_files_with_pattern() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create files with different extensions
     let files = vec![
@@ -300,8 +300,8 @@ async fn test_list_files_with_pattern() {
 
 #[tokio::test]
 async fn test_file_operations_integration() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a TypeScript file
     let ts_file = workspace.path().join("integration.ts");
@@ -375,8 +375,8 @@ export function createUser(name: string, email?: string): User {
 
 #[tokio::test]
 async fn test_large_file_handling() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("large_file.txt");
 
@@ -403,8 +403,8 @@ async fn test_large_file_handling() {
 
 #[tokio::test]
 async fn test_binary_file_handling() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_path = workspace.path().join("binary_file.dat");
 

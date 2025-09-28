@@ -94,7 +94,7 @@ This document provides a comprehensive overview of language support across all M
 
 | Tool | TypeScript/JS | Python | Go | Rust | Test Coverage | Notes |
 |------|--------------|--------|-----|------|--------------|-------|
-| `update_package_json` | ✅ Full | N/A | N/A | N/A | 🔬 Unit | Node.js specific |
+| `update_dependencies` | ✅ Full | ✅ Full | ✅ Full | ✅ Full | 🔬 Unit | Universal multi-language |
 
 ## Language Server Configuration
 
