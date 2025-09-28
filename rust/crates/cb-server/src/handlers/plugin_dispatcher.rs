@@ -5,11 +5,9 @@
 
 use crate::error::{ServerError, ServerResult};
 use crate::handlers::AppState;
-use crate::systems::lsp::LspManager;
 use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
 use cb_plugins::{
-    PluginManager, LspAdapterPlugin, LspService, PluginRequest, PluginResponse,
-    Position, Range, PluginError, PluginResult
+    PluginManager, LspAdapterPlugin, LspService, PluginRequest, PluginError
 };
 use async_trait::async_trait;
 use serde_json::{json, Value};
@@ -17,7 +15,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::OnceCell;
-use tracing::{debug, error, info, warn, instrument};
+use tracing::{debug, error, info, instrument};
 
 /// Plugin-based MCP dispatcher
 pub struct PluginDispatcher {
@@ -31,13 +29,13 @@ pub struct PluginDispatcher {
 
 /// LSP service adapter that bridges the plugin system with the existing LSP manager
 struct LspManagerAdapter {
-    lsp_manager: Arc<LspManager>,
+    lsp_manager: Arc<dyn crate::interfaces::LspService>,
     extensions: Vec<String>,
     name: String,
 }
 
 impl LspManagerAdapter {
-    fn new(lsp_manager: Arc<LspManager>, extensions: Vec<String>, name: String) -> Self {
+    fn new(lsp_manager: Arc<dyn crate::interfaces::LspService>, extensions: Vec<String>, name: String) -> Self {
         Self {
             lsp_manager,
             extensions,
@@ -148,8 +146,8 @@ impl PluginDispatcher {
                 .map_err(|e| ServerError::Internal(format!("Failed to register Rust plugin: {}", e)))?;
 
             info!("Plugin system initialized successfully with 4 language plugins");
-            Ok(())
-        }).await.map_err(|e| e.clone())?;
+            Ok::<(), ServerError>(())
+        }).await?;
 
         Ok(())
     }

@@ -2,7 +2,7 @@
 
 use crate::auth::jwt::validate_token_with_project;
 use crate::error::{ServerError, ServerResult};
-use crate::handlers::McpDispatcher;
+use crate::handlers::PluginDispatcher;
 use cb_core::config::AppConfig;
 use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, McpError};
 use futures_util::{SinkExt, StreamExt};
@@ -68,7 +68,7 @@ impl Session {
 /// Start the WebSocket server
 pub async fn start_ws_server(
     config: Arc<AppConfig>,
-    dispatcher: Arc<McpDispatcher>,
+    dispatcher: Arc<PluginDispatcher>,
 ) -> ServerResult<()> {
     let addr = format!("{}:{}", config.server.host, config.server.port);
     let listener = TcpListener::bind(&addr)
@@ -91,7 +91,7 @@ pub async fn start_ws_server(
 async fn handle_connection(
     stream: TcpStream,
     config: Arc<AppConfig>,
-    dispatcher: Arc<McpDispatcher>,
+    dispatcher: Arc<PluginDispatcher>,
 ) {
     // Perform WebSocket handshake
     let ws_stream = match accept_async(stream).await {
@@ -187,7 +187,7 @@ async fn handle_message(
     session: &mut Session,
     message: McpMessage,
     config: &AppConfig,
-    dispatcher: &McpDispatcher,
+    dispatcher: &PluginDispatcher,
 ) -> ServerResult<McpMessage> {
     match message {
         McpMessage::Request(request) => {
@@ -332,7 +332,7 @@ mod tests {
             lock_manager,
             operation_queue,
         });
-        let _dispatcher = Arc::new(McpDispatcher::new(app_state));
+        let _dispatcher = Arc::new(PluginDispatcher::new(app_state));
         let mut session = Session::new();
 
         let request = McpRequest {
