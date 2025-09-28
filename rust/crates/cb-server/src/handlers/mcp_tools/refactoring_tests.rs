@@ -15,10 +15,14 @@ mod tests {
 
     /// Create a test app state for integration tests
     fn create_test_app_state() -> Arc<AppState> {
+        use crate::services::{LockManager, OperationQueue};
+        use crate::interfaces::LspService;
+        use crate::lsp::{LspConfig, LspManager};
+
         let lsp_config = LspConfig::default();
         let lsp_manager = Arc::new(LspManager::new(lsp_config));
-        let file_service = Arc::new(FileService::new(PathBuf::from("/tmp")));
-        let project_root = PathBuf::from("/tmp");
+        let file_service = Arc::new(crate::services::FileService::new(std::path::PathBuf::from("/tmp")));
+        let project_root = std::path::PathBuf::from("/tmp");
         let lock_manager = Arc::new(LockManager::new());
         let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
 

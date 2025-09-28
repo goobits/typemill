@@ -293,7 +293,7 @@ export function process{}_{}(data: Data{}_{}): string {{
 }}
 
 export const LEVEL_{}_{}  = {};
-"#, level, i, level, i, level, i, level, i, level, i, level, i, level, i, level, i, level);
+"#, level, i, level, i, level, i, level, i, level, i, level, i, level, i, level);
 
             self.create_file(&file_path, &content);
         }

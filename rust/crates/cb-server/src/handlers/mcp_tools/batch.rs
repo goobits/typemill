@@ -106,7 +106,6 @@ const SUPPORTED_TOOLS: &[&str] = &[
     "write_file",
     "list_files",
     "update_dependencies",
-    "update_package_json",
 ];
 
 /// Register batch execution tool

@@ -247,7 +247,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
             "workspace_edit": if workspace_edits.len() == 1 {
                 workspace_edits.into_iter().next()
             } else {
-                json!({"changes": workspace_edits})
+                Some(json!({"changes": workspace_edits}))
             },
             "operation_type": "refactor",
             "original_args": args,
@@ -319,10 +319,10 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
                 }
 
                 // Apply the edits using the transformer
-                match cb_ast::apply_edit_plan(&edit_plan) {
-                    Ok(modified_source) => {
+                match cb_ast::apply_edit_plan(&source, &edit_plan) {
+                    Ok(transform_result) => {
                         // Write the modified source back to file
-                        if let Err(e) = tokio::fs::write(file_path, &modified_source).await {
+                        if let Err(e) = tokio::fs::write(file_path, &transform_result.transformed_source).await {
                             return Ok(json!({
                                 "success": false,
                                 "error": format!("Failed to write file: {}", e),
@@ -333,7 +333,7 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
                         Ok(json!({
                             "success": true,
                             "previewMode": false,
-                            "modifiedSource": modified_source,
+                            "modifiedSource": transform_result.transformed_source,
                             "editPlan": edit_plan,
                             "message": "Variable extracted successfully"
                         }))
@@ -588,14 +588,15 @@ pub fn register_tools(dispatcher: &mut McpDispatcher) {
         }
 
         // Notify LSP servers about file changes
-        if !files_modified.is_empty() {
-            for file_path in &files_modified {
-                let path = std::path::Path::new(file_path);
-                if let Err(e) = app_state.lsp_service.did_change_file(path).await {
-                    tracing::warn!("Failed to notify LSP about file change {}: {}", file_path, e);
-                }
-            }
-        }
+        // TODO: Implement file change notification when LSP service supports it
+        // if !files_modified.is_empty() {
+        //     for file_path in &files_modified {
+        //         let path = std::path::Path::new(file_path);
+        //         if let Err(e) = app_state.lsp.did_change_file(path).await {
+        //             tracing::warn!("Failed to notify LSP about file change {}: {}", file_path, e);
+        //         }
+        //     }
+        // }
 
         Ok(json!({
             "success": true,

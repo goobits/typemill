@@ -1,4 +1,4 @@
-use cb_tests::harness::{TestClient, TestWorkspace};
+use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -6,8 +6,8 @@ use std::fs;
 
 #[tokio::test]
 async fn test_large_file_performance() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a large TypeScript file (50k lines)
     let large_file = workspace.path().join("large_performance.ts");
@@ -65,8 +65,8 @@ async fn test_large_file_performance() {
 
 #[tokio::test]
 async fn test_many_small_files_performance() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let file_count = 100;
     let mut file_paths = Vec::new();
@@ -132,8 +132,8 @@ export function process{}(data: Data{}): string {{
 
 #[tokio::test]
 async fn test_concurrent_operations_performance() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let concurrent_count = 20;
     let mut handles = Vec::new();
@@ -241,8 +241,8 @@ export class ConcurrentClass{} {{
 
 #[tokio::test]
 async fn test_workspace_edit_performance() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create multiple files for large workspace edit
     let file_count = 50;
@@ -334,8 +334,8 @@ const oldConstant{} = "old_value_{}";
 
 #[tokio::test]
 async fn test_memory_usage_large_operations() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a very large content string (5MB)
     let large_content = "A".repeat(5 * 1024 * 1024);
@@ -392,8 +392,8 @@ async fn test_memory_usage_large_operations() {
 
 #[tokio::test]
 async fn test_lsp_performance_complex_project() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     // Create a complex TypeScript project structure
     let src_dir = workspace.path().join("src");
@@ -556,8 +556,8 @@ export class UserService{} {{
 
 #[tokio::test]
 async fn test_stress_test_rapid_operations() {
-    let workspace = TestWorkspace::new().await;
-    let client = TestClient::new().await;
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
 
     let operations_count = 200;
     let mut operation_times = Vec::new();

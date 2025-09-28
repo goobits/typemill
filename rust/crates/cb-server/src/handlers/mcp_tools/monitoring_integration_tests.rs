@@ -14,21 +14,30 @@ mod tests {
 
     /// Create a test AppState with mock services
     fn create_test_app_state() -> Arc<AppState> {
-        let mock_lsp = MockLspService::new();
+        use crate::services::{LockManager, OperationQueue};
+        use crate::interfaces::LspService;
+        use crate::lsp::{LspConfig, LspManager};
+
+        let lsp_config = LspConfig::default();
+        let lsp_manager = Arc::new(LspManager::new(lsp_config));
+        let file_service = Arc::new(crate::services::FileService::new(std::path::PathBuf::from("/tmp")));
+        let project_root = std::path::PathBuf::from("/tmp");
+        let lock_manager = Arc::new(LockManager::new());
+        let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
+
         Arc::new(AppState {
-            file_service: Arc::new(FileService::new()),
-            symbol_service: Arc::new(SymbolService::new(Arc::new(mock_lsp.clone()))),
-            editing_service: Arc::new(EditingService::new(Arc::new(mock_lsp.clone()))),
-            import_service: Arc::new(ImportService::new()),
-            lsp_service: Arc::new(mock_lsp),
-            operation_queue: Arc::new(OperationQueue::new()),
+            lsp: lsp_manager,
+            file_service,
+            project_root,
+            lock_manager,
+            operation_queue,
         })
     }
 
     #[tokio::test]
     async fn test_get_queue_stats_empty_queue() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::monitoring::register_tools(&mut dispatcher);
 
@@ -48,8 +57,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_queue_stats_with_operations() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         // Simulate some queue activity
         let stats = QueueStats {
@@ -86,8 +95,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_queue_stats_concurrent_access() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::monitoring::register_tools(&mut dispatcher);
 
@@ -111,8 +120,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_queue_stats_response_format() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::monitoring::register_tools(&mut dispatcher);
 
@@ -140,8 +149,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_queue_stats_large_numbers() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         // Test with large operation counts
         let stats = QueueStats {
@@ -171,8 +180,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_queue_stats_zero_wait_times() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         // Test with zero wait times (immediate processing)
         let stats = QueueStats {
@@ -202,8 +211,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_queue_stats_invalid_args() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::monitoring::register_tools(&mut dispatcher);
 
@@ -222,8 +231,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_queue_stats_consistency() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::super::monitoring::register_tools(&mut dispatcher);
 

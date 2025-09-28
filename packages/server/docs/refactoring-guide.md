@@ -84,7 +84,7 @@ First, identify the operations you want to perform. You can batch any MCP tool o
 
 - **File operations**: rename_file, rename_directory, create_file, delete_file
 - **Symbol operations**: rename_symbol, find_references
-- **Project management**: update_package_json
+- **Project management**: update_dependencies
 - **Diagnostics**: get_diagnostics
 - **Code intelligence**: find_definition, get_symbols
 - And any other available MCP tools
@@ -116,7 +116,7 @@ Use `batch_execute` with preview mode to understand what will happen:
       }
     },
     {
-      "tool": "update_package_json",
+      "tool": "update_dependencies",
       "args": {
         "file_path": "./package.json",
         "add_dev_dependencies": {

@@ -117,49 +117,48 @@ export const utilityToolDefinitions = [
     },
   },
   {
-    name: 'update_package_json',
+    name: 'update_dependencies',
     description:
-      'Update package.json files by adding, removing, or modifying dependencies, devDependencies, scripts, and other package configuration. Preserves formatting and validates changes.',
+      'Universal dependency management tool that works across multiple languages (Node.js, Python, Rust, Go). Auto-detects file type and applies appropriate dependency updates. More comprehensive than update_package_json.',
     inputSchema: {
       type: 'object',
       properties: {
         file_path: {
           type: 'string',
-          description: 'Path to the package.json file to modify',
-          default: './package.json',
+          description: 'Path to dependency file (package.json, requirements.txt, Cargo.toml, go.mod, pyproject.toml)',
         },
         add_dependencies: {
           type: 'object',
-          description: 'Dependencies to add to the "dependencies" section',
+          description: 'Dependencies to add to the main dependencies section',
           additionalProperties: { type: 'string' },
         },
         add_dev_dependencies: {
           type: 'object',
-          description: 'Dependencies to add to the "devDependencies" section',
+          description: 'Dependencies to add to the development dependencies section',
           additionalProperties: { type: 'string' },
         },
         remove_dependencies: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Dependency names to remove from both dependencies and devDependencies',
+          description: 'Dependency names to remove from all dependency sections',
         },
         add_scripts: {
           type: 'object',
-          description: 'Scripts to add to the "scripts" section',
+          description: 'Scripts to add (Node.js package.json only)',
           additionalProperties: { type: 'string' },
         },
         remove_scripts: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Script names to remove from the "scripts" section',
+          description: 'Script names to remove (Node.js package.json only)',
         },
         update_version: {
           type: 'string',
-          description: 'Update the version field (e.g., "1.2.3")',
+          description: 'Update the version field (works across all supported languages)',
         },
         workspace_config: {
           type: 'object',
-          description: 'Add or update workspace configuration',
+          description: 'Workspace configuration (Node.js package.json only)',
           properties: {
             workspaces: {
               type: 'array',
@@ -170,7 +169,7 @@ export const utilityToolDefinitions = [
         },
         dry_run: {
           type: 'boolean',
-          description: 'Preview changes without applying them',
+          description: 'Preview changes without applying them (default: false)',
           default: false,
         },
       },

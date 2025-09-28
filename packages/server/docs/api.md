@@ -178,26 +178,36 @@ Rename an entire directory and update all import statements that reference files
 
 **Returns:** Summary of all files moved and import updates applied
 
-### `update_package_json`
 
-Update package.json files by adding, removing, or modifying dependencies, scripts, and configuration. Preserves formatting and validates changes.
+### `update_dependencies`
+Universal dependency management tool that works across multiple programming languages. Auto-detects file type and applies appropriate dependency updates. Supports Node.js, Python, Rust, Go, and more.
 
 **Parameters:**
-- `file_path`: Path to package.json file (default: "./package.json")
-- `add_dependencies`: Object of dependencies to add to "dependencies" section (optional)
-- `add_dev_dependencies`: Object of dependencies to add to "devDependencies" section (optional)
-- `remove_dependencies`: Array of dependency names to remove (optional)
-- `add_scripts`: Object of scripts to add to "scripts" section (optional)
-- `remove_scripts`: Array of script names to remove (optional)
-- `update_version`: New version string (optional)
-- `workspace_config`: Workspace configuration with workspaces array (optional)
-- `dry_run`: If true, only preview changes without applying them (optional, default: false)
+- `file_path`: Path to dependency file (package.json, requirements.txt, Cargo.toml, go.mod, pyproject.toml)
+- `add_dependencies`: Object of dependencies to add to main dependencies section (optional)
+- `add_dev_dependencies`: Object of dependencies to add to development dependencies section (optional)
+- `remove_dependencies`: Array of dependency names to remove from all sections (optional)
+- `add_scripts`: Object of scripts to add (Node.js package.json only) (optional)
+- `remove_scripts`: Array of script names to remove (Node.js package.json only) (optional)
+- `update_version`: Update version field (works across all languages) (optional)
+- `workspace_config`: Workspace configuration (Node.js only) (optional)
+- `dry_run`: Preview changes without applying them (optional, default: false)
 
-**When to use:** Managing project dependencies, scripts, and workspace configuration
+**Supported File Types:**
+- **Node.js**: `package.json` - Dependencies, devDependencies, scripts, version, workspaces
+- **Python**: `requirements.txt`, `pyproject.toml` - Dependencies, dev dependencies, version
+- **Rust**: `Cargo.toml` - Dependencies, dev-dependencies, version
+- **Go**: `go.mod` - Dependencies, version
 
-**Example prompt:** "Add lodash as a dependency and a build script"
+**When to use:** Managing dependencies across different programming languages in a unified way
 
-**Returns:** Summary of all changes made to the package.json file
+**Example prompts:**
+- "Add express dependency to package.json"
+- "Add pytest to Python requirements"
+- "Update serde version in Cargo.toml"
+- "Remove old-package from go.mod"
+
+**Returns:** Summary of dependency changes with language-specific details
 
 ### `fix_imports`
 

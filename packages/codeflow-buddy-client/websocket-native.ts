@@ -1,6 +1,7 @@
 // WebSocket implementation using Bun's native WebSocket for testing
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
+import type { EventHandler } from './types.js';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
@@ -163,17 +164,17 @@ export class WebSocketClient extends EventEmitter {
     }
   }
 
-  once(event: string, listener: (...args: any[]) => void): this {
+  once(event: string, listener: EventHandler): this {
     super.once(event, listener);
     return this;
   }
 
-  on(event: string, listener: (...args: any[]) => void): this {
+  on(event: string, listener: EventHandler): this {
     super.on(event, listener);
     return this;
   }
 
-  off(event: string, listener: (...args: any[]) => void): this {
+  off(event: string, listener: EventHandler): this {
     super.off(event, listener);
     return this;
   }

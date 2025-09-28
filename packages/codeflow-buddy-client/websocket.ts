@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 
 // Use native WebSocket in Bun, ws module in Node.js
-let WebSocketImpl: any;
+let WebSocketImpl: typeof WebSocket | typeof import('ws');
 if (typeof globalThis.WebSocket !== 'undefined') {
   // Running in Bun or browser - use native WebSocket
   WebSocketImpl = globalThis.WebSocket;
@@ -63,7 +63,7 @@ interface PendingRequest {
 }
 
 export class WebSocketClient extends EventEmitter {
-  private ws?: any; // WebSocket or ws.WebSocket
+  private ws?: WebSocket | import('ws').WebSocket; // WebSocket or ws.WebSocket
   private url: string;
   private options: WebSocketClientInternalOptions;
   private pendingRequests = new Map<string, PendingRequest>();
@@ -131,8 +131,9 @@ export class WebSocketClient extends EventEmitter {
         // Bun/Browser native WebSocket - headers not supported in constructor
         this.ws = new WebSocketImpl(this.url);
       } else {
-        // Node.js ws module - supports headers
-        this.ws = new WebSocketImpl(this.url, { headers });
+        // Node.js ws module - supports headers as third parameter
+        const WS = WebSocketImpl as typeof import('ws');
+        this.ws = new WS(this.url, undefined, { headers });
       }
 
       const onOpen = () => {
@@ -155,23 +156,27 @@ export class WebSocketClient extends EventEmitter {
       const cleanup = () => {
         if (typeof globalThis.WebSocket !== 'undefined') {
           // Native WebSocket uses event properties
-          this.ws.onopen = null;
-          this.ws.onerror = null;
+          const ws = this.ws as WebSocket;
+          ws.onopen = null;
+          ws.onerror = null;
         } else {
           // ws module uses EventEmitter
-          this.ws?.off('open', onOpen);
-          this.ws?.off('error', onError);
+          const ws = this.ws as import('ws').WebSocket;
+          ws.off('open', onOpen);
+          ws.off('error', onError);
         }
       };
 
       if (typeof globalThis.WebSocket !== 'undefined') {
         // Native WebSocket uses event properties
-        this.ws.onopen = onOpen;
-        this.ws.onerror = onError;
+        const ws = this.ws as WebSocket;
+        ws.onopen = onOpen;
+        ws.onerror = (ev: Event) => onError(new Error('WebSocket error'));
       } else {
         // ws module uses EventEmitter
-        this.ws.once('open', onOpen);
-        this.ws.once('error', onError);
+        const ws = this.ws as import('ws').WebSocket;
+        ws.once('open', onOpen);
+        ws.once('error', onError);
       }
     });
   }
@@ -209,7 +214,8 @@ export class WebSocketClient extends EventEmitter {
       // Error handler already set in connect()
     } else {
       // ws module uses EventEmitter
-      this.ws.on('message', (data: any) => {
+      const ws = this.ws as import('ws').WebSocket;
+      ws.on('message', (data: Buffer | ArrayBuffer | string) => {
         try {
           const message = JSON.parse(data.toString());
           this.handleMessage(message);
@@ -218,7 +224,7 @@ export class WebSocketClient extends EventEmitter {
         }
       });
 
-      this.ws.on('close', (code: number, reason: Buffer) => {
+      ws.on('close', (code: number, reason: Buffer) => {
         this.setStatus('disconnected');
         this.emit('disconnected', { code, reason: reason.toString() });
 
@@ -234,15 +240,16 @@ export class WebSocketClient extends EventEmitter {
         }
       });
 
-      this.ws.on('error', (error: Error) => {
+      ws.on('error', (error: Error) => {
         this.emit('error', error);
       });
     }
 
     // Ping/pong only supported in ws module
-    if (typeof globalThis.WebSocket === 'undefined' && this.ws.on) {
-      this.ws.on('ping', () => {
-        this.ws?.pong();
+    if (typeof globalThis.WebSocket === 'undefined') {
+      const ws = this.ws as import('ws').WebSocket;
+      ws.on('ping', () => {
+        ws.pong();
       });
     }
   }
@@ -337,13 +344,26 @@ export class WebSocketClient extends EventEmitter {
         id,
       };
 
-      this.ws?.send(JSON.stringify(request), (error: any) => {
-        if (error) {
+      if (typeof globalThis.WebSocket !== 'undefined') {
+        // Native WebSocket send doesn't have callback
+        try {
+          this.ws?.send(JSON.stringify(request));
+        } catch (error) {
           clearTimeout(timeout);
           this.pendingRequests.delete(id);
-          reject(error);
+          reject(error as Error);
         }
-      });
+      } else {
+        // ws module send has callback
+        const ws = this.ws as import('ws').WebSocket;
+        ws.send(JSON.stringify(request), (error?: Error) => {
+          if (error) {
+            clearTimeout(timeout);
+            this.pendingRequests.delete(id);
+            reject(error);
+          }
+        });
+      }
     });
   }
 
@@ -361,15 +381,17 @@ export class WebSocketClient extends EventEmitter {
       return new Promise((resolve) => {
         if (typeof globalThis.WebSocket !== 'undefined') {
           // Native WebSocket
-          const originalOnClose = this.ws.onclose;
-          this.ws.onclose = (event: CloseEvent) => {
+          const ws = this.ws as WebSocket;
+          const originalOnClose = ws.onclose;
+          ws.onclose = (event: CloseEvent) => {
+            if (originalOnClose) originalOnClose.call(ws, event);
             this.ws = undefined;
             resolve();
-            if (originalOnClose) originalOnClose.call(this.ws, event);
           };
         } else {
           // ws module
-          this.ws?.once('close', () => {
+          const ws = this.ws as import('ws').WebSocket;
+          ws.once('close', () => {
             this.ws = undefined;
             resolve();
           });

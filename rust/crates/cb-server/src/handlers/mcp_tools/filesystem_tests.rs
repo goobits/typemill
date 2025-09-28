@@ -16,20 +16,30 @@ mod tests {
 
     /// Create a test AppState with real FileService
     fn create_test_app_state() -> Arc<AppState> {
-        let mock_lsp = MockLspService::new();
+        use crate::services::{LockManager, OperationQueue};
+        use crate::interfaces::LspService;
+        use crate::lsp::{LspConfig, LspManager};
+
+        let lsp_config = LspConfig::default();
+        let lsp_manager = Arc::new(LspManager::new(lsp_config));
+        let file_service = Arc::new(crate::services::FileService::new(std::path::PathBuf::from("/tmp")));
+        let project_root = std::path::PathBuf::from("/tmp");
+        let lock_manager = Arc::new(LockManager::new());
+        let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
+
         Arc::new(AppState {
-            file_service: Arc::new(FileService::new()),
-            symbol_service: Arc::new(SymbolService::new(Arc::new(mock_lsp.clone()))),
-            editing_service: Arc::new(EditingService::new(Arc::new(mock_lsp.clone()))),
-            import_service: Arc::new(ImportService::new()),
-            lsp_service: Arc::new(mock_lsp),
+            lsp: lsp_manager,
+            file_service,
+            project_root,
+            lock_manager,
+            operation_queue,
         })
     }
 
     #[tokio::test]
     async fn test_delete_file_success() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::register_tools(&mut dispatcher);
 
@@ -58,8 +68,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_file_force() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::register_tools(&mut dispatcher);
 
@@ -85,8 +95,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_file_nonexistent() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::register_tools(&mut dispatcher);
 
@@ -108,8 +118,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_file_directory_error() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::register_tools(&mut dispatcher);
 
@@ -143,8 +153,8 @@ mod tests {
             return; // Windows permission model is different
         }
 
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::register_tools(&mut dispatcher);
 
@@ -178,8 +188,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_file_invalid_args() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::register_tools(&mut dispatcher);
 
@@ -211,7 +221,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_file_with_lsp_notification() {
-        let mut dispatcher = McpDispatcher::new();
+        let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         let mut mock_lsp = MockLspService::new();
 
@@ -248,8 +259,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_and_delete_file_workflow() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::register_tools(&mut dispatcher);
 
@@ -284,8 +295,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_file_relative_path() {
-        let mut dispatcher = McpDispatcher::new();
         let app_state = create_test_app_state();
+        let mut dispatcher = McpDispatcher::new(app_state.clone());
 
         super::register_tools(&mut dispatcher);
 
