@@ -36,20 +36,6 @@ mod filesystem_integration_tests;
 #[path = "batch_integration_tests.rs"]
 mod batch_integration_tests;
 
-use crate::handlers::McpDispatcher;
-
-/// Register all MCP tools with the dispatcher
-pub fn register_all_tools(dispatcher: &mut McpDispatcher) {
-    navigation::register_tools(dispatcher);
-    editing::register_tools(dispatcher);
-    filesystem::register_tools(dispatcher);
-    intelligence::register_tools(dispatcher);
-    analysis::register_tools(dispatcher);
-    hierarchy::register_tools(dispatcher);
-    batch::register_tools(dispatcher);
-    diagnostics::register_tools(dispatcher);
-    server_management::register_tools(dispatcher);
-    monitoring::register_tools(dispatcher);
-    refactoring::register_tools(dispatcher);
-    duplicate_detection::register(dispatcher);
-}
+// NOTE: register_all_tools has been removed!
+// The plugin system now handles all tool registration automatically.
+// Individual language plugins register their capabilities dynamically.

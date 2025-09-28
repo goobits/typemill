@@ -96,28 +96,9 @@ impl LspManager {
         Path::new(file_path).extension()?.to_str()
     }
 
-    /// Convert MCP request to LSP request
-    fn mcp_to_lsp_request(mcp_request: &McpRequest) -> ServerResult<(String, Value)> {
-        let method = match mcp_request.method.as_str() {
-            "find_definition" => "textDocument/definition",
-            "find_references" => "textDocument/references",
-            "rename_symbol" => "textDocument/rename",
-            "get_completions" => "textDocument/completion",
-            "get_hover" => "textDocument/hover",
-            "get_signature_help" => "textDocument/signatureHelp",
-            "get_diagnostics" => "textDocument/diagnostic",
-            "format_document" => "textDocument/formatting",
-            _ => {
-                return Err(ServerError::Unsupported(format!(
-                    "Unsupported MCP method: {}",
-                    mcp_request.method
-                )));
-            }
-        };
-
-        let params = mcp_request.params.clone().unwrap_or(json!({}));
-        Ok((method.to_string(), params))
-    }
+    // NOTE: Hard-coded MCP-to-LSP mappings have been removed!
+    // All requests now flow through the plugin system which handles translation.
+    // The plugin system (DirectLspAdapter) bypasses this manager entirely.
 
     /// Convert LSP response to MCP response
     fn lsp_to_mcp_response(lsp_result: Value, request_id: Option<Value>) -> McpResponse {
@@ -178,20 +159,16 @@ impl LspService for LspManager {
                     }
                 };
 
-                // Convert MCP request to LSP request
-                let (lsp_method, lsp_params) = match Self::mcp_to_lsp_request(&request) {
-                    Ok((method, params)) => (method, params),
-                    Err(e) => {
-                        error!("Failed to convert MCP request to LSP: {}", e);
-                        return Ok(McpMessage::Response(Self::create_error_response(
-                            request.id,
-                            format!("Unsupported request: {}", e),
-                        )));
-                    }
-                };
+                // NOTE: This code path is DEPRECATED and bypassed by the plugin system!
+                // The plugin system (DirectLspAdapter) goes directly to LspClient.
+                // This is only kept for backwards compatibility but should not be used.
+                return Err(CoreError::not_supported(
+                    "Direct LSP manager requests are deprecated. Use the plugin system instead."
+                ));
 
-                // Send request to LSP server
-                match client.send_request(&lsp_method, lsp_params).await {
+                // Old code (no longer reached):
+                #[allow(unreachable_code)]
+                match client.send_request("", json!({})).await {
                     Ok(result) => {
                         debug!("LSP request successful: {}", request.method);
                         Ok(McpMessage::Response(Self::lsp_to_mcp_response(result, request.id)))
@@ -325,23 +302,5 @@ mod tests {
         assert_eq!(LspManager::get_extension("file.js"), Some("js"));
     }
 
-    #[test]
-    fn test_mcp_to_lsp_request() {
-        let request = McpRequest {
-            id: Some(json!(1)),
-            method: "find_definition".to_string(),
-            params: Some(json!({"file_path": "/test.ts"})),
-        };
-
-        let (method, _params) = LspManager::mcp_to_lsp_request(&request).unwrap();
-        assert_eq!(method, "textDocument/definition");
-
-        let invalid_request = McpRequest {
-            id: Some(json!(1)),
-            method: "invalid_method".to_string(),
-            params: None,
-        };
-
-        assert!(LspManager::mcp_to_lsp_request(&invalid_request).is_err());
-    }
+    // Test removed: mcp_to_lsp_request functionality is now handled by the plugin system
 }
