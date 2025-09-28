@@ -1,5 +1,10 @@
 {"servers":[
     {
+      "extensions": ["ts", "tsx", "js", "jsx"],
+      "command": ["typescript-language-server", "--stdio"]
+    }
+,
+    {
       "extensions": ["py", "pyi"],
       "command": ["pylsp"]
     }
