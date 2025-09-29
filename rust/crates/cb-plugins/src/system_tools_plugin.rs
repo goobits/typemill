@@ -679,7 +679,220 @@ impl LanguagePlugin for SystemToolsPlugin {
     }
 
     fn tool_definitions(&self) -> Vec<Value> {
-        vec![]
+        vec![
+            json!({
+                "name": "list_files",
+                "description": "List files and directories in a given path.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to list (defaults to current directory)"
+                        },
+                        "recursive": {
+                            "type": "boolean",
+                            "description": "Whether to recursively list subdirectories"
+                        },
+                        "include_hidden": {
+                            "type": "boolean",
+                            "description": "Whether to include hidden files"
+                        }
+                    }
+                }
+            }),
+            json!({
+                "name": "analyze_imports",
+                "description": "Analyze import statements in a file.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "Path to the file to analyze"
+                        }
+                    },
+                    "required": ["file_path"]
+                }
+            }),
+            json!({
+                "name": "find_dead_code",
+                "description": "Find potentially unused code in a workspace.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "workspace_path": {
+                            "type": "string",
+                            "description": "Path to the workspace to analyze"
+                        }
+                    },
+                    "required": ["workspace_path"]
+                }
+            }),
+            json!({
+                "name": "update_dependencies",
+                "description": "Update project dependencies using the appropriate package manager.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "project_path": {
+                            "type": "string",
+                            "description": "Path to the project (defaults to current directory)"
+                        },
+                        "package_manager": {
+                            "type": "string",
+                            "description": "Package manager to use (auto, npm, yarn, pnpm, cargo, pip)"
+                        },
+                        "update_type": {
+                            "type": "string",
+                            "description": "Type of update (minor, major, patch)"
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "Preview changes without applying them"
+                        }
+                    }
+                }
+            }),
+            json!({
+                "name": "rename_directory",
+                "description": "Rename a directory and optionally update import statements.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "old_path": {
+                            "type": "string",
+                            "description": "Current directory path"
+                        },
+                        "new_path": {
+                            "type": "string",
+                            "description": "New directory path"
+                        },
+                        "update_imports": {
+                            "type": "boolean",
+                            "description": "Whether to update import statements"
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "Preview changes without applying them"
+                        }
+                    },
+                    "required": ["old_path", "new_path"]
+                }
+            }),
+            json!({
+                "name": "extract_function",
+                "description": "Extract a block of code into a new function.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "Path to the file"
+                        },
+                        "start_line": {
+                            "type": "number",
+                            "description": "Start line of code to extract"
+                        },
+                        "end_line": {
+                            "type": "number",
+                            "description": "End line of code to extract"
+                        },
+                        "function_name": {
+                            "type": "string",
+                            "description": "Name for the new function"
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "Preview changes without applying them"
+                        }
+                    },
+                    "required": ["file_path", "start_line", "end_line", "function_name"]
+                }
+            }),
+            json!({
+                "name": "inline_variable",
+                "description": "Inline a variable's value.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "Path to the file"
+                        },
+                        "variable_name": {
+                            "type": "string",
+                            "description": "Name of the variable to inline"
+                        },
+                        "line": {
+                            "type": "number",
+                            "description": "Line number where the variable is declared"
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "Preview changes without applying them"
+                        }
+                    },
+                    "required": ["file_path", "variable_name", "line"]
+                }
+            }),
+            json!({
+                "name": "extract_variable",
+                "description": "Extract an expression into a new variable.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "Path to the file"
+                        },
+                        "start_line": {
+                            "type": "number",
+                            "description": "Start line of expression"
+                        },
+                        "start_character": {
+                            "type": "number",
+                            "description": "Start character of expression"
+                        },
+                        "end_line": {
+                            "type": "number",
+                            "description": "End line of expression"
+                        },
+                        "end_character": {
+                            "type": "number",
+                            "description": "End character of expression"
+                        },
+                        "variable_name": {
+                            "type": "string",
+                            "description": "Name for the new variable"
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "Preview changes without applying them"
+                        }
+                    },
+                    "required": ["file_path", "start_line", "start_character", "end_line", "end_character", "variable_name"]
+                }
+            }),
+            json!({
+                "name": "fix_imports",
+                "description": "Fix import statements by removing unused imports and organizing them.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "Path to the file"
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "Preview changes without applying them"
+                        }
+                    },
+                    "required": ["file_path"]
+                }
+            }),
+        ]
     }
 
     fn capabilities(&self) -> Capabilities {

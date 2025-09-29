@@ -4,11 +4,11 @@
 //! dispatcher with a flexible plugin system.
 
 use crate::{ServerError, ServerResult};
-use cb_api::AstService;
-use cb_transport::McpDispatcher;
 use async_trait::async_trait;
+use cb_api::AstService;
 use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
 use cb_plugins::{LspAdapterPlugin, LspService, PluginError, PluginManager, PluginRequest};
+use cb_transport::McpDispatcher;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -386,7 +386,10 @@ impl PluginDispatcher {
         match self.plugin_manager.handle_request(plugin_request).await {
             Ok(response) => {
                 let processing_time = start_time.elapsed().as_millis();
-                debug!(processing_time_ms = processing_time, "Plugin request processed");
+                debug!(
+                    processing_time_ms = processing_time,
+                    "Plugin request processed"
+                );
 
                 Ok(json!({
                     "content": response.data.unwrap_or(json!(null)),
@@ -520,7 +523,15 @@ impl PluginDispatcher {
     fn is_system_tool(&self, tool_name: &str) -> bool {
         matches!(
             tool_name,
-            "list_files" | "analyze_imports" | "find_dead_code"
+            "list_files"
+                | "analyze_imports"
+                | "find_dead_code"
+                | "update_dependencies"
+                | "rename_directory"
+                | "extract_function"
+                | "inline_variable"
+                | "extract_variable"
+                | "fix_imports"
         )
     }
 
@@ -543,7 +554,10 @@ impl PluginDispatcher {
         match self.plugin_manager.handle_request(request).await {
             Ok(response) => {
                 let processing_time = start_time.elapsed().as_millis();
-                debug!(processing_time_ms = processing_time, "System tool processed");
+                debug!(
+                    processing_time_ms = processing_time,
+                    "System tool processed"
+                );
 
                 Ok(json!({
                     "content": response.data.unwrap_or(json!(null)),
@@ -573,7 +587,11 @@ impl PluginDispatcher {
         let file_path = PathBuf::from(file_path_str);
 
         // Trigger plugin lifecycle hooks for all plugins that can handle this file
-        if let Err(e) = self.plugin_manager.trigger_file_open_hooks(&file_path).await {
+        if let Err(e) = self
+            .plugin_manager
+            .trigger_file_open_hooks(&file_path)
+            .await
+        {
             warn!(
                 file_path = %file_path.display(),
                 error = %e,
@@ -659,7 +677,11 @@ impl PluginDispatcher {
         let file_path = PathBuf::from(file_path_str);
 
         // Trigger plugin lifecycle hooks for all plugins that can handle this file
-        if let Err(e) = self.plugin_manager.trigger_file_save_hooks(&file_path).await {
+        if let Err(e) = self
+            .plugin_manager
+            .trigger_file_save_hooks(&file_path)
+            .await
+        {
             warn!(
                 file_path = %file_path.display(),
                 error = %e,
@@ -691,7 +713,11 @@ impl PluginDispatcher {
         let file_path = PathBuf::from(file_path_str);
 
         // Trigger plugin lifecycle hooks for all plugins that can handle this file
-        if let Err(e) = self.plugin_manager.trigger_file_close_hooks(&file_path).await {
+        if let Err(e) = self
+            .plugin_manager
+            .trigger_file_close_hooks(&file_path)
+            .await
+        {
             warn!(
                 file_path = %file_path.display(),
                 error = %e,
@@ -996,7 +1022,8 @@ impl PluginDispatcher {
 #[async_trait]
 impl McpDispatcher for PluginDispatcher {
     async fn dispatch(&self, message: McpMessage) -> cb_api::ApiResult<McpMessage> {
-        self.dispatch(message).await
+        self.dispatch(message)
+            .await
             .map_err(|e| cb_api::ApiError::internal(e.to_string()))
     }
 }

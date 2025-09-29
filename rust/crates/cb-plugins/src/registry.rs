@@ -36,23 +36,15 @@ impl PluginRegistry {
         plugin: Arc<dyn LanguagePlugin>,
     ) -> PluginResult<()> {
         let name = name.into();
-        eprintln!(
-            "DEBUG: PluginRegistry::register_plugin called for '{}'",
-            name
-        );
 
         let metadata = plugin.metadata();
         let capabilities = plugin.capabilities();
-        eprintln!("DEBUG: Plugin '{}' metadata: {:?}", name, metadata);
-        eprintln!("DEBUG: Plugin '{}' capabilities: {:?}", name, capabilities);
 
         // Validate plugin metadata
-        eprintln!("DEBUG: Validating plugin metadata for '{}'", name);
         self.validate_plugin_metadata(&metadata)?;
 
         // Check for duplicate plugin names
         if self.plugins.contains_key(&name) {
-            eprintln!("DEBUG: Plugin '{}' already registered, replacing", name);
             warn!("Plugin '{}' is already registered, replacing", name);
         }
 
@@ -65,23 +57,12 @@ impl PluginRegistry {
         }
 
         // Update method mappings based on capabilities
-        eprintln!("DEBUG: Updating method mappings for '{}'", name);
         self.update_method_mappings(&name, &capabilities);
 
         // Store plugin and metadata
-        eprintln!("DEBUG: Storing plugin '{}' in registry", name);
         self.plugins.insert(name.clone(), plugin);
         self.metadata_cache.insert(name.clone(), metadata);
 
-        eprintln!(
-            "DEBUG: Plugin '{}' registration completed successfully",
-            name
-        );
-        eprintln!("DEBUG: Total plugins in registry: {}", self.plugins.len());
-        eprintln!(
-            "DEBUG: Available plugin names: {:?}",
-            self.plugins.keys().collect::<Vec<_>>()
-        );
         info!("Registered plugin '{}'", name);
         Ok(())
     }
@@ -144,32 +125,37 @@ impl PluginRegistry {
 
         // Special handling for workspace-level LSP operations
         if matches!(method, "search_workspace_symbols") {
-            eprintln!("DEBUG: Special handling for search_workspace_symbols");
-            eprintln!(
-                "DEBUG: Available plugins: {:?}",
-                self.plugins.keys().collect::<Vec<_>>()
+            debug!(
+                method = %method,
+                available_plugins = ?self.plugins.keys().collect::<Vec<_>>(),
+                "Routing workspace-level operation"
             );
-            // HACK: The method_map isn't correctly populated in tests, so we'll just
-            // hardcode this for now.
-            if self.plugins.contains_key("typescript") {
-                eprintln!("DEBUG: Found typescript plugin, routing to it");
-                return Ok("typescript".to_string());
-            } else {
-                eprintln!("DEBUG: No typescript plugin found, trying other plugins");
-                // Try any available plugin that might handle LSP operations
-                let available_plugins = self.plugins.keys().collect::<Vec<_>>();
-                for plugin_name in available_plugins {
-                    if plugin_name != "system" {
-                        eprintln!("DEBUG: Trying plugin: {}", plugin_name);
-                        return Ok(plugin_name.clone());
-                    }
-                }
-                eprintln!("DEBUG: No suitable plugins found for workspace symbols");
-                return Err(PluginError::plugin_not_found(
-                    file_path.to_string_lossy(),
-                    method,
-                ));
+
+            // Route to any plugin that supports workspace symbols
+            let method_plugins = self.find_plugins_for_method(method);
+            if let Some(plugin_name) = method_plugins.first() {
+                debug!(
+                    selected_plugin = %plugin_name,
+                    "Workspace symbol request routed"
+                );
+                return Ok(plugin_name.clone());
             }
+
+            // Fallback: try any LSP plugin (excluding system plugin)
+            for plugin_name in self.plugins.keys() {
+                if plugin_name != "system" {
+                    debug!(
+                        fallback_plugin = %plugin_name,
+                        "Using fallback plugin for workspace symbols"
+                    );
+                    return Ok(plugin_name.clone());
+                }
+            }
+
+            return Err(PluginError::plugin_not_found(
+                file_path.to_string_lossy(),
+                method,
+            ));
         }
 
         let file_plugins = self.find_plugins_for_file(file_path);
