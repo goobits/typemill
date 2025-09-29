@@ -272,7 +272,7 @@ impl Filesystem for CodeflowFS {
     }
 
     fn open(&mut self, _req: &Request, ino: u64, _flags: i32, reply: ReplyOpen) {
-        debug!("open: ino={}", ino);
+        debug!(ino = %ino, "open");
 
         let path = match self.inode_to_path.get(&ino) {
             Some(path) => path,
@@ -301,7 +301,7 @@ impl Filesystem for CodeflowFS {
         _lock: Option<u64>,
         reply: ReplyData,
     ) {
-        debug!("read: ino={}, offset={}, size={}", ino, offset, size);
+        debug!(ino = %ino, offset = %offset, size = %size, "read");
 
         let path = match self.inode_to_path.get(&ino) {
             Some(path) => path,
@@ -323,7 +323,7 @@ impl Filesystem for CodeflowFS {
                 }
             }
             Err(err) => {
-                warn!("Failed to read file {:?}: {}", path, err);
+                warn!(path = ?path, error = %err, "Failed to read file");
                 reply.error(libc::EIO);
             }
         }
@@ -367,7 +367,7 @@ pub fn start_fuse_mount(
     // Spawn FUSE mount in a background thread
     let mount_point_clone = mount_point.clone();
     std::thread::spawn(move || {
-        info!("Mounting FUSE filesystem at {:?}", mount_point_clone);
+        info!(mount_point = ?mount_point_clone, "Mounting FUSE filesystem");
 
         let options = vec![
             fuser::MountOption::RO, // Read-only mount
@@ -376,7 +376,7 @@ pub fn start_fuse_mount(
         ];
 
         if let Err(err) = fuser::mount2(filesystem, &mount_point_clone, &options) {
-            error!("FUSE mount failed: {}", err);
+            error!(error = %err, "FUSE mount failed");
         } else {
             info!("FUSE filesystem unmounted");
         }

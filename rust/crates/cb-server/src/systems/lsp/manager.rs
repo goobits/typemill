@@ -63,7 +63,7 @@ impl LspManager {
             clients.insert(extension.to_string(), client.clone());
         }
 
-        info!("Created LSP client for extension: {}", extension);
+        info!(extension = %extension, "Created LSP client");
         Ok(client)
     }
 
@@ -126,7 +126,7 @@ impl LspService for LspManager {
         // The plugin system (DirectLspAdapter) goes directly to LspClient.
         // This method exists only for interface compatibility.
 
-        debug!("LSP request received but deprecated: {:?}", message.method);
+        debug!(method = ?message.method, "LSP request received but deprecated");
 
         Err(cb_api::ApiError::Unsupported(
             "Direct LSP manager requests are deprecated. Use the plugin system instead.".to_string()
@@ -150,7 +150,7 @@ impl LspService for LspManager {
             // Restart specific extensions
             for extension in extensions {
                 if let Some(client) = clients.remove(&extension) {
-                    info!("Restarting LSP client for extension: {}", extension);
+                    info!(extension = %extension, "Restarting LSP client");
                     client
                         .kill()
                         .await
@@ -161,7 +161,7 @@ impl LspService for LspManager {
             // Restart all clients
             info!("Restarting all LSP clients");
             for (extension, client) in clients.drain() {
-                info!("Killing LSP client for extension: {}", extension);
+                info!(extension = %extension, "Killing LSP client");
                 client
                     .kill()
                     .await
