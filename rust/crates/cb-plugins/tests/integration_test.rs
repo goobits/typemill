@@ -188,3 +188,257 @@ async fn test_plugin_error_handling() {
         "Should have at least 1 failed request"
     );
 }
+
+#[tokio::test]
+async fn test_file_lifecycle_hooks_integration() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    // Create a mock plugin that counts hook invocations
+    struct HookCountingLspService {
+        name: String,
+        open_count: Arc<AtomicUsize>,
+        save_count: Arc<AtomicUsize>,
+        close_count: Arc<AtomicUsize>,
+    }
+
+    #[async_trait]
+    impl LspService for HookCountingLspService {
+        async fn request(&self, method: &str, _params: Value) -> Result<Value, String> {
+            match method {
+                "textDocument/definition" => Ok(json!([{
+                    "uri": "file:///test.ts",
+                    "range": {
+                        "start": { "line": 0, "character": 0 },
+                        "end": { "line": 0, "character": 10 }
+                    }
+                }])),
+                _ => Ok(json!(null)),
+            }
+        }
+
+        fn supports_extension(&self, extension: &str) -> bool {
+            ["ts", "tsx"].contains(&extension)
+        }
+
+        fn service_name(&self) -> String {
+            self.name.clone()
+        }
+    }
+
+    // Custom plugin wrapper that tracks lifecycle hooks
+    struct HookTrackingPlugin {
+        inner: Arc<LspAdapterPlugin>,
+        open_count: Arc<AtomicUsize>,
+    }
+
+    #[async_trait]
+    impl cb_plugins::LanguagePlugin for HookTrackingPlugin {
+        fn metadata(&self) -> PluginMetadata {
+            self.inner.metadata()
+        }
+
+        fn supported_extensions(&self) -> Vec<String> {
+            self.inner.supported_extensions()
+        }
+
+        fn capabilities(&self) -> Capabilities {
+            self.inner.capabilities()
+        }
+
+        async fn handle_request(
+            &self,
+            request: cb_plugins::PluginRequest,
+        ) -> cb_plugins::PluginResult<cb_plugins::PluginResponse> {
+            self.inner.handle_request(request).await
+        }
+
+        fn configure(&self, config: Value) -> cb_plugins::PluginResult<()> {
+            self.inner.configure(config)
+        }
+
+        fn on_file_open(&self, path: &std::path::Path) -> cb_plugins::PluginResult<()> {
+            self.open_count.fetch_add(1, Ordering::SeqCst);
+            self.inner.on_file_open(path)
+        }
+
+        fn tool_definitions(&self) -> Vec<Value> {
+            self.inner.tool_definitions()
+        }
+    }
+
+    let manager = PluginManager::new();
+
+    let open_count = Arc::new(AtomicUsize::new(0));
+    let save_count = Arc::new(AtomicUsize::new(0));
+    let close_count = Arc::new(AtomicUsize::new(0));
+
+    let lsp_service = Arc::new(HookCountingLspService {
+        name: "hook-test-lsp".to_string(),
+        open_count: open_count.clone(),
+        save_count: save_count.clone(),
+        close_count: close_count.clone(),
+    });
+
+    let inner_plugin = Arc::new(LspAdapterPlugin::typescript(lsp_service));
+    let tracking_plugin = Arc::new(HookTrackingPlugin {
+        inner: inner_plugin,
+        open_count: open_count.clone(),
+    });
+
+    manager
+        .register_plugin("typescript", tracking_plugin)
+        .await
+        .unwrap();
+
+    // Test file open hook
+    let ts_file = std::path::PathBuf::from("test.ts");
+    manager.trigger_file_open_hooks(&ts_file).await.unwrap();
+
+    assert_eq!(
+        open_count.load(Ordering::SeqCst),
+        1,
+        "on_file_open should be called once"
+    );
+
+    // Test multiple hook invocations
+    manager.trigger_file_open_hooks(&ts_file).await.unwrap();
+    manager.trigger_file_open_hooks(&ts_file).await.unwrap();
+
+    assert_eq!(
+        open_count.load(Ordering::SeqCst),
+        3,
+        "on_file_open should be called three times total"
+    );
+
+    // Test that hooks are NOT called for non-matching files
+    let py_file = std::path::PathBuf::from("test.py");
+    manager.trigger_file_open_hooks(&py_file).await.unwrap();
+
+    assert_eq!(
+        open_count.load(Ordering::SeqCst),
+        3,
+        "on_file_open should NOT be called for .py file"
+    );
+}
+
+#[tokio::test]
+async fn test_hooks_with_multiple_plugins() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    let ts_hook_count = Arc::new(AtomicUsize::new(0));
+    let js_hook_count = Arc::new(AtomicUsize::new(0));
+
+    struct CountingLspService {
+        name: String,
+        hook_count: Arc<AtomicUsize>,
+    }
+
+    #[async_trait]
+    impl LspService for CountingLspService {
+        async fn request(&self, _method: &str, _params: Value) -> Result<Value, String> {
+            Ok(json!(null))
+        }
+
+        fn supports_extension(&self, _extension: &str) -> bool {
+            true
+        }
+
+        fn service_name(&self) -> String {
+            self.name.clone()
+        }
+    }
+
+    struct CountingPlugin {
+        inner: Arc<LspAdapterPlugin>,
+        hook_count: Arc<AtomicUsize>,
+    }
+
+    #[async_trait]
+    impl cb_plugins::LanguagePlugin for CountingPlugin {
+        fn metadata(&self) -> PluginMetadata {
+            self.inner.metadata()
+        }
+
+        fn supported_extensions(&self) -> Vec<String> {
+            self.inner.supported_extensions()
+        }
+
+        fn capabilities(&self) -> Capabilities {
+            self.inner.capabilities()
+        }
+
+        async fn handle_request(
+            &self,
+            request: cb_plugins::PluginRequest,
+        ) -> cb_plugins::PluginResult<cb_plugins::PluginResponse> {
+            self.inner.handle_request(request).await
+        }
+
+        fn configure(&self, config: Value) -> cb_plugins::PluginResult<()> {
+            self.inner.configure(config)
+        }
+
+        fn on_file_open(&self, path: &std::path::Path) -> cb_plugins::PluginResult<()> {
+            self.hook_count.fetch_add(1, Ordering::SeqCst);
+            self.inner.on_file_open(path)
+        }
+
+        fn tool_definitions(&self) -> Vec<Value> {
+            self.inner.tool_definitions()
+        }
+    }
+
+    let manager = PluginManager::new();
+
+    // Register TypeScript plugin
+    let ts_service = Arc::new(CountingLspService {
+        name: "ts-lsp".to_string(),
+        hook_count: ts_hook_count.clone(),
+    });
+    let ts_inner = Arc::new(LspAdapterPlugin::new(
+        "typescript",
+        vec!["ts".to_string(), "tsx".to_string()],
+        ts_service,
+    ));
+    let ts_plugin = Arc::new(CountingPlugin {
+        inner: ts_inner,
+        hook_count: ts_hook_count.clone(),
+    });
+    manager.register_plugin("typescript", ts_plugin).await.unwrap();
+
+    // Register JavaScript plugin (also handles .js files)
+    let js_service = Arc::new(CountingLspService {
+        name: "js-lsp".to_string(),
+        hook_count: js_hook_count.clone(),
+    });
+    let js_inner = Arc::new(LspAdapterPlugin::new(
+        "javascript",
+        vec!["js".to_string()],
+        js_service,
+    ));
+    let js_plugin = Arc::new(CountingPlugin {
+        inner: js_inner,
+        hook_count: js_hook_count.clone(),
+    });
+    manager.register_plugin("javascript", js_plugin).await.unwrap();
+
+    // Test TypeScript file - only TS plugin should receive hook
+    manager
+        .trigger_file_open_hooks(&std::path::PathBuf::from("test.ts"))
+        .await
+        .unwrap();
+
+    assert_eq!(ts_hook_count.load(Ordering::SeqCst), 1);
+    assert_eq!(js_hook_count.load(Ordering::SeqCst), 0);
+
+    // Test JavaScript file - only JS plugin should receive hook
+    manager
+        .trigger_file_open_hooks(&std::path::PathBuf::from("test.js"))
+        .await
+        .unwrap();
+
+    assert_eq!(ts_hook_count.load(Ordering::SeqCst), 1);
+    assert_eq!(js_hook_count.load(Ordering::SeqCst), 1);
+}

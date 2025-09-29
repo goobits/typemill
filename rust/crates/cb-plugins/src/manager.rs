@@ -11,7 +11,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, instrument};
+use tracing::{debug, error, info, instrument, warn};
 
 /// Main plugin manager that orchestrates all plugin operations
 pub struct PluginManager {
@@ -295,6 +295,111 @@ impl PluginManager {
         registry.find_plugins_for_method(method)
     }
 
+    /// Trigger file open hooks for all plugins that can handle this file
+    #[instrument(skip(self), fields(file = %file_path.display()))]
+    pub async fn trigger_file_open_hooks(&self, file_path: &Path) -> PluginResult<()> {
+        let registry = self.registry.read().await;
+        let plugin_names = registry.find_plugins_for_file(file_path);
+
+        debug!(
+            file = %file_path.display(),
+            plugins = ?plugin_names,
+            hook = "on_file_open",
+            "Triggering lifecycle hooks"
+        );
+
+        for plugin_name in plugin_names {
+            if let Some(plugin) = registry.get_plugin(&plugin_name) {
+                match plugin.on_file_open(file_path) {
+                    Ok(()) => {
+                        debug!(plugin = %plugin_name, hook = "on_file_open", "Hook succeeded");
+                    }
+                    Err(e) => {
+                        warn!(
+                            plugin = %plugin_name,
+                            hook = "on_file_open",
+                            error = %e,
+                            "Hook failed (continuing)"
+                        );
+                        // Don't propagate errors - hooks are non-blocking
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Trigger file save hooks for all plugins that can handle this file
+    #[instrument(skip(self), fields(file = %file_path.display()))]
+    pub async fn trigger_file_save_hooks(&self, file_path: &Path) -> PluginResult<()> {
+        let registry = self.registry.read().await;
+        let plugin_names = registry.find_plugins_for_file(file_path);
+
+        debug!(
+            file = %file_path.display(),
+            plugins = ?plugin_names,
+            hook = "on_file_save",
+            "Triggering lifecycle hooks"
+        );
+
+        for plugin_name in plugin_names {
+            if let Some(plugin) = registry.get_plugin(&plugin_name) {
+                match plugin.on_file_save(file_path) {
+                    Ok(()) => {
+                        debug!(plugin = %plugin_name, hook = "on_file_save", "Hook succeeded");
+                    }
+                    Err(e) => {
+                        warn!(
+                            plugin = %plugin_name,
+                            hook = "on_file_save",
+                            error = %e,
+                            "Hook failed (continuing)"
+                        );
+                        // Don't propagate errors - hooks are non-blocking
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Trigger file close hooks for all plugins that can handle this file
+    #[instrument(skip(self), fields(file = %file_path.display()))]
+    pub async fn trigger_file_close_hooks(&self, file_path: &Path) -> PluginResult<()> {
+        let registry = self.registry.read().await;
+        let plugin_names = registry.find_plugins_for_file(file_path);
+
+        debug!(
+            file = %file_path.display(),
+            plugins = ?plugin_names,
+            hook = "on_file_close",
+            "Triggering lifecycle hooks"
+        );
+
+        for plugin_name in plugin_names {
+            if let Some(plugin) = registry.get_plugin(&plugin_name) {
+                match plugin.on_file_close(file_path) {
+                    Ok(()) => {
+                        debug!(plugin = %plugin_name, hook = "on_file_close", "Hook succeeded");
+                    }
+                    Err(e) => {
+                        warn!(
+                            plugin = %plugin_name,
+                            hook = "on_file_close",
+                            error = %e,
+                            "Hook failed (continuing)"
+                        );
+                        // Don't propagate errors - hooks are non-blocking
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Get all tool definitions from all registered plugins
     pub async fn get_all_tool_definitions(&self) -> Vec<Value> {
         let registry = self.registry.read().await;
@@ -560,6 +665,188 @@ mod tests {
             !manager
                 .is_method_supported(&PathBuf::from("file.other"), "find_definition")
                 .await
+        );
+    }
+
+    #[tokio::test]
+    async fn test_file_open_hooks() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        struct HookTestPlugin {
+            hook_called: Arc<AtomicBool>,
+            extensions: Vec<String>,
+        }
+
+        #[async_trait]
+        impl LanguagePlugin for HookTestPlugin {
+            fn metadata(&self) -> PluginMetadata {
+                PluginMetadata::new("hook-test", "1.0.0", "test")
+            }
+
+            fn supported_extensions(&self) -> Vec<String> {
+                self.extensions.clone()
+            }
+
+            fn capabilities(&self) -> Capabilities {
+                Capabilities::default()
+            }
+
+            async fn handle_request(&self, _request: PluginRequest) -> PluginResult<PluginResponse> {
+                Ok(PluginResponse::empty())
+            }
+
+            fn configure(&self, _config: Value) -> PluginResult<()> {
+                Ok(())
+            }
+
+            fn on_file_open(&self, _path: &Path) -> PluginResult<()> {
+                self.hook_called.store(true, Ordering::SeqCst);
+                Ok(())
+            }
+
+            fn tool_definitions(&self) -> Vec<Value> {
+                vec![]
+            }
+        }
+
+        let manager = PluginManager::new();
+        let hook_called = Arc::new(AtomicBool::new(false));
+
+        let plugin = Arc::new(HookTestPlugin {
+            hook_called: hook_called.clone(),
+            extensions: vec!["test".to_string()],
+        });
+
+        manager.register_plugin("hook-test", plugin).await.unwrap();
+
+        // Trigger hook for matching file
+        let test_file = PathBuf::from("file.test");
+        manager.trigger_file_open_hooks(&test_file).await.unwrap();
+
+        assert!(hook_called.load(Ordering::SeqCst), "Hook should be called for .test file");
+
+        // Reset and test non-matching file
+        hook_called.store(false, Ordering::SeqCst);
+        let other_file = PathBuf::from("file.other");
+        manager.trigger_file_open_hooks(&other_file).await.unwrap();
+
+        assert!(!hook_called.load(Ordering::SeqCst), "Hook should NOT be called for .other file");
+    }
+
+    #[tokio::test]
+    async fn test_hook_error_handling() {
+        struct FailingHookPlugin;
+
+        #[async_trait]
+        impl LanguagePlugin for FailingHookPlugin {
+            fn metadata(&self) -> PluginMetadata {
+                PluginMetadata::new("failing-hook", "1.0.0", "test")
+            }
+
+            fn supported_extensions(&self) -> Vec<String> {
+                vec!["fail".to_string()]
+            }
+
+            fn capabilities(&self) -> Capabilities {
+                Capabilities::default()
+            }
+
+            async fn handle_request(&self, _request: PluginRequest) -> PluginResult<PluginResponse> {
+                Ok(PluginResponse::empty())
+            }
+
+            fn configure(&self, _config: Value) -> PluginResult<()> {
+                Ok(())
+            }
+
+            fn on_file_open(&self, _path: &Path) -> PluginResult<()> {
+                Err(PluginError::request_failed("failing-hook", "Intentional test failure"))
+            }
+
+            fn tool_definitions(&self) -> Vec<Value> {
+                vec![]
+            }
+        }
+
+        let manager = PluginManager::new();
+        let plugin = Arc::new(FailingHookPlugin);
+
+        manager.register_plugin("failing-hook", plugin).await.unwrap();
+
+        // Hook failure should not propagate
+        let result = manager.trigger_file_open_hooks(&PathBuf::from("file.fail")).await;
+        assert!(result.is_ok(), "Hook errors should not propagate");
+    }
+
+    #[tokio::test]
+    async fn test_multiple_plugins_receive_hooks() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let call_counter = Arc::new(AtomicUsize::new(0));
+
+        struct CountingPlugin {
+            counter: Arc<AtomicUsize>,
+            name: String,
+            extensions: Vec<String>,
+        }
+
+        #[async_trait]
+        impl LanguagePlugin for CountingPlugin {
+            fn metadata(&self) -> PluginMetadata {
+                PluginMetadata::new(&self.name, "1.0.0", "test")
+            }
+
+            fn supported_extensions(&self) -> Vec<String> {
+                self.extensions.clone()
+            }
+
+            fn capabilities(&self) -> Capabilities {
+                Capabilities::default()
+            }
+
+            async fn handle_request(&self, _request: PluginRequest) -> PluginResult<PluginResponse> {
+                Ok(PluginResponse::empty())
+            }
+
+            fn configure(&self, _config: Value) -> PluginResult<()> {
+                Ok(())
+            }
+
+            fn on_file_open(&self, _path: &Path) -> PluginResult<()> {
+                self.counter.fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            }
+
+            fn tool_definitions(&self) -> Vec<Value> {
+                vec![]
+            }
+        }
+
+        let manager = PluginManager::new();
+
+        // Register two plugins for the same extension
+        let plugin1 = Arc::new(CountingPlugin {
+            counter: call_counter.clone(),
+            name: "counter1".to_string(),
+            extensions: vec!["ts".to_string()],
+        });
+
+        let plugin2 = Arc::new(CountingPlugin {
+            counter: call_counter.clone(),
+            name: "counter2".to_string(),
+            extensions: vec!["ts".to_string()],
+        });
+
+        manager.register_plugin("counter1", plugin1).await.unwrap();
+        manager.register_plugin("counter2", plugin2).await.unwrap();
+
+        // Trigger hook
+        manager.trigger_file_open_hooks(&PathBuf::from("file.ts")).await.unwrap();
+
+        assert_eq!(
+            call_counter.load(Ordering::SeqCst),
+            2,
+            "Both plugins should receive the hook"
         );
     }
 }
