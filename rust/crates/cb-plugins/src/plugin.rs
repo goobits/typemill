@@ -1,6 +1,6 @@
 //! Core plugin trait and metadata definitions
 
-use crate::{PluginRequest, PluginResponse, Capabilities, PluginResult};
+use crate::{Capabilities, PluginRequest, PluginResponse, PluginResult};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -78,7 +78,11 @@ pub struct PluginMetadata {
 
 impl PluginMetadata {
     /// Create new plugin metadata
-    pub fn new(name: impl Into<String>, version: impl Into<String>, author: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        version: impl Into<String>,
+        author: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
             version: version.into(),

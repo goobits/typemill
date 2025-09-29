@@ -4,9 +4,9 @@ mod json_helper;
 
 use crate::error::{CoreError, CoreResult};
 use config::{Config, Environment, File, FileFormat};
+use json_helper::to_camel_case_keys;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use json_helper::to_camel_case_keys;
 
 /// Main application configuration
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -146,7 +146,6 @@ pub struct CacheConfig {
     pub cache_dir: Option<PathBuf>,
 }
 
-
 impl Default for ServerConfig {
     fn default() -> Self {
         Self {
@@ -165,8 +164,16 @@ impl Default for LspConfig {
         Self {
             servers: vec![
                 LspServerConfig {
-                    extensions: vec!["ts".to_string(), "tsx".to_string(), "js".to_string(), "jsx".to_string()],
-                    command: vec!["typescript-language-server".to_string(), "--stdio".to_string()],
+                    extensions: vec![
+                        "ts".to_string(),
+                        "tsx".to_string(),
+                        "js".to_string(),
+                        "jsx".to_string(),
+                    ],
+                    command: vec![
+                        "typescript-language-server".to_string(),
+                        "--stdio".to_string(),
+                    ],
                     root_dir: None,
                     restart_interval: Some(10),
                 },
@@ -210,7 +217,7 @@ impl Default for CacheConfig {
         Self {
             enabled: true,
             max_size_bytes: 256 * 1024 * 1024, // 256 MB
-            ttl_seconds: 3600, // 1 hour
+            ttl_seconds: 3600,                 // 1 hour
             persistent: false,
             cache_dir: None,
         }
@@ -265,7 +272,8 @@ impl AppConfig {
             if config_path.ends_with(".toml") {
                 let path = std::path::Path::new(config_path);
                 if path.exists() {
-                    config_builder = config_builder.add_source(File::from(path).format(FileFormat::Toml));
+                    config_builder =
+                        config_builder.add_source(File::from(path).format(FileFormat::Toml));
                     file_found = true;
                     break;
                 }
@@ -365,12 +373,16 @@ impl AppConfig {
 
         // Validate LSP config
         if self.lsp.servers.is_empty() {
-            return Err(CoreError::config("At least one LSP server must be configured"));
+            return Err(CoreError::config(
+                "At least one LSP server must be configured",
+            ));
         }
 
         for server in &self.lsp.servers {
             if server.extensions.is_empty() {
-                return Err(CoreError::config("LSP server must handle at least one extension"));
+                return Err(CoreError::config(
+                    "LSP server must handle at least one extension",
+                ));
             }
             if server.command.is_empty() {
                 return Err(CoreError::config("LSP server command cannot be empty"));
@@ -398,7 +410,9 @@ impl AppConfig {
 
         // Validate cache config
         if self.cache.enabled && self.cache.max_size_bytes == 0 {
-            return Err(CoreError::config("Cache max size cannot be 0 when cache is enabled"));
+            return Err(CoreError::config(
+                "Cache max size cannot be 0 when cache is enabled",
+            ));
         }
 
         Ok(())

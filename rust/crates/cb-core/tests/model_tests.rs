@@ -128,7 +128,10 @@ fn test_lsp_response_creation() {
 
 #[test]
 fn test_lsp_position_serialization() {
-    let position = LspPosition { line: 10, character: 5 };
+    let position = LspPosition {
+        line: 10,
+        character: 5,
+    };
     let json = serde_json::to_value(&position).unwrap();
 
     assert_eq!(json["line"], 10);
@@ -141,8 +144,14 @@ fn test_lsp_position_serialization() {
 #[test]
 fn test_lsp_range_serialization() {
     let range = LspRange {
-        start: LspPosition { line: 0, character: 0 },
-        end: LspPosition { line: 0, character: 10 },
+        start: LspPosition {
+            line: 0,
+            character: 0,
+        },
+        end: LspPosition {
+            line: 0,
+            character: 10,
+        },
     };
 
     let json = serde_json::to_value(&range).unwrap();
@@ -165,7 +174,9 @@ fn test_fuse_config_default() {
     assert!(!config.debug);
     assert_eq!(config.mount_options.len(), 2);
     assert!(config.mount_options.contains(&"auto_unmount".to_string()));
-    assert!(config.mount_options.contains(&"default_permissions".to_string()));
+    assert!(config
+        .mount_options
+        .contains(&"default_permissions".to_string()));
 }
 
 #[test]
@@ -227,7 +238,10 @@ fn test_intent_spec_with_metadata() {
 
     let metadata = intent.metadata().unwrap();
     assert!(metadata.timestamp.is_some());
-    assert_eq!(metadata.context.get("session_id").unwrap(), &json!("session-456"));
+    assert_eq!(
+        metadata.context.get("session_id").unwrap(),
+        &json!("session-456")
+    );
 }
 
 #[test]
@@ -256,7 +270,10 @@ fn test_intent_context_management() {
 
     assert_eq!(context.execution_id, "exec-123");
     assert_eq!(context.status, IntentStatus::Running);
-    assert_eq!(context.parent_execution_id.as_ref().unwrap(), "parent-exec-456");
+    assert_eq!(
+        context.parent_execution_id.as_ref().unwrap(),
+        "parent-exec-456"
+    );
     assert!(context.child_execution_ids.is_empty());
 
     context.add_child("child-exec-789");
@@ -290,6 +307,9 @@ fn test_intent_serialization() {
     let deserialized_metadata = deserialized.metadata.unwrap();
     let original_metadata = intent.metadata.unwrap();
     assert_eq!(deserialized_metadata.source, original_metadata.source);
-    assert_eq!(deserialized_metadata.correlation_id, original_metadata.correlation_id);
+    assert_eq!(
+        deserialized_metadata.correlation_id,
+        original_metadata.correlation_id
+    );
     assert_eq!(deserialized_metadata.priority, original_metadata.priority);
 }

@@ -11,9 +11,7 @@ pub fn to_camel_case_keys(value: Value) -> Value {
             }
             Value::Object(new_map)
         }
-        Value::Array(arr) => {
-            Value::Array(arr.into_iter().map(to_camel_case_keys).collect())
-        }
+        Value::Array(arr) => Value::Array(arr.into_iter().map(to_camel_case_keys).collect()),
         other => other,
     }
 }

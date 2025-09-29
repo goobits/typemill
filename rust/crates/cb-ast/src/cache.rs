@@ -64,7 +64,11 @@ impl AstCache {
         let current_metadata = match std::fs::metadata(file_path) {
             Ok(metadata) => metadata,
             Err(e) => {
-                debug!("Failed to get metadata for {}: {}, invalidating cache", file_path.display(), e);
+                debug!(
+                    "Failed to get metadata for {}: {}, invalidating cache",
+                    file_path.display(),
+                    e
+                );
                 self.invalidate(file_path);
                 return None;
             }
@@ -73,7 +77,11 @@ impl AstCache {
         let current_modified = match current_metadata.modified() {
             Ok(time) => time,
             Err(e) => {
-                debug!("Failed to get modification time for {}: {}, invalidating cache", file_path.display(), e);
+                debug!(
+                    "Failed to get modification time for {}: {}, invalidating cache",
+                    file_path.display(),
+                    e
+                );
                 self.invalidate(file_path);
                 return None;
             }
@@ -81,8 +89,8 @@ impl AstCache {
 
         // Check if the cached entry is still valid (file hasn't been modified)
         // Compare modification times and file sizes
-        let is_valid = entry.cached_at <= current_modified &&
-                      entry.file_size == current_metadata.len();
+        let is_valid =
+            entry.cached_at <= current_modified && entry.file_size == current_metadata.len();
 
         if is_valid {
             // Cache hit!
@@ -92,14 +100,21 @@ impl AstCache {
         } else {
             // Cache miss due to file modification
             self.increment_stat("misses");
-            debug!("Cache miss for {} (file modified or size changed)", file_path.display());
+            debug!(
+                "Cache miss for {} (file modified or size changed)",
+                file_path.display()
+            );
             self.invalidate(file_path);
             None
         }
     }
 
     /// Insert a new import graph into the cache
-    pub fn insert(&self, file_path: PathBuf, import_graph: ImportGraph) -> Result<(), std::io::Error> {
+    pub fn insert(
+        &self,
+        file_path: PathBuf,
+        import_graph: ImportGraph,
+    ) -> Result<(), std::io::Error> {
         trace!("Cache insert requested for: {}", file_path.display());
 
         // Get file metadata for cache validation
@@ -179,7 +194,8 @@ impl AstCache {
     /// Perform cache maintenance (remove entries for files that no longer exist)
     pub fn maintenance(&self) {
         let mut removed_count = 0;
-        let paths_to_remove: Vec<PathBuf> = self.cache
+        let paths_to_remove: Vec<PathBuf> = self
+            .cache
             .iter()
             .filter_map(|entry| {
                 let path = entry.key();
@@ -203,7 +219,8 @@ impl AstCache {
 
     // Helper methods for statistics
     fn increment_stat(&self, key: &str) {
-        self.stats.entry(key.to_string())
+        self.stats
+            .entry(key.to_string())
             .and_modify(|e| *e += 1)
             .or_insert(1);
     }

@@ -1,6 +1,6 @@
-use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
+use tests::harness::{TestClient, TestWorkspace};
 
 #[tokio::test]
 async fn test_health_check_basic() {
@@ -34,18 +34,27 @@ async fn test_health_check_with_active_lsp() {
 
     // Create a TypeScript file to trigger LSP server startup
     let ts_file = workspace.path().join("trigger.ts");
-    std::fs::write(&ts_file, r#"
+    std::fs::write(
+        &ts_file,
+        r#"
 interface Test {
     id: number;
 }
 
 const test: Test = { id: 1 };
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Trigger LSP by doing an operation that requires it
-    let _response = client.call_tool("get_document_symbols", json!({
-        "file_path": ts_file.to_string_lossy()
-    })).await;
+    let _response = client
+        .call_tool(
+            "get_document_symbols",
+            json!({
+                "file_path": ts_file.to_string_lossy()
+            }),
+        )
+        .await;
 
     // Give LSP time to start
     tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
@@ -59,10 +68,10 @@ const test: Test = { id: 1 };
     // Should show TypeScript server information
     if let Some(servers) = response.get("servers") {
         let servers_array = servers.as_array().unwrap();
-        let has_ts_server = servers_array.iter().any(|s|
-            s["name"].as_str().unwrap_or("").contains("typescript") ||
-            s["name"].as_str().unwrap_or("").contains("ts")
-        );
+        let has_ts_server = servers_array.iter().any(|s| {
+            s["name"].as_str().unwrap_or("").contains("typescript")
+                || s["name"].as_str().unwrap_or("").contains("ts")
+        });
 
         if !servers_array.is_empty() {
             // If we have servers, at least one should be TypeScript-related
@@ -76,9 +85,15 @@ async fn test_health_check_detailed() {
     let workspace = TestWorkspace::new();
     let mut client = TestClient::new(workspace.path());
 
-    let response = client.call_tool("health_check", json!({
-        "include_details": true
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "health_check",
+            json!({
+                "include_details": true
+            }),
+        )
+        .await
+        .unwrap();
 
     // With details, should have more comprehensive information
     assert!(response.get("status").is_some());
@@ -129,22 +144,32 @@ async fn test_update_dependencies_package_json() {
         }
     });
 
-    std::fs::write(&package_json, serde_json::to_string_pretty(&initial_content).unwrap()).unwrap();
+    std::fs::write(
+        &package_json,
+        serde_json::to_string_pretty(&initial_content).unwrap(),
+    )
+    .unwrap();
 
     // Update dependencies
-    let response = client.call_tool("update_dependencies", json!({
-        "file_path": package_json.to_string_lossy(),
-        "add_dependencies": {
-            "express": "^4.18.0",
-            "axios": "^1.0.0"
-        },
-        "add_dev_dependencies": {
-            "@types/node": "^18.0.0",
-            "jest": "^29.0.0"
-        },
-        "remove_dependencies": ["lodash"],
-        "update_version": "1.1.0"
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "update_dependencies",
+            json!({
+                "file_path": package_json.to_string_lossy(),
+                "add_dependencies": {
+                    "express": "^4.18.0",
+                    "axios": "^1.0.0"
+                },
+                "add_dev_dependencies": {
+                    "@types/node": "^18.0.0",
+                    "jest": "^29.0.0"
+                },
+                "remove_dependencies": ["lodash"],
+                "update_version": "1.1.0"
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
 
@@ -196,18 +221,24 @@ assert_cmd = "2.0"
     std::fs::write(&cargo_toml, initial_content).unwrap();
 
     // Update Rust dependencies
-    let response = client.call_tool("update_dependencies", json!({
-        "file_path": cargo_toml.to_string_lossy(),
-        "add_dependencies": {
-            "reqwest": "0.11",
-            "clap": "4.0"
-        },
-        "add_dev_dependencies": {
-            "tempfile": "3.0"
-        },
-        "remove_dependencies": ["serde"],
-        "update_version": "0.2.0"
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "update_dependencies",
+            json!({
+                "file_path": cargo_toml.to_string_lossy(),
+                "add_dependencies": {
+                    "reqwest": "0.11",
+                    "clap": "4.0"
+                },
+                "add_dev_dependencies": {
+                    "tempfile": "3.0"
+                },
+                "remove_dependencies": ["serde"],
+                "update_version": "0.2.0"
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
 
@@ -247,14 +278,20 @@ flask==2.0.1
     std::fs::write(&requirements_txt, initial_content).unwrap();
 
     // Update Python dependencies
-    let response = client.call_tool("update_dependencies", json!({
-        "file_path": requirements_txt.to_string_lossy(),
-        "add_dependencies": {
-            "fastapi": "0.68.0",
-            "uvicorn": "0.15.0"
-        },
-        "remove_dependencies": ["flask"]
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "update_dependencies",
+            json!({
+                "file_path": requirements_txt.to_string_lossy(),
+                "add_dependencies": {
+                    "fastapi": "0.68.0",
+                    "uvicorn": "0.15.0"
+                },
+                "remove_dependencies": ["flask"]
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
 
@@ -288,16 +325,26 @@ async fn test_update_dependencies_dry_run() {
         }
     });
 
-    std::fs::write(&package_json, serde_json::to_string_pretty(&initial_content).unwrap()).unwrap();
+    std::fs::write(
+        &package_json,
+        serde_json::to_string_pretty(&initial_content).unwrap(),
+    )
+    .unwrap();
 
     // Do a dry run
-    let response = client.call_tool("update_dependencies", json!({
-        "file_path": package_json.to_string_lossy(),
-        "add_dependencies": {
-            "express": "^4.18.0"
-        },
-        "dry_run": true
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "update_dependencies",
+            json!({
+                "file_path": package_json.to_string_lossy(),
+                "add_dependencies": {
+                    "express": "^4.18.0"
+                },
+                "dry_run": true
+            }),
+        )
+        .await
+        .unwrap();
 
     // Should show what would change
     assert!(response.get("preview").is_some() || response.get("changes").is_some());
@@ -306,7 +353,10 @@ async fn test_update_dependencies_dry_run() {
     let unchanged_content = std::fs::read_to_string(&package_json).unwrap();
     let unchanged_json: Value = serde_json::from_str(&unchanged_content).unwrap();
 
-    assert_eq!(unchanged_json["dependencies"]["lodash"].as_str().unwrap(), "^4.17.21");
+    assert_eq!(
+        unchanged_json["dependencies"]["lodash"].as_str().unwrap(),
+        "^4.17.21"
+    );
     assert!(unchanged_json["dependencies"].get("express").is_none());
 }
 
@@ -326,16 +376,26 @@ async fn test_update_dependencies_scripts_management() {
         }
     });
 
-    std::fs::write(&package_json, serde_json::to_string_pretty(&initial_content).unwrap()).unwrap();
+    std::fs::write(
+        &package_json,
+        serde_json::to_string_pretty(&initial_content).unwrap(),
+    )
+    .unwrap();
 
-    let response = client.call_tool("update_dependencies", json!({
-        "file_path": package_json.to_string_lossy(),
-        "add_scripts": {
-            "dev": "nodemon src/index.ts",
-            "lint": "eslint src/**/*.ts"
-        },
-        "remove_scripts": ["outdated-script"]
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "update_dependencies",
+            json!({
+                "file_path": package_json.to_string_lossy(),
+                "add_scripts": {
+                    "dev": "nodemon src/index.ts",
+                    "lint": "eslint src/**/*.ts"
+                },
+                "remove_scripts": ["outdated-script"]
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
 
@@ -364,12 +424,17 @@ async fn test_update_dependencies_error_handling() {
     // Try to update non-existent file
     let nonexistent_file = workspace.path().join("nonexistent.json");
 
-    let response = client.call_tool("update_dependencies", json!({
-        "file_path": nonexistent_file.to_string_lossy(),
-        "add_dependencies": {
-            "test": "1.0.0"
-        }
-    })).await;
+    let response = client
+        .call_tool(
+            "update_dependencies",
+            json!({
+                "file_path": nonexistent_file.to_string_lossy(),
+                "add_dependencies": {
+                    "test": "1.0.0"
+                }
+            }),
+        )
+        .await;
 
     assert!(response.is_err());
 }
@@ -383,12 +448,17 @@ async fn test_update_dependencies_invalid_json() {
     let invalid_json = workspace.path().join("invalid.json");
     std::fs::write(&invalid_json, "{ invalid json content").unwrap();
 
-    let response = client.call_tool("update_dependencies", json!({
-        "file_path": invalid_json.to_string_lossy(),
-        "add_dependencies": {
-            "test": "1.0.0"
-        }
-    })).await;
+    let response = client
+        .call_tool(
+            "update_dependencies",
+            json!({
+                "file_path": invalid_json.to_string_lossy(),
+                "add_dependencies": {
+                    "test": "1.0.0"
+                }
+            }),
+        )
+        .await;
 
     assert!(response.is_err());
 }
@@ -413,28 +483,38 @@ async fn test_system_tools_integration() {
         "dependencies": {}
     });
 
-    std::fs::write(&package_json, serde_json::to_string_pretty(&initial_package).unwrap()).unwrap();
+    std::fs::write(
+        &package_json,
+        serde_json::to_string_pretty(&initial_package).unwrap(),
+    )
+    .unwrap();
 
     // Step 3: Update dependencies to simulate project growth
-    let _update_response = client.call_tool("update_dependencies", json!({
-        "file_path": package_json.to_string_lossy(),
-        "add_dependencies": {
-            "express": "^4.18.0",
-            "cors": "^2.8.5",
-            "helmet": "^6.0.0"
-        },
-        "add_dev_dependencies": {
-            "typescript": "^4.9.0",
-            "@types/express": "^4.17.0",
-            "nodemon": "^2.0.0"
-        },
-        "add_scripts": {
-            "dev": "nodemon src/index.ts",
-            "build": "tsc",
-            "test": "jest"
-        },
-        "update_version": "1.0.0"
-    })).await.unwrap();
+    let _update_response = client
+        .call_tool(
+            "update_dependencies",
+            json!({
+                "file_path": package_json.to_string_lossy(),
+                "add_dependencies": {
+                    "express": "^4.18.0",
+                    "cors": "^2.8.5",
+                    "helmet": "^6.0.0"
+                },
+                "add_dev_dependencies": {
+                    "typescript": "^4.9.0",
+                    "@types/express": "^4.17.0",
+                    "nodemon": "^2.0.0"
+                },
+                "add_scripts": {
+                    "dev": "nodemon src/index.ts",
+                    "build": "tsc",
+                    "test": "jest"
+                },
+                "update_version": "1.0.0"
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(_update_response["success"].as_bool().unwrap_or(false));
 
@@ -443,7 +523,9 @@ async fn test_system_tools_integration() {
     std::fs::create_dir(&src_dir).unwrap();
 
     let index_ts = src_dir.join("index.ts");
-    std::fs::write(&index_ts, r#"
+    std::fs::write(
+        &index_ts,
+        r#"
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -462,21 +544,34 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Step 5: Trigger LSP operations
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
-    let _symbols_response = client.call_tool("get_document_symbols", json!({
-        "file_path": index_ts.to_string_lossy()
-    })).await;
+    let _symbols_response = client
+        .call_tool(
+            "get_document_symbols",
+            json!({
+                "file_path": index_ts.to_string_lossy()
+            }),
+        )
+        .await;
 
     // Step 6: Check health after all operations
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
-    let final_health_response = client.call_tool("health_check", json!({
-        "include_details": true
-    })).await.unwrap();
+    let final_health_response = client
+        .call_tool(
+            "health_check",
+            json!({
+                "include_details": true
+            }),
+        )
+        .await
+        .unwrap();
 
     let final_status = final_health_response["status"].as_str().unwrap();
 
@@ -488,7 +583,20 @@ app.listen(PORT, () => {
     let final_package_json: Value = serde_json::from_str(&final_package_content).unwrap();
 
     assert_eq!(final_package_json["version"].as_str().unwrap(), "1.0.0");
-    assert_eq!(final_package_json["dependencies"]["express"].as_str().unwrap(), "^4.18.0");
-    assert_eq!(final_package_json["devDependencies"]["typescript"].as_str().unwrap(), "^4.9.0");
-    assert_eq!(final_package_json["scripts"]["dev"].as_str().unwrap(), "nodemon src/index.ts");
+    assert_eq!(
+        final_package_json["dependencies"]["express"]
+            .as_str()
+            .unwrap(),
+        "^4.18.0"
+    );
+    assert_eq!(
+        final_package_json["devDependencies"]["typescript"]
+            .as_str()
+            .unwrap(),
+        "^4.9.0"
+    );
+    assert_eq!(
+        final_package_json["scripts"]["dev"].as_str().unwrap(),
+        "nodemon src/index.ts"
+    );
 }

@@ -1,15 +1,15 @@
+use async_trait::async_trait;
 use cb_core::model::lsp::{
     CompletionItem, CompletionList, Diagnostic, DiagnosticSeverity, DocumentSymbol, Hover,
     Location, Position, Range, SymbolKind, TextEdit, WorkspaceEdit,
 };
 use cb_server::helpers::lsp::forward_lsp_request;
-use cb_server::services::lsp::{LspService, LspServiceResult, LspRequest, LspResponse};
+use cb_server::services::lsp::{LspRequest, LspResponse, LspService, LspServiceResult};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
-use async_trait::async_trait;
 
 // Simple mock LSP service for benchmarking
 struct MockLspService {
@@ -24,7 +24,10 @@ impl MockLspService {
     }
 
     fn add_response(&self, method: &str, response: Value) {
-        self.responses.write().unwrap().insert(method.to_string(), response);
+        self.responses
+            .write()
+            .unwrap()
+            .insert(method.to_string(), response);
     }
 }
 
@@ -36,9 +39,9 @@ impl LspService for MockLspService {
 
     async fn request(&self, method: &str, _params: Value) -> LspServiceResult<Value> {
         let responses = self.responses.read().unwrap();
-        responses.get(method)
-            .cloned()
-            .ok_or_else(|| cb_server::error::ServerError::runtime(format!("Method not found: {}", method)))
+        responses.get(method).cloned().ok_or_else(|| {
+            cb_server::error::ServerError::runtime(format!("Method not found: {}", method))
+        })
     }
 
     async fn shutdown(&self) -> LspServiceResult<()> {

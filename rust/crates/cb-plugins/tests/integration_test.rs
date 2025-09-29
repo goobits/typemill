@@ -1,10 +1,10 @@
 //! Integration test for the plugin system
 
-use cb_plugins::{
-    PluginManager, LspAdapterPlugin, LspService, PluginRequest,
-    Capabilities, NavigationCapabilities, PluginMetadata
-};
 use async_trait::async_trait;
+use cb_plugins::{
+    Capabilities, LspAdapterPlugin, LspService, NavigationCapabilities, PluginManager,
+    PluginMetadata, PluginRequest,
+};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -55,7 +55,10 @@ async fn test_complete_plugin_system_integration() {
     let ts_plugin = Arc::new(LspAdapterPlugin::typescript(lsp_service));
 
     // 4. Register plugin
-    assert!(manager.register_plugin("typescript", ts_plugin).await.is_ok());
+    assert!(manager
+        .register_plugin("typescript", ts_plugin)
+        .await
+        .is_ok());
 
     // 5. Verify plugin capabilities
     let capabilities = manager.get_plugin_capabilities("typescript").await;
@@ -67,9 +70,17 @@ async fn test_complete_plugin_system_integration() {
 
     // 6. Test method support checking
     let ts_file = PathBuf::from("test.ts");
-    assert!(manager.is_method_supported(&ts_file, "find_definition").await);
+    assert!(
+        manager
+            .is_method_supported(&ts_file, "find_definition")
+            .await
+    );
     assert!(manager.is_method_supported(&ts_file, "get_hover").await);
-    assert!(!manager.is_method_supported(&ts_file, "unsupported_method").await);
+    assert!(
+        !manager
+            .is_method_supported(&ts_file, "unsupported_method")
+            .await
+    );
 
     // 7. Test plugin request handling
     let request = PluginRequest::new("find_definition", ts_file.clone())
@@ -84,8 +95,7 @@ async fn test_complete_plugin_system_integration() {
     assert!(response.data.is_some());
 
     // 8. Test hover request
-    let hover_request = PluginRequest::new("get_hover", ts_file)
-        .with_position(5, 10);
+    let hover_request = PluginRequest::new("get_hover", ts_file).with_position(5, 10);
 
     let hover_response = manager.handle_request(hover_request).await;
     assert!(hover_response.is_ok());
@@ -111,26 +121,45 @@ async fn test_multi_language_plugin_system() {
     let manager = PluginManager::new();
 
     // Register TypeScript plugin
-    let ts_lsp = Arc::new(MockLspService { name: "ts-lsp".to_string() });
+    let ts_lsp = Arc::new(MockLspService {
+        name: "ts-lsp".to_string(),
+    });
     let ts_plugin = Arc::new(LspAdapterPlugin::typescript(ts_lsp));
-    assert!(manager.register_plugin("typescript", ts_plugin).await.is_ok());
+    assert!(manager
+        .register_plugin("typescript", ts_plugin)
+        .await
+        .is_ok());
 
     // Register Python plugin (using same mock LSP for simplicity)
-    let py_lsp = Arc::new(MockLspService { name: "py-lsp".to_string() });
+    let py_lsp = Arc::new(MockLspService {
+        name: "py-lsp".to_string(),
+    });
     let py_plugin = Arc::new(LspAdapterPlugin::python(py_lsp));
     assert!(manager.register_plugin("python", py_plugin).await.is_ok());
 
     // Test TypeScript file routing
     let ts_file = PathBuf::from("test.ts");
-    assert!(manager.is_method_supported(&ts_file, "find_definition").await);
+    assert!(
+        manager
+            .is_method_supported(&ts_file, "find_definition")
+            .await
+    );
 
     // Test Python file routing
     let py_file = PathBuf::from("test.py");
-    assert!(manager.is_method_supported(&py_file, "find_definition").await);
+    assert!(
+        manager
+            .is_method_supported(&py_file, "find_definition")
+            .await
+    );
 
     // Test unsupported file
     let unknown_file = PathBuf::from("test.unknown");
-    assert!(!manager.is_method_supported(&unknown_file, "find_definition").await);
+    assert!(
+        !manager
+            .is_method_supported(&unknown_file, "find_definition")
+            .await
+    );
 
     // Verify statistics
     let stats = manager.get_registry_statistics().await;
@@ -154,5 +183,8 @@ async fn test_plugin_error_handling() {
 
     // Verify metrics recorded the failure
     let metrics = manager.get_metrics().await;
-    assert!(metrics.failed_requests >= 1, "Should have at least 1 failed request");
+    assert!(
+        metrics.failed_requests >= 1,
+        "Should have at least 1 failed request"
+    );
 }

@@ -81,7 +81,7 @@ pub fn create_javascript_project() -> TestWorkspace {
   "name": "js-test-project",
   "version": "1.0.0",
   "type": "module"
-}"#
+}"#,
     );
 
     // Create main.js
@@ -102,7 +102,7 @@ export function calculate(a, b, operation) {
 export function displayResult(result) {
     return formatMessage(`Result: ${result}`);
 }
-"#
+"#,
     );
 
     // Create math.js
@@ -124,7 +124,7 @@ export function multiply(a, b) {
 export function divide(a, b) {
     return b !== 0 ? a / b : null;
 }
-"#
+"#,
     );
 
     // Create utils.js
@@ -137,7 +137,7 @@ export function divide(a, b) {
 export function logError(error) {
     console.error(`[ERROR] ${error}`);
 }
-"#
+"#,
     );
 
     workspace
@@ -164,7 +164,7 @@ export interface Product {
 }
 
 export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
-"#
+"#,
     );
 
     // Create JavaScript file that imports TypeScript
@@ -190,7 +190,7 @@ export class DataService {
         return this.users.find(u => u.id === id);
     }
 }
-"#
+"#,
     );
 
     // Create TypeScript file that imports JavaScript
@@ -216,7 +216,7 @@ export class Controller {
         return user;
     }
 }
-"#
+"#,
     );
 
     workspace
@@ -239,7 +239,7 @@ export function functionA() {
 export function helperA() {
     return 'Helper A';
 }
-"#
+"#,
     );
 
     // Create moduleB.ts that imports moduleA (circular)
@@ -250,7 +250,7 @@ export function helperA() {
 export function functionB() {
     return 'B: ' + helperA();
 }
-"#
+"#,
     );
 
     workspace
@@ -281,7 +281,7 @@ export class OldClassName {
 }
 
 export const OLD_CONSTANT = 'constant_value';
-"#
+"#,
     );
 
     // File that imports and uses the symbols
@@ -300,7 +300,7 @@ export function useImports() {
     const anotherCall = oldFunctionName('another');
     const anotherInstance = new OldClassName('more');
 }
-"#
+"#,
     );
 
     // Another consumer for cross-file testing
@@ -319,7 +319,7 @@ export class ConsumerClass {
         return this.helper;
     }
 }
-"#
+"#,
     );
 
     workspace

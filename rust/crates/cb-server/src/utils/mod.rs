@@ -2,4 +2,4 @@
 
 pub mod json_perf;
 
-pub use json_perf::{SimdJsonParser, create_paginated_response};
+pub use json_perf::{create_paginated_response, SimdJsonParser};

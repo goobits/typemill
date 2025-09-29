@@ -1,7 +1,10 @@
 //! Test LSP service for predictable testing without heavy mocking
 
 use async_trait::async_trait;
-use cb_core::{model::mcp::{McpMessage, McpRequest, McpResponse, McpError}, CoreError};
+use cb_core::{
+    model::mcp::{McpError, McpMessage, McpRequest, McpResponse},
+    CoreError,
+};
 use cb_server::interfaces::LspService;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -61,66 +64,78 @@ impl TestLspService {
     /// Set up common LSP responses for navigation testing
     pub fn setup_navigation_responses(&self) {
         // textDocument/definition response
-        self.set_response("textDocument/definition", json!([
-            {
-                "uri": "file:///test/example.ts",
-                "range": {
-                    "start": {"line": 10, "character": 5},
-                    "end": {"line": 10, "character": 15}
-                }
-            }
-        ]));
-
-        // textDocument/references response
-        self.set_response("textDocument/references", json!([
-            {
-                "uri": "file:///test/example.ts",
-                "range": {
-                    "start": {"line": 5, "character": 0},
-                    "end": {"line": 5, "character": 10}
-                }
-            },
-            {
-                "uri": "file:///test/other.ts",
-                "range": {
-                    "start": {"line": 20, "character": 8},
-                    "end": {"line": 20, "character": 18}
-                }
-            }
-        ]));
-
-        // workspace/symbol response
-        self.set_response("workspace/symbol", json!([
-            {
-                "name": "TestFunction",
-                "kind": 12,
-                "location": {
+        self.set_response(
+            "textDocument/definition",
+            json!([
+                {
                     "uri": "file:///test/example.ts",
                     "range": {
-                        "start": {"line": 15, "character": 0},
-                        "end": {"line": 20, "character": 1}
+                        "start": {"line": 10, "character": 5},
+                        "end": {"line": 10, "character": 15}
                     }
                 }
-            }
-        ]));
+            ]),
+        );
+
+        // textDocument/references response
+        self.set_response(
+            "textDocument/references",
+            json!([
+                {
+                    "uri": "file:///test/example.ts",
+                    "range": {
+                        "start": {"line": 5, "character": 0},
+                        "end": {"line": 5, "character": 10}
+                    }
+                },
+                {
+                    "uri": "file:///test/other.ts",
+                    "range": {
+                        "start": {"line": 20, "character": 8},
+                        "end": {"line": 20, "character": 18}
+                    }
+                }
+            ]),
+        );
+
+        // workspace/symbol response
+        self.set_response(
+            "workspace/symbol",
+            json!([
+                {
+                    "name": "TestFunction",
+                    "kind": 12,
+                    "location": {
+                        "uri": "file:///test/example.ts",
+                        "range": {
+                            "start": {"line": 15, "character": 0},
+                            "end": {"line": 20, "character": 1}
+                        }
+                    }
+                }
+            ]),
+        );
     }
 
     /// Set up common LSP responses for editing testing
     pub fn setup_editing_responses(&self) {
         // textDocument/rename response
-        self.set_response("textDocument/rename", json!({
-            "changes": {
-                "file:///test/example.ts": [
-                    {
-                        "range": {
-                            "start": {"line": 5, "character": 10},
-                            "end": {"line": 5, "character": 20}
-                        },
-                        "newText": "newVariableName"
-                    }
-                ]
-            }
-        }));
+        self.set_response(
+            "textDocument/rename",
+            json!({
+                "changes": {
+                    "file:///test/example.ts": [
+                        {
+                            "range": {
+                                "start": {"line": 5, "character": 10},
+                                "end": {"line": 5, "character": 20}
+                            },
+                            "newText": "newVariableName"
+                        }
+                    ]
+                }
+            }),
+        );
     }
 
     /// Set up common LSP responses for intelligence testing
@@ -170,14 +185,13 @@ impl LspService for TestLspService {
 
                 // Look up configured response
                 let responses = self.responses.lock().unwrap();
-                let result = responses.get(&request.method).cloned()
-                    .unwrap_or_else(|| {
-                        // Default response for unknown methods
-                        json!({
-                            "method": request.method,
-                            "message": "Default test response"
-                        })
-                    });
+                let result = responses.get(&request.method).cloned().unwrap_or_else(|| {
+                    // Default response for unknown methods
+                    json!({
+                        "method": request.method,
+                        "message": "Default test response"
+                    })
+                });
 
                 let response = McpResponse {
                     jsonrpc: "2.0".to_string(),
@@ -230,7 +244,10 @@ mod tests {
             params: Some(json!({"param": "value"})),
         };
 
-        let response = service.request(McpMessage::Request(request.clone())).await.unwrap();
+        let response = service
+            .request(McpMessage::Request(request.clone()))
+            .await
+            .unwrap();
 
         if let McpMessage::Response(resp) = response {
             assert_eq!(resp.id, Some(json!(1)));
@@ -291,7 +308,10 @@ mod tests {
             params: None,
         };
 
-        let response = service.request(McpMessage::Request(def_request)).await.unwrap();
+        let response = service
+            .request(McpMessage::Request(def_request))
+            .await
+            .unwrap();
         if let McpMessage::Response(resp) = response {
             assert!(resp.result.is_some());
             let result = resp.result.unwrap();

@@ -1,7 +1,7 @@
 use crate::harness::{TestClient, TestWorkspace};
 use serde_json::json;
-use std::process::Command;
 use std::path::Path;
+use std::process::Command;
 
 /// Helper for setting up and validating LSP servers in tests
 pub struct LspSetupHelper;
@@ -62,15 +62,20 @@ impl LspSetupHelper {
 
         workspace.create_file(
             ".codebuddy/config.json",
-            &serde_json::to_string_pretty(&config).unwrap()
+            &serde_json::to_string_pretty(&config).unwrap(),
         );
     }
 
     /// Verify that LSP servers are working with the test client
-    pub async fn verify_lsp_functionality(client: &mut TestClient, workspace: &TestWorkspace) -> Result<(), String> {
+    pub async fn verify_lsp_functionality(
+        client: &mut TestClient,
+        workspace: &TestWorkspace,
+    ) -> Result<(), String> {
         // Create a simple TypeScript file to test with
         let test_file = workspace.path().join("test_lsp.ts");
-        std::fs::write(&test_file, r#"
+        std::fs::write(
+            &test_file,
+            r#"
 export interface TestInterface {
     name: string;
     value: number;
@@ -79,15 +84,23 @@ export interface TestInterface {
 export function testFunction(param: string): string {
     return param.toUpperCase();
 }
-"#).map_err(|e| format!("Failed to create test file: {}", e))?;
+"#,
+        )
+        .map_err(|e| format!("Failed to create test file: {}", e))?;
 
         // Give LSP time to process the file
         tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
 
         // Test get_document_symbols to verify LSP is working
-        let response = client.call_tool("get_document_symbols", json!({
-            "file_path": test_file.to_string_lossy()
-        })).await.map_err(|e| format!("LSP call failed: {}", e))?;
+        let response = client
+            .call_tool(
+                "get_document_symbols",
+                json!({
+                    "file_path": test_file.to_string_lossy()
+                }),
+            )
+            .await
+            .map_err(|e| format!("LSP call failed: {}", e))?;
 
         // Check if we got an error response
         if let Some(error) = response.get("error") {
@@ -95,7 +108,10 @@ export function testFunction(param: string): string {
                 "LSP server error: {}\n\
                 This indicates the LSP server is not working properly.\n\
                 Check that typescript-language-server is installed and functional.",
-                error.get("message").and_then(|m| m.as_str()).unwrap_or("unknown error")
+                error
+                    .get("message")
+                    .and_then(|m| m.as_str())
+                    .unwrap_or("unknown error")
             ));
         }
 
@@ -113,8 +129,10 @@ export function testFunction(param: string): string {
         match symbols {
             Some(symbols_array) => {
                 // LSP is working - it returned a symbols array (even if empty is okay for simple files)
-                println!("✅ LSP verification successful: TypeScript LSP server is responding correctly");
-            },
+                println!(
+                    "✅ LSP verification successful: TypeScript LSP server is responding correctly"
+                );
+            }
             None => {
                 return Err(format!(
                     "LSP response has unexpected format.\n\
@@ -132,7 +150,10 @@ export function testFunction(param: string): string {
     }
 
     /// Full LSP setup and validation for test workspace
-    pub async fn setup_and_verify_lsp(workspace: &TestWorkspace, client: &mut TestClient) -> Result<(), String> {
+    pub async fn setup_and_verify_lsp(
+        workspace: &TestWorkspace,
+        client: &mut TestClient,
+    ) -> Result<(), String> {
         // Check system requirements first
         Self::check_lsp_servers_available()?;
 

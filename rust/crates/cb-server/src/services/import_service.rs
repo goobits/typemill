@@ -1,7 +1,7 @@
 //! Service for managing import updates across the codebase
 
 use crate::error::{ServerError, ServerResult};
-use cb_ast::{ImportPathResolver, update_import_paths};
+use cb_ast::{update_import_paths, ImportPathResolver};
 use std::path::{Path, PathBuf};
 use tracing::info;
 
@@ -45,8 +45,12 @@ impl ImportService {
         };
 
         // Find and update imports
-        info!("Calling update_import_paths with old_abs: {:?}, new_abs: {:?}, project_root: {:?}", old_abs, new_abs, self.project_root);
-        let result = update_import_paths(&old_abs, &new_abs, &self.project_root).await
+        info!(
+            "Calling update_import_paths with old_abs: {:?}, new_abs: {:?}, project_root: {:?}",
+            old_abs, new_abs, self.project_root
+        );
+        let result = update_import_paths(&old_abs, &new_abs, &self.project_root)
+            .await
             .map_err(|e| ServerError::Internal(format!("Failed to update imports: {}", e)))?;
         info!("update_import_paths result: {:?}", result);
 
@@ -55,11 +59,13 @@ impl ImportService {
             files_updated: result.updated_files.len(),
             imports_updated: result.imports_updated,
             failed_files: result.failed_files.len(),
-            updated_paths: result.updated_files
+            updated_paths: result
+                .updated_files
                 .iter()
                 .map(|p| p.to_string_lossy().to_string())
                 .collect(),
-            errors: result.failed_files
+            errors: result
+                .failed_files
                 .iter()
                 .map(|(p, e)| format!("{}: {}", p.display(), e))
                 .collect(),
@@ -78,17 +84,15 @@ impl ImportService {
     }
 
     /// Find all files that would be affected by a rename
-    pub async fn find_affected_files(
-        &self,
-        file_path: &Path,
-    ) -> ServerResult<Vec<PathBuf>> {
+    pub async fn find_affected_files(&self, file_path: &Path) -> ServerResult<Vec<PathBuf>> {
         let resolver = ImportPathResolver::new(&self.project_root);
 
         // Get all project files
         let project_files = self.find_all_source_files()?;
 
         // Find files importing the target
-        let affected = resolver.find_affected_files(file_path, &project_files)
+        let affected = resolver
+            .find_affected_files(file_path, &project_files)
             .map_err(|e| ServerError::Internal(format!("Failed to find affected files: {}", e)))?;
 
         Ok(affected)
@@ -125,7 +129,8 @@ impl ImportService {
         for entry in std::fs::read_dir(dir)
             .map_err(|e| ServerError::Internal(format!("Failed to read directory: {}", e)))?
         {
-            let entry = entry.map_err(|e| ServerError::Internal(format!("Failed to read entry: {}", e)))?;
+            let entry =
+                entry.map_err(|e| ServerError::Internal(format!("Failed to read entry: {}", e)))?;
             let path = entry.path();
 
             if path.is_dir() {
@@ -155,8 +160,8 @@ impl ImportService {
             .unwrap_or("");
 
         // Simple check for import references
-        Ok(content.contains(target_stem) &&
-           (content.contains("import") || content.contains("require")))
+        Ok(content.contains(target_stem)
+            && (content.contains("import") || content.contains("require")))
     }
 }
 

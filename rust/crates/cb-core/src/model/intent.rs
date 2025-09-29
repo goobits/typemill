@@ -246,11 +246,7 @@ impl IntentMetadata {
     }
 
     /// Add context value
-    pub fn with_context(
-        mut self,
-        key: impl Into<String>,
-        value: serde_json::Value,
-    ) -> Self {
+    pub fn with_context(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
         self.context.insert(key.into(), value);
         self
     }

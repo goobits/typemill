@@ -2,7 +2,10 @@
 
 use async_trait::async_trait;
 use cb_ast::{EditPlan, ImportGraph};
-use cb_core::{model::{IntentSpec, McpMessage}, CoreError};
+use cb_core::{
+    model::{IntentSpec, McpMessage},
+    CoreError,
+};
 use cb_server::{AstService, LspService};
 use mockall::mock;
 use std::path::Path;
@@ -14,6 +17,7 @@ mock! {
     impl AstService for AstService {
         async fn build_import_graph(&self, file: &Path) -> Result<ImportGraph, CoreError>;
         async fn plan_refactor(&self, intent: &IntentSpec, file: &Path) -> Result<EditPlan, CoreError>;
+        async fn cache_stats(&self) -> cb_ast::CacheStats;
     }
 }
 

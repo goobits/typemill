@@ -45,12 +45,9 @@ impl ImportPathResolver {
     }
 
     /// Calculate relative import path between two files
-    fn calculate_relative_import(
-        &self,
-        from_file: &Path,
-        to_file: &Path,
-    ) -> AstResult<String> {
-        let from_dir = from_file.parent()
+    fn calculate_relative_import(&self, from_file: &Path, to_file: &Path) -> AstResult<String> {
+        let from_dir = from_file
+            .parent()
             .ok_or_else(|| AstError::parse("Invalid source file path"))?;
 
         let relative = pathdiff::diff_paths(to_file, from_dir)
@@ -61,7 +58,9 @@ impl ImportPathResolver {
         if let Some(ext) = to_file.extension() {
             let ext_str = ext.to_str().unwrap_or("");
             if matches!(ext_str, "ts" | "tsx" | "js" | "jsx") {
-                relative_str = relative_str.trim_end_matches(&format!(".{}", ext_str)).to_string();
+                relative_str = relative_str
+                    .trim_end_matches(&format!(".{}", ext_str))
+                    .to_string();
             }
         }
 
@@ -96,7 +95,8 @@ impl ImportPathResolver {
         if old_path.to_string_lossy().contains(path_after_alias) {
             // Replace the old path component with the new one
             let new_path_str = new_path.to_string_lossy();
-            let new_path_component = new_path_str.trim_start_matches(&self.project_root.to_string_lossy().to_string());
+            let new_path_component =
+                new_path_str.trim_start_matches(&self.project_root.to_string_lossy().to_string());
             Ok(format!("{}{}", alias, new_path_component))
         } else {
             Ok(original_import.to_string())
@@ -130,9 +130,7 @@ impl ImportPathResolver {
 
     /// Check if a file's content imports a target file
     fn file_imports_target(&self, content: &str, target: &Path) -> bool {
-        let target_stem = target.file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
+        let target_stem = target.file_stem().and_then(|s| s.to_str()).unwrap_or("");
 
         // Check for various import patterns that might reference this file
         // For simplicity, just check if the file stem appears in import statements
@@ -231,12 +229,14 @@ async fn update_imports_in_file(
     new_target: &Path,
     resolver: &ImportPathResolver,
 ) -> AstResult<usize> {
-    let content = tokio::fs::read_to_string(file_path).await
+    let content = tokio::fs::read_to_string(file_path)
+        .await
         .map_err(|e| AstError::parse(format!("Failed to read file: {}", e)))?;
 
     let mut updated_content = String::new();
     let mut updates_count = 0;
-    let old_target_stem = old_target.file_stem()
+    let old_target_stem = old_target
+        .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("");
 
@@ -244,7 +244,9 @@ async fn update_imports_in_file(
         if line.contains("import") || line.contains("require") {
             if line.contains(old_target_stem) {
                 // This line likely contains an import that needs updating
-                if let Some(updated_line) = update_import_line(line, file_path, old_target, new_target, resolver) {
+                if let Some(updated_line) =
+                    update_import_line(line, file_path, old_target, new_target, resolver)
+                {
                     updated_content.push_str(&updated_line);
                     updates_count += 1;
                 } else {
@@ -261,7 +263,8 @@ async fn update_imports_in_file(
 
     if updates_count > 0 {
         // Write the updated content back to the file
-        tokio::fs::write(file_path, updated_content.trim_end()).await
+        tokio::fs::write(file_path, updated_content.trim_end())
+            .await
             .map_err(|e| AstError::transformation(format!("Failed to write file: {}", e)))?;
     }
 
@@ -280,12 +283,9 @@ fn update_import_line(
     let import_path = extract_import_path(line)?;
 
     // Calculate the new import path
-    if let Ok(new_import_path) = resolver.calculate_new_import_path(
-        importing_file,
-        old_target,
-        new_target,
-        &import_path,
-    ) {
+    if let Ok(new_import_path) =
+        resolver.calculate_new_import_path(importing_file, old_target, new_target, &import_path)
+    {
         // Replace the old import path with the new one
         Some(line.replace(&import_path, &new_import_path))
     } else {
@@ -325,11 +325,7 @@ fn find_project_files(project_root: &Path) -> AstResult<Vec<PathBuf>> {
     let mut files = Vec::new();
     let extensions = ["ts", "tsx", "js", "jsx", "mjs", "cjs"];
 
-    fn collect_files(
-        dir: &Path,
-        files: &mut Vec<PathBuf>,
-        extensions: &[&str],
-    ) -> AstResult<()> {
+    fn collect_files(dir: &Path, files: &mut Vec<PathBuf>, extensions: &[&str]) -> AstResult<()> {
         if dir.is_dir() {
             // Skip node_modules and other common directories to ignore
             if let Some(dir_name) = dir.file_name() {
@@ -339,8 +335,11 @@ fn find_project_files(project_root: &Path) -> AstResult<Vec<PathBuf>> {
                 }
             }
 
-            for entry in std::fs::read_dir(dir).map_err(|e| AstError::parse(format!("Failed to read directory: {}", e)))? {
-                let entry = entry.map_err(|e| AstError::parse(format!("Failed to read entry: {}", e)))?;
+            for entry in std::fs::read_dir(dir)
+                .map_err(|e| AstError::parse(format!("Failed to read directory: {}", e)))?
+            {
+                let entry =
+                    entry.map_err(|e| AstError::parse(format!("Failed to read entry: {}", e)))?;
                 let path = entry.path();
                 if path.is_dir() {
                     collect_files(&path, files, extensions)?;
@@ -371,7 +370,9 @@ mod tests {
         let from_file = temp_dir.path().join("src/components/Button.tsx");
         let to_file = temp_dir.path().join("src/utils/helpers.ts");
 
-        let result = resolver.calculate_relative_import(&from_file, &to_file).unwrap();
+        let result = resolver
+            .calculate_relative_import(&from_file, &to_file)
+            .unwrap();
         assert_eq!(result, "../utils/helpers");
     }
 
@@ -381,7 +382,10 @@ mod tests {
         assert_eq!(extract_import_path(line1), Some("./component".to_string()));
 
         let line2 = "const utils = require('../utils/helpers');";
-        assert_eq!(extract_import_path(line2), Some("../utils/helpers".to_string()));
+        assert_eq!(
+            extract_import_path(line2),
+            Some("../utils/helpers".to_string())
+        );
 
         let line3 = "import React from 'react';";
         assert_eq!(extract_import_path(line3), Some("react".to_string()));

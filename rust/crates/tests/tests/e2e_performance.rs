@@ -1,8 +1,8 @@
-use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
+use std::fs;
 use std::path::Path;
 use std::time::{Duration, Instant};
-use std::fs;
+use tests::harness::{TestClient, TestWorkspace};
 
 #[tokio::test]
 async fn test_large_file_performance() {
@@ -19,10 +19,16 @@ async fn test_large_file_performance() {
 
     // Time file creation
     let start = Instant::now();
-    let response = client.call_tool("create_file", json!({
-        "file_path": large_file.to_string_lossy(),
-        "content": content
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "create_file",
+            json!({
+                "file_path": large_file.to_string_lossy(),
+                "content": content
+            }),
+        )
+        .await
+        .unwrap();
     let create_duration = start.elapsed();
 
     assert!(response["success"].as_bool().unwrap_or(false));
@@ -30,9 +36,15 @@ async fn test_large_file_performance() {
 
     // Time file reading
     let start = Instant::now();
-    let response = client.call_tool("read_file", json!({
-        "file_path": large_file.to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "read_file",
+            json!({
+                "file_path": large_file.to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
     let read_duration = start.elapsed();
 
     assert!(response.get("content").is_some());
@@ -42,25 +54,42 @@ async fn test_large_file_performance() {
     tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
 
     let start = Instant::now();
-    let response = client.call_tool("get_document_symbols", json!({
-        "file_path": large_file.to_string_lossy()
-    })).await;
+    let response = client
+        .call_tool(
+            "get_document_symbols",
+            json!({
+                "file_path": large_file.to_string_lossy()
+            }),
+        )
+        .await;
     let lsp_duration = start.elapsed();
 
     match response {
         Ok(resp) => {
-            println!("LSP document symbols on large file took: {:?}", lsp_duration);
+            println!(
+                "LSP document symbols on large file took: {:?}",
+                lsp_duration
+            );
             let symbols = resp["symbols"].as_array().unwrap();
             assert!(!symbols.is_empty());
-        },
+        }
         Err(_) => {
-            println!("LSP operation timed out or failed on large file after: {:?}", lsp_duration);
+            println!(
+                "LSP operation timed out or failed on large file after: {:?}",
+                lsp_duration
+            );
         }
     }
 
     // Performance assertions (adjust based on expected performance)
-    assert!(create_duration < Duration::from_secs(30), "File creation should complete within 30 seconds");
-    assert!(read_duration < Duration::from_secs(10), "File reading should complete within 10 seconds");
+    assert!(
+        create_duration < Duration::from_secs(30),
+        "File creation should complete within 30 seconds"
+    );
+    assert!(
+        read_duration < Duration::from_secs(10),
+        "File reading should complete within 10 seconds"
+    );
 }
 
 #[tokio::test]
@@ -75,7 +104,8 @@ async fn test_many_small_files_performance() {
     let start = Instant::now();
     for i in 0..file_count {
         let file_path = workspace.path().join(format!("small_file_{}.ts", i));
-        let content = format!(r#"
+        let content = format!(
+            r#"
 export interface Data{} {{
     id: number;
     value: string;
@@ -84,12 +114,20 @@ export interface Data{} {{
 export function process{}(data: Data{}): string {{
     return `Processing ${{data.id}}: ${{data.value}}`;
 }}
-"#, i, i, i);
+"#,
+            i, i, i
+        );
 
-        let response = client.call_tool("create_file", json!({
-            "file_path": file_path.to_string_lossy(),
-            "content": content
-        })).await.unwrap();
+        let response = client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": file_path.to_string_lossy(),
+                    "content": content
+                }),
+            )
+            .await
+            .unwrap();
 
         assert!(response["success"].as_bool().unwrap_or(false));
         file_paths.push(file_path);
@@ -97,37 +135,62 @@ export function process{}(data: Data{}): string {{
     let creation_duration = start.elapsed();
 
     println!("Created {} files in: {:?}", file_count, creation_duration);
-    println!("Average time per file: {:?}", creation_duration / file_count as u32);
+    println!(
+        "Average time per file: {:?}",
+        creation_duration / file_count as u32
+    );
 
     // Give LSP time to process all files
     tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
 
     // Test workspace symbol search performance
     let start = Instant::now();
-    let response = client.call_tool("search_workspace_symbols", json!({
-        "query": "Data"
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "search_workspace_symbols",
+            json!({
+                "query": "Data"
+            }),
+        )
+        .await
+        .unwrap();
     let search_duration = start.elapsed();
 
     let symbols = response["symbols"].as_array().unwrap();
-    println!("Workspace symbol search found {} symbols in: {:?}", symbols.len(), search_duration);
+    println!(
+        "Workspace symbol search found {} symbols in: {:?}",
+        symbols.len(),
+        search_duration
+    );
 
     assert!(!symbols.is_empty());
-    assert!(search_duration < Duration::from_secs(10), "Workspace search should complete within 10 seconds");
+    assert!(
+        search_duration < Duration::from_secs(10),
+        "Workspace search should complete within 10 seconds"
+    );
 
     // Test listing all files performance
     let start = Instant::now();
-    let response = client.call_tool("list_files", json!({
-        "directory": workspace.path().to_string_lossy(),
-        "recursive": true
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "list_files",
+            json!({
+                "directory": workspace.path().to_string_lossy(),
+                "recursive": true
+            }),
+        )
+        .await
+        .unwrap();
     let list_duration = start.elapsed();
 
     let files = response["files"].as_array().unwrap();
     println!("Listed {} files in: {:?}", files.len(), list_duration);
 
     assert!(files.len() >= file_count as usize);
-    assert!(list_duration < Duration::from_secs(5), "File listing should complete within 5 seconds");
+    assert!(
+        list_duration < Duration::from_secs(5),
+        "File listing should complete within 5 seconds"
+    );
 }
 
 #[tokio::test]
@@ -145,7 +208,8 @@ async fn test_rapid_operations_performance() {
     let start = Instant::now();
     for i in 0..operation_count {
         let file_path = workspace.path().join(format!("rapid_{}.ts", i));
-        let content = format!(r#"
+        let content = format!(
+            r#"
 export class RapidClass{} {{
     private value: number = {};
 
@@ -159,26 +223,43 @@ export class RapidClass{} {{
         }});
     }}
 }}
-"#, i, i);
+"#,
+            i, i
+        );
 
         let op_start = Instant::now();
 
         // Create file
-        let create_result = client.call_tool("create_file", json!({
-            "file_path": file_path.to_string_lossy(),
-            "content": content
-        })).await;
+        let create_result = client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": file_path.to_string_lossy(),
+                    "content": content
+                }),
+            )
+            .await;
 
         // Read file back
-        let read_result = client.call_tool("read_file", json!({
-            "file_path": file_path.to_string_lossy()
-        })).await;
+        let read_result = client
+            .call_tool(
+                "read_file",
+                json!({
+                    "file_path": file_path.to_string_lossy()
+                }),
+            )
+            .await;
 
         // Try LSP operation
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        let symbols_result = client.call_tool("get_document_symbols", json!({
-            "file_path": file_path.to_string_lossy()
-        })).await;
+        let symbols_result = client
+            .call_tool(
+                "get_document_symbols",
+                json!({
+                    "file_path": file_path.to_string_lossy()
+                }),
+            )
+            .await;
 
         let op_duration = op_start.elapsed();
         operation_times.push(op_duration);
@@ -196,19 +277,33 @@ export class RapidClass{} {{
 
     let total_duration = start.elapsed();
 
-    println!("Completed {} rapid operations in: {:?}", operation_count, total_duration);
+    println!(
+        "Completed {} rapid operations in: {:?}",
+        operation_count, total_duration
+    );
 
     let total_ops_time: Duration = operation_times.iter().sum();
     let avg_op_time = total_ops_time / operation_count as u32;
 
-    println!("Successful operations - Creates: {}, Reads: {}, LSP: {}",
-             successful_creates, successful_reads, successful_lsp);
+    println!(
+        "Successful operations - Creates: {}, Reads: {}, LSP: {}",
+        successful_creates, successful_reads, successful_lsp
+    );
     println!("Average operation time: {:?}", avg_op_time);
 
     // Performance assertions
-    assert!(successful_creates >= operation_count * 8 / 10, "At least 80% of creates should succeed");
-    assert!(successful_reads >= operation_count * 8 / 10, "At least 80% of reads should succeed");
-    assert!(total_duration < Duration::from_secs(30), "All rapid operations should complete within 30 seconds");
+    assert!(
+        successful_creates >= operation_count * 8 / 10,
+        "At least 80% of creates should succeed"
+    );
+    assert!(
+        successful_reads >= operation_count * 8 / 10,
+        "At least 80% of reads should succeed"
+    );
+    assert!(
+        total_duration < Duration::from_secs(30),
+        "All rapid operations should complete within 30 seconds"
+    );
 }
 
 #[tokio::test]
@@ -222,7 +317,8 @@ async fn test_workspace_edit_performance() {
 
     for i in 0..file_count {
         let file_path = workspace.path().join(format!("edit_perf_{}.ts", i));
-        let content = format!(r#"
+        let content = format!(
+            r#"
 export interface OldInterface{} {{
     id: number;
     oldProperty: string;
@@ -233,12 +329,20 @@ export function oldFunction{}(param: OldInterface{}): string {{
 }}
 
 const oldConstant{} = "old_value_{}";
-"#, i, i, i, i, i);
+"#,
+            i, i, i, i, i
+        );
 
-        let response = client.call_tool("create_file", json!({
-            "file_path": file_path.to_string_lossy(),
-            "content": content
-        })).await.unwrap();
+        let response = client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": file_path.to_string_lossy(),
+                    "content": content
+                }),
+            )
+            .await
+            .unwrap();
 
         assert!(response["success"].as_bool().unwrap_or(false));
         file_paths.push(file_path);
@@ -275,22 +379,41 @@ const oldConstant{} = "old_value_{}";
 
     // Execute large workspace edit
     let start = Instant::now();
-    let response = client.call_tool("apply_workspace_edit", json!({
-        "changes": changes
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "apply_workspace_edit",
+            json!({
+                "changes": changes
+            }),
+        )
+        .await
+        .unwrap();
     let edit_duration = start.elapsed();
 
-    println!("Workspace edit across {} files took: {:?}", file_count, edit_duration);
+    println!(
+        "Workspace edit across {} files took: {:?}",
+        file_count, edit_duration
+    );
 
     assert!(response["applied"].as_bool().unwrap_or(false));
-    assert!(edit_duration < Duration::from_secs(20), "Large workspace edit should complete within 20 seconds");
+    assert!(
+        edit_duration < Duration::from_secs(20),
+        "Large workspace edit should complete within 20 seconds"
+    );
 
     // Verify changes were applied correctly
     let verification_start = Instant::now();
-    for (index, file_path) in file_paths.iter().enumerate().take(5) { // Check first 5 files
-        let content_response = client.call_tool("read_file", json!({
-            "file_path": file_path.to_string_lossy()
-        })).await.unwrap();
+    for (index, file_path) in file_paths.iter().enumerate().take(5) {
+        // Check first 5 files
+        let content_response = client
+            .call_tool(
+                "read_file",
+                json!({
+                    "file_path": file_path.to_string_lossy()
+                }),
+            )
+            .await
+            .unwrap();
 
         let content = content_response["content"].as_str().unwrap();
         assert!(content.contains(&format!("NewInterface{}", index)));
@@ -315,10 +438,16 @@ async fn test_memory_usage_large_operations() {
 
     // Test memory efficiency with large content
     let start = Instant::now();
-    let response = client.call_tool("create_file", json!({
-        "file_path": large_file.to_string_lossy(),
-        "content": large_content
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "create_file",
+            json!({
+                "file_path": large_file.to_string_lossy(),
+                "content": large_content
+            }),
+        )
+        .await
+        .unwrap();
     let create_duration = start.elapsed();
 
     assert!(response["success"].as_bool().unwrap_or(false));
@@ -326,9 +455,15 @@ async fn test_memory_usage_large_operations() {
 
     // Read it back
     let start = Instant::now();
-    let response = client.call_tool("read_file", json!({
-        "file_path": large_file.to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "read_file",
+            json!({
+                "file_path": large_file.to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
     let read_duration = start.elapsed();
 
     let read_content = response["content"].as_str().unwrap();
@@ -340,20 +475,32 @@ async fn test_memory_usage_large_operations() {
         let file_path = workspace.path().join(format!("memory_small_{}.txt", i));
         let content = format!("Small file {} with some content", i).repeat(1000); // ~30KB each
 
-        let response = client.call_tool("create_file", json!({
-            "file_path": file_path.to_string_lossy(),
-            "content": content
-        })).await.unwrap();
+        let response = client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": file_path.to_string_lossy(),
+                    "content": content
+                }),
+            )
+            .await
+            .unwrap();
 
         assert!(response["success"].as_bool().unwrap_or(false));
     }
 
     // List all files to test memory with many file handles
     let start = Instant::now();
-    let response = client.call_tool("list_files", json!({
-        "directory": workspace.path().to_string_lossy(),
-        "recursive": true
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "list_files",
+            json!({
+                "directory": workspace.path().to_string_lossy(),
+                "recursive": true
+            }),
+        )
+        .await
+        .unwrap();
     let list_duration = start.elapsed();
 
     let files = response["files"].as_array().unwrap();
@@ -383,7 +530,8 @@ async fn test_lsp_performance_complex_project() {
     // Create types files
     for i in 0..10 {
         let types_file = types_dir.join(format!("types{}.ts", i));
-        let content = format!(r#"
+        let content = format!(
+            r#"
 export interface User{} {{
     id: number;
     name: string;
@@ -404,7 +552,9 @@ export interface ApiResponse{}<T> {{
     status: number;
     message: string;
 }}
-"#, i, i, i, i, i);
+"#,
+            i, i, i, i, i
+        );
 
         fs::write(&types_file, content).unwrap();
     }
@@ -412,7 +562,8 @@ export interface ApiResponse{}<T> {{
     // Create utils files
     for i in 0..10 {
         let utils_file = utils_dir.join(format!("utils{}.ts", i));
-        let content = format!(r#"
+        let content = format!(
+            r#"
 import {{ User{}, UserPreferences{}, ApiResponse{} }} from '../types/types{}';
 
 export function validateUser{}(user: User{}): boolean {{
@@ -432,7 +583,9 @@ export function applyPreferences{}(prefs: UserPreferences{}): void {{
     document.body.setAttribute('data-theme', prefs.theme);
     document.documentElement.lang = prefs.language;
 }}
-"#, i, i, i, i, i, i, i, i, i, i, i, i, i);
+"#,
+            i, i, i, i, i, i, i, i, i, i, i, i, i
+        );
 
         fs::write(&utils_file, content).unwrap();
     }
@@ -440,7 +593,8 @@ export function applyPreferences{}(prefs: UserPreferences{}): void {{
     // Create service files
     for i in 0..10 {
         let service_file = services_dir.join(format!("service{}.ts", i));
-        let content = format!(r#"
+        let content = format!(
+            r#"
 import {{ User{}, UserPreferences{}, UserRole{}, ApiResponse{} }} from '../types/types{}';
 import {{ validateUser{}, formatUserDisplay{}, fetchUserData{} }} from '../utils/utils{}';
 
@@ -474,7 +628,9 @@ export class UserService{} {{
         return false;
     }}
 }}
-"#, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+"#,
+            i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i
+        );
 
         fs::write(&service_file, content).unwrap();
     }
@@ -484,46 +640,84 @@ export class UserService{} {{
 
     // Test find definition performance across the project
     let start = Instant::now();
-    let response = client.call_tool("find_definition", json!({
-        "file_path": services_dir.join("service0.ts").to_string_lossy(),
-        "line": 1,
-        "character": 10 // Should point to User0 import
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "find_definition",
+            json!({
+                "file_path": services_dir.join("service0.ts").to_string_lossy(),
+                "line": 1,
+                "character": 10 // Should point to User0 import
+            }),
+        )
+        .await
+        .unwrap();
     let definition_duration = start.elapsed();
 
     let locations = response["locations"].as_array().unwrap();
     assert!(!locations.is_empty());
-    println!("Cross-file definition lookup took: {:?}", definition_duration);
+    println!(
+        "Cross-file definition lookup took: {:?}",
+        definition_duration
+    );
 
     // Test workspace symbol search performance
     let start = Instant::now();
-    let response = client.call_tool("search_workspace_symbols", json!({
-        "query": "User"
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "search_workspace_symbols",
+            json!({
+                "query": "User"
+            }),
+        )
+        .await
+        .unwrap();
     let search_duration = start.elapsed();
 
     let symbols = response["symbols"].as_array().unwrap();
-    println!("Workspace symbol search found {} symbols in: {:?}", symbols.len(), search_duration);
+    println!(
+        "Workspace symbol search found {} symbols in: {:?}",
+        symbols.len(),
+        search_duration
+    );
     assert!(symbols.len() > 50); // Should find many User-related symbols
 
     // Test find references performance
     let start = Instant::now();
-    let response = client.call_tool("find_references", json!({
-        "file_path": types_dir.join("types0.ts").to_string_lossy(),
-        "line": 1,
-        "character": 18, // User0 interface
-        "include_declaration": true
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "find_references",
+            json!({
+                "file_path": types_dir.join("types0.ts").to_string_lossy(),
+                "line": 1,
+                "character": 18, // User0 interface
+                "include_declaration": true
+            }),
+        )
+        .await
+        .unwrap();
     let references_duration = start.elapsed();
 
     let references = response["references"].as_array().unwrap();
-    println!("Found {} references in: {:?}", references.len(), references_duration);
+    println!(
+        "Found {} references in: {:?}",
+        references.len(),
+        references_duration
+    );
     assert!(!references.is_empty());
 
     // Performance assertions for complex project
-    assert!(definition_duration < Duration::from_secs(5), "Definition lookup should be fast");
-    assert!(search_duration < Duration::from_secs(10), "Workspace search should complete reasonably fast");
-    assert!(references_duration < Duration::from_secs(10), "Reference finding should be efficient");
+    assert!(
+        definition_duration < Duration::from_secs(5),
+        "Definition lookup should be fast"
+    );
+    assert!(
+        search_duration < Duration::from_secs(10),
+        "Workspace search should complete reasonably fast"
+    );
+    assert!(
+        references_duration < Duration::from_secs(10),
+        "Reference finding should be efficient"
+    );
 }
 
 #[tokio::test]
@@ -541,30 +735,45 @@ async fn test_stress_test_rapid_operations() {
             0 => {
                 // Create file operation
                 let file_path = workspace.path().join(format!("stress_{}.txt", i));
-                let _response = client.call_tool("create_file", json!({
-                    "file_path": file_path.to_string_lossy(),
-                    "content": format!("Stress test content {}", i)
-                })).await;
-            },
+                let _response = client
+                    .call_tool(
+                        "create_file",
+                        json!({
+                            "file_path": file_path.to_string_lossy(),
+                            "content": format!("Stress test content {}", i)
+                        }),
+                    )
+                    .await;
+            }
             1 => {
                 // List files operation
-                let _response = client.call_tool("list_files", json!({
-                    "directory": workspace.path().to_string_lossy()
-                })).await;
-            },
+                let _response = client
+                    .call_tool(
+                        "list_files",
+                        json!({
+                            "directory": workspace.path().to_string_lossy()
+                        }),
+                    )
+                    .await;
+            }
             2 => {
                 // Read file operation (if files exist)
                 if i > 0 {
                     let file_path = workspace.path().join(format!("stress_{}.txt", i - 1));
-                    let _response = client.call_tool("read_file", json!({
-                        "file_path": file_path.to_string_lossy()
-                    })).await;
+                    let _response = client
+                        .call_tool(
+                            "read_file",
+                            json!({
+                                "file_path": file_path.to_string_lossy()
+                            }),
+                        )
+                        .await;
                 }
-            },
+            }
             3 => {
                 // Health check operation
                 let _response = client.call_tool("health_check", json!({})).await;
-            },
+            }
             _ => unreachable!(),
         }
 
@@ -596,7 +805,16 @@ async fn test_stress_test_rapid_operations() {
     println!("99th percentile: {:?}", p99_time);
 
     // Performance assertions
-    assert!(avg_time < Duration::from_millis(500), "Average operation should be under 500ms");
-    assert!(p95_time < Duration::from_secs(2), "95% of operations should complete within 2 seconds");
-    assert!(p99_time < Duration::from_secs(5), "99% of operations should complete within 5 seconds");
+    assert!(
+        avg_time < Duration::from_millis(500),
+        "Average operation should be under 500ms"
+    );
+    assert!(
+        p95_time < Duration::from_secs(2),
+        "95% of operations should complete within 2 seconds"
+    );
+    assert!(
+        p99_time < Duration::from_secs(5),
+        "99% of operations should complete within 5 seconds"
+    );
 }

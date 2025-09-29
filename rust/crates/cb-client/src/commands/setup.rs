@@ -14,7 +14,7 @@ impl SetupCommand {
     async fn run_wizard(&self, ctx: &mut CommandContext) -> ClientResult<()> {
         ctx.interactive.banner(
             "🚀 Codeflow Buddy Client Setup",
-            Some("Let's configure your client to connect to the codeflow-buddy server")
+            Some("Let's configure your client to connect to the codeflow-buddy server"),
         )?;
 
         // Current configuration summary if exists
@@ -23,7 +23,10 @@ impl SetupCommand {
             println!("{}", ctx.config_summary());
             println!();
 
-            if !ctx.interactive.confirm("Would you like to update your configuration?", Some(true))? {
+            if !ctx
+                .interactive
+                .confirm("Would you like to update your configuration?", Some(true))?
+            {
                 ctx.display_info("Setup cancelled");
                 return Ok(());
             }
@@ -42,7 +45,10 @@ impl SetupCommand {
         let test_successful = self.test_connection(ctx, &url, &token, timeout).await?;
 
         if !test_successful {
-            if !ctx.interactive.confirm("Connection test failed. Save configuration anyway?", Some(false))? {
+            if !ctx.interactive.confirm(
+                "Connection test failed. Save configuration anyway?",
+                Some(false),
+            )? {
                 ctx.display_info("Setup cancelled");
                 return Ok(());
             }
@@ -61,7 +67,7 @@ impl SetupCommand {
 
             ctx.interactive.banner(
                 "✅ Setup Complete",
-                Some("Your codeflow-buddy client is now configured!")
+                Some("Your codeflow-buddy client is now configured!"),
             )?;
 
             self.show_next_steps(ctx)?;
@@ -74,14 +80,16 @@ impl SetupCommand {
 
     /// Setup server URL with validation and smart defaults
     async fn setup_server_url(&self, ctx: &CommandContext) -> ClientResult<String> {
-        ctx.interactive.progress_message("Step 1: Server Configuration");
+        ctx.interactive
+            .progress_message("Step 1: Server Configuration");
 
         // Smart defaults based on common development setups
         let current_url = ctx.config.url.as_deref();
         let _default_url = current_url.unwrap_or("ws://localhost:3000");
 
         println!();
-        ctx.interactive.info("Enter the WebSocket URL of your codeflow-buddy server");
+        ctx.interactive
+            .info("Enter the WebSocket URL of your codeflow-buddy server");
         ctx.interactive.info("Common formats:");
         println!("  • Local development: ws://localhost:3000");
         println!("  • Remote server: ws://your-server.com:3000");
@@ -93,18 +101,23 @@ impl SetupCommand {
                 Ok(url) => {
                     // Additional validation
                     if !url.starts_with("ws://") && !url.starts_with("wss://") {
-                        ctx.interactive.error_message("URL must start with ws:// or wss://");
+                        ctx.interactive
+                            .error_message("URL must start with ws:// or wss://");
                         if !ctx.interactive.retry_on_error("Invalid URL format", true)? {
                             return Err(ClientError::ConfigError("Invalid URL format".to_string()));
                         }
                         continue;
                     }
 
-                    ctx.interactive.success_message(&format!("Server URL: {}", ctx.formatter.url(&url)));
+                    ctx.interactive
+                        .success_message(&format!("Server URL: {}", ctx.formatter.url(&url)));
                     return Ok(url);
                 }
                 Err(e) => {
-                    if !ctx.interactive.retry_on_error(&format!("Error: {}", e), true)? {
+                    if !ctx
+                        .interactive
+                        .retry_on_error(&format!("Error: {}", e), true)?
+                    {
                         return Err(e);
                     }
                 }
@@ -115,34 +128,51 @@ impl SetupCommand {
     /// Setup authentication token (optional)
     async fn setup_auth_token(&self, ctx: &CommandContext) -> ClientResult<Option<String>> {
         println!();
-        ctx.interactive.progress_message("Step 2: Authentication (Optional)");
+        ctx.interactive
+            .progress_message("Step 2: Authentication (Optional)");
 
         println!();
-        ctx.interactive.info("Authentication token provides secure access to the server");
-        ctx.interactive.info("Leave empty if your server doesn't require authentication");
+        ctx.interactive
+            .info("Authentication token provides secure access to the server");
+        ctx.interactive
+            .info("Leave empty if your server doesn't require authentication");
         println!();
 
-        if ctx.interactive.confirm("Do you want to configure an authentication token?", Some(false))? {
+        if ctx.interactive.confirm(
+            "Do you want to configure an authentication token?",
+            Some(false),
+        )? {
             loop {
-                match ctx.interactive.optional_input("Authentication token", ctx.config.get_token()) {
+                match ctx
+                    .interactive
+                    .optional_input("Authentication token", ctx.config.get_token())
+                {
                     Ok(Some(token)) => {
                         // Basic token validation
                         if token.trim().len() < 8 {
-                            if !ctx.interactive.retry_on_error("Token should be at least 8 characters", true)? {
+                            if !ctx
+                                .interactive
+                                .retry_on_error("Token should be at least 8 characters", true)?
+                            {
                                 return Ok(None);
                             }
                             continue;
                         }
 
-                        ctx.interactive.success_message("Authentication token configured");
+                        ctx.interactive
+                            .success_message("Authentication token configured");
                         return Ok(Some(token));
                     }
                     Ok(None) => {
-                        ctx.interactive.warning_message("No authentication token configured");
+                        ctx.interactive
+                            .warning_message("No authentication token configured");
                         return Ok(None);
                     }
                     Err(e) => {
-                        if !ctx.interactive.retry_on_error(&format!("Error: {}", e), true)? {
+                        if !ctx
+                            .interactive
+                            .retry_on_error(&format!("Error: {}", e), true)?
+                        {
                             return Err(e);
                         }
                     }
@@ -157,10 +187,12 @@ impl SetupCommand {
     /// Setup timeout configuration
     async fn setup_timeout(&self, ctx: &CommandContext) -> ClientResult<u64> {
         println!();
-        ctx.interactive.progress_message("Step 3: Timeout Configuration");
+        ctx.interactive
+            .progress_message("Step 3: Timeout Configuration");
 
         println!();
-        ctx.interactive.info("Request timeout determines how long to wait for server responses");
+        ctx.interactive
+            .info("Request timeout determines how long to wait for server responses");
         ctx.interactive.info("Recommended values:");
         println!("  • Fast local network: 10-30 seconds (10000-30000ms)");
         println!("  • Remote/slow network: 30-60 seconds (30000-60000ms)");
@@ -186,7 +218,10 @@ impl SetupCommand {
 
         let progress = ctx.formatter.progress_bar(None, "Connecting...");
 
-        match ctx.test_connection(Some(url.to_string()), token.clone()).await {
+        match ctx
+            .test_connection(Some(url.to_string()), token.clone())
+            .await
+        {
             Ok(ping_time) => {
                 progress.finish_with_message("Connection successful!");
 
@@ -203,14 +238,16 @@ impl SetupCommand {
                     if client.connect().await.is_ok() {
                         match client.get_capabilities().await {
                             Ok(capabilities) => {
-                                ctx.interactive.success_message("Server capabilities retrieved");
+                                ctx.interactive
+                                    .success_message("Server capabilities retrieved");
                                 println!();
                                 ctx.interactive.info("Server capabilities:");
                                 println!("{}", super::utils::format_capabilities(&capabilities));
                             }
                             Err(e) => {
                                 ctx.interactive.warning_message(&format!(
-                                    "Could not retrieve server capabilities: {}", e
+                                    "Could not retrieve server capabilities: {}",
+                                    e
                                 ));
                             }
                         }
@@ -223,7 +260,8 @@ impl SetupCommand {
             Err(e) => {
                 progress.finish_with_message("Connection failed");
 
-                ctx.interactive.error_message(&format!("❌ Connection failed: {}", e));
+                ctx.interactive
+                    .error_message(&format!("❌ Connection failed: {}", e));
 
                 // Provide helpful troubleshooting tips
                 self.show_troubleshooting_tips(ctx, url, &e);
@@ -277,7 +315,8 @@ impl SetupCommand {
         println!("  3. Call a specific tool: codeflow-buddy call <tool_name> [params]");
         println!();
 
-        ctx.interactive.info("For help with any command, use --help flag");
+        ctx.interactive
+            .info("For help with any command, use --help flag");
         println!("  Example: codeflow-buddy call --help");
         println!();
 
@@ -285,12 +324,19 @@ impl SetupCommand {
     }
 
     /// Quick setup mode (non-interactive)
-    async fn quick_setup(&self, ctx: &mut CommandContext, url: String, token: Option<String>) -> ClientResult<()> {
+    async fn quick_setup(
+        &self,
+        ctx: &mut CommandContext,
+        url: String,
+        token: Option<String>,
+    ) -> ClientResult<()> {
         ctx.display_info("Running quick setup...");
 
         // Validate URL
         if !url.starts_with("ws://") && !url.starts_with("wss://") {
-            return Err(ClientError::ConfigError("URL must start with ws:// or wss://".to_string()));
+            return Err(ClientError::ConfigError(
+                "URL must start with ws:// or wss://".to_string(),
+            ));
         }
 
         // Update configuration
@@ -300,7 +346,10 @@ impl SetupCommand {
         ctx.display_info("Testing connection...");
         match ctx.test_connection(Some(url), token).await {
             Ok(ping_time) => {
-                ctx.display_success(&format!("Connected successfully (ping: {})", ctx.formatter.duration(ping_time)));
+                ctx.display_success(&format!(
+                    "Connected successfully (ping: {})",
+                    ctx.formatter.duration(ping_time)
+                ));
             }
             Err(e) => {
                 ctx.display_warning(&format!("Connection test failed: {}", e));
@@ -329,11 +378,11 @@ impl Command for SetupCommand {
         // Check for quick setup mode via environment variables
         if let (Ok(url), token) = (
             std::env::var("CODEFLOW_BUDDY_URL"),
-            std::env::var("CODEFLOW_BUDDY_TOKEN").ok()
+            std::env::var("CODEFLOW_BUDDY_TOKEN").ok(),
         ) {
             if !ctx.interactive.confirm(
                 &format!("Use environment variables for setup? (URL: {})", url),
-                Some(true)
+                Some(true),
             )? {
                 return self.run_wizard(&mut ctx).await;
             }
@@ -362,7 +411,10 @@ mod tests {
     fn test_setup_command_creation() {
         let cmd = SetupCommand::new();
         assert_eq!(cmd.name(), "setup");
-        assert_eq!(cmd.description(), "Interactive configuration wizard for the codeflow-buddy client");
+        assert_eq!(
+            cmd.description(),
+            "Interactive configuration wizard for the codeflow-buddy client"
+        );
     }
 
     #[test]

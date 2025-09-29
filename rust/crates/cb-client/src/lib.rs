@@ -1,14 +1,14 @@
 //! cb-client: Codeflow Buddy client implementation
 
-pub mod error;
 pub mod client_config;
-pub mod websocket;
+pub mod commands;
+pub mod error;
 pub mod formatting;
 pub mod interactive;
-pub mod commands;
+pub mod websocket;
 
-pub use error::{ClientError, ClientResult};
 pub use client_config::{ClientConfig, ConfigBuilder};
+pub use error::{ClientError, ClientResult};
 
 use serde::{Deserialize, Serialize};
 
@@ -113,15 +113,18 @@ impl SessionReport {
             ClientError::TransportError(_) => "TransportError",
             ClientError::ProtocolError(_) => "ProtocolError",
             ClientError::Core(_) => "CoreError",
-        }.to_string();
+        }
+        .to_string();
 
         let message = error.to_string();
         let now = chrono::Utc::now();
 
         // Try to find existing error of same type and message
-        if let Some(existing) = self.errors.iter_mut().find(|e|
-            e.error_type == error_type && e.message == message
-        ) {
+        if let Some(existing) = self
+            .errors
+            .iter_mut()
+            .find(|e| e.error_type == error_type && e.message == message)
+        {
             existing.count += 1;
             existing.last_seen = now;
         } else {
@@ -189,12 +192,12 @@ impl ErrorSummary {
     }
 }
 
-use commands::{Command, GlobalArgs};
-use commands::setup::SetupCommand;
-use commands::connect::ConnectCommand;
+use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use commands::call::{CallCommand, OutputFormat};
+use commands::connect::ConnectCommand;
+use commands::setup::SetupCommand;
 use commands::status::StatusCommand;
-use clap::{Parser, Subcommand, ValueEnum, CommandFactory};
+use commands::{Command, GlobalArgs};
 use std::time::Duration;
 
 /// A powerful, interactive client for the Codeflow Buddy server.
@@ -232,11 +235,15 @@ pub struct CliArgs {
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Run an interactive setup wizard to create a configuration file.
-    #[command(long_about = "Guides you through setting up a connection to a Codeflow Buddy server and saves the settings to a configuration file.")]
+    #[command(
+        long_about = "Guides you through setting up a connection to a Codeflow Buddy server and saves the settings to a configuration file."
+    )]
     Setup,
 
     /// Connect to the server and start an interactive session.
-    #[command(long_about = "Establishes a persistent WebSocket connection to the server for interactive operations.")]
+    #[command(
+        long_about = "Establishes a persistent WebSocket connection to the server for interactive operations."
+    )]
     Connect {
         /// The WebSocket URL of the server (e.g., ws://localhost:3000). Overrides config and environment variables.
         #[arg(short, long, help_heading = "Connection")]
@@ -256,8 +263,12 @@ pub enum Commands {
     },
 
     /// Execute a raw MCP tool on the server.
-    #[command(long_about = "Execute a raw MCP tool on the server. This is useful for scripting and advanced operations.")]
-    #[command(after_help = "Example: codeflow-buddy call read_file '{\"file_path\":\"/path/to/file.txt\"}'")]
+    #[command(
+        long_about = "Execute a raw MCP tool on the server. This is useful for scripting and advanced operations."
+    )]
+    #[command(
+        after_help = "Example: codeflow-buddy call read_file '{\"file_path\":\"/path/to/file.txt\"}'"
+    )]
     Call {
         /// The name of the MCP tool to execute (e.g., `read_file`, `get_hover`).
         tool: String,
@@ -287,7 +298,9 @@ pub enum Commands {
     },
 
     /// Check client status and verify connectivity to the server.
-    #[command(long_about = "Performs a health check on the client and attempts to connect to the server to verify configuration and connectivity.")]
+    #[command(
+        long_about = "Performs a health check on the client and attempts to connect to the server to verify configuration and connectivity."
+    )]
     Status {
         /// The WebSocket URL of the server to check.
         #[arg(short, long, help_heading = "Connection")]
@@ -360,9 +373,13 @@ pub async fn run_cli() -> ClientResult<()> {
             let cmd = SetupCommand::new();
             cmd.execute(&global_args).await
         }
-        Commands::Connect { url, token, no_auto_reconnect, session_timeout } => {
-            let mut cmd = ConnectCommand::new(url, token)
-                .with_auto_reconnect(!no_auto_reconnect);
+        Commands::Connect {
+            url,
+            token,
+            no_auto_reconnect,
+            session_timeout,
+        } => {
+            let mut cmd = ConnectCommand::new(url, token).with_auto_reconnect(!no_auto_reconnect);
 
             if let Some(timeout_secs) = session_timeout {
                 cmd = cmd.with_session_timeout(Duration::from_secs(timeout_secs));
@@ -370,9 +387,16 @@ pub async fn run_cli() -> ClientResult<()> {
 
             cmd.execute(&global_args).await
         }
-        Commands::Call { tool, params, url, token, format, params_file, params_stdin } => {
-            let mut cmd = CallCommand::new(tool, params)
-                .with_format(format.into());
+        Commands::Call {
+            tool,
+            params,
+            url,
+            token,
+            format,
+            params_file,
+            params_stdin,
+        } => {
+            let mut cmd = CallCommand::new(tool, params).with_format(format.into());
 
             if let Some(url) = url {
                 cmd = cmd.with_url(url);
@@ -389,9 +413,12 @@ pub async fn run_cli() -> ClientResult<()> {
 
             cmd.execute(&global_args).await
         }
-        Commands::Status { url, token, verbose } => {
-            let cmd = StatusCommand::new(url, token)
-                .with_verbose(verbose);
+        Commands::Status {
+            url,
+            token,
+            verbose,
+        } => {
+            let cmd = StatusCommand::new(url, token).with_verbose(verbose);
             cmd.execute(&global_args).await
         }
         Commands::Completions { shell } => {
@@ -412,7 +439,8 @@ pub async fn run_cli() -> ClientResult<()> {
         }
         Err(e) => {
             // Error handling - always display error to stderr
-            let formatter = formatting::Formatter::with_settings(!global_args.no_color, !global_args.no_emoji);
+            let formatter =
+                formatting::Formatter::with_settings(!global_args.no_color, !global_args.no_emoji);
             eprintln!("{}", formatter.client_error(&e));
 
             if global_args.debug {
@@ -437,7 +465,11 @@ pub async fn run_cli() -> ClientResult<()> {
 }
 
 /// Convenience function to create a client config from args
-pub fn create_client_config_from_args(url: Option<String>, token: Option<String>, timeout: Option<u64>) -> ClientResult<ClientConfig> {
+pub fn create_client_config_from_args(
+    url: Option<String>,
+    token: Option<String>,
+    timeout: Option<u64>,
+) -> ClientResult<ClientConfig> {
     let mut config = ClientConfig::new();
 
     if let Some(url) = url {
@@ -492,9 +524,18 @@ mod tests {
 
     #[test]
     fn test_output_format_conversion() {
-        assert!(matches!(OutputFormat::from(OutputFormatArg::Pretty), OutputFormat::Pretty));
-        assert!(matches!(OutputFormat::from(OutputFormatArg::Json), OutputFormat::Json));
-        assert!(matches!(OutputFormat::from(OutputFormatArg::Raw), OutputFormat::Raw));
+        assert!(matches!(
+            OutputFormat::from(OutputFormatArg::Pretty),
+            OutputFormat::Pretty
+        ));
+        assert!(matches!(
+            OutputFormat::from(OutputFormatArg::Json),
+            OutputFormat::Json
+        ));
+        assert!(matches!(
+            OutputFormat::from(OutputFormatArg::Raw),
+            OutputFormat::Raw
+        ));
     }
 
     #[test]
@@ -502,8 +543,9 @@ mod tests {
         let config = create_client_config_from_args(
             Some("ws://localhost:3000".to_string()),
             Some("test-token".to_string()),
-            Some(60000)
-        ).unwrap();
+            Some(60000),
+        )
+        .unwrap();
 
         assert_eq!(config.get_url().unwrap(), "ws://localhost:3000");
         assert_eq!(config.get_token(), Some("test-token"));

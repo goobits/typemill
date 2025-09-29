@@ -20,7 +20,10 @@ impl SimdJsonParser {
         match simd_json::from_slice(&mut bytes) {
             Ok(value) => Ok(value),
             Err(e) => {
-                tracing::warn!("SIMD JSON parsing failed, falling back to serde_json: {}", e);
+                tracing::warn!(
+                    "SIMD JSON parsing failed, falling back to serde_json: {}",
+                    e
+                );
                 // Fallback to standard serde_json for compatibility
                 Self::fallback_from_slice(&bytes)
             }
@@ -37,7 +40,10 @@ impl SimdJsonParser {
                     .map_err(|e| ServerError::runtime(format!("JSON conversion error: {}", e)))
             }
             Err(e) => {
-                tracing::warn!("SIMD value parsing failed, falling back to serde_json: {}", e);
+                tracing::warn!(
+                    "SIMD value parsing failed, falling back to serde_json: {}",
+                    e
+                );
                 Self::fallback_value_from_slice(&bytes)
             }
         }
@@ -145,7 +151,7 @@ mod tests {
 
         let page_items = response["items"].as_array().unwrap();
         assert_eq!(page_items.len(), 3);
-        assert_eq!(page_items[0], 4);  // Second page starts at index 3
+        assert_eq!(page_items[0], 4); // Second page starts at index 3
 
         let pagination = &response["pagination"];
         assert_eq!(pagination["page"], 1);

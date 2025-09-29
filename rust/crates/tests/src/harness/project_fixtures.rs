@@ -36,7 +36,8 @@ impl ProjectFixtures {
         // Create type files
         for i in 0..files_per_dir {
             let file_path = types_dir.join(format!("types{}.ts", i));
-            let content = format!(r#"
+            let content = format!(
+                r#"
 export interface Entity{} {{
     id: number;
     name: string;
@@ -66,12 +67,19 @@ export class EntityValidator{} {{
         return ['active', 'inactive', 'pending', 'archived'].includes(status);
     }}
 }}
-"#, i, i, i, i, i, i, i, i, i);
+"#,
+                i, i, i, i, i, i, i, i, i
+            );
 
-            client.call_tool("create_file", json!({
-                "file_path": file_path.to_string_lossy(),
-                "content": content
-            })).await?;
+            client
+                .call_tool(
+                    "create_file",
+                    json!({
+                        "file_path": file_path.to_string_lossy(),
+                        "content": content
+                    }),
+                )
+                .await?;
 
             created_files.push(file_path);
         }
@@ -79,7 +87,8 @@ export class EntityValidator{} {{
         // Create utility files
         for i in 0..files_per_dir {
             let file_path = utils_dir.join(format!("utils{}.ts", i));
-            let content = format!(r#"
+            let content = format!(
+                r#"
 import {{ Entity{}, EntityFilter{}, EntityStatus{}, EntityValidator{} }} from '../types/types{}';
 
 export class EntityUtils{} {{
@@ -132,12 +141,19 @@ export function createEntity{}(name: string, metadata: Record<string, any> = {{}
 export async function batchCreateEntities{}(names: string[]): Promise<Entity{}[]> {{
     return names.map(name => createEntity{}(name));
 }}
-"#, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+"#,
+                i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i
+            );
 
-            client.call_tool("create_file", json!({
-                "file_path": file_path.to_string_lossy(),
-                "content": content
-            })).await?;
+            client
+                .call_tool(
+                    "create_file",
+                    json!({
+                        "file_path": file_path.to_string_lossy(),
+                        "content": content
+                    }),
+                )
+                .await?;
 
             created_files.push(file_path);
         }
@@ -145,7 +161,8 @@ export async function batchCreateEntities{}(names: string[]): Promise<Entity{}[]
         // Create service files
         for i in 0..files_per_dir {
             let file_path = services_dir.join(format!("service{}.ts", i));
-            let content = format!(r#"
+            let content = format!(
+                r#"
 import {{ Entity{}, EntityFilter{}, EntityWithStatus{}, EntityStatus{} }} from '../types/types{}';
 import {{ EntityUtils{}, createEntity{}, batchCreateEntities{} }} from '../utils/utils{}';
 
@@ -220,12 +237,19 @@ export class EntityService{} {{
         }};
     }}
 }}
-"#, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+"#,
+                i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i
+            );
 
-            client.call_tool("create_file", json!({
-                "file_path": file_path.to_string_lossy(),
-                "content": content
-            })).await?;
+            client
+                .call_tool(
+                    "create_file",
+                    json!({
+                        "file_path": file_path.to_string_lossy(),
+                        "content": content
+                    }),
+                )
+                .await?;
 
             created_files.push(file_path);
         }
@@ -233,7 +257,8 @@ export class EntityService{} {{
         // Create component files
         for i in 0..files_per_dir {
             let file_path = components_dir.join(format!("component{}.ts", i));
-            let content = format!(r#"
+            let content = format!(
+                r#"
 import {{ Entity{}, EntityFilter{}, EntityWithStatus{} }} from '../types/types{}';
 import {{ EntityService{} }} from '../services/service{}';
 import {{ EntityUtils{} }} from '../utils/utils{}';
@@ -312,12 +337,51 @@ export class EntityComponent{} {{
 export function createComponent{}(entities: Entity{}[], filter?: EntityFilter{}): EntityComponent{} {{
     return new EntityComponent{}({{ entities, filter }});
 }}
-"#, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+"#,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i
+            );
 
-            client.call_tool("create_file", json!({
-                "file_path": file_path.to_string_lossy(),
-                "content": content
-            })).await?;
+            client
+                .call_tool(
+                    "create_file",
+                    json!({
+                        "file_path": file_path.to_string_lossy(),
+                        "content": content
+                    }),
+                )
+                .await?;
 
             created_files.push(file_path);
         }
@@ -338,10 +402,15 @@ export function createComponent{}(entities: Entity{}[], filter?: EntityFilter{})
 
         // Create __init__.py
         let init_file = src_dir.join("__init__.py");
-        client.call_tool("create_file", json!({
-            "file_path": init_file.to_string_lossy(),
-            "content": "\"\"\"Python project for testing.\"\"\"\n__version__ = \"1.0.0\"\n"
-        })).await?;
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": init_file.to_string_lossy(),
+                    "content": "\"\"\"Python project for testing.\"\"\"\n__version__ = \"1.0.0\"\n"
+                }),
+            )
+            .await?;
         created_files.push(init_file);
 
         // Create models.py
@@ -416,10 +485,15 @@ class Project:
             self.tags.remove(tag)
 "#;
 
-        client.call_tool("create_file", json!({
-            "file_path": models_file.to_string_lossy(),
-            "content": models_content
-        })).await?;
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": models_file.to_string_lossy(),
+                    "content": models_content
+                }),
+            )
+            .await?;
         created_files.push(models_file);
 
         // Create services.py
@@ -547,10 +621,15 @@ class ProjectService:
         ]
 "#;
 
-        client.call_tool("create_file", json!({
-            "file_path": services_file.to_string_lossy(),
-            "content": services_content
-        })).await?;
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": services_file.to_string_lossy(),
+                    "content": services_content
+                }),
+            )
+            .await?;
         created_files.push(services_file);
 
         // Create utils.py
@@ -647,10 +726,15 @@ class CircularBuffer:
         self.index = 0
 "#;
 
-        client.call_tool("create_file", json!({
-            "file_path": utils_file.to_string_lossy(),
-            "content": utils_content
-        })).await?;
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": utils_file.to_string_lossy(),
+                    "content": utils_content
+                }),
+            )
+            .await?;
         created_files.push(utils_file);
 
         // Create requirements.txt
@@ -690,10 +774,15 @@ assert_cmd = "2.0"
 tempfile = "3.0"
 "#;
 
-        client.call_tool("create_file", json!({
-            "file_path": cargo_toml.to_string_lossy(),
-            "content": cargo_content
-        })).await?;
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": cargo_toml.to_string_lossy(),
+                    "content": cargo_content
+                }),
+            )
+            .await?;
         created_files.push(cargo_toml);
 
         // Create src directory
@@ -733,10 +822,15 @@ mod tests {
 }
 "#;
 
-        client.call_tool("create_file", json!({
-            "file_path": lib_file.to_string_lossy(),
-            "content": lib_content
-        })).await?;
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": lib_file.to_string_lossy(),
+                    "content": lib_content
+                }),
+            )
+            .await?;
         created_files.push(lib_file);
 
         // Create models.rs
@@ -878,10 +972,15 @@ mod tests {
 }
 "#;
 
-        client.call_tool("create_file", json!({
-            "file_path": models_file.to_string_lossy(),
-            "content": models_content
-        })).await?;
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": models_file.to_string_lossy(),
+                    "content": models_content
+                }),
+            )
+            .await?;
         created_files.push(models_file);
 
         Ok(created_files)
@@ -920,10 +1019,15 @@ mod tests {
 }
 "#;
 
-        client.call_tool("create_file", json!({
-            "file_path": root_package.to_string_lossy(),
-            "content": root_content
-        })).await?;
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": root_package.to_string_lossy(),
+                    "content": root_content
+                }),
+            )
+            .await?;
         created_files.push(root_package);
 
         // Create packages directory structure
@@ -938,9 +1042,12 @@ mod tests {
         std::fs::create_dir_all(&shared_dir)?;
 
         let shared_package = shared_dir.join("package.json");
-        client.call_tool("create_file", json!({
-            "file_path": shared_package.to_string_lossy(),
-            "content": r#"
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": shared_package.to_string_lossy(),
+                    "content": r#"
 {
   "name": "@monorepo/shared",
   "version": "1.0.0",
@@ -959,13 +1066,18 @@ mod tests {
   }
 }
 "#
-        })).await?;
+                }),
+            )
+            .await?;
         created_files.push(shared_package);
 
         let shared_index = shared_dir.join("index.ts");
-        client.call_tool("create_file", json!({
-            "file_path": shared_index.to_string_lossy(),
-            "content": r#"
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": shared_index.to_string_lossy(),
+                    "content": r#"
 export interface BaseEntity {
     id: string;
     createdAt: Date;
@@ -1005,7 +1117,9 @@ export class Logger {
     }
 }
 "#
-        })).await?;
+                }),
+            )
+            .await?;
         created_files.push(shared_index);
 
         // Create frontend app
@@ -1013,9 +1127,12 @@ export class Logger {
         std::fs::create_dir_all(&frontend_dir)?;
 
         let frontend_package = frontend_dir.join("package.json");
-        client.call_tool("create_file", json!({
-            "file_path": frontend_package.to_string_lossy(),
-            "content": r#"
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": frontend_package.to_string_lossy(),
+                    "content": r#"
 {
   "name": "@monorepo/frontend",
   "version": "1.0.0",
@@ -1036,13 +1153,18 @@ export class Logger {
   }
 }
 "#
-        })).await?;
+                }),
+            )
+            .await?;
         created_files.push(frontend_package);
 
         let frontend_app = frontend_dir.join("app.tsx");
-        client.call_tool("create_file", json!({
-            "file_path": frontend_app.to_string_lossy(),
-            "content": r#"
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": frontend_app.to_string_lossy(),
+                    "content": r#"
 import { User, Project, generateId, validateEmail, Logger } from '@monorepo/shared';
 import React, { useState, useEffect } from 'react';
 
@@ -1139,7 +1261,9 @@ export function App({ initialUsers = [] }: AppProps) {
 
 export default App;
 "#
-        })).await?;
+                }),
+            )
+            .await?;
         created_files.push(frontend_app);
 
         Ok(created_files)
@@ -1156,9 +1280,12 @@ export default App;
 
         // File with syntax errors
         let syntax_error_file = workspace.path().join("syntax_errors.ts");
-        client.call_tool("create_file", json!({
-            "file_path": syntax_error_file.to_string_lossy(),
-            "content": r#"
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": syntax_error_file.to_string_lossy(),
+                    "content": r#"
 // This file contains intentional syntax errors for testing
 
 interface User {
@@ -1182,14 +1309,19 @@ class BrokenClass {
 export { User, brokenFunction, BrokenClass;
 // Should work despite errors above
 "#
-        })).await?;
+                }),
+            )
+            .await?;
         created_files.push(syntax_error_file);
 
         // File with type errors
         let type_error_file = workspace.path().join("type_errors.ts");
-        client.call_tool("create_file", json!({
-            "file_path": type_error_file.to_string_lossy(),
-            "content": r#"
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": type_error_file.to_string_lossy(),
+                    "content": r#"
 // This file contains intentional type errors
 
 interface User {
@@ -1223,14 +1355,19 @@ export function validFunction(x: number): number {
 
 export const validConstant = "this works";
 "#
-        })).await?;
+                }),
+            )
+            .await?;
         created_files.push(type_error_file);
 
         // File with import errors
         let import_error_file = workspace.path().join("import_errors.ts");
-        client.call_tool("create_file", json!({
-            "file_path": import_error_file.to_string_lossy(),
-            "content": r#"
+        client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": import_error_file.to_string_lossy(),
+                    "content": r#"
 // This file contains intentional import errors
 
 import { NonExistentType } from './does-not-exist';
@@ -1253,7 +1390,9 @@ export function workingFunction(): number {
     return validFunction(42);
 }
 "#
-        })).await?;
+                }),
+            )
+            .await?;
         created_files.push(import_error_file);
 
         Ok(created_files)
@@ -1272,7 +1411,8 @@ export function workingFunction(): number {
         // Create many interface files
         for i in 0..base_count {
             let file_path = workspace.path().join(format!("perf_interface_{}.ts", i));
-            let content = format!(r#"
+            let content = format!(
+                r#"
 export interface PerfInterface{i} {{
     id{i}: number;
     data{i}: string;
@@ -1289,12 +1429,19 @@ export interface Extended{i} extends PerfInterface{i} {{
     additional{i}: Union{i};
     computed{i}: () => string;
 }}
-"#, i = i);
+"#,
+                i = i
+            );
 
-            client.call_tool("create_file", json!({
-                "file_path": file_path.to_string_lossy(),
-                "content": content
-            })).await?;
+            client
+                .call_tool(
+                    "create_file",
+                    json!({
+                        "file_path": file_path.to_string_lossy(),
+                        "content": content
+                    }),
+                )
+                .await?;
 
             created_files.push(file_path);
         }
@@ -1307,7 +1454,8 @@ export interface Extended{i} extends PerfInterface{i} {{
                 format!("import {{ PerfInterface{idx}, Extended{idx}, Union{idx} }} from './perf_interface_{idx}';", idx = idx)
             }).collect::<Vec<_>>().join("\n");
 
-            let content = format!(r#"
+            let content = format!(
+                r#"
 {imports}
 
 export class PerfClass{i} {{
@@ -1335,12 +1483,20 @@ export class PerfClass{i} {{
         return result;
     }}
 }}
-"#, imports = imports, i = i);
+"#,
+                imports = imports,
+                i = i
+            );
 
-            client.call_tool("create_file", json!({
-                "file_path": file_path.to_string_lossy(),
-                "content": content
-            })).await?;
+            client
+                .call_tool(
+                    "create_file",
+                    json!({
+                        "file_path": file_path.to_string_lossy(),
+                        "content": content
+                    }),
+                )
+                .await?;
 
             created_files.push(file_path);
         }

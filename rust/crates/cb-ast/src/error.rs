@@ -1,7 +1,7 @@
 //! AST error types
 
-use thiserror::Error;
 use cb_core::CoreError;
+use thiserror::Error;
 
 /// AST operation errors
 #[derive(Error, Debug)]
@@ -25,19 +25,27 @@ pub enum AstError {
 
 impl AstError {
     pub fn parse(message: impl Into<String>) -> Self {
-        Self::Parse { message: message.into() }
+        Self::Parse {
+            message: message.into(),
+        }
     }
 
     pub fn analysis(message: impl Into<String>) -> Self {
-        Self::Analysis { message: message.into() }
+        Self::Analysis {
+            message: message.into(),
+        }
     }
 
     pub fn transformation(message: impl Into<String>) -> Self {
-        Self::Transformation { message: message.into() }
+        Self::Transformation {
+            message: message.into(),
+        }
     }
 
     pub fn unsupported_syntax(feature: impl Into<String>) -> Self {
-        Self::UnsupportedSyntax { feature: feature.into() }
+        Self::UnsupportedSyntax {
+            feature: feature.into(),
+        }
     }
 }
 

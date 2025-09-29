@@ -1,6 +1,6 @@
-use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
+use tests::harness::{TestClient, TestWorkspace};
 
 #[tokio::test]
 async fn test_find_definition_function() {
@@ -11,30 +11,44 @@ async fn test_find_definition_function() {
     let main_file = workspace.path().join("main.ts");
     let util_file = workspace.path().join("utils.ts");
 
-    std::fs::write(&util_file, r#"
+    std::fs::write(
+        &util_file,
+        r#"
 export function calculateSum(a: number, b: number): number {
     return a + b;
 }
 
 export const PI = 3.14159;
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
-    std::fs::write(&main_file, r#"
+    std::fs::write(
+        &main_file,
+        r#"
 import { calculateSum, PI } from './utils';
 
 const result = calculateSum(5, 3);
 console.log(`Result: ${result}, PI: ${PI}`);
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Give LSP time to process files
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
     // Find definition of calculateSum at the call site
-    let response = client.call_tool("find_definition", json!({
-        "file_path": main_file.to_string_lossy(),
-        "line": 4,
-        "character": 15
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "find_definition",
+            json!({
+                "file_path": main_file.to_string_lossy(),
+                "line": 4,
+                "character": 15
+            }),
+        )
+        .await
+        .unwrap();
 
     let locations = response["locations"].as_array().unwrap();
     assert!(!locations.is_empty());
@@ -56,7 +70,9 @@ async fn test_find_definition_interface() {
     let types_file = workspace.path().join("types.ts");
     let main_file = workspace.path().join("main.ts");
 
-    std::fs::write(&types_file, r#"
+    std::fs::write(
+        &types_file,
+        r#"
 export interface User {
     id: number;
     name: string;
@@ -64,9 +80,13 @@ export interface User {
 }
 
 export type UserRole = 'admin' | 'user' | 'guest';
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
-    std::fs::write(&main_file, r#"
+    std::fs::write(
+        &main_file,
+        r#"
 import { User, UserRole } from './types';
 
 const user: User = {
@@ -76,16 +96,24 @@ const user: User = {
 };
 
 const role: UserRole = 'admin';
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
     // Find definition of User interface
-    let response = client.call_tool("find_definition", json!({
-        "file_path": main_file.to_string_lossy(),
-        "line": 3,
-        "character": 12
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "find_definition",
+            json!({
+                "file_path": main_file.to_string_lossy(),
+                "line": 3,
+                "character": 12
+            }),
+        )
+        .await
+        .unwrap();
 
     let locations = response["locations"].as_array().unwrap();
     assert!(!locations.is_empty());
@@ -104,20 +132,30 @@ async fn test_find_references_function() {
     let main_file = workspace.path().join("main.ts");
     let test_file = workspace.path().join("test.ts");
 
-    std::fs::write(&util_file, r#"
+    std::fs::write(
+        &util_file,
+        r#"
 export function formatName(first: string, last: string): string {
     return `${first} ${last}`;
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
-    std::fs::write(&main_file, r#"
+    std::fs::write(
+        &main_file,
+        r#"
 import { formatName } from './utils';
 
 const fullName = formatName('John', 'Doe');
 console.log(fullName);
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
-    std::fs::write(&test_file, r#"
+    std::fs::write(
+        &test_file,
+        r#"
 import { formatName } from './utils';
 
 describe('formatName', () => {
@@ -126,23 +164,32 @@ describe('formatName', () => {
         expect(result).toBe('Jane Smith');
     });
 });
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
     // Find all references to formatName
-    let response = client.call_tool("find_references", json!({
-        "file_path": util_file.to_string_lossy(),
-        "line": 1,
-        "character": 17,
-        "include_declaration": true
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "find_references",
+            json!({
+                "file_path": util_file.to_string_lossy(),
+                "line": 1,
+                "character": 17,
+                "include_declaration": true
+            }),
+        )
+        .await
+        .unwrap();
 
     let references = response["references"].as_array().unwrap();
     assert!(references.len() >= 3); // declaration + 2 usages
 
     // Check that references include the declaration and usages
-    let files_referenced: Vec<String> = references.iter()
+    let files_referenced: Vec<String> = references
+        .iter()
         .map(|r| r["uri"].as_str().unwrap().to_string())
         .collect();
 
@@ -158,7 +205,9 @@ async fn test_get_hover_function() {
 
     let file_path = workspace.path().join("hover_test.ts");
 
-    std::fs::write(&file_path, r#"
+    std::fs::write(
+        &file_path,
+        r#"
 /**
  * Calculates the area of a rectangle
  * @param width The width of the rectangle
@@ -170,20 +219,32 @@ function calculateArea(width: number, height: number): number {
 }
 
 const area = calculateArea(10, 5);
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
     // Get hover information for the function call
-    let response = client.call_tool("get_hover", json!({
-        "file_path": file_path.to_string_lossy(),
-        "line": 10,
-        "character": 15
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "get_hover",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "line": 10,
+                "character": 15
+            }),
+        )
+        .await
+        .unwrap();
 
     let hover_content = response["contents"].as_str().unwrap();
     assert!(hover_content.contains("calculateArea"));
-    assert!(hover_content.contains("number") || hover_content.contains("width") || hover_content.contains("height"));
+    assert!(
+        hover_content.contains("number")
+            || hover_content.contains("width")
+            || hover_content.contains("height")
+    );
 }
 
 #[tokio::test]
@@ -193,7 +254,9 @@ async fn test_get_hover_variable() {
 
     let file_path = workspace.path().join("variable_hover.ts");
 
-    std::fs::write(&file_path, r#"
+    std::fs::write(
+        &file_path,
+        r#"
 interface Point {
     x: number;
     y: number;
@@ -201,16 +264,24 @@ interface Point {
 
 const origin: Point = { x: 0, y: 0 };
 const distance = Math.sqrt(origin.x ** 2 + origin.y ** 2);
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
     // Get hover information for the origin variable
-    let response = client.call_tool("get_hover", json!({
-        "file_path": file_path.to_string_lossy(),
-        "line": 6,
-        "character": 6
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "get_hover",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "line": 6,
+                "character": 6
+            }),
+        )
+        .await
+        .unwrap();
 
     let hover_content = response["contents"].as_str().unwrap();
     assert!(hover_content.contains("Point") || hover_content.contains("origin"));
@@ -223,22 +294,32 @@ async fn test_get_signature_help() {
 
     let file_path = workspace.path().join("signature_test.ts");
 
-    std::fs::write(&file_path, r#"
+    std::fs::write(
+        &file_path,
+        r#"
 function greetUser(name: string, age: number, isActive: boolean = true): string {
     return `Hello ${name}, age ${age}, active: ${isActive}`;
 }
 
 const greeting = greetUser("Alice", 30,
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
     // Get signature help while typing function arguments
-    let response = client.call_tool("get_signature_help", json!({
-        "file_path": file_path.to_string_lossy(),
-        "line": 5,
-        "character": 35
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "get_signature_help",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "line": 5,
+                "character": 35
+            }),
+        )
+        .await
+        .unwrap();
 
     let signatures = response["signatures"].as_array().unwrap();
     assert!(!signatures.is_empty());
@@ -259,7 +340,9 @@ async fn test_search_workspace_symbols() {
 
     // Create ALL TypeScript files in src/ directory BEFORE starting LSP client
     // (tsconfig.json includes only "src/**/*" files)
-    workspace.create_file("src/models.ts", r#"
+    workspace.create_file(
+        "src/models.ts",
+        r#"
 export class UserModel {
     constructor(public id: number, public name: string) {}
 
@@ -273,9 +356,12 @@ export interface UserData {
     name: string;
     email: string;
 }
-"#);
+"#,
+    );
 
-    workspace.create_file("src/services.ts", r#"
+    workspace.create_file(
+        "src/services.ts",
+        r#"
 import { UserModel, UserData } from './models';
 
 export class UserService {
@@ -291,7 +377,8 @@ export class UserService {
         return this.users.find(u => u.id === id);
     }
 }
-"#);
+"#,
+    );
 
     // NOW create the TestClient after all files are in place
     let mut client = TestClient::new(workspace.path());
@@ -300,14 +387,28 @@ export class UserService {
 
     // Explicitly notify the LSP server about all TypeScript files
     // This ensures the server indexes them for symbol search
-    let ts_files = ["src/models.ts", "src/services.ts", "tsconfig.json", "package.json"];
+    let ts_files = [
+        "src/models.ts",
+        "src/services.ts",
+        "tsconfig.json",
+        "package.json",
+    ];
     for file in &ts_files {
         let file_path = workspace.path().join(file);
         if file_path.exists() {
-            println!("DEBUG: Notifying LSP server about file: {}", file_path.display());
-            client.call_tool("notify_file_opened", json!({
-                "file_path": file_path.to_string_lossy()
-            })).await.unwrap();
+            println!(
+                "DEBUG: Notifying LSP server about file: {}",
+                file_path.display()
+            );
+            client
+                .call_tool(
+                    "notify_file_opened",
+                    json!({
+                        "file_path": file_path.to_string_lossy()
+                    }),
+                )
+                .await
+                .unwrap();
         }
     }
 
@@ -335,13 +436,21 @@ export class UserService {
     let package_path = workspace.path().join("package.json");
     if tsconfig_path.exists() {
         println!("DEBUG: tsconfig.json exists and contains:");
-        println!("{}", std::fs::read_to_string(&tsconfig_path).unwrap_or_else(|e| format!("Error reading: {}", e)));
+        println!(
+            "{}",
+            std::fs::read_to_string(&tsconfig_path)
+                .unwrap_or_else(|e| format!("Error reading: {}", e))
+        );
     } else {
         println!("DEBUG: tsconfig.json DOES NOT EXIST");
     }
     if package_path.exists() {
         println!("DEBUG: package.json exists and contains:");
-        println!("{}", std::fs::read_to_string(&package_path).unwrap_or_else(|e| format!("Error reading: {}", e)));
+        println!(
+            "{}",
+            std::fs::read_to_string(&package_path)
+                .unwrap_or_else(|e| format!("Error reading: {}", e))
+        );
     } else {
         println!("DEBUG: package.json DOES NOT EXIST");
     }
@@ -357,9 +466,14 @@ export class UserService {
     // Verify the server is ready by checking document symbols first
     // This is a simpler operation that should work if the project is recognized
     println!("DEBUG: Testing document symbols to verify project recognition...");
-    let doc_symbols_test = client.call_tool("get_document_symbols", json!({
-        "file_path": workspace.path().join("src/models.ts").to_string_lossy()
-    })).await;
+    let doc_symbols_test = client
+        .call_tool(
+            "get_document_symbols",
+            json!({
+                "file_path": workspace.path().join("src/models.ts").to_string_lossy()
+            }),
+        )
+        .await;
 
     match doc_symbols_test {
         Ok(response) => {
@@ -375,18 +489,29 @@ export class UserService {
     // This means TypeScript server needs explicit project configuration
     // Force TypeScript server to re-detect the project by opening tsconfig.json
     println!("DEBUG: Opening tsconfig.json to force project detection...");
-    let _tsconfig_open = client.call_tool("notify_file_opened", json!({
-        "file_path": workspace.path().join("tsconfig.json").to_string_lossy()
-    })).await;
+    let _tsconfig_open = client
+        .call_tool(
+            "notify_file_opened",
+            json!({
+                "file_path": workspace.path().join("tsconfig.json").to_string_lossy()
+            }),
+        )
+        .await;
 
     // Give additional time for project re-detection
     println!("DEBUG: Waiting for project re-detection after tsconfig.json notification...");
     tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
 
     // Search for symbols containing "User"
-    let response = client.call_tool("search_workspace_symbols", json!({
-        "query": "User"
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "search_workspace_symbols",
+            json!({
+                "query": "User"
+            }),
+        )
+        .await
+        .unwrap();
 
     // Print stderr logs to see server startup debug output
     let stderr_logs = client.get_stderr_logs();
@@ -420,12 +545,15 @@ export class UserService {
     };
 
     let symbols = symbols.unwrap_or_else(|| {
-        panic!("Could not find symbols in response. Available keys: {:?}",
-               response.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+        panic!(
+            "Could not find symbols in response. Available keys: {:?}",
+            response.as_object().map(|o| o.keys().collect::<Vec<_>>())
+        );
     });
     assert!(!symbols.is_empty());
 
-    let symbol_names: Vec<String> = symbols.iter()
+    let symbol_names: Vec<String> = symbols
+        .iter()
         .map(|s| s["name"].as_str().unwrap().to_string())
         .collect();
 
@@ -441,7 +569,9 @@ async fn test_get_document_symbols() {
 
     let file_path = workspace.path().join("symbols.ts");
 
-    std::fs::write(&file_path, r#"
+    std::fs::write(
+        &file_path,
+        r#"
 export const API_URL = 'https://api.example.com';
 
 export interface Config {
@@ -471,18 +601,27 @@ export class ApiClient {
 export function createClient(config: Config): ApiClient {
     return new ApiClient(config);
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
-    let response = client.call_tool("get_document_symbols", json!({
-        "file_path": file_path.to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "get_document_symbols",
+            json!({
+                "file_path": file_path.to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
 
     let symbols = response["symbols"].as_array().unwrap();
     assert!(!symbols.is_empty());
 
-    let symbol_names: Vec<String> = symbols.iter()
+    let symbol_names: Vec<String> = symbols
+        .iter()
         .map(|s| s["name"].as_str().unwrap().to_string())
         .collect();
 
@@ -493,19 +632,23 @@ export function createClient(config: Config): ApiClient {
     assert!(symbol_names.contains(&"createClient".to_string()));
 
     // Check that class has methods as children
-    let api_client_symbol = symbols.iter()
+    let api_client_symbol = symbols
+        .iter()
         .find(|s| s["name"].as_str().unwrap() == "ApiClient")
         .unwrap();
 
     if let Some(children) = api_client_symbol.get("children") {
         let children_array = children.as_array().unwrap();
-        let method_names: Vec<String> = children_array.iter()
+        let method_names: Vec<String> = children_array
+            .iter()
             .map(|c| c["name"].as_str().unwrap().to_string())
             .collect();
 
-        assert!(method_names.contains(&"constructor".to_string()) ||
-                method_names.contains(&"get".to_string()) ||
-                method_names.contains(&"post".to_string()));
+        assert!(
+            method_names.contains(&"constructor".to_string())
+                || method_names.contains(&"get".to_string())
+                || method_names.contains(&"post".to_string())
+        );
     }
 }
 
@@ -519,7 +662,9 @@ async fn test_cross_file_intelligence() {
     let utils_file = workspace.path().join("utils.ts");
     let main_file = workspace.path().join("main.ts");
 
-    std::fs::write(&types_file, r#"
+    std::fs::write(
+        &types_file,
+        r#"
 export interface Product {
     id: string;
     name: string;
@@ -528,9 +673,13 @@ export interface Product {
 }
 
 export type SortOrder = 'asc' | 'desc';
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
-    std::fs::write(&utils_file, r#"
+    std::fs::write(
+        &utils_file,
+        r#"
 import { Product, SortOrder } from './types';
 
 export function sortProducts(products: Product[], order: SortOrder = 'asc'): Product[] {
@@ -543,9 +692,13 @@ export function sortProducts(products: Product[], order: SortOrder = 'asc'): Pro
 export function filterByCategory(products: Product[], category: string): Product[] {
     return products.filter(p => p.category === category);
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
-    std::fs::write(&main_file, r#"
+    std::fs::write(
+        &main_file,
+        r#"
 import { Product } from './types';
 import { sortProducts, filterByCategory } from './utils';
 
@@ -559,16 +712,24 @@ const electronics = filterByCategory(products, 'Electronics');
 const sortedElectronics = sortProducts(electronics, 'desc');
 
 console.log(sortedElectronics);
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
 
     // Test 1: Find definition of Product interface from main.ts
-    let response = client.call_tool("find_definition", json!({
-        "file_path": main_file.to_string_lossy(),
-        "line": 2,
-        "character": 20
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "find_definition",
+            json!({
+                "file_path": main_file.to_string_lossy(),
+                "line": 2,
+                "character": 20
+            }),
+        )
+        .await
+        .unwrap();
 
     let locations = response["locations"].as_array().unwrap();
     assert!(!locations.is_empty());
@@ -576,35 +737,54 @@ console.log(sortedElectronics);
     assert!(def_uri.contains("types.ts"));
 
     // Test 2: Find references to sortProducts function
-    let response = client.call_tool("find_references", json!({
-        "file_path": utils_file.to_string_lossy(),
-        "line": 3,
-        "character": 17,
-        "include_declaration": true
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "find_references",
+            json!({
+                "file_path": utils_file.to_string_lossy(),
+                "line": 3,
+                "character": 17,
+                "include_declaration": true
+            }),
+        )
+        .await
+        .unwrap();
 
     let references = response["references"].as_array().unwrap();
     assert!(references.len() >= 2); // declaration + usage in main.ts
 
     // Test 3: Get hover for filterByCategory in main.ts
-    let response = client.call_tool("get_hover", json!({
-        "file_path": main_file.to_string_lossy(),
-        "line": 9,
-        "character": 20
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "get_hover",
+            json!({
+                "file_path": main_file.to_string_lossy(),
+                "line": 9,
+                "character": 20
+            }),
+        )
+        .await
+        .unwrap();
 
     let hover_content = response["contents"].as_str().unwrap();
     assert!(hover_content.contains("filterByCategory") || hover_content.contains("Product"));
 
     // Test 4: Search for all Product-related symbols
-    let response = client.call_tool("search_workspace_symbols", json!({
-        "query": "Product"
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "search_workspace_symbols",
+            json!({
+                "query": "Product"
+            }),
+        )
+        .await
+        .unwrap();
 
     let symbols = response["symbols"].as_array().unwrap();
     assert!(!symbols.is_empty());
 
-    let symbol_names: Vec<String> = symbols.iter()
+    let symbol_names: Vec<String> = symbols
+        .iter()
         .map(|s| s["name"].as_str().unwrap().to_string())
         .collect();
 
@@ -619,7 +799,9 @@ async fn test_lsp_intelligence_with_errors() {
     let file_path = workspace.path().join("errors.ts");
 
     // Create file with intentional TypeScript errors
-    std::fs::write(&file_path, r#"
+    std::fs::write(
+        &file_path,
+        r#"
 interface User {
     id: number;
     name: string;
@@ -637,41 +819,62 @@ const user: User = {
     // Missing name property - error
     age: 30 // Error: Object literal may only specify known properties
 };
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
     // Even with errors, LSP intelligence should still work for valid parts
 
     // Test 1: Find definition of User interface should work
-    let response = client.call_tool("find_definition", json!({
-        "file_path": file_path.to_string_lossy(),
-        "line": 7,
-        "character": 25
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "find_definition",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "line": 7,
+                "character": 25
+            }),
+        )
+        .await
+        .unwrap();
 
     let locations = response["locations"].as_array().unwrap();
     assert!(!locations.is_empty());
 
     // Test 2: Get hover on valid property should work
-    let response = client.call_tool("get_hover", json!({
-        "file_path": file_path.to_string_lossy(),
-        "line": 8,
-        "character": 20
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "get_hover",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "line": 8,
+                "character": 20
+            }),
+        )
+        .await
+        .unwrap();
 
     let hover_content = response["contents"].as_str().unwrap();
     assert!(hover_content.contains("name") || hover_content.contains("string"));
 
     // Test 3: Document symbols should still be extracted
-    let response = client.call_tool("get_document_symbols", json!({
-        "file_path": file_path.to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "get_document_symbols",
+            json!({
+                "file_path": file_path.to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
 
     let symbols = response["symbols"].as_array().unwrap();
     assert!(!symbols.is_empty());
 
-    let symbol_names: Vec<String> = symbols.iter()
+    let symbol_names: Vec<String> = symbols
+        .iter()
         .map(|s| s["name"].as_str().unwrap().to_string())
         .collect();
 

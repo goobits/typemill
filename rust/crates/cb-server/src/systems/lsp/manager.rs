@@ -1,12 +1,12 @@
 //! LSP manager implementation
 
 use crate::error::{ServerError, ServerResult};
-use cb_core::CoreError;
 use crate::interfaces::LspService;
 use crate::systems::lsp::client::LspClient;
 use async_trait::async_trait;
 use cb_core::config::LspConfig;
-use cb_core::model::mcp::{McpMessage, McpResponse, McpError};
+use cb_core::model::mcp::{McpError, McpMessage, McpResponse};
+use cb_core::CoreError;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::Path;
@@ -48,7 +48,10 @@ impl LspManager {
             .iter()
             .find(|server| server.extensions.contains(&extension.to_string()))
             .ok_or_else(|| {
-                ServerError::Unsupported(format!("No LSP server configured for extension: {}", extension))
+                ServerError::Unsupported(format!(
+                    "No LSP server configured for extension: {}",
+                    extension
+                ))
             })?;
 
         // Create new client
@@ -146,14 +149,20 @@ impl LspService for LspManager {
 
                 // Get file extension
                 let extension = Self::get_extension(&file_path).ok_or_else(|| {
-                    CoreError::invalid_data(format!("Could not determine file extension for: {}", file_path))
+                    CoreError::invalid_data(format!(
+                        "Could not determine file extension for: {}",
+                        file_path
+                    ))
                 })?;
 
                 // Get LSP client for this extension
                 let client = match self.get_client_for_extension(extension).await {
                     Ok(client) => client,
                     Err(e) => {
-                        error!("Failed to get LSP client for extension {}: {}", extension, e);
+                        error!(
+                            "Failed to get LSP client for extension {}: {}",
+                            extension, e
+                        );
                         return Ok(McpMessage::Response(Self::create_error_response(
                             request.id,
                             format!("LSP server not available for {} files: {}", extension, e),
@@ -165,7 +174,7 @@ impl LspService for LspManager {
                 // The plugin system (DirectLspAdapter) goes directly to LspClient.
                 // This is only kept for backwards compatibility but should not be used.
                 return Err(CoreError::not_supported(
-                    "Direct LSP manager requests are deprecated. Use the plugin system instead."
+                    "Direct LSP manager requests are deprecated. Use the plugin system instead.",
                 ));
 
                 // Old code (no longer reached):
@@ -173,7 +182,9 @@ impl LspService for LspManager {
                 match client.send_request("", json!({})).await {
                     Ok(result) => {
                         debug!("LSP request successful: {}", request.method);
-                        Ok(McpMessage::Response(Self::lsp_to_mcp_response(result, request.id)))
+                        Ok(McpMessage::Response(Self::lsp_to_mcp_response(
+                            result, request.id,
+                        )))
                     }
                     Err(e) => {
                         error!("LSP request failed: {}", e);
@@ -209,7 +220,10 @@ impl LspService for LspManager {
             for extension in extensions {
                 if let Some(client) = clients.remove(&extension) {
                     info!("Restarting LSP client for extension: {}", extension);
-                    client.kill().await.map_err(|e| CoreError::internal(e.to_string()))?;
+                    client
+                        .kill()
+                        .await
+                        .map_err(|e| CoreError::internal(e.to_string()))?;
                 }
             }
         } else {
@@ -217,7 +231,10 @@ impl LspService for LspManager {
             info!("Restarting all LSP clients");
             for (extension, client) in clients.drain() {
                 info!("Killing LSP client for extension: {}", extension);
-                client.kill().await.map_err(|e| CoreError::internal(e.to_string()))?;
+                client
+                    .kill()
+                    .await
+                    .map_err(|e| CoreError::internal(e.to_string()))?;
             }
         }
 
@@ -227,19 +244,21 @@ impl LspService for LspManager {
     /// Notify LSP server that a file has been opened
     async fn notify_file_opened(&self, file_path: &Path) -> Result<(), CoreError> {
         // Get file extension to determine which client to use
-        let extension = file_path
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
+        let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
         // Get the appropriate client
         match self.get_client_for_extension(extension).await {
             Ok(client) => {
-                client.notify_file_opened(file_path).await
+                client
+                    .notify_file_opened(file_path)
+                    .await
                     .map_err(|e| CoreError::internal(e.to_string()))?;
             }
             Err(e) => {
-                debug!("No LSP client available for extension '{}': {}", extension, e);
+                debug!(
+                    "No LSP client available for extension '{}': {}",
+                    extension, e
+                );
                 // Don't fail the operation if there's no client for this extension
             }
         }
@@ -258,7 +277,10 @@ mod tests {
             servers: vec![
                 LspServerConfig {
                     extensions: vec!["ts".to_string(), "js".to_string()],
-                    command: vec!["typescript-language-server".to_string(), "--stdio".to_string()],
+                    command: vec![
+                        "typescript-language-server".to_string(),
+                        "--stdio".to_string(),
+                    ],
                     root_dir: None,
                     restart_interval: None,
                 },

@@ -7,10 +7,10 @@ use axum::{
     routing::get,
     Router,
 };
-use cb_server::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
-use cb_server::services::DefaultAstService;
-use cb_server::interfaces::AstService;
 use cb_ast::AstCache;
+use cb_server::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
+use cb_server::interfaces::AstService;
+use cb_server::services::DefaultAstService;
 use clap::{Parser, Subcommand};
 use std::sync::Arc;
 use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -79,7 +79,10 @@ async fn main() {
 
 async fn run_stdio_mode() {
     debug!("Initializing stdio mode MCP server");
-    debug!("Current working directory in run_stdio_mode: {:?}", std::env::current_dir());
+    debug!(
+        "Current working directory in run_stdio_mode: {:?}",
+        std::env::current_dir()
+    );
 
     // Create AppState similar to the test implementation
     let app_state = match create_app_state().await {
@@ -173,7 +176,9 @@ async fn run_websocket_server() {
         return;
     }
 
-    let app = Router::new().route("/ws", get(ws_handler)).with_state(dispatcher);
+    let app = Router::new()
+        .route("/ws", get(ws_handler))
+        .with_state(dispatcher);
 
     let listener = match tokio::net::TcpListener::bind("127.0.0.1:3000").await {
         Ok(listener) => listener,
@@ -213,7 +218,9 @@ async fn create_app_state() -> Result<Arc<AppState>, std::io::Error> {
         ast_cache.clone(),
         lock_manager.clone(),
     ));
-    let operation_queue = Arc::new(cb_server::services::OperationQueue::new(lock_manager.clone()));
+    let operation_queue = Arc::new(cb_server::services::OperationQueue::new(
+        lock_manager.clone(),
+    ));
 
     Ok(Arc::new(AppState {
         ast_service,
@@ -253,7 +260,11 @@ async fn handle_socket(mut socket: WebSocket, dispatcher: Arc<PluginDispatcher>)
                                 continue;
                             }
                         };
-                        if socket.send(Message::Text(response_text.into())).await.is_err() {
+                        if socket
+                            .send(Message::Text(response_text.into()))
+                            .await
+                            .is_err()
+                        {
                             break; // client disconnected
                         }
                     }

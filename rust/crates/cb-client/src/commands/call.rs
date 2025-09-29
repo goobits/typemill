@@ -1,4 +1,4 @@
-use super::{Command, CommandContext, GlobalArgs, utils};
+use super::{utils, Command, CommandContext, GlobalArgs};
 use crate::error::{ClientError, ClientResult};
 use crate::websocket::MCPResponse;
 use async_trait::async_trait;
@@ -98,7 +98,9 @@ impl CallCommand {
         }
 
         // Connect to server
-        let client = ctx.connect_client(self.url.clone(), self.token.clone()).await?;
+        let client = ctx
+            .connect_client(self.url.clone(), self.token.clone())
+            .await?;
 
         // Execute the tool call
         ctx.display_info(&format!("Calling tool '{}'...", self.tool));
@@ -152,8 +154,15 @@ impl CallCommand {
     }
 
     /// Read parameters from file
-    async fn read_params_from_file(&self, ctx: &CommandContext, file: &str) -> ClientResult<Option<Value>> {
-        ctx.display_info(&format!("Reading parameters from file: {}", ctx.formatter.path(file)));
+    async fn read_params_from_file(
+        &self,
+        ctx: &CommandContext,
+        file: &str,
+    ) -> ClientResult<Option<Value>> {
+        ctx.display_info(&format!(
+            "Reading parameters from file: {}",
+            ctx.formatter.path(file)
+        ));
 
         let content = fs::read_to_string(file)
             .map_err(|e| ClientError::IoError(format!("Failed to read file '{}': {}", file, e)))?;
@@ -173,8 +182,9 @@ impl CallCommand {
                 println!("{}", ctx.formatter.mcp_response(response)?);
             }
             OutputFormat::Json => {
-                let json = serde_json::to_string_pretty(response)
-                    .map_err(|e| ClientError::SerializationError(format!("Failed to serialize response: {}", e)))?;
+                let json = serde_json::to_string_pretty(response).map_err(|e| {
+                    ClientError::SerializationError(format!("Failed to serialize response: {}", e))
+                })?;
                 println!("{}", json);
             }
             OutputFormat::Raw => {
@@ -182,8 +192,12 @@ impl CallCommand {
                     eprintln!("Error {}: {}", error.code, error.message);
                     std::process::exit(1);
                 } else if let Some(ref result) = response.result {
-                    let output = serde_json::to_string(result)
-                        .map_err(|e| ClientError::SerializationError(format!("Failed to serialize result: {}", e)))?;
+                    let output = serde_json::to_string(result).map_err(|e| {
+                        ClientError::SerializationError(format!(
+                            "Failed to serialize result: {}",
+                            e
+                        ))
+                    })?;
                     println!("{}", output);
                 } else {
                     println!("null");
@@ -253,23 +267,17 @@ impl CallCommand {
     async fn interactive_params(&self, ctx: &CommandContext) -> ClientResult<Option<Value>> {
         ctx.interactive.banner(
             &format!("🔧 Interactive Parameter Builder for '{}'", self.tool),
-            Some("Let's build the parameters step by step")
+            Some("Let's build the parameters step by step"),
         )?;
 
         // Tool-specific parameter helpers
         match self.tool.as_str() {
-            "find_definition" | "find_references" => {
-                self.build_symbol_params(ctx).await
-            }
+            "find_definition" | "find_references" => self.build_symbol_params(ctx).await,
             "get_document_symbols" | "format_document" | "get_diagnostics" => {
                 self.build_file_params(ctx).await
             }
-            "rename_symbol" => {
-                self.build_rename_params(ctx).await
-            }
-            _ => {
-                self.build_generic_params(ctx).await
-            }
+            "rename_symbol" => self.build_rename_params(ctx).await,
+            _ => self.build_generic_params(ctx).await,
         }
     }
 
@@ -300,7 +308,9 @@ impl CallCommand {
     /// Build parameters for rename tool
     async fn build_rename_params(&self, ctx: &CommandContext) -> ClientResult<Option<Value>> {
         let file_path = ctx.interactive.required_input("File path", None)?;
-        let symbol_name = ctx.interactive.required_input("Current symbol name", None)?;
+        let symbol_name = ctx
+            .interactive
+            .required_input("Current symbol name", None)?;
         let new_name = ctx.interactive.required_input("New symbol name", None)?;
 
         let params = serde_json::json!({
@@ -314,7 +324,8 @@ impl CallCommand {
 
     /// Build parameters for generic tools
     async fn build_generic_params(&self, ctx: &CommandContext) -> ClientResult<Option<Value>> {
-        ctx.interactive.warning_message("Generic parameter builder - manual JSON input required");
+        ctx.interactive
+            .warning_message("Generic parameter builder - manual JSON input required");
 
         let json_input = ctx.interactive.optional_input(
             "Parameters (JSON format, leave empty for no parameters)",
@@ -355,7 +366,7 @@ impl Command for CallCommand {
         if self.params.is_none() && self.params_file.is_none() && !self.params_stdin {
             if ctx.interactive.confirm(
                 "No parameters provided. Would you like to use the interactive parameter builder?",
-                Some(false)
+                Some(false),
             )? {
                 let params = self.interactive_params(&ctx).await?;
                 if let Some(p) = params {
@@ -364,7 +375,10 @@ impl Command for CallCommand {
                     println!("{}", ctx.formatter.json(&p)?);
                     println!();
 
-                    if !ctx.interactive.confirm("Proceed with these parameters?", Some(true))? {
+                    if !ctx
+                        .interactive
+                        .confirm("Proceed with these parameters?", Some(true))?
+                    {
                         ctx.display_info("Tool call cancelled");
                         return Ok(());
                     }

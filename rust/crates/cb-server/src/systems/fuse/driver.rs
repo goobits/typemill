@@ -2,8 +2,8 @@
 
 use cb_core::config::FuseConfig;
 use fuser::{
-    FileAttr, FileType, Filesystem, ReplyAttr, ReplyData, ReplyDirectory, ReplyEntry, Request,
-    ReplyOpen,
+    FileAttr, FileType, Filesystem, ReplyAttr, ReplyData, ReplyDirectory, ReplyEntry, ReplyOpen,
+    Request,
 };
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -243,7 +243,12 @@ impl Filesystem for CodeflowFS {
                         }
                     };
 
-                    if reply.add(inode, offset + i as i64 + 1, file_type_to_kind(file_type), file_name) {
+                    if reply.add(
+                        inode,
+                        offset + i as i64 + 1,
+                        file_type_to_kind(file_type),
+                        file_name,
+                    ) {
                         break;
                     }
                 }
@@ -316,11 +321,18 @@ impl Filesystem for CodeflowFS {
 }
 
 /// Start the FUSE mount in a background thread
-pub fn start_fuse_mount(config: &FuseConfig, workspace_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+pub fn start_fuse_mount(
+    config: &FuseConfig,
+    workspace_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mount_point = config.mount_point.clone();
     let workspace_path = workspace_path.to_path_buf();
 
-    info!("Starting FUSE mount: {} -> {}", workspace_path.display(), mount_point.display());
+    info!(
+        "Starting FUSE mount: {} -> {}",
+        workspace_path.display(),
+        mount_point.display()
+    );
 
     // Validate mount point exists
     if !mount_point.exists() {

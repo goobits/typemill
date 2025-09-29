@@ -39,11 +39,13 @@ impl StatusCommand {
         let mut status_items = Vec::new();
 
         // 1. Configuration Check
-        self.check_configuration(ctx, &mut status_items, &mut overall_status).await?;
+        self.check_configuration(ctx, &mut status_items, &mut overall_status)
+            .await?;
 
         // 2. Connection Check
         if ctx.is_configured() || self.url.is_some() {
-            self.check_connection(ctx, &mut status_items, &mut overall_status).await?;
+            self.check_connection(ctx, &mut status_items, &mut overall_status)
+                .await?;
         } else {
             status_items.push((
                 "Server Connection".to_string(),
@@ -96,11 +98,7 @@ impl StatusCommand {
             "Not configured".to_string()
         };
 
-        status_items.push((
-            "Server URL".to_string(),
-            url_status,
-            has_url,
-        ));
+        status_items.push(("Server URL".to_string(), url_status, has_url));
 
         if !has_url {
             *overall_status = false;
@@ -110,17 +108,17 @@ impl StatusCommand {
         let has_token = ctx.config.token.is_some() || self.token.is_some();
         status_items.push((
             "Auth Token".to_string(),
-            if has_token { "Configured".to_string() } else { "Not configured".to_string() },
+            if has_token {
+                "Configured".to_string()
+            } else {
+                "Not configured".to_string()
+            },
             true, // Token is optional, so always "OK"
         ));
 
         // Timeout configuration
         let timeout = ctx.config.get_timeout_ms();
-        status_items.push((
-            "Timeout".to_string(),
-            format!("{}ms", timeout),
-            true,
-        ));
+        status_items.push(("Timeout".to_string(), format!("{}ms", timeout), true));
 
         if self.verbose {
             println!();
@@ -159,14 +157,20 @@ impl StatusCommand {
         match connection_result {
             Ok((ping_time, state)) => {
                 let state_str = super::utils::format_connection_status(
-                    matches!(state, ConnectionState::Connected | ConnectionState::Authenticated),
+                    matches!(
+                        state,
+                        ConnectionState::Connected | ConnectionState::Authenticated
+                    ),
                     matches!(state, ConnectionState::Authenticated),
                 );
 
                 status_items.push((
                     "Connection".to_string(),
                     format!("{} ({})", state_str, ctx.formatter.duration(ping_time)),
-                    matches!(state, ConnectionState::Connected | ConnectionState::Authenticated),
+                    matches!(
+                        state,
+                        ConnectionState::Connected | ConnectionState::Authenticated
+                    ),
                 ));
 
                 // Test authentication if token is available
@@ -175,19 +179,17 @@ impl StatusCommand {
                 }
 
                 // Check server capabilities
-                self.check_server_capabilities(ctx, &client, status_items).await?;
+                self.check_server_capabilities(ctx, &client, status_items)
+                    .await?;
 
                 // Test basic tool availability
                 if self.verbose {
-                    self.check_tool_availability(ctx, &client, status_items).await?;
+                    self.check_tool_availability(ctx, &client, status_items)
+                        .await?;
                 }
             }
             Err(e) => {
-                status_items.push((
-                    "Connection".to_string(),
-                    format!("Failed: {}", e),
-                    false,
-                ));
+                status_items.push(("Connection".to_string(), format!("Failed: {}", e), false));
                 *overall_status = false;
 
                 // Provide connection diagnostics
@@ -201,7 +203,10 @@ impl StatusCommand {
     }
 
     /// Test connection and return ping time and state
-    async fn test_connection(&self, client: &WebSocketClient) -> ClientResult<(Duration, ConnectionState)> {
+    async fn test_connection(
+        &self,
+        client: &WebSocketClient,
+    ) -> ClientResult<(Duration, ConnectionState)> {
         // Connect
         client.connect().await?;
 
@@ -291,7 +296,9 @@ impl StatusCommand {
         for tool in &common_tools {
             match client.call_tool(tool, None).await {
                 Ok(response) => {
-                    if response.error.is_none() || response.error.as_ref().map(|e| e.code) == Some(-32601) {
+                    if response.error.is_none()
+                        || response.error.as_ref().map(|e| e.code) == Some(-32601)
+                    {
                         // Tool exists (either success or "method not found" which means it's recognized)
                         successful_tools += 1;
                     }
@@ -305,7 +312,11 @@ impl StatusCommand {
         let all_available = successful_tools == common_tools.len();
         status_items.push((
             "Tool Availability".to_string(),
-            format!("{}/{} tools available", successful_tools, common_tools.len()),
+            format!(
+                "{}/{} tools available",
+                successful_tools,
+                common_tools.len()
+            ),
             all_available,
         ));
 
@@ -313,7 +324,11 @@ impl StatusCommand {
     }
 
     /// Diagnose connection failure and provide specific guidance
-    fn diagnose_connection_failure(&self, ctx: &CommandContext, error: &ClientError) -> ClientResult<()> {
+    fn diagnose_connection_failure(
+        &self,
+        ctx: &CommandContext,
+        error: &ClientError,
+    ) -> ClientResult<()> {
         println!();
         ctx.display_warning("🔍 Connection Diagnostics");
 
@@ -394,7 +409,9 @@ impl StatusCommand {
                     }
                     "Server URL" => {
                         println!("• Configure server URL with 'codeflow-buddy setup'");
-                        println!("• Or use --url flag: codeflow-buddy status --url ws://localhost:3000");
+                        println!(
+                            "• Or use --url flag: codeflow-buddy status --url ws://localhost:3000"
+                        );
                     }
                     "Connection" => {
                         println!("• Ensure codeflow-buddy server is running");
@@ -457,7 +474,10 @@ mod tests {
     fn test_status_command_creation() {
         let cmd = StatusCommand::new(None, None);
         assert_eq!(cmd.name(), "status");
-        assert_eq!(cmd.description(), "Check client status and verify connectivity to the server");
+        assert_eq!(
+            cmd.description(),
+            "Check client status and verify connectivity to the server"
+        );
         assert!(!cmd.verbose);
     }
 
@@ -465,8 +485,9 @@ mod tests {
     fn test_status_command_with_params() {
         let cmd = StatusCommand::new(
             Some("ws://example.com:3000".to_string()),
-            Some("test-token".to_string())
-        ).with_verbose(true);
+            Some("test-token".to_string()),
+        )
+        .with_verbose(true);
 
         assert_eq!(cmd.url, Some("ws://example.com:3000".to_string()));
         assert_eq!(cmd.token, Some("test-token".to_string()));

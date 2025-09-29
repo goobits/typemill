@@ -1,8 +1,8 @@
 //! Integration tests for Phase 2 features
 //! These tests verify the operation queue, lock manager, and transaction support
 
-use cb_server::services::{LockManager, OperationQueue, FileOperation, OperationType};
 use cb_server::services::operation_queue::OperationTransaction;
+use cb_server::services::{FileOperation, LockManager, OperationQueue, OperationType};
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -45,7 +45,10 @@ async fn test_concurrent_reads() {
     // If they ran concurrently, the maximum time should be around 50ms
     // If they ran sequentially, it would be around 250ms
     let max_time = results.iter().max().unwrap();
-    assert!(max_time.as_millis() < 100, "Reads should execute concurrently");
+    assert!(
+        max_time.as_millis() < 100,
+        "Reads should execute concurrently"
+    );
 }
 
 #[tokio::test]
@@ -74,7 +77,10 @@ async fn test_write_blocks_reads() {
 
     // Read should only proceed after write is released
     let read_time = read_task.await.unwrap();
-    assert!(read_time.as_millis() >= 95, "Read should wait for write to complete");
+    assert!(
+        read_time.as_millis() >= 95,
+        "Read should wait for write to complete"
+    );
 }
 
 #[tokio::test]

@@ -1,10 +1,10 @@
 use serde_json::{json, Value};
 use std::io::{BufRead, BufReader, Write};
+use std::path::Path;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
-use std::path::Path;
 
 /// Test client for interacting with the cb-server binary.
 /// Manages process lifecycle and JSON-RPC communication.
@@ -100,7 +100,11 @@ impl TestClient {
     }
 
     /// Send a tools/call request with the given tool name and arguments.
-    pub async fn call_tool(&mut self, tool_name: &str, arguments: Value) -> Result<Value, Box<dyn std::error::Error>> {
+    pub async fn call_tool(
+        &mut self,
+        tool_name: &str,
+        arguments: Value,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
         static mut REQUEST_ID: i32 = 0;
         let id = unsafe {
             REQUEST_ID += 1;
@@ -182,7 +186,11 @@ impl TestClient {
     }
 
     /// Call a tool with performance timing.
-    pub async fn call_tool_with_timing(&mut self, tool_name: &str, arguments: Value) -> Result<(Value, Duration), Box<dyn std::error::Error>> {
+    pub async fn call_tool_with_timing(
+        &mut self,
+        tool_name: &str,
+        arguments: Value,
+    ) -> Result<(Value, Duration), Box<dyn std::error::Error>> {
         let start = Instant::now();
         let result = self.call_tool(tool_name, arguments).await?;
         let duration = start.elapsed();
@@ -190,7 +198,10 @@ impl TestClient {
     }
 
     /// Call multiple tools sequentially and return results with timings.
-    pub async fn call_multiple_tools(&mut self, calls: Vec<(&str, Value)>) -> Vec<Result<(Value, Duration), Box<dyn std::error::Error>>> {
+    pub async fn call_multiple_tools(
+        &mut self,
+        calls: Vec<(&str, Value)>,
+    ) -> Vec<Result<(Value, Duration), Box<dyn std::error::Error>>> {
         let mut results = Vec::new();
 
         for (tool_name, arguments) in calls {
@@ -202,7 +213,12 @@ impl TestClient {
     }
 
     /// Call a tool with a custom timeout.
-    pub async fn call_tool_with_timeout(&mut self, tool_name: &str, arguments: Value, timeout: Duration) -> Result<Value, Box<dyn std::error::Error>> {
+    pub async fn call_tool_with_timeout(
+        &mut self,
+        tool_name: &str,
+        arguments: Value,
+        timeout: Duration,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
         static mut REQUEST_ID: i32 = 0;
         let id = unsafe {
             REQUEST_ID += 1;
@@ -255,7 +271,10 @@ impl TestClient {
     }
 
     /// Batch execute multiple tool calls concurrently (simulated).
-    pub async fn batch_execute_tools(&mut self, calls: Vec<(&str, Value)>) -> Vec<Result<Value, Box<dyn std::error::Error>>> {
+    pub async fn batch_execute_tools(
+        &mut self,
+        calls: Vec<(&str, Value)>,
+    ) -> Vec<Result<Value, Box<dyn std::error::Error>>> {
         // Since we can't truly parallelize with a single stdin/stdout,
         // we'll execute them rapidly in sequence to simulate batch execution
         let mut results = Vec::new();
@@ -362,7 +381,7 @@ impl TestClient {
                     if request_duration > results.max_response_time {
                         results.max_response_time = request_duration;
                     }
-                },
+                }
                 Err(_) => {
                     results.failed_requests += 1;
                 }

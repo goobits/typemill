@@ -1,5 +1,5 @@
-use crate::error::{ClientError, ClientResult};
 use crate::client_config::ClientConfig;
+use crate::error::{ClientError, ClientResult};
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -93,7 +93,8 @@ impl WebSocketClient {
         let url = Url::parse(url)
             .map_err(|e| ClientError::ConnectionError(format!("Invalid URL: {}", e)))?;
 
-        let (ws_stream, _) = connect_async(&url).await
+        let (ws_stream, _) = connect_async(&url)
+            .await
             .map_err(|e| ClientError::ConnectionError(format!("Failed to connect: {}", e)))?;
 
         info!("WebSocket connection established");
@@ -120,7 +121,8 @@ impl WebSocketClient {
                 }
                 debug!("Write task ending");
                 let mut state = state.lock().await;
-                if *state == ConnectionState::Connected || *state == ConnectionState::Authenticated {
+                if *state == ConnectionState::Connected || *state == ConnectionState::Authenticated
+                {
                     *state = ConnectionState::Disconnected;
                 }
             })
@@ -151,7 +153,8 @@ impl WebSocketClient {
                 }
                 debug!("Read task ending");
                 let mut state = state.lock().await;
-                if *state == ConnectionState::Connected || *state == ConnectionState::Authenticated {
+                if *state == ConnectionState::Connected || *state == ConnectionState::Authenticated
+                {
                     *state = ConnectionState::Disconnected;
                 }
             })
@@ -190,8 +193,9 @@ impl WebSocketClient {
 
     /// Authenticate with the server using JWT token
     async fn authenticate(&self) -> ClientResult<()> {
-        let token = self.config.get_token()
-            .ok_or_else(|| ClientError::AuthError("No authentication token configured".to_string()))?;
+        let token = self.config.get_token().ok_or_else(|| {
+            ClientError::AuthError("No authentication token configured".to_string())
+        })?;
 
         {
             let mut state = self.state.lock().await;
@@ -234,7 +238,9 @@ impl WebSocketClient {
                     return Err(ClientError::ConnectionError("Not connected".to_string()));
                 }
                 ConnectionState::Connecting | ConnectionState::Reconnecting => {
-                    return Err(ClientError::ConnectionError("Connection in progress".to_string()));
+                    return Err(ClientError::ConnectionError(
+                        "Connection in progress".to_string(),
+                    ));
                 }
                 _ => {}
             }
@@ -253,8 +259,9 @@ impl WebSocketClient {
         }
 
         // Send the request
-        let message = serde_json::to_string(&request)
-            .map_err(|e| ClientError::SerializationError(format!("Failed to serialize request: {}", e)))?;
+        let message = serde_json::to_string(&request).map_err(|e| {
+            ClientError::SerializationError(format!("Failed to serialize request: {}", e))
+        })?;
 
         {
             let connection = self.connection.lock().await;
@@ -263,13 +270,18 @@ impl WebSocketClient {
                     // Clean up pending request
                     let mut pending = self.pending_requests.lock().await;
                     pending.remove(&request_id);
-                    return Err(ClientError::ConnectionError(format!("Failed to send message: {}", e)));
+                    return Err(ClientError::ConnectionError(format!(
+                        "Failed to send message: {}",
+                        e
+                    )));
                 }
             } else {
                 // Clean up pending request
                 let mut pending = self.pending_requests.lock().await;
                 pending.remove(&request_id);
-                return Err(ClientError::ConnectionError("No active connection".to_string()));
+                return Err(ClientError::ConnectionError(
+                    "No active connection".to_string(),
+                ));
             }
         }
 
@@ -292,7 +304,11 @@ impl WebSocketClient {
     }
 
     /// Call an MCP tool
-    pub async fn call_tool(&self, tool: &str, params: Option<serde_json::Value>) -> ClientResult<MCPResponse> {
+    pub async fn call_tool(
+        &self,
+        tool: &str,
+        params: Option<serde_json::Value>,
+    ) -> ClientResult<MCPResponse> {
         let request = MCPRequest {
             id: self.generate_id(),
             method: tool.to_string(),
@@ -311,7 +327,10 @@ impl WebSocketClient {
     /// Check if connected and authenticated
     pub async fn is_ready(&self) -> bool {
         let state = self.state.lock().await;
-        matches!(*state, ConnectionState::Connected | ConnectionState::Authenticated)
+        matches!(
+            *state,
+            ConnectionState::Connected | ConnectionState::Authenticated
+        )
     }
 
     /// Disconnect from the server
@@ -336,7 +355,9 @@ impl WebSocketClient {
         {
             let mut pending = self.pending_requests.lock().await;
             for (_, sender) in pending.drain() {
-                let _ = sender.send(Err(ClientError::ConnectionError("Connection closed".to_string())));
+                let _ = sender.send(Err(ClientError::ConnectionError(
+                    "Connection closed".to_string(),
+                )));
             }
         }
 
@@ -356,8 +377,9 @@ impl WebSocketClient {
     ) -> ClientResult<()> {
         debug!("Received message: {}", text);
 
-        let response: MCPResponse = serde_json::from_str(text)
-            .map_err(|e| ClientError::SerializationError(format!("Failed to parse response: {}", e)))?;
+        let response: MCPResponse = serde_json::from_str(text).map_err(|e| {
+            ClientError::SerializationError(format!("Failed to parse response: {}", e))
+        })?;
 
         // Find and complete the pending request
         let mut pending = pending_requests.lock().await;
@@ -395,7 +417,10 @@ impl WebSocketClient {
         let response = self.send_request(request).await?;
 
         if let Some(error) = response.error {
-            return Err(ClientError::RequestError(format!("Server error: {}", error.message)));
+            return Err(ClientError::RequestError(format!(
+                "Server error: {}",
+                error.message
+            )));
         }
 
         Ok(response.result.unwrap_or_default())

@@ -4,7 +4,7 @@ use crate::auth::jwt::validate_token_with_project;
 use crate::error::{ServerError, ServerResult};
 use crate::handlers::PluginDispatcher;
 use cb_core::config::AppConfig;
-use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, McpError};
+use cb_core::model::mcp::{McpError, McpMessage, McpRequest, McpResponse};
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -123,9 +123,7 @@ async fn handle_connection(
                                 "message": "Parse error"
                             }
                         });
-                        if let Err(e) = write
-                            .send(Message::Text(error_response.to_string()))
-                            .await
+                        if let Err(e) = write.send(Message::Text(error_response.to_string())).await
                         {
                             tracing::error!("Failed to send error response: {}", e);
                             break;
@@ -135,22 +133,23 @@ async fn handle_connection(
                 };
 
                 // Handle the message
-                let response = match handle_message(&mut session, mcp_message, &config, &dispatcher).await {
-                    Ok(response) => response,
-                    Err(e) => {
-                        tracing::error!("Failed to handle message: {}", e);
-                        McpMessage::Response(McpResponse {
-            jsonrpc: "2.0".to_string(),
-                            id: None,
-                            result: None,
-                            error: Some(McpError {
-                                code: -1,
-                                message: e.to_string(),
-                                data: None,
-                            }),
-                        })
-                    }
-                };
+                let response =
+                    match handle_message(&mut session, mcp_message, &config, &dispatcher).await {
+                        Ok(response) => response,
+                        Err(e) => {
+                            tracing::error!("Failed to handle message: {}", e);
+                            McpMessage::Response(McpResponse {
+                                jsonrpc: "2.0".to_string(),
+                                id: None,
+                                result: None,
+                                error: Some(McpError {
+                                    code: -1,
+                                    message: e.to_string(),
+                                    data: None,
+                                }),
+                            })
+                        }
+                    };
 
                 // Send response
                 let response_text = match serde_json::to_string(&response) {
@@ -197,12 +196,13 @@ async fn handle_message(
             } else if !session.initialized {
                 // Reject non-initialize requests before initialization
                 Ok(McpMessage::Response(McpResponse {
-            jsonrpc: "2.0".to_string(),
+                    jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: None,
                     error: Some(McpError {
                         code: -1,
-                        message: "Session not initialized. Send initialize message first.".to_string(),
+                        message: "Session not initialized. Send initialize message first."
+                            .to_string(),
                         data: None,
                     }),
                 }))
@@ -247,7 +247,7 @@ async fn handle_initialize(
             tracing::info!("Authentication successful for project: {}", project_id);
         } else {
             return Ok(McpMessage::Response(McpResponse {
-            jsonrpc: "2.0".to_string(),
+                jsonrpc: "2.0".to_string(),
                 id: request.id,
                 result: None,
                 error: Some(McpError {
@@ -264,8 +264,11 @@ async fn handle_initialize(
     session.project_root = payload.project_root;
     session.initialized = true;
 
-    tracing::info!("Session {} initialized for project: {:?}",
-                   session.id, session.project_id);
+    tracing::info!(
+        "Session {} initialized for project: {:?}",
+        session.id,
+        session.project_id
+    );
 
     // Create response
     let response = InitializeResponse {
@@ -283,7 +286,7 @@ async fn handle_initialize(
     };
 
     Ok(McpMessage::Response(McpResponse {
-            jsonrpc: "2.0".to_string(),
+        jsonrpc: "2.0".to_string(),
         id: request.id,
         result: Some(serde_json::to_value(response)?),
         error: None,
@@ -293,7 +296,7 @@ async fn handle_initialize(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cb_core::config::{AuthConfig, ServerConfig, LoggingConfig, CacheConfig, LspConfig};
+    use cb_core::config::{AuthConfig, CacheConfig, LoggingConfig, LspConfig, ServerConfig};
 
     fn create_test_config(with_auth: bool) -> AppConfig {
         AppConfig {
@@ -354,7 +357,9 @@ mod tests {
             })),
         };
 
-        let response = handle_initialize(&mut session, request, &config).await.unwrap();
+        let response = handle_initialize(&mut session, request, &config)
+            .await
+            .unwrap();
 
         assert!(session.initialized);
         assert_eq!(session.project_id, Some("test_project".to_string()));
@@ -382,7 +387,9 @@ mod tests {
             })),
         };
 
-        let response = handle_initialize(&mut session, request, &config).await.unwrap();
+        let response = handle_initialize(&mut session, request, &config)
+            .await
+            .unwrap();
 
         assert!(!session.initialized);
 

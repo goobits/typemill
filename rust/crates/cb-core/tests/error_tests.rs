@@ -1,7 +1,7 @@
 //! Tests for error handling
 
-use cb_core::{CoreError};
 use cb_core::error::CoreResult;
+use cb_core::CoreError;
 use std::io;
 
 #[test]
@@ -110,7 +110,10 @@ fn test_core_result_type_alias() {
 fn test_error_chain() {
     // Test that errors can be chained properly
     fn inner_function() -> Result<(), io::Error> {
-        Err(io::Error::new(io::ErrorKind::PermissionDenied, "Access denied"))
+        Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "Access denied",
+        ))
     }
 
     fn outer_function() -> CoreResult<()> {

@@ -1,10 +1,10 @@
 //! Plugin manager for orchestrating plugin operations
 
-use crate::{
-    LanguagePlugin, PluginRegistry, PluginRequest, PluginResponse, PluginError, PluginResult,
-    Capabilities, PluginMetadata
-};
 use crate::registry::RegistryStatistics;
+use crate::{
+    Capabilities, LanguagePlugin, PluginError, PluginMetadata, PluginRegistry, PluginRequest,
+    PluginResponse, PluginResult,
+};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
@@ -119,12 +119,14 @@ impl PluginManager {
 
         let (plugin_name, plugin) = match plugin_result {
             Ok(plugin_name) => {
-                debug!("PluginManager got plugin_name '{}' from registry", plugin_name);
-                let plugin = registry.get_plugin(&plugin_name)
-                    .ok_or_else(|| {
-                        error!("get_plugin('{}') returned None!", plugin_name);
-                        PluginError::plugin_not_found(&plugin_name, &request.method)
-                    })?;
+                debug!(
+                    "PluginManager got plugin_name '{}' from registry",
+                    plugin_name
+                );
+                let plugin = registry.get_plugin(&plugin_name).ok_or_else(|| {
+                    error!("get_plugin('{}') returned None!", plugin_name);
+                    PluginError::plugin_not_found(&plugin_name, &request.method)
+                })?;
                 debug!("Successfully got plugin '{}' from registry", plugin_name);
                 (plugin_name, plugin)
             }
@@ -132,7 +134,8 @@ impl PluginManager {
                 // Update metrics for system-level failures (no plugin found)
                 let processing_time = start_time.elapsed().as_millis() as u64;
                 let error_result: PluginResult<PluginResponse> = Err(err.clone());
-                self.update_metrics("none", &error_result, processing_time).await;
+                self.update_metrics("none", &error_result, processing_time)
+                    .await;
                 return Err(err);
             }
         };
@@ -147,7 +150,8 @@ impl PluginManager {
 
         // Update metrics
         let processing_time = start_time.elapsed().as_millis() as u64;
-        self.update_metrics(&plugin_name, &result, processing_time).await;
+        self.update_metrics(&plugin_name, &result, processing_time)
+            .await;
 
         match result {
             Ok(mut response) => {
@@ -155,8 +159,10 @@ impl PluginManager {
                 response.metadata.plugin_name = plugin_name;
                 response.metadata.processing_time_ms = Some(processing_time);
 
-                debug!("Request processed successfully by plugin '{}' in {}ms",
-                       response.metadata.plugin_name, processing_time);
+                debug!(
+                    "Request processed successfully by plugin '{}' in {}ms",
+                    response.metadata.plugin_name, processing_time
+                );
                 Ok(response)
             }
             Err(err) => {
@@ -319,10 +325,14 @@ impl PluginManager {
         metrics.average_processing_time_ms = total_time / metrics.total_requests as f64;
 
         // Update per-plugin metrics
-        *metrics.requests_per_plugin.entry(plugin_name.to_string()).or_insert(0) += 1;
+        *metrics
+            .requests_per_plugin
+            .entry(plugin_name.to_string())
+            .or_insert(0) += 1;
 
         let plugin_requests = *metrics.requests_per_plugin.get(plugin_name).unwrap_or(&1);
-        let current_avg = metrics.processing_time_per_plugin
+        let current_avg = metrics
+            .processing_time_per_plugin
             .get(plugin_name)
             .copied()
             .unwrap_or(0.0);
@@ -330,7 +340,9 @@ impl PluginManager {
         let new_avg = (current_avg * (plugin_requests - 1) as f64 + processing_time_ms as f64)
             / plugin_requests as f64;
 
-        metrics.processing_time_per_plugin.insert(plugin_name.to_string(), new_avg);
+        metrics
+            .processing_time_per_plugin
+            .insert(plugin_name.to_string(), new_avg);
     }
 }
 
@@ -343,7 +355,7 @@ impl Default for PluginManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{PluginRequest, PluginResponse, PluginMetadata, Capabilities};
+    use crate::{Capabilities, PluginMetadata, PluginRequest, PluginResponse};
     use async_trait::async_trait;
     use std::path::PathBuf;
 
@@ -374,7 +386,7 @@ mod tests {
             } else {
                 Ok(PluginResponse::success(
                     serde_json::json!({"method": request.method}),
-                    &self.name
+                    &self.name,
                 ))
             }
         }
@@ -429,7 +441,10 @@ mod tests {
             should_fail: true,
         });
 
-        manager.register_plugin("failing-plugin", plugin).await.unwrap();
+        manager
+            .register_plugin("failing-plugin", plugin)
+            .await
+            .unwrap();
 
         let request = PluginRequest::new("find_definition", PathBuf::from("test.test"));
         let result = manager.handle_request(request).await;
@@ -453,12 +468,20 @@ mod tests {
             should_fail: false,
         });
 
-        manager.register_plugin("configurable-plugin", plugin).await.unwrap();
+        manager
+            .register_plugin("configurable-plugin", plugin)
+            .await
+            .unwrap();
 
         let config = serde_json::json!({"enabled": true, "level": "debug"});
-        assert!(manager.configure_plugin("configurable-plugin", config.clone()).await.is_ok());
+        assert!(manager
+            .configure_plugin("configurable-plugin", config.clone())
+            .await
+            .is_ok());
 
-        let stored_config = manager.get_plugin_configuration("configurable-plugin").await;
+        let stored_config = manager
+            .get_plugin_configuration("configurable-plugin")
+            .await;
         assert_eq!(stored_config, Some(config));
     }
 
@@ -477,10 +500,15 @@ mod tests {
             should_fail: false,
         });
 
-        manager.register_plugin("discovery-test", plugin).await.unwrap();
+        manager
+            .register_plugin("discovery-test", plugin)
+            .await
+            .unwrap();
 
         // Test file-based discovery
-        let plugins = manager.find_plugins_for_file(&PathBuf::from("file.test")).await;
+        let plugins = manager
+            .find_plugins_for_file(&PathBuf::from("file.test"))
+            .await;
         assert_eq!(plugins, vec!["discovery-test"]);
 
         // Test method-based discovery
@@ -488,7 +516,15 @@ mod tests {
         assert_eq!(plugins, vec!["discovery-test"]);
 
         // Test capability checking
-        assert!(manager.is_method_supported(&PathBuf::from("file.test"), "find_definition").await);
-        assert!(!manager.is_method_supported(&PathBuf::from("file.other"), "find_definition").await);
+        assert!(
+            manager
+                .is_method_supported(&PathBuf::from("file.test"), "find_definition")
+                .await
+        );
+        assert!(
+            !manager
+                .is_method_supported(&PathBuf::from("file.other"), "find_definition")
+                .await
+        );
     }
 }

@@ -75,7 +75,7 @@ impl TestWorkspace {
 
         self.create_file(
             "tsconfig.json",
-            &serde_json::to_string_pretty(&tsconfig).unwrap()
+            &serde_json::to_string_pretty(&tsconfig).unwrap(),
         );
     }
 
@@ -93,7 +93,7 @@ impl TestWorkspace {
 
         self.create_file(
             "package.json",
-            &serde_json::to_string_pretty(&package_json).unwrap()
+            &serde_json::to_string_pretty(&package_json).unwrap(),
         );
     }
 
@@ -133,7 +133,7 @@ impl TestWorkspace {
 
         self.create_file(
             ".codebuddy/config.json",
-            &serde_json::to_string_pretty(&config).unwrap()
+            &serde_json::to_string_pretty(&config).unwrap(),
         );
     }
 
@@ -143,12 +143,16 @@ impl TestWorkspace {
         self.create_requirements_txt();
         self.create_directory("src");
         self.create_file("src/__init__.py", "# Python project");
-        self.create_file("README.md", &format!("# {}\n\nA Python test project.", name));
+        self.create_file(
+            "README.md",
+            &format!("# {}\n\nA Python test project.", name),
+        );
     }
 
     /// Create a pyproject.toml file for a Python project.
     pub fn create_pyproject_toml(&self, name: &str) {
-        let content = format!(r#"
+        let content = format!(
+            r#"
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -180,7 +184,9 @@ python_version = "3.8"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
-"#, name);
+"#,
+            name
+        );
 
         self.create_file("pyproject.toml", &content);
     }
@@ -213,7 +219,8 @@ flake8>=5.0.0
 
     /// Create a Cargo.toml file for a Rust project.
     pub fn create_cargo_toml(&self, name: &str) {
-        let content = format!(r#"
+        let content = format!(
+            r#"
 [package]
 name = "{}"
 version = "0.1.0"
@@ -238,7 +245,11 @@ path = "src/main.rs"
 [lib]
 name = "{}"
 path = "src/lib.rs"
-"#, name, name, name.replace("-", "_"));
+"#,
+            name,
+            name,
+            name.replace("-", "_")
+        );
 
         self.create_file("Cargo.toml", &content);
     }
@@ -269,7 +280,7 @@ path = "src/lib.rs"
 
         self.create_file(
             "package.json",
-            &serde_json::to_string_pretty(&workspace_package).unwrap()
+            &serde_json::to_string_pretty(&workspace_package).unwrap(),
         );
 
         // Create workspace directories
@@ -289,7 +300,7 @@ path = "src/lib.rs"
 
         self.create_file(
             "lerna.json",
-            &serde_json::to_string_pretty(&lerna_config).unwrap()
+            &serde_json::to_string_pretty(&lerna_config).unwrap(),
         );
     }
 
@@ -298,7 +309,13 @@ path = "src/lib.rs"
         self._create_large_structure("", depth, files_per_dir, 0);
     }
 
-    fn _create_large_structure(&self, base_path: &str, remaining_depth: usize, files_per_dir: usize, level: usize) {
+    fn _create_large_structure(
+        &self,
+        base_path: &str,
+        remaining_depth: usize,
+        files_per_dir: usize,
+        level: usize,
+    ) {
         if remaining_depth == 0 {
             return;
         }
@@ -312,7 +329,8 @@ path = "src/lib.rs"
                 format!("{}/{}", base_path, file_name)
             };
 
-            let content = format!(r#"
+            let content = format!(
+                r#"
 // Generated file at level {} index {}
 export interface Data{}_{}  {{
     id: number;
@@ -326,14 +344,17 @@ export function process{}_{}(data: Data{}_{}): string {{
 }}
 
 export const LEVEL_{}_{}  = {};
-"#, level, i, level, i, level, i, level, i, level, i, level, i, level, i, level);
+"#,
+                level, i, level, i, level, i, level, i, level, i, level, i, level, i, level
+            );
 
             self.create_file(&file_path, &content);
         }
 
         // Create subdirectories and recurse
         if remaining_depth > 1 {
-            for i in 0..3 { // Create 3 subdirectories per level
+            for i in 0..3 {
+                // Create 3 subdirectories per level
                 let dir_name = format!("level_{}_{}", level, i);
                 let dir_path = if base_path.is_empty() {
                     dir_name.clone()
@@ -342,7 +363,12 @@ export const LEVEL_{}_{}  = {};
                 };
 
                 self.create_directory(&dir_path);
-                self._create_large_structure(&dir_path, remaining_depth - 1, files_per_dir, level + 1);
+                self._create_large_structure(
+                    &dir_path,
+                    remaining_depth - 1,
+                    files_per_dir,
+                    level + 1,
+                );
             }
         }
     }
@@ -350,7 +376,9 @@ export const LEVEL_{}_{}  = {};
     /// Create a project with intentional errors for error testing.
     pub fn setup_error_project(&self) {
         // Create TypeScript files with various types of errors
-        self.create_file("syntax_error.ts", r#"
+        self.create_file(
+            "syntax_error.ts",
+            r#"
 // File with syntax errors
 interface User {
     id: number;
@@ -360,9 +388,12 @@ interface User {
 function broken() {
     console.log("unclosed"
     // Missing closing parenthesis and brace
-"#);
+"#,
+        );
 
-        self.create_file("type_error.ts", r#"
+        self.create_file(
+            "type_error.ts",
+            r#"
 // File with type errors
 interface User {
     id: number;
@@ -377,9 +408,12 @@ const user: User = {
     id: "not a number", // Type error
     name: 123 // Type error
 };
-"#);
+"#,
+        );
 
-        self.create_file("import_error.ts", r#"
+        self.create_file(
+            "import_error.ts",
+            r#"
 // File with import errors
 import { NonExistent } from './does-not-exist';
 import { User } from './type_error'; // This should work
@@ -391,7 +425,8 @@ function useNonExistent(x: NonExistent): void {
 export function validFunction(): string {
     return "this works";
 }
-"#);
+"#,
+        );
 
         // Create corrupted file
         let corrupted_path = self.path().join("corrupted.ts");
@@ -401,7 +436,13 @@ export function validFunction(): string {
     /// Create a multi-language project structure.
     pub fn setup_multi_language_project(&self, name: &str) {
         // Root configuration
-        self.create_file("README.md", &format!("# {}\n\nMulti-language test project with TypeScript, Python, and Rust.", name));
+        self.create_file(
+            "README.md",
+            &format!(
+                "# {}\n\nMulti-language test project with TypeScript, Python, and Rust.",
+                name
+            ),
+        );
 
         // TypeScript part
         self.create_directory("typescript");
@@ -425,10 +466,12 @@ export function validFunction(): string {
 
         self.create_file(
             "typescript/package.json",
-            &serde_json::to_string_pretty(&ts_package).unwrap()
+            &serde_json::to_string_pretty(&ts_package).unwrap(),
         );
 
-        self.create_file("typescript/tsconfig.json", r#"
+        self.create_file(
+            "typescript/tsconfig.json",
+            r#"
 {
   "compilerOptions": {
     "target": "ES2022",
@@ -441,9 +484,12 @@ export function validFunction(): string {
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
-"#);
+"#,
+        );
 
-        self.create_file("typescript/src/index.ts", r#"
+        self.create_file(
+            "typescript/src/index.ts",
+            r#"
 import express from 'express';
 
 const app = express();
@@ -456,11 +502,15 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-"#);
+"#,
+        );
 
         // Python part
         self.create_directory("python");
-        self.create_file("python/pyproject.toml", &format!(r#"
+        self.create_file(
+            "python/pyproject.toml",
+            &format!(
+                r#"
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
@@ -476,9 +526,14 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0.0", "black>=22.0.0"]
-"#, name));
+"#,
+                name
+            ),
+        );
 
-        self.create_file("python/main.py", r#"
+        self.create_file(
+            "python/main.py",
+            r#"
 from fastapi import FastAPI
 import uvicorn
 
@@ -494,11 +549,15 @@ async def health():
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-"#);
+"#,
+        );
 
         // Rust part
         self.create_directory("rust");
-        self.create_file("rust/Cargo.toml", &format!(r#"
+        self.create_file(
+            "rust/Cargo.toml",
+            &format!(
+                r#"
 [package]
 name = "{}-rust"
 version = "0.1.0"
@@ -508,9 +567,14 @@ edition = "2021"
 tokio = {{ version = "1.0", features = ["full"] }}
 serde = {{ version = "1.0", features = ["derive"] }}
 serde_json = "1.0"
-"#, name));
+"#,
+                name
+            ),
+        );
 
-        self.create_file("rust/src/main.rs", r#"
+        self.create_file(
+            "rust/src/main.rs",
+            r#"
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
@@ -533,9 +597,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-"#);
+"#,
+        );
 
-        self.create_file("rust/src/lib.rs", r#"
+        self.create_file(
+            "rust/src/lib.rs",
+            r#"
 //! Multi-language project Rust component
 
 pub mod models {
@@ -560,7 +627,8 @@ pub mod models {
 }
 
 pub use models::*;
-"#);
+"#,
+        );
     }
 }
 

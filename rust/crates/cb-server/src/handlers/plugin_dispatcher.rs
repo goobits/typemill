@@ -6,11 +6,9 @@
 use crate::error::{ServerError, ServerResult};
 use crate::interfaces::AstService;
 use crate::mcp_tools;
-use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
-use cb_plugins::{
-    PluginManager, LspAdapterPlugin, LspService, PluginRequest, PluginError
-};
 use async_trait::async_trait;
+use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
+use cb_plugins::{LspAdapterPlugin, LspService, PluginError, PluginManager, PluginRequest};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -67,7 +65,10 @@ impl DirectLspAdapter {
     }
 
     /// Get or create an LSP client for the given extension
-    async fn get_or_create_client(&self, extension: &str) -> Result<Arc<crate::systems::lsp::LspClient>, String> {
+    async fn get_or_create_client(
+        &self,
+        extension: &str,
+    ) -> Result<Arc<crate::systems::lsp::LspClient>, String> {
         // Check if client already exists
         {
             let clients = self.lsp_clients.lock().await;
@@ -77,7 +78,8 @@ impl DirectLspAdapter {
         }
 
         // Find server config for this extension
-        let server_config = self.config
+        let server_config = self
+            .config
             .servers
             .iter()
             .find(|server| server.extensions.contains(&extension.to_string()))
@@ -119,7 +121,10 @@ impl DirectLspAdapter {
                 if let Some(uri) = params.get("textDocument")?.get("uri")?.as_str() {
                     if uri.starts_with("file://") {
                         let path = uri.trim_start_matches("file://");
-                        return std::path::Path::new(path).extension()?.to_str().map(|s| s.to_string());
+                        return std::path::Path::new(path)
+                            .extension()?
+                            .to_str()
+                            .map(|s| s.to_string());
                     }
                 }
                 None
@@ -132,14 +137,21 @@ impl DirectLspAdapter {
 impl LspService for DirectLspAdapter {
     async fn request(&self, method: &str, params: Value) -> Result<Value, String> {
         // Extract extension from params
-        let extension = self.extract_extension_from_params(&params, method)
-            .ok_or_else(|| format!("Could not extract file extension from params for method '{}'", method))?;
+        let extension = self
+            .extract_extension_from_params(&params, method)
+            .ok_or_else(|| {
+                format!(
+                    "Could not extract file extension from params for method '{}'",
+                    method
+                )
+            })?;
 
         // Get appropriate LSP client
         let client = self.get_or_create_client(&extension).await?;
 
         // Send LSP method DIRECTLY to client (bypassing old manager and its hard-coded mappings!)
-        client.send_request(method, params)
+        client
+            .send_request(method, params)
             .await
             .map_err(|e| format!("LSP request failed: {}", e))
     }
@@ -299,7 +311,7 @@ impl PluginDispatcher {
         };
 
         Ok(McpMessage::Response(McpResponse {
-                    jsonrpc: "2.0".to_string(),
+            jsonrpc: "2.0".to_string(),
             id: request.id,
             result: Some(response),
             error: None,
@@ -378,7 +390,9 @@ impl PluginDispatcher {
                 if let Some(array) = tool["parameters"]["required"].as_array_mut() {
                     array.push(json!("query"));
                 } else {
-                    warn!("Could not add 'query' to required parameters for search_workspace_symbols");
+                    warn!(
+                        "Could not add 'query' to required parameters for search_workspace_symbols"
+                    );
                 }
             }
             _ => {}
@@ -447,7 +461,10 @@ impl PluginDispatcher {
     }
 
     /// Convert MCP tool call to plugin request
-    fn convert_tool_call_to_plugin_request(&self, tool_call: ToolCall) -> ServerResult<PluginRequest> {
+    fn convert_tool_call_to_plugin_request(
+        &self,
+        tool_call: ToolCall,
+    ) -> ServerResult<PluginRequest> {
         let args = tool_call.arguments.unwrap_or(json!({}));
 
         // Handle workspace-level operations that don't require a file path
@@ -458,10 +475,12 @@ impl PluginDispatcher {
             }
             _ => {
                 // Extract file path for file-specific operations
-                let file_path_str = args
-                    .get("file_path")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing file_path parameter".into()))?;
+                let file_path_str =
+                    args.get("file_path")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| {
+                            ServerError::InvalidRequest("Missing file_path parameter".into())
+                        })?;
                 PathBuf::from(file_path_str)
             }
         };
@@ -525,12 +544,13 @@ impl PluginDispatcher {
     /// Convert plugin error to server error
     fn convert_plugin_error_to_server_error(&self, error: PluginError) -> ServerError {
         match error {
-            PluginError::PluginNotFound { file, method } => {
-                ServerError::Unsupported(format!("No plugin found for file '{}' and method '{}'", file, method))
-            }
-            PluginError::MethodNotSupported { method, plugin } => {
-                ServerError::Unsupported(format!("Method '{}' not supported by plugin '{}'", method, plugin))
-            }
+            PluginError::PluginNotFound { file, method } => ServerError::Unsupported(format!(
+                "No plugin found for file '{}' and method '{}'",
+                file, method
+            )),
+            PluginError::MethodNotSupported { method, plugin } => ServerError::Unsupported(
+                format!("Method '{}' not supported by plugin '{}'", method, plugin),
+            ),
             PluginError::PluginRequestFailed { plugin, message } => {
                 ServerError::Internal(format!("Plugin '{}' failed: {}", plugin, message))
             }
@@ -548,12 +568,18 @@ impl PluginDispatcher {
 
     /// Check if a tool name represents a file operation
     fn is_file_operation(&self, tool_name: &str) -> bool {
-        matches!(tool_name, "rename_file" | "create_file" | "delete_file" | "rename_directory")
+        matches!(
+            tool_name,
+            "rename_file" | "create_file" | "delete_file" | "rename_directory"
+        )
     }
 
     /// Check if a tool name represents a system tool
     fn is_system_tool(&self, tool_name: &str) -> bool {
-        matches!(tool_name, "list_files" | "analyze_imports" | "find_dead_code")
+        matches!(
+            tool_name,
+            "list_files" | "analyze_imports" | "find_dead_code"
+        )
     }
 
     /// Handle system tools through the plugin system
@@ -597,17 +623,15 @@ impl PluginDispatcher {
         debug!("Handling notify_file_opened: {}", tool_call.name);
 
         let args = tool_call.arguments.unwrap_or(json!({}));
-        let file_path_str = args.get("file_path")
+        let file_path_str = args
+            .get("file_path")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
 
         let file_path = PathBuf::from(file_path_str);
 
         // Get file extension to determine which LSP adapter to notify
-        let extension = file_path
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
+        let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
         // Load LSP config to create a temporary DirectLspAdapter for notification
         let app_config = cb_core::config::AppConfig::load()
@@ -615,9 +639,11 @@ impl PluginDispatcher {
         let lsp_config = app_config.lsp;
 
         // Find the server config for this extension
-        if let Some(_server_config) = lsp_config.servers.iter()
-            .find(|server| server.extensions.contains(&extension.to_string())) {
-
+        if let Some(_server_config) = lsp_config
+            .servers
+            .iter()
+            .find(|server| server.extensions.contains(&extension.to_string()))
+        {
             // Create a temporary DirectLspAdapter to handle the notification
             let adapter = DirectLspAdapter::new(
                 lsp_config,
@@ -627,25 +653,33 @@ impl PluginDispatcher {
 
             // Get or create LSP client and notify
             match adapter.get_or_create_client(extension).await {
-                Ok(client) => {
-                    match client.notify_file_opened(&file_path).await {
-                        Ok(()) => {
-                            debug!("Successfully notified LSP server about file: {}", file_path.display());
-                            Ok(json!({
-                                "success": true,
-                                "message": format!("Notified LSP server about file: {}", file_path.display())
-                            }))
-                        }
-                        Err(e) => {
-                            warn!("Failed to notify LSP server about file {}: {}", file_path.display(), e);
-                            Err(ServerError::Runtime {
-                                message: format!("Failed to notify LSP server: {}", e),
-                            })
-                        }
+                Ok(client) => match client.notify_file_opened(&file_path).await {
+                    Ok(()) => {
+                        debug!(
+                            "Successfully notified LSP server about file: {}",
+                            file_path.display()
+                        );
+                        Ok(json!({
+                            "success": true,
+                            "message": format!("Notified LSP server about file: {}", file_path.display())
+                        }))
                     }
-                }
+                    Err(e) => {
+                        warn!(
+                            "Failed to notify LSP server about file {}: {}",
+                            file_path.display(),
+                            e
+                        );
+                        Err(ServerError::Runtime {
+                            message: format!("Failed to notify LSP server: {}", e),
+                        })
+                    }
+                },
                 Err(e) => {
-                    warn!("Failed to get LSP client for extension '{}': {}", extension, e);
+                    warn!(
+                        "Failed to get LSP client for extension '{}': {}",
+                        extension, e
+                    );
                     Err(ServerError::Runtime {
                         message: format!("Failed to get LSP client: {}", e),
                     })
@@ -665,21 +699,29 @@ impl PluginDispatcher {
         debug!("Handling rename_symbol_with_imports: {}", tool_call.name);
 
         let args = tool_call.arguments.unwrap_or(json!({}));
-        let file_path_str = args.get("file_path")
+        let file_path_str = args
+            .get("file_path")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
 
-        let old_name = args.get("old_name")
+        let old_name = args
+            .get("old_name")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'old_name' parameter".into()))?;
 
-        let new_name = args.get("new_name")
+        let new_name = args
+            .get("new_name")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'new_name' parameter".into()))?;
 
         let file_path = std::path::Path::new(file_path_str);
 
-        debug!("Planning refactor to rename '{}' to '{}' in file: {}", old_name, new_name, file_path.display());
+        debug!(
+            "Planning refactor to rename '{}' to '{}' in file: {}",
+            old_name,
+            new_name,
+            file_path.display()
+        );
 
         // Create an IntentSpec for the rename operation
         let intent = cb_core::model::IntentSpec::new(
@@ -688,13 +730,21 @@ impl PluginDispatcher {
                 "oldName": old_name,
                 "newName": new_name,
                 "sourceFile": file_path_str
-            })
+            }),
         );
 
         // Use the AST service to plan the refactoring
-        match self.app_state.ast_service.plan_refactor(&intent, file_path).await {
+        match self
+            .app_state
+            .ast_service
+            .plan_refactor(&intent, file_path)
+            .await
+        {
             Ok(edit_plan) => {
-                debug!("Successfully planned refactor for {} files", edit_plan.edits.len());
+                debug!(
+                    "Successfully planned refactor for {} files",
+                    edit_plan.edits.len()
+                );
                 Ok(json!({
                     "success": true,
                     "message": format!("Successfully planned rename of '{}' to '{}' affecting {} edits across {} files",
@@ -703,7 +753,10 @@ impl PluginDispatcher {
                 }))
             }
             Err(e) => {
-                error!("Failed to plan refactor for '{}' -> '{}': {}", old_name, new_name, e);
+                error!(
+                    "Failed to plan refactor for '{}' -> '{}': {}",
+                    old_name, new_name, e
+                );
                 Err(ServerError::Runtime {
                     message: format!("Failed to plan refactor: {}", e),
                 })
@@ -716,22 +769,34 @@ impl PluginDispatcher {
         debug!("Handling apply_edits: {}", tool_call.name);
 
         let args = tool_call.arguments.unwrap_or(json!({}));
-        let edit_plan_value = args.get("edit_plan")
+        let edit_plan_value = args
+            .get("edit_plan")
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'edit_plan' parameter".into()))?;
 
         // Parse the EditPlan from the JSON value
         let edit_plan: cb_ast::analyzer::EditPlan = serde_json::from_value(edit_plan_value.clone())
             .map_err(|e| ServerError::InvalidRequest(format!("Invalid edit_plan format: {}", e)))?;
 
-        debug!("Applying edit plan for file: {} with {} edits and {} dependency updates",
-               edit_plan.source_file, edit_plan.edits.len(), edit_plan.dependency_updates.len());
+        debug!(
+            "Applying edit plan for file: {} with {} edits and {} dependency updates",
+            edit_plan.source_file,
+            edit_plan.edits.len(),
+            edit_plan.dependency_updates.len()
+        );
 
         // Apply the edit plan using the FileService
-        match self.app_state.file_service.apply_edit_plan(&edit_plan).await {
+        match self
+            .app_state
+            .file_service
+            .apply_edit_plan(&edit_plan)
+            .await
+        {
             Ok(result) => {
                 if result.success {
-                    info!("Successfully applied edit plan - modified {} files",
-                          result.modified_files.len());
+                    info!(
+                        "Successfully applied edit plan - modified {} files",
+                        result.modified_files.len()
+                    );
                     Ok(json!({
                         "success": true,
                         "message": format!("Successfully applied edit plan to {} files",
@@ -765,28 +830,43 @@ impl PluginDispatcher {
 
         match tool_call.name.as_str() {
             "rename_file" => {
-                let args = tool_call.arguments
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for rename_file".into()))?;
-                let old_path = args.get("old_path")
+                let args = tool_call.arguments.ok_or_else(|| {
+                    ServerError::InvalidRequest("Missing arguments for rename_file".into())
+                })?;
+                let old_path = args
+                    .get("old_path")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'old_path' parameter".into()))?;
-                let new_path = args.get("new_path")
+                    .ok_or_else(|| {
+                        ServerError::InvalidRequest("Missing 'old_path' parameter".into())
+                    })?;
+                let new_path = args
+                    .get("new_path")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'new_path' parameter".into()))?;
-                let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
+                    .ok_or_else(|| {
+                        ServerError::InvalidRequest("Missing 'new_path' parameter".into())
+                    })?;
+                let dry_run = args
+                    .get("dry_run")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
 
-                let result = self.app_state.file_service
+                let result = self
+                    .app_state
+                    .file_service
                     .rename_file_with_imports(
                         std::path::Path::new(old_path),
                         std::path::Path::new(new_path),
-                        dry_run
-                    ).await?;
+                        dry_run,
+                    )
+                    .await?;
 
-                let imports_updated = result.import_updates
+                let imports_updated = result
+                    .import_updates
                     .as_ref()
                     .map(|r| r.imports_updated)
                     .unwrap_or(0);
-                let files_affected = result.import_updates
+                let files_affected = result
+                    .import_updates
                     .as_ref()
                     .map(|r| r.files_updated)
                     .unwrap_or(0);
@@ -800,16 +880,19 @@ impl PluginDispatcher {
                 }))
             }
             "create_file" => {
-                let args = tool_call.arguments
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for create_file".into()))?;
-                let file_path = args.get("file_path")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
-                let content = args.get("content")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                let args = tool_call.arguments.ok_or_else(|| {
+                    ServerError::InvalidRequest("Missing arguments for create_file".into())
+                })?;
+                let file_path =
+                    args.get("file_path")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| {
+                            ServerError::InvalidRequest("Missing 'file_path' parameter".into())
+                        })?;
+                let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("");
 
-                tokio::fs::write(file_path, content).await
+                tokio::fs::write(file_path, content)
+                    .await
                     .map_err(|e| ServerError::Internal(format!("Failed to create file: {}", e)))?;
 
                 Ok(json!({
@@ -819,13 +902,18 @@ impl PluginDispatcher {
                 }))
             }
             "delete_file" => {
-                let args = tool_call.arguments
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for delete_file".into()))?;
-                let file_path = args.get("file_path")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+                let args = tool_call.arguments.ok_or_else(|| {
+                    ServerError::InvalidRequest("Missing arguments for delete_file".into())
+                })?;
+                let file_path =
+                    args.get("file_path")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| {
+                            ServerError::InvalidRequest("Missing 'file_path' parameter".into())
+                        })?;
 
-                tokio::fs::remove_file(file_path).await
+                tokio::fs::remove_file(file_path)
+                    .await
                     .map_err(|e| ServerError::Internal(format!("Failed to delete file: {}", e)))?;
 
                 Ok(json!({
@@ -834,14 +922,20 @@ impl PluginDispatcher {
                     "deleted": true
                 }))
             }
-            _ => Err(ServerError::Unsupported(format!("File operation '{}' not implemented", tool_call.name)))
+            _ => Err(ServerError::Unsupported(format!(
+                "File operation '{}' not implemented",
+                tool_call.name
+            ))),
         }
     }
 
     /// Check if a method is supported for a file
     pub async fn is_method_supported(&self, file_path: &std::path::Path, method: &str) -> bool {
-        self.initialize().await.is_ok() &&
-        self.plugin_manager.is_method_supported(file_path, method).await
+        self.initialize().await.is_ok()
+            && self
+                .plugin_manager
+                .is_method_supported(file_path, method)
+                .await
     }
 
     /// Get supported file extensions
@@ -935,7 +1029,10 @@ mod tests {
             params: None,
         };
 
-        let response = dispatcher.dispatch(McpMessage::Request(request)).await.unwrap();
+        let response = dispatcher
+            .dispatch(McpMessage::Request(request))
+            .await
+            .unwrap();
 
         if let McpMessage::Response(resp) = response {
             assert!(resp.result.is_some());
@@ -946,10 +1043,7 @@ mod tests {
             assert!(!tools.is_empty());
 
             // Should have common tools
-            let tool_names: Vec<&str> = tools
-                .iter()
-                .filter_map(|t| t["name"].as_str())
-                .collect();
+            let tool_names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
             assert!(tool_names.contains(&"find_definition"));
         } else {
             panic!("Expected Response message");
@@ -965,11 +1059,19 @@ mod tests {
 
         // TypeScript file should support find_definition
         let ts_file = std::path::Path::new("test.ts");
-        assert!(dispatcher.is_method_supported(ts_file, "find_definition").await);
+        assert!(
+            dispatcher
+                .is_method_supported(ts_file, "find_definition")
+                .await
+        );
 
         // Unknown extension should not be supported
         let unknown_file = std::path::Path::new("test.unknown");
-        assert!(!dispatcher.is_method_supported(unknown_file, "find_definition").await);
+        assert!(
+            !dispatcher
+                .is_method_supported(unknown_file, "find_definition")
+                .await
+        );
     }
 
     #[tokio::test]

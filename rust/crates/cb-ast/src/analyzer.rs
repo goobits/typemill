@@ -157,21 +157,30 @@ pub fn plan_refactor(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> {
         "update_import_path" => plan_update_import_path(intent, source),
         "extract_function" => plan_extract_function(intent, source),
         "inline_function" => plan_inline_function(intent, source),
-        _ => Err(AstError::unsupported_syntax(format!("Intent: {}", intent.name()))),
+        _ => Err(AstError::unsupported_syntax(format!(
+            "Intent: {}",
+            intent.name()
+        ))),
     }
 }
 
 /// Plan a symbol rename operation
 fn plan_rename_symbol(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> {
-    let old_name = intent.arguments().get("oldName")
+    let old_name = intent
+        .arguments()
+        .get("oldName")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AstError::analysis("Missing oldName parameter"))?;
 
-    let new_name = intent.arguments().get("newName")
+    let new_name = intent
+        .arguments()
+        .get("newName")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AstError::analysis("Missing newName parameter"))?;
 
-    let source_file = intent.arguments().get("sourceFile")
+    let source_file = intent
+        .arguments()
+        .get("sourceFile")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
 
@@ -185,8 +194,18 @@ fn plan_rename_symbol(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> 
             let actual_pos = column + pos;
 
             // Check if this is a word boundary (simplified check)
-            let is_word_boundary = (actual_pos == 0 || !line.chars().nth(actual_pos - 1).unwrap_or(' ').is_alphanumeric())
-                && (actual_pos + old_name.len() >= line.len() || !line.chars().nth(actual_pos + old_name.len()).unwrap_or(' ').is_alphanumeric());
+            let is_word_boundary = (actual_pos == 0
+                || !line
+                    .chars()
+                    .nth(actual_pos - 1)
+                    .unwrap_or(' ')
+                    .is_alphanumeric())
+                && (actual_pos + old_name.len() >= line.len()
+                    || !line
+                        .chars()
+                        .nth(actual_pos + old_name.len())
+                        .unwrap_or(' ')
+                        .is_alphanumeric());
 
             if is_word_boundary {
                 edits.push(TextEdit {
@@ -237,18 +256,26 @@ fn plan_rename_symbol(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> 
 
 /// Plan an add import operation
 fn plan_add_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> {
-    let module_path = intent.arguments().get("modulePath")
+    let module_path = intent
+        .arguments()
+        .get("modulePath")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AstError::analysis("Missing modulePath parameter"))?;
 
-    let import_name = intent.arguments().get("importName")
+    let import_name = intent
+        .arguments()
+        .get("importName")
         .and_then(|v| v.as_str());
 
-    let is_default = intent.arguments().get("isDefault")
+    let is_default = intent
+        .arguments()
+        .get("isDefault")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    let source_file = intent.arguments().get("sourceFile")
+    let source_file = intent
+        .arguments()
+        .get("sourceFile")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
 
@@ -256,7 +283,11 @@ fn plan_add_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> {
     let insert_location = find_import_insertion_point(source)?;
 
     let import_text = if is_default {
-        format!("import {} from '{}';", import_name.unwrap_or("defaultImport"), module_path)
+        format!(
+            "import {} from '{}';",
+            import_name.unwrap_or("defaultImport"),
+            module_path
+        )
     } else if let Some(name) = import_name {
         format!("import {{ {} }} from '{}';", name, module_path)
     } else {
@@ -276,15 +307,14 @@ fn plan_add_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> {
         source_file: source_file.to_string(),
         edits: vec![edit],
         dependency_updates: Vec::new(),
-        validations: vec![
-            ValidationRule {
-                rule_type: ValidationType::ImportResolution,
-                description: "Verify import resolves correctly".to_string(),
-                parameters: HashMap::from([
-                    ("module_path".to_string(), serde_json::Value::String(module_path.to_string())),
-                ]),
-            },
-        ],
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::ImportResolution,
+            description: "Verify import resolves correctly".to_string(),
+            parameters: HashMap::from([(
+                "module_path".to_string(),
+                serde_json::Value::String(module_path.to_string()),
+            )]),
+        }],
         metadata: EditPlanMetadata {
             intent_name: intent.name().to_string(),
             intent_arguments: intent.arguments().clone(),
@@ -320,14 +350,20 @@ fn find_import_insertion_point(source: &str) -> AstResult<EditLocation> {
 
 /// Plan a remove import operation
 fn plan_remove_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> {
-    let module_path = intent.arguments().get("modulePath")
+    let module_path = intent
+        .arguments()
+        .get("modulePath")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AstError::analysis("Missing modulePath parameter"))?;
 
-    let import_name = intent.arguments().get("importName")
+    let import_name = intent
+        .arguments()
+        .get("importName")
         .and_then(|v| v.as_str());
 
-    let source_file = intent.arguments().get("sourceFile")
+    let source_file = intent
+        .arguments()
+        .get("sourceFile")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
 
@@ -338,13 +374,15 @@ fn plan_remove_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> 
         let line_trimmed = line.trim();
 
         // Check for ES module imports
-        if line_trimmed.starts_with("import ") && line_trimmed.contains(&format!("'{}'", module_path)) {
+        if line_trimmed.starts_with("import ")
+            && line_trimmed.contains(&format!("'{}'", module_path))
+        {
             if let Some(import_name) = import_name {
                 // Remove specific named import
-                if line_trimmed.contains(&format!("{{ {}", import_name)) ||
-                   line_trimmed.contains(&format!("{} }}", import_name)) ||
-                   line_trimmed.contains(&format!(" {} ", import_name)) {
-
+                if line_trimmed.contains(&format!("{{ {}", import_name))
+                    || line_trimmed.contains(&format!("{} }}", import_name))
+                    || line_trimmed.contains(&format!(" {} ", import_name))
+                {
                     if line_trimmed.matches(',').count() > 0 {
                         // Multiple imports - remove just this one
                         let new_line = remove_named_import_from_line(line, import_name);
@@ -397,9 +435,10 @@ fn plan_remove_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> 
                 });
             }
         }
-
         // Check for CommonJS requires
-        else if line_trimmed.contains("require(") && line_trimmed.contains(&format!("'{}'", module_path)) {
+        else if line_trimmed.contains("require(")
+            && line_trimmed.contains(&format!("'{}'", module_path))
+        {
             edits.push(TextEdit {
                 edit_type: EditType::RemoveImport,
                 location: EditLocation {
@@ -420,13 +459,11 @@ fn plan_remove_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> 
         source_file: source_file.to_string(),
         edits,
         dependency_updates: Vec::new(),
-        validations: vec![
-            ValidationRule {
-                rule_type: ValidationType::SyntaxCheck,
-                description: "Verify syntax is still valid after import removal".to_string(),
-                parameters: HashMap::new(),
-            },
-        ],
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::SyntaxCheck,
+            description: "Verify syntax is still valid after import removal".to_string(),
+            parameters: HashMap::new(),
+        }],
         metadata: EditPlanMetadata {
             intent_name: intent.name().to_string(),
             intent_arguments: intent.arguments().clone(),
@@ -439,15 +476,21 @@ fn plan_remove_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> 
 
 /// Plan an update import path operation
 fn plan_update_import_path(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> {
-    let old_path = intent.arguments().get("oldPath")
+    let old_path = intent
+        .arguments()
+        .get("oldPath")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AstError::analysis("Missing oldPath parameter"))?;
 
-    let new_path = intent.arguments().get("newPath")
+    let new_path = intent
+        .arguments()
+        .get("newPath")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AstError::analysis("Missing newPath parameter"))?;
 
-    let source_file = intent.arguments().get("sourceFile")
+    let source_file = intent
+        .arguments()
+        .get("sourceFile")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
 
@@ -457,11 +500,13 @@ fn plan_update_import_path(intent: &IntentSpec, source: &str) -> AstResult<EditP
     for (line_num, line) in source.lines().enumerate() {
         let line_trimmed = line.trim();
 
-        if (line_trimmed.starts_with("import ") || line_trimmed.contains("require(")) &&
-           (line_trimmed.contains(&format!("'{}'", old_path)) || line_trimmed.contains(&format!("\"{}\"", old_path))) {
-
-            let new_line = line.replace(&format!("'{}'", old_path), &format!("'{}'", new_path))
-                               .replace(&format!("\"{}\"", old_path), &format!("\"{}\"", new_path));
+        if (line_trimmed.starts_with("import ") || line_trimmed.contains("require("))
+            && (line_trimmed.contains(&format!("'{}'", old_path))
+                || line_trimmed.contains(&format!("\"{}\"", old_path)))
+        {
+            let new_line = line
+                .replace(&format!("'{}'", old_path), &format!("'{}'", new_path))
+                .replace(&format!("\"{}\"", old_path), &format!("\"{}\"", new_path));
 
             if new_line != line {
                 edits.push(TextEdit {
@@ -475,7 +520,10 @@ fn plan_update_import_path(intent: &IntentSpec, source: &str) -> AstResult<EditP
                     original_text: line.to_string(),
                     new_text: new_line,
                     priority: 100,
-                    description: format!("Update import path from '{}' to '{}'", old_path, new_path),
+                    description: format!(
+                        "Update import path from '{}' to '{}'",
+                        old_path, new_path
+                    ),
                 });
             }
         }
@@ -485,15 +533,14 @@ fn plan_update_import_path(intent: &IntentSpec, source: &str) -> AstResult<EditP
         source_file: source_file.to_string(),
         edits,
         dependency_updates: Vec::new(),
-        validations: vec![
-            ValidationRule {
-                rule_type: ValidationType::ImportResolution,
-                description: "Verify new import path resolves correctly".to_string(),
-                parameters: HashMap::from([
-                    ("new_path".to_string(), serde_json::Value::String(new_path.to_string())),
-                ]),
-            },
-        ],
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::ImportResolution,
+            description: "Verify new import path resolves correctly".to_string(),
+            parameters: HashMap::from([(
+                "new_path".to_string(),
+                serde_json::Value::String(new_path.to_string()),
+            )]),
+        }],
         metadata: EditPlanMetadata {
             intent_name: intent.name().to_string(),
             intent_arguments: intent.arguments().clone(),
@@ -506,26 +553,40 @@ fn plan_update_import_path(intent: &IntentSpec, source: &str) -> AstResult<EditP
 
 /// Plan an extract function operation
 fn plan_extract_function(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> {
-    let function_name = intent.arguments().get("functionName")
+    let function_name = intent
+        .arguments()
+        .get("functionName")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AstError::analysis("Missing functionName parameter"))?;
 
-    let start_line = intent.arguments().get("startLine")
+    let start_line = intent
+        .arguments()
+        .get("startLine")
         .and_then(|v| v.as_u64())
-        .ok_or_else(|| AstError::analysis("Missing startLine parameter"))? as u32;
+        .ok_or_else(|| AstError::analysis("Missing startLine parameter"))?
+        as u32;
 
-    let end_line = intent.arguments().get("endLine")
+    let end_line = intent
+        .arguments()
+        .get("endLine")
         .and_then(|v| v.as_u64())
         .ok_or_else(|| AstError::analysis("Missing endLine parameter"))? as u32;
 
-    let source_file = intent.arguments().get("sourceFile")
+    let source_file = intent
+        .arguments()
+        .get("sourceFile")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
 
     let lines: Vec<&str> = source.lines().collect();
 
-    if start_line as usize >= lines.len() || end_line as usize >= lines.len() || start_line > end_line {
-        return Err(AstError::analysis("Invalid line range for function extraction"));
+    if start_line as usize >= lines.len()
+        || end_line as usize >= lines.len()
+        || start_line > end_line
+    {
+        return Err(AstError::analysis(
+            "Invalid line range for function extraction",
+        ));
     }
 
     // Extract the selected lines
@@ -533,7 +594,8 @@ fn plan_extract_function(intent: &IntentSpec, source: &str) -> AstResult<EditPla
     let extracted_code = extracted_lines.join("\n");
 
     // Analyze variables used in the extracted code
-    let (parameters, return_vars) = analyze_function_variables(&extracted_code, source, start_line, end_line)?;
+    let (parameters, return_vars) =
+        analyze_function_variables(&extracted_code, source, start_line, end_line)?;
 
     // Create the new function
     let mut function_def = format!("function {}(", function_name);
@@ -560,9 +622,19 @@ fn plan_extract_function(intent: &IntentSpec, source: &str) -> AstResult<EditPla
     let function_call = if return_vars.is_empty() {
         format!("{}({});", function_name, parameters.join(", "))
     } else if return_vars.len() == 1 {
-        format!("const {} = {}({});", return_vars[0], function_name, parameters.join(", "))
+        format!(
+            "const {} = {}({});",
+            return_vars[0],
+            function_name,
+            parameters.join(", ")
+        )
     } else {
-        format!("const [{}] = {}({});", return_vars.join(", "), function_name, parameters.join(", "))
+        format!(
+            "const [{}] = {}({});",
+            return_vars.join(", "),
+            function_name,
+            parameters.join(", ")
+        )
     };
 
     edits.push(TextEdit {
@@ -618,11 +690,15 @@ fn plan_extract_function(intent: &IntentSpec, source: &str) -> AstResult<EditPla
 
 /// Plan an inline function operation
 fn plan_inline_function(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> {
-    let function_name = intent.arguments().get("functionName")
+    let function_name = intent
+        .arguments()
+        .get("functionName")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AstError::analysis("Missing functionName parameter"))?;
 
-    let source_file = intent.arguments().get("sourceFile")
+    let source_file = intent
+        .arguments()
+        .get("sourceFile")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
 
@@ -639,7 +715,8 @@ fn plan_inline_function(intent: &IntentSpec, source: &str) -> AstResult<EditPlan
     let mut edits = Vec::new();
 
     // Replace each function call with the function body
-    for call in function_calls.iter().rev() { // Process in reverse order to avoid offset issues
+    for call in function_calls.iter().rev() {
+        // Process in reverse order to avoid offset issues
         let inlined_code = inline_function_call(&function_info, call)?;
 
         edits.push(TextEdit {
@@ -683,7 +760,11 @@ fn plan_inline_function(intent: &IntentSpec, source: &str) -> AstResult<EditPlan
             intent_arguments: intent.arguments().clone(),
             created_at: chrono::Utc::now(),
             complexity: 9, // Very high complexity
-            impact_areas: vec!["functions".to_string(), "code_structure".to_string(), "refactoring".to_string()],
+            impact_areas: vec![
+                "functions".to_string(),
+                "code_structure".to_string(),
+                "refactoring".to_string(),
+            ],
         },
     })
 }
@@ -700,7 +781,12 @@ fn remove_named_import_from_line(line: &str, import_name: &str) -> String {
 }
 
 /// Analyze variables for function extraction
-fn analyze_function_variables(extracted_code: &str, _full_source: &str, _start_line: u32, _end_line: u32) -> AstResult<(Vec<String>, Vec<String>)> {
+fn analyze_function_variables(
+    extracted_code: &str,
+    _full_source: &str,
+    _start_line: u32,
+    _end_line: u32,
+) -> AstResult<(Vec<String>, Vec<String>)> {
     // Simplified analysis - in practice, you'd use a proper AST
     let parameters = Vec::new();
     let mut return_vars = Vec::new();
@@ -773,10 +859,10 @@ struct FunctionCall {
 fn find_function_definition(source: &str, function_name: &str) -> AstResult<FunctionInfo> {
     // Simplified function finder - in practice, you'd use proper AST parsing
     for (line_num, line) in source.lines().enumerate() {
-        if line.contains(&format!("function {}", function_name)) ||
-           line.contains(&format!("const {} =", function_name)) ||
-           line.contains(&format!("let {} =", function_name)) {
-
+        if line.contains(&format!("function {}", function_name))
+            || line.contains(&format!("const {} =", function_name))
+            || line.contains(&format!("let {} =", function_name))
+        {
             return Ok(FunctionInfo {
                 name: function_name.to_string(),
                 parameters: Vec::new(), // Would extract from actual function signature
@@ -792,7 +878,10 @@ fn find_function_definition(source: &str, function_name: &str) -> AstResult<Func
         }
     }
 
-    Err(AstError::analysis(format!("Function '{}' not found", function_name)))
+    Err(AstError::analysis(format!(
+        "Function '{}' not found",
+        function_name
+    )))
 }
 
 /// Find all calls to a function

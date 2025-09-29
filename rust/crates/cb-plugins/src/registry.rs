@@ -1,6 +1,6 @@
 //! Plugin registry for managing loaded plugins
 
-use crate::{LanguagePlugin, PluginMetadata, Capabilities, PluginError, PluginResult};
+use crate::{Capabilities, LanguagePlugin, PluginError, PluginMetadata, PluginResult};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -36,7 +36,10 @@ impl PluginRegistry {
         plugin: Arc<dyn LanguagePlugin>,
     ) -> PluginResult<()> {
         let name = name.into();
-        eprintln!("DEBUG: PluginRegistry::register_plugin called for '{}'", name);
+        eprintln!(
+            "DEBUG: PluginRegistry::register_plugin called for '{}'",
+            name
+        );
 
         let metadata = plugin.metadata();
         let capabilities = plugin.capabilities();
@@ -70,9 +73,15 @@ impl PluginRegistry {
         self.plugins.insert(name.clone(), plugin);
         self.metadata_cache.insert(name.clone(), metadata);
 
-        eprintln!("DEBUG: Plugin '{}' registration completed successfully", name);
+        eprintln!(
+            "DEBUG: Plugin '{}' registration completed successfully",
+            name
+        );
         eprintln!("DEBUG: Total plugins in registry: {}", self.plugins.len());
-        eprintln!("DEBUG: Available plugin names: {:?}", self.plugins.keys().collect::<Vec<_>>());
+        eprintln!(
+            "DEBUG: Available plugin names: {:?}",
+            self.plugins.keys().collect::<Vec<_>>()
+        );
         info!("Registered plugin '{}'", name);
         Ok(())
     }
@@ -120,10 +129,7 @@ impl PluginRegistry {
 
     /// Find plugins that support a specific method
     pub fn find_plugins_for_method(&self, method: &str) -> Vec<String> {
-        self.method_map
-            .get(method)
-            .cloned()
-            .unwrap_or_default()
+        self.method_map.get(method).cloned().unwrap_or_default()
     }
 
     /// Find the best plugin for a file and method combination
@@ -139,7 +145,10 @@ impl PluginRegistry {
         // Special handling for workspace-level LSP operations
         if matches!(method, "search_workspace_symbols") {
             eprintln!("DEBUG: Special handling for search_workspace_symbols");
-            eprintln!("DEBUG: Available plugins: {:?}", self.plugins.keys().collect::<Vec<_>>());
+            eprintln!(
+                "DEBUG: Available plugins: {:?}",
+                self.plugins.keys().collect::<Vec<_>>()
+            );
             // HACK: The method_map isn't correctly populated in tests, so we'll just
             // hardcode this for now.
             if self.plugins.contains_key("typescript") {
@@ -244,11 +253,15 @@ impl PluginRegistry {
     /// Validate plugin metadata
     fn validate_plugin_metadata(&self, metadata: &PluginMetadata) -> PluginResult<()> {
         if metadata.name.is_empty() {
-            return Err(PluginError::configuration_error("Plugin name cannot be empty"));
+            return Err(PluginError::configuration_error(
+                "Plugin name cannot be empty",
+            ));
         }
 
         if metadata.version.is_empty() {
-            return Err(PluginError::configuration_error("Plugin version cannot be empty"));
+            return Err(PluginError::configuration_error(
+                "Plugin version cannot be empty",
+            ));
         }
 
         // Basic semver validation (could be more sophisticated)
@@ -276,31 +289,57 @@ impl PluginRegistry {
             // Navigation methods
             ("find_definition", capabilities.navigation.go_to_definition),
             ("find_references", capabilities.navigation.find_references),
-            ("find_implementations", capabilities.navigation.find_implementations),
-            ("find_type_definition", capabilities.navigation.find_type_definition),
-            ("search_workspace_symbols", capabilities.navigation.workspace_symbols),
-            ("get_document_symbols", capabilities.navigation.document_symbols),
-            ("prepare_call_hierarchy", capabilities.navigation.call_hierarchy),
-            ("get_call_hierarchy_incoming_calls", capabilities.navigation.call_hierarchy),
-            ("get_call_hierarchy_outgoing_calls", capabilities.navigation.call_hierarchy),
-
+            (
+                "find_implementations",
+                capabilities.navigation.find_implementations,
+            ),
+            (
+                "find_type_definition",
+                capabilities.navigation.find_type_definition,
+            ),
+            (
+                "search_workspace_symbols",
+                capabilities.navigation.workspace_symbols,
+            ),
+            (
+                "get_document_symbols",
+                capabilities.navigation.document_symbols,
+            ),
+            (
+                "prepare_call_hierarchy",
+                capabilities.navigation.call_hierarchy,
+            ),
+            (
+                "get_call_hierarchy_incoming_calls",
+                capabilities.navigation.call_hierarchy,
+            ),
+            (
+                "get_call_hierarchy_outgoing_calls",
+                capabilities.navigation.call_hierarchy,
+            ),
             // Editing methods
             ("rename_symbol", capabilities.editing.rename),
             ("format_document", capabilities.editing.format_document),
             ("format_range", capabilities.editing.format_range),
             ("get_code_actions", capabilities.editing.code_actions),
             ("organize_imports", capabilities.editing.organize_imports),
-
             // Refactoring methods
-            ("extract_function", capabilities.refactoring.extract_function),
-            ("extract_variable", capabilities.refactoring.extract_variable),
+            (
+                "extract_function",
+                capabilities.refactoring.extract_function,
+            ),
+            (
+                "extract_variable",
+                capabilities.refactoring.extract_variable,
+            ),
             ("inline_variable", capabilities.refactoring.inline_variable),
-
             // Intelligence methods
             ("get_hover", capabilities.intelligence.hover),
             ("get_completions", capabilities.intelligence.completions),
-            ("get_signature_help", capabilities.intelligence.signature_help),
-
+            (
+                "get_signature_help",
+                capabilities.intelligence.signature_help,
+            ),
             // Diagnostic methods
             ("get_diagnostics", capabilities.diagnostics.diagnostics),
         ];
@@ -347,7 +386,7 @@ pub struct RegistryStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{PluginRequest, PluginResponse, PluginMetadata};
+    use crate::{PluginMetadata, PluginRequest, PluginResponse};
     use async_trait::async_trait;
     use serde_json::Value;
     use std::path::PathBuf;
@@ -421,7 +460,9 @@ mod tests {
         let method_plugins = registry.find_plugins_for_method("find_definition");
         assert_eq!(method_plugins, vec!["test-plugin"]);
 
-        let best_plugin = registry.find_best_plugin(&file_path, "find_definition").unwrap();
+        let best_plugin = registry
+            .find_best_plugin(&file_path, "find_definition")
+            .unwrap();
         assert_eq!(best_plugin, "test-plugin");
     }
 

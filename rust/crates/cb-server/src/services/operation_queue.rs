@@ -1,15 +1,15 @@
 //! Operation queue for serializing file operations
 
-use crate::error::{ServerError, ServerResult};
 use super::lock_manager::{LockManager, LockType};
+use crate::error::{ServerError, ServerResult};
+use serde_json::Value;
 use std::collections::VecDeque;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, Notify};
 use tokio::time::timeout;
-use std::path::PathBuf;
-use serde_json::Value;
-use std::time::{Duration, Instant};
-use tracing::{debug, warn, error};
+use tracing::{debug, error, warn};
 
 /// Warning timeout for lock acquisition (30 seconds)
 const LOCK_ACQUISITION_WARNING_TIMEOUT: Duration = Duration::from_secs(30);
@@ -28,12 +28,13 @@ pub enum OperationType {
 impl OperationType {
     /// Check if this operation modifies files
     pub fn is_write_operation(&self) -> bool {
-        matches!(self,
-            OperationType::Write |
-            OperationType::Delete |
-            OperationType::Rename |
-            OperationType::Format |
-            OperationType::Refactor
+        matches!(
+            self,
+            OperationType::Write
+                | OperationType::Delete
+                | OperationType::Rename
+                | OperationType::Format
+                | OperationType::Refactor
         )
     }
 
@@ -155,8 +156,12 @@ impl OperationQueue {
         }
 
         let operation_id = operation.id.clone();
-        debug!("Enqueueing operation {}: {} on {}",
-            operation_id, operation.tool_name, operation.file_path.display());
+        debug!(
+            "Enqueueing operation {}: {} on {}",
+            operation_id,
+            operation.tool_name,
+            operation.file_path.display()
+        );
 
         // Insert based on priority
         let priority = operation.priority;
@@ -236,7 +241,12 @@ impl OperationQueue {
                 match lock_type {
                     LockType::Read => {
                         // Try to acquire read lock with timeout warning
-                        let _guard = match timeout(LOCK_ACQUISITION_WARNING_TIMEOUT, file_lock.read()).await {
+                        let _guard = match timeout(
+                            LOCK_ACQUISITION_WARNING_TIMEOUT,
+                            file_lock.read(),
+                        )
+                        .await
+                        {
                             Ok(guard) => guard,
                             Err(_) => {
                                 warn!(
@@ -248,7 +258,10 @@ impl OperationQueue {
                             }
                         };
                         // Process the operation
-                        debug!("Processing operation {}: {}", operation.id, operation.tool_name);
+                        debug!(
+                            "Processing operation {}: {}",
+                            operation.id, operation.tool_name
+                        );
                         match handler(operation).await {
                             Ok(_result) => {
                                 debug!("Operation completed successfully");
@@ -261,7 +274,7 @@ impl OperationQueue {
                                 stats.failed_operations += 1;
                             }
                         }
-                    },
+                    }
                     LockType::Write => {
                         // Batch processing: collect all operations for the same file
                         let mut batched_operations = vec![operation];
@@ -274,7 +287,11 @@ impl OperationQueue {
                                 if queue[i].file_path == file_path {
                                     // Remove and add to batch
                                     let op = queue.remove(i).unwrap();
-                                    debug!("Batching operation {} for file {}", op.id, file_path.display());
+                                    debug!(
+                                        "Batching operation {} for file {}",
+                                        op.id,
+                                        file_path.display()
+                                    );
                                     batched_operations.push(op);
                                 } else {
                                     i += 1;
@@ -284,7 +301,12 @@ impl OperationQueue {
 
                         // Process all batched operations under the same write lock
                         // Try to acquire write lock with timeout warning
-                        let _guard = match timeout(LOCK_ACQUISITION_WARNING_TIMEOUT, file_lock.write()).await {
+                        let _guard = match timeout(
+                            LOCK_ACQUISITION_WARNING_TIMEOUT,
+                            file_lock.write(),
+                        )
+                        .await
+                        {
                             Ok(guard) => guard,
                             Err(_) => {
                                 warn!(
@@ -295,11 +317,17 @@ impl OperationQueue {
                                 file_lock.write().await
                             }
                         };
-                        debug!("Processing {} batched operations for file {}",
-                               batched_operations.len(), file_path.display());
+                        debug!(
+                            "Processing {} batched operations for file {}",
+                            batched_operations.len(),
+                            file_path.display()
+                        );
 
                         for batched_op in batched_operations {
-                            debug!("Processing operation {}: {}", batched_op.id, batched_op.tool_name);
+                            debug!(
+                                "Processing operation {}: {}",
+                                batched_op.id, batched_op.tool_name
+                            );
                             match handler(batched_op).await {
                                 Ok(_result) => {
                                     debug!("Operation completed successfully");
@@ -313,7 +341,7 @@ impl OperationQueue {
                                 }
                             }
                         }
-                    },
+                    }
                 };
             }
         }
@@ -356,7 +384,6 @@ impl OperationQueue {
         queue.clear();
     }
 
-
     /// Remove a specific operation from the queue
     pub async fn cancel_operation(&self, operation_id: &str) -> bool {
         let mut queue = self.queue.lock().await;
@@ -368,13 +395,16 @@ impl OperationQueue {
     /// Get all pending operations (for monitoring)
     pub async fn get_pending_operations(&self) -> Vec<(String, String, PathBuf, Duration)> {
         let queue = self.queue.lock().await;
-        queue.iter()
-            .map(|op| (
-                op.id.clone(),
-                op.tool_name.clone(),
-                op.file_path.clone(),
-                op.age(),
-            ))
+        queue
+            .iter()
+            .map(|op| {
+                (
+                    op.id.clone(),
+                    op.tool_name.clone(),
+                    op.file_path.clone(),
+                    op.age(),
+                )
+            })
             .collect()
     }
 }
@@ -453,21 +483,24 @@ mod tests {
             OperationType::Read,
             PathBuf::from("/file1.txt"),
             Value::Null,
-        ).with_priority(5);
+        )
+        .with_priority(5);
 
         let op2 = FileOperation::new(
             "tool2".to_string(),
             OperationType::Read,
             PathBuf::from("/file2.txt"),
             Value::Null,
-        ).with_priority(1); // Higher priority
+        )
+        .with_priority(1); // Higher priority
 
         let op3 = FileOperation::new(
             "tool3".to_string(),
             OperationType::Read,
             PathBuf::from("/file3.txt"),
             Value::Null,
-        ).with_priority(10); // Lower priority
+        )
+        .with_priority(10); // Lower priority
 
         queue.enqueue(op1).await.unwrap();
         queue.enqueue(op2).await.unwrap();

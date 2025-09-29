@@ -76,7 +76,9 @@ impl ClientConfig {
         let mut actions = Vec::new();
 
         if self.url.is_none() {
-            actions.push("Set server URL with --url or CODEFLOW_BUDDY_URL environment variable".to_string());
+            actions.push(
+                "Set server URL with --url or CODEFLOW_BUDDY_URL environment variable".to_string(),
+            );
         }
 
         if self.token.is_none() {
@@ -91,7 +93,8 @@ impl ClientConfig {
         let path = path.as_ref();
         debug!("Loading config from {}", path.display());
 
-        let content = fs::read_to_string(path).await
+        let content = fs::read_to_string(path)
+            .await
             .map_err(|e| ClientError::ConfigError(format!("Failed to read config file: {}", e)))?;
 
         let config: Self = serde_json::from_str(&content)
@@ -113,15 +116,17 @@ impl ClientConfig {
 
         // Create directory if it doesn't exist
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).await
-                .map_err(|e| ClientError::ConfigError(format!("Failed to create config directory: {}", e)))?;
+            fs::create_dir_all(parent).await.map_err(|e| {
+                ClientError::ConfigError(format!("Failed to create config directory: {}", e))
+            })?;
         }
 
         // Serialize config with pretty formatting
         let content = serde_json::to_string_pretty(self)
             .map_err(|e| ClientError::ConfigError(format!("Failed to serialize config: {}", e)))?;
 
-        fs::write(path, content).await
+        fs::write(path, content)
+            .await
             .map_err(|e| ClientError::ConfigError(format!("Failed to write config file: {}", e)))?;
 
         info!("Configuration saved to {}", path.display());
@@ -130,16 +135,18 @@ impl ClientConfig {
 
     /// Get the default configuration file path
     pub fn default_config_path() -> ClientResult<PathBuf> {
-        let home = home_dir()
-            .ok_or_else(|| ClientError::ConfigError("Unable to determine home directory".to_string()))?;
+        let home = home_dir().ok_or_else(|| {
+            ClientError::ConfigError("Unable to determine home directory".to_string())
+        })?;
 
         Ok(home.join(".codeflow-buddy").join("config.json"))
     }
 
     /// Get the configuration directory path
     pub fn config_dir() -> ClientResult<PathBuf> {
-        let home = home_dir()
-            .ok_or_else(|| ClientError::ConfigError("Unable to determine home directory".to_string()))?;
+        let home = home_dir().ok_or_else(|| {
+            ClientError::ConfigError("Unable to determine home directory".to_string())
+        })?;
 
         Ok(home.join(".codeflow-buddy"))
     }
@@ -149,17 +156,25 @@ impl ClientConfig {
         // Validate URL format if provided
         if let Some(ref url) = self.url {
             if let Err(e) = url::Url::parse(url) {
-                return Err(ClientError::ConfigError(format!("Invalid URL format: {}", e)));
+                return Err(ClientError::ConfigError(format!(
+                    "Invalid URL format: {}",
+                    e
+                )));
             }
         }
 
         // Validate timeout is reasonable
         if let Some(timeout) = self.timeout_ms {
             if timeout == 0 {
-                return Err(ClientError::ConfigError("Timeout cannot be zero".to_string()));
+                return Err(ClientError::ConfigError(
+                    "Timeout cannot be zero".to_string(),
+                ));
             }
-            if timeout > 300_000 { // 5 minutes max
-                return Err(ClientError::ConfigError("Timeout cannot exceed 5 minutes".to_string()));
+            if timeout > 300_000 {
+                // 5 minutes max
+                return Err(ClientError::ConfigError(
+                    "Timeout cannot exceed 5 minutes".to_string(),
+                ));
             }
         }
 
@@ -168,7 +183,8 @@ impl ClientConfig {
 
     /// Get the URL, returning an error if not configured
     pub fn get_url(&self) -> ClientResult<&str> {
-        self.url.as_deref()
+        self.url
+            .as_deref()
             .ok_or_else(|| ClientError::ConfigError("No server URL configured".to_string()))
     }
 
@@ -230,7 +246,11 @@ impl ClientConfig {
     /// Get a summary of the configuration for display
     pub fn summary(&self) -> String {
         let url = self.url.as_deref().unwrap_or("<not configured>");
-        let token_status = if self.token.is_some() { "configured" } else { "not configured" };
+        let token_status = if self.token.is_some() {
+            "configured"
+        } else {
+            "not configured"
+        };
         let timeout = self.get_timeout_ms();
 
         format!(
@@ -259,11 +279,13 @@ impl ConfigBuilder {
 
         if path.exists() {
             debug!("Loading config from {}", path.display());
-            let content = fs::read_to_string(path).await
-                .map_err(|e| ClientError::ConfigError(format!("Failed to read config file: {}", e)))?;
+            let content = fs::read_to_string(path).await.map_err(|e| {
+                ClientError::ConfigError(format!("Failed to read config file: {}", e))
+            })?;
 
-            self.config = serde_json::from_str(&content)
-                .map_err(|e| ClientError::ConfigError(format!("Failed to parse config file: {}", e)))?;
+            self.config = serde_json::from_str(&content).map_err(|e| {
+                ClientError::ConfigError(format!("Failed to parse config file: {}", e))
+            })?;
         } else {
             debug!("No config file found at {}, using defaults", path.display());
         }
@@ -276,7 +298,8 @@ impl ConfigBuilder {
         let path = path.as_ref();
         debug!("Loading config from {}", path.display());
 
-        let content = fs::read_to_string(path).await
+        let content = fs::read_to_string(path)
+            .await
             .map_err(|e| ClientError::ConfigError(format!("Failed to read config file: {}", e)))?;
 
         self.config = serde_json::from_str(&content)
@@ -354,9 +377,9 @@ impl ConfigBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use serial_test::serial;
     use std::env;
+    use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_config_save_and_load() {
@@ -411,7 +434,7 @@ mod tests {
 
         let overridden = base_config.with_overrides(
             Some("ws://example.com:4000".to_string()),
-            Some("override-token".to_string())
+            Some("override-token".to_string()),
         );
 
         assert_eq!(overridden.url, Some("ws://example.com:4000".to_string()));
@@ -601,7 +624,10 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid URL format"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid URL format"));
     }
 
     #[test]
@@ -611,10 +637,7 @@ mod tests {
             .with_url("ws://chain:9000".to_string())
             .with_token("chain-token".to_string())
             .with_timeout_ms(20000)
-            .with_overrides(
-                Some("ws://override:9001".to_string()),
-                None
-            )
+            .with_overrides(Some("ws://override:9001".to_string()), None)
             .build()
             .unwrap();
 

@@ -1,7 +1,7 @@
-use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
 use tempfile::TempDir;
+use tests::harness::{TestClient, TestWorkspace};
 
 #[tokio::test]
 async fn test_create_file_basic() {
@@ -11,10 +11,16 @@ async fn test_create_file_basic() {
     let file_path = workspace.path().join("new_file.txt");
     let content = "Hello, World!";
 
-    let response = client.call_tool("create_file", json!({
-        "file_path": file_path.to_string_lossy(),
-        "content": content
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "create_file",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "content": content
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
     assert!(file_path.exists());
@@ -31,10 +37,16 @@ async fn test_create_file_with_directories() {
     let file_path = workspace.path().join("nested/deep/new_file.js");
     let content = "export const greeting = 'Hello from nested file!';";
 
-    let response = client.call_tool("create_file", json!({
-        "file_path": file_path.to_string_lossy(),
-        "content": content
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "create_file",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "content": content
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
     assert!(file_path.exists());
@@ -52,10 +64,15 @@ async fn test_create_file_overwrite_protection() {
     let file_path = workspace.path().join("existing.txt");
     std::fs::write(&file_path, "original content").unwrap();
 
-    let response = client.call_tool("create_file", json!({
-        "file_path": file_path.to_string_lossy(),
-        "content": "new content"
-    })).await;
+    let response = client
+        .call_tool(
+            "create_file",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "content": "new content"
+            }),
+        )
+        .await;
 
     // Should fail without overwrite flag
     assert!(response.is_err() || !response.unwrap()["success"].as_bool().unwrap_or(true));
@@ -72,11 +89,17 @@ async fn test_create_file_with_overwrite() {
     let file_path = workspace.path().join("existing.txt");
     std::fs::write(&file_path, "original content").unwrap();
 
-    let response = client.call_tool("create_file", json!({
-        "file_path": file_path.to_string_lossy(),
-        "content": "new content",
-        "overwrite": true
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "create_file",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "content": "new content",
+                "overwrite": true
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
 
@@ -93,9 +116,15 @@ async fn test_read_file_basic() {
     let content = "This is test content\nwith multiple lines\nand unicode: 🚀";
     std::fs::write(&file_path, content).unwrap();
 
-    let response = client.call_tool("read_file", json!({
-        "file_path": file_path.to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "read_file",
+            json!({
+                "file_path": file_path.to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
 
     assert_eq!(response["content"].as_str().unwrap(), content);
 }
@@ -107,9 +136,14 @@ async fn test_read_file_nonexistent() {
 
     let file_path = workspace.path().join("nonexistent.txt");
 
-    let response = client.call_tool("read_file", json!({
-        "file_path": file_path.to_string_lossy()
-    })).await;
+    let response = client
+        .call_tool(
+            "read_file",
+            json!({
+                "file_path": file_path.to_string_lossy()
+            }),
+        )
+        .await;
 
     assert!(response.is_err());
 }
@@ -124,11 +158,17 @@ async fn test_read_file_with_range() {
     let content = lines.join("\n");
     std::fs::write(&file_path, &content).unwrap();
 
-    let response = client.call_tool("read_file", json!({
-        "file_path": file_path.to_string_lossy(),
-        "start_line": 10,
-        "end_line": 20
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "read_file",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "start_line": 10,
+                "end_line": 20
+            }),
+        )
+        .await
+        .unwrap();
 
     let expected_lines: Vec<String> = (10..=20).map(|i| format!("Line {}", i)).collect();
     let expected = expected_lines.join("\n");
@@ -143,10 +183,16 @@ async fn test_write_file_basic() {
     let file_path = workspace.path().join("write_test.txt");
     let content = "Written content with special chars: @#$%^&*()";
 
-    let response = client.call_tool("write_file", json!({
-        "file_path": file_path.to_string_lossy(),
-        "content": content
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "write_file",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "content": content
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
     assert!(file_path.exists());
@@ -164,10 +210,16 @@ async fn test_write_file_overwrites_existing() {
     std::fs::write(&file_path, "original").unwrap();
 
     let new_content = "completely new content";
-    let response = client.call_tool("write_file", json!({
-        "file_path": file_path.to_string_lossy(),
-        "content": new_content
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "write_file",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "content": new_content
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
 
@@ -184,9 +236,15 @@ async fn test_delete_file_basic() {
     std::fs::write(&file_path, "content to be deleted").unwrap();
     assert!(file_path.exists());
 
-    let response = client.call_tool("delete_file", json!({
-        "file_path": file_path.to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "delete_file",
+            json!({
+                "file_path": file_path.to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
     assert!(!file_path.exists());
@@ -199,9 +257,14 @@ async fn test_delete_file_nonexistent() {
 
     let file_path = workspace.path().join("nonexistent.txt");
 
-    let response = client.call_tool("delete_file", json!({
-        "file_path": file_path.to_string_lossy()
-    })).await;
+    let response = client
+        .call_tool(
+            "delete_file",
+            json!({
+                "file_path": file_path.to_string_lossy()
+            }),
+        )
+        .await;
 
     assert!(response.is_err());
 }
@@ -222,14 +285,21 @@ async fn test_list_files_basic() {
     std::fs::create_dir(&subdir).unwrap();
     std::fs::write(subdir.join("nested.txt"), "nested content").unwrap();
 
-    let response = client.call_tool("list_files", json!({
-        "directory": workspace.path().to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "list_files",
+            json!({
+                "directory": workspace.path().to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
 
     let file_list = response["files"].as_array().unwrap();
     assert!(file_list.len() >= 4); // 3 files + 1 directory
 
-    let file_names: Vec<&str> = file_list.iter()
+    let file_names: Vec<&str> = file_list
+        .iter()
         .map(|f| f["name"].as_str().unwrap())
         .collect();
 
@@ -255,13 +325,20 @@ async fn test_list_files_recursive() {
     std::fs::create_dir(&level2).unwrap();
     std::fs::write(level2.join("deep.txt"), "deep").unwrap();
 
-    let response = client.call_tool("list_files", json!({
-        "directory": workspace.path().to_string_lossy(),
-        "recursive": true
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "list_files",
+            json!({
+                "directory": workspace.path().to_string_lossy(),
+                "recursive": true
+            }),
+        )
+        .await
+        .unwrap();
 
     let file_list = response["files"].as_array().unwrap();
-    let paths: Vec<String> = file_list.iter()
+    let paths: Vec<String> = file_list
+        .iter()
         .map(|f| f["path"].as_str().unwrap().to_string())
         .collect();
 
@@ -288,10 +365,16 @@ async fn test_list_files_with_pattern() {
         std::fs::write(workspace.path().join(file), content).unwrap();
     }
 
-    let response = client.call_tool("list_files", json!({
-        "directory": workspace.path().to_string_lossy(),
-        "pattern": "*.js"
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "list_files",
+            json!({
+                "directory": workspace.path().to_string_lossy(),
+                "pattern": "*.js"
+            }),
+        )
+        .await
+        .unwrap();
 
     let file_list = response["files"].as_array().unwrap();
     assert_eq!(file_list.len(), 1);
@@ -317,17 +400,32 @@ export function createUser(name: string): User {
 "#;
 
     // Test create_file
-    let response = client.call_tool("create_file", json!({
-        "file_path": ts_file.to_string_lossy(),
-        "content": initial_content
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "create_file",
+            json!({
+                "file_path": ts_file.to_string_lossy(),
+                "content": initial_content
+            }),
+        )
+        .await
+        .unwrap();
     assert!(response["success"].as_bool().unwrap_or(false));
 
     // Test read_file
-    let response = client.call_tool("read_file", json!({
-        "file_path": ts_file.to_string_lossy()
-    })).await.unwrap();
-    assert_eq!(response["content"].as_str().unwrap().trim(), initial_content.trim());
+    let response = client
+        .call_tool(
+            "read_file",
+            json!({
+                "file_path": ts_file.to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        response["content"].as_str().unwrap().trim(),
+        initial_content.trim()
+    );
 
     // Test write_file with modified content
     let modified_content = r#"
@@ -342,33 +440,60 @@ export function createUser(name: string, email?: string): User {
 }
 "#;
 
-    let response = client.call_tool("write_file", json!({
-        "file_path": ts_file.to_string_lossy(),
-        "content": modified_content
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "write_file",
+            json!({
+                "file_path": ts_file.to_string_lossy(),
+                "content": modified_content
+            }),
+        )
+        .await
+        .unwrap();
     assert!(response["success"].as_bool().unwrap_or(false));
 
     // Verify the modification
-    let response = client.call_tool("read_file", json!({
-        "file_path": ts_file.to_string_lossy()
-    })).await.unwrap();
-    assert_eq!(response["content"].as_str().unwrap().trim(), modified_content.trim());
+    let response = client
+        .call_tool(
+            "read_file",
+            json!({
+                "file_path": ts_file.to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        response["content"].as_str().unwrap().trim(),
+        modified_content.trim()
+    );
 
     // Test list_files to ensure our file is there
-    let response = client.call_tool("list_files", json!({
-        "directory": workspace.path().to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "list_files",
+            json!({
+                "directory": workspace.path().to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
 
     let file_list = response["files"].as_array().unwrap();
-    let has_our_file = file_list.iter().any(|f|
-        f["name"].as_str().unwrap() == "integration.ts"
-    );
+    let has_our_file = file_list
+        .iter()
+        .any(|f| f["name"].as_str().unwrap() == "integration.ts");
     assert!(has_our_file);
 
     // Test delete_file
-    let response = client.call_tool("delete_file", json!({
-        "file_path": ts_file.to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "delete_file",
+            json!({
+                "file_path": ts_file.to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
     assert!(response["success"].as_bool().unwrap_or(false));
     assert!(!ts_file.exists());
 }
@@ -384,17 +509,29 @@ async fn test_large_file_handling() {
     let line = "This is a test line with some content to make it reasonably long.\n";
     let large_content = line.repeat(1024 * 16); // ~1MB
 
-    let response = client.call_tool("create_file", json!({
-        "file_path": file_path.to_string_lossy(),
-        "content": large_content
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "create_file",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "content": large_content
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
 
     // Read back and verify size
-    let response = client.call_tool("read_file", json!({
-        "file_path": file_path.to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "read_file",
+            json!({
+                "file_path": file_path.to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
 
     let read_content = response["content"].as_str().unwrap();
     assert_eq!(read_content.len(), large_content.len());
@@ -413,9 +550,14 @@ async fn test_binary_file_handling() {
     std::fs::write(&file_path, &binary_data).unwrap();
 
     // Test reading binary file (should handle gracefully)
-    let response = client.call_tool("read_file", json!({
-        "file_path": file_path.to_string_lossy()
-    })).await;
+    let response = client
+        .call_tool(
+            "read_file",
+            json!({
+                "file_path": file_path.to_string_lossy()
+            }),
+        )
+        .await;
 
     // Binary files might be handled differently, but should not crash
     // The exact behavior depends on implementation
@@ -423,7 +565,7 @@ async fn test_binary_file_handling() {
         Ok(resp) => {
             // If it succeeds, content should be present
             assert!(resp.get("content").is_some());
-        },
+        }
         Err(_) => {
             // If it fails, that's acceptable for binary files
             // but it should be a graceful error
@@ -431,13 +573,19 @@ async fn test_binary_file_handling() {
     }
 
     // List files should still work and show the binary file
-    let response = client.call_tool("list_files", json!({
-        "directory": workspace.path().to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "list_files",
+            json!({
+                "directory": workspace.path().to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
 
     let file_list = response["files"].as_array().unwrap();
-    let has_binary_file = file_list.iter().any(|f|
-        f["name"].as_str().unwrap() == "binary_file.dat"
-    );
+    let has_binary_file = file_list
+        .iter()
+        .any(|f| f["name"].as_str().unwrap() == "binary_file.dat");
     assert!(has_binary_file);
 }
