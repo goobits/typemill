@@ -564,6 +564,15 @@ impl PluginDispatcher {
 
         let file_path = PathBuf::from(file_path_str);
 
+        // Trigger plugin lifecycle hooks for all plugins that can handle this file
+        if let Err(e) = self.plugin_manager.trigger_file_open_hooks(&file_path).await {
+            warn!(
+                file_path = %file_path.display(),
+                error = %e,
+                "Failed to trigger plugin hooks (continuing)"
+            );
+        }
+
         // Get file extension to determine which LSP adapter to notify
         let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
 

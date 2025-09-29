@@ -789,20 +789,44 @@ impl LanguagePlugin for LspAdapterPlugin {
     }
 
     fn on_file_open(&self, path: &Path) -> PluginResult<()> {
-        debug!("File opened: {}", path.display());
-        // Could notify LSP service about file open
+        debug!(
+            path = %path.display(),
+            plugin = %self.metadata.name,
+            "File opened - hook triggered"
+        );
+
+        // Note: The actual LSP textDocument/didOpen notification is sent by
+        // the DirectLspAdapter in plugin_dispatcher.rs via LspClient::notify_file_opened().
+        // This hook serves as a notification point for the plugin to be aware of file lifecycle.
+        // Future enhancements could add plugin-specific logic here (e.g., invalidate caches,
+        // update internal state, etc.)
+
         Ok(())
     }
 
     fn on_file_save(&self, path: &Path) -> PluginResult<()> {
-        debug!("File saved: {}", path.display());
-        // Could notify LSP service about file save
+        debug!(
+            path = %path.display(),
+            plugin = %self.metadata.name,
+            "File saved - hook triggered"
+        );
+
+        // Note: Future implementation could send textDocument/didSave notification
+        // when notify_file_saved tool is added to the MCP API
+
         Ok(())
     }
 
     fn on_file_close(&self, path: &Path) -> PluginResult<()> {
-        debug!("File closed: {}", path.display());
-        // Could notify LSP service about file close
+        debug!(
+            path = %path.display(),
+            plugin = %self.metadata.name,
+            "File closed - hook triggered"
+        );
+
+        // Note: Future implementation could send textDocument/didClose notification
+        // when notify_file_closed tool is added to the MCP API
+
         Ok(())
     }
 }
