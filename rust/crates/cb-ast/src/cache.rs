@@ -1,6 +1,6 @@
 //! AST caching system for performance optimization
 
-use crate::parser::ImportGraph;
+use cb_api::{CacheStats, ImportGraph};
 use dashmap::DashMap;
 use std::path::PathBuf;
 use std::time::SystemTime;
@@ -237,51 +237,9 @@ impl Default for AstCache {
 }
 
 /// Cache statistics for monitoring and debugging
-#[derive(Debug, Clone)]
-pub struct CacheStats {
-    /// Number of cache hits
-    pub hits: u64,
-    /// Number of cache misses
-    pub misses: u64,
-    /// Number of cache invalidations
-    pub invalidations: u64,
-    /// Number of cache inserts
-    pub inserts: u64,
-    /// Current number of cached entries
-    pub current_entries: usize,
-}
+// CacheStats now comes from cb-api
 
-impl CacheStats {
-    /// Calculate hit ratio as a percentage
-    pub fn hit_ratio(&self) -> f64 {
-        let total = self.hits + self.misses;
-        if total == 0 {
-            0.0
-        } else {
-            (self.hits as f64 / total as f64) * 100.0
-        }
-    }
-
-    /// Check if cache is performing well (arbitrary threshold of 70% hit ratio)
-    pub fn is_performing_well(&self) -> bool {
-        self.hit_ratio() >= 70.0 && (self.hits + self.misses) >= 10
-    }
-}
-
-impl std::fmt::Display for CacheStats {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Cache Stats: {} entries, {}/{} hits/total ({:.1}% hit ratio), {} invalidations, {} inserts",
-            self.current_entries,
-            self.hits,
-            self.hits + self.misses,
-            self.hit_ratio(),
-            self.invalidations,
-            self.inserts
-        )
-    }
-}
+// CacheStats impl methods now in cb-api
 
 #[cfg(test)]
 mod tests {

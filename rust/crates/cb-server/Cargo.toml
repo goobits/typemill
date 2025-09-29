@@ -6,9 +6,12 @@ description = "Codeflow Buddy server implementation"
 license = "MIT"
 
 [dependencies]
+cb-api = { path = "../cb-api" }
 cb-core = { path = "../cb-core" }
 cb-ast = { path = "../cb-ast" }
 cb-plugins = { path = "../cb-plugins" }
+cb-transport = { path = "../cb-transport" }
+cb-vfs = { path = "../cb-vfs" }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 serde = { workspace = true }
@@ -19,11 +22,7 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
-# Transport & Authentication dependencies
-tokio-tungstenite = "0.21"
-futures-util = "0.3"
 jsonwebtoken = "8"
-url = "2"
 # LSP dependencies
 lsp-types = "0.94"
 # Utilities
@@ -31,9 +30,6 @@ uuid = { version = "1.0", features = ["v4"] }
 ignore = "0.4"
 clap = { version = "4.0", features = ["derive"] }
 toml_edit = "0.20"
-# FUSE filesystem
-fuser = "0.14"
-libc = "0.2"
 
 [dev-dependencies]
 tempfile = "3.0"

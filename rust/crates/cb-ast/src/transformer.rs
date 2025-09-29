@@ -1,6 +1,6 @@
 //! AST transformation functionality
 
-use crate::analyzer::{EditPlan, TextEdit};
+use cb_api::{EditPlan, TextEdit};
 use crate::error::{AstError, AstResult};
 use serde::{Deserialize, Serialize};
 

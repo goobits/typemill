@@ -1,13 +1,13 @@
 //! Stdio transport implementation for MCP
 
-use crate::handlers::PluginDispatcher;
+use crate::McpDispatcher;
 use cb_core::model::mcp::{McpError, McpMessage, McpResponse};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 /// Start the stdio MCP server
 pub async fn start_stdio_server(
-    dispatcher: Arc<PluginDispatcher>,
+    dispatcher: Arc<dyn McpDispatcher>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Starting stdio MCP server");
 

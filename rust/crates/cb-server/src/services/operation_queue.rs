@@ -1,7 +1,7 @@
 //! Operation queue for serializing file operations
 
 use super::lock_manager::{LockManager, LockType};
-use crate::error::{ServerError, ServerResult};
+use crate::{ServerError, ServerResult};
 use serde_json::Value;
 use std::collections::VecDeque;
 use std::path::PathBuf;

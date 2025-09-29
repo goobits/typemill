@@ -1,12 +1,12 @@
 //! LSP manager implementation
 
-use crate::error::{ServerError, ServerResult};
-use crate::interfaces::LspService;
+use crate::{ServerError, ServerResult};
+use cb_api::{ApiResult, LspService, Message};
 use crate::systems::lsp::client::LspClient;
 use async_trait::async_trait;
 use cb_core::config::LspConfig;
 use cb_core::model::mcp::{McpError, McpMessage, McpResponse};
-use cb_core::CoreError;
+// CoreError automatically converts to ApiError via From trait
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
@@ -121,56 +121,16 @@ impl LspManager {
 #[async_trait]
 impl LspService for LspManager {
     /// Send a request to the appropriate LSP server
-    async fn request(&self, message: McpMessage) -> Result<McpMessage, CoreError> {
-        match message {
-            McpMessage::Request(request) => {
-                debug!("Processing LSP request: {}", request.method);
+    async fn request(&self, message: Message) -> ApiResult<Message> {
+        // NOTE: This LSP manager is DEPRECATED and bypassed by the plugin system!
+        // The plugin system (DirectLspAdapter) goes directly to LspClient.
+        // This method exists only for interface compatibility.
 
-                // Extract file path from request parameters
-                let file_path = if let Some(params) = &request.params {
-                    Self::extract_file_path(params)
-                } else {
-                    None
-                };
+        debug!("LSP request received but deprecated: {:?}", message.method);
 
-                let file_path = file_path.ok_or_else(|| {
-                    CoreError::invalid_data("No file path found in request parameters")
-                })?;
-
-                // Get file extension
-                let extension = Self::get_extension(&file_path).ok_or_else(|| {
-                    CoreError::invalid_data(format!(
-                        "Could not determine file extension for: {}",
-                        file_path
-                    ))
-                })?;
-
-                // Get LSP client for this extension
-                let _client = match self.get_client_for_extension(extension).await {
-                    Ok(client) => client,
-                    Err(e) => {
-                        error!(
-                            "Failed to get LSP client for extension {}: {}",
-                            extension, e
-                        );
-                        return Ok(McpMessage::Response(Self::create_error_response(
-                            request.id,
-                            format!("LSP server not available for {} files: {}", extension, e),
-                        )));
-                    }
-                };
-
-                // NOTE: This code path is DEPRECATED and bypassed by the plugin system!
-                // The plugin system (DirectLspAdapter) goes directly to LspClient.
-                return Err(CoreError::not_supported(
-                    "Direct LSP manager requests are deprecated. Use the plugin system instead.",
-                ));
-            }
-            _ => {
-                // Forward other message types as-is
-                Err(CoreError::not_supported("Only MCP requests are supported"))
-            }
-        }
+        Err(cb_api::ApiError::Unsupported(
+            "Direct LSP manager requests are deprecated. Use the plugin system instead.".to_string()
+        ))
     }
 
     /// Check if LSP server is available for the given extension
@@ -183,7 +143,7 @@ impl LspService for LspManager {
     }
 
     /// Restart LSP servers for the given extensions
-    async fn restart_servers(&self, extensions: Option<Vec<String>>) -> Result<(), CoreError> {
+    async fn restart_servers(&self, extensions: Option<Vec<String>>) -> ApiResult<()> {
         let mut clients = self.clients.lock().await;
 
         if let Some(extensions) = extensions {
@@ -194,7 +154,7 @@ impl LspService for LspManager {
                     client
                         .kill()
                         .await
-                        .map_err(|e| CoreError::internal(e.to_string()))?;
+                        .map_err(|e| cb_api::ApiError::internal(e.to_string()))?;
                 }
             }
         } else {
@@ -205,7 +165,7 @@ impl LspService for LspManager {
                 client
                     .kill()
                     .await
-                    .map_err(|e| CoreError::internal(e.to_string()))?;
+                    .map_err(|e| cb_api::ApiError::internal(e.to_string()))?;
             }
         }
 
@@ -213,7 +173,7 @@ impl LspService for LspManager {
     }
 
     /// Notify LSP server that a file has been opened
-    async fn notify_file_opened(&self, file_path: &Path) -> Result<(), CoreError> {
+    async fn notify_file_opened(&self, file_path: &Path) -> ApiResult<()> {
         // Get file extension to determine which client to use
         let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
@@ -223,7 +183,7 @@ impl LspService for LspManager {
                 client
                     .notify_file_opened(file_path)
                     .await
-                    .map_err(|e| CoreError::internal(e.to_string()))?;
+                    .map_err(|e| cb_api::ApiError::internal(e.to_string()))?;
             }
             Err(e) => {
                 debug!(

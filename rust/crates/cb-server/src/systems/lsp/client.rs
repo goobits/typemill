@@ -1,6 +1,6 @@
 //! LSP client implementation for communicating with a single LSP server
 
-use crate::error::{ServerError, ServerResult};
+use crate::{ServerError, ServerResult};
 use cb_core::config::LspServerConfig;
 use serde_json::{json, Value};
 use std::collections::HashMap;

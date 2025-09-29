@@ -1,16 +1,24 @@
 //! WebSocket transport implementation
 
-use crate::auth::jwt::validate_token_with_project;
-use crate::error::{ServerError, ServerResult};
-use crate::handlers::PluginDispatcher;
+use crate::McpDispatcher;
+use cb_api::{ApiError, ApiResult};
 use cb_core::config::AppConfig;
 use cb_core::model::mcp::{McpError, McpMessage, McpRequest, McpResponse};
 use futures_util::{SinkExt, StreamExt};
+use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
+
+/// JWT Claims structure
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    exp: usize,
+    iat: usize,
+    project_id: Option<String>,
+}
 
 /// Initialize message payload structure
 #[derive(Debug, Deserialize)]
@@ -65,15 +73,44 @@ impl Session {
     }
 }
 
+/// Simple JWT validation function
+fn validate_token_with_project(
+    token: &str,
+    secret: &str,
+    project_id: &str,
+) -> Result<bool, String> {
+    let key = DecodingKey::from_secret(secret.as_bytes());
+    let validation = Validation::default();
+
+    match decode::<Claims>(token, &key, &validation) {
+        Ok(token_data) => {
+            let claims = token_data.claims;
+
+            // Check if project matches (if specified in claims)
+            if let Some(token_project) = claims.project_id {
+                if token_project != project_id {
+                    return Err(format!(
+                        "Token project '{}' does not match expected project '{}'",
+                        token_project, project_id
+                    ));
+                }
+            }
+
+            Ok(true)
+        }
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 /// Start the WebSocket server
 pub async fn start_ws_server(
     config: Arc<AppConfig>,
-    dispatcher: Arc<PluginDispatcher>,
-) -> ServerResult<()> {
+    dispatcher: Arc<dyn McpDispatcher>,
+) -> ApiResult<()> {
     let addr = format!("{}:{}", config.server.host, config.server.port);
     let listener = TcpListener::bind(&addr)
         .await
-        .map_err(|e| ServerError::bootstrap(format!("Failed to bind to {}: {}", addr, e)))?;
+        .map_err(|e| ApiError::bootstrap(format!("Failed to bind to {}: {}", addr, e)))?;
 
     tracing::info!("WebSocket server listening on {}", addr);
 
@@ -91,7 +128,7 @@ pub async fn start_ws_server(
 async fn handle_connection(
     stream: TcpStream,
     config: Arc<AppConfig>,
-    dispatcher: Arc<PluginDispatcher>,
+    dispatcher: Arc<dyn McpDispatcher>,
 ) {
     // Perform WebSocket handshake
     let ws_stream = match accept_async(stream).await {
@@ -134,7 +171,7 @@ async fn handle_connection(
 
                 // Handle the message
                 let response =
-                    match handle_message(&mut session, mcp_message, &config, &dispatcher).await {
+                    match handle_message(&mut session, mcp_message, &config, dispatcher.as_ref()).await {
                         Ok(response) => response,
                         Err(e) => {
                             tracing::error!("Failed to handle message: {}", e);
@@ -187,8 +224,8 @@ async fn handle_message(
     session: &mut Session,
     message: McpMessage,
     config: &AppConfig,
-    dispatcher: &PluginDispatcher,
-) -> ServerResult<McpMessage> {
+    dispatcher: &dyn McpDispatcher,
+) -> ApiResult<McpMessage> {
     match message {
         McpMessage::Request(request) => {
             if request.method == "initialize" {
@@ -223,11 +260,11 @@ async fn handle_initialize(
     session: &mut Session,
     request: McpRequest,
     config: &AppConfig,
-) -> ServerResult<McpMessage> {
+) -> ApiResult<McpMessage> {
     // Parse initialize payload
     let payload: InitializePayload = if let Some(params) = request.params {
         serde_json::from_value(params)
-            .map_err(|e| ServerError::InvalidRequest(format!("Invalid initialize params: {}", e)))?
+            .map_err(|e| ApiError::InvalidRequest(format!("Invalid initialize params: {}", e)))?
     } else {
         InitializePayload {
             token: None,
@@ -242,7 +279,7 @@ async fn handle_initialize(
             let project_id = payload.project.as_deref().unwrap_or("default");
 
             validate_token_with_project(token, &auth_config.jwt_secret, project_id)
-                .map_err(|e| ServerError::Auth(format!("Authentication failed: {}", e)))?;
+                .map_err(|e| ApiError::Auth(format!("Authentication failed: {}", e)))?;
 
             tracing::info!("Authentication successful for project: {}", project_id);
         } else {

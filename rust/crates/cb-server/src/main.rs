@@ -3,10 +3,10 @@
 use cb_ast::AstCache;
 use cb_core::AppConfig;
 use cb_server::handlers::{AppState, PluginDispatcher};
-use cb_server::interfaces::AstService;
+use cb_api::AstService;
 use cb_server::services::{DefaultAstService, FileService, LockManager, OperationQueue};
-use cb_server::systems::fuse::start_fuse_mount;
-use cb_server::transport;
+use cb_vfs::start_fuse_mount;
+use cb_transport;
 use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -93,7 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::Start) => {
             // Start stdio MCP server
             tracing::info!("Starting stdio MCP server");
-            if let Err(e) = transport::start_stdio_server(dispatcher).await {
+            if let Err(e) = cb_transport::start_stdio_server(dispatcher).await {
                 tracing::error!("Failed to start stdio server: {}", e);
                 return Err(e);
             }
@@ -106,7 +106,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 config.server.port
             );
 
-            if let Err(e) = transport::start_ws_server(config, dispatcher).await {
+            if let Err(e) = cb_transport::start_ws_server(config, dispatcher).await {
                 tracing::error!("Failed to start WebSocket server: {}", e);
                 return Err(e.into());
             }

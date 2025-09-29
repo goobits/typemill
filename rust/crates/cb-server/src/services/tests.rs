@@ -284,7 +284,7 @@ async fn test_operation_processing() {
         let processed_ops = processed_ops_clone.clone();
         async move {
             processed_ops.lock().await.push(operation.tool_name.clone());
-            Ok::<Value, crate::error::ServerError>(json!({"status": "processed"}))
+            Ok::<Value, ServerError>(json!({"status": "processed"}))
         }
     };
 
