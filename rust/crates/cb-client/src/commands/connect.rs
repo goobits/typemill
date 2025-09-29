@@ -214,8 +214,7 @@ impl ConnectCommand {
         client: &WebSocketClient,
         input: &str,
         stats: &mut SessionStats,
-        #[allow(clippy::ptr_arg)]
-        history: &mut Vec<String>,
+        #[allow(clippy::ptr_arg)] history: &mut Vec<String>,
         session_active: &mut bool,
     ) -> ClientResult<bool> {
         let parts: Vec<&str> = input.split_whitespace().collect();

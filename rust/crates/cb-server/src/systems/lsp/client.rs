@@ -165,7 +165,9 @@ impl LspClient {
                 }
 
                 match &message {
-                    LspMessage::Request { method, .. } => debug!(method = %method, "Sent LSP request"),
+                    LspMessage::Request { method, .. } => {
+                        debug!(method = %method, "Sent LSP request")
+                    }
                     LspMessage::Notification { method, .. } => {
                         debug!(method = %method, "Sent LSP notification")
                     }
@@ -317,7 +319,7 @@ impl LspClient {
                     "Received LSP response"
                 );
                 Ok(result)
-            },
+            }
             Ok(Ok(Err(error))) => {
                 tracing::debug!(
                     lsp_method = %method,
@@ -328,7 +330,7 @@ impl LspClient {
                     "Received LSP error response"
                 );
                 Err(ServerError::runtime(format!("LSP error: {}", error)))
-            },
+            }
             Ok(Err(_)) => {
                 tracing::warn!(
                     lsp_method = %method,
@@ -631,10 +633,8 @@ mod tests {
 
         // This will fail because echo is not an LSP server, but we can test the creation logic
         // Add timeout to prevent hanging
-        let result = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            LspClient::new(config)
-        ).await;
+        let result =
+            tokio::time::timeout(std::time::Duration::from_secs(5), LspClient::new(config)).await;
 
         match result {
             Ok(client_result) => {

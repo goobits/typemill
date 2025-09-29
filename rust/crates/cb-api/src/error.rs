@@ -72,12 +72,13 @@ impl ApiError {
 
     /// Check if this is a client error (4xx-style)
     pub fn is_client_error(&self) -> bool {
-        matches!(self,
-            ApiError::InvalidRequest(_) |
-            ApiError::Unsupported(_) |
-            ApiError::Auth(_) |
-            ApiError::NotFound(_) |
-            ApiError::AlreadyExists(_)
+        matches!(
+            self,
+            ApiError::InvalidRequest(_)
+                | ApiError::Unsupported(_)
+                | ApiError::Auth(_)
+                | ApiError::NotFound(_)
+                | ApiError::AlreadyExists(_)
         )
     }
 

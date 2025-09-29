@@ -1,7 +1,7 @@
 //! AST transformation functionality
 
-use cb_api::{EditPlan, TextEdit};
 use crate::error::{AstError, AstResult};
+use cb_api::{EditPlan, TextEdit};
 use serde::{Deserialize, Serialize};
 
 /// Transformation result
@@ -266,7 +266,9 @@ fn apply_multi_line_edit(source: &mut String, edit: &TextEdit) -> AstResult<Edit
         }
 
         if original_text != edit.original_text {
-            return Err(AstError::transformation("Expected original text doesn't match actual text".to_string()));
+            return Err(AstError::transformation(
+                "Expected original text doesn't match actual text".to_string(),
+            ));
         }
     }
 

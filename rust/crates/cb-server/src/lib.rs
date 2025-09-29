@@ -12,13 +12,13 @@ pub mod services;
 pub mod systems;
 pub mod utils;
 
-pub use cb_api::{ApiError as ServerError, ApiResult as ServerResult, AstService, LspService};
 use crate::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
-use crate::services::{DefaultAstService, LockManager, FileService, OperationQueue};
+use crate::services::{DefaultAstService, FileService, LockManager, OperationQueue};
+pub use cb_api::{ApiError as ServerError, ApiResult as ServerResult, AstService, LspService};
 use cb_ast::AstCache;
 use cb_core::AppConfig;
-use std::sync::Arc;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::sync::oneshot;
 
 /// Server configuration options

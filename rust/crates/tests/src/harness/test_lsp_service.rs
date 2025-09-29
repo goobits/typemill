@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 // No longer need cb_core imports since we use cb_api::Message
-use cb_api::{LspService, ApiError, Message};
+use cb_api::{ApiError, LspService, Message};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -225,10 +225,7 @@ mod tests {
             params: json!({"param": "value"}),
         };
 
-        let response = service
-            .request(request.clone())
-            .await
-            .unwrap();
+        let response = service.request(request.clone()).await.unwrap();
 
         assert_eq!(response.id, Some("1".to_string()));
         assert_eq!(response.method, "test/method_response");
@@ -277,10 +274,7 @@ mod tests {
             params: json!({}),
         };
 
-        let response = service
-            .request(def_request)
-            .await
-            .unwrap();
+        let response = service.request(def_request).await.unwrap();
 
         assert!(response.params.is_array());
     }

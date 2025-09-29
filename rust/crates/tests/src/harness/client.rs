@@ -20,10 +20,12 @@ impl TestClient {
     pub fn new(working_dir: &Path) -> Self {
         // Determine the path to the cb-server binary
         // Use absolute paths for reliability
-        let possible_paths = ["/workspace/rust/target/release/cb-server",
+        let possible_paths = [
+            "/workspace/rust/target/release/cb-server",
             "/workspace/rust/target/debug/cb-server",
             "target/release/cb-server",
-            "target/debug/cb-server"];
+            "target/debug/cb-server",
+        ];
 
         let server_path = possible_paths
             .iter()
@@ -51,10 +53,12 @@ impl TestClient {
             let reader = BufReader::new(stdout);
             for line in reader.lines().flatten() {
                 let trimmed = line.trim();
-                if !trimmed.is_empty() && trimmed.starts_with('{')
-                    && stdout_sender.send(line).is_err() {
-                        break;
-                    }
+                if !trimmed.is_empty()
+                    && trimmed.starts_with('{')
+                    && stdout_sender.send(line).is_err()
+                {
+                    break;
+                }
             }
         });
 

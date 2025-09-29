@@ -10,16 +10,22 @@ impl LspSetupHelper {
     pub fn check_lsp_servers_available() -> Result<(), String> {
         // Check TypeScript language server
         if !Self::is_command_available("typescript-language-server") {
-            return Err("TypeScript LSP test requires 'typescript-language-server' to be installed.\n\
+            return Err(
+                "TypeScript LSP test requires 'typescript-language-server' to be installed.\n\
                 Install with: npm install -g typescript-language-server typescript\n\
-                Or use system package manager.".to_string());
+                Or use system package manager."
+                    .to_string(),
+            );
         }
 
         // Check Python language server
         if !Self::is_command_available("pylsp") {
-            return Err("Python LSP test requires 'pylsp' (Python LSP Server) to be installed.\n\
+            return Err(
+                "Python LSP test requires 'pylsp' (Python LSP Server) to be installed.\n\
                 Install with: pip install python-lsp-server[all]\n\
-                Or use conda/system package manager.".to_string());
+                Or use conda/system package manager."
+                    .to_string(),
+            );
         }
 
         Ok(())

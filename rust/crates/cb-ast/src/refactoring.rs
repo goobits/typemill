@@ -1,15 +1,15 @@
 //! Advanced refactoring operations using AST analysis
 
-use cb_api::{
-    DependencyUpdate, DependencyUpdateType, EditLocation, EditPlan, EditPlanMetadata, EditType,
-    TextEdit, ValidationRule, ValidationType,
-};
 use crate::error::{AstError, AstResult};
 use crate::parser::build_import_graph;
-use cb_api::ImportInfo;
 use crate::python_parser::{
     analyze_python_expression_range, extract_python_functions, extract_python_variables,
     find_variable_at_position, get_variable_usages_in_scope,
+};
+use cb_api::ImportInfo;
+use cb_api::{
+    DependencyUpdate, DependencyUpdateType, EditLocation, EditPlan, EditPlanMetadata, EditType,
+    TextEdit, ValidationRule, ValidationType,
 };
 use cb_core::CoreError;
 use serde::{Deserialize, Serialize};
@@ -881,19 +881,22 @@ fn analyze_extract_function_python(
 
             // Find variable references in this line
             for var in &variables {
-                if var.line < range.start_line && line_text.contains(&var.name)
-                    && !required_parameters.contains(&var.name) {
-                        required_parameters.push(var.name.clone());
-                    }
+                if var.line < range.start_line
+                    && line_text.contains(&var.name)
+                    && !required_parameters.contains(&var.name)
+                {
+                    required_parameters.push(var.name.clone());
+                }
             }
 
             // Find function calls in this line that are defined outside the selection
             for func in &functions {
                 if func.start_line < range.start_line
                     && line_text.contains(&format!("{}(", func.name))
-                    && !required_imports.contains(&func.name) {
-                        required_imports.push(func.name.clone());
-                    }
+                    && !required_imports.contains(&func.name)
+                {
+                    required_imports.push(func.name.clone());
+                }
             }
         }
     }

@@ -1,7 +1,7 @@
 //! Mock implementations for testing
 
 use async_trait::async_trait;
-use cb_api::{EditPlan, ImportGraph, AstService, LspService, ApiError, CacheStats, Message};
+use cb_api::{ApiError, AstService, CacheStats, EditPlan, ImportGraph, LspService, Message};
 use cb_core::model::IntentSpec;
 use mockall::mock;
 use std::path::Path;

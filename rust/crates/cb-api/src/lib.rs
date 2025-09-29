@@ -318,7 +318,11 @@ pub trait AstService: Send + Sync {
     async fn build_import_graph(&self, file: &Path) -> ApiResult<ImportGraph>;
 
     /// Plan a refactoring operation based on intent
-    async fn plan_refactor(&self, intent: &cb_core::model::IntentSpec, file: &Path) -> ApiResult<EditPlan>;
+    async fn plan_refactor(
+        &self,
+        intent: &cb_core::model::IntentSpec,
+        file: &Path,
+    ) -> ApiResult<EditPlan>;
 
     /// Get cache statistics for monitoring
     async fn cache_stats(&self) -> CacheStats;

@@ -1,10 +1,10 @@
 //! File operations service with import awareness
 
-use crate::{ServerError, ServerResult};
 use crate::services::import_service::{ImportService, ImportUpdateReport};
 use crate::services::lock_manager::LockManager;
-use cb_ast::AstCache;
+use crate::{ServerError, ServerResult};
 use cb_api::{DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit};
+use cb_ast::AstCache;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
@@ -70,7 +70,10 @@ impl FileService {
         // Find files that need import updates before renaming
         let affected_files = self.import_service.find_affected_files(&old_abs).await?;
 
-        debug!(affected_files_count = affected_files.len(), "Found files potentially affected by rename");
+        debug!(
+            affected_files_count = affected_files.len(),
+            "Found files potentially affected by rename"
+        );
 
         let mut result = FileRenameResult {
             old_path: old_abs.to_string_lossy().to_string(),

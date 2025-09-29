@@ -23,4 +23,4 @@ Thumbs.db
 
 # Test outputs
 test-results/
-coverage/
+coverage/crates/cb-plugins/tests/.integration_test.rs.pending-snap

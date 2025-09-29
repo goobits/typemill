@@ -133,7 +133,9 @@ async fn handle_connection(
     config: Arc<AppConfig>,
     dispatcher: Arc<dyn McpDispatcher>,
 ) {
-    let addr = stream.peer_addr().unwrap_or_else(|_| "unknown".parse().unwrap());
+    let addr = stream
+        .peer_addr()
+        .unwrap_or_else(|_| "unknown".parse().unwrap());
 
     // Perform WebSocket handshake
     let ws_stream = match accept_async(stream).await {
@@ -189,7 +191,9 @@ async fn handle_connection(
 
                 // Handle the message
                 let response =
-                    match handle_message(&mut session, mcp_message, &config, dispatcher.as_ref()).await {
+                    match handle_message(&mut session, mcp_message, &config, dispatcher.as_ref())
+                        .await
+                    {
                         Ok(response) => response,
                         Err(e) => {
                             tracing::error!(

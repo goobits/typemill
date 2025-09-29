@@ -11,7 +11,6 @@ pub struct Interactive {
     theme: ColorfulTheme,
 }
 
-
 impl Interactive {
     /// Create a new interactive instance
     pub fn new() -> Self {

@@ -8,8 +8,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// Complete set of capabilities a plugin can provide
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Capabilities {
     /// Navigation capabilities (go-to-definition, find references, etc.)
     pub navigation: NavigationCapabilities,
@@ -25,10 +24,8 @@ pub struct Capabilities {
     pub custom: HashMap<String, Value>,
 }
 
-
 /// Navigation-related capabilities
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NavigationCapabilities {
     /// Go to definition support
     pub go_to_definition: bool,
@@ -46,10 +43,8 @@ pub struct NavigationCapabilities {
     pub call_hierarchy: bool,
 }
 
-
 /// Code editing capabilities
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EditingCapabilities {
     /// Symbol renaming support
     pub rename: bool,
@@ -65,10 +60,8 @@ pub struct EditingCapabilities {
     pub auto_imports: bool,
 }
 
-
 /// Refactoring capabilities
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RefactoringCapabilities {
     /// Extract function/method support
     pub extract_function: bool,
@@ -82,10 +75,8 @@ pub struct RefactoringCapabilities {
     pub move_refactor: bool,
 }
 
-
 /// Code intelligence capabilities
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct IntelligenceCapabilities {
     /// Hover information support
     pub hover: bool,
@@ -99,10 +90,8 @@ pub struct IntelligenceCapabilities {
     pub semantic_highlighting: bool,
 }
 
-
 /// Diagnostic capabilities
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DiagnosticCapabilities {
     /// Error/warning diagnostics
     pub diagnostics: bool,
@@ -111,7 +100,6 @@ pub struct DiagnosticCapabilities {
     /// Pull diagnostics support
     pub pull_diagnostics: bool,
 }
-
 
 impl Capabilities {
     /// Create capabilities with all features enabled (for testing)

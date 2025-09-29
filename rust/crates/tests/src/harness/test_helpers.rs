@@ -130,7 +130,8 @@ export interface BaseType {
 export function baseFunction(param: BaseType): string {
     return `Base: ${param.value}`;
 }
-"#.to_string()
+"#
+                .to_string()
             } else {
                 // Import from previous file
                 let prev_file = format!("chain_{}", i - 1);

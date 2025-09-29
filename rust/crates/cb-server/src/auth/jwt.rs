@@ -125,6 +125,7 @@ mod tests {
         let token = create_test_token(secret, None);
 
         // Should succeed when no project_id claim is present
-        assert!(validate_token_with_project(&token, secret, "any_project").expect("Test token should be valid"));
+        assert!(validate_token_with_project(&token, secret, "any_project")
+            .expect("Test token should be valid"));
     }
 }
