@@ -4,12 +4,12 @@ use async_trait::async_trait;
 use std::path::Path;
 use std::sync::Arc;
 
-use cb_ast::{AstCache, EditPlan, ImportGraph};
+use cb_ast::AstCache;
+use cb_api::{ApiResult, CacheStats, EditPlan, ImportGraph};
 use cb_core::model::IntentSpec;
-use cb_core::CoreError;
 use tracing::{debug, trace};
 
-use crate::interfaces::AstService;
+use cb_api::AstService;
 
 /// Default implementation of the AST service with caching
 pub struct DefaultAstService {
@@ -32,12 +32,12 @@ impl DefaultAstService {
     }
 
     /// Get cache statistics for monitoring
-    pub fn cache_stats(&self) -> cb_ast::CacheStats {
+    pub fn cache_stats(&self) -> CacheStats {
         self.cache.stats()
     }
 
     /// Get cache statistics for monitoring (async trait implementation)
-    pub async fn cache_stats_async(&self) -> cb_ast::CacheStats {
+    pub async fn cache_stats_async(&self) -> CacheStats {
         self.cache.stats()
     }
 
@@ -59,7 +59,7 @@ impl DefaultAstService {
 
 #[async_trait]
 impl AstService for DefaultAstService {
-    async fn build_import_graph(&self, file: &Path) -> Result<ImportGraph, CoreError> {
+    async fn build_import_graph(&self, file: &Path) -> ApiResult<ImportGraph> {
         let file_path = file.to_path_buf();
 
         trace!("Building import graph for: {}", file_path.display());
@@ -77,7 +77,7 @@ impl AstService for DefaultAstService {
 
         // Parse the file using the cb-ast crate
         let import_graph = cb_ast::parser::build_import_graph(&content, file)
-            .map_err(|e| CoreError::internal(format!("AST parsing failed: {}", e)))?;
+            .map_err(|e| cb_api::ApiError::internal(format!("AST parsing failed: {}", e)))?;
 
         // Cache the result for future use
         if let Err(e) = self.cache.insert(file_path.clone(), import_graph.clone()) {
@@ -94,7 +94,7 @@ impl AstService for DefaultAstService {
         Ok(import_graph)
     }
 
-    async fn plan_refactor(&self, intent: &IntentSpec, file: &Path) -> Result<EditPlan, CoreError> {
+    async fn plan_refactor(&self, intent: &IntentSpec, file: &Path) -> ApiResult<EditPlan> {
         match intent.name() {
             "rename_symbol_with_imports" => {
                 // Extract parameters from intent
@@ -103,7 +103,7 @@ impl AstService for DefaultAstService {
                     .get("oldName")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| {
-                        CoreError::invalid_data("Missing 'oldName' parameter in intent")
+                        cb_api::ApiError::InvalidRequest("Missing 'oldName' parameter in intent".to_string())
                     })?;
 
                 let new_name = intent
@@ -111,21 +111,21 @@ impl AstService for DefaultAstService {
                     .get("newName")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| {
-                        CoreError::invalid_data("Missing 'newName' parameter in intent")
+                        cb_api::ApiError::InvalidRequest("Missing 'newName' parameter in intent".to_string())
                     })?;
 
                 // Call the plan_rename_refactor function from cb-ast
                 cb_ast::refactoring::plan_rename_refactor(old_name, new_name, file)
-                    .map_err(|e| CoreError::internal(format!("Refactoring planning failed: {}", e)))
+                    .map_err(|e| cb_api::ApiError::internal(format!("Refactoring planning failed: {}", e)))
             }
-            _ => Err(CoreError::not_supported(format!(
+            _ => Err(cb_api::ApiError::Unsupported(format!(
                 "Intent '{}' is not supported for refactoring",
                 intent.name()
             ))),
         }
     }
 
-    async fn cache_stats(&self) -> cb_ast::CacheStats {
+    async fn cache_stats(&self) -> CacheStats {
         self.cache.stats()
     }
 }

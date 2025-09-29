@@ -1,10 +1,11 @@
 //! AST parsing functionality
 
 use crate::error::AstResult;
+use cb_api::{ImportGraph, ImportGraphMetadata, ImportInfo, ImportType, NamedImport, SourceLocation};
 use petgraph::graph::NodeIndex;
 use petgraph::{Direction, Graph};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+// serde traits no longer needed here
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -15,102 +16,7 @@ use swc_ecma_ast::{CallExpr, ExportDecl, Expr, ImportDecl, Lit, Str};
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 use swc_ecma_visit::{Visit, VisitWith};
 
-/// Import graph representation
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ImportGraph {
-    /// Source file path
-    pub source_file: String,
-    /// Direct imports from this file
-    pub imports: Vec<ImportInfo>,
-    /// Files that import this file
-    pub importers: Vec<String>,
-    /// Dependency graph metadata
-    pub metadata: ImportGraphMetadata,
-}
-
-/// Information about a single import
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ImportInfo {
-    /// The imported module path/name
-    pub module_path: String,
-    /// Import type (ES module, CommonJS, etc.)
-    pub import_type: ImportType,
-    /// Named imports
-    pub named_imports: Vec<NamedImport>,
-    /// Default import name (if any)
-    pub default_import: Option<String>,
-    /// Namespace import name (if any)
-    pub namespace_import: Option<String>,
-    /// Whether this is a type-only import
-    pub type_only: bool,
-    /// Source location in the file
-    pub location: SourceLocation,
-}
-
-/// Named import information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct NamedImport {
-    /// Original name in the module
-    pub name: String,
-    /// Local alias (if renamed)
-    pub alias: Option<String>,
-    /// Whether this is a type-only import
-    pub type_only: bool,
-}
-
-/// Import/export type classification
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-#[non_exhaustive]
-pub enum ImportType {
-    /// ES module import (import/export)
-    EsModule,
-    /// CommonJS require
-    CommonJs,
-    /// Dynamic import()
-    Dynamic,
-    /// AMD require
-    Amd,
-    /// TypeScript import type
-    TypeOnly,
-    /// Python import statement
-    PythonImport,
-    /// Python from...import statement
-    PythonFromImport,
-}
-
-/// Source location information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct SourceLocation {
-    /// Start line (0-based)
-    pub start_line: u32,
-    /// Start column (0-based)
-    pub start_column: u32,
-    /// End line (0-based)
-    pub end_line: u32,
-    /// End column (0-based)
-    pub end_column: u32,
-}
-
-/// Import graph metadata
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ImportGraphMetadata {
-    /// File extension/language
-    pub language: String,
-    /// Parsing timestamp
-    pub parsed_at: chrono::DateTime<chrono::Utc>,
-    /// Parser version
-    pub parser_version: String,
-    /// Circular dependencies detected
-    pub circular_dependencies: Vec<Vec<String>>,
-    /// External dependencies (not in project)
-    pub external_dependencies: Vec<String>,
-}
+// Import graph types now come from cb-api
 
 /// Build import graph for a source file
 pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {

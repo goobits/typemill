@@ -7,17 +7,13 @@
 //! code intelligence and refactoring operations.
 
 pub mod auth;
-pub mod error;
 pub mod handlers;
-pub mod interfaces;
 pub mod mcp_tools;
 pub mod services;
 pub mod systems;
-pub mod transport;
 pub mod utils;
 
-pub use error::{ServerError, ServerResult};
-pub use interfaces::{AstService, LspService};
+pub use cb_api::{ApiError as ServerError, ApiResult as ServerResult, AstService, LspService};
 
 use cb_core::AppConfig;
 use tokio::sync::oneshot;

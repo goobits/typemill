@@ -1,6 +1,6 @@
 //! JWT authentication utilities
 
-use crate::error::ServerError;
+use crate::ServerError;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 

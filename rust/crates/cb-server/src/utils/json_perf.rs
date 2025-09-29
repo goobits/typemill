@@ -1,6 +1,6 @@
 //! High-performance JSON utilities using simd-json for optimization
 
-use crate::error::{ServerError, ServerResult};
+use crate::{ServerError, ServerResult};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

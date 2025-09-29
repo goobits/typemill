@@ -1,10 +1,13 @@
 [workspace]
 members = [
+    "crates/cb-api",
     "crates/cb-core",
     "crates/cb-ast",
     "crates/cb-plugins",
     "crates/cb-server",
     "crates/cb-client",
+    "crates/cb-transport",
+    "crates/cb-vfs",
     "crates/tests",
     "benchmark-harness",
     "apps/server",

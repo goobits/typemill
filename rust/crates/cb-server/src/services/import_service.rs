@@ -1,6 +1,6 @@
 //! Service for managing import updates across the codebase
 
-use crate::error::{ServerError, ServerResult};
+use crate::{ServerError, ServerResult};
 use cb_ast::{update_import_paths, ImportPathResolver};
 use std::path::{Path, PathBuf};
 use tracing::info;

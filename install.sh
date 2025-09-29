@@ -79,6 +79,260 @@ EOF
     log_success "MCP configuration created at $mcp_config"
 }
 
+# Install system dependencies required for building
+install_system_dependencies() {
+    log_info "Installing system dependencies..."
+
+    # Detect OS type
+    if [ -f "/etc/os-release" ]; then
+        . /etc/os-release
+        OS_ID="$ID"
+    else
+        log_error "Cannot detect operating system type"
+        exit 1
+    fi
+
+    # Define required packages for Ubuntu/Debian
+    local packages="build-essential pkg-config libfuse-dev git curl python3-dev python3-pip"
+
+    case "$OS_ID" in
+        ubuntu|debian)
+            # Check if packages are missing
+            local missing_packages=""
+            for pkg in $packages; do
+                if ! dpkg -l | grep -q "^ii  $pkg "; then
+                    missing_packages="$missing_packages $pkg"
+                fi
+            done
+
+            if [ -n "$missing_packages" ]; then
+                log_info "Installing missing system packages:$missing_packages"
+                if sudo apt-get update && sudo apt-get install -y${missing_packages}; then
+                    log_success "System dependencies installed successfully"
+                else
+                    log_error "Failed to install system dependencies"
+                    log_error "Please run: sudo apt-get update && sudo apt-get install -y $packages"
+                    exit 1
+                fi
+            else
+                log_success "All system dependencies already installed"
+            fi
+            ;;
+        *)
+            log_warning "Unsupported OS: $OS_ID"
+            log_warning "Please ensure these packages are installed: $packages"
+            ;;
+    esac
+}
+
+# Install Rust toolchain if missing
+install_rust() {
+    log_info "Checking Rust installation..."
+
+    if command -v rustc >/dev/null 2>&1 && command -v cargo >/dev/null 2>&1; then
+        local rust_version=$(rustc --version)
+        log_success "Rust already installed: $rust_version"
+        return 0
+    fi
+
+    log_info "Installing Rust toolchain..."
+    if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
+        log_success "Rust toolchain installed successfully"
+
+        # Source Rust environment
+        if [ -f "$HOME/.cargo/env" ]; then
+            . "$HOME/.cargo/env"
+            log_success "Rust environment loaded"
+        else
+            log_error "Rust installation completed but environment not found"
+            exit 1
+        fi
+    else
+        log_error "Failed to install Rust"
+        log_error "Please install manually from https://rustup.rs/"
+        exit 1
+    fi
+}
+
+# Install Node.js and npm if missing
+install_nodejs() {
+    log_info "Checking Node.js installation..."
+
+    if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+        local node_version=$(node --version)
+        local npm_version=$(npm --version)
+        log_success "Node.js already installed: $node_version (npm: $npm_version)"
+        return 0
+    fi
+
+    log_info "Installing Node.js LTS..."
+
+    # Detect OS for Node.js installation
+    if [ -f "/etc/os-release" ]; then
+        . /etc/os-release
+        OS_ID="$ID"
+    fi
+
+    case "$OS_ID" in
+        ubuntu|debian)
+            # Install via NodeSource repository
+            if curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && \
+               sudo apt-get install -y nodejs; then
+                log_success "Node.js installed successfully"
+            else
+                log_error "Failed to install Node.js via NodeSource"
+                log_error "Please install manually from https://nodejs.org/"
+                exit 1
+            fi
+            ;;
+        *)
+            log_warning "Unsupported OS for automatic Node.js installation: $OS_ID"
+            log_warning "Please install Node.js manually from https://nodejs.org/"
+            ;;
+    esac
+}
+
+# Install pipx if missing
+install_pipx() {
+    log_info "Checking pipx installation..."
+
+    if command -v pipx >/dev/null 2>&1; then
+        log_success "pipx already installed"
+        return 0
+    fi
+
+    log_info "Installing pipx..."
+
+    # Detect OS for pipx installation
+    if [ -f "/etc/os-release" ]; then
+        . /etc/os-release
+        OS_ID="$ID"
+        VERSION_ID="$VERSION_ID"
+    fi
+
+    case "$OS_ID" in
+        ubuntu)
+            # Ubuntu 23.04+ has pipx in repositories
+            if [ "${VERSION_ID%%.*}" -ge 23 ]; then
+                if sudo apt-get install -y pipx; then
+                    log_success "pipx installed via apt"
+                else
+                    log_warning "Failed to install pipx via apt, trying pip..."
+                    if python3 -m pip install --user pipx; then
+                        log_success "pipx installed via pip"
+                    else
+                        log_error "Failed to install pipx"
+                        exit 1
+                    fi
+                fi
+            else
+                # Older Ubuntu versions, use pip
+                if python3 -m pip install --user pipx; then
+                    log_success "pipx installed via pip"
+                else
+                    log_error "Failed to install pipx via pip"
+                    exit 1
+                fi
+            fi
+            ;;
+        debian)
+            # Try apt first, fallback to pip
+            if sudo apt-get install -y pipx 2>/dev/null || python3 -m pip install --user pipx; then
+                log_success "pipx installed successfully"
+            else
+                log_error "Failed to install pipx"
+                exit 1
+            fi
+            ;;
+        *)
+            log_warning "Unsupported OS for automatic pipx installation: $OS_ID"
+            log_warning "Trying pip installation..."
+            if python3 -m pip install --user pipx; then
+                log_success "pipx installed via pip"
+            else
+                log_error "Failed to install pipx"
+                exit 1
+            fi
+            ;;
+    esac
+}
+
+# Ensure all tools are in PATH
+ensure_tool_paths() {
+    log_info "Setting up tool paths..."
+
+    # Source Rust environment if available
+    if [ -f "$HOME/.cargo/env" ]; then
+        . "$HOME/.cargo/env"
+    fi
+
+    # Add user local bin to PATH for pipx
+    if [ -d "$HOME/.local/bin" ]; then
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
+
+    # Verify critical tools are now available
+    local missing_tools=""
+    for tool in rustc cargo; do
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            missing_tools="$missing_tools $tool"
+        fi
+    done
+
+    if [ -n "$missing_tools" ]; then
+        log_error "Critical tools still missing after installation:$missing_tools"
+        log_error "Please check installation logs and PATH configuration"
+        exit 1
+    fi
+
+    log_success "All development tools available in PATH"
+}
+
+# Install language servers for development
+install_language_servers() {
+    log_info "Installing development language servers..."
+
+    # Install TypeScript language server
+    if command -v npm >/dev/null 2>&1; then
+        log_info "Installing TypeScript language server..."
+        npm install -g typescript-language-server typescript
+        log_success "TypeScript language server installed"
+    else
+        log_warning "npm not found - skipping TypeScript language server"
+    fi
+
+    # Install Python language server
+    if command -v pipx >/dev/null 2>&1; then
+        log_info "Installing Python language server..."
+        pipx install "python-lsp-server[all]"
+        log_success "Python language server installed"
+    elif command -v pip >/dev/null 2>&1; then
+        log_info "Installing Python language server with pip..."
+        pip install --user "python-lsp-server[all]" || pip install --break-system-packages "python-lsp-server[all]"
+        log_success "Python language server installed"
+    else
+        log_warning "pip/pipx not found - skipping Python language server"
+    fi
+
+    # Install Go language server
+    if command -v go >/dev/null 2>&1; then
+        log_info "Installing Go language server..."
+        go install golang.org/x/tools/gopls@latest
+        log_success "Go language server installed"
+    else
+        log_warning "go not found - skipping Go language server"
+    fi
+
+    # Install Rust language server (rust-analyzer)
+    if command -v rustup >/dev/null 2>&1; then
+        log_info "Installing Rust language server..."
+        rustup component add rust-analyzer
+        log_success "Rust language server installed"
+    else
+        log_warning "rustup not found - skipping Rust language server"
+    fi
+}
+
 # Setup LSP configuration
 setup_lsp_config() {
     local project_dir="${1:-$(pwd)}"
@@ -96,18 +350,18 @@ setup_lsp_config() {
     local has_go=false
     local has_rs=false
 
-    # Check for file types
-    [ -n "$(find "$project_dir" -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" 2>/dev/null | head -1)" ] && has_ts=true
-    [ -n "$(find "$project_dir" -name "*.py" 2>/dev/null | head -1)" ] && has_py=true
-    [ -n "$(find "$project_dir" -name "*.go" 2>/dev/null | head -1)" ] && has_go=true
-    [ -n "$(find "$project_dir" -name "*.rs" 2>/dev/null | head -1)" ] && has_rs=true
+    # Check for file types (more comprehensive search for development)
+    [ -n "$(find "$project_dir" -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "package.json" -o -name "tsconfig.json" 2>/dev/null | head -1)" ] && has_ts=true
+    [ -n "$(find "$project_dir" -name "*.py" -o -name "requirements.txt" -o -name "pyproject.toml" 2>/dev/null | head -1)" ] && has_py=true
+    [ -n "$(find "$project_dir" -name "*.go" -o -name "go.mod" 2>/dev/null | head -1)" ] && has_go=true
+    [ -n "$(find "$project_dir" -name "*.rs" -o -name "Cargo.toml" 2>/dev/null | head -1)" ] && has_rs=true
 
     # Start building config
     echo '{"servers":[' > "$lsp_config"
     local first=true
 
-    # Add TypeScript/JavaScript server if needed
-    if [ "$has_ts" = true ] && command -v typescript-language-server >/dev/null 2>&1; then
+    # Add TypeScript/JavaScript server
+    if [ "$has_ts" = true ]; then
         [ "$first" = false ] && echo "," >> "$lsp_config"
         cat >> "$lsp_config" << 'EOF'
     {
@@ -116,24 +370,34 @@ setup_lsp_config() {
     }
 EOF
         first=false
-        log_success "Added TypeScript language server"
+        log_success "Added TypeScript language server to config"
     fi
 
-    # Add Python server if needed
-    if [ "$has_py" = true ] && command -v pylsp >/dev/null 2>&1; then
+    # Add Python server
+    if [ "$has_py" = true ]; then
         [ "$first" = false ] && echo "," >> "$lsp_config"
-        cat >> "$lsp_config" << 'EOF'
+        # Check for pipx installation path first
+        if [ -f "/home/developer/.local/bin/pylsp" ]; then
+            cat >> "$lsp_config" << 'EOF'
+    {
+      "extensions": ["py", "pyi"],
+      "command": ["/home/developer/.local/bin/pylsp"]
+    }
+EOF
+        else
+            cat >> "$lsp_config" << 'EOF'
     {
       "extensions": ["py", "pyi"],
       "command": ["pylsp"]
     }
 EOF
+        fi
         first=false
-        log_success "Added Python language server"
+        log_success "Added Python language server to config"
     fi
 
-    # Add Go server if needed
-    if [ "$has_go" = true ] && command -v gopls >/dev/null 2>&1; then
+    # Add Go server
+    if [ "$has_go" = true ]; then
         [ "$first" = false ] && echo "," >> "$lsp_config"
         cat >> "$lsp_config" << 'EOF'
     {
@@ -142,11 +406,11 @@ EOF
     }
 EOF
         first=false
-        log_success "Added Go language server"
+        log_success "Added Go language server to config"
     fi
 
-    # Add Rust server if needed
-    if [ "$has_rs" = true ] && command -v rust-analyzer >/dev/null 2>&1; then
+    # Add Rust server
+    if [ "$has_rs" = true ]; then
         [ "$first" = false ] && echo "," >> "$lsp_config"
         cat >> "$lsp_config" << 'EOF'
     {
@@ -155,7 +419,7 @@ EOF
     }
 EOF
         first=false
-        log_success "Added Rust language server"
+        log_success "Added Rust language server to config"
     fi
 
     echo ']' >> "$lsp_config"
@@ -183,7 +447,7 @@ test_installation() {
 
 # Main installation flow
 main() {
-    log_info "Installing Codeflow Buddy MCP Server (Local Build)..."
+    log_info "Installing Codebuddy MCP Server with Complete Development Environment..."
 
     # Check we're in the right place
     if [ ! -f "/workspace/rust/Cargo.toml" ]; then
@@ -191,11 +455,25 @@ main() {
         exit 1
     fi
 
-    # Build and install
+    # Phase 1: Install prerequisites
+    log_info "=== Phase 1: Installing Prerequisites ==="
+    install_system_dependencies
+    install_rust
+    install_nodejs
+    install_pipx
+    ensure_tool_paths
+
+    # Phase 2: Install language servers
+    log_info "=== Phase 2: Installing Language Servers ==="
+    install_language_servers
+
+    # Phase 3: Build and install
+    log_info "=== Phase 3: Building and Installing Codebuddy ==="
     build_project
     install_binary
 
-    # Setup configurations
+    # Phase 4: Setup configurations
+    log_info "=== Phase 4: Setting up Configurations ==="
     local project_dir="${1:-/workspace}"
     setup_project_mcp "$project_dir"
     setup_lsp_config "$project_dir"
@@ -203,20 +481,28 @@ main() {
     # Test the installation
     if test_installation; then
         echo ""
-        log_success "🎉 Codeflow Buddy MCP Server installed successfully!"
+        log_success "🎉 Codebuddy Complete Development Environment installed successfully!"
         echo ""
-        echo "The server is configured with:"
+        echo "✅ INSTALLED COMPONENTS:"
+        echo "  • System Dependencies: build-essential, pkg-config, libfuse-dev, git, curl"
+        echo "  • Rust Toolchain: rustc, cargo, rust-analyzer"
+        echo "  • Node.js: node, npm, typescript-language-server"
+        echo "  • Python Tools: pipx, python-lsp-server"
+        echo "  • Codebuddy Server: $INSTALL_DIR/$BINARY_NAME"
+        echo ""
+        echo "🔧 SERVER CONFIGURATION:"
         echo "  • Protocol: JSON-RPC 2.0"
         echo "  • Version: 2025-06-18"
         echo "  • Location: $INSTALL_DIR/$BINARY_NAME"
         echo ""
-        echo "Configuration files created:"
+        echo "📁 CONFIGURATION FILES:"
         echo "  • MCP: $project_dir/.mcp.json"
         echo "  • LSP: $project_dir/.codebuddy/config.json"
         echo ""
-        echo "To use with Claude Code:"
+        echo "🚀 GETTING STARTED:"
         echo "  1. Open Claude Code in this project"
         echo "  2. Use the /mcp command to connect"
+        echo "  3. All language servers are pre-configured and ready!"
         echo ""
     else
         log_error "Installation completed but server test failed"

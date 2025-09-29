@@ -1,11 +1,12 @@
 //! Advanced refactoring operations using AST analysis
 
-use crate::analyzer::{
+use cb_api::{
     DependencyUpdate, DependencyUpdateType, EditLocation, EditPlan, EditPlanMetadata, EditType,
     TextEdit, ValidationRule, ValidationType,
 };
 use crate::error::{AstError, AstResult};
-use crate::parser::{build_import_graph, ImportInfo};
+use crate::parser::build_import_graph;
+use cb_api::ImportInfo;
 use crate::python_parser::{
     analyze_python_expression_range, extract_python_functions, extract_python_variables,
     find_variable_at_position, get_variable_usages_in_scope,

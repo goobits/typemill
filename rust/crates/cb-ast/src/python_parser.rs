@@ -4,7 +4,7 @@
 //! Full AST parsing will be re-implemented with the stable API.
 
 use crate::error::{AstError, AstResult};
-use crate::parser::{ImportInfo, ImportType, NamedImport, SourceLocation};
+use cb_api::{ImportInfo, ImportType, NamedImport, SourceLocation};
 use regex::Regex;
 
 /// Parse Python imports using regex-based parsing (temporary implementation)

@@ -3,8 +3,9 @@
 //! This is the new plugin-based dispatcher that replaces the monolithic
 //! dispatcher with a flexible plugin system.
 
-use crate::error::{ServerError, ServerResult};
-use crate::interfaces::AstService;
+use crate::{ServerError, ServerResult};
+use cb_api::AstService;
+use cb_transport::McpDispatcher;
 use crate::mcp_tools;
 use async_trait::async_trait;
 use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
@@ -698,7 +699,7 @@ impl PluginDispatcher {
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'edit_plan' parameter".into()))?;
 
         // Parse the EditPlan from the JSON value
-        let edit_plan: cb_ast::analyzer::EditPlan = serde_json::from_value(edit_plan_value.clone())
+        let edit_plan: cb_api::EditPlan = serde_json::from_value(edit_plan_value.clone())
             .map_err(|e| ServerError::InvalidRequest(format!("Invalid edit_plan format: {}", e)))?;
 
         debug!(
@@ -896,6 +897,14 @@ impl PluginDispatcher {
             },
             "plugins": plugins
         }))
+    }
+}
+
+#[async_trait]
+impl McpDispatcher for PluginDispatcher {
+    async fn dispatch(&self, message: McpMessage) -> cb_api::ApiResult<McpMessage> {
+        self.dispatch(message).await
+            .map_err(|e| cb_api::ApiError::internal(e.to_string()))
     }
 }
 

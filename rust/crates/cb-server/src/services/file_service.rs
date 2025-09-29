@@ -1,12 +1,10 @@
 //! File operations service with import awareness
 
-use crate::error::{ServerError, ServerResult};
+use crate::{ServerError, ServerResult};
 use crate::services::import_service::{ImportService, ImportUpdateReport};
 use crate::services::lock_manager::LockManager;
-use cb_ast::{
-    analyzer::{DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit},
-    AstCache,
-};
+use cb_ast::AstCache;
+use cb_api::{DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
