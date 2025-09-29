@@ -678,6 +678,10 @@ impl LanguagePlugin for SystemToolsPlugin {
         vec![]
     }
 
+    fn tool_definitions(&self) -> Vec<Value> {
+        vec![]
+    }
+
     fn capabilities(&self) -> Capabilities {
         self.capabilities.clone()
     }

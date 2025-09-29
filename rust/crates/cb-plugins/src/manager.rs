@@ -295,6 +295,21 @@ impl PluginManager {
         registry.find_plugins_for_method(method)
     }
 
+    /// Get all tool definitions from all registered plugins
+    pub async fn get_all_tool_definitions(&self) -> Vec<Value> {
+        let registry = self.registry.read().await;
+        let mut all_tools = Vec::new();
+
+        for plugin_name in registry.get_plugin_names() {
+            if let Some(plugin) = registry.get_plugin(&plugin_name) {
+                let tools = plugin.tool_definitions();
+                all_tools.extend(tools);
+            }
+        }
+
+        all_tools
+    }
+
     /// Shutdown all plugins gracefully
     #[instrument(skip(self))]
     pub async fn shutdown(&self) -> PluginResult<()> {
@@ -390,6 +405,10 @@ mod tests {
 
         fn supported_extensions(&self) -> Vec<String> {
             self.extensions.clone()
+        }
+
+        fn tool_definitions(&self) -> Vec<Value> {
+            vec![]
         }
 
         fn capabilities(&self) -> Capabilities {
