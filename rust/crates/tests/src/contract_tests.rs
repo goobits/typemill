@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use tokio_tungstenite::{connect_async, tungstenite::Message};
+use tokio_tungstenite::connect_async;
 use url::Url;
 
 /// Test helper to start cb-server and send MCP requests via stdio

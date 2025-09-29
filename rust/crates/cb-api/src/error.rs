@@ -50,6 +50,42 @@ pub enum ApiError {
 }
 
 impl ApiError {
+    /// Get the error category for structured logging and alerting
+    pub fn category(&self) -> &'static str {
+        match self {
+            ApiError::Config { .. } => "config_error",
+            ApiError::Bootstrap { .. } => "bootstrap_error",
+            ApiError::Runtime { .. } => "runtime_error",
+            ApiError::InvalidRequest(_) => "invalid_request",
+            ApiError::Unsupported(_) => "unsupported_operation",
+            ApiError::Auth(_) => "authentication_error",
+            ApiError::NotFound(_) => "not_found",
+            ApiError::AlreadyExists(_) => "already_exists",
+            ApiError::Internal(_) => "internal_error",
+            ApiError::Io(_) => "io_error",
+            ApiError::Serialization(_) => "serialization_error",
+            ApiError::Lsp(_) => "lsp_error",
+            ApiError::Ast(_) => "ast_error",
+            ApiError::Plugin(_) => "plugin_error",
+        }
+    }
+
+    /// Check if this is a client error (4xx-style)
+    pub fn is_client_error(&self) -> bool {
+        matches!(self,
+            ApiError::InvalidRequest(_) |
+            ApiError::Unsupported(_) |
+            ApiError::Auth(_) |
+            ApiError::NotFound(_) |
+            ApiError::AlreadyExists(_)
+        )
+    }
+
+    /// Check if this is a server error (5xx-style)
+    pub fn is_server_error(&self) -> bool {
+        !self.is_client_error()
+    }
+
     /// Create a new configuration error
     pub fn config(message: impl Into<String>) -> Self {
         Self::Config {
@@ -108,3 +144,25 @@ impl From<cb_core::CoreError> for ApiError {
 
 /// Result type alias for API operations
 pub type ApiResult<T> = Result<T, ApiError>;
+
+/// Macro for logging errors with automatic category extraction
+#[macro_export]
+macro_rules! log_error {
+    ($err:expr, $msg:literal) => {
+        tracing::error!(
+            error_category = $err.category(),
+            error = %$err,
+            is_client_error = $err.is_client_error(),
+            $msg
+        )
+    };
+    ($err:expr, $msg:literal, $($field:ident = $value:expr),* $(,)?) => {
+        tracing::error!(
+            error_category = $err.category(),
+            error = %$err,
+            is_client_error = $err.is_client_error(),
+            $($field = $value,)*
+            $msg
+        )
+    };
+}

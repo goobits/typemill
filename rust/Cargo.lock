@@ -564,15 +564,18 @@ name = "cb-transport"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "axum",
  "cb-api",
  "cb-ast",
  "cb-core",
  "futures-util",
+ "hyper",
  "jsonwebtoken 8.3.0",
  "serde",
  "serde_json",
  "tokio",
  "tokio-tungstenite 0.21.0",
+ "tower",
  "tracing",
  "url",
  "uuid",

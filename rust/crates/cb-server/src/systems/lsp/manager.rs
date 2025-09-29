@@ -5,14 +5,14 @@ use cb_api::{ApiResult, LspService, Message};
 use crate::systems::lsp::client::LspClient;
 use async_trait::async_trait;
 use cb_core::config::LspConfig;
-use cb_core::model::mcp::{McpError, McpMessage, McpResponse};
+use cb_core::model::mcp::{McpError, McpResponse};
 // CoreError automatically converts to ApiError via From trait
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 /// LSP manager that handles multiple LSP clients by language
 pub struct LspManager {

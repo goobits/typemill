@@ -90,7 +90,7 @@ mod tests {
         let secret = "test_secret";
         let token = create_test_token(secret, None);
 
-        assert!(validate_token(&token, secret).unwrap());
+        assert!(validate_token(&token, secret).expect("Test token should be valid"));
     }
 
     #[test]
@@ -125,6 +125,6 @@ mod tests {
         let token = create_test_token(secret, None);
 
         // Should succeed when no project_id claim is present
-        assert!(validate_token_with_project(&token, secret, "any_project").unwrap());
+        assert!(validate_token_with_project(&token, secret, "any_project").expect("Test token should be valid"));
     }
 }

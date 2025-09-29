@@ -8,9 +8,11 @@ use async_trait::async_trait;
 use cb_api::ApiResult;
 use cb_core::model::mcp::McpMessage;
 
+pub mod admin;
 pub mod stdio;
 pub mod ws;
 
+pub use admin::start_admin_server;
 pub use stdio::start_stdio_server;
 pub use ws::{start_ws_server, Session};
 

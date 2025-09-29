@@ -80,7 +80,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
 
             if let Err(e) = start_fuse_mount(fuse_config, workspace_path) {
-                tracing::error!("Failed to start FUSE mount: {}", e);
+                tracing::error!(
+                    error_category = "fuse_error",
+                    error = %e,
+                    "Failed to start FUSE mount"
+                );
                 // Continue without FUSE - it's not critical for core functionality
             } else {
                 tracing::info!("FUSE filesystem mounted successfully");
@@ -94,20 +98,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Start stdio MCP server
             tracing::info!("Starting stdio MCP server");
             if let Err(e) = cb_transport::start_stdio_server(dispatcher).await {
-                tracing::error!("Failed to start stdio server: {}", e);
+                tracing::error!(
+                    error_category = "transport_error",
+                    error = %e,
+                    "Failed to start stdio server"
+                );
                 return Err(e);
             }
         }
         Some(Commands::Serve) | None => {
+            // Start admin server on a separate port
+            let admin_port = config.server.port + 1000; // Admin on port+1000
+            tokio::spawn(async move {
+                if let Err(e) = cb_transport::start_admin_server(admin_port).await {
+                    tracing::error!(
+                        error_category = "admin_server_error",
+                        error = %e,
+                        admin_port = admin_port,
+                        "Failed to start admin server"
+                    );
+                }
+            });
+
             // Start WebSocket server (default)
             tracing::info!(
                 "Starting WebSocket server on {}:{}",
                 config.server.host,
                 config.server.port
             );
+            tracing::info!(
+                "Admin endpoints available on 127.0.0.1:{}",
+                admin_port
+            );
 
             if let Err(e) = cb_transport::start_ws_server(config, dispatcher).await {
-                tracing::error!("Failed to start WebSocket server: {}", e);
+                tracing::error!(
+                    error_category = "transport_error",
+                    error = %e,
+                    "Failed to start WebSocket server"
+                );
                 return Err(e.into());
             }
         }
