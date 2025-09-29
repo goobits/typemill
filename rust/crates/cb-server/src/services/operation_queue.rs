@@ -450,7 +450,6 @@ impl OperationTransaction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
 
     #[tokio::test]
     async fn test_enqueue_dequeue() {

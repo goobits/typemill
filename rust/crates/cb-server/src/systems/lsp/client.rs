@@ -141,7 +141,11 @@ impl LspClient {
                 let message_str = format!("Content-Length: {}\r\n\r\n{}", content.len(), content);
 
                 if let Err(e) = stdin.write_all(message_str.as_bytes()).await {
-                    error!("Failed to write to LSP server: {}", e);
+                    tracing::error!(
+                        error_category = "lsp_communication",
+                        error = %e,
+                        "Failed to write to LSP server"
+                    );
                     if let LspMessage::Request { response_tx, .. } = message {
                         let _ = response_tx.send(Err(format!("Write error: {}", e)));
                     }
@@ -149,7 +153,11 @@ impl LspClient {
                 }
 
                 if let Err(e) = stdin.flush().await {
-                    error!("Failed to flush LSP server stdin: {}", e);
+                    tracing::error!(
+                        error_category = "lsp_communication",
+                        error = %e,
+                        "Failed to flush LSP server stdin"
+                    );
                     if let LspMessage::Request { response_tx, .. } = message {
                         let _ = response_tx.send(Err(format!("Flush error: {}", e)));
                     }
@@ -203,7 +211,11 @@ impl LspClient {
                         }
                     }
                     Err(e) => {
-                        error!("Failed to read from LSP server: {}", e);
+                        tracing::error!(
+                            error_category = "lsp_communication",
+                            error = %e,
+                            "Failed to read from LSP server"
+                        );
                         break;
                     }
                 }
