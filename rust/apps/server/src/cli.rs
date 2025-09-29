@@ -3,7 +3,9 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::process;
-use cb_core::config::AppConfig;
+use cb_core::config::{AppConfig, LogFormat};
+use tracing_subscriber::fmt;
+use tracing_subscriber::prelude::*;
 
 #[derive(Parser)]
 #[command(name = "codebuddy")]
@@ -50,9 +52,9 @@ pub async fn run() {
     // Only initialize tracing for server commands
     match &cli.command {
         Commands::Start { .. } | Commands::Serve { .. } => {
-            tracing_subscriber::fmt()
-                .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-                .init();
+            // Load configuration to determine log format
+            let config = AppConfig::load().unwrap_or_default();
+            initialize_tracing(&config);
         }
         _ => {
             // For other commands, we want direct console output
@@ -284,5 +286,33 @@ fn terminate_process(pid: u32) -> bool {
             .output()
             .map(|output| output.status.success())
             .unwrap_or(false)
+    }
+}
+
+/// Initialize tracing based on configuration
+fn initialize_tracing(config: &AppConfig) {
+    // Parse log level from config, with fallback to INFO
+    let log_level = config.logging.level.parse()
+        .unwrap_or(tracing::Level::INFO);
+
+    // Create env filter with configured level and allow env overrides
+    let env_filter = tracing_subscriber::EnvFilter::from_default_env()
+        .add_directive(log_level.into());
+
+    match config.logging.format {
+        LogFormat::Json => {
+            // Use JSON formatter for structured logging
+            tracing_subscriber::registry()
+                .with(env_filter)
+                .with(fmt::layer().json())
+                .init();
+        }
+        LogFormat::Pretty => {
+            // Use pretty (human-readable) formatter
+            tracing_subscriber::registry()
+                .with(env_filter)
+                .with(fmt::layer())
+                .init();
+        }
     }
 }

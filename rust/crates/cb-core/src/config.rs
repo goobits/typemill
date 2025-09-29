@@ -106,14 +106,30 @@ pub struct FuseConfig {
     pub max_file_size_bytes: u64,
 }
 
+/// Log output format
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum LogFormat {
+    /// Human-readable format for development
+    Pretty,
+    /// Structured JSON format for production
+    Json,
+}
+
+impl Default for LogFormat {
+    fn default() -> Self {
+        LogFormat::Pretty
+    }
+}
+
 /// Logging configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoggingConfig {
     /// Log level (trace, debug, info, warn, error)
     pub level: String,
-    /// Output format (json, pretty)
-    pub format: String,
+    /// Output format
+    pub format: LogFormat,
     /// Enable file logging
     pub file: Option<FileLoggingConfig>,
 }
@@ -206,7 +222,7 @@ impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
             level: "info".to_string(),
-            format: "pretty".to_string(),
+            format: LogFormat::Pretty,
             file: None,
         }
     }
@@ -371,6 +387,14 @@ impl AppConfig {
             config.logging.level = level;
         }
 
+        if let Ok(format) = env::var("CODEBUDDY__LOGGING__FORMAT") {
+            config.logging.format = match format.to_lowercase().as_str() {
+                "json" => LogFormat::Json,
+                "pretty" => LogFormat::Pretty,
+                _ => LogFormat::Pretty,
+            };
+        }
+
         if let Ok(enabled) = env::var("CODEBUDDY__CACHE__ENABLED") {
             if let Ok(enabled_value) = enabled.parse::<bool>() {
                 config.cache.enabled = enabled_value;
@@ -417,14 +441,7 @@ impl AppConfig {
             )));
         }
 
-        let valid_formats = ["json", "pretty"];
-        if !valid_formats.contains(&self.logging.format.as_str()) {
-            return Err(CoreError::config(format!(
-                "Invalid log format '{}', must be one of: {}",
-                self.logging.format,
-                valid_formats.join(", ")
-            )));
-        }
+        // LogFormat enum ensures valid format values at compile time
 
         // Validate cache config
         if self.cache.enabled && self.cache.max_size_bytes == 0 {
