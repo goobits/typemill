@@ -68,7 +68,7 @@ mod tests {
     fn create_test_token(secret: &str, project_id: Option<String>) -> String {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("System time should be after UNIX epoch")
             .as_secs() as usize;
 
         let claims = Claims {
@@ -82,7 +82,7 @@ mod tests {
 
         let header = Header::default();
         let key = EncodingKey::from_secret(secret.as_ref());
-        encode(&header, &claims, &key).unwrap()
+        encode(&header, &claims, &key).expect("Test token encoding should succeed")
     }
 
     #[test]
