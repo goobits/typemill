@@ -269,6 +269,25 @@ ensure_tool_paths() {
     # Add user local bin to PATH for pipx
     if [ -d "$HOME/.local/bin" ]; then
         export PATH="$HOME/.local/bin:$PATH"
+
+        # Persist PATH changes to shell configuration
+        local shell_rc=""
+        if [ -n "$BASH_VERSION" ]; then
+            shell_rc="$HOME/.bashrc"
+        elif [ -n "$ZSH_VERSION" ]; then
+            shell_rc="$HOME/.zshrc"
+        else
+            shell_rc="$HOME/.profile"
+        fi
+
+        # Add PATH export if not already present
+        if ! grep -q "export PATH.*/.local/bin" "$shell_rc" 2>/dev/null; then
+            echo "" >> "$shell_rc"
+            echo "# Added by Codebuddy installer" >> "$shell_rc"
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$shell_rc"
+            log_info "Added ~/.local/bin to PATH in $shell_rc"
+            log_warning "Please run 'source $shell_rc' or restart your shell for PATH changes to take effect"
+        fi
     fi
 
     # Verify critical tools are now available
@@ -305,7 +324,16 @@ install_language_servers() {
     if command -v pipx >/dev/null 2>&1; then
         log_info "Installing Python language server..."
         pipx install "python-lsp-server[all]"
-        log_success "Python language server installed"
+
+        # Verify pylsp is accessible
+        if [ -f "$HOME/.local/bin/pylsp" ]; then
+            export PATH="$HOME/.local/bin:$PATH"
+            log_success "Python language server installed at ~/.local/bin/pylsp"
+        elif command -v pylsp >/dev/null 2>&1; then
+            log_success "Python language server installed and available in PATH"
+        else
+            log_warning "Python LSP installed but not found in PATH - you may need to add ~/.local/bin to your PATH"
+        fi
     elif command -v pip >/dev/null 2>&1; then
         log_info "Installing Python language server with pip..."
         pip install --user "python-lsp-server[all]" || pip install --break-system-packages "python-lsp-server[all]"
@@ -376,24 +404,24 @@ EOF
     # Add Python server
     if [ "$has_py" = true ]; then
         [ "$first" = false ] && echo "," >> "$lsp_config"
-        # Check for pipx installation path first
-        if [ -f "/home/developer/.local/bin/pylsp" ]; then
-            cat >> "$lsp_config" << 'EOF'
-    {
-      "extensions": ["py", "pyi"],
-      "command": ["/home/developer/.local/bin/pylsp"]
-    }
-EOF
+        # Dynamically detect pylsp path
+        local pylsp_path=""
+        if [ -f "$HOME/.local/bin/pylsp" ]; then
+            pylsp_path="$HOME/.local/bin/pylsp"
+        elif command -v pylsp >/dev/null 2>&1; then
+            pylsp_path=$(command -v pylsp)
         else
-            cat >> "$lsp_config" << 'EOF'
+            pylsp_path="pylsp"  # Fallback to hoping it's in PATH
+        fi
+
+        cat >> "$lsp_config" << EOF
     {
       "extensions": ["py", "pyi"],
-      "command": ["pylsp"]
+      "command": ["$pylsp_path"]
     }
 EOF
-        fi
         first=false
-        log_success "Added Python language server to config"
+        log_success "Added Python language server to config (using: $pylsp_path)"
     fi
 
     # Add Go server
@@ -466,6 +494,41 @@ main() {
     # Phase 2: Install language servers
     log_info "=== Phase 2: Installing Language Servers ==="
     install_language_servers
+
+    # Verify LSP servers are accessible
+    log_info "=== Verifying Language Server Installation ==="
+    local lsp_status=""
+
+    # Check TypeScript LSP
+    if command -v typescript-language-server >/dev/null 2>&1; then
+        lsp_status="${lsp_status}✓ TypeScript LSP: $(command -v typescript-language-server)\n"
+    else
+        lsp_status="${lsp_status}✗ TypeScript LSP: Not found in PATH\n"
+    fi
+
+    # Check Python LSP (with expanded PATH)
+    export PATH="$HOME/.local/bin:$PATH"
+    if command -v pylsp >/dev/null 2>&1; then
+        lsp_status="${lsp_status}✓ Python LSP: $(command -v pylsp)\n"
+    else
+        lsp_status="${lsp_status}✗ Python LSP: Not found in PATH\n"
+    fi
+
+    # Check Rust analyzer
+    if command -v rust-analyzer >/dev/null 2>&1; then
+        lsp_status="${lsp_status}✓ Rust analyzer: $(command -v rust-analyzer)\n"
+    else
+        lsp_status="${lsp_status}✗ Rust analyzer: Not found in PATH\n"
+    fi
+
+    # Check Go LSP
+    if command -v gopls >/dev/null 2>&1; then
+        lsp_status="${lsp_status}✓ Go LSP: $(command -v gopls)\n"
+    else
+        lsp_status="${lsp_status}✗ Go LSP: Not found (optional)\n"
+    fi
+
+    echo -e "\nLanguage Server Status:\n$lsp_status"
 
     # Phase 3: Build and install
     log_info "=== Phase 3: Building and Installing Codebuddy ==="
