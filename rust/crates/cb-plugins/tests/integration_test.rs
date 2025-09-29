@@ -667,3 +667,128 @@ async fn test_rust_plugin_references_snapshot() {
     // Snapshot the Rust references response
     insta::assert_yaml_snapshot!(response.data);
 }
+
+/// Test file save and close lifecycle hooks
+#[tokio::test]
+async fn test_file_save_and_close_hooks() {
+    use common::{MockLspService, PluginTestBuilder};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    // Create counters for tracking hook invocations
+    let save_count = Arc::new(AtomicUsize::new(0));
+    let close_count = Arc::new(AtomicUsize::new(0));
+
+    // Create a custom plugin wrapper that tracks lifecycle hooks
+    struct HookTrackingPlugin {
+        inner: Arc<LspAdapterPlugin>,
+        save_count: Arc<AtomicUsize>,
+        close_count: Arc<AtomicUsize>,
+    }
+
+    #[async_trait]
+    impl cb_plugins::LanguagePlugin for HookTrackingPlugin {
+        fn metadata(&self) -> PluginMetadata {
+            self.inner.metadata()
+        }
+
+        fn supported_extensions(&self) -> Vec<String> {
+            self.inner.supported_extensions()
+        }
+
+        fn capabilities(&self) -> Capabilities {
+            self.inner.capabilities()
+        }
+
+        async fn handle_request(
+            &self,
+            request: cb_plugins::PluginRequest,
+        ) -> cb_plugins::PluginResult<cb_plugins::PluginResponse> {
+            self.inner.handle_request(request).await
+        }
+
+        fn configure(&self, config: Value) -> cb_plugins::PluginResult<()> {
+            self.inner.configure(config)
+        }
+
+        fn on_file_save(&self, path: &std::path::Path) -> cb_plugins::PluginResult<()> {
+            self.save_count.fetch_add(1, Ordering::SeqCst);
+            self.inner.on_file_save(path)
+        }
+
+        fn on_file_close(&self, path: &std::path::Path) -> cb_plugins::PluginResult<()> {
+            self.close_count.fetch_add(1, Ordering::SeqCst);
+            self.inner.on_file_close(path)
+        }
+
+        fn tool_definitions(&self) -> Vec<Value> {
+            self.inner.tool_definitions()
+        }
+    }
+
+    let lsp_service = Arc::new(MockLspService::new("lifecycle-test-lsp"));
+    let inner_plugin = Arc::new(LspAdapterPlugin::typescript(lsp_service));
+    let tracking_plugin = Arc::new(HookTrackingPlugin {
+        inner: inner_plugin,
+        save_count: save_count.clone(),
+        close_count: close_count.clone(),
+    });
+
+    // Use builder to set up manager
+    let manager = PluginTestBuilder::new()
+        .with_plugin("typescript", tracking_plugin)
+        .build()
+        .await
+        .unwrap();
+
+    let ts_file = std::path::PathBuf::from("app.ts");
+
+    // Test file save hook
+    manager.trigger_file_save_hooks(&ts_file).await.unwrap();
+    assert_eq!(
+        save_count.load(Ordering::SeqCst),
+        1,
+        "on_file_save should be called once"
+    );
+
+    // Test file close hook
+    manager.trigger_file_close_hooks(&ts_file).await.unwrap();
+    assert_eq!(
+        close_count.load(Ordering::SeqCst),
+        1,
+        "on_file_close should be called once"
+    );
+
+    // Test multiple invocations
+    manager.trigger_file_save_hooks(&ts_file).await.unwrap();
+    manager.trigger_file_save_hooks(&ts_file).await.unwrap();
+    assert_eq!(
+        save_count.load(Ordering::SeqCst),
+        3,
+        "on_file_save should be called three times total"
+    );
+
+    manager.trigger_file_close_hooks(&ts_file).await.unwrap();
+    assert_eq!(
+        close_count.load(Ordering::SeqCst),
+        2,
+        "on_file_close should be called twice total"
+    );
+
+    // Test that hooks are NOT called for non-matching files
+    let py_file = std::path::PathBuf::from("script.py");
+    manager.trigger_file_save_hooks(&py_file).await.unwrap();
+    manager.trigger_file_close_hooks(&py_file).await.unwrap();
+
+    // Counts should remain the same since .py doesn't match TypeScript plugin
+    assert_eq!(
+        save_count.load(Ordering::SeqCst),
+        3,
+        "on_file_save should NOT be called for .py file"
+    );
+    assert_eq!(
+        close_count.load(Ordering::SeqCst),
+        2,
+        "on_file_close should NOT be called for .py file"
+    );
+}

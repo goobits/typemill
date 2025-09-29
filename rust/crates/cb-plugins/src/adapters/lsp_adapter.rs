@@ -740,6 +740,28 @@ impl LanguagePlugin for LspAdapterPlugin {
                     "required": ["file_path"]
                 }
             }),
+            json!({
+                "name": "notify_file_saved",
+                "description": "Notify the LSP server that a file has been saved. Triggers on_file_save hooks on all plugins that support the file extension.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": { "type": "string", "description": "The path to the file that was saved" }
+                    },
+                    "required": ["file_path"]
+                }
+            }),
+            json!({
+                "name": "notify_file_closed",
+                "description": "Notify the LSP server that a file has been closed. Triggers on_file_close hooks on all plugins that support the file extension.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": { "type": "string", "description": "The path to the file that was closed" }
+                    },
+                    "required": ["file_path"]
+                }
+            }),
         ]
     }
 

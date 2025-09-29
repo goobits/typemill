@@ -355,6 +355,14 @@ impl PluginDispatcher {
             return self.handle_notify_file_opened(tool_call).await;
         }
 
+        if tool_call.name == "notify_file_saved" {
+            return self.handle_notify_file_saved(tool_call).await;
+        }
+
+        if tool_call.name == "notify_file_closed" {
+            return self.handle_notify_file_closed(tool_call).await;
+        }
+
         // Check if this is the AST-powered refactoring tool
         if tool_call.name == "rename_symbol_with_imports" {
             return self.handle_rename_symbol_with_imports(tool_call).await;
@@ -636,6 +644,70 @@ impl PluginDispatcher {
                 "message": format!("No LSP server configured for extension '{}'", extension)
             }))
         }
+    }
+
+    /// Handle LSP file saved notification tool
+    async fn handle_notify_file_saved(&self, tool_call: ToolCall) -> ServerResult<Value> {
+        debug!(tool_name = %tool_call.name, "Handling notify_file_saved");
+
+        let args = tool_call.arguments.unwrap_or(json!({}));
+        let file_path_str = args
+            .get("file_path")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+
+        let file_path = PathBuf::from(file_path_str);
+
+        // Trigger plugin lifecycle hooks for all plugins that can handle this file
+        if let Err(e) = self.plugin_manager.trigger_file_save_hooks(&file_path).await {
+            warn!(
+                file_path = %file_path.display(),
+                error = %e,
+                "Failed to trigger plugin save hooks (continuing)"
+            );
+        }
+
+        debug!(
+            file_path = %file_path.display(),
+            "File saved notification processed"
+        );
+
+        Ok(json!({
+            "success": true,
+            "message": format!("Notified about saved file: {}", file_path.display())
+        }))
+    }
+
+    /// Handle LSP file closed notification tool
+    async fn handle_notify_file_closed(&self, tool_call: ToolCall) -> ServerResult<Value> {
+        debug!(tool_name = %tool_call.name, "Handling notify_file_closed");
+
+        let args = tool_call.arguments.unwrap_or(json!({}));
+        let file_path_str = args
+            .get("file_path")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+
+        let file_path = PathBuf::from(file_path_str);
+
+        // Trigger plugin lifecycle hooks for all plugins that can handle this file
+        if let Err(e) = self.plugin_manager.trigger_file_close_hooks(&file_path).await {
+            warn!(
+                file_path = %file_path.display(),
+                error = %e,
+                "Failed to trigger plugin close hooks (continuing)"
+            );
+        }
+
+        debug!(
+            file_path = %file_path.display(),
+            "File closed notification processed"
+        );
+
+        Ok(json!({
+            "success": true,
+            "message": format!("Notified about closed file: {}", file_path.display())
+        }))
     }
 
     /// Handle rename_symbol_with_imports tool using AST service
