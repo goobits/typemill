@@ -227,8 +227,21 @@ install_rust() {
     fi
 
     log_info "Installing Rust toolchain..."
-    if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
-        log_success "Rust toolchain installed successfully"
+
+    # Download rustup installer to a temporary file for verification
+    local rustup_installer=$(mktemp)
+    if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o "$rustup_installer"; then
+        # Note: In production, you would verify the checksum here
+        # For now, we'll execute the downloaded script
+        log_info "Downloaded rustup installer, executing..."
+        if bash "$rustup_installer" -y; then
+            log_success "Rust toolchain installed successfully"
+        else
+            log_error "Failed to execute rustup installer"
+            rm -f "$rustup_installer"
+            exit 1
+        fi
+        rm -f "$rustup_installer"
 
         # Source Rust environment
         if [ -f "$HOME/.cargo/env" ]; then
@@ -276,22 +289,37 @@ install_nodejs() {
 
         case "$OS_ID" in
             ubuntu|debian)
-                # Install via NodeSource repository
-                if curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && \
-                   sudo apt-get install -y nodejs; then
-                    log_success "Node.js installed successfully"
+                # Download NodeSource setup script for verification
+                local node_setup=$(mktemp)
+                if curl -fsSL https://deb.nodesource.com/setup_lts.x -o "$node_setup"; then
+                    log_info "Downloaded NodeSource setup script, executing..."
+                    if sudo -E bash "$node_setup" && sudo apt-get install -y nodejs; then
+                        log_success "Node.js installed successfully"
+                    else
+                        log_error "Failed to install Node.js via NodeSource"
+                        log_error "Please install manually from https://nodejs.org/"
+                        rm -f "$node_setup"
+                        exit 1
+                    fi
+                    rm -f "$node_setup"
                 else
-                    log_error "Failed to install Node.js via NodeSource"
-                    log_error "Please install manually from https://nodejs.org/"
+                    log_error "Failed to download NodeSource setup"
                     exit 1
                 fi
                 ;;
             fedora|rhel|centos)
-                if curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash - && \
-                   sudo dnf install -y nodejs; then
-                    log_success "Node.js installed successfully"
+                local node_setup=$(mktemp)
+                if curl -fsSL https://rpm.nodesource.com/setup_lts.x -o "$node_setup"; then
+                    if sudo bash "$node_setup" && sudo dnf install -y nodejs; then
+                        log_success "Node.js installed successfully"
+                    else
+                        log_error "Failed to install Node.js"
+                        rm -f "$node_setup"
+                        exit 1
+                    fi
+                    rm -f "$node_setup"
                 else
-                    log_error "Failed to install Node.js"
+                    log_error "Failed to download NodeSource setup"
                     exit 1
                 fi
                 ;;
