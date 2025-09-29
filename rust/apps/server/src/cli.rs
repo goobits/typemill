@@ -1,9 +1,9 @@
 //! CLI command handling for the codebuddy server
 
+use cb_core::config::{AppConfig, LogFormat};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::process;
-use cb_core::config::{AppConfig, LogFormat};
 use tracing::{error, info};
 use tracing_subscriber::fmt;
 use tracing_subscriber::prelude::*;
@@ -111,7 +111,10 @@ async fn handle_setup() {
 
     // Check if config already exists
     if config_path.exists() {
-        println!("⚠️  Configuration file already exists at: {}", config_path.display());
+        println!(
+            "⚠️  Configuration file already exists at: {}",
+            config_path.display()
+        );
         println!("   To recreate configuration, please delete the existing file first.");
         return;
     }
@@ -127,7 +130,10 @@ async fn handle_setup() {
             println!("   • Go: gopls");
             println!("   • Rust: rust-analyzer");
             println!();
-            println!("💡 You can edit {} to customize LSP servers and other settings.", config_path.display());
+            println!(
+                "💡 You can edit {} to customize LSP servers and other settings.",
+                config_path.display()
+            );
         }
         Err(e) => {
             error!(error = %e, "Failed to save configuration");
@@ -249,9 +255,7 @@ fn is_process_running(pid: u32) -> bool {
     #[cfg(unix)]
     {
         // On Unix systems, we can send signal 0 to check if process exists
-        unsafe {
-            libc::kill(pid as i32, 0) == 0
-        }
+        unsafe { libc::kill(pid as i32, 0) == 0 }
     }
     #[cfg(windows)]
     {
@@ -262,10 +266,7 @@ fn is_process_running(pid: u32) -> bool {
         Command::new("tasklist")
             .args(&["/FI", &format!("PID eq {}", pid)])
             .output()
-            .map(|output| {
-                String::from_utf8_lossy(&output.stdout)
-                    .contains(&pid.to_string())
-            })
+            .map(|output| String::from_utf8_lossy(&output.stdout).contains(&pid.to_string()))
             .unwrap_or(false)
     }
 }
@@ -274,9 +275,7 @@ fn is_process_running(pid: u32) -> bool {
 fn terminate_process(pid: u32) -> bool {
     #[cfg(unix)]
     {
-        unsafe {
-            libc::kill(pid as i32, libc::SIGTERM) == 0
-        }
+        unsafe { libc::kill(pid as i32, libc::SIGTERM) == 0 }
     }
     #[cfg(windows)]
     {
@@ -293,12 +292,11 @@ fn terminate_process(pid: u32) -> bool {
 /// Initialize tracing based on configuration
 fn initialize_tracing(config: &AppConfig) {
     // Parse log level from config, with fallback to INFO
-    let log_level = config.logging.level.parse()
-        .unwrap_or(tracing::Level::INFO);
+    let log_level = config.logging.level.parse().unwrap_or(tracing::Level::INFO);
 
     // Create env filter with configured level and allow env overrides
-    let env_filter = tracing_subscriber::EnvFilter::from_default_env()
-        .add_directive(log_level.into());
+    let env_filter =
+        tracing_subscriber::EnvFilter::from_default_env().add_directive(log_level.into());
 
     match config.logging.format {
         LogFormat::Json => {

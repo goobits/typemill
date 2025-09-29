@@ -25,8 +25,7 @@ pub struct CallCommand {
 }
 
 /// Output format options
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum OutputFormat {
     /// Pretty-printed with colors and formatting
     #[default]
@@ -36,7 +35,6 @@ pub enum OutputFormat {
     /// Minimal output (result only)
     Raw,
 }
-
 
 impl CallCommand {
     pub fn new(tool: String, params: Option<String>) -> Self {
@@ -360,32 +358,35 @@ impl Command for CallCommand {
         }
 
         // Check if we need to run interactive parameter builder
-        if self.params.is_none() && self.params_file.is_none() && !self.params_stdin
+        if self.params.is_none()
+            && self.params_file.is_none()
+            && !self.params_stdin
             && ctx.interactive.confirm(
                 "No parameters provided. Would you like to use the interactive parameter builder?",
                 Some(false),
-            )? {
-                let params = self.interactive_params(&ctx).await?;
-                if let Some(p) = params {
-                    println!();
-                    ctx.display_info("Generated parameters:");
-                    println!("{}", ctx.formatter.json(&p)?);
-                    println!();
+            )?
+        {
+            let params = self.interactive_params(&ctx).await?;
+            if let Some(p) = params {
+                println!();
+                ctx.display_info("Generated parameters:");
+                println!("{}", ctx.formatter.json(&p)?);
+                println!();
 
-                    if !ctx
-                        .interactive
-                        .confirm("Proceed with these parameters?", Some(true))?
-                    {
-                        ctx.display_info("Tool call cancelled");
-                        return Ok(());
-                    }
-
-                    // Create a new command with the built parameters
-                    let mut new_cmd = self.clone();
-                    new_cmd.params = Some(serde_json::to_string(&p).unwrap());
-                    return new_cmd.execute_tool_call(&ctx).await;
+                if !ctx
+                    .interactive
+                    .confirm("Proceed with these parameters?", Some(true))?
+                {
+                    ctx.display_info("Tool call cancelled");
+                    return Ok(());
                 }
+
+                // Create a new command with the built parameters
+                let mut new_cmd = self.clone();
+                new_cmd.params = Some(serde_json::to_string(&p).unwrap());
+                return new_cmd.execute_tool_call(&ctx).await;
             }
+        }
 
         self.execute_tool_call(&ctx).await
     }

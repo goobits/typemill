@@ -12,8 +12,7 @@ use async_trait::async_trait;
 use std::time::Duration;
 
 /// Global arguments passed to all commands
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct GlobalArgs {
     /// Enable debug logging
     pub debug: bool,
@@ -26,7 +25,6 @@ pub struct GlobalArgs {
     /// Disable emojis in output
     pub no_emoji: bool,
 }
-
 
 /// Common trait for all CLI commands
 #[async_trait]

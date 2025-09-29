@@ -92,11 +92,7 @@ impl PluginTestBuilder {
     /// # Arguments
     /// * `name` - Plugin name (e.g., "typescript", "python")
     /// * `plugin` - Plugin instance implementing LanguagePlugin
-    pub fn with_plugin(
-        mut self,
-        name: impl Into<String>,
-        plugin: Arc<dyn LanguagePlugin>,
-    ) -> Self {
+    pub fn with_plugin(mut self, name: impl Into<String>, plugin: Arc<dyn LanguagePlugin>) -> Self {
         self.plugins.push((name.into(), plugin));
         self
     }
@@ -106,7 +102,11 @@ impl PluginTestBuilder {
     /// # Arguments
     /// * `method` - Method name (e.g., "find_definition", "get_hover")
     /// * `file_path` - Path to the file being tested
-    pub fn with_request(mut self, method: impl Into<String>, file_path: impl Into<PathBuf>) -> Self {
+    pub fn with_request(
+        mut self,
+        method: impl Into<String>,
+        file_path: impl Into<PathBuf>,
+    ) -> Self {
         self.method = Some(method.into());
         self.file_path = Some(file_path.into());
         self

@@ -48,10 +48,11 @@ impl SetupCommand {
             && !ctx.interactive.confirm(
                 "Connection test failed. Save configuration anyway?",
                 Some(false),
-            )? {
-                ctx.display_info("Setup cancelled");
-                return Ok(());
-            }
+            )?
+        {
+            ctx.display_info("Setup cancelled");
+            return Ok(());
+        }
 
         // Step 5: Save configuration
         ctx.update_config(Some(url), token, Some(timeout));

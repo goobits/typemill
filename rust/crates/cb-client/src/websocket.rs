@@ -374,10 +374,7 @@ impl WebSocketClient {
     }
 
     /// Handle incoming message
-    async fn handle_message(
-        text: &str,
-        pending_requests: &PendingRequests,
-    ) -> ClientResult<()> {
+    async fn handle_message(text: &str, pending_requests: &PendingRequests) -> ClientResult<()> {
         debug!(message = %text, "Received message");
 
         let response: MCPResponse = serde_json::from_str(text).map_err(|e| {

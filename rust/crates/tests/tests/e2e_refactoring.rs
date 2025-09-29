@@ -3,10 +3,10 @@
 //! These tests verify the complete refactoring pipeline from planning to execution,
 //! ensuring correctness, atomicity, and cache invalidation.
 
+use cb_api::AstService;
 use cb_ast::{refactoring::plan_rename_refactor, AstCache};
 use cb_core::model::IntentSpec;
 use cb_server::handlers::{AppState, PluginDispatcher};
-use cb_api::AstService;
 use cb_server::services::{DefaultAstService, FileService, LockManager, OperationQueue};
 use serde_json::json;
 use std::fs;

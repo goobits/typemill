@@ -1,7 +1,9 @@
 //! AST parsing functionality
 
 use crate::error::AstResult;
-use cb_api::{ImportGraph, ImportGraphMetadata, ImportInfo, ImportType, NamedImport, SourceLocation};
+use cb_api::{
+    ImportGraph, ImportGraphMetadata, ImportInfo, ImportType, NamedImport, SourceLocation,
+};
 use petgraph::graph::NodeIndex;
 use petgraph::{Direction, Graph};
 use regex::Regex;

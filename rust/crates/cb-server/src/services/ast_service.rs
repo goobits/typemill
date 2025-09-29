@@ -4,8 +4,8 @@ use async_trait::async_trait;
 use std::path::Path;
 use std::sync::Arc;
 
-use cb_ast::AstCache;
 use cb_api::{ApiResult, CacheStats, EditPlan, ImportGraph};
+use cb_ast::AstCache;
 use cb_core::model::IntentSpec;
 use tracing::{debug, trace};
 
@@ -103,7 +103,9 @@ impl AstService for DefaultAstService {
                     .get("oldName")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| {
-                        cb_api::ApiError::InvalidRequest("Missing 'oldName' parameter in intent".to_string())
+                        cb_api::ApiError::InvalidRequest(
+                            "Missing 'oldName' parameter in intent".to_string(),
+                        )
                     })?;
 
                 let new_name = intent
@@ -111,12 +113,15 @@ impl AstService for DefaultAstService {
                     .get("newName")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| {
-                        cb_api::ApiError::InvalidRequest("Missing 'newName' parameter in intent".to_string())
+                        cb_api::ApiError::InvalidRequest(
+                            "Missing 'newName' parameter in intent".to_string(),
+                        )
                     })?;
 
                 // Call the plan_rename_refactor function from cb-ast
-                cb_ast::refactoring::plan_rename_refactor(old_name, new_name, file)
-                    .map_err(|e| cb_api::ApiError::internal(format!("Refactoring planning failed: {}", e)))
+                cb_ast::refactoring::plan_rename_refactor(old_name, new_name, file).map_err(|e| {
+                    cb_api::ApiError::internal(format!("Refactoring planning failed: {}", e))
+                })
             }
             _ => Err(cb_api::ApiError::Unsupported(format!(
                 "Intent '{}' is not supported for refactoring",

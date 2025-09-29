@@ -1,12 +1,12 @@
 //! cb-server main binary
 
-use cb_ast::AstCache;
-use cb_core::{AppConfig, config::LogFormat};
-use cb_server::handlers::{AppState, PluginDispatcher};
 use cb_api::AstService;
+use cb_ast::AstCache;
+use cb_core::{config::LogFormat, AppConfig};
+use cb_server::handlers::{AppState, PluginDispatcher};
 use cb_server::services::{DefaultAstService, FileService, LockManager, OperationQueue};
-use cb_vfs::start_fuse_mount;
 use cb_transport;
+use cb_vfs::start_fuse_mount;
 use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -126,10 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 config.server.host,
                 config.server.port
             );
-            tracing::info!(
-                "Admin endpoints available on 127.0.0.1:{}",
-                admin_port
-            );
+            tracing::info!("Admin endpoints available on 127.0.0.1:{}", admin_port);
 
             if let Err(e) = cb_transport::start_ws_server(config, dispatcher).await {
                 tracing::error!(
@@ -151,12 +148,11 @@ fn initialize_tracing(config: &AppConfig) {
     use tracing_subscriber::{fmt, prelude::*};
 
     // Parse log level from config, with fallback to INFO
-    let log_level = config.logging.level.parse()
-        .unwrap_or(tracing::Level::INFO);
+    let log_level = config.logging.level.parse().unwrap_or(tracing::Level::INFO);
 
     // Create env filter with configured level and allow env overrides
-    let env_filter = tracing_subscriber::EnvFilter::from_default_env()
-        .add_directive(log_level.into());
+    let env_filter =
+        tracing_subscriber::EnvFilter::from_default_env().add_directive(log_level.into());
 
     match config.logging.format {
         LogFormat::Json => {

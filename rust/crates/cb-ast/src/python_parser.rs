@@ -112,12 +112,7 @@ pub fn extract_python_functions(source: &str) -> AstResult<Vec<PythonFunction>> 
             } else {
                 args_str
                     .split(',')
-                    .map(|arg| {
-                        arg.split_whitespace()
-                            .next()
-                            .unwrap_or("")
-                            .to_string()
-                    })
+                    .map(|arg| arg.split_whitespace().next().unwrap_or("").to_string())
                     .filter(|arg| !arg.is_empty())
                     .collect()
             };

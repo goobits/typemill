@@ -146,7 +146,9 @@ impl PluginManager {
         debug!("Routing request to plugin '{}'", plugin_name);
 
         // Save file extension and method before moving request
-        let file_extension = request.file_path.extension()
+        let file_extension = request
+            .file_path
+            .extension()
             .and_then(|ext| ext.to_str())
             .unwrap_or("unknown")
             .to_string();
@@ -691,7 +693,10 @@ mod tests {
                 Capabilities::default()
             }
 
-            async fn handle_request(&self, _request: PluginRequest) -> PluginResult<PluginResponse> {
+            async fn handle_request(
+                &self,
+                _request: PluginRequest,
+            ) -> PluginResult<PluginResponse> {
                 Ok(PluginResponse::empty())
             }
 
@@ -723,14 +728,20 @@ mod tests {
         let test_file = PathBuf::from("file.test");
         manager.trigger_file_open_hooks(&test_file).await.unwrap();
 
-        assert!(hook_called.load(Ordering::SeqCst), "Hook should be called for .test file");
+        assert!(
+            hook_called.load(Ordering::SeqCst),
+            "Hook should be called for .test file"
+        );
 
         // Reset and test non-matching file
         hook_called.store(false, Ordering::SeqCst);
         let other_file = PathBuf::from("file.other");
         manager.trigger_file_open_hooks(&other_file).await.unwrap();
 
-        assert!(!hook_called.load(Ordering::SeqCst), "Hook should NOT be called for .other file");
+        assert!(
+            !hook_called.load(Ordering::SeqCst),
+            "Hook should NOT be called for .other file"
+        );
     }
 
     #[tokio::test]
@@ -751,7 +762,10 @@ mod tests {
                 Capabilities::default()
             }
 
-            async fn handle_request(&self, _request: PluginRequest) -> PluginResult<PluginResponse> {
+            async fn handle_request(
+                &self,
+                _request: PluginRequest,
+            ) -> PluginResult<PluginResponse> {
                 Ok(PluginResponse::empty())
             }
 
@@ -760,7 +774,10 @@ mod tests {
             }
 
             fn on_file_open(&self, _path: &Path) -> PluginResult<()> {
-                Err(PluginError::request_failed("failing-hook", "Intentional test failure"))
+                Err(PluginError::request_failed(
+                    "failing-hook",
+                    "Intentional test failure",
+                ))
             }
 
             fn tool_definitions(&self) -> Vec<Value> {
@@ -771,10 +788,15 @@ mod tests {
         let manager = PluginManager::new();
         let plugin = Arc::new(FailingHookPlugin);
 
-        manager.register_plugin("failing-hook", plugin).await.unwrap();
+        manager
+            .register_plugin("failing-hook", plugin)
+            .await
+            .unwrap();
 
         // Hook failure should not propagate
-        let result = manager.trigger_file_open_hooks(&PathBuf::from("file.fail")).await;
+        let result = manager
+            .trigger_file_open_hooks(&PathBuf::from("file.fail"))
+            .await;
         assert!(result.is_ok(), "Hook errors should not propagate");
     }
 
@@ -804,7 +826,10 @@ mod tests {
                 Capabilities::default()
             }
 
-            async fn handle_request(&self, _request: PluginRequest) -> PluginResult<PluginResponse> {
+            async fn handle_request(
+                &self,
+                _request: PluginRequest,
+            ) -> PluginResult<PluginResponse> {
                 Ok(PluginResponse::empty())
             }
 
@@ -841,7 +866,10 @@ mod tests {
         manager.register_plugin("counter2", plugin2).await.unwrap();
 
         // Trigger hook
-        manager.trigger_file_open_hooks(&PathBuf::from("file.ts")).await.unwrap();
+        manager
+            .trigger_file_open_hooks(&PathBuf::from("file.ts"))
+            .await
+            .unwrap();
 
         assert_eq!(
             call_counter.load(Ordering::SeqCst),

@@ -408,7 +408,10 @@ async fn test_hooks_with_multiple_plugins() {
         inner: ts_inner,
         hook_count: ts_hook_count.clone(),
     });
-    manager.register_plugin("typescript", ts_plugin).await.unwrap();
+    manager
+        .register_plugin("typescript", ts_plugin)
+        .await
+        .unwrap();
 
     // Register JavaScript plugin (also handles .js files)
     let js_service = Arc::new(CountingLspService {
@@ -424,7 +427,10 @@ async fn test_hooks_with_multiple_plugins() {
         inner: js_inner,
         hook_count: js_hook_count.clone(),
     });
-    manager.register_plugin("javascript", js_plugin).await.unwrap();
+    manager
+        .register_plugin("javascript", js_plugin)
+        .await
+        .unwrap();
 
     // Test TypeScript file - only TS plugin should receive hook
     manager
@@ -451,20 +457,18 @@ async fn test_plugin_with_builder_and_snapshots() {
     use common::{MockLspService, PluginTestBuilder};
 
     // Create a mock LSP service with custom responses
-    let lsp_service = Arc::new(
-        MockLspService::new("test-ts-lsp").with_response(
-            "textDocument/definition",
-            json!([
-                {
-                    "uri": "file:///src/module.ts",
-                    "range": {
-                        "start": { "line": 42, "character": 10 },
-                        "end": { "line": 42, "character": 20 }
-                    }
+    let lsp_service = Arc::new(MockLspService::new("test-ts-lsp").with_response(
+        "textDocument/definition",
+        json!([
+            {
+                "uri": "file:///src/module.ts",
+                "range": {
+                    "start": { "line": 42, "character": 10 },
+                    "end": { "line": 42, "character": 20 }
                 }
-            ]),
-        ),
-    );
+            }
+        ]),
+    ));
 
     let plugin = Arc::new(LspAdapterPlugin::typescript(lsp_service));
 
