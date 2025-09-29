@@ -47,6 +47,97 @@ log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_error() { echo -e "${RED}✗${NC} $1"; }
 
+# Package verification functions
+verify_package_apt() {
+    local package="$1"
+    log_info "Verifying package: $package"
+
+    # Check if package exists and show policy info
+    if apt-cache policy "$package" >/dev/null 2>&1; then
+        local policy_info=$(apt-cache policy "$package")
+        local candidate_version=$(echo "$policy_info" | grep "Candidate:" | awk '{print $2}')
+        local origin=$(echo "$policy_info" | grep -A5 "Candidate:" | grep "500" | head -1 | awk '{print $3}')
+
+        if [ "$candidate_version" != "(none)" ] && [ -n "$origin" ]; then
+            log_success "Package verified: $package v$candidate_version from $origin"
+            return 0
+        else
+            log_warning "Package $package not available or no valid candidate"
+            return 1
+        fi
+    else
+        log_error "Package $package not found in repositories"
+        return 1
+    fi
+}
+
+verify_package_brew() {
+    local package="$1"
+    log_info "Verifying package: $package"
+
+    # Get package info in JSON format for detailed verification
+    if brew info "$package" --json >/dev/null 2>&1; then
+        local package_info=$(brew info "$package" --json 2>/dev/null)
+        local version=$(echo "$package_info" | grep -o '"version":"[^"]*"' | head -1 | cut -d'"' -f4)
+        local tap=$(echo "$package_info" | grep -o '"tap":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+        if [ -n "$version" ]; then
+            log_success "Package verified: $package v$version from ${tap:-homebrew/core}"
+            return 0
+        else
+            log_warning "Package $package info incomplete"
+            return 1
+        fi
+    else
+        log_error "Package $package not found in Homebrew"
+        return 1
+    fi
+}
+
+verify_package_dnf() {
+    local package="$1"
+    log_info "Verifying package: $package"
+
+    if dnf info "$package" >/dev/null 2>&1; then
+        local package_info=$(dnf info "$package" 2>/dev/null)
+        local version=$(echo "$package_info" | grep "Version" | head -1 | awk '{print $3}')
+        local repo=$(echo "$package_info" | grep "Repository" | head -1 | awk '{print $3}')
+
+        if [ -n "$version" ] && [ -n "$repo" ]; then
+            log_success "Package verified: $package v$version from $repo"
+            return 0
+        else
+            log_warning "Package $package verification incomplete"
+            return 1
+        fi
+    else
+        log_error "Package $package not found in DNF repositories"
+        return 1
+    fi
+}
+
+verify_package_pacman() {
+    local package="$1"
+    log_info "Verifying package: $package"
+
+    if pacman -Si "$package" >/dev/null 2>&1; then
+        local package_info=$(pacman -Si "$package" 2>/dev/null)
+        local version=$(echo "$package_info" | grep "Version" | head -1 | awk '{print $3}')
+        local repo=$(echo "$package_info" | grep "Repository" | head -1 | awk '{print $3}')
+
+        if [ -n "$version" ] && [ -n "$repo" ]; then
+            log_success "Package verified: $package v$version from $repo"
+            return 0
+        else
+            log_warning "Package $package verification incomplete"
+            return 1
+        fi
+    else
+        log_error "Package $package not found in Pacman repositories"
+        return 1
+    fi
+}
+
 # Check for unsupported OS
 if [ "$OS_TYPE" = "unknown" ]; then
     log_error "Unsupported operating system: $(uname -s)"
@@ -229,10 +320,15 @@ install_rust() {
     log_info "Installing Rust toolchain via package manager..."
 
     if [ "$OS_TYPE" = "macos" ]; then
-        # macOS: Use Homebrew
+        # macOS: Use Homebrew with verification
         if command -v brew >/dev/null 2>&1; then
-            brew install rust
-            log_success "Rust installed via Homebrew"
+            if verify_package_brew "rust"; then
+                brew install rust
+                log_success "Rust installed via Homebrew"
+            else
+                log_error "Package verification failed for Rust"
+                exit 1
+            fi
         else
             log_error "Homebrew not found. Please install Homebrew first or install Rust manually"
             exit 1
@@ -243,18 +339,33 @@ install_rust() {
             . /etc/os-release
             case "$ID" in
                 ubuntu|debian)
-                    # Ubuntu/Debian: Install via apt
+                    # Ubuntu/Debian: Verify then install via apt
                     sudo apt update
-                    sudo apt install -y rustc cargo
-                    log_success "Rust installed via apt"
+                    if verify_package_apt "rustc" && verify_package_apt "cargo"; then
+                        sudo apt install -y rustc cargo
+                        log_success "Rust installed via apt"
+                    else
+                        log_error "Package verification failed for Rust components"
+                        exit 1
+                    fi
                     ;;
                 fedora|rhel|centos)
-                    sudo dnf install -y rust cargo
-                    log_success "Rust installed via dnf"
+                    if verify_package_dnf "rust" && verify_package_dnf "cargo"; then
+                        sudo dnf install -y rust cargo
+                        log_success "Rust installed via dnf"
+                    else
+                        log_error "Package verification failed for Rust components"
+                        exit 1
+                    fi
                     ;;
                 arch|manjaro)
-                    sudo pacman -S --needed rust
-                    log_success "Rust installed via pacman"
+                    if verify_package_pacman "rust"; then
+                        sudo pacman -S --needed rust
+                        log_success "Rust installed via pacman"
+                    else
+                        log_error "Package verification failed for Rust"
+                        exit 1
+                    fi
                     ;;
                 *)
                     log_warning "Unsupported Linux distribution. Falling back to rustup..."
@@ -286,10 +397,15 @@ install_nodejs() {
     log_info "Installing Node.js LTS via package manager..."
 
     if [ "$OS_TYPE" = "macos" ]; then
-        # macOS: Use Homebrew
+        # macOS: Use Homebrew with verification
         if command -v brew >/dev/null 2>&1; then
-            brew install node
-            log_success "Node.js installed via Homebrew"
+            if verify_package_brew "node"; then
+                brew install node
+                log_success "Node.js installed via Homebrew"
+            else
+                log_error "Package verification failed for Node.js"
+                exit 1
+            fi
         else
             log_error "Homebrew not found. Please install Homebrew first or install Node.js manually"
             exit 1
@@ -300,18 +416,33 @@ install_nodejs() {
             . /etc/os-release
             case "$ID" in
                 ubuntu|debian)
-                    # Ubuntu/Debian: Install from default repos (simpler and more secure)
+                    # Ubuntu/Debian: Verify then install from default repos
                     sudo apt update
-                    sudo apt install -y nodejs npm
-                    log_success "Node.js installed via apt"
+                    if verify_package_apt "nodejs" && verify_package_apt "npm"; then
+                        sudo apt install -y nodejs npm
+                        log_success "Node.js installed via apt"
+                    else
+                        log_error "Package verification failed for Node.js components"
+                        exit 1
+                    fi
                     ;;
                 fedora|rhel|centos)
-                    sudo dnf install -y nodejs npm
-                    log_success "Node.js installed via dnf"
+                    if verify_package_dnf "nodejs" && verify_package_dnf "npm"; then
+                        sudo dnf install -y nodejs npm
+                        log_success "Node.js installed via dnf"
+                    else
+                        log_error "Package verification failed for Node.js components"
+                        exit 1
+                    fi
                     ;;
                 arch|manjaro)
-                    sudo pacman -S --needed nodejs npm
-                    log_success "Node.js installed via pacman"
+                    if verify_package_pacman "nodejs" && verify_package_pacman "npm"; then
+                        sudo pacman -S --needed nodejs npm
+                        log_success "Node.js installed via pacman"
+                    else
+                        log_error "Package verification failed for Node.js components"
+                        exit 1
+                    fi
                     ;;
                 *)
                     log_warning "Unsupported Linux distribution: $ID"
@@ -337,11 +468,16 @@ install_pipx() {
     log_info "Installing pipx via package manager..."
 
     if [ "$OS_TYPE" = "macos" ]; then
-        # macOS: Use Homebrew
+        # macOS: Use Homebrew with verification
         if command -v brew >/dev/null 2>&1; then
-            brew install pipx
-            pipx ensurepath
-            log_success "pipx installed via Homebrew"
+            if verify_package_brew "pipx"; then
+                brew install pipx
+                pipx ensurepath
+                log_success "pipx installed via Homebrew"
+            else
+                log_error "Package verification failed for pipx"
+                exit 1
+            fi
         else
             log_error "Homebrew not found. Please install Homebrew first or install pipx manually"
             exit 1
@@ -352,31 +488,32 @@ install_pipx() {
             . /etc/os-release
             case "$ID" in
                 ubuntu|debian)
-                    # Ubuntu/Debian: Try package manager first, fallback to pip
-                    if sudo apt update && sudo apt install -y pipx; then
+                    # Ubuntu/Debian: Verify then try package manager first, fallback to pip
+                    sudo apt update
+                    if verify_package_apt "pipx" && sudo apt install -y pipx; then
                         log_success "pipx installed via apt"
                     elif python3 -m pip install --user pipx; then
-                        log_success "pipx installed via pip"
+                        log_success "pipx installed via pip (fallback)"
                     else
                         log_error "Failed to install pipx"
                         exit 1
                     fi
                     ;;
                 fedora|rhel|centos)
-                    if sudo dnf install -y pipx; then
+                    if verify_package_dnf "pipx" && sudo dnf install -y pipx; then
                         log_success "pipx installed via dnf"
                     elif python3 -m pip install --user pipx; then
-                        log_success "pipx installed via pip"
+                        log_success "pipx installed via pip (fallback)"
                     else
                         log_error "Failed to install pipx"
                         exit 1
                     fi
                     ;;
                 arch|manjaro)
-                    if sudo pacman -S --needed python-pipx; then
+                    if verify_package_pacman "python-pipx" && sudo pacman -S --needed python-pipx; then
                         log_success "pipx installed via pacman"
                     elif python3 -m pip install --user pipx; then
-                        log_success "pipx installed via pip"
+                        log_success "pipx installed via pip (fallback)"
                     else
                         log_error "Failed to install pipx"
                         exit 1
