@@ -8,8 +8,10 @@ license = "MIT"
 [dependencies]
 cb-core = { path = "../cb-core" }
 cb-ast = { path = "../cb-ast" }
+cb-api = { path = "../cb-api" }
 cb-server = { path = "../cb-server" }
 cb-client = { path = "../cb-client" }
+cb-vfs = { path = "../cb-vfs" }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 mockall = { workspace = true }

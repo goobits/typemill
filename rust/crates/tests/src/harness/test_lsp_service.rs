@@ -1,11 +1,8 @@
 //! Test LSP service for predictable testing without heavy mocking
 
 use async_trait::async_trait;
-use cb_core::{
-    model::mcp::{McpError, McpMessage, McpRequest, McpResponse},
-    CoreError,
-};
-use cb_server::interfaces::LspService;
+// No longer need cb_core imports since we use cb_api::Message
+use cb_api::{LspService, ApiError, Message};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -16,7 +13,7 @@ pub struct TestLspService {
     /// Configured responses for specific LSP methods
     responses: Arc<Mutex<HashMap<String, Value>>>,
     /// Track requests for verification
-    requests: Arc<Mutex<Vec<McpRequest>>>,
+    requests: Arc<Mutex<Vec<Message>>>,
     /// Simulate errors for specific methods
     error_methods: Arc<Mutex<HashMap<String, String>>>,
 }
@@ -44,13 +41,13 @@ impl TestLspService {
     }
 
     /// Get all requests that were sent to this service
-    pub fn get_requests(&self) -> Vec<McpRequest> {
+    pub fn get_requests(&self) -> Vec<Message> {
         let requests = self.requests.lock().unwrap();
         requests.clone()
     }
 
     /// Get the last request sent to this service
-    pub fn get_last_request(&self) -> Option<McpRequest> {
+    pub fn get_last_request(&self) -> Option<Message> {
         let requests = self.requests.lock().unwrap();
         requests.last().cloned()
     }
@@ -156,54 +153,39 @@ impl TestLspService {
 
 #[async_trait]
 impl LspService for TestLspService {
-    async fn request(&self, message: McpMessage) -> Result<McpMessage, CoreError> {
-        match message {
-            McpMessage::Request(request) => {
-                // Store the request for verification
-                {
-                    let mut requests = self.requests.lock().unwrap();
-                    requests.push(request.clone());
-                }
-
-                // Check if we should simulate an error
-                {
-                    let errors = self.error_methods.lock().unwrap();
-                    if let Some(error_msg) = errors.get(&request.method) {
-                        let error_response = McpResponse {
-                            jsonrpc: "2.0".to_string(),
-                            id: request.id.clone(),
-                            result: None,
-                            error: Some(McpError {
-                                code: -32603,
-                                message: error_msg.clone(),
-                                data: None,
-                            }),
-                        };
-                        return Ok(McpMessage::Response(error_response));
-                    }
-                }
-
-                // Look up configured response
-                let responses = self.responses.lock().unwrap();
-                let result = responses.get(&request.method).cloned().unwrap_or_else(|| {
-                    // Default response for unknown methods
-                    json!({
-                        "method": request.method,
-                        "message": "Default test response"
-                    })
-                });
-
-                let response = McpResponse {
-                    jsonrpc: "2.0".to_string(),
-                    id: request.id,
-                    result: Some(result),
-                    error: None,
-                };
-
-                Ok(McpMessage::Response(response))
-            }
-            _ => Err(CoreError::invalid_data("Expected request message")),
+    async fn request(&self, message: Message) -> Result<Message, ApiError> {
+        // Store the request for verification
+        {
+            let mut requests = self.requests.lock().unwrap();
+            requests.push(message.clone());
         }
+
+        // Check if we should simulate an error
+        {
+            let errors = self.error_methods.lock().unwrap();
+            if let Some(error_msg) = errors.get(&message.method) {
+                return Err(ApiError::lsp(error_msg.clone()));
+            }
+        }
+
+        // Look up configured response
+        let responses = self.responses.lock().unwrap();
+        let result_value = responses.get(&message.method).cloned().unwrap_or_else(|| {
+            // Default response for unknown methods
+            json!({
+                "method": message.method,
+                "message": "Default test response"
+            })
+        });
+
+        // Create response message
+        let response = Message {
+            id: message.id,
+            method: format!("{}_response", message.method),
+            params: result_value,
+        };
+
+        Ok(response)
     }
 
     async fn is_available(&self, _extension: &str) -> bool {
@@ -211,12 +193,12 @@ impl LspService for TestLspService {
         true
     }
 
-    async fn restart_servers(&self, _extensions: Option<Vec<String>>) -> Result<(), CoreError> {
+    async fn restart_servers(&self, _extensions: Option<Vec<String>>) -> Result<(), ApiError> {
         // No-op for testing
         Ok(())
     }
 
-    async fn notify_file_opened(&self, _file_path: &std::path::Path) -> Result<(), CoreError> {
+    async fn notify_file_opened(&self, _file_path: &std::path::Path) -> Result<(), ApiError> {
         // No-op for testing - the test LSP service doesn't need actual file notifications
         Ok(())
     }
@@ -237,25 +219,20 @@ mod tests {
         let service = TestLspService::new();
         service.set_response("test/method", json!({"result": "success"}));
 
-        let request = McpRequest {
-            jsonrpc: "2.0".to_string(),
-            id: Some(json!(1)),
+        let request = Message {
+            id: Some("1".to_string()),
             method: "test/method".to_string(),
-            params: Some(json!({"param": "value"})),
+            params: json!({"param": "value"}),
         };
 
         let response = service
-            .request(McpMessage::Request(request.clone()))
+            .request(request.clone())
             .await
             .unwrap();
 
-        if let McpMessage::Response(resp) = response {
-            assert_eq!(resp.id, Some(json!(1)));
-            assert_eq!(resp.result, Some(json!({"result": "success"})));
-            assert!(resp.error.is_none());
-        } else {
-            panic!("Expected response message");
-        }
+        assert_eq!(response.id, Some("1".to_string()));
+        assert_eq!(response.method, "test/method_response");
+        assert_eq!(response.params, json!({"result": "success"}));
 
         // Verify request was recorded
         let requests = service.get_requests();
@@ -268,23 +245,16 @@ mod tests {
         let service = TestLspService::new();
         service.set_error("error/method", "Simulated error");
 
-        let request = McpRequest {
-            jsonrpc: "2.0".to_string(),
-            id: Some(json!(2)),
+        let request = Message {
+            id: Some("2".to_string()),
             method: "error/method".to_string(),
-            params: None,
+            params: json!({}),
         };
 
-        let response = service.request(McpMessage::Request(request)).await.unwrap();
-
-        if let McpMessage::Response(resp) = response {
-            assert_eq!(resp.id, Some(json!(2)));
-            assert!(resp.result.is_none());
-            assert!(resp.error.is_some());
-            assert_eq!(resp.error.unwrap().message, "Simulated error");
-        } else {
-            panic!("Expected response message");
-        }
+        let result = service.request(request).await;
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(error.to_string().contains("Simulated error"));
     }
 
     #[tokio::test]
@@ -301,21 +271,17 @@ mod tests {
         service.setup_navigation_responses();
 
         // Test definition response
-        let def_request = McpRequest {
-            jsonrpc: "2.0".to_string(),
-            id: Some(json!(1)),
+        let def_request = Message {
+            id: Some("1".to_string()),
             method: "textDocument/definition".to_string(),
-            params: None,
+            params: json!({}),
         };
 
         let response = service
-            .request(McpMessage::Request(def_request))
+            .request(def_request)
             .await
             .unwrap();
-        if let McpMessage::Response(resp) = response {
-            assert!(resp.result.is_some());
-            let result = resp.result.unwrap();
-            assert!(result.is_array());
-        }
+
+        assert!(response.params.is_array());
     }
 }

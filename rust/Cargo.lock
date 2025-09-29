@@ -703,6 +703,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum-extra",
+ "cb-api",
  "cb-ast",
  "cb-core",
  "cb-server",
@@ -3332,10 +3333,12 @@ version = "0.1.0"
 dependencies = [
  "assert_cmd",
  "async-trait",
+ "cb-api",
  "cb-ast",
  "cb-client",
  "cb-core",
  "cb-server",
+ "cb-vfs",
  "chrono",
  "criterion",
  "futures",
