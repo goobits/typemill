@@ -9,7 +9,7 @@ use axum::{
 };
 use cb_ast::AstCache;
 use cb_server::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
-use cb_server::interfaces::AstService;
+use cb_api::AstService;
 use cb_server::services::DefaultAstService;
 use clap::{Parser, Subcommand};
 use std::sync::Arc;

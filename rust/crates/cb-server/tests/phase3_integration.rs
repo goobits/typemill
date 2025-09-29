@@ -2,6 +2,7 @@
 //! These tests verify monitoring, batching, and deadlock warnings
 
 use cb_server::services::{FileOperation, LockManager, OperationQueue, OperationType};
+use cb_api::ApiError;
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -93,7 +94,7 @@ async fn test_operation_batching() {
                     lock_acqs.push(op.file_path.clone());
                     drop(lock_acqs);
 
-                    Ok::<_, cb_server::error::ServerError>(json!({"processed": op.id}))
+                    Ok::<_, ApiError>(json!({"processed": op.id}))
                 }
             })
             .await;
@@ -152,7 +153,7 @@ async fn test_deadlock_warning() {
     let processor = tokio::spawn(async move {
         queue_clone
             .process_with(|op| async move {
-                Ok::<_, cb_server::error::ServerError>(json!({"processed": op.id}))
+                Ok::<_, ApiError>(json!({"processed": op.id}))
             })
             .await;
     });
@@ -214,7 +215,7 @@ async fn test_deadlock_warning_short() {
     let processor = tokio::spawn(async move {
         queue_clone
             .process_with(|op| async move {
-                Ok::<_, cb_server::error::ServerError>(json!({"processed": op.id}))
+                Ok::<_, ApiError>(json!({"processed": op.id}))
             })
             .await;
     });

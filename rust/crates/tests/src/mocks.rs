@@ -1,12 +1,8 @@
 //! Mock implementations for testing
 
 use async_trait::async_trait;
-use cb_ast::{EditPlan, ImportGraph};
-use cb_core::{
-    model::{IntentSpec, McpMessage},
-    CoreError,
-};
-use cb_server::{AstService, LspService};
+use cb_api::{EditPlan, ImportGraph, AstService, LspService, ApiError, CacheStats, Message};
+use cb_core::model::IntentSpec;
 use mockall::mock;
 use std::path::Path;
 
@@ -15,9 +11,9 @@ mock! {
 
     #[async_trait]
     impl AstService for AstService {
-        async fn build_import_graph(&self, file: &Path) -> Result<ImportGraph, CoreError>;
-        async fn plan_refactor(&self, intent: &IntentSpec, file: &Path) -> Result<EditPlan, CoreError>;
-        async fn cache_stats(&self) -> cb_ast::CacheStats;
+        async fn build_import_graph(&self, file: &Path) -> Result<ImportGraph, ApiError>;
+        async fn plan_refactor(&self, intent: &IntentSpec, file: &Path) -> Result<EditPlan, ApiError>;
+        async fn cache_stats(&self) -> CacheStats;
     }
 }
 
@@ -26,10 +22,10 @@ mock! {
 
     #[async_trait]
     impl LspService for LspService {
-        async fn request(&self, message: McpMessage) -> Result<McpMessage, CoreError>;
+        async fn request(&self, message: Message) -> Result<Message, ApiError>;
         async fn is_available(&self, extension: &str) -> bool;
-        async fn restart_servers(&self, extensions: Option<Vec<String>>) -> Result<(), CoreError>;
-        async fn notify_file_opened(&self, file_path: &Path) -> Result<(), CoreError>;
+        async fn restart_servers(&self, extensions: Option<Vec<String>>) -> Result<(), ApiError>;
+        async fn notify_file_opened(&self, file_path: &Path) -> Result<(), ApiError>;
     }
 }
 
