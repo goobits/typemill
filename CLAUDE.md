@@ -206,6 +206,43 @@ Run quality checks before committing:
 cargo fmt && cargo clippy && cargo test
 ```
 
+## Structured Logging Standards
+
+The codebase uses **structured tracing** for all logging to enable machine-readable logs and enhanced production observability.
+
+### Logging Requirements
+
+**✅ DO - Use structured key-value format:**
+```rust
+// Correct structured logging
+error!(error = %e, file_path = %path, "Failed to read file");
+info!(user_id = %user.id, action = "login", "User authenticated");
+debug!(request_id = %req_id, duration_ms = elapsed, "Request completed");
+```
+
+**❌ DON'T - Use string interpolation:**
+```rust
+// Incorrect - string interpolation
+error!("Failed to read file {}: {}", path, e);
+info!("User {} authenticated with action {}", user.id, "login");
+debug!("Request {} completed in {}ms", req_id, elapsed);
+```
+
+### Field Naming Conventions
+
+- **Errors**: `error = %e`
+- **File paths**: `file_path = %path.display()` or `path = ?path`
+- **IDs**: `user_id = %id`, `request_id = %req_id`
+- **Counts**: `files_count = count`, `items_processed = num`
+- **Durations**: `duration_ms = elapsed`, `timeout_seconds = timeout`
+
+### Log Levels
+
+- **`error!`**: Runtime errors, failed operations, system failures
+- **`warn!`**: Recoverable issues, deprecation warnings, fallback actions
+- **`info!`**: Important business events, service lifecycle, user actions
+- **`debug!`**: Detailed execution flow, internal state changes
+
 ## LSP Protocol Details
 
 The implementation handles LSP protocol specifics:

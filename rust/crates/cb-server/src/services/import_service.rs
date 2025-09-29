@@ -52,7 +52,7 @@ impl ImportService {
         let result = update_import_paths(&old_abs, &new_abs, &self.project_root)
             .await
             .map_err(|e| ServerError::Internal(format!("Failed to update imports: {}", e)))?;
-        info!("update_import_paths result: {:?}", result);
+        info!(result = ?result, "update_import_paths result");
 
         // Create report
         let report = ImportUpdateReport {

@@ -165,9 +165,9 @@ impl LspClient {
                 }
 
                 match &message {
-                    LspMessage::Request { method, .. } => debug!("Sent LSP request: {}", method),
+                    LspMessage::Request { method, .. } => debug!(method = %method, "Sent LSP request"),
                     LspMessage::Notification { method, .. } => {
-                        debug!("Sent LSP notification: {}", method)
+                        debug!(method = %method, "Sent LSP notification")
                     }
                 }
             }
@@ -180,7 +180,7 @@ impl LspClient {
             while stderr_reader.read_line(&mut stderr_line).await.is_ok() {
                 if !stderr_line.is_empty() {
                     // Log stderr output at debug level (most LSPs write diagnostics here)
-                    debug!("LSP stderr: {}", stderr_line.trim());
+                    debug!(stderr = %stderr_line.trim(), "LSP stderr");
                     stderr_line.clear();
                 }
             }
@@ -415,7 +415,7 @@ impl LspClient {
             }]
         });
 
-        debug!("LSP initialize params: {:?}", initialize_params);
+        debug!(params = ?initialize_params, "LSP initialize params");
 
         // Send initialize request
         let result = timeout(
@@ -425,7 +425,7 @@ impl LspClient {
         .await
         .map_err(|_| ServerError::runtime("LSP initialization timeout"))??;
 
-        debug!("LSP server initialized with result: {:?}", result);
+        debug!(result = ?result, "LSP server initialized");
 
         // Send initialized notification
         self.send_notification("initialized", json!({})).await?;

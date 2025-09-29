@@ -94,7 +94,7 @@ impl ClientConfig {
     /// Load configuration from a specific file path
     pub async fn load_from_path<P: AsRef<Path>>(path: P) -> ClientResult<Self> {
         let path = path.as_ref();
-        debug!("Loading config from {}", path.display());
+        debug!(path = %path.display(), "Loading config");
 
         let content = fs::read_to_string(path)
             .await
@@ -132,7 +132,7 @@ impl ClientConfig {
             .await
             .map_err(|e| ClientError::ConfigError(format!("Failed to write config file: {}", e)))?;
 
-        info!("Configuration saved to {}", path.display());
+        info!(path = %path.display(), "Configuration saved");
         Ok(())
     }
 
@@ -287,7 +287,7 @@ impl ConfigBuilder {
         let path = path.as_ref();
 
         if path.exists() {
-            debug!("Loading config from {}", path.display());
+            debug!(path = %path.display(), "Loading config");
             let content = fs::read_to_string(path).await.map_err(|e| {
                 ClientError::ConfigError(format!("Failed to read config file: {}", e))
             })?;
@@ -305,7 +305,7 @@ impl ConfigBuilder {
     /// Load configuration from a specific file
     pub async fn from_file<P: AsRef<Path>>(mut self, path: P) -> ClientResult<Self> {
         let path = path.as_ref();
-        debug!("Loading config from {}", path.display());
+        debug!(path = %path.display(), "Loading config");
 
         let content = fs::read_to_string(path)
             .await
@@ -337,7 +337,7 @@ impl ConfigBuilder {
                     self.config.timeout_ms = Some(timeout_ms);
                 }
                 Err(e) => {
-                    warn!("Invalid timeout in environment variable: {}", e);
+                    warn!(error = %e, "Invalid timeout in environment variable");
                 }
             }
         }

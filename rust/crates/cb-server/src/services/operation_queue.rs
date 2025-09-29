@@ -227,14 +227,14 @@ impl OperationQueue {
 
                 // Check if operation has timed out
                 if wait_time > self.operation_timeout {
-                    warn!("Operation {} timed out after {:?}", operation.id, wait_time);
+                    warn!(operation_id = %operation.id, wait_time = ?wait_time, "Operation timed out");
                     let mut stats = self.stats.lock().await;
                     stats.failed_operations += 1;
                     continue;
                 }
 
                 // Acquire lock for the file
-                debug!("Acquiring {:?} lock for {}", lock_type, file_path.display());
+                debug!(lock_type = ?lock_type, file_path = %file_path.display(), "Acquiring lock");
                 let file_lock = self.lock_manager.get_lock(&file_path).await;
 
                 // Acquire the appropriate lock and process immediately
@@ -269,7 +269,7 @@ impl OperationQueue {
                                 stats.completed_operations += 1;
                             }
                             Err(e) => {
-                                error!("Operation failed: {}", e);
+                                error!(error = %e, "Operation failed");
                                 let mut stats = self.stats.lock().await;
                                 stats.failed_operations += 1;
                             }
@@ -335,7 +335,7 @@ impl OperationQueue {
                                     stats.completed_operations += 1;
                                 }
                                 Err(e) => {
-                                    error!("Operation failed: {}", e);
+                                    error!(error = %e, "Operation failed");
                                     let mut stats = self.stats.lock().await;
                                     stats.failed_operations += 1;
                                 }
