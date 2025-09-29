@@ -12,7 +12,11 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tracing::{debug, error, info, warn};
 
-// Add Unix-specific metadata support
+// Add platform-specific metadata support
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
+
+#[cfg(target_os = "macos")]
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
 // Helper function to convert file types

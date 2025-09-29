@@ -5,8 +5,34 @@ set -e
 # Builds and installs from local source
 
 BINARY_NAME="codebuddy"
-INSTALL_DIR="/usr/local/bin"
 SOURCE_BINARY="/workspace/rust/target/release/cb-server"
+
+# Detect operating system
+detect_os() {
+    case "$(uname -s)" in
+        Linux*)     echo "linux" ;;
+        Darwin*)    echo "macos" ;;
+        *)          echo "unknown" ;;
+    esac
+}
+
+OS_TYPE=$(detect_os)
+
+# Set install directory based on OS
+if [ "$OS_TYPE" = "macos" ]; then
+    # macOS: prefer /usr/local/bin (Homebrew standard)
+    INSTALL_DIR="/usr/local/bin"
+    # Check if we need sudo for /usr/local/bin
+    if [ -w "$INSTALL_DIR" ]; then
+        SUDO_CMD=""
+    else
+        SUDO_CMD="sudo"
+    fi
+else
+    # Linux: always use /usr/local/bin with sudo
+    INSTALL_DIR="/usr/local/bin"
+    SUDO_CMD="sudo"
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -20,6 +46,13 @@ log_info() { echo -e "${BLUE}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_error() { echo -e "${RED}✗${NC} $1"; }
+
+# Check for unsupported OS
+if [ "$OS_TYPE" = "unknown" ]; then
+    log_error "Unsupported operating system: $(uname -s)"
+    log_error "This installer supports Linux and macOS only"
+    exit 1
+fi
 
 # Build the Rust project
 build_project() {
@@ -38,17 +71,13 @@ build_project() {
 install_binary() {
     log_info "Installing binary to $INSTALL_DIR/$BINARY_NAME..."
 
-    # Use sudo if needed for /usr/local/bin
-    if [ -w "$INSTALL_DIR" ]; then
+    # Use appropriate command based on permissions
+    if [ -n "$SUDO_CMD" ]; then
+        $SUDO_CMD cp "$SOURCE_BINARY" "$INSTALL_DIR/$BINARY_NAME"
+        $SUDO_CMD chmod +x "$INSTALL_DIR/$BINARY_NAME"
+    else
         cp "$SOURCE_BINARY" "$INSTALL_DIR/$BINARY_NAME"
-    else
-        sudo cp "$SOURCE_BINARY" "$INSTALL_DIR/$BINARY_NAME"
-    fi
-
-    if [ -w "$INSTALL_DIR" ]; then
         chmod +x "$INSTALL_DIR/$BINARY_NAME"
-    else
-        sudo chmod +x "$INSTALL_DIR/$BINARY_NAME"
     fi
     log_success "Binary installed to $INSTALL_DIR/$BINARY_NAME"
 }
@@ -81,14 +110,66 @@ EOF
 
 # Install system dependencies required for building
 install_system_dependencies() {
-    log_info "Installing system dependencies..."
+    log_info "Installing system dependencies for $OS_TYPE..."
 
-    # Detect OS type
+    if [ "$OS_TYPE" = "macos" ]; then
+        install_macos_dependencies
+    else
+        install_linux_dependencies
+    fi
+}
+
+# Install macOS dependencies
+install_macos_dependencies() {
+    # Check for Homebrew
+    if ! command -v brew >/dev/null 2>&1; then
+        log_error "Homebrew is not installed"
+        log_info "Please install Homebrew first:"
+        log_info "/bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+        exit 1
+    fi
+
+    log_info "Checking macOS dependencies..."
+    local missing_packages=""
+
+    # Check for required packages
+    for pkg in pkg-config; do
+        if ! brew list $pkg >/dev/null 2>&1; then
+            missing_packages="$missing_packages $pkg"
+        fi
+    done
+
+    # Check for macFUSE (for FUSE support on macOS)
+    if ! brew list --cask macfuse >/dev/null 2>&1; then
+        log_info "macFUSE is not installed (optional for FUSE support)"
+        log_info "To install: brew install --cask macfuse"
+    fi
+
+    if [ -n "$missing_packages" ]; then
+        log_info "Installing missing packages:$missing_packages"
+        brew install$missing_packages
+        log_success "macOS dependencies installed"
+    else
+        log_success "All macOS dependencies already installed"
+    fi
+
+    # Check for Xcode Command Line Tools
+    if ! xcode-select -p >/dev/null 2>&1; then
+        log_info "Installing Xcode Command Line Tools..."
+        xcode-select --install
+        log_warning "Please complete the Xcode installation and re-run this script"
+        exit 1
+    fi
+}
+
+# Install Linux dependencies
+install_linux_dependencies() {
+    # Detect Linux distribution
     if [ -f "/etc/os-release" ]; then
         . /etc/os-release
         OS_ID="$ID"
     else
-        log_error "Cannot detect operating system type"
+        log_error "Cannot detect Linux distribution"
         exit 1
     fi
 
@@ -118,8 +199,18 @@ install_system_dependencies() {
                 log_success "All system dependencies already installed"
             fi
             ;;
+        fedora|rhel|centos)
+            log_info "Installing packages for Fedora/RHEL/CentOS..."
+            sudo dnf install -y gcc gcc-c++ make pkg-config fuse-devel git curl python3-devel python3-pip
+            log_success "System dependencies installed"
+            ;;
+        arch|manjaro)
+            log_info "Installing packages for Arch/Manjaro..."
+            sudo pacman -Sy --needed base-devel pkg-config fuse2 git curl python python-pip
+            log_success "System dependencies installed"
+            ;;
         *)
-            log_warning "Unsupported OS: $OS_ID"
+            log_warning "Unsupported Linux distribution: $OS_ID"
             log_warning "Please ensure these packages are installed: $packages"
             ;;
     esac
@@ -167,29 +258,53 @@ install_nodejs() {
 
     log_info "Installing Node.js LTS..."
 
-    # Detect OS for Node.js installation
-    if [ -f "/etc/os-release" ]; then
-        . /etc/os-release
-        OS_ID="$ID"
-    fi
+    if [ "$OS_TYPE" = "macos" ]; then
+        # Install via Homebrew on macOS
+        if command -v brew >/dev/null 2>&1; then
+            brew install node
+            log_success "Node.js installed via Homebrew"
+        else
+            log_error "Homebrew not found. Please install Node.js manually from https://nodejs.org/"
+            exit 1
+        fi
+    else
+        # Linux installation
+        if [ -f "/etc/os-release" ]; then
+            . /etc/os-release
+            OS_ID="$ID"
+        fi
 
-    case "$OS_ID" in
-        ubuntu|debian)
-            # Install via NodeSource repository
-            if curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && \
-               sudo apt-get install -y nodejs; then
-                log_success "Node.js installed successfully"
-            else
-                log_error "Failed to install Node.js via NodeSource"
-                log_error "Please install manually from https://nodejs.org/"
-                exit 1
-            fi
-            ;;
-        *)
-            log_warning "Unsupported OS for automatic Node.js installation: $OS_ID"
-            log_warning "Please install Node.js manually from https://nodejs.org/"
-            ;;
-    esac
+        case "$OS_ID" in
+            ubuntu|debian)
+                # Install via NodeSource repository
+                if curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && \
+                   sudo apt-get install -y nodejs; then
+                    log_success "Node.js installed successfully"
+                else
+                    log_error "Failed to install Node.js via NodeSource"
+                    log_error "Please install manually from https://nodejs.org/"
+                    exit 1
+                fi
+                ;;
+            fedora|rhel|centos)
+                if curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash - && \
+                   sudo dnf install -y nodejs; then
+                    log_success "Node.js installed successfully"
+                else
+                    log_error "Failed to install Node.js"
+                    exit 1
+                fi
+                ;;
+            arch|manjaro)
+                sudo pacman -S --needed nodejs npm
+                log_success "Node.js installed via pacman"
+                ;;
+            *)
+                log_warning "Unsupported OS for automatic Node.js installation: $OS_ID"
+                log_warning "Please install Node.js manually from https://nodejs.org/"
+                ;;
+        esac
+    fi
 }
 
 # Install pipx if missing
@@ -203,14 +318,28 @@ install_pipx() {
 
     log_info "Installing pipx..."
 
-    # Detect OS for pipx installation
-    if [ -f "/etc/os-release" ]; then
-        . /etc/os-release
-        OS_ID="$ID"
-        VERSION_ID="$VERSION_ID"
-    fi
+    if [ "$OS_TYPE" = "macos" ]; then
+        # Install pipx on macOS
+        if command -v brew >/dev/null 2>&1; then
+            brew install pipx
+            pipx ensurepath
+            log_success "pipx installed via Homebrew"
+        elif command -v pip3 >/dev/null 2>&1; then
+            pip3 install --user pipx
+            log_success "pipx installed via pip"
+        else
+            log_error "Neither Homebrew nor pip3 found. Cannot install pipx"
+            exit 1
+        fi
+    else
+        # Linux installation
+        if [ -f "/etc/os-release" ]; then
+            . /etc/os-release
+            OS_ID="$ID"
+            VERSION_ID="$VERSION_ID"
+        fi
 
-    case "$OS_ID" in
+        case "$OS_ID" in
         ubuntu)
             # Ubuntu 23.04+ has pipx in repositories
             if [ "${VERSION_ID%%.*}" -ge 23 ]; then
@@ -269,9 +398,21 @@ ensure_tool_paths() {
     # Add user local bin to PATH for pipx
     if [ -d "$HOME/.local/bin" ]; then
         export PATH="$HOME/.local/bin:$PATH"
+    fi
 
-        # Persist PATH changes to shell configuration
-        local shell_rc=""
+    # Persist PATH changes to shell configuration
+    local shell_rc=""
+    if [ "$OS_TYPE" = "macos" ]; then
+        # macOS: check for .zprofile (default for macOS Catalina+) or .bash_profile
+        if [ -n "$ZSH_VERSION" ] || [ -f "$HOME/.zprofile" ]; then
+            shell_rc="$HOME/.zprofile"
+        elif [ -n "$BASH_VERSION" ] || [ -f "$HOME/.bash_profile" ]; then
+            shell_rc="$HOME/.bash_profile"
+        else
+            shell_rc="$HOME/.profile"
+        fi
+    else
+        # Linux: use .bashrc or .zshrc
         if [ -n "$BASH_VERSION" ]; then
             shell_rc="$HOME/.bashrc"
         elif [ -n "$ZSH_VERSION" ]; then
@@ -279,15 +420,15 @@ ensure_tool_paths() {
         else
             shell_rc="$HOME/.profile"
         fi
+    fi
 
-        # Add PATH export if not already present
-        if ! grep -q "export PATH.*/.local/bin" "$shell_rc" 2>/dev/null; then
-            echo "" >> "$shell_rc"
-            echo "# Added by Codebuddy installer" >> "$shell_rc"
-            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$shell_rc"
-            log_info "Added ~/.local/bin to PATH in $shell_rc"
-            log_warning "Please run 'source $shell_rc' or restart your shell for PATH changes to take effect"
-        fi
+    # Add PATH export if not already present
+    if [ -d "$HOME/.local/bin" ] && ! grep -q "export PATH.*/.local/bin" "$shell_rc" 2>/dev/null; then
+        echo "" >> "$shell_rc"
+        echo "# Added by Codebuddy installer" >> "$shell_rc"
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$shell_rc"
+        log_info "Added ~/.local/bin to PATH in $shell_rc"
+        log_warning "Please run 'source $shell_rc' or restart your shell for PATH changes to take effect"
     fi
 
     # Verify critical tools are now available
@@ -475,7 +616,7 @@ test_installation() {
 
 # Main installation flow
 main() {
-    log_info "Installing Codebuddy MCP Server with Complete Development Environment..."
+    log_info "Installing Codebuddy MCP Server on $OS_TYPE with Complete Development Environment..."
 
     # Check we're in the right place
     if [ ! -f "/workspace/rust/Cargo.toml" ]; then
@@ -547,7 +688,11 @@ main() {
         log_success "🎉 Codebuddy Complete Development Environment installed successfully!"
         echo ""
         echo "✅ INSTALLED COMPONENTS:"
-        echo "  • System Dependencies: build-essential, pkg-config, libfuse-dev, git, curl"
+        if [ "$OS_TYPE" = "macos" ]; then
+            echo "  • System Dependencies: Xcode CLI Tools, pkg-config (via Homebrew)"
+        else
+            echo "  • System Dependencies: build-essential, pkg-config, libfuse-dev, git, curl"
+        fi
         echo "  • Rust Toolchain: rustc, cargo, rust-analyzer"
         echo "  • Node.js: node, npm, typescript-language-server"
         echo "  • Python Tools: pipx, python-lsp-server"
