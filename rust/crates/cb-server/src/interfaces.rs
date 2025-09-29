@@ -2,7 +2,10 @@
 
 use async_trait::async_trait;
 use cb_ast::{EditPlan, ImportGraph};
-use cb_core::{model::{IntentSpec, McpMessage}, CoreError};
+use cb_core::{
+    model::{IntentSpec, McpMessage},
+    CoreError,
+};
 use std::path::Path;
 
 /// AST service interface
@@ -13,6 +16,9 @@ pub trait AstService: Send + Sync {
 
     /// Plan a refactoring operation based on intent
     async fn plan_refactor(&self, intent: &IntentSpec, file: &Path) -> Result<EditPlan, CoreError>;
+
+    /// Get cache statistics for monitoring
+    async fn cache_stats(&self) -> cb_ast::CacheStats;
 }
 
 /// LSP service interface

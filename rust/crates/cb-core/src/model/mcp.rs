@@ -282,10 +282,7 @@ impl McpMessage {
     }
 
     /// Create a new notification with parameters
-    pub fn notification_with_params(
-        method: impl Into<String>,
-        params: serde_json::Value,
-    ) -> Self {
+    pub fn notification_with_params(method: impl Into<String>, params: serde_json::Value) -> Self {
         Self::Notification(McpNotification {
             jsonrpc: "2.0".to_string(),
             method: method.into(),

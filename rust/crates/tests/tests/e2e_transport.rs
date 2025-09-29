@@ -1,6 +1,6 @@
-use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
+use tests::harness::{TestClient, TestWorkspace};
 
 // Note: These tests are for future WebSocket and authentication features
 // They may be disabled if the features are not yet implemented
@@ -21,7 +21,10 @@ async fn test_websocket_connection() {
     // 5. Test connection recovery
 
     // For now, this is a placeholder that passes
-    assert!(true, "WebSocket transport tests will be implemented when feature is ready");
+    assert!(
+        true,
+        "WebSocket transport tests will be implemented when feature is ready"
+    );
 }
 
 #[tokio::test]
@@ -39,7 +42,10 @@ async fn test_jwt_authentication() {
     // 4. Test with invalid/expired tokens
     // 5. Test permission-based access control
 
-    assert!(true, "JWT authentication tests will be implemented when feature is ready");
+    assert!(
+        true,
+        "JWT authentication tests will be implemented when feature is ready"
+    );
 }
 
 #[tokio::test]
@@ -57,7 +63,10 @@ async fn test_session_management() {
     // 4. Reconnect and recover session
     // 5. Verify session state is preserved
 
-    assert!(true, "Session management tests will be implemented when feature is ready");
+    assert!(
+        true,
+        "Session management tests will be implemented when feature is ready"
+    );
 }
 
 #[tokio::test]
@@ -75,7 +84,10 @@ async fn test_multi_client_scenarios() {
     // 4. Test resource sharing
     // 5. Test concurrent modifications
 
-    assert!(true, "Multi-client tests will be implemented when feature is ready");
+    assert!(
+        true,
+        "Multi-client tests will be implemented when feature is ready"
+    );
 }
 
 #[tokio::test]
@@ -93,7 +105,10 @@ async fn test_secure_transport() {
     // 4. Test certificate validation
     // 5. Verify encrypted communication
 
-    assert!(true, "Secure transport tests will be implemented when feature is ready");
+    assert!(
+        true,
+        "Secure transport tests will be implemented when feature is ready"
+    );
 }
 
 // Tests for transport-related features that might be partially implemented
@@ -110,32 +125,49 @@ async fn test_connection_resilience() {
     let test_file = workspace.path().join("resilience_test.ts");
     let content = "const test = 'resilience';";
 
-    let response = client.call_tool("create_file", json!({
-        "file_path": test_file.to_string_lossy(),
-        "content": content
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "create_file",
+            json!({
+                "file_path": test_file.to_string_lossy(),
+                "content": content
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["success"].as_bool().unwrap_or(false));
 
     // Rapid consecutive operations to test resilience
     for i in 0..10 {
-        let response = client.call_tool("read_file", json!({
-            "file_path": test_file.to_string_lossy()
-        })).await;
+        let response = client
+            .call_tool(
+                "read_file",
+                json!({
+                    "file_path": test_file.to_string_lossy()
+                }),
+            )
+            .await;
 
         match response {
             Ok(resp) => {
                 assert_eq!(resp["content"].as_str().unwrap(), content);
-            },
+            }
             Err(_) => {
                 // Some failures are acceptable under stress
                 // but we should be able to recover
                 tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
                 // Try again after a brief pause
-                let retry_response = client.call_tool("read_file", json!({
-                    "file_path": test_file.to_string_lossy()
-                })).await.unwrap();
+                let retry_response = client
+                    .call_tool(
+                        "read_file",
+                        json!({
+                            "file_path": test_file.to_string_lossy()
+                        }),
+                    )
+                    .await
+                    .unwrap();
 
                 assert_eq!(retry_response["content"].as_str().unwrap(), content);
             }
@@ -161,21 +193,33 @@ async fn test_message_ordering() {
         "Second write",
         "Third write",
         "Fourth write",
-        "Final write"
+        "Final write",
     ];
 
     for (i, content) in operations.iter().enumerate() {
-        let response = client.call_tool("write_file", json!({
-            "file_path": file_path.to_string_lossy(),
-            "content": format!("{} - {}", content, i)
-        })).await.unwrap();
+        let response = client
+            .call_tool(
+                "write_file",
+                json!({
+                    "file_path": file_path.to_string_lossy(),
+                    "content": format!("{} - {}", content, i)
+                }),
+            )
+            .await
+            .unwrap();
 
         assert!(response["success"].as_bool().unwrap_or(false));
 
         // Verify the write took effect before next operation
-        let read_response = client.call_tool("read_file", json!({
-            "file_path": file_path.to_string_lossy()
-        })).await.unwrap();
+        let read_response = client
+            .call_tool(
+                "read_file",
+                json!({
+                    "file_path": file_path.to_string_lossy()
+                }),
+            )
+            .await
+            .unwrap();
 
         let expected = format!("{} - {}", content, i);
         assert_eq!(read_response["content"].as_str().unwrap(), expected);
@@ -191,25 +235,49 @@ async fn test_error_propagation() {
 
     // Try to read non-existent file
     let nonexistent = workspace.path().join("does_not_exist.txt");
-    let error_response = client.call_tool("read_file", json!({
-        "file_path": nonexistent.to_string_lossy()
-    })).await;
+    let error_response = client
+        .call_tool(
+            "read_file",
+            json!({
+                "file_path": nonexistent.to_string_lossy()
+            }),
+        )
+        .await;
 
-    assert!(error_response.is_err(), "Should propagate file not found error");
+    assert!(
+        error_response.is_err(),
+        "Should propagate file not found error"
+    );
 
     // Try invalid tool call
-    let invalid_response = client.call_tool("nonexistent_tool", json!({
-        "some_param": "value"
-    })).await;
+    let invalid_response = client
+        .call_tool(
+            "nonexistent_tool",
+            json!({
+                "some_param": "value"
+            }),
+        )
+        .await;
 
-    assert!(invalid_response.is_err(), "Should propagate invalid tool error");
+    assert!(
+        invalid_response.is_err(),
+        "Should propagate invalid tool error"
+    );
 
     // Try tool with invalid parameters
-    let invalid_params_response = client.call_tool("read_file", json!({
-        "wrong_param": "value"
-    })).await;
+    let invalid_params_response = client
+        .call_tool(
+            "read_file",
+            json!({
+                "wrong_param": "value"
+            }),
+        )
+        .await;
 
-    assert!(invalid_params_response.is_err(), "Should propagate parameter validation error");
+    assert!(
+        invalid_params_response.is_err(),
+        "Should propagate parameter validation error"
+    );
 }
 
 #[tokio::test]
@@ -227,27 +295,41 @@ async fn test_large_message_handling() {
     for size in sizes {
         let large_content = "X".repeat(size);
 
-        let response = client.call_tool("create_file", json!({
-            "file_path": large_file.to_string_lossy(),
-            "content": large_content
-        })).await;
+        let response = client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": large_file.to_string_lossy(),
+                    "content": large_content
+                }),
+            )
+            .await;
 
         match response {
             Ok(resp) => {
                 assert!(resp["success"].as_bool().unwrap_or(false));
 
                 // Verify we can read it back
-                let read_response = client.call_tool("read_file", json!({
-                    "file_path": large_file.to_string_lossy()
-                })).await.unwrap();
+                let read_response = client
+                    .call_tool(
+                        "read_file",
+                        json!({
+                            "file_path": large_file.to_string_lossy()
+                        }),
+                    )
+                    .await
+                    .unwrap();
 
                 let read_content = read_response["content"].as_str().unwrap();
                 assert_eq!(read_content.len(), size);
 
                 println!("Successfully handled {}KB message", size / 1024);
-            },
+            }
             Err(_) => {
-                println!("Failed to handle {}KB message (may be expected)", size / 1024);
+                println!(
+                    "Failed to handle {}KB message (may be expected)",
+                    size / 1024
+                );
                 // Large message failures might be expected depending on transport limits
                 break;
             }
@@ -269,15 +351,25 @@ async fn test_rapid_transport_operations() {
         let content = format!("Rapid content {}", i);
 
         // Create file
-        let create_result = client.call_tool("create_file", json!({
-            "file_path": file_path.to_string_lossy(),
-            "content": content
-        })).await;
+        let create_result = client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": file_path.to_string_lossy(),
+                    "content": content
+                }),
+            )
+            .await;
 
         // Read it back
-        let read_result = client.call_tool("read_file", json!({
-            "file_path": file_path.to_string_lossy()
-        })).await;
+        let read_result = client
+            .call_tool(
+                "read_file",
+                json!({
+                    "file_path": file_path.to_string_lossy()
+                }),
+            )
+            .await;
 
         if create_result.is_ok() && read_result.is_ok() {
             successful_operations += 1;
@@ -289,7 +381,10 @@ async fn test_rapid_transport_operations() {
         }
     }
 
-    assert!(successful_operations > 0, "At least some transport operations should succeed");
+    assert!(
+        successful_operations > 0,
+        "At least some transport operations should succeed"
+    );
 }
 
 #[tokio::test]
@@ -319,10 +414,16 @@ async fn test_transport_health_monitoring() {
     let test_file = workspace.path().join("health_test.txt");
 
     for i in 0..5 {
-        let _response = client.call_tool("create_file", json!({
-            "file_path": test_file.to_string_lossy(),
-            "content": format!("Health test {}", i)
-        })).await.unwrap();
+        let _response = client
+            .call_tool(
+                "create_file",
+                json!({
+                    "file_path": test_file.to_string_lossy(),
+                    "content": format!("Health test {}", i)
+                }),
+            )
+            .await
+            .unwrap();
     }
 
     // Health should still be good after operations

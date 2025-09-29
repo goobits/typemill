@@ -2,7 +2,9 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::refactoring::{plan_extract_function, plan_inline_variable, plan_extract_variable, CodeRange};
+    use crate::refactoring::{
+        plan_extract_function, plan_extract_variable, plan_inline_variable, CodeRange,
+    };
 
     #[test]
     fn test_python_extract_function_basic() {
@@ -46,7 +48,15 @@ mod tests {
         let source = r#"def calculate_total(price, tax_rate):
     return price * tax_rate + price"#;
 
-        let result = plan_extract_variable(source, 1, 11, 1, 27, Some("tax_amount".to_string()), "/tmp/test.py");
+        let result = plan_extract_variable(
+            source,
+            1,
+            11,
+            1,
+            27,
+            Some("tax_amount".to_string()),
+            "/tmp/test.py",
+        );
         assert!(result.is_ok(), "Python extract_variable should work");
 
         let plan = result.unwrap();
@@ -68,11 +78,16 @@ mod tests {
         println!("Python variable declaration: {}", declaration_edit.new_text);
 
         // Check that it uses Python syntax (no const, proper assignment)
-        assert!(declaration_edit.new_text.contains("result = 1 + 2") ||
-                declaration_edit.new_text.contains("extracted = 1 + 2") ||
-                declaration_edit.new_text.contains("value = 1 + 2"),
-               "Should use Python variable assignment syntax: {}", declaration_edit.new_text);
-        assert!(!declaration_edit.new_text.contains("const"),
-               "Should not use TypeScript const keyword");
+        assert!(
+            declaration_edit.new_text.contains("result = 1 + 2")
+                || declaration_edit.new_text.contains("extracted = 1 + 2")
+                || declaration_edit.new_text.contains("value = 1 + 2"),
+            "Should use Python variable assignment syntax: {}",
+            declaration_edit.new_text
+        );
+        assert!(
+            !declaration_edit.new_text.contains("const"),
+            "Should not use TypeScript const keyword"
+        );
     }
 }

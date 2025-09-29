@@ -90,10 +90,22 @@ impl PluginRequest {
     }
 
     /// Set range for the request
-    pub fn with_range(mut self, start_line: u32, start_char: u32, end_line: u32, end_char: u32) -> Self {
+    pub fn with_range(
+        mut self,
+        start_line: u32,
+        start_char: u32,
+        end_line: u32,
+        end_char: u32,
+    ) -> Self {
         self.range = Some(Range {
-            start: Position { line: start_line, character: start_char },
-            end: Position { line: end_line, character: end_char },
+            start: Position {
+                line: start_line,
+                character: start_char,
+            },
+            end: Position {
+                line: end_line,
+                character: end_char,
+            },
         });
         self
     }
@@ -253,10 +265,10 @@ impl Range {
 
     /// Check if this range contains a position
     pub fn contains(&self, position: Position) -> bool {
-        (self.start.line < position.line ||
-         (self.start.line == position.line && self.start.character <= position.character)) &&
-        (self.end.line > position.line ||
-         (self.end.line == position.line && self.end.character >= position.character))
+        (self.start.line < position.line
+            || (self.start.line == position.line && self.start.character <= position.character))
+            && (self.end.line > position.line
+                || (self.end.line == position.line && self.end.character >= position.character))
     }
 }
 
@@ -275,17 +287,21 @@ mod tests {
 
         assert_eq!(request.method, "find_definition");
         assert_eq!(request.file_path, PathBuf::from("test.ts"));
-        assert_eq!(request.position, Some(Position { line: 10, character: 20 }));
+        assert_eq!(
+            request.position,
+            Some(Position {
+                line: 10,
+                character: 20
+            })
+        );
         assert_eq!(request.get_string_param("symbol"), Some("test"));
         assert_eq!(request.request_id, Some("req-123".to_string()));
     }
 
     #[test]
     fn test_plugin_response_success() {
-        let response = PluginResponse::success(
-            json!({"locations": []}),
-            "typescript-plugin"
-        ).with_processing_time(150);
+        let response = PluginResponse::success(json!({"locations": []}), "typescript-plugin")
+            .with_processing_time(150);
 
         assert!(response.success);
         assert!(response.error.is_none());
@@ -325,12 +341,11 @@ mod tests {
 
     #[test]
     fn test_request_param_accessors() {
-        let request = PluginRequest::new("test", PathBuf::from("test.ts"))
-            .with_params(json!({
-                "text": "hello",
-                "enabled": true,
-                "count": 42.5
-            }));
+        let request = PluginRequest::new("test", PathBuf::from("test.ts")).with_params(json!({
+            "text": "hello",
+            "enabled": true,
+            "count": 42.5
+        }));
 
         assert_eq!(request.get_string_param("text"), Some("hello"));
         assert_eq!(request.get_bool_param("enabled"), Some(true));

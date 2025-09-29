@@ -13,9 +13,9 @@ use tokio::time::{timeout, Duration};
 use tracing::{debug, error, info, warn};
 
 /// Timeout for LSP requests
-const LSP_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);  // Increased for slow language servers
+const LSP_REQUEST_TIMEOUT: Duration = Duration::from_secs(60); // Increased for slow language servers
 /// Timeout for LSP initialization
-const LSP_INIT_TIMEOUT: Duration = Duration::from_secs(60);  // Increased significantly for slow language servers like Python
+const LSP_INIT_TIMEOUT: Duration = Duration::from_secs(60); // Increased significantly for slow language servers like Python
 /// Buffer size for message channels
 const CHANNEL_BUFFER_SIZE: usize = 1000;
 
@@ -74,7 +74,12 @@ impl LspClient {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .current_dir(config.root_dir.as_deref().unwrap_or(&std::env::current_dir()?))
+            .current_dir(
+                config
+                    .root_dir
+                    .as_deref()
+                    .unwrap_or(&std::env::current_dir()?),
+            )
             .spawn()
             .map_err(|e| {
                 ServerError::runtime(format!(
@@ -113,14 +118,16 @@ impl LspClient {
             let mut stdin = write_stdin.lock().await;
             while let Some(message) = message_rx.recv().await {
                 let lsp_message = match &message {
-                    LspMessage::Request { id, method, params, .. } => {
+                    LspMessage::Request {
+                        id, method, params, ..
+                    } => {
                         json!({
                             "jsonrpc": "2.0",
                             "id": id,
                             "method": method,
                             "params": params
                         })
-                    },
+                    }
                     LspMessage::Notification { method, params } => {
                         json!({
                             "jsonrpc": "2.0",
@@ -151,7 +158,9 @@ impl LspClient {
 
                 match &message {
                     LspMessage::Request { method, .. } => debug!("Sent LSP request: {}", method),
-                    LspMessage::Notification { method, .. } => debug!("Sent LSP notification: {}", method),
+                    LspMessage::Notification { method, .. } => {
+                        debug!("Sent LSP notification: {}", method)
+                    }
                 }
             }
         });
@@ -186,7 +195,9 @@ impl LspClient {
                         let line = buffer.trim();
                         if let Some(content_length) = Self::parse_content_length(line) {
                             // Read the JSON message
-                            if let Ok(message) = Self::read_json_message(&mut reader, content_length).await {
+                            if let Ok(message) =
+                                Self::read_json_message(&mut reader, content_length).await
+                            {
                                 Self::handle_message(message, &pending_requests_clone).await;
                             }
                         }
@@ -218,9 +229,16 @@ impl LspClient {
     pub async fn send_request(&self, method: &str, params: Value) -> ServerResult<Value> {
         // For file-specific operations, ensure the file is open in the LSP server
         if method.starts_with("textDocument/") && method != "textDocument/didOpen" {
-            info!("DEBUG: Processing {} request, checking if file needs to be opened", method);
+            info!(
+                "DEBUG: Processing {} request, checking if file needs to be opened",
+                method
+            );
             // Extract file path from params to open it if needed
-            if let Some(uri) = params.get("textDocument").and_then(|td| td.get("uri")).and_then(|u| u.as_str()) {
+            if let Some(uri) = params
+                .get("textDocument")
+                .and_then(|td| td.get("uri"))
+                .and_then(|u| u.as_str())
+            {
                 info!("DEBUG: Found URI in params: {}", uri);
                 if uri.starts_with("file://") {
                     let file_path = std::path::Path::new(&uri[7..]);
@@ -234,7 +252,10 @@ impl LspClient {
                     }
                 }
             } else {
-                warn!("DEBUG: No textDocument.uri found in params for {}: {:?}", method, params);
+                warn!(
+                    "DEBUG: No textDocument.uri found in params for {}: {:?}",
+                    method, params
+                );
             }
         }
 
@@ -268,7 +289,10 @@ impl LspClient {
             // Remove from pending requests
             let mut pending = self.pending_requests.lock().await;
             pending.remove(&id);
-            return Err(ServerError::runtime(format!("Failed to send request: {}", e)));
+            return Err(ServerError::runtime(format!(
+                "Failed to send request: {}",
+                e
+            )));
         }
 
         // Wait for response with timeout
@@ -368,7 +392,10 @@ impl LspClient {
             *initialized = true;
         }
 
-        info!("LSP server initialized successfully: {}", self.config.command.join(" "));
+        info!(
+            "LSP server initialized successfully: {}",
+            self.config.command.join(" ")
+        );
 
         Ok(())
     }
@@ -382,7 +409,10 @@ impl LspClient {
         };
 
         if let Err(e) = self.message_tx.send(message).await {
-            return Err(ServerError::runtime(format!("Failed to send notification: {}", e)));
+            return Err(ServerError::runtime(format!(
+                "Failed to send notification: {}",
+                e
+            )));
         }
 
         debug!("Queued LSP notification: {}", method);
@@ -439,8 +469,12 @@ impl LspClient {
             }
         });
 
-        self.send_notification("textDocument/didOpen", params).await?;
-        debug!("Sent didOpen notification for file: {}", file_path.display());
+        self.send_notification("textDocument/didOpen", params)
+            .await?;
+        debug!(
+            "Sent didOpen notification for file: {}",
+            file_path.display()
+        );
 
         Ok(())
     }
@@ -483,8 +517,7 @@ impl LspClient {
         let json_str = String::from_utf8(json_buffer)
             .map_err(|e| format!("Invalid UTF-8 in JSON content: {}", e))?;
 
-        serde_json::from_str(&json_str)
-            .map_err(|e| format!("Failed to parse JSON: {}", e))
+        serde_json::from_str(&json_str).map_err(|e| format!("Failed to parse JSON: {}", e))
     }
 
     /// Handle incoming message from LSP server
@@ -559,9 +592,18 @@ mod tests {
 
     #[test]
     fn test_parse_content_length() {
-        assert_eq!(LspClient::parse_content_length("Content-Length: 123"), Some(123));
-        assert_eq!(LspClient::parse_content_length("Content-Length: 0"), Some(0));
+        assert_eq!(
+            LspClient::parse_content_length("Content-Length: 123"),
+            Some(123)
+        );
+        assert_eq!(
+            LspClient::parse_content_length("Content-Length: 0"),
+            Some(0)
+        );
         assert_eq!(LspClient::parse_content_length("Other header"), None);
-        assert_eq!(LspClient::parse_content_length("Content-Length: invalid"), None);
+        assert_eq!(
+            LspClient::parse_content_length("Content-Length: invalid"),
+            None
+        );
     }
 }

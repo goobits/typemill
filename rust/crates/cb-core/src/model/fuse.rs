@@ -132,7 +132,10 @@ impl Default for FuseConfig {
             cache_timeout_seconds: 60,
             max_file_size_bytes: 10 * 1024 * 1024, // 10 MB
             debug: false,
-            mount_options: vec!["auto_unmount".to_string(), "default_permissions".to_string()],
+            mount_options: vec![
+                "auto_unmount".to_string(),
+                "default_permissions".to_string(),
+            ],
         }
     }
 }

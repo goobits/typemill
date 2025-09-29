@@ -1,8 +1,8 @@
 use crate::error::{ClientError, ClientResult};
 use crate::formatting::Formatter;
-use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select, Password, FuzzySelect};
-use url::Url;
 use console::Term;
+use dialoguer::{theme::ColorfulTheme, Confirm, FuzzySelect, Input, Password, Select};
+use url::Url;
 
 /// Interactive prompt utilities for CLI user interaction
 pub struct Interactive {
@@ -69,7 +69,12 @@ impl Interactive {
     }
 
     /// Prompt for a string input with validation
-    pub fn input<F>(&self, prompt: &str, default: Option<&str>, validator: F) -> ClientResult<String>
+    pub fn input<F>(
+        &self,
+        prompt: &str,
+        default: Option<&str>,
+        validator: F,
+    ) -> ClientResult<String>
     where
         F: Fn(&String) -> Result<(), String> + 'static,
     {
@@ -107,7 +112,11 @@ impl Interactive {
     }
 
     /// Prompt for an optional string (can be empty)
-    pub fn optional_input(&self, prompt: &str, default: Option<&str>) -> ClientResult<Option<String>> {
+    pub fn optional_input(
+        &self,
+        prompt: &str,
+        default: Option<&str>,
+    ) -> ClientResult<Option<String>> {
         let result = self.input(prompt, default, |_| Ok(()))?;
         if result.trim().is_empty() {
             Ok(None)
@@ -122,7 +131,8 @@ impl Interactive {
         password_prompt = password_prompt.with_prompt(prompt);
 
         if confirm {
-            password_prompt = password_prompt.with_confirmation("Confirm password", "Passwords don't match");
+            password_prompt =
+                password_prompt.with_confirmation("Confirm password", "Passwords don't match");
         }
 
         password_prompt
@@ -147,7 +157,12 @@ impl Interactive {
     }
 
     /// Prompt for selection from a list of options
-    pub fn select(&self, prompt: &str, options: &[&str], default: Option<usize>) -> ClientResult<usize> {
+    pub fn select(
+        &self,
+        prompt: &str,
+        options: &[&str],
+        default: Option<usize>,
+    ) -> ClientResult<usize> {
         let mut select_prompt = Select::with_theme(&self.theme)
             .with_prompt(prompt)
             .items(options);
@@ -164,7 +179,12 @@ impl Interactive {
     }
 
     /// Prompt for fuzzy selection from a list of options
-    pub fn fuzzy_select(&self, prompt: &str, options: &[&str], default: Option<usize>) -> ClientResult<usize> {
+    pub fn fuzzy_select(
+        &self,
+        prompt: &str,
+        options: &[&str],
+        default: Option<usize>,
+    ) -> ClientResult<usize> {
         let mut select_prompt = FuzzySelect::with_theme(&self.theme)
             .with_prompt(prompt)
             .items(options);
@@ -190,7 +210,8 @@ impl Interactive {
         let default_ref = default_str.as_deref();
 
         self.input(prompt, default_ref, |input| {
-            input.parse::<T>()
+            input
+                .parse::<T>()
                 .map(|_| ())
                 .map_err(|e| format!("Invalid number: {}", e))
         })?
@@ -216,7 +237,6 @@ impl Interactive {
             .map_err(|e| ClientError::IoError(format!("Failed to clear screen: {}", e)))
     }
 
-
     /// Display an error and ask if user wants to retry
     pub fn retry_on_error(&self, error: &str, default_retry: bool) -> ClientResult<bool> {
         println!("{}", self.formatter.error(error));
@@ -233,7 +253,11 @@ impl Interactive {
         let mut results = Vec::new();
 
         for (i, (step_name, step_fn)) in steps.into_iter().enumerate() {
-            println!("{}", self.formatter.info(&format!("Step {}: {}", i + 1, step_name)));
+            println!(
+                "{}",
+                self.formatter
+                    .info(&format!("Step {}: {}", i + 1, step_name))
+            );
             println!();
 
             let result = step_fn(self)?;
@@ -257,18 +281,26 @@ impl Interactive {
                         return Ok(url);
                     } else if url.starts_with("http://") {
                         let ws_url = url.replace("http://", "ws://");
-                        if self.confirm(&format!("Convert to WebSocket URL: {}?", ws_url), Some(true))? {
+                        if self.confirm(
+                            &format!("Convert to WebSocket URL: {}?", ws_url),
+                            Some(true),
+                        )? {
                             return Ok(ws_url);
                         }
                     } else if url.starts_with("https://") {
                         let wss_url = url.replace("https://", "wss://");
-                        if self.confirm(&format!("Convert to secure WebSocket URL: {}?", wss_url), Some(true))? {
+                        if self.confirm(
+                            &format!("Convert to secure WebSocket URL: {}?", wss_url),
+                            Some(true),
+                        )? {
                             return Ok(wss_url);
                         }
                     } else {
                         // Assume it needs ws:// prefix
                         let ws_url = format!("ws://{}", url);
-                        if self.confirm(&format!("Add WebSocket protocol: {}?", ws_url), Some(true))? {
+                        if self
+                            .confirm(&format!("Add WebSocket protocol: {}?", ws_url), Some(true))?
+                        {
                             return Ok(ws_url);
                         }
                     }
@@ -296,7 +328,9 @@ impl Interactive {
                         continue;
                     }
                     if timeout > 300_000 {
-                        if !self.retry_on_error("Timeout cannot exceed 5 minutes (300000ms)", true)? {
+                        if !self
+                            .retry_on_error("Timeout cannot exceed 5 minutes (300000ms)", true)?
+                        {
                             return Err(ClientError::ConfigError("Invalid timeout".to_string()));
                         }
                         continue;
@@ -328,7 +362,6 @@ impl Interactive {
         println!("{}", self.formatter.header(title));
         self.select("Choose an action", actions, Some(0))
     }
-
 }
 
 /// Create a default interactive instance

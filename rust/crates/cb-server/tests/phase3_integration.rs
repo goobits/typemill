@@ -1,7 +1,7 @@
 //! Integration tests for Phase 3 features
 //! These tests verify monitoring, batching, and deadlock warnings
 
-use cb_server::services::{LockManager, OperationQueue, FileOperation, OperationType};
+use cb_server::services::{FileOperation, LockManager, OperationQueue, OperationType};
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -83,18 +83,20 @@ async fn test_operation_batching() {
     // Start processor that tracks when it processes operations
     let queue_clone = queue.clone();
     let processor = tokio::spawn(async move {
-        queue_clone.process_with(move |op| {
-            let lock_acquisitions = lock_acquisitions_clone.clone();
+        queue_clone
+            .process_with(move |op| {
+                let lock_acquisitions = lock_acquisitions_clone.clone();
 
-            async move {
-                // Track this operation
-                let mut lock_acqs = lock_acquisitions.lock().await;
-                lock_acqs.push(op.file_path.clone());
-                drop(lock_acqs);
+                async move {
+                    // Track this operation
+                    let mut lock_acqs = lock_acquisitions.lock().await;
+                    lock_acqs.push(op.file_path.clone());
+                    drop(lock_acqs);
 
-                Ok::<_, cb_server::error::ServerError>(json!({"processed": op.id}))
-            }
-        }).await;
+                    Ok::<_, cb_server::error::ServerError>(json!({"processed": op.id}))
+                }
+            })
+            .await;
     });
 
     // Give processor time to batch operations
@@ -112,7 +114,10 @@ async fn test_operation_batching() {
     if lock_acqs.len() >= 3 {
         // Verify all are for the same file
         assert!(lock_acqs.iter().all(|path| path == &target_file));
-        println!("Batching verified: {} operations processed for the same file", lock_acqs.len());
+        println!(
+            "Batching verified: {} operations processed for the same file",
+            lock_acqs.len()
+        );
     }
 }
 
@@ -145,9 +150,11 @@ async fn test_deadlock_warning() {
     // Start processor in background
     let queue_clone = queue.clone();
     let processor = tokio::spawn(async move {
-        queue_clone.process_with(|op| async move {
-            Ok::<_, cb_server::error::ServerError>(json!({"processed": op.id}))
-        }).await;
+        queue_clone
+            .process_with(|op| async move {
+                Ok::<_, cb_server::error::ServerError>(json!({"processed": op.id}))
+            })
+            .await;
     });
 
     // Wait enough time for warning to trigger (>30 seconds)
@@ -157,8 +164,9 @@ async fn test_deadlock_warning() {
     // Use timeout to avoid hanging in CI
     let timeout_result = tokio::time::timeout(
         Duration::from_secs(35),
-        tokio::time::sleep(Duration::from_secs(31))
-    ).await;
+        tokio::time::sleep(Duration::from_secs(31)),
+    )
+    .await;
 
     if timeout_result.is_err() {
         println!("Test timed out after 35 seconds - acceptable for CI");
@@ -204,9 +212,11 @@ async fn test_deadlock_warning_short() {
     // Start processor in background
     let queue_clone = queue.clone();
     let processor = tokio::spawn(async move {
-        queue_clone.process_with(|op| async move {
-            Ok::<_, cb_server::error::ServerError>(json!({"processed": op.id}))
-        }).await;
+        queue_clone
+            .process_with(|op| async move {
+                Ok::<_, cb_server::error::ServerError>(json!({"processed": op.id}))
+            })
+            .await;
     });
 
     // Wait a shorter time (2 seconds) to test the structure

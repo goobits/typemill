@@ -3,12 +3,9 @@ use std::fs;
 
 #[test]
 fn test_app_config_contract() {
-    let fixture_path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/fixtures/app_config.json"
-    );
-    let fixture_content = fs::read_to_string(fixture_path)
-        .expect("Failed to read app_config.json fixture");
+    let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/app_config.json");
+    let fixture_content =
+        fs::read_to_string(fixture_path).expect("Failed to read app_config.json fixture");
 
     let config: AppConfig = serde_json::from_str(&fixture_content)
         .expect("Failed to deserialize app_config.json into AppConfig");
@@ -34,7 +31,10 @@ fn test_app_config_contract() {
     // Verify first LSP server
     let ts_server = &config.lsp.servers[0];
     assert_eq!(ts_server.extensions, vec!["ts", "tsx", "js", "jsx"]);
-    assert_eq!(ts_server.command, vec!["typescript-language-server", "--stdio"]);
+    assert_eq!(
+        ts_server.command,
+        vec!["typescript-language-server", "--stdio"]
+    );
     assert_eq!(ts_server.restart_interval, Some(5));
 
     // Verify second LSP server

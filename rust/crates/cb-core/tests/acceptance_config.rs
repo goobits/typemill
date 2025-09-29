@@ -124,7 +124,10 @@ fn test_config_load_from_json() {
     assert_eq!(config.cache.max_size_bytes, 1024);
     assert_eq!(config.cache.ttl_seconds, 300);
     assert!(config.cache.persistent);
-    assert_eq!(config.cache.cache_dir.unwrap().to_str().unwrap(), "/tmp/cache");
+    assert_eq!(
+        config.cache.cache_dir.unwrap().to_str().unwrap(),
+        "/tmp/cache"
+    );
 
     // Clean up
     env::set_current_dir(original_dir).unwrap();
@@ -341,7 +344,16 @@ fn test_config_serialization_round_trip() {
     // Should be identical
     assert_eq!(original_config.server.host, deserialized_config.server.host);
     assert_eq!(original_config.server.port, deserialized_config.server.port);
-    assert_eq!(original_config.lsp.servers.len(), deserialized_config.lsp.servers.len());
-    assert_eq!(original_config.logging.level, deserialized_config.logging.level);
-    assert_eq!(original_config.cache.enabled, deserialized_config.cache.enabled);
+    assert_eq!(
+        original_config.lsp.servers.len(),
+        deserialized_config.lsp.servers.len()
+    );
+    assert_eq!(
+        original_config.logging.level,
+        deserialized_config.logging.level
+    );
+    assert_eq!(
+        original_config.cache.enabled,
+        deserialized_config.cache.enabled
+    );
 }

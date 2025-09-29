@@ -26,7 +26,11 @@ pub enum PluginError {
 
     /// Plugin version compatibility error
     #[error("Plugin '{plugin}' version '{version}' is incompatible with system version '{system_version}'")]
-    VersionIncompatible { plugin: String, version: String, system_version: String },
+    VersionIncompatible {
+        plugin: String,
+        version: String,
+        system_version: String,
+    },
 
     /// Method not supported by plugin
     #[error("Method '{method}' not supported by plugin '{plugin}'")]
@@ -34,7 +38,11 @@ pub enum PluginError {
 
     /// Multiple plugins claim support for the same file/method
     #[error("Multiple plugins support file '{file}' and method '{method}': {plugins:?}")]
-    AmbiguousPluginSelection { file: String, method: String, plugins: Vec<String> },
+    AmbiguousPluginSelection {
+        file: String,
+        method: String,
+        plugins: Vec<String>,
+    },
 
     /// Plugin loading/unloading error
     #[error("Plugin lifecycle error: {message}")]
@@ -178,7 +186,10 @@ mod tests {
         assert!(json_error.is_err());
 
         let plugin_error: PluginError = json_error.unwrap_err().into();
-        assert!(matches!(plugin_error, PluginError::SerializationError { .. }));
+        assert!(matches!(
+            plugin_error,
+            PluginError::SerializationError { .. }
+        ));
     }
 
     #[test]
@@ -186,7 +197,10 @@ mod tests {
         let plugins = vec!["typescript".to_string(), "javascript".to_string()];
         let error = PluginError::ambiguous_selection("test.js", "find_definition", plugins);
 
-        assert!(matches!(error, PluginError::AmbiguousPluginSelection { .. }));
+        assert!(matches!(
+            error,
+            PluginError::AmbiguousPluginSelection { .. }
+        ));
         assert!(error.to_string().contains("typescript"));
         assert!(error.to_string().contains("javascript"));
     }

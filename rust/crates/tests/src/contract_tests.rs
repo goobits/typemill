@@ -86,7 +86,9 @@ async fn test_tools_list_contract() {
         "params": {}
     });
 
-    let response = client.send_request(request).expect("Failed to get response");
+    let response = client
+        .send_request(request)
+        .expect("Failed to get response");
 
     // Validate response structure
     assert_eq!(response["id"], "test-1");
@@ -112,7 +114,10 @@ async fn test_tools_list_contract() {
     assert!(tool_names.contains(&"find_dead_code"));
     assert!(tool_names.contains(&"list_files"));
 
-    println!("✅ tools/list contract test passed - {} tools found", tools.len());
+    println!(
+        "✅ tools/list contract test passed - {} tools found",
+        tools.len()
+    );
 }
 
 #[tokio::test]
@@ -132,7 +137,9 @@ async fn test_find_definition_contract() {
         }
     });
 
-    let response = client.send_request(request).expect("Failed to get response");
+    let response = client
+        .send_request(request)
+        .expect("Failed to get response");
 
     // Validate response structure
     assert_eq!(response["id"], "test-2");
@@ -144,7 +151,10 @@ async fn test_find_definition_contract() {
         println!("✅ find_definition contract test passed - LSP responded");
     } else {
         // Error case - validate error structure
-        assert!(response["error"]["message"].is_string(), "Error should have message");
+        assert!(
+            response["error"]["message"].is_string(),
+            "Error should have message"
+        );
         println!("⚠️ find_definition contract test passed - LSP error handled correctly");
     }
 }
@@ -167,7 +177,9 @@ async fn test_get_hover_contract() {
         }
     });
 
-    let response = client.send_request(request).expect("Failed to get response");
+    let response = client
+        .send_request(request)
+        .expect("Failed to get response");
 
     // Validate response structure
     assert_eq!(response["id"], "test-3");
@@ -177,7 +189,10 @@ async fn test_get_hover_contract() {
         assert!(response["result"].is_object(), "Result should be an object");
         println!("✅ get_hover contract test passed - LSP responded");
     } else {
-        assert!(response["error"]["message"].is_string(), "Error should have message");
+        assert!(
+            response["error"]["message"].is_string(),
+            "Error should have message"
+        );
         println!("⚠️ get_hover contract test passed - LSP error handled correctly");
     }
 }
@@ -198,7 +213,9 @@ async fn test_analyze_imports_contract() {
         }
     });
 
-    let response = client.send_request(request).expect("Failed to get response");
+    let response = client
+        .send_request(request)
+        .expect("Failed to get response");
 
     // Validate response structure
     assert_eq!(response["id"], "test-4");
@@ -212,8 +229,14 @@ async fn test_analyze_imports_contract() {
         let result = &response["result"];
         let content = &result["content"];
         assert!(content["sourceFile"].is_string(), "Should have sourceFile");
-        assert!(content["importGraph"].is_object(), "Should have importGraph");
-        assert!(content["analysisStats"].is_object(), "Should have analysisStats");
+        assert!(
+            content["importGraph"].is_object(),
+            "Should have importGraph"
+        );
+        assert!(
+            content["analysisStats"].is_object(),
+            "Should have analysisStats"
+        );
         println!("✅ analyze_imports contract test passed");
     } else {
         // Should not error for this tool
@@ -238,7 +261,9 @@ async fn test_list_files_contract() {
         }
     });
 
-    let response = client.send_request(request).expect("Failed to get response");
+    let response = client
+        .send_request(request)
+        .expect("Failed to get response");
 
     // Validate response structure
     assert_eq!(response["id"], "test-5");
@@ -257,7 +282,10 @@ async fn test_list_files_contract() {
     let files = content["files"].as_array().unwrap();
     assert!(!files.is_empty(), "Should find some files");
 
-    println!("✅ list_files contract test passed - {} files found", files.len());
+    println!(
+        "✅ list_files contract test passed - {} files found",
+        files.len()
+    );
 }
 
 #[tokio::test]
@@ -272,12 +300,20 @@ async fn test_error_handling_contract() {
         "params": {}
     });
 
-    let response = client.send_request(request).expect("Failed to get response");
+    let response = client
+        .send_request(request)
+        .expect("Failed to get response");
 
     // Should get an error response
     assert_eq!(response["id"], "test-6");
-    assert!(!response["error"].is_null(), "Should have error for invalid method");
-    assert!(response["error"]["message"].is_string(), "Error should have message");
+    assert!(
+        !response["error"].is_null(),
+        "Should have error for invalid method"
+    );
+    assert!(
+        response["error"]["message"].is_string(),
+        "Error should have message"
+    );
 
     println!("✅ error_handling contract test passed - invalid method handled correctly");
 }
@@ -323,7 +359,9 @@ mod integration {
             "params": {}
         });
 
-        let list_response = client.send_request(list_request).expect("Failed to list tools");
+        let list_response = client
+            .send_request(list_request)
+            .expect("Failed to list tools");
         assert_eq!(list_response["id"], "workflow-1");
         assert!(list_response["result"]["tools"].is_array());
 
@@ -341,7 +379,9 @@ mod integration {
             }
         });
 
-        let read_response = client.send_request(read_request).expect("Failed to list files");
+        let read_response = client
+            .send_request(read_request)
+            .expect("Failed to list files");
         assert_eq!(read_response["id"], "workflow-2");
 
         // Step 3: Call an analysis operation
@@ -357,7 +397,9 @@ mod integration {
             }
         });
 
-        let analyze_response = client.send_request(analyze_request).expect("Failed to analyze");
+        let analyze_response = client
+            .send_request(analyze_request)
+            .expect("Failed to analyze");
         assert_eq!(analyze_response["id"], "workflow-3");
 
         println!("✅ Full MCP workflow test passed - all operations completed");

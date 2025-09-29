@@ -67,7 +67,9 @@ pub fn apply_edit_plan(source: &str, plan: &EditPlan) -> AstResult<TransformResu
             std::cmp::Ordering::Equal => {
                 // If same priority, sort by location (reverse order)
                 match b.location.start_line.cmp(&a.location.start_line) {
-                    std::cmp::Ordering::Equal => b.location.start_column.cmp(&a.location.start_column),
+                    std::cmp::Ordering::Equal => {
+                        b.location.start_column.cmp(&a.location.start_column)
+                    }
                     other => other,
                 }
             }
@@ -183,13 +185,17 @@ fn apply_single_line_edit(source: &mut String, edit: &TextEdit) -> AstResult<Edi
     if !edit.original_text.is_empty() && actual_text != edit.original_text {
         return Err(AstError::transformation(format!(
             "Expected text '{}' but found '{}'",
-            edit.original_text,
-            actual_text
+            edit.original_text, actual_text
         )));
     }
 
     // Build the new line
-    let new_line = format!("{}{}{}", &line[..start_col], edit.new_text, &line[end_col..]);
+    let new_line = format!(
+        "{}{}{}",
+        &line[..start_col],
+        edit.new_text,
+        &line[end_col..]
+    );
 
     // Rebuild the source
     let mut new_lines = lines.clone();
@@ -222,16 +228,14 @@ fn apply_multi_line_edit(source: &mut String, edit: &TextEdit) -> AstResult<Edit
     if start_col > lines[start_line].len() {
         return Err(AstError::transformation(format!(
             "Start column {} beyond line {} length",
-            start_col,
-            start_line
+            start_col, start_line
         )));
     }
 
     if end_col > lines[end_line].len() {
         return Err(AstError::transformation(format!(
             "End column {} beyond line {} length",
-            end_col,
-            end_line
+            end_col, end_line
         )));
     }
 

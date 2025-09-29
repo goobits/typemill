@@ -61,9 +61,10 @@ fn bench_dispatch_simple(c: &mut Criterion) {
     let mut dispatcher = McpDispatcher::new(app_state);
 
     // Register a simple mock tool
-    dispatcher.register_tool("get_project_info".to_string(), |_app_state, _args| async move {
-        Ok(json!({"status": "success"}))
-    });
+    dispatcher.register_tool(
+        "get_project_info".to_string(),
+        |_app_state, _args| async move { Ok(json!({"status": "success"})) },
+    );
 
     c.bench_function("dispatch_simple_tool", |b| {
         b.to_async(&rt).iter(|| async {
@@ -87,19 +88,22 @@ fn bench_dispatch_complex(c: &mut Criterion) {
     let mut dispatcher = McpDispatcher::new(app_state);
 
     // Register a complex mock tool
-    dispatcher.register_tool("find_references".to_string(), |_app_state, _args| async move {
-        let mut references = Vec::new();
-        for i in 0..50 {
-            references.push(json!({
-                "uri": format!("file:///tmp/file_{}.rs", i),
-                "range": {
-                    "start": { "line": i, "character": 0 },
-                    "end": { "line": i, "character": 10 }
-                }
-            }));
-        }
-        Ok(json!({ "references": references }))
-    });
+    dispatcher.register_tool(
+        "find_references".to_string(),
+        |_app_state, _args| async move {
+            let mut references = Vec::new();
+            for i in 0..50 {
+                references.push(json!({
+                    "uri": format!("file:///tmp/file_{}.rs", i),
+                    "range": {
+                        "start": { "line": i, "character": 0 },
+                        "end": { "line": i, "character": 10 }
+                    }
+                }));
+            }
+            Ok(json!({ "references": references }))
+        },
+    );
 
     c.bench_function("dispatch_complex_tool", |b| {
         b.to_async(&rt).iter(|| async {
@@ -127,11 +131,14 @@ fn bench_dispatch_parallel(c: &mut Criterion) {
     let mut dispatcher = McpDispatcher::new(app_state);
 
     // Register a simple tool for parallel testing
-    dispatcher.register_tool("parallel_test".to_string(), |_app_state, _args| async move {
-        // Small delay to make concurrency visible
-        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-        Ok(json!({"status": "parallel_success"}))
-    });
+    dispatcher.register_tool(
+        "parallel_test".to_string(),
+        |_app_state, _args| async move {
+            // Small delay to make concurrency visible
+            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+            Ok(json!({"status": "parallel_success"}))
+        },
+    );
 
     let dispatcher = Arc::new(dispatcher);
 

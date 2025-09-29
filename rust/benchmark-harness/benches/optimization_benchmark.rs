@@ -1,5 +1,5 @@
 use cb_core::model::mcp::{McpRequest, McpResponse};
-use cb_server::utils::{SimdJsonParser, create_paginated_response};
+use cb_server::utils::{create_paginated_response, SimdJsonParser};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use serde_json::{json, Value};
 
@@ -86,9 +86,9 @@ fn bench_pagination_vs_full_response(c: &mut Criterion) {
         b.iter(|| {
             let response = create_paginated_response(
                 black_box(all_references.clone()),
-                50, // page_size
-                0,  // page
-                200 // total_count
+                50,  // page_size
+                0,   // page
+                200, // total_count
             );
             let _ = serde_json::to_string(&response).unwrap();
         });
@@ -99,8 +99,9 @@ fn bench_pagination_vs_full_response(c: &mut Criterion) {
         all_references.clone(),
         50,
         0,
-        200
-    )).unwrap();
+        200,
+    ))
+    .unwrap();
 
     group.bench_function("paginated_response_deserialize", |b| {
         b.iter(|| {

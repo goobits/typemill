@@ -1,6 +1,6 @@
-use super::{Command, CommandContext, GlobalArgs, utils};
+use super::{utils, Command, CommandContext, GlobalArgs};
 use crate::error::{ClientError, ClientResult};
-use crate::websocket::{WebSocketClient, ConnectionState};
+use crate::websocket::{ConnectionState, WebSocketClient};
 use async_trait::async_trait;
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
@@ -101,7 +101,7 @@ impl ConnectCommand {
     async fn start_session(&self, ctx: &CommandContext) -> ClientResult<()> {
         ctx.interactive.banner(
             "🔌 Interactive Session",
-            Some("Connected to codeflow-buddy server. Type 'help' for commands.")
+            Some("Connected to codeflow-buddy server. Type 'help' for commands."),
         )?;
 
         let mut stats = SessionStats::new();
@@ -109,7 +109,9 @@ impl ConnectCommand {
         let mut session_active = true;
 
         // Connect to server
-        let client = ctx.connect_client(self.url.clone(), self.token.clone()).await?;
+        let client = ctx
+            .connect_client(self.url.clone(), self.token.clone())
+            .await?;
 
         // Show connection info
         self.show_connection_info(ctx, &client).await?;
@@ -126,14 +128,21 @@ impl ConnectCommand {
 
             // Check connection state
             let state = client.get_state().await;
-            if !matches!(state, ConnectionState::Connected | ConnectionState::Authenticated) {
+            if !matches!(
+                state,
+                ConnectionState::Connected | ConnectionState::Authenticated
+            ) {
                 if self.auto_reconnect {
                     ctx.display_warning("Connection lost, attempting to reconnect...");
                     if let Err(e) = client.connect().await {
-                        ctx.display_error(&ClientError::ConnectionError(
-                            format!("Reconnection failed: {}", e)
-                        ));
-                        if !ctx.interactive.confirm("Continue trying to reconnect?", Some(true))? {
+                        ctx.display_error(&ClientError::ConnectionError(format!(
+                            "Reconnection failed: {}",
+                            e
+                        )));
+                        if !ctx
+                            .interactive
+                            .confirm("Continue trying to reconnect?", Some(true))?
+                        {
                             break;
                         }
                         sleep(Duration::from_secs(2)).await;
@@ -161,16 +170,19 @@ impl ConnectCommand {
             }
 
             // Handle built-in commands
-            match self.handle_builtin_command(
-                ctx,
-                &client,
-                input,
-                &mut stats,
-                &mut command_history,
-                &mut session_active,
-            ).await {
+            match self
+                .handle_builtin_command(
+                    ctx,
+                    &client,
+                    input,
+                    &mut stats,
+                    &mut command_history,
+                    &mut session_active,
+                )
+                .await
+            {
                 Ok(true) => continue, // Built-in command handled
-                Ok(false) => {}, // Not a built-in command, continue to tool call
+                Ok(false) => {}       // Not a built-in command, continue to tool call
                 Err(e) => {
                     ctx.display_error(&e);
                     continue;
@@ -178,7 +190,10 @@ impl ConnectCommand {
             }
 
             // Parse and execute tool call
-            if let Err(e) = self.execute_session_command(ctx, &client, input, &mut stats).await {
+            if let Err(e) = self
+                .execute_session_command(ctx, &client, input, &mut stats)
+                .await
+            {
                 ctx.display_error(&e);
             }
 
@@ -317,32 +332,56 @@ impl ConnectCommand {
     }
 
     /// Show connection information
-    async fn show_connection_info(&self, ctx: &CommandContext, client: &WebSocketClient) -> ClientResult<()> {
+    async fn show_connection_info(
+        &self,
+        ctx: &CommandContext,
+        client: &WebSocketClient,
+    ) -> ClientResult<()> {
         let state = client.get_state().await;
         let connection_status = utils::format_connection_status(
-            matches!(state, ConnectionState::Connected | ConnectionState::Authenticated),
+            matches!(
+                state,
+                ConnectionState::Connected | ConnectionState::Authenticated
+            ),
             matches!(state, ConnectionState::Authenticated),
         );
 
         println!();
         ctx.display_info("Session Information:");
-        println!("  {}", ctx.formatter.key_value("Status", &connection_status));
+        println!(
+            "  {}",
+            ctx.formatter.key_value("Status", &connection_status)
+        );
 
         if let Some(url) = self.url.as_ref().or(ctx.config.url.as_ref()) {
-            println!("  {}", ctx.formatter.key_value("Server", &ctx.formatter.url(url)));
+            println!(
+                "  {}",
+                ctx.formatter.key_value("Server", &ctx.formatter.url(url))
+            );
         }
 
-        println!("  {}", ctx.formatter.key_value("Auto-reconnect", &self.auto_reconnect.to_string()));
+        println!(
+            "  {}",
+            ctx.formatter
+                .key_value("Auto-reconnect", &self.auto_reconnect.to_string())
+        );
 
         if let Some(timeout) = self.session_timeout {
-            println!("  {}", ctx.formatter.key_value("Session timeout", &format!("{}s", timeout.as_secs())));
+            println!(
+                "  {}",
+                ctx.formatter
+                    .key_value("Session timeout", &format!("{}s", timeout.as_secs()))
+            );
         }
 
         println!();
 
         // Test basic connectivity
         if let Ok(ping_time) = client.ping().await {
-            ctx.display_success(&format!("Server responding (ping: {})", ctx.formatter.duration(ping_time)));
+            ctx.display_success(&format!(
+                "Server responding (ping: {})",
+                ctx.formatter.duration(ping_time)
+            ));
         }
 
         println!();
@@ -400,22 +439,45 @@ impl ConnectCommand {
         println!();
 
         let state = client.get_state().await;
-        let is_connected = matches!(state, ConnectionState::Connected | ConnectionState::Authenticated);
+        let is_connected = matches!(
+            state,
+            ConnectionState::Connected | ConnectionState::Authenticated
+        );
         let is_authenticated = matches!(state, ConnectionState::Authenticated);
 
         let status_items = vec![
-            ("Connection".to_string(), utils::format_connection_status(is_connected, is_authenticated), is_connected),
-            ("Commands executed".to_string(), stats.commands_executed.to_string(), true),
-            ("Success rate".to_string(),
+            (
+                "Connection".to_string(),
+                utils::format_connection_status(is_connected, is_authenticated),
+                is_connected,
+            ),
+            (
+                "Commands executed".to_string(),
+                stats.commands_executed.to_string(),
+                true,
+            ),
+            (
+                "Success rate".to_string(),
                 if stats.commands_executed > 0 {
-                    format!("{:.1}%", (stats.successful_calls as f64 / stats.commands_executed as f64) * 100.0)
+                    format!(
+                        "{:.1}%",
+                        (stats.successful_calls as f64 / stats.commands_executed as f64) * 100.0
+                    )
                 } else {
                     "N/A".to_string()
                 },
-                stats.failed_calls == 0
+                stats.failed_calls == 0,
             ),
-            ("Session duration".to_string(), ctx.formatter.duration(stats.session_duration()), true),
-            ("Idle time".to_string(), ctx.formatter.duration(stats.idle_time()), true),
+            (
+                "Session duration".to_string(),
+                ctx.formatter.duration(stats.session_duration()),
+                true,
+            ),
+            (
+                "Idle time".to_string(),
+                ctx.formatter.duration(stats.idle_time()),
+                true,
+            ),
         ];
 
         println!("{}", ctx.formatter.status_summary(&status_items));
@@ -453,17 +515,56 @@ impl ConnectCommand {
         ctx.formatter.header("📈 Detailed Statistics");
         println!();
 
-        println!("  {}", ctx.formatter.key_value("Session started", &format!("{:?} ago", stats.session_duration())));
-        println!("  {}", ctx.formatter.key_value("Last activity", &format!("{:?} ago", stats.idle_time())));
-        println!("  {}", ctx.formatter.key_value("Total commands", &stats.commands_executed.to_string()));
-        println!("  {}", ctx.formatter.key_value("Successful calls", &stats.successful_calls.to_string()));
-        println!("  {}", ctx.formatter.key_value("Failed calls", &stats.failed_calls.to_string()));
+        println!(
+            "  {}",
+            ctx.formatter.key_value(
+                "Session started",
+                &format!("{:?} ago", stats.session_duration())
+            )
+        );
+        println!(
+            "  {}",
+            ctx.formatter
+                .key_value("Last activity", &format!("{:?} ago", stats.idle_time()))
+        );
+        println!(
+            "  {}",
+            ctx.formatter
+                .key_value("Total commands", &stats.commands_executed.to_string())
+        );
+        println!(
+            "  {}",
+            ctx.formatter
+                .key_value("Successful calls", &stats.successful_calls.to_string())
+        );
+        println!(
+            "  {}",
+            ctx.formatter
+                .key_value("Failed calls", &stats.failed_calls.to_string())
+        );
 
         if stats.commands_executed > 0 {
-            let success_rate = (stats.successful_calls as f64 / stats.commands_executed as f64) * 100.0;
-            println!("  {}", ctx.formatter.key_value("Success rate", &format!("{:.1}%", success_rate)));
-            println!("  {}", ctx.formatter.key_value("Average response time", &ctx.formatter.duration(stats.average_response_time())));
-            println!("  {}", ctx.formatter.key_value("Total response time", &ctx.formatter.duration(stats.total_response_time)));
+            let success_rate =
+                (stats.successful_calls as f64 / stats.commands_executed as f64) * 100.0;
+            println!(
+                "  {}",
+                ctx.formatter
+                    .key_value("Success rate", &format!("{:.1}%", success_rate))
+            );
+            println!(
+                "  {}",
+                ctx.formatter.key_value(
+                    "Average response time",
+                    &ctx.formatter.duration(stats.average_response_time())
+                )
+            );
+            println!(
+                "  {}",
+                ctx.formatter.key_value(
+                    "Total response time",
+                    &ctx.formatter.duration(stats.total_response_time)
+                )
+            );
         }
 
         println!();
@@ -476,13 +577,34 @@ impl ConnectCommand {
         ctx.formatter.header("📋 Session Summary");
         println!();
 
-        println!("  {}", ctx.formatter.key_value("Duration", &ctx.formatter.duration(stats.session_duration())));
-        println!("  {}", ctx.formatter.key_value("Commands executed", &stats.commands_executed.to_string()));
+        println!(
+            "  {}",
+            ctx.formatter.key_value(
+                "Duration",
+                &ctx.formatter.duration(stats.session_duration())
+            )
+        );
+        println!(
+            "  {}",
+            ctx.formatter
+                .key_value("Commands executed", &stats.commands_executed.to_string())
+        );
 
         if stats.commands_executed > 0 {
-            let success_rate = (stats.successful_calls as f64 / stats.commands_executed as f64) * 100.0;
-            println!("  {}", ctx.formatter.key_value("Success rate", &format!("{:.1}%", success_rate)));
-            println!("  {}", ctx.formatter.key_value("Average response time", &ctx.formatter.duration(stats.average_response_time())));
+            let success_rate =
+                (stats.successful_calls as f64 / stats.commands_executed as f64) * 100.0;
+            println!(
+                "  {}",
+                ctx.formatter
+                    .key_value("Success rate", &format!("{:.1}%", success_rate))
+            );
+            println!(
+                "  {}",
+                ctx.formatter.key_value(
+                    "Average response time",
+                    &ctx.formatter.duration(stats.average_response_time())
+                )
+            );
         }
 
         println!();
@@ -511,10 +633,13 @@ impl Command for ConnectCommand {
         // Check configuration
         if !ctx.is_configured() && self.url.is_none() {
             ctx.display_error(&ClientError::ConfigError(
-                "No server URL configured. Run 'codeflow-buddy setup' or provide --url".to_string()
+                "No server URL configured. Run 'codeflow-buddy setup' or provide --url".to_string(),
             ));
 
-            if ctx.interactive.confirm("Would you like to run setup now?", Some(true))? {
+            if ctx
+                .interactive
+                .confirm("Would you like to run setup now?", Some(true))?
+            {
                 let setup_cmd = super::setup::SetupCommand::new();
                 setup_cmd.execute(global_args).await?;
             }
@@ -542,7 +667,10 @@ mod tests {
     fn test_connect_command_creation() {
         let cmd = ConnectCommand::new(None, None);
         assert_eq!(cmd.name(), "connect");
-        assert_eq!(cmd.description(), "Start an interactive session with the codeflow-buddy server");
+        assert_eq!(
+            cmd.description(),
+            "Start an interactive session with the codeflow-buddy server"
+        );
         assert!(cmd.auto_reconnect);
         assert!(cmd.session_timeout.is_none());
     }
@@ -551,7 +679,7 @@ mod tests {
     fn test_connect_command_with_options() {
         let cmd = ConnectCommand::new(
             Some("ws://localhost:3000".to_string()),
-            Some("test-token".to_string())
+            Some("test-token".to_string()),
         )
         .with_auto_reconnect(false)
         .with_session_timeout(Duration::from_secs(3600));

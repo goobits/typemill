@@ -38,12 +38,19 @@ impl Formatter {
 
     /// Create a formatter with specific settings
     pub fn with_settings(use_colors: bool, use_emojis: bool) -> Self {
-        Self { use_colors, use_emojis }
+        Self {
+            use_colors,
+            use_emojis,
+        }
     }
 
     /// Format a success message
     pub fn success(&self, message: &str) -> String {
-        let emoji = if self.use_emojis { CHECKMARK.to_string() } else { String::new() };
+        let emoji = if self.use_emojis {
+            CHECKMARK.to_string()
+        } else {
+            String::new()
+        };
         if self.use_colors {
             format!("{}{}", emoji, style(message).green().bold())
         } else {
@@ -53,7 +60,11 @@ impl Formatter {
 
     /// Format an informational message
     pub fn info(&self, message: &str) -> String {
-        let emoji = if self.use_emojis { INFO.to_string() } else { String::new() };
+        let emoji = if self.use_emojis {
+            INFO.to_string()
+        } else {
+            String::new()
+        };
         if self.use_colors {
             format!("{}{}", emoji, style(message).blue())
         } else {
@@ -63,7 +74,11 @@ impl Formatter {
 
     /// Format a title message
     pub fn title(&self, message: &str) -> String {
-        let emoji = if self.use_emojis { ROCKET.to_string() } else { String::new() };
+        let emoji = if self.use_emojis {
+            ROCKET.to_string()
+        } else {
+            String::new()
+        };
         if self.use_colors {
             format!("{}{}", emoji, style(message).bold().underlined())
         } else {
@@ -82,7 +97,11 @@ impl Formatter {
 
     /// Format an error message
     pub fn error(&self, message: &str) -> String {
-        let emoji = if self.use_emojis { CROSS.to_string() } else { String::new() };
+        let emoji = if self.use_emojis {
+            CROSS.to_string()
+        } else {
+            String::new()
+        };
         if self.use_colors {
             format!("{}{}", emoji, style(message).red().bold())
         } else {
@@ -92,7 +111,11 @@ impl Formatter {
 
     /// Format a warning message
     pub fn warning(&self, message: &str) -> String {
-        let emoji = if self.use_emojis { WARNING.to_string() } else { String::new() };
+        let emoji = if self.use_emojis {
+            WARNING.to_string()
+        } else {
+            String::new()
+        };
         if self.use_colors {
             format!("{}{}", emoji, style(message).yellow().bold())
         } else {
@@ -100,10 +123,13 @@ impl Formatter {
         }
     }
 
-
     /// Format a header message
     pub fn header(&self, message: &str) -> String {
-        let emoji = if self.use_emojis { ROCKET.to_string() } else { String::new() };
+        let emoji = if self.use_emojis {
+            ROCKET.to_string()
+        } else {
+            String::new()
+        };
         if self.use_colors {
             format!("{}{}", emoji, style(message).blue().bold())
         } else {
@@ -113,7 +139,11 @@ impl Formatter {
 
     /// Format a configuration message
     pub fn config(&self, message: &str) -> String {
-        let emoji = if self.use_emojis { GEAR.to_string() } else { String::new() };
+        let emoji = if self.use_emojis {
+            GEAR.to_string()
+        } else {
+            String::new()
+        };
         if self.use_colors {
             format!("{}{}", emoji, style(message).magenta())
         } else {
@@ -124,10 +154,7 @@ impl Formatter {
     /// Format a key-value pair
     pub fn key_value(&self, key: &str, value: &str) -> String {
         if self.use_colors {
-            format!("{}: {}",
-                style(key).bold(),
-                style(value).dim()
-            )
+            format!("{}: {}", style(key).bold(), style(value).dim())
         } else {
             format!("{}: {}", key, value)
         }
@@ -169,8 +196,9 @@ impl Formatter {
 
     /// Format JSON with syntax highlighting
     pub fn json(&self, value: &Value) -> Result<String, ClientError> {
-        let pretty = serde_json::to_string_pretty(value)
-            .map_err(|e| ClientError::SerializationError(format!("Failed to format JSON: {}", e)))?;
+        let pretty = serde_json::to_string_pretty(value).map_err(|e| {
+            ClientError::SerializationError(format!("Failed to format JSON: {}", e))
+        })?;
 
         if !self.use_colors {
             return Ok(pretty);
@@ -221,7 +249,13 @@ impl Formatter {
                     number.push(c);
 
                     while let Some(&next_ch) = chars.peek() {
-                        if next_ch.is_numeric() || next_ch == '.' || next_ch == 'e' || next_ch == 'E' || next_ch == '+' || next_ch == '-' {
+                        if next_ch.is_numeric()
+                            || next_ch == '.'
+                            || next_ch == 'e'
+                            || next_ch == 'E'
+                            || next_ch == '+'
+                            || next_ch == '-'
+                        {
                             number.push(chars.next().unwrap());
                         } else {
                             break;
@@ -233,7 +267,10 @@ impl Formatter {
                 't' => {
                     // Try to match "true"
                     let mut temp_chars = chars.clone();
-                    if temp_chars.next() == Some('r') && temp_chars.next() == Some('u') && temp_chars.next() == Some('e') {
+                    if temp_chars.next() == Some('r')
+                        && temp_chars.next() == Some('u')
+                        && temp_chars.next() == Some('e')
+                    {
                         result.push_str(&style("true").magenta().to_string());
                         chars.nth(2); // consume "rue"
                     } else {
@@ -243,7 +280,11 @@ impl Formatter {
                 'f' => {
                     // Try to match "false"
                     let mut temp_chars = chars.clone();
-                    if temp_chars.next() == Some('a') && temp_chars.next() == Some('l') && temp_chars.next() == Some('s') && temp_chars.next() == Some('e') {
+                    if temp_chars.next() == Some('a')
+                        && temp_chars.next() == Some('l')
+                        && temp_chars.next() == Some('s')
+                        && temp_chars.next() == Some('e')
+                    {
                         result.push_str(&style("false").magenta().to_string());
                         chars.nth(3); // consume "alse"
                     } else {
@@ -253,7 +294,10 @@ impl Formatter {
                 'n' => {
                     // Try to match "null"
                     let mut temp_chars = chars.clone();
-                    if temp_chars.next() == Some('u') && temp_chars.next() == Some('l') && temp_chars.next() == Some('l') {
+                    if temp_chars.next() == Some('u')
+                        && temp_chars.next() == Some('l')
+                        && temp_chars.next() == Some('l')
+                    {
                         result.push_str(&style("null").red().to_string());
                         chars.nth(2); // consume "ull"
                     } else {
@@ -274,30 +318,46 @@ impl Formatter {
         let mut output = String::new();
 
         // Response header
-        writeln!(output, "{}", self.header(&format!("Response (ID: {})", response.id)))
-            .map_err(|e| ClientError::SerializationError(format!("Failed to write output: {}", e)))?;
+        writeln!(
+            output,
+            "{}",
+            self.header(&format!("Response (ID: {})", response.id))
+        )
+        .map_err(|e| ClientError::SerializationError(format!("Failed to write output: {}", e)))?;
 
         if let Some(ref error) = response.error {
-            writeln!(output, "{}", self.error(&format!("Error {}: {}", error.code, error.message)))
-                .map_err(|e| ClientError::SerializationError(format!("Failed to write output: {}", e)))?;
+            writeln!(
+                output,
+                "{}",
+                self.error(&format!("Error {}: {}", error.code, error.message))
+            )
+            .map_err(|e| {
+                ClientError::SerializationError(format!("Failed to write output: {}", e))
+            })?;
 
             if let Some(ref data) = error.data {
-                writeln!(output, "\nError details:")
-                    .map_err(|e| ClientError::SerializationError(format!("Failed to write output: {}", e)))?;
-                writeln!(output, "{}", self.json(data)?)
-                    .map_err(|e| ClientError::SerializationError(format!("Failed to write output: {}", e)))?;
+                writeln!(output, "\nError details:").map_err(|e| {
+                    ClientError::SerializationError(format!("Failed to write output: {}", e))
+                })?;
+                writeln!(output, "{}", self.json(data)?).map_err(|e| {
+                    ClientError::SerializationError(format!("Failed to write output: {}", e))
+                })?;
             }
         } else if let Some(ref result) = response.result {
-            writeln!(output, "{}", self.success("Success"))
-                .map_err(|e| ClientError::SerializationError(format!("Failed to write output: {}", e)))?;
+            writeln!(output, "{}", self.success("Success")).map_err(|e| {
+                ClientError::SerializationError(format!("Failed to write output: {}", e))
+            })?;
 
-            writeln!(output, "\nResult:")
-                .map_err(|e| ClientError::SerializationError(format!("Failed to write output: {}", e)))?;
-            writeln!(output, "{}", self.json(result)?)
-                .map_err(|e| ClientError::SerializationError(format!("Failed to write output: {}", e)))?;
+            writeln!(output, "\nResult:").map_err(|e| {
+                ClientError::SerializationError(format!("Failed to write output: {}", e))
+            })?;
+            writeln!(output, "{}", self.json(result)?).map_err(|e| {
+                ClientError::SerializationError(format!("Failed to write output: {}", e))
+            })?;
         } else {
-            writeln!(output, "{}", self.success("Success (no result data)"))
-                .map_err(|e| ClientError::SerializationError(format!("Failed to write output: {}", e)))?;
+            writeln!(output, "{}", self.success("Success (no result data)")).map_err(|e| {
+                ClientError::SerializationError(format!("Failed to write output: {}", e))
+            })?;
         }
 
         Ok(output)
@@ -306,43 +366,28 @@ impl Formatter {
     /// Format a client error
     pub fn client_error(&self, error: &ClientError) -> String {
         match error {
-            ClientError::ConfigError(msg) => {
-                self.error(&format!("Configuration error: {}", msg))
-            }
-            ClientError::ConnectionError(msg) => {
-                self.error(&format!("Connection error: {}", msg))
-            }
-            ClientError::AuthError(msg) => {
-                self.error(&format!("Authentication error: {}", msg))
-            }
-            ClientError::RequestError(msg) => {
-                self.error(&format!("Request error: {}", msg))
-            }
-            ClientError::TimeoutError(msg) => {
-                self.error(&format!("Timeout error: {}", msg))
-            }
+            ClientError::ConfigError(msg) => self.error(&format!("Configuration error: {}", msg)),
+            ClientError::ConnectionError(msg) => self.error(&format!("Connection error: {}", msg)),
+            ClientError::AuthError(msg) => self.error(&format!("Authentication error: {}", msg)),
+            ClientError::RequestError(msg) => self.error(&format!("Request error: {}", msg)),
+            ClientError::TimeoutError(msg) => self.error(&format!("Timeout error: {}", msg)),
             ClientError::SerializationError(msg) => {
                 self.error(&format!("Serialization error: {}", msg))
             }
-            ClientError::IoError(msg) => {
-                self.error(&format!("I/O error: {}", msg))
-            }
-            ClientError::TransportError(msg) => {
-                self.error(&format!("Transport error: {}", msg))
-            }
-            ClientError::ProtocolError(msg) => {
-                self.error(&format!("Protocol error: {}", msg))
-            }
-            ClientError::Core(err) => {
-                self.error(&format!("Core error: {}", err))
-            }
+            ClientError::IoError(msg) => self.error(&format!("I/O error: {}", msg)),
+            ClientError::TransportError(msg) => self.error(&format!("Transport error: {}", msg)),
+            ClientError::ProtocolError(msg) => self.error(&format!("Protocol error: {}", msg)),
+            ClientError::Core(err) => self.error(&format!("Core error: {}", err)),
         }
     }
 
-
     /// Format a progress message
     pub fn progress_message(&self, message: &str) -> String {
-        let emoji = if self.use_emojis { "⏳ ".to_string() } else { String::new() };
+        let emoji = if self.use_emojis {
+            "⏳ ".to_string()
+        } else {
+            String::new()
+        };
         if self.use_colors {
             format!("{}{}", emoji, style(message).cyan())
         } else {
@@ -374,21 +419,16 @@ impl Formatter {
                     "{spinner:.green} [{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}"
                 ).unwrap()
             } else {
-                ProgressStyle::with_template(
-                    "{spinner:.green} [{elapsed_precise}] {msg}"
-                ).unwrap()
+                ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] {msg}").unwrap()
             };
 
             pb.set_style(style);
         } else {
             let style = if length.is_some() {
-                ProgressStyle::with_template(
-                    "[{elapsed_precise}] {bar:40} {pos:>7}/{len:7} {msg}"
-                ).unwrap()
+                ProgressStyle::with_template("[{elapsed_precise}] {bar:40} {pos:>7}/{len:7} {msg}")
+                    .unwrap()
             } else {
-                ProgressStyle::with_template(
-                    "[{elapsed_precise}] {msg}"
-                ).unwrap()
+                ProgressStyle::with_template("[{elapsed_precise}] {msg}").unwrap()
             };
 
             pb.set_style(style);
@@ -468,9 +508,17 @@ impl Formatter {
 
         for (key, value, is_ok) in items {
             let status_symbol = if *is_ok {
-                if self.use_emojis { "✅" } else { "✓" }
+                if self.use_emojis {
+                    "✅"
+                } else {
+                    "✓"
+                }
             } else {
-                if self.use_emojis { "❌" } else { "✗" }
+                if self.use_emojis {
+                    "❌"
+                } else {
+                    "✗"
+                }
             };
 
             let formatted_key = if self.use_colors {
@@ -489,7 +537,10 @@ impl Formatter {
                 value.clone()
             };
 
-            output.push_str(&format!("{} {}: {}\n", status_symbol, formatted_key, formatted_value));
+            output.push_str(&format!(
+                "{} {}: {}\n",
+                status_symbol, formatted_key, formatted_value
+            ));
         }
 
         output

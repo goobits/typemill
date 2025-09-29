@@ -254,9 +254,7 @@ impl Capabilities {
             "get_diagnostics" => self.diagnostics.diagnostics,
 
             // Custom capabilities
-            method if method.contains('.') => {
-                self.custom.contains_key(method)
-            }
+            method if method.contains('.') => self.custom.contains_key(method),
 
             _ => false,
         }
@@ -297,7 +295,8 @@ mod tests {
     fn test_supports_method() {
         let mut caps = Capabilities::default();
         caps.navigation.go_to_definition = true;
-        caps.custom.insert("typescript.infer_types".to_string(), json!(true));
+        caps.custom
+            .insert("typescript.infer_types".to_string(), json!(true));
 
         assert!(caps.supports("find_definition"));
         assert!(!caps.supports("find_references"));
@@ -311,6 +310,9 @@ mod tests {
         caps.add_custom("rust.expand_macros".to_string(), json!({"supported": true}));
 
         assert!(caps.supports("rust.expand_macros"));
-        assert_eq!(caps.custom.get("rust.expand_macros"), Some(&json!({"supported": true})));
+        assert_eq!(
+            caps.custom.get("rust.expand_macros"),
+            Some(&json!({"supported": true}))
+        );
     }
 }

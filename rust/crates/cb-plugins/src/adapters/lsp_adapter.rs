@@ -4,9 +4,9 @@
 //! existing LSP servers without requiring changes to the LSP implementation.
 
 use crate::{
-    LanguagePlugin, PluginMetadata, Capabilities, PluginRequest, PluginResponse,
-    PluginError, PluginResult, NavigationCapabilities, EditingCapabilities,
-    RefactoringCapabilities, IntelligenceCapabilities, DiagnosticCapabilities
+    Capabilities, DiagnosticCapabilities, EditingCapabilities, IntelligenceCapabilities,
+    LanguagePlugin, NavigationCapabilities, PluginError, PluginMetadata, PluginRequest,
+    PluginResponse, PluginResult, RefactoringCapabilities,
 };
 use async_trait::async_trait;
 use serde_json::{json, Value};
@@ -91,7 +91,7 @@ impl LspAdapterPlugin {
             },
             diagnostics: DiagnosticCapabilities {
                 diagnostics: true,
-                linting: false,        // Depends on LSP server
+                linting: false, // Depends on LSP server
                 pull_diagnostics: true,
             },
             custom: HashMap::new(),
@@ -110,7 +110,12 @@ impl LspAdapterPlugin {
     pub fn typescript(lsp_service: Arc<dyn LspService>) -> Self {
         let mut adapter = Self::new(
             "typescript-lsp-adapter",
-            vec!["ts".to_string(), "tsx".to_string(), "js".to_string(), "jsx".to_string()],
+            vec![
+                "ts".to_string(),
+                "tsx".to_string(),
+                "js".to_string(),
+                "jsx".to_string(),
+            ],
             lsp_service,
         );
 
@@ -132,54 +137,46 @@ impl LspAdapterPlugin {
         Self::apply_standard_capabilities(&mut adapter);
 
         // Add Python-specific custom capabilities
-        adapter.capabilities.custom.insert(
-            "python.format_imports".to_string(),
-            json!(true),
-        );
+        adapter
+            .capabilities
+            .custom
+            .insert("python.format_imports".to_string(), json!(true));
 
         adapter
     }
 
     /// Create a Go LSP adapter
     pub fn go(lsp_service: Arc<dyn LspService>) -> Self {
-        let mut adapter = Self::new(
-            "go-lsp-adapter",
-            vec!["go".to_string()],
-            lsp_service,
-        );
+        let mut adapter = Self::new("go-lsp-adapter", vec!["go".to_string()], lsp_service);
 
         // Apply standard capabilities
         Self::apply_standard_capabilities(&mut adapter);
 
         // Add Go-specific custom capabilities
-        adapter.capabilities.custom.insert(
-            "go.generate".to_string(),
-            json!(true),
-        );
-        adapter.capabilities.custom.insert(
-            "go.organize_imports".to_string(),
-            json!(true),
-        );
+        adapter
+            .capabilities
+            .custom
+            .insert("go.generate".to_string(), json!(true));
+        adapter
+            .capabilities
+            .custom
+            .insert("go.organize_imports".to_string(), json!(true));
 
         adapter
     }
 
     /// Create a Rust LSP adapter
     pub fn rust(lsp_service: Arc<dyn LspService>) -> Self {
-        let mut adapter = Self::new(
-            "rust-lsp-adapter",
-            vec!["rs".to_string()],
-            lsp_service,
-        );
+        let mut adapter = Self::new("rust-lsp-adapter", vec!["rs".to_string()], lsp_service);
 
         // Apply standard capabilities
         Self::apply_standard_capabilities(&mut adapter);
 
         // Add Rust-specific custom capabilities
-        adapter.capabilities.custom.insert(
-            "rust.expand_macro".to_string(),
-            json!(true),
-        );
+        adapter
+            .capabilities
+            .custom
+            .insert("rust.expand_macro".to_string(), json!(true));
 
         adapter
     }
@@ -202,7 +199,10 @@ impl LspAdapterPlugin {
         {
             let cache = self.method_cache.lock().await;
             if let Some(lsp_method) = cache.get(&request.method) {
-                return Ok((lsp_method.clone(), self.build_lsp_params(request, lsp_method)?));
+                return Ok((
+                    lsp_method.clone(),
+                    self.build_lsp_params(request, lsp_method)?,
+                ));
             }
         }
 
@@ -338,7 +338,11 @@ impl LspAdapterPlugin {
     }
 
     /// Convert LSP response to plugin response
-    fn translate_response(&self, lsp_result: Value, request: &PluginRequest) -> PluginResult<PluginResponse> {
+    fn translate_response(
+        &self,
+        lsp_result: Value,
+        request: &PluginRequest,
+    ) -> PluginResult<PluginResponse> {
         // Handle different LSP response formats
         let data = match request.method.as_str() {
             "find_definition" | "find_references" | "find_implementations" => {
@@ -458,7 +462,10 @@ impl LanguagePlugin for LspAdapterPlugin {
         // Translate plugin request to LSP request
         let (lsp_method, lsp_params) = self.translate_request(&request).await?;
 
-        debug!("Translated to LSP method: {} with params: {}", lsp_method, lsp_params);
+        debug!(
+            "Translated to LSP method: {} with params: {}",
+            lsp_method, lsp_params
+        );
 
         // Send request to LSP service
         match self.lsp_service.request(&lsp_method, lsp_params).await {
@@ -559,8 +566,8 @@ mod tests {
 
         let adapter = LspAdapterPlugin::typescript(lsp_service);
 
-        let request = PluginRequest::new("find_definition", PathBuf::from("test.ts"))
-            .with_position(10, 20);
+        let request =
+            PluginRequest::new("find_definition", PathBuf::from("test.ts")).with_position(10, 20);
 
         let response = adapter.handle_request(request).await.unwrap();
         assert!(response.success);
@@ -579,8 +586,8 @@ mod tests {
 
         let adapter = LspAdapterPlugin::typescript(lsp_service);
 
-        let request = PluginRequest::new("get_hover", PathBuf::from("test.ts"))
-            .with_position(5, 10);
+        let request =
+            PluginRequest::new("get_hover", PathBuf::from("test.ts")).with_position(5, 10);
 
         let response = adapter.handle_request(request).await.unwrap();
         assert!(response.success);
@@ -602,7 +609,10 @@ mod tests {
 
         let result = adapter.handle_request(request).await;
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), PluginError::MethodNotSupported { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            PluginError::MethodNotSupported { .. }
+        ));
     }
 
     #[tokio::test]
@@ -614,26 +624,42 @@ mod tests {
 
         let python_adapter = LspAdapterPlugin::python(lsp_service.clone());
         assert_eq!(python_adapter.metadata().name, "python-lsp-adapter");
-        assert!(python_adapter.supported_extensions().contains(&"py".to_string()));
+        assert!(python_adapter
+            .supported_extensions()
+            .contains(&"py".to_string()));
         // Python adapter should have the custom capability we added
-        assert!(python_adapter.capabilities().custom.contains_key("python.format_imports"));
+        assert!(python_adapter
+            .capabilities()
+            .custom
+            .contains_key("python.format_imports"));
 
         let go_adapter = LspAdapterPlugin::go(lsp_service.clone());
         assert_eq!(go_adapter.metadata().name, "go-lsp-adapter");
         // Go adapter should have both capabilities
         assert!(go_adapter.capabilities().custom.contains_key("go.generate"));
-        assert!(go_adapter.capabilities().custom.contains_key("go.organize_imports"));
+        assert!(go_adapter
+            .capabilities()
+            .custom
+            .contains_key("go.organize_imports"));
 
         let rust_adapter = LspAdapterPlugin::rust(lsp_service);
         assert_eq!(rust_adapter.metadata().name, "rust-lsp-adapter");
-        assert!(rust_adapter.capabilities().custom.contains_key("rust.expand_macro"));
+        assert!(rust_adapter
+            .capabilities()
+            .custom
+            .contains_key("rust.expand_macro"));
     }
 
     #[tokio::test]
     async fn test_consistent_capabilities() {
         let lsp_service = Arc::new(MockLspService {
             name: "test-consistency-lsp".to_string(),
-            extensions: vec!["ts".to_string(), "py".to_string(), "go".to_string(), "rs".to_string()],
+            extensions: vec![
+                "ts".to_string(),
+                "py".to_string(),
+                "go".to_string(),
+                "rs".to_string(),
+            ],
         });
 
         let ts_adapter = LspAdapterPlugin::typescript(lsp_service.clone());
@@ -645,11 +671,31 @@ mod tests {
 
         for adapter in adapters {
             let caps = adapter.capabilities();
-            assert!(caps.editing.auto_imports, "auto_imports should be enabled for {}", adapter.metadata.name);
-            assert!(caps.editing.organize_imports, "organize_imports should be enabled for {}", adapter.metadata.name);
-            assert!(caps.refactoring.extract_function, "extract_function should be enabled for {}", adapter.metadata.name);
-            assert!(caps.refactoring.extract_variable, "extract_variable should be enabled for {}", adapter.metadata.name);
-            assert!(caps.refactoring.inline_variable, "inline_variable should be enabled for {}", adapter.metadata.name);
+            assert!(
+                caps.editing.auto_imports,
+                "auto_imports should be enabled for {}",
+                adapter.metadata.name
+            );
+            assert!(
+                caps.editing.organize_imports,
+                "organize_imports should be enabled for {}",
+                adapter.metadata.name
+            );
+            assert!(
+                caps.refactoring.extract_function,
+                "extract_function should be enabled for {}",
+                adapter.metadata.name
+            );
+            assert!(
+                caps.refactoring.extract_variable,
+                "extract_variable should be enabled for {}",
+                adapter.metadata.name
+            );
+            assert!(
+                caps.refactoring.inline_variable,
+                "inline_variable should be enabled for {}",
+                adapter.metadata.name
+            );
         }
     }
 }

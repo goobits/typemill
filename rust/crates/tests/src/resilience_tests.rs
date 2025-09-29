@@ -1,14 +1,14 @@
 //! Resilience and advanced workflow tests for Rust MCP server
 //! These tests validate error handling, crash recovery, and complex multi-step workflows
 
-use crate::harness::{TestClient, TestWorkspace, create_typescript_project};
+use crate::harness::{create_typescript_project, TestClient, TestWorkspace};
+use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 use url::Url;
-use futures_util::{SinkExt, StreamExt};
 
 // ResilientMcpClient has been moved to harness/client.rs as TestClient
 // create_test_project has been moved to harness/fixtures.rs as create_typescript_project
@@ -26,7 +26,9 @@ async fn test_lsp_crash_resilience() {
         "params": {}
     });
 
-    let response = client.send_request(test_request).expect("Initial request failed");
+    let response = client
+        .send_request(test_request)
+        .expect("Initial request failed");
     assert_eq!(response["id"], "resilience-1");
     assert!(!response["result"]["tools"].as_array().unwrap().is_empty());
 
@@ -44,12 +46,18 @@ async fn test_lsp_crash_resilience() {
         }
     });
 
-    let lsp_response = client.send_request(lsp_request).expect("LSP request failed");
+    let lsp_response = client
+        .send_request(lsp_request)
+        .expect("LSP request failed");
     assert_eq!(lsp_response["id"], "resilience-2");
 
     // Get list of child processes (LSP servers)
     let child_pids = client.get_child_processes();
-    println!("Found {} child LSP processes: {:?}", child_pids.len(), child_pids);
+    println!(
+        "Found {} child LSP processes: {:?}",
+        child_pids.len(),
+        child_pids
+    );
 
     // Kill one of the child LSP servers if any exist
     if !child_pids.is_empty() {
@@ -66,7 +74,10 @@ async fn test_lsp_crash_resilience() {
                 if output.status.success() {
                     println!("Successfully killed LSP server");
                 } else {
-                    println!("Kill command failed: {}", String::from_utf8_lossy(&output.stderr));
+                    println!(
+                        "Kill command failed: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
                 }
             }
             Err(e) => println!("Failed to execute kill command: {}", e),
@@ -77,7 +88,10 @@ async fn test_lsp_crash_resilience() {
     }
 
     // Verify main server is still alive after LSP crash
-    assert!(client.is_alive(), "Main server should still be running after LSP crash");
+    assert!(
+        client.is_alive(),
+        "Main server should still be running after LSP crash"
+    );
 
     // Try another request - should either work or return a proper error
     let recovery_request = json!({
@@ -107,7 +121,10 @@ async fn test_lsp_crash_resilience() {
             if client.is_alive() {
                 println!("⚠️ LSP crash resilience test partially passed - server alive but not responding");
             } else {
-                panic!("❌ LSP crash resilience test failed - main server crashed: {}", e);
+                panic!(
+                    "❌ LSP crash resilience test failed - main server crashed: {}",
+                    e
+                );
             }
         }
     }
@@ -157,18 +174,32 @@ async fn test_invalid_request_handling() {
         }
     });
 
-    let response = client.send_request(missing_params_request).expect("Should get error response");
+    let response = client
+        .send_request(missing_params_request)
+        .expect("Should get error response");
 
     // The ID might be null if the request was malformed, which is acceptable
     if !response["id"].is_null() {
         assert_eq!(response["id"], "invalid-1");
     }
-    assert!(!response["error"].is_null(), "Should have error for missing params");
+    assert!(
+        !response["error"].is_null(),
+        "Should have error for missing params"
+    );
     if response["error"]["message"].is_string() {
-        println!("Got expected error message: {}", response["error"]["message"]);
+        println!(
+            "Got expected error message: {}",
+            response["error"]["message"]
+        );
     } else {
-        println!("Error response structure: {}", serde_json::to_string_pretty(&response["error"]).unwrap());
-        assert!(response["error"].is_object(), "Error should at least be an object");
+        println!(
+            "Error response structure: {}",
+            serde_json::to_string_pretty(&response["error"]).unwrap()
+        );
+        assert!(
+            response["error"].is_object(),
+            "Error should at least be an object"
+        );
     }
 
     // Test 4: Unknown method
@@ -180,8 +211,13 @@ async fn test_invalid_request_handling() {
         "params": {}
     });
 
-    let response = client.send_request(unknown_method_request).expect("Should get error response");
-    println!("Unknown method response: {}", serde_json::to_string_pretty(&response).unwrap());
+    let response = client
+        .send_request(unknown_method_request)
+        .expect("Should get error response");
+    println!(
+        "Unknown method response: {}",
+        serde_json::to_string_pretty(&response).unwrap()
+    );
 
     if !response["id"].is_null() {
         assert_eq!(response["id"], "invalid-2");
@@ -191,7 +227,10 @@ async fn test_invalid_request_handling() {
     if response["error"].is_null() {
         println!("⚠️ Server handled unknown method gracefully (no error returned)");
     } else {
-        println!("✅ Server returned error for unknown method: {}", response["error"]["message"].as_str().unwrap_or("N/A"));
+        println!(
+            "✅ Server returned error for unknown method: {}",
+            response["error"]["message"].as_str().unwrap_or("N/A")
+        );
     }
 
     // Test 5: Invalid tool name
@@ -206,8 +245,13 @@ async fn test_invalid_request_handling() {
         }
     });
 
-    let response = client.send_request(invalid_tool_request).expect("Should get error response");
-    println!("Invalid tool response: {}", serde_json::to_string_pretty(&response).unwrap());
+    let response = client
+        .send_request(invalid_tool_request)
+        .expect("Should get error response");
+    println!(
+        "Invalid tool response: {}",
+        serde_json::to_string_pretty(&response).unwrap()
+    );
 
     // Accept any ID as long as we get a proper error response
 
@@ -215,10 +259,16 @@ async fn test_invalid_request_handling() {
     if response["error"].is_null() {
         println!("⚠️ Server handled invalid tool gracefully (unexpected)");
     } else {
-        println!("✅ Server returned error for invalid tool: {}", response["error"]["message"].as_str().unwrap_or("N/A"));
+        println!(
+            "✅ Server returned error for invalid tool: {}",
+            response["error"]["message"].as_str().unwrap_or("N/A")
+        );
         // The server might return a different ID due to internal processing
         // That's acceptable as long as we get a proper error
-        assert!(!response["error"].is_null(), "Should have error for invalid tool");
+        assert!(
+            !response["error"].is_null(),
+            "Should have error for invalid tool"
+        );
     }
 
     // Verify server is still functional after all invalid requests
@@ -229,12 +279,20 @@ async fn test_invalid_request_handling() {
         "params": {}
     });
 
-    let response = client.send_request(health_check).expect("Health check should work");
-    println!("Health check response: {}", serde_json::to_string_pretty(&response).unwrap());
+    let response = client
+        .send_request(health_check)
+        .expect("Health check should work");
+    println!(
+        "Health check response: {}",
+        serde_json::to_string_pretty(&response).unwrap()
+    );
 
     // Accept any valid response - could be either result or error
     if !response["error"].is_null() {
-        println!("Health check returned error (acceptable): {}", response["error"]["message"].as_str().unwrap_or("N/A"));
+        println!(
+            "Health check returned error (acceptable): {}",
+            response["error"]["message"].as_str().unwrap_or("N/A")
+        );
     } else if response["result"]["tools"].is_array() {
         println!("Health check returned tools array successfully");
     } else {
@@ -252,7 +310,10 @@ async fn test_find_dead_code_workflow() {
 
     let mut client = TestClient::new(workspace.path());
 
-    println!("Testing find_dead_code workflow with project at: {}", project_path);
+    println!(
+        "Testing find_dead_code workflow with project at: {}",
+        project_path
+    );
 
     // Run find_dead_code on our test project
     let dead_code_request = json!({
@@ -273,7 +334,9 @@ async fn test_find_dead_code_workflow() {
         }
     });
 
-    let response = client.send_request(dead_code_request).expect("find_dead_code should respond");
+    let response = client
+        .send_request(dead_code_request)
+        .expect("find_dead_code should respond");
     assert_eq!(response["id"], "dead-code-1");
 
     if response["error"].is_null() {
@@ -281,8 +344,14 @@ async fn test_find_dead_code_workflow() {
 
         // Validate response structure
         assert!(result["summary"].is_object(), "Should have summary object");
-        assert!(result["deadCodeItems"].is_array(), "Should have deadCodeItems array");
-        assert!(result["analysisStats"].is_object(), "Should have analysisStats object");
+        assert!(
+            result["deadCodeItems"].is_array(),
+            "Should have deadCodeItems array"
+        );
+        assert!(
+            result["analysisStats"].is_object(),
+            "Should have analysisStats object"
+        );
 
         let dead_items = result["deadCodeItems"].as_array().unwrap();
         let summary = &result["summary"];
@@ -291,20 +360,20 @@ async fn test_find_dead_code_workflow() {
 
         // We expect to find the unused function and class
         let found_unused_function = dead_items.iter().any(|item| {
-            item["name"].as_str() == Some("unusedFunction") &&
-            item["file"].as_str().unwrap_or("").contains("processor.ts")
+            item["name"].as_str() == Some("unusedFunction")
+                && item["file"].as_str().unwrap_or("").contains("processor.ts")
         });
 
         let found_unused_class = dead_items.iter().any(|item| {
-            item["name"].as_str() == Some("UnusedClass") &&
-            item["file"].as_str().unwrap_or("").contains("processor.ts")
+            item["name"].as_str() == Some("UnusedClass")
+                && item["file"].as_str().unwrap_or("").contains("processor.ts")
         });
 
         // Check that used functions are NOT marked as dead
         let found_used_function = dead_items.iter().any(|item| {
-            item["name"].as_str() == Some("format") ||
-            item["name"].as_str() == Some("transform") ||
-            item["name"].as_str() == Some("TestMain")
+            item["name"].as_str() == Some("format")
+                || item["name"].as_str() == Some("transform")
+                || item["name"].as_str() == Some("TestMain")
         });
 
         println!("Dead code analysis results:");
@@ -313,20 +382,36 @@ async fn test_find_dead_code_workflow() {
         println!("  - Incorrectly flagged used code: {}", found_used_function);
 
         // Validate analysis statistics
-        assert!(summary["totalSymbols"].is_number(), "Should have total symbols count");
-        assert!(summary["potentialDeadCode"].is_number(), "Should have dead code count");
+        assert!(
+            summary["totalSymbols"].is_number(),
+            "Should have total symbols count"
+        );
+        assert!(
+            summary["potentialDeadCode"].is_number(),
+            "Should have dead code count"
+        );
 
         // If we found dead code, it should include our unused items
         if dead_items.len() > 0 {
-            println!("✅ find_dead_code workflow test passed - detected {} dead code items", dead_items.len());
+            println!(
+                "✅ find_dead_code workflow test passed - detected {} dead code items",
+                dead_items.len()
+            );
         } else {
-            println!("⚠️ find_dead_code workflow test passed but found no dead code (may need LSP)");
+            println!(
+                "⚠️ find_dead_code workflow test passed but found no dead code (may need LSP)"
+            );
         }
     } else {
         // Error case - should still be valid error structure
-        assert!(response["error"]["message"].is_string(), "Error should have message");
-        println!("⚠️ find_dead_code workflow test passed - handled error gracefully: {}",
-                response["error"]["message"]);
+        assert!(
+            response["error"]["message"].is_string(),
+            "Error should have message"
+        );
+        println!(
+            "⚠️ find_dead_code workflow test passed - handled error gracefully: {}",
+            response["error"]["message"]
+        );
     }
 }
 
@@ -341,7 +426,10 @@ async fn test_basic_filesystem_operations() {
 
     let mut client = TestClient::new(workspace.path());
 
-    println!("Testing filesystem operations with project at: {}", project_path);
+    println!(
+        "Testing filesystem operations with project at: {}",
+        project_path
+    );
 
     // Test 1: List files in the test project
     let list_request = json!({
@@ -357,7 +445,9 @@ async fn test_basic_filesystem_operations() {
         }
     });
 
-    let response = client.send_request(list_request).expect("list_files should work");
+    let response = client
+        .send_request(list_request)
+        .expect("list_files should work");
     assert_eq!(response["id"], "fs-1");
     assert!(response["error"].is_null(), "list_files should not error");
 
@@ -379,15 +469,23 @@ async fn test_basic_filesystem_operations() {
         }
     });
 
-    let response = client.send_request(read_request).expect("read_file should work");
+    let response = client
+        .send_request(read_request)
+        .expect("read_file should work");
     assert_eq!(response["id"], "fs-2");
 
     if response["error"].is_null() {
         let content = &response["result"]["content"]["content"];
         assert!(content["content"].is_string(), "Should have file content");
         let file_content = content["content"].as_str().unwrap();
-        assert!(file_content.contains("TestMain"), "Should contain our test class");
-        assert!(file_content.contains("import"), "Should contain import statements");
+        assert!(
+            file_content.contains("TestMain"),
+            "Should contain our test class"
+        );
+        assert!(
+            file_content.contains("import"),
+            "Should contain import statements"
+        );
     }
 
     // Test 3: Create a temporary file
@@ -405,7 +503,9 @@ async fn test_basic_filesystem_operations() {
         }
     });
 
-    let response = client.send_request(create_request).expect("create_file should work");
+    let response = client
+        .send_request(create_request)
+        .expect("create_file should work");
     assert_eq!(response["id"], "fs-3");
 
     // Test 4: Verify the file was created
@@ -421,12 +521,19 @@ async fn test_basic_filesystem_operations() {
         }
     });
 
-    let response = client.send_request(verify_request).expect("read_file verification should work");
+    let response = client
+        .send_request(verify_request)
+        .expect("read_file verification should work");
     assert_eq!(response["id"], "fs-4");
 
     if response["error"].is_null() {
-        let file_content = response["result"]["content"]["content"]["content"].as_str().unwrap();
-        assert!(file_content.contains("tempVar"), "Created file should have our content");
+        let file_content = response["result"]["content"]["content"]["content"]
+            .as_str()
+            .unwrap();
+        assert!(
+            file_content.contains("tempVar"),
+            "Created file should have our content"
+        );
     }
 
     // Test 5: Delete the temporary file
@@ -442,7 +549,9 @@ async fn test_basic_filesystem_operations() {
         }
     });
 
-    let response = client.send_request(delete_request).expect("delete_file should work");
+    let response = client
+        .send_request(delete_request)
+        .expect("delete_file should work");
     assert_eq!(response["id"], "fs-5");
 
     println!("✅ Basic filesystem operations test passed - CRUD operations work correctly");
@@ -470,7 +579,9 @@ mod advanced_resilience {
 
             // Note: In a real concurrent test, we'd need multiple client connections
             // For now, we test rapid sequential requests
-            let response = client.send_request(request).expect("Concurrent request should work");
+            let response = client
+                .send_request(request)
+                .expect("Concurrent request should work");
             assert_eq!(response["id"], format!("concurrent-{}", i));
 
             // Small delay to avoid overwhelming
@@ -501,13 +612,18 @@ mod advanced_resilience {
             }
         });
 
-        let response = client.send_request(large_request).expect("Large request should work");
+        let response = client
+            .send_request(large_request)
+            .expect("Large request should work");
         assert_eq!(response["id"], "large-1");
 
         if response["error"].is_null() {
             let result_str = serde_json::to_string(&response["result"]).unwrap();
             println!("Large response size: {} bytes", result_str.len());
-            assert!(result_str.len() > 100, "Should have substantial response data");
+            assert!(
+                result_str.len() > 100,
+                "Should have substantial response data"
+            );
         }
 
         println!("✅ Large response handling test passed");
@@ -550,17 +666,29 @@ async fn test_authentication_failure_websocket() {
             }
         });
 
-        let send_result = ws_sender.send(WsMessage::Text(init_message.to_string())).await;
+        let send_result = ws_sender
+            .send(WsMessage::Text(init_message.to_string()))
+            .await;
         if send_result.is_ok() {
             // Try to receive response
             if let Some(response_msg) = ws_receiver.next().await {
                 match response_msg {
                     Ok(WsMessage::Text(text)) => {
-                        let response: Value = serde_json::from_str(&text).expect("Invalid JSON response");
+                        let response: Value =
+                            serde_json::from_str(&text).expect("Invalid JSON response");
                         assert_eq!(response["id"], "auth-test-1");
-                        assert!(!response["error"].is_null(), "Should have authentication error");
-                        assert!(response["error"]["message"].as_str().unwrap().contains("Authentication"));
-                        println!("✅ Authentication failure correctly detected: {}", response["error"]["message"]);
+                        assert!(
+                            !response["error"].is_null(),
+                            "Should have authentication error"
+                        );
+                        assert!(response["error"]["message"]
+                            .as_str()
+                            .unwrap()
+                            .contains("Authentication"));
+                        println!(
+                            "✅ Authentication failure correctly detected: {}",
+                            response["error"]["message"]
+                        );
                     }
                     Ok(WsMessage::Close(_)) => {
                         println!("✅ WebSocket connection closed due to authentication failure");
@@ -572,7 +700,9 @@ async fn test_authentication_failure_websocket() {
             }
         }
     } else {
-        println!("⚠️ WebSocket connection failed (expected if auth is enforced at connection level)");
+        println!(
+            "⚠️ WebSocket connection failed (expected if auth is enforced at connection level)"
+        );
     }
 
     // Test 2: Connect with invalid JWT token
@@ -594,15 +724,24 @@ async fn test_authentication_failure_websocket() {
             }
         });
 
-        let send_result2 = ws_sender2.send(WsMessage::Text(init_message2.to_string())).await;
+        let send_result2 = ws_sender2
+            .send(WsMessage::Text(init_message2.to_string()))
+            .await;
         if send_result2.is_ok() {
             if let Some(response_msg2) = ws_receiver2.next().await {
                 match response_msg2 {
                     Ok(WsMessage::Text(text)) => {
-                        let response: Value = serde_json::from_str(&text).expect("Invalid JSON response");
+                        let response: Value =
+                            serde_json::from_str(&text).expect("Invalid JSON response");
                         assert_eq!(response["id"], "auth-test-2");
-                        assert!(!response["error"].is_null(), "Should have JWT validation error");
-                        println!("✅ Invalid JWT token correctly rejected: {}", response["error"]["message"]);
+                        assert!(
+                            !response["error"].is_null(),
+                            "Should have JWT validation error"
+                        );
+                        println!(
+                            "✅ Invalid JWT token correctly rejected: {}",
+                            response["error"]["message"]
+                        );
                     }
                     Ok(WsMessage::Close(_)) => {
                         println!("✅ WebSocket connection closed due to invalid JWT");
@@ -645,8 +784,9 @@ async fn test_authentication_failure_websocket() {
     let token = encode(
         &Header::default(),
         &claims,
-        &EncodingKey::from_secret("test_secret_123".as_ref())
-    ).expect("Failed to create test JWT");
+        &EncodingKey::from_secret("test_secret_123".as_ref()),
+    )
+    .expect("Failed to create test JWT");
 
     let url3 = Url::parse("ws://127.0.0.1:3041").expect("Invalid WebSocket URL");
     let connect_result3 = connect_async(url3).await;
@@ -665,19 +805,28 @@ async fn test_authentication_failure_websocket() {
             }
         });
 
-        let send_result3 = ws_sender3.send(WsMessage::Text(init_message3.to_string())).await;
+        let send_result3 = ws_sender3
+            .send(WsMessage::Text(init_message3.to_string()))
+            .await;
         if send_result3.is_ok() {
             if let Some(response_msg3) = ws_receiver3.next().await {
                 match response_msg3 {
                     Ok(WsMessage::Text(text)) => {
-                        let response: Value = serde_json::from_str(&text).expect("Invalid JSON response");
+                        let response: Value =
+                            serde_json::from_str(&text).expect("Invalid JSON response");
                         assert_eq!(response["id"], "auth-test-3");
 
                         if response["error"].is_null() {
-                            assert!(response["result"].is_object(), "Should have successful initialization");
+                            assert!(
+                                response["result"].is_object(),
+                                "Should have successful initialization"
+                            );
                             println!("✅ Valid JWT token accepted successfully");
                         } else {
-                            println!("⚠️ Valid JWT token rejected: {}", response["error"]["message"]);
+                            println!(
+                                "⚠️ Valid JWT token rejected: {}",
+                                response["error"]["message"]
+                            );
                         }
                     }
                     _ => {

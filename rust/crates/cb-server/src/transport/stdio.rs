@@ -1,12 +1,14 @@
 //! Stdio transport implementation for MCP
 
 use crate::handlers::PluginDispatcher;
-use cb_core::model::mcp::{McpMessage, McpResponse, McpError};
+use cb_core::model::mcp::{McpError, McpMessage, McpResponse};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 /// Start the stdio MCP server
-pub async fn start_stdio_server(dispatcher: Arc<PluginDispatcher>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn start_stdio_server(
+    dispatcher: Arc<PluginDispatcher>,
+) -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Starting stdio MCP server");
 
     let stdin = tokio::io::stdin();
@@ -49,7 +51,8 @@ pub async fn start_stdio_server(dispatcher: Arc<PluginDispatcher>) -> Result<(),
                             }),
                         };
 
-                        let response_json = serde_json::to_string(&McpMessage::Response(error_response))?;
+                        let response_json =
+                            serde_json::to_string(&McpMessage::Response(error_response))?;
                         stdout.write_all(response_json.as_bytes()).await?;
                         stdout.write_all(b"\n").await?;
                         stdout.flush().await?;

@@ -1,16 +1,22 @@
 //! Advanced refactoring operations using AST analysis
 
+use crate::analyzer::{
+    DependencyUpdate, DependencyUpdateType, EditLocation, EditPlan, EditPlanMetadata, EditType,
+    TextEdit, ValidationRule, ValidationType,
+};
 use crate::error::{AstError, AstResult};
-use crate::analyzer::{EditPlan, TextEdit, EditType, EditLocation, EditPlanMetadata, ValidationRule, ValidationType, DependencyUpdate, DependencyUpdateType};
 use crate::parser::{build_import_graph, ImportInfo};
+use crate::python_parser::{
+    analyze_python_expression_range, extract_python_functions, extract_python_variables,
+    find_variable_at_position, get_variable_usages_in_scope,
+};
 use cb_core::CoreError;
-use crate::python_parser::{extract_python_functions, extract_python_variables, find_variable_at_position, get_variable_usages_in_scope, analyze_python_expression_range};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use swc_common::{SourceMap, FileName, FilePathMapping, sync::Lrc};
-use swc_ecma_parser::{Parser, Syntax, lexer::Lexer, StringInput, TsSyntax};
+use swc_common::{sync::Lrc, FileName, FilePathMapping, SourceMap};
 use swc_ecma_ast::*;
+use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 use swc_ecma_visit::{Visit, VisitWith};
 
 /// Range of selected code for extraction
@@ -122,8 +128,13 @@ pub fn plan_extract_function(
 ) -> AstResult<EditPlan> {
     match detect_language(file_path) {
         "python" => plan_extract_function_python(source, range, new_function_name, file_path),
-        "typescript" | "javascript" => plan_extract_function_ts_js(source, range, new_function_name, file_path),
-        _ => Err(AstError::analysis(format!("Unsupported language for file: {}", file_path))),
+        "typescript" | "javascript" => {
+            plan_extract_function_ts_js(source, range, new_function_name, file_path)
+        }
+        _ => Err(AstError::analysis(format!(
+            "Unsupported language for file: {}",
+            file_path
+        ))),
     }
 }
 
@@ -139,11 +150,7 @@ fn plan_extract_function_ts_js(
     let mut edits = Vec::new();
 
     // 1. Create the new function at the insertion point
-    let function_code = generate_extracted_function(
-        source,
-        &analysis,
-        new_function_name,
-    )?;
+    let function_code = generate_extracted_function(source, &analysis, new_function_name)?;
 
     edits.push(TextEdit {
         edit_type: EditType::Insert,
@@ -216,7 +223,6 @@ fn plan_inline_variable_ts_js(
     source: &str,
     analysis: &InlineVariableAnalysis,
 ) -> AstResult<EditPlan> {
-
     if !analysis.is_safe_to_inline {
         return Err(AstError::analysis(format!(
             "Cannot safely inline variable '{}': {}",
@@ -231,12 +237,13 @@ fn plan_inline_variable_ts_js(
     // Replace all usages with the initializer expression
     for usage_location in &analysis.usage_locations {
         // Only wrap in parentheses if it's a complex expression (contains operators or spaces)
-        let replacement_text = if analysis.initializer_expression.contains(' ') ||
-                                 analysis.initializer_expression.contains('+') ||
-                                 analysis.initializer_expression.contains('-') ||
-                                 analysis.initializer_expression.contains('*') ||
-                                 analysis.initializer_expression.contains('/') ||
-                                 analysis.initializer_expression.contains('%') {
+        let replacement_text = if analysis.initializer_expression.contains(' ')
+            || analysis.initializer_expression.contains('+')
+            || analysis.initializer_expression.contains('-')
+            || analysis.initializer_expression.contains('*')
+            || analysis.initializer_expression.contains('/')
+            || analysis.initializer_expression.contains('%')
+        {
             format!("({})", analysis.initializer_expression)
         } else {
             analysis.initializer_expression.clone()
@@ -267,13 +274,11 @@ fn plan_inline_variable_ts_js(
         source_file: "inline_variable".to_string(),
         edits,
         dependency_updates: Vec::new(),
-        validations: vec![
-            ValidationRule {
-                rule_type: ValidationType::SyntaxCheck,
-                description: "Verify syntax is valid after inlining".to_string(),
-                parameters: HashMap::new(),
-            },
-        ],
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::SyntaxCheck,
+            description: "Verify syntax is valid after inlining".to_string(),
+            parameters: HashMap::new(),
+        }],
         metadata: EditPlanMetadata {
             intent_name: "inline_variable".to_string(),
             intent_arguments: serde_json::json!({
@@ -358,7 +363,10 @@ pub fn analyze_extract_variable(
                 blocking_reasons.push("Cannot extract function or class declarations".to_string());
             }
 
-            if expression.starts_with("const ") || expression.starts_with("let ") || expression.starts_with("var ") {
+            if expression.starts_with("const ")
+                || expression.starts_with("let ")
+                || expression.starts_with("var ")
+            {
                 can_extract = false;
                 blocking_reasons.push("Cannot extract variable declarations".to_string());
             }
@@ -390,9 +398,7 @@ pub fn analyze_extract_variable(
                 scope_type: "function".to_string(), // Simplified for now
             })
         }
-        Err(e) => {
-            Err(AstError::parse(format!("Failed to parse file: {:?}", e)))
-        }
+        Err(e) => Err(AstError::parse(format!("Failed to parse file: {:?}", e))),
     }
 }
 
@@ -448,9 +454,19 @@ pub fn plan_extract_variable(
     file_path: &str,
 ) -> AstResult<EditPlan> {
     match detect_language(file_path) {
-        "python" => plan_extract_variable_python(source, start_line, start_col, end_line, end_col, variable_name, file_path),
+        "python" => plan_extract_variable_python(
+            source,
+            start_line,
+            start_col,
+            end_line,
+            end_col,
+            variable_name,
+            file_path,
+        ),
         _ => {
-            let analysis = analyze_extract_variable(source, start_line, start_col, end_line, end_col, file_path)?;
+            let analysis = analyze_extract_variable(
+                source, start_line, start_col, end_line, end_col, file_path,
+            )?;
             plan_extract_variable_ts_js(source, &analysis, variable_name, file_path)
         }
     }
@@ -463,7 +479,6 @@ fn plan_extract_variable_ts_js(
     variable_name: Option<String>,
     file_path: &str,
 ) -> AstResult<EditPlan> {
-
     if !analysis.can_extract {
         return Err(AstError::analysis(format!(
             "Cannot extract expression: {}",
@@ -475,8 +490,13 @@ fn plan_extract_variable_ts_js(
 
     // Get the indentation of the current line
     let lines: Vec<&str> = source.lines().collect();
-    let current_line = lines.get((analysis.insertion_point.start_line) as usize).unwrap_or(&"");
-    let indent = current_line.chars().take_while(|c| c.is_whitespace()).collect::<String>();
+    let current_line = lines
+        .get((analysis.insertion_point.start_line) as usize)
+        .unwrap_or(&"");
+    let indent = current_line
+        .chars()
+        .take_while(|c| c.is_whitespace())
+        .collect::<String>();
 
     let mut edits = Vec::new();
 
@@ -488,7 +508,10 @@ fn plan_extract_variable_ts_js(
         original_text: String::new(),
         new_text: declaration,
         priority: 100,
-        description: format!("Extract '{}' into variable '{}'", analysis.expression, var_name),
+        description: format!(
+            "Extract '{}' into variable '{}'",
+            analysis.expression, var_name
+        ),
     });
 
     // Replace the original expression with the variable name
@@ -505,13 +528,11 @@ fn plan_extract_variable_ts_js(
         source_file: file_path.to_string(),
         edits,
         dependency_updates: Vec::new(),
-        validations: vec![
-            ValidationRule {
-                rule_type: ValidationType::SyntaxCheck,
-                description: "Verify syntax is valid after extraction".to_string(),
-                parameters: HashMap::new(),
-            },
-        ],
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::SyntaxCheck,
+            description: "Verify syntax is valid after extraction".to_string(),
+            parameters: HashMap::new(),
+        }],
         metadata: EditPlanMetadata {
             intent_name: "extract_variable".to_string(),
             intent_arguments: serde_json::json!({
@@ -543,8 +564,6 @@ impl ExtractFunctionAnalyzer {
         }
     }
 
-
-
     fn finalize(self) -> AstResult<ExtractableFunction> {
         // TODO: Implement sophisticated variable analysis
         // For now, returning simplified result
@@ -555,7 +574,8 @@ impl ExtractFunctionAnalyzer {
             required_parameters: Vec::new(), // TODO: Implement parameter analysis
             return_variables: Vec::new(),    // TODO: Implement return variable analysis
             suggested_name: "extracted_function".to_string(), // TODO: Implement name suggestion
-            insertion_point: CodeRange {     // TODO: Implement insertion point detection
+            insertion_point: CodeRange {
+                // TODO: Implement insertion point detection
                 start_line: self.selection_range.start_line.saturating_sub(1),
                 start_col: 0,
                 end_line: self.selection_range.start_line.saturating_sub(1),
@@ -565,7 +585,6 @@ impl ExtractFunctionAnalyzer {
             complexity_score: self.complexity_score,
         })
     }
-
 }
 
 // TODO: Implement AST visitor for sophisticated analysis
@@ -587,7 +606,6 @@ impl InlineVariableAnalyzer {
         }
     }
 
-
     fn extract_expression_text(&self, expr: &Expr) -> String {
         match expr {
             Expr::Lit(lit) => match lit {
@@ -598,7 +616,7 @@ impl InlineVariableAnalyzer {
                 Lit::BigInt(b) => format!("{}n", b.value),
                 Lit::Regex(r) => {
                     format!("/{}/{}", r.exp, r.flags)
-                },
+                }
                 Lit::JSXText(_) => "/* JSX text */".to_string(),
             },
             Expr::Ident(ident) => ident.sym.to_string(),
@@ -614,7 +632,7 @@ impl InlineVariableAnalyzer {
                     _ => "?",
                 };
                 format!("{} {} {}", left, op, right)
-            },
+            }
             Expr::Unary(unary) => {
                 let arg = self.extract_expression_text(&unary.arg);
                 let op = match unary.op {
@@ -625,11 +643,11 @@ impl InlineVariableAnalyzer {
                     _ => "?",
                 };
                 format!("{}{}", op, arg)
-            },
+            }
             Expr::Paren(paren) => {
                 let inner = self.extract_expression_text(&paren.expr);
                 format!("({})", inner)
-            },
+            }
             _ => "/* complex expression */".to_string(),
         }
     }
@@ -661,7 +679,11 @@ impl Visit for InlineVariableAnalyzer {
                 // Check if this variable is on our target line by looking at source text
                 // The test passes line 1 expecting to find const multiplier, but after conversion it becomes 0
                 // However, const multiplier is actually at source line 1, so we need to check line 1
-                let _actual_target_line = if self.target_line == 0 { 1 } else { self.target_line };
+                let _actual_target_line = if self.target_line == 0 {
+                    1
+                } else {
+                    self.target_line
+                };
                 // TODO: Re-implement variable declaration detection with proper source analysis
             }
         }
@@ -700,9 +722,9 @@ fn parse_module(source: &str, file_path: &str) -> AstResult<Module> {
     );
 
     let mut parser = Parser::new_from(lexer);
-    parser.parse_module().map_err(|e| {
-        AstError::parse(format!("Failed to parse module: {:?}", e))
-    })
+    parser
+        .parse_module()
+        .map_err(|e| AstError::parse(format!("Failed to parse module: {:?}", e)))
 }
 
 fn extract_range_text(source: &str, range: &CodeRange) -> AstResult<String> {
@@ -710,7 +732,8 @@ fn extract_range_text(source: &str, range: &CodeRange) -> AstResult<String> {
 
     if range.start_line == range.end_line {
         // Single line
-        let line = lines.get(range.start_line as usize)
+        let line = lines
+            .get(range.start_line as usize)
             .ok_or_else(|| AstError::analysis("Invalid line number"))?;
 
         Ok(line[range.start_col as usize..range.end_col as usize].to_string())
@@ -797,10 +820,7 @@ fn generate_extracted_function(
 
     Ok(format!(
         "function {}({}) {{\n{}\n{}\n}}",
-        function_name,
-        params,
-        extracted_code,
-        return_statement
+        function_name, params, extracted_code, return_statement
     ))
 }
 
@@ -813,7 +833,10 @@ fn generate_function_call(
     if analysis.return_variables.is_empty() {
         Ok(format!("{}({});", function_name, args))
     } else if analysis.return_variables.len() == 1 {
-        Ok(format!("const {} = {}({});", analysis.return_variables[0], function_name, args))
+        Ok(format!(
+            "const {} = {}({});",
+            analysis.return_variables[0], function_name, args
+        ))
     } else {
         Ok(format!(
             "const {{ {} }} = {}({});",
@@ -867,7 +890,9 @@ fn analyze_extract_function_python(
 
             // Find function calls in this line that are defined outside the selection
             for func in &functions {
-                if func.start_line < range.start_line && line_text.contains(&format!("{}(", func.name)) {
+                if func.start_line < range.start_line
+                    && line_text.contains(&format!("{}(", func.name))
+                {
                     if !required_imports.contains(&func.name) {
                         required_imports.push(func.name.clone());
                     }
@@ -909,11 +934,16 @@ fn analyze_inline_variable_python(
     if let Some(variable) = find_variable_at_position(source, variable_line, variable_col)? {
         // Get the variable's value from the source
         let lines: Vec<&str> = source.lines().collect();
-        let var_line_text = lines.get(variable.line as usize)
+        let var_line_text = lines
+            .get(variable.line as usize)
             .ok_or_else(|| AstError::analysis("Invalid line number"))?;
 
         // Extract the initializer expression
-        let assign_re = regex::Regex::new(&format!(r"^\s*{}\s*=\s*(.+)", regex::escape(&variable.name))).unwrap();
+        let assign_re = regex::Regex::new(&format!(
+            r"^\s*{}\s*=\s*(.+)",
+            regex::escape(&variable.name)
+        ))
+        .unwrap();
         let initializer = if let Some(captures) = assign_re.captures(var_line_text) {
             captures.get(1).unwrap().as_str().trim().to_string()
         } else {
@@ -922,7 +952,8 @@ fn analyze_inline_variable_python(
 
         // Find all usages of this variable
         let usages = get_variable_usages_in_scope(source, &variable.name, variable.line + 1)?;
-        let usage_locations: Vec<CodeRange> = usages.into_iter()
+        let usage_locations: Vec<CodeRange> = usages
+            .into_iter()
             .map(|(line, start_col, end_col)| CodeRange {
                 start_line: line,
                 start_col,
@@ -945,7 +976,9 @@ fn analyze_inline_variable_python(
             blocking_reasons: Vec::new(),
         })
     } else {
-        Err(AstError::analysis("Could not find variable at specified position"))
+        Err(AstError::analysis(
+            "Could not find variable at specified position",
+        ))
     }
 }
 
@@ -965,7 +998,8 @@ fn analyze_extract_variable_python(
         end_col,
     };
 
-    let expression = analyze_python_expression_range(source, start_line, start_col, end_line, end_col)?;
+    let expression =
+        analyze_python_expression_range(source, start_line, start_col, end_line, end_col)?;
 
     // Simple validation for Python expressions
     let mut can_extract = true;
@@ -1047,13 +1081,11 @@ fn plan_extract_function_python(
         source_file: file_path.to_string(),
         edits,
         dependency_updates: Vec::new(),
-        validations: vec![
-            ValidationRule {
-                rule_type: ValidationType::SyntaxCheck,
-                description: "Verify Python syntax is valid after extraction".to_string(),
-                parameters: HashMap::new(),
-            },
-        ],
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::SyntaxCheck,
+            description: "Verify Python syntax is valid after extraction".to_string(),
+            parameters: HashMap::new(),
+        }],
         metadata: EditPlanMetadata {
             intent_name: "extract_function".to_string(),
             intent_arguments: serde_json::json!({
@@ -1090,12 +1122,13 @@ fn plan_inline_variable_python(
     // Replace all usages with the initializer expression
     for usage_location in &analysis.usage_locations {
         // For Python, we typically don't need parentheses unless it's a complex expression
-        let replacement_text = if analysis.initializer_expression.contains(' ') &&
-                                 (analysis.initializer_expression.contains('+') ||
-                                  analysis.initializer_expression.contains('-') ||
-                                  analysis.initializer_expression.contains('*') ||
-                                  analysis.initializer_expression.contains('/') ||
-                                  analysis.initializer_expression.contains('%')) {
+        let replacement_text = if analysis.initializer_expression.contains(' ')
+            && (analysis.initializer_expression.contains('+')
+                || analysis.initializer_expression.contains('-')
+                || analysis.initializer_expression.contains('*')
+                || analysis.initializer_expression.contains('/')
+                || analysis.initializer_expression.contains('%'))
+        {
             format!("({})", analysis.initializer_expression)
         } else {
             analysis.initializer_expression.clone()
@@ -1126,13 +1159,11 @@ fn plan_inline_variable_python(
         source_file: file_path.to_string(),
         edits,
         dependency_updates: Vec::new(),
-        validations: vec![
-            ValidationRule {
-                rule_type: ValidationType::SyntaxCheck,
-                description: "Verify Python syntax is valid after inlining".to_string(),
-                parameters: HashMap::new(),
-            },
-        ],
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::SyntaxCheck,
+            description: "Verify Python syntax is valid after inlining".to_string(),
+            parameters: HashMap::new(),
+        }],
         metadata: EditPlanMetadata {
             intent_name: "inline_variable".to_string(),
             intent_arguments: serde_json::json!({
@@ -1157,7 +1188,9 @@ fn plan_extract_variable_python(
     variable_name: Option<String>,
     file_path: &str,
 ) -> AstResult<EditPlan> {
-    let analysis = analyze_extract_variable_python(source, start_line, start_col, end_line, end_col, file_path)?;
+    let analysis = analyze_extract_variable_python(
+        source, start_line, start_col, end_line, end_col, file_path,
+    )?;
 
     if !analysis.can_extract {
         return Err(AstError::analysis(format!(
@@ -1171,7 +1204,10 @@ fn plan_extract_variable_python(
     // Get the indentation of the current line
     let lines: Vec<&str> = source.lines().collect();
     let current_line = lines.get((start_line) as usize).unwrap_or(&"");
-    let indent = current_line.chars().take_while(|c| c.is_whitespace()).collect::<String>();
+    let indent = current_line
+        .chars()
+        .take_while(|c| c.is_whitespace())
+        .collect::<String>();
 
     let mut edits = Vec::new();
 
@@ -1183,7 +1219,10 @@ fn plan_extract_variable_python(
         original_text: String::new(),
         new_text: declaration,
         priority: 100,
-        description: format!("Extract '{}' into variable '{}'", analysis.expression, var_name),
+        description: format!(
+            "Extract '{}' into variable '{}'",
+            analysis.expression, var_name
+        ),
     });
 
     // Replace the original expression with the variable name
@@ -1200,13 +1239,11 @@ fn plan_extract_variable_python(
         source_file: file_path.to_string(),
         edits,
         dependency_updates: Vec::new(),
-        validations: vec![
-            ValidationRule {
-                rule_type: ValidationType::SyntaxCheck,
-                description: "Verify Python syntax is valid after extraction".to_string(),
-                parameters: HashMap::new(),
-            },
-        ],
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::SyntaxCheck,
+            description: "Verify Python syntax is valid after extraction".to_string(),
+            parameters: HashMap::new(),
+        }],
         metadata: EditPlanMetadata {
             intent_name: "extract_variable".to_string(),
             intent_arguments: serde_json::json!({
@@ -1228,7 +1265,13 @@ fn plan_extract_variable_python(
 
 /// Extract text from a Python code range
 fn extract_python_range_text(source: &str, range: &CodeRange) -> AstResult<String> {
-    analyze_python_expression_range(source, range.start_line, range.start_col, range.end_line, range.end_col)
+    analyze_python_expression_range(
+        source,
+        range.start_line,
+        range.start_col,
+        range.end_line,
+        range.end_col,
+    )
 }
 
 /// Find proper insertion point for a new Python function
@@ -1272,7 +1315,13 @@ fn generate_extracted_function_python(
     // Ensure proper indentation for the function body
     let indented_code = extracted_code
         .lines()
-        .map(|line| if line.trim().is_empty() { line.to_string() } else { format!("    {}", line) })
+        .map(|line| {
+            if line.trim().is_empty() {
+                line.to_string()
+            } else {
+                format!("    {}", line)
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -1286,10 +1335,7 @@ fn generate_extracted_function_python(
 
     Ok(format!(
         "def {}({}):\n{}\n{}",
-        function_name,
-        params,
-        indented_code,
-        return_statement
+        function_name, params, indented_code, return_statement
     ))
 }
 
@@ -1303,7 +1349,10 @@ fn generate_python_function_call(
     if analysis.return_variables.is_empty() {
         Ok(format!("{}({})", function_name, args))
     } else if analysis.return_variables.len() == 1 {
-        Ok(format!("{} = {}({})", analysis.return_variables[0], function_name, args))
+        Ok(format!(
+            "{} = {}({})",
+            analysis.return_variables[0], function_name, args
+        ))
     } else {
         Ok(format!(
             "{} = {}({})",
@@ -1393,10 +1442,14 @@ mod tests {
 }
 
 /// Plan a project-wide symbol rename operation with import updates
-pub fn plan_rename_refactor(old_name: &str, new_name: &str, file_path: &Path) -> AstResult<EditPlan> {
+pub fn plan_rename_refactor(
+    old_name: &str,
+    new_name: &str,
+    file_path: &Path,
+) -> AstResult<EditPlan> {
     // Read the target file to understand its imports and exports
-    let content = std::fs::read_to_string(file_path)
-        .map_err(|e| AstError::Core(CoreError::from(e)))?;
+    let content =
+        std::fs::read_to_string(file_path).map_err(|e| AstError::Core(CoreError::from(e)))?;
 
     // Build import graph for the file to understand dependencies
     let _import_graph = build_import_graph(&content, file_path)?;
@@ -1423,9 +1476,12 @@ pub fn plan_rename_refactor(old_name: &str, new_name: &str, file_path: &Path) ->
                 let imports_target_symbol = importing_graph.imports.iter().any(|import| {
                     // Check if this import references our target file and symbol
                     if is_import_from_target_file(import, file_path) {
-                        import.named_imports.iter().any(|named| named.name == old_name) ||
-                        import.default_import.as_ref() == Some(&old_name.to_string()) ||
-                        import.namespace_import.as_ref() == Some(&old_name.to_string())
+                        import
+                            .named_imports
+                            .iter()
+                            .any(|named| named.name == old_name)
+                            || import.default_import.as_ref() == Some(&old_name.to_string())
+                            || import.namespace_import.as_ref() == Some(&old_name.to_string())
                     } else {
                         false
                     }
@@ -1433,7 +1489,12 @@ pub fn plan_rename_refactor(old_name: &str, new_name: &str, file_path: &Path) ->
 
                 if imports_target_symbol {
                     // Generate import update edits for this file
-                    let import_edits = generate_import_update_edits(&importing_content, old_name, new_name, &importing_file)?;
+                    let import_edits = generate_import_update_edits(
+                        &importing_content,
+                        old_name,
+                        new_name,
+                        &importing_file,
+                    )?;
                     edits.extend(import_edits);
 
                     // Track dependency update
@@ -1487,7 +1548,12 @@ pub fn plan_rename_refactor(old_name: &str, new_name: &str, file_path: &Path) ->
 }
 
 /// Find all references to a symbol in source code and generate rename edits
-fn find_symbol_references(source: &str, old_name: &str, new_name: &str, _file_path: &Path) -> AstResult<Vec<TextEdit>> {
+fn find_symbol_references(
+    source: &str,
+    old_name: &str,
+    new_name: &str,
+    _file_path: &Path,
+) -> AstResult<Vec<TextEdit>> {
     let mut edits = Vec::new();
 
     // Simple text-based search for symbol references
@@ -1498,10 +1564,18 @@ fn find_symbol_references(source: &str, old_name: &str, new_name: &str, _file_pa
             let actual_pos = search_pos + pos;
 
             // Basic check to ensure we're replacing a whole word, not part of another identifier
-            let is_word_boundary_before = actual_pos == 0 ||
-                !line.chars().nth(actual_pos - 1).unwrap_or(' ').is_alphanumeric();
-            let is_word_boundary_after = actual_pos + old_name.len() >= line.len() ||
-                !line.chars().nth(actual_pos + old_name.len()).unwrap_or(' ').is_alphanumeric();
+            let is_word_boundary_before = actual_pos == 0
+                || !line
+                    .chars()
+                    .nth(actual_pos - 1)
+                    .unwrap_or(' ')
+                    .is_alphanumeric();
+            let is_word_boundary_after = actual_pos + old_name.len() >= line.len()
+                || !line
+                    .chars()
+                    .nth(actual_pos + old_name.len())
+                    .unwrap_or(' ')
+                    .is_alphanumeric();
 
             if is_word_boundary_before && is_word_boundary_after {
                 edits.push(TextEdit {
@@ -1515,7 +1589,10 @@ fn find_symbol_references(source: &str, old_name: &str, new_name: &str, _file_pa
                     original_text: old_name.to_string(),
                     new_text: new_name.to_string(),
                     priority: 100, // High priority for definition site
-                    description: format!("Rename symbol '{}' to '{}' in definition file", old_name, new_name),
+                    description: format!(
+                        "Rename symbol '{}' to '{}' in definition file",
+                        old_name, new_name
+                    ),
                 });
             }
 
@@ -1527,7 +1604,12 @@ fn find_symbol_references(source: &str, old_name: &str, new_name: &str, _file_pa
 }
 
 /// Generate edits to update import statements in a file
-fn generate_import_update_edits(source: &str, old_name: &str, new_name: &str, file_path: &Path) -> AstResult<Vec<TextEdit>> {
+fn generate_import_update_edits(
+    source: &str,
+    old_name: &str,
+    new_name: &str,
+    file_path: &Path,
+) -> AstResult<Vec<TextEdit>> {
     let mut edits = Vec::new();
 
     // Parse import statements and find ones that need updating
@@ -1555,14 +1637,22 @@ fn generate_import_update_edits(source: &str, old_name: &str, new_name: &str, fi
                             original_text: line.to_string(),
                             new_text: updated_line,
                             priority: 50, // Medium priority for import updates
-                            description: format!("Update import of '{}' to '{}' in {}", old_name, new_name, file_path.display()),
+                            description: format!(
+                                "Update import of '{}' to '{}' in {}",
+                                old_name,
+                                new_name,
+                                file_path.display()
+                            ),
                         });
                     }
                 }
             }
             // Handle default imports: import oldName from '...'
             else if trimmed.contains(&format!("import {}", old_name)) {
-                let updated_line = line.replace(&format!("import {}", old_name), &format!("import {}", new_name));
+                let updated_line = line.replace(
+                    &format!("import {}", old_name),
+                    &format!("import {}", new_name),
+                );
 
                 edits.push(TextEdit {
                     edit_type: EditType::UpdateImport,
@@ -1575,7 +1665,12 @@ fn generate_import_update_edits(source: &str, old_name: &str, new_name: &str, fi
                     original_text: line.to_string(),
                     new_text: updated_line,
                     priority: 50,
-                    description: format!("Update default import of '{}' to '{}' in {}", old_name, new_name, file_path.display()),
+                    description: format!(
+                        "Update default import of '{}' to '{}' in {}",
+                        old_name,
+                        new_name,
+                        file_path.display()
+                    ),
                 });
             }
         }
@@ -1587,13 +1682,16 @@ fn generate_import_update_edits(source: &str, old_name: &str, new_name: &str, fi
 /// Check if an import is from the target file we're refactoring
 fn is_import_from_target_file(import: &ImportInfo, target_file: &Path) -> bool {
     // This is a simplified check - a full implementation would resolve module paths properly
-    let target_name = target_file.file_stem()
+    let target_name = target_file
+        .file_stem()
         .and_then(|stem| stem.to_str())
         .unwrap_or("");
 
     // Check if the import path matches the target file
-    import.module_path.contains(target_name) ||
-    import.module_path.ends_with(&target_file.to_string_lossy().replace('\\', "/"))
+    import.module_path.contains(target_name)
+        || import
+            .module_path
+            .ends_with(&target_file.to_string_lossy().replace('\\', "/"))
 }
 
 /// Find the project root by looking for common project markers
@@ -1602,10 +1700,11 @@ fn find_project_root(file_path: &Path) -> PathBuf {
 
     loop {
         // Look for common project root indicators
-        if current.join("package.json").exists() ||
-           current.join("Cargo.toml").exists() ||
-           current.join(".git").exists() ||
-           current.join("tsconfig.json").exists() {
+        if current.join("package.json").exists()
+            || current.join("Cargo.toml").exists()
+            || current.join(".git").exists()
+            || current.join("tsconfig.json").exists()
+        {
             return current.to_path_buf();
         }
 
@@ -1619,7 +1718,11 @@ fn find_project_root(file_path: &Path) -> PathBuf {
 }
 
 /// Find all files in the project that might import the target symbol
-fn find_files_importing_symbol(project_root: &Path, target_file: &Path, _symbol_name: &str) -> AstResult<Vec<PathBuf>> {
+fn find_files_importing_symbol(
+    project_root: &Path,
+    target_file: &Path,
+    _symbol_name: &str,
+) -> AstResult<Vec<PathBuf>> {
     let mut files = Vec::new();
 
     // Walk through the project directory and find source files
@@ -1631,12 +1734,22 @@ fn find_files_importing_symbol(project_root: &Path, target_file: &Path, _symbol_
                 let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
 
                 // Only check source files that could contain imports
-                if matches!(extension, "ts" | "tsx" | "js" | "jsx" | "py" | "rs") && path != target_file {
+                if matches!(extension, "ts" | "tsx" | "js" | "jsx" | "py" | "rs")
+                    && path != target_file
+                {
                     files.push(path);
                 }
-            } else if path.is_dir() && !path.file_name().unwrap_or_default().to_str().unwrap_or("").starts_with('.') {
+            } else if path.is_dir()
+                && !path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or("")
+                    .starts_with('.')
+            {
                 // Recursively search subdirectories (excluding hidden dirs)
-                if let Ok(subfiles) = find_files_importing_symbol(&path, target_file, _symbol_name) {
+                if let Ok(subfiles) = find_files_importing_symbol(&path, target_file, _symbol_name)
+                {
                     files.extend(subfiles);
                 }
             }

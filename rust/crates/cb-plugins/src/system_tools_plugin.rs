@@ -1,5 +1,6 @@
 //! System tools plugin providing workspace-level and AST analysis tools
 
+use crate::capabilities::Capabilities;
 use crate::{
     error::PluginError,
     plugin::{LanguagePlugin, PluginMetadata},
@@ -7,7 +8,6 @@ use crate::{
     PluginResult,
 };
 use async_trait::async_trait;
-use crate::capabilities::Capabilities;
 use ignore::WalkBuilder;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -27,15 +27,33 @@ impl SystemToolsPlugin {
         let mut capabilities = Capabilities::default();
 
         // Add custom capabilities for system tools
-        capabilities.custom.insert("system.list_files".to_string(), json!(true));
-        capabilities.custom.insert("system.analyze_imports".to_string(), json!(true));
-        capabilities.custom.insert("system.find_dead_code".to_string(), json!(true));
-        capabilities.custom.insert("system.update_dependencies".to_string(), json!(true));
-        capabilities.custom.insert("system.rename_directory".to_string(), json!(true));
-        capabilities.custom.insert("system.extract_function".to_string(), json!(true));
-        capabilities.custom.insert("system.inline_variable".to_string(), json!(true));
-        capabilities.custom.insert("system.extract_variable".to_string(), json!(true));
-        capabilities.custom.insert("system.fix_imports".to_string(), json!(true));
+        capabilities
+            .custom
+            .insert("system.list_files".to_string(), json!(true));
+        capabilities
+            .custom
+            .insert("system.analyze_imports".to_string(), json!(true));
+        capabilities
+            .custom
+            .insert("system.find_dead_code".to_string(), json!(true));
+        capabilities
+            .custom
+            .insert("system.update_dependencies".to_string(), json!(true));
+        capabilities
+            .custom
+            .insert("system.rename_directory".to_string(), json!(true));
+        capabilities
+            .custom
+            .insert("system.extract_function".to_string(), json!(true));
+        capabilities
+            .custom
+            .insert("system.inline_variable".to_string(), json!(true));
+        capabilities
+            .custom
+            .insert("system.extract_variable".to_string(), json!(true));
+        capabilities
+            .custom
+            .insert("system.fix_imports".to_string(), json!(true));
 
         SystemToolsPlugin {
             metadata: PluginMetadata {
@@ -61,8 +79,10 @@ impl SystemToolsPlugin {
             pattern: Option<String>,
         }
 
-        let args: ListFilesArgs = serde_json::from_value(params)
-            .map_err(|e| PluginError::SerializationError { message: format!("Invalid list_files args: {}", e) })?;
+        let args: ListFilesArgs =
+            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+                message: format!("Invalid list_files args: {}", e),
+            })?;
 
         let path = args.path.unwrap_or_else(|| ".".to_string());
         let recursive = args.recursive.unwrap_or(false);
@@ -81,7 +101,8 @@ impl SystemToolsPlugin {
             match result {
                 Ok(entry) => {
                     let file_path = entry.path();
-                    let file_name = file_path.file_name()
+                    let file_name = file_path
+                        .file_name()
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
@@ -124,28 +145,52 @@ impl SystemToolsPlugin {
             file_path: String,
         }
 
-        let args: AnalyzeImportsArgs = serde_json::from_value(params)
-            .map_err(|e| PluginError::SerializationError { message: format!("Invalid analyze_imports args: {}", e) })?;
+        let args: AnalyzeImportsArgs =
+            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+                message: format!("Invalid analyze_imports args: {}", e),
+            })?;
 
         debug!("Analyzing imports for: {}", args.file_path);
 
         // Read the file content
-        let content = fs::read_to_string(&args.file_path).await
-            .map_err(|e| PluginError::IoError { message: format!("Failed to read file: {}", e) })?;
+        let content =
+            fs::read_to_string(&args.file_path)
+                .await
+                .map_err(|e| PluginError::IoError {
+                    message: format!("Failed to read file: {}", e),
+                })?;
 
         // Call cb_ast::parser::build_import_graph
         let path = Path::new(&args.file_path);
-        let import_graph = cb_ast::parser::build_import_graph(&content, path)
-            .map_err(|e| PluginError::PluginRequestFailed { plugin: "system-tools".to_string(), message: format!("Failed to analyze imports: {}", e) })?;
+        let import_graph = cb_ast::parser::build_import_graph(&content, path).map_err(|e| {
+            PluginError::PluginRequestFailed {
+                plugin: "system-tools".to_string(),
+                message: format!("Failed to analyze imports: {}", e),
+            }
+        })?;
 
         // Calculate statistics
         let total_imports = import_graph.imports.len();
-        let unique_modules: std::collections::HashSet<&String> = import_graph.imports.iter()
+        let unique_modules: std::collections::HashSet<&String> = import_graph
+            .imports
+            .iter()
             .map(|imp| &imp.module_path)
             .collect();
-        let type_only_imports = import_graph.imports.iter().filter(|imp| imp.type_only).count();
-        let namespace_imports = import_graph.imports.iter().filter(|imp| imp.namespace_import.is_some()).count();
-        let default_imports = import_graph.imports.iter().filter(|imp| imp.default_import.is_some()).count();
+        let type_only_imports = import_graph
+            .imports
+            .iter()
+            .filter(|imp| imp.type_only)
+            .count();
+        let namespace_imports = import_graph
+            .imports
+            .iter()
+            .filter(|imp| imp.namespace_import.is_some())
+            .count();
+        let default_imports = import_graph
+            .imports
+            .iter()
+            .filter(|imp| imp.default_import.is_some())
+            .count();
 
         Ok(json!({
             "sourceFile": args.file_path,
@@ -171,15 +216,20 @@ impl SystemToolsPlugin {
             dry_run: Option<bool>,
         }
 
-        let args: UpdateDependenciesArgs = serde_json::from_value(params)
-            .map_err(|e| PluginError::SerializationError { message: format!("Invalid update_dependencies args: {}", e) })?;
+        let args: UpdateDependenciesArgs =
+            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+                message: format!("Invalid update_dependencies args: {}", e),
+            })?;
 
         let project_path = args.project_path.unwrap_or_else(|| ".".to_string());
         let package_manager = args.package_manager.unwrap_or_else(|| "auto".to_string());
         let update_type = args.update_type.unwrap_or_else(|| "minor".to_string());
         let dry_run = args.dry_run.unwrap_or(false);
 
-        debug!("Updating dependencies in: {} using {}", project_path, package_manager);
+        debug!(
+            "Updating dependencies in: {} using {}",
+            project_path, package_manager
+        );
 
         // Detect package manager
         let detected_manager = if package_manager == "auto" {
@@ -203,15 +253,47 @@ impl SystemToolsPlugin {
         };
 
         let command = match detected_manager {
-            "npm" => if dry_run { "npm outdated" } else { "npm update" },
-            "yarn" => if dry_run { "yarn outdated" } else { "yarn upgrade" },
-            "pnpm" => if dry_run { "pnpm outdated" } else { "pnpm update" },
-            "cargo" => if dry_run { "cargo outdated" } else { "cargo update" },
-            "pip" => if dry_run { "pip list --outdated" } else { "pip install --upgrade -r requirements.txt" },
-            _ => return Err(PluginError::PluginRequestFailed {
-                plugin: "system-tools".to_string(),
-                message: format!("Unknown package manager: {}", detected_manager)
-            }),
+            "npm" => {
+                if dry_run {
+                    "npm outdated"
+                } else {
+                    "npm update"
+                }
+            }
+            "yarn" => {
+                if dry_run {
+                    "yarn outdated"
+                } else {
+                    "yarn upgrade"
+                }
+            }
+            "pnpm" => {
+                if dry_run {
+                    "pnpm outdated"
+                } else {
+                    "pnpm update"
+                }
+            }
+            "cargo" => {
+                if dry_run {
+                    "cargo outdated"
+                } else {
+                    "cargo update"
+                }
+            }
+            "pip" => {
+                if dry_run {
+                    "pip list --outdated"
+                } else {
+                    "pip install --upgrade -r requirements.txt"
+                }
+            }
+            _ => {
+                return Err(PluginError::PluginRequestFailed {
+                    plugin: "system-tools".to_string(),
+                    message: format!("Unknown package manager: {}", detected_manager),
+                })
+            }
         };
 
         Ok(json!({
@@ -235,25 +317,29 @@ impl SystemToolsPlugin {
             dry_run: Option<bool>,
         }
 
-        let args: RenameDirectoryArgs = serde_json::from_value(params)
-            .map_err(|e| PluginError::SerializationError { message: format!("Invalid rename_directory args: {}", e) })?;
+        let args: RenameDirectoryArgs =
+            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+                message: format!("Invalid rename_directory args: {}", e),
+            })?;
 
-        debug!("Renaming directory from {} to {}", args.old_path, args.new_path);
+        debug!(
+            "Renaming directory from {} to {}",
+            args.old_path, args.new_path
+        );
 
         if args.dry_run.unwrap_or(false) {
             // In dry run, just show what would happen
             let mut affected_files = Vec::new();
 
             // Walk through directory to find all files that would be moved
-            let walker = WalkBuilder::new(&args.old_path)
-                .hidden(false)
-                .build();
+            let walker = WalkBuilder::new(&args.old_path).hidden(false).build();
 
             for result in walker {
                 if let Ok(entry) = result {
                     let file_path = entry.path();
                     if file_path.is_file() {
-                        let relative_path = file_path.strip_prefix(&args.old_path)
+                        let relative_path = file_path
+                            .strip_prefix(&args.old_path)
                             .unwrap_or(file_path)
                             .to_string_lossy();
                         let new_file_path = format!("{}/{}", args.new_path, relative_path);
@@ -277,20 +363,16 @@ impl SystemToolsPlugin {
 
         // Actual rename operation
         match tokio::fs::rename(&args.old_path, &args.new_path).await {
-            Ok(_) => {
-                Ok(json!({
-                    "operation": "rename_directory",
-                    "old_path": args.old_path,
-                    "new_path": args.new_path,
-                    "status": "success",
-                    "update_imports": args.update_imports.unwrap_or(true),
-                }))
-            }
-            Err(e) => {
-                Err(PluginError::IoError {
-                    message: format!("Failed to rename directory: {}", e)
-                })
-            }
+            Ok(_) => Ok(json!({
+                "operation": "rename_directory",
+                "old_path": args.old_path,
+                "new_path": args.new_path,
+                "status": "success",
+                "update_imports": args.update_imports.unwrap_or(true),
+            })),
+            Err(e) => Err(PluginError::IoError {
+                message: format!("Failed to rename directory: {}", e),
+            }),
         }
     }
 
@@ -302,8 +384,10 @@ impl SystemToolsPlugin {
             workspace_path: String,
         }
 
-        let args: FindDeadCodeArgs = serde_json::from_value(params)
-            .map_err(|e| PluginError::SerializationError { message: format!("Invalid find_dead_code args: {}", e) })?;
+        let args: FindDeadCodeArgs =
+            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+                message: format!("Invalid find_dead_code args: {}", e),
+            })?;
 
         debug!("Finding dead code in workspace: {}", args.workspace_path);
 
@@ -313,9 +397,7 @@ impl SystemToolsPlugin {
         let symbols_analyzed = 0;
 
         // Use ignore crate to walk the directory
-        let walker = WalkBuilder::new(&args.workspace_path)
-            .hidden(false)
-            .build();
+        let walker = WalkBuilder::new(&args.workspace_path).hidden(false).build();
 
         for result in walker {
             if let Ok(entry) = result {
@@ -370,14 +452,23 @@ impl SystemToolsPlugin {
             dry_run: Option<bool>,
         }
 
-        let args: ExtractFunctionArgs = serde_json::from_value(params)
-            .map_err(|e| PluginError::SerializationError { message: format!("Invalid extract_function args: {}", e) })?;
+        let args: ExtractFunctionArgs =
+            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+                message: format!("Invalid extract_function args: {}", e),
+            })?;
 
-        debug!("Extracting function {} from {}:{}-{}", args.function_name, args.file_path, args.start_line, args.end_line);
+        debug!(
+            "Extracting function {} from {}:{}-{}",
+            args.function_name, args.file_path, args.start_line, args.end_line
+        );
 
         // Read the file
-        let content = fs::read_to_string(&args.file_path).await
-            .map_err(|e| PluginError::IoError { message: format!("Failed to read file: {}", e) })?;
+        let content =
+            fs::read_to_string(&args.file_path)
+                .await
+                .map_err(|e| PluginError::IoError {
+                    message: format!("Failed to read file: {}", e),
+                })?;
 
         let lines: Vec<&str> = content.lines().collect();
 
@@ -387,7 +478,10 @@ impl SystemToolsPlugin {
         let extracted_code = extracted_lines.join("\n");
 
         // Create the new function
-        let new_function = format!("function {}() {{\n  {}\n}}", args.function_name, extracted_code);
+        let new_function = format!(
+            "function {}() {{\n  {}\n}}",
+            args.function_name, extracted_code
+        );
 
         Ok(json!({
             "operation": "extract_function",
@@ -412,14 +506,23 @@ impl SystemToolsPlugin {
             dry_run: Option<bool>,
         }
 
-        let args: InlineVariableArgs = serde_json::from_value(params)
-            .map_err(|e| PluginError::SerializationError { message: format!("Invalid inline_variable args: {}", e) })?;
+        let args: InlineVariableArgs =
+            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+                message: format!("Invalid inline_variable args: {}", e),
+            })?;
 
-        debug!("Inlining variable {} in {} at line {}", args.variable_name, args.file_path, args.line);
+        debug!(
+            "Inlining variable {} in {} at line {}",
+            args.variable_name, args.file_path, args.line
+        );
 
         // Read the file
-        let _content = fs::read_to_string(&args.file_path).await
-            .map_err(|e| PluginError::IoError { message: format!("Failed to read file: {}", e) })?;
+        let _content =
+            fs::read_to_string(&args.file_path)
+                .await
+                .map_err(|e| PluginError::IoError {
+                    message: format!("Failed to read file: {}", e),
+                })?;
 
         // In a real implementation, this would use AST parsing to find the variable declaration
         // and all its usages, then replace them with the value
@@ -449,17 +552,28 @@ impl SystemToolsPlugin {
             dry_run: Option<bool>,
         }
 
-        let args: ExtractVariableArgs = serde_json::from_value(params)
-            .map_err(|e| PluginError::SerializationError { message: format!("Invalid extract_variable args: {}", e) })?;
+        let args: ExtractVariableArgs =
+            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+                message: format!("Invalid extract_variable args: {}", e),
+            })?;
 
-        debug!("Extracting variable {} from {}:{}:{}-{}:{}",
-            args.variable_name, args.file_path,
-            args.start_line, args.start_character,
-            args.end_line, args.end_character);
+        debug!(
+            "Extracting variable {} from {}:{}:{}-{}:{}",
+            args.variable_name,
+            args.file_path,
+            args.start_line,
+            args.start_character,
+            args.end_line,
+            args.end_character
+        );
 
         // Read the file
-        let _content = fs::read_to_string(&args.file_path).await
-            .map_err(|e| PluginError::IoError { message: format!("Failed to read file: {}", e) })?;
+        let _content =
+            fs::read_to_string(&args.file_path)
+                .await
+                .map_err(|e| PluginError::IoError {
+                    message: format!("Failed to read file: {}", e),
+                })?;
 
         // In a real implementation, this would use AST parsing to extract the expression
         // and create a variable declaration
@@ -487,31 +601,46 @@ impl SystemToolsPlugin {
             dry_run: Option<bool>,
         }
 
-        let args: FixImportsArgs = serde_json::from_value(params)
-            .map_err(|e| PluginError::SerializationError { message: format!("Invalid fix_imports args: {}", e) })?;
+        let args: FixImportsArgs =
+            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+                message: format!("Invalid fix_imports args: {}", e),
+            })?;
 
         debug!("Fixing imports in: {}", args.file_path);
 
         // Read the file
-        let content = fs::read_to_string(&args.file_path).await
-            .map_err(|e| PluginError::IoError { message: format!("Failed to read file: {}", e) })?;
+        let content =
+            fs::read_to_string(&args.file_path)
+                .await
+                .map_err(|e| PluginError::IoError {
+                    message: format!("Failed to read file: {}", e),
+                })?;
 
         // Use cb_ast to analyze imports
         let path = Path::new(&args.file_path);
-        let import_graph = cb_ast::parser::build_import_graph(&content, path)
-            .map_err(|e| PluginError::PluginRequestFailed {
+        let import_graph = cb_ast::parser::build_import_graph(&content, path).map_err(|e| {
+            PluginError::PluginRequestFailed {
                 plugin: "system-tools".to_string(),
-                message: format!("Failed to analyze imports: {}", e)
-            })?;
+                message: format!("Failed to analyze imports: {}", e),
+            }
+        })?;
 
         // Count different types of fixes that would be applied
-        let unused_imports = import_graph.imports.iter()
-            .filter(|imp| imp.named_imports.is_empty() && imp.default_import.is_none() && imp.namespace_import.is_none())
+        let unused_imports = import_graph
+            .imports
+            .iter()
+            .filter(|imp| {
+                imp.named_imports.is_empty()
+                    && imp.default_import.is_none()
+                    && imp.namespace_import.is_none()
+            })
             .count();
 
         let duplicate_imports = {
             let mut seen = std::collections::HashSet::new();
-            import_graph.imports.iter()
+            import_graph
+                .imports
+                .iter()
                 .filter(|imp| !seen.insert(&imp.module_path))
                 .count()
         };
@@ -557,7 +686,10 @@ impl LanguagePlugin for SystemToolsPlugin {
             "list_files" => self.handle_list_files(request.params.clone()).await?,
             "analyze_imports" => self.handle_analyze_imports(request.params.clone()).await?,
             "find_dead_code" => self.handle_find_dead_code(request.params.clone()).await?,
-            "update_dependencies" => self.handle_update_dependencies(request.params.clone()).await?,
+            "update_dependencies" => {
+                self.handle_update_dependencies(request.params.clone())
+                    .await?
+            }
             "rename_directory" => self.handle_rename_directory(request.params.clone()).await?,
             "extract_function" => self.handle_extract_function(request.params.clone()).await?,
             "inline_variable" => self.handle_inline_variable(request.params.clone()).await?,

@@ -1,15 +1,15 @@
 //! cb-server main binary
 
+use cb_ast::AstCache;
 use cb_core::AppConfig;
-use cb_server::handlers::{PluginDispatcher, AppState};
+use cb_server::handlers::{AppState, PluginDispatcher};
 use cb_server::interfaces::AstService;
 use cb_server::services::{DefaultAstService, FileService, LockManager, OperationQueue};
 use cb_server::systems::fuse::start_fuse_mount;
-use cb_ast::AstCache;
 use cb_server::transport;
 use clap::{Parser, Subcommand};
-use std::sync::Arc;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tracing_subscriber;
 
 #[derive(Parser)]
@@ -75,7 +75,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if matches!(cli.command, Some(Commands::Serve) | None) {
         if let Some(fuse_config) = &config.fuse {
             let workspace_path = Path::new(".");
-            tracing::info!("FUSE enabled, mounting filesystem at {:?}", fuse_config.mount_point);
+            tracing::info!(
+                "FUSE enabled, mounting filesystem at {:?}",
+                fuse_config.mount_point
+            );
 
             if let Err(e) = start_fuse_mount(fuse_config, workspace_path) {
                 tracing::error!("Failed to start FUSE mount: {}", e);
@@ -98,7 +101,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::Serve) | None => {
             // Start WebSocket server (default)
-            tracing::info!("Starting WebSocket server on {}:{}", config.server.host, config.server.port);
+            tracing::info!(
+                "Starting WebSocket server on {}:{}",
+                config.server.host,
+                config.server.port
+            );
 
             if let Err(e) = transport::start_ws_server(config, dispatcher).await {
                 tracing::error!("Failed to start WebSocket server: {}", e);

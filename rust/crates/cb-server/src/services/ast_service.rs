@@ -5,8 +5,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use cb_ast::{AstCache, EditPlan, ImportGraph};
-use cb_core::CoreError;
 use cb_core::model::IntentSpec;
+use cb_core::CoreError;
 use tracing::{debug, trace};
 
 use crate::interfaces::AstService;
@@ -33,6 +33,11 @@ impl DefaultAstService {
 
     /// Get cache statistics for monitoring
     pub fn cache_stats(&self) -> cb_ast::CacheStats {
+        self.cache.stats()
+    }
+
+    /// Get cache statistics for monitoring (async trait implementation)
+    pub async fn cache_stats_async(&self) -> cb_ast::CacheStats {
         self.cache.stats()
     }
 
@@ -77,7 +82,11 @@ impl AstService for DefaultAstService {
         // Cache the result for future use
         if let Err(e) = self.cache.insert(file_path.clone(), import_graph.clone()) {
             // Cache insertion failure shouldn't fail the operation, just log it
-            debug!("Failed to cache import graph for {}: {}", file_path.display(), e);
+            debug!(
+                "Failed to cache import graph for {}: {}",
+                file_path.display(),
+                e
+            );
         } else {
             trace!("Cached import graph for: {}", file_path.display());
         }
@@ -89,19 +98,34 @@ impl AstService for DefaultAstService {
         match intent.name() {
             "rename_symbol_with_imports" => {
                 // Extract parameters from intent
-                let old_name = intent.arguments().get("oldName")
+                let old_name = intent
+                    .arguments()
+                    .get("oldName")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| CoreError::invalid_data("Missing 'oldName' parameter in intent"))?;
+                    .ok_or_else(|| {
+                        CoreError::invalid_data("Missing 'oldName' parameter in intent")
+                    })?;
 
-                let new_name = intent.arguments().get("newName")
+                let new_name = intent
+                    .arguments()
+                    .get("newName")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| CoreError::invalid_data("Missing 'newName' parameter in intent"))?;
+                    .ok_or_else(|| {
+                        CoreError::invalid_data("Missing 'newName' parameter in intent")
+                    })?;
 
                 // Call the plan_rename_refactor function from cb-ast
                 cb_ast::refactoring::plan_rename_refactor(old_name, new_name, file)
                     .map_err(|e| CoreError::internal(format!("Refactoring planning failed: {}", e)))
             }
-            _ => Err(CoreError::not_supported(format!("Intent '{}' is not supported for refactoring", intent.name())))
+            _ => Err(CoreError::not_supported(format!(
+                "Intent '{}' is not supported for refactoring",
+                intent.name()
+            ))),
         }
+    }
+
+    async fn cache_stats(&self) -> cb_ast::CacheStats {
+        self.cache.stats()
     }
 }

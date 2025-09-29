@@ -53,7 +53,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["file_path"]
             }
         }),
-
         // Refactoring Tools
         json!({
             "name": "rename_symbol",
@@ -85,7 +84,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["file_path", "line", "character", "new_name"]
             }
         }),
-
         // Editing Tools
         json!({
             "name": "organize_imports",
@@ -154,7 +152,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["file_path"]
             }
         }),
-
         // Intelligence Tools
         json!({
             "name": "get_hover",
@@ -197,7 +194,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["file_path", "line", "character"]
             }
         }),
-
         // Diagnostics Tools
         json!({
             "name": "get_diagnostics",
@@ -210,7 +206,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["file_path"]
             }
         }),
-
         // File Management Tools
         json!({
             "name": "rename_file",
@@ -250,7 +245,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["file_path"]
             }
         }),
-
         // Call Hierarchy Tools
         json!({
             "name": "prepare_call_hierarchy",
@@ -293,7 +287,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["item"]
             }
         }),
-
         // System Tools
         json!({
             "name": "list_files",
@@ -415,7 +408,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["file_path"]
             }
         }),
-
         // Advanced Tools
         json!({
             "name": "apply_workspace_edit",
@@ -464,7 +456,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["changes"]
             }
         }),
-
         // System Tools
         json!({
             "name": "restart_server",
@@ -490,7 +481,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         // System Tools (workspace-level operations)
         json!({
             "name": "list_files",
@@ -610,7 +600,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["edit_plan"]
             }
         }),
-
         // LSP Notification Tools
         json!({
             "name": "notify_file_opened",
@@ -622,6 +611,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 },
                 "required": ["file_path"]
             }
-        })
+        }),
     ]
 }

@@ -1,7 +1,7 @@
 //! End-to-end flow tests
 
 use cb_core::AppConfig;
-use cb_server::{bootstrap, ServerOptions, AstService, LspService};
+use cb_server::{bootstrap, AstService, LspService, ServerOptions};
 use tests::{create_test_config, TestHarnessError};
 
 #[tokio::test]
@@ -11,18 +11,23 @@ async fn test_server_bootstrap_and_shutdown() -> Result<(), TestHarnessError> {
     let options = ServerOptions::from_config(config).with_debug(true);
 
     // Bootstrap the server
-    let handle = bootstrap(options).await
+    let handle = bootstrap(options)
+        .await
         .map_err(|e| TestHarnessError::setup(format!("Bootstrap failed: {}", e)))?;
 
     // Start the server
-    handle.start().await
+    handle
+        .start()
+        .await
         .map_err(|e| TestHarnessError::execution(format!("Start failed: {}", e)))?;
 
     // Give it a moment to start
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     // Shutdown the server
-    handle.shutdown().await
+    handle
+        .shutdown()
+        .await
         .map_err(|e| TestHarnessError::execution(format!("Shutdown failed: {}", e)))?;
 
     Ok(())
@@ -48,19 +53,19 @@ async fn test_configuration_loading() -> Result<(), TestHarnessError> {
     // Validate the test configuration
     if config.server.port != 3043 {
         return Err(TestHarnessError::assertion(
-            "Test config should use port 3043".to_string()
+            "Test config should use port 3043".to_string(),
         ));
     }
 
     if config.server.host != "127.0.0.1" {
         return Err(TestHarnessError::assertion(
-            "Test config should use localhost".to_string()
+            "Test config should use localhost".to_string(),
         ));
     }
 
     if config.logging.level != "debug" {
         return Err(TestHarnessError::assertion(
-            "Test config should use debug logging".to_string()
+            "Test config should use debug logging".to_string(),
         ));
     }
 
@@ -69,8 +74,8 @@ async fn test_configuration_loading() -> Result<(), TestHarnessError> {
 
 #[tokio::test]
 async fn test_mock_services_integration() -> Result<(), TestHarnessError> {
-    use tests::{MockAstService, MockLspService};
     use std::path::Path;
+    use tests::{MockAstService, MockLspService};
 
     // Create mock services
     let mut ast_service = MockAstService::new();
@@ -89,7 +94,9 @@ async fn test_mock_services_integration() -> Result<(), TestHarnessError> {
         .returning(|_| true);
 
     // Use the mock services
-    let import_graph = ast_service.build_import_graph(Path::new("test.ts")).await
+    let import_graph = ast_service
+        .build_import_graph(Path::new("test.ts"))
+        .await
         .map_err(|e| TestHarnessError::execution(format!("AST service failed: {}", e)))?;
 
     let is_available = lsp_service.is_available("ts").await;
@@ -97,13 +104,13 @@ async fn test_mock_services_integration() -> Result<(), TestHarnessError> {
     // Verify results
     if import_graph.source_file != "test.ts" {
         return Err(TestHarnessError::assertion(
-            "Import graph should have correct source file".to_string()
+            "Import graph should have correct source file".to_string(),
         ));
     }
 
     if !is_available {
         return Err(TestHarnessError::assertion(
-            "LSP service should be available for TypeScript".to_string()
+            "LSP service should be available for TypeScript".to_string(),
         ));
     }
 

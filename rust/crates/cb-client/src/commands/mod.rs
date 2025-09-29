@@ -1,6 +1,6 @@
-pub mod setup;
-pub mod connect;
 pub mod call;
+pub mod connect;
+pub mod setup;
 pub mod status;
 
 use crate::client_config::ClientConfig;
@@ -84,7 +84,11 @@ impl CommandContext {
     }
 
     /// Create a WebSocket client with current configuration and overrides
-    pub fn create_client(&self, url_override: Option<String>, token_override: Option<String>) -> ClientResult<WebSocketClient> {
+    pub fn create_client(
+        &self,
+        url_override: Option<String>,
+        token_override: Option<String>,
+    ) -> ClientResult<WebSocketClient> {
         let mut config = self.config.clone();
 
         // Apply overrides
@@ -103,7 +107,7 @@ impl CommandContext {
         // Validate that we have a URL
         if config.url.is_none() {
             return Err(ClientError::ConfigError(
-                "No server URL configured. Run 'codeflow-buddy setup' or provide --url".to_string()
+                "No server URL configured. Run 'codeflow-buddy setup' or provide --url".to_string(),
             ));
         }
 
@@ -111,7 +115,11 @@ impl CommandContext {
     }
 
     /// Connect to the server and return a ready client
-    pub async fn connect_client(&self, url_override: Option<String>, token_override: Option<String>) -> ClientResult<WebSocketClient> {
+    pub async fn connect_client(
+        &self,
+        url_override: Option<String>,
+        token_override: Option<String>,
+    ) -> ClientResult<WebSocketClient> {
         let client = self.create_client(url_override, token_override)?;
 
         self.formatter.progress_message("Connecting to server...");
@@ -122,14 +130,19 @@ impl CommandContext {
                 Ok(client)
             }
             Err(e) => {
-                self.formatter.error_message(&format!("Failed to connect: {}", e));
+                self.formatter
+                    .error_message(&format!("Failed to connect: {}", e));
                 Err(e)
             }
         }
     }
 
     /// Test connection without maintaining it
-    pub async fn test_connection(&self, url_override: Option<String>, token_override: Option<String>) -> ClientResult<Duration> {
+    pub async fn test_connection(
+        &self,
+        url_override: Option<String>,
+        token_override: Option<String>,
+    ) -> ClientResult<Duration> {
         let client = self.create_client(url_override, token_override)?;
 
         // Connect
@@ -152,7 +165,12 @@ impl CommandContext {
     }
 
     /// Update configuration with new values
-    pub fn update_config(&mut self, url: Option<String>, token: Option<String>, timeout: Option<u64>) {
+    pub fn update_config(
+        &mut self,
+        url: Option<String>,
+        token: Option<String>,
+        timeout: Option<u64>,
+    ) {
         if let Some(url) = url {
             self.config.set_url(url);
         }
@@ -167,14 +185,20 @@ impl CommandContext {
     /// Get configuration summary for display
     pub fn config_summary(&self) -> String {
         let url = self.config.url.as_deref().unwrap_or("<not configured>");
-        let token_status = if self.config.token.is_some() { "✓ configured" } else { "✗ not configured" };
+        let token_status = if self.config.token.is_some() {
+            "✓ configured"
+        } else {
+            "✗ not configured"
+        };
         let timeout = self.config.get_timeout_ms();
 
         format!(
             "{}\n{}\n{}",
-            self.formatter.key_value("Server URL", &self.formatter.url(url)),
+            self.formatter
+                .key_value("Server URL", &self.formatter.url(url)),
             self.formatter.key_value("Auth Token", token_status),
-            self.formatter.key_value("Timeout", &format!("{}ms", timeout))
+            self.formatter
+                .key_value("Timeout", &format!("{}ms", timeout))
         )
     }
 
@@ -212,7 +236,8 @@ impl CommandContext {
         }
 
         if !self.config.has_token() {
-            suggestions.push("Consider adding an authentication token for secure access".to_string());
+            suggestions
+                .push("Consider adding an authentication token for secure access".to_string());
         }
 
         suggestions
@@ -228,11 +253,9 @@ pub mod utils {
     pub fn parse_json_params(params_str: Option<&str>) -> ClientResult<Option<Value>> {
         match params_str {
             Some(s) if s.trim().is_empty() => Ok(None),
-            Some(s) => {
-                serde_json::from_str(s)
-                    .map(Some)
-                    .map_err(|e| ClientError::SerializationError(format!("Invalid JSON parameters: {}", e)))
-            }
+            Some(s) => serde_json::from_str(s).map(Some).map_err(|e| {
+                ClientError::SerializationError(format!("Invalid JSON parameters: {}", e))
+            }),
             None => Ok(None),
         }
     }
@@ -240,13 +263,15 @@ pub mod utils {
     /// Validate tool name format
     pub fn validate_tool_name(tool: &str) -> ClientResult<()> {
         if tool.trim().is_empty() {
-            return Err(ClientError::RequestError("Tool name cannot be empty".to_string()));
+            return Err(ClientError::RequestError(
+                "Tool name cannot be empty".to_string(),
+            ));
         }
 
         // Basic validation - tool names should be alphanumeric with underscores
         if !tool.chars().all(|c| c.is_alphanumeric() || c == '_') {
             return Err(ClientError::RequestError(
-                "Tool name should only contain letters, numbers, and underscores".to_string()
+                "Tool name should only contain letters, numbers, and underscores".to_string(),
             ));
         }
 
@@ -356,9 +381,21 @@ mod tests {
 
     #[test]
     fn test_format_connection_status() {
-        assert_eq!(utils::format_connection_status(true, true), "Connected and authenticated");
-        assert_eq!(utils::format_connection_status(true, false), "Connected (not authenticated)");
-        assert_eq!(utils::format_connection_status(false, true), "Not connected");
-        assert_eq!(utils::format_connection_status(false, false), "Not connected");
+        assert_eq!(
+            utils::format_connection_status(true, true),
+            "Connected and authenticated"
+        );
+        assert_eq!(
+            utils::format_connection_status(true, false),
+            "Connected (not authenticated)"
+        );
+        assert_eq!(
+            utils::format_connection_status(false, true),
+            "Not connected"
+        );
+        assert_eq!(
+            utils::format_connection_status(false, false),
+            "Not connected"
+        );
     }
 }

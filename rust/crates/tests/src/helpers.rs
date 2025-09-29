@@ -1,7 +1,7 @@
 //! Test helper functions and utilities
 
-use cb_core::{AppConfig, model::*};
 use cb_ast::{EditPlan, ImportGraph};
+use cb_core::{model::*, AppConfig};
 use serde_json::json;
 use std::path::Path;
 
@@ -28,7 +28,7 @@ pub fn create_test_intent(name: &str) -> IntentSpec {
             "sourceFile": "test.ts",
             "oldName": "oldFunction",
             "newName": "newFunction"
-        })
+        }),
     )
 }
 
@@ -44,26 +44,24 @@ pub fn create_test_mcp_response() -> McpMessage {
 
 /// Create a test import graph
 pub fn create_test_import_graph(source_file: &str) -> ImportGraph {
-    use cb_ast::{ImportInfo, ImportType, ImportGraphMetadata, SourceLocation};
+    use cb_ast::{ImportGraphMetadata, ImportInfo, ImportType, SourceLocation};
 
     ImportGraph {
         source_file: source_file.to_string(),
-        imports: vec![
-            ImportInfo {
-                module_path: "./utils".to_string(),
-                import_type: ImportType::EsModule,
-                named_imports: vec![],
-                default_import: Some("utils".to_string()),
-                namespace_import: None,
-                type_only: false,
-                location: SourceLocation {
-                    start_line: 0,
-                    start_column: 0,
-                    end_line: 0,
-                    end_column: 25,
-                },
-            }
-        ],
+        imports: vec![ImportInfo {
+            module_path: "./utils".to_string(),
+            import_type: ImportType::EsModule,
+            named_imports: vec![],
+            default_import: Some("utils".to_string()),
+            namespace_import: None,
+            type_only: false,
+            location: SourceLocation {
+                start_line: 0,
+                start_column: 0,
+                end_line: 0,
+                end_column: 25,
+            },
+        }],
         importers: vec![],
         metadata: ImportGraphMetadata {
             language: "typescript".to_string(),
@@ -77,25 +75,23 @@ pub fn create_test_import_graph(source_file: &str) -> ImportGraph {
 
 /// Create a test edit plan
 pub fn create_test_edit_plan() -> EditPlan {
-    use cb_ast::{TextEdit, EditType, EditLocation, EditPlanMetadata};
+    use cb_ast::{EditLocation, EditPlanMetadata, EditType, TextEdit};
 
     EditPlan {
         source_file: "test.ts".to_string(),
-        edits: vec![
-            TextEdit {
-                edit_type: EditType::Rename,
-                location: EditLocation {
-                    start_line: 5,
-                    start_column: 10,
-                    end_line: 5,
-                    end_column: 20,
-                },
-                original_text: "oldFunction".to_string(),
-                new_text: "newFunction".to_string(),
-                priority: 100,
-                description: "Rename function".to_string(),
-            }
-        ],
+        edits: vec![TextEdit {
+            edit_type: EditType::Rename,
+            location: EditLocation {
+                start_line: 5,
+                start_column: 10,
+                end_line: 5,
+                end_column: 20,
+            },
+            original_text: "oldFunction".to_string(),
+            new_text: "newFunction".to_string(),
+            priority: 100,
+            description: "Rename function".to_string(),
+        }],
         dependency_updates: vec![],
         validations: vec![],
         metadata: EditPlanMetadata {
@@ -124,7 +120,8 @@ pub fn create_temp_file(content: &str) -> tempfile::NamedTempFile {
     use std::io::Write;
 
     let mut file = tempfile::NamedTempFile::new().expect("Failed to create temp file");
-    file.write_all(content.as_bytes()).expect("Failed to write temp file");
+    file.write_all(content.as_bytes())
+        .expect("Failed to write temp file");
     file
 }
 

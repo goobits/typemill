@@ -110,8 +110,15 @@ pub fn extract_python_functions(source: &str) -> AstResult<Vec<PythonFunction>> 
             let args = if args_str.trim().is_empty() {
                 Vec::new()
             } else {
-                args_str.split(',')
-                    .map(|arg| arg.trim().split_whitespace().next().unwrap_or("").to_string())
+                args_str
+                    .split(',')
+                    .map(|arg| {
+                        arg.trim()
+                            .split_whitespace()
+                            .next()
+                            .unwrap_or("")
+                            .to_string()
+                    })
                     .filter(|arg| !arg.is_empty())
                     .collect()
             };
@@ -222,14 +229,18 @@ fn infer_python_value_type_simple(value: &str) -> PythonValueType {
 }
 
 /// Find variables in scope for a given line
-pub fn find_python_scope_variables(source: &str, target_line: u32) -> AstResult<Vec<PythonVariable>> {
+pub fn find_python_scope_variables(
+    source: &str,
+    target_line: u32,
+) -> AstResult<Vec<PythonVariable>> {
     let variables = extract_python_variables(source)?;
 
     // For Python, variables are in scope if they're declared before the target line
     // and at the same or lower indentation level
     let target_indent = get_python_indentation_at_line(source, target_line);
 
-    Ok(variables.into_iter()
+    Ok(variables
+        .into_iter()
         .filter(|var| var.line < target_line)
         .filter(|var| {
             let var_indent = get_python_indentation_at_line(source, var.line);
@@ -250,7 +261,8 @@ pub fn analyze_python_expression_range(
 
     if start_line == end_line {
         // Single line
-        let line = lines.get(start_line as usize)
+        let line = lines
+            .get(start_line as usize)
             .ok_or_else(|| AstError::analysis("Invalid line number"))?;
         Ok(line[start_col as usize..end_col as usize].to_string())
     } else {
@@ -281,12 +293,18 @@ pub fn analyze_python_expression_range(
 }
 
 /// Find variable declaration at specific position
-pub fn find_variable_at_position(source: &str, line: u32, col: u32) -> AstResult<Option<PythonVariable>> {
+pub fn find_variable_at_position(
+    source: &str,
+    line: u32,
+    col: u32,
+) -> AstResult<Option<PythonVariable>> {
     let variables = extract_python_variables(source)?;
 
     for var in variables {
         if var.line == line {
-            let line_text = source.lines().nth(line as usize)
+            let line_text = source
+                .lines()
+                .nth(line as usize)
                 .ok_or_else(|| AstError::analysis("Invalid line number"))?;
 
             // Check if the column position is within the variable name
@@ -303,7 +321,11 @@ pub fn find_variable_at_position(source: &str, line: u32, col: u32) -> AstResult
 }
 
 /// Get all usages of a variable within scope
-pub fn get_variable_usages_in_scope(source: &str, variable_name: &str, from_line: u32) -> AstResult<Vec<(u32, u32, u32)>> {
+pub fn get_variable_usages_in_scope(
+    source: &str,
+    variable_name: &str,
+    from_line: u32,
+) -> AstResult<Vec<(u32, u32, u32)>> {
     let mut usages = Vec::new();
     let lines: Vec<&str> = source.lines().collect();
 
@@ -321,11 +343,25 @@ pub fn get_variable_usages_in_scope(source: &str, variable_name: &str, from_line
             let actual_pos = start + pos;
 
             // Check if this is a whole word (not part of another identifier)
-            let is_word_boundary = (actual_pos == 0 || !line_text.chars().nth(actual_pos - 1).unwrap_or(' ').is_alphanumeric()) &&
-                                  (actual_pos + variable_name.len() >= line_text.len() || !line_text.chars().nth(actual_pos + variable_name.len()).unwrap_or(' ').is_alphanumeric());
+            let is_word_boundary = (actual_pos == 0
+                || !line_text
+                    .chars()
+                    .nth(actual_pos - 1)
+                    .unwrap_or(' ')
+                    .is_alphanumeric())
+                && (actual_pos + variable_name.len() >= line_text.len()
+                    || !line_text
+                        .chars()
+                        .nth(actual_pos + variable_name.len())
+                        .unwrap_or(' ')
+                        .is_alphanumeric());
 
             if is_word_boundary {
-                usages.push((line_idx, actual_pos as u32, (actual_pos + variable_name.len()) as u32));
+                usages.push((
+                    line_idx,
+                    actual_pos as u32,
+                    (actual_pos + variable_name.len()) as u32,
+                ));
             }
 
             start = actual_pos + 1;
@@ -360,8 +396,11 @@ pub fn find_python_function_end(source: &str, function_start_line: u32) -> AstRe
         if line_indent <= func_indent {
             // Check if it's a new function, class, or other top-level construct
             let trimmed = line.trim();
-            if trimmed.starts_with("def ") || trimmed.starts_with("class ") ||
-               trimmed.starts_with("if __name__") || line_indent < func_indent {
+            if trimmed.starts_with("def ")
+                || trimmed.starts_with("class ")
+                || trimmed.starts_with("if __name__")
+                || line_indent < func_indent
+            {
                 return Ok(idx as u32 - 1);
             }
         }
@@ -415,7 +454,10 @@ from typing import Dict, List as ArrayList
         // Test from import with aliases
         assert_eq!(imports[3].module_path, "typing");
         assert_eq!(imports[3].named_imports.len(), 2);
-        assert_eq!(imports[3].named_imports[1].alias, Some("ArrayList".to_string()));
+        assert_eq!(
+            imports[3].named_imports[1].alias,
+            Some("ArrayList".to_string())
+        );
     }
 
     #[test]
@@ -507,11 +549,29 @@ CONSTANT_VALUE = "constant"
 
     #[test]
     fn test_value_type_inference() {
-        assert!(matches!(infer_python_value_type_simple("\"hello\""), PythonValueType::String));
-        assert!(matches!(infer_python_value_type_simple("42"), PythonValueType::Number));
-        assert!(matches!(infer_python_value_type_simple("True"), PythonValueType::Boolean));
-        assert!(matches!(infer_python_value_type_simple("[1, 2, 3]"), PythonValueType::List));
-        assert!(matches!(infer_python_value_type_simple("{\"a\": 1}"), PythonValueType::Dict));
-        assert!(matches!(infer_python_value_type_simple("None"), PythonValueType::None));
+        assert!(matches!(
+            infer_python_value_type_simple("\"hello\""),
+            PythonValueType::String
+        ));
+        assert!(matches!(
+            infer_python_value_type_simple("42"),
+            PythonValueType::Number
+        ));
+        assert!(matches!(
+            infer_python_value_type_simple("True"),
+            PythonValueType::Boolean
+        ));
+        assert!(matches!(
+            infer_python_value_type_simple("[1, 2, 3]"),
+            PythonValueType::List
+        ));
+        assert!(matches!(
+            infer_python_value_type_simple("{\"a\": 1}"),
+            PythonValueType::Dict
+        ));
+        assert!(matches!(
+            infer_python_value_type_simple("None"),
+            PythonValueType::None
+        ));
     }
 }

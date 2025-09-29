@@ -35,13 +35,13 @@ pub fn validate_token(token: &str, secret: &str) -> Result<bool, ServerError> {
 pub fn validate_token_with_project(
     token: &str,
     secret: &str,
-    expected_project_id: &str
+    expected_project_id: &str,
 ) -> Result<bool, ServerError> {
     let key = DecodingKey::from_secret(secret.as_ref());
     let validation = Validation::default();
 
-    let token_data = decode::<Claims>(token, &key, &validation)
-        .map_err(|e| ServerError::Auth(e.to_string()))?;
+    let token_data =
+        decode::<Claims>(token, &key, &validation).map_err(|e| ServerError::Auth(e.to_string()))?;
 
     // Check if project_id claim matches expected value
     if let Some(project_id) = &token_data.claims.project_id {
@@ -50,8 +50,7 @@ pub fn validate_token_with_project(
         } else {
             Err(ServerError::Auth(format!(
                 "Project ID mismatch: expected '{}', got '{}'",
-                expected_project_id,
-                project_id
+                expected_project_id, project_id
             )))
         }
     } else {

@@ -1,6 +1,6 @@
-use tests::harness::{TestClient, TestWorkspace};
 use serde_json::{json, Value};
 use std::path::Path;
+use tests::harness::{TestClient, TestWorkspace};
 
 #[tokio::test]
 async fn test_apply_workspace_edit_single_file() {
@@ -19,26 +19,32 @@ const result = oldFunctionName(5);
     std::fs::write(&file_path, initial_content).unwrap();
 
     // Apply workspace edit to rename function
-    let response = client.call_tool("apply_workspace_edit", json!({
-        "changes": {
-            file_path.to_string_lossy(): [
-                {
-                    "range": {
-                        "start": { "line": 1, "character": 16 },
-                        "end": { "line": 1, "character": 31 }
-                    },
-                    "newText": "newFunctionName"
-                },
-                {
-                    "range": {
-                        "start": { "line": 5, "character": 15 },
-                        "end": { "line": 5, "character": 30 }
-                    },
-                    "newText": "newFunctionName"
+    let response = client
+        .call_tool(
+            "apply_workspace_edit",
+            json!({
+                "changes": {
+                    file_path.to_string_lossy(): [
+                        {
+                            "range": {
+                                "start": { "line": 1, "character": 16 },
+                                "end": { "line": 1, "character": 31 }
+                            },
+                            "newText": "newFunctionName"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 5, "character": 15 },
+                                "end": { "line": 5, "character": 30 }
+                            },
+                            "newText": "newFunctionName"
+                        }
+                    ]
                 }
-            ]
-        }
-    })).await.unwrap();
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["applied"].as_bool().unwrap_or(false));
 
@@ -56,52 +62,66 @@ async fn test_apply_workspace_edit_multiple_files() {
     let file1 = workspace.path().join("types.ts");
     let file2 = workspace.path().join("usage.ts");
 
-    std::fs::write(&file1, r#"
+    std::fs::write(
+        &file1,
+        r#"
 export interface OldInterface {
     id: number;
     name: string;
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
-    std::fs::write(&file2, r#"
+    std::fs::write(
+        &file2,
+        r#"
 import { OldInterface } from './types';
 
 const item: OldInterface = {
     id: 1,
     name: 'test'
 };
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Apply workspace edit to rename interface in both files
-    let response = client.call_tool("apply_workspace_edit", json!({
-        "changes": {
-            file1.to_string_lossy(): [
-                {
-                    "range": {
-                        "start": { "line": 1, "character": 17 },
-                        "end": { "line": 1, "character": 29 }
-                    },
-                    "newText": "NewInterface"
+    let response = client
+        .call_tool(
+            "apply_workspace_edit",
+            json!({
+                "changes": {
+                    file1.to_string_lossy(): [
+                        {
+                            "range": {
+                                "start": { "line": 1, "character": 17 },
+                                "end": { "line": 1, "character": 29 }
+                            },
+                            "newText": "NewInterface"
+                        }
+                    ],
+                    file2.to_string_lossy(): [
+                        {
+                            "range": {
+                                "start": { "line": 1, "character": 9 },
+                                "end": { "line": 1, "character": 21 }
+                            },
+                            "newText": "NewInterface"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 3, "character": 12 },
+                                "end": { "line": 3, "character": 24 }
+                            },
+                            "newText": "NewInterface"
+                        }
+                    ]
                 }
-            ],
-            file2.to_string_lossy(): [
-                {
-                    "range": {
-                        "start": { "line": 1, "character": 9 },
-                        "end": { "line": 1, "character": 21 }
-                    },
-                    "newText": "NewInterface"
-                },
-                {
-                    "range": {
-                        "start": { "line": 3, "character": 12 },
-                        "end": { "line": 3, "character": 24 }
-                    },
-                    "newText": "NewInterface"
-                }
-            ]
-        }
-    })).await.unwrap();
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["applied"].as_bool().unwrap_or(false));
 
@@ -126,35 +146,40 @@ async fn test_apply_workspace_edit_atomic_failure() {
     std::fs::write(&existing_file, "const x = 1;").unwrap();
 
     // Try to apply edits to both existing and non-existing file
-    let response = client.call_tool("apply_workspace_edit", json!({
-        "changes": {
-            existing_file.to_string_lossy(): [
-                {
-                    "range": {
-                        "start": { "line": 0, "character": 6 },
-                        "end": { "line": 0, "character": 7 }
-                    },
-                    "newText": "y"
+    let response = client
+        .call_tool(
+            "apply_workspace_edit",
+            json!({
+                "changes": {
+                    existing_file.to_string_lossy(): [
+                        {
+                            "range": {
+                                "start": { "line": 0, "character": 6 },
+                                "end": { "line": 0, "character": 7 }
+                            },
+                            "newText": "y"
+                        }
+                    ],
+                    nonexistent_file.to_string_lossy(): [
+                        {
+                            "range": {
+                                "start": { "line": 0, "character": 0 },
+                                "end": { "line": 0, "character": 0 }
+                            },
+                            "newText": "const z = 3;"
+                        }
+                    ]
                 }
-            ],
-            nonexistent_file.to_string_lossy(): [
-                {
-                    "range": {
-                        "start": { "line": 0, "character": 0 },
-                        "end": { "line": 0, "character": 0 }
-                    },
-                    "newText": "const z = 3;"
-                }
-            ]
-        }
-    })).await;
+            }),
+        )
+        .await;
 
     // Should fail atomically - either all changes apply or none do
     match response {
         Ok(resp) => {
             // If it succeeds, all files should be changed
             assert!(resp["applied"].as_bool().unwrap_or(false));
-        },
+        }
         Err(_) => {
             // If it fails, original file should be unchanged
             let content = std::fs::read_to_string(&existing_file).unwrap();
@@ -187,9 +212,15 @@ const user=createUser({name:"John",email:"john@example.com"});
 
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-    let response = client.call_tool("format_document", json!({
-        "file_path": file_path.to_string_lossy()
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "format_document",
+            json!({
+                "file_path": file_path.to_string_lossy()
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["formatted"].as_bool().unwrap_or(false));
 
@@ -219,13 +250,19 @@ function test(){return"hello";}
 
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-    let response = client.call_tool("format_document", json!({
-        "file_path": file_path.to_string_lossy(),
-        "options": {
-            "tabSize": 4,
-            "insertSpaces": true
-        }
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "format_document",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "options": {
+                    "tabSize": 4,
+                    "insertSpaces": true
+                }
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["formatted"].as_bool().unwrap_or(false));
 
@@ -264,7 +301,9 @@ function processUser(user: User): void {
 
     // Create the utils file to make import valid
     let utils_file = workspace.path().join("utils.ts");
-    std::fs::write(&utils_file, r#"
+    std::fs::write(
+        &utils_file,
+        r#"
 export function unusedImport(x: string): string {
     return x.toUpperCase();
 }
@@ -272,37 +311,50 @@ export function unusedImport(x: string): string {
 export function usedImport(x: string): string {
     return x.toLowerCase();
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
 
-    let response = client.call_tool("get_code_actions", json!({
-        "file_path": file_path.to_string_lossy(),
-        "range": {
-            "start": { "line": 0, "character": 0 },
-            "end": { "line": 20, "character": 0 }
-        }
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "get_code_actions",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "range": {
+                    "start": { "line": 0, "character": 0 },
+                    "end": { "line": 20, "character": 0 }
+                }
+            }),
+        )
+        .await
+        .unwrap();
 
     let actions = response["actions"].as_array().unwrap();
     assert!(!actions.is_empty());
 
     // Check that we get some code actions
-    let action_titles: Vec<String> = actions.iter()
+    let action_titles: Vec<String> = actions
+        .iter()
         .filter_map(|a| a["title"].as_str())
         .map(|s| s.to_string())
         .collect();
 
     // Common TypeScript code actions
-    let has_relevant_actions = action_titles.iter().any(|title|
-        title.contains("unused") ||
-        title.contains("import") ||
-        title.contains("remove") ||
-        title.contains("organize") ||
-        title.contains("fix")
-    );
+    let has_relevant_actions = action_titles.iter().any(|title| {
+        title.contains("unused")
+            || title.contains("import")
+            || title.contains("remove")
+            || title.contains("organize")
+            || title.contains("fix")
+    });
 
-    assert!(has_relevant_actions, "Expected relevant code actions, got: {:?}", action_titles);
+    assert!(
+        has_relevant_actions,
+        "Expected relevant code actions, got: {:?}",
+        action_titles
+    );
 }
 
 #[tokio::test]
@@ -334,13 +386,19 @@ class Calculator {
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
     // Get code actions for a specific method that might have refactoring options
-    let response = client.call_tool("get_code_actions", json!({
-        "file_path": file_path.to_string_lossy(),
-        "range": {
-            "start": { "line": 9, "character": 4 },
-            "end": { "line": 13, "character": 5 }
-        }
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "get_code_actions",
+            json!({
+                "file_path": file_path.to_string_lossy(),
+                "range": {
+                    "start": { "line": 9, "character": 4 },
+                    "end": { "line": 13, "character": 5 }
+                }
+            }),
+        )
+        .await
+        .unwrap();
 
     let actions = response["actions"].as_array().unwrap();
 
@@ -365,7 +423,9 @@ async fn test_workspace_operations_integration() {
     let services_file = workspace.path().join("services.ts");
     let main_file = workspace.path().join("main.ts");
 
-    std::fs::write(&models_file, r#"
+    std::fs::write(
+        &models_file,
+        r#"
 export   interface   Product   {
 id:string;
 name:string;
@@ -373,9 +433,13 @@ price:number;
 }
 
 export type ProductFilter = (product: Product) => boolean;
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
-    std::fs::write(&services_file, r#"
+    std::fs::write(
+        &services_file,
+        r#"
 import{Product,ProductFilter}from'./models';
 
 export class ProductService{
@@ -389,9 +453,13 @@ filterProducts(filter:ProductFilter):Product[]{
 return this.products.filter(filter);
 }
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
-    std::fs::write(&main_file, r#"
+    std::fs::write(
+        &main_file,
+        r#"
 import{ProductService}from'./services';
 import{Product}from'./models';
 
@@ -400,156 +468,170 @@ service.addProduct({id:'1',name:'Laptop',price:999});
 
 const expensiveProducts=service.filterProducts(p=>p.price>500);
 console.log(expensiveProducts);
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
 
     // Step 1: Format all files
     for file in [&models_file, &services_file, &main_file] {
-        let response = client.call_tool("format_document", json!({
-            "file_path": file.to_string_lossy()
-        })).await.unwrap();
+        let response = client
+            .call_tool(
+                "format_document",
+                json!({
+                    "file_path": file.to_string_lossy()
+                }),
+            )
+            .await
+            .unwrap();
 
         assert!(response["formatted"].as_bool().unwrap_or(false));
     }
 
     // Step 2: Apply workspace edit to rename Product to Item across all files
-    let response = client.call_tool("apply_workspace_edit", json!({
-        "changes": {
-            models_file.to_string_lossy(): [
-                {
-                    "range": {
-                        "start": { "line": 1, "character": 26 },
-                        "end": { "line": 1, "character": 33 }
-                    },
-                    "newText": "Item"
-                },
-                {
-                    "range": {
-                        "start": { "line": 7, "character": 13 },
-                        "end": { "line": 7, "character": 20 }
-                    },
-                    "newText": "Item"
-                },
-                {
-                    "range": {
-                        "start": { "line": 7, "character": 32 },
-                        "end": { "line": 7, "character": 39 }
-                    },
-                    "newText": "Item"
+    let response = client
+        .call_tool(
+            "apply_workspace_edit",
+            json!({
+                "changes": {
+                    models_file.to_string_lossy(): [
+                        {
+                            "range": {
+                                "start": { "line": 1, "character": 26 },
+                                "end": { "line": 1, "character": 33 }
+                            },
+                            "newText": "Item"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 7, "character": 13 },
+                                "end": { "line": 7, "character": 20 }
+                            },
+                            "newText": "Item"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 7, "character": 32 },
+                                "end": { "line": 7, "character": 39 }
+                            },
+                            "newText": "Item"
+                        }
+                    ],
+                    services_file.to_string_lossy(): [
+                        {
+                            "range": {
+                                "start": { "line": 1, "character": 8 },
+                                "end": { "line": 1, "character": 15 }
+                            },
+                            "newText": "Item"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 1, "character": 16 },
+                                "end": { "line": 1, "character": 29 }
+                            },
+                            "newText": "ItemFilter"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 3, "character": 18 },
+                                "end": { "line": 3, "character": 25 }
+                            },
+                            "newText": "Item"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 5, "character": 11 },
+                                "end": { "line": 5, "character": 18 }
+                            },
+                            "newText": "Item"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 5, "character": 19 },
+                                "end": { "line": 5, "character": 26 }
+                            },
+                            "newText": "item"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 6, "character": 18 },
+                                "end": { "line": 6, "character": 25 }
+                            },
+                            "newText": "item"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 9, "character": 14 },
+                                "end": { "line": 9, "character": 27 }
+                            },
+                            "newText": "ItemFilter"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 9, "character": 29 },
+                                "end": { "line": 9, "character": 36 }
+                            },
+                            "newText": "Item"
+                        }
+                    ],
+                    main_file.to_string_lossy(): [
+                        {
+                            "range": {
+                                "start": { "line": 1, "character": 8 },
+                                "end": { "line": 1, "character": 21 }
+                            },
+                            "newText": "ItemService"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 2, "character": 8 },
+                                "end": { "line": 2, "character": 15 }
+                            },
+                            "newText": "Item"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 4, "character": 19 },
+                                "end": { "line": 4, "character": 32 }
+                            },
+                            "newText": "ItemService"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 5, "character": 8 },
+                                "end": { "line": 5, "character": 18 }
+                            },
+                            "newText": "addItem"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 7, "character": 7 },
+                                "end": { "line": 7, "character": 22 }
+                            },
+                            "newText": "expensiveItems"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 7, "character": 31 },
+                                "end": { "line": 7, "character": 46 }
+                            },
+                            "newText": "filterItems"
+                        },
+                        {
+                            "range": {
+                                "start": { "line": 8, "character": 12 },
+                                "end": { "line": 8, "character": 27 }
+                            },
+                            "newText": "expensiveItems"
+                        }
+                    ]
                 }
-            ],
-            services_file.to_string_lossy(): [
-                {
-                    "range": {
-                        "start": { "line": 1, "character": 8 },
-                        "end": { "line": 1, "character": 15 }
-                    },
-                    "newText": "Item"
-                },
-                {
-                    "range": {
-                        "start": { "line": 1, "character": 16 },
-                        "end": { "line": 1, "character": 29 }
-                    },
-                    "newText": "ItemFilter"
-                },
-                {
-                    "range": {
-                        "start": { "line": 3, "character": 18 },
-                        "end": { "line": 3, "character": 25 }
-                    },
-                    "newText": "Item"
-                },
-                {
-                    "range": {
-                        "start": { "line": 5, "character": 11 },
-                        "end": { "line": 5, "character": 18 }
-                    },
-                    "newText": "Item"
-                },
-                {
-                    "range": {
-                        "start": { "line": 5, "character": 19 },
-                        "end": { "line": 5, "character": 26 }
-                    },
-                    "newText": "item"
-                },
-                {
-                    "range": {
-                        "start": { "line": 6, "character": 18 },
-                        "end": { "line": 6, "character": 25 }
-                    },
-                    "newText": "item"
-                },
-                {
-                    "range": {
-                        "start": { "line": 9, "character": 14 },
-                        "end": { "line": 9, "character": 27 }
-                    },
-                    "newText": "ItemFilter"
-                },
-                {
-                    "range": {
-                        "start": { "line": 9, "character": 29 },
-                        "end": { "line": 9, "character": 36 }
-                    },
-                    "newText": "Item"
-                }
-            ],
-            main_file.to_string_lossy(): [
-                {
-                    "range": {
-                        "start": { "line": 1, "character": 8 },
-                        "end": { "line": 1, "character": 21 }
-                    },
-                    "newText": "ItemService"
-                },
-                {
-                    "range": {
-                        "start": { "line": 2, "character": 8 },
-                        "end": { "line": 2, "character": 15 }
-                    },
-                    "newText": "Item"
-                },
-                {
-                    "range": {
-                        "start": { "line": 4, "character": 19 },
-                        "end": { "line": 4, "character": 32 }
-                    },
-                    "newText": "ItemService"
-                },
-                {
-                    "range": {
-                        "start": { "line": 5, "character": 8 },
-                        "end": { "line": 5, "character": 18 }
-                    },
-                    "newText": "addItem"
-                },
-                {
-                    "range": {
-                        "start": { "line": 7, "character": 7 },
-                        "end": { "line": 7, "character": 22 }
-                    },
-                    "newText": "expensiveItems"
-                },
-                {
-                    "range": {
-                        "start": { "line": 7, "character": 31 },
-                        "end": { "line": 7, "character": 46 }
-                    },
-                    "newText": "filterItems"
-                },
-                {
-                    "range": {
-                        "start": { "line": 8, "character": 12 },
-                        "end": { "line": 8, "character": 27 }
-                    },
-                    "newText": "expensiveItems"
-                }
-            ]
-        }
-    })).await.unwrap();
+            }),
+        )
+        .await
+        .unwrap();
 
     assert!(response["applied"].as_bool().unwrap_or(false));
 
@@ -571,13 +653,19 @@ console.log(expensiveProducts);
     assert!(!main_content.contains("Product"));
 
     // Step 4: Get code actions to verify LSP is still working after edits
-    let response = client.call_tool("get_code_actions", json!({
-        "file_path": main_file.to_string_lossy(),
-        "range": {
-            "start": { "line": 0, "character": 0 },
-            "end": { "line": 10, "character": 0 }
-        }
-    })).await.unwrap();
+    let response = client
+        .call_tool(
+            "get_code_actions",
+            json!({
+                "file_path": main_file.to_string_lossy(),
+                "range": {
+                    "start": { "line": 0, "character": 0 },
+                    "end": { "line": 10, "character": 0 }
+                }
+            }),
+        )
+        .await
+        .unwrap();
 
     let actions = response["actions"].as_array().unwrap();
     // Should get some code actions even after the workspace edit
@@ -598,20 +686,25 @@ console.log(value);
     std::fs::write(&file_path, content).unwrap();
 
     // Try to apply an edit with invalid range
-    let response = client.call_tool("apply_workspace_edit", json!({
-        "changes": {
-            file_path.to_string_lossy(): [
-                {
-                    "range": {
-                        "start": { "line": 100, "character": 0 },
-                        "end": { "line": 100, "character": 5 }
-                    },
-                    "newText": "invalid"
-                }
-            ]
-        },
-        "validate_before_apply": true
-    })).await;
+    let response = client
+        .call_tool(
+            "apply_workspace_edit",
+            json!({
+                "changes": {
+                    file_path.to_string_lossy(): [
+                        {
+                            "range": {
+                                "start": { "line": 100, "character": 0 },
+                                "end": { "line": 100, "character": 5 }
+                            },
+                            "newText": "invalid"
+                        }
+                    ]
+                },
+                "validate_before_apply": true
+            }),
+        )
+        .await;
 
     // Should fail validation
     assert!(response.is_err() || !response.unwrap()["applied"].as_bool().unwrap_or(true));

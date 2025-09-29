@@ -1,6 +1,4 @@
-use cb_core::model::mcp::{
-    McpError, McpRequest, McpResponse, ToolCall,
-};
+use cb_core::model::mcp::{McpError, McpRequest, McpResponse, ToolCall};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use serde_json::{json, Value};
 
@@ -76,7 +74,8 @@ fn create_error_response() -> McpResponse {
         result: None,
         error: Some(McpError {
             code: -32603,
-            message: "Internal server error: Failed to connect to language server after 3 attempts".to_string(),
+            message: "Internal server error: Failed to connect to language server after 3 attempts"
+                .to_string(),
             data: Some(json!({
                 "attempts": 3,
                 "last_error": "Connection refused",

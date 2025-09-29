@@ -1,12 +1,12 @@
 //! Integration tests for concurrent operations
 
 use super::*;
+use futures_util::future;
+use serde_json::{json, Value};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::{sleep, timeout};
-use serde_json::{json, Value};
-use std::path::PathBuf;
-use futures_util::future;
 
 /// Test concurrent read operations
 #[tokio::test]
@@ -27,7 +27,7 @@ async fn test_concurrent_read_operations() {
                 format!("read_tool_{}", i),
                 OperationType::Read,
                 path,
-                json!({"line": i})
+                json!({"line": i}),
             );
 
             queue.enqueue(operation).await.unwrap();
@@ -81,8 +81,9 @@ async fn test_write_operations_serialized() {
                 format!("write_tool_{}", i),
                 OperationType::Write,
                 path,
-                json!({"content": format!("write_{}", i)})
-            ).with_priority(priority);
+                json!({"content": format!("write_{}", i)}),
+            )
+            .with_priority(priority);
 
             queue.enqueue(operation).await.unwrap();
 
@@ -128,7 +129,7 @@ async fn test_concurrent_operations_different_files() {
                 format!("tool_{}", i),
                 OperationType::Write,
                 path,
-                json!({"content": format!("content_{}", i)})
+                json!({"content": format!("content_{}", i)}),
             );
 
             queue.enqueue(operation).await.unwrap()
@@ -163,7 +164,7 @@ async fn test_operation_cancellation() {
             format!("tool_{}", i),
             OperationType::Write,
             file_path.clone(),
-            json!({"content": format!("content_{}", i)})
+            json!({"content": format!("content_{}", i)}),
         );
 
         let id = operation_queue.enqueue(operation).await.unwrap();
@@ -194,7 +195,7 @@ async fn test_operation_timeout() {
         "slow_tool".to_string(),
         OperationType::Write,
         PathBuf::from("/test/timeout.txt"),
-        json!({"content": "test"})
+        json!({"content": "test"}),
     );
 
     operation_queue.enqueue(operation).await.unwrap();
@@ -229,7 +230,7 @@ async fn test_queue_statistics() {
             format!("tool_{}", i),
             OperationType::Write,
             PathBuf::from(format!("/test/stats_{}.txt", i)),
-            json!({"index": i})
+            json!({"index": i}),
         );
 
         operation_queue.enqueue(operation).await.unwrap();
@@ -263,10 +264,7 @@ async fn test_lock_manager_integration() {
     let _read_lock2 = file_lock.read().await;
 
     // Should be able to get another read lock immediately
-    let read_lock3 = timeout(
-        Duration::from_millis(10),
-        file_lock.read()
-    ).await;
+    let read_lock3 = timeout(Duration::from_millis(10), file_lock.read()).await;
 
     assert!(read_lock3.is_ok());
 }
@@ -295,7 +293,7 @@ async fn test_operation_processing() {
         "test_tool".to_string(),
         OperationType::Write,
         file_path,
-        json!({"test": "data"})
+        json!({"test": "data"}),
     );
 
     operation_queue.enqueue(operation).await.unwrap();
@@ -323,7 +321,7 @@ async fn test_clear_operations() {
             format!("tool_{}", i),
             OperationType::Write,
             PathBuf::from(format!("/test/clear_{}.txt", i)),
-            json!({"index": i})
+            json!({"index": i}),
         );
 
         operation_queue.enqueue(operation).await.unwrap();

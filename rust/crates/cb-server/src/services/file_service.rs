@@ -3,11 +3,14 @@
 use crate::error::{ServerError, ServerResult};
 use crate::services::import_service::{ImportService, ImportUpdateReport};
 use crate::services::lock_manager::LockManager;
-use cb_ast::{AstCache, analyzer::{EditPlan, TextEdit, DependencyUpdate, EditPlanMetadata}};
+use cb_ast::{
+    analyzer::{DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit},
+    AstCache,
+};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
-use tracing::{debug, info, warn, error};
+use tracing::{debug, error, info, warn};
 
 /// Service for file operations with import update capabilities
 pub struct FileService {
@@ -72,7 +75,10 @@ impl FileService {
         // Find files that need import updates before renaming
         let affected_files = self.import_service.find_affected_files(&old_abs).await?;
 
-        debug!("Found {} files potentially affected by rename", affected_files.len());
+        debug!(
+            "Found {} files potentially affected by rename",
+            affected_files.len()
+        );
 
         let mut result = FileRenameResult {
             old_path: old_abs.to_string_lossy().to_string(),
@@ -84,7 +90,8 @@ impl FileService {
 
         if dry_run {
             // Dry run - don't actually rename, but simulate import updates
-            let import_report = self.import_service
+            let import_report = self
+                .import_service
                 .update_imports_for_rename(&old_abs, &new_abs, true)
                 .await?;
 
@@ -98,7 +105,8 @@ impl FileService {
                     info!("File renamed successfully");
 
                     // Update imports in affected files
-                    match self.import_service
+                    match self
+                        .import_service
                         .update_imports_for_rename(&old_abs, &new_abs, false)
                         .await
                     {
@@ -106,8 +114,7 @@ impl FileService {
                             result.success = true;
                             info!(
                                 "Successfully updated {} imports in {} files",
-                                import_report.imports_updated,
-                                import_report.files_updated
+                                import_report.imports_updated, import_report.files_updated
                             );
                             result.import_updates = Some(import_report);
                         }
@@ -134,12 +141,14 @@ impl FileService {
     async fn perform_rename(&self, old_path: &Path, new_path: &Path) -> ServerResult<()> {
         // Ensure parent directory exists
         if let Some(parent) = new_path.parent() {
-            fs::create_dir_all(parent).await
-                .map_err(|e| ServerError::Internal(format!("Failed to create parent directory: {}", e)))?;
+            fs::create_dir_all(parent).await.map_err(|e| {
+                ServerError::Internal(format!("Failed to create parent directory: {}", e))
+            })?;
         }
 
         // Rename the file
-        fs::rename(old_path, new_path).await
+        fs::rename(old_path, new_path)
+            .await
             .map_err(|e| ServerError::Internal(format!("Failed to rename file: {}", e)))?;
 
         Ok(())
@@ -164,13 +173,15 @@ impl FileService {
 
         // Ensure parent directory exists
         if let Some(parent) = abs_path.parent() {
-            fs::create_dir_all(parent).await
-                .map_err(|e| ServerError::Internal(format!("Failed to create parent directory: {}", e)))?;
+            fs::create_dir_all(parent).await.map_err(|e| {
+                ServerError::Internal(format!("Failed to create parent directory: {}", e))
+            })?;
         }
 
         // Write content to file
         let content = content.unwrap_or("");
-        fs::write(&abs_path, content).await
+        fs::write(&abs_path, content)
+            .await
             .map_err(|e| ServerError::Internal(format!("Failed to write file: {}", e)))?;
 
         info!("Created file: {:?}", abs_path);
@@ -209,7 +220,8 @@ impl FileService {
         }
 
         // Delete the file
-        fs::remove_file(&abs_path).await
+        fs::remove_file(&abs_path)
+            .await
             .map_err(|e| ServerError::Internal(format!("Failed to delete file: {}", e)))?;
 
         info!("Deleted file: {:?}", abs_path);
@@ -227,7 +239,8 @@ impl FileService {
             )));
         }
 
-        let content = fs::read_to_string(&abs_path).await
+        let content = fs::read_to_string(&abs_path)
+            .await
             .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
 
         Ok(content)
@@ -239,11 +252,13 @@ impl FileService {
 
         // Ensure parent directory exists
         if let Some(parent) = abs_path.parent() {
-            fs::create_dir_all(parent).await
-                .map_err(|e| ServerError::Internal(format!("Failed to create parent directory: {}", e)))?;
+            fs::create_dir_all(parent).await.map_err(|e| {
+                ServerError::Internal(format!("Failed to create parent directory: {}", e))
+            })?;
         }
 
-        fs::write(&abs_path, content).await
+        fs::write(&abs_path, content)
+            .await
             .map_err(|e| ServerError::Internal(format!("Failed to write file: {}", e)))?;
 
         info!("Wrote to file: {:?}", abs_path);
@@ -253,8 +268,11 @@ impl FileService {
     /// Apply an edit plan to the filesystem atomically
     pub async fn apply_edit_plan(&self, plan: &EditPlan) -> ServerResult<EditPlanResult> {
         info!("Applying edit plan for file: {}", plan.source_file);
-        debug!("Edit plan contains {} edits and {} dependency updates",
-               plan.edits.len(), plan.dependency_updates.len());
+        debug!(
+            "Edit plan contains {} edits and {} dependency updates",
+            plan.edits.len(),
+            plan.dependency_updates.len()
+        );
 
         // For simplicity, we'll apply edits sequentially with individual locks
         // In a production system, you might want more sophisticated coordination
@@ -262,10 +280,7 @@ impl FileService {
     }
 
     /// Apply edits with file coordination
-    async fn apply_edits_with_coordination(
-        &self,
-        plan: &EditPlan,
-    ) -> ServerResult<EditPlanResult> {
+    async fn apply_edits_with_coordination(&self, plan: &EditPlan) -> ServerResult<EditPlanResult> {
         let mut modified_files = Vec::new();
         let mut errors = Vec::new();
 
@@ -277,10 +292,17 @@ impl FileService {
         match self.apply_file_edits(&main_file, &plan.edits).await {
             Ok(_) => {
                 modified_files.push(plan.source_file.clone());
-                info!("Successfully applied {} edits to {}", plan.edits.len(), plan.source_file);
+                info!(
+                    "Successfully applied {} edits to {}",
+                    plan.edits.len(),
+                    plan.source_file
+                );
             }
             Err(e) => {
-                error!("Failed to apply edits to main file {}: {}", plan.source_file, e);
+                error!(
+                    "Failed to apply edits to main file {}: {}",
+                    plan.source_file, e
+                );
                 errors.push(format!("Main file {}: {}", plan.source_file, e));
             }
         }
@@ -301,7 +323,10 @@ impl FileService {
                     }
                 }
                 Err(e) => {
-                    error!("Failed to apply dependency update to {}: {}", dep_update.target_file, e);
+                    error!(
+                        "Failed to apply dependency update to {}: {}",
+                        dep_update.target_file, e
+                    );
                     errors.push(format!("Dependency file {}: {}", dep_update.target_file, e));
                 }
             }
@@ -325,13 +350,21 @@ impl FileService {
 
         let success = errors.is_empty();
         if !success {
-            warn!("Edit plan completed with {} errors: {}", errors.len(), errors.join("; "));
+            warn!(
+                "Edit plan completed with {} errors: {}",
+                errors.len(),
+                errors.join("; ")
+            );
         }
 
         Ok(EditPlanResult {
             success,
             modified_files,
-            errors: if errors.is_empty() { None } else { Some(errors) },
+            errors: if errors.is_empty() {
+                None
+            } else {
+                Some(errors)
+            },
             plan_metadata: plan.metadata.clone(),
         })
     }
@@ -348,7 +381,8 @@ impl FileService {
             Err(e) => {
                 return Err(ServerError::Internal(format!(
                     "Failed to read file {}: {}",
-                    file_path.display(), e
+                    file_path.display(),
+                    e
                 )));
             }
         };
@@ -371,11 +405,13 @@ impl FileService {
         }
 
         // Write modified content back to file
-        fs::write(file_path, modified_content).await
-            .map_err(|e| ServerError::Internal(format!(
+        fs::write(file_path, modified_content).await.map_err(|e| {
+            ServerError::Internal(format!(
                 "Failed to write file {}: {}",
-                file_path.display(), e
-            )))?;
+                file_path.display(),
+                e
+            ))
+        })?;
 
         Ok(())
     }
@@ -387,7 +423,8 @@ impl FileService {
         if edit.location.start_line as usize >= lines.len() {
             return Err(ServerError::InvalidRequest(format!(
                 "Edit location line {} is beyond file length {}",
-                edit.location.start_line, lines.len()
+                edit.location.start_line,
+                lines.len()
             )));
         }
 
@@ -410,7 +447,8 @@ impl FileService {
                 if start_col > line_chars.len() {
                     return Err(ServerError::InvalidRequest(format!(
                         "Edit start column {} is beyond line length {}",
-                        start_col, line_chars.len()
+                        start_col,
+                        line_chars.len()
                     )));
                 }
 
@@ -450,7 +488,11 @@ impl FileService {
         let content = match fs::read_to_string(file_path).await {
             Ok(content) => content,
             Err(e) => {
-                warn!("Could not read file for dependency update {}: {}", file_path.display(), e);
+                warn!(
+                    "Could not read file for dependency update {}: {}",
+                    file_path.display(),
+                    e
+                );
                 return Ok(false); // File doesn't exist, skip update
             }
         };
@@ -463,14 +505,20 @@ impl FileService {
         if content.contains(old_ref) {
             let updated_content = content.replace(old_ref, new_ref);
 
-            fs::write(file_path, updated_content).await
-                .map_err(|e| ServerError::Internal(format!(
+            fs::write(file_path, updated_content).await.map_err(|e| {
+                ServerError::Internal(format!(
                     "Failed to write dependency update to {}: {}",
-                    file_path.display(), e
-                )))?;
+                    file_path.display(),
+                    e
+                ))
+            })?;
 
-            debug!("Updated dependency reference '{}' -> '{}' in {}",
-                   old_ref, new_ref, file_path.display());
+            debug!(
+                "Updated dependency reference '{}' -> '{}' in {}",
+                old_ref,
+                new_ref,
+                file_path.display()
+            );
             return Ok(true);
         }
 
@@ -531,7 +579,10 @@ mod tests {
         let content = "Hello, World!";
 
         // Create file
-        service.create_file(file_path, Some(content), false).await.unwrap();
+        service
+            .create_file(file_path, Some(content), false)
+            .await
+            .unwrap();
 
         // Read file
         let read_content = service.read_file(file_path).await.unwrap();
@@ -548,10 +599,16 @@ mod tests {
         // Create initial file
         let old_path = Path::new("old.txt");
         let new_path = Path::new("new.txt");
-        service.create_file(old_path, Some("content"), false).await.unwrap();
+        service
+            .create_file(old_path, Some("content"), false)
+            .await
+            .unwrap();
 
         // Rename file
-        let result = service.rename_file_with_imports(old_path, new_path, false).await.unwrap();
+        let result = service
+            .rename_file_with_imports(old_path, new_path, false)
+            .await
+            .unwrap();
         assert!(result.success);
 
         // Verify old file doesn't exist and new file does
@@ -569,7 +626,10 @@ mod tests {
         let file_path = Path::new("to_delete.txt");
 
         // Create and then delete file
-        service.create_file(file_path, Some("temporary"), false).await.unwrap();
+        service
+            .create_file(file_path, Some("temporary"), false)
+            .await
+            .unwrap();
         assert!(temp_dir.path().join(file_path).exists());
 
         service.delete_file(file_path, false).await.unwrap();

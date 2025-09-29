@@ -1,9 +1,9 @@
 //! File-level locking mechanism to prevent concurrent modifications
 
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use std::path::{Path, PathBuf};
 
 /// Lock type for file operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,7 +32,8 @@ impl LockManager {
 
         // Get or create the lock for this file
         let mut locks = self.locks.write().await;
-        locks.entry(path)
+        locks
+            .entry(path)
             .or_insert_with(|| Arc::new(RwLock::new(())))
             .clone()
     }
