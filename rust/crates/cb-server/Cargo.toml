@@ -11,6 +11,7 @@ cb-core = { path = "../cb-core" }
 cb-ast = { path = "../cb-ast" }
 cb-plugins = { path = "../cb-plugins" }
 cb-transport = { path = "../cb-transport" }
+cb-mcp-proxy = { path = "../cb-mcp-proxy", optional = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 futures-util = "0.3"
@@ -34,6 +35,10 @@ toml_edit = "0.23"
 
 [target.'cfg(unix)'.dependencies]
 cb-vfs = { path = "../cb-vfs" }
+
+[features]
+default = []
+mcp-proxy = ["cb-mcp-proxy", "cb-core/mcp-proxy"]
 
 [dev-dependencies]
 tempfile = "3.0"

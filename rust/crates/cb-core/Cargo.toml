@@ -13,6 +13,10 @@ config = { workspace = true }
 tracing = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 
+[features]
+default = []
+mcp-proxy = []
+
 [dev-dependencies]
 tempfile = "3.8"
 serial_test = "3.2"
