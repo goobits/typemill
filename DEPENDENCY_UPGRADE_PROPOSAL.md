@@ -23,7 +23,21 @@ All core libraries (`cb-server`, `cb-core`, `cb-api`, `cb-ast`, `cb-plugins`, `c
 
 ---
 
-## 🔄 Major Version Updates Requiring Review
+## ✅ Completed: Major Version Updates
+
+All major version updates have been **successfully applied** and tested:
+
+- **tokio-tungstenite**: `0.21`/`0.26` → `0.28.0` ✓
+- **config**: `0.14` → `0.15.17` ✓
+- **jsonwebtoken**: `8` → `10.0.0` ✓
+- **mockall**: `0.12` → `0.13.1` ✓
+- **reqwest**: `0.11` → `0.12.23` ✓
+
+All library tests pass (49 tests). See commit history for implementation details.
+
+---
+
+## 🔄 Major Version Updates Requiring Review (ARCHIVE)
 
 ### 1. **tokio-tungstenite**: `0.21`/`0.26` → `0.28.0` (PRIORITY: HIGH)
 
