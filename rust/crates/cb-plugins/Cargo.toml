@@ -14,7 +14,7 @@ indexmap = "2.0"
 cb-core = { path = "../cb-core" }
 cb-ast = { path = "../cb-ast" }
 ignore = "0.4"
-reqwest = { version = "0.11", features = ["blocking", "rustls-tls"], default-features = false }
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], default-features = false }
 html2md = "0.2"
 
 [dev-dependencies]

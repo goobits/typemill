@@ -13,7 +13,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 
 /// JWT Claims structure
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Claims {
     exp: usize,
     iat: usize,
@@ -80,7 +80,9 @@ fn validate_token_with_project(
     project_id: &str,
 ) -> Result<bool, String> {
     let key = DecodingKey::from_secret(secret.as_bytes());
-    let validation = Validation::default();
+    let mut validation = Validation::default();
+    // Don't require aud claim
+    validation.validate_aud = false;
 
     match decode::<Claims>(token, &key, &validation) {
         Ok(token_data) => {
@@ -180,7 +182,7 @@ async fn handle_connection(
                                 "message": "Parse error"
                             }
                         });
-                        if let Err(e) = write.send(Message::Text(error_response.to_string())).await
+                        if let Err(e) = write.send(Message::Text(error_response.to_string().into())).await
                         {
                             tracing::error!("Failed to send error response: {}", e);
                             break;
@@ -227,7 +229,7 @@ async fn handle_connection(
                     }
                 };
 
-                if let Err(e) = write.send(Message::Text(response_text)).await {
+                if let Err(e) = write.send(Message::Text(response_text.into())).await {
                     tracing::error!(
                         request_id = %request_id,
                         error = %e,
