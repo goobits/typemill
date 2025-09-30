@@ -181,6 +181,21 @@ impl LspClient {
                     .expect("LSP message serialization should never fail for valid JSON types");
                 let message_str = format!("Content-Length: {}\r\n\r\n{}", content.len(), content);
 
+                // Debug: Log outgoing LSP messages
+                eprintln!("[LSP SEND] {}", content);
+
+                // Debug: Hex dump first 200 bytes to diagnose pylsp crash
+                let bytes = message_str.as_bytes();
+                let dump_len = bytes.len().min(200);
+                eprintln!("[LSP HEX DUMP] First {} bytes of message:", dump_len);
+                for (i, chunk) in bytes[..dump_len].chunks(16).enumerate() {
+                    let hex: String = chunk.iter().map(|b| format!("{:02x} ", b)).collect();
+                    let ascii: String = chunk.iter().map(|&b| {
+                        if b >= 32 && b <= 126 { b as char } else { '.' }
+                    }).collect();
+                    eprintln!("  {:04x}: {:<48} {}", i * 16, hex, ascii);
+                }
+
                 if let Err(e) = stdin.write_all(message_str.as_bytes()).await {
                     tracing::error!(
                         error_category = "lsp_communication",
@@ -217,13 +232,17 @@ impl LspClient {
         });
 
         // Spawn stderr reader task to prevent blocking
+        let server_command = command.to_string();
         tokio::spawn(async move {
             let mut stderr_reader = BufReader::new(stderr);
             let mut stderr_line = String::new();
             while stderr_reader.read_line(&mut stderr_line).await.is_ok() {
                 if !stderr_line.is_empty() {
+                    let trimmed = stderr_line.trim();
                     // Log stderr output at debug level (most LSPs write diagnostics here)
-                    debug!(stderr = %stderr_line.trim(), "LSP stderr");
+                    // Also print to stderr for visibility in tests
+                    eprintln!("[LSP stderr: {}] {}", server_command, trimmed);
+                    debug!(server = %server_command, stderr = %trimmed, "LSP stderr");
                     stderr_line.clear();
                 }
             }
@@ -244,14 +263,40 @@ impl LspClient {
                     }
                     Ok(_) => {
                         let line = buffer.trim();
-                        if let Some(content_length) = Self::parse_content_length(line) {
-                            // Read the JSON message
+                        // Parse Content-Length from any header line
+                        let content_length_opt = Self::parse_content_length(line);
+
+                        // If we found Content-Length, skip remaining headers and read message
+                        if let Some(content_length) = content_length_opt {
+                            // Read remaining header lines until we reach the empty line
+                            // (LSP spec allows optional headers like Content-Type)
+                            // Note: read_json_message will consume the empty line itself
+                            loop {
+                                buffer.clear();
+                                match reader.read_line(&mut buffer).await {
+                                    Ok(0) => break, // EOF
+                                    Ok(_) => {
+                                        if buffer.trim().is_empty() {
+                                            // Found empty line - DON'T consume it, let read_json_message handle it
+                                            // Actually we just consumed it, so we're at the right position
+                                            break;
+                                        }
+                                        // Continue reading and discarding additional headers
+                                    }
+                                    Err(_) => break,
+                                }
+                            }
+
+                            // Read the JSON message (expects to be positioned after empty line)
                             if let Ok(message) =
                                 Self::read_json_message(&mut reader, content_length).await
                             {
+                                // Debug: Log incoming LSP messages
+                                eprintln!("[LSP RECV] {}", serde_json::to_string(&message).unwrap_or_else(|_| "parse error".to_string()));
                                 Self::handle_message(message, &pending_requests_clone).await;
                             }
                         }
+                        // Otherwise, skip non-Content-Length headers and continue
                     }
                     Err(e) => {
                         tracing::error!(
@@ -584,17 +629,12 @@ impl LspClient {
     }
 
     /// Read JSON message with specified content length
+    /// Note: This expects to be called AFTER the empty line separator has been consumed
     async fn read_json_message(
         reader: &mut BufReader<tokio::process::ChildStdout>,
         content_length: usize,
     ) -> Result<Value, String> {
-        // Skip the empty line
-        let mut buffer = String::new();
-        if let Err(e) = reader.read_line(&mut buffer).await {
-            return Err(format!("Failed to read separator line: {}", e));
-        }
-
-        // Read the JSON content
+        // Read the JSON content (empty line already consumed by caller)
         let mut json_buffer = vec![0u8; content_length];
         if let Err(e) = tokio::io::AsyncReadExt::read_exact(reader, &mut json_buffer).await {
             return Err(format!("Failed to read JSON content: {}", e));
