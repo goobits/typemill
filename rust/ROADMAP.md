@@ -77,14 +77,17 @@ CodeBuddy is in active development with core functionality working but no API st
 
 ### 📦 LOW Priority (Post-1.0)
 
-#### 5. SWC Integration - Faster TypeScript/JavaScript parsing
-- [ ] Integrate SWC for AST parsing
-- [ ] Benchmark performance improvements
-- [ ] Update existing TS/JS tools to use SWC
-  - Status: Not implemented, blocked by network restrictions during initial dev
-  - Estimated effort: 20-40 hours
-  - **Decision**: ⏸️ Defer - Current AST parsing works, this is optimization
-  - Priority: **LOW** - Post-1.0 optimization if performance becomes issue
+#### 5. SWC Integration - ✅ COMPLETE
+- [x] Integrate SWC for AST parsing ✅
+- [x] Benchmark performance improvements ✅
+- [x] Update existing TS/JS tools to use SWC ✅
+  - Status: ✅ COMPLETE - Production-ready since parser version 0.3.0
+  - Implementation: `crates/cb-ast/src/parser.rs` (lines 14-271) and `refactoring.rs`
+  - Dependencies: swc_common v14, swc_ecma_parser v24, swc_ecma_ast v15, swc_ecma_visit v15
+  - Features: Full TypeScript/JavaScript AST parsing with regex fallback for robustness
+  - Performance: Native speed via swc_ecma_parser
+  - **Decision**: ✅ Complete - SWC is primary parser, docs updated to reflect reality
+  - Priority: **DONE**
 
 #### 6. Benchmark Suite - ✅ COMPLETE
 - [x] Delete `benchmark-harness/benches/config_benchmark.rs.disabled`
@@ -130,17 +133,11 @@ See section above for detailed breakdown. Quick reference:
 
 **✅ COMPLETED:**
 1. ✅ Structured Logging - DONE (production code uses tracing, CLI println appropriate)
-2. ✅ Dependency Cleanup - DONE (thiserror 2.0, jsonwebtoken 10.0 unified)
-3. ✅ Benchmark Suite - DONE (stale code removed)
-
-**HIGH Priority (Before 1.0):**
-4. 📋 Error Handling Phase 1 - 8-10 hours (production hot paths)
-
-**MEDIUM Priority (Consider for 1.0):**
-5. ⚠️ VFS Feature-gating - 1-2 hours (defer decision, keep code)
-
-**LOW Priority (Post-1.0):**
-6. ⏸️ SWC Integration - 20-40 hours (optimization, not required)
+2. ✅ Error Handling - DONE (all production unwraps converted to expect())
+3. ✅ Dependency Cleanup - DONE (thiserror 2.0, jsonwebtoken 10.0 unified)
+4. ✅ VFS Feature-gating - DONE (properly feature-gated, not in default build)
+5. ✅ Benchmark Suite - DONE (stale code removed)
+6. ✅ SWC Integration - DONE (production-ready since parser v0.3.0)
 
 ---
 

@@ -4,39 +4,59 @@ AST parsing and transformation crate for Codeflow Buddy.
 
 ## Current Status
 
-⚠️ **Important**: The current implementation uses regex-based parsing for rapid prototyping. This is a **temporary solution** and will be replaced with proper AST parsing using SWC.
+✅ **SWC Integration Complete**: This crate uses SWC (Speedy Web Compiler) for production-grade AST parsing of TypeScript and JavaScript.
 
-## Planned AST Integration
+## Features
 
-The crate is designed to integrate with SWC (Speedy Web Compiler) for proper AST parsing:
+### TypeScript/JavaScript Parsing
+- **Primary Parser**: SWC (`swc_ecma_parser` v24)
+- **Fallback**: Enhanced regex patterns for malformed code
+- **Capabilities**:
+  - ES module imports (`import ... from ...`)
+  - Dynamic imports (`import(...)`)
+  - CommonJS (`require(...)`)
+  - Type-only imports (`import type ...`)
+  - Namespace imports (`import * as ...`)
+  - Full AST traversal with `swc_ecma_visit`
 
-```toml
-# Future dependencies to be added:
-swc_ecma_parser = "0.143"
-swc_ecma_ast = "0.112"
-swc_common = "0.33"
+### Python Parsing
+- **Primary Parser**: RustPython AST (`rustpython-parser` v0.3)
+- **Fallback**: Regex patterns for edge cases
+- **Capabilities**: Standard Python import analysis
+
+### Architecture
+- **parser.rs**: Import graph building with SWC
+- **refactoring.rs**: AST-powered refactoring operations
+- **Import resolution**: Dependency graph analysis with `petgraph`
+- **Performance**: Thread-safe caching with `dashmap`
+
+## Implementation Details
+
+```rust
+// SWC is tried first, with regex fallback for robustness
+match parse_js_ts_imports_swc(source, path) {
+    Ok(swc_imports) => swc_imports,
+    Err(_) => parse_js_ts_imports_enhanced(source)? // Fallback
+}
 ```
 
-## Why Regex Currently?
+Parser version: `0.3.0-swc`
 
-1. **Network Restrictions**: The development environment has restricted network access, making it difficult to download SWC dependencies
-2. **Rapid Prototyping**: Regex allows testing the overall architecture while SWC integration is pending
-3. **API Stability**: The public API is designed to remain stable when switching to SWC
+## API
 
-## Migration Path to SWC
+### Core Functions
 
-1. Add SWC dependencies to Cargo.toml
-2. Replace regex parsing in `parser.rs` with SWC parser
-3. Update `ImportGraph` building to use proper AST traversal
-4. Enhance `plan_refactor` with AST-based transformations
+**`build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph>`**
+- Parse source code and build import graph
+- Language detection based on file extension
+- Returns import information with metadata
 
-## Current Limitations
+**`build_dependency_graph(import_graphs: &[ImportGraph]) -> DependencyGraph`**
+- Build project-wide dependency graph
+- Detect circular dependencies
+- Analyze import/importer relationships
 
-- No understanding of scopes or semantic analysis
-- Cannot handle complex import patterns (re-exports, barrel files)
-- No type-aware refactoring
-- Edge cases in dynamic imports
-
-## API Stability Guarantee
-
-The public API (`build_import_graph`, `plan_refactor`) will remain stable during the migration to SWC. Only the internal implementation will change.
+**`plan_refactor(intent: &IntentSpec, file_path: &Path) -> AstResult<EditPlan>`**
+- Generate edit plans for refactoring operations
+- AST-powered symbol renaming
+- Import path updates across files
