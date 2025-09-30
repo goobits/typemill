@@ -751,6 +751,9 @@ EOF
 # Setup cargo config to add ~/.local/bin to PATH for tests
 setup_cargo_config() {
     local project_dir="${1:-.}"
+
+    # Cargo looks for .cargo/config.toml relative to the workspace root
+    # Since we run `cargo test` from /workspace/rust, we need .cargo there
     local cargo_dir="$project_dir/rust/.cargo"
     local cargo_config="$cargo_dir/config.toml"
 
@@ -768,18 +771,27 @@ setup_cargo_config() {
         fi
     fi
 
-    # Write cargo config
+    # Write cargo config with expanded PATH to include all necessary directories
     cat > "$cargo_config" << 'EOF'
 # Cargo configuration for codebuddy project
 
 [env]
 # Ensure ~/.local/bin is in PATH for language servers (pylsp, gopls, etc.)
 # This is needed for tests that require LSP servers installed via pipx/go install
-PATH = { value = "${HOME}/.local/bin:${PATH}", force = false, relative = false }
+# Also ensure ~/.cargo/bin and other standard paths are included
+PATH = { value = "${HOME}/.local/bin:${HOME}/.cargo/bin:${PATH}", force = true, relative = false }
 EOF
 
     log_success "Cargo configuration created at $cargo_config"
     log_info "Tests will now have access to language servers in ~/.local/bin"
+
+    # Also verify the path works
+    if [ -d "$HOME/.local/bin" ]; then
+        log_info "Verified ~/.local/bin exists and contains:"
+        ls -1 "$HOME/.local/bin" 2>/dev/null | grep -E "(pylsp|gopls|rust-analyzer)" | while read tool; do
+            log_info "  - $tool"
+        done
+    fi
 }
 
 # Test the installation

@@ -6,7 +6,7 @@
 ,
     {
       "extensions": ["py", "pyi"],
-      "command": ["pylsp"]
+      "command": ["/home/developer/.local/bin/pylsp"]
     }
 ,
     {
