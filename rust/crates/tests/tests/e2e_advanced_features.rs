@@ -7,6 +7,7 @@ use tests::harness::{LspSetupHelper, TestClient, TestWorkspace};
 // Advanced features that may not be fully implemented yet
 
 #[tokio::test]
+#[cfg(target_os = "linux")]
 async fn test_fuse_filesystem_integration() {
     // This test will only run on systems with FUSE support.
     // It requires `fusermount` to be in the PATH and FUSE kernel module loaded.
