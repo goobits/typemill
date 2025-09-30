@@ -12,14 +12,19 @@ pub fn parse_python_imports_ast(source: &str) -> AstResult<Vec<ImportInfo>> {
     let mut imports = Vec::new();
 
     // Regex patterns for Python imports
-    let import_re = Regex::new(r"^import\s+([\w.]+)(?:\s+as\s+(\w+))?").unwrap();
-    let from_import_re = Regex::new(r"^from\s+([\w.]+)\s+import\s+(.+)").unwrap();
+    let import_re = Regex::new(r"^import\s+([\w.]+)(?:\s+as\s+(\w+))?")
+        .expect("Python import regex pattern should be valid");
+    let from_import_re = Regex::new(r"^from\s+([\w.]+)\s+import\s+(.+)")
+        .expect("Python from-import regex pattern should be valid");
 
     for (line_num, line) in source.lines().enumerate() {
         let line = line.trim();
 
         if let Some(captures) = import_re.captures(line) {
-            let module_name = captures.get(1).unwrap().as_str();
+            let module_name = captures
+                .get(1)
+                .expect("Python import regex should always capture module name at index 1")
+                .as_str();
             let alias = captures.get(2).map(|m| m.as_str().to_string());
 
             imports.push(ImportInfo {
@@ -37,8 +42,14 @@ pub fn parse_python_imports_ast(source: &str) -> AstResult<Vec<ImportInfo>> {
                 },
             });
         } else if let Some(captures) = from_import_re.captures(line) {
-            let module_name = captures.get(1).unwrap().as_str();
-            let imports_str = captures.get(2).unwrap().as_str();
+            let module_name = captures
+                .get(1)
+                .expect("Python from-import regex should always capture module name at index 1")
+                .as_str();
+            let imports_str = captures
+                .get(2)
+                .expect("Python from-import regex should always capture imports at index 2")
+                .as_str();
 
             let named_imports = parse_import_names(imports_str);
 
@@ -98,14 +109,24 @@ pub fn extract_python_functions(source: &str) -> AstResult<Vec<PythonFunction>> 
     let mut functions = Vec::new();
 
     // Regex for function definitions
-    let func_re = Regex::new(r"^(\s*)(async\s+)?def\s+(\w+)\s*\(([^)]*)\)\s*:").unwrap();
+    let func_re = Regex::new(r"^(\s*)(async\s+)?def\s+(\w+)\s*\(([^)]*)\)\s*:")
+        .expect("Python function regex pattern should be valid");
 
     for (line_num, line) in source.lines().enumerate() {
         if let Some(captures) = func_re.captures(line) {
-            let _indent = captures.get(1).unwrap().as_str();
+            let _indent = captures
+                .get(1)
+                .expect("Python function regex should always capture indent at index 1")
+                .as_str();
             let is_async = captures.get(2).is_some();
-            let name = captures.get(3).unwrap().as_str();
-            let args_str = captures.get(4).unwrap().as_str();
+            let name = captures
+                .get(3)
+                .expect("Python function regex should always capture name at index 3")
+                .as_str();
+            let args_str = captures
+                .get(4)
+                .expect("Python function regex should always capture args at index 4")
+                .as_str();
 
             let args = if args_str.trim().is_empty() {
                 Vec::new()
@@ -149,12 +170,19 @@ pub fn extract_python_variables(source: &str) -> AstResult<Vec<PythonVariable>> 
     let mut variables = Vec::new();
 
     // Regex for variable assignments
-    let assign_re = Regex::new(r"^(\s*)(\w+)\s*=\s*(.+)").unwrap();
+    let assign_re = Regex::new(r"^(\s*)(\w+)\s*=\s*(.+)")
+        .expect("Python variable assignment regex pattern should be valid");
 
     for (line_num, line) in source.lines().enumerate() {
         if let Some(captures) = assign_re.captures(line) {
-            let var_name = captures.get(2).unwrap().as_str();
-            let value = captures.get(3).unwrap().as_str();
+            let var_name = captures
+                .get(2)
+                .expect("Python assignment regex should always capture variable name at index 2")
+                .as_str();
+            let value = captures
+                .get(3)
+                .expect("Python assignment regex should always capture value at index 3")
+                .as_str();
 
             let value_type = infer_python_value_type_simple(value);
             let is_constant = var_name.chars().all(|c| c.is_uppercase() || c == '_');

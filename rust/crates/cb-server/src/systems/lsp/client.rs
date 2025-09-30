@@ -61,7 +61,10 @@ impl LspClient {
             return Err(ServerError::config("LSP server command cannot be empty"));
         }
 
-        let (command, args) = config.command.split_first().unwrap();
+        let (command, args) = config
+            .command
+            .split_first()
+            .expect("LSP server command is empty (should be caught by validation)");
 
         // Start the LSP server process
         let mut child = Command::new(command)
@@ -132,7 +135,8 @@ impl LspClient {
                     }
                 };
 
-                let content = serde_json::to_string(&lsp_message).unwrap();
+                let content = serde_json::to_string(&lsp_message)
+                    .expect("LSP message serialization should never fail for valid JSON types");
                 let message_str = format!("Content-Length: {}\r\n\r\n{}", content.len(), content);
 
                 if let Err(e) = stdin.write_all(message_str.as_bytes()).await {
@@ -401,12 +405,14 @@ impl LspClient {
             },
             "rootUri": format!("file://{}",
                 self.config.root_dir.as_deref()
-                    .unwrap_or(&std::env::current_dir().unwrap())
+                    .unwrap_or(&std::env::current_dir()
+                        .expect("Failed to get current directory for LSP workspace root"))
                     .display()),
             "workspaceFolders": [{
                 "uri": format!("file://{}",
                     self.config.root_dir.as_deref()
-                        .unwrap_or(&std::env::current_dir().unwrap())
+                        .unwrap_or(&std::env::current_dir()
+                            .expect("Failed to get current directory for LSP workspace folder"))
                         .display()),
                 "name": "workspace"
             }]
