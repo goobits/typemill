@@ -20,39 +20,66 @@ CodeBuddy is in active development with core functionality working but no API st
 
 ---
 
-## 🚀 Planned Features
+## 🚀 Planned Features & Technical Debt
 
-### Language Support
-- [ ] **SWC Integration** - Faster TypeScript/JavaScript parsing
-  - Status: Planned but not yet implemented
-  - Blocker: Network restrictions during initial development
-  - Priority: Medium
+### 🔥 HIGH Priority (Before 1.0)
+
+#### 1. Structured Logging - Convert 216 println!/eprintln! calls
+- [x] **Foundation**: Tracing framework integrated in cb-server ✅
+- [ ] **Remaining Work**: Convert 216 direct console calls to tracing
+  - Status: 20% done (framework exists, conversions needed)
+  - Pattern: `println!("message")` → `info!("message")`
+  - Estimated effort: 4-6 hours
+  - **Decision**: ✅ Complete it - Required for production observability
+  - Priority: **HIGH** - Do before 1.0
+
+#### 2. Error Handling - Remove .unwrap() from production code
+- [ ] **Phase 1**: Production hot paths (services/, handlers/) - 8-10 hours
+- [ ] **Phase 2**: CLI and startup code - 6-8 hours
+- [ ] **Phase 3**: Keep .unwrap() in tests (tests are allowed to panic)
+  - Status: 0% done, .unwrap() in 100+ files
+  - Total estimated effort: 14-18 hours (phased approach)
+  - **Decision**: 📋 Phase it - Break into chunks, critical paths first
+  - Priority: **HIGH** for Phase 1, **MEDIUM** for Phase 2
+
+#### 3. Dependency Cleanup - Resolve duplicates
+- [ ] Run `cargo tree --duplicates` to identify all duplicates
+- [ ] Align versions in Cargo.toml across workspace
+- [ ] Verify build and tests pass
+  - Status: Multiple duplicates visible (base64 v0.21.7, etc.)
+  - Estimated effort: 1-2 hours
+  - **Decision**: ✅ Clean up - Quick win, reduces binary size
+  - Priority: **MEDIUM** - Do before 1.0
+
+### ⚠️ MEDIUM Priority (Consider for 1.0)
+
+#### 4. VFS Feature - Feature-gate and defer
+- [ ] Add `#[cfg(feature = "vfs")]` guards to cb-vfs crate
+- [ ] Update Cargo.toml to make vfs an optional feature
+- [ ] Document as experimental
+  - Status: Partial implementation (466 lines), decision pending
+  - Estimated effort: 1-2 hours to feature-gate
+  - **Decision**: ⚠️ Feature-gate and defer - Docker volumes proposal eliminates immediate need
+  - Priority: **LOW** - Not blocking 1.0, revisit in 3-6 months
+
+### 📦 LOW Priority (Post-1.0)
+
+#### 5. SWC Integration - Faster TypeScript/JavaScript parsing
+- [ ] Integrate SWC for AST parsing
+- [ ] Benchmark performance improvements
+- [ ] Update existing TS/JS tools to use SWC
+  - Status: Not implemented, blocked by network restrictions during initial dev
   - Estimated effort: 20-40 hours
+  - **Decision**: ⏸️ Defer - Current AST parsing works, this is optimization
+  - Priority: **LOW** - Post-1.0 optimization if performance becomes issue
 
-### Architecture Improvements
-- [ ] **Structured Logging** - Replace println!/eprintln! with proper logging framework
-  - Priority: High
-  - Target: Before 1.0
-  - Estimated effort: 6-8 hours
-
-- [ ] **VFS Feature Completion** - Complete or remove partial FUSE implementation
-  - Priority: High
-  - Needs decision: Complete or remove?
-  - Estimated effort: 16-24 hours (complete) or 4 hours (remove)
-
-### Developer Experience
-- [ ] **Benchmark Suite Restoration** - Re-enable disabled performance benchmarks
-  - File: `benchmark-harness/benches/config_benchmark.rs.disabled` (238 lines)
-  - Status: Disabled, requires API update investigation
-  - Blocker: `ClientConfig::load_with_path` method no longer exists in current API
-  - Decision needed: Update to current API or remove permanently
-  - Priority: Low (informational value only)
-  - Estimated effort: 4-8 hours (investigation + update) or 5 minutes (delete)
-
-- [ ] **Error Handling** - Systematic removal of `.unwrap()` from production code
-  - Priority: High
-  - Target: Before 1.0
-  - Estimated effort: 40+ hours
+#### 6. Benchmark Suite - Delete stale benchmarks
+- [ ] Delete `benchmark-harness/benches/config_benchmark.rs.disabled`
+- [ ] Document that benchmarks can be recreated later if needed
+  - Status: Disabled, API changed (ClientConfig::load_with_path doesn't exist)
+  - Estimated effort: 5 minutes to delete
+  - **Decision**: ❌ Delete it - Zero value, API changed, not critical
+  - Priority: **LOW** - Remove clutter
 
 ---
 
@@ -84,16 +111,21 @@ CodeBuddy is in active development with core functionality working but no API st
 
 ---
 
-## 🔧 Technical Debt
+## 🔧 Technical Debt Summary
 
-See [Legacy Code Analysis Report](docs/legacy-analysis.md) for detailed technical debt tracking.
+See section above for detailed breakdown. Quick reference:
 
-**Priority Items:**
-1. Remove `.unwrap()` from production code (HIGH RISK)
-2. Complete or remove VFS driver (HIGH RISK)
-3. Fix test infrastructure error handling (HIGH RISK)
-4. Add structured logging (MEDIUM RISK)
-5. Resolve dependency duplicates (MEDIUM RISK)
+**HIGH Priority (Before 1.0):**
+1. ✅ Structured Logging - 4-6 hours (foundation done, 216 calls to convert)
+2. 📋 Error Handling Phase 1 - 8-10 hours (production hot paths)
+3. ✅ Dependency Cleanup - 1-2 hours (quick win)
+
+**MEDIUM Priority (Consider for 1.0):**
+4. ⚠️ VFS Feature-gating - 1-2 hours (defer decision, keep code)
+
+**LOW Priority (Post-1.0):**
+5. ⏸️ SWC Integration - 20-40 hours (optimization, not required)
+6. ❌ Benchmark Suite - 5 minutes (delete stale code)
 
 ---
 
