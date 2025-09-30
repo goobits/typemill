@@ -26,6 +26,11 @@ chrono = { version = "0.4", features = ["serde"] }
 jsonwebtoken = { workspace = true }
 # LSP dependencies
 lsp-types = "0.97"
+# SWC dependencies for AST transformations
+swc_common = "14"
+swc_ecma_parser = "24"
+swc_ecma_ast = "15"
+swc_ecma_codegen = "17"
 # Utilities
 uuid = { version = "1.0", features = ["v4"] }
 dashmap = "5.5"

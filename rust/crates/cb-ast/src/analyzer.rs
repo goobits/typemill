@@ -7,6 +7,9 @@ use cb_api::{
 use cb_core::model::IntentSpec;
 // serde traits no longer needed here
 use std::collections::HashMap;
+use swc_common::{sync::Lrc, SourceMap};
+use swc_ecma_codegen::{text_writer::JsWriter, Emitter};
+use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 
 // Edit plan types now come from cb-api
 
@@ -633,13 +636,116 @@ fn plan_inline_function(intent: &IntentSpec, source: &str) -> AstResult<EditPlan
 
 // Helper functions for refactoring operations
 
-/// Remove a named import from an import line
+/// Remove a named import from an import line using AST parsing
 fn remove_named_import_from_line(line: &str, import_name: &str) -> String {
-    // This is a simplified implementation
-    line.replace(&format!("{}, ", import_name), "")
-        .replace(&format!(", {}", import_name), "")
-        .replace(&format!("{{ {} }}", import_name), "")
-        .replace(import_name, "")
+    use swc_common::{FileName, FilePathMapping};
+    use swc_ecma_ast::{ImportSpecifier, ModuleDecl, ModuleItem};
+
+    // Set up SWC parser
+    let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+    let file_name = Lrc::new(FileName::Anon);
+    let source_file = cm.new_source_file(file_name, line.to_string());
+
+    // Parse the import line as TypeScript (most permissive syntax)
+    let syntax = Syntax::Typescript(TsSyntax {
+        tsx: true,
+        decorators: true,
+        ..Default::default()
+    });
+
+    let lexer = Lexer::new(syntax, Default::default(), StringInput::from(&*source_file), None);
+    let mut parser = Parser::new_from(lexer);
+
+    // Try to parse as a module
+    let module = match parser.parse_module() {
+        Ok(module) => module,
+        Err(_) => {
+            // If parsing fails, return the original line unchanged
+            return line.to_string();
+        }
+    };
+
+    // Find the import declaration and filter out the specified import
+    let mut modified = false;
+    let new_items: Vec<ModuleItem> = module
+        .body
+        .into_iter()
+        .filter_map(|item| {
+            if let ModuleItem::ModuleDecl(ModuleDecl::Import(mut import_decl)) = item {
+                // Filter out the import specifier matching import_name
+                let original_len = import_decl.specifiers.len();
+                import_decl.specifiers.retain(|spec| {
+                    match spec {
+                        ImportSpecifier::Named(named) => {
+                            // Check both the local name and imported name
+                            let local_name = named.local.sym.as_ref();
+                            let imported_name = named.imported.as_ref().map_or(local_name, |imp| {
+                                match imp {
+                                    swc_ecma_ast::ModuleExportName::Ident(ident) => ident.sym.as_ref(),
+                                    swc_ecma_ast::ModuleExportName::Str(s) => s.value.as_ref(),
+                                }
+                            });
+                            local_name != import_name && imported_name != import_name
+                        }
+                        ImportSpecifier::Default(default) => {
+                            default.local.sym.as_ref() != import_name
+                        }
+                        ImportSpecifier::Namespace(ns) => {
+                            ns.local.sym.as_ref() != import_name
+                        }
+                    }
+                });
+
+                // If we removed something, mark as modified
+                if import_decl.specifiers.len() < original_len {
+                    modified = true;
+                }
+
+                // If no specifiers left, remove the entire import
+                if import_decl.specifiers.is_empty() {
+                    return None;
+                }
+
+                return Some(ModuleItem::ModuleDecl(ModuleDecl::Import(import_decl)));
+            }
+            Some(item)
+        })
+        .collect();
+
+    // If nothing was modified, return original line
+    if !modified {
+        return line.to_string();
+    }
+
+    // If no items left (entire import was removed), return empty string
+    if new_items.is_empty() {
+        return String::new();
+    }
+
+    // Emit the modified import
+    let mut buf = vec![];
+    {
+        use swc_ecma_ast::Module;
+
+        let new_module = Module {
+            body: new_items,
+            ..module
+        };
+
+        let mut emitter = Emitter {
+            cfg: Default::default(),
+            cm: cm.clone(),
+            comments: None,
+            wr: JsWriter::new(cm.clone(), "\n", &mut buf, None),
+        };
+
+        if emitter.emit_module(&new_module).is_err() {
+            // If emission fails, return original line
+            return line.to_string();
+        }
+    }
+
+    String::from_utf8(buf).unwrap_or_else(|_| line.to_string()).trim().to_string()
 }
 
 /// Analyze variables for function extraction
@@ -765,4 +871,70 @@ fn inline_function_call(function_info: &FunctionInfo, _call: &FunctionCall) -> A
     // Simplified inlining - replace the call with the function body
     // In practice, you'd need to handle parameter substitution, variable scoping, etc.
     Ok(format!("{{ {} }}", function_info.body))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_remove_only_named_import() {
+        let line = "import { foo } from 'module';";
+        let result = remove_named_import_from_line(line, "foo");
+        assert_eq!(result, "", "Should return empty string when removing the only import");
+    }
+
+    #[test]
+    fn test_remove_first_import_from_multiple() {
+        let line = "import { foo, bar, baz } from 'module';";
+        let result = remove_named_import_from_line(line, "foo");
+        assert!(
+            result.contains("bar") && result.contains("baz"),
+            "Should keep remaining imports"
+        );
+        assert!(!result.contains("foo"), "Should remove the specified import");
+    }
+
+    #[test]
+    fn test_remove_middle_import() {
+        let line = "import { foo, bar, baz } from 'module';";
+        let result = remove_named_import_from_line(line, "bar");
+        assert!(
+            result.contains("foo") && result.contains("baz"),
+            "Should keep remaining imports"
+        );
+        assert!(!result.contains("bar"), "Should remove the specified import");
+    }
+
+    #[test]
+    fn test_remove_last_import() {
+        let line = "import { foo, bar, baz } from 'module';";
+        let result = remove_named_import_from_line(line, "baz");
+        assert!(
+            result.contains("foo") && result.contains("bar"),
+            "Should keep remaining imports"
+        );
+        assert!(!result.contains("baz"), "Should remove the specified import");
+    }
+
+    #[test]
+    fn test_remove_non_existent_import() {
+        let line = "import { foo, bar } from 'module';";
+        let result = remove_named_import_from_line(line, "nonexistent");
+        assert_eq!(result, line, "Should return original line when import not found");
+    }
+
+    #[test]
+    fn test_remove_default_import() {
+        let line = "import foo from 'module';";
+        let result = remove_named_import_from_line(line, "foo");
+        assert_eq!(result, "", "Should remove default import");
+    }
+
+    #[test]
+    fn test_remove_aliased_import() {
+        let line = "import { foo as bar } from 'module';";
+        let result = remove_named_import_from_line(line, "bar");
+        assert_eq!(result, "", "Should remove aliased import by local name");
+    }
 }

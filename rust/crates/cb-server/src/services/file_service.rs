@@ -482,45 +482,18 @@ impl FileService {
         file_path: &Path,
         update: &DependencyUpdate,
     ) -> ServerResult<bool> {
-        // Read file content
-        let content = match fs::read_to_string(file_path).await {
-            Ok(content) => content,
-            Err(e) => {
-                warn!(
+        // Delegate the dependency update to the import service, which handles AST transformations.
+        self.import_service
+            .update_import_reference(file_path, update)
+            .await
+            .map_err(|e| {
+                error!(
                     file_path = %file_path.display(),
                     error = %e,
-                    "Could not read file for dependency update"
+                    "AST-based dependency update failed"
                 );
-                return Ok(false); // File doesn't exist, skip update
-            }
-        };
-
-        // Simple string replacement for dependency updates
-        // In a production system, this would use proper AST parsing
-        let old_ref = &update.old_reference;
-        let new_ref = &update.new_reference;
-
-        if content.contains(old_ref) {
-            let updated_content = content.replace(old_ref, new_ref);
-
-            fs::write(file_path, updated_content).await.map_err(|e| {
-                ServerError::Internal(format!(
-                    "Failed to write dependency update to {}: {}",
-                    file_path.display(),
-                    e
-                ))
-            })?;
-
-            debug!(
-                old_ref = %old_ref,
-                new_ref = %new_ref,
-                file_path = %file_path.display(),
-                "Updated dependency reference"
-            );
-            return Ok(true);
-        }
-
-        Ok(false) // No changes made
+                ServerError::Internal(format!("Failed to apply dependency update: {}", e))
+            })
     }
 
     /// Convert a path to absolute path within the project

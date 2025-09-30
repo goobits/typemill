@@ -1565,58 +1565,14 @@ pub fn plan_rename_refactor(
 
 /// Find all references to a symbol in source code and generate rename edits
 fn find_symbol_references(
-    source: &str,
-    old_name: &str,
-    new_name: &str,
+    _source: &str,
+    _old_name: &str,
+    _new_name: &str,
     _file_path: &Path,
 ) -> AstResult<Vec<TextEdit>> {
-    let mut edits = Vec::new();
-
-    // Simple text-based search for symbol references
-    // This is a simplified implementation - a full implementation would use AST parsing
-    for (line_num, line) in source.lines().enumerate() {
-        let mut search_pos = 0;
-        while let Some(pos) = line[search_pos..].find(old_name) {
-            let actual_pos = search_pos + pos;
-
-            // Basic check to ensure we're replacing a whole word, not part of another identifier
-            let is_word_boundary_before = actual_pos == 0
-                || !line
-                    .chars()
-                    .nth(actual_pos - 1)
-                    .unwrap_or(' ')
-                    .is_alphanumeric();
-            let is_word_boundary_after = actual_pos + old_name.len() >= line.len()
-                || !line
-                    .chars()
-                    .nth(actual_pos + old_name.len())
-                    .unwrap_or(' ')
-                    .is_alphanumeric();
-
-            if is_word_boundary_before && is_word_boundary_after {
-                edits.push(TextEdit {
-                    edit_type: EditType::Rename,
-                    location: EditLocation {
-                        start_line: line_num as u32,
-                        start_column: actual_pos as u32,
-                        end_line: line_num as u32,
-                        end_column: (actual_pos + old_name.len()) as u32,
-                    },
-                    original_text: old_name.to_string(),
-                    new_text: new_name.to_string(),
-                    priority: 100, // High priority for definition site
-                    description: format!(
-                        "Rename symbol '{}' to '{}' in definition file",
-                        old_name, new_name
-                    ),
-                });
-            }
-
-            search_pos = actual_pos + old_name.len();
-        }
-    }
-
-    Ok(edits)
+    Err(AstError::unsupported_syntax(
+        "Naive, string-based symbol finding is deprecated and unsafe. Use an LSP-based, scope-aware utility instead."
+    ))
 }
 
 /// Generate edits to update import statements in a file
