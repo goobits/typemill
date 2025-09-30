@@ -3,6 +3,11 @@ set -e
 
 # Codeflow Buddy MCP Server Installer
 # Builds and installs from local source
+#
+# Usage:
+#   ./install.sh                        # Interactive mode (prompts for location)
+#   CODEBUDDY_INSTALL_MODE=system ./install.sh  # System-wide (/usr/local/bin)
+#   CODEBUDDY_INSTALL_MODE=local ./install.sh   # User-local (~/.local/bin)
 
 BINARY_NAME="codebuddy"
 SOURCE_BINARY="/workspace/rust/target/release/cb-server"
@@ -18,9 +23,29 @@ detect_os() {
 
 OS_TYPE=$(detect_os)
 
-# Set install directory based on OS
-if [ "$OS_TYPE" = "macos" ]; then
-    # macOS: prefer /usr/local/bin (Homebrew standard)
+# Determine installation mode from environment or prompt
+INSTALL_MODE="${CODEBUDDY_INSTALL_MODE:-}"
+
+if [ -z "$INSTALL_MODE" ]; then
+    # Interactive: ask user for install preference
+    echo "Choose installation location:"
+    echo "  1) System-wide (/usr/local/bin) - requires sudo, available to all users"
+    echo "  2) User-local (~/.local/bin) - no sudo required, only for current user"
+    read -p "Enter choice [1-2] (default: 1): " choice
+    case "$choice" in
+        2) INSTALL_MODE="local" ;;
+        *) INSTALL_MODE="system" ;;
+    esac
+fi
+
+# Set install directory based on mode
+if [ "$INSTALL_MODE" = "local" ]; then
+    # User-local installation (no sudo required)
+    INSTALL_DIR="$HOME/.local/bin"
+    SUDO_CMD=""
+    mkdir -p "$INSTALL_DIR"
+elif [ "$OS_TYPE" = "macos" ]; then
+    # macOS: system-wide installation
     INSTALL_DIR="/usr/local/bin"
     # Check if we need sudo for /usr/local/bin
     if [ -w "$INSTALL_DIR" ]; then
@@ -29,7 +54,7 @@ if [ "$OS_TYPE" = "macos" ]; then
         SUDO_CMD="sudo"
     fi
 else
-    # Linux: always use /usr/local/bin with sudo
+    # Linux: system-wide installation with sudo
     INSTALL_DIR="/usr/local/bin"
     SUDO_CMD="sudo"
 fi
@@ -901,6 +926,15 @@ main() {
         echo "  • Version: 2025-06-18"
         echo "  • Location: $INSTALL_DIR/$BINARY_NAME"
         echo ""
+
+        # Show PATH instructions for user-local install
+        if [ "$INSTALL_MODE" = "local" ]; then
+            echo "⚠️  USER-LOCAL INSTALLATION:"
+            echo "  Ensure ~/.local/bin is in your PATH. Add this to your shell config:"
+            echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+            echo ""
+        fi
+
         echo "📁 CONFIGURATION FILES:"
         echo "  • MCP: $project_dir/.mcp.json"
         echo "  • LSP: $project_dir/.codebuddy/config.json"
