@@ -1,6 +1,7 @@
 pub mod client;
 pub mod fixtures;
 pub mod lsp_setup;
+pub mod mcp_fixtures;
 pub mod project_fixtures;
 pub mod real_lsp_service;
 pub mod test_builder;

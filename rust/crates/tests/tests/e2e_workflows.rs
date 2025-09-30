@@ -608,29 +608,9 @@ export function main() {
 mod advanced_workflows {
     use super::*;
 
-    #[tokio::test]
-    async fn test_circular_dependency_handling() {
-        use tests::harness::create_circular_dependency_project;
-
-        let workspace = create_circular_dependency_project();
-        let mut client = TestClient::new(workspace.path());
-
-        // Try to analyze imports with circular dependencies
-        let import_analysis = client
-            .call_tool(
-                "analyze_imports",
-                json!({
-                    "file_path": workspace.absolute_path("src/moduleA.ts").to_str().unwrap()
-                }),
-            )
-            .await;
-
-        if let Ok(response) = import_analysis {
-            if response["error"].is_null() {
-                println!("✅ Circular dependency handling works");
-            }
-        }
-    }
+    // NOTE: test_circular_dependency_handling has been migrated to the data-driven
+    // test architecture in mcp_file_operations.rs as part of ANALYZE_IMPORTS_TESTS.
+    // The new tests provide the same coverage with better maintainability.
 
     #[tokio::test]
     async fn test_batch_operations() {

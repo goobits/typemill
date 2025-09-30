@@ -662,7 +662,7 @@ impl PluginDispatcher {
     fn is_file_operation(&self, tool_name: &str) -> bool {
         matches!(
             tool_name,
-            "rename_file" | "create_file" | "delete_file" | "rename_directory"
+            "rename_file" | "create_file" | "delete_file" | "rename_directory" | "read_file" | "write_file"
         )
     }
 
@@ -1205,11 +1205,14 @@ impl PluginDispatcher {
                         .ok_or_else(|| {
                             ServerError::InvalidRequest("Missing 'file_path' parameter".into())
                         })?;
-                let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                let content = args.get("content").and_then(|v| v.as_str());
+                let overwrite = args.get("overwrite").and_then(|v| v.as_bool()).unwrap_or(false);
 
-                tokio::fs::write(file_path, content)
-                    .await
-                    .map_err(|e| ServerError::Internal(format!("Failed to create file: {}", e)))?;
+                // Use FileService for proper locking and cache invalidation
+                self.app_state
+                    .file_service
+                    .create_file(std::path::Path::new(file_path), content, overwrite)
+                    .await?;
 
                 Ok(json!({
                     "success": true,
@@ -1227,15 +1230,69 @@ impl PluginDispatcher {
                         .ok_or_else(|| {
                             ServerError::InvalidRequest("Missing 'file_path' parameter".into())
                         })?;
+                let force = args.get("force").and_then(|v| v.as_bool()).unwrap_or(false);
 
-                tokio::fs::remove_file(file_path)
-                    .await
-                    .map_err(|e| ServerError::Internal(format!("Failed to delete file: {}", e)))?;
+                // Use FileService for proper locking and cache invalidation
+                self.app_state
+                    .file_service
+                    .delete_file(std::path::Path::new(file_path), force)
+                    .await?;
 
                 Ok(json!({
                     "success": true,
                     "file_path": file_path,
                     "deleted": true
+                }))
+            }
+            "read_file" => {
+                let args = tool_call.arguments.ok_or_else(|| {
+                    ServerError::InvalidRequest("Missing arguments for read_file".into())
+                })?;
+                let file_path =
+                    args.get("file_path")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| {
+                            ServerError::InvalidRequest("Missing 'file_path' parameter".into())
+                        })?;
+
+                // Use FileService for proper locking
+                let content = self.app_state
+                    .file_service
+                    .read_file(std::path::Path::new(file_path))
+                    .await?;
+
+                Ok(json!({
+                    "success": true,
+                    "file_path": file_path,
+                    "content": content
+                }))
+            }
+            "write_file" => {
+                let args = tool_call.arguments.ok_or_else(|| {
+                    ServerError::InvalidRequest("Missing arguments for write_file".into())
+                })?;
+                let file_path =
+                    args.get("file_path")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| {
+                            ServerError::InvalidRequest("Missing 'file_path' parameter".into())
+                        })?;
+                let content = args.get("content")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        ServerError::InvalidRequest("Missing 'content' parameter".into())
+                    })?;
+
+                // Use FileService for proper locking and cache invalidation
+                self.app_state
+                    .file_service
+                    .write_file(std::path::Path::new(file_path), content)
+                    .await?;
+
+                Ok(json!({
+                    "success": true,
+                    "file_path": file_path,
+                    "written": true
                 }))
             }
             _ => Err(ServerError::Unsupported(format!(
