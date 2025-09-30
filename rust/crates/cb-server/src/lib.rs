@@ -6,6 +6,10 @@
 //! mechanisms (stdio, WebSocket). It provides the runtime infrastructure for all
 //! code intelligence and refactoring operations.
 
+// Prevent technical debt accumulation
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
+
 pub mod auth;
 pub mod handlers;
 pub mod services;

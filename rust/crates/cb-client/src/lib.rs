@@ -5,6 +5,10 @@
 //! handling, configuration management, and user-friendly output formatting.
 //! It enables developers to leverage all server capabilities through a clean CLI interface.
 
+// Prevent technical debt accumulation
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
+
 pub mod client_config;
 pub mod commands;
 pub mod error;

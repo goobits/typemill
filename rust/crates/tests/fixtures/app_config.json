@@ -1,4 +1,6 @@
 {
+  "_NOTICE": "⚠️ TEST FIXTURE ONLY - DO NOT USE IN PRODUCTION",
+  "_WARNING": "This file contains test-only secrets and configurations",
   "server": {
     "host": "127.0.0.1",
     "port": 3000,
