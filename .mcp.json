@@ -2,7 +2,7 @@
   "mcpServers": {
     "codebuddy": {
       "type": "stdio",
-      "command": "codebuddy",
+      "command": "/usr/local/bin/codebuddy",
       "args": [
         "start"
       ],
