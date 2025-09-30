@@ -86,3 +86,122 @@ pub fn add_preset(preset_id: &str) -> Result<()> {
         Ok(())
     }
 }
+
+/// Remove an MCP preset from config
+pub fn remove_preset(preset_id: &str) -> Result<()> {
+    #[cfg(not(feature = "mcp-proxy"))]
+    {
+        bail!("MCP proxy feature not enabled. Rebuild with --features mcp-proxy");
+    }
+
+    #[cfg(feature = "mcp-proxy")]
+    {
+        // Load config
+        let config_path = Path::new(".codebuddy/config.json");
+        if !config_path.exists() {
+            bail!("No configuration file found at .codebuddy/config.json");
+        }
+
+        let mut config = AppConfig::load()?;
+
+        // Check if external_mcp exists
+        let external_mcp = config
+            .external_mcp
+            .as_mut()
+            .ok_or_else(|| anyhow::anyhow!("No MCP servers configured"))?;
+
+        // Find and remove the server
+        let initial_len = external_mcp.servers.len();
+        external_mcp.servers.retain(|s| s.name != preset_id);
+
+        if external_mcp.servers.len() == initial_len {
+            bail!(
+                "Preset '{}' is not configured. Run 'codebuddy mcp list' to see available presets.",
+                preset_id
+            );
+        }
+
+        // Save config
+        config.save(config_path)?;
+
+        println!("✓ Removed {} from .codebuddy/config.json", preset_id);
+
+        Ok(())
+    }
+}
+
+/// Show detailed information about an MCP preset
+pub fn info_preset(preset_id: &str) -> Result<()> {
+    #[cfg(not(feature = "mcp-proxy"))]
+    {
+        bail!("MCP proxy feature not enabled. Rebuild with --features mcp-proxy");
+    }
+
+    #[cfg(feature = "mcp-proxy")]
+    {
+        // Get preset
+        let preset = presets::get_preset(preset_id).ok_or_else(|| {
+            anyhow::anyhow!(
+                "Preset '{}' not found. Run 'codebuddy mcp list' to see available presets.",
+                preset_id
+            )
+        })?;
+
+        println!("{}", "=".repeat(60));
+        println!("MCP Preset: {}", preset.name);
+        println!("{}", "=".repeat(60));
+        println!();
+        println!("ID:          {}", preset.id);
+        println!("Description: {}", preset.description);
+        println!("Auto-start:  {}", preset.auto_start);
+        println!();
+        println!("Command:");
+        println!("  {}", preset.command.join(" "));
+
+        if !preset.env.is_empty() {
+            println!();
+            println!("Environment Variables:");
+            for (key, value) in &preset.env {
+                println!("  {}={}", key, value);
+            }
+        }
+
+        println!();
+
+        // Check if installed
+        let config_path = Path::new(".codebuddy/config.json");
+        if config_path.exists() {
+            if let Ok(config) = AppConfig::load() {
+                if let Some(external_mcp) = &config.external_mcp {
+                    let is_installed = external_mcp.servers.iter().any(|s| s.name == preset.id);
+                    println!(
+                        "Status:      {}",
+                        if is_installed {
+                            "✓ Installed"
+                        } else {
+                            "✗ Not installed"
+                        }
+                    );
+                    println!();
+                    if !is_installed {
+                        println!("To install: codebuddy mcp add {}", preset.id);
+                    } else {
+                        println!("To remove:  codebuddy mcp remove {}", preset.id);
+                    }
+                } else {
+                    println!("Status:      ✗ Not installed");
+                    println!();
+                    println!("To install: codebuddy mcp add {}", preset.id);
+                }
+            }
+        } else {
+            println!("Status:      ✗ Not installed");
+            println!();
+            println!("To install: codebuddy mcp add {}", preset.id);
+        }
+
+        println!();
+
+        Ok(())
+    }
+}

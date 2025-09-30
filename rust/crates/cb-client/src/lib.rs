@@ -349,6 +349,16 @@ pub enum McpCommands {
         /// The preset ID to add (e.g., context7, git, filesystem)
         preset_id: String,
     },
+    /// Remove an MCP preset from the configuration
+    Remove {
+        /// The preset ID to remove (e.g., context7, git, filesystem)
+        preset_id: String,
+    },
+    /// Show detailed information about an MCP preset
+    Info {
+        /// The preset ID to show info for (e.g., context7, git, filesystem)
+        preset_id: String,
+    },
 }
 
 /// Output format for the `call` command.
@@ -454,6 +464,14 @@ pub async fn run_cli() -> ClientResult<()> {
             }),
             McpCommands::Add { preset_id } => commands::mcp::add_preset(&preset_id).map_err(
                 |e| ClientError::RequestError(format!("Failed to add preset: {}", e)),
+            ),
+            McpCommands::Remove { preset_id } => {
+                commands::mcp::remove_preset(&preset_id).map_err(|e| {
+                    ClientError::RequestError(format!("Failed to remove preset: {}", e))
+                })
+            }
+            McpCommands::Info { preset_id } => commands::mcp::info_preset(&preset_id).map_err(
+                |e| ClientError::RequestError(format!("Failed to show preset info: {}", e)),
             ),
         },
         Commands::Completions { shell } => {

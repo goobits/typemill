@@ -43,6 +43,10 @@ pub enum Commands {
     Link,
     /// Remove AI from config
     Unlink,
+    /// Manage MCP server presets
+    #[cfg(feature = "mcp-proxy")]
+    #[command(subcommand)]
+    Mcp(cb_client::McpCommands),
 }
 
 /// Main CLI entry point
@@ -96,6 +100,31 @@ pub async fn run() {
         Commands::Unlink => {
             handle_unlink().await;
         }
+        #[cfg(feature = "mcp-proxy")]
+        Commands::Mcp(mcp_command) => {
+            handle_mcp_command(mcp_command).await;
+        }
+    }
+}
+
+#[cfg(feature = "mcp-proxy")]
+async fn handle_mcp_command(command: cb_client::McpCommands) {
+    let result = match command {
+        cb_client::McpCommands::List => cb_client::commands::mcp::list_presets(),
+        cb_client::McpCommands::Add { preset_id } => {
+            cb_client::commands::mcp::add_preset(&preset_id)
+        }
+        cb_client::McpCommands::Remove { preset_id } => {
+            cb_client::commands::mcp::remove_preset(&preset_id)
+        }
+        cb_client::McpCommands::Info { preset_id } => {
+            cb_client::commands::mcp::info_preset(&preset_id)
+        }
+    };
+
+    if let Err(e) = result {
+        error!(error = %e, "MCP command failed");
+        process::exit(1);
     }
 }
 
