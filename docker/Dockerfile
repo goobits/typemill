@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     libfuse-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace files
+# Copy workspace files (context is parent directory)
 COPY Cargo.toml Cargo.lock ./
 COPY rust/ ./rust/
 
