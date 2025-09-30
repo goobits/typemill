@@ -6,6 +6,51 @@
 use crate::error::{AstError, AstResult};
 use cb_api::{ImportInfo, ImportType, NamedImport, SourceLocation};
 use regex::Regex;
+use std::io::Write;
+use std::process::{Command, Stdio};
+
+/// List all function names in Python source code using Python's native AST parser.
+/// This function spawns a Python subprocess to perform the parsing.
+pub fn list_functions(source: &str) -> AstResult<Vec<String>> {
+    // Note: This assumes 'python3' is in the system's PATH.
+    // A more robust solution might involve making this configurable.
+    let python_executable = "python3";
+
+    // Determine the path to the script relative to the crate's root.
+    let script_path = format!("{}/resources/ast_tool.py", env!("CARGO_MANIFEST_DIR"));
+
+    let mut child = Command::new(python_executable)
+        .arg(&script_path)
+        .arg("list-functions")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| AstError::analysis(format!("Failed to spawn Python script: {}", e)))?;
+
+    // Write the source code to the script's stdin.
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(source.as_bytes()).map_err(|e| {
+            AstError::analysis(format!("Failed to write to Python script stdin: {}", e))
+        })?;
+    }
+
+    // Wait for the process to finish and capture its output.
+    let output = child.wait_with_output().map_err(|e| {
+        AstError::analysis(format!("Failed to wait for Python script: {}", e))
+    })?;
+
+    if output.status.success() {
+        serde_json::from_slice(&output.stdout)
+            .map_err(|e| AstError::analysis(format!("Failed to parse JSON from Python script: {}", e)))
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(AstError::analysis(format!(
+            "Python script failed: {}",
+            stderr
+        )))
+    }
+}
 
 /// Parse Python imports using regex-based parsing (temporary implementation)
 pub fn parse_python_imports_ast(source: &str) -> AstResult<Vec<ImportInfo>> {
@@ -595,5 +640,45 @@ CONSTANT_VALUE = "constant"
             infer_python_value_type_simple("None"),
             PythonValueType::None
         ));
+    }
+
+    #[test]
+    fn test_list_functions_success() {
+        let source = r#"
+import os
+
+def top_level_function():
+    pass
+
+class MyClass:
+    def method_one(self):
+        pass
+
+    def method_two(self):
+        def nested_function():
+            pass
+"#;
+        let functions = list_functions(source).unwrap();
+        assert_eq!(functions.len(), 4);
+        assert!(functions.contains(&"top_level_function".to_string()));
+        assert!(functions.contains(&"method_one".to_string()));
+        assert!(functions.contains(&"method_two".to_string()));
+        assert!(functions.contains(&"nested_function".to_string()));
+    }
+
+    #[test]
+    fn test_list_functions_no_functions() {
+        let source = "x = 1\ny = 2";
+        let functions = list_functions(source).unwrap();
+        assert!(functions.is_empty());
+    }
+
+    #[test]
+    fn test_list_functions_syntax_error() {
+        let source = "def my_func(";
+        let result = list_functions(source);
+        assert!(result.is_err());
+        let error_str = result.unwrap_err().to_string();
+        assert!(error_str.contains("SyntaxError"));
     }
 }
