@@ -307,3 +307,33 @@ async fn test_rename_directory_real() {
         run_rename_directory_test(case, true).await;
     }
 }
+// =============================================================================
+// Rename File Tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_rename_file_mock() {
+    for (idx, case) in RENAME_FILE_TESTS.iter().enumerate() {
+        println!(
+            "Running mock rename_file test {}/{}: {}",
+            idx + 1,
+            RENAME_FILE_TESTS.len(),
+            case.test_name
+        );
+        run_rename_file_test(case, false).await;
+    }
+}
+
+#[tokio::test]
+#[ignore] // Requires MCP server to be running
+async fn test_rename_file_real() {
+    for (idx, case) in RENAME_FILE_TESTS.iter().enumerate() {
+        println!(
+            "Running real rename_file test {}/{}: {}",
+            idx + 1,
+            RENAME_FILE_TESTS.len(),
+            case.test_name
+        );
+        run_rename_file_test(case, true).await;
+    }
+}

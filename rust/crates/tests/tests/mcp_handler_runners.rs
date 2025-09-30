@@ -1051,3 +1051,133 @@ pub async fn run_rename_directory_test(case: &RenameDirectoryTestCase, use_real_
         }
     }
 }
+
+/// Run a rename_file test with the given test case
+pub async fn run_rename_file_test(case: &RenameFileTestCase, use_real_mcp: bool) {
+    let workspace = TestWorkspace::new();
+
+    // Setup initial files
+    for (path, content) in case.initial_files {
+        let file_path = workspace.path().join(path);
+        if let Some(parent) = file_path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(&file_path, content).unwrap();
+    }
+
+    let old_path = workspace.path().join(case.old_file_path);
+    let new_path = workspace.path().join(case.new_file_path);
+
+    if use_real_mcp {
+        // Real MCP test using TestClient
+        let mut client = TestClient::new(workspace.path());
+
+        let params = json!({
+            "old_path": old_path.to_string_lossy(),
+            "new_path": new_path.to_string_lossy()
+        });
+
+        let response = client.call_tool("rename_file", params).await;
+
+        if case.expect_success {
+            let response = response.unwrap();
+            // MCP responses are JSON-RPC format
+            eprintln!("DEBUG rename_file response: {:?}", response);
+
+            // Check that there's no error
+            assert!(
+                response.get("error").is_none() || response.get("error").and_then(|e| e.as_null()).is_some(),
+                "Test '{}': Expected success but got error. Response: {:?}",
+                case.test_name,
+                response
+            );
+
+            // Verify file was renamed
+            assert!(
+                new_path.exists(),
+                "Test '{}': New file should exist after rename",
+                case.test_name
+            );
+            assert!(
+                !old_path.exists(),
+                "Test '{}': Old file should not exist after rename",
+                case.test_name
+            );
+
+            // Verify import updates
+            for (file_to_check, expected_content) in case.expected_import_updates {
+                let file_content = workspace.read_file(file_to_check);
+                assert!(
+                    file_content.contains(expected_content),
+                    "Test '{}': File '{}' should contain '{}'. Actual content:\n{}",
+                    case.test_name,
+                    file_to_check,
+                    expected_content,
+                    file_content
+                );
+            }
+        } else {
+            // For expected failures, check for JSON-RPC error field
+            if let Ok(response) = response {
+                assert!(
+                    response.get("error").is_some(),
+                    "Test '{}': Expected failure but got success. Response: {:?}",
+                    case.test_name,
+                    response
+                );
+            }
+        }
+    } else {
+        // Mock test using FileService directly
+        let app_state = create_mock_state(workspace.path().to_path_buf()).await;
+
+        let result = app_state
+            .file_service
+            .rename_file_with_imports(
+                &old_path,
+                &new_path,
+                false, // dry_run
+            )
+            .await;
+
+        if case.expect_success {
+            assert!(
+                result.is_ok(),
+                "Test '{}': Expected success but got error: {:?}",
+                case.test_name,
+                result.err()
+            );
+
+            // Verify file was renamed
+            assert!(
+                new_path.exists(),
+                "Test '{}': New file should exist after rename",
+                case.test_name
+            );
+            assert!(
+                !old_path.exists(),
+                "Test '{}': Old file should not exist after rename",
+                case.test_name
+            );
+
+            // Verify import updates
+            for (file_to_check, expected_content) in case.expected_import_updates {
+                let file_content = workspace.read_file(file_to_check);
+                assert!(
+                    file_content.contains(expected_content),
+                    "Test '{}': File '{}' should contain '{}'. Actual content:\n{}",
+                    case.test_name,
+                    file_to_check,
+                    expected_content,
+                    file_content
+                );
+            }
+        } else {
+            assert!(
+                result.is_err(),
+                "Test '{}': Expected failure but got success",
+                case.test_name
+            );
+        }
+    }
+}

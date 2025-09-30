@@ -264,6 +264,124 @@ console.log(targetFunc());
         new_name: "newFunc",
         expect_success: true, // Returns empty edit plan, not an error
     },
+    RenameSymbolTestCase {
+        test_name: "multi_file_with_multiple_references",
+        initial_files: &[
+            (
+                "src/exporter.ts",
+                r#"export function oldFunctionName(value: string): string {
+    return value.toUpperCase();
+}
+
+export class OldClassName {
+    private data: string;
+
+    constructor(data: string) {
+        this.data = data;
+    }
+
+    getData(): string {
+        return this.data;
+    }
+}
+
+export const OLD_CONSTANT = 'constant_value';
+"#,
+            ),
+            (
+                "src/consumer.ts",
+                r#"import { oldFunctionName, OldClassName, OLD_CONSTANT } from './exporter';
+
+export function useImports() {
+    const result = oldFunctionName('test');
+    const instance = new OldClassName('data');
+    const data = instance.getData();
+
+    console.log(result, data, OLD_CONSTANT);
+
+    // Multiple references to test thorough renaming
+    const anotherCall = oldFunctionName('another');
+    const anotherInstance = new OldClassName('more');
+}
+"#,
+            ),
+            (
+                "src/another-consumer.ts",
+                r#"import { oldFunctionName as renamed, OldClassName } from './exporter';
+
+export class ConsumerClass {
+    private helper = new OldClassName('helper');
+
+    process(input: string): string {
+        return renamed(input);
+    }
+
+    getHelper(): OldClassName {
+        return this.helper;
+    }
+}
+"#,
+            ),
+        ],
+        file_path: "src/exporter.ts",
+        old_name: "oldFunctionName",
+        new_name: "newFunctionName",
+        expect_success: true,
+    },
+    RenameSymbolTestCase {
+        test_name: "multi_file_class_rename",
+        initial_files: &[
+            (
+                "src/services/DataService.ts",
+                r#"export class DataService {
+    private data: string[] = [];
+
+    addData(item: string): void {
+        this.data.push(item);
+    }
+
+    getData(): string[] {
+        return this.data;
+    }
+}
+"#,
+            ),
+            (
+                "src/controllers/MainController.ts",
+                r#"import { DataService } from '../services/DataService';
+
+export class MainController {
+    private service: DataService;
+
+    constructor() {
+        this.service = new DataService();
+    }
+
+    processData(input: string): void {
+        this.service.addData(input);
+    }
+}
+"#,
+            ),
+            (
+                "src/utils/helper.ts",
+                r#"import { DataService } from '../services/DataService';
+
+export function createService(): DataService {
+    return new DataService();
+}
+
+export function processWithService(service: DataService, data: string): void {
+    service.addData(data);
+}
+"#,
+            ),
+        ],
+        file_path: "src/services/DataService.ts",
+        old_name: "DataService",
+        new_name: "DataManager",
+        expect_success: true,
+    },
 ];
 
 // =============================================================================
@@ -449,5 +567,129 @@ export default function App() {
         new_dir_name: "newdir",
         update_imports: false,
         expect_success: false,
+    },
+];
+
+// =============================================================================
+// RENAME FILE TEST CASES
+// =============================================================================
+
+/// Test fixture for rename_file operations
+#[derive(Debug, Clone)]
+pub struct RenameFileTestCase {
+    pub test_name: &'static str,
+    pub initial_files: &'static [(&'static str, &'static str)],
+    pub old_file_path: &'static str,
+    pub new_file_path: &'static str,
+    pub expect_success: bool,
+    pub expected_import_updates: &'static [(&'static str, &'static str)], // (file_path, expected_content_substring)
+}
+
+pub const RENAME_FILE_TESTS: &[RenameFileTestCase] = &[
+    RenameFileTestCase {
+        test_name: "basic_rename_with_import_updates",
+        initial_files: &[
+            (
+                "src/utils.ts",
+                r#"export const myUtil = () => {
+    return "utility function";
+};
+
+export function helperFunc(data: string): string {
+    return data.toUpperCase();
+}
+"#,
+            ),
+            (
+                "src/main.ts",
+                r#"import { myUtil, helperFunc } from './utils';
+
+export function main() {
+    const result = myUtil();
+    const processed = helperFunc(result);
+    console.log(processed);
+}
+"#,
+            ),
+        ],
+        old_file_path: "src/utils.ts",
+        new_file_path: "src/renamed_utils.ts",
+        expect_success: true,
+        expected_import_updates: &[("src/main.ts", "from './renamed_utils'")],
+    },
+    RenameFileTestCase {
+        test_name: "nested_import_path_resolution",
+        initial_files: &[
+            (
+                "src/core/types.ts",
+                r#"export interface User {
+    id: number;
+    name: string;
+}
+
+export type Status = 'active' | 'inactive';
+"#,
+            ),
+            (
+                "src/core/models/UserModel.ts",
+                r#"import { User, Status } from '../types';
+
+export class UserModel implements User {
+    constructor(
+        public id: number,
+        public name: string,
+        public status: Status = 'active'
+    ) {}
+}
+"#,
+            ),
+            (
+                "src/features/users/UserService.ts",
+                r#"import { UserModel } from '../../core/models/UserModel';
+import { Status } from '../../core/types';
+
+export class UserService {
+    private users: UserModel[] = [];
+
+    addUser(name: string): UserModel {
+        const user = new UserModel(Date.now(), name);
+        this.users.push(user);
+        return user;
+    }
+
+    setUserStatus(id: number, status: Status): void {
+        const user = this.users.find(u => u.id === id);
+        if (user) {
+            user.status = status;
+        }
+    }
+}
+"#,
+            ),
+        ],
+        old_file_path: "src/core/types.ts",
+        new_file_path: "src/shared/types.ts",
+        expect_success: true,
+        expected_import_updates: &[
+            ("src/core/models/UserModel.ts", "from '../../shared/types'"),
+            ("src/features/users/UserService.ts", "from '../../shared/types'"),
+        ],
+    },
+    RenameFileTestCase {
+        test_name: "rename_to_subdirectory",
+        initial_files: &[
+            ("config.ts", "export const API_URL = 'https://api.example.com';"),
+            (
+                "app.ts",
+                r#"import { API_URL } from './config';
+
+console.log(API_URL);
+"#,
+            ),
+        ],
+        old_file_path: "config.ts",
+        new_file_path: "settings/config.ts",
+        expect_success: true,
+        expected_import_updates: &[("app.ts", "from './settings/config'")],
     },
 ];
