@@ -69,6 +69,159 @@ pub fn get_presets() -> HashMap<String, McpPreset> {
         },
     );
 
+    // github
+    presets.insert(
+        "github".to_string(),
+        McpPreset {
+            id: "github".to_string(),
+            name: "GitHub MCP".to_string(),
+            description: "GitHub API integration for repositories, issues, and PRs".to_string(),
+            command: vec![
+                "npx".to_string(),
+                "-y".to_string(),
+                "@modelcontextprotocol/server-github".to_string(),
+            ],
+            env: HashMap::new(),
+            auto_start: true,
+        },
+    );
+
+    // postgres
+    presets.insert(
+        "postgres".to_string(),
+        McpPreset {
+            id: "postgres".to_string(),
+            name: "PostgreSQL MCP".to_string(),
+            description: "PostgreSQL database operations and queries".to_string(),
+            command: vec![
+                "npx".to_string(),
+                "-y".to_string(),
+                "@modelcontextprotocol/server-postgres".to_string(),
+            ],
+            env: HashMap::new(),
+            auto_start: true,
+        },
+    );
+
+    // brave-search
+    presets.insert(
+        "brave-search".to_string(),
+        McpPreset {
+            id: "brave-search".to_string(),
+            name: "Brave Search MCP".to_string(),
+            description: "Web search using Brave Search API".to_string(),
+            command: vec![
+                "npx".to_string(),
+                "-y".to_string(),
+                "@modelcontextprotocol/server-brave-search".to_string(),
+            ],
+            env: HashMap::new(),
+            auto_start: true,
+        },
+    );
+
+    // puppeteer
+    presets.insert(
+        "puppeteer".to_string(),
+        McpPreset {
+            id: "puppeteer".to_string(),
+            name: "Puppeteer MCP".to_string(),
+            description: "Browser automation and web scraping".to_string(),
+            command: vec![
+                "npx".to_string(),
+                "-y".to_string(),
+                "@modelcontextprotocol/server-puppeteer".to_string(),
+            ],
+            env: HashMap::new(),
+            auto_start: true,
+        },
+    );
+
+    // slack
+    presets.insert(
+        "slack".to_string(),
+        McpPreset {
+            id: "slack".to_string(),
+            name: "Slack MCP".to_string(),
+            description: "Slack workspace integration for messages and channels".to_string(),
+            command: vec![
+                "npx".to_string(),
+                "-y".to_string(),
+                "@modelcontextprotocol/server-slack".to_string(),
+            ],
+            env: HashMap::new(),
+            auto_start: true,
+        },
+    );
+
+    // memory
+    presets.insert(
+        "memory".to_string(),
+        McpPreset {
+            id: "memory".to_string(),
+            name: "Memory MCP".to_string(),
+            description: "Persistent conversation memory and knowledge graphs".to_string(),
+            command: vec![
+                "npx".to_string(),
+                "-y".to_string(),
+                "@modelcontextprotocol/server-memory".to_string(),
+            ],
+            env: HashMap::new(),
+            auto_start: true,
+        },
+    );
+
+    // fetch
+    presets.insert(
+        "fetch".to_string(),
+        McpPreset {
+            id: "fetch".to_string(),
+            name: "Fetch MCP".to_string(),
+            description: "HTTP requests and API calls".to_string(),
+            command: vec![
+                "npx".to_string(),
+                "-y".to_string(),
+                "@modelcontextprotocol/server-fetch".to_string(),
+            ],
+            env: HashMap::new(),
+            auto_start: true,
+        },
+    );
+
+    // sqlite
+    presets.insert(
+        "sqlite".to_string(),
+        McpPreset {
+            id: "sqlite".to_string(),
+            name: "SQLite MCP".to_string(),
+            description: "SQLite database operations and queries".to_string(),
+            command: vec![
+                "npx".to_string(),
+                "-y".to_string(),
+                "@modelcontextprotocol/server-sqlite".to_string(),
+            ],
+            env: HashMap::new(),
+            auto_start: true,
+        },
+    );
+
+    // sequential-thinking
+    presets.insert(
+        "sequential-thinking".to_string(),
+        McpPreset {
+            id: "sequential-thinking".to_string(),
+            name: "Sequential Thinking MCP".to_string(),
+            description: "Enhanced reasoning and step-by-step problem solving".to_string(),
+            command: vec![
+                "npx".to_string(),
+                "-y".to_string(),
+                "@modelcontextprotocol/server-sequential-thinking".to_string(),
+            ],
+            env: HashMap::new(),
+            auto_start: true,
+        },
+    );
+
     presets
 }
 
