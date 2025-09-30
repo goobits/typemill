@@ -63,7 +63,6 @@ impl DefaultWorkflowExecutor {
     /// Example: `$steps.0.result.locations` retrieves the `locations` field from
     /// the `result` field of step 0's output.
     fn resolve_step_params(
-        &self,
         params: &Value,
         step_results: &HashMap<usize, Value>,
     ) -> ServerResult<Value> {
@@ -71,14 +70,14 @@ impl DefaultWorkflowExecutor {
             Value::Object(map) => {
                 let mut resolved = serde_json::Map::new();
                 for (key, value) in map {
-                    resolved.insert(key.clone(), self.resolve_step_params(value, step_results)?);
+                    resolved.insert(key.clone(), Self::resolve_step_params(value, step_results)?);
                 }
                 Ok(Value::Object(resolved))
             }
             Value::Array(arr) => {
                 let mut resolved = Vec::new();
                 for item in arr {
-                    resolved.push(self.resolve_step_params(item, step_results)?);
+                    resolved.push(Self::resolve_step_params(item, step_results)?);
                 }
                 Ok(Value::Array(resolved))
             }
@@ -212,7 +211,7 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
             );
 
             // Resolve parameters using generic placeholder substitution
-            let mut resolved_params = self.resolve_step_params(&step.params, &step_results)?;
+            let mut resolved_params = Self::resolve_step_params(&step.params, &step_results)?;
 
             // If dry_run is enabled, add it to the parameters for all tools
             if dry_run {
@@ -361,7 +360,7 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
             );
 
             // Resolve parameters using generic placeholder substitution
-            let mut resolved_params = self.resolve_step_params(&step.params, &step_results)?;
+            let mut resolved_params = Self::resolve_step_params(&step.params, &step_results)?;
 
             // If dry_run is enabled, add it to the parameters for all tools
             if dry_run {
@@ -497,7 +496,7 @@ mod tests {
             "locations": "$steps.0.locations"
         });
 
-        let resolved = executor.resolve_step_params(&params, &step_results);
+        let resolved = DefaultWorkflowExecutor::resolve_step_params(&params, &step_results);
         assert!(resolved.is_ok());
 
         let result = resolved.unwrap();
@@ -531,7 +530,7 @@ mod tests {
             "number": "$steps.0.data.nested.value"
         });
 
-        let resolved = executor.resolve_step_params(&params, &step_results);
+        let resolved = DefaultWorkflowExecutor::resolve_step_params(&params, &step_results);
         assert!(resolved.is_ok());
 
         let result = resolved.unwrap();
@@ -558,7 +557,7 @@ mod tests {
             "character": "$steps.0.range.start.character"
         });
 
-        let resolved = executor.resolve_step_params(&params, &step_results);
+        let resolved = DefaultWorkflowExecutor::resolve_step_params(&params, &step_results);
         assert!(resolved.is_ok());
 
         let result = resolved.unwrap();
@@ -576,7 +575,7 @@ mod tests {
             "value": "$steps.0.result"
         });
 
-        let resolved = executor.resolve_step_params(&params, &step_results);
+        let resolved = DefaultWorkflowExecutor::resolve_step_params(&params, &step_results);
         assert!(resolved.is_err());
 
         let error = resolved.unwrap_err();
@@ -605,7 +604,7 @@ mod tests {
             "value": "$steps.0.data.nonexistent"
         });
 
-        let resolved = executor.resolve_step_params(&params, &step_results);
+        let resolved = DefaultWorkflowExecutor::resolve_step_params(&params, &step_results);
         assert!(resolved.is_err());
 
         let error = resolved.unwrap_err();
@@ -627,7 +626,7 @@ mod tests {
             "value": "$steps.invalid"
         });
 
-        let resolved = executor.resolve_step_params(&params, &step_results);
+        let resolved = DefaultWorkflowExecutor::resolve_step_params(&params, &step_results);
         assert!(resolved.is_err());
 
         let error = resolved.unwrap_err();
@@ -662,7 +661,7 @@ mod tests {
             "files": ["$steps.0.file", "other.ts"]
         });
 
-        let resolved = executor.resolve_step_params(&params, &step_results);
+        let resolved = DefaultWorkflowExecutor::resolve_step_params(&params, &step_results);
         assert!(resolved.is_ok());
 
         let result = resolved.unwrap();

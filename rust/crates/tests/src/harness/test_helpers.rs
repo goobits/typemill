@@ -271,7 +271,7 @@ impl LspTestHelper {
 
         while start.elapsed() < timeout {
             // Try a simple health check to see if LSP is responsive
-            if let Ok(_) = self.client.call_tool("health_check", json!({})).await {
+            if self.client.call_tool("health_check", json!({})).await.is_ok() {
                 return true;
             }
 
@@ -442,12 +442,12 @@ impl ErrorTestHelper {
 
 /// Helper for performance testing
 pub struct PerformanceTestHelper {
-    client: TestClient,
+    _client: TestClient,
 }
 
 impl PerformanceTestHelper {
     pub fn new(client: TestClient) -> Self {
-        Self { client }
+        Self { _client: client }
     }
 
     pub async fn measure_operation_latency(
@@ -525,10 +525,7 @@ impl PerformanceTestHelper {
 
         let successful = results
             .iter()
-            .filter(|r| match r {
-                Ok(Ok(_)) => true,
-                _ => false,
-            })
+            .filter(|r| matches!(r, Ok(Ok(_))))
             .count();
 
         (successful, total_duration)
@@ -677,11 +674,11 @@ console.log(user, checkRole(role));
         tokio::time::sleep(duration).await;
     }
 
-    pub fn extract_error_message(error: &Box<dyn std::error::Error>) -> String {
+    pub fn extract_error_message(error: &dyn std::error::Error) -> String {
         error.to_string()
     }
 
-    pub fn is_timeout_error(error: &Box<dyn std::error::Error>) -> bool {
+    pub fn is_timeout_error(error: &dyn std::error::Error) -> bool {
         error.to_string().to_lowercase().contains("timeout")
     }
 }
