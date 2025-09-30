@@ -75,13 +75,6 @@ impl LspClient {
             .as_deref()
             .unwrap_or(&current_dir);
 
-        eprintln!("=== LSP SPAWN DEBUG ===");
-        eprintln!("Command: {}", command);
-        eprintln!("Args: {:?}", args);
-        eprintln!("Root dir: {:?}", root_dir);
-        eprintln!("PATH: {}", path_env);
-        eprintln!("======================");
-
         tracing::debug!(
             command = %command,
             args = ?args,
@@ -98,12 +91,6 @@ impl LspClient {
             .current_dir(root_dir)
             .spawn()
             .map_err(|e| {
-                eprintln!("=== LSP SPAWN FAILED ===");
-                eprintln!("Command: {}", command);
-                eprintln!("Error: {}", e);
-                eprintln!("PATH: {}", path_env);
-                eprintln!("========================");
-
                 tracing::error!(
                     command = %command,
                     args = ?args,
@@ -117,11 +104,6 @@ impl LspClient {
                     e
                 ))
             })?;
-
-        eprintln!("=== LSP SPAWN SUCCESS ===");
-        eprintln!("Command: {}", command);
-        eprintln!("PID: {:?}", child.id());
-        eprintln!("=========================");
 
         tracing::debug!(
             command = %command,
@@ -181,9 +163,6 @@ impl LspClient {
                     .expect("LSP message serialization should never fail for valid JSON types");
                 let message_str = format!("Content-Length: {}\r\n\r\n{}", content.len(), content);
 
-                // Debug: Log outgoing LSP messages
-                eprintln!("[LSP SEND] {}", content);
-
                 if let Err(e) = stdin.write_all(message_str.as_bytes()).await {
                     tracing::error!(
                         error_category = "lsp_communication",
@@ -228,8 +207,6 @@ impl LspClient {
                 if !stderr_line.is_empty() {
                     let trimmed = stderr_line.trim();
                     // Log stderr output at debug level (most LSPs write diagnostics here)
-                    // Also print to stderr for visibility in tests
-                    eprintln!("[LSP stderr: {}] {}", server_command, trimmed);
                     debug!(server = %server_command, stderr = %trimmed, "LSP stderr");
                     stderr_line.clear();
                 }
@@ -279,8 +256,6 @@ impl LspClient {
                             if let Ok(message) =
                                 Self::read_json_message(&mut reader, content_length).await
                             {
-                                // Debug: Log incoming LSP messages
-                                eprintln!("[LSP RECV] {}", serde_json::to_string(&message).unwrap_or_else(|_| "parse error".to_string()));
                                 Self::handle_message(message, &pending_requests_clone).await;
                             }
                         }

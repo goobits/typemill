@@ -528,6 +528,7 @@ impl FileService {
 
     /// Apply a single text edit to content
     fn apply_single_edit(&self, content: &str, edit: &TextEdit) -> ServerResult<String> {
+        let original_had_newline = content.ends_with('\n');
         let lines: Vec<&str> = content.lines().collect();
 
         if edit.location.start_line as usize >= lines.len() {
@@ -585,7 +586,11 @@ impl FileService {
             // Skip lines that are being replaced (between start_line and end_line)
         }
 
-        Ok(result.join("\n"))
+        let mut final_content = result.join("\n");
+        if original_had_newline && !final_content.is_empty() && !final_content.ends_with('\n') {
+            final_content.push('\n');
+        }
+        Ok(final_content)
     }
 
     /// Apply a dependency update (import/export change) to a file
