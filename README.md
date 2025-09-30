@@ -270,7 +270,7 @@ curl http://localhost/health
 - **Nginx reverse proxy**: Production-grade WebSocket handling with SSL ready
 - **Multi-container development**: Isolated workspaces for frontend/backend
 
-See [`examples/README.md`](examples/README.md) for detailed Docker documentation.
+See [`DOCKER.md`](DOCKER.md) for detailed Docker documentation and troubleshooting.
 
 ## 📝 License
 MIT - see [LICENSE](LICENSE) for details
