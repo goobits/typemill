@@ -47,9 +47,6 @@ impl SystemToolsPlugin {
             .insert("system.update_dependencies".to_string(), json!(true));
         capabilities
             .custom
-            .insert("system.rename_directory".to_string(), json!(true));
-        capabilities
-            .custom
             .insert("system.extract_function".to_string(), json!(true));
         capabilities
             .custom
@@ -310,75 +307,6 @@ impl SystemToolsPlugin {
             "command": command,
             "status": if dry_run { "preview" } else { "updated" },
         }))
-    }
-
-    /// Handle rename_directory tool
-    async fn handle_rename_directory(&self, params: Value) -> PluginResult<Value> {
-        #[derive(Debug, Deserialize)]
-        #[serde(rename_all = "snake_case")]
-        struct RenameDirectoryArgs {
-            old_path: String,
-            new_path: String,
-            update_imports: Option<bool>,
-            dry_run: Option<bool>,
-        }
-
-        let args: RenameDirectoryArgs =
-            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
-                message: format!("Invalid rename_directory args: {}", e),
-            })?;
-
-        debug!(
-            old_path = %args.old_path,
-            new_path = %args.new_path,
-            "Renaming directory"
-        );
-
-        if args.dry_run.unwrap_or(false) {
-            // In dry run, just show what would happen
-            let mut affected_files = Vec::new();
-
-            // Walk through directory to find all files that would be moved
-            let walker = WalkBuilder::new(&args.old_path).hidden(false).build();
-
-            for entry in walker.flatten() {
-                let file_path = entry.path();
-                if file_path.is_file() {
-                    let relative_path = file_path
-                        .strip_prefix(&args.old_path)
-                        .unwrap_or(file_path)
-                        .to_string_lossy();
-                    let new_file_path = format!("{}/{}", args.new_path, relative_path);
-                    affected_files.push(json!({
-                        "old": file_path.to_string_lossy(),
-                        "new": new_file_path,
-                    }));
-                }
-            }
-
-            return Ok(json!({
-                "operation": "rename_directory",
-                "old_path": args.old_path,
-                "new_path": args.new_path,
-                "dry_run": true,
-                "affected_files": affected_files,
-                "update_imports": args.update_imports.unwrap_or(true),
-            }));
-        }
-
-        // Actual rename operation
-        match tokio::fs::rename(&args.old_path, &args.new_path).await {
-            Ok(_) => Ok(json!({
-                "operation": "rename_directory",
-                "old_path": args.old_path,
-                "new_path": args.new_path,
-                "status": "success",
-                "update_imports": args.update_imports.unwrap_or(true),
-            })),
-            Err(e) => Err(PluginError::IoError {
-                message: format!("Failed to rename directory: {}", e),
-            }),
-        }
     }
 
     /// Handle find_dead_code tool
@@ -823,32 +751,6 @@ impl LanguagePlugin for SystemToolsPlugin {
                 }
             }),
             json!({
-                "name": "rename_directory",
-                "description": "Rename a directory and optionally update import statements.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "old_path": {
-                            "type": "string",
-                            "description": "Current directory path"
-                        },
-                        "new_path": {
-                            "type": "string",
-                            "description": "New directory path"
-                        },
-                        "update_imports": {
-                            "type": "boolean",
-                            "description": "Whether to update import statements"
-                        },
-                        "dry_run": {
-                            "type": "boolean",
-                            "description": "Preview changes without applying them"
-                        }
-                    },
-                    "required": ["old_path", "new_path"]
-                }
-            }),
-            json!({
                 "name": "extract_function",
                 "description": "Extract a block of code into a new function.",
                 "inputSchema": {
@@ -1005,7 +907,6 @@ impl LanguagePlugin for SystemToolsPlugin {
                 self.handle_update_dependencies(request.params.clone())
                     .await?
             }
-            "rename_directory" => self.handle_rename_directory(request.params.clone()).await?,
             "extract_function" => self.handle_extract_function(request.params.clone()).await?,
             "inline_variable" => self.handle_inline_variable(request.params.clone()).await?,
             "extract_variable" => self.handle_extract_variable(request.params.clone()).await?,

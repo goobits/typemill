@@ -667,7 +667,12 @@ impl PluginDispatcher {
     fn is_file_operation(&self, tool_name: &str) -> bool {
         matches!(
             tool_name,
-            "rename_file" | "create_file" | "delete_file" | "read_file" | "write_file"
+            "rename_file"
+                | "create_file"
+                | "delete_file"
+                | "read_file"
+                | "write_file"
+                | "rename_directory"
         )
     }
 
@@ -679,7 +684,6 @@ impl PluginDispatcher {
                 | "analyze_imports"
                 | "find_dead_code"
                 | "update_dependencies"
-                | "rename_directory"
                 | "extract_function"
                 | "inline_variable"
                 | "extract_variable"
@@ -1127,6 +1131,39 @@ impl PluginDispatcher {
                     "imports_updated": imports_updated,
                     "files_affected": files_affected
                 }))
+            }
+            "rename_directory" => {
+                let args = tool_call.arguments.ok_or_else(|| {
+                    ServerError::InvalidRequest("Missing arguments for rename_directory".into())
+                })?;
+                let old_path = args
+                    .get("old_path")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        ServerError::InvalidRequest("Missing 'old_path' parameter".into())
+                    })?;
+                let new_path = args
+                    .get("new_path")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        ServerError::InvalidRequest("Missing 'new_path' parameter".into())
+                    })?;
+                let dry_run = args
+                    .get("dry_run")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+
+                let result = self
+                    .app_state
+                    .file_service
+                    .rename_directory_with_imports(
+                        std::path::Path::new(old_path),
+                        std::path::Path::new(new_path),
+                        dry_run,
+                    )
+                    .await?;
+
+                Ok(json!(result))
             }
             "create_file" => {
                 let args = tool_call.arguments.ok_or_else(|| {

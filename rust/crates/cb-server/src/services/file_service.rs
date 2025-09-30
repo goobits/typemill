@@ -134,6 +134,122 @@ impl FileService {
         Ok(result)
     }
 
+    /// Rename a directory and update all imports pointing to files within it
+    pub async fn rename_directory_with_imports(
+        &self,
+        old_dir_path: &Path,
+        new_dir_path: &Path,
+        dry_run: bool,
+    ) -> ServerResult<DirectoryRenameResult> {
+        info!(old_path = ?old_dir_path, new_path = ?new_dir_path, dry_run, "Renaming directory");
+
+        let old_abs_dir = self.to_absolute_path(old_dir_path);
+        let new_abs_dir = self.to_absolute_path(new_dir_path);
+
+        // Check if source directory exists
+        if !old_abs_dir.exists() {
+            return Err(ServerError::NotFound(format!(
+                "Source directory does not exist: {:?}",
+                old_abs_dir
+            )));
+        }
+
+        // Check if destination already exists
+        if new_abs_dir.exists() && !dry_run {
+            return Err(ServerError::AlreadyExists(format!(
+                "Destination directory already exists: {:?}",
+                new_abs_dir
+            )));
+        }
+
+        // 1. Walk the directory to find all files before the rename
+        let mut files_to_move = Vec::new();
+        let walker = ignore::WalkBuilder::new(&old_abs_dir).hidden(false).build();
+        for entry in walker.flatten() {
+            if entry.path().is_file() {
+                files_to_move.push(entry.path().to_path_buf());
+            }
+        }
+
+        debug!(
+            files_count = files_to_move.len(),
+            "Found files in directory to rename"
+        );
+
+        // 2. Perform the actual directory rename on the filesystem
+        if !dry_run {
+            if let Err(e) = self.perform_rename(&old_abs_dir, &new_abs_dir).await {
+                return Err(e);
+            }
+            info!("Directory renamed successfully");
+        }
+
+        // 3. For each file, calculate its old and new path, then update imports
+        let mut total_imports_updated = 0;
+        let mut total_files_updated = std::collections::HashSet::new();
+        let mut all_errors = Vec::new();
+
+        for old_file_path in &files_to_move {
+            let relative_path = old_file_path.strip_prefix(&old_abs_dir).unwrap();
+            let new_file_path = new_abs_dir.join(relative_path);
+
+            match self
+                .import_service
+                .update_imports_for_rename(old_file_path, &new_file_path, dry_run)
+                .await
+            {
+                Ok(report) => {
+                    total_imports_updated += report.imports_updated;
+                    for path_str in report.updated_paths {
+                        total_files_updated.insert(path_str);
+                    }
+                    all_errors.extend(report.errors);
+                }
+                Err(e) => {
+                    let error_msg = format!("Failed to update imports for {:?}: {}", old_file_path, e);
+                    warn!(error = %e, file_path = %old_file_path.display(), "Failed to update imports");
+                    all_errors.push(error_msg);
+                }
+            }
+        }
+
+        let final_report = ImportUpdateReport {
+            files_updated: total_files_updated.len(),
+            imports_updated: total_imports_updated,
+            failed_files: all_errors.len(),
+            updated_paths: total_files_updated.into_iter().collect(),
+            errors: all_errors,
+        };
+
+        info!(
+            files_moved = files_to_move.len(),
+            imports_updated = final_report.imports_updated,
+            files_updated = final_report.files_updated,
+            "Directory rename complete"
+        );
+
+        let has_errors = !final_report.errors.is_empty();
+        let error_count = final_report.errors.len();
+
+        let result = DirectoryRenameResult {
+            old_path: old_dir_path.to_string_lossy().to_string(),
+            new_path: new_dir_path.to_string_lossy().to_string(),
+            success: !has_errors,
+            files_moved: files_to_move.len(),
+            import_updates: final_report,
+            error: if has_errors {
+                Some(format!(
+                    "Completed with {} errors during import updates",
+                    error_count
+                ))
+            } else {
+                None
+            },
+        };
+
+        Ok(result)
+    }
+
     /// Perform the actual file rename operation
     async fn perform_rename(&self, old_path: &Path, new_path: &Path) -> ServerResult<()> {
         // Ensure parent directory exists
@@ -634,6 +750,23 @@ pub struct FileRenameResult {
     pub success: bool,
     /// Import update report if applicable
     pub import_updates: Option<ImportUpdateReport>,
+    /// Error message if operation failed
+    pub error: Option<String>,
+}
+
+/// Result of a directory rename operation
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DirectoryRenameResult {
+    /// Original directory path
+    pub old_path: String,
+    /// New directory path
+    pub new_path: String,
+    /// Whether the rename was successful
+    pub success: bool,
+    /// Total number of files moved
+    pub files_moved: usize,
+    /// Aggregated import update report
+    pub import_updates: ImportUpdateReport,
     /// Error message if operation failed
     pub error: Option<String>,
 }

@@ -61,7 +61,7 @@
 
 | Function | Status | TypeScript/JS | Python | Go | Rust | Notes |
 |----------|--------|---------------|--------|-----|------|-------|
-| `rename_directory` | ⚠️ Partial | ✅ | ⚠️ | ⚠️ | ⚠️ | Renames dir, optional import updates (TS/JS only) |
+| `rename_directory` | ✅ Full | ✅ | ✅ | ✅ | ✅ | **Automatically updates imports for all files**, supports dry_run |
 | `analyze_imports` | ⚠️ Partial | ✅ | ✅ | ❌ | ❌ | TS/JS via cb_ast, Python via native parser |
 | `find_dead_code` | ⚠️ Partial | ✅ | ❌ | ❌ | ❌ | TS/JS only via AST analysis |
 | `update_dependencies` | ⚠️ Partial | ✅ npm/yarn/pnpm | ✅ pip | ❌ | ✅ cargo | Package manager detection + execution |
@@ -156,7 +156,7 @@ All LSP-based navigation, intelligence, and editing functions are production-rea
 - ✅ Advanced AST analysis via native Rust `swc` parser (Phase B)
 - ✅ Import graph analysis and updates
 - ✅ Dead code detection
-- ✅ File/directory rename with automatic import updates
+- ✅ File/directory rename with automatic import updates (all languages)
 
 ### Python (Good Support)
 - ✅ All LSP features via `pylsp`
@@ -195,7 +195,7 @@ New languages can be added by:
 ### **Import-Aware File Operations**
 - `rename_file`: ✅ Automatically updates imports in affected files
 - `delete_file`: ✅ Checks for imports before deletion (unless forced)
-- `rename_directory`: ⚠️ TS/JS only for import updates
+- `rename_directory`: ✅ **Automatically updates imports for ALL files in directory** (all languages)
 
 ### **Workflow System** (`achieve_intent`)
 - ✅ Intent → Workflow planning via `DefaultPlanner`
