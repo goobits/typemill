@@ -1,24 +1,26 @@
-# docker-compose.yml - CodeFlow Buddy Service Development Setup
 version: '3.8'
 
 services:
-  # CodeFlow WebSocket Service
-  codeflow-service:
+  codebuddy:
     build:
       context: .
-      dockerfile: Dockerfile.service
+      dockerfile: Dockerfile
+    container_name: codebuddy-dev
     ports:
-      - "3000:3000"
+      - "3000:3000"  # WebSocket server
+      - "4000:4000"  # Admin/health endpoints
     environment:
-      - NODE_ENV=development
-      - MAX_CLIENTS=20
-      - LOG_LEVEL=debug
-      - ENABLE_FUSE=true
+      - RUST_LOG=debug
+      - CODEBUDDY__SERVER__PORT=3000
+      - CODEBUDDY__SERVER__HOST=0.0.0.0
+      - CODEBUDDY__LOGGING__LEVEL=debug
+      - CODEBUDDY__LOGGING__FORMAT=pretty
     volumes:
-      # Mount logs directory for persistence
-      - ./logs:/app/logs
-      # FUSE mount directories
-      - /tmp/codeflow-workspaces:/tmp/codeflow-workspaces:shared
+      # Mount workspace for live development
+      - ./examples:/workspace
+      # Mount config directory
+      - ./config:/app/.codebuddy:ro
+      # FUSE mount points (shared for visibility)
       - /tmp/codeflow-mounts:/tmp/codeflow-mounts:shared
     devices:
       # Required for FUSE operations
@@ -27,85 +29,56 @@ services:
       # Required capabilities for FUSE
       - SYS_ADMIN
     security_opt:
-      # Allow access to FUSE devices
+      # Allow FUSE mounts in container
       - apparmor:unconfined
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 10s
     restart: unless-stopped
     networks:
-      - codeflow-network
+      - codebuddy-net
 
-  # Frontend Development Container (Node.js/React example)
-  frontend-dev:
-    image: node:20
+  # Example: Frontend development container
+  frontend-workspace:
+    image: node:20-slim
+    container_name: frontend-dev
     working_dir: /workspace
     volumes:
       - ./examples/frontend:/workspace
       - frontend-node-modules:/workspace/node_modules
     environment:
-      - MCP_SERVER=ws://codeflow-service:3000
+      - CODEBUDDY_WS=ws://codebuddy:3000
       - PROJECT_ID=frontend-app
-      - PROJECT_ROOT=/workspace
-    command: >
-      sh -c "
-        echo 'Setting up frontend development environment...' &&
-        npm install &&
-        echo 'Frontend container ready. Connect to CodeFlow service at ws://codeflow-service:3000' &&
-        tail -f /dev/null
-      "
+    command: tail -f /dev/null
     depends_on:
-      codeflow-service:
+      codebuddy:
         condition: service_healthy
     networks:
-      - codeflow-network
+      - codebuddy-net
 
-  # Backend Development Container (Python/FastAPI example)
-  backend-dev:
+  # Example: Backend development container
+  backend-workspace:
     image: python:3.11-slim
+    container_name: backend-dev
     working_dir: /workspace
     volumes:
       - ./examples/backend:/workspace
     environment:
-      - MCP_SERVER=ws://codeflow-service:3000
+      - CODEBUDDY_WS=ws://codebuddy:3000
       - PROJECT_ID=backend-api
-      - PROJECT_ROOT=/workspace
-      - PYTHONPATH=/workspace
-    command: >
-      sh -c "
-        echo 'Setting up backend development environment...' &&
-        pip install -r requirements.txt 2>/dev/null || echo 'No requirements.txt found' &&
-        echo 'Backend container ready. Connect to CodeFlow service at ws://codeflow-service:3000' &&
-        tail -f /dev/null
-      "
+    command: tail -f /dev/null
     depends_on:
-      codeflow-service:
+      codebuddy:
         condition: service_healthy
     networks:
-      - codeflow-network
-
-  # Database Development Container (PostgreSQL example)
-  postgres-dev:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_DB=devdb
-      - POSTGRES_USER=devuser
-      - POSTGRES_PASSWORD=devpass
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./examples/database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
-    networks:
-      - codeflow-network
+      - codebuddy-net
 
 volumes:
   frontend-node-modules:
-  postgres-data:
 
 networks:
-  codeflow-network:
+  codebuddy-net:
     driver: bridge

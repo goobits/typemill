@@ -1,0 +1,52 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 3000,
+    "maxClients": 100,
+    "timeoutMs": 120000,
+    "auth": {
+      "jwtSecret": "${JWT_SECRET}",
+      "jwtExpirySeconds": 86400,
+      "jwtIssuer": "codebuddy",
+      "jwtAudience": "codebuddy-clients"
+    }
+  },
+  "lsp": {
+    "servers": [
+      {
+        "extensions": ["ts", "tsx", "js", "jsx"],
+        "command": ["typescript-language-server", "--stdio"],
+        "restartInterval": 30
+      },
+      {
+        "extensions": ["py"],
+        "command": ["pylsp"],
+        "restartInterval": 15
+      }
+    ],
+    "defaultTimeoutMs": 30000,
+    "enablePreload": true
+  },
+  "fuse": {
+    "mountPoint": "/tmp/codeflow-mounts",
+    "readOnly": false,
+    "cacheTimeoutSeconds": 300,
+    "maxFileSizeBytes": 52428800
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "file": {
+      "path": "/var/log/codebuddy/app.log",
+      "maxSizeBytes": 104857600,
+      "maxFiles": 10
+    }
+  },
+  "cache": {
+    "enabled": true,
+    "ttlSeconds": 3600,
+    "maxSizeBytes": 1073741824,
+    "persistent": true,
+    "cacheDir": "/var/cache/codebuddy"
+  }
+}
