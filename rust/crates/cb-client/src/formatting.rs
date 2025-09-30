@@ -256,7 +256,9 @@ impl Formatter {
                             || next_ch == '+'
                             || next_ch == '-'
                         {
-                            number.push(chars.next().unwrap());
+                            if let Some(ch) = chars.next() {
+                                number.push(ch);
+                            }
                         } else {
                             break;
                         }
