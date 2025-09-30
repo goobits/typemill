@@ -40,7 +40,7 @@ impl LspSetupHelper {
                 std::env::var(var).ok()
             }).to_string();
 
-            for path_dir in expanded_path.split(':') {
+            for path_dir in expanded_path.split(if cfg!(windows) { ';' } else { ':' }) {
                 let full_path = std::path::Path::new(path_dir).join(command);
                 if full_path.exists() && full_path.is_file() {
                     return true;
@@ -128,7 +128,7 @@ impl LspSetupHelper {
                 std::env::var(var).ok()
             }).to_string();
 
-            for path_dir in expanded_path.split(':') {
+            for path_dir in expanded_path.split(if cfg!(windows) { ';' } else { ':' }) {
                 let full_path = std::path::Path::new(path_dir).join(command);
                 if full_path.exists() && full_path.is_file() {
                     return full_path.to_string_lossy().to_string().into();
@@ -137,6 +137,31 @@ impl LspSetupHelper {
         }
 
         None
+    }
+
+    /// Get the LSP command for a given file extension
+    pub fn get_lsp_command(extension: &str) -> Result<Vec<String>, cb_api::ApiError> {
+        match extension {
+            "ts" | "tsx" | "js" | "jsx" => {
+                let ts_lsp_path = Self::resolve_command_path("typescript-language-server")
+                    .unwrap_or_else(|| "typescript-language-server".to_string());
+                Ok(vec![ts_lsp_path, "--stdio".to_string()])
+            }
+            "py" => {
+                let pylsp_path = Self::resolve_command_path("pylsp")
+                    .unwrap_or_else(|| "pylsp".to_string());
+                Ok(vec![pylsp_path])
+            }
+            "rs" => {
+                let rust_analyzer_path = Self::resolve_command_path("rust-analyzer")
+                    .unwrap_or_else(|| "rust-analyzer".to_string());
+                Ok(vec![rust_analyzer_path])
+            }
+            _ => Err(cb_api::ApiError::lsp(format!(
+                "No LSP server configured for extension: {}",
+                extension
+            ))),
+        }
     }
 
     /// Verify that LSP servers are working with the test client

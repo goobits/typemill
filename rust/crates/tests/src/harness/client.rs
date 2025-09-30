@@ -18,21 +18,13 @@ pub struct TestClient {
 impl TestClient {
     /// Spawns cb-server in stdio mode with the given working directory.
     pub fn new(working_dir: &Path) -> Self {
-        // Determine the path to the cb-server binary
-        // Use absolute paths for reliability
-        let possible_paths = [
-            "/workspace/rust/target/release/cb-server",
-            "/workspace/rust/target/debug/cb-server",
-            "target/release/cb-server",
-            "target/debug/cb-server",
-        ];
+        // Determine the path to the cb-server binary relative to the workspace root
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
+            .expect("CARGO_MANIFEST_DIR not set. Please run tests with `cargo test`.");
+        let server_path = std::path::Path::new(&manifest_dir)
+            .join("../../target/debug/cb-server");
 
-        let server_path = possible_paths
-            .iter()
-            .find(|path| Path::new(path).exists())
-            .unwrap_or(&"cb-server");
-
-        eprintln!("DEBUG: TestClient using server path: {}", server_path);
+        eprintln!("DEBUG: TestClient using server path: {}", server_path.display());
 
         // Expand ALL environment variables in PATH for LSP server spawning
         // This is needed because cargo config sets PATH with $HOME, $NVM_DIR, etc.
@@ -317,10 +309,6 @@ impl TestClient {
     pub fn get_server_stats(&self) -> Result<ServerStats, Box<dyn std::error::Error>> {
         let pid = self.process.id();
 
-        // Get process information using /proc filesystem (Linux)
-        let status_path = format!("/proc/{}/status", pid);
-        let stat_path = format!("/proc/{}/stat", pid);
-
         let mut stats = ServerStats {
             pid,
             memory_kb: 0,
@@ -329,27 +317,34 @@ impl TestClient {
             child_processes: self.get_child_processes().len() as u32,
         };
 
-        // Read memory usage from /proc/PID/status
-        if let Ok(status_content) = std::fs::read_to_string(&status_path) {
-            for line in status_content.lines() {
-                if line.starts_with("VmRSS:") {
-                    if let Some(value_str) = line.split_whitespace().nth(1) {
-                        stats.memory_kb = value_str.parse().unwrap_or(0);
+        // Get process information using /proc filesystem (Linux-only)
+        #[cfg(target_os = "linux")]
+        {
+            let status_path = format!("/proc/{}/status", pid);
+            let stat_path = format!("/proc/{}/stat", pid);
+
+            // Read memory usage from /proc/PID/status
+            if let Ok(status_content) = std::fs::read_to_string(&status_path) {
+                for line in status_content.lines() {
+                    if line.starts_with("VmRSS:") {
+                        if let Some(value_str) = line.split_whitespace().nth(1) {
+                            stats.memory_kb = value_str.parse().unwrap_or(0);
+                        }
+                        break;
                     }
-                    break;
                 }
             }
-        }
 
-        // Basic uptime calculation (simplified)
-        if let Ok(stat_content) = std::fs::read_to_string(&stat_path) {
-            let fields: Vec<&str> = stat_content.split_whitespace().collect();
-            if fields.len() > 21 {
-                // Field 22 is starttime in clock ticks
-                if let Ok(starttime) = fields[21].parse::<u64>() {
-                    let clock_ticks_per_sec = 100; // Typical value, could be more precise
-                    let _boot_time = 0; // Would need to read from /proc/stat for accuracy
-                    stats.uptime_seconds = starttime / clock_ticks_per_sec;
+            // Basic uptime calculation (simplified)
+            if let Ok(stat_content) = std::fs::read_to_string(&stat_path) {
+                let fields: Vec<&str> = stat_content.split_whitespace().collect();
+                if fields.len() > 21 {
+                    // Field 22 is starttime in clock ticks
+                    if let Ok(starttime) = fields[21].parse::<u64>() {
+                        let clock_ticks_per_sec = 100; // Typical value, could be more precise
+                        let _boot_time = 0; // Would need to read from /proc/stat for accuracy
+                        stats.uptime_seconds = starttime / clock_ticks_per_sec;
+                    }
                 }
             }
         }
