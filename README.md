@@ -241,18 +241,19 @@ cargo build --release
 
 ### Development Environment
 ```bash
+cd docker
+
 # Start all services (codebuddy + example workspaces)
 docker-compose up -d
 
 # View logs
 docker-compose logs -f codebuddy
-
-# Stop services
-docker-compose down
 ```
 
 ### Production Deployment
 ```bash
+cd docker
+
 # Set JWT secret for authentication
 export JWT_SECRET="your-secure-secret-key"
 
@@ -270,7 +271,7 @@ curl http://localhost/health
 - **Nginx reverse proxy**: Production-grade WebSocket handling with SSL ready
 - **Multi-container development**: Isolated workspaces for frontend/backend
 
-See [`DOCKER.md`](DOCKER.md) for detailed Docker documentation and troubleshooting.
+See [`docker/README.md`](docker/README.md) for detailed Docker documentation and troubleshooting.
 
 ## 📝 License
 MIT - see [LICENSE](LICENSE) for details

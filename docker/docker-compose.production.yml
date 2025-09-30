@@ -3,8 +3,8 @@ version: '3.8'
 services:
   codebuddy:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: codebuddy-prod
     ports:
       - "3000:3000"  # Internal only, proxied by nginx

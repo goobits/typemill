@@ -3,8 +3,8 @@ version: '3.8'
 services:
   codebuddy:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: codebuddy-dev
     ports:
       - "3000:3000"  # WebSocket server
@@ -17,7 +17,7 @@ services:
       - CODEBUDDY__LOGGING__FORMAT=pretty
     volumes:
       # Mount workspace for live development
-      - ./examples:/workspace
+      - ../examples:/workspace
       # Mount config directory
       - ./config:/app/.codebuddy:ro
       # FUSE mount points (shared for visibility)
@@ -47,7 +47,7 @@ services:
     container_name: frontend-dev
     working_dir: /workspace
     volumes:
-      - ./examples/frontend:/workspace
+      - ../examples/frontend:/workspace
       - frontend-node-modules:/workspace/node_modules
     environment:
       - CODEBUDDY_WS=ws://codebuddy:3000
@@ -65,7 +65,7 @@ services:
     container_name: backend-dev
     working_dir: /workspace
     volumes:
-      - ./examples/backend:/workspace
+      - ../examples/backend:/workspace
     environment:
       - CODEBUDDY_WS=ws://codebuddy:3000
       - PROJECT_ID=backend-api
