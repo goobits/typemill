@@ -184,18 +184,6 @@ impl LspClient {
                 // Debug: Log outgoing LSP messages
                 eprintln!("[LSP SEND] {}", content);
 
-                // Debug: Hex dump first 200 bytes to diagnose pylsp crash
-                let bytes = message_str.as_bytes();
-                let dump_len = bytes.len().min(200);
-                eprintln!("[LSP HEX DUMP] First {} bytes of message:", dump_len);
-                for (i, chunk) in bytes[..dump_len].chunks(16).enumerate() {
-                    let hex: String = chunk.iter().map(|b| format!("{:02x} ", b)).collect();
-                    let ascii: String = chunk.iter().map(|&b| {
-                        if b >= 32 && b <= 126 { b as char } else { '.' }
-                    }).collect();
-                    eprintln!("  {:04x}: {:<48} {}", i * 16, hex, ascii);
-                }
-
                 if let Err(e) = stdin.write_all(message_str.as_bytes()).await {
                     tracing::error!(
                         error_category = "lsp_communication",
