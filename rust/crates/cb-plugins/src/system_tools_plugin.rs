@@ -700,46 +700,6 @@ impl SystemToolsPlugin {
         }))
     }
 
-    /// Handle google_search tool
-    async fn handle_google_search(&self, params: Value) -> PluginResult<Value> {
-        #[derive(Debug, Deserialize)]
-        #[serde(rename_all = "snake_case")]
-        struct GoogleSearchArgs {
-            query: String,
-        }
-
-        let args: GoogleSearchArgs =
-            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
-                message: format!("Invalid google_search args: {}", e),
-            })?;
-
-        debug!(query = %args.query, "Performing Google search");
-
-        // Return mock search results
-        let results = vec![
-            json!({
-                "url": "https://example.com/result1",
-                "title": format!("Result 1 for '{}'", args.query),
-                "description": "This is the first search result"
-            }),
-            json!({
-                "url": "https://example.com/result2",
-                "title": format!("Result 2 for '{}'", args.query),
-                "description": "This is the second search result"
-            }),
-            json!({
-                "url": "https://example.com/result3",
-                "title": format!("Result 3 for '{}'", args.query),
-                "description": "This is the third search result"
-            }),
-        ];
-
-        Ok(json!({
-            "query": args.query,
-            "results": results,
-            "status": "success"
-        }))
-    }
 }
 
 #[async_trait]
@@ -1015,20 +975,6 @@ impl LanguagePlugin for SystemToolsPlugin {
                 }
             }),
             json!({
-                "name": "google_search",
-                "description": "Search for a topic using Google. Returns a list of search results.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The search query"
-                        }
-                    },
-                    "required": ["query"]
-                }
-            }),
-            json!({
                 "name": "health_check",
                 "description": "Get the health status of the server, including uptime, loaded plugins, and paused workflows.",
                 "inputSchema": {
@@ -1065,7 +1011,6 @@ impl LanguagePlugin for SystemToolsPlugin {
             "extract_variable" => self.handle_extract_variable(request.params.clone()).await?,
             "fix_imports" => self.handle_fix_imports(request.params.clone()).await?,
             "web_fetch" => self.handle_web_fetch(request.params.clone()).await?,
-            "google_search" => self.handle_google_search(request.params.clone()).await?,
             _ => {
                 return Err(PluginError::MethodNotSupported {
                     method: request.method.clone(),
