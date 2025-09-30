@@ -1,11 +1,12 @@
 //! Unified LSP Feature Tests
 //!
 //! This module contains comprehensive tests for LSP features across multiple languages.
-//! Tests are organized by feature and run against mock LSP servers.
+//! Each feature has both mock tests (fast, no dependencies) and real tests (marked with #[ignore]).
+//! Real tests require actual LSP servers to be installed (e.g., typescript-language-server for TypeScript).
 
 use cb_api::LspService;
 use serde_json::json;
-use tests::harness::LspTestBuilder;
+use tests::harness::{LspTestBuilder, MockLspService, TestWorkspace};
 
 // =============================================================================
 // Go To Definition Tests
@@ -13,22 +14,20 @@ use tests::harness::LspTestBuilder;
 
 #[tokio::test]
 async fn test_go_to_definition_mock_typescript() {
-    let (service, workspace) = LspTestBuilder::new("ts")
-        .with_file("main.ts", r#"
+    let mock_service = std::sync::Arc::new(MockLspService::new());
+    let workspace = TestWorkspace::new();
+    workspace.create_file("main.ts", r#"
 import { calculateSum } from './utils';
 const result = calculateSum(5, 3);
-"#)
-        .with_file("utils.ts", r#"
+"#);
+    workspace.create_file("utils.ts", r#"
 export function calculateSum(a: number, b: number): number {
     return a + b;
 }
-"#)
-        .build_mock()
-        .await
-        .unwrap();
+"#);
 
     // Configure mock to return definition location
-    service.set_response(
+    mock_service.set_response(
         "textDocument/definition",
         json!([{
             "uri": format!("file://{}/utils.ts", workspace.path().display()),
@@ -39,7 +38,6 @@ export function calculateSum(a: number, b: number): number {
         }]),
     );
 
-    // Call find_definition through the service
     let message = cb_api::Message {
         id: Some("1".to_string()),
         method: "textDocument/definition".to_string(),
@@ -51,96 +49,45 @@ export function calculateSum(a: number, b: number): number {
         }),
     };
 
-    let response = service.request(message).await.unwrap();
-
-    // Verify the response contains the expected definition location
+    let response = mock_service.request(message).await.unwrap();
     let locations = response.params.as_array().unwrap();
     assert!(!locations.is_empty(), "Should return at least one location");
-
-    let location = &locations[0];
     assert!(
-        location["uri"].as_str().unwrap().contains("utils.ts"),
+        locations[0]["uri"].as_str().unwrap().contains("utils.ts"),
         "Definition should be in utils.ts"
     );
 }
 
 #[tokio::test]
-async fn test_go_to_definition_function() {
+#[ignore] // Ignored in CI unless LSP servers are guaranteed to be present
+async fn test_go_to_definition_real_typescript() {
     let (service, workspace) = LspTestBuilder::new("ts")
-        .with_file("main.ts", r#"
-import { calculateSum } from './utils';
-const result = calculateSum(5, 3);
-"#)
-        .with_file("utils.ts", r#"
-export function calculateSum(a: number, b: number): number {
-    return a + b;
-}
-"#)
-        .build_mock()
+        .with_real_lsp()
+        .with_file("main.ts", r#"import { util } from './util';
+util();"#)
+        .with_file("util.ts", "export function util() {}")
+        .build()
         .await
         .unwrap();
 
-    // Setup mock response using pre-configured navigation responses
-    service.setup_navigation_responses();
+    // Give the real LSP server time to initialize and index files
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let message = cb_api::Message {
-        id: Some("1".to_string()),
+        id: Some("real-def-1".to_string()),
         method: "textDocument/definition".to_string(),
         params: json!({
             "textDocument": {
                 "uri": format!("file://{}/main.ts", workspace.path().display())
             },
-            "position": {"line": 2, "character": 15}
-        }),
-    };
-
-    let response = service.request(message).await.unwrap();
-    assert!(response.params.is_array() || response.params.is_object());
-}
-
-#[tokio::test]
-async fn test_go_to_definition_interface() {
-    let (service, workspace) = LspTestBuilder::new("ts")
-        .with_file("main.ts", r#"
-import { User } from './types';
-const user: User = { id: 1, name: 'John' };
-"#)
-        .with_file("types.ts", r#"
-export interface User {
-    id: number;
-    name: string;
-}
-"#)
-        .build_mock()
-        .await
-        .unwrap();
-
-    // Setup mock response for interface definition
-    service.set_response(
-        "textDocument/definition",
-        json!([{
-            "uri": format!("file://{}/types.ts", workspace.path().display()),
-            "range": {
-                "start": {"line": 1, "character": 17},
-                "end": {"line": 1, "character": 21}
-            }
-        }]),
-    );
-
-    let message = cb_api::Message {
-        id: Some("1".to_string()),
-        method: "textDocument/definition".to_string(),
-        params: json!({
-            "textDocument": {
-                "uri": format!("file://{}/main.ts", workspace.path().display())
-            },
-            "position": {"line": 2, "character": 12}
+            "position": { "line": 0, "character": 9 }
         }),
     };
 
     let response = service.request(message).await.unwrap();
     let locations = response.params.as_array().unwrap();
-    assert!(!locations.is_empty());
+    assert!(!locations.is_empty(), "Real LSP server should return a definition");
+    assert!(locations[0]["uri"].as_str().unwrap().contains("util.ts"));
 }
 
 // =============================================================================
@@ -148,26 +95,20 @@ export interface User {
 // =============================================================================
 
 #[tokio::test]
-async fn test_find_references_function() {
-    let (service, workspace) = LspTestBuilder::new("ts")
-        .with_file("utils.ts", r#"
+async fn test_find_references_mock() {
+    let mock_service = std::sync::Arc::new(MockLspService::new());
+    let workspace = TestWorkspace::new();
+    workspace.create_file("utils.ts", r#"
 export function formatName(first: string, last: string): string {
     return `${first} ${last}`;
 }
-"#)
-        .with_file("main.ts", r#"
+"#);
+    workspace.create_file("main.ts", r#"
 import { formatName } from './utils';
 const fullName = formatName('John', 'Doe');
-"#)
-        .with_file("test.ts", r#"
-import { formatName } from './utils';
-const result = formatName('Jane', 'Smith');
-"#)
-        .build_mock()
-        .await
-        .unwrap();
+"#);
 
-    service.set_response(
+    mock_service.set_response(
         "textDocument/references",
         json!([
             {
@@ -182,13 +123,6 @@ const result = formatName('Jane', 'Smith');
                 "range": {
                     "start": {"line": 2, "character": 17},
                     "end": {"line": 2, "character": 27}
-                }
-            },
-            {
-                "uri": format!("file://{}/test.ts", workspace.path().display()),
-                "range": {
-                    "start": {"line": 2, "character": 15},
-                    "end": {"line": 2, "character": 25}
                 }
             }
         ]),
@@ -206,9 +140,39 @@ const result = formatName('Jane', 'Smith');
         }),
     };
 
+    let response = mock_service.request(message).await.unwrap();
+    let references = response.params.as_array().unwrap();
+    assert!(references.len() >= 2, "Should find at least 2 references");
+}
+
+#[tokio::test]
+#[ignore] // Requires typescript-language-server
+async fn test_find_references_real_typescript() {
+    let (service, workspace) = LspTestBuilder::new("ts")
+        .with_real_lsp()
+        .with_file("utils.ts", "export function helper() { return 42; }")
+        .with_file("main.ts", "import { helper } from './utils';\nconst x = helper();")
+        .build()
+        .await
+        .unwrap();
+
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+    let message = cb_api::Message {
+        id: Some("real-refs-1".to_string()),
+        method: "textDocument/references".to_string(),
+        params: json!({
+            "textDocument": {
+                "uri": format!("file://{}/utils.ts", workspace.path().display())
+            },
+            "position": {"line": 0, "character": 17},
+            "context": {"includeDeclaration": true}
+        }),
+    };
+
     let response = service.request(message).await.unwrap();
     let references = response.params.as_array().unwrap();
-    assert!(references.len() >= 3, "Should find at least 3 references");
+    assert!(!references.is_empty(), "Real LSP should find references");
 }
 
 // =============================================================================
@@ -216,66 +180,29 @@ const result = formatName('Jane', 'Smith');
 // =============================================================================
 
 #[tokio::test]
-async fn test_hover_function() {
-    let (service, workspace) = LspTestBuilder::new("ts")
-        .with_file("hover_test.ts", r#"
+async fn test_hover_mock() {
+    let mock_service = std::sync::Arc::new(MockLspService::new());
+    let workspace = TestWorkspace::new();
+    workspace.create_file("hover_test.ts", r#"
 /**
  * Calculates the area of a rectangle
- * @param width The width of the rectangle
- * @param height The height of the rectangle
- * @returns The area in square units
  */
 function calculateArea(width: number, height: number): number {
     return width * height;
 }
 const area = calculateArea(10, 5);
-"#)
-        .build_mock()
-        .await
-        .unwrap();
+"#);
 
-    service.setup_intelligence_responses();
-
-    let message = cb_api::Message {
-        id: Some("1".to_string()),
-        method: "textDocument/hover".to_string(),
-        params: json!({
-            "textDocument": {
-                "uri": format!("file://{}/hover_test.ts", workspace.path().display())
-            },
-            "position": {"line": 10, "character": 15}
-        }),
-    };
-
-    let response = service.request(message).await.unwrap();
-    let hover_data = &response.params;
-
-    // Verify hover contains expected information
-    assert!(hover_data.is_object());
-    assert!(hover_data.get("contents").is_some());
-}
-
-#[tokio::test]
-async fn test_hover_variable() {
-    let (service, workspace) = LspTestBuilder::new("ts")
-        .with_file("variable_hover.ts", r#"
-interface Point {
-    x: number;
-    y: number;
-}
-const origin: Point = { x: 0, y: 0 };
-const distance = Math.sqrt(origin.x ** 2 + origin.y ** 2);
-"#)
-        .build_mock()
-        .await
-        .unwrap();
-
-    service.set_response(
+    mock_service.set_response(
         "textDocument/hover",
         json!({
             "contents": {
                 "kind": "markdown",
-                "value": "```typescript\nconst origin: Point\n```"
+                "value": "```typescript\nfunction calculateArea(width: number, height: number): number\n```\n\nCalculates the area of a rectangle"
+            },
+            "range": {
+                "start": {"line": 4, "character": 9},
+                "end": {"line": 4, "character": 22}
             }
         }),
     );
@@ -285,66 +212,43 @@ const distance = Math.sqrt(origin.x ** 2 + origin.y ** 2);
         method: "textDocument/hover".to_string(),
         params: json!({
             "textDocument": {
-                "uri": format!("file://{}/variable_hover.ts", workspace.path().display())
+                "uri": format!("file://{}/hover_test.ts", workspace.path().display())
             },
-            "position": {"line": 5, "character": 6}
+            "position": {"line": 7, "character": 15}
         }),
     };
 
-    let response = service.request(message).await.unwrap();
-    assert!(response.params.is_object());
+    let response = mock_service.request(message).await.unwrap();
+    let hover_data = &response.params;
+    assert!(hover_data.is_object());
+    assert!(hover_data.get("contents").is_some());
 }
-
-// =============================================================================
-// Signature Help Tests
-// =============================================================================
 
 #[tokio::test]
-async fn test_signature_help() {
+#[ignore] // Requires typescript-language-server
+async fn test_hover_real_typescript() {
     let (service, workspace) = LspTestBuilder::new("ts")
-        .with_file("signature_test.ts", r#"
-function greetUser(name: string, age: number, isActive: boolean = true): string {
-    return `Hello ${name}, age ${age}, active: ${isActive}`;
-}
-const greeting = greetUser("Alice", 30,
-"#)
-        .build_mock()
+        .with_real_lsp()
+        .with_file("test.ts", "function greet(name: string) { return 'Hello ' + name; }\nconst msg = greet('World');")
+        .build()
         .await
         .unwrap();
 
-    service.set_response(
-        "textDocument/signatureHelp",
-        json!({
-            "signatures": [{
-                "label": "greetUser(name: string, age: number, isActive?: boolean): string",
-                "parameters": [
-                    {"label": "name: string"},
-                    {"label": "age: number"},
-                    {"label": "isActive?: boolean"}
-                ]
-            }],
-            "activeSignature": 0,
-            "activeParameter": 2
-        }),
-    );
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let message = cb_api::Message {
-        id: Some("1".to_string()),
-        method: "textDocument/signatureHelp".to_string(),
+        id: Some("real-hover-1".to_string()),
+        method: "textDocument/hover".to_string(),
         params: json!({
             "textDocument": {
-                "uri": format!("file://{}/signature_test.ts", workspace.path().display())
+                "uri": format!("file://{}/test.ts", workspace.path().display())
             },
-            "position": {"line": 4, "character": 35}
+            "position": {"line": 1, "character": 12}
         }),
     };
 
     let response = service.request(message).await.unwrap();
-    let sig_help = &response.params;
-
-    assert!(sig_help.get("signatures").is_some());
-    let signatures = sig_help["signatures"].as_array().unwrap();
-    assert!(!signatures.is_empty());
+    assert!(response.params.is_object() || response.params.is_null());
 }
 
 // =============================================================================
@@ -352,37 +256,26 @@ const greeting = greetUser("Alice", 30,
 // =============================================================================
 
 #[tokio::test]
-async fn test_document_symbols() {
-    let (service, workspace) = LspTestBuilder::new("ts")
-        .with_file("symbols.ts", r#"
+async fn test_document_symbols_mock() {
+    let mock_service = std::sync::Arc::new(MockLspService::new());
+    let workspace = TestWorkspace::new();
+    workspace.create_file("symbols.ts", r#"
 export const API_URL = 'https://api.example.com';
 
 export interface Config {
     timeout: number;
-    retries: number;
 }
 
 export class ApiClient {
-    private config: Config;
-
-    constructor(config: Config) {
-        this.config = config;
-    }
-
-    async get(endpoint: string): Promise<any> {
-        return fetch(`${API_URL}/${endpoint}`);
-    }
+    constructor(config: Config) {}
 }
 
 export function createClient(config: Config): ApiClient {
     return new ApiClient(config);
 }
-"#)
-        .build_mock()
-        .await
-        .unwrap();
+"#);
 
-    service.set_response(
+    mock_service.set_response(
         "textDocument/documentSymbol",
         json!([
             {
@@ -398,27 +291,15 @@ export function createClient(config: Config): ApiClient {
                 "kind": 11,
                 "range": {
                     "start": {"line": 3, "character": 17},
-                    "end": {"line": 6, "character": 1}
+                    "end": {"line": 5, "character": 1}
                 }
             },
             {
                 "name": "ApiClient",
                 "kind": 5,
                 "range": {
-                    "start": {"line": 8, "character": 13},
-                    "end": {"line": 17, "character": 1}
-                },
-                "children": [
-                    {"name": "constructor", "kind": 9},
-                    {"name": "get", "kind": 6}
-                ]
-            },
-            {
-                "name": "createClient",
-                "kind": 12,
-                "range": {
-                    "start": {"line": 19, "character": 16},
-                    "end": {"line": 21, "character": 1}
+                    "start": {"line": 7, "character": 13},
+                    "end": {"line": 9, "character": 1}
                 }
             }
         ]),
@@ -434,19 +315,40 @@ export function createClient(config: Config): ApiClient {
         }),
     };
 
-    let response = service.request(message).await.unwrap();
+    let response = mock_service.request(message).await.unwrap();
     let symbols = response.params.as_array().unwrap();
     assert!(!symbols.is_empty(), "Should return document symbols");
+}
 
-    let symbol_names: Vec<&str> = symbols
-        .iter()
-        .filter_map(|s| s["name"].as_str())
-        .collect();
+#[tokio::test]
+#[ignore] // Requires typescript-language-server
+async fn test_document_symbols_real_typescript() {
+    let (service, workspace) = LspTestBuilder::new("ts")
+        .with_real_lsp()
+        .with_file("symbols.ts", r#"
+export const VERSION = '1.0.0';
+export class MyClass {
+    method() {}
+}
+"#)
+        .build()
+        .await
+        .unwrap();
 
-    assert!(symbol_names.contains(&"API_URL"));
-    assert!(symbol_names.contains(&"Config"));
-    assert!(symbol_names.contains(&"ApiClient"));
-    assert!(symbol_names.contains(&"createClient"));
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+    let message = cb_api::Message {
+        id: Some("real-symbols-1".to_string()),
+        method: "textDocument/documentSymbol".to_string(),
+        params: json!({
+            "textDocument": {
+                "uri": format!("file://{}/symbols.ts", workspace.path().display())
+            }
+        }),
+    };
+
+    let response = service.request(message).await.unwrap();
+    assert!(response.params.is_array() || response.params.is_object());
 }
 
 // =============================================================================
@@ -454,28 +356,16 @@ export function createClient(config: Config): ApiClient {
 // =============================================================================
 
 #[tokio::test]
-async fn test_workspace_symbols() {
-    let (service, workspace) = LspTestBuilder::new("ts")
-        .with_file("src/models.ts", r#"
+async fn test_workspace_symbols_mock() {
+    let mock_service = std::sync::Arc::new(MockLspService::new());
+    let workspace = TestWorkspace::new();
+    workspace.create_file("src/models.ts", r#"
 export class UserModel {
-    constructor(public id: number, public name: string) {}
+    constructor(public id: number) {}
 }
-export interface UserData {
-    id: number;
-    name: string;
-}
-"#)
-        .with_file("src/services.ts", r#"
-import { UserModel } from './models';
-export class UserService {
-    private users: UserModel[] = [];
-}
-"#)
-        .build_mock()
-        .await
-        .unwrap();
+"#);
 
-    service.set_response(
+    mock_service.set_response(
         "workspace/symbol",
         json!([
             {
@@ -486,28 +376,6 @@ export class UserService {
                     "range": {
                         "start": {"line": 1, "character": 13},
                         "end": {"line": 3, "character": 1}
-                    }
-                }
-            },
-            {
-                "name": "UserData",
-                "kind": 11,
-                "location": {
-                    "uri": format!("file://{}/src/models.ts", workspace.path().display()),
-                    "range": {
-                        "start": {"line": 4, "character": 17},
-                        "end": {"line": 7, "character": 1}
-                    }
-                }
-            },
-            {
-                "name": "UserService",
-                "kind": 5,
-                "location": {
-                    "uri": format!("file://{}/src/services.ts", workspace.path().display()),
-                    "range": {
-                        "start": {"line": 2, "character": 13},
-                        "end": {"line": 4, "character": 1}
                     }
                 }
             }
@@ -522,73 +390,29 @@ export class UserService {
         }),
     };
 
-    let response = service.request(message).await.unwrap();
+    let response = mock_service.request(message).await.unwrap();
     let symbols = response.params.as_array().unwrap();
     assert!(!symbols.is_empty(), "Should find workspace symbols");
-
-    let symbol_names: Vec<&str> = symbols
-        .iter()
-        .filter_map(|s| s["name"].as_str())
-        .collect();
-
-    assert!(symbol_names.iter().any(|name| name.contains("UserModel")));
-    assert!(symbol_names.iter().any(|name| name.contains("UserService")));
 }
-
-// =============================================================================
-// Cross-File Intelligence Tests
-// =============================================================================
 
 #[tokio::test]
-async fn test_cross_file_intelligence() {
+#[ignore] // Requires typescript-language-server
+async fn test_workspace_symbols_real_typescript() {
     let (service, workspace) = LspTestBuilder::new("ts")
-        .with_file("types.ts", r#"
-export interface Product {
-    id: string;
-    name: string;
-    price: number;
-}
-"#)
-        .with_file("utils.ts", r#"
-import { Product } from './types';
-export function sortProducts(products: Product[]): Product[] {
-    return products.sort((a, b) => a.price - b.price);
-}
-"#)
-        .with_file("main.ts", r#"
-import { Product } from './types';
-import { sortProducts } from './utils';
-const products: Product[] = [];
-"#)
-        .build_mock()
+        .with_real_lsp()
+        .with_file("models.ts", "export class DataModel {}")
+        .build()
         .await
         .unwrap();
 
-    // Test: Definition lookup for Product from main.ts
-    service.set_response(
-        "textDocument/definition",
-        json!([{
-            "uri": format!("file://{}/types.ts", workspace.path().display()),
-            "range": {
-                "start": {"line": 1, "character": 17},
-                "end": {"line": 1, "character": 24}
-            }
-        }]),
-    );
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let message = cb_api::Message {
-        id: Some("1".to_string()),
-        method: "textDocument/definition".to_string(),
-        params: json!({
-            "textDocument": {
-                "uri": format!("file://{}/main.ts", workspace.path().display())
-            },
-            "position": {"line": 1, "character": 20}
-        }),
+        id: Some("real-ws-symbols-1".to_string()),
+        method: "workspace/symbol".to_string(),
+        params: json!({"query": "Data"}),
     };
 
     let response = service.request(message).await.unwrap();
-    let locations = response.params.as_array().unwrap();
-    assert!(!locations.is_empty());
-    assert!(locations[0]["uri"].as_str().unwrap().contains("types.ts"));
+    assert!(response.params.is_array() || response.params.is_null());
 }

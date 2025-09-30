@@ -41,34 +41,8 @@ impl LspTestBuilder {
         self
     }
 
-    /// Build the test context for mock mode, providing MockLspService and TestWorkspace.
-    pub async fn build_mock(self) -> Result<(Arc<MockLspService>, TestWorkspace), ApiError> {
-        match self.mode {
-            LspTestMode::Mock => {
-                let mock_service = Arc::new(MockLspService::new());
-                Ok((mock_service, self.workspace))
-            }
-            LspTestMode::Real => {
-                Err(ApiError::lsp("build_mock() called but mode is Real. Use build_real() instead.".to_string()))
-            }
-        }
-    }
-
-    /// Build the test context for real mode, providing RealLspService and TestWorkspace.
-    pub async fn build_real(self) -> Result<(Arc<RealLspService>, TestWorkspace), ApiError> {
-        match self.mode {
-            LspTestMode::Real => {
-                let root_path = self.workspace.path();
-                let real_service = Arc::new(RealLspService::new(&self.language, root_path).await?);
-                Ok((real_service, self.workspace))
-            }
-            LspTestMode::Mock => {
-                Err(ApiError::lsp("build_real() called but mode is Mock. Use build_mock() instead.".to_string()))
-            }
-        }
-    }
-
     /// Build the test context, providing an LspService and TestWorkspace.
+    /// Returns either a MockLspService or RealLspService based on the configured mode.
     pub async fn build(self) -> Result<(Arc<dyn LspService>, TestWorkspace), ApiError> {
         let lsp_service: Arc<dyn LspService> = match self.mode {
             LspTestMode::Mock => Arc::new(MockLspService::new()),
