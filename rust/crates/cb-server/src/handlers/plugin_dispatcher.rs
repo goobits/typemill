@@ -512,20 +512,88 @@ impl PluginDispatcher {
         let mut request = PluginRequest::new(tool_call.name, file_path);
 
         // Extract position if available
-        if let (Some(line), Some(character)) = (
-            args.get("line").and_then(|v| v.as_u64()),
-            args.get("character").and_then(|v| v.as_u64()),
-        ) {
+        // If line or character are provided, they must be valid numbers
+        let line_opt = match args.get("line") {
+            Some(val) if !val.is_null() => {
+                Some(val.as_u64().ok_or_else(|| {
+                    ServerError::InvalidRequest(format!(
+                        "Parameter 'line' must be a number, got: {}",
+                        val
+                    ))
+                })?)
+            }
+            _ => None,
+        };
+
+        let character_opt = match args.get("character") {
+            Some(val) if !val.is_null() => {
+                Some(val.as_u64().ok_or_else(|| {
+                    ServerError::InvalidRequest(format!(
+                        "Parameter 'character' must be a number, got: {}",
+                        val
+                    ))
+                })?)
+            }
+            _ => None,
+        };
+
+        if let (Some(line), Some(character)) = (line_opt, character_opt) {
             request = request.with_position(line as u32 - 1, character as u32); // Convert to 0-indexed
         }
 
         // Extract range if available
-        if let (Some(start_line), Some(start_char), Some(end_line), Some(end_char)) = (
-            args.get("start_line").and_then(|v| v.as_u64()),
-            args.get("start_character").and_then(|v| v.as_u64()),
-            args.get("end_line").and_then(|v| v.as_u64()),
-            args.get("end_character").and_then(|v| v.as_u64()),
-        ) {
+        // If range parameters are provided, they must be valid numbers
+        let start_line_opt = match args.get("start_line") {
+            Some(val) if !val.is_null() => {
+                Some(val.as_u64().ok_or_else(|| {
+                    ServerError::InvalidRequest(format!(
+                        "Parameter 'start_line' must be a number, got: {}",
+                        val
+                    ))
+                })?)
+            }
+            _ => None,
+        };
+
+        let start_char_opt = match args.get("start_character") {
+            Some(val) if !val.is_null() => {
+                Some(val.as_u64().ok_or_else(|| {
+                    ServerError::InvalidRequest(format!(
+                        "Parameter 'start_character' must be a number, got: {}",
+                        val
+                    ))
+                })?)
+            }
+            _ => None,
+        };
+
+        let end_line_opt = match args.get("end_line") {
+            Some(val) if !val.is_null() => {
+                Some(val.as_u64().ok_or_else(|| {
+                    ServerError::InvalidRequest(format!(
+                        "Parameter 'end_line' must be a number, got: {}",
+                        val
+                    ))
+                })?)
+            }
+            _ => None,
+        };
+
+        let end_char_opt = match args.get("end_character") {
+            Some(val) if !val.is_null() => {
+                Some(val.as_u64().ok_or_else(|| {
+                    ServerError::InvalidRequest(format!(
+                        "Parameter 'end_character' must be a number, got: {}",
+                        val
+                    ))
+                })?)
+            }
+            _ => None,
+        };
+
+        if let (Some(start_line), Some(start_char), Some(end_line), Some(end_char)) =
+            (start_line_opt, start_char_opt, end_line_opt, end_char_opt)
+        {
             request = request.with_range(
                 start_line as u32 - 1,
                 start_char as u32,
