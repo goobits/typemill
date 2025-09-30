@@ -17,9 +17,6 @@
 
 use cb_core::config::LspConfig;
 use cb_core::model::mcp::{McpMessage, McpRequest, ToolCall};
-// Historical reference - McpDispatcher architecture replaced by PluginDispatcher
-// Old: use cb_server::handlers::{AppState, McpDispatcher};
-// New: use cb_server::handlers::{AppState, PluginDispatcher};
 use cb_server::handlers::{AppState, PluginDispatcher};
 use cb_server::services::{FileService, LockManager, OperationQueue};
 use cb_server::systems::LspManager;

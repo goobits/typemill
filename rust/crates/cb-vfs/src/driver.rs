@@ -1,4 +1,37 @@
 //! FUSE filesystem driver implementation
+//!
+//! ## Development Status
+//!
+//! ⚠️ **This module is partially implemented and under active development.**
+//!
+//! ### Current Status
+//!
+//! This FUSE driver provides basic read-only filesystem operations but several
+//! features remain incomplete or stubbed out. Methods marked with `#[allow(dead_code)]`
+//! fall into one of these categories:
+//!
+//! 1. **FUSE trait requirements** - Required by the `fuser` crate interface but not yet fully implemented
+//! 2. **Planned features** - Part of the VFS roadmap but not prioritized yet
+//! 3. **Internal utilities** - Helper functions for future functionality
+//!
+//! ### Implemented
+//! - ✅ Basic filesystem mounting
+//! - ✅ Read-only directory listing
+//! - ✅ File attribute caching
+//! - ✅ Path resolution
+//!
+//! ### Not Yet Implemented
+//! - ❌ Write operations (create, delete, rename)
+//! - ❌ Extended attributes
+//! - ❌ Advanced caching strategies
+//! - ❌ Performance optimizations
+//!
+//! ### Roadmap
+//! See [ROADMAP.md](../../../ROADMAP.md) for VFS feature planning.
+//!
+//! **Decision needed:** Complete full VFS functionality or simplify to read-only operations?
+//!
+//! Related: GitHub issue tracking VFS features (to be created)
 
 use cb_core::config::FuseConfig;
 use fuser::{

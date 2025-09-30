@@ -53,8 +53,11 @@ uuid = { version = "1.0", features = ["v4"] }
 opt-level = 3
 lto = true
 codegen-units = 1
-# panic = "abort" - Disabled due to incompatibility with html2md dependency
-# See: https://github.com/rust-lang/rust/issues/64926
+# WORKAROUND: panic = "abort" disabled due to html2md dependency incompatibility
+# Status: Waiting for upstream fix or exploring alternatives
+# Impact: ~50KB larger binary, slightly slower panic handling
+# Rust Issue: https://github.com/rust-lang/rust/issues/64926
+# TODO: Re-evaluate in Q2 2025 or when html2md updates
 panic = "unwind"
 
 [profile.dev]

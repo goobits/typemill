@@ -88,7 +88,7 @@
                       "character": 0
                     }
                   },
-                  "newText": "/** TODO: Add documentation based on: $steps.1.contents */\n"
+                  "newText": "/**\n * TODO: Add documentation here\n *\n * Context from analysis: $steps.1.contents\n * This placeholder should be replaced with proper documentation.\n */\n"
                 }
               ]
             }
