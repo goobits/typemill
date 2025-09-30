@@ -223,7 +223,6 @@ cargo run -- start
 # WebSocket server development
 ./target/release/codebuddy serve --port 3000             # Basic server
 ./target/release/codebuddy serve --require-auth --jwt-secret KEY # With auth
-docker-compose up -d                                      # Full stack
 
 # Testing
 cargo test
@@ -237,6 +236,41 @@ cargo check               # Type checking
 # Build for production
 cargo build --release
 ```
+
+## 🐳 Docker Deployment
+
+### Development Environment
+```bash
+# Start all services (codebuddy + example workspaces)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f codebuddy
+
+# Stop services
+docker-compose down
+```
+
+### Production Deployment
+```bash
+# Set JWT secret for authentication
+export JWT_SECRET="your-secure-secret-key"
+
+# Start production stack with nginx proxy
+docker-compose -f docker-compose.production.yml up -d
+
+# Check health
+curl http://localhost/health
+```
+
+### Features
+- **Multi-stage Rust build**: Optimized 400MB runtime image
+- **FUSE support**: Pre-configured with proper capabilities and security
+- **Pre-installed LSP servers**: TypeScript and Python ready out-of-the-box
+- **Nginx reverse proxy**: Production-grade WebSocket handling with SSL ready
+- **Multi-container development**: Isolated workspaces for frontend/backend
+
+See [`examples/README.md`](examples/README.md) for detailed Docker documentation.
 
 ## 📝 License
 MIT - see [LICENSE](LICENSE) for details
