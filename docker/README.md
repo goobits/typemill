@@ -2,10 +2,10 @@
 
 ## Quick Start
 
-### Development Mode
+### Production Mode (Secure - Recommended)
 ```bash
-# Start all services
-docker-compose up -d
+# Start with default secure configuration (no FUSE, no elevated privileges)
+docker-compose up codebuddy
 
 # View logs
 docker-compose logs -f codebuddy
@@ -13,6 +13,17 @@ docker-compose logs -f codebuddy
 # Stop services
 docker-compose down
 ```
+
+### Development Mode with FUSE (⚠️ EXPERIMENTAL)
+```bash
+# Start with FUSE support (requires SYS_ADMIN capability)
+docker-compose --profile fuse up codebuddy-fuse
+
+# View logs
+docker-compose logs -f codebuddy-fuse
+```
+
+**⚠️ SECURITY WARNING:** FUSE mode requires `SYS_ADMIN` capability and disabled AppArmor security, effectively removing container security boundaries. **Only use in trusted development environments. Never use in production.**
 
 ### Production Mode
 ```bash
@@ -38,14 +49,31 @@ The default `docker-compose.yml` includes example workspace containers:
 
 These can be removed if not needed, or customized for your stack.
 
-## FUSE Support
+## FUSE Support (⚠️ EXPERIMENTAL)
+
+**Default:** FUSE is **disabled** for security. The default `codebuddy` service runs without elevated privileges.
+
+**To enable FUSE (development only):**
+```bash
+docker-compose --profile fuse up codebuddy-fuse
+```
 
 FUSE filesystems are mounted at `/tmp/codeflow-mounts` inside containers with shared mount propagation.
 
-**Requirements:**
+**Security Requirements:**
 - `/dev/fuse` device on host
-- `SYS_ADMIN` capability
-- `apparmor:unconfined` security option
+- `SYS_ADMIN` capability (elevated privileges)
+- `apparmor:unconfined` security option (disables container isolation)
+
+**⚠️ This configuration is NOT secure for production environments.**
+
+**To disable FUSE in configuration:**
+Edit `.codebuddy/config.json`:
+```json
+{
+  "fuse": null
+}
+```
 
 ## Configuration
 
@@ -175,6 +203,8 @@ services:
 ## Security Hardening
 
 ### Production Checklist
+- ✅ **Use default `codebuddy` service (no FUSE, no elevated privileges)**
+- ✅ Disable FUSE in config: `"fuse": null`
 - ✅ Set strong `JWT_SECRET`
 - ✅ Enable HTTPS/WSS
 - ✅ Restrict `/metrics` endpoint by IP
@@ -182,6 +212,12 @@ services:
 - ✅ Enable Docker Content Trust
 - ✅ Scan images for vulnerabilities
 - ✅ Run as non-root user (already configured)
+
+### ⚠️ NEVER in Production
+- ❌ Do not use `codebuddy-fuse` service in production
+- ❌ Do not enable `SYS_ADMIN` capability
+- ❌ Do not disable AppArmor security (`apparmor:unconfined`)
+- ❌ Do not enable FUSE configuration
 
 ## Kubernetes Deployment
 

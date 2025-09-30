@@ -18,8 +18,19 @@ use std::sync::Arc;
 use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::{debug, error, info};
 
+fn warn_if_fuse_enabled() {
+    if let Ok(config) = cb_core::config::AppConfig::load() {
+        if config.fuse.is_some() {
+            eprintln!("⚠️  FUSE configured - requires SYS_ADMIN capability");
+            eprintln!("   Only use in trusted development environments");
+            eprintln!("   Set \"fuse\": null in config for production");
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
+    warn_if_fuse_enabled();
     cli::run().await;
 }
 

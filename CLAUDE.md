@@ -97,6 +97,11 @@ cargo check
 - **Plugin System** (`crates/cb-plugins/`) - Extensible plugin architecture
 - **AST Processing** (`crates/cb-ast/`) - Code parsing and analysis
 - **Virtual Filesystem** (`crates/cb-vfs/`) - FUSE filesystem support (Unix only)
+  - ⚠️ **EXPERIMENTAL - Development Only**
+  - Requires `SYS_ADMIN` capability (disables container security boundaries)
+  - Not recommended for production use
+  - To disable: set `"fuse": null` in `.codebuddy/config.json`
+  - Docker: Use `docker-compose --profile fuse up codebuddy-fuse` to enable
 - **API Interfaces** (`crates/cb-api/`) - Service trait definitions
 - **Client Library** (`crates/cb-client/`) - CLI client and WebSocket client
 
