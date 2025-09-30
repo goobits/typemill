@@ -107,19 +107,19 @@ async fn set_log_level(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    // TODO: Implement actual log level change
-    // This would require a tracing reload handle to be passed in
-    // For now, we'll just log the request
-    tracing::info!(
+    // Log level changes are not supported at runtime without reload handle
+    // This is a documented limitation - see ARCHITECTURE.md
+    tracing::warn!(
         previous_level = %previous_level,
-        new_level = %request.level,
-        "Log level change requested"
+        requested_level = %request.level,
+        "Runtime log level change not supported - restart server with RUST_LOG={}",
+        request.level
     );
 
     Ok(Json(LogLevelResponse {
-        status: "success".to_string(),
+        status: "not_supported".to_string(),
         previous_level: Some(previous_level),
-        new_level: request.level,
+        new_level: format!("restart_required_with_RUST_LOG={}", request.level),
     }))
 }
 
@@ -141,7 +141,7 @@ fn get_current_log_level() -> String {
         .next()
         .unwrap_or("info")
         .split('=')
-        .last()
+        .next_back()
         .unwrap_or("info")
         .to_string()
 }

@@ -1,11 +1,25 @@
-// BENCHMARK DISABLED - Old McpDispatcher has been replaced by plugin system
-// TODO: Rewrite benchmarks for new PluginDispatcher architecture
-#![cfg(skip_benchmarks)]
+// BENCHMARKS DISABLED PENDING PLUGIN SYSTEM STABILIZATION
+//
+// The McpDispatcher was replaced by PluginDispatcher architecture in the
+// plugin system migration. These benchmarks need complete rewrite for the new
+// architecture once the plugin APIs stabilize.
+//
+// Tracking: When re-implementing, reference PluginDispatcher in
+// crates/cb-server/src/handlers/plugin_dispatcher.rs and follow the pattern
+// in crates/tests/tests/e2e_*.rs for creating test fixtures.
+//
+// For now, this file is kept for reference of what needs benchmarking:
+// - Plugin dispatch latency
+// - Concurrent plugin request handling
+// - Plugin initialization overhead
+// - LSP adapter forwarding performance
+#![cfg(disabled_pending_refactor)]
 
 use cb_core::config::LspConfig;
 use cb_core::model::mcp::{McpMessage, McpRequest, ToolCall};
-// NOTE: McpDispatcher no longer exists - replaced by PluginDispatcher
-// use cb_server::handlers::{AppState, McpDispatcher};
+// Historical reference - McpDispatcher architecture replaced by PluginDispatcher
+// Old: use cb_server::handlers::{AppState, McpDispatcher};
+// New: use cb_server::handlers::{AppState, PluginDispatcher};
 use cb_server::handlers::{AppState, PluginDispatcher};
 use cb_server::services::{FileService, LockManager, OperationQueue};
 use cb_server::systems::LspManager;
