@@ -662,7 +662,7 @@ impl PluginDispatcher {
     fn is_file_operation(&self, tool_name: &str) -> bool {
         matches!(
             tool_name,
-            "rename_file" | "create_file" | "delete_file" | "rename_directory" | "read_file" | "write_file"
+            "rename_file" | "create_file" | "delete_file" | "read_file" | "write_file"
         )
     }
 

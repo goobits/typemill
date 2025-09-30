@@ -519,90 +519,9 @@ export class UserService {
     }
 }
 
-#[tokio::test]
-async fn test_dead_code_detection() {
-    // Test detection of unused exports and functions
-    let workspace = TestWorkspace::new();
-    workspace.setup_typescript_project("dead-code-test");
-
-    workspace.create_file(
-        "src/utils.ts",
-        r#"
-export function usedFunction(x: number): number {
-    return x * 2;
-}
-
-export function unusedFunction(x: number): number {
-    return x * 3;
-}
-
-export class UnusedClass {
-    value: number = 0;
-}
-
-function privateUnusedFunction(): void {
-    console.log("never called");
-}
-"#,
-    );
-
-    workspace.create_file(
-        "src/main.ts",
-        r#"
-import { usedFunction } from './utils';
-
-export function main() {
-    const result = usedFunction(5);
-    console.log(result);
-}
-"#,
-    );
-
-    let mut client = TestClient::new(workspace.path());
-
-    // Run dead code detection
-    let dead_code_response = client
-        .call_tool(
-            "find_dead_code",
-            json!({
-                "files": [
-                    workspace.absolute_path("src/utils.ts").to_str().unwrap(),
-                    workspace.absolute_path("src/main.ts").to_str().unwrap()
-                ],
-                "exclude_tests": true,
-                "min_references": 1
-            }),
-        )
-        .await;
-
-    if let Ok(response) = dead_code_response {
-        if response["error"].is_null() {
-            let dead_items = response["result"]["content"]["deadCodeItems"].as_array();
-
-            if let Some(items) = dead_items {
-                // Should detect unusedFunction and UnusedClass
-                let has_unused_function = items
-                    .iter()
-                    .any(|item| item["name"].as_str() == Some("unusedFunction"));
-
-                let has_unused_class = items
-                    .iter()
-                    .any(|item| item["name"].as_str() == Some("UnusedClass"));
-
-                if has_unused_function && has_unused_class {
-                    println!("✅ Dead code detection working correctly");
-                } else {
-                    println!(
-                        "⚠️ Dead code detection partial (found {} items)",
-                        items.len()
-                    );
-                }
-            }
-        } else {
-            println!("⚠️ Dead code detection failed (LSP may not be configured)");
-        }
-    }
-}
+// NOTE: test_dead_code_detection has been migrated to the data-driven
+// test architecture in mcp_file_operations.rs as part of FIND_DEAD_CODE_TESTS.
+// The new tests provide the same coverage with better maintainability.
 
 #[cfg(test)]
 mod advanced_workflows {

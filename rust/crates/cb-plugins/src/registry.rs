@@ -116,7 +116,18 @@ impl PluginRegistry {
     /// Find the best plugin for a file and method combination
     pub fn find_best_plugin(&self, file_path: &Path, method: &str) -> PluginResult<String> {
         // Special handling for system tools that don't have file associations
-        if matches!(method, "list_files" | "analyze_imports" | "find_dead_code") {
+        if matches!(
+            method,
+            "list_files"
+                | "analyze_imports"
+                | "find_dead_code"
+                | "rename_directory"
+                | "update_dependencies"
+                | "extract_function"
+                | "inline_variable"
+                | "extract_variable"
+                | "fix_imports"
+        ) {
             // Check if we have the system plugin registered
             if self.plugins.contains_key("system") {
                 return Ok("system".to_string());

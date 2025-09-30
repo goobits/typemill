@@ -245,3 +245,65 @@ async fn test_analyze_imports_real() {
         run_analyze_imports_test(case, true).await;
     }
 }
+
+// =============================================================================
+// Find Dead Code Tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_find_dead_code_mock() {
+    for (idx, case) in FIND_DEAD_CODE_TESTS.iter().enumerate() {
+        println!(
+            "Running mock find_dead_code test {}/{}: {}",
+            idx + 1,
+            FIND_DEAD_CODE_TESTS.len(),
+            case.test_name
+        );
+        run_find_dead_code_test(case, false).await;
+    }
+}
+
+#[tokio::test]
+#[ignore] // Requires MCP server to be running
+async fn test_find_dead_code_real() {
+    for (idx, case) in FIND_DEAD_CODE_TESTS.iter().enumerate() {
+        println!(
+            "Running real find_dead_code test {}/{}: {}",
+            idx + 1,
+            FIND_DEAD_CODE_TESTS.len(),
+            case.test_name
+        );
+        run_find_dead_code_test(case, true).await;
+    }
+}
+
+// =============================================================================
+// Rename Directory Tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_rename_directory_mock() {
+    for (idx, case) in RENAME_DIRECTORY_TESTS.iter().enumerate() {
+        println!(
+            "Running mock rename_directory test {}/{}: {}",
+            idx + 1,
+            RENAME_DIRECTORY_TESTS.len(),
+            case.test_name
+        );
+        run_rename_directory_test(case, false).await;
+    }
+}
+
+#[tokio::test]
+#[ignore] // Requires MCP server to be running
+async fn test_rename_directory_real() {
+    for (idx, case) in RENAME_DIRECTORY_TESTS.iter().enumerate() {
+        println!(
+            "Running real rename_directory test {}/{}: {}",
+            idx + 1,
+            RENAME_DIRECTORY_TESTS.len(),
+            case.test_name
+        );
+        run_rename_directory_test(case, true).await;
+    }
+}

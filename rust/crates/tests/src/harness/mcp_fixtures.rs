@@ -316,3 +316,138 @@ console.log(value);
         expect_success: false,
     },
 ];
+
+// =============================================================================
+// FIND DEAD CODE TEST CASES
+// =============================================================================
+
+/// Test fixture for find_dead_code operations
+#[derive(Debug, Clone)]
+pub struct FindDeadCodeTestCase {
+    pub test_name: &'static str,
+    pub initial_files: &'static [(&'static str, &'static str)],
+    pub workspace_path: &'static str, // Relative to workspace root
+    pub expected_dead_symbols: &'static [&'static str], // Names of dead symbols expected
+    pub expect_success: bool,
+}
+
+pub const FIND_DEAD_CODE_TESTS: &[FindDeadCodeTestCase] = &[
+    FindDeadCodeTestCase {
+        test_name: "detect_unused_exports",
+        initial_files: &[
+            (
+                "src/utils.ts",
+                r#"export function usedFunction(x: number): number {
+    return x * 2;
+}
+
+export function unusedFunction(x: number): number {
+    return x * 3;
+}
+
+export class UnusedClass {
+    value: number = 0;
+}
+"#,
+            ),
+            (
+                "src/main.ts",
+                r#"import { usedFunction } from './utils';
+
+export function main() {
+    const result = usedFunction(5);
+    console.log(result);
+}
+"#,
+            ),
+        ],
+        workspace_path: "",
+        expected_dead_symbols: &["unusedFunction", "UnusedClass"],
+        expect_success: true,
+    },
+    FindDeadCodeTestCase {
+        test_name: "no_dead_code",
+        initial_files: &[
+            (
+                "src/module.ts",
+                r#"export function activeFunction(): void {
+    console.log("active");
+}
+"#,
+            ),
+            (
+                "src/app.ts",
+                r#"import { activeFunction } from './module';
+
+activeFunction();
+"#,
+            ),
+        ],
+        workspace_path: "",
+        expected_dead_symbols: &[],
+        expect_success: true,
+    },
+    FindDeadCodeTestCase {
+        test_name: "empty_workspace",
+        initial_files: &[],
+        workspace_path: "",
+        expected_dead_symbols: &[],
+        expect_success: true,
+    },
+];
+
+// =============================================================================
+// RENAME DIRECTORY TEST CASES
+// =============================================================================
+
+/// Test fixture for rename_directory operations
+#[derive(Debug, Clone)]
+pub struct RenameDirectoryTestCase {
+    pub test_name: &'static str,
+    pub initial_files: &'static [(&'static str, &'static str)],
+    pub dir_to_rename: &'static str,
+    pub new_dir_name: &'static str,
+    pub update_imports: bool,
+    pub expect_success: bool,
+}
+
+pub const RENAME_DIRECTORY_TESTS: &[RenameDirectoryTestCase] = &[
+    RenameDirectoryTestCase {
+        test_name: "simple_rename",
+        initial_files: &[
+            ("olddir/file1.ts", "export const value = 1;"),
+            ("olddir/file2.ts", "export const value = 2;"),
+        ],
+        dir_to_rename: "olddir",
+        new_dir_name: "newdir",
+        update_imports: false,
+        expect_success: true,
+    },
+    RenameDirectoryTestCase {
+        test_name: "rename_with_import_updates",
+        initial_files: &[
+            ("components/Button.tsx", "export const Button = () => <button />;"),
+            (
+                "app.tsx",
+                r#"import { Button } from './components/Button';
+
+export default function App() {
+    return <Button />;
+}
+"#,
+            ),
+        ],
+        dir_to_rename: "components",
+        new_dir_name: "ui",
+        update_imports: true,
+        expect_success: true,
+    },
+    RenameDirectoryTestCase {
+        test_name: "nonexistent_directory",
+        initial_files: &[("src/file.ts", "export const value = 1;")],
+        dir_to_rename: "nonexistent",
+        new_dir_name: "newdir",
+        update_imports: false,
+        expect_success: false,
+    },
+];
