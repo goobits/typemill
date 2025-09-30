@@ -67,6 +67,32 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
 
     // Create plugin manager and workflow executor
     let plugin_manager = Arc::new(cb_plugins::PluginManager::new());
+
+    // Register MCP proxy plugin if feature enabled
+    #[cfg(feature = "mcp-proxy")]
+    if let Some(external_mcp_config) = &options.config.external_mcp {
+        use cb_mcp_proxy::McpProxyPlugin;
+        use cb_plugins::LanguagePlugin;
+
+        tracing::info!(
+            servers_count = external_mcp_config.servers.len(),
+            "Registering MCP proxy plugin"
+        );
+
+        let mut mcp_plugin = McpProxyPlugin::new(
+            external_mcp_config.servers.clone()
+        );
+
+        // Initialize the plugin BEFORE wrapping in Arc
+        mcp_plugin.initialize().await
+            .map_err(|e| ServerError::plugin(format!("Failed to initialize MCP proxy plugin: {}", e)))?;
+
+        plugin_manager
+            .register_plugin("mcp-proxy", Arc::new(mcp_plugin))
+            .await
+            .map_err(|e| ServerError::plugin(format!("Failed to register MCP proxy plugin: {}", e)))?;
+    }
+
     let workflow_executor =
         crate::services::workflow_executor::DefaultWorkflowExecutor::new(plugin_manager.clone());
 

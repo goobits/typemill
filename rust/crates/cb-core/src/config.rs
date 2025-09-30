@@ -6,6 +6,7 @@ use crate::error::{CoreError, CoreResult};
 use config::{Config, Environment, File, FileFormat};
 use json_helper::to_camel_case_keys;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// Main application configuration
@@ -22,6 +23,9 @@ pub struct AppConfig {
     pub logging: LoggingConfig,
     /// Cache configuration
     pub cache: CacheConfig,
+    /// External MCP server configuration (optional)
+    #[cfg(feature = "mcp-proxy")]
+    pub external_mcp: Option<ExternalMcpConfig>,
 }
 
 /// Server-specific configuration
@@ -90,6 +94,29 @@ pub struct LspServerConfig {
     pub root_dir: Option<PathBuf>,
     /// Auto-restart interval in minutes (optional)
     pub restart_interval: Option<u64>,
+}
+
+/// External MCP server configuration (optional)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalMcpConfig {
+    /// List of external MCP servers to proxy
+    pub servers: Vec<ExternalMcpServerConfig>,
+}
+
+/// Individual external MCP server configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalMcpServerConfig {
+    /// MCP server name (e.g., "context7")
+    pub name: String,
+    /// Command to spawn the MCP server
+    pub command: Vec<String>,
+    /// Environment variables (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub env: Option<HashMap<String, String>>,
+    /// Auto-start on codebuddy startup
+    pub auto_start: bool,
 }
 
 /// FUSE filesystem configuration

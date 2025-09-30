@@ -1,5 +1,7 @@
 pub mod call;
 pub mod connect;
+#[cfg(feature = "mcp-proxy")]
+pub mod mcp;
 pub mod setup;
 pub mod status;
 

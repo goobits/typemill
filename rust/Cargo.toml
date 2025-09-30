@@ -4,6 +4,7 @@ members = [
     "crates/cb-core",
     "crates/cb-ast",
     "crates/cb-plugins",
+    "crates/cb-mcp-proxy",
     "crates/cb-server",
     "crates/cb-client",
     "crates/cb-transport",

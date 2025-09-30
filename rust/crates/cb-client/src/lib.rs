@@ -320,13 +320,34 @@ pub enum Commands {
         verbose: bool,
     },
 
+    /// Manage MCP server presets.
+    #[cfg(feature = "mcp-proxy")]
+    #[command(long_about = "Add, list, and manage MCP server presets for easy integration with external tools.")]
+    Mcp {
+        #[command(subcommand)]
+        command: McpCommands,
+    },
+
     /// Generate shell completion scripts.
-    #[command(long_about = "Generate shell completion scripts for your shell. 
+    #[command(long_about = "Generate shell completion scripts for your shell.
 To use, add `source <(codebuddy completions <shell>)` to your shell's startup file.")]
     Completions {
         /// The shell to generate completions for.
         #[arg(value_enum)]
         shell: clap_complete::Shell,
+    },
+}
+
+/// MCP preset subcommands
+#[cfg(feature = "mcp-proxy")]
+#[derive(Debug, Subcommand)]
+pub enum McpCommands {
+    /// List available MCP presets
+    List,
+    /// Add an MCP preset to the configuration
+    Add {
+        /// The preset ID to add (e.g., context7, git, filesystem)
+        preset_id: String,
     },
 }
 
@@ -426,6 +447,15 @@ pub async fn run_cli() -> ClientResult<()> {
             let cmd = StatusCommand::new(url, token).with_verbose(verbose);
             cmd.execute(&global_args).await
         }
+        #[cfg(feature = "mcp-proxy")]
+        Commands::Mcp { command } => match command {
+            McpCommands::List => commands::mcp::list_presets().map_err(|e| {
+                ClientError::RequestError(format!("Failed to list presets: {}", e))
+            }),
+            McpCommands::Add { preset_id } => commands::mcp::add_preset(&preset_id).map_err(
+                |e| ClientError::RequestError(format!("Failed to add preset: {}", e)),
+            ),
+        },
         Commands::Completions { shell } => {
             let mut cmd = CliArgs::command();
             let name = cmd.get_name().to_string();

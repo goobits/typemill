@@ -11,6 +11,7 @@ use axum::{
 };
 use cb_api::AstService;
 use cb_ast::AstCache;
+use cb_plugins::PluginManager;
 use cb_server::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
 use cb_server::services::DefaultAstService;
 use std::sync::Arc;
@@ -38,7 +39,8 @@ pub async fn run_stdio_mode() {
         }
     };
 
-    let dispatcher = Arc::new(PluginDispatcher::new(app_state));
+    let plugin_manager = Arc::new(PluginManager::new());
+    let dispatcher = Arc::new(PluginDispatcher::new(app_state, plugin_manager));
     debug!("About to call dispatcher.initialize()");
     if let Err(e) = dispatcher.initialize().await {
         error!(error = %e, "Failed to initialize dispatcher");
@@ -119,7 +121,8 @@ pub async fn run_websocket_server_with_port(port: u16) {
         }
     };
 
-    let dispatcher = Arc::new(PluginDispatcher::new(app_state));
+    let plugin_manager = Arc::new(PluginManager::new());
+    let dispatcher = Arc::new(PluginDispatcher::new(app_state, plugin_manager));
     if let Err(e) = dispatcher.initialize().await {
         error!(error = %e, "Failed to initialize dispatcher");
         return;
@@ -185,6 +188,7 @@ async fn create_app_state() -> Result<Arc<AppState>, std::io::Error> {
         project_root,
         lock_manager,
         operation_queue,
+        start_time: std::time::Instant::now(),
     }))
 }
 
