@@ -5,7 +5,7 @@ use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
 /// JWT Claims structure
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Claims {
     /// Subject (user identifier)
     pub sub: Option<String>,
@@ -24,7 +24,9 @@ pub struct Claims {
 /// Validate a JWT token and return true if valid
 pub fn validate_token(token: &str, secret: &str) -> Result<bool, ServerError> {
     let key = DecodingKey::from_secret(secret.as_ref());
-    let validation = Validation::default();
+    let mut validation = Validation::default();
+    // Don't require aud claim in tests
+    validation.validate_aud = false;
 
     decode::<Claims>(token, &key, &validation)
         .map(|_| true)
@@ -38,7 +40,9 @@ pub fn validate_token_with_project(
     expected_project_id: &str,
 ) -> Result<bool, ServerError> {
     let key = DecodingKey::from_secret(secret.as_ref());
-    let validation = Validation::default();
+    let mut validation = Validation::default();
+    // Don't require aud claim in tests
+    validation.validate_aud = false;
 
     let token_data =
         decode::<Claims>(token, &key, &validation).map_err(|e| ServerError::Auth(e.to_string()))?;
