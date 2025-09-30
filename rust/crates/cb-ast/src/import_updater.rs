@@ -104,7 +104,7 @@ impl ImportPathResolver {
     }
 
     /// Find all files that need import updates after a rename
-    pub fn find_affected_files(
+    pub async fn find_affected_files(
         &self,
         renamed_file: &Path,
         project_files: &[PathBuf],
@@ -118,7 +118,7 @@ impl ImportPathResolver {
             }
 
             // Check if this file might import the renamed file
-            if let Ok(content) = std::fs::read_to_string(file) {
+            if let Ok(content) = tokio::fs::read_to_string(file).await {
                 if self.file_imports_target(&content, renamed_file) {
                     affected.push(file.clone());
                 }
@@ -180,10 +180,10 @@ pub async fn update_import_paths(
     let resolver = ImportPathResolver::new(project_root);
 
     // Find all TypeScript/JavaScript files in the project
-    let project_files = find_project_files(project_root)?;
+    let project_files = find_project_files(project_root).await?;
 
     // Find files that import the renamed file
-    let affected_files = resolver.find_affected_files(old_path, &project_files)?;
+    let affected_files = resolver.find_affected_files(old_path, &project_files).await?;
 
     info!(
         "Found {} files potentially affected by rename of {:?}",
@@ -321,39 +321,50 @@ fn extract_import_path(line: &str) -> Option<String> {
 }
 
 /// Find all TypeScript/JavaScript files in a project
-fn find_project_files(project_root: &Path) -> AstResult<Vec<PathBuf>> {
+async fn find_project_files(project_root: &Path) -> AstResult<Vec<PathBuf>> {
     let mut files = Vec::new();
     let extensions = ["ts", "tsx", "js", "jsx", "mjs", "cjs"];
 
-    fn collect_files(dir: &Path, files: &mut Vec<PathBuf>, extensions: &[&str]) -> AstResult<()> {
-        if dir.is_dir() {
-            // Skip node_modules and other common directories to ignore
-            if let Some(dir_name) = dir.file_name() {
-                let name = dir_name.to_string_lossy();
-                if name == "node_modules" || name == ".git" || name == "dist" || name == "build" {
-                    return Ok(());
+    fn collect_files<'a>(
+        dir: &'a Path,
+        files: &'a mut Vec<PathBuf>,
+        extensions: &'a [&str],
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AstResult<()>> + Send + 'a>> {
+        Box::pin(async move {
+            if dir.is_dir() {
+                // Skip node_modules and other common directories to ignore
+                if let Some(dir_name) = dir.file_name() {
+                    let name = dir_name.to_string_lossy();
+                    if name == "node_modules" || name == ".git" || name == "dist" || name == "build"
+                    {
+                        return Ok(());
+                    }
                 }
-            }
 
-            for entry in std::fs::read_dir(dir)
-                .map_err(|e| AstError::parse(format!("Failed to read directory: {}", e)))?
-            {
-                let entry =
-                    entry.map_err(|e| AstError::parse(format!("Failed to read entry: {}", e)))?;
-                let path = entry.path();
-                if path.is_dir() {
-                    collect_files(&path, files, extensions)?;
-                } else if let Some(ext) = path.extension() {
-                    if extensions.contains(&ext.to_str().unwrap_or("")) {
-                        files.push(path);
+                let mut read_dir = tokio::fs::read_dir(dir)
+                    .await
+                    .map_err(|e| AstError::parse(format!("Failed to read directory: {}", e)))?;
+
+                while let Some(entry) = read_dir
+                    .next_entry()
+                    .await
+                    .map_err(|e| AstError::parse(format!("Failed to read entry: {}", e)))?
+                {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        collect_files(&path, files, extensions).await?;
+                    } else if let Some(ext) = path.extension() {
+                        if extensions.contains(&ext.to_str().unwrap_or("")) {
+                            files.push(path);
+                        }
                     }
                 }
             }
-        }
-        Ok(())
+            Ok(())
+        })
     }
 
-    collect_files(project_root, &mut files, &extensions)?;
+    collect_files(project_root, &mut files, &extensions).await?;
     Ok(files)
 }
 

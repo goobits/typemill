@@ -54,14 +54,14 @@ impl AstCache {
     }
 
     /// Get a cached import graph if it exists and is still valid
-    pub fn get(&self, file_path: &PathBuf) -> Option<ImportGraph> {
+    pub async fn get(&self, file_path: &PathBuf) -> Option<ImportGraph> {
         trace!("Cache get requested for: {}", file_path.display());
 
         // Check if we have a cached entry
         let entry = self.cache.get(file_path)?;
 
         // Get current file metadata
-        let current_metadata = match std::fs::metadata(file_path) {
+        let current_metadata = match tokio::fs::metadata(file_path).await {
             Ok(metadata) => metadata,
             Err(e) => {
                 debug!(
@@ -110,7 +110,7 @@ impl AstCache {
     }
 
     /// Insert a new import graph into the cache
-    pub fn insert(
+    pub async fn insert(
         &self,
         file_path: PathBuf,
         import_graph: ImportGraph,
@@ -118,7 +118,7 @@ impl AstCache {
         trace!("Cache insert requested for: {}", file_path.display());
 
         // Get file metadata for cache validation
-        let metadata = std::fs::metadata(&file_path)?;
+        let metadata = tokio::fs::metadata(&file_path).await?;
         let modified_time = metadata.modified()?;
         let file_size = metadata.len();
 
@@ -175,8 +175,8 @@ impl AstCache {
     }
 
     /// Check if a file is cached and valid
-    pub fn is_cached(&self, file_path: &PathBuf) -> bool {
-        self.get(file_path).is_some()
+    pub async fn is_cached(&self, file_path: &PathBuf) -> bool {
+        self.get(file_path).await.is_some()
     }
 
     /// Get current cache size (number of entries)
@@ -247,8 +247,8 @@ mod tests {
     use std::fs;
     use tempfile::NamedTempFile;
 
-    #[test]
-    fn test_cache_basic_operations() {
+    #[tokio::test]
+    async fn test_cache_basic_operations() {
         let cache = AstCache::new();
 
         // Create a temporary file
@@ -273,10 +273,10 @@ mod tests {
         };
 
         // Test insert and get
-        assert!(cache.insert(path.clone(), import_graph.clone()).is_ok());
+        assert!(cache.insert(path.clone(), import_graph.clone()).await.is_ok());
         assert_eq!(cache.size(), 1);
 
-        let cached = cache.get(&path);
+        let cached = cache.get(&path).await;
         assert!(cached.is_some());
         assert_eq!(cached.unwrap().source_file, import_graph.source_file);
 
@@ -287,8 +287,8 @@ mod tests {
         assert_eq!(stats.current_entries, 1);
     }
 
-    #[test]
-    fn test_cache_invalidation() {
+    #[tokio::test]
+    async fn test_cache_invalidation() {
         let cache = AstCache::new();
 
         // Create a temporary file
@@ -312,20 +312,20 @@ mod tests {
         };
 
         // Cache the file
-        cache.insert(path.clone(), import_graph).unwrap();
-        assert!(cache.is_cached(&path));
+        cache.insert(path.clone(), import_graph).await.unwrap();
+        assert!(cache.is_cached(&path).await);
 
         // Invalidate manually
         cache.invalidate(&path);
-        assert!(!cache.is_cached(&path));
+        assert!(!cache.is_cached(&path).await);
         assert_eq!(cache.size(), 0);
 
         let stats = cache.stats();
         assert_eq!(stats.invalidations, 1);
     }
 
-    #[test]
-    fn test_cache_stats_and_hit_ratio() {
+    #[tokio::test]
+    async fn test_cache_stats_and_hit_ratio() {
         let cache = AstCache::new();
 
         let temp_file = NamedTempFile::new().unwrap();
@@ -345,12 +345,12 @@ mod tests {
             },
         };
 
-        cache.insert(path.clone(), import_graph).unwrap();
+        cache.insert(path.clone(), import_graph).await.unwrap();
 
         // Multiple gets should increase hit count
-        cache.get(&path);
-        cache.get(&path);
-        cache.get(&path);
+        cache.get(&path).await;
+        cache.get(&path).await;
+        cache.get(&path).await;
 
         let stats = cache.stats();
         assert_eq!(stats.hits, 3);

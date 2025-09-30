@@ -65,7 +65,7 @@ impl AstService for DefaultAstService {
         trace!("Building import graph for: {}", file_path.display());
 
         // Check cache first
-        if let Some(cached_graph) = self.cache.get(&file_path) {
+        if let Some(cached_graph) = self.cache.get(&file_path).await {
             trace!("Cache hit for: {}", file_path.display());
             return Ok(cached_graph);
         }
@@ -80,7 +80,7 @@ impl AstService for DefaultAstService {
             .map_err(|e| cb_api::ApiError::internal(format!("AST parsing failed: {}", e)))?;
 
         // Cache the result for future use
-        if let Err(e) = self.cache.insert(file_path.clone(), import_graph.clone()) {
+        if let Err(e) = self.cache.insert(file_path.clone(), import_graph.clone()).await {
             // Cache insertion failure shouldn't fail the operation, just log it
             debug!(
                 "Failed to cache import graph for {}: {}",

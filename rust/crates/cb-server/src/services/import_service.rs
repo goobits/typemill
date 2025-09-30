@@ -90,69 +90,77 @@ impl ImportService {
         let resolver = ImportPathResolver::new(&self.project_root);
 
         // Get all project files
-        let project_files = self.find_all_source_files()?;
+        let project_files = self.find_all_source_files().await?;
 
         // Find files importing the target
         let affected = resolver
             .find_affected_files(file_path, &project_files)
+            .await
             .map_err(|e| ServerError::Internal(format!("Failed to find affected files: {}", e)))?;
 
         Ok(affected)
     }
 
     /// Find all source files in the project
-    fn find_all_source_files(&self) -> ServerResult<Vec<PathBuf>> {
+    async fn find_all_source_files(&self) -> ServerResult<Vec<PathBuf>> {
         let mut files = Vec::new();
         let extensions = ["ts", "tsx", "js", "jsx", "mjs", "cjs"];
 
-        Self::collect_files(&self.project_root, &mut files, &extensions)?;
+        Self::collect_files(&self.project_root, &mut files, &extensions).await?;
 
         Ok(files)
     }
 
     /// Recursively collect files with given extensions
-    fn collect_files(
-        dir: &Path,
-        files: &mut Vec<PathBuf>,
-        extensions: &[&str],
-    ) -> ServerResult<()> {
-        // Skip ignored directories
-        if let Some(name) = dir.file_name() {
-            let name_str = name.to_string_lossy();
-            if matches!(
-                name_str.as_ref(),
-                "node_modules" | ".git" | "dist" | "build" | "target" | ".next" | ".nuxt"
-            ) {
-                return Ok(());
-            }
-        }
-
-        for entry in std::fs::read_dir(dir)
-            .map_err(|e| ServerError::Internal(format!("Failed to read directory: {}", e)))?
-        {
-            let entry =
-                entry.map_err(|e| ServerError::Internal(format!("Failed to read entry: {}", e)))?;
-            let path = entry.path();
-
-            if path.is_dir() {
-                Self::collect_files(&path, files, extensions)?;
-            } else if let Some(ext) = path.extension() {
-                if extensions.contains(&ext.to_str().unwrap_or("")) {
-                    files.push(path);
+    fn collect_files<'a>(
+        dir: &'a Path,
+        files: &'a mut Vec<PathBuf>,
+        extensions: &'a [&str],
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ServerResult<()>> + Send + 'a>> {
+        Box::pin(async move {
+            // Skip ignored directories
+            if let Some(name) = dir.file_name() {
+                let name_str = name.to_string_lossy();
+                if matches!(
+                    name_str.as_ref(),
+                    "node_modules" | ".git" | "dist" | "build" | "target" | ".next" | ".nuxt"
+                ) {
+                    return Ok(());
                 }
             }
-        }
 
-        Ok(())
+            let mut read_dir = tokio::fs::read_dir(dir)
+                .await
+                .map_err(|e| ServerError::Internal(format!("Failed to read directory: {}", e)))?;
+
+            while let Some(entry) = read_dir
+                .next_entry()
+                .await
+                .map_err(|e| ServerError::Internal(format!("Failed to read entry: {}", e)))?
+            {
+                let path = entry.path();
+
+                if path.is_dir() {
+                    Self::collect_files(&path, files, extensions).await?;
+                } else if let Some(ext) = path.extension() {
+                    if extensions.contains(&ext.to_str().unwrap_or("")) {
+                        files.push(path);
+                    }
+                }
+            }
+
+            Ok(())
+        })
     }
 
     /// Check if a file imports another file
-    pub fn check_import_dependency(
+    pub async fn check_import_dependency(
         &self,
         source_file: &Path,
         target_file: &Path,
     ) -> ServerResult<bool> {
-        let content = std::fs::read_to_string(source_file)
+        let content = tokio::fs::read_to_string(source_file)
+            .await
             .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
 
         let target_stem = target_file
@@ -351,7 +359,7 @@ mod tests {
         std::fs::write(temp_dir.path().join("node_modules/lib.js"), "ignore me").unwrap();
 
         let service = ImportService::new(temp_dir.path());
-        let files = service.find_all_source_files().unwrap();
+        let files = service.find_all_source_files().await.unwrap();
 
         assert_eq!(files.len(), 2);
         assert!(files.iter().any(|p| p.ends_with("index.ts")));
