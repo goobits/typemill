@@ -50,7 +50,7 @@ console.log(`Result: ${result}, PI: ${PI}`);
         .await
         .unwrap();
 
-    let locations = response["locations"].as_array().unwrap();
+    let locations = response["result"]["content"]["locations"].as_array().unwrap();
     assert!(!locations.is_empty());
 
     let definition = &locations[0];
@@ -115,7 +115,7 @@ const role: UserRole = 'admin';
         .await
         .unwrap();
 
-    let locations = response["locations"].as_array().unwrap();
+    let locations = response["result"]["content"]["locations"].as_array().unwrap();
     assert!(!locations.is_empty());
 
     let definition = &locations[0];
@@ -184,7 +184,7 @@ describe('formatName', () => {
         .await
         .unwrap();
 
-    let references = response["references"].as_array().unwrap();
+    let references = response["result"]["content"]["references"].as_array().unwrap();
     assert!(references.len() >= 3); // declaration + 2 usages
 
     // Check that references include the declaration and usages
@@ -238,7 +238,7 @@ const area = calculateArea(10, 5);
         .await
         .unwrap();
 
-    let hover_content = response["contents"].as_str().unwrap();
+    let hover_content = response["result"]["content"]["hover"]["contents"].as_str().unwrap();
     assert!(hover_content.contains("calculateArea"));
     assert!(
         hover_content.contains("number")
@@ -283,7 +283,7 @@ const distance = Math.sqrt(origin.x ** 2 + origin.y ** 2);
         .await
         .unwrap();
 
-    let hover_content = response["contents"].as_str().unwrap();
+    let hover_content = response["result"]["content"]["hover"]["contents"].as_str().unwrap();
     assert!(hover_content.contains("Point") || hover_content.contains("origin"));
 }
 
@@ -321,7 +321,7 @@ const greeting = greetUser("Alice", 30,
         .await
         .unwrap();
 
-    let signatures = response["signatures"].as_array().unwrap();
+    let signatures = response["result"]["content"]["signatureHelp"]["signatures"].as_array().unwrap();
     assert!(!signatures.is_empty());
 
     let signature = &signatures[0];
@@ -617,7 +617,7 @@ export function createClient(config: Config): ApiClient {
         .await
         .unwrap();
 
-    let symbols = response["symbols"].as_array().unwrap();
+    let symbols = response["result"]["content"]["symbols"].as_array().unwrap();
     assert!(!symbols.is_empty());
 
     let symbol_names: Vec<String> = symbols
@@ -731,7 +731,7 @@ console.log(sortedElectronics);
         .await
         .unwrap();
 
-    let locations = response["locations"].as_array().unwrap();
+    let locations = response["result"]["content"]["locations"].as_array().unwrap();
     assert!(!locations.is_empty());
     let def_uri = locations[0]["uri"].as_str().unwrap();
     assert!(def_uri.contains("types.ts"));
@@ -750,7 +750,7 @@ console.log(sortedElectronics);
         .await
         .unwrap();
 
-    let references = response["references"].as_array().unwrap();
+    let references = response["result"]["content"]["references"].as_array().unwrap();
     assert!(references.len() >= 2); // declaration + usage in main.ts
 
     // Test 3: Get hover for filterByCategory in main.ts
@@ -766,7 +766,7 @@ console.log(sortedElectronics);
         .await
         .unwrap();
 
-    let hover_content = response["contents"].as_str().unwrap();
+    let hover_content = response["result"]["content"]["hover"]["contents"].as_str().unwrap();
     assert!(hover_content.contains("filterByCategory") || hover_content.contains("Product"));
 
     // Test 4: Search for all Product-related symbols
@@ -780,7 +780,7 @@ console.log(sortedElectronics);
         .await
         .unwrap();
 
-    let symbols = response["symbols"].as_array().unwrap();
+    let symbols = response["result"]["content"]["symbols"].as_array().unwrap();
     assert!(!symbols.is_empty());
 
     let symbol_names: Vec<String> = symbols
@@ -840,7 +840,7 @@ const user: User = {
         .await
         .unwrap();
 
-    let locations = response["locations"].as_array().unwrap();
+    let locations = response["result"]["content"]["locations"].as_array().unwrap();
     assert!(!locations.is_empty());
 
     // Test 2: Get hover on valid property should work
@@ -856,7 +856,7 @@ const user: User = {
         .await
         .unwrap();
 
-    let hover_content = response["contents"].as_str().unwrap();
+    let hover_content = response["result"]["content"]["hover"]["contents"].as_str().unwrap();
     assert!(hover_content.contains("name") || hover_content.contains("string"));
 
     // Test 3: Document symbols should still be extracted
@@ -870,7 +870,7 @@ const user: User = {
         .await
         .unwrap();
 
-    let symbols = response["symbols"].as_array().unwrap();
+    let symbols = response["result"]["content"]["symbols"].as_array().unwrap();
     assert!(!symbols.is_empty());
 
     let symbol_names: Vec<String> = symbols
