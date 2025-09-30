@@ -54,11 +54,9 @@ pub fn add_preset(preset_id: &str) -> Result<()> {
         };
 
         // Initialize external_mcp if needed
-        if config.external_mcp.is_none() {
-            config.external_mcp = Some(ExternalMcpConfig { servers: vec![] });
-        }
-
-        let external_mcp = config.external_mcp.as_mut().unwrap();
+        let external_mcp = config
+            .external_mcp
+            .get_or_insert_with(|| ExternalMcpConfig { servers: vec![] });
 
         // Check if already exists
         if external_mcp.servers.iter().any(|s| s.name == preset.id) {

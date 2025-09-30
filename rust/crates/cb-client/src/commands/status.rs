@@ -90,13 +90,12 @@ impl StatusCommand {
         ));
 
         // Server URL
-        let has_url = ctx.config.url.is_some() || self.url.is_some();
-        let url_status = if has_url {
-            let url = self.url.as_ref().or(ctx.config.url.as_ref()).unwrap();
+        let url_status = if let Some(url) = self.url.as_ref().or(ctx.config.url.as_ref()) {
             ctx.formatter.url(url).to_string()
         } else {
             "Not configured".to_string()
         };
+        let has_url = self.url.is_some() || ctx.config.url.is_some();
 
         status_items.push(("Server URL".to_string(), url_status, has_url));
 
