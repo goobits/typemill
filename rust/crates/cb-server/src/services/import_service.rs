@@ -103,14 +103,13 @@ impl ImportService {
         let mut files = Vec::new();
         let extensions = ["ts", "tsx", "js", "jsx", "mjs", "cjs"];
 
-        self.collect_files(&self.project_root, &mut files, &extensions)?;
+        Self::collect_files(&self.project_root, &mut files, &extensions)?;
 
         Ok(files)
     }
 
     /// Recursively collect files with given extensions
     fn collect_files(
-        &self,
         dir: &Path,
         files: &mut Vec<PathBuf>,
         extensions: &[&str],
@@ -134,7 +133,7 @@ impl ImportService {
             let path = entry.path();
 
             if path.is_dir() {
-                self.collect_files(&path, files, extensions)?;
+                Self::collect_files(&path, files, extensions)?;
             } else if let Some(ext) = path.extension() {
                 if extensions.contains(&ext.to_str().unwrap_or("")) {
                     files.push(path);

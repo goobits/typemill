@@ -10,7 +10,6 @@ use cb_server::services::{
     workflow_executor::{DefaultWorkflowExecutor, WorkflowExecutor},
     DefaultAstService, FileService, LockManager, OperationQueue,
 };
-use cb_transport;
 use cb_vfs::start_fuse_mount;
 use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};

@@ -2,7 +2,7 @@
 
 use cb_core::model::workflow::{Intent, Step, Workflow, WorkflowMetadata};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -147,7 +147,7 @@ impl Planner for DefaultPlanner {
 
         // Check that all required parameters are present
         for required_param in &template.required_params {
-            if !intent.params.get(required_param).is_some() {
+            if intent.params.get(required_param).is_none() {
                 return Err(format!("Missing required parameter '{}'", required_param));
             }
         }

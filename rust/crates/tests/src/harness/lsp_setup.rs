@@ -128,7 +128,7 @@ export function testFunction(param: string): string {
         };
 
         match symbols {
-            Some(symbols_array) => {
+            Some(_symbols_array) => {
                 // LSP is working - it returned a symbols array (even if empty is okay for simple files)
                 println!(
                     "✅ LSP verification successful: TypeScript LSP server is responding correctly"

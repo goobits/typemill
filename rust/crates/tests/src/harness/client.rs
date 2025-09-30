@@ -51,7 +51,7 @@ impl TestClient {
         let (stdout_sender, stdout_receiver) = mpsc::channel();
         thread::spawn(move || {
             let reader = BufReader::new(stdout);
-            for line in reader.lines().flatten() {
+            for line in reader.lines().map_while(Result::ok) {
                 let trimmed = line.trim();
                 if !trimmed.is_empty()
                     && trimmed.starts_with('{')
@@ -66,7 +66,7 @@ impl TestClient {
         let (stderr_sender, stderr_receiver) = mpsc::channel();
         thread::spawn(move || {
             let reader = BufReader::new(stderr);
-            for line in reader.lines().flatten() {
+            for line in reader.lines().map_while(Result::ok) {
                 if stderr_sender.send(line).is_err() {
                     break;
                 }

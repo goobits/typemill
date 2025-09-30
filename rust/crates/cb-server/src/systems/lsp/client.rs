@@ -10,7 +10,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::time::{timeout, Duration};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// Timeout for LSP requests
 const LSP_REQUEST_TIMEOUT: Duration = Duration::from_secs(60); // Increased for slow language servers
@@ -19,6 +19,9 @@ const LSP_INIT_TIMEOUT: Duration = Duration::from_secs(60); // Increased signifi
 /// Buffer size for message channels
 const CHANNEL_BUFFER_SIZE: usize = 1000;
 
+/// Type alias for pending request responses
+type PendingRequests = Arc<Mutex<HashMap<i64, oneshot::Sender<Result<Value, String>>>>>;
+
 /// LSP client for communicating with a single LSP server process
 pub struct LspClient {
     /// Child process handle
@@ -26,7 +29,7 @@ pub struct LspClient {
     /// Channel for sending messages (requests and notifications) to the LSP server
     message_tx: mpsc::Sender<LspMessage>,
     /// Pending requests waiting for responses
-    pending_requests: Arc<Mutex<HashMap<i64, oneshot::Sender<Result<Value, String>>>>>,
+    pending_requests: PendingRequests,
     /// Next request ID
     next_id: Arc<Mutex<i64>>,
     /// Whether the client has been initialized
@@ -50,14 +53,6 @@ enum LspMessage {
     },
 }
 
-/// Internal request structure (kept for compatibility)
-#[derive(Debug)]
-struct LspRequest {
-    id: i64,
-    method: String,
-    params: Value,
-    response_tx: oneshot::Sender<Result<Value, String>>,
-}
 
 impl LspClient {
     /// Create a new LSP client and start the server process
@@ -249,8 +244,8 @@ impl LspClient {
                 .and_then(|td| td.get("uri"))
                 .and_then(|u| u.as_str())
             {
-                if uri.starts_with("file://") {
-                    let file_path = std::path::Path::new(&uri[7..]);
+                if let Some(stripped) = uri.strip_prefix("file://") {
+                    let file_path = std::path::Path::new(stripped);
                     // Notify file opened (will be no-op if already open)
                     if let Err(e) = self.notify_file_opened(file_path).await {
                         tracing::debug!(
@@ -536,11 +531,8 @@ impl LspClient {
 
     /// Parse Content-Length header from LSP message
     fn parse_content_length(line: &str) -> Option<usize> {
-        if line.starts_with("Content-Length: ") {
-            line["Content-Length: ".len()..].parse().ok()
-        } else {
-            None
-        }
+        line.strip_prefix("Content-Length: ")
+            .and_then(|stripped| stripped.parse().ok())
     }
 
     /// Read JSON message with specified content length
@@ -569,7 +561,7 @@ impl LspClient {
     /// Handle incoming message from LSP server
     async fn handle_message(
         message: Value,
-        pending_requests: &Arc<Mutex<HashMap<i64, oneshot::Sender<Result<Value, String>>>>>,
+        pending_requests: &PendingRequests,
     ) {
         if let Some(id) = message.get("id") {
             if let Some(id_num) = id.as_i64() {
