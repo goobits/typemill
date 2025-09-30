@@ -24,14 +24,16 @@ CodeBuddy is in active development with core functionality working but no API st
 
 ### 🔥 HIGH Priority (Before 1.0)
 
-#### 1. Structured Logging - Convert 216 println!/eprintln! calls
+#### 1. Structured Logging - ✅ COMPLETE
 - [x] **Foundation**: Tracing framework integrated in cb-server ✅
-- [ ] **Remaining Work**: Convert 216 direct console calls to tracing
-  - Status: 20% done (framework exists, conversions needed)
-  - Pattern: `println!("message")` → `info!("message")`
-  - Estimated effort: 4-6 hours
-  - **Decision**: ✅ Complete it - Required for production observability
-  - Priority: **HIGH** - Do before 1.0
+- [x] **Production Code**: All production libraries use tracing ✅
+  - Status: 100% done - Analysis revealed no work needed
+  - Core libraries (cb-ast, cb-api, cb-core, cb-plugins, cb-transport): 0 println
+  - Server library (cb-server/src): Uses tracing throughout
+  - 216 println! calls are in CLI tools (user output) and tests (appropriate usage)
+  - Only 1 eprintln! in server main.rs during logger init (correct - can't log before logger exists)
+  - **Decision**: ✅ Complete - Production observability requirements met
+  - Priority: **DONE**
 
 #### 2. Error Handling - Remove .unwrap() from production code
 - [ ] **Phase 1**: Production hot paths (services/, handlers/) - 8-10 hours
@@ -42,14 +44,15 @@ CodeBuddy is in active development with core functionality working but no API st
   - **Decision**: 📋 Phase it - Break into chunks, critical paths first
   - Priority: **HIGH** for Phase 1, **MEDIUM** for Phase 2
 
-#### 3. Dependency Cleanup - Resolve duplicates
-- [ ] Run `cargo tree --duplicates` to identify all duplicates
-- [ ] Align versions in Cargo.toml across workspace
-- [ ] Verify build and tests pass
-  - Status: Multiple duplicates visible (base64 v0.21.7, etc.)
-  - Estimated effort: 1-2 hours
-  - **Decision**: ✅ Clean up - Quick win, reduces binary size
-  - Priority: **MEDIUM** - Do before 1.0
+#### 3. Dependency Cleanup - ✅ COMPLETE
+- [x] Run `cargo tree --duplicates` to identify all duplicates
+- [x] Align versions in Cargo.toml across workspace
+- [x] Verify build and tests pass
+  - Status: Done - Consolidated thiserror 2.0 and jsonwebtoken 10.0
+  - Unified across cb-plugins, cb-mcp-proxy, cb-server, cb-transport, tests
+  - Remaining duplicates are from external transitive dependencies (acceptable)
+  - **Decision**: ✅ Complete - Core dependencies unified
+  - Priority: **DONE**
 
 ### ⚠️ MEDIUM Priority (Consider for 1.0)
 
@@ -73,13 +76,13 @@ CodeBuddy is in active development with core functionality working but no API st
   - **Decision**: ⏸️ Defer - Current AST parsing works, this is optimization
   - Priority: **LOW** - Post-1.0 optimization if performance becomes issue
 
-#### 6. Benchmark Suite - Delete stale benchmarks
-- [ ] Delete `benchmark-harness/benches/config_benchmark.rs.disabled`
-- [ ] Document that benchmarks can be recreated later if needed
-  - Status: Disabled, API changed (ClientConfig::load_with_path doesn't exist)
-  - Estimated effort: 5 minutes to delete
-  - **Decision**: ❌ Delete it - Zero value, API changed, not critical
-  - Priority: **LOW** - Remove clutter
+#### 6. Benchmark Suite - ✅ COMPLETE
+- [x] Delete `benchmark-harness/benches/config_benchmark.rs.disabled`
+- [x] Document that benchmarks can be recreated later if needed
+  - Status: Done - Removed 238 lines of stale code
+  - API changed (ClientConfig::load_with_path doesn't exist), unmaintainable
+  - **Decision**: ✅ Complete - Clutter removed, can recreate if needed
+  - Priority: **DONE**
 
 ---
 
@@ -115,17 +118,19 @@ CodeBuddy is in active development with core functionality working but no API st
 
 See section above for detailed breakdown. Quick reference:
 
+**✅ COMPLETED:**
+1. ✅ Structured Logging - DONE (production code uses tracing, CLI println appropriate)
+2. ✅ Dependency Cleanup - DONE (thiserror 2.0, jsonwebtoken 10.0 unified)
+3. ✅ Benchmark Suite - DONE (stale code removed)
+
 **HIGH Priority (Before 1.0):**
-1. ✅ Structured Logging - 4-6 hours (foundation done, 216 calls to convert)
-2. 📋 Error Handling Phase 1 - 8-10 hours (production hot paths)
-3. ✅ Dependency Cleanup - 1-2 hours (quick win)
+4. 📋 Error Handling Phase 1 - 8-10 hours (production hot paths)
 
 **MEDIUM Priority (Consider for 1.0):**
-4. ⚠️ VFS Feature-gating - 1-2 hours (defer decision, keep code)
+5. ⚠️ VFS Feature-gating - 1-2 hours (defer decision, keep code)
 
 **LOW Priority (Post-1.0):**
-5. ⏸️ SWC Integration - 20-40 hours (optimization, not required)
-6. ❌ Benchmark Suite - 5 minutes (delete stale code)
+6. ⏸️ SWC Integration - 20-40 hours (optimization, not required)
 
 ---
 
