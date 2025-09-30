@@ -264,33 +264,17 @@ The implementation handles LSP protocol specifics:
 cargo build --release
 
 # The resulting binary is self-contained and ready for deployment
-./target/release/codebuddy serve --port 3000
+./target/release/codebuddy serve
 ```
 
 ### WebSocket Server Configuration
 ```bash
-# Basic server
-./target/release/codebuddy serve --port 3000 --max-clients 10
-
-# With authentication
-./target/release/codebuddy serve --require-auth --jwt-secret "your-secret"
-
-# With TLS/WSS
-./target/release/codebuddy serve --tls-key server.key --tls-cert server.crt
-
-# Enterprise setup
-./target/release/codebuddy serve \
-  --port 3000 --max-clients 10 \
-  --require-auth --jwt-secret "enterprise-key" \
-  --tls-key /etc/ssl/server.key --tls-cert /etc/ssl/server.crt
+# Start WebSocket server (default port 3000)
+./target/release/codebuddy serve
 ```
 
 ### Environment Variables
 - `RUST_LOG` - Logging level (debug/info/warn/error)
-- `JWT_SECRET` - JWT signing secret for authentication
-- `JWT_EXPIRY` - Token expiry time (default: 24h)
-- `JWT_ISSUER` - Token issuer (default: codebuddy)
-- `JWT_AUDIENCE` - Token audience (default: codebuddy-clients)
 
 ## Performance Features
 
@@ -302,8 +286,6 @@ cargo build --release
 
 ### Security Features
 - **Memory safety** - Rust's ownership system prevents common vulnerabilities
-- **JWT Authentication** - Token-based project access control
-- **TLS/WSS Support** - Encrypted WebSocket connections
 - **Type safety** - Compile-time prevention of data races and null pointer errors
 
 ## Adding New MCP Tools (For Contributors)
