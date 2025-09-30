@@ -54,11 +54,8 @@ codebuddy start
 # Check status
 codebuddy status
 
-# WebSocket server (advanced)
-codebuddy serve --port 3000
-
-# With authentication
-codebuddy serve --require-auth --jwt-secret "your-secret"
+# WebSocket server
+codebuddy serve
 ```
 
 ## 📚 MCP Integration
@@ -76,19 +73,6 @@ The installer automatically configures Claude Code. Manual setup:
 }
 ```
 
-## 📊 Production Monitoring
-```bash
-# Health check
-curl http://localhost:3000/healthz
-
-# Prometheus metrics
-curl http://localhost:3000/metrics
-
-# Authentication endpoint (if enabled)
-curl -X POST http://localhost:3000/auth \
-  -H "Content-Type: application/json" \
-  -d '{"projectId": "my-project", "secretKey": "my-secret"}'
-```
 
 ## 🛠️ Language Server Setup
 ```bash
@@ -138,70 +122,6 @@ cat > .codebuddy/config.json << 'EOF'
 EOF
 ```
 
-## 🗄️ FUSE Support (Experimental)
-
-FUSE (Filesystem in Userspace) enables mounting remote filesystems locally, allowing LSP servers to access files as if they were on the local filesystem.
-
-### Platform Support
-
-| Platform | Support | Requirements |
-|----------|---------|-------------|
-| Linux | ✅ Full | FUSE kernel module |
-| macOS | ✅ Full | macFUSE installation |
-| Windows | ❌ None | Use WSL2 for FUSE support |
-
-### Setup FUSE
-
-```bash
-# FUSE setup must be done manually
-# See platform-specific instructions below
-```
-
-#### Linux Setup
-```bash
-# Debian/Ubuntu
-sudo apt-get install fuse fuse-dev
-sudo usermod -aG fuse $USER  # Add user to fuse group
-
-# RedHat/Fedora
-sudo dnf install fuse fuse-devel
-
-# Arch
-sudo pacman -S fuse2 fuse3
-```
-
-#### macOS Setup
-```bash
-# Install macFUSE via Homebrew
-brew install --cask macfuse
-
-# Note: You'll need to allow the kernel extension in:
-# System Preferences > Security & Privacy
-```
-
-### Verify Installation
-```bash
-# Check FUSE availability
-codebuddy status  # Will show FUSE support status
-
-# The system will automatically detect FUSE on startup
-# and provide platform-specific instructions if needed
-```
-
-### Using FUSE with WebSocket Server
-```bash
-# Start server with FUSE enabled
-codebuddy serve --port 3000 --enable-fuse
-
-# Mount path configuration
-codebuddy serve --fuse-mount-path /tmp/codeflow-mount
-```
-
-### Troubleshooting
-
-- **Linux**: If you get permission errors, ensure you're in the `fuse` group and have logged out/in
-- **macOS**: If macFUSE isn't detected, restart after installation and check Security & Privacy settings
-- **Both**: Rebuild if needed after installing FUSE
 
 ## 📖 Documentation
 - **[CLAUDE.md](CLAUDE.md)** - Project instructions and architecture
@@ -220,9 +140,8 @@ cargo build --release
 # Run development version
 cargo run -- start
 
-# WebSocket server development
-./target/release/codebuddy serve --port 3000             # Basic server
-./target/release/codebuddy serve --require-auth --jwt-secret KEY # With auth
+# WebSocket server
+./target/release/codebuddy serve
 
 # Testing
 cargo test
