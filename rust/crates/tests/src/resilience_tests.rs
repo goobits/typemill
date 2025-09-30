@@ -475,9 +475,9 @@ async fn test_basic_filesystem_operations() {
     assert_eq!(response["id"], "fs-2");
 
     if response["error"].is_null() {
-        let content = &response["result"]["content"]["content"];
-        assert!(content["content"].is_string(), "Should have file content");
-        let file_content = content["content"].as_str().unwrap();
+        let content = &response["result"]["content"];
+        assert!(content.is_string(), "Should have file content");
+        let file_content = content.as_str().unwrap();
         assert!(
             file_content.contains("TestMain"),
             "Should contain our test class"
@@ -527,7 +527,7 @@ async fn test_basic_filesystem_operations() {
     assert_eq!(response["id"], "fs-4");
 
     if response["error"].is_null() {
-        let file_content = response["result"]["content"]["content"]["content"]
+        let file_content = response["result"]["content"]
             .as_str()
             .unwrap();
         assert!(
