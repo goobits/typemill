@@ -275,13 +275,16 @@ pub fn parse_js_ts_imports_enhanced(source: &str) -> AstResult<Vec<ImportInfo>> 
     let mut imports = Vec::new();
 
     // Enhanced regex patterns for different import types
-    let es_import_re = Regex::new(r#"^\s*import\s+(?:(type)\s+)?(?:(?:(\*)\s+as\s+(\w+))|(?:(\w+)(?:\s*,\s*\{([^}]+)\})?)|(?:\{([^}]+)\}))\s+from\s+['"]([^'"]+)['"]"#).unwrap();
-    let dynamic_import_re = Regex::new(r#"import\s*\(\s*['"]([^'"]+)['"]\s*\)"#).unwrap();
+    let es_import_re = Regex::new(r#"^\s*import\s+(?:(type)\s+)?(?:(?:(\*)\s+as\s+(\w+))|(?:(\w+)(?:\s*,\s*\{([^}]+)\})?)|(?:\{([^}]+)\}))\s+from\s+['"]([^'"]+)['"]"#)
+        .expect("ES import regex pattern should be valid");
+    let dynamic_import_re = Regex::new(r#"import\s*\(\s*['"]([^'"]+)['"]\s*\)"#)
+        .expect("Dynamic import regex pattern should be valid");
     let require_re = Regex::new(
         r#"(?:const|let|var)\s+(?:\{([^}]+)\}|(\w+))\s*=\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)"#,
     )
-    .unwrap();
-    let direct_require_re = Regex::new(r#"require\s*\(\s*['"]([^'"]+)['"]\s*\)"#).unwrap();
+    .expect("Require regex pattern should be valid");
+    let direct_require_re = Regex::new(r#"require\s*\(\s*['"]([^'"]+)['"]\s*\)"#)
+        .expect("Direct require regex pattern should be valid");
 
     for (line_num, line) in source.lines().enumerate() {
         let line = line.trim();
@@ -299,7 +302,11 @@ pub fn parse_js_ts_imports_enhanced(source: &str) -> AstResult<Vec<ImportInfo>> 
             let default_import = captures.get(4).map(|m| m.as_str().to_string());
             let mixed_named = captures.get(5).map(|m| m.as_str());
             let named_only = captures.get(6).map(|m| m.as_str());
-            let module_path = captures.get(7).map(|m| m.as_str()).unwrap().to_string();
+            let module_path = captures
+                .get(7)
+                .expect("ES import regex should always capture module path at index 7")
+                .as_str()
+                .to_string();
 
             let named_imports = if let Some(named_str) = mixed_named.or(named_only) {
                 parse_named_imports_enhanced(named_str)?
@@ -329,7 +336,14 @@ pub fn parse_js_ts_imports_enhanced(source: &str) -> AstResult<Vec<ImportInfo>> 
 
         // Dynamic imports
         for captures in dynamic_import_re.captures_iter(line) {
-            let module_path = captures.get(1).unwrap().as_str().to_string();
+            let module_path = captures
+                .get(1)
+                .expect("Dynamic import regex should always capture module path at index 1")
+                .as_str()
+                .to_string();
+            let full_match = captures
+                .get(0)
+                .expect("Regex match should always have capture group 0");
 
             imports.push(ImportInfo {
                 module_path,
@@ -340,16 +354,20 @@ pub fn parse_js_ts_imports_enhanced(source: &str) -> AstResult<Vec<ImportInfo>> 
                 type_only: false,
                 location: SourceLocation {
                     start_line: line_num as u32,
-                    start_column: captures.get(0).unwrap().start() as u32,
+                    start_column: full_match.start() as u32,
                     end_line: line_num as u32,
-                    end_column: captures.get(0).unwrap().end() as u32,
+                    end_column: full_match.end() as u32,
                 },
             });
         }
 
         // CommonJS requires with destructuring
         if let Some(captures) = require_re.captures(line) {
-            let module_path = captures.get(3).unwrap().as_str().to_string();
+            let module_path = captures
+                .get(3)
+                .expect("Require regex should always capture module path at index 3")
+                .as_str()
+                .to_string();
 
             let named_imports = if let Some(destructured) = captures.get(1) {
                 parse_named_imports_enhanced(destructured.as_str())?
@@ -376,7 +394,14 @@ pub fn parse_js_ts_imports_enhanced(source: &str) -> AstResult<Vec<ImportInfo>> 
         }
         // Direct require calls (no assignment)
         else if let Some(captures) = direct_require_re.captures(line) {
-            let module_path = captures.get(1).unwrap().as_str().to_string();
+            let module_path = captures
+                .get(1)
+                .expect("Direct require regex should always capture module path at index 1")
+                .as_str()
+                .to_string();
+            let full_match = captures
+                .get(0)
+                .expect("Regex match should always have capture group 0");
 
             imports.push(ImportInfo {
                 module_path,
@@ -387,9 +412,9 @@ pub fn parse_js_ts_imports_enhanced(source: &str) -> AstResult<Vec<ImportInfo>> 
                 type_only: false,
                 location: SourceLocation {
                     start_line: line_num as u32,
-                    start_column: captures.get(0).unwrap().start() as u32,
+                    start_column: full_match.start() as u32,
                     end_line: line_num as u32,
-                    end_column: captures.get(0).unwrap().end() as u32,
+                    end_column: full_match.end() as u32,
                 },
             });
         }
@@ -401,11 +426,16 @@ pub fn parse_js_ts_imports_enhanced(source: &str) -> AstResult<Vec<ImportInfo>> 
 /// Parse named imports with enhanced regex support
 fn parse_named_imports_enhanced(named_str: &str) -> AstResult<Vec<NamedImport>> {
     let mut named_imports = Vec::new();
-    let import_re = Regex::new(r#"(?:(type)\s+)?(\w+)(?:\s+as\s+(\w+))?"#).unwrap();
+    let import_re = Regex::new(r#"(?:(type)\s+)?(\w+)(?:\s+as\s+(\w+))?"#)
+        .expect("Named import regex pattern should be valid");
 
     for captures in import_re.captures_iter(named_str) {
         let type_only = captures.get(1).is_some();
-        let name = captures.get(2).unwrap().as_str().to_string();
+        let name = captures
+            .get(2)
+            .expect("Named import regex should always capture name at index 2")
+            .as_str()
+            .to_string();
         let alias = captures.get(3).map(|m| m.as_str().to_string());
 
         named_imports.push(NamedImport {
@@ -753,7 +783,9 @@ fn parse_rust_imports(source: &str) -> AstResult<Vec<ImportInfo>> {
             if use_part.contains("::") {
                 let parts: Vec<&str> = use_part.split("::").collect();
                 let module_path = parts[..parts.len() - 1].join("::");
-                let imported_item = parts.last().unwrap();
+                let imported_item = parts
+                    .last()
+                    .expect("use statement with :: should have at least one part after split");
 
                 let (named_imports, namespace_import) =
                     if imported_item.contains('{') && imported_item.contains('}') {
