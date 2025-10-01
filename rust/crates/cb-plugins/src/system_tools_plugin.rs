@@ -44,15 +44,6 @@ impl SystemToolsPlugin {
             .insert("system.update_dependencies".to_string(), json!(true));
         capabilities
             .custom
-            .insert("system.extract_function".to_string(), json!(true));
-        capabilities
-            .custom
-            .insert("system.inline_variable".to_string(), json!(true));
-        capabilities
-            .custom
-            .insert("system.extract_variable".to_string(), json!(true));
-        capabilities
-            .custom
             .insert("system.fix_imports".to_string(), json!(true));
 
         SystemToolsPlugin {
@@ -332,164 +323,6 @@ impl SystemToolsPlugin {
             "status": if dry_run { "preview" } else { "completed" },
         }))
     }
-
-    /// Handle extract_function tool
-    async fn handle_extract_function(&self, params: Value) -> PluginResult<Value> {
-        #[derive(Debug, Deserialize)]
-        #[serde(rename_all = "snake_case")]
-        struct ExtractFunctionArgs {
-            file_path: String,
-            start_line: u32,
-            end_line: u32,
-            function_name: String,
-            dry_run: Option<bool>,
-        }
-
-        let args: ExtractFunctionArgs =
-            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
-                message: format!("Invalid extract_function args: {}", e),
-            })?;
-
-        debug!(
-            function_name = %args.function_name,
-            file_path = %args.file_path,
-            start_line = args.start_line,
-            end_line = args.end_line,
-            "Extracting function"
-        );
-
-        // Read the file
-        let content =
-            fs::read_to_string(&args.file_path)
-                .await
-                .map_err(|e| PluginError::IoError {
-                    message: format!("Failed to read file: {}", e),
-                })?;
-
-        let lines: Vec<&str> = content.lines().collect();
-
-        // Basic extraction logic (simplified)
-        // In a real implementation, this would use AST parsing to properly extract the function
-        let extracted_lines = &lines[(args.start_line as usize - 1)..(args.end_line as usize)];
-        let extracted_code = extracted_lines.join("\n");
-
-        // Create the new function
-        let new_function = format!(
-            "function {}() {{\n  {}\n}}",
-            args.function_name, extracted_code
-        );
-
-        Ok(json!({
-            "operation": "extract_function",
-            "file_path": args.file_path,
-            "function_name": args.function_name,
-            "extracted_code": extracted_code,
-            "new_function": new_function,
-            "start_line": args.start_line,
-            "end_line": args.end_line,
-            "dry_run": args.dry_run.unwrap_or(false),
-        }))
-    }
-
-    /// Handle inline_variable tool
-    async fn handle_inline_variable(&self, params: Value) -> PluginResult<Value> {
-        #[derive(Debug, Deserialize)]
-        #[serde(rename_all = "snake_case")]
-        struct InlineVariableArgs {
-            file_path: String,
-            variable_name: String,
-            line: u32,
-            dry_run: Option<bool>,
-        }
-
-        let args: InlineVariableArgs =
-            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
-                message: format!("Invalid inline_variable args: {}", e),
-            })?;
-
-        debug!(
-            variable_name = %args.variable_name,
-            file_path = %args.file_path,
-            line = args.line,
-            "Inlining variable"
-        );
-
-        // Read the file
-        let _content =
-            fs::read_to_string(&args.file_path)
-                .await
-                .map_err(|e| PluginError::IoError {
-                    message: format!("Failed to read file: {}", e),
-                })?;
-
-        // In a real implementation, this would use AST parsing to find the variable declaration
-        // and all its usages, then replace them with the value
-
-        Ok(json!({
-            "operation": "inline_variable",
-            "file_path": args.file_path,
-            "variable_name": args.variable_name,
-            "line": args.line,
-            "status": "preview",
-            "dry_run": args.dry_run.unwrap_or(false),
-            "message": "Would inline variable and update all references",
-        }))
-    }
-
-    /// Handle extract_variable tool
-    async fn handle_extract_variable(&self, params: Value) -> PluginResult<Value> {
-        #[derive(Debug, Deserialize)]
-        #[serde(rename_all = "snake_case")]
-        struct ExtractVariableArgs {
-            file_path: String,
-            start_line: u32,
-            start_character: u32,
-            end_line: u32,
-            end_character: u32,
-            variable_name: String,
-            dry_run: Option<bool>,
-        }
-
-        let args: ExtractVariableArgs =
-            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
-                message: format!("Invalid extract_variable args: {}", e),
-            })?;
-
-        debug!(
-            variable_name = %args.variable_name,
-            file_path = %args.file_path,
-            start_line = args.start_line,
-            start_character = args.start_character,
-            end_line = args.end_line,
-            end_character = args.end_character,
-            "Extracting variable"
-        );
-
-        // Read the file
-        let _content =
-            fs::read_to_string(&args.file_path)
-                .await
-                .map_err(|e| PluginError::IoError {
-                    message: format!("Failed to read file: {}", e),
-                })?;
-
-        // In a real implementation, this would use AST parsing to extract the expression
-        // and create a variable declaration
-
-        Ok(json!({
-            "operation": "extract_variable",
-            "file_path": args.file_path,
-            "variable_name": args.variable_name,
-            "range": {
-                "start": { "line": args.start_line, "character": args.start_character },
-                "end": { "line": args.end_line, "character": args.end_character },
-            },
-            "status": "preview",
-            "dry_run": args.dry_run.unwrap_or(false),
-            "message": "Would extract expression into variable",
-        }))
-    }
-
 
     /// Handle web_fetch tool
     async fn handle_web_fetch(&self, params: Value) -> PluginResult<Value> {
@@ -771,9 +604,6 @@ impl LanguagePlugin for SystemToolsPlugin {
                 self.handle_update_dependencies(request.params.clone())
                     .await?
             }
-            "extract_function" => self.handle_extract_function(request.params.clone()).await?,
-            "inline_variable" => self.handle_inline_variable(request.params.clone()).await?,
-            "extract_variable" => self.handle_extract_variable(request.params.clone()).await?,
             "web_fetch" => self.handle_web_fetch(request.params.clone()).await?,
             _ => {
                 return Err(PluginError::MethodNotSupported {

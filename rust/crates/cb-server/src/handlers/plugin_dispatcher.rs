@@ -13,7 +13,7 @@ use cb_plugins::{LspAdapterPlugin, LspService, PluginError, PluginManager, Plugi
 use cb_transport::McpDispatcher;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::{Mutex, OnceCell};
@@ -439,6 +439,11 @@ impl PluginDispatcher {
             return self.handle_file_operation(tool_call).await;
         }
 
+        // Check if this is a refactoring operation that needs EditPlan handling
+        if self.is_refactoring_operation(&tool_call.name) {
+            return self.handle_refactoring_operation(tool_call).await;
+        }
+
         // Check if this is an LSP notification tool
         if tool_call.name == "notify_file_opened" {
             return self.handle_notify_file_opened(tool_call).await;
@@ -696,9 +701,14 @@ impl PluginDispatcher {
             "list_files"
                 | "analyze_imports"
                 | "update_dependencies"
-                | "extract_function"
-                | "inline_variable"
-                | "extract_variable"
+        )
+    }
+
+    /// Check if a tool name represents a refactoring operation that needs EditPlan handling
+    fn is_refactoring_operation(&self, tool_name: &str) -> bool {
+        matches!(
+            tool_name,
+            "extract_function" | "inline_variable" | "extract_variable"
         )
     }
 
@@ -1281,6 +1291,157 @@ impl PluginDispatcher {
                 tool_call.name
             ))),
         }
+    }
+
+    /// Handle refactoring operations using cb-ast and FileService
+    async fn handle_refactoring_operation(&self, tool_call: ToolCall) -> ServerResult<Value> {
+        debug!(tool_name = %tool_call.name, "Handling refactoring operation");
+
+        let args = tool_call.arguments.ok_or_else(|| {
+            ServerError::InvalidRequest(format!("Missing arguments for {}", tool_call.name))
+        })?;
+
+        // Get file path and read content
+        let file_path = args
+            .get("file_path")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+
+        let content = self
+            .app_state
+            .file_service
+            .read_file(Path::new(file_path))
+            .await?;
+
+        let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
+
+        // Generate EditPlan using cb-ast refactoring functions
+        let edit_plan = match tool_call.name.as_str() {
+            "extract_function" => {
+                let start_line = args
+                    .get("start_line")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'start_line'".into()))?
+                    as u32;
+                let end_line = args
+                    .get("end_line")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'end_line'".into()))?
+                    as u32;
+                let function_name = args
+                    .get("function_name")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'function_name'".into()))?;
+
+                let range = cb_ast::refactoring::CodeRange {
+                    start_line,
+                    start_col: 0,
+                    end_line,
+                    end_col: u32::MAX, // Full line
+                };
+
+                cb_ast::refactoring::plan_extract_function(
+                    &content,
+                    &range,
+                    function_name,
+                    file_path,
+                )
+                .map_err(|e| ServerError::Runtime {
+                    message: format!("Extract function planning failed: {}", e),
+                })?
+            }
+            "inline_variable" => {
+                let line = args
+                    .get("line")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'line'".into()))?
+                    as u32;
+                let character = args
+                    .get("character")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0) as u32;
+
+                cb_ast::refactoring::plan_inline_variable(&content, line, character, file_path)
+                    .map_err(|e| ServerError::Runtime {
+                        message: format!("Inline variable planning failed: {}", e),
+                    })?
+            }
+            "extract_variable" => {
+                let start_line = args
+                    .get("start_line")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'start_line'".into()))?
+                    as u32;
+                let start_character = args
+                    .get("start_character")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| {
+                        ServerError::InvalidRequest("Missing 'start_character'".into())
+                    })? as u32;
+                let end_line = args
+                    .get("end_line")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'end_line'".into()))?
+                    as u32;
+                let end_character = args
+                    .get("end_character")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'end_character'".into()))?
+                    as u32;
+                let variable_name = args
+                    .get("variable_name")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        ServerError::InvalidRequest("Missing 'variable_name'".into())
+                    })?;
+
+                cb_ast::refactoring::plan_extract_variable(
+                    &content,
+                    start_line,
+                    start_character,
+                    end_line,
+                    end_character,
+                    Some(variable_name.to_string()),
+                    file_path,
+                )
+                .map_err(|e| ServerError::Runtime {
+                    message: format!("Extract variable planning failed: {}", e),
+                })?
+            }
+            _ => {
+                return Err(ServerError::InvalidRequest(format!(
+                    "Unknown refactoring operation: {}",
+                    tool_call.name
+                )))
+            }
+        };
+
+        // If dry_run, return the plan without applying
+        if dry_run {
+            return Ok(json!({
+                "status": "preview",
+                "operation": tool_call.name,
+                "file_path": file_path,
+                "edit_plan": edit_plan,
+                "dry_run": true
+            }));
+        }
+
+        // Apply the edit plan atomically via FileService
+        let result = self
+            .app_state
+            .file_service
+            .apply_edit_plan(&edit_plan)
+            .await?;
+
+        Ok(json!({
+            "status": "completed",
+            "operation": tool_call.name,
+            "file_path": file_path,
+            "success": result.success,
+            "modified_files": result.modified_files,
+            "errors": result.errors
+        }))
     }
 
     /// Check if a method is supported for a file
