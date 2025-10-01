@@ -90,7 +90,7 @@ CodeBuddy is in active development with core functionality working but no API st
   - Priority: **DONE**
 
 #### 6. Benchmark Suite - ✅ COMPLETE
-- [x] Delete `benchmark-harness/benches/config_benchmark.rs.disabled`
+- [x] Delete `testing/benchmarks/benches/config_benchmark.rs.disabled`
 - [x] Document that benchmarks can be recreated later if needed
   - Status: Done - Removed 238 lines of stale code
   - API changed (ClientConfig::load_with_path doesn't exist), unmaintainable

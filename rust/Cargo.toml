@@ -9,8 +9,7 @@ members = [
     "crates/cb-client",
     "crates/cb-transport",
     "crates/tests",
-    "benchmark-harness",
-    "apps/server",
+    "apps/server", "testing/benchmarks",
 ]
 # Excluded members (optional features - build with --features vfs):
 exclude = [
