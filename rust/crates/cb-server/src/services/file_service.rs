@@ -244,6 +244,33 @@ impl FileService {
             }
         }
 
+        // Update documentation references
+        let doc_updates = if dry_run {
+            info!(
+                old_path = %old_abs_dir.display(),
+                new_path = %new_abs_dir.display(),
+                "[DRY RUN] Would scan for documentation references"
+            );
+            self.update_documentation_references(&old_abs_dir, &new_abs_dir, dry_run).await.ok()
+        } else {
+            match self.update_documentation_references(&old_abs_dir, &new_abs_dir, dry_run).await {
+                Ok(report) => {
+                    if report.references_updated > 0 {
+                        info!(
+                            files = report.files_updated,
+                            references = report.references_updated,
+                            "Updated documentation references"
+                        );
+                    }
+                    Some(report)
+                }
+                Err(e) => {
+                    warn!(error = %e, "Failed to update documentation references, continuing");
+                    None
+                }
+            }
+        };
+
         info!(
             files_moved = files_to_move.len(),
             imports_updated = final_report.imports_updated,
@@ -266,6 +293,7 @@ impl FileService {
             success: !has_errors,
             files_moved: files_to_move.len(),
             import_updates: final_report_with_manifest_errors,
+            documentation_updates: doc_updates,
             error: if has_errors {
                 Some(format!(
                     "Completed with {} error(s) during rename operation.",
@@ -945,6 +973,126 @@ impl FileService {
             path.to_string()
         }
     }
+
+    /// Update documentation file references after directory rename
+    async fn update_documentation_references(
+        &self,
+        old_dir_path: &Path,
+        new_dir_path: &Path,
+        dry_run: bool,
+    ) -> ServerResult<DocumentationUpdateReport> {
+        let old_rel = old_dir_path.strip_prefix(&self.project_root)
+            .unwrap_or(old_dir_path);
+        let new_rel = new_dir_path.strip_prefix(&self.project_root)
+            .unwrap_or(new_dir_path);
+
+        let old_path_str = old_rel.to_string_lossy();
+        let new_path_str = new_rel.to_string_lossy();
+
+        // Documentation file patterns
+        let doc_patterns = ["*.md", "*.txt", "README*", "CHANGELOG*", "CONTRIBUTING*"];
+
+        let mut updated_files = Vec::new();
+        let mut failed_files = Vec::new();
+        let mut total_references = 0;
+
+        // Walk project root for documentation files
+        let walker = ignore::WalkBuilder::new(&self.project_root)
+            .hidden(false)
+            .git_ignore(true)
+            .build();
+
+        for entry in walker.flatten() {
+            let path = entry.path();
+
+            // Check if matches doc pattern
+            if !path.is_file() {
+                continue;
+            }
+
+            let matches_pattern = doc_patterns.iter().any(|pattern| {
+                if pattern.starts_with('*') {
+                    path.extension()
+                        .and_then(|e| e.to_str())
+                        .map(|e| pattern.ends_with(e))
+                        .unwrap_or(false)
+                } else {
+                    path.file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|n| n.starts_with(pattern.trim_end_matches('*')))
+                        .unwrap_or(false)
+                }
+            });
+
+            if !matches_pattern {
+                continue;
+            }
+
+            // Read file content
+            match fs::read_to_string(&path).await {
+                Ok(content) => {
+                    // Count and replace references
+                    let count = content.matches(old_path_str.as_ref()).count();
+                    if count == 0 {
+                        continue;
+                    }
+
+                    total_references += count;
+
+                    if dry_run {
+                        info!(
+                            file = %path.display(),
+                            references = count,
+                            "[DRY RUN] Would update documentation references"
+                        );
+                        updated_files.push(path.to_string_lossy().to_string());
+                    } else {
+                        let new_content = content.replace(old_path_str.as_ref(), new_path_str.as_ref());
+
+                        match fs::write(&path, new_content).await {
+                            Ok(_) => {
+                                info!(
+                                    file = %path.display(),
+                                    references = count,
+                                    old = %old_path_str,
+                                    new = %new_path_str,
+                                    "Updated documentation references"
+                                );
+                                updated_files.push(path.to_string_lossy().to_string());
+                            }
+                            Err(e) => {
+                                warn!(
+                                    file = %path.display(),
+                                    error = %e,
+                                    "Failed to update documentation file"
+                                );
+                                failed_files.push(format!("{}: {}", path.display(), e));
+                            }
+                        }
+                    }
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
+                    // Skip binary files silently
+                    debug!(file = %path.display(), "Skipping binary file");
+                }
+                Err(e) => {
+                    warn!(
+                        file = %path.display(),
+                        error = %e,
+                        "Failed to read documentation file"
+                    );
+                    failed_files.push(format!("{}: {}", path.display(), e));
+                }
+            }
+        }
+
+        Ok(DocumentationUpdateReport {
+            files_updated: updated_files.len(),
+            references_updated: total_references,
+            updated_files,
+            failed_files,
+        })
+    }
 }
 
 /// Result of a file rename operation
@@ -962,6 +1110,19 @@ pub struct FileRenameResult {
     pub error: Option<String>,
 }
 
+/// Result of documentation reference updates
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DocumentationUpdateReport {
+    /// Number of documentation files updated
+    pub files_updated: usize,
+    /// Number of path references updated
+    pub references_updated: usize,
+    /// Paths of updated documentation files
+    pub updated_files: Vec<String>,
+    /// Files that failed to update
+    pub failed_files: Vec<String>,
+}
+
 /// Result of a directory rename operation
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct DirectoryRenameResult {
@@ -975,6 +1136,8 @@ pub struct DirectoryRenameResult {
     pub files_moved: usize,
     /// Aggregated import update report
     pub import_updates: ImportUpdateReport,
+    /// Documentation update report if applicable
+    pub documentation_updates: Option<DocumentationUpdateReport>,
     /// Error message if operation failed
     pub error: Option<String>,
 }
