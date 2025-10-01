@@ -43,6 +43,8 @@ pub enum Commands {
     Link,
     /// Remove AI from config
     Unlink,
+    /// Check client configuration and diagnose potential problems
+    Doctor,
     /// Manage MCP server presets
     #[cfg(feature = "mcp-proxy")]
     #[command(subcommand)]
@@ -99,6 +101,9 @@ pub async fn run() {
         }
         Commands::Unlink => {
             handle_unlink().await;
+        }
+        Commands::Doctor => {
+            handle_doctor().await;
         }
         #[cfg(feature = "mcp-proxy")]
         Commands::Mcp(mcp_command) => {
@@ -200,6 +205,63 @@ async fn handle_status() {
         println!("ℹ️  Codebuddy server is not running");
         println!("   Start the server with: codebuddy start");
     }
+}
+
+/// Handle the doctor command
+async fn handle_doctor() {
+    println!("🩺 Running Codebuddy Doctor...");
+    println!();
+
+    // 1. Check for and validate the configuration file
+    print!("Checking for configuration file... ");
+    match AppConfig::load() {
+        Ok(config) => {
+            println!("[✓] Found and parsed successfully.");
+            println!();
+
+            // 2. Check language servers
+            println!("Checking language servers:");
+            for server in &config.lsp.servers {
+                let cmd = &server.command[0];
+                print!(
+                    "  - Checking for '{}' (for {})... ",
+                    cmd,
+                    server.extensions.join(", ")
+                );
+                if command_exists(cmd) {
+                    println!("[✓] Found in PATH.");
+                } else {
+                    println!("[✗] Not found in PATH.");
+                    println!(
+                        "    > Please install '{}' and ensure it is available in your system's PATH.",
+                        cmd
+                    );
+                }
+            }
+        }
+        Err(e) => {
+            println!("[✗] Error: {}", e);
+            println!("  > Run `codebuddy setup` to create a new configuration file.");
+        }
+    }
+
+    println!();
+    println!("✨ Doctor's checkup complete.");
+}
+
+/// Helper to check if a command exists on the system's PATH
+fn command_exists(cmd: &str) -> bool {
+    std::process::Command::new(if cfg!(target_os = "windows") {
+        "where"
+    } else {
+        "command"
+    })
+    .arg("-v")
+    .arg(cmd)
+    .stdout(std::process::Stdio::null())
+    .stderr(std::process::Stdio::null())
+    .status()
+    .map_or(false, |status| status.success())
 }
 
 /// Handle the stop command

@@ -204,6 +204,7 @@ impl ErrorSummary {
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use commands::call::{CallCommand, OutputFormat};
 use commands::connect::ConnectCommand;
+use commands::doctor::DoctorCommand;
 use commands::setup::SetupCommand;
 use commands::status::StatusCommand;
 use commands::{Command, GlobalArgs};
@@ -331,6 +332,12 @@ pub enum Commands {
         #[command(subcommand)]
         command: McpCommands,
     },
+
+    /// Check client configuration and diagnose potential problems.
+    #[command(
+        long_about = "Performs a series of checks to validate the configuration, find required executables, and ensure the client is ready to connect to the server."
+    )]
+    Doctor,
 
     /// Generate shell completion scripts.
     #[command(long_about = "Generate shell completion scripts for your shell.
@@ -478,6 +485,10 @@ pub async fn run_cli() -> ClientResult<()> {
                 |e| ClientError::RequestError(format!("Failed to show preset info: {}", e)),
             ),
         },
+        Commands::Doctor => {
+            let cmd = DoctorCommand::new();
+            cmd.execute(&global_args).await
+        }
         Commands::Completions { shell } => {
             let mut cmd = CliArgs::command();
             let name = cmd.get_name().to_string();

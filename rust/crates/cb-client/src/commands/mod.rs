@@ -1,5 +1,6 @@
 pub mod call;
 pub mod connect;
+pub mod doctor;
 #[cfg(feature = "mcp-proxy")]
 pub mod mcp;
 pub mod setup;
