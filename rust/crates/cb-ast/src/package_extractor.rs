@@ -124,7 +124,6 @@ impl LanguageAdapter for RustAdapter {
         package_path: &Path,
         module_path: &str,
     ) -> AstResult<Vec<std::path::PathBuf>> {
-        use std::path::PathBuf;
         use tracing::debug;
 
         debug!(
@@ -392,6 +391,48 @@ impl LanguageAdapter for PythonAdapter {
     fn rewrite_import(&self, _old_import: &str, _new_package_name: &str) -> String {
         unimplemented!("PythonAdapter::rewrite_import not yet implemented")
     }
+}
+
+/// Recursively find all .rs files in a directory
+fn find_rust_files_in_dir(dir: &Path) -> AstResult<Vec<std::path::PathBuf>> {
+    let mut rust_files = Vec::new();
+
+    if !dir.exists() || !dir.is_dir() {
+        return Ok(rust_files);
+    }
+
+    let entries = std::fs::read_dir(dir).map_err(|e| {
+        crate::error::AstError::Analysis {
+            message: format!("Failed to read directory {}: {}", dir.display(), e),
+        }
+    })?;
+
+    for entry_result in entries {
+        let entry = entry_result.map_err(|e| {
+            crate::error::AstError::Analysis {
+                message: format!("Failed to read directory entry: {}", e),
+            }
+        })?;
+
+        let path = entry.path();
+
+        if path.is_dir() {
+            // Skip target and hidden directories
+            if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                if dir_name == "target" || dir_name.starts_with('.') {
+                    continue;
+                }
+            }
+
+            // Recursively search subdirectories
+            let mut sub_files = find_rust_files_in_dir(&path)?;
+            rust_files.append(&mut sub_files);
+        } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+            rust_files.push(path);
+        }
+    }
+
+    Ok(rust_files)
 }
 
 /// Update a Cargo.toml file to add a new path dependency
@@ -889,6 +930,95 @@ pub async fn plan_extract_module_to_package(
         }
     }
 
+    // Step 9: Find and update all use statements in the workspace
+    if params.update_imports.unwrap_or(true) {
+        debug!("Starting use statement updates across workspace");
+
+        // Find all Rust files in the source crate
+        let rust_files = find_rust_files_in_dir(source_path)?;
+
+        debug!(
+            rust_files_count = rust_files.len(),
+            "Found Rust files to scan for imports"
+        );
+
+        for file_path in rust_files {
+            // Skip the files we're already modifying
+            let skip_file = located_files.iter().any(|f| f == &file_path);
+            if skip_file {
+                continue;
+            }
+
+            match tokio::fs::read_to_string(&file_path).await {
+                Ok(content) => {
+                    // Parse imports using the Rust AST parser
+                    match crate::rust_parser::parse_rust_imports_ast(&content) {
+                        Ok(imports) => {
+                            for import in imports {
+                                // Check if this import references the extracted module
+                                // The module path should start with "crate::" followed by our module path
+                                let module_path_normalized = params.module_path.replace("::", "::").replace(".", "::");
+                                let patterns_to_match = vec![
+                                    format!("crate::{}", module_path_normalized),
+                                    format!("self::{}", module_path_normalized),
+                                    module_path_normalized.clone(),
+                                ];
+
+                                let is_match = patterns_to_match.iter().any(|pattern| {
+                                    import.module_path.starts_with(pattern)
+                                        || import.module_path == *pattern
+                                });
+
+                                if is_match {
+                                    // Found an import that needs to be rewritten
+                                    let old_use_statement = format!("use {};", import.module_path);
+                                    let new_use_statement = adapter.rewrite_import(&import.module_path, &params.target_package_name);
+
+                                    // Create a TextEdit to replace this import
+                                    edits.push(TextEdit {
+                                        file_path: Some(file_path.to_string_lossy().to_string()),
+                                        edit_type: EditType::Replace,
+                                        location: EditLocation {
+                                            start_line: import.location.start_line,
+                                            start_column: import.location.start_column,
+                                            end_line: import.location.end_line,
+                                            end_column: import.location.end_column,
+                                        },
+                                        original_text: old_use_statement.clone(),
+                                        new_text: new_use_statement.clone(),
+                                        priority: 40,
+                                        description: format!("Update import to use new crate {}", params.target_package_name),
+                                    });
+
+                                    debug!(
+                                        file = %file_path.display(),
+                                        old_import = %old_use_statement,
+                                        new_import = %new_use_statement,
+                                        "Created use statement update TextEdit"
+                                    );
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            debug!(
+                                error = %e,
+                                file_path = %file_path.display(),
+                                "Failed to parse imports from file"
+                            );
+                        }
+                    }
+                }
+                Err(e) => {
+                    debug!(
+                        error = %e,
+                        file_path = %file_path.display(),
+                        "Failed to read file for import scanning"
+                    );
+                }
+            }
+        }
+    }
+
     // Convert PathBuf to strings for JSON serialization
     let located_files_strings: Vec<String> = located_files
         .iter()
@@ -1269,6 +1399,15 @@ use std::io::Read;
         let temp_dir = tempdir().unwrap();
         let project_root = temp_dir.path();
 
+        // Create workspace Cargo.toml
+        fs::write(
+            project_root.join("Cargo.toml"),
+            r#"[workspace]
+members = ["src_crate"]
+"#,
+        )
+        .unwrap();
+
         // Create source crate structure
         let src_crate = project_root.join("src_crate");
         let src_dir = src_crate.join("src");
@@ -1285,12 +1424,15 @@ edition = "2021"
         )
         .unwrap();
 
-        // Create lib.rs with module declaration
+        // Create lib.rs with module declaration AND imports of the module
         fs::write(
             src_dir.join("lib.rs"),
             r#"pub mod my_module;
 
+use crate::my_module::module_function;
+
 pub fn main_function() {
+    module_function();
     println!("Main function");
 }
 "#,
@@ -1306,6 +1448,18 @@ use serde::Serialize;
 pub fn module_function() {
     let map: HashMap<String, i32> = HashMap::new();
     println!("Module function");
+}
+"#,
+        )
+        .unwrap();
+
+        // Create another file that uses the module
+        fs::write(
+            src_dir.join("consumer.rs"),
+            r#"use crate::my_module::module_function;
+
+pub fn consume() {
+    module_function();
 }
 "#,
         )
@@ -1338,11 +1492,17 @@ pub fn module_function() {
             "rust"
         );
 
-        // Verify we have the expected number of edits (at least 3: create manifest, create lib.rs, delete old file)
-        // May have 4 if parent mod removal succeeded
+        // Verify we have the expected number of edits:
+        // 1. Create target manifest
+        // 2. Create target lib.rs
+        // 3. Delete old module file
+        // 4. Remove mod declaration from parent
+        // 5. Update source Cargo.toml (add dependency)
+        // 6. Update workspace Cargo.toml (add member)
+        // 7-8. Update use statements in lib.rs and consumer.rs
         assert!(
-            edit_plan.edits.len() >= 3,
-            "Should have at least 3 edits, got {}",
+            edit_plan.edits.len() >= 5,
+            "Should have at least 5 edits, got {}",
             edit_plan.edits.len()
         );
 
@@ -1396,6 +1556,81 @@ pub fn module_function() {
                 .contains("lib.rs"));
             assert!(parent_edit.description.contains("Remove mod my_module"));
         }
+
+        // Verify source Cargo.toml edit (add dependency)
+        let src_cargo_edit = edit_plan
+            .edits
+            .iter()
+            .find(|e| {
+                e.file_path
+                    .as_ref()
+                    .map(|p| p.contains("src_crate/Cargo.toml") && !p.contains("target_crate"))
+                    .unwrap_or(false)
+            })
+            .expect("Should have source Cargo.toml edit");
+        assert_eq!(src_cargo_edit.edit_type, EditType::Replace);
+        assert_eq!(src_cargo_edit.priority, 60);
+        assert!(
+            src_cargo_edit.new_text.contains("extracted_module"),
+            "Source Cargo.toml should add extracted_module dependency"
+        );
+        assert!(
+            src_cargo_edit.new_text.contains("[dependencies]"),
+            "Source Cargo.toml should have [dependencies] section"
+        );
+
+        // Verify workspace Cargo.toml edit (add member)
+        let ws_cargo_edit = edit_plan
+            .edits
+            .iter()
+            .find(|e| {
+                e.file_path
+                    .as_ref()
+                    .map(|p| {
+                        p.ends_with("Cargo.toml")
+                            && !p.contains("src_crate")
+                            && !p.contains("target_crate")
+                    })
+                    .unwrap_or(false)
+            })
+            .expect("Should have workspace Cargo.toml edit");
+        assert_eq!(ws_cargo_edit.edit_type, EditType::Replace);
+        assert_eq!(ws_cargo_edit.priority, 50);
+        assert!(
+            ws_cargo_edit.new_text.contains("target_crate"),
+            "Workspace Cargo.toml should add target_crate to members"
+        );
+        assert!(
+            ws_cargo_edit.new_text.contains("[workspace]"),
+            "Workspace Cargo.toml should have [workspace] section"
+        );
+
+        // Verify use statement edits
+        let use_statement_edits: Vec<_> = edit_plan
+            .edits
+            .iter()
+            .filter(|e| {
+                e.edit_type == EditType::Replace
+                    && e.priority == 40
+                    && e.description.contains("Update import")
+            })
+            .collect();
+        assert!(
+            use_statement_edits.len() >= 2,
+            "Should have at least 2 use statement updates (lib.rs and consumer.rs), got {}",
+            use_statement_edits.len()
+        );
+
+        // Verify at least one use statement edit has correct transformation
+        let sample_use_edit = use_statement_edits[0];
+        assert!(
+            sample_use_edit.new_text.contains("extracted_module"),
+            "Use statement should reference new crate name"
+        );
+        assert!(
+            sample_use_edit.original_text.contains("use"),
+            "Original text should be a use statement"
+        );
 
         // Verify dependencies were collected
         let dependencies = edit_plan.metadata.intent_arguments["dependencies"]
