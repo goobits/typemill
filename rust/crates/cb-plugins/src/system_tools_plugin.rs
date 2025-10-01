@@ -46,6 +46,17 @@ impl SystemToolsPlugin {
             .custom
             .insert("system.fix_imports".to_string(), json!(true));
 
+        // Add refactoring tool capabilities (handled by plugin_dispatcher, but advertised here for discovery)
+        capabilities
+            .custom
+            .insert("system.extract_function".to_string(), json!(true));
+        capabilities
+            .custom
+            .insert("system.inline_variable".to_string(), json!(true));
+        capabilities
+            .custom
+            .insert("system.extract_variable".to_string(), json!(true));
+
         SystemToolsPlugin {
             metadata: PluginMetadata {
                 name: "system-tools".to_string(),

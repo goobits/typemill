@@ -11,6 +11,7 @@ use cb_api::AstService;
 use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
 use cb_plugins::{LspAdapterPlugin, LspService, PluginError, PluginManager, PluginRequest};
 use cb_transport::McpDispatcher;
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -242,6 +243,39 @@ impl LspService for DirectLspAdapter {
     fn service_name(&self) -> String {
         self.name.clone()
     }
+}
+
+/// Parameter structures for refactoring operations
+#[derive(Debug, Deserialize)]
+struct ExtractFunctionArgs {
+    file_path: String,
+    start_line: u32,
+    end_line: u32,
+    function_name: String,
+    #[serde(default)]
+    dry_run: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+struct InlineVariableArgs {
+    file_path: String,
+    line: u32,
+    #[serde(default)]
+    character: Option<u32>,
+    #[serde(default)]
+    dry_run: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ExtractVariableArgs {
+    file_path: String,
+    start_line: u32,
+    start_character: u32,
+    end_line: u32,
+    end_character: u32,
+    variable_name: String,
+    #[serde(default)]
+    dry_run: Option<bool>,
 }
 
 impl PluginDispatcher {
@@ -1145,13 +1179,28 @@ impl PluginDispatcher {
                     .map(|r| r.files_updated)
                     .unwrap_or(0);
 
-                Ok(json!({
-                    "success": true,
-                    "old_path": old_path,
-                    "new_path": new_path,
-                    "imports_updated": imports_updated,
-                    "files_affected": files_affected
-                }))
+                if dry_run {
+                    Ok(json!({
+                        "status": "preview",
+                        "operation": "rename_file",
+                        "old_path": old_path,
+                        "new_path": new_path,
+                        "changes": {
+                            "file_renamed": true,
+                            "imports_to_update": imports_updated,
+                            "files_to_modify": files_affected
+                        },
+                        "preview": result
+                    }))
+                } else {
+                    Ok(json!({
+                        "success": true,
+                        "old_path": old_path,
+                        "new_path": new_path,
+                        "imports_updated": imports_updated,
+                        "files_affected": files_affected
+                    }))
+                }
             }
             "rename_directory" => {
                 let args = tool_call.arguments.ok_or_else(|| {
@@ -1184,7 +1233,18 @@ impl PluginDispatcher {
                     )
                     .await?;
 
-                Ok(json!(result))
+                if dry_run {
+                    Ok(json!({
+                        "status": "preview",
+                        "operation": "rename_directory",
+                        "old_path": old_path,
+                        "new_path": new_path,
+                        "changes": result,
+                        "preview": result
+                    }))
+                } else {
+                    Ok(json!(result))
+                }
             }
             "create_file" => {
                 let args = tool_call.arguments.ok_or_else(|| {
@@ -1301,112 +1361,83 @@ impl PluginDispatcher {
             ServerError::InvalidRequest(format!("Missing arguments for {}", tool_call.name))
         })?;
 
-        // Get file path and read content
-        let file_path = args
-            .get("file_path")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
-
-        let content = self
-            .app_state
-            .file_service
-            .read_file(Path::new(file_path))
-            .await?;
-
-        let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
-
-        // Generate EditPlan using cb-ast refactoring functions
-        let edit_plan = match tool_call.name.as_str() {
+        // Parse and execute refactoring based on tool type
+        let (file_path, dry_run, edit_plan) = match tool_call.name.as_str() {
             "extract_function" => {
-                let start_line = args
-                    .get("start_line")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'start_line'".into()))?
-                    as u32;
-                let end_line = args
-                    .get("end_line")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'end_line'".into()))?
-                    as u32;
-                let function_name = args
-                    .get("function_name")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'function_name'".into()))?;
+                let parsed: ExtractFunctionArgs = serde_json::from_value(args)
+                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid arguments: {}", e)))?;
+
+                let content = self
+                    .app_state
+                    .file_service
+                    .read_file(Path::new(&parsed.file_path))
+                    .await?;
 
                 let range = cb_ast::refactoring::CodeRange {
-                    start_line,
+                    start_line: parsed.start_line,
                     start_col: 0,
-                    end_line,
-                    end_col: u32::MAX, // Full line
+                    end_line: parsed.end_line,
+                    end_col: u32::MAX,
                 };
 
-                cb_ast::refactoring::plan_extract_function(
+                let plan = cb_ast::refactoring::plan_extract_function(
                     &content,
                     &range,
-                    function_name,
-                    file_path,
+                    &parsed.function_name,
+                    &parsed.file_path,
                 )
                 .map_err(|e| ServerError::Runtime {
                     message: format!("Extract function planning failed: {}", e),
-                })?
+                })?;
+
+                (parsed.file_path, parsed.dry_run.unwrap_or(false), plan)
             }
             "inline_variable" => {
-                let line = args
-                    .get("line")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'line'".into()))?
-                    as u32;
-                let character = args
-                    .get("character")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0) as u32;
+                let parsed: InlineVariableArgs = serde_json::from_value(args)
+                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid arguments: {}", e)))?;
 
-                cb_ast::refactoring::plan_inline_variable(&content, line, character, file_path)
-                    .map_err(|e| ServerError::Runtime {
-                        message: format!("Inline variable planning failed: {}", e),
-                    })?
+                let content = self
+                    .app_state
+                    .file_service
+                    .read_file(Path::new(&parsed.file_path))
+                    .await?;
+
+                let plan = cb_ast::refactoring::plan_inline_variable(
+                    &content,
+                    parsed.line,
+                    parsed.character.unwrap_or(0),
+                    &parsed.file_path,
+                )
+                .map_err(|e| ServerError::Runtime {
+                    message: format!("Inline variable planning failed: {}", e),
+                })?;
+
+                (parsed.file_path, parsed.dry_run.unwrap_or(false), plan)
             }
             "extract_variable" => {
-                let start_line = args
-                    .get("start_line")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'start_line'".into()))?
-                    as u32;
-                let start_character = args
-                    .get("start_character")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(|| {
-                        ServerError::InvalidRequest("Missing 'start_character'".into())
-                    })? as u32;
-                let end_line = args
-                    .get("end_line")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'end_line'".into()))?
-                    as u32;
-                let end_character = args
-                    .get("end_character")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(|| ServerError::InvalidRequest("Missing 'end_character'".into()))?
-                    as u32;
-                let variable_name = args
-                    .get("variable_name")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| {
-                        ServerError::InvalidRequest("Missing 'variable_name'".into())
-                    })?;
+                let parsed: ExtractVariableArgs = serde_json::from_value(args)
+                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid arguments: {}", e)))?;
 
-                cb_ast::refactoring::plan_extract_variable(
+                let content = self
+                    .app_state
+                    .file_service
+                    .read_file(Path::new(&parsed.file_path))
+                    .await?;
+
+                let plan = cb_ast::refactoring::plan_extract_variable(
                     &content,
-                    start_line,
-                    start_character,
-                    end_line,
-                    end_character,
-                    Some(variable_name.to_string()),
-                    file_path,
+                    parsed.start_line,
+                    parsed.start_character,
+                    parsed.end_line,
+                    parsed.end_character,
+                    Some(parsed.variable_name.clone()),
+                    &parsed.file_path,
                 )
                 .map_err(|e| ServerError::Runtime {
                     message: format!("Extract variable planning failed: {}", e),
-                })?
+                })?;
+
+                (parsed.file_path, parsed.dry_run.unwrap_or(false), plan)
             }
             _ => {
                 return Err(ServerError::InvalidRequest(format!(
