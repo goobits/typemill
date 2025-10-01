@@ -140,10 +140,26 @@ curl http://localhost/health
 See [`docker/README.md`](docker/README.md) for detailed documentation.
 
 ## 📖 Documentation
-- **[Architecture Guide](rust/docs/ARCHITECTURE.md)** - System design and implementation
-- **[Operations Guide](rust/docs/OPERATIONS.md)** - Deployment and operations
-- **[Usage Guide](rust/docs/USAGE.md)** - Detailed usage instructions
+- **[MCP API Reference](MCP_API.md)** - Complete MCP tools documentation
 - **[CLAUDE.md](CLAUDE.md)** - AI assistant integration guide
+- **[Architecture](rust/docs/ARCHITECTURE.md)** - System design
+- **[Support Matrix](SUPPORT_MATRIX.md)** - Language support
+
+## 🔧 Troubleshooting
+
+**LSP server not starting?**
+```bash
+# Check server is installed
+codebuddy status
+
+# View detailed logs
+RUST_LOG=debug codebuddy start
+```
+
+**Import updates not working?**
+- Ensure LSP server supports workspace edits
+- Check file is within workspace root
+- Try `codebuddy setup` to reconfigure servers
 
 ## 🔗 Related Projects
 - **[Model Context Protocol](https://github.com/modelcontextprotocol/servers)** - MCP specification and ecosystem

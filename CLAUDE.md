@@ -8,6 +8,65 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Pure Rust MCP server bridging Language Server Protocol (LSP) functionality to AI coding assistants with comprehensive tools for navigation, refactoring, code intelligence, and batch operations.
 
+## MCP Tools
+
+Codebuddy provides 40+ MCP tools for code intelligence and refactoring. See **[MCP_API.md](MCP_API.md)** for complete API reference.
+
+### Quick Reference
+
+**Navigation & Intelligence** (13 tools)
+- `find_definition`, `find_references`, `search_workspace_symbols`
+- `get_document_symbols`, `get_hover`, `get_completions`
+- `get_signature_help`, `get_diagnostics`
+- `prepare_call_hierarchy`, `get_call_hierarchy_incoming_calls`, `get_call_hierarchy_outgoing_calls`
+- `find_implementations`, `find_type_definition`
+
+**Editing & Refactoring** (8 tools)
+- `rename_symbol`, `rename_symbol_strict`
+- `organize_imports`, `get_code_actions`, `format_document`
+- `extract_function`, `inline_variable`, `extract_variable`
+
+**File Operations** (6 tools)
+- `create_file`, `read_file`, `write_file`, `delete_file`
+- `rename_file` (auto-updates imports)
+- `list_files`
+
+**Workspace Operations** (4 tools)
+- `rename_directory` (auto-updates imports)
+- `analyze_imports`, `find_dead_code`, `update_dependencies`
+
+**Advanced Operations** (3 tools)
+- `apply_edits` (atomic multi-file edits)
+- `rename_symbol_with_imports` (workflow-based)
+- `achieve_intent` (intent-based planning)
+
+**LSP Lifecycle** (3 tools)
+- `notify_file_opened`, `notify_file_saved`, `notify_file_closed`
+
+**System & Health** (1 tool)
+- `health_check`
+
+**Web/Network** (1 tool)
+- `web_fetch`
+
+### MCP Usage Pattern
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "find_definition",
+    "arguments": {
+      "file_path": "src/app.ts",
+      "line": 10,
+      "character": 5
+    }
+  }
+}
+```
+
+For detailed parameters, return types, and examples, see **[MCP_API.md](MCP_API.md)**.
+
 ## Development Commands
 
 ```bash
