@@ -5,17 +5,45 @@ use crate::python_parser::{
     analyze_python_expression_range, extract_python_functions, extract_python_variables,
     find_variable_at_position, get_variable_usages_in_scope,
 };
+use async_trait::async_trait;
 use cb_api::{
     EditLocation, EditPlan, EditPlanMetadata, EditType,
     TextEdit, ValidationRule, ValidationType,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use swc_common::{sync::Lrc, FileName, FilePathMapping, SourceMap};
 use swc_ecma_ast::*;
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 use swc_ecma_visit::{Visit, VisitWith};
+use tracing::debug;
+
+/// Trait for LSP refactoring service
+///
+/// This trait abstracts LSP code action requests to enable dependency injection
+/// and testing without requiring a full LSP server.
+#[async_trait]
+pub trait LspRefactoringService: Send + Sync {
+    /// Request code actions from LSP server
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path` - Path to the file
+    /// * `range` - Code range to refactor
+    /// * `kinds` - Desired code action kinds (e.g., "refactor.extract.function")
+    ///
+    /// # Returns
+    ///
+    /// LSP CodeAction array or WorkspaceEdit
+    async fn get_code_actions(
+        &self,
+        file_path: &str,
+        range: &CodeRange,
+        kinds: Option<Vec<String>>,
+    ) -> AstResult<Value>;
+}
 
 /// Range of selected code for extraction
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -118,27 +146,212 @@ pub fn analyze_inline_variable(
     analyzer.finalize()
 }
 
+/// LSP-based extract function refactoring
+///
+/// Queries the LSP server for "refactor.extract.function" code actions
+/// and converts the result to an EditPlan.
+async fn lsp_extract_function(
+    lsp_service: &dyn LspRefactoringService,
+    file_path: &str,
+    range: &CodeRange,
+    _function_name: &str,
+) -> AstResult<EditPlan> {
+    debug!(
+        file_path = %file_path,
+        start_line = range.start_line,
+        end_line = range.end_line,
+        "Requesting LSP extract function refactoring"
+    );
+
+    let actions = lsp_service
+        .get_code_actions(
+            file_path,
+            range,
+            Some(vec!["refactor.extract.function".to_string()]),
+        )
+        .await?;
+
+    // Find the extract function action
+    let action = actions
+        .as_array()
+        .and_then(|arr| {
+            arr.iter().find(|a| {
+                a.get("kind")
+                    .and_then(|k| k.as_str())
+                    .map(|k| k.starts_with("refactor.extract"))
+                    .unwrap_or(false)
+            })
+        })
+        .ok_or_else(|| {
+            AstError::analysis("LSP server returned no extract function actions".to_string())
+        })?;
+
+    // Extract WorkspaceEdit from the action
+    let workspace_edit = action
+        .get("edit")
+        .ok_or_else(|| AstError::analysis("Code action missing edit field".to_string()))?;
+
+    // Convert to EditPlan
+    cb_api::EditPlan::from_lsp_workspace_edit(
+        workspace_edit,
+        file_path,
+        "extract_function",
+    )
+    .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
+}
+
+/// LSP-based inline variable refactoring
+async fn lsp_inline_variable(
+    lsp_service: &dyn LspRefactoringService,
+    file_path: &str,
+    variable_line: u32,
+    variable_col: u32,
+) -> AstResult<EditPlan> {
+    debug!(
+        file_path = %file_path,
+        line = variable_line,
+        col = variable_col,
+        "Requesting LSP inline variable refactoring"
+    );
+
+    let range = CodeRange {
+        start_line: variable_line,
+        start_col: variable_col,
+        end_line: variable_line,
+        end_col: variable_col + 1,
+    };
+
+    let actions = lsp_service
+        .get_code_actions(
+            file_path,
+            &range,
+            Some(vec!["refactor.inline".to_string()]),
+        )
+        .await?;
+
+    let action = actions
+        .as_array()
+        .and_then(|arr| {
+            arr.iter().find(|a| {
+                a.get("kind")
+                    .and_then(|k| k.as_str())
+                    .map(|k| k.starts_with("refactor.inline"))
+                    .unwrap_or(false)
+            })
+        })
+        .ok_or_else(|| {
+            AstError::analysis("LSP server returned no inline variable actions".to_string())
+        })?;
+
+    let workspace_edit = action
+        .get("edit")
+        .ok_or_else(|| AstError::analysis("Code action missing edit field".to_string()))?;
+
+    cb_api::EditPlan::from_lsp_workspace_edit(
+        workspace_edit,
+        file_path,
+        "inline_variable",
+    )
+    .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
+}
+
+/// LSP-based extract variable refactoring
+async fn lsp_extract_variable(
+    lsp_service: &dyn LspRefactoringService,
+    file_path: &str,
+    range: &CodeRange,
+    _variable_name: &str,
+) -> AstResult<EditPlan> {
+    debug!(
+        file_path = %file_path,
+        start_line = range.start_line,
+        end_line = range.end_line,
+        "Requesting LSP extract variable refactoring"
+    );
+
+    let actions = lsp_service
+        .get_code_actions(
+            file_path,
+            range,
+            Some(vec!["refactor.extract.constant".to_string()]),
+        )
+        .await?;
+
+    let action = actions
+        .as_array()
+        .and_then(|arr| {
+            arr.iter().find(|a| {
+                a.get("kind")
+                    .and_then(|k| k.as_str())
+                    .map(|k| k.contains("extract"))
+                    .unwrap_or(false)
+            })
+        })
+        .ok_or_else(|| {
+            AstError::analysis("LSP server returned no extract variable actions".to_string())
+        })?;
+
+    let workspace_edit = action
+        .get("edit")
+        .ok_or_else(|| AstError::analysis("Code action missing edit field".to_string()))?;
+
+    cb_api::EditPlan::from_lsp_workspace_edit(
+        workspace_edit,
+        file_path,
+        "extract_variable",
+    )
+    .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
+}
+
 /// Generate edit plan for extract function refactoring
-pub fn plan_extract_function(
+///
+/// This function implements an LSP-first approach:
+/// 1. If LSP service is provided, try LSP code actions first
+/// 2. Fall back to AST-based analysis if LSP is unavailable or fails
+///
+/// # Arguments
+///
+/// * `source` - Source code content
+/// * `range` - Code range to extract
+/// * `new_function_name` - Name for the extracted function
+/// * `file_path` - Path to the source file
+/// * `lsp_service` - Optional LSP service for refactoring
+pub async fn plan_extract_function(
     source: &str,
     range: &CodeRange,
     new_function_name: &str,
     file_path: &str,
+    lsp_service: Option<&dyn LspRefactoringService>,
 ) -> AstResult<EditPlan> {
+    // Try LSP first if available
+    if let Some(lsp) = lsp_service {
+        match lsp_extract_function(lsp, file_path, range, new_function_name).await {
+            Ok(plan) => return Ok(plan),
+            Err(e) => {
+                debug!(
+                    error = %e,
+                    file_path = %file_path,
+                    "LSP extract function failed, falling back to AST"
+                );
+            }
+        }
+    }
+
+    // Fallback to AST-based implementation
     match detect_language(file_path) {
-        "python" => plan_extract_function_python(source, range, new_function_name, file_path),
+        "python" => ast_extract_function_python(source, range, new_function_name, file_path),
         "typescript" | "javascript" => {
-            plan_extract_function_ts_js(source, range, new_function_name, file_path)
+            ast_extract_function_ts_js(source, range, new_function_name, file_path)
         }
         _ => Err(AstError::analysis(format!(
-            "Unsupported language for file: {}",
+            "Language not supported. LSP server may provide this via code actions for: {}",
             file_path
         ))),
     }
 }
 
-/// Generate edit plan for extract function refactoring (TypeScript/JavaScript)
-fn plan_extract_function_ts_js(
+/// Generate edit plan for extract function refactoring (TypeScript/JavaScript) using AST
+fn ast_extract_function_ts_js(
     source: &str,
     range: &CodeRange,
     new_function_name: &str,
@@ -202,23 +415,47 @@ fn plan_extract_function_ts_js(
 }
 
 /// Generate edit plan for inline variable refactoring
-pub fn plan_inline_variable(
+///
+/// This function implements an LSP-first approach:
+/// 1. If LSP service is provided, try LSP code actions first
+/// 2. Fall back to AST-based analysis if LSP is unavailable or fails
+pub async fn plan_inline_variable(
     source: &str,
     variable_line: u32,
     variable_col: u32,
     file_path: &str,
+    lsp_service: Option<&dyn LspRefactoringService>,
 ) -> AstResult<EditPlan> {
-    match detect_language(file_path) {
-        "python" => plan_inline_variable_python(source, variable_line, variable_col, file_path),
-        _ => {
-            let analysis = analyze_inline_variable(source, variable_line, variable_col, file_path)?;
-            plan_inline_variable_ts_js(source, &analysis)
+    // Try LSP first if available
+    if let Some(lsp) = lsp_service {
+        match lsp_inline_variable(lsp, file_path, variable_line, variable_col).await {
+            Ok(plan) => return Ok(plan),
+            Err(e) => {
+                debug!(
+                    error = %e,
+                    file_path = %file_path,
+                    "LSP inline variable failed, falling back to AST"
+                );
+            }
         }
+    }
+
+    // Fallback to AST-based implementation
+    match detect_language(file_path) {
+        "python" => ast_inline_variable_python(source, variable_line, variable_col, file_path),
+        "typescript" | "javascript" => {
+            let analysis = analyze_inline_variable(source, variable_line, variable_col, file_path)?;
+            ast_inline_variable_ts_js(source, &analysis)
+        }
+        _ => Err(AstError::analysis(format!(
+            "Language not supported. LSP server may provide this via code actions for: {}",
+            file_path
+        ))),
     }
 }
 
-/// Generate edit plan for inline variable refactoring (TypeScript/JavaScript)
-fn plan_inline_variable_ts_js(
+/// Generate edit plan for inline variable refactoring (TypeScript/JavaScript) using AST
+fn ast_inline_variable_ts_js(
     source: &str,
     analysis: &InlineVariableAnalysis,
 ) -> AstResult<EditPlan> {
@@ -443,7 +680,11 @@ fn suggest_variable_name(expression: &str) -> String {
 }
 
 /// Generate edit plan for extract variable refactoring
-pub fn plan_extract_variable(
+///
+/// This function implements an LSP-first approach:
+/// 1. If LSP service is provided, try LSP code actions first
+/// 2. Fall back to AST-based analysis if LSP is unavailable or fails
+pub async fn plan_extract_variable(
     source: &str,
     start_line: u32,
     start_col: u32,
@@ -451,9 +692,33 @@ pub fn plan_extract_variable(
     end_col: u32,
     variable_name: Option<String>,
     file_path: &str,
+    lsp_service: Option<&dyn LspRefactoringService>,
 ) -> AstResult<EditPlan> {
+    let range = CodeRange {
+        start_line,
+        start_col,
+        end_line,
+        end_col,
+    };
+
+    // Try LSP first if available
+    if let Some(lsp) = lsp_service {
+        let var_name = variable_name.as_deref().unwrap_or("extracted");
+        match lsp_extract_variable(lsp, file_path, &range, var_name).await {
+            Ok(plan) => return Ok(plan),
+            Err(e) => {
+                debug!(
+                    error = %e,
+                    file_path = %file_path,
+                    "LSP extract variable failed, falling back to AST"
+                );
+            }
+        }
+    }
+
+    // Fallback to AST-based implementation
     match detect_language(file_path) {
-        "python" => plan_extract_variable_python(
+        "python" => ast_extract_variable_python(
             source,
             start_line,
             start_col,
@@ -462,17 +727,21 @@ pub fn plan_extract_variable(
             variable_name,
             file_path,
         ),
-        _ => {
+        "typescript" | "javascript" => {
             let analysis = analyze_extract_variable(
                 source, start_line, start_col, end_line, end_col, file_path,
             )?;
-            plan_extract_variable_ts_js(source, &analysis, variable_name, file_path)
+            ast_extract_variable_ts_js(source, &analysis, variable_name, file_path)
         }
+        _ => Err(AstError::analysis(format!(
+            "Language not supported. LSP server may provide this via code actions for: {}",
+            file_path
+        ))),
     }
 }
 
 /// Generate edit plan for extract variable refactoring (TypeScript/JavaScript)
-fn plan_extract_variable_ts_js(
+fn ast_extract_variable_ts_js(
     source: &str,
     analysis: &ExtractVariableAnalysis,
     variable_name: Option<String>,
@@ -1056,7 +1325,7 @@ fn analyze_extract_variable_python(
 }
 
 /// Generate edit plan for extract function refactoring (Python)
-fn plan_extract_function_python(
+fn ast_extract_function_python(
     source: &str,
     range: &CodeRange,
     new_function_name: &str,
@@ -1113,7 +1382,7 @@ fn plan_extract_function_python(
 }
 
 /// Generate edit plan for inline variable refactoring (Python)
-fn plan_inline_variable_python(
+fn ast_inline_variable_python(
     source: &str,
     variable_line: u32,
     variable_col: u32,
@@ -1192,7 +1461,7 @@ fn plan_inline_variable_python(
 }
 
 /// Generate edit plan for extract variable refactoring (Python)
-fn plan_extract_variable_python(
+fn ast_extract_variable_python(
     source: &str,
     start_line: u32,
     start_col: u32,

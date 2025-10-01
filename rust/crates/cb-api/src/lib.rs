@@ -135,6 +135,105 @@ pub struct EditPlan {
     pub metadata: EditPlanMetadata,
 }
 
+impl EditPlan {
+    /// Create an EditPlan from an LSP WorkspaceEdit
+    ///
+    /// Converts LSP's WorkspaceEdit format into CodeBuddy's EditPlan format.
+    /// This enables refactoring operations to use LSP server responses directly.
+    ///
+    /// # Arguments
+    ///
+    /// * `workspace_edit` - LSP WorkspaceEdit from code action or rename
+    /// * `source_file` - Primary file being edited
+    /// * `intent_name` - Name of the refactoring intent (e.g., "extract_function")
+    ///
+    /// # Returns
+    ///
+    /// EditPlan with converted text edits from the WorkspaceEdit
+    pub fn from_lsp_workspace_edit(
+        workspace_edit: &serde_json::Value,
+        source_file: impl Into<String>,
+        intent_name: impl Into<String>,
+    ) -> ApiResult<Self> {
+        let source_file = source_file.into();
+        let intent_name = intent_name.into();
+        let mut edits = Vec::new();
+
+        // Extract changes from workspace edit
+        if let Some(changes) = workspace_edit.get("changes").and_then(|c| c.as_object()) {
+            for (uri, file_edits) in changes {
+                // Convert file:// URI to path
+                let file_path = uri.strip_prefix("file://").unwrap_or(uri);
+
+                if let Some(edit_array) = file_edits.as_array() {
+                    for (idx, lsp_edit) in edit_array.iter().enumerate() {
+                        let range = lsp_edit.get("range").ok_or_else(|| ApiError::Parse {
+                            message: "LSP edit missing range".to_string(),
+                        })?;
+
+                        let start = range.get("start").ok_or_else(|| ApiError::Parse {
+                            message: "LSP range missing start".to_string(),
+                        })?;
+                        let end = range.get("end").ok_or_else(|| ApiError::Parse {
+                            message: "LSP range missing end".to_string(),
+                        })?;
+
+                        let start_line = start.get("line").and_then(|v| v.as_u64()).ok_or_else(|| ApiError::Parse {
+                            message: "LSP start missing line".to_string(),
+                        })? as u32;
+                        let start_col = start.get("character").and_then(|v| v.as_u64()).ok_or_else(|| ApiError::Parse {
+                            message: "LSP start missing character".to_string(),
+                        })? as u32;
+                        let end_line = end.get("line").and_then(|v| v.as_u64()).ok_or_else(|| ApiError::Parse {
+                            message: "LSP end missing line".to_string(),
+                        })? as u32;
+                        let end_col = end.get("character").and_then(|v| v.as_u64()).ok_or_else(|| ApiError::Parse {
+                            message: "LSP end missing character".to_string(),
+                        })? as u32;
+
+                        let new_text = lsp_edit.get("newText")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+
+                        edits.push(TextEdit {
+                            edit_type: EditType::Replace,
+                            location: EditLocation {
+                                start_line,
+                                start_column: start_col,
+                                end_line,
+                                end_column: end_col,
+                            },
+                            original_text: String::new(), // LSP doesn't provide original text
+                            new_text,
+                            priority: (edit_array.len() - idx) as u32, // Reverse order for priority
+                            description: format!("LSP refactoring edit in {}", file_path),
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(EditPlan {
+            source_file,
+            edits,
+            dependency_updates: Vec::new(),
+            validations: vec![ValidationRule {
+                rule_type: ValidationType::SyntaxCheck,
+                description: "Verify syntax after LSP refactoring".to_string(),
+                parameters: HashMap::new(),
+            }],
+            metadata: EditPlanMetadata {
+                intent_name,
+                intent_arguments: workspace_edit.clone(),
+                created_at: chrono::Utc::now(),
+                complexity: 3,
+                impact_areas: vec!["refactoring".to_string()],
+            },
+        })
+    }
+}
+
 /// Individual text edit operation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

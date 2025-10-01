@@ -8,6 +8,7 @@ use crate::services::workflow_executor::WorkflowExecutor;
 use crate::{ServerError, ServerResult};
 use async_trait::async_trait;
 use cb_api::AstService;
+use cb_ast::refactoring::{CodeRange, LspRefactoringService};
 use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
 use cb_plugins::{LspAdapterPlugin, LspService, PluginError, PluginManager, PluginRequest};
 use cb_transport::McpDispatcher;
@@ -47,6 +48,8 @@ pub struct PluginDispatcher {
     plugin_manager: Arc<PluginManager>,
     /// Application state for file operations and services beyond LSP
     app_state: Arc<AppState>,
+    /// LSP adapter for refactoring operations
+    lsp_adapter: Arc<Mutex<Option<Arc<DirectLspAdapter>>>>,
     /// Initialization flag
     initialized: OnceCell<()>,
 }
@@ -245,6 +248,82 @@ impl LspService for DirectLspAdapter {
     }
 }
 
+/// LSP service wrapper for refactoring operations
+///
+/// This wrapper implements the `LspRefactoringService` trait from cb-ast,
+/// allowing refactoring functions to query LSP servers for code actions.
+struct LspRefactoringServiceWrapper {
+    lsp_adapter: Arc<DirectLspAdapter>,
+}
+
+impl LspRefactoringServiceWrapper {
+    fn new(lsp_adapter: Arc<DirectLspAdapter>) -> Self {
+        Self { lsp_adapter }
+    }
+
+    /// Get file extension from file path
+    fn get_extension(file_path: &str) -> Option<String> {
+        Path::new(file_path)
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|s| s.to_string())
+    }
+}
+
+#[async_trait]
+impl LspRefactoringService for LspRefactoringServiceWrapper {
+    async fn get_code_actions(
+        &self,
+        file_path: &str,
+        range: &CodeRange,
+        kinds: Option<Vec<String>>,
+    ) -> cb_ast::error::AstResult<Value> {
+        // Convert file path to URI
+        let uri = format!("file://{}", file_path);
+
+        // Build LSP code action params
+        let params = json!({
+            "textDocument": {
+                "uri": uri
+            },
+            "range": {
+                "start": {
+                    "line": range.start_line,
+                    "character": range.start_col
+                },
+                "end": {
+                    "line": range.end_line,
+                    "character": range.end_col
+                }
+            },
+            "context": {
+                "diagnostics": [],
+                "only": kinds.unwrap_or_default()
+            }
+        });
+
+        // Get extension and send request
+        let extension = Self::get_extension(file_path).ok_or_else(|| {
+            cb_ast::error::AstError::analysis(format!(
+                "Could not determine file extension for: {}",
+                file_path
+            ))
+        })?;
+
+        let client = self
+            .lsp_adapter
+            .get_or_create_client(&extension)
+            .await
+            .map_err(|e| cb_ast::error::AstError::analysis(format!("LSP client error: {}", e)))?;
+
+        client
+            .send_request("textDocument/codeAction", params)
+            .await
+            .map_err(|e| cb_ast::error::AstError::analysis(format!("LSP request failed: {}", e)))
+            .map(|v| v)
+    }
+}
+
 /// Parameter structures for refactoring operations
 #[derive(Debug, Deserialize)]
 struct ExtractFunctionArgs {
@@ -293,6 +372,7 @@ impl PluginDispatcher {
         Self {
             plugin_manager,
             app_state,
+            lsp_adapter: Arc::new(Mutex::new(None)),
             initialized: OnceCell::new(),
         }
     }
@@ -342,6 +422,15 @@ impl PluginDispatcher {
                     server_config.extensions.clone(),
                     adapter_name.clone(),
                 ));
+
+                // Store the first LSP adapter for refactoring operations
+                {
+                    let mut stored_adapter = self.lsp_adapter.lock().await;
+                    if stored_adapter.is_none() {
+                        *stored_adapter = Some(lsp_adapter.clone());
+                        debug!("Stored LSP adapter for refactoring operations");
+                    }
+                }
 
                 // Determine plugin type based on primary extension
                 let primary_extension = &server_config.extensions[0];
@@ -1441,12 +1530,22 @@ impl PluginDispatcher {
                     end_col,
                 };
 
+                // Create LSP service wrapper if adapter is available
+                let lsp_service: Option<LspRefactoringServiceWrapper> = {
+                    let adapter_guard = self.lsp_adapter.lock().await;
+                    adapter_guard
+                        .as_ref()
+                        .map(|adapter| LspRefactoringServiceWrapper::new(adapter.clone()))
+                };
+
                 let plan = cb_ast::refactoring::plan_extract_function(
                     &content,
                     &range,
                     &parsed.function_name,
                     &parsed.file_path,
+                    lsp_service.as_ref().map(|s| s as &dyn LspRefactoringService),
                 )
+                .await
                 .map_err(|e| ServerError::Runtime {
                     message: format!("Extract function planning failed: {}", e),
                 })?;
@@ -1463,12 +1562,22 @@ impl PluginDispatcher {
                     .read_file(Path::new(&parsed.file_path))
                     .await?;
 
+                // Create LSP service wrapper if adapter is available
+                let lsp_service: Option<LspRefactoringServiceWrapper> = {
+                    let adapter_guard = self.lsp_adapter.lock().await;
+                    adapter_guard
+                        .as_ref()
+                        .map(|adapter| LspRefactoringServiceWrapper::new(adapter.clone()))
+                };
+
                 let plan = cb_ast::refactoring::plan_inline_variable(
                     &content,
                     parsed.line,
                     parsed.character.unwrap_or(0),
                     &parsed.file_path,
+                    lsp_service.as_ref().map(|s| s as &dyn LspRefactoringService),
                 )
+                .await
                 .map_err(|e| ServerError::Runtime {
                     message: format!("Inline variable planning failed: {}", e),
                 })?;
@@ -1485,6 +1594,14 @@ impl PluginDispatcher {
                     .read_file(Path::new(&parsed.file_path))
                     .await?;
 
+                // Create LSP service wrapper if adapter is available
+                let lsp_service: Option<LspRefactoringServiceWrapper> = {
+                    let adapter_guard = self.lsp_adapter.lock().await;
+                    adapter_guard
+                        .as_ref()
+                        .map(|adapter| LspRefactoringServiceWrapper::new(adapter.clone()))
+                };
+
                 let plan = cb_ast::refactoring::plan_extract_variable(
                     &content,
                     parsed.start_line,
@@ -1493,7 +1610,9 @@ impl PluginDispatcher {
                     parsed.end_character,
                     Some(parsed.variable_name.clone()),
                     &parsed.file_path,
+                    lsp_service.as_ref().map(|s| s as &dyn LspRefactoringService),
                 )
+                .await
                 .map_err(|e| ServerError::Runtime {
                     message: format!("Extract variable planning failed: {}", e),
                 })?;

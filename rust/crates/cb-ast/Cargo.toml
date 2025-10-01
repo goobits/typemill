@@ -12,6 +12,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
+async-trait = { workspace = true }
+# LSP types for refactoring integration
+lsp-types = "0.97"
 # SWC dependencies for true AST parsing (latest compatible versions)
 swc_common = "14"
 swc_ecma_parser = "24"

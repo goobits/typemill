@@ -39,6 +39,9 @@ pub enum ApiError {
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
+    #[error("Parse error: {message}")]
+    Parse { message: String },
+
     #[error("LSP error: {0}")]
     Lsp(String),
 
@@ -64,6 +67,7 @@ impl ApiError {
             ApiError::Internal(_) => "internal_error",
             ApiError::Io(_) => "io_error",
             ApiError::Serialization(_) => "serialization_error",
+            ApiError::Parse { .. } => "parse_error",
             ApiError::Lsp(_) => "lsp_error",
             ApiError::Ast(_) => "ast_error",
             ApiError::Plugin(_) => "plugin_error",

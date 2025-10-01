@@ -493,11 +493,13 @@ dependencies = [
 name = "cb-ast"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "cb-api",
  "cb-core",
  "chrono",
  "dashmap",
  "indexmap",
+ "lsp-types",
  "pathdiff",
  "petgraph",
  "quote",
