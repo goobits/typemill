@@ -121,10 +121,83 @@ impl LanguageAdapter for RustAdapter {
 
     async fn locate_module_files(
         &self,
-        _package_path: &Path,
-        _module_path: &str,
+        package_path: &Path,
+        module_path: &str,
     ) -> AstResult<Vec<std::path::PathBuf>> {
-        unimplemented!("RustAdapter::locate_module_files not yet implemented")
+        use std::path::PathBuf;
+        use tracing::debug;
+
+        debug!(
+            package_path = %package_path.display(),
+            module_path = %module_path,
+            "Locating Rust module files"
+        );
+
+        // Start at the crate's source root (e.g., package_path/src)
+        let src_root = package_path.join(self.source_dir());
+
+        if !src_root.exists() {
+            return Err(crate::error::AstError::Analysis {
+                message: format!("Source directory not found: {}", src_root.display()),
+            });
+        }
+
+        // Split module path by either "::" or "." into segments
+        let segments: Vec<&str> = module_path
+            .split(|c| c == ':' || c == '.')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        if segments.is_empty() {
+            return Err(crate::error::AstError::Analysis {
+                message: "Module path cannot be empty".to_string(),
+            });
+        }
+
+        // Build path by joining segments
+        let mut current_path = src_root.clone();
+
+        // Navigate through all segments except the last
+        for segment in &segments[..segments.len() - 1] {
+            current_path = current_path.join(segment);
+        }
+
+        // For the final segment, check both naming conventions
+        let final_segment = segments[segments.len() - 1];
+        let mut found_files = Vec::new();
+
+        // Check for module_name.rs
+        let file_path = current_path.join(format!("{}.rs", final_segment));
+        if file_path.exists() && file_path.is_file() {
+            debug!(file_path = %file_path.display(), "Found module file");
+            found_files.push(file_path);
+        }
+
+        // Check for module_name/mod.rs
+        let mod_path = current_path.join(final_segment).join("mod.rs");
+        if mod_path.exists() && mod_path.is_file() {
+            debug!(file_path = %mod_path.display(), "Found mod.rs file");
+            found_files.push(mod_path);
+        }
+
+        if found_files.is_empty() {
+            return Err(crate::error::AstError::Analysis {
+                message: format!(
+                    "Module '{}' not found at {} (checked both {}.rs and {}/mod.rs)",
+                    module_path,
+                    current_path.display(),
+                    final_segment,
+                    final_segment
+                ),
+            });
+        }
+
+        debug!(
+            files_count = found_files.len(),
+            "Successfully located module files"
+        );
+
+        Ok(found_files)
     }
 
     async fn parse_imports(&self, _file_path: &Path) -> AstResult<Vec<String>> {
@@ -292,8 +365,23 @@ pub async fn plan_extract_module_to_package(
         }
     };
 
-    // Step 3: Generate EditPlan with metadata confirming adapter selection
-    // For Phase 3, we return a minimal EditPlan that verifies the dispatch logic works
+    // Step 3: Locate module files using the adapter
+    let located_files = adapter
+        .locate_module_files(source_path, &params.module_path)
+        .await?;
+
+    debug!(
+        files_count = located_files.len(),
+        "Located module files"
+    );
+
+    // Step 4: Generate EditPlan with located files in metadata
+    // Convert PathBuf to strings for JSON serialization
+    let located_files_strings: Vec<String> = located_files
+        .iter()
+        .map(|p| p.display().to_string())
+        .collect();
+
     let edit_plan = EditPlan {
         source_file: params.source_package.clone(),
         edits: vec![],
@@ -311,6 +399,7 @@ pub async fn plan_extract_module_to_package(
                 "target_package_path": params.target_package_path,
                 "target_package_name": params.target_package_name,
                 "adapter_selected": adapter.language().as_str(),
+                "located_files": located_files_strings,
             }),
             created_at: chrono::Utc::now(),
             complexity: 1,
@@ -320,8 +409,167 @@ pub async fn plan_extract_module_to_package(
 
     info!(
         adapter = %adapter.language().as_str(),
-        "Successfully created EditPlan with adapter selection"
+        files_count = located_files.len(),
+        "Successfully created EditPlan with located files"
     );
 
     Ok(edit_plan)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn test_locate_module_files_single_file() {
+        // Create a temporary Rust project structure
+        let temp_dir = tempdir().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+
+        // Create lib.rs
+        fs::write(src_dir.join("lib.rs"), "// lib.rs").unwrap();
+
+        // Create a module as a single file: src/my_module.rs
+        fs::write(src_dir.join("my_module.rs"), "// my_module.rs").unwrap();
+
+        let adapter = RustAdapter;
+        let result = adapter
+            .locate_module_files(temp_dir.path(), "my_module")
+            .await;
+
+        assert!(result.is_ok());
+        let files = result.unwrap();
+        assert_eq!(files.len(), 1);
+        assert!(files[0].ends_with("my_module.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_locate_module_files_mod_rs() {
+        // Create a temporary Rust project structure
+        let temp_dir = tempdir().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+
+        // Create lib.rs
+        fs::write(src_dir.join("lib.rs"), "// lib.rs").unwrap();
+
+        // Create a module as a directory with mod.rs: src/my_module/mod.rs
+        let module_dir = src_dir.join("my_module");
+        fs::create_dir(&module_dir).unwrap();
+        fs::write(module_dir.join("mod.rs"), "// mod.rs").unwrap();
+
+        let adapter = RustAdapter;
+        let result = adapter
+            .locate_module_files(temp_dir.path(), "my_module")
+            .await;
+
+        assert!(result.is_ok());
+        let files = result.unwrap();
+        assert_eq!(files.len(), 1);
+        assert!(files[0].ends_with("my_module/mod.rs") || files[0].ends_with("my_module\\mod.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_locate_module_files_nested_module() {
+        // Create a temporary Rust project structure
+        let temp_dir = tempdir().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+
+        // Create lib.rs
+        fs::write(src_dir.join("lib.rs"), "// lib.rs").unwrap();
+
+        // Create nested module structure: src/services/planner.rs
+        let services_dir = src_dir.join("services");
+        fs::create_dir(&services_dir).unwrap();
+        fs::write(services_dir.join("planner.rs"), "// planner.rs").unwrap();
+
+        let adapter = RustAdapter;
+        let result = adapter
+            .locate_module_files(temp_dir.path(), "services::planner")
+            .await;
+
+        assert!(result.is_ok());
+        let files = result.unwrap();
+        assert_eq!(files.len(), 1);
+        assert!(files[0].ends_with("services/planner.rs") || files[0].ends_with("services\\planner.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_locate_module_files_dot_separator() {
+        // Test that the function accepts both :: and . as separators
+        let temp_dir = tempdir().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+
+        // Create lib.rs
+        fs::write(src_dir.join("lib.rs"), "// lib.rs").unwrap();
+
+        // Create nested module structure: src/services/planner.rs
+        let services_dir = src_dir.join("services");
+        fs::create_dir(&services_dir).unwrap();
+        fs::write(services_dir.join("planner.rs"), "// planner.rs").unwrap();
+
+        let adapter = RustAdapter;
+        let result = adapter
+            .locate_module_files(temp_dir.path(), "services.planner")
+            .await;
+
+        assert!(result.is_ok());
+        let files = result.unwrap();
+        assert_eq!(files.len(), 1);
+        assert!(files[0].ends_with("services/planner.rs") || files[0].ends_with("services\\planner.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_locate_module_files_not_found() {
+        // Create a temporary Rust project structure
+        let temp_dir = tempdir().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+
+        // Create lib.rs but no module files
+        fs::write(src_dir.join("lib.rs"), "// lib.rs").unwrap();
+
+        let adapter = RustAdapter;
+        let result = adapter
+            .locate_module_files(temp_dir.path(), "nonexistent")
+            .await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, crate::error::AstError::Analysis { .. }));
+    }
+
+    #[tokio::test]
+    async fn test_locate_module_files_no_src_dir() {
+        // Create a temporary directory without src/
+        let temp_dir = tempdir().unwrap();
+
+        let adapter = RustAdapter;
+        let result = adapter
+            .locate_module_files(temp_dir.path(), "my_module")
+            .await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, crate::error::AstError::Analysis { .. }));
+    }
+
+    #[tokio::test]
+    async fn test_locate_module_files_empty_module_path() {
+        let temp_dir = tempdir().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+
+        let adapter = RustAdapter;
+        let result = adapter.locate_module_files(temp_dir.path(), "").await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, crate::error::AstError::Analysis { .. }));
+    }
 }
