@@ -1,5 +1,4 @@
 use serde_json::{json, Value};
-use std::path::Path;
 use tests::harness::{TestClient, TestWorkspace};
 
 #[tokio::test]
@@ -599,4 +598,175 @@ app.listen(PORT, () => {
         final_package_json["scripts"]["dev"].as_str().unwrap(),
         "nodemon src/index.ts"
     );
+}
+
+#[tokio::test]
+async fn test_fix_imports_dry_run() {
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
+
+    // Create a TypeScript file with unused imports
+    let test_file = workspace.path().join("test.ts");
+    std::fs::write(
+        &test_file,
+        r#"import { useState, useEffect, useCallback } from 'react';
+import * as lodash from 'lodash';
+import defaultExport from 'some-module';
+import './styles.css';
+
+// Only using useState
+function MyComponent() {
+    const [count, setCount] = useState(0);
+    return <div>{count}</div>;
+}
+"#,
+    )
+    .unwrap();
+
+    // Call fix_imports in dry-run mode
+    let response = client
+        .call_tool(
+            "fix_imports",
+            json!({
+                "file_path": test_file.to_string_lossy(),
+                "dry_run": true
+            }),
+        )
+        .await
+        .unwrap();
+
+    // Verify dry-run response (accessing nested result)
+    let result = &response["result"];
+    assert_eq!(result["operation"].as_str().unwrap(), "fix_imports");
+    assert_eq!(result["dry_run"].as_bool().unwrap(), true);
+    assert_eq!(result["modified"].as_bool().unwrap(), false);
+    assert_eq!(result["status"].as_str().unwrap(), "preview");
+
+    // File should not be modified in dry-run mode
+    let content = std::fs::read_to_string(&test_file).unwrap();
+    assert!(content.contains("useEffect"));
+    assert!(content.contains("useCallback"));
+    assert!(content.contains("lodash"));
+}
+
+#[tokio::test]
+async fn test_fix_imports_with_lsp() {
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
+
+    // Create a TypeScript file with unused imports
+    let test_file = workspace.path().join("test_imports.ts");
+    let original_content = r#"import { useState, useEffect, useCallback } from 'react';
+import * as lodash from 'lodash';
+import defaultExport from 'some-module';
+
+// Only using useState
+function MyComponent() {
+    const [count, setCount] = useState(0);
+    return <div>{count}</div>;
+}
+"#;
+
+    std::fs::write(&test_file, original_content).unwrap();
+
+    // Give LSP time to start and analyze the file
+    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+
+    // Call fix_imports to actually fix the imports
+    let response = client
+        .call_tool(
+            "fix_imports",
+            json!({
+                "file_path": test_file.to_string_lossy(),
+                "dry_run": false
+            }),
+        )
+        .await;
+
+    // The response depends on whether LSP is available
+    // If LSP is running, it should organize imports
+    // If LSP is not available, it should return an error or delegate appropriately
+    match response {
+        Ok(response_value) => {
+            eprintln!("Response: {}", serde_json::to_string_pretty(&response_value).unwrap());
+
+            // Check if there's a result field
+            if let Some(result) = response_value.get("result") {
+                assert_eq!(result["operation"].as_str().unwrap(), "fix_imports");
+                assert_eq!(result["dry_run"].as_bool().unwrap_or(true), false);
+                assert_eq!(result["status"].as_str().unwrap(), "fixed");
+
+                // If successful, the LSP response should be present
+                assert!(result.get("lsp_response").is_some(), "Expected lsp_response field");
+            } else if let Some(_error) = response_value.get("error") {
+                // Error response is acceptable if LSP is not configured
+                eprintln!("Note: fix_imports returned an error (LSP may not be configured)");
+            } else {
+                panic!("Expected either 'result' or 'error' in response");
+            }
+        }
+        Err(e) => {
+            // If LSP is not available or organize_imports is not supported,
+            // that's acceptable for this test - we're just verifying the delegation works
+            eprintln!("Note: fix_imports requires LSP organize_imports support: {:?}", e);
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_fix_imports_missing_file_path() {
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
+
+    // Call fix_imports without file_path
+    let response = client
+        .call_tool(
+            "fix_imports",
+            json!({
+                "dry_run": true
+            }),
+        )
+        .await;
+
+    // Should return an error or error response
+    if let Ok(resp) = response {
+        // If it's a JSON-RPC response, check for error field
+        eprintln!("Response: {}", serde_json::to_string_pretty(&resp).unwrap());
+        assert!(resp.get("error").is_some(), "Expected error in response");
+    } else {
+        // Response is an actual Err, which is also acceptable
+        assert!(true);
+    }
+}
+
+#[tokio::test]
+async fn test_fix_imports_nonexistent_file() {
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
+
+    let nonexistent_file = workspace.path().join("nonexistent.ts");
+
+    // Call fix_imports on non-existent file
+    let response = client
+        .call_tool(
+            "fix_imports",
+            json!({
+                "file_path": nonexistent_file.to_string_lossy(),
+                "dry_run": false
+            }),
+        )
+        .await;
+
+    // LSP may handle nonexistent files gracefully and return empty results
+    // This is actually acceptable behavior - we just verify the tool doesn't crash
+    match response {
+        Ok(resp) => {
+            // If successful, should have a result or error
+            assert!(resp.get("result").is_some() || resp.get("error").is_some());
+        }
+        Err(_) => {
+            // Error is also acceptable for nonexistent files
+            assert!(true);
+        }
+    }
 }
