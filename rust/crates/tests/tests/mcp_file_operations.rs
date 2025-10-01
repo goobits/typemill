@@ -307,3 +307,68 @@ async fn test_rename_file_real() {
         run_rename_file_test(case, true).await;
     }
 }
+
+// =============================================================================
+// Rename Directory Dry-Run Test
+// =============================================================================
+
+#[tokio::test]
+async fn test_rename_directory_dry_run() {
+    use serde_json::json;
+    use tests::harness::{TestClient, TestWorkspace};
+
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
+
+    // Create a directory structure with files
+    let src_dir = workspace.path().join("src");
+    tokio::fs::create_dir_all(&src_dir).await.unwrap();
+
+    let main_file = src_dir.join("main.ts");
+    tokio::fs::write(&main_file, "console.log('Hello');")
+        .await
+        .unwrap();
+
+    // Call rename_directory with dry_run: true
+    let response = client
+        .call_tool(
+            "rename_directory",
+            json!({
+                "old_path": src_dir.to_str().unwrap(),
+                "new_path": workspace.path().join("lib").to_str().unwrap(),
+                "dry_run": true
+            }),
+        )
+        .await
+        .unwrap();
+
+    // Assert that the response contains preview data
+    let result = response.get("result").expect("Response should have result field");
+    assert_eq!(
+        result["status"], "preview",
+        "Response should have status 'preview' for dry-run"
+    );
+    assert_eq!(
+        result["operation"], "rename_directory",
+        "Response should indicate rename_directory operation"
+    );
+    assert!(
+        result.get("changes").is_some(),
+        "Response should contain changes preview"
+    );
+
+    // Assert that the directory was NOT actually renamed
+    let src_exists = tokio::fs::try_exists(&src_dir).await.unwrap();
+    assert!(src_exists, "Original src directory should still exist after dry-run");
+
+    let lib_dir = workspace.path().join("lib");
+    let lib_exists = tokio::fs::try_exists(&lib_dir).await.unwrap();
+    assert!(!lib_exists, "New lib directory should NOT exist after dry-run");
+
+    // Verify the original file is still in place
+    let original_file_exists = tokio::fs::try_exists(&main_file).await.unwrap();
+    assert!(
+        original_file_exists,
+        "Original file should still exist in src directory after dry-run"
+    );
+}

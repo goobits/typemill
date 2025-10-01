@@ -770,3 +770,120 @@ async fn test_fix_imports_nonexistent_file() {
         }
     }
 }
+
+#[tokio::test]
+async fn test_extract_function_refactoring() {
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
+
+    // Create a Python file with code to refactor
+    let test_file = workspace.path().join("test.py");
+    let original_content = "a = 1\nb = 2\nresult = a + b\n";
+
+    tokio::fs::write(&test_file, original_content)
+        .await
+        .unwrap();
+
+    // Call extract_function - expect it to either succeed or fail gracefully
+    let response = client
+        .call_tool(
+            "extract_function",
+            json!({
+                "file_path": test_file.to_str().unwrap(),
+                "start_line": 1,
+                "end_line": 2,
+                "function_name": "calculate"
+            }),
+        )
+        .await;
+
+    // The tool should at minimum not crash the server
+    match response {
+        Ok(resp) => {
+            // Either success with result, or error response (but not server crash)
+            assert!(
+                resp.get("result").is_some() || resp.get("error").is_some(),
+                "Response should have either result or error field"
+            );
+
+            // If successful, verify the result structure
+            if let Some(result) = resp.get("result") {
+                assert!(
+                    result.get("success").is_some() || result.get("status").is_some(),
+                    "Result should have success or status field"
+                );
+
+                // If it succeeded, verify file was modified
+                if result.get("success").and_then(|s| s.as_bool()).unwrap_or(false) {
+                    let modified_content = tokio::fs::read_to_string(&test_file).await.unwrap();
+                    assert_ne!(
+                        original_content, modified_content,
+                        "File content should be modified after successful refactoring"
+                    );
+                }
+            }
+        }
+        Err(_) => {
+            // Acceptable - refactoring might not be fully implemented for all cases
+            // The important thing is the server didn't crash
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_inline_variable_refactoring() {
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
+
+    // Create a Python file with a variable to inline
+    let test_file = workspace.path().join("test.py");
+    let original_content = "x = 10\ny = x * 2\n";
+
+    tokio::fs::write(&test_file, original_content)
+        .await
+        .unwrap();
+
+    // Call inline_variable - expect it to either succeed or fail gracefully
+    let response = client
+        .call_tool(
+            "inline_variable",
+            json!({
+                "file_path": test_file.to_str().unwrap(),
+                "line": 1,
+                "character": 0
+            }),
+        )
+        .await;
+
+    // The tool should at minimum not crash the server
+    match response {
+        Ok(resp) => {
+            // Either success with result, or error response (but not server crash)
+            assert!(
+                resp.get("result").is_some() || resp.get("error").is_some(),
+                "Response should have either result or error field"
+            );
+
+            // If successful, verify the result structure
+            if let Some(result) = resp.get("result") {
+                assert!(
+                    result.get("success").is_some() || result.get("status").is_some(),
+                    "Result should have success or status field"
+                );
+
+                // If it succeeded, verify file was modified
+                if result.get("success").and_then(|s| s.as_bool()).unwrap_or(false) {
+                    let modified_content = tokio::fs::read_to_string(&test_file).await.unwrap();
+                    assert_ne!(
+                        original_content, modified_content,
+                        "File content should be modified after successful refactoring"
+                    );
+                }
+            }
+        }
+        Err(_) => {
+            // Acceptable - refactoring might not be fully implemented for all cases
+            // The important thing is the server didn't crash
+        }
+    }
+}

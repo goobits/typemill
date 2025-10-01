@@ -1425,11 +1425,20 @@ impl PluginDispatcher {
                     .read_file(Path::new(&parsed.file_path))
                     .await?;
 
+                // Calculate end_col based on the actual line length
+                let lines: Vec<&str> = content.lines().collect();
+                let end_col = if parsed.end_line > 0 && (parsed.end_line as usize) <= lines.len() {
+                    let line = lines[(parsed.end_line as usize) - 1];
+                    line.len() as u32
+                } else {
+                    0
+                };
+
                 let range = cb_ast::refactoring::CodeRange {
                     start_line: parsed.start_line,
                     start_col: 0,
                     end_line: parsed.end_line,
-                    end_col: u32::MAX,
+                    end_col,
                 };
 
                 let plan = cb_ast::refactoring::plan_extract_function(
