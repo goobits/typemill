@@ -1399,18 +1399,29 @@ impl PluginDispatcher {
                         })?;
                 let content = args.get("content").and_then(|v| v.as_str());
                 let overwrite = args.get("overwrite").and_then(|v| v.as_bool()).unwrap_or(false);
+                let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
 
                 // Use FileService for proper locking and cache invalidation
                 self.app_state
                     .file_service
-                    .create_file(std::path::Path::new(file_path), content, overwrite)
+                    .create_file(std::path::Path::new(file_path), content, overwrite, dry_run)
                     .await?;
 
-                Ok(json!({
-                    "success": true,
-                    "file_path": file_path,
-                    "created": true
-                }))
+                if dry_run {
+                    Ok(json!({
+                        "status": "preview",
+                        "operation": "create_file",
+                        "file_path": file_path,
+                        "content_size": content.map(|c| c.len()).unwrap_or(0),
+                        "overwrite": overwrite
+                    }))
+                } else {
+                    Ok(json!({
+                        "success": true,
+                        "file_path": file_path,
+                        "created": true
+                    }))
+                }
             }
             "delete_file" => {
                 let args = tool_call.arguments.ok_or_else(|| {
@@ -1423,18 +1434,28 @@ impl PluginDispatcher {
                             ServerError::InvalidRequest("Missing 'file_path' parameter".into())
                         })?;
                 let force = args.get("force").and_then(|v| v.as_bool()).unwrap_or(false);
+                let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
 
                 // Use FileService for proper locking and cache invalidation
                 self.app_state
                     .file_service
-                    .delete_file(std::path::Path::new(file_path), force)
+                    .delete_file(std::path::Path::new(file_path), force, dry_run)
                     .await?;
 
-                Ok(json!({
-                    "success": true,
-                    "file_path": file_path,
-                    "deleted": true
-                }))
+                if dry_run {
+                    Ok(json!({
+                        "status": "preview",
+                        "operation": "delete_file",
+                        "file_path": file_path,
+                        "force": force
+                    }))
+                } else {
+                    Ok(json!({
+                        "success": true,
+                        "file_path": file_path,
+                        "deleted": true
+                    }))
+                }
             }
             "read_file" => {
                 let args = tool_call.arguments.ok_or_else(|| {
@@ -1474,18 +1495,28 @@ impl PluginDispatcher {
                     .ok_or_else(|| {
                         ServerError::InvalidRequest("Missing 'content' parameter".into())
                     })?;
+                let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
 
                 // Use FileService for proper locking and cache invalidation
                 self.app_state
                     .file_service
-                    .write_file(std::path::Path::new(file_path), content)
+                    .write_file(std::path::Path::new(file_path), content, dry_run)
                     .await?;
 
-                Ok(json!({
-                    "success": true,
-                    "file_path": file_path,
-                    "written": true
-                }))
+                if dry_run {
+                    Ok(json!({
+                        "status": "preview",
+                        "operation": "write_file",
+                        "file_path": file_path,
+                        "content_size": content.len()
+                    }))
+                } else {
+                    Ok(json!({
+                        "success": true,
+                        "file_path": file_path,
+                        "written": true
+                    }))
+                }
             }
             _ => Err(ServerError::Unsupported(format!(
                 "File operation '{}' not implemented",

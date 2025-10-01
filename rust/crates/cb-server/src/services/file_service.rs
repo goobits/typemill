@@ -330,6 +330,7 @@ impl FileService {
         path: &Path,
         content: Option<&str>,
         overwrite: bool,
+        dry_run: bool,
     ) -> ServerResult<()> {
         let abs_path = self.to_absolute_path(path);
 
@@ -339,6 +340,16 @@ impl FileService {
                 "File already exists: {:?}",
                 abs_path
             )));
+        }
+
+        if dry_run {
+            info!(
+                path = ?abs_path,
+                overwrite = overwrite,
+                content_size = content.unwrap_or("").len(),
+                "[DRY RUN] Would create file"
+            );
+            return Ok(());
         }
 
         // Ensure parent directory exists
@@ -359,7 +370,7 @@ impl FileService {
     }
 
     /// Delete a file
-    pub async fn delete_file(&self, path: &Path, force: bool) -> ServerResult<()> {
+    pub async fn delete_file(&self, path: &Path, force: bool, dry_run: bool) -> ServerResult<()> {
         let abs_path = self.to_absolute_path(path);
 
         if !abs_path.exists() {
@@ -375,7 +386,7 @@ impl FileService {
         }
 
         // Check if any files import this file
-        if !force {
+        let affected_files = if !force {
             let affected = self.import_service.find_affected_files(&abs_path).await?;
             if !affected.is_empty() {
                 warn!(
@@ -387,6 +398,19 @@ impl FileService {
                     affected.len()
                 )));
             }
+            affected.len()
+        } else {
+            0
+        };
+
+        if dry_run {
+            info!(
+                path = ?abs_path,
+                force = force,
+                affected_files = affected_files,
+                "[DRY RUN] Would delete file"
+            );
+            return Ok(());
         }
 
         // Delete the file
@@ -417,8 +441,17 @@ impl FileService {
     }
 
     /// Write content to file
-    pub async fn write_file(&self, path: &Path, content: &str) -> ServerResult<()> {
+    pub async fn write_file(&self, path: &Path, content: &str, dry_run: bool) -> ServerResult<()> {
         let abs_path = self.to_absolute_path(path);
+
+        if dry_run {
+            info!(
+                path = ?abs_path,
+                content_size = content.len(),
+                "[DRY RUN] Would write to file"
+            );
+            return Ok(());
+        }
 
         // Ensure parent directory exists
         if let Some(parent) = abs_path.parent() {

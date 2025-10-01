@@ -669,7 +669,8 @@ impl LanguagePlugin for LspAdapterPlugin {
                     "properties": {
                         "file_path": { "type": "string", "description": "The path where the new file should be created" },
                         "content": { "type": "string", "description": "Initial content for the file (default: empty string)" },
-                        "overwrite": { "type": "boolean", "description": "Whether to overwrite existing file if it exists (default: false)" }
+                        "overwrite": { "type": "boolean", "description": "Whether to overwrite existing file if it exists (default: false)" },
+                        "dry_run": { "type": "boolean", "description": "Preview changes without applying them (default: false)" }
                     },
                     "required": ["file_path"]
                 }
@@ -681,7 +682,8 @@ impl LanguagePlugin for LspAdapterPlugin {
                     "type": "object",
                     "properties": {
                         "file_path": { "type": "string", "description": "The path to the file to delete" },
-                        "force": { "type": "boolean", "description": "Force deletion even if file has uncommitted changes (default: false)" }
+                        "force": { "type": "boolean", "description": "Force deletion even if file has uncommitted changes (default: false)" },
+                        "dry_run": { "type": "boolean", "description": "Preview changes without applying them (default: false)" }
                     },
                     "required": ["file_path"]
                 }
