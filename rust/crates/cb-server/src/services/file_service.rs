@@ -1528,3 +1528,95 @@ mod tests {
         assert_eq!(dep3_content, dep3_original, "Third dependency file should remain unchanged");
     }
 }
+
+#[cfg(test)]
+mod workspace_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn test_update_workspace_manifests_simple_rename() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        // Create a workspace Cargo.toml
+        let workspace_toml_content = r#"
+[workspace]
+members = [
+    "crates/my-crate",
+]
+"#;
+        fs::write(project_root.join("Cargo.toml"), workspace_toml_content)
+            .await
+            .unwrap();
+
+        // Create the package directory and its Cargo.toml
+        let old_crate_dir = project_root.join("crates/my-crate");
+        fs::create_dir_all(&old_crate_dir).await.unwrap();
+        fs::write(old_crate_dir.join("Cargo.toml"), "[package]\nname = \"my-crate\"")
+            .await
+            .unwrap();
+
+        let new_crate_dir = project_root.join("crates/my-renamed-crate");
+
+        // Setup FileService
+        let ast_cache = Arc::new(AstCache::new());
+        let lock_manager = Arc::new(LockManager::new());
+        let service = FileService::new(project_root, ast_cache, lock_manager);
+
+        // Run the update
+        service
+            .update_workspace_manifests(&old_crate_dir, &new_crate_dir)
+            .await
+            .unwrap();
+
+        // Verify the workspace Cargo.toml was updated
+        let updated_content = fs::read_to_string(project_root.join("Cargo.toml"))
+            .await
+            .unwrap();
+        let doc = updated_content.parse::<toml_edit::DocumentMut>().unwrap();
+        let members = doc["workspace"]["members"].as_array().unwrap();
+
+        assert_eq!(members.len(), 1);
+        assert_eq!(members.iter().next().unwrap().as_str(), Some("crates/my-renamed-crate"));
+    }
+
+    #[test]
+    fn test_adjust_relative_path_logic() {
+        let temp_dir = TempDir::new().unwrap();
+        let ast_cache = Arc::new(AstCache::new());
+        let lock_manager = Arc::new(LockManager::new());
+        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager);
+
+        // Moved deeper: 1 level
+        assert_eq!(
+            service.adjust_relative_path("../sibling", 1, 2),
+            "../../sibling"
+        );
+        // Moved deeper: 2 levels
+        assert_eq!(
+            service.adjust_relative_path("../sibling", 1, 3),
+            "../../../sibling"
+        );
+        // Moved shallower: 1 level
+        assert_eq!(
+            service.adjust_relative_path("../../sibling", 2, 1),
+            "../sibling"
+        );
+        // Moved shallower: 2 levels
+        assert_eq!(
+            service.adjust_relative_path("../../../sibling", 3, 1),
+            "../sibling"
+        );
+        // No change
+        assert_eq!(
+            service.adjust_relative_path("../sibling", 2, 2),
+            "../sibling"
+        );
+        // Path with no up-levels
+        assert_eq!(
+            service.adjust_relative_path("sibling", 2, 1),
+            "sibling"
+        );
+    }
+}
