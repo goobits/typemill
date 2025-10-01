@@ -1676,32 +1676,41 @@ impl PluginDispatcher {
             }
         };
 
-        // If dry_run, return the plan without applying
-        if dry_run {
-            return Ok(json!({
-                "status": "preview",
-                "operation": tool_call.name,
-                "file_path": file_path,
-                "edit_plan": edit_plan,
-                "dry_run": true
-            }));
-        }
+        // Use centralized dry_run pattern for consistent behavior
+        let dry_run_result = cb_core::execute_with_dry_run(
+            dry_run,
+            // Preview function: Just return the generated plan
+            || async {
+                Ok(json!({
+                    "status": "preview",
+                    "operation": tool_call.name,
+                    "file_path": file_path,
+                    "edit_plan": edit_plan,
+                }))
+            },
+            // Execution function: Apply the plan using the file service
+            || async {
+                let result = self
+                    .app_state
+                    .file_service
+                    .apply_edit_plan(&edit_plan)
+                    .await?;
 
-        // Apply the edit plan atomically via FileService
-        let result = self
-            .app_state
-            .file_service
-            .apply_edit_plan(&edit_plan)
-            .await?;
+                Ok(json!({
+                    "status": "completed",
+                    "operation": tool_call.name,
+                    "file_path": file_path,
+                    "success": result.success,
+                    "modified_files": result.modified_files,
+                    "errors": result.errors
+                }))
+            },
+        )
+        .await
+        .map_err(|e| ServerError::Internal(format!("Dry run execution failed: {}", e)))?;
 
-        Ok(json!({
-            "status": "completed",
-            "operation": tool_call.name,
-            "file_path": file_path,
-            "success": result.success,
-            "modified_files": result.modified_files,
-            "errors": result.errors
-        }))
+        // Return the consistent, wrapped result
+        Ok(dry_run_result.to_json())
     }
 
     /// Checks if a specific LSP method is supported for the given file.

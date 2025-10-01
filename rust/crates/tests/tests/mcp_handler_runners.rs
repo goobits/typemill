@@ -112,7 +112,7 @@ pub async fn run_create_file_test(case: &CreateFileTestCase, use_real_mcp: bool)
 
         let result = app_state
             .file_service
-            .create_file(&file_path, Some(case.content), case.overwrite)
+            .create_file(&file_path, Some(case.content), case.overwrite, false)
             .await;
 
         if case.expect_success {
@@ -294,7 +294,7 @@ pub async fn run_write_file_test(case: &WriteFileTestCase, use_real_mcp: bool) {
 
         let result = app_state
             .file_service
-            .write_file(&file_path, case.content)
+            .write_file(&file_path, case.content, false)
             .await;
 
         if case.expect_success {
@@ -380,7 +380,7 @@ pub async fn run_delete_file_test(case: &DeleteFileTestCase, use_real_mcp: bool)
         // Mock test using FileService directly
         let app_state = create_mock_state(workspace.path().to_path_buf()).await;
 
-        let result = app_state.file_service.delete_file(&file_path, false).await;
+        let result = app_state.file_service.delete_file(&file_path, false, false).await;
 
         if case.expect_success {
             assert!(

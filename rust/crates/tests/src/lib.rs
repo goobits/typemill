@@ -11,6 +11,9 @@ pub mod helpers;
 pub mod mocks;
 
 #[cfg(test)]
+pub mod dry_run_integration;
+
+#[cfg(test)]
 pub mod resilience_tests;
 
 pub use harness::{TestClient, TestWorkspace};
