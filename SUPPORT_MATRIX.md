@@ -71,7 +71,7 @@
 | Function | Status | TypeScript/JS | Python | Go | Rust | Notes |
 |----------|--------|---------------|--------|-----|------|-------|
 | `apply_edits` | ✅ Full | ✅ | ✅ | ✅ | ✅ | **Atomic multi-file edits with rollback** |
-| `rename_symbol_with_imports` | ⚠️ Planned | ✅ | ⚠️ | ⚠️ | ⚠️ | **Symbol rename + AST-based import updates**. Implementation pending as workflow |
+| `rename_symbol_with_imports` | ✅ Full | ✅ | ✅ | ✅ | ✅ | **LSP-based symbol rename with automatic import updates**. Implemented as workflow via `achieve_intent` |
 | `achieve_intent` | ✅ Full | ✅ | ✅ | ✅ | ✅ | Workflow planning/execution, supports resume |
 
 ### LSP Lifecycle Notifications
@@ -139,6 +139,25 @@ All LSP-based navigation, intelligence, editing, and refactoring functions are p
 - ✅ **Automatic improvements**: Benefits from LSP server updates without code changes
 - ✅ **Consistent behavior**: Same refactoring quality as VSCode, Vim, Emacs, etc.
 - ✅ **No code duplication**: Single implementation path for all languages
+
+### **Workflow-Based Tools** (1 function)
+
+**`rename_symbol_with_imports`** - High-level workflow combining LSP symbol renaming with automatic import updates:
+- **Status**: ✅ Full - Workflow implementation
+- **Implementation**: Defined in `.codebuddy/workflows.json` as `refactor.renameSymbolWithImports`
+- **How it works**:
+  1. Calls `rename_symbol` (LSP-based) to rename the symbol across the project
+  2. LSP servers automatically update imports via WorkspaceEdit
+  3. User confirmation required before applying changes
+- **Invocation**: Use `achieve_intent` tool with intent name `refactor.renameSymbolWithImports`
+- **Parameters**: `file_path`, `old_name`, `new_name`
+- **Support**: Works with all languages that have LSP servers configured (TypeScript, Python, Go, Rust, etc.)
+
+**Benefits of Workflow Approach:**
+- ✅ **Composable**: Combines multiple tools into higher-level operations
+- ✅ **User-friendly**: Simplified parameter passing and clear intent names
+- ✅ **Safe**: Built-in confirmation steps prevent accidental destructive operations
+- ✅ **Extensible**: New workflows can be added via configuration without code changes
 
 ### **Potentially Superfluous Functions**
 
