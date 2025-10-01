@@ -176,6 +176,9 @@ impl FileService {
             "Found files in directory to rename"
         );
 
+        // Check if this is a Cargo package BEFORE renaming
+        let is_cargo_pkg = self.is_cargo_package(&old_abs_dir).await?;
+
         // 2. Perform the actual directory rename on the filesystem
         if !dry_run {
             if let Err(e) = self.perform_rename(&old_abs_dir, &new_abs_dir).await {
@@ -221,6 +224,26 @@ impl FileService {
             errors: all_errors,
         };
 
+        // Take a mutable copy of the errors to potentially add to it.
+        let mut all_errors = final_report.errors.clone();
+
+        // NEW: Update workspace manifest if the directory was a Cargo package
+        if is_cargo_pkg {
+            if dry_run {
+                info!(
+                    old_path = %old_abs_dir.display(),
+                    new_path = %new_abs_dir.display(),
+                    "[DRY RUN] Would update workspace manifest for Cargo package"
+                );
+            } else {
+                info!("Renamed directory was a Cargo package, attempting to update workspace manifest.");
+                if let Err(e) = self.update_workspace_manifests(&old_abs_dir, &new_abs_dir).await {
+                    warn!(error = %e, "Failed to update workspace manifest. The workspace may be in a broken state.");
+                    all_errors.push(format!("Failed to update workspace manifest: {}", e));
+                }
+            }
+        }
+
         info!(
             files_moved = files_to_move.len(),
             imports_updated = final_report.imports_updated,
@@ -228,18 +251,24 @@ impl FileService {
             "Directory rename complete"
         );
 
-        let has_errors = !final_report.errors.is_empty();
-        let error_count = final_report.errors.len();
+        // Re-evaluate errors after potentially adding manifest update error
+        let final_report_with_manifest_errors = ImportUpdateReport {
+            errors: all_errors,
+            ..final_report
+        };
+
+        let has_errors = !final_report_with_manifest_errors.errors.is_empty();
+        let error_count = final_report_with_manifest_errors.errors.len();
 
         let result = DirectoryRenameResult {
             old_path: old_dir_path.to_string_lossy().to_string(),
             new_path: new_dir_path.to_string_lossy().to_string(),
             success: !has_errors,
             files_moved: files_to_move.len(),
-            import_updates: final_report,
+            import_updates: final_report_with_manifest_errors,
             error: if has_errors {
                 Some(format!(
-                    "Completed with {} errors during import updates",
+                    "Completed with {} error(s) during rename operation.",
                     error_count
                 ))
             } else {
@@ -735,6 +764,185 @@ impl FileService {
             path.to_path_buf()
         } else {
             self.project_root.join(path)
+        }
+    }
+
+    /// Check if a directory is a Cargo package by looking for a Cargo.toml with a [package] section.
+    async fn is_cargo_package(&self, dir: &Path) -> ServerResult<bool> {
+        let cargo_toml_path = dir.join("Cargo.toml");
+        if !cargo_toml_path.exists() {
+            return Ok(false);
+        }
+        match fs::read_to_string(&cargo_toml_path).await {
+            Ok(content) => Ok(content.contains("[package]")),
+            Err(_) => Ok(false),
+        }
+    }
+
+    /// Find the parent Cargo workspace and update the members array to reflect a renamed package.
+    async fn update_workspace_manifests(
+        &self,
+        old_package_path: &Path,
+        new_package_path: &Path,
+    ) -> ServerResult<()> {
+        let mut current_path = old_package_path.parent();
+
+        while let Some(path) = current_path {
+            let workspace_toml_path = path.join("Cargo.toml");
+            if workspace_toml_path.exists() {
+                let content = fs::read_to_string(&workspace_toml_path).await.map_err(|e| {
+                    ServerError::Internal(format!("Failed to read workspace Cargo.toml: {}", e))
+                })?;
+
+                if content.contains("[workspace]") {
+                    // This is the workspace root we need to modify.
+                    let mut doc = content.parse::<toml_edit::DocumentMut>().map_err(|e| {
+                        ServerError::Internal(format!("Failed to parse workspace Cargo.toml: {}", e))
+                    })?;
+
+                    let old_rel_path = old_package_path.strip_prefix(path).map_err(|_| {
+                        ServerError::Internal("Failed to calculate old relative path".to_string())
+                    })?;
+                    let new_rel_path = new_package_path.strip_prefix(path).map_err(|_| {
+                        ServerError::Internal("Failed to calculate new relative path".to_string())
+                    })?;
+
+                    let old_path_str = old_rel_path.to_string_lossy().to_string();
+                    let new_path_str = new_rel_path.to_string_lossy().to_string();
+
+                    // Check if we need to update the workspace members
+                    let members = doc["workspace"]["members"].as_array_mut().ok_or_else(|| {
+                        ServerError::Internal("`[workspace.members]` is not a valid array".to_string())
+                    })?;
+
+                    let index_opt = members.iter().position(|m| m.as_str() == Some(&old_path_str));
+                    if let Some(index) = index_opt {
+                        members.remove(index);
+                        members.push(new_path_str.as_str());
+
+                        info!(
+                            workspace = ?workspace_toml_path,
+                            old = %old_path_str,
+                            new = %new_path_str,
+                            "Updated workspace members"
+                        );
+
+                        fs::write(&workspace_toml_path, doc.to_string()).await.map_err(|e| {
+                            ServerError::Internal(format!("Failed to write updated workspace Cargo.toml: {}", e))
+                        })?;
+                    }
+
+                    // Also update relative path dependencies in the moved package's Cargo.toml
+                    let package_cargo_toml = new_package_path.join("Cargo.toml");
+                    if package_cargo_toml.exists() {
+                        self.update_package_relative_paths(&package_cargo_toml, old_package_path, new_package_path, path)
+                            .await?;
+                    }
+
+                    // If we found the workspace, we can stop searching.
+                    return Ok(());
+                }
+            }
+
+            if path == self.project_root {
+                break;
+            }
+            current_path = path.parent();
+        }
+
+        Ok(())
+    }
+
+    /// Update relative `path` dependencies in a package's Cargo.toml after it moves
+    async fn update_package_relative_paths(
+        &self,
+        package_cargo_toml: &Path,
+        old_package_path: &Path,
+        new_package_path: &Path,
+        workspace_root: &Path,
+    ) -> ServerResult<()> {
+        let content = fs::read_to_string(package_cargo_toml).await.map_err(|e| {
+            ServerError::Internal(format!("Failed to read package Cargo.toml: {}", e))
+        })?;
+
+        let mut doc = content.parse::<toml_edit::DocumentMut>().map_err(|e| {
+            ServerError::Internal(format!("Failed to parse package Cargo.toml: {}", e))
+        })?;
+
+        // Calculate depth change
+        let old_depth = old_package_path.strip_prefix(workspace_root)
+            .map(|p| p.components().count())
+            .unwrap_or(0);
+        let new_depth = new_package_path.strip_prefix(workspace_root)
+            .map(|p| p.components().count())
+            .unwrap_or(0);
+
+        if old_depth == new_depth {
+            debug!("No depth change, skipping relative path updates");
+            return Ok(()); // No depth change, paths still valid
+        }
+
+        let mut updated_count = 0;
+
+        // Update [dependencies] and [dev-dependencies]
+        for section in ["dependencies", "dev-dependencies"] {
+            if let Some(deps) = doc[section].as_table_mut() {
+                for (name, value) in deps.iter_mut() {
+                    if let Some(table) = value.as_inline_table_mut() {
+                        if let Some(path_value) = table.get_mut("path") {
+                            if let Some(old_path_str) = path_value.as_str() {
+                                let new_path_str = self.adjust_relative_path(old_path_str, old_depth, new_depth);
+                                if new_path_str != old_path_str {
+                                    info!(
+                                        dependency = %name,
+                                        old_path = %old_path_str,
+                                        new_path = %new_path_str,
+                                        "Updating relative path dependency"
+                                    );
+                                    *path_value = new_path_str.as_str().into();
+                                    updated_count += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if updated_count > 0 {
+            fs::write(package_cargo_toml, doc.to_string()).await.map_err(|e| {
+                ServerError::Internal(format!("Failed to write updated package Cargo.toml: {}", e))
+            })?;
+            info!(
+                package = ?package_cargo_toml,
+                updated_count = updated_count,
+                "Updated relative path dependencies in package manifest"
+            );
+        } else {
+            debug!("No relative path dependencies needed updating");
+        }
+
+        Ok(())
+    }
+
+    /// Adjust a relative path based on depth change
+    fn adjust_relative_path(&self, path: &str, old_depth: usize, new_depth: usize) -> String {
+        let depth_diff = new_depth as i32 - old_depth as i32;
+
+        if depth_diff > 0 {
+            // Moved deeper, add more "../"
+            let additional_uplevels = "../".repeat(depth_diff as usize);
+            format!("{}{}", additional_uplevels, path)
+        } else if depth_diff < 0 {
+            // Moved shallower, remove "../"
+            let uplevels_to_remove = (-depth_diff) as usize;
+            let mut remaining = path;
+            for _ in 0..uplevels_to_remove {
+                remaining = remaining.strip_prefix("../").unwrap_or(remaining);
+            }
+            remaining.to_string()
+        } else {
+            path.to_string()
         }
     }
 }
