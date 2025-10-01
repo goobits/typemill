@@ -200,8 +200,51 @@ impl LanguageAdapter for RustAdapter {
         Ok(found_files)
     }
 
-    async fn parse_imports(&self, _file_path: &Path) -> AstResult<Vec<String>> {
-        unimplemented!("RustAdapter::parse_imports not yet implemented")
+    async fn parse_imports(&self, file_path: &Path) -> AstResult<Vec<String>> {
+        use std::collections::HashSet;
+        use tracing::debug;
+
+        debug!(
+            file_path = %file_path.display(),
+            "Parsing Rust imports"
+        );
+
+        // Read the file content
+        let content = tokio::fs::read_to_string(file_path).await.map_err(|e| {
+            crate::error::AstError::Analysis {
+                message: format!("Failed to read file {}: {}", file_path.display(), e),
+            }
+        })?;
+
+        // Parse imports using the refactored AST parser
+        let import_infos = crate::rust_parser::parse_rust_imports_ast(&content)?;
+
+        // Extract unique external crate names
+        let mut dependencies = HashSet::new();
+
+        for import_info in import_infos {
+            // Split the module path by "::" to get segments
+            let segments: Vec<&str> = import_info.module_path.split("::").collect();
+
+            if let Some(first_segment) = segments.first() {
+                // Filter out internal imports (crate, self, super)
+                if *first_segment != "crate" && *first_segment != "self" && *first_segment != "super" {
+                    // This is an external crate dependency
+                    dependencies.insert(first_segment.to_string());
+                }
+            }
+        }
+
+        // Convert HashSet to sorted Vec for consistent output
+        let mut result: Vec<String> = dependencies.into_iter().collect();
+        result.sort();
+
+        debug!(
+            dependencies_count = result.len(),
+            "Extracted external dependencies"
+        );
+
+        Ok(result)
     }
 
     fn generate_manifest(&self, _package_name: &str, _dependencies: &[String]) -> String {
@@ -375,7 +418,42 @@ pub async fn plan_extract_module_to_package(
         "Located module files"
     );
 
-    // Step 4: Generate EditPlan with located files in metadata
+    // Step 4: Parse imports from all located files and aggregate dependencies
+    let mut all_dependencies = std::collections::HashSet::new();
+
+    for file_path in &located_files {
+        debug!(
+            file_path = %file_path.display(),
+            "Parsing dependencies from file"
+        );
+
+        match adapter.parse_imports(file_path).await {
+            Ok(deps) => {
+                for dep in deps {
+                    all_dependencies.insert(dep);
+                }
+            }
+            Err(e) => {
+                // Log error but continue with other files
+                debug!(
+                    error = %e,
+                    file_path = %file_path.display(),
+                    "Failed to parse imports from file"
+                );
+            }
+        }
+    }
+
+    // Convert to sorted vector for consistent output
+    let mut dependencies: Vec<String> = all_dependencies.into_iter().collect();
+    dependencies.sort();
+
+    debug!(
+        dependencies_count = dependencies.len(),
+        "Aggregated dependencies from all module files"
+    );
+
+    // Step 5: Generate EditPlan with located files and dependencies in metadata
     // Convert PathBuf to strings for JSON serialization
     let located_files_strings: Vec<String> = located_files
         .iter()
@@ -400,6 +478,7 @@ pub async fn plan_extract_module_to_package(
                 "target_package_name": params.target_package_name,
                 "adapter_selected": adapter.language().as_str(),
                 "located_files": located_files_strings,
+                "dependencies": dependencies,
             }),
             created_at: chrono::Utc::now(),
             complexity: 1,
@@ -410,7 +489,8 @@ pub async fn plan_extract_module_to_package(
     info!(
         adapter = %adapter.language().as_str(),
         files_count = located_files.len(),
-        "Successfully created EditPlan with located files"
+        dependencies_count = dependencies.len(),
+        "Successfully created EditPlan with located files and dependencies"
     );
 
     Ok(edit_plan)
@@ -571,5 +651,106 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(matches!(err, crate::error::AstError::Analysis { .. }));
+    }
+
+    #[tokio::test]
+    async fn test_parse_imports_filters_external_crates() {
+        // Create a temporary Rust project with a file containing various imports
+        let temp_dir = tempdir().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+
+        // Create a Rust file with mixed imports
+        let rust_content = r#"
+use std::collections::HashMap;
+use tokio::sync::Mutex;
+use serde::{Deserialize, Serialize};
+use crate::models::User;
+use self::helpers::validate;
+use super::config::Config;
+"#;
+        let test_file = src_dir.join("test_module.rs");
+        fs::write(&test_file, rust_content).unwrap();
+
+        let adapter = RustAdapter;
+        let result = adapter.parse_imports(&test_file).await;
+
+        assert!(result.is_ok());
+        let dependencies = result.unwrap();
+
+        // Should only include external crates: std, tokio, serde
+        // Should NOT include: crate, self, super
+        assert!(dependencies.contains(&"std".to_string()));
+        assert!(dependencies.contains(&"tokio".to_string()));
+        assert!(dependencies.contains(&"serde".to_string()));
+        assert!(!dependencies.contains(&"crate".to_string()));
+        assert!(!dependencies.contains(&"self".to_string()));
+        assert!(!dependencies.contains(&"super".to_string()));
+
+        // Should be sorted and deduplicated
+        assert_eq!(dependencies.len(), 3);
+        let mut sorted = dependencies.clone();
+        sorted.sort();
+        assert_eq!(dependencies, sorted);
+    }
+
+    #[tokio::test]
+    async fn test_parse_imports_empty_file() {
+        // Create a temporary Rust file with no imports
+        let temp_dir = tempdir().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+
+        let rust_content = r#"
+fn main() {
+    println!("Hello, world!");
+}
+"#;
+        let test_file = src_dir.join("test_module.rs");
+        fs::write(&test_file, rust_content).unwrap();
+
+        let adapter = RustAdapter;
+        let result = adapter.parse_imports(&test_file).await;
+
+        assert!(result.is_ok());
+        let dependencies = result.unwrap();
+        assert_eq!(dependencies.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_parse_imports_deduplication() {
+        // Create a temporary Rust file with duplicate imports from same crate
+        let temp_dir = tempdir().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+
+        let rust_content = r#"
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::io::Read;
+"#;
+        let test_file = src_dir.join("test_module.rs");
+        fs::write(&test_file, rust_content).unwrap();
+
+        let adapter = RustAdapter;
+        let result = adapter.parse_imports(&test_file).await;
+
+        assert!(result.is_ok());
+        let dependencies = result.unwrap();
+
+        // Should only have "std" once, even though it's imported multiple times
+        assert_eq!(dependencies.len(), 1);
+        assert_eq!(dependencies[0], "std");
+    }
+
+    #[tokio::test]
+    async fn test_parse_imports_nonexistent_file() {
+        let temp_dir = tempdir().unwrap();
+        let nonexistent_file = temp_dir.path().join("nonexistent.rs");
+
+        let adapter = RustAdapter;
+        let result = adapter.parse_imports(&nonexistent_file).await;
+
+        assert!(result.is_err());
     }
 }

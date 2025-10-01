@@ -1,5 +1,6 @@
 use crate::error::{AstError, AstResult};
-use syn::{visit::Visit, File};
+use cb_api::{ImportInfo, ImportType, NamedImport, SourceLocation};
+use syn::{visit::Visit, File, Item, ItemUse, UseTree};
 
 // A visitor that will walk the AST and collect the names of all functions it finds.
 struct FunctionVisitor {
@@ -42,6 +43,127 @@ pub fn list_functions(source: &str) -> AstResult<Vec<String>> {
 
     // Return the collected function names.
     Ok(visitor.functions)
+}
+
+/// Parse Rust imports using AST analysis with syn
+///
+/// This function parses Rust source code and extracts all `use` statements,
+/// returning detailed information about each import including the module path,
+/// named imports, and location in the source.
+pub fn parse_rust_imports_ast(source: &str) -> AstResult<Vec<ImportInfo>> {
+    // Parse the Rust source file
+    let syntax_tree: File = syn::parse_str(source).map_err(|e| {
+        AstError::analysis(format!("Failed to parse Rust source: {}", e))
+    })?;
+
+    struct ImportVisitor {
+        imports: Vec<ImportInfo>,
+        current_line: u32,
+    }
+
+    impl<'ast> Visit<'ast> for ImportVisitor {
+        fn visit_item_use(&mut self, node: &'ast ItemUse) {
+            self.extract_use_tree(&node.tree, String::new(), self.current_line);
+        }
+
+        fn visit_item(&mut self, node: &'ast Item) {
+            // Track line numbers
+            self.current_line += 1;
+            syn::visit::visit_item(self, node);
+        }
+    }
+
+    impl ImportVisitor {
+        fn extract_use_tree(&mut self, tree: &UseTree, prefix: String, line: u32) {
+            match tree {
+                UseTree::Path(path) => {
+                    let new_prefix = if prefix.is_empty() {
+                        path.ident.to_string()
+                    } else {
+                        format!("{}::{}", prefix, path.ident)
+                    };
+                    self.extract_use_tree(&path.tree, new_prefix, line);
+                }
+                UseTree::Name(name) => {
+                    let module_path = if prefix.is_empty() {
+                        name.ident.to_string()
+                    } else {
+                        prefix.clone()
+                    };
+
+                    self.imports.push(ImportInfo {
+                        module_path: module_path.clone(),
+                        import_type: ImportType::EsModule,
+                        named_imports: vec![NamedImport {
+                            name: name.ident.to_string(),
+                            alias: None,
+                            type_only: false,
+                        }],
+                        default_import: None,
+                        namespace_import: None,
+                        type_only: false,
+                        location: SourceLocation {
+                            start_line: line,
+                            start_column: 0,
+                            end_line: line,
+                            end_column: 0,
+                        },
+                    });
+                }
+                UseTree::Rename(rename) => {
+                    let module_path = prefix.clone();
+                    self.imports.push(ImportInfo {
+                        module_path: module_path.clone(),
+                        import_type: ImportType::EsModule,
+                        named_imports: vec![NamedImport {
+                            name: rename.ident.to_string(),
+                            alias: Some(rename.rename.to_string()),
+                            type_only: false,
+                        }],
+                        default_import: None,
+                        namespace_import: None,
+                        type_only: false,
+                        location: SourceLocation {
+                            start_line: line,
+                            start_column: 0,
+                            end_line: line,
+                            end_column: 0,
+                        },
+                    });
+                }
+                UseTree::Glob(_) => {
+                    self.imports.push(ImportInfo {
+                        module_path: prefix.clone(),
+                        import_type: ImportType::EsModule,
+                        named_imports: Vec::new(),
+                        default_import: None,
+                        namespace_import: Some(prefix),
+                        type_only: false,
+                        location: SourceLocation {
+                            start_line: line,
+                            start_column: 0,
+                            end_line: line,
+                            end_column: 0,
+                        },
+                    });
+                }
+                UseTree::Group(group) => {
+                    for tree in &group.items {
+                        self.extract_use_tree(tree, prefix.clone(), line);
+                    }
+                }
+            }
+        }
+    }
+
+    let mut visitor = ImportVisitor {
+        imports: Vec::new(),
+        current_line: 0,
+    };
+
+    visitor.visit_file(&syntax_tree);
+
+    Ok(visitor.imports)
 }
 
 #[cfg(test)]
