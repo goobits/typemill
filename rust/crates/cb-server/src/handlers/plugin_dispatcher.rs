@@ -1372,12 +1372,6 @@ impl PluginDispatcher {
         Ok(json!({
             "workspacePath": workspace_path,
             "deadSymbols": dead_symbols_json,
-            "deadCodeItems": dead_symbols_json,  // For backward compatibility
-            "summary": {
-                "totalSymbols": dead_symbols.len(),
-                "deadSymbols": dead_symbols.len(),
-                "filesAnalyzed": files_analyzed,
-            },
             "analysisStats": {
                 "filesAnalyzed": files_analyzed,
                 "symbolsAnalyzed": dead_symbols_json.len(),

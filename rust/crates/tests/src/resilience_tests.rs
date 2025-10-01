@@ -344,38 +344,34 @@ async fn test_find_dead_code_workflow() {
     if response["error"].is_null() {
         let result = &response["result"]["content"];
 
-        // Debug: print the actual response structure
-        eprintln!("Dead code response content: {}", serde_json::to_string_pretty(&result).unwrap());
-
         // Validate response structure
-        assert!(result["summary"].is_object(), "Should have summary object");
         assert!(
-            result["deadCodeItems"].is_array(),
-            "Should have deadCodeItems array"
+            result["deadSymbols"].is_array(),
+            "Should have deadSymbols array"
         );
         assert!(
             result["analysisStats"].is_object(),
             "Should have analysisStats object"
         );
 
-        let dead_items = result["deadCodeItems"].as_array().unwrap();
-        let summary = &result["summary"];
+        let dead_symbols = result["deadSymbols"].as_array().unwrap();
+        let stats = &result["analysisStats"];
 
-        println!("Found {} potential dead code items", dead_items.len());
+        println!("Found {} dead symbols", dead_symbols.len());
 
         // We expect to find the unused function and class
-        let found_unused_function = dead_items.iter().any(|item| {
+        let found_unused_function = dead_symbols.iter().any(|item| {
             item["name"].as_str() == Some("unusedFunction")
                 && item["file"].as_str().unwrap_or("").contains("processor.ts")
         });
 
-        let found_unused_class = dead_items.iter().any(|item| {
+        let found_unused_class = dead_symbols.iter().any(|item| {
             item["name"].as_str() == Some("UnusedClass")
                 && item["file"].as_str().unwrap_or("").contains("processor.ts")
         });
 
         // Check that used functions are NOT marked as dead
-        let found_used_function = dead_items.iter().any(|item| {
+        let found_used_function = dead_symbols.iter().any(|item| {
             item["name"].as_str() == Some("format")
                 || item["name"].as_str() == Some("transform")
                 || item["name"].as_str() == Some("TestMain")
@@ -388,19 +384,19 @@ async fn test_find_dead_code_workflow() {
 
         // Validate analysis statistics
         assert!(
-            summary["totalSymbols"].is_number(),
-            "Should have total symbols count"
+            stats["filesAnalyzed"].is_number(),
+            "Should have files analyzed count"
         );
         assert!(
-            summary["potentialDeadCode"].is_number(),
-            "Should have dead code count"
+            stats["deadSymbolsFound"].is_number(),
+            "Should have dead symbols count"
         );
 
         // If we found dead code, it should include our unused items
-        if dead_items.len() > 0 {
+        if dead_symbols.len() > 0 {
             println!(
-                "✅ find_dead_code workflow test passed - detected {} dead code items",
-                dead_items.len()
+                "✅ find_dead_code workflow test passed - detected {} dead symbols",
+                dead_symbols.len()
             );
         } else {
             println!(
