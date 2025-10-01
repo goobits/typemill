@@ -339,8 +339,13 @@ async fn test_find_dead_code_workflow() {
         .expect("find_dead_code should respond");
     assert_eq!(response["id"], "dead-code-1");
 
+    eprintln!("Full response: {}", serde_json::to_string_pretty(&response).unwrap());
+
     if response["error"].is_null() {
         let result = &response["result"]["content"];
+
+        // Debug: print the actual response structure
+        eprintln!("Dead code response content: {}", serde_json::to_string_pretty(&result).unwrap());
 
         // Validate response structure
         assert!(result["summary"].is_object(), "Should have summary object");

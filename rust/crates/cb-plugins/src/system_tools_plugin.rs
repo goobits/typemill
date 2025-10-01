@@ -41,9 +41,6 @@ impl SystemToolsPlugin {
             .insert("system.analyze_imports".to_string(), json!(true));
         capabilities
             .custom
-            .insert("system.find_dead_code".to_string(), json!(true));
-        capabilities
-            .custom
             .insert("system.update_dependencies".to_string(), json!(true));
         capabilities
             .custom
@@ -333,68 +330,6 @@ impl SystemToolsPlugin {
             "stdout": stdout,
             "stderr": stderr,
             "status": if dry_run { "preview" } else { "completed" },
-        }))
-    }
-
-    /// Handle find_dead_code tool
-    async fn handle_find_dead_code(&self, params: Value) -> PluginResult<Value> {
-        #[derive(Debug, Deserialize)]
-        #[serde(rename_all = "snake_case")]
-        struct FindDeadCodeArgs {
-            workspace_path: String,
-        }
-
-        let args: FindDeadCodeArgs =
-            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
-                message: format!("Invalid find_dead_code args: {}", e),
-            })?;
-
-        debug!(workspace_path = %args.workspace_path, "Finding dead code");
-
-        let start_time = std::time::Instant::now();
-        let dead_symbols: Vec<Value> = Vec::new();
-        let mut files_analyzed = 0;
-        let symbols_analyzed = 0;
-
-        // Use ignore crate to walk the directory
-        let walker = WalkBuilder::new(&args.workspace_path).hidden(false).build();
-
-        for entry in walker.flatten() {
-            let file_path = entry.path();
-
-            // Only analyze source files
-            if let Some(ext) = file_path.extension() {
-                let ext_str = ext.to_string_lossy();
-                if matches!(ext_str.as_ref(), "ts" | "tsx" | "js" | "jsx" | "py" | "rs") {
-                    files_analyzed += 1;
-
-                    // For each file, we would need to:
-                    // 1. Get symbols using LSP documentSymbol request
-                    // 2. Check references for each symbol
-                    // 3. Mark symbols with 0-1 references as potentially dead
-
-                    // Since we don't have LSP service access here directly,
-                    // we'll provide a simplified implementation
-                    // In a full implementation, this would call LSP servers
-
-                    // For now, return a placeholder that indicates the analysis would happen
-                    debug!(file_path = ?file_path, "Would analyze file");
-                }
-            }
-        }
-
-        let duration_ms = start_time.elapsed().as_millis() as u64;
-
-        // Return analysis result (simplified version)
-        Ok(json!({
-            "workspacePath": args.workspace_path,
-            "deadSymbols": dead_symbols,
-            "analysisStats": {
-                "filesAnalyzed": files_analyzed,
-                "symbolsAnalyzed": symbols_analyzed,
-                "deadSymbolsFound": dead_symbols.len(),
-                "analysisDurationMs": duration_ms,
-            }
         }))
     }
 
@@ -739,20 +674,6 @@ impl LanguagePlugin for SystemToolsPlugin {
                 }
             }),
             json!({
-                "name": "find_dead_code",
-                "description": "Find potentially unused code in a workspace.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "workspace_path": {
-                            "type": "string",
-                            "description": "Path to the workspace to analyze"
-                        }
-                    },
-                    "required": ["workspace_path"]
-                }
-            }),
-            json!({
                 "name": "update_dependencies",
                 "description": "Update project dependencies using the appropriate package manager.",
                 "inputSchema": {
@@ -929,7 +850,6 @@ impl LanguagePlugin for SystemToolsPlugin {
         let result = match request.method.as_str() {
             "list_files" => self.handle_list_files(request.params.clone()).await?,
             "analyze_imports" => self.handle_analyze_imports(request.params.clone()).await?,
-            "find_dead_code" => self.handle_find_dead_code(request.params.clone()).await?,
             "update_dependencies" => {
                 self.handle_update_dependencies(request.params.clone())
                     .await?

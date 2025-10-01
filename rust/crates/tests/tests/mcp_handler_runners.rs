@@ -675,6 +675,8 @@ pub async fn run_analyze_imports_test(case: &AnalyzeImportsTestCase, use_real_mc
 
 /// Run a find_dead_code test with the given test case
 pub async fn run_find_dead_code_test(case: &FindDeadCodeTestCase, use_real_mcp: bool) {
+    use std::collections::HashSet;
+
     let workspace = TestWorkspace::new();
 
     // Setup initial files
@@ -708,54 +710,30 @@ pub async fn run_find_dead_code_test(case: &FindDeadCodeTestCase, use_real_mcp: 
             let result = response.get("result").expect("Response should have result field");
             let content = result.get("content").expect("Result should have content field");
 
-            // Check dead code items
-            let dead_items = content.get("deadCodeItems")
-                .or_else(|| content.get("dead_code_items"))
-                .and_then(|v| v.as_array());
+            // Check dead symbols using new response format
+            let dead_symbols = content.get("deadSymbols")
+                .and_then(|v| v.as_array())
+                .expect("Response should have deadSymbols array");
 
-            if let Some(items) = dead_items {
-                // Verify expected dead symbols are found
-                for expected_symbol in case.expected_dead_symbols {
-                    let found = items.iter().any(|item| {
-                        item.get("name")
-                            .and_then(|n| n.as_str())
-                            .map(|n| n.contains(expected_symbol))
-                            .unwrap_or(false)
-                    });
+            // Extract symbol names from result
+            let found_names: HashSet<String> = dead_symbols
+                .iter()
+                .filter_map(|s| s.get("name").and_then(|n| n.as_str().map(|s| s.to_string())))
+                .collect();
 
-                    if !found && !case.expected_dead_symbols.is_empty() {
-                        eprintln!(
-                            "Test '{}': Expected to find dead symbol '{}' but it was not detected",
-                            case.test_name,
-                            expected_symbol
-                        );
-                    }
-                }
+            let expected_names: HashSet<String> = case.expected_dead_symbols
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
 
-                eprintln!(
-                    "Test '{}': Found {} dead code items (expected symbols: {})",
-                    case.test_name,
-                    items.len(),
-                    case.expected_dead_symbols.len()
-                );
-            } else {
-                // Note: Real MCP tests may not detect dead code since SystemToolsPlugin
-                // doesn't have LSP integration for full analysis. This is acceptable.
-                if !case.expected_dead_symbols.is_empty() && use_real_mcp {
-                    eprintln!(
-                        "⚠️  Test '{}': No dead code detected (expected {} symbols). This is a known limitation - SystemToolsPlugin needs LSP integration for full dead code analysis.",
-                        case.test_name,
-                        case.expected_dead_symbols.len()
-                    );
-                } else if !case.expected_dead_symbols.is_empty() {
-                    // For mock tests, we expect dead code to be found
-                    assert!(
-                        false,
-                        "Test '{}': No dead code items found but expected some",
-                        case.test_name
-                    );
-                }
-            }
+            assert_eq!(
+                found_names,
+                expected_names,
+                "Test '{}': Dead symbol mismatch. Expected {:?}, found {:?}",
+                case.test_name,
+                expected_names,
+                found_names
+            );
         } else {
             // For expected failures, check for JSON-RPC error field
             if let Ok(response) = response {
@@ -768,61 +746,14 @@ pub async fn run_find_dead_code_test(case: &FindDeadCodeTestCase, use_real_mcp: 
             }
         }
     } else {
-        // Mock test using SystemToolsPlugin directly
-        use cb_plugins::system_tools_plugin::SystemToolsPlugin;
-        use cb_plugins::{LanguagePlugin, PluginRequest};
-
-        let params = json!({
-            "workspace_path": workspace_path.to_string_lossy()
-        });
-
-        let plugin = SystemToolsPlugin::new();
-        let request = PluginRequest {
-            method: "find_dead_code".to_string(),
-            file_path: workspace_path.clone(),
-            position: None,
-            range: None,
-            params,
-            request_id: Some("test-find-dead-code".to_string()),
-        };
-
-        let result = plugin.handle_request(request).await;
-
-        if case.expect_success {
-            assert!(
-                result.is_ok(),
-                "Test '{}': Expected success but got error: {:?}",
-                case.test_name,
-                result.err()
-            );
-
-            let response = result.unwrap();
-            assert!(
-                response.success,
-                "Test '{}': Plugin returned success=false: {:?}",
-                case.test_name,
-                response.error
-            );
-
-            let data = response.data.unwrap();
-            let dead_items = data.get("deadCodeItems")
-                .or_else(|| data.get("dead_code_items"))
-                .and_then(|v| v.as_array());
-
-            if let Some(items) = dead_items {
-                eprintln!(
-                    "Test '{}': Found {} dead code items",
-                    case.test_name,
-                    items.len()
-                );
-            }
-        } else {
-            assert!(
-                result.is_err(),
-                "Test '{}': Expected failure but got success",
-                case.test_name
-            );
-        }
+        // Mock test - find_dead_code is no longer in SystemToolsPlugin
+        // It's now handled directly by the dispatcher with LSP integration
+        // For mock tests, we can't test this without LSP servers running
+        // So we'll just verify the test expectation is set correctly
+        eprintln!(
+            "ℹ️  Test '{}': Mock tests for find_dead_code are not implemented (requires LSP). Use real MCP tests instead.",
+            case.test_name
+        );
     }
 }
 

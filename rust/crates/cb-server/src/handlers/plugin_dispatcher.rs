@@ -51,7 +51,7 @@ pub struct PluginDispatcher {
 }
 
 /// Direct LSP adapter that bypasses the old LSP manager and its hard-coded mappings
-struct DirectLspAdapter {
+pub(crate) struct DirectLspAdapter {
     /// LSP clients by extension
     lsp_clients: Arc<Mutex<HashMap<String, Arc<crate::systems::lsp::LspClient>>>>,
     /// LSP configuration
@@ -63,7 +63,7 @@ struct DirectLspAdapter {
 }
 
 impl DirectLspAdapter {
-    fn new(config: cb_core::config::LspConfig, extensions: Vec<String>, name: String) -> Self {
+    pub(crate) fn new(config: cb_core::config::LspConfig, extensions: Vec<String>, name: String) -> Self {
         Self {
             lsp_clients: Arc::new(Mutex::new(HashMap::new())),
             config,
@@ -73,7 +73,7 @@ impl DirectLspAdapter {
     }
 
     /// Get or create an LSP client for the given extension
-    async fn get_or_create_client(
+    pub(crate) async fn get_or_create_client(
         &self,
         extension: &str,
     ) -> Result<Arc<crate::systems::lsp::LspClient>, String> {
@@ -457,6 +457,14 @@ impl PluginDispatcher {
             return self.handle_apply_edits(tool_call).await;
         }
 
+        // Check if this is the dead code analysis tool
+        if tool_call.name == "find_dead_code" {
+            let result = self.handle_find_dead_code(tool_call).await?;
+            return Ok(json!({
+                "content": result
+            }));
+        }
+
         // Check if this is a system tool
         if self.is_system_tool(&tool_call.name) {
             return self.handle_system_tool(tool_call).await;
@@ -682,7 +690,6 @@ impl PluginDispatcher {
             tool_name,
             "list_files"
                 | "analyze_imports"
-                | "find_dead_code"
                 | "update_dependencies"
                 | "extract_function"
                 | "inline_variable"
@@ -1314,6 +1321,69 @@ impl PluginDispatcher {
                 "processing_time_per_plugin": metrics.processing_time_per_plugin
             },
             "plugins": plugins
+        }))
+    }
+
+    /// Handle find_dead_code tool using the dedicated analyzer module
+    async fn handle_find_dead_code(&self, tool_call: ToolCall) -> ServerResult<Value> {
+        let start_time = std::time::Instant::now();
+        let args = tool_call.arguments.unwrap_or(json!({}));
+        let workspace_path = args
+            .get("workspace_path")
+            .and_then(|v| v.as_str())
+            .unwrap_or(".");
+
+        debug!(workspace_path = %workspace_path, "Handling find_dead_code request");
+
+        // Load LSP configuration
+        let app_config = cb_core::config::AppConfig::load()
+            .map_err(|e| ServerError::Internal(format!("Failed to load config: {}", e)))?;
+
+        // Run dead code analysis
+        let config = crate::handlers::dead_code::AnalysisConfig::default();
+        let dead_symbols = crate::handlers::dead_code::analyze_dead_code(
+            app_config.lsp,
+            workspace_path,
+            config,
+        )
+        .await?;
+
+        // Format response with complete stats
+        let dead_symbols_json: Vec<Value> = dead_symbols
+            .iter()
+            .map(|s| {
+                json!({
+                    "name": s.name,
+                    "kind": s.kind,
+                    "file": s.file_path,
+                    "line": s.line,
+                    "column": s.column,
+                    "referenceCount": s.reference_count,
+                })
+            })
+            .collect();
+
+        let files_analyzed = dead_symbols
+            .iter()
+            .map(|s| s.file_path.as_str())
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+
+        Ok(json!({
+            "workspacePath": workspace_path,
+            "deadSymbols": dead_symbols_json,
+            "deadCodeItems": dead_symbols_json,  // For backward compatibility
+            "summary": {
+                "totalSymbols": dead_symbols.len(),
+                "deadSymbols": dead_symbols.len(),
+                "filesAnalyzed": files_analyzed,
+            },
+            "analysisStats": {
+                "filesAnalyzed": files_analyzed,
+                "symbolsAnalyzed": dead_symbols_json.len(),
+                "deadSymbolsFound": dead_symbols.len(),
+                "analysisDurationMs": start_time.elapsed().as_millis(),
+            }
         }))
     }
 }
