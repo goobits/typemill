@@ -312,10 +312,16 @@ impl WebSocketClient {
         tool: &str,
         params: Option<serde_json::Value>,
     ) -> ClientResult<MCPResponse> {
+        // Format as MCP tools/call request
+        let tool_params = serde_json::json!({
+            "name": tool,
+            "arguments": params.unwrap_or(serde_json::json!({}))
+        });
+
         let request = MCPRequest {
             id: self.generate_id(),
-            method: tool.to_string(),
-            params,
+            method: "tools/call".to_string(),
+            params: Some(tool_params),
         };
 
         self.send_request(request).await
