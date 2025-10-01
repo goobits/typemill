@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Refactoring tools**: Full AST-based implementation for extract_function, inline_variable, and extract_variable
+  - Python: Full AST analysis with parameter detection and scope handling
+  - TypeScript/JavaScript: Functional implementation with SWC parser
+  - Atomic operations with automatic rollback on failure
+  - Dry-run mode for previewing changes
 - SWC-based AST parsing for TypeScript/JavaScript (production-ready since parser v0.3.0)
 - Full TypeScript/JavaScript AST parsing with regex fallback for robustness
 - VFS (Virtual Filesystem) support as optional experimental feature (Unix only)

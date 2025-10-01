@@ -45,7 +45,7 @@ This document tracks the implementation status of TypeScript features in the Rus
 | CommonJS | ✅ | ✅ | ✅ | require() support |
 | TypeScript | ✅ | ✅ | ✅ | Type imports |
 | Import Graph | ✅ | ✅ | ✅ | Dependency analysis |
-| Refactoring | ✅ | 🚧 | 🚧 | Intent-based |
+| Refactoring | ✅ | ✅ | ✅ | AST-based, Python + TS/JS |
 
 ### Phase 3 Features
 | Feature | TypeScript | Rust | Status | Notes |
