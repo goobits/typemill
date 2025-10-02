@@ -35,7 +35,7 @@
 //! }
 //! ```
 
-use crate::{ServerError, ServerResult};
+use crate::ServerResult;
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
 use serde_json::Value;
@@ -83,9 +83,5 @@ pub trait ToolHandler: Send + Sync {
     /// Returns `ServerError::InvalidRequest` if arguments are missing or invalid.
     /// Returns `ServerError::Unsupported` if the tool name is not supported.
     /// Returns other `ServerError` variants for operation failures.
-    async fn handle_tool(
-        &self,
-        tool_call: ToolCall,
-        context: &ToolContext,
-    ) -> ServerResult<Value>;
+    async fn handle_tool(&self, tool_call: ToolCall, context: &ToolContext) -> ServerResult<Value>;
 }

@@ -167,9 +167,9 @@ async fn test_rapid_file_access_operations() {
         }
     }
 
-    assert!(
-        successful_ops > 0,
-        "At least some rapid operations should succeed"
+    assert_eq!(
+        successful_ops, 5,
+        "All 5 rapid sequential file operations should succeed"
     );
 }
 

@@ -345,7 +345,10 @@ impl LspAdapterPlugin {
     ) -> PluginResult<PluginResponse> {
         // Handle different LSP response formats
         let data = match request.method.as_str() {
-            "find_definition" | "find_references" | "find_implementations" | "find_type_definition" => {
+            "find_definition"
+            | "find_references"
+            | "find_implementations"
+            | "find_type_definition" => {
                 // LSP returns Location[] or LocationLink[]
                 self.normalize_locations(lsp_result)?
             }

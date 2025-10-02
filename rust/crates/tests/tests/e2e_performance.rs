@@ -31,7 +31,9 @@ async fn test_large_file_performance() {
         .unwrap();
     let create_duration = start.elapsed();
 
-    let result = response.get("result").expect("Response should have result field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
     assert!(result["success"].as_bool().unwrap_or(false));
     println!("Large file creation took: {:?}", create_duration);
 
@@ -48,7 +50,9 @@ async fn test_large_file_performance() {
         .unwrap();
     let read_duration = start.elapsed();
 
-    let result = response.get("result").expect("Response should have result field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
     assert!(result.get("content").is_some());
     println!("Large file reading took: {:?}", read_duration);
 
@@ -72,9 +76,13 @@ async fn test_large_file_performance() {
                 "LSP document symbols on large file took: {:?}",
                 lsp_duration
             );
-            let result = resp.get("result").expect("Response should have result field");
-            let content = result.get("content").expect("Response should have content field");
-    let symbols = content["symbols"].as_array().unwrap();
+            let result = resp
+                .get("result")
+                .expect("Response should have result field");
+            let content = result
+                .get("content")
+                .expect("Response should have content field");
+            let symbols = content["symbols"].as_array().unwrap();
             assert!(!symbols.is_empty());
         }
         Err(_) => {
@@ -133,7 +141,9 @@ export function process{}(data: Data{}): string {{
             .await
             .unwrap();
 
-        let result = response.get("result").expect("Response should have result field");
+        let result = response
+            .get("result")
+            .expect("Response should have result field");
         assert!(result["success"].as_bool().unwrap_or(false));
         file_paths.push(file_path);
     }
@@ -161,8 +171,12 @@ export function process{}(data: Data{}): string {{
         .unwrap();
     let search_duration = start.elapsed();
 
-    let result = response.get("result").expect("Response should have result field");
-    let content = result.get("content").expect("Response should have content field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
+    let content = result
+        .get("content")
+        .expect("Response should have content field");
     let symbols = content["symbols"].as_array().unwrap();
     println!(
         "Workspace symbol search found {} symbols in: {:?}",
@@ -190,8 +204,12 @@ export function process{}(data: Data{}): string {{
         .unwrap();
     let list_duration = start.elapsed();
 
-    let result = response.get("result").expect("Response should have result field");
-    let content = result.get("content").expect("Response should have content field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
+    let content = result
+        .get("content")
+        .expect("Response should have content field");
     let files = content["files"].as_array().unwrap();
     println!("Listed {} files in: {:?}", files.len(), list_duration);
 
@@ -302,12 +320,14 @@ export class RapidClass{} {{
 
     // Performance assertions
     assert!(
-        successful_creates >= operation_count * 8 / 10,
-        "At least 80% of creates should succeed"
+        successful_creates >= operation_count * 19 / 20,
+        "At least 95% of creates should succeed, got {}/{}",
+        successful_creates, operation_count
     );
     assert!(
-        successful_reads >= operation_count * 8 / 10,
-        "At least 80% of reads should succeed"
+        successful_reads >= operation_count * 19 / 20,
+        "At least 95% of reads should succeed, got {}/{}",
+        successful_reads, operation_count
     );
     assert!(
         total_duration < Duration::from_secs(30),
@@ -353,7 +373,9 @@ const oldConstant{} = "old_value_{}";
             .await
             .unwrap();
 
-        let result = response.get("result").expect("Response should have result field");
+        let result = response
+            .get("result")
+            .expect("Response should have result field");
         assert!(result["success"].as_bool().unwrap_or(false));
         file_paths.push(file_path);
     }
@@ -405,7 +427,9 @@ const oldConstant{} = "old_value_{}";
         file_count, edit_duration
     );
 
-    let result = response.get("result").expect("Response should have result field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
     assert!(result["applied"].as_bool().unwrap_or(false));
     assert!(
         edit_duration < Duration::from_secs(20),
@@ -426,7 +450,9 @@ const oldConstant{} = "old_value_{}";
             .await
             .unwrap();
 
-        let result = content_response.get("result").expect("Response should have result field");
+        let result = content_response
+            .get("result")
+            .expect("Response should have result field");
         let content = result["content"].as_str().unwrap();
         assert!(content.contains(&format!("NewInterface{}", index)));
         assert!(content.contains("newProperty"));
@@ -462,7 +488,9 @@ async fn test_memory_usage_large_operations() {
         .unwrap();
     let create_duration = start.elapsed();
 
-    let result = response.get("result").expect("Response should have result field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
     assert!(result["success"].as_bool().unwrap_or(false));
     println!("Created 5MB file in: {:?}", create_duration);
 
@@ -479,7 +507,9 @@ async fn test_memory_usage_large_operations() {
         .unwrap();
     let read_duration = start.elapsed();
 
-    let result = response.get("result").expect("Response should have result field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
     let read_content = result["content"].as_str().unwrap();
     assert_eq!(read_content.len(), large_content.len());
     println!("Read 5MB file in: {:?}", read_duration);
@@ -500,7 +530,9 @@ async fn test_memory_usage_large_operations() {
             .await
             .unwrap();
 
-        let result = response.get("result").expect("Response should have result field");
+        let result = response
+            .get("result")
+            .expect("Response should have result field");
         assert!(result["success"].as_bool().unwrap_or(false));
     }
 
@@ -518,8 +550,12 @@ async fn test_memory_usage_large_operations() {
         .unwrap();
     let list_duration = start.elapsed();
 
-    let result = response.get("result").expect("Response should have result field");
-    let content = result.get("content").expect("Response should have content field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
+    let content = result
+        .get("content")
+        .expect("Response should have content field");
     let files = content["files"].as_array().unwrap();
     println!("Listed {} files in: {:?}", files.len(), list_duration);
 
@@ -670,8 +706,12 @@ export class UserService{} {{
         .unwrap();
     let definition_duration = start.elapsed();
 
-    let result = response.get("result").expect("Response should have result field");
-    let content = result.get("content").expect("Response should have content field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
+    let content = result
+        .get("content")
+        .expect("Response should have content field");
     let locations = content["locations"].as_array().unwrap();
     assert!(!locations.is_empty());
     println!(
@@ -692,8 +732,12 @@ export class UserService{} {{
         .unwrap();
     let search_duration = start.elapsed();
 
-    let result = response.get("result").expect("Response should have result field");
-    let content = result.get("content").expect("Response should have content field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
+    let content = result
+        .get("content")
+        .expect("Response should have content field");
     let symbols = content["symbols"].as_array().unwrap();
     println!(
         "Workspace symbol search found {} symbols in: {:?}",
@@ -718,8 +762,12 @@ export class UserService{} {{
         .unwrap();
     let references_duration = start.elapsed();
 
-    let result = response.get("result").expect("Response should have result field");
-    let content = result.get("content").expect("Response should have content field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
+    let content = result
+        .get("content")
+        .expect("Response should have content field");
     let references = content["references"].as_array().unwrap();
     println!(
         "Found {} references in: {:?}",

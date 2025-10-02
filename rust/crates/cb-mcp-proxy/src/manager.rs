@@ -86,9 +86,7 @@ impl ExternalMcpManager {
         let result = self
             .call_tool(server_name, tool_name, request.params)
             .await
-            .map_err(|e| {
-                cb_plugins::PluginError::request_failed("mcp-proxy", e.to_string())
-            })?;
+            .map_err(|e| cb_plugins::PluginError::request_failed("mcp-proxy", e.to_string()))?;
 
         Ok(PluginResponse::success(result, "mcp-proxy"))
     }

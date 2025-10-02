@@ -61,17 +61,22 @@ impl FileService {
                     return Err(Box::new(ServerError::NotFound(format!(
                         "Source file does not exist: {:?}",
                         old_abs
-                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                    )))
+                        as Box<dyn std::error::Error + Send + Sync>);
                 }
 
                 if new_abs.exists() {
                     return Err(Box::new(ServerError::AlreadyExists(format!(
                         "Destination file already exists: {:?}",
                         new_abs
-                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                    )))
+                        as Box<dyn std::error::Error + Send + Sync>);
                 }
 
-                let affected_files = self.import_service.find_affected_files(&old_abs).await
+                let affected_files = self
+                    .import_service
+                    .find_affected_files(&old_abs)
+                    .await
                     .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
                 let import_report = self
@@ -94,17 +99,20 @@ impl FileService {
                     return Err(Box::new(ServerError::NotFound(format!(
                         "Source file does not exist: {:?}",
                         old_abs
-                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                    )))
+                        as Box<dyn std::error::Error + Send + Sync>);
                 }
 
                 if new_abs.exists() {
                     return Err(Box::new(ServerError::AlreadyExists(format!(
                         "Destination file already exists: {:?}",
                         new_abs
-                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                    )))
+                        as Box<dyn std::error::Error + Send + Sync>);
                 }
 
-                self.perform_rename(&old_abs, &new_abs).await
+                self.perform_rename(&old_abs, &new_abs)
+                    .await
                     .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
                 info!("File renamed successfully");
@@ -115,8 +123,10 @@ impl FileService {
                     .await
                     .map_err(|e| {
                         warn!(error = %e, "File renamed but import updates failed");
-                        Box::new(ServerError::Internal(format!("Import updates failed: {}", e)))
-                            as Box<dyn std::error::Error + Send + Sync>
+                        Box::new(ServerError::Internal(format!(
+                            "Import updates failed: {}",
+                            e
+                        ))) as Box<dyn std::error::Error + Send + Sync>
                     })?;
 
                 info!(
@@ -325,7 +335,8 @@ impl FileService {
                     return Err(Box::new(ServerError::AlreadyExists(format!(
                         "File already exists: {:?}",
                         abs_path
-                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                    )))
+                        as Box<dyn std::error::Error + Send + Sync>);
                 }
                 Ok(json!({
                     "operation": "create_file",
@@ -340,7 +351,8 @@ impl FileService {
                     return Err(Box::new(ServerError::AlreadyExists(format!(
                         "File already exists: {:?}",
                         abs_path
-                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                    )))
+                        as Box<dyn std::error::Error + Send + Sync>);
                 }
                 if let Some(parent) = abs_path.parent() {
                     fs::create_dir_all(parent).await.map_err(|e| {
@@ -351,8 +363,10 @@ impl FileService {
                     })?;
                 }
                 fs::write(&abs_path, &content).await.map_err(|e| {
-                    Box::new(ServerError::Internal(format!("Failed to write file: {}", e)))
-                        as Box<dyn std::error::Error + Send + Sync>
+                    Box::new(ServerError::Internal(format!(
+                        "Failed to write file: {}",
+                        e
+                    ))) as Box<dyn std::error::Error + Send + Sync>
                 })?;
                 info!(path = ?abs_path, "Created file");
                 Ok(json!({
@@ -391,18 +405,23 @@ impl FileService {
                         return Err(Box::new(ServerError::NotFound(format!(
                             "File does not exist: {:?}",
                             abs_path
-                        ))) as Box<dyn std::error::Error + Send + Sync>);
+                        )))
+                            as Box<dyn std::error::Error + Send + Sync>);
                     }
                 }
 
                 let affected_files_count = if !force {
-                    let affected = self.import_service.find_affected_files(&abs_path).await
+                    let affected = self
+                        .import_service
+                        .find_affected_files(&abs_path)
+                        .await
                         .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
                     if !affected.is_empty() {
                         return Err(Box::new(ServerError::InvalidRequest(format!(
                             "File is imported by {} other files",
                             affected.len()
-                        ))) as Box<dyn std::error::Error + Send + Sync>);
+                        )))
+                            as Box<dyn std::error::Error + Send + Sync>);
                     }
                     affected.len()
                 } else {
@@ -430,12 +449,16 @@ impl FileService {
                         return Err(Box::new(ServerError::NotFound(format!(
                             "File does not exist: {:?}",
                             abs_path
-                        ))) as Box<dyn std::error::Error + Send + Sync>);
+                        )))
+                            as Box<dyn std::error::Error + Send + Sync>);
                     }
                 }
 
                 if !force {
-                    let affected = self.import_service.find_affected_files(&abs_path).await
+                    let affected = self
+                        .import_service
+                        .find_affected_files(&abs_path)
+                        .await
                         .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
                     if !affected.is_empty() {
                         warn!(
@@ -445,13 +468,16 @@ impl FileService {
                         return Err(Box::new(ServerError::InvalidRequest(format!(
                             "File is imported by {} other files",
                             affected.len()
-                        ))) as Box<dyn std::error::Error + Send + Sync>);
+                        )))
+                            as Box<dyn std::error::Error + Send + Sync>);
                     }
                 }
 
                 fs::remove_file(&abs_path).await.map_err(|e| {
-                    Box::new(ServerError::Internal(format!("Failed to delete file: {}", e)))
-                        as Box<dyn std::error::Error + Send + Sync>
+                    Box::new(ServerError::Internal(format!(
+                        "Failed to delete file: {}",
+                        e
+                    ))) as Box<dyn std::error::Error + Send + Sync>
                 })?;
 
                 info!(path = ?abs_path, "Deleted file");
@@ -516,8 +542,10 @@ impl FileService {
                     })?;
                 }
                 fs::write(&abs_path, &content).await.map_err(|e| {
-                    Box::new(ServerError::Internal(format!("Failed to write file: {}", e)))
-                        as Box<dyn std::error::Error + Send + Sync>
+                    Box::new(ServerError::Internal(format!(
+                        "Failed to write file: {}",
+                        e
+                    ))) as Box<dyn std::error::Error + Send + Sync>
                 })?;
                 info!(path = ?abs_path, "Wrote to file");
                 Ok(json!({
@@ -552,11 +580,12 @@ impl FileService {
         let mut files = Vec::new();
 
         if recursive {
-            self.list_files_recursive(&abs_path, &abs_path, &mut files).await?;
+            self.list_files_recursive(&abs_path, &abs_path, &mut files)
+                .await?;
         } else {
-            let mut entries = fs::read_dir(&abs_path).await.map_err(|e| {
-                ServerError::Internal(format!("Failed to read directory: {}", e))
-            })?;
+            let mut entries = fs::read_dir(&abs_path)
+                .await
+                .map_err(|e| ServerError::Internal(format!("Failed to read directory: {}", e)))?;
 
             while let Some(entry) = entries.next_entry().await.map_err(|e| {
                 ServerError::Internal(format!("Failed to read directory entry: {}", e))
@@ -579,13 +608,15 @@ impl FileService {
         current_path: &Path,
         files: &mut Vec<String>,
     ) -> ServerResult<()> {
-        let mut entries = fs::read_dir(current_path).await.map_err(|e| {
-            ServerError::Internal(format!("Failed to read directory: {}", e))
-        })?;
+        let mut entries = fs::read_dir(current_path)
+            .await
+            .map_err(|e| ServerError::Internal(format!("Failed to read directory: {}", e)))?;
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| {
-            ServerError::Internal(format!("Failed to read directory entry: {}", e))
-        })? {
+        while let Some(entry) = entries
+            .next_entry()
+            .await
+            .map_err(|e| ServerError::Internal(format!("Failed to read directory entry: {}", e)))?
+        {
             let path = entry.path();
 
             if path.is_dir() {
@@ -983,17 +1014,19 @@ impl FileService {
 
         // Read the old Cargo.toml to get the old crate name
         let old_cargo_toml = old_package_path.join("Cargo.toml");
-        let old_content = fs::read_to_string(&old_cargo_toml).await.map_err(|e| {
-            ServerError::Internal(format!("Failed to read old Cargo.toml: {}", e))
-        })?;
+        let old_content = fs::read_to_string(&old_cargo_toml)
+            .await
+            .map_err(|e| ServerError::Internal(format!("Failed to read old Cargo.toml: {}", e)))?;
 
-        let old_doc = old_content.parse::<toml_edit::DocumentMut>().map_err(|e| {
-            ServerError::Internal(format!("Failed to parse old Cargo.toml: {}", e))
-        })?;
+        let old_doc = old_content
+            .parse::<toml_edit::DocumentMut>()
+            .map_err(|e| ServerError::Internal(format!("Failed to parse old Cargo.toml: {}", e)))?;
 
         let old_crate_name = old_doc["package"]["name"]
             .as_str()
-            .ok_or_else(|| ServerError::Internal("Missing [package].name in Cargo.toml".to_string()))?
+            .ok_or_else(|| {
+                ServerError::Internal("Missing [package].name in Cargo.toml".to_string())
+            })?
             .to_string();
 
         // Derive the new crate name from the new directory path
@@ -1032,14 +1065,19 @@ impl FileService {
         while let Some(path) = current_path {
             let workspace_toml_path = path.join("Cargo.toml");
             if workspace_toml_path.exists() {
-                let content = fs::read_to_string(&workspace_toml_path).await.map_err(|e| {
-                    ServerError::Internal(format!("Failed to read workspace Cargo.toml: {}", e))
-                })?;
+                let content = fs::read_to_string(&workspace_toml_path)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Internal(format!("Failed to read workspace Cargo.toml: {}", e))
+                    })?;
 
                 if content.contains("[workspace]") {
                     // This is the workspace root we need to modify.
                     let mut doc = content.parse::<toml_edit::DocumentMut>().map_err(|e| {
-                        ServerError::Internal(format!("Failed to parse workspace Cargo.toml: {}", e))
+                        ServerError::Internal(format!(
+                            "Failed to parse workspace Cargo.toml: {}",
+                            e
+                        ))
                     })?;
 
                     let old_rel_path = old_package_path.strip_prefix(path).map_err(|_| {
@@ -1054,10 +1092,14 @@ impl FileService {
 
                     // Check if we need to update the workspace members
                     let members = doc["workspace"]["members"].as_array_mut().ok_or_else(|| {
-                        ServerError::Internal("`[workspace.members]` is not a valid array".to_string())
+                        ServerError::Internal(
+                            "`[workspace.members]` is not a valid array".to_string(),
+                        )
                     })?;
 
-                    let index_opt = members.iter().position(|m| m.as_str() == Some(&old_path_str));
+                    let index_opt = members
+                        .iter()
+                        .position(|m| m.as_str() == Some(&old_path_str));
                     if let Some(index) = index_opt {
                         members.remove(index);
                         members.push(new_path_str.as_str());
@@ -1069,16 +1111,26 @@ impl FileService {
                             "Updated workspace members"
                         );
 
-                        fs::write(&workspace_toml_path, doc.to_string()).await.map_err(|e| {
-                            ServerError::Internal(format!("Failed to write updated workspace Cargo.toml: {}", e))
-                        })?;
+                        fs::write(&workspace_toml_path, doc.to_string())
+                            .await
+                            .map_err(|e| {
+                                ServerError::Internal(format!(
+                                    "Failed to write updated workspace Cargo.toml: {}",
+                                    e
+                                ))
+                            })?;
                     }
 
                     // Also update relative path dependencies in the moved package's Cargo.toml
                     let package_cargo_toml = new_package_path.join("Cargo.toml");
                     if package_cargo_toml.exists() {
-                        self.update_package_relative_paths(&package_cargo_toml, old_package_path, new_package_path, path)
-                            .await?;
+                        self.update_package_relative_paths(
+                            &package_cargo_toml,
+                            old_package_path,
+                            new_package_path,
+                            path,
+                        )
+                        .await?;
                     }
 
                     // If we found the workspace, we can stop searching.
@@ -1114,9 +1166,7 @@ impl FileService {
         let mut updated_count = 0;
 
         // Update [package].name to match the new directory name
-        let new_dir_name = new_package_path
-            .file_name()
-            .and_then(|n| n.to_str());
+        let new_dir_name = new_package_path.file_name().and_then(|n| n.to_str());
 
         if let Some(new_name) = new_dir_name {
             let new_crate_name = new_name.replace('_', "-"); // Normalize to hyphens for Cargo.toml
@@ -1137,10 +1187,12 @@ impl FileService {
         }
 
         // Calculate depth change for relative path updates
-        let old_depth = old_package_path.strip_prefix(workspace_root)
+        let old_depth = old_package_path
+            .strip_prefix(workspace_root)
             .map(|p| p.components().count())
             .unwrap_or(0);
-        let new_depth = new_package_path.strip_prefix(workspace_root)
+        let new_depth = new_package_path
+            .strip_prefix(workspace_root)
             .map(|p| p.components().count())
             .unwrap_or(0);
 
@@ -1151,7 +1203,8 @@ impl FileService {
                     if let Some(table) = value.as_inline_table_mut() {
                         if let Some(path_value) = table.get_mut("path") {
                             if let Some(old_path_str) = path_value.as_str() {
-                                let new_path_str = self.adjust_relative_path(old_path_str, old_depth, new_depth);
+                                let new_path_str =
+                                    self.adjust_relative_path(old_path_str, old_depth, new_depth);
                                 if new_path_str != old_path_str {
                                     info!(
                                         dependency = %name,
@@ -1170,9 +1223,14 @@ impl FileService {
         }
 
         if updated_count > 0 {
-            fs::write(package_cargo_toml, doc.to_string()).await.map_err(|e| {
-                ServerError::Internal(format!("Failed to write updated package Cargo.toml: {}", e))
-            })?;
+            fs::write(package_cargo_toml, doc.to_string())
+                .await
+                .map_err(|e| {
+                    ServerError::Internal(format!(
+                        "Failed to write updated package Cargo.toml: {}",
+                        e
+                    ))
+                })?;
             info!(
                 package = ?package_cargo_toml,
                 updated_count = updated_count,
@@ -1213,9 +1271,11 @@ impl FileService {
         new_dir_path: &Path,
         dry_run: bool,
     ) -> ServerResult<DocumentationUpdateReport> {
-        let old_rel = old_dir_path.strip_prefix(&self.project_root)
+        let old_rel = old_dir_path
+            .strip_prefix(&self.project_root)
             .unwrap_or(old_dir_path);
-        let new_rel = new_dir_path.strip_prefix(&self.project_root)
+        let new_rel = new_dir_path
+            .strip_prefix(&self.project_root)
             .unwrap_or(new_dir_path);
 
         let old_path_str = old_rel.to_string_lossy();
@@ -1279,7 +1339,8 @@ impl FileService {
                         );
                         updated_files.push(path.to_string_lossy().to_string());
                     } else {
-                        let new_content = content.replace(old_path_str.as_ref(), new_path_str.as_ref());
+                        let new_content =
+                            content.replace(old_path_str.as_ref(), new_path_str.as_ref());
 
                         match fs::write(&path, new_content).await {
                             Ok(_) => {
@@ -1440,11 +1501,21 @@ mod tests {
         let dep_file = "dependency.ts";
 
         service
-            .create_file(Path::new(main_file), Some("import { foo } from './old';\nconst x = 1;"), false, false)
+            .create_file(
+                Path::new(main_file),
+                Some("import { foo } from './old';\nconst x = 1;"),
+                false,
+                false,
+            )
             .await
             .unwrap();
         service
-            .create_file(Path::new(dep_file), Some("import './old';\nconst y = 2;"), false, false)
+            .create_file(
+                Path::new(dep_file),
+                Some("import './old';\nconst y = 2;"),
+                false,
+                false,
+            )
             .await
             .unwrap();
 
@@ -1453,7 +1524,7 @@ mod tests {
             source_file: main_file.to_string(),
             edits: vec![TextEdit {
                 file_path: None,
-            edit_type: EditType::Replace,
+                edit_type: EditType::Replace,
                 location: EditLocation {
                     start_line: 1,
                     start_column: 0,
@@ -1527,7 +1598,7 @@ mod tests {
             source_file: main_file.to_string(),
             edits: vec![TextEdit {
                 file_path: None,
-            edit_type: EditType::Replace,
+                edit_type: EditType::Replace,
                 location: EditLocation {
                     start_line: 999, // Invalid line - will cause failure
                     start_column: 0,
@@ -1561,10 +1632,16 @@ mod tests {
 
         // Verify files were rolled back to original state
         let main_content = service.read_file(Path::new(main_file)).await.unwrap();
-        assert_eq!(main_content, main_original, "Main file should be rolled back");
+        assert_eq!(
+            main_content, main_original,
+            "Main file should be rolled back"
+        );
 
         let dep_content = service.read_file(Path::new(dep_file)).await.unwrap();
-        assert_eq!(dep_content, dep_original, "Dependency file should be rolled back");
+        assert_eq!(
+            dep_content, dep_original,
+            "Dependency file should be rolled back"
+        );
     }
 
     #[tokio::test]
@@ -1599,7 +1676,7 @@ mod tests {
             source_file: main_file.to_string(),
             edits: vec![TextEdit {
                 file_path: None,
-            edit_type: EditType::Replace,
+                edit_type: EditType::Replace,
                 location: EditLocation {
                     start_line: 0,
                     start_column: 0,
@@ -1633,11 +1710,17 @@ mod tests {
 
         // Verify main file was rolled back to original state
         let main_content = service.read_file(Path::new(main_file)).await.unwrap();
-        assert_eq!(main_content, main_original, "Main file should be rolled back after dependency failure");
+        assert_eq!(
+            main_content, main_original,
+            "Main file should be rolled back after dependency failure"
+        );
 
         // Verify bad dependency file was also rolled back
         let dep_content = service.read_file(Path::new(dep_file)).await.unwrap();
-        assert_eq!(dep_content, dep_original, "Dependency file should be rolled back");
+        assert_eq!(
+            dep_content, dep_original,
+            "Dependency file should be rolled back"
+        );
     }
 
     #[tokio::test]
@@ -1660,17 +1743,29 @@ mod tests {
         let dep2_original = "import './old2';";
         let dep3_original = "import 'this_will_cause_parse_error'; <<<< invalid syntax >>>>";
 
-        service.create_file(Path::new(main_file), Some(main_original), false, false).await.unwrap();
-        service.create_file(Path::new(dep_file1), Some(dep1_original), false, false).await.unwrap();
-        service.create_file(Path::new(dep_file2), Some(dep2_original), false, false).await.unwrap();
-        service.create_file(Path::new(dep_file3), Some(dep3_original), false, false).await.unwrap();
+        service
+            .create_file(Path::new(main_file), Some(main_original), false, false)
+            .await
+            .unwrap();
+        service
+            .create_file(Path::new(dep_file1), Some(dep1_original), false, false)
+            .await
+            .unwrap();
+        service
+            .create_file(Path::new(dep_file2), Some(dep2_original), false, false)
+            .await
+            .unwrap();
+        service
+            .create_file(Path::new(dep_file3), Some(dep3_original), false, false)
+            .await
+            .unwrap();
 
         // Create edit plan that will fail on the last dependency due to parse error
         let plan = EditPlan {
             source_file: main_file.to_string(),
             edits: vec![TextEdit {
                 file_path: None,
-            edit_type: EditType::Replace,
+                edit_type: EditType::Replace,
                 location: EditLocation {
                     start_line: 0,
                     start_column: 0,
@@ -1718,16 +1813,28 @@ mod tests {
 
         // Verify ALL files were rolled back to original state
         let main_content = service.read_file(Path::new(main_file)).await.unwrap();
-        assert_eq!(main_content, main_original, "Main file should be rolled back");
+        assert_eq!(
+            main_content, main_original,
+            "Main file should be rolled back"
+        );
 
         let dep1_content = service.read_file(Path::new(dep_file1)).await.unwrap();
-        assert_eq!(dep1_content, dep1_original, "First dependency file should be rolled back");
+        assert_eq!(
+            dep1_content, dep1_original,
+            "First dependency file should be rolled back"
+        );
 
         let dep2_content = service.read_file(Path::new(dep_file2)).await.unwrap();
-        assert_eq!(dep2_content, dep2_original, "Second dependency file should be rolled back");
+        assert_eq!(
+            dep2_content, dep2_original,
+            "Second dependency file should be rolled back"
+        );
 
         let dep3_content = service.read_file(Path::new(dep_file3)).await.unwrap();
-        assert_eq!(dep3_content, dep3_original, "Third dependency file should remain unchanged");
+        assert_eq!(
+            dep3_content, dep3_original,
+            "Third dependency file should remain unchanged"
+        );
     }
 }
 
@@ -1755,9 +1862,12 @@ members = [
         // Create the package directory and its Cargo.toml
         let old_crate_dir = project_root.join("crates/my-crate");
         fs::create_dir_all(&old_crate_dir).await.unwrap();
-        fs::write(old_crate_dir.join("Cargo.toml"), "[package]\nname = \"my-crate\"")
-            .await
-            .unwrap();
+        fs::write(
+            old_crate_dir.join("Cargo.toml"),
+            "[package]\nname = \"my-crate\"",
+        )
+        .await
+        .unwrap();
 
         let new_crate_dir = project_root.join("crates/my-renamed-crate");
 
@@ -1780,7 +1890,10 @@ members = [
         let members = doc["workspace"]["members"].as_array().unwrap();
 
         assert_eq!(members.len(), 1);
-        assert_eq!(members.iter().next().unwrap().as_str(), Some("crates/my-renamed-crate"));
+        assert_eq!(
+            members.iter().next().unwrap().as_str(),
+            Some("crates/my-renamed-crate")
+        );
     }
 
     #[test]
@@ -1816,9 +1929,6 @@ members = [
             "../sibling"
         );
         // Path with no up-levels
-        assert_eq!(
-            service.adjust_relative_path("sibling", 2, 1),
-            "sibling"
-        );
+        assert_eq!(service.adjust_relative_path("sibling", 2, 1), "sibling");
     }
 }

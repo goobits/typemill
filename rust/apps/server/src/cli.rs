@@ -307,11 +307,13 @@ async fn handle_status() {
                 println!("   ⭕ No codebuddy processes found");
             } else {
                 for pid in pids {
-                    let marker = if server_running &&
-                        pid_file.exists() &&
-                        std::fs::read_to_string(&pid_file)
+                    let marker = if server_running
+                        && pid_file.exists()
+                        && std::fs::read_to_string(&pid_file)
                             .ok()
-                            .and_then(|s| s.trim().parse::<u32>().ok()) == Some(pid) {
+                            .and_then(|s| s.trim().parse::<u32>().ok())
+                            == Some(pid)
+                    {
                         " (managed)"
                     } else {
                         ""
@@ -628,8 +630,14 @@ async fn handle_tools_command(format: &str) {
                         println!("{}", "=".repeat(80));
                         if let Some(tools) = result.get("tools").and_then(|t| t.as_array()) {
                             for tool in tools {
-                                let name = tool.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
-                                let desc = tool.get("description").and_then(|d| d.as_str()).unwrap_or("");
+                                let name = tool
+                                    .get("name")
+                                    .and_then(|n| n.as_str())
+                                    .unwrap_or("unknown");
+                                let desc = tool
+                                    .get("description")
+                                    .and_then(|d| d.as_str())
+                                    .unwrap_or("");
                                 let desc_short = if desc.len() > 48 {
                                     format!("{}...", &desc[..45])
                                 } else {
@@ -659,7 +667,10 @@ async fn handle_tool_command(tool_name: &str, args_json: &str, format: &str) {
     let arguments: serde_json::Value = match serde_json::from_str(args_json) {
         Ok(val) => val,
         Err(e) => {
-            let error = cb_core::model::mcp::McpError::invalid_request(format!("Invalid JSON arguments: {}", e));
+            let error = cb_core::model::mcp::McpError::invalid_request(format!(
+                "Invalid JSON arguments: {}",
+                e
+            ));
             let api_error = cb_api::ApiError::from(error);
             output_error(&api_error, format);
             process::exit(1);

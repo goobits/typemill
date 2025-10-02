@@ -76,13 +76,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_dry_run_executes_preview() {
-        let result = execute_with_dry_run(
-            true,
-            || async { Ok("preview") },
-            || async { Ok("execute") },
-        )
-        .await
-        .unwrap();
+        let result =
+            execute_with_dry_run(true, || async { Ok("preview") }, || async { Ok("execute") })
+                .await
+                .unwrap();
 
         assert!(result.dry_run);
         assert_eq!(result.result, "preview");

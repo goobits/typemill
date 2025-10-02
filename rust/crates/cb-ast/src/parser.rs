@@ -885,8 +885,8 @@ fn parse_rust_imports(source: &str) -> AstResult<Vec<ImportInfo>> {
 /// - Dot imports: `import . "fmt"`
 /// - Blank imports: `import _ "database/sql/driver"`
 fn parse_go_imports_ast(source: &str) -> AstResult<Vec<ImportInfo>> {
-    use std::process::{Command, Stdio};
     use std::io::Write;
+    use std::process::{Command, Stdio};
 
     // Find the ast_tool.go executable path
     let ast_tool_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -933,9 +933,8 @@ fn parse_go_imports_ast(source: &str) -> AstResult<Vec<ImportInfo>> {
 
     // Parse JSON output
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let imports: Vec<ImportInfo> = serde_json::from_str(&stdout).map_err(|e| {
-        AstError::analysis(format!("Failed to parse Go AST tool output: {}", e))
-    })?;
+    let imports: Vec<ImportInfo> = serde_json::from_str(&stdout)
+        .map_err(|e| AstError::analysis(format!("Failed to parse Go AST tool output: {}", e)))?;
 
     Ok(imports)
 }
@@ -1646,4 +1645,3 @@ func main() {
         assert_eq!(imports[7].default_import, None);
     }
 }
-

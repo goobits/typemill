@@ -38,11 +38,9 @@ impl FileOperationHandler {
         );
 
         // Look up workspace
-        let workspace = workspace_manager
-            .get(workspace_id)
-            .ok_or_else(|| {
-                ServerError::InvalidRequest(format!("Workspace '{}' not found", workspace_id))
-            })?;
+        let workspace = workspace_manager.get(workspace_id).ok_or_else(|| {
+            ServerError::InvalidRequest(format!("Workspace '{}' not found", workspace_id))
+        })?;
 
         // Build agent URL
         let agent_url = format!("{}/execute", workspace.agent_url);
@@ -75,7 +73,10 @@ impl FileOperationHandler {
         // Check response status
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             error!(
                 workspace_id = %workspace_id,
                 status = %status,
@@ -89,13 +90,10 @@ impl FileOperationHandler {
         }
 
         // Parse response
-        let result: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| {
-                error!(error = %e, "Failed to parse agent response");
-                ServerError::Internal("Failed to parse agent response".into())
-            })?;
+        let result: serde_json::Value = response.json().await.map_err(|e| {
+            error!(error = %e, "Failed to parse agent response");
+            ServerError::Internal("Failed to parse agent response".into())
+        })?;
 
         // Extract stdout from response
         result
@@ -129,11 +127,7 @@ impl ToolHandler for FileOperationHandler {
         ]
     }
 
-    async fn handle_tool(
-        &self,
-        tool_call: ToolCall,
-        context: &ToolContext,
-    ) -> ServerResult<Value> {
+    async fn handle_tool(&self, tool_call: ToolCall, context: &ToolContext) -> ServerResult<Value> {
         debug!(tool_name = %tool_call.name, "Handling file operation");
 
         match tool_call.name.as_str() {
@@ -158,9 +152,9 @@ impl FileOperationHandler {
         tool_call: ToolCall,
         context: &ToolContext,
     ) -> ServerResult<Value> {
-        let args = tool_call
-            .arguments
-            .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for rename_file".into()))?;
+        let args = tool_call.arguments.ok_or_else(|| {
+            ServerError::InvalidRequest("Missing arguments for rename_file".into())
+        })?;
 
         let old_path = args
             .get("old_path")
@@ -196,9 +190,9 @@ impl FileOperationHandler {
         tool_call: ToolCall,
         context: &ToolContext,
     ) -> ServerResult<Value> {
-        let args = tool_call
-            .arguments
-            .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for rename_directory".into()))?;
+        let args = tool_call.arguments.ok_or_else(|| {
+            ServerError::InvalidRequest("Missing arguments for rename_directory".into())
+        })?;
 
         let old_path = args
             .get("old_path")
@@ -234,9 +228,9 @@ impl FileOperationHandler {
         tool_call: ToolCall,
         context: &ToolContext,
     ) -> ServerResult<Value> {
-        let args = tool_call
-            .arguments
-            .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for create_file".into()))?;
+        let args = tool_call.arguments.ok_or_else(|| {
+            ServerError::InvalidRequest("Missing arguments for create_file".into())
+        })?;
 
         let file_path = args
             .get("file_path")
@@ -273,9 +267,9 @@ impl FileOperationHandler {
         tool_call: ToolCall,
         context: &ToolContext,
     ) -> ServerResult<Value> {
-        let args = tool_call
-            .arguments
-            .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for delete_file".into()))?;
+        let args = tool_call.arguments.ok_or_else(|| {
+            ServerError::InvalidRequest("Missing arguments for delete_file".into())
+        })?;
 
         let file_path = args
             .get("file_path")
@@ -349,9 +343,9 @@ impl FileOperationHandler {
         tool_call: ToolCall,
         context: &ToolContext,
     ) -> ServerResult<Value> {
-        let args = tool_call
-            .arguments
-            .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for write_file".into()))?;
+        let args = tool_call.arguments.ok_or_else(|| {
+            ServerError::InvalidRequest("Missing arguments for write_file".into())
+        })?;
 
         let file_path = args
             .get("file_path")

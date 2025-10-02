@@ -327,7 +327,9 @@ pub enum Commands {
 
     /// Manage MCP server presets.
     #[cfg(feature = "mcp-proxy")]
-    #[command(long_about = "Add, list, and manage MCP server presets for easy integration with external tools.")]
+    #[command(
+        long_about = "Add, list, and manage MCP server presets for easy integration with external tools."
+    )]
     Mcp {
         #[command(subcommand)]
         command: McpCommands,
@@ -470,20 +472,17 @@ pub async fn run_cli() -> ClientResult<()> {
         }
         #[cfg(feature = "mcp-proxy")]
         Commands::Mcp { command } => match command {
-            McpCommands::List => commands::mcp::list_presets().map_err(|e| {
-                ClientError::RequestError(format!("Failed to list presets: {}", e))
-            }),
-            McpCommands::Add { preset_id } => commands::mcp::add_preset(&preset_id).map_err(
-                |e| ClientError::RequestError(format!("Failed to add preset: {}", e)),
-            ),
-            McpCommands::Remove { preset_id } => {
-                commands::mcp::remove_preset(&preset_id).map_err(|e| {
-                    ClientError::RequestError(format!("Failed to remove preset: {}", e))
+            McpCommands::List => commands::mcp::list_presets()
+                .map_err(|e| ClientError::RequestError(format!("Failed to list presets: {}", e))),
+            McpCommands::Add { preset_id } => commands::mcp::add_preset(&preset_id)
+                .map_err(|e| ClientError::RequestError(format!("Failed to add preset: {}", e))),
+            McpCommands::Remove { preset_id } => commands::mcp::remove_preset(&preset_id)
+                .map_err(|e| ClientError::RequestError(format!("Failed to remove preset: {}", e))),
+            McpCommands::Info { preset_id } => {
+                commands::mcp::info_preset(&preset_id).map_err(|e| {
+                    ClientError::RequestError(format!("Failed to show preset info: {}", e))
                 })
             }
-            McpCommands::Info { preset_id } => commands::mcp::info_preset(&preset_id).map_err(
-                |e| ClientError::RequestError(format!("Failed to show preset info: {}", e)),
-            ),
         },
         Commands::Doctor => {
             let cmd = DoctorCommand::new();

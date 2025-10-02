@@ -53,7 +53,6 @@ enum LspMessage {
     },
 }
 
-
 impl LspClient {
     /// Create a new LSP client and start the server process
     pub async fn new(config: LspServerConfig) -> ServerResult<Self> {
@@ -70,10 +69,7 @@ impl LspClient {
         // Debug logging for LSP server spawn
         let path_env = std::env::var("PATH").unwrap_or_else(|_| "NOT SET".to_string());
         let current_dir = std::env::current_dir()?;
-        let root_dir = config
-            .root_dir
-            .as_deref()
-            .unwrap_or(&current_dir);
+        let root_dir = config.root_dir.as_deref().unwrap_or(&current_dir);
 
         tracing::debug!(
             command = %command,
@@ -610,10 +606,7 @@ impl LspClient {
     }
 
     /// Handle incoming message from LSP server
-    async fn handle_message(
-        message: Value,
-        pending_requests: &PendingRequests,
-    ) {
+    async fn handle_message(message: Value, pending_requests: &PendingRequests) {
         if let Some(id) = message.get("id") {
             if let Some(id_num) = id.as_i64() {
                 let sender = {

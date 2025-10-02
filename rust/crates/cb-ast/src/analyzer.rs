@@ -75,7 +75,7 @@ fn plan_rename_symbol(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> 
             if is_word_boundary {
                 edits.push(TextEdit {
                     file_path: None,
-            edit_type: EditType::Rename,
+                    edit_type: EditType::Rename,
                     location: EditLocation {
                         start_line: line_num as u32,
                         start_column: actual_pos as u32,
@@ -162,7 +162,7 @@ fn plan_add_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> {
 
     let edit = TextEdit {
         file_path: None,
-            edit_type: EditType::AddImport,
+        edit_type: EditType::AddImport,
         location: insert_location,
         original_text: String::new(),
         new_text: format!("{}\n", import_text),
@@ -256,7 +256,7 @@ fn plan_remove_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> 
                         if new_line != line {
                             edits.push(TextEdit {
                                 file_path: None,
-            edit_type: EditType::UpdateImport,
+                                edit_type: EditType::UpdateImport,
                                 location: EditLocation {
                                     start_line: line_num as u32,
                                     start_column: 0,
@@ -273,7 +273,7 @@ fn plan_remove_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> 
                         // Single import - remove entire line
                         edits.push(TextEdit {
                             file_path: None,
-            edit_type: EditType::RemoveImport,
+                            edit_type: EditType::RemoveImport,
                             location: EditLocation {
                                 start_line: line_num as u32,
                                 start_column: 0,
@@ -291,7 +291,7 @@ fn plan_remove_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> 
                 // Remove entire import
                 edits.push(TextEdit {
                     file_path: None,
-            edit_type: EditType::RemoveImport,
+                    edit_type: EditType::RemoveImport,
                     location: EditLocation {
                         start_line: line_num as u32,
                         start_column: 0,
@@ -311,7 +311,7 @@ fn plan_remove_import(intent: &IntentSpec, source: &str) -> AstResult<EditPlan> 
         {
             edits.push(TextEdit {
                 file_path: None,
-            edit_type: EditType::RemoveImport,
+                edit_type: EditType::RemoveImport,
                 location: EditLocation {
                     start_line: line_num as u32,
                     start_column: 0,
@@ -382,7 +382,7 @@ fn plan_update_import_path(intent: &IntentSpec, source: &str) -> AstResult<EditP
             if new_line != line {
                 edits.push(TextEdit {
                     file_path: None,
-            edit_type: EditType::UpdateImport,
+                    edit_type: EditType::UpdateImport,
                     location: EditLocation {
                         start_line: line_num as u32,
                         start_column: 0,
@@ -511,7 +511,7 @@ fn plan_extract_function(intent: &IntentSpec, source: &str) -> AstResult<EditPla
 
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Replace,
+        edit_type: EditType::Replace,
         location: EditLocation {
             start_line,
             start_column: 0,
@@ -528,7 +528,7 @@ fn plan_extract_function(intent: &IntentSpec, source: &str) -> AstResult<EditPla
     let insertion_point = find_function_insertion_point(source, start_line)?;
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Insert,
+        edit_type: EditType::Insert,
         location: insertion_point,
         original_text: String::new(),
         new_text: function_def,
@@ -607,7 +607,7 @@ fn plan_inline_function(intent: &IntentSpec, source: &str) -> AstResult<EditPlan
     // Remove the original function definition
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Delete,
+        edit_type: EditType::Delete,
         location: function_info.location.clone(),
         original_text: function_info.function_text.clone(),
         new_text: String::new(),
@@ -664,7 +664,12 @@ fn remove_named_import_from_line(line: &str, import_name: &str) -> String {
         ..Default::default()
     });
 
-    let lexer = Lexer::new(syntax, Default::default(), StringInput::from(&*source_file), None);
+    let lexer = Lexer::new(
+        syntax,
+        Default::default(),
+        StringInput::from(&*source_file),
+        None,
+    );
     let mut parser = Parser::new_from(lexer);
 
     // Try to parse as a module
@@ -690,20 +695,19 @@ fn remove_named_import_from_line(line: &str, import_name: &str) -> String {
                         ImportSpecifier::Named(named) => {
                             // Check both the local name and imported name
                             let local_name = named.local.sym.as_ref();
-                            let imported_name = named.imported.as_ref().map_or(local_name, |imp| {
-                                match imp {
-                                    swc_ecma_ast::ModuleExportName::Ident(ident) => ident.sym.as_ref(),
+                            let imported_name =
+                                named.imported.as_ref().map_or(local_name, |imp| match imp {
+                                    swc_ecma_ast::ModuleExportName::Ident(ident) => {
+                                        ident.sym.as_ref()
+                                    }
                                     swc_ecma_ast::ModuleExportName::Str(s) => s.value.as_ref(),
-                                }
-                            });
+                                });
                             local_name != import_name && imported_name != import_name
                         }
                         ImportSpecifier::Default(default) => {
                             default.local.sym.as_ref() != import_name
                         }
-                        ImportSpecifier::Namespace(ns) => {
-                            ns.local.sym.as_ref() != import_name
-                        }
+                        ImportSpecifier::Namespace(ns) => ns.local.sym.as_ref() != import_name,
                     }
                 });
 
@@ -756,7 +760,10 @@ fn remove_named_import_from_line(line: &str, import_name: &str) -> String {
         }
     }
 
-    String::from_utf8(buf).unwrap_or_else(|_| line.to_string()).trim().to_string()
+    String::from_utf8(buf)
+        .unwrap_or_else(|_| line.to_string())
+        .trim()
+        .to_string()
 }
 
 /// Analyze variables for function extraction
@@ -892,7 +899,10 @@ mod tests {
     fn test_remove_only_named_import() {
         let line = "import { foo } from 'module';";
         let result = remove_named_import_from_line(line, "foo");
-        assert_eq!(result, "", "Should return empty string when removing the only import");
+        assert_eq!(
+            result, "",
+            "Should return empty string when removing the only import"
+        );
     }
 
     #[test]
@@ -903,7 +913,10 @@ mod tests {
             result.contains("bar") && result.contains("baz"),
             "Should keep remaining imports"
         );
-        assert!(!result.contains("foo"), "Should remove the specified import");
+        assert!(
+            !result.contains("foo"),
+            "Should remove the specified import"
+        );
     }
 
     #[test]
@@ -914,7 +927,10 @@ mod tests {
             result.contains("foo") && result.contains("baz"),
             "Should keep remaining imports"
         );
-        assert!(!result.contains("bar"), "Should remove the specified import");
+        assert!(
+            !result.contains("bar"),
+            "Should remove the specified import"
+        );
     }
 
     #[test]
@@ -925,14 +941,20 @@ mod tests {
             result.contains("foo") && result.contains("bar"),
             "Should keep remaining imports"
         );
-        assert!(!result.contains("baz"), "Should remove the specified import");
+        assert!(
+            !result.contains("baz"),
+            "Should remove the specified import"
+        );
     }
 
     #[test]
     fn test_remove_non_existent_import() {
         let line = "import { foo, bar } from 'module';";
         let result = remove_named_import_from_line(line, "nonexistent");
-        assert_eq!(result, line, "Should return original line when import not found");
+        assert_eq!(
+            result, line,
+            "Should return original line when import not found"
+        );
     }
 
     #[test]

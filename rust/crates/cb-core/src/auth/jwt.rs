@@ -45,8 +45,8 @@ pub fn validate_token_with_project(
     // Don't require aud claim in tests
     validation.validate_aud = false;
 
-    let token_data =
-        decode::<Claims>(token, &key, &validation).map_err(|e| CoreError::permission_denied(e.to_string()))?;
+    let token_data = decode::<Claims>(token, &key, &validation)
+        .map_err(|e| CoreError::permission_denied(e.to_string()))?;
 
     // Check if project_id claim matches expected value
     if let Some(project_id) = &token_data.claims.project_id {
@@ -91,7 +91,8 @@ pub fn generate_token(
     let header = Header::default();
     let key = EncodingKey::from_secret(secret.as_ref());
 
-    encode(&header, &claims, &key).map_err(|e| CoreError::permission_denied(format!("Token generation failed: {}", e)))
+    encode(&header, &claims, &key)
+        .map_err(|e| CoreError::permission_denied(format!("Token generation failed: {}", e)))
 }
 
 #[cfg(test)]

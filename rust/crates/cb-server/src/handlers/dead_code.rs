@@ -54,7 +54,10 @@ pub async fn analyze_dead_code(
     config: AnalysisConfig,
 ) -> ServerResult<Vec<DeadSymbol>> {
     let all_symbols = collect_workspace_symbols(&lsp_config).await?;
-    debug!(total_symbols = all_symbols.len(), "Collected symbols from language servers");
+    debug!(
+        total_symbols = all_symbols.len(),
+        "Collected symbols from language servers"
+    );
 
     if all_symbols.is_empty() {
         return Ok(Vec::new());
@@ -69,12 +72,9 @@ pub async fn analyze_dead_code(
         "Filtered to analyzable symbols"
     );
 
-    let dead_symbols = check_symbol_references(
-        &lsp_config,
-        symbols_to_check,
-        config.max_concurrent_checks,
-    )
-    .await?;
+    let dead_symbols =
+        check_symbol_references(&lsp_config, symbols_to_check, config.max_concurrent_checks)
+            .await?;
 
     info!(
         dead_symbols_found = dead_symbols.len(),
@@ -102,7 +102,10 @@ async fn collect_workspace_symbols(
             format!("dead-code-collector-{}", primary_ext),
         );
 
-        match adapter.request("workspace/symbol", json!({ "query": "" })).await {
+        match adapter
+            .request("workspace/symbol", json!({ "query": "" }))
+            .await
+        {
             Ok(response) => {
                 if let Some(symbols) = response.as_array() {
                     debug!(

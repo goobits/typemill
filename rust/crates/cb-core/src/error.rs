@@ -196,33 +196,28 @@ impl From<CoreError> for ApiError {
         use error_codes::*;
 
         match err {
-            CoreError::Config { message } => {
-                ApiError::new(E1001_INVALID_REQUEST, message)
-            }
+            CoreError::Config { message } => ApiError::new(E1001_INVALID_REQUEST, message),
             CoreError::Io(e) => {
                 ApiError::new(E1000_INTERNAL_SERVER_ERROR, format!("I/O error: {}", e))
             }
-            CoreError::Json(e) => {
-                ApiError::new(E1008_INVALID_DATA, format!("JSON error: {}", e))
-            }
-            CoreError::InvalidData { message } => {
-                ApiError::new(E1008_INVALID_DATA, message)
-            }
-            CoreError::NotSupported { operation } => {
-                ApiError::new(E1007_NOT_SUPPORTED, format!("Operation not supported: {}", operation))
-            }
-            CoreError::NotFound { resource } => {
-                ApiError::new(E1006_RESOURCE_NOT_FOUND, format!("Resource not found: {}", resource))
-            }
-            CoreError::PermissionDenied { operation } => {
-                ApiError::new(E1005_PERMISSION_DENIED, format!("Permission denied: {}", operation))
-            }
+            CoreError::Json(e) => ApiError::new(E1008_INVALID_DATA, format!("JSON error: {}", e)),
+            CoreError::InvalidData { message } => ApiError::new(E1008_INVALID_DATA, message),
+            CoreError::NotSupported { operation } => ApiError::new(
+                E1007_NOT_SUPPORTED,
+                format!("Operation not supported: {}", operation),
+            ),
+            CoreError::NotFound { resource } => ApiError::new(
+                E1006_RESOURCE_NOT_FOUND,
+                format!("Resource not found: {}", resource),
+            ),
+            CoreError::PermissionDenied { operation } => ApiError::new(
+                E1005_PERMISSION_DENIED,
+                format!("Permission denied: {}", operation),
+            ),
             CoreError::Timeout { operation } => {
                 ApiError::new(E1004_TIMEOUT, format!("Timeout: {}", operation))
             }
-            CoreError::Internal { message } => {
-                ApiError::new(E1000_INTERNAL_SERVER_ERROR, message)
-            }
+            CoreError::Internal { message } => ApiError::new(E1000_INTERNAL_SERVER_ERROR, message),
         }
     }
 }

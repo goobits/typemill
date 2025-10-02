@@ -132,7 +132,10 @@ impl DirectLspAdapter {
             match self.get_or_create_client(extension).await {
                 Ok(client) => {
                     // Send workspace/symbol request to this server
-                    match client.send_request("workspace/symbol", params.clone()).await {
+                    match client
+                        .send_request("workspace/symbol", params.clone())
+                        .await
+                    {
                         Ok(response) => {
                             // Extract symbols from response
                             if let Some(symbols) = response.as_array() {
@@ -518,7 +521,11 @@ impl PluginDispatcher {
                     lsp_adapter: self.lsp_adapter.clone(),
                 };
                 drop(registry); // Release lock before async operation
-                self.tool_registry.lock().await.handle_tool(tool_call, &context).await
+                self.tool_registry
+                    .lock()
+                    .await
+                    .handle_tool(tool_call, &context)
+                    .await
             } else {
                 // Fall back to plugin system for LSP operations only
                 let plugin_request = self.convert_tool_call_to_plugin_request(tool_call)?;
@@ -602,26 +609,22 @@ impl PluginDispatcher {
         // Extract position if available
         // If line or character are provided, they must be valid numbers
         let line_opt = match args.get("line") {
-            Some(val) if !val.is_null() => {
-                Some(val.as_u64().ok_or_else(|| {
-                    ServerError::InvalidRequest(format!(
-                        "Parameter 'line' must be a number, got: {}",
-                        val
-                    ))
-                })?)
-            }
+            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
+                ServerError::InvalidRequest(format!(
+                    "Parameter 'line' must be a number, got: {}",
+                    val
+                ))
+            })?),
             _ => None,
         };
 
         let character_opt = match args.get("character") {
-            Some(val) if !val.is_null() => {
-                Some(val.as_u64().ok_or_else(|| {
-                    ServerError::InvalidRequest(format!(
-                        "Parameter 'character' must be a number, got: {}",
-                        val
-                    ))
-                })?)
-            }
+            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
+                ServerError::InvalidRequest(format!(
+                    "Parameter 'character' must be a number, got: {}",
+                    val
+                ))
+            })?),
             _ => None,
         };
 
@@ -632,50 +635,42 @@ impl PluginDispatcher {
         // Extract range if available
         // If range parameters are provided, they must be valid numbers
         let start_line_opt = match args.get("start_line") {
-            Some(val) if !val.is_null() => {
-                Some(val.as_u64().ok_or_else(|| {
-                    ServerError::InvalidRequest(format!(
-                        "Parameter 'start_line' must be a number, got: {}",
-                        val
-                    ))
-                })?)
-            }
+            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
+                ServerError::InvalidRequest(format!(
+                    "Parameter 'start_line' must be a number, got: {}",
+                    val
+                ))
+            })?),
             _ => None,
         };
 
         let start_char_opt = match args.get("start_character") {
-            Some(val) if !val.is_null() => {
-                Some(val.as_u64().ok_or_else(|| {
-                    ServerError::InvalidRequest(format!(
-                        "Parameter 'start_character' must be a number, got: {}",
-                        val
-                    ))
-                })?)
-            }
+            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
+                ServerError::InvalidRequest(format!(
+                    "Parameter 'start_character' must be a number, got: {}",
+                    val
+                ))
+            })?),
             _ => None,
         };
 
         let end_line_opt = match args.get("end_line") {
-            Some(val) if !val.is_null() => {
-                Some(val.as_u64().ok_or_else(|| {
-                    ServerError::InvalidRequest(format!(
-                        "Parameter 'end_line' must be a number, got: {}",
-                        val
-                    ))
-                })?)
-            }
+            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
+                ServerError::InvalidRequest(format!(
+                    "Parameter 'end_line' must be a number, got: {}",
+                    val
+                ))
+            })?),
             _ => None,
         };
 
         let end_char_opt = match args.get("end_character") {
-            Some(val) if !val.is_null() => {
-                Some(val.as_u64().ok_or_else(|| {
-                    ServerError::InvalidRequest(format!(
-                        "Parameter 'end_character' must be a number, got: {}",
-                        val
-                    ))
-                })?)
-            }
+            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
+                ServerError::InvalidRequest(format!(
+                    "Parameter 'end_character' must be a number, got: {}",
+                    val
+                ))
+            })?),
             _ => None,
         };
 
@@ -753,119 +748,6 @@ impl PluginDispatcher {
     pub fn plugin_manager(&self) -> &PluginManager {
         &self.plugin_manager
     }
-
-    /// Escape a shell argument for safe execution
-    fn escape_shell_arg(arg: &str) -> String {
-        // Replace single quotes with '\'' to safely escape for sh -c
-        arg.replace('\'', "'\\''")
-    }
-
-    /// Execute a command in a remote workspace via its agent
-    async fn execute_remote_command(
-        workspace_manager: &WorkspaceManager,
-        workspace_id: &str,
-        command: &str,
-    ) -> ServerResult<String> {
-        debug!(
-            workspace_id = %workspace_id,
-            command = %command,
-            "Executing remote command"
-        );
-
-        // Look up workspace
-        let workspace = workspace_manager
-            .get(workspace_id)
-            .ok_or_else(|| {
-                ServerError::InvalidRequest(format!("Workspace '{}' not found", workspace_id))
-            })?;
-
-        // Build agent URL
-        let agent_url = format!("{}/execute", workspace.agent_url);
-
-        // Create HTTP client with timeout
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(60))
-            .build()
-            .map_err(|e| {
-                error!(error = %e, "Failed to create HTTP client");
-                ServerError::Internal("HTTP client error".into())
-            })?;
-
-        // Execute command via agent
-        let response = client
-            .post(&agent_url)
-            .json(&json!({ "command": command }))
-            .send()
-            .await
-            .map_err(|e| {
-                error!(
-                    workspace_id = %workspace_id,
-                    agent_url = %agent_url,
-                    error = %e,
-                    "Failed to send command to workspace agent"
-                );
-                ServerError::Internal(format!("Failed to reach workspace agent: {}", e))
-            })?;
-
-        // Check response status
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            error!(
-                workspace_id = %workspace_id,
-                status = %status,
-                error = %error_text,
-                "Agent returned error"
-            );
-            return Err(ServerError::Internal(format!(
-                "Agent error ({}): {}",
-                status, error_text
-            )));
-        }
-
-        // Parse response
-        #[derive(serde::Deserialize)]
-        struct ExecuteResponse {
-            exit_code: i32,
-            stdout: String,
-            stderr: String,
-        }
-
-        let result: ExecuteResponse = response.json().await.map_err(|e| {
-            error!(
-                workspace_id = %workspace_id,
-                error = %e,
-                "Failed to parse agent response"
-            );
-            ServerError::Internal("Invalid response from workspace agent".into())
-        })?;
-
-        // Check exit code
-        if result.exit_code != 0 {
-            error!(
-                workspace_id = %workspace_id,
-                exit_code = result.exit_code,
-                stderr = %result.stderr,
-                "Command failed in workspace"
-            );
-            return Err(ServerError::Internal(format!(
-                "Command failed with exit code {}: {}",
-                result.exit_code, result.stderr
-            )));
-        }
-
-        debug!(
-            workspace_id = %workspace_id,
-            stdout_len = result.stdout.len(),
-            "Command executed successfully"
-        );
-
-        Ok(result.stdout)
-    }
-
 
     /// Checks if a specific LSP method is supported for the given file.
     ///
@@ -953,155 +835,6 @@ impl PluginDispatcher {
             },
             "plugins": plugins
         }))
-    }
-
-    /// Handle find_dead_code tool using the dedicated analyzer module
-    async fn handle_find_dead_code(&self, tool_call: ToolCall) -> ServerResult<Value> {
-        let start_time = std::time::Instant::now();
-        let args = tool_call.arguments.unwrap_or(json!({}));
-        let workspace_path = args
-            .get("workspace_path")
-            .and_then(|v| v.as_str())
-            .unwrap_or(".");
-
-        debug!(workspace_path = %workspace_path, "Handling find_dead_code request");
-
-        // Load LSP configuration
-        let app_config = cb_core::config::AppConfig::load()
-            .map_err(|e| ServerError::Internal(format!("Failed to load config: {}", e)))?;
-
-        // Run dead code analysis
-        let config = crate::handlers::dead_code::AnalysisConfig::default();
-        let dead_symbols = crate::handlers::dead_code::analyze_dead_code(
-            app_config.lsp,
-            workspace_path,
-            config,
-        )
-        .await?;
-
-        // Format response with complete stats
-        let dead_symbols_json: Vec<Value> = dead_symbols
-            .iter()
-            .map(|s| {
-                json!({
-                    "name": s.name,
-                    "kind": s.kind,
-                    "file": s.file_path,
-                    "line": s.line,
-                    "column": s.column,
-                    "referenceCount": s.reference_count,
-                })
-            })
-            .collect();
-
-        let files_analyzed = dead_symbols
-            .iter()
-            .map(|s| s.file_path.as_str())
-            .collect::<std::collections::HashSet<_>>()
-            .len();
-
-        Ok(json!({
-            "workspacePath": workspace_path,
-            "deadSymbols": dead_symbols_json,
-            "analysisStats": {
-                "filesAnalyzed": files_analyzed,
-                "symbolsAnalyzed": dead_symbols_json.len(),
-                "deadSymbolsFound": dead_symbols.len(),
-                "analysisDurationMs": start_time.elapsed().as_millis(),
-            }
-        }))
-    }
-
-    /// Handle fix_imports by delegating to LSP's organize_imports
-    ///
-    /// This tool analyzes and fixes import statements in a file by removing unused imports,
-    /// organizing import order, and applying language-specific formatting conventions.
-    ///
-    /// # How it Works
-    ///
-    /// - **Dry-run mode** (`dry_run: true`): Returns a preview message without making changes
-    /// - **Normal mode** (`dry_run: false`): Delegates to LSP's `organize_imports` code action
-    ///   which performs semantic analysis to identify and remove all types of unused imports:
-    ///   - Named imports (e.g., `import { unused } from 'module'`)
-    ///   - Default imports (e.g., `import Unused from 'module'`)
-    ///   - Namespace imports (e.g., `import * as unused from 'module'`)
-    ///   - Side-effect imports (e.g., `import './unused.css'`)
-    ///
-    /// # Requirements
-    ///
-    /// - Requires an LSP server that supports the `source.organizeImports` code action
-    /// - TypeScript Language Server provides full support for this feature
-    ///
-    /// # Parameters
-    ///
-    /// - `file_path`: Absolute path to the file to fix
-    /// - `dry_run`: Optional boolean (default: false) - if true, returns preview without changes
-    ///
-    /// # Returns
-    ///
-    /// Returns a JSON object with:
-    /// - `operation`: "fix_imports"
-    /// - `file_path`: The file that was processed
-    /// - `dry_run`: Whether this was a dry-run
-    /// - `modified`: Whether the file was actually modified
-    /// - `status`: "preview" (dry-run) or "fixed" (actual changes)
-    /// - `lsp_response`: The response from organize_imports (when not dry-run)
-    async fn handle_fix_imports(&self, tool_call: ToolCall) -> ServerResult<Value> {
-        let args = tool_call.arguments.unwrap_or(json!({}));
-
-        // Extract parameters from fix_imports call
-        let file_path = args
-            .get("file_path")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("file_path is required".to_string()))?;
-
-        let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
-
-        debug!(file_path = %file_path, dry_run = dry_run, "Handling fix_imports via organize_imports");
-
-        if dry_run {
-            // For dry-run mode, just return a preview message
-            return Ok(json!({
-                "operation": "fix_imports",
-                "file_path": file_path,
-                "dry_run": true,
-                "modified": false,
-                "status": "preview",
-                "message": "Dry run mode - set dry_run: false to apply import organization"
-            }));
-        }
-
-        // For actual fixes, delegate to organize_imports via LSP
-        // Create a new tool call for organize_imports
-        let organize_imports_call = ToolCall {
-            name: "organize_imports".to_string(),
-            arguments: Some(json!({
-                "file_path": file_path
-            })),
-        };
-
-        // Convert to plugin request and dispatch through LSP adapter
-        let plugin_request = self.convert_tool_call_to_plugin_request(organize_imports_call)?;
-
-        match self.plugin_manager.handle_request(plugin_request).await {
-            Ok(response) => {
-                // Wrap LSP response in fix_imports format
-                Ok(json!({
-                    "operation": "fix_imports",
-                    "file_path": file_path,
-                    "dry_run": false,
-                    "modified": true,
-                    "status": "fixed",
-                    "lsp_response": response
-                }))
-            }
-            Err(e) => {
-                Err(ServerError::internal(format!(
-                    "Failed to organize imports: {}",
-                    e
-                )))
-            }
-        }
     }
 }
 

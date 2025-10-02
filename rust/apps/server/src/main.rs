@@ -120,7 +120,11 @@ pub async fn run_websocket_server_with_port(port: u16) {
     let workspace_manager = Arc::new(WorkspaceManager::new());
 
     // Initialize dispatcher via factory
-    let dispatcher = match dispatcher_factory::create_initialized_dispatcher_with_workspace(workspace_manager.clone()).await {
+    let dispatcher = match dispatcher_factory::create_initialized_dispatcher_with_workspace(
+        workspace_manager.clone(),
+    )
+    .await
+    {
         Ok(d) => d,
         Err(e) => {
             error!(error = %e, "Failed to initialize dispatcher");
@@ -132,7 +136,8 @@ pub async fn run_websocket_server_with_port(port: u16) {
     let admin_port = port + 1000; // Admin on port+1000
     let admin_workspace_manager = workspace_manager.clone();
     tokio::spawn(async move {
-        if let Err(e) = cb_transport::start_admin_server(admin_port, admin_workspace_manager).await {
+        if let Err(e) = cb_transport::start_admin_server(admin_port, admin_workspace_manager).await
+        {
             error!(
                 error_category = "admin_server_error",
                 error = %e,

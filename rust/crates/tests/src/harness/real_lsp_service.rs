@@ -35,15 +35,20 @@ impl RealLspService {
             .current_dir(root_path);
 
         let mut child = command.spawn().map_err(|e| {
-            ApiError::lsp(format!("Failed to spawn LSP server for {}: {}", extension, e))
+            ApiError::lsp(format!(
+                "Failed to spawn LSP server for {}: {}",
+                extension, e
+            ))
         })?;
 
-        let stdin = child.stdin.take().ok_or_else(|| {
-            ApiError::lsp("Failed to capture stdin of LSP server".to_string())
-        })?;
-        let stdout = child.stdout.take().ok_or_else(|| {
-            ApiError::lsp("Failed to capture stdout of LSP server".to_string())
-        })?;
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| ApiError::lsp("Failed to capture stdin of LSP server".to_string()))?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| ApiError::lsp("Failed to capture stdout of LSP server".to_string()))?;
 
         let responses = Arc::new(Mutex::new(HashMap::new()));
         let responses_clone = responses.clone();
@@ -78,7 +83,9 @@ impl RealLspService {
 
                         // Parse Content-Length header
                         if line.starts_with("Content-Length:") {
-                            if let Some(length_str) = line.strip_prefix("Content-Length:").map(|s| s.trim()) {
+                            if let Some(length_str) =
+                                line.strip_prefix("Content-Length:").map(|s| s.trim())
+                            {
                                 if let Ok(content_length) = length_str.parse::<usize>() {
                                     // Skip remaining headers until empty line
                                     loop {
@@ -93,34 +100,59 @@ impl RealLspService {
 
                                     // Read JSON content
                                     let mut json_buffer = vec![0u8; content_length];
-                                    if let Ok(_) = tokio::io::AsyncReadExt::read_exact(&mut reader, &mut json_buffer).await {
+                                    if let Ok(_) = tokio::io::AsyncReadExt::read_exact(
+                                        &mut reader,
+                                        &mut json_buffer,
+                                    )
+                                    .await
+                                    {
                                         if let Ok(json_str) = String::from_utf8(json_buffer) {
-                                            if let Ok(value) = serde_json::from_str::<Value>(&json_str) {
+                                            if let Ok(value) =
+                                                serde_json::from_str::<Value>(&json_str)
+                                            {
                                                 // Check if this is a response (has "id" field)
-                                                if let Some(id) = value.get("id").and_then(|v| v.as_str()) {
+                                                if let Some(id) =
+                                                    value.get("id").and_then(|v| v.as_str())
+                                                {
                                                     let msg = Message {
                                                         id: Some(id.to_string()),
-                                                        method: value.get("method")
+                                                        method: value
+                                                            .get("method")
                                                             .and_then(|v| v.as_str())
                                                             .unwrap_or("response")
                                                             .to_string(),
-                                                        params: value.get("result")
+                                                        params: value
+                                                            .get("result")
                                                             .cloned()
-                                                            .unwrap_or_else(|| value.get("error").cloned().unwrap_or(Value::Null)),
+                                                            .unwrap_or_else(|| {
+                                                                value
+                                                                    .get("error")
+                                                                    .cloned()
+                                                                    .unwrap_or(Value::Null)
+                                                            }),
                                                     };
                                                     let mut resp = responses_clone.lock().unwrap();
                                                     resp.insert(id.to_string(), msg);
-                                                } else if let Some(id_num) = value.get("id").and_then(|v| v.as_i64()) {
+                                                } else if let Some(id_num) =
+                                                    value.get("id").and_then(|v| v.as_i64())
+                                                {
                                                     let id = id_num.to_string();
                                                     let msg = Message {
                                                         id: Some(id.clone()),
-                                                        method: value.get("method")
+                                                        method: value
+                                                            .get("method")
                                                             .and_then(|v| v.as_str())
                                                             .unwrap_or("response")
                                                             .to_string(),
-                                                        params: value.get("result")
+                                                        params: value
+                                                            .get("result")
                                                             .cloned()
-                                                            .unwrap_or_else(|| value.get("error").cloned().unwrap_or(Value::Null)),
+                                                            .unwrap_or_else(|| {
+                                                                value
+                                                                    .get("error")
+                                                                    .cloned()
+                                                                    .unwrap_or(Value::Null)
+                                                            }),
                                                     };
                                                     let mut resp = responses_clone.lock().unwrap();
                                                     resp.insert(id, msg);
@@ -204,7 +236,11 @@ impl LspService for RealLspService {
         let request_str = serde_json::to_string(&lsp_request)
             .map_err(|e| ApiError::lsp(format!("Failed to serialize request: {}", e)))?;
 
-        let lsp_message = format!("Content-Length: {}\r\n\r\n{}", request_str.len(), request_str);
+        let lsp_message = format!(
+            "Content-Length: {}\r\n\r\n{}",
+            request_str.len(),
+            request_str
+        );
 
         self.stdin_tx
             .send(lsp_message)

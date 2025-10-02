@@ -301,7 +301,10 @@ impl SystemToolsPlugin {
                 if dry_run {
                     ("pip", vec!["list", "--outdated"])
                 } else {
-                    ("pip", vec!["install", "--upgrade", "-r", "requirements.txt"])
+                    (
+                        "pip",
+                        vec!["install", "--upgrade", "-r", "requirements.txt"],
+                    )
                 }
             }
             _ => {
@@ -413,7 +416,6 @@ impl SystemToolsPlugin {
             "status": "success"
         }))
     }
-
 }
 
 #[async_trait]

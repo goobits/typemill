@@ -688,7 +688,10 @@ function MyComponent() {
     // If LSP is not available, it should return an error or delegate appropriately
     match response {
         Ok(response_value) => {
-            eprintln!("Response: {}", serde_json::to_string_pretty(&response_value).unwrap());
+            eprintln!(
+                "Response: {}",
+                serde_json::to_string_pretty(&response_value).unwrap()
+            );
 
             // Check if there's a result field
             if let Some(result) = response_value.get("result") {
@@ -697,7 +700,10 @@ function MyComponent() {
                 assert_eq!(result["status"].as_str().unwrap(), "fixed");
 
                 // If successful, the LSP response should be present
-                assert!(result.get("lsp_response").is_some(), "Expected lsp_response field");
+                assert!(
+                    result.get("lsp_response").is_some(),
+                    "Expected lsp_response field"
+                );
             } else if let Some(_error) = response_value.get("error") {
                 // Error response is acceptable if LSP is not configured
                 eprintln!("Note: fix_imports returned an error (LSP may not be configured)");
@@ -708,7 +714,10 @@ function MyComponent() {
         Err(e) => {
             // If LSP is not available or organize_imports is not supported,
             // that's acceptable for this test - we're just verifying the delegation works
-            eprintln!("Note: fix_imports requires LSP organize_imports support: {:?}", e);
+            eprintln!(
+                "Note: fix_imports requires LSP organize_imports support: {:?}",
+                e
+            );
         }
     }
 }
@@ -814,7 +823,11 @@ async fn test_extract_function_refactoring() {
                 );
 
                 // If it succeeded, verify file was modified
-                if result.get("success").and_then(|s| s.as_bool()).unwrap_or(false) {
+                if result
+                    .get("success")
+                    .and_then(|s| s.as_bool())
+                    .unwrap_or(false)
+                {
                     let modified_content = tokio::fs::read_to_string(&test_file).await.unwrap();
                     assert_ne!(
                         original_content, modified_content,
@@ -872,7 +885,11 @@ async fn test_inline_variable_refactoring() {
                 );
 
                 // If it succeeded, verify file was modified
-                if result.get("success").and_then(|s| s.as_bool()).unwrap_or(false) {
+                if result
+                    .get("success")
+                    .and_then(|s| s.as_bool())
+                    .unwrap_or(false)
+                {
                     let modified_content = tokio::fs::read_to_string(&test_file).await.unwrap();
                     assert_ne!(
                         original_content, modified_content,
@@ -971,21 +988,39 @@ edition = "2021"
 
     // Check if there's a result field with success indicator
     if let Some(result_obj) = response.get("result") {
-        assert_eq!(result_obj["success"], true, "Result should indicate success");
+        assert_eq!(
+            result_obj["success"], true,
+            "Result should indicate success"
+        );
     } else {
         // Check for success at top level
-        assert_eq!(response["success"], true, "Response should indicate success");
+        assert_eq!(
+            response["success"], true,
+            "Response should indicate success"
+        );
     }
 
     // 3. Verify the workspace Cargo.toml was updated
     let ws_manifest = workspace.read_file("Cargo.toml");
-    assert!(ws_manifest.contains("\"crates/crate_renamed\"") || ws_manifest.contains("crates/crate_renamed"));
+    assert!(
+        ws_manifest.contains("\"crates/crate_renamed\"")
+            || ws_manifest.contains("crates/crate_renamed")
+    );
     assert!(!ws_manifest.contains("\"crates/crate_b\"") || !ws_manifest.contains("crate_b\""));
 
     // 4. Verify that crate_b directory was actually moved
-    assert!(workspace.file_exists("crates/crate_renamed/Cargo.toml"), "Renamed crate should exist");
-    assert!(workspace.file_exists("crates/crate_renamed/src/lib.rs"), "Renamed crate source should exist");
-    assert!(!workspace.file_exists("crates/crate_b/Cargo.toml"), "Old crate directory should not exist");
+    assert!(
+        workspace.file_exists("crates/crate_renamed/Cargo.toml"),
+        "Renamed crate should exist"
+    );
+    assert!(
+        workspace.file_exists("crates/crate_renamed/src/lib.rs"),
+        "Renamed crate source should exist"
+    );
+    assert!(
+        !workspace.file_exists("crates/crate_b/Cargo.toml"),
+        "Old crate directory should not exist"
+    );
 
     // Note: The test workspace uses path dependencies between crates.
     // When a crate directory is renamed:

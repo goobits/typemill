@@ -49,11 +49,9 @@ impl LspTestBuilder {
                 let mock_service = Arc::new(MockLspService::new());
                 Ok((mock_service, self.workspace))
             }
-            LspTestMode::Real => {
-                Err(ApiError::lsp(
-                    "build_mock() called but mode is Real. Use build() for trait object.".to_string()
-                ))
-            }
+            LspTestMode::Real => Err(ApiError::lsp(
+                "build_mock() called but mode is Real. Use build() for trait object.".to_string(),
+            )),
         }
     }
 

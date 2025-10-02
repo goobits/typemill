@@ -29,11 +29,7 @@ impl ToolHandler for WorkflowHandler {
         vec!["achieve_intent", "apply_edits"]
     }
 
-    async fn handle_tool(
-        &self,
-        tool_call: ToolCall,
-        context: &ToolContext,
-    ) -> ServerResult<Value> {
+    async fn handle_tool(&self, tool_call: ToolCall, context: &ToolContext) -> ServerResult<Value> {
         debug!(tool_name = %tool_call.name, "Handling workflow operation");
 
         match tool_call.name.as_str() {

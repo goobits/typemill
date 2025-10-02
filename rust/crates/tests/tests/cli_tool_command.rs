@@ -79,11 +79,7 @@ fn test_tool_list_files_success() {
 
     let mut cmd = codebuddy_cmd();
     cmd.current_dir(temp_dir.path());
-    cmd.args(&[
-        "tool",
-        "list_files",
-        r#"{"path": "."}"#,
-    ]);
+    cmd.args(&["tool", "list_files", r#"{"path": "."}"#]);
 
     cmd.assert()
         .success()
@@ -99,11 +95,7 @@ fn test_tool_read_file_success() {
 
     let mut cmd = codebuddy_cmd();
     cmd.current_dir(temp_dir.path());
-    cmd.args(&[
-        "tool",
-        "read_file",
-        r#"{"file_path": "test.txt"}"#,
-    ]);
+    cmd.args(&["tool", "read_file", r#"{"file_path": "test.txt"}"#]);
 
     cmd.assert()
         .success()
@@ -151,11 +143,7 @@ fn test_tool_create_and_read_file() {
     // Read file back
     let mut cmd = codebuddy_cmd();
     cmd.current_dir(temp_dir.path());
-    cmd.args(&[
-        "tool",
-        "read_file",
-        r#"{"file_path": "created.txt"}"#,
-    ]);
+    cmd.args(&["tool", "read_file", r#"{"file_path": "created.txt"}"#]);
 
     cmd.assert()
         .success()
@@ -179,12 +167,10 @@ fn test_tool_missing_required_arguments() {
     cmd.args(&[
         "tool",
         "read_file",
-        "{}",  // Missing required file_path argument
+        "{}", // Missing required file_path argument
     ]);
 
-    cmd.assert()
-        .failure()
-        .code(1);
+    cmd.assert().failure().code(1);
 }
 
 #[test]
@@ -203,11 +189,7 @@ fn test_tool_output_is_valid_json() {
 #[test]
 fn test_tool_error_output_is_valid_json() {
     let mut cmd = codebuddy_cmd();
-    cmd.args(&[
-        "tool",
-        "read_file",
-        r#"{"file_path": "/nonexistent.txt"}"#,
-    ]);
+    cmd.args(&["tool", "read_file", r#"{"file_path": "/nonexistent.txt"}"#]);
 
     let output = cmd.assert().failure();
     let stderr = String::from_utf8_lossy(&output.get_output().stderr);

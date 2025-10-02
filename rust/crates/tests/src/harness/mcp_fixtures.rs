@@ -193,7 +193,6 @@ pub const LIST_FILES_TESTS: &[ListFilesTestCase] = &[
     },
 ];
 
-
 // =============================================================================
 // ANALYZE IMPORTS TEST CASES
 // =============================================================================
@@ -354,7 +353,10 @@ pub const RENAME_DIRECTORY_TESTS: &[RenameDirectoryTestCase] = &[
     RenameDirectoryTestCase {
         test_name: "rename_with_import_updates",
         initial_files: &[
-            ("components/Button.tsx", "export const Button = () => <button />;"),
+            (
+                "components/Button.tsx",
+                "export const Button = () => <button />;",
+            ),
             (
                 "app.tsx",
                 r#"import { Button } from './components/Button';
@@ -482,13 +484,19 @@ export class UserService {
         expect_success: true,
         expected_import_updates: &[
             ("src/core/models/UserModel.ts", "from '../../shared/types'"),
-            ("src/features/users/UserService.ts", "from '../../shared/types'"),
+            (
+                "src/features/users/UserService.ts",
+                "from '../../shared/types'",
+            ),
         ],
     },
     RenameFileTestCase {
         test_name: "rename_to_subdirectory",
         initial_files: &[
-            ("config.ts", "export const API_URL = 'https://api.example.com';"),
+            (
+                "config.ts",
+                "export const API_URL = 'https://api.example.com';",
+            ),
             (
                 "app.ts",
                 r#"import { API_URL } from './config';

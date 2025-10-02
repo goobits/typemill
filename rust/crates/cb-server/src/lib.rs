@@ -90,18 +90,19 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
             "Registering MCP proxy plugin"
         );
 
-        let mut mcp_plugin = McpProxyPlugin::new(
-            external_mcp_config.servers.clone()
-        );
+        let mut mcp_plugin = McpProxyPlugin::new(external_mcp_config.servers.clone());
 
         // Initialize the plugin BEFORE wrapping in Arc
-        mcp_plugin.initialize().await
-            .map_err(|e| ServerError::plugin(format!("Failed to initialize MCP proxy plugin: {}", e)))?;
+        mcp_plugin.initialize().await.map_err(|e| {
+            ServerError::plugin(format!("Failed to initialize MCP proxy plugin: {}", e))
+        })?;
 
         plugin_manager
             .register_plugin("mcp-proxy", Arc::new(mcp_plugin))
             .await
-            .map_err(|e| ServerError::plugin(format!("Failed to register MCP proxy plugin: {}", e)))?;
+            .map_err(|e| {
+                ServerError::plugin(format!("Failed to register MCP proxy plugin: {}", e))
+            })?;
     }
 
     let workflow_executor =

@@ -187,7 +187,8 @@ impl ImportPathResolver {
                         if modified == cached_info.last_modified {
                             // Cache hit - check if renamed file is in cached imports
                             debug!(file = ?file, "Cache hit for import check");
-                            let is_affected = cached_info.imports.contains(&renamed_file.to_path_buf());
+                            let is_affected =
+                                cached_info.imports.contains(&renamed_file.to_path_buf());
                             (false, is_affected)
                         } else {
                             // Cache stale - need to re-scan
@@ -318,7 +319,9 @@ pub async fn update_imports_for_rename(
     let project_files = find_project_files(project_root, adapters).await?;
 
     // Find files that import the renamed file
-    let affected_files = resolver.find_affected_files(old_path, &project_files).await?;
+    let affected_files = resolver
+        .find_affected_files(old_path, &project_files)
+        .await?;
 
     info!(
         dry_run = dry_run,
@@ -410,7 +413,6 @@ pub async fn update_imports_for_rename(
     Ok(result)
 }
 
-
 /// Extract import path from an import/require statement
 pub fn extract_import_path(line: &str) -> Option<String> {
     // Handle ES6 imports: import ... from 'path'
@@ -480,7 +482,10 @@ pub async fn find_project_files(
                     } else if let Some(ext) = path.extension() {
                         let ext_str = ext.to_str().unwrap_or("");
                         // Check if any adapter handles this extension
-                        if adapters.iter().any(|adapter| adapter.handles_extension(ext_str)) {
+                        if adapters
+                            .iter()
+                            .any(|adapter| adapter.handles_extension(ext_str))
+                        {
                             files.push(path);
                         }
                     }
@@ -580,6 +585,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(affected3.len(), 1);
-        assert!(affected3.contains(&file_a), "Should still detect fileA after modification");
+        assert!(
+            affected3.contains(&file_a),
+            "Should still detect fileA after modification"
+        );
     }
 }

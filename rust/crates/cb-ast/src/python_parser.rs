@@ -36,13 +36,14 @@ pub fn list_functions(source: &str) -> AstResult<Vec<String>> {
     }
 
     // Wait for the process to finish and capture its output.
-    let output = child.wait_with_output().map_err(|e| {
-        AstError::analysis(format!("Failed to wait for Python script: {}", e))
-    })?;
+    let output = child
+        .wait_with_output()
+        .map_err(|e| AstError::analysis(format!("Failed to wait for Python script: {}", e)))?;
 
     if output.status.success() {
-        serde_json::from_slice(&output.stdout)
-            .map_err(|e| AstError::analysis(format!("Failed to parse JSON from Python script: {}", e)))
+        serde_json::from_slice(&output.stdout).map_err(|e| {
+            AstError::analysis(format!("Failed to parse JSON from Python script: {}", e))
+        })
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(AstError::analysis(format!(

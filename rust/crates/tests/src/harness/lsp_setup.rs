@@ -36,9 +36,9 @@ impl LspSetupHelper {
         // Use the PATH environment variable to find the command
         if let Ok(path_env) = std::env::var("PATH") {
             // Use shellexpand with context to handle missing variables gracefully
-            let expanded_path = shellexpand::env_with_context_no_errors(&path_env, |var| {
-                std::env::var(var).ok()
-            }).to_string();
+            let expanded_path =
+                shellexpand::env_with_context_no_errors(&path_env, |var| std::env::var(var).ok())
+                    .to_string();
 
             for path_dir in expanded_path.split(if cfg!(windows) { ';' } else { ':' }) {
                 let full_path = std::path::Path::new(path_dir).join(command);
@@ -63,8 +63,7 @@ impl LspSetupHelper {
         // Resolve absolute paths for LSP servers to avoid PATH issues
         let ts_lsp_path = Self::resolve_command_path("typescript-language-server")
             .unwrap_or_else(|| "typescript-language-server".to_string());
-        let pylsp_path = Self::resolve_command_path("pylsp")
-            .unwrap_or_else(|| "pylsp".to_string());
+        let pylsp_path = Self::resolve_command_path("pylsp").unwrap_or_else(|| "pylsp".to_string());
 
         // Only log LSP paths if RUST_LOG=debug
         if std::env::var("RUST_LOG")
@@ -95,10 +94,7 @@ impl LspSetupHelper {
 
         let config_str = serde_json::to_string_pretty(&config).unwrap();
 
-        workspace.create_file(
-            ".codebuddy/config.json",
-            &config_str,
-        );
+        workspace.create_file(".codebuddy/config.json", &config_str);
 
         // Only log config details if RUST_LOG=debug
         if std::env::var("RUST_LOG")
@@ -124,9 +120,9 @@ impl LspSetupHelper {
         // Search PATH for the command
         if let Ok(path_env) = std::env::var("PATH") {
             // Use shellexpand with context to handle missing variables gracefully
-            let expanded_path = shellexpand::env_with_context_no_errors(&path_env, |var| {
-                std::env::var(var).ok()
-            }).to_string();
+            let expanded_path =
+                shellexpand::env_with_context_no_errors(&path_env, |var| std::env::var(var).ok())
+                    .to_string();
 
             for path_dir in expanded_path.split(if cfg!(windows) { ';' } else { ':' }) {
                 let full_path = std::path::Path::new(path_dir).join(command);
@@ -148,8 +144,8 @@ impl LspSetupHelper {
                 Ok(vec![ts_lsp_path, "--stdio".to_string()])
             }
             "py" => {
-                let pylsp_path = Self::resolve_command_path("pylsp")
-                    .unwrap_or_else(|| "pylsp".to_string());
+                let pylsp_path =
+                    Self::resolve_command_path("pylsp").unwrap_or_else(|| "pylsp".to_string());
                 Ok(vec![pylsp_path])
             }
             "rs" => {

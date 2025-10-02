@@ -302,16 +302,13 @@ impl AppConfig {
         // Priority order: Env vars > Profile > Base config > Legacy JSON > Defaults
         // Start with full defaults by serializing the Default implementation
         let default_config = AppConfig::default();
-        let default_value = serde_json::to_value(&default_config)
-            .expect("Failed to serialize default config");
+        let default_value =
+            serde_json::to_value(&default_config).expect("Failed to serialize default config");
 
         let figment = Figment::from(figment::providers::Serialized::defaults(default_value));
 
         // 2. Try to load legacy JSON files for backward compatibility
-        let legacy_json_paths = [
-            ".codebuddy/config.json",
-            "codebuddy.json",
-        ];
+        let legacy_json_paths = [".codebuddy/config.json", "codebuddy.json"];
 
         let mut figment_with_legacy = figment;
         for json_path in &legacy_json_paths {
@@ -323,9 +320,8 @@ impl AppConfig {
                     if let Ok(json_config) = serde_json::from_str::<AppConfig>(&content) {
                         // Merge the JSON config
                         if let Ok(json_value) = serde_json::to_value(&json_config) {
-                            figment_with_legacy = figment_with_legacy.merge(
-                                figment::providers::Serialized::defaults(json_value)
-                            );
+                            figment_with_legacy = figment_with_legacy
+                                .merge(figment::providers::Serialized::defaults(json_value));
                         }
                         break; // Use first found JSON file
                     }
@@ -334,10 +330,7 @@ impl AppConfig {
         }
 
         // 3. Load codebuddy.toml if it exists (base configuration)
-        let toml_paths = [
-            "codebuddy.toml",
-            ".codebuddy/config.toml",
-        ];
+        let toml_paths = ["codebuddy.toml", ".codebuddy/config.toml"];
 
         let mut toml_found = false;
         for toml_path in &toml_paths {
@@ -357,14 +350,15 @@ impl AppConfig {
                 "Applying environment-specific profile"
             );
             // Merge environment-specific overrides from [environments.{profile}]
-            figment_with_legacy = figment_with_legacy.select(&format!("environments.{}", env_profile));
+            figment_with_legacy =
+                figment_with_legacy.select(format!("environments.{}", env_profile));
         }
 
         // 5. Apply environment variable overrides
         let figment_final = figment_with_legacy.merge(
             Env::prefixed("CODEBUDDY__")
                 .split("__")
-                .map(|k| k.as_str().replace("__", ".").to_lowercase().into())
+                .map(|k| k.as_str().replace("__", ".").to_lowercase().into()),
         );
 
         // Extract and deserialize configuration
@@ -383,7 +377,6 @@ impl AppConfig {
 
         Ok(app_config)
     }
-
 
     /// Validate the configuration
     fn validate(&self) -> CoreResult<()> {

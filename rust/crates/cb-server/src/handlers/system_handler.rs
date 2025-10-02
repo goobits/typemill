@@ -8,7 +8,6 @@ use super::tool_handler::{ToolContext, ToolHandler};
 use crate::{ServerError, ServerResult};
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
-use cb_plugins::PluginRequest;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
@@ -39,11 +38,7 @@ impl ToolHandler for SystemHandler {
         ]
     }
 
-    async fn handle_tool(
-        &self,
-        tool_call: ToolCall,
-        context: &ToolContext,
-    ) -> ServerResult<Value> {
+    async fn handle_tool(&self, tool_call: ToolCall, context: &ToolContext) -> ServerResult<Value> {
         debug!(tool_name = %tool_call.name, "Handling system operation");
 
         match tool_call.name.as_str() {
@@ -73,10 +68,17 @@ impl SystemHandler {
         let uptime_hours = uptime_mins / 60;
 
         // Get plugin count from plugin manager
-        let plugin_count = context.plugin_manager.get_all_tool_definitions().await.len();
+        let plugin_count = context
+            .plugin_manager
+            .get_all_tool_definitions()
+            .await
+            .len();
 
         // Get paused workflow count from executor
-        let paused_workflows = context.app_state.workflow_executor.get_paused_workflow_count();
+        let paused_workflows = context
+            .app_state
+            .workflow_executor
+            .get_paused_workflow_count();
 
         Ok(json!({
             "status": "healthy",
@@ -286,12 +288,9 @@ impl SystemHandler {
 
         // Run dead code analysis
         let config = crate::handlers::dead_code::AnalysisConfig::default();
-        let dead_symbols = crate::handlers::dead_code::analyze_dead_code(
-            app_config.lsp,
-            workspace_path,
-            config,
-        )
-        .await?;
+        let dead_symbols =
+            crate::handlers::dead_code::analyze_dead_code(app_config.lsp, workspace_path, config)
+                .await?;
 
         // Format response with complete stats
         let dead_symbols_json: Vec<Value> = dead_symbols
@@ -325,5 +324,4 @@ impl SystemHandler {
             }
         }))
     }
-
 }

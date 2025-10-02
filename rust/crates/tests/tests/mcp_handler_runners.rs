@@ -77,7 +77,9 @@ pub async fn run_create_file_test(case: &CreateFileTestCase, use_real_mcp: bool)
         if case.expect_success {
             let response = response.unwrap();
             // MCP responses are JSON-RPC format: check result.success
-            let result = response.get("result").expect("Response should have result field");
+            let result = response
+                .get("result")
+                .expect("Response should have result field");
             assert!(
                 result["success"].as_bool().unwrap_or(false),
                 "Test '{}': Expected success but got failure. Response: {:?}",
@@ -178,7 +180,9 @@ pub async fn run_read_file_test(case: &ReadFileTestCase, use_real_mcp: bool) {
         if case.expect_success {
             let response = response.unwrap();
             // MCP responses are JSON-RPC format: check result.content
-            let result = response.get("result").expect("Response should have result field");
+            let result = response
+                .get("result")
+                .expect("Response should have result field");
             if let Some(expected) = case.expected_content {
                 assert_eq!(
                     result["content"].as_str().unwrap(),
@@ -191,8 +195,12 @@ pub async fn run_read_file_test(case: &ReadFileTestCase, use_real_mcp: bool) {
             // For expected failures, check for JSON-RPC error field or failed result
             if let Ok(response) = response {
                 assert!(
-                    response.get("error").is_some() ||
-                    response.get("result").map(|r| r.get("success").and_then(|s| s.as_bool()).unwrap_or(true)).unwrap_or(true) == false,
+                    response.get("error").is_some()
+                        || response
+                            .get("result")
+                            .map(|r| r.get("success").and_then(|s| s.as_bool()).unwrap_or(true))
+                            .unwrap_or(true)
+                            == false,
                     "Test '{}': Expected failure but got success. Response: {:?}",
                     case.test_name,
                     response
@@ -259,7 +267,10 @@ pub async fn run_write_file_test(case: &WriteFileTestCase, use_real_mcp: bool) {
         if case.expect_success {
             let response = response.unwrap();
             // MCP responses are JSON-RPC format: check result.success
-            let result = response.get("result").expect(&format!("Response should have result field. Full response: {:?}", response));
+            let result = response.get("result").expect(&format!(
+                "Response should have result field. Full response: {:?}",
+                response
+            ));
             assert!(
                 result["success"].as_bool().unwrap_or(false),
                 "Test '{}': Expected success but got failure",
@@ -280,8 +291,12 @@ pub async fn run_write_file_test(case: &WriteFileTestCase, use_real_mcp: bool) {
             // For expected failures, check for JSON-RPC error field or failed result
             if let Ok(response) = response {
                 assert!(
-                    response.get("error").is_some() ||
-                    response.get("result").map(|r| r.get("success").and_then(|s| s.as_bool()).unwrap_or(true)).unwrap_or(true) == false,
+                    response.get("error").is_some()
+                        || response
+                            .get("result")
+                            .map(|r| r.get("success").and_then(|s| s.as_bool()).unwrap_or(true))
+                            .unwrap_or(true)
+                            == false,
                     "Test '{}': Expected failure but got success. Response: {:?}",
                     case.test_name,
                     response
@@ -353,7 +368,9 @@ pub async fn run_delete_file_test(case: &DeleteFileTestCase, use_real_mcp: bool)
         if case.expect_success {
             let response = response.unwrap();
             // MCP responses are JSON-RPC format: check result.success
-            let result = response.get("result").expect("Response should have result field");
+            let result = response
+                .get("result")
+                .expect("Response should have result field");
             assert!(
                 result["success"].as_bool().unwrap_or(false),
                 "Test '{}': Expected success but got failure",
@@ -368,8 +385,12 @@ pub async fn run_delete_file_test(case: &DeleteFileTestCase, use_real_mcp: bool)
             // For expected failures, check for JSON-RPC error field or failed result
             if let Ok(response) = response {
                 assert!(
-                    response.get("error").is_some() ||
-                    response.get("result").map(|r| r.get("success").and_then(|s| s.as_bool()).unwrap_or(true)).unwrap_or(true) == false,
+                    response.get("error").is_some()
+                        || response
+                            .get("result")
+                            .map(|r| r.get("success").and_then(|s| s.as_bool()).unwrap_or(true))
+                            .unwrap_or(true)
+                            == false,
                     "Test '{}': Expected failure but got success. Response: {:?}",
                     case.test_name,
                     response
@@ -380,7 +401,10 @@ pub async fn run_delete_file_test(case: &DeleteFileTestCase, use_real_mcp: bool)
         // Mock test using FileService directly
         let app_state = create_mock_state(workspace.path().to_path_buf()).await;
 
-        let result = app_state.file_service.delete_file(&file_path, false, false).await;
+        let result = app_state
+            .file_service
+            .delete_file(&file_path, false, false)
+            .await;
 
         if case.expect_success {
             assert!(
@@ -446,9 +470,15 @@ pub async fn run_list_files_test(case: &ListFilesTestCase, use_real_mcp: bool) {
         let response = client.call_tool("list_files", params).await.unwrap();
 
         // MCP responses are JSON-RPC format: check result.content.files
-        let result = response.get("result").expect("Response should have result field");
-        let content = result.get("content").expect("Response should have content field");
-        let file_list = content["files"].as_array().expect("Content should have files array");
+        let result = response
+            .get("result")
+            .expect("Response should have result field");
+        let content = result
+            .get("content")
+            .expect("Response should have content field");
+        let file_list = content["files"]
+            .as_array()
+            .expect("Content should have files array");
         assert!(
             file_list.len() >= case.expected_min_count,
             "Test '{}': Expected at least {} files, got {}",
@@ -511,8 +541,7 @@ pub async fn run_list_files_test(case: &ListFilesTestCase, use_real_mcp: bool) {
         assert!(
             response.success,
             "Test '{}': Plugin returned success=false: {:?}",
-            case.test_name,
-            response.error
+            case.test_name, response.error
         );
 
         let data = response.data.unwrap();
@@ -578,15 +607,21 @@ pub async fn run_analyze_imports_test(case: &AnalyzeImportsTestCase, use_real_mc
         if case.expect_success {
             let response = response.unwrap();
             // MCP responses are JSON-RPC format: check result.content
-            let result = response.get("result").expect("Response should have result field");
-            let content = result.get("content").expect("Result should have content field");
+            let result = response
+                .get("result")
+                .expect("Response should have result field");
+            let content = result
+                .get("content")
+                .expect("Result should have content field");
 
             // Check import graph structure
-            let import_graph = content.get("importGraph")
+            let import_graph = content
+                .get("importGraph")
                 .or_else(|| content.get("import_graph"))
                 .expect("Content should have importGraph field");
 
-            let imports = import_graph.get("imports")
+            let imports = import_graph
+                .get("imports")
                 .and_then(|v| v.as_array())
                 .expect("Import graph should have imports array");
 
@@ -642,16 +677,17 @@ pub async fn run_analyze_imports_test(case: &AnalyzeImportsTestCase, use_real_mc
             assert!(
                 response.success,
                 "Test '{}': Plugin returned success=false: {:?}",
-                case.test_name,
-                response.error
+                case.test_name, response.error
             );
 
             let data = response.data.unwrap();
-            let import_graph = data.get("importGraph")
+            let import_graph = data
+                .get("importGraph")
                 .or_else(|| data.get("import_graph"))
                 .expect("Data should have importGraph field");
 
-            let imports = import_graph.get("imports")
+            let imports = import_graph
+                .get("imports")
                 .and_then(|v| v.as_array())
                 .expect("Import graph should have imports array");
 
@@ -707,32 +743,38 @@ pub async fn run_find_dead_code_test(case: &FindDeadCodeTestCase, use_real_mcp: 
         if case.expect_success {
             let response = response.unwrap();
             // MCP responses are JSON-RPC format: check result.content
-            let result = response.get("result").expect("Response should have result field");
-            let content = result.get("content").expect("Result should have content field");
+            let result = response
+                .get("result")
+                .expect("Response should have result field");
+            let content = result
+                .get("content")
+                .expect("Result should have content field");
 
             // Check dead symbols using new response format
-            let dead_symbols = content.get("deadSymbols")
+            let dead_symbols = content
+                .get("deadSymbols")
                 .and_then(|v| v.as_array())
                 .expect("Response should have deadSymbols array");
 
             // Extract symbol names from result
             let found_names: HashSet<String> = dead_symbols
                 .iter()
-                .filter_map(|s| s.get("name").and_then(|n| n.as_str().map(|s| s.to_string())))
+                .filter_map(|s| {
+                    s.get("name")
+                        .and_then(|n| n.as_str().map(|s| s.to_string()))
+                })
                 .collect();
 
-            let expected_names: HashSet<String> = case.expected_dead_symbols
+            let expected_names: HashSet<String> = case
+                .expected_dead_symbols
                 .iter()
                 .map(|s| s.to_string())
                 .collect();
 
             assert_eq!(
-                found_names,
-                expected_names,
+                found_names, expected_names,
                 "Test '{}': Dead symbol mismatch. Expected {:?}, found {:?}",
-                case.test_name,
-                expected_names,
-                found_names
+                case.test_name, expected_names, found_names
             );
         } else {
             // For expected failures, check for JSON-RPC error field
@@ -790,15 +832,30 @@ pub async fn run_rename_directory_test(case: &RenameDirectoryTestCase, use_real_
             let response = response.unwrap();
             // MCP responses are JSON-RPC format: check result
             eprintln!("DEBUG rename_directory response: {:?}", response);
-            let result = response.get("result").expect(&format!("Response should have result field. Full response: {:?}", response));
+            let result = response.get("result").expect(&format!(
+                "Response should have result field. Full response: {:?}",
+                response
+            ));
 
             // Check that operation succeeded
             // Response can have either "success": true, "renamed": true, or "status": "success"
-            let content = result.get("content").expect("Result should have content field");
+            let content = result
+                .get("content")
+                .expect("Result should have content field");
             assert!(
-                result.get("success").and_then(|s| s.as_bool()).unwrap_or(false) ||
-                result.get("renamed").and_then(|r| r.as_bool()).unwrap_or(false) ||
-                content.get("status").and_then(|s| s.as_str()).map(|s| s == "success").unwrap_or(false),
+                result
+                    .get("success")
+                    .and_then(|s| s.as_bool())
+                    .unwrap_or(false)
+                    || result
+                        .get("renamed")
+                        .and_then(|r| r.as_bool())
+                        .unwrap_or(false)
+                    || content
+                        .get("status")
+                        .and_then(|s| s.as_str())
+                        .map(|s| s == "success")
+                        .unwrap_or(false),
                 "Test '{}': Expected success in response. Response: {:?}",
                 case.test_name,
                 response
@@ -862,8 +919,7 @@ pub async fn run_rename_directory_test(case: &RenameDirectoryTestCase, use_real_
             assert!(
                 response.success,
                 "Test '{}': Plugin returned success=false: {:?}",
-                case.test_name,
-                response.error
+                case.test_name, response.error
             );
 
             // Verify directory was renamed
@@ -921,7 +977,8 @@ pub async fn run_rename_file_test(case: &RenameFileTestCase, use_real_mcp: bool)
 
             // Check that there's no error
             assert!(
-                response.get("error").is_none() || response.get("error").and_then(|e| e.as_null()).is_some(),
+                response.get("error").is_none()
+                    || response.get("error").and_then(|e| e.as_null()).is_some(),
                 "Test '{}': Expected success but got error. Response: {:?}",
                 case.test_name,
                 response
@@ -969,9 +1026,7 @@ pub async fn run_rename_file_test(case: &RenameFileTestCase, use_real_mcp: bool)
         let result = app_state
             .file_service
             .rename_file_with_imports(
-                &old_path,
-                &new_path,
-                false, // dry_run
+                &old_path, &new_path, false, // dry_run
             )
             .await;
 

@@ -2,7 +2,9 @@
 
 use crate::{ServerError, ServerResult};
 use cb_api::DependencyUpdate;
-use cb_ast::{language::LanguageAdapter, find_project_files, update_imports_for_rename, ImportPathResolver};
+use cb_ast::{
+    find_project_files, language::LanguageAdapter, update_imports_for_rename, ImportPathResolver,
+};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
@@ -19,7 +21,9 @@ pub struct ImportService {
 impl ImportService {
     /// Create a new import service
     pub fn new(project_root: impl AsRef<Path>) -> Self {
-        use cb_ast::language::{GoAdapter, JavaAdapter, PythonAdapter, RustAdapter, TypeScriptAdapter};
+        use cb_ast::language::{
+            GoAdapter, JavaAdapter, PythonAdapter, RustAdapter, TypeScriptAdapter,
+        };
 
         let adapters: Vec<Arc<dyn LanguageAdapter>> = vec![
             Arc::new(RustAdapter),
@@ -209,7 +213,12 @@ impl ImportService {
             };
 
             // Parse the file
-            let lexer = Lexer::new(syntax, Default::default(), StringInput::from(&*source_file), None);
+            let lexer = Lexer::new(
+                syntax,
+                Default::default(),
+                StringInput::from(&*source_file),
+                None,
+            );
             let mut parser = Parser::new_from(lexer);
 
             let module = match parser.parse_module() {

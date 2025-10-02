@@ -339,7 +339,10 @@ async fn test_find_dead_code_workflow() {
         .expect("find_dead_code should respond");
     assert_eq!(response["id"], "dead-code-1");
 
-    eprintln!("Full response: {}", serde_json::to_string_pretty(&response).unwrap());
+    eprintln!(
+        "Full response: {}",
+        serde_json::to_string_pretty(&response).unwrap()
+    );
 
     if response["error"].is_null() {
         let result = &response["result"]["content"];
@@ -528,9 +531,7 @@ async fn test_basic_filesystem_operations() {
     assert_eq!(response["id"], "fs-4");
 
     if response["error"].is_null() {
-        let file_content = response["result"]["content"]
-            .as_str()
-            .unwrap();
+        let file_content = response["result"]["content"].as_str().unwrap();
         assert!(
             file_content.contains("tempVar"),
             "Created file should have our content"
@@ -635,10 +636,8 @@ mod advanced_resilience {
 async fn test_authentication_failure_websocket() {
     // Start WebSocket server with authentication enabled
     // Use CARGO_MANIFEST_DIR to construct path to binary in workspace
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .expect("CARGO_MANIFEST_DIR not set");
-    let binary_path = std::path::Path::new(&manifest_dir)
-        .join("../../target/debug/codebuddy");
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
+    let binary_path = std::path::Path::new(&manifest_dir).join("../../target/debug/codebuddy");
 
     if !binary_path.exists() {
         panic!(
@@ -657,7 +656,13 @@ async fn test_authentication_failure_websocket() {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .unwrap_or_else(|e| panic!("Failed to start WebSocket server with auth. Binary: {}, Error: {}", binary_path.display(), e));
+        .unwrap_or_else(|e| {
+            panic!(
+                "Failed to start WebSocket server with auth. Binary: {}, Error: {}",
+                binary_path.display(),
+                e
+            )
+        });
 
     // Wait for server to start
     thread::sleep(Duration::from_millis(2000));

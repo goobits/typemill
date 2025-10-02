@@ -184,7 +184,6 @@ async fn test_list_files_real() {
     }
 }
 
-
 // =============================================================================
 // Analyze Imports Tests
 // =============================================================================
@@ -343,7 +342,9 @@ async fn test_rename_directory_dry_run() {
         .unwrap();
 
     // Assert that the response contains preview data
-    let result = response.get("result").expect("Response should have result field");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
     assert_eq!(
         result["status"], "preview",
         "Response should have status 'preview' for dry-run"
@@ -359,11 +360,17 @@ async fn test_rename_directory_dry_run() {
 
     // Assert that the directory was NOT actually renamed
     let src_exists = tokio::fs::try_exists(&src_dir).await.unwrap();
-    assert!(src_exists, "Original src directory should still exist after dry-run");
+    assert!(
+        src_exists,
+        "Original src directory should still exist after dry-run"
+    );
 
     let lib_dir = workspace.path().join("lib");
     let lib_exists = tokio::fs::try_exists(&lib_dir).await.unwrap();
-    assert!(!lib_exists, "New lib directory should NOT exist after dry-run");
+    assert!(
+        !lib_exists,
+        "New lib directory should NOT exist after dry-run"
+    );
 
     // Verify the original file is still in place
     let original_file_exists = tokio::fs::try_exists(&main_file).await.unwrap();

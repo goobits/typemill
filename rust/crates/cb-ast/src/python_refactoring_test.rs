@@ -20,7 +20,8 @@ mod tests {
             end_col: 30,
         };
 
-        let result = plan_extract_function(source, &range, "calculate_tax", "/tmp/test.py", None).await;
+        let result =
+            plan_extract_function(source, &range, "calculate_tax", "/tmp/test.py", None).await;
         assert!(result.is_ok(), "Python extract_function should work");
 
         let plan = result.unwrap();
@@ -57,7 +58,8 @@ mod tests {
             Some("tax_amount".to_string()),
             "/tmp/test.py",
             None,
-        ).await;
+        )
+        .await;
         assert!(result.is_ok(), "Python extract_variable should work");
 
         let plan = result.unwrap();

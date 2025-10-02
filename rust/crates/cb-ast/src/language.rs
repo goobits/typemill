@@ -254,7 +254,10 @@ impl LanguageAdapter for RustAdapter {
 
             if let Some(first_segment) = segments.first() {
                 // Filter out internal imports (crate, self, super)
-                if *first_segment != "crate" && *first_segment != "self" && *first_segment != "super" {
+                if *first_segment != "crate"
+                    && *first_segment != "self"
+                    && *first_segment != "super"
+                {
                     // This is an external crate dependency
                     dependencies.insert(first_segment.to_string());
                 }
@@ -364,9 +367,8 @@ impl LanguageAdapter for RustAdapter {
         );
 
         // Parse the Rust source file
-        let mut file: File = syn::parse_str(content).map_err(|e| {
-            AstError::analysis(format!("Failed to parse Rust source: {}", e))
-        })?;
+        let mut file: File = syn::parse_str(content)
+            .map_err(|e| AstError::analysis(format!("Failed to parse Rust source: {}", e)))?;
 
         let mut changes_count = 0;
 
@@ -393,10 +395,7 @@ impl LanguageAdapter for RustAdapter {
         // Use prettyplease to format the modified AST
         let new_content = prettyplease::unparse(&file);
 
-        tracing::debug!(
-            changes = changes_count,
-            "Successfully rewrote Rust imports"
-        );
+        tracing::debug!(changes = changes_count, "Successfully rewrote Rust imports");
 
         Ok((new_content, changes_count))
     }
@@ -464,10 +463,7 @@ impl LanguageAdapter for TypeScriptAdapter {
         let mut updated_content = String::new();
         let mut updates_count = 0;
 
-        let old_target_stem = old_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
+        let old_target_stem = old_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
 
         for line in content.lines() {
             if line.contains("import") || line.contains("require") {
@@ -633,16 +629,15 @@ impl LanguageAdapter for GoAdapter {
         // Find all .go files in the directory (non-recursive)
         let mut go_files = Vec::new();
 
-        let mut entries = tokio::fs::read_dir(&module_dir).await.map_err(|e| {
-            AstError::Analysis {
-                message: format!("Failed to read directory {}: {}", module_dir.display(), e),
-            }
-        })?;
+        let mut entries =
+            tokio::fs::read_dir(&module_dir)
+                .await
+                .map_err(|e| AstError::Analysis {
+                    message: format!("Failed to read directory {}: {}", module_dir.display(), e),
+                })?;
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| {
-            AstError::Analysis {
-                message: format!("Error reading directory entry: {}", e),
-            }
+        while let Some(entry) = entries.next_entry().await.map_err(|e| AstError::Analysis {
+            message: format!("Error reading directory entry: {}", e),
         })? {
             let path = entry.path();
             if path.is_file() {
@@ -684,11 +679,12 @@ impl LanguageAdapter for GoAdapter {
         );
 
         // Read file content
-        let content = tokio::fs::read_to_string(file_path).await.map_err(|e| {
-            AstError::Analysis {
-                message: format!("Failed to read file {}: {}", file_path.display(), e),
-            }
-        })?;
+        let content =
+            tokio::fs::read_to_string(file_path)
+                .await
+                .map_err(|e| AstError::Analysis {
+                    message: format!("Failed to read file {}: {}", file_path.display(), e),
+                })?;
 
         // Use existing build_import_graph which calls parse_go_imports_ast
         let import_graph = crate::parser::build_import_graph(&content, file_path)?;
@@ -795,10 +791,7 @@ impl LanguageAdapter for GoAdapter {
             updated_content.push('\n');
         }
 
-        tracing::debug!(
-            changes = changes_count,
-            "Successfully rewrote Go imports"
-        );
+        tracing::debug!(changes = changes_count, "Successfully rewrote Go imports");
 
         Ok((updated_content.trim_end().to_string(), changes_count))
     }
@@ -867,16 +860,15 @@ impl LanguageAdapter for JavaAdapter {
         // Find all .java files in the package directory (non-recursive)
         let mut java_files = Vec::new();
 
-        let mut entries = tokio::fs::read_dir(&package_dir).await.map_err(|e| {
-            AstError::Analysis {
-                message: format!("Failed to read directory {}: {}", package_dir.display(), e),
-            }
-        })?;
+        let mut entries =
+            tokio::fs::read_dir(&package_dir)
+                .await
+                .map_err(|e| AstError::Analysis {
+                    message: format!("Failed to read directory {}: {}", package_dir.display(), e),
+                })?;
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| {
-            AstError::Analysis {
-                message: format!("Error reading directory entry: {}", e),
-            }
+        while let Some(entry) = entries.next_entry().await.map_err(|e| AstError::Analysis {
+            message: format!("Error reading directory entry: {}", e),
         })? {
             let path = entry.path();
             if path.is_file() {
@@ -913,11 +905,12 @@ impl LanguageAdapter for JavaAdapter {
         );
 
         // Read file content
-        let content = tokio::fs::read_to_string(file_path).await.map_err(|e| {
-            AstError::Analysis {
-                message: format!("Failed to read file {}: {}", file_path.display(), e),
-            }
-        })?;
+        let content =
+            tokio::fs::read_to_string(file_path)
+                .await
+                .map_err(|e| AstError::Analysis {
+                    message: format!("Failed to read file {}: {}", file_path.display(), e),
+                })?;
 
         // Parse Java imports using regex (simple but effective)
         // import com.example.utils.Helper;
@@ -938,7 +931,8 @@ impl LanguageAdapter for JavaAdapter {
                         let package_name = &full_import[..last_dot];
 
                         // Filter out java.* and javax.* (standard library)
-                        if !package_name.starts_with("java.") && !package_name.starts_with("javax.") {
+                        if !package_name.starts_with("java.") && !package_name.starts_with("javax.")
+                        {
                             dependencies.insert(package_name.to_string());
                         }
                     }
@@ -964,8 +958,16 @@ impl LanguageAdapter for JavaAdapter {
 
         // Generate basic pom.xml structure
         writeln!(manifest, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").unwrap();
-        writeln!(manifest, "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"").unwrap();
-        writeln!(manifest, "         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"").unwrap();
+        writeln!(
+            manifest,
+            "<project xmlns=\"http://maven.apache.org/POM/4.0.0\""
+        )
+        .unwrap();
+        writeln!(
+            manifest,
+            "         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\""
+        )
+        .unwrap();
         writeln!(manifest, "         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">").unwrap();
         writeln!(manifest, "    <modelVersion>4.0.0</modelVersion>").unwrap();
         writeln!(manifest).unwrap();
@@ -997,7 +999,12 @@ impl LanguageAdapter for JavaAdapter {
 
                 writeln!(manifest, "        <dependency>").unwrap();
                 writeln!(manifest, "            <groupId>{}</groupId>", dep_group).unwrap();
-                writeln!(manifest, "            <artifactId>{}</artifactId>", dep_artifact).unwrap();
+                writeln!(
+                    manifest,
+                    "            <artifactId>{}</artifactId>",
+                    dep_artifact
+                )
+                .unwrap();
                 writeln!(manifest, "            <version>1.0.0</version>").unwrap();
                 writeln!(manifest, "        </dependency>").unwrap();
             }
@@ -1073,10 +1080,7 @@ impl LanguageAdapter for JavaAdapter {
             updated_content.push('\n');
         }
 
-        tracing::debug!(
-            changes = changes_count,
-            "Successfully rewrote Java imports"
-        );
+        tracing::debug!(changes = changes_count, "Successfully rewrote Java imports");
 
         Ok((updated_content.trim_end().to_string(), changes_count))
     }

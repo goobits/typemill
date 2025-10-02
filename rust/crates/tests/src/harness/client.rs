@@ -21,10 +21,12 @@ impl TestClient {
         // Determine the path to the cb-server binary relative to the workspace root
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
             .expect("CARGO_MANIFEST_DIR not set. Please run tests with `cargo test`.");
-        let server_path = std::path::Path::new(&manifest_dir)
-            .join("../../target/debug/cb-server");
+        let server_path = std::path::Path::new(&manifest_dir).join("../../target/debug/cb-server");
 
-        eprintln!("DEBUG: TestClient using server path: {}", server_path.display());
+        eprintln!(
+            "DEBUG: TestClient using server path: {}",
+            server_path.display()
+        );
 
         // Expand ALL environment variables in PATH for LSP server spawning
         // This is needed because cargo config sets PATH with $HOME, $NVM_DIR, etc.
@@ -32,9 +34,9 @@ impl TestClient {
         let expanded_path = if let Ok(path) = std::env::var("PATH") {
             // Use shellexpand with custom context to handle missing variables gracefully
             // Missing variables expand to empty strings instead of causing errors
-            let result = shellexpand::env_with_context_no_errors(&path, |var| {
-                std::env::var(var).ok()
-            }).to_string();
+            let result =
+                shellexpand::env_with_context_no_errors(&path, |var| std::env::var(var).ok())
+                    .to_string();
 
             // Only log if RUST_LOG=debug to avoid exposing paths in CI by default
             if std::env::var("RUST_LOG")

@@ -2,7 +2,7 @@
 
 use cb_core::model::workflow::{Intent, Step, Workflow, WorkflowMetadata};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -105,7 +105,7 @@ impl DefaultPlanner {
                     value.clone()
                 } else if s.starts_with("{") && s.ends_with("}") && s.len() > 2 {
                     // This is a pure placeholder like "{file_path}" - try to get the actual value
-                    let param_name = &s[1..s.len()-1];
+                    let param_name = &s[1..s.len() - 1];
                     if let Value::Object(map) = params {
                         if let Some(param_value) = map.get(param_name) {
                             // Return the actual value (could be string, number, etc.)
@@ -126,13 +126,14 @@ impl DefaultPlanner {
                 }
                 Value::Object(new_map)
             }
-            Value::Array(arr) => {
-                Value::Array(arr.iter().map(|v| Self::replace_placeholders_in_value(v, params)).collect())
-            }
+            Value::Array(arr) => Value::Array(
+                arr.iter()
+                    .map(|v| Self::replace_placeholders_in_value(v, params))
+                    .collect(),
+            ),
             _ => value.clone(),
         }
     }
-
 }
 
 impl Planner for DefaultPlanner {
@@ -141,9 +142,10 @@ impl Planner for DefaultPlanner {
         debug!(intent_name = %intent.name, "Planning workflow for intent");
 
         // Look up the workflow template
-        let template = self.recipes.get(&intent.name).ok_or_else(|| {
-            format!("No workflow planner found for intent '{}'", intent.name)
-        })?;
+        let template = self
+            .recipes
+            .get(&intent.name)
+            .ok_or_else(|| format!("No workflow planner found for intent '{}'", intent.name))?;
 
         // Check that all required parameters are present
         for required_param in &template.required_params {
@@ -164,10 +166,12 @@ impl Planner for DefaultPlanner {
                     .expect("Failed to serialize step params");
 
                 // Replace placeholders in step params
-                let params = Self::replace_placeholders_in_value(&template_params_value, &intent.params);
+                let params =
+                    Self::replace_placeholders_in_value(&template_params_value, &intent.params);
 
                 // Replace placeholders in description
-                let description = Self::replace_placeholders(&step_template.description, &intent.params);
+                let description =
+                    Self::replace_placeholders(&step_template.description, &intent.params);
 
                 Step {
                     tool: step_template.tool.clone(),
@@ -460,7 +464,10 @@ mod tests {
         let result = planner.plan_for_intent(&intent);
         assert!(result.is_err());
         let error_msg = result.unwrap_err();
-        assert!(error_msg.contains("Missing required parameter 'old_name'") || error_msg.contains("Missing 'old_name'"));
+        assert!(
+            error_msg.contains("Missing required parameter 'old_name'")
+                || error_msg.contains("Missing 'old_name'")
+        );
     }
 
     #[test]
@@ -499,16 +506,32 @@ mod tests {
         assert!(result.is_ok(), "Workflow planning should succeed");
 
         let workflow = result.unwrap();
-        assert_eq!(workflow.name, "Rename symbol 'OldStruct' to 'NewStruct' with import updates");
+        assert_eq!(
+            workflow.name,
+            "Rename symbol 'OldStruct' to 'NewStruct' with import updates"
+        );
         assert_eq!(workflow.steps.len(), 1, "Should have exactly 1 step");
         assert_eq!(workflow.metadata.complexity, 2);
 
         // Check the rename_symbol step
         let step = &workflow.steps[0];
         assert_eq!(step.tool, "rename_symbol");
-        assert_eq!(step.params.get("file_path").unwrap().as_str().unwrap(), "src/example.rs");
-        assert_eq!(step.params.get("symbol_name").unwrap().as_str().unwrap(), "OldStruct");
-        assert_eq!(step.params.get("new_name").unwrap().as_str().unwrap(), "NewStruct");
-        assert_eq!(step.requires_confirmation, Some(true), "Should require user confirmation");
+        assert_eq!(
+            step.params.get("file_path").unwrap().as_str().unwrap(),
+            "src/example.rs"
+        );
+        assert_eq!(
+            step.params.get("symbol_name").unwrap().as_str().unwrap(),
+            "OldStruct"
+        );
+        assert_eq!(
+            step.params.get("new_name").unwrap().as_str().unwrap(),
+            "NewStruct"
+        );
+        assert_eq!(
+            step.requires_confirmation,
+            Some(true),
+            "Should require user confirmation"
+        );
     }
 }

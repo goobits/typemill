@@ -178,20 +178,34 @@ impl EditPlan {
                             message: "LSP range missing end".to_string(),
                         })?;
 
-                        let start_line = start.get("line").and_then(|v| v.as_u64()).ok_or_else(|| ApiError::Parse {
-                            message: "LSP start missing line".to_string(),
-                        })? as u32;
-                        let start_col = start.get("character").and_then(|v| v.as_u64()).ok_or_else(|| ApiError::Parse {
-                            message: "LSP start missing character".to_string(),
-                        })? as u32;
-                        let end_line = end.get("line").and_then(|v| v.as_u64()).ok_or_else(|| ApiError::Parse {
-                            message: "LSP end missing line".to_string(),
-                        })? as u32;
-                        let end_col = end.get("character").and_then(|v| v.as_u64()).ok_or_else(|| ApiError::Parse {
-                            message: "LSP end missing character".to_string(),
-                        })? as u32;
+                        let start_line =
+                            start.get("line").and_then(|v| v.as_u64()).ok_or_else(|| {
+                                ApiError::Parse {
+                                    message: "LSP start missing line".to_string(),
+                                }
+                            })? as u32;
+                        let start_col =
+                            start
+                                .get("character")
+                                .and_then(|v| v.as_u64())
+                                .ok_or_else(|| ApiError::Parse {
+                                    message: "LSP start missing character".to_string(),
+                                })? as u32;
+                        let end_line =
+                            end.get("line").and_then(|v| v.as_u64()).ok_or_else(|| {
+                                ApiError::Parse {
+                                    message: "LSP end missing line".to_string(),
+                                }
+                            })? as u32;
+                        let end_col =
+                            end.get("character")
+                                .and_then(|v| v.as_u64())
+                                .ok_or_else(|| ApiError::Parse {
+                                    message: "LSP end missing character".to_string(),
+                                })? as u32;
 
-                        let new_text = lsp_edit.get("newText")
+                        let new_text = lsp_edit
+                            .get("newText")
                             .and_then(|v| v.as_str())
                             .unwrap_or("")
                             .to_string();

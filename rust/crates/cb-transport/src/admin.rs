@@ -234,15 +234,12 @@ async fn execute_command(
     );
 
     // Look up workspace
-    let workspace = state
-        .workspace_manager
-        .get(&workspace_id)
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                format!("Workspace '{}' not found", workspace_id),
-            )
-        })?;
+    let workspace = state.workspace_manager.get(&workspace_id).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            format!("Workspace '{}' not found", workspace_id),
+        )
+    })?;
 
     // Build agent URL
     let agent_url = format!("{}/execute", workspace.agent_url);
@@ -253,7 +250,10 @@ async fn execute_command(
         .build()
         .map_err(|e| {
             error!(error = %e, "Failed to create HTTP client");
-            (StatusCode::INTERNAL_SERVER_ERROR, "HTTP client error".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "HTTP client error".to_string(),
+            )
         })?;
 
     // Forward command to agent
@@ -323,20 +323,17 @@ async fn generate_auth_token(
     Json(request): Json<GenerateTokenRequest>,
 ) -> Result<Json<GenerateTokenResponse>, (StatusCode, String)> {
     // Check if authentication is configured
-    let auth_config = state
-        .config
-        .server
-        .auth
-        .as_ref()
-        .ok_or_else(|| {
-            (
-                StatusCode::SERVICE_UNAVAILABLE,
-                "Authentication is not configured on this server".to_string(),
-            )
-        })?;
+    let auth_config = state.config.server.auth.as_ref().ok_or_else(|| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Authentication is not configured on this server".to_string(),
+        )
+    })?;
 
     // Use custom expiry or default from config
-    let expiry_seconds = request.expiry_seconds.unwrap_or(auth_config.jwt_expiry_seconds);
+    let expiry_seconds = request
+        .expiry_seconds
+        .unwrap_or(auth_config.jwt_expiry_seconds);
 
     // Generate token
     let token = generate_token(

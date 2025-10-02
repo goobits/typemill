@@ -212,7 +212,9 @@ async fn handle_connection(
                                 "message": "Parse error"
                             }
                         });
-                        if let Err(e) = write.send(Message::Text(error_response.to_string().into())).await
+                        if let Err(e) = write
+                            .send(Message::Text(error_response.to_string().into()))
+                            .await
                         {
                             tracing::error!("Failed to send error response: {}", e);
                             break;
@@ -336,7 +338,7 @@ async fn handle_message(
 async fn handle_initialize(
     session: &mut Session,
     request: McpRequest,
-    config: &AppConfig,
+    _config: &AppConfig,
 ) -> ApiResult<McpMessage> {
     // Parse initialize payload
     let payload: InitializePayload = if let Some(params) = request.params {

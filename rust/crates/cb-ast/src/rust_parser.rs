@@ -30,8 +30,8 @@ impl<'ast> Visit<'ast> for FunctionVisitor {
 /// Parses Rust source code and returns a list of all function and method names.
 pub fn list_functions(source: &str) -> AstResult<Vec<String>> {
     // Parse the source code into a syn::File, which is the root of the AST.
-    let ast: File =
-        syn::parse_file(source).map_err(|e| AstError::analysis(format!("Failed to parse Rust code: {}", e)))?;
+    let ast: File = syn::parse_file(source)
+        .map_err(|e| AstError::analysis(format!("Failed to parse Rust code: {}", e)))?;
 
     // Create an instance of our visitor.
     let mut visitor = FunctionVisitor {
@@ -52,9 +52,8 @@ pub fn list_functions(source: &str) -> AstResult<Vec<String>> {
 /// named imports, and location in the source.
 pub fn parse_rust_imports_ast(source: &str) -> AstResult<Vec<ImportInfo>> {
     // Parse the Rust source file
-    let syntax_tree: File = syn::parse_str(source).map_err(|e| {
-        AstError::analysis(format!("Failed to parse Rust source: {}", e))
-    })?;
+    let syntax_tree: File = syn::parse_str(source)
+        .map_err(|e| AstError::analysis(format!("Failed to parse Rust source: {}", e)))?;
 
     struct ImportVisitor {
         imports: Vec<ImportInfo>,
@@ -183,7 +182,11 @@ pub fn parse_rust_imports_ast(source: &str) -> AstResult<Vec<ImportInfo>> {
 /// # Returns
 ///
 /// `Some(UseTree)` if the tree was modified, `None` if no changes were needed
-pub(crate) fn rewrite_use_tree(tree: &UseTree, old_crate: &str, new_crate: &str) -> Option<UseTree> {
+pub(crate) fn rewrite_use_tree(
+    tree: &UseTree,
+    old_crate: &str,
+    new_crate: &str,
+) -> Option<UseTree> {
     match tree {
         UseTree::Path(path) => {
             // Check if this is the leading identifier we need to replace

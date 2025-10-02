@@ -252,16 +252,22 @@ mod tests {
     #[test]
     fn test_manifest_filename() {
         assert_eq!(ProjectLanguage::Rust.manifest_filename(), "Cargo.toml");
-        assert_eq!(ProjectLanguage::TypeScript.manifest_filename(), "package.json");
-        assert_eq!(ProjectLanguage::Python.manifest_filename(), "pyproject.toml");
+        assert_eq!(
+            ProjectLanguage::TypeScript.manifest_filename(),
+            "package.json"
+        );
+        assert_eq!(
+            ProjectLanguage::Python.manifest_filename(),
+            "pyproject.toml"
+        );
         assert_eq!(ProjectLanguage::Go.manifest_filename(), "go.mod");
         assert_eq!(ProjectLanguage::Java.manifest_filename(), "pom.xml");
     }
 
     #[test]
     fn test_detect_rust_project() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("Cargo.toml")).unwrap();
@@ -272,8 +278,8 @@ mod tests {
 
     #[test]
     fn test_detect_typescript_project() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("package.json")).unwrap();
@@ -284,8 +290,8 @@ mod tests {
 
     #[test]
     fn test_detect_python_project_pyproject() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("pyproject.toml")).unwrap();
@@ -296,8 +302,8 @@ mod tests {
 
     #[test]
     fn test_detect_python_project_requirements() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("requirements.txt")).unwrap();
@@ -308,8 +314,8 @@ mod tests {
 
     #[test]
     fn test_detect_python_project_setup() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("setup.py")).unwrap();
@@ -320,8 +326,8 @@ mod tests {
 
     #[test]
     fn test_detect_go_project() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("go.mod")).unwrap();
@@ -332,8 +338,8 @@ mod tests {
 
     #[test]
     fn test_detect_java_project_maven() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("pom.xml")).unwrap();
@@ -344,8 +350,8 @@ mod tests {
 
     #[test]
     fn test_detect_java_project_gradle() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("build.gradle")).unwrap();
@@ -367,8 +373,8 @@ mod tests {
 
     #[test]
     fn test_detect_npm_package_manager() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("package.json")).unwrap();
@@ -380,8 +386,8 @@ mod tests {
 
     #[test]
     fn test_detect_yarn_package_manager() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("package.json")).unwrap();
@@ -393,8 +399,8 @@ mod tests {
 
     #[test]
     fn test_detect_pnpm_package_manager() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("package.json")).unwrap();
@@ -406,8 +412,8 @@ mod tests {
 
     #[test]
     fn test_detect_cargo_package_manager() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("Cargo.toml")).unwrap();
@@ -418,8 +424,8 @@ mod tests {
 
     #[test]
     fn test_detect_go_package_manager() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("go.mod")).unwrap();
@@ -430,8 +436,8 @@ mod tests {
 
     #[test]
     fn test_detect_pip_package_manager() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("requirements.txt")).unwrap();
@@ -442,8 +448,8 @@ mod tests {
 
     #[test]
     fn test_detect_maven_package_manager() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("pom.xml")).unwrap();
@@ -454,8 +460,8 @@ mod tests {
 
     #[test]
     fn test_detect_gradle_package_manager() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         File::create(dir.path().join("build.gradle")).unwrap();
@@ -477,8 +483,8 @@ mod tests {
 
     #[test]
     fn test_priority_rust_over_others() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         // Rust should be detected first if Cargo.toml exists
         let dir = tempdir().unwrap();
@@ -491,8 +497,8 @@ mod tests {
 
     #[test]
     fn test_priority_yarn_over_npm() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         // Yarn lock file should take priority
         let dir = tempdir().unwrap();
@@ -505,8 +511,8 @@ mod tests {
 
     #[test]
     fn test_priority_pnpm_over_npm() {
-        use tempfile::tempdir;
         use std::fs::File;
+        use tempfile::tempdir;
 
         // pnpm lock file should take priority
         let dir = tempdir().unwrap();

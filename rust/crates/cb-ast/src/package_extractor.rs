@@ -4,7 +4,9 @@
 //! for extracting modules into separate packages.
 
 use crate::error::AstResult;
-use crate::language::{GoAdapter, JavaAdapter, LanguageAdapter, PythonAdapter, RustAdapter, TypeScriptAdapter};
+use crate::language::{
+    GoAdapter, JavaAdapter, LanguageAdapter, PythonAdapter, RustAdapter, TypeScriptAdapter,
+};
 use cb_api::EditPlan;
 use cb_core::language::ProjectLanguage;
 use serde::Deserialize;
@@ -22,7 +24,6 @@ pub struct ExtractModuleToPackageParams {
     pub dry_run: Option<bool>,
 }
 
-
 /// Recursively find all .rs files in a directory
 fn find_rust_files_in_dir(dir: &Path) -> AstResult<Vec<std::path::PathBuf>> {
     let mut rust_files = Vec::new();
@@ -31,17 +32,13 @@ fn find_rust_files_in_dir(dir: &Path) -> AstResult<Vec<std::path::PathBuf>> {
         return Ok(rust_files);
     }
 
-    let entries = std::fs::read_dir(dir).map_err(|e| {
-        crate::error::AstError::Analysis {
-            message: format!("Failed to read directory {}: {}", dir.display(), e),
-        }
+    let entries = std::fs::read_dir(dir).map_err(|e| crate::error::AstError::Analysis {
+        message: format!("Failed to read directory {}: {}", dir.display(), e),
     })?;
 
     for entry_result in entries {
-        let entry = entry_result.map_err(|e| {
-            crate::error::AstError::Analysis {
-                message: format!("Failed to read directory entry: {}", e),
-            }
+        let entry = entry_result.map_err(|e| crate::error::AstError::Analysis {
+            message: format!("Failed to read directory entry: {}", e),
         })?;
 
         let path = entry.path();
@@ -74,30 +71,33 @@ fn update_cargo_toml_dependency(
 ) -> AstResult<String> {
     use toml_edit::DocumentMut;
 
-    let mut doc = cargo_content.parse::<DocumentMut>().map_err(|e| {
-        crate::error::AstError::Analysis {
-            message: format!("Failed to parse Cargo.toml: {}", e),
-        }
-    })?;
+    let mut doc =
+        cargo_content
+            .parse::<DocumentMut>()
+            .map_err(|e| crate::error::AstError::Analysis {
+                message: format!("Failed to parse Cargo.toml: {}", e),
+            })?;
 
     // Calculate relative path from source to target
     let source_cargo_dir = source_path;
     let target_path = Path::new(dep_path);
-    let relative_path = pathdiff::diff_paths(target_path, source_cargo_dir)
-        .ok_or_else(|| crate::error::AstError::Analysis {
+    let relative_path = pathdiff::diff_paths(target_path, source_cargo_dir).ok_or_else(|| {
+        crate::error::AstError::Analysis {
             message: "Failed to calculate relative path".to_string(),
-        })?;
+        }
+    })?;
 
     // Add dependency to [dependencies] section
     if !doc.contains_key("dependencies") {
         doc["dependencies"] = toml_edit::table();
     }
 
-    let deps = doc["dependencies"].as_table_mut().ok_or_else(|| {
-        crate::error::AstError::Analysis {
-            message: "[dependencies] is not a table".to_string(),
-        }
-    })?;
+    let deps =
+        doc["dependencies"]
+            .as_table_mut()
+            .ok_or_else(|| crate::error::AstError::Analysis {
+                message: "[dependencies] is not a table".to_string(),
+            })?;
 
     // Create inline table for path dependency
     let mut dep_table = toml_edit::InlineTable::new();
@@ -119,39 +119,43 @@ fn update_workspace_members(
 ) -> AstResult<String> {
     use toml_edit::DocumentMut;
 
-    let mut doc = workspace_content.parse::<DocumentMut>().map_err(|e| {
-        crate::error::AstError::Analysis {
-            message: format!("Failed to parse workspace Cargo.toml: {}", e),
-        }
-    })?;
+    let mut doc =
+        workspace_content
+            .parse::<DocumentMut>()
+            .map_err(|e| crate::error::AstError::Analysis {
+                message: format!("Failed to parse workspace Cargo.toml: {}", e),
+            })?;
 
     // Calculate relative path from workspace root to new member
     let target_path = Path::new(new_member_path);
-    let relative_path = pathdiff::diff_paths(target_path, workspace_root)
-        .ok_or_else(|| crate::error::AstError::Analysis {
+    let relative_path = pathdiff::diff_paths(target_path, workspace_root).ok_or_else(|| {
+        crate::error::AstError::Analysis {
             message: "Failed to calculate relative path for workspace member".to_string(),
-        })?;
+        }
+    })?;
 
     // Ensure [workspace.members] exists
     if !doc.contains_key("workspace") {
         doc["workspace"] = toml_edit::table();
     }
 
-    let workspace = doc["workspace"].as_table_mut().ok_or_else(|| {
-        crate::error::AstError::Analysis {
-            message: "[workspace] is not a table".to_string(),
-        }
-    })?;
+    let workspace =
+        doc["workspace"]
+            .as_table_mut()
+            .ok_or_else(|| crate::error::AstError::Analysis {
+                message: "[workspace] is not a table".to_string(),
+            })?;
 
     if !workspace.contains_key("members") {
         workspace["members"] = toml_edit::value(toml_edit::Array::new());
     }
 
-    let members = workspace["members"].as_array_mut().ok_or_else(|| {
-        crate::error::AstError::Analysis {
-            message: "[workspace.members] is not an array".to_string(),
-        }
-    })?;
+    let members =
+        workspace["members"]
+            .as_array_mut()
+            .ok_or_else(|| crate::error::AstError::Analysis {
+                message: "[workspace.members] is not an array".to_string(),
+            })?;
 
     // Add new member if not already present
     let member_str = relative_path.to_string_lossy();
@@ -173,11 +177,10 @@ fn remove_module_declaration(source: &str, module_name: &str) -> AstResult<Strin
     use syn::{File, Item};
 
     // Parse the Rust source
-    let mut syntax_tree: File = syn::parse_str(source).map_err(|e| {
-        crate::error::AstError::Analysis {
+    let mut syntax_tree: File =
+        syn::parse_str(source).map_err(|e| crate::error::AstError::Analysis {
             message: format!("Failed to parse Rust source for mod removal: {}", e),
-        }
-    })?;
+        })?;
 
     // Remove the module declaration
     syntax_tree.items.retain(|item| {
@@ -262,10 +265,7 @@ pub async fn plan_extract_module_to_package(
         .locate_module_files(source_path, &params.module_path)
         .await?;
 
-    debug!(
-        files_count = located_files.len(),
-        "Located module files"
-    );
+    debug!(files_count = located_files.len(), "Located module files");
 
     // Step 4: Parse imports from all located files and aggregate dependencies
     let mut all_dependencies = std::collections::HashSet::new();
@@ -404,7 +404,9 @@ pub async fn plan_extract_module_to_package(
             // Determine parent file path
             let parent_file_path = if module_segments.len() == 1 {
                 // Top-level module, parent is lib.rs
-                source_path.join(adapter.source_dir()).join(adapter.entry_point())
+                source_path
+                    .join(adapter.source_dir())
+                    .join(adapter.entry_point())
             } else {
                 // Nested module, parent is the containing module's mod.rs or .rs file
                 let mut parent_path = source_path.join(adapter.source_dir());
@@ -429,7 +431,9 @@ pub async fn plan_extract_module_to_package(
                             Ok(updated_content) => {
                                 if updated_content != parent_content {
                                     edits.push(TextEdit {
-                                        file_path: Some(parent_file_path.to_string_lossy().to_string()),
+                                        file_path: Some(
+                                            parent_file_path.to_string_lossy().to_string(),
+                                        ),
                                         edit_type: EditType::Replace,
                                         location: EditLocation {
                                             start_line: 0,
@@ -440,7 +444,10 @@ pub async fn plan_extract_module_to_package(
                                         original_text: parent_content,
                                         new_text: updated_content,
                                         priority: 70,
-                                        description: format!("Remove mod {} declaration from parent", final_module_name),
+                                        description: format!(
+                                            "Remove mod {} declaration from parent",
+                                            final_module_name
+                                        ),
                                     });
 
                                     debug!(edit_count = 4, "Created parent mod removal TextEdit");
@@ -473,7 +480,12 @@ pub async fn plan_extract_module_to_package(
     if source_cargo_toml.exists() {
         match tokio::fs::read_to_string(&source_cargo_toml).await {
             Ok(cargo_content) => {
-                match update_cargo_toml_dependency(&cargo_content, &params.target_package_name, &params.target_package_path, source_path) {
+                match update_cargo_toml_dependency(
+                    &cargo_content,
+                    &params.target_package_name,
+                    &params.target_package_path,
+                    source_path,
+                ) {
                     Ok(updated_cargo) => {
                         if updated_cargo != cargo_content {
                             edits.push(TextEdit {
@@ -488,7 +500,10 @@ pub async fn plan_extract_module_to_package(
                                 original_text: cargo_content,
                                 new_text: updated_cargo,
                                 priority: 60,
-                                description: format!("Add {} dependency to source Cargo.toml", params.target_package_name),
+                                description: format!(
+                                    "Add {} dependency to source Cargo.toml",
+                                    params.target_package_name
+                                ),
                             });
                             debug!("Created source Cargo.toml update TextEdit");
                         }
@@ -528,11 +543,17 @@ pub async fn plan_extract_module_to_package(
         match tokio::fs::read_to_string(&workspace_cargo_toml).await {
             Ok(workspace_content) => {
                 if workspace_content.contains("[workspace]") {
-                    match update_workspace_members(&workspace_content, &params.target_package_path, &workspace_root) {
+                    match update_workspace_members(
+                        &workspace_content,
+                        &params.target_package_path,
+                        &workspace_root,
+                    ) {
                         Ok(updated_workspace) => {
                             if updated_workspace != workspace_content {
                                 edits.push(TextEdit {
-                                    file_path: Some(workspace_cargo_toml.to_string_lossy().to_string()),
+                                    file_path: Some(
+                                        workspace_cargo_toml.to_string_lossy().to_string(),
+                                    ),
                                     edit_type: EditType::Replace,
                                     location: EditLocation {
                                         start_line: 0,
@@ -587,7 +608,8 @@ pub async fn plan_extract_module_to_package(
                             for import in imports {
                                 // Check if this import references the extracted module
                                 // The module path should start with "crate::" followed by our module path
-                                let module_path_normalized = params.module_path.replace("::", "::").replace(".", "::");
+                                let module_path_normalized =
+                                    params.module_path.replace("::", "::").replace(".", "::");
                                 let patterns_to_match = vec![
                                     format!("crate::{}", module_path_normalized),
                                     format!("self::{}", module_path_normalized),
@@ -602,7 +624,10 @@ pub async fn plan_extract_module_to_package(
                                 if is_match {
                                     // Found an import that needs to be rewritten
                                     let old_use_statement = format!("use {};", import.module_path);
-                                    let new_use_statement = adapter.rewrite_import(&import.module_path, &params.target_package_name);
+                                    let new_use_statement = adapter.rewrite_import(
+                                        &import.module_path,
+                                        &params.target_package_name,
+                                    );
 
                                     // Create a TextEdit to replace this import
                                     edits.push(TextEdit {
@@ -617,7 +642,10 @@ pub async fn plan_extract_module_to_package(
                                         original_text: old_use_statement.clone(),
                                         new_text: new_use_statement.clone(),
                                         priority: 40,
-                                        description: format!("Update import to use new crate {}", params.target_package_name),
+                                        description: format!(
+                                            "Update import to use new crate {}",
+                                            params.target_package_name
+                                        ),
                                     });
 
                                     debug!(
@@ -773,7 +801,9 @@ mod tests {
         assert!(result.is_ok());
         let files = result.unwrap();
         assert_eq!(files.len(), 1);
-        assert!(files[0].ends_with("services/planner.rs") || files[0].ends_with("services\\planner.rs"));
+        assert!(
+            files[0].ends_with("services/planner.rs") || files[0].ends_with("services\\planner.rs")
+        );
     }
 
     #[tokio::test]
@@ -799,7 +829,9 @@ mod tests {
         assert!(result.is_ok());
         let files = result.unwrap();
         assert_eq!(files.len(), 1);
-        assert!(files[0].ends_with("services/planner.rs") || files[0].ends_with("services\\planner.rs"));
+        assert!(
+            files[0].ends_with("services/planner.rs") || files[0].ends_with("services\\planner.rs")
+        );
     }
 
     #[tokio::test]
@@ -955,7 +987,11 @@ use std::io::Read;
     #[test]
     fn test_generate_manifest_with_dependencies() {
         let adapter = RustAdapter;
-        let dependencies = vec!["serde".to_string(), "tokio".to_string(), "async-trait".to_string()];
+        let dependencies = vec![
+            "serde".to_string(),
+            "tokio".to_string(),
+            "async-trait".to_string(),
+        ];
 
         let manifest = adapter.generate_manifest("my-test-crate", &dependencies);
 
@@ -1145,7 +1181,9 @@ pub fn consume() {
             .as_ref()
             .unwrap()
             .contains("Cargo.toml"));
-        assert!(manifest_edit.new_text.contains("name = \"extracted_module\""));
+        assert!(manifest_edit
+            .new_text
+            .contains("name = \"extracted_module\""));
         assert!(manifest_edit.new_text.contains("[package]"));
         assert!(manifest_edit.new_text.contains("[dependencies]"));
         assert!(manifest_edit.new_text.contains("serde = \"*\""));
@@ -1161,7 +1199,9 @@ pub fn consume() {
             .unwrap()
             .contains("lib.rs"));
         assert!(entrypoint_edit.new_text.contains("module_function"));
-        assert!(entrypoint_edit.new_text.contains("use std::collections::HashMap"));
+        assert!(entrypoint_edit
+            .new_text
+            .contains("use std::collections::HashMap"));
 
         // Verify Edit 3: Delete old module file
         let delete_edit = &edit_plan.edits[2];
@@ -1179,11 +1219,7 @@ pub fn consume() {
             let parent_edit = &edit_plan.edits[3];
             assert_eq!(parent_edit.edit_type, EditType::Replace);
             assert_eq!(parent_edit.priority, 70);
-            assert!(parent_edit
-                .file_path
-                .as_ref()
-                .unwrap()
-                .contains("lib.rs"));
+            assert!(parent_edit.file_path.as_ref().unwrap().contains("lib.rs"));
             assert!(parent_edit.description.contains("Remove mod my_module"));
         }
 
@@ -1267,9 +1303,7 @@ pub fn consume() {
             .as_array()
             .unwrap();
         assert!(dependencies.len() >= 2); // Should have at least serde and std
-        assert!(dependencies
-            .iter()
-            .any(|d| d.as_str() == Some("serde")));
+        assert!(dependencies.iter().any(|d| d.as_str() == Some("serde")));
         assert!(dependencies.iter().any(|d| d.as_str() == Some("std")));
     }
 
@@ -1286,7 +1320,14 @@ pub fn consume() {
         });
 
         let (new_content, count) = adapter
-            .rewrite_imports_for_rename(source, Path::new(""), Path::new(""), Path::new(""), Path::new(""), Some(&rename_info))
+            .rewrite_imports_for_rename(
+                source,
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Some(&rename_info),
+            )
             .unwrap();
 
         assert_eq!(count, 1);
@@ -1306,7 +1347,14 @@ pub fn consume() {
         });
 
         let (new_content, count) = adapter
-            .rewrite_imports_for_rename(source, Path::new(""), Path::new(""), Path::new(""), Path::new(""), Some(&rename_info))
+            .rewrite_imports_for_rename(
+                source,
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Some(&rename_info),
+            )
             .unwrap();
 
         assert_eq!(count, 1);
@@ -1326,7 +1374,14 @@ pub fn consume() {
         });
 
         let (new_content, count) = adapter
-            .rewrite_imports_for_rename(source, Path::new(""), Path::new(""), Path::new(""), Path::new(""), Some(&rename_info))
+            .rewrite_imports_for_rename(
+                source,
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Some(&rename_info),
+            )
             .unwrap();
 
         assert_eq!(count, 1);
@@ -1346,7 +1401,14 @@ pub fn consume() {
         });
 
         let (new_content, count) = adapter
-            .rewrite_imports_for_rename(source, Path::new(""), Path::new(""), Path::new(""), Path::new(""), Some(&rename_info))
+            .rewrite_imports_for_rename(
+                source,
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Some(&rename_info),
+            )
             .unwrap();
 
         assert_eq!(count, 0);
@@ -1369,7 +1431,14 @@ use other_crate::TypeC;"#;
         });
 
         let (new_content, count) = adapter
-            .rewrite_imports_for_rename(source, Path::new(""), Path::new(""), Path::new(""), Path::new(""), Some(&rename_info))
+            .rewrite_imports_for_rename(
+                source,
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Some(&rename_info),
+            )
             .unwrap();
 
         assert_eq!(count, 2);
@@ -1385,7 +1454,14 @@ use other_crate::TypeC;"#;
         let source = r#"use old_crate::SomeType;"#;
 
         let (new_content, count) = adapter
-            .rewrite_imports_for_rename(source, Path::new(""), Path::new(""), Path::new(""), Path::new(""), None)
+            .rewrite_imports_for_rename(
+                source,
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                None,
+            )
             .unwrap();
 
         assert_eq!(count, 0);
@@ -1405,7 +1481,14 @@ use other_crate::TypeC;"#;
         });
 
         let (new_content, count) = adapter
-            .rewrite_imports_for_rename(source, Path::new(""), Path::new(""), Path::new(""), Path::new(""), Some(&rename_info))
+            .rewrite_imports_for_rename(
+                source,
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Path::new(""),
+                Some(&rename_info),
+            )
             .unwrap();
 
         assert_eq!(count, 1);

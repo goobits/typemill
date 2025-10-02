@@ -3,8 +3,8 @@
 use cb_api::{CacheStats, ImportGraph};
 use dashmap::DashMap;
 use std::path::PathBuf;
-use std::time::{Duration, SystemTime};
-use tracing::{debug, trace, warn};
+use std::time::SystemTime;
+use tracing::{debug, trace};
 
 /// Cache key containing file path and modification time for invalidation
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -44,7 +44,7 @@ impl Default for CacheSettings {
         Self {
             enabled: true,
             max_entries: 10000,
-            ttl_seconds: 3600, // 1 hour
+            ttl_seconds: 3600,                 // 1 hour
             max_size_bytes: 256 * 1024 * 1024, // 256 MB
         }
     }
@@ -53,11 +53,7 @@ impl Default for CacheSettings {
 impl CacheSettings {
     /// Create cache settings from core config
     /// This allows creating cache settings from cb_core::config::CacheConfig
-    pub fn from_config(
-        enabled: bool,
-        ttl_seconds: u64,
-        max_size_bytes: u64,
-    ) -> Self {
+    pub fn from_config(enabled: bool, ttl_seconds: u64, max_size_bytes: u64) -> Self {
         // Calculate max_entries based on max_size_bytes
         // Assuming average entry size of ~10KB (includes path + import graph)
         let avg_entry_size = 10 * 1024; // 10KB
@@ -398,7 +394,10 @@ mod tests {
         };
 
         // Test insert and get
-        assert!(cache.insert(path.clone(), import_graph.clone()).await.is_ok());
+        assert!(cache
+            .insert(path.clone(), import_graph.clone())
+            .await
+            .is_ok());
         assert_eq!(cache.size(), 1);
 
         let cached = cache.get(&path).await;

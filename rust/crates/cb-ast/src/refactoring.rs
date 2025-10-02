@@ -7,8 +7,7 @@ use crate::python_parser::{
 };
 use async_trait::async_trait;
 use cb_api::{
-    EditLocation, EditPlan, EditPlanMetadata, EditType,
-    TextEdit, ValidationRule, ValidationType,
+    EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -192,12 +191,8 @@ async fn lsp_extract_function(
         .ok_or_else(|| AstError::analysis("Code action missing edit field".to_string()))?;
 
     // Convert to EditPlan
-    cb_api::EditPlan::from_lsp_workspace_edit(
-        workspace_edit,
-        file_path,
-        "extract_function",
-    )
-    .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
+    cb_api::EditPlan::from_lsp_workspace_edit(workspace_edit, file_path, "extract_function")
+        .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
 }
 
 /// LSP-based inline variable refactoring
@@ -222,11 +217,7 @@ async fn lsp_inline_variable(
     };
 
     let actions = lsp_service
-        .get_code_actions(
-            file_path,
-            &range,
-            Some(vec!["refactor.inline".to_string()]),
-        )
+        .get_code_actions(file_path, &range, Some(vec!["refactor.inline".to_string()]))
         .await?;
 
     let action = actions
@@ -247,12 +238,8 @@ async fn lsp_inline_variable(
         .get("edit")
         .ok_or_else(|| AstError::analysis("Code action missing edit field".to_string()))?;
 
-    cb_api::EditPlan::from_lsp_workspace_edit(
-        workspace_edit,
-        file_path,
-        "inline_variable",
-    )
-    .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
+    cb_api::EditPlan::from_lsp_workspace_edit(workspace_edit, file_path, "inline_variable")
+        .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
 }
 
 /// LSP-based extract variable refactoring
@@ -295,12 +282,8 @@ async fn lsp_extract_variable(
         .get("edit")
         .ok_or_else(|| AstError::analysis("Code action missing edit field".to_string()))?;
 
-    cb_api::EditPlan::from_lsp_workspace_edit(
-        workspace_edit,
-        file_path,
-        "extract_variable",
-    )
-    .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
+    cb_api::EditPlan::from_lsp_workspace_edit(workspace_edit, file_path, "extract_variable")
+        .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
 }
 
 /// Generate edit plan for extract function refactoring
@@ -366,7 +349,7 @@ fn ast_extract_function_ts_js(
 
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Insert,
+        edit_type: EditType::Insert,
         location: analysis.insertion_point.clone().into(),
         original_text: String::new(),
         new_text: format!("\n{}\n", function_code),
@@ -379,7 +362,7 @@ fn ast_extract_function_ts_js(
 
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Replace,
+        edit_type: EditType::Replace,
         location: analysis.selected_range.clone().into(),
         original_text: extract_range_text(source, &analysis.selected_range)?,
         new_text: call_code,
@@ -502,7 +485,7 @@ fn ast_inline_variable_ts_js(
     // Remove the variable declaration
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Delete,
+        edit_type: EditType::Delete,
         location: analysis.declaration_range.clone().into(),
         original_text: extract_range_text(source, &analysis.declaration_range)?,
         new_text: String::new(),
@@ -776,7 +759,7 @@ fn ast_extract_variable_ts_js(
     let declaration = format!("const {} = {};\n{}", var_name, analysis.expression, indent);
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Insert,
+        edit_type: EditType::Insert,
         location: analysis.insertion_point.clone().into(),
         original_text: String::new(),
         new_text: declaration,
@@ -790,7 +773,7 @@ fn ast_extract_variable_ts_js(
     // Replace the original expression with the variable name
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Replace,
+        edit_type: EditType::Replace,
         location: analysis.expression_range.clone().into(),
         original_text: analysis.expression.clone(),
         new_text: var_name.clone(),
@@ -1346,7 +1329,7 @@ fn ast_extract_function_python(
 
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Insert,
+        edit_type: EditType::Insert,
         location: analysis.insertion_point.clone().into(),
         original_text: String::new(),
         new_text: format!("{}\n\n", function_code),
@@ -1359,7 +1342,7 @@ fn ast_extract_function_python(
 
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Replace,
+        edit_type: EditType::Replace,
         location: analysis.selected_range.clone().into(),
         original_text: extract_python_range_text(source, &analysis.selected_range)?,
         new_text: call_code,
@@ -1439,7 +1422,7 @@ fn ast_inline_variable_python(
     // Remove the variable declaration
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Delete,
+        edit_type: EditType::Delete,
         location: analysis.declaration_range.clone().into(),
         original_text: extract_python_range_text(source, &analysis.declaration_range)?,
         new_text: String::new(),
@@ -1507,7 +1490,7 @@ fn ast_extract_variable_python(
     let declaration = format!("{}{} = {}\n", indent, var_name, analysis.expression);
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Insert,
+        edit_type: EditType::Insert,
         location: analysis.insertion_point.clone().into(),
         original_text: String::new(),
         new_text: declaration,
@@ -1521,7 +1504,7 @@ fn ast_extract_variable_python(
     // Replace the original expression with the variable name
     edits.push(TextEdit {
         file_path: None,
-            edit_type: EditType::Replace,
+        edit_type: EditType::Replace,
         location: analysis.expression_range.clone().into(),
         original_text: analysis.expression.clone(),
         new_text: var_name.clone(),
@@ -1734,4 +1717,3 @@ mod tests {
         assert_eq!(result, "x = 1;\nconst y");
     }
 }
-

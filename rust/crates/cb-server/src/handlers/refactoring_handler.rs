@@ -143,11 +143,9 @@ impl RefactoringHandler {
     ) -> ServerResult<String> {
         debug!(workspace_id = %workspace_id, command = %command, "Executing remote command");
 
-        let workspace = workspace_manager
-            .get(workspace_id)
-            .ok_or_else(|| {
-                ServerError::InvalidRequest(format!("Workspace '{}' not found", workspace_id))
-            })?;
+        let workspace = workspace_manager.get(workspace_id).ok_or_else(|| {
+            ServerError::InvalidRequest(format!("Workspace '{}' not found", workspace_id))
+        })?;
 
         let agent_url = format!("{}/execute", workspace.agent_url);
 
@@ -171,7 +169,10 @@ impl RefactoringHandler {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             error!(workspace_id = %workspace_id, status = %status, error = %error_text, "Workspace agent returned error");
             return Err(ServerError::Internal(format!(
                 "Workspace agent error ({}): {}",
@@ -179,13 +180,10 @@ impl RefactoringHandler {
             )));
         }
 
-        let result: Value = response
-            .json()
-            .await
-            .map_err(|e| {
-                error!(error = %e, "Failed to parse agent response");
-                ServerError::Internal("Failed to parse agent response".into())
-            })?;
+        let result: Value = response.json().await.map_err(|e| {
+            error!(error = %e, "Failed to parse agent response");
+            ServerError::Internal("Failed to parse agent response".into())
+        })?;
 
         result
             .get("stdout")
@@ -216,15 +214,14 @@ impl ToolHandler for RefactoringHandler {
         ]
     }
 
-    async fn handle_tool(
-        &self,
-        tool_call: ToolCall,
-        context: &ToolContext,
-    ) -> ServerResult<Value> {
+    async fn handle_tool(&self, tool_call: ToolCall, context: &ToolContext) -> ServerResult<Value> {
         debug!(tool_name = %tool_call.name, "Handling refactoring operation");
 
         match tool_call.name.as_str() {
-            "extract_function" | "inline_variable" | "extract_variable" | "extract_module_to_package" => {
+            "extract_function"
+            | "inline_variable"
+            | "extract_variable"
+            | "extract_module_to_package" => {
                 self.handle_refactoring_operation(tool_call, context).await
             }
             "fix_imports" => self.handle_fix_imports(tool_call, context).await,
@@ -251,8 +248,9 @@ impl RefactoringHandler {
         // Parse and execute refactoring based on tool type
         let (file_path, dry_run, workspace_id, edit_plan) = match tool_call.name.as_str() {
             "extract_function" => {
-                let parsed: ExtractFunctionArgs = serde_json::from_value(args)
-                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid arguments: {}", e)))?;
+                let parsed: ExtractFunctionArgs = serde_json::from_value(args).map_err(|e| {
+                    ServerError::InvalidRequest(format!("Invalid arguments: {}", e))
+                })?;
 
                 let content = if let Some(workspace_id) = &parsed.workspace_id {
                     let command = format!("cat '{}'", Self::escape_shell_arg(&parsed.file_path));
@@ -297,18 +295,26 @@ impl RefactoringHandler {
                     &range,
                     &parsed.function_name,
                     &parsed.file_path,
-                    lsp_service.as_ref().map(|s| s as &dyn LspRefactoringService),
+                    lsp_service
+                        .as_ref()
+                        .map(|s| s as &dyn LspRefactoringService),
                 )
                 .await
                 .map_err(|e| ServerError::Runtime {
                     message: format!("Extract function planning failed: {}", e),
                 })?;
 
-                (parsed.file_path, parsed.dry_run.unwrap_or(false), parsed.workspace_id, plan)
+                (
+                    parsed.file_path,
+                    parsed.dry_run.unwrap_or(false),
+                    parsed.workspace_id,
+                    plan,
+                )
             }
             "inline_variable" => {
-                let parsed: InlineVariableArgs = serde_json::from_value(args)
-                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid arguments: {}", e)))?;
+                let parsed: InlineVariableArgs = serde_json::from_value(args).map_err(|e| {
+                    ServerError::InvalidRequest(format!("Invalid arguments: {}", e))
+                })?;
 
                 let content = if let Some(workspace_id) = &parsed.workspace_id {
                     let command = format!("cat '{}'", Self::escape_shell_arg(&parsed.file_path));
@@ -338,18 +344,26 @@ impl RefactoringHandler {
                     parsed.line,
                     parsed.character.unwrap_or(0),
                     &parsed.file_path,
-                    lsp_service.as_ref().map(|s| s as &dyn LspRefactoringService),
+                    lsp_service
+                        .as_ref()
+                        .map(|s| s as &dyn LspRefactoringService),
                 )
                 .await
                 .map_err(|e| ServerError::Runtime {
                     message: format!("Inline variable planning failed: {}", e),
                 })?;
 
-                (parsed.file_path, parsed.dry_run.unwrap_or(false), parsed.workspace_id, plan)
+                (
+                    parsed.file_path,
+                    parsed.dry_run.unwrap_or(false),
+                    parsed.workspace_id,
+                    plan,
+                )
             }
             "extract_variable" => {
-                let parsed: ExtractVariableArgs = serde_json::from_value(args)
-                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid arguments: {}", e)))?;
+                let parsed: ExtractVariableArgs = serde_json::from_value(args).map_err(|e| {
+                    ServerError::InvalidRequest(format!("Invalid arguments: {}", e))
+                })?;
 
                 let content = if let Some(workspace_id) = &parsed.workspace_id {
                     let command = format!("cat '{}'", Self::escape_shell_arg(&parsed.file_path));
@@ -382,19 +396,27 @@ impl RefactoringHandler {
                     parsed.end_character,
                     Some(parsed.variable_name.clone()),
                     &parsed.file_path,
-                    lsp_service.as_ref().map(|s| s as &dyn LspRefactoringService),
+                    lsp_service
+                        .as_ref()
+                        .map(|s| s as &dyn LspRefactoringService),
                 )
                 .await
                 .map_err(|e| ServerError::Runtime {
                     message: format!("Extract variable planning failed: {}", e),
                 })?;
 
-                (parsed.file_path, parsed.dry_run.unwrap_or(false), parsed.workspace_id, plan)
+                (
+                    parsed.file_path,
+                    parsed.dry_run.unwrap_or(false),
+                    parsed.workspace_id,
+                    plan,
+                )
             }
             "extract_module_to_package" => {
                 let parsed: cb_ast::package_extractor::ExtractModuleToPackageParams =
-                    serde_json::from_value(args)
-                        .map_err(|e| ServerError::InvalidRequest(format!("Invalid arguments: {}", e)))?;
+                    serde_json::from_value(args).map_err(|e| {
+                        ServerError::InvalidRequest(format!("Invalid arguments: {}", e))
+                    })?;
 
                 let plan = cb_ast::package_extractor::plan_extract_module_to_package(parsed)
                     .await
@@ -402,12 +424,7 @@ impl RefactoringHandler {
                         message: format!("Extract module to package planning failed: {}", e),
                     })?;
 
-                (
-                    plan.source_file.clone(),
-                    false,
-                    None,
-                    plan,
-                )
+                (plan.source_file.clone(), false, None, plan)
             }
             _ => {
                 return Err(ServerError::InvalidRequest(format!(
@@ -429,7 +446,10 @@ impl RefactoringHandler {
             }
 
             if let Some(file_edit) = edit_plan.edits.get(0) {
-                let target_file = file_edit.file_path.as_ref().unwrap_or(&edit_plan.source_file);
+                let target_file = file_edit
+                    .file_path
+                    .as_ref()
+                    .unwrap_or(&edit_plan.source_file);
                 let command = format!(
                     "printf '%s' '{}' > '{}'",
                     Self::escape_shell_arg(&file_edit.new_text),
@@ -506,7 +526,10 @@ impl RefactoringHandler {
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("file_path is required".to_string()))?;
 
-        let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
+        let dry_run = args
+            .get("dry_run")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
 
         debug!(file_path = %file_path, dry_run = dry_run, "Handling fix_imports via organize_imports");
 
@@ -521,31 +544,25 @@ impl RefactoringHandler {
             }));
         }
 
-        let mut plugin_request = PluginRequest::new(
-            "organize_imports".to_string(),
-            PathBuf::from(file_path),
-        );
+        let mut plugin_request =
+            PluginRequest::new("organize_imports".to_string(), PathBuf::from(file_path));
         plugin_request.params = json!({
             "file_path": file_path
         });
 
         match context.plugin_manager.handle_request(plugin_request).await {
-            Ok(response) => {
-                Ok(json!({
-                    "operation": "fix_imports",
-                    "file_path": file_path,
-                    "dry_run": false,
-                    "modified": true,
-                    "status": "fixed",
-                    "lsp_response": response
-                }))
-            }
-            Err(e) => {
-                Err(ServerError::internal(format!(
-                    "Failed to organize imports: {}",
-                    e
-                )))
-            }
+            Ok(response) => Ok(json!({
+                "operation": "fix_imports",
+                "file_path": file_path,
+                "dry_run": false,
+                "modified": true,
+                "status": "fixed",
+                "lsp_response": response
+            })),
+            Err(e) => Err(ServerError::internal(format!(
+                "Failed to organize imports: {}",
+                e
+            ))),
         }
     }
 }
