@@ -56,11 +56,10 @@ pub enum Commands {
     Tool {
         /// Tool name (e.g., "rename_directory", "find_definition")
         tool_name: String,
-        /// Tool arguments as JSON
-        #[arg(value_parser = parse_json)]
-        args: Option<serde_json::Value>,
-        /// Output format (json or pretty)
-        #[arg(long, default_value = "pretty")]
+        /// Tool arguments as JSON string
+        args: String,
+        /// Output format (pretty or compact)
+        #[arg(long, default_value = "pretty", value_parser = ["pretty", "compact"])]
         format: String,
     },
     /// Manage MCP server presets
@@ -140,7 +139,7 @@ pub async fn run() {
             args,
             format,
         } => {
-            handle_tool_command(&tool_name, args, &format).await;
+            handle_tool_command(&tool_name, &args, &format).await;
         }
         #[cfg(feature = "mcp-proxy")]
         Commands::Mcp(mcp_command) => {
@@ -582,27 +581,23 @@ fn terminate_process(pid: u32) -> bool {
 }
 
 /// Handle the tool command - call MCP tool directly
-async fn handle_tool_command(
-    tool_name: &str,
-    args: Option<serde_json::Value>,
-    format: &str,
-) {
-    // Create MCP request
-    let request = serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "tools/call",
-        "params": {
-            "name": tool_name,
-            "arguments": args.unwrap_or(serde_json::json!({}))
+async fn handle_tool_command(tool_name: &str, args_json: &str, format: &str) {
+    // Parse JSON arguments
+    let arguments: serde_json::Value = match serde_json::from_str(args_json) {
+        Ok(val) => val,
+        Err(e) => {
+            let error = cb_api::ApiError::invalid_request(format!("Invalid JSON arguments: {}", e));
+            output_error(&error, format);
+            process::exit(1);
         }
-    });
+    };
 
-    // Create app state and dispatcher
+    // Create headless AppState initialization
     let app_state = match crate::create_app_state().await {
         Ok(state) => state,
         Err(e) => {
-            eprintln!("❌ Failed to initialize: {}", e);
+            let error = cb_api::ApiError::internal(format!("Failed to initialize: {}", e));
+            output_error(&error, format);
             process::exit(1);
         }
     };
@@ -612,45 +607,54 @@ async fn handle_tool_command(
         cb_server::handlers::plugin_dispatcher::PluginDispatcher::new(app_state, plugin_manager),
     );
 
+    // Initialize dispatcher
     if let Err(e) = dispatcher.initialize().await {
-        eprintln!("❌ Failed to initialize dispatcher: {}", e);
+        let error = cb_api::ApiError::internal(format!("Failed to initialize dispatcher: {}", e));
+        output_error(&error, format);
         process::exit(1);
     }
 
-    // Parse and dispatch
-    let mcp_request: cb_core::model::mcp::McpRequest = match serde_json::from_value(request) {
-        Ok(msg) => msg,
-        Err(e) => {
-            eprintln!("❌ Failed to create MCP request: {}", e);
-            process::exit(1);
-        }
+    // Construct ToolCall directly
+    let tool_call = cb_core::model::mcp::ToolCall {
+        name: tool_name.to_string(),
+        arguments: Some(arguments),
     };
 
-    let mcp_message = cb_core::model::mcp::McpMessage::Request(mcp_request);
-
-    match dispatcher.dispatch(mcp_message).await {
-        Ok(cb_core::model::mcp::McpMessage::Response(response)) => {
-            if format == "json" {
-                println!("{}", serde_json::to_string_pretty(&response).unwrap());
-            } else {
-                // Pretty format
-                if let Some(result) = response.result {
-                    println!("{}", serde_json::to_string_pretty(&result).unwrap());
-                } else if let Some(error) = response.error {
-                    eprintln!("❌ Error: {}", serde_json::to_string_pretty(&error).unwrap());
-                    process::exit(1);
-                }
-            }
+    // Execute tool call directly
+    match dispatcher.handle_tool_call(tool_call).await {
+        Ok(result) => {
+            // Output result to stdout
+            output_result(&result, format);
         }
-        Ok(msg) => {
-            eprintln!("❌ Unexpected response type: {:?}", msg);
-            process::exit(1);
-        }
-        Err(e) => {
-            eprintln!("❌ Tool execution failed: {}", e);
+        Err(server_error) => {
+            // Convert ServerError to ApiError and output to stderr
+            let api_error = cb_api::ApiError::internal(server_error.to_string());
+            output_error(&api_error, format);
             process::exit(1);
         }
     }
+}
+
+/// Output result to stdout based on format
+fn output_result(result: &serde_json::Value, format: &str) {
+    let output = match format {
+        "compact" => serde_json::to_string(result).unwrap_or_else(|_| "{}".to_string()),
+        _ => serde_json::to_string_pretty(result).unwrap_or_else(|_| "{}".to_string()),
+    };
+    println!("{}", output);
+}
+
+/// Output error to stderr based on format
+fn output_error(error: &cb_api::ApiError, format: &str) {
+    let error_json = serde_json::to_value(error).unwrap_or(serde_json::json!({
+        "error": error.to_string()
+    }));
+
+    let output = match format {
+        "compact" => serde_json::to_string(&error_json).unwrap_or_else(|_| "{}".to_string()),
+        _ => serde_json::to_string_pretty(&error_json).unwrap_or_else(|_| "{}".to_string()),
+    };
+    eprintln!("{}", output);
 }
 
 /// Initialize tracing based on configuration

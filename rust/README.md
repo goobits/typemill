@@ -113,12 +113,15 @@ Check if the server is running and display process information.
 ### `codebuddy stop`
 Gracefully stop a running server instance.
 
-### `codebuddy tool <tool_name> '<json_args>' [--format json|pretty]`
+### `codebuddy tool <tool_name> '<json_args>' [--format pretty|compact]`
 **NEW!** Call MCP tools directly from the command line without starting a server.
 
 ```bash
-# Check system health
+# Check system health (pretty format, default)
 codebuddy tool health_check '{}'
+
+# Check system health (compact format for scripts)
+codebuddy tool health_check '{}' --format compact
 
 # Dry-run directory rename with import updates
 codebuddy tool rename_directory '{
@@ -127,16 +130,20 @@ codebuddy tool rename_directory '{
   "dry_run": true
 }'
 
-# Find definition (JSON output)
+# Find definition (compact JSON output for parsing)
 codebuddy tool find_definition '{
   "file_path": "src/app.ts",
   "line": 10,
   "character": 5
-}' --format json
+}' --format compact
 
 # List workspace symbols
 codebuddy tool search_workspace_symbols '{"query": "UserService"}'
 ```
+
+**Output Formats:**
+- `pretty` (default): Human-readable JSON with indentation and newlines
+- `compact`: Minified JSON on a single line (ideal for scripts and parsing)
 
 **Benefits:**
 - ✅ No server needed - tools run directly
