@@ -10,8 +10,6 @@ use cb_server::services::{
     workflow_executor::{DefaultWorkflowExecutor, WorkflowExecutor},
     DefaultAstService, FileService, LockManager, OperationQueue,
 };
-#[cfg(all(unix, feature = "vfs"))]
-use cb_vfs::start_fuse_mount;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -90,29 +88,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dispatcher = PluginDispatcher::new(app_state, plugin_manager);
 
     let dispatcher = Arc::new(dispatcher);
-
-    // Start FUSE filesystem if enabled (only for WebSocket server)
-    if matches!(cli.command, Some(Commands::Serve) | None) {
-        #[cfg(all(unix, feature = "vfs"))]
-        if let Some(fuse_config) = &config.fuse {
-            let workspace_path = Path::new(".");
-            tracing::info!(
-                "FUSE enabled, mounting filesystem at {:?}",
-                fuse_config.mount_point
-            );
-
-            if let Err(e) = start_fuse_mount(fuse_config, workspace_path) {
-                tracing::error!(
-                    error_category = "fuse_error",
-                    error = %e,
-                    "Failed to start FUSE mount"
-                );
-                // Continue without FUSE - it's not critical for core functionality
-            } else {
-                tracing::info!("FUSE filesystem mounted successfully");
-            }
-        }
-    }
 
     // Execute based on command
     match cli.command {

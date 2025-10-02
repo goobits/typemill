@@ -11,10 +11,6 @@ members = [
     "crates/tests",
     "apps/server", "testing/benchmarks",
 ]
-# Excluded members (optional features - build with --features vfs):
-exclude = [
-    "crates/cb-vfs",  # EXPERIMENTAL: FUSE virtual filesystem (Unix only, optional)
-]
 resolver = "2"
 
 # Package metadata for cargo install
