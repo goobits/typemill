@@ -167,7 +167,13 @@ RUST_LOG=debug codebuddy start
 
 ## 🧪 Development
 ```bash
-# Build from source
+# Quick start (using Makefile)
+make setup       # One-time: install build optimization tools
+make             # Build debug version
+make test        # Run tests
+make install     # Install to ~/.local/bin
+
+# Or use cargo directly
 cd rust
 cargo build --release
 
@@ -183,6 +189,8 @@ cargo clippy                  # Linting
 cargo fmt                     # Formatting
 cargo check                   # Type checking
 ```
+
+**Contributing:** See [CONTRIBUTING.md](rust/CONTRIBUTING.md) for detailed development setup and build optimization tips.
 
 ## 📝 License
 MIT - see [LICENSE](LICENSE)
