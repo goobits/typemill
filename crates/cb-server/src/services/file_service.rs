@@ -564,6 +564,32 @@ impl FileService {
             },
             // Execution function
             || async {
+                // Queue the operations for tracking
+                let mut transaction = OperationTransaction::new(self.operation_queue.clone());
+
+                if let Some(parent) = abs_path.parent() {
+                    if !parent.exists() {
+                        transaction.add_operation(FileOperation::new(
+                            "system".to_string(),
+                            OperationType::CreateDir,
+                            parent.to_path_buf(),
+                            json!({ "recursive": true }),
+                        ));
+                    }
+                }
+
+                transaction.add_operation(FileOperation::new(
+                    "system".to_string(),
+                    OperationType::Write,
+                    abs_path.clone(),
+                    json!({ "content": content }),
+                ));
+
+                transaction.commit().await.map_err(|e| {
+                    Box::new(e) as Box<dyn std::error::Error + Send + Sync>
+                })?;
+
+                // Actually perform the filesystem operations
                 if let Some(parent) = abs_path.parent() {
                     fs::create_dir_all(parent).await.map_err(|e| {
                         Box::new(ServerError::Internal(format!(
