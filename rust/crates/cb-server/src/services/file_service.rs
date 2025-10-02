@@ -214,6 +214,13 @@ impl FileService {
                 let is_cargo_pkg = self.is_cargo_package(&old_abs_dir).await
                     .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
+                // Build rename_info for Cargo packages
+                let rename_info = if is_cargo_pkg {
+                    self.extract_cargo_rename_info(&old_abs_dir, &new_abs_dir).await.ok()
+                } else {
+                    None
+                };
+
                 self.perform_rename(&old_abs_dir, &new_abs_dir).await
                     .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
@@ -229,7 +236,7 @@ impl FileService {
 
                     match self
                         .import_service
-                        .update_imports_for_rename(old_file_path, &new_file_path, false)
+                        .update_imports_for_rename(old_file_path, &new_file_path, rename_info.as_ref(), false)
                         .await
                     {
                         Ok(report) => {
@@ -896,6 +903,54 @@ impl FileService {
         }
     }
 
+    /// Extract Cargo package rename information for import rewriting
+    async fn extract_cargo_rename_info(
+        &self,
+        old_package_path: &Path,
+        new_package_path: &Path,
+    ) -> ServerResult<serde_json::Value> {
+        use serde_json::json;
+
+        // Read the old Cargo.toml to get the old crate name
+        let old_cargo_toml = old_package_path.join("Cargo.toml");
+        let old_content = fs::read_to_string(&old_cargo_toml).await.map_err(|e| {
+            ServerError::Internal(format!("Failed to read old Cargo.toml: {}", e))
+        })?;
+
+        let old_doc = old_content.parse::<toml_edit::DocumentMut>().map_err(|e| {
+            ServerError::Internal(format!("Failed to parse old Cargo.toml: {}", e))
+        })?;
+
+        let old_crate_name = old_doc["package"]["name"]
+            .as_str()
+            .ok_or_else(|| ServerError::Internal("Missing [package].name in Cargo.toml".to_string()))?
+            .to_string();
+
+        // Derive the new crate name from the new directory path
+        // Convert directory name to valid crate name (replace hyphens with underscores for imports)
+        let new_dir_name = new_package_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or_else(|| ServerError::Internal("Invalid new directory path".to_string()))?;
+
+        // For Rust crate names: keep hyphens in package name but use underscores for imports
+        let new_crate_name = new_dir_name.replace('_', "-"); // Normalize to hyphens for package name
+        let new_crate_import = new_dir_name.replace('-', "_"); // Use underscores for use statements
+
+        info!(
+            old_crate_name = %old_crate_name,
+            new_crate_name = %new_crate_name,
+            new_crate_import = %new_crate_import,
+            "Extracted Cargo rename information"
+        );
+
+        Ok(json!({
+            "old_crate_name": old_crate_name.replace('-', "_"), // Normalize to underscores for comparison
+            "new_crate_name": new_crate_import, // Use underscores for imports
+            "new_package_name": new_crate_name, // Keep hyphens for Cargo.toml
+        }))
+    }
+
     /// Find the parent Cargo workspace and update the members array to reflect a renamed package.
     async fn update_workspace_manifests(
         &self,
@@ -986,20 +1041,38 @@ impl FileService {
             ServerError::Internal(format!("Failed to parse package Cargo.toml: {}", e))
         })?;
 
-        // Calculate depth change
+        let mut updated_count = 0;
+
+        // Update [package].name to match the new directory name
+        let new_dir_name = new_package_path
+            .file_name()
+            .and_then(|n| n.to_str());
+
+        if let Some(new_name) = new_dir_name {
+            let new_crate_name = new_name.replace('_', "-"); // Normalize to hyphens for Cargo.toml
+            if let Some(package_section) = doc.get_mut("package") {
+                if let Some(name_field) = package_section.get_mut("name") {
+                    let old_name = name_field.as_str().unwrap_or("");
+                    if old_name != new_crate_name {
+                        info!(
+                            old_name = %old_name,
+                            new_name = %new_crate_name,
+                            "Updating package name in Cargo.toml"
+                        );
+                        *name_field = toml_edit::value(new_crate_name);
+                        updated_count += 1;
+                    }
+                }
+            }
+        }
+
+        // Calculate depth change for relative path updates
         let old_depth = old_package_path.strip_prefix(workspace_root)
             .map(|p| p.components().count())
             .unwrap_or(0);
         let new_depth = new_package_path.strip_prefix(workspace_root)
             .map(|p| p.components().count())
             .unwrap_or(0);
-
-        if old_depth == new_depth {
-            debug!("No depth change, skipping relative path updates");
-            return Ok(()); // No depth change, paths still valid
-        }
-
-        let mut updated_count = 0;
 
         // Update [dependencies] and [dev-dependencies]
         for section in ["dependencies", "dev-dependencies"] {

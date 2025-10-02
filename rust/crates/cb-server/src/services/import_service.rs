@@ -2,8 +2,9 @@
 
 use crate::{ServerError, ServerResult};
 use cb_api::DependencyUpdate;
-use cb_ast::{update_import_paths, ImportPathResolver};
+use cb_ast::{package_extractor::LanguageAdapter, update_import_paths, update_imports_for_rename, ImportPathResolver};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tokio::fs;
 use tracing::{debug, error, info};
 
@@ -11,13 +12,24 @@ use tracing::{debug, error, info};
 pub struct ImportService {
     /// Project root directory
     project_root: PathBuf,
+    /// Language adapters for multi-language support
+    adapters: Vec<Arc<dyn LanguageAdapter>>,
 }
 
 impl ImportService {
     /// Create a new import service
     pub fn new(project_root: impl AsRef<Path>) -> Self {
+        use cb_ast::package_extractor::{RustAdapter, TypeScriptAdapter, PythonAdapter};
+
+        let adapters: Vec<Arc<dyn LanguageAdapter>> = vec![
+            Arc::new(RustAdapter),
+            Arc::new(TypeScriptAdapter),
+            Arc::new(PythonAdapter),
+        ];
+
         Self {
             project_root: project_root.as_ref().to_path_buf(),
+            adapters,
         }
     }
 
@@ -26,6 +38,7 @@ impl ImportService {
         &self,
         old_path: &Path,
         new_path: &Path,
+        rename_info: Option<&serde_json::Value>,
         dry_run: bool,
     ) -> ServerResult<ImportUpdateReport> {
         info!(
@@ -48,17 +61,25 @@ impl ImportService {
             self.project_root.join(new_path)
         };
 
-        // Find and update imports - CRITICAL FIX: Pass dry_run flag through!
+        // Find and update imports using adapters
         debug!(
             old_abs = ?old_abs,
             new_abs = ?new_abs,
             project_root = ?self.project_root,
             dry_run = dry_run,
-            "Calling update_import_paths"
+            has_rename_info = rename_info.is_some(),
+            "Calling update_imports_for_rename"
         );
-        let result = update_import_paths(&old_abs, &new_abs, &self.project_root, dry_run)
-            .await
-            .map_err(|e| ServerError::Internal(format!("Failed to update imports: {}", e)))?;
+        let result = update_imports_for_rename(
+            &old_abs,
+            &new_abs,
+            &self.project_root,
+            &self.adapters,
+            rename_info,
+            dry_run,
+        )
+        .await
+        .map_err(|e| ServerError::Internal(format!("Failed to update imports: {}", e)))?;
 
         debug!(
             files_updated = result.updated_files.len(),

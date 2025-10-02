@@ -303,17 +303,19 @@ pub struct ImportUpdateResult {
     pub imports_updated: usize,
 }
 
-/// Update import paths in all affected files after a file rename
-pub async fn update_import_paths(
+/// Update import paths in all affected files after a file/directory rename
+pub async fn update_imports_for_rename(
     old_path: &Path,
     new_path: &Path,
     project_root: &Path,
+    adapters: &[std::sync::Arc<dyn crate::package_extractor::LanguageAdapter>],
+    rename_info: Option<&serde_json::Value>,
     dry_run: bool,
 ) -> AstResult<ImportUpdateResult> {
     let resolver = ImportPathResolver::new(project_root);
 
-    // Find all TypeScript/JavaScript files in the project
-    let project_files = find_project_files(project_root).await?;
+    // Find all files that the adapters handle
+    let project_files = find_project_files(project_root, adapters).await?;
 
     // Find files that import the renamed file
     let affected_files = resolver.find_affected_files(old_path, &project_files).await?;
@@ -332,9 +334,55 @@ pub async fn update_import_paths(
     };
 
     for file_path in affected_files {
-        match update_imports_in_file(&file_path, old_path, new_path, &resolver, dry_run).await {
-            Ok(count) => {
+        // Find the appropriate adapter for this file
+        let adapter = if let Some(ext) = file_path.extension() {
+            let ext_str = ext.to_str().unwrap_or("");
+            adapters.iter().find(|a| a.handles_extension(ext_str))
+        } else {
+            None
+        };
+
+        let adapter = match adapter {
+            Some(a) => a,
+            None => {
+                debug!(file = ?file_path, "No adapter found for file extension");
+                continue;
+            }
+        };
+
+        // Read file content
+        let content = match tokio::fs::read_to_string(&file_path).await {
+            Ok(c) => c,
+            Err(e) => {
+                warn!(error = %e, file = ?file_path, "Failed to read file");
+                result.failed_files.push((file_path, e.to_string()));
+                continue;
+            }
+        };
+
+        // Use adapter to rewrite imports
+        match adapter.rewrite_imports_for_rename(
+            &content,
+            old_path,
+            new_path,
+            &file_path,
+            project_root,
+            rename_info,
+        ) {
+            Ok((updated_content, count)) => {
                 if count > 0 {
+                    if !dry_run {
+                        // Write the updated content back to the file
+                        if let Err(e) = tokio::fs::write(&file_path, updated_content).await {
+                            warn!(error = %e, file = ?file_path, "Failed to write file");
+                            result.failed_files.push((file_path, e.to_string()));
+                            continue;
+                        }
+                        debug!(file = ?file_path, "Wrote updated imports to file");
+                    } else {
+                        debug!(file = ?file_path, changes = count, "[DRY RUN] Would update imports");
+                    }
+
                     result.updated_files.push(file_path.clone());
                     result.imports_updated += count;
                     debug!(
@@ -362,83 +410,24 @@ pub async fn update_import_paths(
     Ok(result)
 }
 
-/// Update imports in a single file
-async fn update_imports_in_file(
-    file_path: &Path,
-    old_target: &Path,
-    new_target: &Path,
-    resolver: &ImportPathResolver,
+/// Legacy function for backward compatibility - delegates to update_imports_for_rename with TypeScript adapter
+pub async fn update_import_paths(
+    old_path: &Path,
+    new_path: &Path,
+    project_root: &Path,
     dry_run: bool,
-) -> AstResult<usize> {
-    let content = tokio::fs::read_to_string(file_path)
-        .await
-        .map_err(|e| AstError::parse(format!("Failed to read file: {}", e)))?;
+) -> AstResult<ImportUpdateResult> {
+    use crate::package_extractor::TypeScriptAdapter;
 
-    let mut updated_content = String::new();
-    let mut updates_count = 0;
-    let old_target_stem = old_target
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
+    let adapters: Vec<std::sync::Arc<dyn crate::package_extractor::LanguageAdapter>> =
+        vec![std::sync::Arc::new(TypeScriptAdapter)];
 
-    for line in content.lines() {
-        if line.contains("import") || line.contains("require") {
-            if line.contains(old_target_stem) {
-                // This line likely contains an import that needs updating
-                if let Some(updated_line) =
-                    update_import_line(line, file_path, old_target, new_target, resolver)
-                {
-                    updated_content.push_str(&updated_line);
-                    updates_count += 1;
-                } else {
-                    updated_content.push_str(line);
-                }
-            } else {
-                updated_content.push_str(line);
-            }
-        } else {
-            updated_content.push_str(line);
-        }
-        updated_content.push('\n');
-    }
-
-    if updates_count > 0 && !dry_run {
-        // Write the updated content back to the file only if not in dry run mode
-        tokio::fs::write(file_path, updated_content.trim_end())
-            .await
-            .map_err(|e| AstError::transformation(format!("Failed to write file: {}", e)))?;
-        debug!(file = ?file_path, "Wrote updated imports to file");
-    } else if updates_count > 0 && dry_run {
-        debug!(file = ?file_path, changes = updates_count, "[DRY RUN] Would update imports");
-    }
-
-    Ok(updates_count)
+    update_imports_for_rename(old_path, new_path, project_root, &adapters, None, dry_run).await
 }
 
-/// Update a single import line
-fn update_import_line(
-    line: &str,
-    importing_file: &Path,
-    old_target: &Path,
-    new_target: &Path,
-    resolver: &ImportPathResolver,
-) -> Option<String> {
-    // Extract the import path from the line
-    let import_path = extract_import_path(line)?;
-
-    // Calculate the new import path
-    if let Ok(new_import_path) =
-        resolver.calculate_new_import_path(importing_file, old_target, new_target, &import_path)
-    {
-        // Replace the old import path with the new one
-        Some(line.replace(&import_path, &new_import_path))
-    } else {
-        None
-    }
-}
 
 /// Extract import path from an import/require statement
-fn extract_import_path(line: &str) -> Option<String> {
+pub fn extract_import_path(line: &str) -> Option<String> {
     // Handle ES6 imports: import ... from 'path'
     if line.contains("from") {
         if let Some(start) = line.find(['\'', '"']) {
@@ -464,22 +453,28 @@ fn extract_import_path(line: &str) -> Option<String> {
     None
 }
 
-/// Find all TypeScript/JavaScript files in a project
-async fn find_project_files(project_root: &Path) -> AstResult<Vec<PathBuf>> {
+/// Find all project files that match the language adapters
+pub async fn find_project_files(
+    project_root: &Path,
+    adapters: &[std::sync::Arc<dyn crate::package_extractor::LanguageAdapter>],
+) -> AstResult<Vec<PathBuf>> {
     let mut files = Vec::new();
-    let extensions = ["ts", "tsx", "js", "jsx", "mjs", "cjs"];
 
     fn collect_files<'a>(
         dir: &'a Path,
         files: &'a mut Vec<PathBuf>,
-        extensions: &'a [&str],
+        adapters: &'a [std::sync::Arc<dyn crate::package_extractor::LanguageAdapter>],
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AstResult<()>> + Send + 'a>> {
         Box::pin(async move {
             if dir.is_dir() {
                 // Skip node_modules and other common directories to ignore
                 if let Some(dir_name) = dir.file_name() {
                     let name = dir_name.to_string_lossy();
-                    if name == "node_modules" || name == ".git" || name == "dist" || name == "build"
+                    if name == "node_modules"
+                        || name == ".git"
+                        || name == "dist"
+                        || name == "build"
+                        || name == "target"
                     {
                         return Ok(());
                     }
@@ -496,9 +491,11 @@ async fn find_project_files(project_root: &Path) -> AstResult<Vec<PathBuf>> {
                 {
                     let path = entry.path();
                     if path.is_dir() {
-                        collect_files(&path, files, extensions).await?;
+                        collect_files(&path, files, adapters).await?;
                     } else if let Some(ext) = path.extension() {
-                        if extensions.contains(&ext.to_str().unwrap_or("")) {
+                        let ext_str = ext.to_str().unwrap_or("");
+                        // Check if any adapter handles this extension
+                        if adapters.iter().any(|adapter| adapter.handles_extension(ext_str)) {
                             files.push(path);
                         }
                     }
@@ -508,7 +505,7 @@ async fn find_project_files(project_root: &Path) -> AstResult<Vec<PathBuf>> {
         })
     }
 
-    collect_files(project_root, &mut files, &extensions).await?;
+    collect_files(project_root, &mut files, adapters).await?;
     Ok(files)
 }
 

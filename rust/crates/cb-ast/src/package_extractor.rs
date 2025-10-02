@@ -92,6 +92,41 @@ pub trait LanguageAdapter: Send + Sync {
     ///
     /// Updated import statement
     fn rewrite_import(&self, old_import: &str, new_package_name: &str) -> String;
+
+    /// Check if this adapter handles the given file extension
+    ///
+    /// # Arguments
+    ///
+    /// * `ext` - File extension without the dot (e.g., "rs", "ts", "py")
+    ///
+    /// # Returns
+    ///
+    /// true if this adapter handles files with this extension
+    fn handles_extension(&self, ext: &str) -> bool;
+
+    /// Rewrite import statements in file content for a rename operation
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - The file content to process
+    /// * `old_path` - Original path before rename
+    /// * `new_path` - New path after rename
+    /// * `importing_file` - Path of the file being processed
+    /// * `project_root` - Root directory of the project
+    /// * `rename_info` - Optional language-specific rename context (JSON)
+    ///
+    /// # Returns
+    ///
+    /// Tuple of (updated_content, number_of_changes)
+    fn rewrite_imports_for_rename(
+        &self,
+        content: &str,
+        old_path: &Path,
+        new_path: &Path,
+        importing_file: &Path,
+        project_root: &Path,
+        rename_info: Option<&serde_json::Value>,
+    ) -> AstResult<(String, usize)>;
 }
 
 /// Rust language adapter
@@ -299,6 +334,30 @@ impl LanguageAdapter for RustAdapter {
             format!("use {}::{};", new_package_name, remaining_path)
         }
     }
+
+    fn handles_extension(&self, ext: &str) -> bool {
+        matches!(ext, "rs")
+    }
+
+    fn rewrite_imports_for_rename(
+        &self,
+        content: &str,
+        _old_path: &Path,
+        _new_path: &Path,
+        _importing_file: &Path,
+        _project_root: &Path,
+        rename_info: Option<&serde_json::Value>,
+    ) -> AstResult<(String, usize)> {
+        // Phase 2: This will use syn + prettyplease for Rust import rewriting
+        // For now, return placeholder until Phase 2 implementation
+        if let Some(info) = rename_info {
+            tracing::debug!(
+                rename_info = %info,
+                "Rust import rewriting not yet implemented (Phase 2)"
+            );
+        }
+        Ok((content.to_string(), 0))
+    }
 }
 
 /// TypeScript/JavaScript language adapter
@@ -345,6 +404,54 @@ impl LanguageAdapter for TypeScriptAdapter {
     fn rewrite_import(&self, _old_import: &str, _new_package_name: &str) -> String {
         unimplemented!("TypeScriptAdapter::rewrite_import not yet implemented")
     }
+
+    fn handles_extension(&self, ext: &str) -> bool {
+        matches!(ext, "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs")
+    }
+
+    fn rewrite_imports_for_rename(
+        &self,
+        content: &str,
+        old_path: &Path,
+        new_path: &Path,
+        importing_file: &Path,
+        project_root: &Path,
+        _rename_info: Option<&serde_json::Value>,
+    ) -> AstResult<(String, usize)> {
+        use crate::import_updater::ImportPathResolver;
+
+        let resolver = ImportPathResolver::new(project_root);
+        let mut updated_content = String::new();
+        let mut updates_count = 0;
+
+        let old_target_stem = old_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("");
+
+        for line in content.lines() {
+            if line.contains("import") || line.contains("require") {
+                if line.contains(old_target_stem) {
+                    // This line likely contains an import that needs updating
+                    if let Some(updated_line) =
+                        update_import_line_ts(line, importing_file, old_path, new_path, &resolver)
+                    {
+                        updated_content.push_str(&updated_line);
+                        updates_count += 1;
+                    } else {
+                        updated_content.push_str(line);
+                    }
+                } else {
+                    updated_content.push_str(line);
+                }
+            } else {
+                updated_content.push_str(line);
+            }
+            updated_content.push('\n');
+        }
+
+        Ok((updated_content.trim_end().to_string(), updates_count))
+    }
 }
 
 /// Python language adapter
@@ -390,6 +497,47 @@ impl LanguageAdapter for PythonAdapter {
 
     fn rewrite_import(&self, _old_import: &str, _new_package_name: &str) -> String {
         unimplemented!("PythonAdapter::rewrite_import not yet implemented")
+    }
+
+    fn handles_extension(&self, ext: &str) -> bool {
+        matches!(ext, "py")
+    }
+
+    fn rewrite_imports_for_rename(
+        &self,
+        content: &str,
+        _old_path: &Path,
+        _new_path: &Path,
+        _importing_file: &Path,
+        _project_root: &Path,
+        _rename_info: Option<&serde_json::Value>,
+    ) -> AstResult<(String, usize)> {
+        // Python import rewriting not yet implemented
+        Ok((content.to_string(), 0))
+    }
+}
+
+/// Helper function to update a single import line for TypeScript/JavaScript
+fn update_import_line_ts(
+    line: &str,
+    importing_file: &Path,
+    old_target: &Path,
+    new_target: &Path,
+    resolver: &crate::import_updater::ImportPathResolver,
+) -> Option<String> {
+    use crate::import_updater::extract_import_path;
+
+    // Extract the import path from the line
+    let import_path = extract_import_path(line)?;
+
+    // Calculate the new import path
+    if let Ok(new_import_path) =
+        resolver.calculate_new_import_path(importing_file, old_target, new_target, &import_path)
+    {
+        // Replace the old import path with the new one
+        Some(line.replace(&import_path, &new_import_path))
+    } else {
+        None
     }
 }
 
