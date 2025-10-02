@@ -193,6 +193,7 @@ impl Planner for DefaultPlanner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     fn create_planner() -> Arc<dyn Planner> {
         // For tests, we'll use a test config with inline data

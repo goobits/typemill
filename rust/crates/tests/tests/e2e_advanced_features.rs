@@ -112,7 +112,7 @@ async fn test_advanced_lsp_features_availability() {
     workspace.setup_typescript_project("advanced-features");
     let mut client = TestClient::new(workspace.path());
 
-    // Test what advanced LSP features are currently available
+    // Test that advanced LSP features work correctly with complex TypeScript code
 
     let file_path = workspace.path().join("src/advanced_test.ts");
     let content = r#"
@@ -148,89 +148,70 @@ function createProcessor<T>(type: string): DataProcessor<T> | null {
 
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
-    // Test currently available advanced features
-
-    // Test signature help with generics
-    let response = client
-        .call_tool(
-            "get_signature_help",
-            json!({
-                "file_path": file_path.to_string_lossy(),
-                "line": 19,
-                "character": 25
-            }),
-        )
-        .await;
-
-    match response {
-        Ok(resp) => {
-            if let Some(signatures) = resp["signatures"].as_array() {
-                if !signatures.is_empty() {
-                    println!("Signature help with generics: Available");
-                } else {
-                    println!("Signature help with generics: Empty response");
-                }
-            } else {
-                println!("Signature help with generics: No signatures in response");
-            }
-        }
-        Err(_) => {
-            println!("Signature help with generics: Not available");
-        }
-    }
-
-    // Test hover on generic types
+    // Test hover on generic interface - should return type information
     let response = client
         .call_tool(
             "get_hover",
             json!({
                 "file_path": file_path.to_string_lossy(),
                 "line": 1,
-                "character": 35
+                "character": 20
             }),
         )
-        .await;
+        .await
+        .expect("get_hover should succeed");
 
-    match response {
-        Ok(resp) => {
-            let content = resp["contents"].as_str().unwrap_or("");
-            if content.contains("DataProcessor") || content.contains("T") {
-                println!("Hover on generics: Available");
-            }
-        }
-        Err(_) => {
-            println!("Hover on generics: Not available");
-        }
-    }
+    let result = response.get("result").expect("Response should have result field");
+    let content_field = result.get("content").expect("Result should have content field");
+    let hover_content = content_field.get("contents").expect("Content should have contents field");
+    let hover_text = hover_content.as_str().unwrap_or("");
 
-    // Test find definition on interface implementation
+    assert!(
+        hover_text.contains("DataProcessor") || hover_text.contains("interface"),
+        "Hover should show interface information, got: {}", hover_text
+    );
+
+    // Test find definition on class implementing interface - should find the interface definition
     let response = client
         .call_tool(
             "find_definition",
             json!({
                 "file_path": file_path.to_string_lossy(),
-                "line": 6,
-                "character": 50
+                "line": 5,
+                "character": 45
             }),
         )
-        .await;
+        .await
+        .expect("find_definition should succeed");
 
-    match response {
-        Ok(resp) => {
-            if let Some(locations) = resp["locations"].as_array() {
-                if !locations.is_empty() {
-                    println!("Definition on interface implementation: Available");
-                } else {
-                    println!("Definition on interface implementation: Empty response");
-                }
-            } else {
-                println!("Definition on interface implementation: No locations in response");
-            }
-        }
-        Err(_) => {
-            println!("Definition on interface implementation: Not available");
-        }
-    }
+    let result = response.get("result").expect("Response should have result field");
+    let content_field = result.get("content").expect("Result should have content field");
+    let locations = content_field.get("locations").expect("Content should have locations field").as_array().unwrap();
+
+    assert!(
+        !locations.is_empty(),
+        "Should find definition of DataProcessor interface"
+    );
+
+    // Test document symbols - should list all interfaces, classes, and functions
+    let response = client
+        .call_tool(
+            "get_document_symbols",
+            json!({
+                "file_path": file_path.to_string_lossy()
+            }),
+        )
+        .await
+        .expect("get_document_symbols should succeed");
+
+    let result = response.get("result").expect("Response should have result field");
+    let content_field = result.get("content").expect("Result should have content field");
+    let symbols = content_field.get("symbols").expect("Content should have symbols field").as_array().unwrap();
+
+    assert!(
+        symbols.len() >= 4,
+        "Should find at least 4 symbols (interface, 2 classes, function), found {}", symbols.len()
+    );
 }
 
 #[tokio::test]

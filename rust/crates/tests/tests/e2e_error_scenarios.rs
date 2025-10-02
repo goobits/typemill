@@ -84,18 +84,30 @@ async fn test_file_corruption_scenarios() {
         )
         .await;
 
-    // Should handle invalid UTF-8 gracefully
+    // Should handle invalid UTF-8 by returning an error or replacement characters
     match response {
         Ok(resp) => {
-            // If it succeeds, should either have content or error
-            assert!(resp.get("content").is_some() || resp.get("error").is_some());
+            // Should have result field with either content or error
+            if let Some(result) = resp.get("result") {
+                assert!(
+                    result.get("content").is_some() || result.get("error").is_some(),
+                    "Invalid UTF-8 should be handled with content (possibly with replacement chars) or error"
+                );
+            } else {
+                panic!("Response should have result field");
+            }
         }
-        Err(_) => {
-            // Failing gracefully is also acceptable
+        Err(e) => {
+            // Explicit error is also acceptable for invalid UTF-8
+            let error_msg = format!("{:?}", e);
+            assert!(
+                error_msg.contains("UTF") || error_msg.contains("encoding") || error_msg.contains("invalid"),
+                "Error should mention encoding issue, got: {}", error_msg
+            );
         }
     }
 
-    // Test extremely large file
+    // Test extremely large file - should either succeed or fail with clear size limit error
     let large_file = workspace.path().join("large.txt");
     let large_content = "A".repeat(10_000_000); // 10MB file
     fs::write(&large_file, &large_content).unwrap();
@@ -109,20 +121,32 @@ async fn test_file_corruption_scenarios() {
         )
         .await;
 
-    // Should handle large files appropriately
+    // Should either successfully read the file or return a clear size limit error
     match response {
         Ok(resp) => {
-            if let Some(content) = resp["content"].as_str() {
-                // Might be truncated or handled in chunks
-                assert!(!content.is_empty());
-            } else if let Some(result) = resp.get("result") {
-                if let Some(content) = result["content"].as_str() {
-                    assert!(!content.is_empty());
-                }
+            let result = resp.get("result").expect("Response should have result field");
+            if let Some(content) = result.get("content") {
+                assert!(
+                    content.as_str().map(|s| !s.is_empty()).unwrap_or(false),
+                    "Large file content should not be empty if read succeeds"
+                );
+            } else if let Some(error) = result.get("error") {
+                let error_msg = error.as_str().unwrap_or("");
+                assert!(
+                    error_msg.contains("size") || error_msg.contains("large") || error_msg.contains("limit"),
+                    "Error should mention size/limit, got: {}", error_msg
+                );
+            } else {
+                panic!("Result should have either content or error for large file");
             }
         }
-        Err(_) => {
-            // May fail due to size limits
+        Err(e) => {
+            // If it fails, error should mention size limits
+            let error_msg = format!("{:?}", e);
+            assert!(
+                error_msg.contains("size") || error_msg.contains("large") || error_msg.contains("limit"),
+                "Error should mention size limit, got: {}", error_msg
+            );
         }
     }
 }
