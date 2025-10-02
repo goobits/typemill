@@ -18,7 +18,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, OnceCell};
 use tracing::{debug, error, info, instrument, warn};
 
@@ -859,6 +859,118 @@ impl PluginDispatcher {
         &self.plugin_manager
     }
 
+    /// Escape a shell argument for safe execution
+    fn escape_shell_arg(arg: &str) -> String {
+        // Replace single quotes with '\'' to safely escape for sh -c
+        arg.replace('\'', "'\\''")
+    }
+
+    /// Execute a command in a remote workspace via its agent
+    async fn execute_remote_command(
+        workspace_manager: &WorkspaceManager,
+        workspace_id: &str,
+        command: &str,
+    ) -> ServerResult<String> {
+        debug!(
+            workspace_id = %workspace_id,
+            command = %command,
+            "Executing remote command"
+        );
+
+        // Look up workspace
+        let workspace = workspace_manager
+            .get(workspace_id)
+            .ok_or_else(|| {
+                ServerError::InvalidRequest(format!("Workspace '{}' not found", workspace_id))
+            })?;
+
+        // Build agent URL
+        let agent_url = format!("{}/execute", workspace.agent_url);
+
+        // Create HTTP client with timeout
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(60))
+            .build()
+            .map_err(|e| {
+                error!(error = %e, "Failed to create HTTP client");
+                ServerError::Internal("HTTP client error".into())
+            })?;
+
+        // Execute command via agent
+        let response = client
+            .post(&agent_url)
+            .json(&json!({ "command": command }))
+            .send()
+            .await
+            .map_err(|e| {
+                error!(
+                    workspace_id = %workspace_id,
+                    agent_url = %agent_url,
+                    error = %e,
+                    "Failed to send command to workspace agent"
+                );
+                ServerError::Internal(format!("Failed to reach workspace agent: {}", e))
+            })?;
+
+        // Check response status
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            error!(
+                workspace_id = %workspace_id,
+                status = %status,
+                error = %error_text,
+                "Agent returned error"
+            );
+            return Err(ServerError::Internal(format!(
+                "Agent error ({}): {}",
+                status, error_text
+            )));
+        }
+
+        // Parse response
+        #[derive(serde::Deserialize)]
+        struct ExecuteResponse {
+            exit_code: i32,
+            stdout: String,
+            stderr: String,
+        }
+
+        let result: ExecuteResponse = response.json().await.map_err(|e| {
+            error!(
+                workspace_id = %workspace_id,
+                error = %e,
+                "Failed to parse agent response"
+            );
+            ServerError::Internal("Invalid response from workspace agent".into())
+        })?;
+
+        // Check exit code
+        if result.exit_code != 0 {
+            error!(
+                workspace_id = %workspace_id,
+                exit_code = result.exit_code,
+                stderr = %result.stderr,
+                "Command failed in workspace"
+            );
+            return Err(ServerError::Internal(format!(
+                "Command failed with exit code {}: {}",
+                result.exit_code, result.stderr
+            )));
+        }
+
+        debug!(
+            workspace_id = %workspace_id,
+            stdout_len = result.stdout.len(),
+            "Command executed successfully"
+        );
+
+        Ok(result.stdout)
+    }
+
     /// Check if a tool name represents a file operation
     fn is_file_operation(&self, tool_name: &str) -> bool {
         matches!(
@@ -894,8 +1006,43 @@ impl PluginDispatcher {
     async fn handle_system_tool(&self, tool_call: ToolCall) -> ServerResult<Value> {
         debug!(tool_name = %tool_call.name, "Handling system tool");
 
-        // Create a plugin request for system tools
-        // System tools don't require a file_path, so use a dummy path
+        // Check if this is a workspace-aware list_files call
+        if tool_call.name == "list_files" {
+            let args = &tool_call.arguments;
+            if let Some(args) = args {
+                if let Some(workspace_id) = args.get("workspace_id").and_then(|v| v.as_str()) {
+                    // Handle remote list_files
+                    let path = args
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| {
+                            ServerError::InvalidRequest("Missing 'path' parameter".into())
+                        })?;
+
+                    let command = format!("ls -1 '{}'", Self::escape_shell_arg(path));
+                    let stdout = Self::execute_remote_command(
+                        &self.app_state.workspace_manager,
+                        workspace_id,
+                        &command,
+                    )
+                    .await?;
+
+                    // Parse stdout into file list (one file per line)
+                    let files: Vec<String> = stdout
+                        .lines()
+                        .filter(|line| !line.is_empty())
+                        .map(|line| line.to_string())
+                        .collect();
+
+                    return Ok(json!({
+                        "files": files,
+                        "path": path
+                    }));
+                }
+            }
+        }
+
+        // Fall through to plugin system for local operations
         let mut request = PluginRequest::new(
             tool_call.name.clone(),
             PathBuf::from("."), // Dummy path for system tools
@@ -1426,12 +1573,25 @@ impl PluginDispatcher {
                         .ok_or_else(|| {
                             ServerError::InvalidRequest("Missing 'file_path' parameter".into())
                         })?;
+                let workspace_id = args.get("workspace_id").and_then(|v| v.as_str());
 
-                // Use FileService for proper locking
-                let content = self.app_state
-                    .file_service
-                    .read_file(std::path::Path::new(file_path))
-                    .await?;
+                // Route to workspace or local filesystem
+                let content = if let Some(workspace_id) = workspace_id {
+                    // Execute in remote workspace
+                    let command = format!("cat '{}'", Self::escape_shell_arg(file_path));
+                    Self::execute_remote_command(
+                        &self.app_state.workspace_manager,
+                        workspace_id,
+                        &command,
+                    )
+                    .await?
+                } else {
+                    // Use FileService for local operations
+                    self.app_state
+                        .file_service
+                        .read_file(std::path::Path::new(file_path))
+                        .await?
+                };
 
                 Ok(json!({
                     "success": true,
@@ -1455,19 +1615,50 @@ impl PluginDispatcher {
                         ServerError::InvalidRequest("Missing 'content' parameter".into())
                     })?;
                 let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
+                let workspace_id = args.get("workspace_id").and_then(|v| v.as_str());
 
-                let result = self.app_state
-                    .file_service
-                    .write_file(std::path::Path::new(file_path), content, dry_run)
+                // Route to workspace or local filesystem
+                if let Some(workspace_id) = workspace_id {
+                    // Remote workspace - dry_run not supported for remote operations
+                    if dry_run {
+                        return Err(ServerError::InvalidRequest(
+                            "dry_run not supported for remote workspace operations".into(),
+                        ));
+                    }
+
+                    // Use printf for safer writing (avoids issues with echo interpreting backslashes)
+                    let command = format!(
+                        "printf '%s' '{}' > '{}'",
+                        Self::escape_shell_arg(content),
+                        Self::escape_shell_arg(file_path)
+                    );
+                    Self::execute_remote_command(
+                        &self.app_state.workspace_manager,
+                        workspace_id,
+                        &command,
+                    )
                     .await?;
 
-                if result.dry_run {
                     Ok(json!({
-                        "status": "preview",
-                        "preview": result.result
+                        "success": true,
+                        "file_path": file_path,
+                        "message": "File written successfully"
                     }))
                 } else {
-                    Ok(result.result)
+                    // Local filesystem
+                    let result = self.app_state
+                        .file_service
+                        .write_file(std::path::Path::new(file_path), content, dry_run)
+                        .await?;
+
+                    if result.dry_run {
+                        Ok(json!({
+                            "status": "preview",
+                            "preview": result.result
+                        }))
+                    } else {
+                        Ok(result.result)
+                    }
                 }
             }
             _ => Err(ServerError::Unsupported(format!(

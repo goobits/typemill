@@ -37,6 +37,7 @@ dashmap = "5.5"
 ignore = "0.4"
 clap = { version = "4.0", features = ["derive"] }
 toml_edit = "0.23"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 
 [target.'cfg(unix)'.dependencies]
 cb-vfs = { path = "../cb-vfs", optional = true }
