@@ -113,6 +113,39 @@ Check if the server is running and display process information.
 ### `codebuddy stop`
 Gracefully stop a running server instance.
 
+### `codebuddy tool <tool_name> '<json_args>' [--format json|pretty]`
+**NEW!** Call MCP tools directly from the command line without starting a server.
+
+```bash
+# Check system health
+codebuddy tool health_check '{}'
+
+# Dry-run directory rename with import updates
+codebuddy tool rename_directory '{
+  "old_path": "src/old-module",
+  "new_path": "src/new-module",
+  "dry_run": true
+}'
+
+# Find definition (JSON output)
+codebuddy tool find_definition '{
+  "file_path": "src/app.ts",
+  "line": 10,
+  "character": 5
+}' --format json
+
+# List workspace symbols
+codebuddy tool search_workspace_symbols '{"query": "UserService"}'
+```
+
+**Benefits:**
+- ✅ No server needed - tools run directly
+- ✅ Perfect for scripts and automation
+- ✅ Instant results without server startup time
+- ✅ Same functionality as WebSocket API
+
+**Available Tools:** All 40+ MCP tools are available. See [MCP_API.md](../MCP_API.md) for complete tool reference.
+
 ## ⚙️ Configuration
 
 The configuration file (`.codebuddy/config.json`) controls server behavior and LSP settings:
