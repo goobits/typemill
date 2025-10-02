@@ -1,7 +1,7 @@
 //! Admin endpoints for runtime log level control and health checks
 
 use axum::{
-    extract::State,
+    extract::{Path, State},
     http::StatusCode,
     response::Json,
     routing::{get, post},
@@ -12,9 +12,10 @@ use cb_server::workspaces::{Workspace, WorkspaceManager};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
-use tracing::info;
+use tracing::{error, info};
 
 /// Admin server state
 #[derive(Clone)]
@@ -58,6 +59,26 @@ pub struct HealthResponse {
     pub log_level: String,
 }
 
+/// Execute command request
+#[derive(Debug, Deserialize)]
+pub struct ExecuteCommandRequest {
+    /// Shell command to execute
+    pub command: String,
+}
+
+/// Execute command response
+#[derive(Debug, Serialize)]
+pub struct ExecuteCommandResponse {
+    /// Exit code of the command
+    pub exit_code: i32,
+    /// Standard output
+    pub stdout: String,
+    /// Standard error
+    pub stderr: String,
+    /// Execution time in milliseconds
+    pub execution_time_ms: u64,
+}
+
 /// Start the admin HTTP server on a separate port
 pub async fn start_admin_server(
     port: u16,
@@ -76,6 +97,7 @@ pub async fn start_admin_server(
         .route("/admin/log-level", get(get_log_level))
         .route("/workspaces", get(list_workspaces))
         .route("/workspaces/register", post(register_workspace))
+        .route("/workspaces/:id/execute", post(execute_command))
         .layer(ServiceBuilder::new())
         .with_state(Arc::new(state));
 
@@ -90,6 +112,7 @@ pub async fn start_admin_server(
     info!("  GET  /admin/log-level - Get current log level");
     info!("  GET  /workspaces - List registered workspaces");
     info!("  POST /workspaces/register - Register a new workspace");
+    info!("  POST /workspaces/:id/execute - Execute command in workspace");
 
     axum::serve(listener, app).await?;
     Ok(())
@@ -170,4 +193,100 @@ async fn register_workspace(
 /// List all registered workspaces
 async fn list_workspaces(State(state): State<Arc<AdminState>>) -> Json<Vec<Workspace>> {
     Json(state.workspace_manager.list())
+}
+
+/// Execute command in a workspace
+async fn execute_command(
+    State(state): State<Arc<AdminState>>,
+    Path(workspace_id): Path<String>,
+    Json(request): Json<ExecuteCommandRequest>,
+) -> Result<Json<ExecuteCommandResponse>, (StatusCode, String)> {
+    info!(
+        workspace_id = %workspace_id,
+        command = %request.command,
+        "Executing command in workspace"
+    );
+
+    // Look up workspace
+    let workspace = state
+        .workspace_manager
+        .get(&workspace_id)
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                format!("Workspace '{}' not found", workspace_id),
+            )
+        })?;
+
+    // Build agent URL
+    let agent_url = format!("{}/execute", workspace.agent_url);
+
+    // Create HTTP client with timeout
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(60))
+        .build()
+        .map_err(|e| {
+            error!(error = %e, "Failed to create HTTP client");
+            (StatusCode::INTERNAL_SERVER_ERROR, "HTTP client error".to_string())
+        })?;
+
+    // Forward command to agent
+    let response = client
+        .post(&agent_url)
+        .json(&json!({ "command": request.command }))
+        .send()
+        .await
+        .map_err(|e| {
+            error!(
+                workspace_id = %workspace_id,
+                agent_url = %agent_url,
+                error = %e,
+                "Failed to send command to workspace agent"
+            );
+            (
+                StatusCode::BAD_GATEWAY,
+                format!("Failed to reach workspace agent: {}", e),
+            )
+        })?;
+
+    // Check response status
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        error!(
+            workspace_id = %workspace_id,
+            status = %status,
+            error = %error_text,
+            "Agent returned error"
+        );
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            format!("Agent error ({}): {}", status, error_text),
+        ));
+    }
+
+    // Parse response
+    let result: ExecuteCommandResponse = response.json().await.map_err(|e| {
+        error!(
+            workspace_id = %workspace_id,
+            error = %e,
+            "Failed to parse agent response"
+        );
+        (
+            StatusCode::BAD_GATEWAY,
+            "Invalid response from workspace agent".to_string(),
+        )
+    })?;
+
+    info!(
+        workspace_id = %workspace_id,
+        exit_code = result.exit_code,
+        execution_time_ms = result.execution_time_ms,
+        "Command execution completed"
+    );
+
+    Ok(Json(result))
 }

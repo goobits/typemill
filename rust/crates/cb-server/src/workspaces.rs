@@ -11,6 +11,8 @@ pub struct Workspace {
     pub language: String,
     /// A user-friendly name for the project within the workspace.
     pub project_name: String,
+    /// The URL of the agent running in the workspace (e.g., "http://python-workspace:8000").
+    pub agent_url: String,
 }
 
 /// Manages the collection of registered workspaces in a thread-safe manner.
@@ -36,5 +38,10 @@ impl WorkspaceManager {
             .iter()
             .map(|entry| entry.value().clone())
             .collect()
+    }
+
+    /// Retrieves a workspace by ID.
+    pub fn get(&self, id: &str) -> Option<Workspace> {
+        self.workspaces.get(id).map(|entry| entry.value().clone())
     }
 }

@@ -36,9 +36,24 @@ services:
         condition: service_started
     networks:
       - codebuddy-net
+    volumes:
+      - ./agent.py:/app/agent.py:ro
+    expose:
+      - "8000"
     command: >
       bash -c "
-        pip install curl-cffi &&
+        echo 'Installing dependencies...' &&
+        pip install -q aiohttp &&
+        echo 'Starting agent...' &&
+        python /app/agent.py &
+        AGENT_PID=\$! &&
+        echo \"Agent started with PID \$AGENT_PID\" &&
+        sleep 2 &&
+        echo 'Waiting for agent to be ready...' &&
+        until curl -s --fail http://localhost:8000/health > /dev/null; do
+          sleep 1;
+        done;
+        echo 'Agent is ready.' &&
         echo 'Waiting for CodeBuddy admin server...' &&
         until curl -s --fail http://codebuddy-dev:4000/health > /dev/null; do
           sleep 1;
@@ -46,9 +61,9 @@ services:
         echo 'CodeBuddy is healthy. Registering workspace...' &&
         curl -X POST http://codebuddy-dev:4000/workspaces/register \
           -H 'Content-Type: application/json' \
-          -d '{\"id\": \"python-workspace\", \"language\": \"python\", \"project_name\": \"Sample Python Project\"}' &&
-        echo 'Workspace registered. Idling...' &&
-        tail -f /dev/null
+          -d '{\"id\": \"python-workspace\", \"language\": \"python\", \"project_name\": \"Sample Python Project\", \"agent_url\": \"http://python-workspace:8000\"}' &&
+        echo 'Workspace registered. Agent running...' &&
+        wait \$AGENT_PID
       "
 
 volumes:
