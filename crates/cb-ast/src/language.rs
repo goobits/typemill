@@ -735,7 +735,7 @@ impl LanguageAdapter for GoAdapter {
         manifest
     }
 
-    fn rewrite_import(&self, old_import: &str, new_package_name: &str) -> String {
+    fn rewrite_import(&self, _old_import: &str, new_package_name: &str) -> String {
         // Transform internal import to external module import
         // e.g., "github.com/user/project/internal/utils" -> "github.com/user/new-package"
         new_package_name.to_string()

@@ -250,8 +250,6 @@ impl PluginDispatcher {
                 debug!("Registered DependencyHandler with 1 tool");
 
                 // New modular handlers (wrapped in adapters for compatibility)
-                use super::tools::ToolHandler as NewToolHandler;
-
                 // Create context for new handlers
                 let new_handler_context = Arc::new(super::tools::ToolHandlerContext {
                     app_state: self.app_state.clone(),
