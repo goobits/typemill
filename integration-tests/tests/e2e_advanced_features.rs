@@ -403,7 +403,8 @@ def process_user_data(user_data):
             println!("  {:?}", entry.path());
         }
     }
-    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    // Give LSP servers time to initialize and index files (TypeScript LSP can be slow)
+    tokio::time::sleep(tokio::time::Duration::from_millis(3000)).await;
     println!("DEBUG: Testing hover on Config interface...");
     let hover_response = client
         .call_tool(

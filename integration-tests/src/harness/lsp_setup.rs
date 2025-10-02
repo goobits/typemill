@@ -131,8 +131,10 @@ impl LspSetupHelper {
             },
             "cache": {
                 "enabled": true,
-                "maxSizeMb": 100,
-                "ttlSeconds": 300
+                "maxSizeBytes": 104857600,
+                "ttlSeconds": 300,
+                "persistent": false,
+                "cacheDir": null
             }
         });
 
