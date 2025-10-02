@@ -3,8 +3,8 @@
 use cb_api::{CacheStats, ImportGraph};
 use dashmap::DashMap;
 use std::path::PathBuf;
-use std::time::SystemTime;
-use tracing::{debug, trace};
+use std::time::{Duration, SystemTime};
+use tracing::{debug, trace, warn};
 
 /// Cache key containing file path and modification time for invalidation
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -26,6 +26,52 @@ pub struct CachedEntry {
     pub file_size: u64,
 }
 
+/// Cache configuration settings
+#[derive(Debug, Clone)]
+pub struct CacheSettings {
+    /// Enable caching
+    pub enabled: bool,
+    /// Maximum number of entries
+    pub max_entries: usize,
+    /// Time-to-live for cache entries in seconds
+    pub ttl_seconds: u64,
+    /// Maximum total size in bytes (approximate)
+    pub max_size_bytes: u64,
+}
+
+impl Default for CacheSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            max_entries: 10000,
+            ttl_seconds: 3600, // 1 hour
+            max_size_bytes: 256 * 1024 * 1024, // 256 MB
+        }
+    }
+}
+
+impl CacheSettings {
+    /// Create cache settings from core config
+    /// This allows creating cache settings from cb_core::config::CacheConfig
+    pub fn from_config(
+        enabled: bool,
+        ttl_seconds: u64,
+        max_size_bytes: u64,
+    ) -> Self {
+        // Calculate max_entries based on max_size_bytes
+        // Assuming average entry size of ~10KB (includes path + import graph)
+        let avg_entry_size = 10 * 1024; // 10KB
+        let max_entries = (max_size_bytes / avg_entry_size as u64).max(100) as usize;
+
+        Self {
+            enabled,
+            max_entries,
+            ttl_seconds,
+            max_size_bytes,
+        }
+    }
+}
+
 /// Thread-safe AST cache using DashMap for high-performance concurrent access
 #[derive(Debug)]
 pub struct AstCache {
@@ -33,14 +79,22 @@ pub struct AstCache {
     cache: DashMap<PathBuf, CachedEntry>,
     /// Cache statistics
     stats: DashMap<String, u64>,
+    /// Cache configuration
+    settings: CacheSettings,
 }
 
 impl AstCache {
-    /// Create a new AST cache
+    /// Create a new AST cache with default settings
     pub fn new() -> Self {
+        Self::with_settings(CacheSettings::default())
+    }
+
+    /// Create a new AST cache with custom settings
+    pub fn with_settings(settings: CacheSettings) -> Self {
         let cache = Self {
             cache: DashMap::new(),
             stats: DashMap::new(),
+            settings: settings.clone(),
         };
 
         // Initialize statistics counters
@@ -48,17 +102,53 @@ impl AstCache {
         cache.stats.insert("misses".to_string(), 0);
         cache.stats.insert("invalidations".to_string(), 0);
         cache.stats.insert("inserts".to_string(), 0);
+        cache.stats.insert("evictions".to_string(), 0);
 
-        debug!("AstCache initialized");
+        debug!(
+            enabled = settings.enabled,
+            max_entries = settings.max_entries,
+            ttl_seconds = settings.ttl_seconds,
+            "AstCache initialized"
+        );
         cache
+    }
+
+    /// Check if cache is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.settings.enabled
+    }
+
+    /// Get cache settings
+    pub fn settings(&self) -> &CacheSettings {
+        &self.settings
     }
 
     /// Get a cached import graph if it exists and is still valid
     pub async fn get(&self, file_path: &PathBuf) -> Option<ImportGraph> {
+        // Check if cache is enabled
+        if !self.settings.enabled {
+            return None;
+        }
+
         trace!("Cache get requested for: {}", file_path.display());
 
         // Check if we have a cached entry
         let entry = self.cache.get(file_path)?;
+
+        // Check TTL expiration
+        if let Ok(elapsed) = SystemTime::now().duration_since(entry.cached_at) {
+            if elapsed.as_secs() > self.settings.ttl_seconds {
+                debug!(
+                    "Cache entry expired for {} (age: {}s, TTL: {}s)",
+                    file_path.display(),
+                    elapsed.as_secs(),
+                    self.settings.ttl_seconds
+                );
+                self.invalidate(file_path);
+                self.increment_stat("misses");
+                return None;
+            }
+        }
 
         // Get current file metadata
         let current_metadata = match tokio::fs::metadata(file_path).await {
@@ -115,7 +205,17 @@ impl AstCache {
         file_path: PathBuf,
         import_graph: ImportGraph,
     ) -> Result<(), std::io::Error> {
+        // Check if cache is enabled
+        if !self.settings.enabled {
+            return Ok(());
+        }
+
         trace!("Cache insert requested for: {}", file_path.display());
+
+        // Check if we need to evict entries to stay under max_entries limit
+        if self.cache.len() >= self.settings.max_entries {
+            self.evict_lru();
+        }
 
         // Get file metadata for cache validation
         let metadata = tokio::fs::metadata(&file_path).await?;
@@ -133,6 +233,31 @@ impl AstCache {
 
         debug!("Cached import graph for: {}", file_path.display());
         Ok(())
+    }
+
+    /// Evict least recently used entries when cache is full
+    fn evict_lru(&self) {
+        // Simple eviction strategy: remove oldest cached entries
+        // In a production system, you might want to use a proper LRU implementation
+        let mut entries: Vec<(PathBuf, SystemTime)> = self
+            .cache
+            .iter()
+            .map(|entry| (entry.key().clone(), entry.value().cached_at))
+            .collect();
+
+        // Sort by cached_at time (oldest first)
+        entries.sort_by_key(|(_, cached_at)| *cached_at);
+
+        // Remove oldest 10% of entries
+        let evict_count = (self.settings.max_entries / 10).max(1);
+        for (path, _) in entries.iter().take(evict_count) {
+            if self.cache.remove(path).is_some() {
+                self.increment_stat("evictions");
+                trace!("Evicted cache entry: {}", path.display());
+            }
+        }
+
+        debug!("Evicted {} cache entries due to size limit", evict_count);
     }
 
     /// Invalidate a cached entry

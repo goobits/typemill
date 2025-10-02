@@ -1,0 +1,65 @@
+# Codebuddy Configuration Example
+# This file shows all available configuration options
+# Copy to 'codebuddy.toml' and customize as needed
+
+[server]
+host = "127.0.0.1"
+port = 3040
+maxClients = 10
+timeoutMs = 30000
+
+[lsp]
+# LSP server configurations
+# Add one [[lsp.servers]] block for each language server
+
+[[lsp.servers]]
+extensions = ["ts", "tsx", "js", "jsx"]
+command = ["typescript-language-server", "--stdio"]
+# Optional: restartInterval in minutes (helps with long-running server stability)
+restartInterval = 10
+
+[[lsp.servers]]
+extensions = ["py"]
+command = ["pylsp"]
+restartInterval = 5
+
+[[lsp.servers]]
+extensions = ["rs"]
+command = ["rust-analyzer"]
+restartInterval = 15
+
+[logging]
+level = "info"
+format = "pretty"
+
+[logging.file]
+enabled = false
+path = "logs/codebuddy.log"
+maxSize = 10485760  # 10MB
+maxBackups = 5
+
+# Import Graph Cache Configuration
+# The cache significantly improves performance for dependency-heavy operations
+# like rename_directory, find_references, and import analysis
+[cache]
+# Enable or disable the import graph cache
+enabled = true
+
+# Maximum cache size in bytes (256MB default)
+# The cache will automatically evict oldest entries when this limit is reached
+maxSizeBytes = 268435456  # 256 * 1024 * 1024
+
+# Time-to-live for cache entries in seconds (1 hour default)
+# Entries older than this will be considered stale and re-parsed
+ttlSeconds = 3600
+
+# Persistent cache (not currently implemented)
+persistent = false
+
+# FUSE Filesystem (Experimental - Development Only)
+# WARNING: Requires SYS_ADMIN capability which disables container security
+# Not recommended for production use
+# To disable, omit this section or set to null
+# [fuse]
+# enabled = false
+# mountPoint = "/tmp/codebuddy-fuse"

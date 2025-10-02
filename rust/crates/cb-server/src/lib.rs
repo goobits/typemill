@@ -53,8 +53,13 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
     // Get project root
     let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
-    // Create shared AST cache for performance optimization
-    let ast_cache = Arc::new(AstCache::new());
+    // Create shared AST cache with configuration
+    let cache_settings = cb_ast::CacheSettings::from_config(
+        options.config.cache.enabled,
+        options.config.cache.ttl_seconds,
+        options.config.cache.max_size_bytes,
+    );
+    let ast_cache = Arc::new(AstCache::with_settings(cache_settings));
 
     // Create services
     let ast_service: Arc<dyn AstService> = Arc::new(DefaultAstService::new(ast_cache.clone()));
