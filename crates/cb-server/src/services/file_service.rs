@@ -2,6 +2,7 @@
 
 use crate::services::import_service::ImportService;
 use crate::services::lock_manager::LockManager;
+use crate::services::operation_queue::{FileOperation, OperationTransaction, OperationType};
 use crate::{ServerError, ServerResult};
 use cb_api::{DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit};
 use cb_ast::AstCache;
@@ -23,6 +24,8 @@ pub struct FileService {
     ast_cache: Arc<AstCache>,
     /// Lock manager for atomic operations
     lock_manager: Arc<LockManager>,
+    /// Operation queue for serializing file operations
+    operation_queue: Arc<super::operation_queue::OperationQueue>,
 }
 
 impl FileService {
@@ -31,6 +34,7 @@ impl FileService {
         project_root: impl AsRef<Path>,
         ast_cache: Arc<AstCache>,
         lock_manager: Arc<LockManager>,
+        operation_queue: Arc<super::operation_queue::OperationQueue>,
     ) -> Self {
         let project_root = project_root.as_ref().to_path_buf();
         Self {
@@ -38,6 +42,7 @@ impl FileService {
             project_root,
             ast_cache,
             lock_manager,
+            operation_queue,
         }
     }
 
@@ -354,6 +359,33 @@ impl FileService {
                     )))
                         as Box<dyn std::error::Error + Send + Sync>);
                 }
+
+                // Queue the operations for tracking
+                let mut transaction = OperationTransaction::new(self.operation_queue.clone());
+
+                if let Some(parent) = abs_path.parent() {
+                    if !parent.exists() {
+                        transaction.add_operation(FileOperation::new(
+                            "system".to_string(),
+                            OperationType::CreateDir,
+                            parent.to_path_buf(),
+                            json!({ "recursive": true }),
+                        ));
+                    }
+                }
+
+                transaction.add_operation(FileOperation::new(
+                    "system".to_string(),
+                    OperationType::CreateFile,
+                    abs_path.clone(),
+                    json!({ "content": content }),
+                ));
+
+                transaction.commit().await.map_err(|e| {
+                    Box::new(e) as Box<dyn std::error::Error + Send + Sync>
+                })?;
+
+                // Actually perform the filesystem operations
                 if let Some(parent) = abs_path.parent() {
                     fs::create_dir_all(parent).await.map_err(|e| {
                         Box::new(ServerError::Internal(format!(
@@ -368,6 +400,7 @@ impl FileService {
                         e
                     ))) as Box<dyn std::error::Error + Send + Sync>
                 })?;
+
                 info!(path = ?abs_path, "Created file");
                 Ok(json!({
                     "success": true
@@ -1415,12 +1448,17 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    fn create_test_service(temp_dir: &TempDir) -> FileService {
+        let ast_cache = Arc::new(AstCache::new());
+        let lock_manager = Arc::new(LockManager::new());
+        let operation_queue = Arc::new(super::super::operation_queue::OperationQueue::new(lock_manager.clone()));
+        FileService::new(temp_dir.path(), ast_cache, lock_manager, operation_queue)
+    }
+
     #[tokio::test]
     async fn test_create_and_read_file() {
         let temp_dir = TempDir::new().unwrap();
-        let ast_cache = Arc::new(AstCache::new());
-        let lock_manager = Arc::new(LockManager::new());
-        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager);
+        let service = create_test_service(&temp_dir);
 
         let file_path = Path::new("test.txt");
         let content = "Hello, World!";
@@ -1439,9 +1477,7 @@ mod tests {
     #[tokio::test]
     async fn test_rename_file() {
         let temp_dir = TempDir::new().unwrap();
-        let ast_cache = Arc::new(AstCache::new());
-        let lock_manager = Arc::new(LockManager::new());
-        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager);
+        let service = create_test_service(&temp_dir);
 
         // Create initial file
         let old_path = Path::new("old.txt");
@@ -1466,9 +1502,7 @@ mod tests {
     #[tokio::test]
     async fn test_delete_file() {
         let temp_dir = TempDir::new().unwrap();
-        let ast_cache = Arc::new(AstCache::new());
-        let lock_manager = Arc::new(LockManager::new());
-        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager);
+        let service = create_test_service(&temp_dir);
 
         let file_path = Path::new("to_delete.txt");
 
@@ -1488,9 +1522,7 @@ mod tests {
         use cb_api::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
-        let ast_cache = Arc::new(AstCache::new());
-        let lock_manager = Arc::new(LockManager::new());
-        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager);
+        let service = create_test_service(&temp_dir);
 
         // Create test files
         let main_file = "main.ts";
@@ -1569,9 +1601,7 @@ mod tests {
         use cb_api::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
-        let ast_cache = Arc::new(AstCache::new());
-        let lock_manager = Arc::new(LockManager::new());
-        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager);
+        let service = create_test_service(&temp_dir);
 
         // Create test files with specific content
         let main_file = "main.ts";
@@ -1645,9 +1675,7 @@ mod tests {
         use cb_api::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
-        let ast_cache = Arc::new(AstCache::new());
-        let lock_manager = Arc::new(LockManager::new());
-        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager);
+        let service = create_test_service(&temp_dir);
 
         // Create main file
         let main_file = "main.ts";
@@ -1724,9 +1752,7 @@ mod tests {
         use cb_api::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
-        let ast_cache = Arc::new(AstCache::new());
-        let lock_manager = Arc::new(LockManager::new());
-        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager);
+        let service = create_test_service(&temp_dir);
 
         // Create multiple files
         let main_file = "main.ts";
@@ -1839,6 +1865,13 @@ mod workspace_tests {
     use super::*;
     use tempfile::TempDir;
 
+    fn create_test_service(temp_dir: &TempDir) -> FileService {
+        let ast_cache = Arc::new(AstCache::new());
+        let lock_manager = Arc::new(LockManager::new());
+        let operation_queue = Arc::new(super::super::operation_queue::OperationQueue::new(lock_manager.clone()));
+        FileService::new(temp_dir.path(), ast_cache, lock_manager, operation_queue)
+    }
+
     #[tokio::test]
     async fn test_update_workspace_manifests_simple_rename() {
         let temp_dir = TempDir::new().unwrap();
@@ -1868,9 +1901,7 @@ members = [
         let new_crate_dir = project_root.join("crates/my-renamed-crate");
 
         // Setup FileService
-        let ast_cache = Arc::new(AstCache::new());
-        let lock_manager = Arc::new(LockManager::new());
-        let service = FileService::new(project_root, ast_cache, lock_manager);
+        let service = create_test_service(&temp_dir);
 
         // Run the update
         service
@@ -1895,9 +1926,7 @@ members = [
     #[test]
     fn test_adjust_relative_path_logic() {
         let temp_dir = TempDir::new().unwrap();
-        let ast_cache = Arc::new(AstCache::new());
-        let lock_manager = Arc::new(LockManager::new());
-        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager);
+        let service = create_test_service(&temp_dir);
 
         // Moved deeper: 1 level
         assert_eq!(

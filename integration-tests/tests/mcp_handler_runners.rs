@@ -21,12 +21,13 @@ async fn create_mock_state(workspace_root: PathBuf) -> Arc<AppState> {
     let ast_cache = Arc::new(AstCache::new());
     let ast_service: Arc<dyn AstService> = Arc::new(DefaultAstService::new(ast_cache.clone()));
     let lock_manager = Arc::new(LockManager::new());
+    let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
     let file_service = Arc::new(FileService::new(
         workspace_root.clone(),
         ast_cache.clone(),
         lock_manager.clone(),
+        operation_queue.clone(),
     ));
-    let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
     let plugin_manager = Arc::new(PluginManager::new());
     let planner = cb_server::services::planner::DefaultPlanner::new();
     let workflow_executor = cb_server::services::workflow_executor::DefaultWorkflowExecutor::new(

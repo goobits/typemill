@@ -750,12 +750,13 @@ mod tests {
         let ast_service = Arc::new(crate::services::DefaultAstService::new(ast_cache.clone()));
         let project_root = temp_dir.path().to_path_buf();
         let lock_manager = Arc::new(crate::services::LockManager::new());
+        let operation_queue = Arc::new(crate::services::OperationQueue::new(lock_manager.clone()));
         let file_service = Arc::new(crate::services::FileService::new(
             project_root.clone(),
             ast_cache.clone(),
             lock_manager.clone(),
+            operation_queue.clone(),
         ));
-        let operation_queue = Arc::new(crate::services::OperationQueue::new(lock_manager.clone()));
         let planner = crate::services::planner::DefaultPlanner::new();
         let plugin_manager = Arc::new(PluginManager::new());
         let workflow_executor =

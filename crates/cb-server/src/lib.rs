@@ -66,12 +66,13 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
     // Create services
     let ast_service: Arc<dyn AstService> = Arc::new(DefaultAstService::new(ast_cache.clone()));
     let lock_manager = Arc::new(LockManager::new());
+    let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
     let file_service = Arc::new(FileService::new(
         &project_root,
         ast_cache.clone(),
         lock_manager.clone(),
+        operation_queue.clone(),
     ));
-    let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
 
     // Create planner
     let planner = crate::services::planner::DefaultPlanner::new();
@@ -177,12 +178,13 @@ pub async fn create_dispatcher_with_workspace(
     // Create services
     let ast_service: Arc<dyn AstService> = Arc::new(DefaultAstService::new(ast_cache.clone()));
     let lock_manager = Arc::new(LockManager::new());
+    let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
     let file_service = Arc::new(FileService::new(
         &project_root,
         ast_cache.clone(),
         lock_manager.clone(),
+        operation_queue.clone(),
     ));
-    let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
 
     // Create planner
     let planner = crate::services::planner::DefaultPlanner::new();

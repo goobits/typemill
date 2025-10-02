@@ -23,6 +23,8 @@ pub enum OperationType {
     Rename,
     Format,
     Refactor,
+    CreateDir,
+    CreateFile,
 }
 
 impl OperationType {
@@ -35,6 +37,8 @@ impl OperationType {
                 | OperationType::Rename
                 | OperationType::Format
                 | OperationType::Refactor
+                | OperationType::CreateDir
+                | OperationType::CreateFile
         )
     }
 
