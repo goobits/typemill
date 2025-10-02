@@ -72,6 +72,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let workflow_executor: Arc<dyn WorkflowExecutor> =
         DefaultWorkflowExecutor::new(plugin_manager.clone());
 
+    // Create workspace manager for tracking connected containers
+    let workspace_manager = Arc::new(cb_core::workspaces::WorkspaceManager::new());
+
     // Create application state
     let app_state = Arc::new(AppState {
         ast_service,
@@ -82,6 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         lock_manager,
         operation_queue,
         start_time: std::time::Instant::now(),
+        workspace_manager,
     });
 
     // Create Plugin dispatcher with app state and plugin manager

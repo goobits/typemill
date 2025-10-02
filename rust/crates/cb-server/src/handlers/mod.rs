@@ -1,6 +1,5 @@
 //! MCP tool handlers module
 
-pub mod dead_code;
 pub mod file_operation_handler;
 pub mod plugin_dispatcher;
 pub mod refactoring_handler;
@@ -9,6 +8,7 @@ pub mod tool_handler;
 pub mod tool_registry;
 pub mod workflow_handler;
 // Note: mcp_tools module removed - all functionality now handled by plugin system
+// Note: dead_code module removed - consolidated into system_handler
 
 pub use file_operation_handler::FileOperationHandler;
 pub use plugin_dispatcher::{AppState, PluginDispatcher};
