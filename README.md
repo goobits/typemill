@@ -174,7 +174,6 @@ make test        # Run tests
 make install     # Install to ~/.local/bin
 
 # Or use cargo directly
-cd rust
 cargo build --release
 
 # Run development version
@@ -190,7 +189,15 @@ cargo fmt                     # Formatting
 cargo check                   # Type checking
 ```
 
-**Contributing:** See [CONTRIBUTING.md](rust/CONTRIBUTING.md) for detailed development setup and build optimization tips.
+**Directory Structure:**
+- `apps/` - Binary applications (codebuddy CLI)
+- `crates/` - Library crates (cb-core, cb-server, cb-api, etc.)
+- `integration-tests/` - Integration and E2E tests
+- `benchmarks/` - Performance benchmarks
+- `examples/` - User-facing examples
+- `playground/` - Developer scratch space (gitignored)
+
+**Contributing:** See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development setup and build optimization tips.
 
 ## 📝 License
 MIT - see [LICENSE](LICENSE)

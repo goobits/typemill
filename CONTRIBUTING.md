@@ -31,7 +31,6 @@ First off, thank you for considering contributing! It's people like you that mak
 
 3.  **Build the project:**
     ```bash
-    cd rust
     cargo build
     ```
     This will download all dependencies and compile the Rust crates.
