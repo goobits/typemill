@@ -1,68 +1,52 @@
-# Multi-stage Rust build with FUSE support for Codebuddy
-# Stage 1: Build
-FROM rust:1.70-slim as builder
-WORKDIR /build
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libfuse-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy workspace files (context is parent directory)
+# Stage 1: Base - for sharing source code
+FROM rust:1.70-slim as base
+WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
-COPY rust/ ./rust/
+COPY rust ./rust
 
-# Build in release mode
-WORKDIR /build/rust
+# Stage 2: Builder - for compiling the release binary
+FROM base as builder
+WORKDIR /app/rust
 RUN cargo build --release --bin codebuddy
 
-# Stage 2: Runtime
-FROM debian:bookworm-slim
+# Stage 3: Final - for production
+FROM debian:bookworm-slim as final
 WORKDIR /app
 
-# Install runtime dependencies (FUSE + LSP servers)
+# Install runtime dependencies (LSPs, curl for healthcheck)
 RUN apt-get update && apt-get install -y \
-    fuse \
-    libfuse2 \
     curl \
     ca-certificates \
-    # Node.js for TypeScript LSP
     nodejs \
     npm \
-    # Python for Python LSP
     python3 \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user and add to fuse group
-RUN useradd -r -s /bin/false -m codebuddy && \
-    usermod -aG fuse codebuddy && \
-    mkdir -p /workspace /tmp/codeflow-mounts && \
-    chown -R codebuddy:codebuddy /workspace /tmp/codeflow-mounts
-
-# Create config directory
-RUN mkdir -p /app/.codebuddy && chown codebuddy:codebuddy /app/.codebuddy
-
-# Copy binary from builder
-COPY --from=builder /build/rust/target/release/codebuddy /usr/local/bin/
-
-# Switch to non-root user
+# Create a non-root user for security
+RUN useradd -r -s /bin/false -m codebuddy
+COPY --from=builder /app/rust/target/release/codebuddy /usr/local/bin/
+RUN chown codebuddy:codebuddy /usr/local/bin/codebuddy
 USER codebuddy
 
-# Install LSP servers as non-root user in user directory
+# Install LSP servers as non-root user
 ENV NPM_CONFIG_PREFIX=/home/codebuddy/.npm-global
 ENV PATH="/home/codebuddy/.npm-global/bin:${PATH}"
 RUN npm install -g typescript-language-server typescript && \
     pip3 install --user python-lsp-server[all]
 
-# Expose ports
+# Expose ports and set up health check
 EXPOSE 3000 4000
-
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:4000/health || exit 1
 
-# Default command
+# Default command for production
 ENTRYPOINT ["codebuddy"]
 CMD ["serve", "--port", "3000"]
+
+# Stage 4: Development - for hot-reloading
+FROM base as development
+WORKDIR /app/rust
+RUN cargo install cargo-watch
+EXPOSE 3000 4000
+CMD ["cargo", "watch", "-q", "-c", "-w", ".", "-x", "run", "--", "--port", "3000"]

@@ -1,40 +1,16 @@
 version: '3.8'
 
 services:
-  # Default: Secure deployment without FUSE
   codebuddy:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: codebuddy
+      target: development
+    container_name: codebuddy-dev
+    working_dir: /app/rust
     ports:
       - "3000:3000"  # WebSocket server
       - "4000:4000"  # Admin/health endpoints
-    environment:
-      - RUST_LOG=info
-      - CODEBUDDY__SERVER__PORT=3000
-      - CODEBUDDY__SERVER__HOST=0.0.0.0
-      - CODEBUDDY__LOGGING__LEVEL=info
-      - CODEBUDDY__LOGGING__FORMAT=pretty
-    volumes:
-      # Mount workspace for live development
-      - ../examples:/workspace
-      # Mount config directory
-      - ./config:/app/.codebuddy:ro
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    restart: unless-stopped
-    networks:
-      - codebuddy-net
-
-  # Development: FUSE-enabled (opt-in via --profile fuse)
-  codebuddy-fuse:
-    extends: codebuddy
-    container_name: codebuddy-fuse
     environment:
       - RUST_LOG=debug
       - CODEBUDDY__SERVER__PORT=3000
@@ -42,62 +18,19 @@ services:
       - CODEBUDDY__LOGGING__LEVEL=debug
       - CODEBUDDY__LOGGING__FORMAT=pretty
     volumes:
-      - ../examples:/workspace
-      - ./config:/app/.codebuddy:ro
-      # FUSE mount points (shared for visibility)
-      - /tmp/codeflow-mounts:/tmp/codeflow-mounts:shared
-    devices:
-      # Required for FUSE operations
-      - /dev/fuse:/dev/fuse
-    cap_add:
-      # Required capabilities for FUSE
-      - SYS_ADMIN
-    security_opt:
-      # Allow FUSE mounts in container
-      - apparmor:unconfined
-    profiles:
-      - fuse
-    labels:
-      - "security.warning=EXPERIMENTAL FUSE support with SYS_ADMIN capability"
-      - "security.environment=development-only"
-
-  # Example: Frontend development container
-  frontend-workspace:
-    image: node:20-slim
-    container_name: frontend-dev
-    working_dir: /workspace
-    volumes:
-      - ../examples/frontend:/workspace
-      - frontend-node-modules:/workspace/node_modules
-    environment:
-      - CODEBUDDY_WS=ws://codebuddy:3000
-      - PROJECT_ID=frontend-app
-    command: tail -f /dev/null
-    depends_on:
-      codebuddy:
-        condition: service_healthy
-    networks:
-      - codebuddy-net
-
-  # Example: Backend development container
-  backend-workspace:
-    image: python:3.11-slim
-    container_name: backend-dev
-    working_dir: /workspace
-    volumes:
-      - ../examples/backend:/workspace
-    environment:
-      - CODEBUDDY_WS=ws://codebuddy:3000
-      - PROJECT_ID=backend-api
-    command: tail -f /dev/null
-    depends_on:
-      codebuddy:
-        condition: service_healthy
+      # Mount host source code for hot-reloading
+      - ../rust:/app/rust
+      # Mount local cargo registry to cache dependencies
+      - cargo-registry:/usr/local/cargo/registry
+      # Mount target directory to cache builds
+      - rust-target:/app/rust/target
+    restart: unless-stopped
     networks:
       - codebuddy-net
 
 volumes:
-  frontend-node-modules:
+  cargo-registry:
+  rust-target:
 
 networks:
   codebuddy-net:

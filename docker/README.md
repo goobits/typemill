@@ -1,229 +1,67 @@
 # Docker Deployment Guide
 
-## Quick Start
+## Quick Start: Development
 
-### Production Mode (Secure - Recommended)
+For local development with automatic hot-reloading, run:
+
 ```bash
-# Start with default secure configuration (no FUSE, no elevated privileges)
-docker-compose up codebuddy
+# This will start the server and watch for file changes in ./rust
+docker-compose up
 
-# View logs
-docker-compose logs -f codebuddy
-
-# Stop services
-docker-compose down
+# To rebuild the development image
+docker-compose build
 ```
 
-### Development Mode with FUSE (⚠️ EXPERIMENTAL)
+Any change saved to a `.rs` file on the host machine will automatically trigger a recompile and restart of the server inside the container.
+
+## Production Deployment
+
+For production, use the `docker-compose.production.yml` file. This uses a minimal, secure image without any development tools.
+
 ```bash
-# Start with FUSE support (requires SYS_ADMIN capability)
-docker-compose --profile fuse up codebuddy-fuse
-
-# View logs
-docker-compose logs -f codebuddy-fuse
-```
-
-**⚠️ SECURITY WARNING:** FUSE mode requires `SYS_ADMIN` capability and disabled AppArmor security, effectively removing container security boundaries. **Only use in trusted development environments. Never use in production.**
-
-### Production Mode
-```bash
-# Set JWT secret
+# Set a secure JWT secret for authentication
 export JWT_SECRET="your-secure-secret-key"
 
-# Start production stack
+# Start the production stack in the background
 docker-compose -f docker-compose.production.yml up -d
 
-# Check health
+# Check the health of the service (via nginx)
 curl http://localhost/health
 ```
 
 ## Architecture
 
-- **codebuddy**: Main WebSocket server with FUSE support (ports 3000, 4000)
-- **nginx**: Reverse proxy with SSL/TLS termination (production only)
+### Development (`docker-compose.yml`)
+- **`codebuddy`**: The main application server running in a development image that includes the Rust toolchain and `cargo-watch`.
+- **Source Code Mount**: The local `./rust` directory is mounted directly into the container, allowing `cargo-watch` to detect changes and trigger a rebuild.
+- **Build Caching**: Volumes are used to cache the `cargo` registry and `target` build directory, persisting dependencies and build artifacts across restarts to speed up subsequent builds.
 
-### Optional Development Containers
-The default `docker-compose.yml` includes example workspace containers:
-- **frontend-workspace**: Node.js development container
-- **backend-workspace**: Python development container
-
-These can be removed if not needed, or customized for your stack.
-
-## FUSE Support (⚠️ EXPERIMENTAL)
-
-**Default:** FUSE is **disabled** for security. The default `codebuddy` service runs without elevated privileges.
-
-**To enable FUSE (development only):**
-```bash
-docker-compose --profile fuse up codebuddy-fuse
-```
-
-FUSE filesystems are mounted at `/tmp/codeflow-mounts` inside containers with shared mount propagation.
-
-**Security Requirements:**
-- `/dev/fuse` device on host
-- `SYS_ADMIN` capability (elevated privileges)
-- `apparmor:unconfined` security option (disables container isolation)
-
-**⚠️ This configuration is NOT secure for production environments.**
-
-**To disable FUSE in configuration:**
-Edit `.codebuddy/config.json`:
-```json
-{
-  "fuse": null
-}
-```
+### Production (`docker-compose.production.yml`)
+- **`codebuddy`**: The main application running from a minimal, hardened production image. It contains only the compiled binary and necessary runtime libraries.
+- **`nginx`**: A reverse proxy that handles incoming traffic, provides SSL/TLS termination, and forwards requests to the `codebuddy` service.
 
 ## Configuration
 
-### Development: `./config/development.json`
-```json
-{
-  "server": {"host": "0.0.0.0", "port": 3000},
-  "logging": {"level": "debug", "format": "pretty"}
-}
-```
+Configuration is managed via environment variables in the `docker-compose.*.yml` files. For production, you can create a `.env` file to manage secrets like `JWT_SECRET`.
 
-### Production: `./config/production.json`
-```json
-{
-  "server": {"host": "0.0.0.0", "port": 3000, "maxClients": 100},
-  "logging": {"level": "info", "format": "json"}
-}
-```
+## Building
 
-### Environment Variable Overrides
-```bash
-CODEBUDDY__SERVER__PORT=3001
-CODEBUDDY__LOGGING__LEVEL=debug
-CODEBUDDY__SERVER__MAX_CLIENTS=50
-```
-
-## WebSocket Connection
-
-### Development
-```javascript
-const ws = new WebSocket('ws://localhost:3000');
-```
-
-### Production (via nginx)
-```javascript
-const ws = new WebSocket('ws://your-domain.com/ws');
-// or wss://your-domain.com/ws for SSL
-```
-
-## Health Checks
+While `docker-compose up` builds the image automatically, you can force a rebuild:
 
 ```bash
-# Development - direct to server
-curl http://localhost:4000/health
+# Rebuild the development image
+docker-compose build --no-cache
 
-# Production - via nginx
-curl http://localhost/health
+# Rebuild the production image
+docker-compose -f docker-compose.production.yml build --no-cache
 ```
 
 ## Logs
 
 ```bash
-# Development
-docker-compose logs -f codebuddy
+# View development logs
+docker-compose logs -f
 
-# Production
-docker-compose -f docker-compose.production.yml logs -f codebuddy
+# View production logs
+docker-compose -f docker-compose.production.yml logs -f
 ```
-
-## Building
-
-```bash
-# Rebuild after code changes
-docker-compose build --no-cache
-
-# Build specific service
-docker-compose build codebuddy
-```
-
-## Troubleshooting
-
-### FUSE not working
-- Ensure `/dev/fuse` exists: `ls -la /dev/fuse`
-- Check kernel module: `lsmod | grep fuse`
-- Verify Docker has required capabilities
-
-### LSP servers not found
-LSP servers are pre-installed:
-- `typescript-language-server` + `typescript`
-- `python-lsp-server`
-
-Check installation inside container:
-```bash
-docker-compose exec codebuddy which typescript-language-server
-```
-
-### Permission errors
-Ensure proper ownership:
-```bash
-docker-compose exec codebuddy ls -la /workspace
-```
-
-### Connection refused
-Check if service is healthy:
-```bash
-docker-compose ps
-docker-compose logs codebuddy
-```
-
-## SSL/TLS Setup (Production)
-
-1. Obtain certificates (Let's Encrypt, etc.)
-2. Place in `./certs/` directory:
-   - `fullchain.pem`
-   - `privkey.pem`
-3. Uncomment HTTPS server block in `nginx.conf`
-4. Restart nginx:
-   ```bash
-   docker-compose -f docker-compose.production.yml restart nginx
-   ```
-
-## Resource Limits
-
-Add to `docker-compose.yml` if needed:
-```yaml
-services:
-  codebuddy:
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          memory: 512M
-```
-
-## Security Hardening
-
-### Production Checklist
-- ✅ **Use default `codebuddy` service (no FUSE, no elevated privileges)**
-- ✅ Disable FUSE in config: `"fuse": null`
-- ✅ Set strong `JWT_SECRET`
-- ✅ Enable HTTPS/WSS
-- ✅ Restrict `/metrics` endpoint by IP
-- ✅ Use read-only config mounts (`:ro`)
-- ✅ Enable Docker Content Trust
-- ✅ Scan images for vulnerabilities
-- ✅ Run as non-root user (already configured)
-
-### ⚠️ NEVER in Production
-- ❌ Do not use `codebuddy-fuse` service in production
-- ❌ Do not enable `SYS_ADMIN` capability
-- ❌ Do not disable AppArmor security (`apparmor:unconfined`)
-- ❌ Do not enable FUSE configuration
-
-## Kubernetes Deployment
-
-For Kubernetes, convert compose files:
-```bash
-kompose convert -f docker-compose.production.yml
-```
-
-Or see example manifests in `/kubernetes/` (if available).
