@@ -27,7 +27,7 @@ First off, thank you for considering contributing! It's people like you that mak
     - Link times: 3-10x faster
     - Clean builds: Cached across git branches
 
-    The tools are automatically configured in `rust/.cargo/config.toml`.
+    The tools are automatically configured in `.cargo/config.toml`.
 
 3.  **Build the project:**
     ```bash
@@ -90,7 +90,7 @@ We use the standard Rust formatting and linting tools to maintain a consistent c
 
 ### Optimization Tools (Configured Automatically)
 
-The project uses several build optimizations configured in `rust/.cargo/config.toml`:
+The project uses several build optimizations configured in `.cargo/config.toml`:
 
 - **sccache**: Compilation cache that dramatically speeds up rebuilds
 - **mold**: Modern, fast linker (3-10x faster than traditional linkers)
@@ -143,7 +143,7 @@ If builds are slower than expected:
 
 2. **Check mold is being used:**
    ```bash
-   grep -r "fuse-ld=mold" rust/.cargo/config.toml
+   grep -r "fuse-ld=mold" .cargo/config.toml
    # Should show linker configuration
    ```
 

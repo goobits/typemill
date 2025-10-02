@@ -9,6 +9,7 @@ use cb_ast::AstCache;
 use cb_plugins::PluginManager;
 use cb_server::handlers::AppState;
 use cb_server::services::{DefaultAstService, FileService, LockManager, OperationQueue};
+use cb_server::workspaces::WorkspaceManager;
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -31,6 +32,7 @@ async fn create_mock_state(workspace_root: PathBuf) -> Arc<AppState> {
     let workflow_executor = cb_server::services::workflow_executor::DefaultWorkflowExecutor::new(
         plugin_manager.clone(),
     );
+    let workspace_manager = Arc::new(WorkspaceManager::new());
 
     Arc::new(AppState {
         ast_service,
@@ -41,6 +43,7 @@ async fn create_mock_state(workspace_root: PathBuf) -> Arc<AppState> {
         lock_manager,
         operation_queue,
         start_time: std::time::Instant::now(),
+        workspace_manager,
     })
 }
 
