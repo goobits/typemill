@@ -1,6 +1,6 @@
 # CodeBuddy MCP Tools API Reference
 
-**Version:** 0.1.0
+**Version:** 1.0.0-beta
 **Last Updated:** 2025-10-02
 
 Complete API documentation for all 42 MCP tools available in CodeBuddy.

@@ -1,7 +1,7 @@
 # CodeBuddy MCP Tools Support Matrix
 
 **Last Updated:** 2025-10-02
-**Version:** 0.1.0
+**Version:** 1.0.0-beta
 
 ---
 

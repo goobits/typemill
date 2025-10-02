@@ -52,9 +52,9 @@ impl LspAdapterPlugin {
         lsp_service: Arc<dyn LspService>,
     ) -> Self {
         let name = name.into();
-        let metadata = PluginMetadata::new(&name, "1.0.0", "Codeflow Buddy")
+        let metadata = PluginMetadata::new(&name, env!("CARGO_PKG_VERSION"), "Codeflow Buddy")
             .with_description("LSP adapter plugin for protocol translation")
-            .with_min_system_version("0.1.0");
+            .with_min_system_version(env!("CARGO_PKG_VERSION"));
 
         // Create comprehensive capabilities for LSP-based functionality
         let capabilities = Capabilities {

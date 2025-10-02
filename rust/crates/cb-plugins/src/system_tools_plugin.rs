@@ -77,11 +77,11 @@ impl SystemToolsPlugin {
         SystemToolsPlugin {
             metadata: PluginMetadata {
                 name: "system-tools".to_string(),
-                version: "0.1.0".to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
                 description: "System-level tools for workspace and AST analysis".to_string(),
                 author: "Codeflow Buddy Team".to_string(),
                 config_schema: None,
-                min_system_version: "0.1.0".to_string(),
+                min_system_version: env!("CARGO_PKG_VERSION").to_string(),
             },
             capabilities,
         }

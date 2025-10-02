@@ -21,4 +21,4 @@ pub use protocol::{PluginRequest, PluginResponse, Position, Range};
 pub use registry::PluginRegistry;
 
 /// Plugin system version for compatibility checking
-pub const PLUGIN_SYSTEM_VERSION: &str = "0.1.0";
+pub const PLUGIN_SYSTEM_VERSION: &str = env!("CARGO_PKG_VERSION");
