@@ -17,9 +17,6 @@ pub enum CoreError {
     #[error("JSON serialization/deserialization error: {0}")]
     Json(#[from] serde_json::Error),
 
-    #[error("Configuration parsing error: {0}")]
-    ConfigParsing(#[from] config::ConfigError),
-
     #[error("Invalid data: {message}")]
     InvalidData { message: String },
 
@@ -207,9 +204,6 @@ impl From<CoreError> for ApiError {
             }
             CoreError::Json(e) => {
                 ApiError::new(E1008_INVALID_DATA, format!("JSON error: {}", e))
-            }
-            CoreError::ConfigParsing(e) => {
-                ApiError::new(E1001_INVALID_REQUEST, format!("Config parsing error: {}", e))
             }
             CoreError::InvalidData { message } => {
                 ApiError::new(E1008_INVALID_DATA, message)

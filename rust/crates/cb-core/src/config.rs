@@ -1,10 +1,6 @@
 //! Configuration management for Codeflow Buddy
 
-mod json_helper;
-
 use crate::error::{CoreError, CoreResult};
-use config::{Config, Environment, File, FileFormat};
-use json_helper::to_camel_case_keys;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -282,147 +278,112 @@ impl AppConfig {
     }
 
     /// Load configuration from environment and config files
+    ///
+    /// Configuration is loaded in the following priority order (highest to lowest):
+    /// 1. Environment variables (CODEBUDDY__*)
+    /// 2. Environment-specific profile from codebuddy.toml (based on CODEBUDDY_ENV)
+    /// 3. Base configuration from codebuddy.toml
+    /// 4. Legacy JSON files (.codebuddy/config.json, etc.) for backward compatibility
+    /// 5. Default values
     pub fn load() -> CoreResult<Self> {
-        // Start with default configuration
-        let mut app_config = AppConfig::default();
+        use figment::{
+            providers::{Env, Format, Toml},
+            Figment,
+        };
 
-        // Load from configuration file if it exists
-        let config_paths = [
+        // Determine which environment profile to use
+        let env_profile = std::env::var("CODEBUDDY_ENV").unwrap_or_else(|_| "default".to_string());
+
+        tracing::debug!(
+            profile = %env_profile,
+            "Loading configuration with profile"
+        );
+
+        // Priority order: Env vars > Profile > Base config > Legacy JSON > Defaults
+        // Start with full defaults by serializing the Default implementation
+        let default_config = AppConfig::default();
+        let default_value = serde_json::to_value(&default_config)
+            .expect("Failed to serialize default config");
+
+        let figment = Figment::from(figment::providers::Serialized::defaults(default_value));
+
+        // 2. Try to load legacy JSON files for backward compatibility
+        let legacy_json_paths = [
             ".codebuddy/config.json",
-            ".codebuddy/config.toml",
-            "codebuddy.json", // Legacy support
-            "codebuddy.toml", // Legacy support
+            "codebuddy.json",
         ];
 
-        // Try direct JSON loading first (preserves camelCase)
-        for config_path in &config_paths {
-            if config_path.ends_with(".json") {
-                let path = std::path::Path::new(config_path);
-                if path.exists() {
-                    let content = std::fs::read_to_string(path)?;
-                    match serde_json::from_str::<AppConfig>(&content) {
-                        Ok(loaded) => {
-                            app_config = loaded;
-
-                            // Apply environment overrides
-                            Self::apply_env_overrides(&mut app_config);
-
-                            // Validate configuration
-                            app_config.validate()?;
-
-                            return Ok(app_config);
+        let mut figment_with_legacy = figment;
+        for json_path in &legacy_json_paths {
+            let path = std::path::Path::new(json_path);
+            if path.exists() {
+                tracing::debug!(path = %json_path, "Loading legacy JSON config");
+                // For JSON files, directly deserialize to preserve camelCase
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    if let Ok(json_config) = serde_json::from_str::<AppConfig>(&content) {
+                        // Merge the JSON config
+                        if let Ok(json_value) = serde_json::to_value(&json_config) {
+                            figment_with_legacy = figment_with_legacy.merge(
+                                figment::providers::Serialized::defaults(json_value)
+                            );
                         }
-                        Err(_) => {
-                            // Continue to try other files or methods
-                        }
+                        break; // Use first found JSON file
                     }
                 }
             }
         }
 
-        // Fallback to config crate for TOML
-        let mut config_builder = Config::builder();
-        let mut file_found = false;
+        // 3. Load codebuddy.toml if it exists (base configuration)
+        let toml_paths = [
+            "codebuddy.toml",
+            ".codebuddy/config.toml",
+        ];
 
-        for config_path in &config_paths {
-            if config_path.ends_with(".toml") {
-                let path = std::path::Path::new(config_path);
-                if path.exists() {
-                    config_builder =
-                        config_builder.add_source(File::from(path).format(FileFormat::Toml));
-                    file_found = true;
-                    break;
-                }
+        let mut toml_found = false;
+        for toml_path in &toml_paths {
+            let path = std::path::Path::new(toml_path);
+            if path.exists() {
+                tracing::info!(path = %toml_path, "Loading TOML configuration");
+                figment_with_legacy = figment_with_legacy.merge(Toml::file(path));
+                toml_found = true;
+                break; // Use first found TOML file
             }
         }
 
-        // If a config file was found, merge it with defaults
-        if file_found {
-            // Override with environment variables
-            config_builder = config_builder.add_source(
-                Environment::with_prefix("CODEBUDDY")
-                    .separator("__")
-                    .try_parsing(true),
+        // 4. If TOML was found and environment profile is not "default", merge environment profile
+        if toml_found && env_profile != "default" {
+            tracing::info!(
+                profile = %env_profile,
+                "Applying environment-specific profile"
             );
-
-            let config = config_builder.build()?;
-
-            // Merge file/env config into our default config
-            // The config crate lowercases all keys, so we need to convert them back to camelCase
-            if let Ok(server_value) = config.get::<serde_json::Value>("server") {
-                let camel_value = to_camel_case_keys(server_value);
-                if let Ok(server_config) = serde_json::from_value::<ServerConfig>(camel_value) {
-                    app_config.server = server_config;
-                }
-            }
-            if let Ok(lsp_value) = config.get::<serde_json::Value>("lsp") {
-                let camel_value = to_camel_case_keys(lsp_value);
-                if let Ok(lsp_config) = serde_json::from_value::<LspConfig>(camel_value) {
-                    app_config.lsp = lsp_config;
-                }
-            }
-            if let Ok(fuse_value) = config.get::<serde_json::Value>("fuse") {
-                let camel_value = to_camel_case_keys(fuse_value);
-                if let Ok(fuse_config) = serde_json::from_value::<FuseConfig>(camel_value) {
-                    app_config.fuse = Some(fuse_config);
-                }
-            }
-            if let Ok(logging_value) = config.get::<serde_json::Value>("logging") {
-                let camel_value = to_camel_case_keys(logging_value);
-                if let Ok(logging_config) = serde_json::from_value::<LoggingConfig>(camel_value) {
-                    app_config.logging = logging_config;
-                }
-            }
-            if let Ok(cache_value) = config.get::<serde_json::Value>("cache") {
-                let camel_value = to_camel_case_keys(cache_value);
-                if let Ok(cache_config) = serde_json::from_value::<CacheConfig>(camel_value) {
-                    app_config.cache = cache_config;
-                }
-            }
-        } else {
-            // No file found, just use defaults with environment overrides
-            Self::apply_env_overrides(&mut app_config);
+            // Merge environment-specific overrides from [environments.{profile}]
+            figment_with_legacy = figment_with_legacy.select(&format!("environments.{}", env_profile));
         }
+
+        // 5. Apply environment variable overrides
+        let figment_final = figment_with_legacy.merge(
+            Env::prefixed("CODEBUDDY__")
+                .split("__")
+                .map(|k| k.as_str().replace("__", ".").to_lowercase().into())
+        );
+
+        // Extract and deserialize configuration
+        let app_config: AppConfig = figment_final
+            .extract()
+            .map_err(|e| CoreError::config(format!("Failed to load configuration: {}", e)))?;
 
         // Validate configuration
         app_config.validate()?;
 
+        tracing::info!(
+            port = app_config.server.port,
+            lsp_servers = app_config.lsp.servers.len(),
+            "Configuration loaded successfully"
+        );
+
         Ok(app_config)
     }
 
-    /// Apply environment variable overrides
-    fn apply_env_overrides(config: &mut Self) {
-        use std::env;
-
-        // Check for common environment overrides
-        if let Ok(port) = env::var("CODEBUDDY__SERVER__PORT") {
-            if let Ok(port_value) = port.parse::<u16>() {
-                config.server.port = port_value;
-            }
-        }
-
-        if let Ok(host) = env::var("CODEBUDDY__SERVER__HOST") {
-            config.server.host = host;
-        }
-
-        if let Ok(level) = env::var("CODEBUDDY__LOGGING__LEVEL") {
-            config.logging.level = level;
-        }
-
-        if let Ok(format) = env::var("CODEBUDDY__LOGGING__FORMAT") {
-            config.logging.format = match format.to_lowercase().as_str() {
-                "json" => LogFormat::Json,
-                "pretty" => LogFormat::Pretty,
-                _ => LogFormat::Pretty,
-            };
-        }
-
-        if let Ok(enabled) = env::var("CODEBUDDY__CACHE__ENABLED") {
-            if let Ok(enabled_value) = enabled.parse::<bool>() {
-                config.cache.enabled = enabled_value;
-            }
-        }
-    }
 
     /// Validate the configuration
     fn validate(&self) -> CoreResult<()> {
