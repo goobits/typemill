@@ -528,6 +528,27 @@ impl PluginDispatcher {
                     .await
             } else {
                 // Fall back to plugin system for LSP operations only
+                // Validate that this is a known LSP tool
+                const LSP_TOOLS: &[&str] = &[
+                    "find_definition",
+                    "find_references",
+                    "find_implementations",
+                    "find_type_definition",
+                    "search_workspace_symbols",
+                    "get_document_symbols",
+                    "get_hover",
+                    "get_completions",
+                    "get_signature_help",
+                    "get_diagnostics",
+                    "prepare_call_hierarchy",
+                    "get_call_hierarchy_incoming_calls",
+                    "get_call_hierarchy_outgoing_calls",
+                ];
+
+                if !LSP_TOOLS.contains(&tool_name.as_str()) {
+                    return Err(ServerError::InvalidRequest(format!("Unknown tool: {}", tool_name)));
+                }
+
                 let plugin_request = self.convert_tool_call_to_plugin_request(tool_call)?;
 
                 let plugin_start = Instant::now();

@@ -67,7 +67,7 @@ fn test_tool_invalid_file_path() {
     cmd.assert()
         .failure()
         .code(1)
-        .stderr(predicate::str::contains("error").or(predicate::str::contains("Error")));
+        .stderr(predicate::str::contains("File does not exist"));
 }
 
 #[test]
@@ -158,7 +158,7 @@ fn test_tool_unknown_tool_name() {
     cmd.assert()
         .failure()
         .code(1)
-        .stderr(predicate::str::contains("error").or(predicate::str::contains("not")));
+        .stderr(predicate::str::contains("Unknown tool"));
 }
 
 #[test]
