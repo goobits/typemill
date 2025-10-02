@@ -10,10 +10,7 @@ use axum::{
     routing::get,
     Router,
 };
-use cb_api::AstService;
-use cb_ast::AstCache;
-use cb_server::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
-use cb_server::services::DefaultAstService;
+use cb_server::handlers::plugin_dispatcher::PluginDispatcher;
 use cb_server::workspaces::WorkspaceManager;
 use std::sync::Arc;
 use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -181,46 +178,6 @@ pub async fn run_websocket_server_with_port(port: u16) {
     if let Err(e) = axum::serve(listener, app).await {
         error!(error = %e, "Server error");
     }
-}
-
-pub async fn create_app_state(
-    workspace_manager: Arc<WorkspaceManager>,
-) -> Result<Arc<AppState>, std::io::Error> {
-    // Use current working directory as project root for production
-    let project_root = std::env::current_dir()?;
-    debug!(project_root = %project_root.display(), "Server project root set");
-
-    // Create shared AST cache for performance optimization
-    let ast_cache = Arc::new(AstCache::new());
-    debug!("Created shared AST cache");
-
-    let ast_service: Arc<dyn AstService> = Arc::new(DefaultAstService::new(ast_cache.clone()));
-    let lock_manager = Arc::new(cb_server::services::LockManager::new());
-    let file_service = Arc::new(cb_server::services::FileService::new(
-        project_root.clone(),
-        ast_cache.clone(),
-        lock_manager.clone(),
-    ));
-    let operation_queue = Arc::new(cb_server::services::OperationQueue::new(
-        lock_manager.clone(),
-    ));
-    let planner = cb_server::services::planner::DefaultPlanner::new();
-    let plugin_manager = Arc::new(cb_plugins::PluginManager::new());
-    let workflow_executor = cb_server::services::workflow_executor::DefaultWorkflowExecutor::new(
-        plugin_manager.clone(),
-    );
-
-    Ok(Arc::new(AppState {
-        ast_service,
-        file_service,
-        planner,
-        workflow_executor,
-        project_root,
-        lock_manager,
-        operation_queue,
-        start_time: std::time::Instant::now(),
-        workspace_manager,
-    }))
 }
 
 async fn ws_handler(
