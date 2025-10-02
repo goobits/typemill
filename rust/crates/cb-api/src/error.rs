@@ -1,10 +1,12 @@
 //! API error types for the codebuddy system
 
+use serde::Serialize;
 use thiserror::Error;
 
 /// Core API operation errors
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Serialize)]
 #[non_exhaustive]
+#[serde(tag = "type", content = "details")]
 pub enum ApiError {
     #[error("Configuration error: {message}")]
     Config { message: String },
@@ -34,9 +36,11 @@ pub enum ApiError {
     Internal(String),
 
     #[error("IO error: {0}")]
+    #[serde(serialize_with = "serialize_io_error")]
     Io(#[from] std::io::Error),
 
     #[error("Serialization error: {0}")]
+    #[serde(serialize_with = "serialize_json_error")]
     Serialization(#[from] serde_json::Error),
 
     #[error("Parse error: {message}")]
@@ -203,6 +207,13 @@ impl From<cb_core::CoreError> for ApiError {
     }
 }
 
+/// Convert from cb_core::model::mcp::McpError to ApiError
+impl From<cb_core::model::mcp::McpError> for ApiError {
+    fn from(error: cb_core::model::mcp::McpError) -> Self {
+        ApiError::InvalidRequest(error.message)
+    }
+}
+
 /// Result type alias for API operations
 pub type ApiResult<T> = Result<T, ApiError>;
 
@@ -226,4 +237,20 @@ macro_rules! log_error {
             $msg
         )
     };
+}
+
+/// Helper function to serialize std::io::Error as a string
+fn serialize_io_error<S>(error: &std::io::Error, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(&error.to_string())
+}
+
+/// Helper function to serialize serde_json::Error as a string
+fn serialize_json_error<S>(error: &serde_json::Error, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(&error.to_string())
 }

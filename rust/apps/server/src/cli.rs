@@ -586,8 +586,9 @@ async fn handle_tool_command(tool_name: &str, args_json: &str, format: &str) {
     let arguments: serde_json::Value = match serde_json::from_str(args_json) {
         Ok(val) => val,
         Err(e) => {
-            let error = cb_api::ApiError::invalid_request(format!("Invalid JSON arguments: {}", e));
-            output_error(&error, format);
+            let error = cb_core::model::mcp::McpError::invalid_request(format!("Invalid JSON arguments: {}", e));
+            let api_error = cb_api::ApiError::from(error);
+            output_error(&api_error, format);
             process::exit(1);
         }
     };
@@ -614,17 +615,34 @@ async fn handle_tool_command(tool_name: &str, args_json: &str, format: &str) {
         process::exit(1);
     }
 
-    // Construct ToolCall directly
-    let tool_call = cb_core::model::mcp::ToolCall {
-        name: tool_name.to_string(),
-        arguments: Some(arguments),
+    // Construct MCP request message
+    use cb_core::model::mcp::{McpMessage, McpRequest};
+    let params = serde_json::json!({
+        "name": tool_name,
+        "arguments": arguments,
+    });
+    let request = McpRequest {
+        jsonrpc: "2.0".to_string(),
+        id: Some(serde_json::json!(1)),
+        method: "tools/call".to_string(),
+        params: Some(params),
     };
+    let message = McpMessage::Request(request);
 
-    // Execute tool call directly
-    match dispatcher.handle_tool_call(tool_call).await {
-        Ok(result) => {
-            // Output result to stdout
-            output_result(&result, format);
+    // Execute tool call via dispatcher
+    match dispatcher.dispatch(message).await {
+        Ok(McpMessage::Response(response)) => {
+            if let Some(result) = response.result {
+                output_result(&result, format);
+            } else if let Some(error) = response.error {
+                let api_error = cb_api::ApiError::from(error);
+                output_error(&api_error, format);
+                process::exit(1);
+            }
+        }
+        Ok(_) => {
+            eprintln!("Unexpected response type");
+            process::exit(1);
         }
         Err(server_error) => {
             // Convert ServerError to ApiError and output to stderr
