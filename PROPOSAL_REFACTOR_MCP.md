@@ -43,11 +43,11 @@
 
 **Why Now**: Prevents conflicts with Phase 4 (benchmarks) and Phase 5 (playground moves)
 
-#### Step 1: Dry-run rename crates/tests → integration-tests
+#### Step 1: Dry-run rename integration-tests → integration-tests
 
 ```bash
 ./target/release/codebuddy tool rename_directory '{
-  "old_path": "crates/tests",
+  "old_path": "integration-tests",
   "new_path": "integration-tests",
   "dry_run": true
 }'
@@ -62,7 +62,7 @@
 
 ```bash
 ./target/release/codebuddy tool rename_directory '{
-  "old_path": "crates/tests",
+  "old_path": "integration-tests",
   "new_path": "integration-tests"
 }'
 ```
@@ -71,7 +71,7 @@
 
 ```bash
 ./target/release/codebuddy tool rename_directory '{
-  "old_path": "examples/playground",
+  "old_path": "tests/fixtures",
   "new_path": "tests/fixtures",
   "dry_run": true
 }'
@@ -81,7 +81,7 @@
 
 ```bash
 ./target/release/codebuddy tool rename_directory '{
-  "old_path": "examples/playground",
+  "old_path": "tests/fixtures",
   "new_path": "tests/fixtures"
 }'
 ```
@@ -104,8 +104,8 @@ cargo test --workspace
 git add -A
 git commit -m "refactor: reorganize test structure (Phase 3)
 
-- Renamed crates/tests/ → integration-tests/
-- Moved examples/playground/ → tests/fixtures/
+- Renamed integration-tests/ → integration-tests/
+- Moved tests/fixtures/ → tests/fixtures/
 - Updated workspace Cargo.toml members
 - Auto-updated documentation references
 
@@ -923,7 +923,7 @@ cargo build --release
 
 # Start Phase 3: Reorganize Test Structure
 ./target/release/codebuddy tool rename_directory '{
-  "old_path": "crates/tests",
+  "old_path": "integration-tests",
   "new_path": "integration-tests",
   "dry_run": true
 }'

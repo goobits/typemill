@@ -171,7 +171,7 @@ This proposal outlines a comprehensive restructure of the Codebuddy project to i
 │   ├── cb-transport/
 │   └── cb-vfs/
 │
-├── integration-tests/                 # Renamed from crates/tests
+├── integration-tests/                 # Renamed from integration-tests
 │   ├── Cargo.toml
 │   ├── fixtures/
 │   ├── src/
@@ -196,7 +196,7 @@ This proposal outlines a comprehensive restructure of the Codebuddy project to i
 │   └── .gitkeep
 │
 ├── tests/
-│   └── fixtures/                      # Test data (from examples/playground)
+│   └── fixtures/                      # Test data (from tests/fixtures)
 │       ├── typescript/
 │       ├── python/
 │       └── rust/
@@ -288,10 +288,10 @@ This maintains flexibility while following Rust ecosystem conventions.
 ### 3. Reorganize Test Structure
 
 **Changes:**
-- Rename `/workspace/crates/tests/` → `/workspace/integration-tests/`
+- Rename `/workspace/integration-tests/` → `/workspace/integration-tests/`
 - Move integration tests to `integration-tests/tests/`
 - Keep unit tests in per-crate `tests/` directories (e.g., `cb-core/tests/`)
-- Move test fixtures from `examples/playground/` to `/workspace/tests/fixtures/`
+- Move test fixtures from `tests/fixtures/` to `/workspace/tests/fixtures/`
 - Keep shared test harness in `integration-tests/src/harness/`
 
 **Reason:** Current "tests" crate name is confusing (it's a full crate with lib.rs, not just tests). Separating unit tests (fast iteration per crate) from integration tests (system-wide validation) follows Rust best practices and matches patterns in large projects like tokio and serde.
@@ -303,12 +303,12 @@ This maintains flexibility while following Rust ecosystem conventions.
 **Changes:**
 - Create `/workspace/playground/` directory
 - Add `/playground/` to `.gitignore` (except `.gitkeep`)
-- Move `/workspace/examples/playground/` → `/workspace/tests/fixtures/` (test data)
+- Move `/workspace/tests/fixtures/` → `/workspace/tests/fixtures/` (test data)
 - Keep clean user-facing examples in `/workspace/examples/`:
   - `typescript-integration/` (reorganized from `backend/`, `frontend/`)
   - `python-integration/` (reorganized from `backend/`)
   - `rust-integration/` (sample project)
-- Remove `examples/playground/rust/target/` (build artifacts)
+- Remove `tests/fixtures/rust/target/` (build artifacts)
 
 **Reason:** `examples/` directory mixes user-facing examples with test fixtures and development playgrounds. Users browsing examples shouldn't see test data or build artifacts. Clean examples improve discoverability and project professionalism.
 

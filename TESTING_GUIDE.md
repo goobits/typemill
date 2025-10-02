@@ -6,17 +6,17 @@ The test suite uses a **data-driven architecture** that separates test logic fro
 
 ### Three-Layer Architecture
 
-1. **Fixtures** (`crates/tests/src/harness/test_fixtures.rs`)
+1. **Fixtures** (`integration-tests/src/harness/test_fixtures.rs`)
    - Language-specific test data
    - Contains code snippets, file names, and expected outcomes
    - Static data structures
 
-2. **Runners** (`crates/tests/tests/lsp_feature_runners.rs`)
+2. **Runners** (`integration-tests/tests/lsp_feature_runners.rs`)
    - Generic test logic
    - One runner function per LSP feature
    - Language-agnostic implementation
 
-3. **Test Declarations** (`crates/tests/tests/lsp_features.rs`)
+3. **Test Declarations** (`integration-tests/tests/lsp_features.rs`)
    - Minimal test file
    - Connects fixtures with runners
    - Automatically generates test matrix
@@ -27,7 +27,7 @@ To add test support for Go, you only need to edit **one file**:
 
 ### Step 1: Add Test Cases to Fixtures
 
-Edit `crates/tests/src/harness/test_fixtures.rs`:
+Edit `integration-tests/src/harness/test_fixtures.rs`:
 
 ```rust
 pub const GO_TO_DEFINITION_TESTS: &[GoToDefinitionTestCase] = &[
@@ -90,7 +90,7 @@ To add tests for a new LSP feature (e.g., "call hierarchy"):
 
 ### Step 1: Define Fixture Struct
 
-Add to `crates/tests/src/harness/test_fixtures.rs`:
+Add to `integration-tests/src/harness/test_fixtures.rs`:
 
 ```rust
 #[derive(Debug, Clone)]
@@ -113,7 +113,7 @@ pub const CALL_HIERARCHY_TESTS: &[CallHierarchyTestCase] = &[
 
 ### Step 2: Implement Runner Function
 
-Add to `crates/tests/tests/lsp_feature_runners.rs`:
+Add to `integration-tests/tests/lsp_feature_runners.rs`:
 
 ```rust
 pub async fn run_call_hierarchy_test(case: &CallHierarchyTestCase, use_real_lsp: bool) {
@@ -126,7 +126,7 @@ pub async fn run_call_hierarchy_test(case: &CallHierarchyTestCase, use_real_lsp:
 
 ### Step 3: Declare Tests
 
-Add to `crates/tests/tests/lsp_features.rs`:
+Add to `integration-tests/tests/lsp_features.rs`:
 
 ```rust
 #[tokio::test]

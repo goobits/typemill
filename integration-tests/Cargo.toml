@@ -1,0 +1,36 @@
+[package]
+name = "integration-tests"
+version = "1.0.0-beta"
+edition = "2021"
+description = "Integration tests and test utilities for Codeflow Buddy"
+license = "MIT"
+
+[dependencies]
+cb-core = { path = "../crates/cb-core" }
+cb-ast = { path = "../crates/cb-ast" }
+cb-api = { path = "../crates/cb-api" }
+cb-server = { path = "../crates/cb-server" }
+cb-client = { path = "../crates/cb-client" }
+cb-plugins = { path = "../crates/cb-plugins" }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+mockall = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tempfile = "3.8"
+chrono = { version = "0.4", features = ["serde"] }
+tokio-tungstenite = "0.21"
+url = "2.5"
+jsonwebtoken = { workspace = true }
+uuid = "1.0"
+futures-util = "0.3"
+futures = "0.3"
+criterion = "0.5"
+tokio-test = "0.4"
+assert_cmd = "2.0"
+predicates = "3.0"
+proptest = "1.0"
+serial_test = "3.0"
+shellexpand = "3.1"
+
