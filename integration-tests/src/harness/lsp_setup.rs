@@ -48,6 +48,37 @@ impl LspSetupHelper {
             }
         }
 
+        // Check common LSP installation locations that might not be in test process PATH
+        // The cargo config sets PATH for child processes, but not the test process itself
+        let home = std::env::var("HOME").ok();
+
+        if let Some(home_dir) = &home {
+            // Check standard locations
+            let standard_paths = vec![
+                format!("{}/.local/bin/{}", home_dir, command),
+                format!("{}/.cargo/bin/{}", home_dir, command),
+            ];
+
+            for path in standard_paths {
+                if std::path::Path::new(&path).is_file() {
+                    return true;
+                }
+            }
+
+            // Check NVM node versions (for typescript-language-server)
+            let nvm_dir = format!("{}/.nvm/versions/node", home_dir);
+            if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+                for entry in entries.flatten() {
+                    if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                        let bin_path = entry.path().join("bin").join(command);
+                        if bin_path.is_file() {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
         // Fallback to which command
         Command::new("which")
             .arg(command)
@@ -65,34 +96,49 @@ impl LspSetupHelper {
             .unwrap_or_else(|| "typescript-language-server".to_string());
         let pylsp_path = Self::resolve_command_path("pylsp").unwrap_or_else(|| "pylsp".to_string());
 
-        // Only log LSP paths if RUST_LOG=debug
-        if std::env::var("RUST_LOG")
-            .unwrap_or_default()
-            .to_lowercase()
-            .contains("debug")
-        {
-            eprintln!("DEBUG: Resolved TypeScript LSP path: {}", ts_lsp_path);
-            eprintln!("DEBUG: Resolved Python LSP path: {}", pylsp_path);
-        }
+        // Always log LSP paths for debugging test failures
+        eprintln!("DEBUG: Resolved TypeScript LSP path: {}", ts_lsp_path);
+        eprintln!("DEBUG: Resolved Python LSP path: {}", pylsp_path);
 
+        // Create a full AppConfig structure to ensure proper deserialization
         let config = json!({
-            "servers": [
-                {
-                    "extensions": ["ts", "tsx", "js", "jsx"],
-                    "command": [ts_lsp_path, "--stdio"],
-                    "rootDir": null,
-                    "restartInterval": 5
-                },
-                {
-                    "extensions": ["py"],
-                    "command": [pylsp_path],
-                    "rootDir": null,
-                    "restartInterval": 5
-                }
-            ]
+            "server": {
+                "host": "127.0.0.1",
+                "port": 3000,
+                "timeoutMs": 30000
+            },
+            "lsp": {
+                "servers": [
+                    {
+                        "extensions": ["ts", "tsx", "js", "jsx"],
+                        "command": [ts_lsp_path, "--stdio"],
+                        "rootDir": null,
+                        "restartInterval": 5
+                    },
+                    {
+                        "extensions": ["py"],
+                        "command": [pylsp_path],
+                        "rootDir": null,
+                        "restartInterval": 5
+                    }
+                ],
+                "defaultTimeoutMs": 10000,
+                "enablePreload": false
+            },
+            "logging": {
+                "level": "debug",
+                "format": "json"
+            },
+            "cache": {
+                "enabled": true,
+                "maxSizeMb": 100,
+                "ttlSeconds": 300
+            }
         });
 
         let config_str = serde_json::to_string_pretty(&config).unwrap();
+
+        eprintln!("DEBUG: LSP Config being written:\n{}", config_str);
 
         workspace.create_file(".codebuddy/config.json", &config_str);
 
@@ -128,6 +174,34 @@ impl LspSetupHelper {
                 let full_path = std::path::Path::new(path_dir).join(command);
                 if full_path.exists() && full_path.is_file() {
                     return full_path.to_string_lossy().to_string().into();
+                }
+            }
+        }
+
+        // Check common LSP installation locations
+        if let Some(home_dir) = std::env::var("HOME").ok() {
+            // Check standard locations
+            let standard_paths = vec![
+                format!("{}/.local/bin/{}", home_dir, command),
+                format!("{}/.cargo/bin/{}", home_dir, command),
+            ];
+
+            for path in standard_paths {
+                if std::path::Path::new(&path).is_file() {
+                    return Some(path);
+                }
+            }
+
+            // Check NVM node versions (for typescript-language-server)
+            let nvm_dir = format!("{}/.nvm/versions/node", home_dir);
+            if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+                for entry in entries.flatten() {
+                    if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                        let bin_path = entry.path().join("bin").join(command);
+                        if bin_path.is_file() {
+                            return Some(bin_path.to_string_lossy().to_string());
+                        }
+                    }
                 }
             }
         }
