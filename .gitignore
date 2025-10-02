@@ -77,3 +77,14 @@ mcp/*/storage.json
 
 # Test playground and artifacts
 examples/playground/
+
+# Rust build artifacts
+target/
+**/*.rs.bk
+
+# Rust runtime
+*.pid
+*.lock
+
+# Test outputs
+test-results/
