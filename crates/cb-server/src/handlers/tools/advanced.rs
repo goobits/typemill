@@ -64,10 +64,10 @@ impl ToolHandler for AdvancedHandler {
                 #[derive(Deserialize, Debug)]
                 #[serde(tag = "type", rename_all = "snake_case")]
                 enum BatchOperation {
-                    CreateFile { path: String, content: Option<String> },
-                    DeleteFile { path: String },
-                    WriteFile { path: String, content: String },
-                    RenameFile { old_path: String, new_path: String },
+                    CreateFile { path: String, content: Option<String>, dry_run: Option<bool> },
+                    DeleteFile { path: String, dry_run: Option<bool> },
+                    WriteFile { path: String, content: String, dry_run: Option<bool> },
+                    RenameFile { old_path: String, new_path: String, dry_run: Option<bool> },
                 }
 
                 // Define the structure for the overall batch_execute parameters
@@ -89,30 +89,34 @@ impl ToolHandler for AdvancedHandler {
                 // 3. Iterate, convert to internal FileOperation, and enqueue
                 for operation in batch_params.operations.into_iter() {
                     let (operation_type, file_path, operation_params) = match operation {
-                        BatchOperation::CreateFile { path, content } => {
+                        BatchOperation::CreateFile { path, content, dry_run } => {
                             let params = json!({
                                 "file_path": path,
-                                "content": content.unwrap_or_default()
+                                "content": content.unwrap_or_default(),
+                                "dry_run": dry_run.unwrap_or(false)
                             });
                             (OperationType::Write, PathBuf::from(path), params)
                         },
-                        BatchOperation::DeleteFile { path } => {
+                        BatchOperation::DeleteFile { path, dry_run } => {
                             let params = json!({
-                                "file_path": path
+                                "file_path": path,
+                                "dry_run": dry_run.unwrap_or(false)
                             });
                             (OperationType::Delete, PathBuf::from(path), params)
                         },
-                        BatchOperation::WriteFile { path, content } => {
+                        BatchOperation::WriteFile { path, content, dry_run } => {
                             let params = json!({
                                 "file_path": path,
-                                "content": content
+                                "content": content,
+                                "dry_run": dry_run.unwrap_or(false)
                             });
                             (OperationType::Write, PathBuf::from(path), params)
                         },
-                        BatchOperation::RenameFile { old_path, new_path } => {
+                        BatchOperation::RenameFile { old_path, new_path, dry_run } => {
                             let params = json!({
                                 "old_path": old_path,
-                                "new_path": new_path.clone()
+                                "new_path": new_path.clone(),
+                                "dry_run": dry_run.unwrap_or(false)
                             });
                             (OperationType::Rename, PathBuf::from(old_path), params)
                         },
