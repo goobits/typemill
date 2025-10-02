@@ -85,9 +85,66 @@ impl ToolHandler for AdvancedHandler {
 
                 let batch_id = Uuid::new_v4().to_string(); // A single ID for the entire batch
                 let mut queued_count = 0;
+                let mut results = Vec::new();
 
-                // 3. Iterate, convert to internal FileOperation, and enqueue
+                // 3. Iterate, convert to internal FileOperation, and enqueue or execute with dry_run
                 for operation in batch_params.operations.into_iter() {
+                    // Check if this operation is a dry run
+                    let is_dry_run = match &operation {
+                        BatchOperation::CreateFile { dry_run, .. } |
+                        BatchOperation::DeleteFile { dry_run, .. } |
+                        BatchOperation::WriteFile { dry_run, .. } |
+                        BatchOperation::RenameFile { dry_run, .. } => dry_run.unwrap_or(false),
+                    };
+
+                    // If dry_run, execute directly and collect results
+                    if is_dry_run {
+                        let result = match operation {
+                            BatchOperation::CreateFile { path, content, .. } => {
+                                let file_service = &context.app_state.file_service;
+                                file_service
+                                    .write_file(
+                                        &PathBuf::from(&path),
+                                        &content.unwrap_or_default(),
+                                        true, // dry_run
+                                    )
+                                    .await
+                                    .map(|dry_result| dry_result.result)
+                                    .map_err(|e| crate::ServerError::runtime(format!("Dry run failed for create_file {}: {}", path, e)))?
+                            },
+                            BatchOperation::WriteFile { path, content, .. } => {
+                                let file_service = &context.app_state.file_service;
+                                file_service
+                                    .write_file(
+                                        &PathBuf::from(&path),
+                                        &content,
+                                        true, // dry_run
+                                    )
+                                    .await
+                                    .map(|dry_result| dry_result.result)
+                                    .map_err(|e| crate::ServerError::runtime(format!("Dry run failed for write_file {}: {}", path, e)))?
+                            },
+                            BatchOperation::DeleteFile { path, .. } => {
+                                let file_service = &context.app_state.file_service;
+                                file_service
+                                    .delete_file(&PathBuf::from(&path), false, true)
+                                    .await
+                                    .map(|dry_result| dry_result.result)
+                                    .map_err(|e| crate::ServerError::runtime(format!("Dry run failed for delete_file {}: {}", path, e)))?
+                            },
+                            BatchOperation::RenameFile { old_path, new_path, .. } => {
+                                let file_service = &context.app_state.file_service;
+                                file_service
+                                    .rename_file_with_imports(&PathBuf::from(&old_path), &PathBuf::from(&new_path), true)
+                                    .await
+                                    .map(|dry_result| dry_result.result)
+                                    .map_err(|e| crate::ServerError::runtime(format!("Dry run failed for rename_file {} -> {}: {}", old_path, new_path, e)))?
+                            },
+                        };
+                        results.push(result);
+                        continue;
+                    }
+
                     let (operation_type, file_path, operation_params) = match operation {
                         BatchOperation::CreateFile { path, content, dry_run } => {
                             let params = json!({
@@ -137,11 +194,22 @@ impl ToolHandler for AdvancedHandler {
                 }
 
                 // 4. Return a success response
-                let response = json!({
-                    "status": "success",
-                    "message": format!("Queued {} operations for execution.", queued_count),
-                    "batch_id": batch_id
-                });
+                let response = if !results.is_empty() {
+                    // Dry run results
+                    json!({
+                        "status": "preview",
+                        "message": format!("Dry run completed for {} operations.", results.len()),
+                        "results": results,
+                        "batch_id": batch_id
+                    })
+                } else {
+                    // Normal queued operations
+                    json!({
+                        "status": "success",
+                        "message": format!("Queued {} operations for execution.", queued_count),
+                        "batch_id": batch_id
+                    })
+                };
                 Ok(response)
             }
             _ => Err(crate::ServerError::InvalidRequest(format!(
