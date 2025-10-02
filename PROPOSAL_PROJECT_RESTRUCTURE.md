@@ -458,3 +458,203 @@ find /workspace -type f -name "*.sh" -exec chmod 755 {} \;
 - [ ] Installation script works from new location
 - [ ] Binary runs with all subcommands
 - [ ] IDE/tooling continues to work (rust-analyzer, etc.)
+
+---
+
+## Implementation Commands - Phase 1: Flatten Rust Directory
+
+### Overview
+
+This section provides the exact MCP commands to execute Phase 1 of the restructure using codebuddy's own tools. The commands are ordered by dependency to ensure safe, incremental migration with validation checkpoints.
+
+**Strategy**: Use codebuddy's MCP tools with dry-run mode, then execute with build validation checkpoints. After each phase, rebuild codebuddy itself to verify the restructure succeeded.
+
+---
+
+### **Phase A: Move Build-Critical Files (3 commands)**
+
+Move the core Cargo configuration files first so the workspace root becomes functional.
+
+```bash
+# A1. Move Cargo.toml (workspace manifest)
+./rust/target/release/codebuddy call rename_file \
+  old_path="rust/Cargo.toml" \
+  new_path="Cargo.toml" \
+  dry_run=true
+
+# A2. Move Cargo.lock (dependency lock)
+./rust/target/release/codebuddy call rename_file \
+  old_path="rust/Cargo.lock" \
+  new_path="Cargo.lock" \
+  dry_run=true
+
+# A3. Move rust-toolchain.toml (Rust version spec)
+./rust/target/release/codebuddy call rename_file \
+  old_path="rust/rust-toolchain.toml" \
+  new_path="rust-toolchain.toml" \
+  dry_run=true
+```
+
+**CHECKPOINT A:**
+```bash
+# Verify workspace configuration is valid
+cd /workspace && cargo check
+```
+
+**Expected Result**: Cargo should recognize `/workspace/` as the workspace root and successfully check all crates.
+
+---
+
+### **Phase B: Move Source Directories (3 commands)**
+
+Move the actual source code directories referenced by the workspace manifest.
+
+```bash
+# B1. Move apps/ directory
+./rust/target/release/codebuddy call rename_directory \
+  old_path="rust/apps" \
+  new_path="apps" \
+  dry_run=true
+
+# B2. Move crates/ directory
+./rust/target/release/codebuddy call rename_directory \
+  old_path="rust/crates" \
+  new_path="crates" \
+  dry_run=true
+
+# B3. Move testing/ directory
+./rust/target/release/codebuddy call rename_directory \
+  old_path="rust/testing" \
+  new_path="testing" \
+  dry_run=true
+```
+
+**CHECKPOINT B:**
+```bash
+# Verify codebuddy can rebuild itself from new location
+cd /workspace && cargo build --release
+
+# If successful, the new binary will be at:
+# /workspace/target/release/codebuddy
+```
+
+**Expected Result**: Complete rebuild succeeds, proving the restructure maintains all build dependencies and import paths.
+
+---
+
+### **Phase C: Move Configuration & Supporting Files (7 commands)**
+
+Move remaining configuration, documentation, and tooling files.
+
+```bash
+# C1. Move justfile (build automation)
+./rust/target/release/codebuddy call rename_file \
+  old_path="rust/justfile" \
+  new_path="justfile" \
+  dry_run=true
+
+# C2. Move .cargo/ directory (build config)
+./rust/target/release/codebuddy call rename_directory \
+  old_path="rust/.cargo" \
+  new_path=".cargo" \
+  dry_run=true
+
+# C3. Move .codebuddy/ directory (codebuddy config)
+./rust/target/release/codebuddy call rename_directory \
+  old_path="rust/.codebuddy" \
+  new_path=".codebuddy" \
+  dry_run=true
+
+# C4. Move CONTRIBUTING.md
+./rust/target/release/codebuddy call rename_file \
+  old_path="rust/CONTRIBUTING.md" \
+  new_path="CONTRIBUTING.md" \
+  dry_run=true
+
+# C5. Move ROADMAP.md
+./rust/target/release/codebuddy call rename_file \
+  old_path="rust/ROADMAP.md" \
+  new_path="ROADMAP.md" \
+  dry_run=true
+
+# C6. Delete rust/README.md (redundant with /workspace/README.md)
+./rust/target/release/codebuddy call delete_file \
+  file_path="rust/README.md" \
+  dry_run=true
+
+# C7. Move codebuddy.example.toml
+./rust/target/release/codebuddy call rename_file \
+  old_path="rust/codebuddy.example.toml" \
+  new_path="codebuddy.example.toml" \
+  dry_run=true
+```
+
+**CHECKPOINT C:**
+```bash
+# Verify all tests pass with new structure
+cd /workspace && cargo test --workspace
+
+# Verify linting passes
+cargo clippy --workspace
+```
+
+**Expected Result**: All tests and linting pass, confirming no functionality broken by restructure.
+
+---
+
+### **Phase D: Manual Merge Operations**
+
+These operations require manual review and cannot be safely automated.
+
+```bash
+# D1. Merge .gitignore files
+cat rust/.gitignore >> .gitignore.temp
+cat .gitignore >> .gitignore.temp
+# Manually deduplicate, review, and replace .gitignore
+
+# D2. Merge docs/ directories
+cp -r rust/docs/* docs/
+# Manually review and reorganize per new docs/ structure
+
+# D3. Clean up empty rust/ directory (after verifying all content moved)
+rm -rf rust/
+```
+
+---
+
+### Execution Strategy
+
+**For Dry-Run Preview:**
+1. Run all commands with `dry_run=true`
+2. Review the output to understand what will change
+3. Verify no unexpected file conflicts
+
+**For Actual Execution:**
+1. Remove `dry_run=true` from each command
+2. Execute Phase A → Checkpoint A
+3. Execute Phase B → Checkpoint B
+4. Execute Phase C → Checkpoint C
+5. Execute Phase D manually
+6. Final validation using checklist above
+
+**Rollback Strategy:**
+- Each phase can be reverted using git: `git checkout -- .`
+- Checkpoints ensure partial completion is still valid
+- If checkpoint fails, investigate before proceeding
+
+---
+
+### Command Summary
+
+**Total MCP Operations: 13**
+- **Phase A:** 3 files (build-critical) - enables workspace root
+- **Phase B:** 3 directories (source code) - moves all Rust code
+- **Phase C:** 7 files/dirs (supporting) - moves configuration/docs
+- **Phase D:** 3 manual operations (merges + cleanup)
+
+**Checkpoints: 3**
+1. After Phase A: `cargo check` validates workspace configuration
+2. After Phase B: `cargo build --release` proves code integrity (self-rebuilding validation)
+3. After Phase C: `cargo test --workspace` confirms no functionality broken
+
+**Key Insight**: Codebuddy rebuilding itself after Phase B is the ultimate validation that the restructure succeeded - if the tool can rebuild itself using the new structure, all imports and paths are correct.
