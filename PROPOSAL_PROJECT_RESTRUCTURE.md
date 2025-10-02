@@ -260,13 +260,28 @@ This proposal outlines a comprehensive restructure of the Codebuddy project to i
 
 **Changes:**
 - Rename `/workspace/apps/server/` → `/workspace/apps/codebuddy/`
-- Delete `/workspace/crates/cb-server/src/main.rs` (orphaned duplicate entry point)
-- Delete `/workspace/crates/cb-client/src/main.rs`
-- Move CLI commands from `apps/server/src/cli.rs` and `cb-client/src/commands/` into `apps/codebuddy/src/commands/`
+- **[REVISED]** ~~Delete `/workspace/crates/cb-server/src/main.rs`~~ - **Keep as optional standalone binary**
+- **[REVISED]** ~~Delete `/workspace/crates/cb-client/src/main.rs`~~ - **Keep as optional standalone binary**
 - Update `apps/codebuddy/Cargo.toml` to set binary name as `codebuddy`
-- Ensure `cb-server` and `cb-client` crates are library-only
+- **Optional:** Move CLI commands from `apps/server/src/cli.rs` and `cb-client/src/commands/` into `apps/codebuddy/src/commands/` (requires manual code refactoring)
 
-**Reason:** Currently two `main.rs` files exist in `cb-server` (duplicate server initialization) and `cb-client` (small wrapper). This creates confusion about entry points and package distribution. A unified binary with subcommands matches industry patterns (git, docker, cargo) and simplifies user experience.
+**Reason (Updated):** Investigation revealed that `cb-server` and `cb-client` both follow the **standard Rust library+binary pattern** (like `cargo`, `rustc`, etc.). Each crate provides:
+- A **library** (`lib.rs`) - core functionality for other crates to use
+- An **optional binary** (`main.rs`) - standalone executable for direct usage
+
+**Current Architecture (Actually Good):**
+- `crates/cb-server` = library + `cb-server` binary (197 lines, full server initialization)
+- `crates/cb-client` = library + `cb-client` binary (9 lines, simple wrapper calling `run_cli()`)
+- `apps/server` = unified `codebuddy` binary (uses both libraries)
+
+**Original Proposal Assumption Was Wrong:** The `main.rs` files are **NOT orphaned duplicates** - they are legitimate standalone binaries that other projects can use. Deleting them would remove useful distribution options.
+
+**Revised Recommendation:**
+1. **Keep the library+binary pattern** in both crates (standard Rust practice)
+2. **Rename** `apps/server` → `apps/codebuddy` (simple, safe)
+3. **Consider** consolidating CLI commands (optional, requires refactoring)
+
+This maintains flexibility while following Rust ecosystem conventions.
 
 ---
 
