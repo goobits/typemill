@@ -24,7 +24,7 @@
 
 #### 🆕 CREATE
 
-**1. `rust/apps/server/src/dispatcher_factory.rs`** (NEW)
+**1. `apps/server/src/dispatcher_factory.rs`** (NEW)
 ```rust
 //! Shared dispatcher initialization factory
 //! Eliminates 3x duplication across CLI, stdio, WebSocket
@@ -64,7 +64,7 @@ pub async fn create_initialized_dispatcher_with_workspace(
 
 #### ✏️ EDIT
 
-**2. `rust/apps/server/src/main.rs`**
+**2. `apps/server/src/main.rs`**
 
 **Removing:**
 ```rust
@@ -126,7 +126,7 @@ let dispatcher = match dispatcher_factory::create_initialized_dispatcher().await
 
 ---
 
-**3. `rust/apps/server/src/cli.rs`**
+**3. `apps/server/src/cli.rs`**
 
 **Removing:**
 ```rust
@@ -258,7 +258,7 @@ async fn handle_tools_command(format: &str) {
 
 #### 🆕 CREATE
 
-**4. `rust/crates/cb-server/src/tool_handler.rs`** (NEW)
+**4. `crates/cb-server/src/tool_handler.rs`** (NEW)
 ```rust
 //! Tool handler trait for non-LSP operations
 //!
@@ -295,7 +295,7 @@ pub struct ToolContext {
 
 ---
 
-**5. `rust/crates/cb-server/src/handlers/file_operations_handler.rs`** (NEW)
+**5. `crates/cb-server/src/handlers/file_operations_handler.rs`** (NEW)
 ```rust
 //! File operations tool handler
 //!
@@ -377,7 +377,7 @@ impl FileOperationsHandler {
 
 ---
 
-**6. `rust/crates/cb-server/src/handlers/workflow_handler.rs`** (NEW)
+**6. `crates/cb-server/src/handlers/workflow_handler.rs`** (NEW)
 ```rust
 //! Workflow and advanced operations handler
 //!
@@ -428,7 +428,7 @@ impl WorkflowHandler {
 
 ---
 
-**7. `rust/crates/cb-server/src/handlers/system_handler.rs`** (NEW)
+**7. `crates/cb-server/src/handlers/system_handler.rs`** (NEW)
 ```rust
 //! System operations handler
 //!
@@ -505,7 +505,7 @@ impl SystemHandler {
 
 ---
 
-**8. `rust/crates/cb-server/src/handlers/refactoring_handler.rs`** (NEW)
+**8. `crates/cb-server/src/handlers/refactoring_handler.rs`** (NEW)
 ```rust
 //! Refactoring operations handler
 //!
@@ -547,7 +547,7 @@ impl ToolHandler for RefactoringHandler {
 
 ---
 
-**9. `rust/crates/cb-server/src/tool_registry.rs`** (NEW)
+**9. `crates/cb-server/src/tool_registry.rs`** (NEW)
 ```rust
 //! Tool handler registry
 //!
@@ -607,7 +607,7 @@ impl ToolRegistry {
 
 #### ✏️ EDIT
 
-**10. `rust/crates/cb-server/src/lib.rs`**
+**10. `crates/cb-server/src/lib.rs`**
 
 **Adding:**
 ```rust
@@ -617,7 +617,7 @@ pub mod tool_registry;
 
 ---
 
-**11. `rust/crates/cb-server/src/handlers/mod.rs`**
+**11. `crates/cb-server/src/handlers/mod.rs`**
 
 **Adding:**
 ```rust
@@ -634,7 +634,7 @@ pub use refactoring_handler::RefactoringHandler;
 
 ---
 
-**12. `rust/crates/cb-server/src/handlers/plugin_dispatcher.rs`**
+**12. `crates/cb-server/src/handlers/plugin_dispatcher.rs`**
 
 **Removing:**
 - Lines 608-631: Hardcoded tool routing if/else chain
@@ -749,7 +749,7 @@ async fn handle_tool_call(&self, params: Option<Value>) -> ServerResult<Value> {
 
 #### 🆕 CREATE
 
-**15. `rust/crates/cb-server/tests/tool_handler_tests.rs`** (NEW)
+**15. `crates/cb-server/tests/tool_handler_tests.rs`** (NEW)
 ```rust
 //! Integration tests for tool handler system
 
@@ -790,22 +790,22 @@ mod tests {
 ## 📊 **Summary**
 
 ### Files to CREATE (9)
-1. `rust/apps/server/src/dispatcher_factory.rs` - Shared initialization
-2. `rust/crates/cb-server/src/tool_handler.rs` - ToolHandler trait
-3. `rust/crates/cb-server/src/handlers/file_operations_handler.rs` - File ops
-4. `rust/crates/cb-server/src/handlers/workflow_handler.rs` - Workflows
-5. `rust/crates/cb-server/src/handlers/system_handler.rs` - System tools
-6. `rust/crates/cb-server/src/handlers/refactoring_handler.rs` - Refactoring
-7. `rust/crates/cb-server/src/tool_registry.rs` - Registry
-8. `rust/crates/cb-server/tests/tool_handler_tests.rs` - Tests
+1. `apps/server/src/dispatcher_factory.rs` - Shared initialization
+2. `crates/cb-server/src/tool_handler.rs` - ToolHandler trait
+3. `crates/cb-server/src/handlers/file_operations_handler.rs` - File ops
+4. `crates/cb-server/src/handlers/workflow_handler.rs` - Workflows
+5. `crates/cb-server/src/handlers/system_handler.rs` - System tools
+6. `crates/cb-server/src/handlers/refactoring_handler.rs` - Refactoring
+7. `crates/cb-server/src/tool_registry.rs` - Registry
+8. `crates/cb-server/tests/tool_handler_tests.rs` - Tests
 9. Plus handler implementations (moving code from dispatcher)
 
 ### Files to EDIT (6)
-1. `rust/apps/server/src/main.rs` - Use factory
-2. `rust/apps/server/src/cli.rs` - Use factory + add tools command
-3. `rust/crates/cb-server/src/lib.rs` - Export new modules
-4. `rust/crates/cb-server/src/handlers/mod.rs` - Export handlers
-5. `rust/crates/cb-server/src/handlers/plugin_dispatcher.rs` - Use registry routing
+1. `apps/server/src/main.rs` - Use factory
+2. `apps/server/src/cli.rs` - Use factory + add tools command
+3. `crates/cb-server/src/lib.rs` - Export new modules
+4. `crates/cb-server/src/handlers/mod.rs` - Export handlers
+5. `crates/cb-server/src/handlers/plugin_dispatcher.rs` - Use registry routing
 6. `SUPPORT_MATRIX.md`, `CLAUDE.md` - Documentation
 
 ### Files to DELETE (0)

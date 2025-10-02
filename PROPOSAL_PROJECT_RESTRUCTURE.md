@@ -182,7 +182,7 @@ This proposal outlines a comprehensive restructure of the Codebuddy project to i
 │       ├── lsp_*.rs
 │       └── mcp_*.rs
 │
-├── benchmarks/                        # Moved from rust/testing/benchmarks
+├── benchmarks/                        # Moved from testing/benchmarks
 │   ├── Cargo.toml
 │   └── benches/
 │
@@ -248,8 +248,8 @@ This proposal outlines a comprehensive restructure of the Codebuddy project to i
 - Move `/workspace/rust/Cargo.lock` → `/workspace/Cargo.lock`
 - Move `/workspace/rust/rust-toolchain.toml` → `/workspace/rust-toolchain.toml`
 - Move `/workspace/rust/justfile` → `/workspace/justfile`
-- Move `/workspace/rust/apps/` → `/workspace/apps/`
-- Move `/workspace/rust/crates/` → `/workspace/crates/`
+- Move `/workspace/apps/` → `/workspace/apps/`
+- Move `/workspace/crates/` → `/workspace/crates/`
 - Delete `/workspace/rust/` directory
 
 **Reason:** Rust workspace should be at repository root per ecosystem conventions. The project is fundamentally Rust (45,650+ lines), not multi-language. This eliminates redundant nesting and allows `cargo build` from root.
@@ -334,7 +334,7 @@ This proposal outlines a comprehensive restructure of the Codebuddy project to i
 ### 7. Move Benchmarks to Standard Location
 
 **Changes:**
-- Move `/workspace/rust/testing/benchmarks/` → `/workspace/benchmarks/`
+- Move `/workspace/testing/benchmarks/` → `/workspace/benchmarks/`
 - Update workspace `Cargo.toml` members: change `"testing/benchmarks"` to `"benchmarks"`
 - Delete empty `/workspace/testing/` directory
 
@@ -512,19 +512,19 @@ Move the actual source code directories referenced by the workspace manifest.
 ```bash
 # B1. Move apps/ directory
 ./rust/target/release/codebuddy call rename_directory \
-  old_path="rust/apps" \
+  old_path="apps" \
   new_path="apps" \
   dry_run=true
 
 # B2. Move crates/ directory
 ./rust/target/release/codebuddy call rename_directory \
-  old_path="rust/crates" \
+  old_path="crates" \
   new_path="crates" \
   dry_run=true
 
 # B3. Move testing/ directory
 ./rust/target/release/codebuddy call rename_directory \
-  old_path="rust/testing" \
+  old_path="testing" \
   new_path="testing" \
   dry_run=true
 ```
@@ -555,7 +555,7 @@ Move remaining configuration, documentation, and tooling files.
 
 # C2. Move .cargo/ directory (build config)
 ./rust/target/release/codebuddy call rename_directory \
-  old_path="rust/.cargo" \
+  old_path=".cargo" \
   new_path=".cargo" \
   dry_run=true
 
