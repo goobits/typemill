@@ -1309,38 +1309,14 @@ impl PluginDispatcher {
                     )
                     .await?;
 
-                let imports_updated = result
-                    .import_updates
-                    .as_ref()
-                    .map(|r| r.imports_updated)
-                    .unwrap_or(0);
-                let files_affected = result
-                    .import_updates
-                    .as_ref()
-                    .map(|r| r.files_updated)
-                    .unwrap_or(0);
-
-                if dry_run {
-                    Ok(json!({
-                        "status": "preview",
-                        "operation": "rename_file",
-                        "old_path": old_path,
-                        "new_path": new_path,
-                        "changes": {
-                            "file_renamed": true,
-                            "imports_to_update": imports_updated,
-                            "files_to_modify": files_affected
-                        },
-                        "preview": result
-                    }))
-                } else {
-                    Ok(json!({
-                        "success": true,
-                        "old_path": old_path,
-                        "new_path": new_path,
-                        "imports_updated": imports_updated,
-                        "files_affected": files_affected
-                    }))
+                match result {
+                    cb_core::dry_run::DryRunnable::Preview(preview) => {
+                        Ok(json!({
+                            "status": "preview",
+                            "preview": preview
+                        }))
+                    }
+                    cb_core::dry_run::DryRunnable::Executed(data) => Ok(data),
                 }
             }
             "rename_directory" => {
@@ -1374,17 +1350,14 @@ impl PluginDispatcher {
                     )
                     .await?;
 
-                if dry_run {
-                    Ok(json!({
-                        "status": "preview",
-                        "operation": "rename_directory",
-                        "old_path": old_path,
-                        "new_path": new_path,
-                        "changes": result,
-                        "preview": result
-                    }))
-                } else {
-                    Ok(json!(result))
+                match result {
+                    cb_core::dry_run::DryRunnable::Preview(preview) => {
+                        Ok(json!({
+                            "status": "preview",
+                            "preview": preview
+                        }))
+                    }
+                    cb_core::dry_run::DryRunnable::Executed(data) => Ok(data),
                 }
             }
             "create_file" => {
@@ -1401,26 +1374,19 @@ impl PluginDispatcher {
                 let overwrite = args.get("overwrite").and_then(|v| v.as_bool()).unwrap_or(false);
                 let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
 
-                // Use FileService for proper locking and cache invalidation
-                self.app_state
+                let result = self.app_state
                     .file_service
                     .create_file(std::path::Path::new(file_path), content, overwrite, dry_run)
                     .await?;
 
-                if dry_run {
-                    Ok(json!({
-                        "status": "preview",
-                        "operation": "create_file",
-                        "file_path": file_path,
-                        "content_size": content.map(|c| c.len()).unwrap_or(0),
-                        "overwrite": overwrite
-                    }))
-                } else {
-                    Ok(json!({
-                        "success": true,
-                        "file_path": file_path,
-                        "created": true
-                    }))
+                match result {
+                    cb_core::dry_run::DryRunnable::Preview(preview) => {
+                        Ok(json!({
+                            "status": "preview",
+                            "preview": preview
+                        }))
+                    }
+                    cb_core::dry_run::DryRunnable::Executed(data) => Ok(data),
                 }
             }
             "delete_file" => {
@@ -1436,25 +1402,19 @@ impl PluginDispatcher {
                 let force = args.get("force").and_then(|v| v.as_bool()).unwrap_or(false);
                 let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
 
-                // Use FileService for proper locking and cache invalidation
-                self.app_state
+                let result = self.app_state
                     .file_service
                     .delete_file(std::path::Path::new(file_path), force, dry_run)
                     .await?;
 
-                if dry_run {
-                    Ok(json!({
-                        "status": "preview",
-                        "operation": "delete_file",
-                        "file_path": file_path,
-                        "force": force
-                    }))
-                } else {
-                    Ok(json!({
-                        "success": true,
-                        "file_path": file_path,
-                        "deleted": true
-                    }))
+                match result {
+                    cb_core::dry_run::DryRunnable::Preview(preview) => {
+                        Ok(json!({
+                            "status": "preview",
+                            "preview": preview
+                        }))
+                    }
+                    cb_core::dry_run::DryRunnable::Executed(data) => Ok(data),
                 }
             }
             "read_file" => {
@@ -1497,25 +1457,19 @@ impl PluginDispatcher {
                     })?;
                 let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
 
-                // Use FileService for proper locking and cache invalidation
-                self.app_state
+                let result = self.app_state
                     .file_service
                     .write_file(std::path::Path::new(file_path), content, dry_run)
                     .await?;
 
-                if dry_run {
-                    Ok(json!({
-                        "status": "preview",
-                        "operation": "write_file",
-                        "file_path": file_path,
-                        "content_size": content.len()
-                    }))
-                } else {
-                    Ok(json!({
-                        "success": true,
-                        "file_path": file_path,
-                        "written": true
-                    }))
+                match result {
+                    cb_core::dry_run::DryRunnable::Preview(preview) => {
+                        Ok(json!({
+                            "status": "preview",
+                            "preview": preview
+                        }))
+                    }
+                    cb_core::dry_run::DryRunnable::Executed(data) => Ok(data),
                 }
             }
             _ => Err(ServerError::Unsupported(format!(

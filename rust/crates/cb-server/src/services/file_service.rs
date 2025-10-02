@@ -5,6 +5,8 @@ use crate::services::lock_manager::LockManager;
 use crate::{ServerError, ServerResult};
 use cb_api::{DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit};
 use cb_ast::AstCache;
+use cb_core::dry_run::{execute_with_dry_run, DryRunnable};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -45,93 +47,95 @@ impl FileService {
         old_path: &Path,
         new_path: &Path,
         dry_run: bool,
-    ) -> ServerResult<FileRenameResult> {
+    ) -> ServerResult<DryRunnable<Value>> {
         info!(old_path = ?old_path, new_path = ?new_path, dry_run, "Renaming file");
 
-        // Convert to absolute paths
         let old_abs = self.to_absolute_path(old_path);
         let new_abs = self.to_absolute_path(new_path);
 
-        // Check if source file exists
-        if !old_abs.exists() {
-            return Err(ServerError::NotFound(format!(
-                "Source file does not exist: {:?}",
-                old_abs
-            )));
-        }
-
-        // Check if destination already exists
-        if new_abs.exists() && !dry_run {
-            return Err(ServerError::AlreadyExists(format!(
-                "Destination file already exists: {:?}",
-                new_abs
-            )));
-        }
-
-        // Find files that need import updates before renaming
-        let affected_files = self.import_service.find_affected_files(&old_abs).await?;
-
-        debug!(
-            affected_files_count = affected_files.len(),
-            "Found files potentially affected by rename"
-        );
-
-        let mut result = FileRenameResult {
-            old_path: old_abs.to_string_lossy().to_string(),
-            new_path: new_abs.to_string_lossy().to_string(),
-            success: false,
-            import_updates: None,
-            error: None,
-        };
-
-        if dry_run {
-            // Dry run - don't actually rename, but simulate import updates
-            let import_report = self
-                .import_service
-                .update_imports_for_rename(&old_abs, &new_abs, true)
-                .await?;
-
-            result.success = true;
-            result.import_updates = Some(import_report);
-            info!("Dry run complete - no actual changes made");
-        } else {
-            // Perform the actual rename
-            match self.perform_rename(&old_abs, &new_abs).await {
-                Ok(_) => {
-                    info!("File renamed successfully");
-
-                    // Update imports in affected files
-                    match self
-                        .import_service
-                        .update_imports_for_rename(&old_abs, &new_abs, false)
-                        .await
-                    {
-                        Ok(import_report) => {
-                            result.success = true;
-                            info!(
-                                imports_updated = import_report.imports_updated,
-                                files_updated = import_report.files_updated,
-                                "Successfully updated imports"
-                            );
-                            result.import_updates = Some(import_report);
-                        }
-                        Err(e) => {
-                            // File was renamed but imports failed to update
-                            warn!(error = %e, "File renamed but import updates failed");
-                            result.success = true; // Partial success
-                            result.error = Some(format!("Import updates failed: {}", e));
-                        }
-                    }
+        execute_with_dry_run(
+            dry_run,
+            // Preview function
+            || async {
+                if !old_abs.exists() {
+                    return Err(Box::new(ServerError::NotFound(format!(
+                        "Source file does not exist: {:?}",
+                        old_abs
+                    ))) as Box<dyn std::error::Error + Send + Sync>);
                 }
-                Err(e) => {
-                    error!(error = %e, "Failed to rename file");
-                    result.error = Some(e.to_string());
-                    return Err(e);
-                }
-            }
-        }
 
-        Ok(result)
+                if new_abs.exists() {
+                    return Err(Box::new(ServerError::AlreadyExists(format!(
+                        "Destination file already exists: {:?}",
+                        new_abs
+                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                }
+
+                let affected_files = self.import_service.find_affected_files(&old_abs).await
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+
+                let import_report = self
+                    .import_service
+                    .update_imports_for_rename(&old_abs, &new_abs, true)
+                    .await
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+
+                Ok(json!({
+                    "operation": "rename_file",
+                    "old_path": old_abs.to_string_lossy(),
+                    "new_path": new_abs.to_string_lossy(),
+                    "affected_files": affected_files.len(),
+                    "import_updates": import_report,
+                }))
+            },
+            // Execution function
+            || async {
+                if !old_abs.exists() {
+                    return Err(Box::new(ServerError::NotFound(format!(
+                        "Source file does not exist: {:?}",
+                        old_abs
+                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                }
+
+                if new_abs.exists() {
+                    return Err(Box::new(ServerError::AlreadyExists(format!(
+                        "Destination file already exists: {:?}",
+                        new_abs
+                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                }
+
+                self.perform_rename(&old_abs, &new_abs).await
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+
+                info!("File renamed successfully");
+
+                let import_report = self
+                    .import_service
+                    .update_imports_for_rename(&old_abs, &new_abs, false)
+                    .await
+                    .map_err(|e| {
+                        warn!(error = %e, "File renamed but import updates failed");
+                        Box::new(ServerError::Internal(format!("Import updates failed: {}", e)))
+                            as Box<dyn std::error::Error + Send + Sync>
+                    })?;
+
+                info!(
+                    imports_updated = import_report.imports_updated,
+                    files_updated = import_report.files_updated,
+                    "Successfully updated imports"
+                );
+
+                Ok(json!({
+                    "operation": "rename_file",
+                    "old_path": old_abs.to_string_lossy(),
+                    "new_path": new_abs.to_string_lossy(),
+                    "success": true,
+                    "import_updates": import_report,
+                }))
+            },
+        )
+        .await
+        .map_err(|e| ServerError::Internal(e.to_string()))
     }
 
     /// Rename a directory and update all imports pointing to files within it
@@ -140,171 +144,142 @@ impl FileService {
         old_dir_path: &Path,
         new_dir_path: &Path,
         dry_run: bool,
-    ) -> ServerResult<DirectoryRenameResult> {
+    ) -> ServerResult<DryRunnable<Value>> {
         info!(old_path = ?old_dir_path, new_path = ?new_dir_path, dry_run, "Renaming directory");
 
         let old_abs_dir = self.to_absolute_path(old_dir_path);
         let new_abs_dir = self.to_absolute_path(new_dir_path);
 
-        // Check if source directory exists
-        if !old_abs_dir.exists() {
-            return Err(ServerError::NotFound(format!(
-                "Source directory does not exist: {:?}",
-                old_abs_dir
-            )));
-        }
+        execute_with_dry_run(
+            dry_run,
+            // Preview function
+            || async {
+                if !old_abs_dir.exists() {
+                    return Err(Box::new(ServerError::NotFound(format!(
+                        "Source directory does not exist: {:?}",
+                        old_abs_dir
+                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                }
 
-        // Check if destination already exists
-        if new_abs_dir.exists() && !dry_run {
-            return Err(ServerError::AlreadyExists(format!(
-                "Destination directory already exists: {:?}",
-                new_abs_dir
-            )));
-        }
+                if new_abs_dir.exists() {
+                    return Err(Box::new(ServerError::AlreadyExists(format!(
+                        "Destination directory already exists: {:?}",
+                        new_abs_dir
+                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                }
 
-        // 1. Walk the directory to find all files before the rename
-        let mut files_to_move = Vec::new();
-        let walker = ignore::WalkBuilder::new(&old_abs_dir).hidden(false).build();
-        for entry in walker.flatten() {
-            if entry.path().is_file() {
-                files_to_move.push(entry.path().to_path_buf());
-            }
-        }
-
-        debug!(
-            files_count = files_to_move.len(),
-            "Found files in directory to rename"
-        );
-
-        // Check if this is a Cargo package BEFORE renaming
-        let is_cargo_pkg = self.is_cargo_package(&old_abs_dir).await?;
-
-        // 2. Perform the actual directory rename on the filesystem
-        if !dry_run {
-            if let Err(e) = self.perform_rename(&old_abs_dir, &new_abs_dir).await {
-                return Err(e);
-            }
-            info!("Directory renamed successfully");
-        }
-
-        // 3. For each file, calculate its old and new path, then update imports
-        let mut total_imports_updated = 0;
-        let mut total_files_updated = std::collections::HashSet::new();
-        let mut all_errors = Vec::new();
-
-        for old_file_path in &files_to_move {
-            let relative_path = old_file_path.strip_prefix(&old_abs_dir).unwrap();
-            let new_file_path = new_abs_dir.join(relative_path);
-
-            match self
-                .import_service
-                .update_imports_for_rename(old_file_path, &new_file_path, dry_run)
-                .await
-            {
-                Ok(report) => {
-                    total_imports_updated += report.imports_updated;
-                    for path_str in report.updated_paths {
-                        total_files_updated.insert(path_str);
+                let mut files_to_move = Vec::new();
+                let walker = ignore::WalkBuilder::new(&old_abs_dir).hidden(false).build();
+                for entry in walker.flatten() {
+                    if entry.path().is_file() {
+                        files_to_move.push(entry.path().to_path_buf());
                     }
-                    all_errors.extend(report.errors);
                 }
-                Err(e) => {
-                    let error_msg = format!("Failed to update imports for {:?}: {}", old_file_path, e);
-                    warn!(error = %e, file_path = %old_file_path.display(), "Failed to update imports");
-                    all_errors.push(error_msg);
-                }
-            }
-        }
 
-        let final_report = ImportUpdateReport {
-            files_updated: total_files_updated.len(),
-            imports_updated: total_imports_updated,
-            failed_files: all_errors.len(),
-            updated_paths: total_files_updated.into_iter().collect(),
-            errors: all_errors,
-        };
+                let is_cargo_pkg = self.is_cargo_package(&old_abs_dir).await
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
-        // Take a mutable copy of the errors to potentially add to it.
-        let mut all_errors = final_report.errors.clone();
-
-        // NEW: Update workspace manifest if the directory was a Cargo package
-        if is_cargo_pkg {
-            if dry_run {
-                info!(
-                    old_path = %old_abs_dir.display(),
-                    new_path = %new_abs_dir.display(),
-                    "[DRY RUN] Would update workspace manifest for Cargo package"
-                );
-            } else {
-                info!("Renamed directory was a Cargo package, attempting to update workspace manifest.");
-                if let Err(e) = self.update_workspace_manifests(&old_abs_dir, &new_abs_dir).await {
-                    warn!(error = %e, "Failed to update workspace manifest. The workspace may be in a broken state.");
-                    all_errors.push(format!("Failed to update workspace manifest: {}", e));
-                }
-            }
-        }
-
-        // Update documentation references
-        let doc_updates = if dry_run {
-            info!(
-                old_path = %old_abs_dir.display(),
-                new_path = %new_abs_dir.display(),
-                "[DRY RUN] Would scan for documentation references"
-            );
-            self.update_documentation_references(&old_abs_dir, &new_abs_dir, dry_run).await.ok()
-        } else {
-            match self.update_documentation_references(&old_abs_dir, &new_abs_dir, dry_run).await {
-                Ok(report) => {
-                    if report.references_updated > 0 {
-                        info!(
-                            files = report.files_updated,
-                            references = report.references_updated,
-                            "Updated documentation references"
-                        );
-                    }
-                    Some(report)
-                }
-                Err(e) => {
-                    warn!(error = %e, "Failed to update documentation references, continuing");
-                    None
-                }
-            }
-        };
-
-        info!(
-            files_moved = files_to_move.len(),
-            imports_updated = final_report.imports_updated,
-            files_updated = final_report.files_updated,
-            "Directory rename complete"
-        );
-
-        // Re-evaluate errors after potentially adding manifest update error
-        let final_report_with_manifest_errors = ImportUpdateReport {
-            errors: all_errors,
-            ..final_report
-        };
-
-        let has_errors = !final_report_with_manifest_errors.errors.is_empty();
-        let error_count = final_report_with_manifest_errors.errors.len();
-
-        let result = DirectoryRenameResult {
-            old_path: old_dir_path.to_string_lossy().to_string(),
-            new_path: new_dir_path.to_string_lossy().to_string(),
-            success: !has_errors,
-            files_moved: files_to_move.len(),
-            import_updates: final_report_with_manifest_errors,
-            documentation_updates: doc_updates,
-            error: if has_errors {
-                Some(format!(
-                    "Completed with {} error(s) during rename operation.",
-                    error_count
-                ))
-            } else {
-                None
+                Ok(json!({
+                    "operation": "rename_directory",
+                    "old_path": old_abs_dir.to_string_lossy(),
+                    "new_path": new_abs_dir.to_string_lossy(),
+                    "files_to_move": files_to_move.len(),
+                    "is_cargo_package": is_cargo_pkg,
+                }))
             },
-        };
+            // Execution function
+            || async {
+                if !old_abs_dir.exists() {
+                    return Err(Box::new(ServerError::NotFound(format!(
+                        "Source directory does not exist: {:?}",
+                        old_abs_dir
+                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                }
 
-        Ok(result)
+                if new_abs_dir.exists() {
+                    return Err(Box::new(ServerError::AlreadyExists(format!(
+                        "Destination directory already exists: {:?}",
+                        new_abs_dir
+                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                }
+
+                let mut files_to_move = Vec::new();
+                let walker = ignore::WalkBuilder::new(&old_abs_dir).hidden(false).build();
+                for entry in walker.flatten() {
+                    if entry.path().is_file() {
+                        files_to_move.push(entry.path().to_path_buf());
+                    }
+                }
+
+                let is_cargo_pkg = self.is_cargo_package(&old_abs_dir).await
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+
+                self.perform_rename(&old_abs_dir, &new_abs_dir).await
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+
+                info!("Directory renamed successfully");
+
+                let mut total_imports_updated = 0;
+                let mut total_files_updated = std::collections::HashSet::new();
+                let mut all_errors = Vec::new();
+
+                for old_file_path in &files_to_move {
+                    let relative_path = old_file_path.strip_prefix(&old_abs_dir).unwrap();
+                    let new_file_path = new_abs_dir.join(relative_path);
+
+                    match self
+                        .import_service
+                        .update_imports_for_rename(old_file_path, &new_file_path, false)
+                        .await
+                    {
+                        Ok(report) => {
+                            total_imports_updated += report.imports_updated;
+                            for path_str in report.updated_paths {
+                                total_files_updated.insert(path_str);
+                            }
+                            all_errors.extend(report.errors);
+                        }
+                        Err(e) => {
+                            let error_msg = format!("Failed to update imports for {:?}: {}", old_file_path, e);
+                            warn!(error = %e, file_path = %old_file_path.display(), "Failed to update imports");
+                            all_errors.push(error_msg);
+                        }
+                    }
+                }
+
+                if is_cargo_pkg {
+                    if let Err(e) = self.update_workspace_manifests(&old_abs_dir, &new_abs_dir).await {
+                        warn!(error = %e, "Failed to update workspace manifest");
+                        all_errors.push(format!("Failed to update workspace manifest: {}", e));
+                    }
+                }
+
+                let doc_updates = self.update_documentation_references(&old_abs_dir, &new_abs_dir, false).await.ok();
+
+                info!(
+                    files_moved = files_to_move.len(),
+                    imports_updated = total_imports_updated,
+                    files_updated = total_files_updated.len(),
+                    "Directory rename complete"
+                );
+
+                Ok(json!({
+                    "operation": "rename_directory",
+                    "old_path": old_abs_dir.to_string_lossy(),
+                    "new_path": new_abs_dir.to_string_lossy(),
+                    "files_moved": files_to_move.len(),
+                    "import_updates": {
+                        "files_updated": total_files_updated.len(),
+                        "imports_updated": total_imports_updated,
+                        "errors": all_errors,
+                    },
+                    "documentation_updates": doc_updates,
+                    "success": all_errors.is_empty(),
+                }))
+            },
+        )
+        .await
+        .map_err(|e| ServerError::Internal(e.to_string()))
     }
 
     /// Perform the actual file rename operation
@@ -331,95 +306,157 @@ impl FileService {
         content: Option<&str>,
         overwrite: bool,
         dry_run: bool,
-    ) -> ServerResult<()> {
+    ) -> ServerResult<DryRunnable<Value>> {
         let abs_path = self.to_absolute_path(path);
+        let content = content.unwrap_or("").to_string();
 
-        // Check if file already exists
-        if abs_path.exists() && !overwrite {
-            return Err(ServerError::AlreadyExists(format!(
-                "File already exists: {:?}",
-                abs_path
-            )));
-        }
-
-        if dry_run {
-            info!(
-                path = ?abs_path,
-                overwrite = overwrite,
-                content_size = content.unwrap_or("").len(),
-                "[DRY RUN] Would create file"
-            );
-            return Ok(());
-        }
-
-        // Ensure parent directory exists
-        if let Some(parent) = abs_path.parent() {
-            fs::create_dir_all(parent).await.map_err(|e| {
-                ServerError::Internal(format!("Failed to create parent directory: {}", e))
-            })?;
-        }
-
-        // Write content to file
-        let content = content.unwrap_or("");
-        fs::write(&abs_path, content)
-            .await
-            .map_err(|e| ServerError::Internal(format!("Failed to write file: {}", e)))?;
-
-        info!(path = ?abs_path, "Created file");
-        Ok(())
+        execute_with_dry_run(
+            dry_run,
+            // Preview function
+            || async {
+                if abs_path.exists() && !overwrite {
+                    return Err(Box::new(ServerError::AlreadyExists(format!(
+                        "File already exists: {:?}",
+                        abs_path
+                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                }
+                Ok(json!({
+                    "operation": "create_file",
+                    "path": abs_path.to_string_lossy(),
+                    "overwrite": overwrite,
+                    "content_size": content.len(),
+                }))
+            },
+            // Execution function
+            || async {
+                if abs_path.exists() && !overwrite {
+                    return Err(Box::new(ServerError::AlreadyExists(format!(
+                        "File already exists: {:?}",
+                        abs_path
+                    ))) as Box<dyn std::error::Error + Send + Sync>);
+                }
+                if let Some(parent) = abs_path.parent() {
+                    fs::create_dir_all(parent).await.map_err(|e| {
+                        Box::new(ServerError::Internal(format!(
+                            "Failed to create parent directory: {}",
+                            e
+                        ))) as Box<dyn std::error::Error + Send + Sync>
+                    })?;
+                }
+                fs::write(&abs_path, &content).await.map_err(|e| {
+                    Box::new(ServerError::Internal(format!("Failed to write file: {}", e)))
+                        as Box<dyn std::error::Error + Send + Sync>
+                })?;
+                info!(path = ?abs_path, "Created file");
+                Ok(json!({
+                    "operation": "create_file",
+                    "path": abs_path.to_string_lossy(),
+                    "created": true,
+                }))
+            },
+        )
+        .await
+        .map_err(|e| ServerError::Internal(e.to_string()))
     }
 
     /// Delete a file
-    pub async fn delete_file(&self, path: &Path, force: bool, dry_run: bool) -> ServerResult<()> {
+    pub async fn delete_file(
+        &self,
+        path: &Path,
+        force: bool,
+        dry_run: bool,
+    ) -> ServerResult<DryRunnable<Value>> {
         let abs_path = self.to_absolute_path(path);
 
-        if !abs_path.exists() {
-            if force {
-                // Force mode - don't error if file doesn't exist
-                return Ok(());
-            } else {
-                return Err(ServerError::NotFound(format!(
-                    "File does not exist: {:?}",
-                    abs_path
-                )));
-            }
-        }
+        execute_with_dry_run(
+            dry_run,
+            // Preview function
+            || async {
+                if !abs_path.exists() {
+                    if force {
+                        return Ok(json!({
+                            "operation": "delete_file",
+                            "path": abs_path.to_string_lossy(),
+                            "force": force,
+                            "status": "not_exists",
+                        }));
+                    } else {
+                        return Err(Box::new(ServerError::NotFound(format!(
+                            "File does not exist: {:?}",
+                            abs_path
+                        ))) as Box<dyn std::error::Error + Send + Sync>);
+                    }
+                }
 
-        // Check if any files import this file
-        let affected_files = if !force {
-            let affected = self.import_service.find_affected_files(&abs_path).await?;
-            if !affected.is_empty() {
-                warn!(
-                    affected_files_count = affected.len(),
-                    "File is imported by other files. Use force=true to delete anyway"
-                );
-                return Err(ServerError::InvalidRequest(format!(
-                    "File is imported by {} other files",
+                let affected_files_count = if !force {
+                    let affected = self.import_service.find_affected_files(&abs_path).await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+                    if !affected.is_empty() {
+                        return Err(Box::new(ServerError::InvalidRequest(format!(
+                            "File is imported by {} other files",
+                            affected.len()
+                        ))) as Box<dyn std::error::Error + Send + Sync>);
+                    }
                     affected.len()
-                )));
-            }
-            affected.len()
-        } else {
-            0
-        };
+                } else {
+                    0
+                };
 
-        if dry_run {
-            info!(
-                path = ?abs_path,
-                force = force,
-                affected_files = affected_files,
-                "[DRY RUN] Would delete file"
-            );
-            return Ok(());
-        }
+                Ok(json!({
+                    "operation": "delete_file",
+                    "path": abs_path.to_string_lossy(),
+                    "force": force,
+                    "affected_files": affected_files_count,
+                }))
+            },
+            // Execution function
+            || async {
+                if !abs_path.exists() {
+                    if force {
+                        return Ok(json!({
+                            "operation": "delete_file",
+                            "path": abs_path.to_string_lossy(),
+                            "deleted": false,
+                            "reason": "not_exists",
+                        }));
+                    } else {
+                        return Err(Box::new(ServerError::NotFound(format!(
+                            "File does not exist: {:?}",
+                            abs_path
+                        ))) as Box<dyn std::error::Error + Send + Sync>);
+                    }
+                }
 
-        // Delete the file
-        fs::remove_file(&abs_path)
-            .await
-            .map_err(|e| ServerError::Internal(format!("Failed to delete file: {}", e)))?;
+                if !force {
+                    let affected = self.import_service.find_affected_files(&abs_path).await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+                    if !affected.is_empty() {
+                        warn!(
+                            affected_files_count = affected.len(),
+                            "File is imported by other files. Use force=true to delete anyway"
+                        );
+                        return Err(Box::new(ServerError::InvalidRequest(format!(
+                            "File is imported by {} other files",
+                            affected.len()
+                        ))) as Box<dyn std::error::Error + Send + Sync>);
+                    }
+                }
 
-        info!(path = ?abs_path, "Deleted file");
-        Ok(())
+                fs::remove_file(&abs_path).await.map_err(|e| {
+                    Box::new(ServerError::Internal(format!("Failed to delete file: {}", e)))
+                        as Box<dyn std::error::Error + Send + Sync>
+                })?;
+
+                info!(path = ?abs_path, "Deleted file");
+                Ok(json!({
+                    "operation": "delete_file",
+                    "path": abs_path.to_string_lossy(),
+                    "deleted": true,
+                }))
+            },
+        )
+        .await
+        .map_err(|e| ServerError::Internal(e.to_string()))
     }
 
     /// Read file contents
@@ -441,31 +478,50 @@ impl FileService {
     }
 
     /// Write content to file
-    pub async fn write_file(&self, path: &Path, content: &str, dry_run: bool) -> ServerResult<()> {
+    pub async fn write_file(
+        &self,
+        path: &Path,
+        content: &str,
+        dry_run: bool,
+    ) -> ServerResult<DryRunnable<Value>> {
         let abs_path = self.to_absolute_path(path);
+        let content = content.to_string();
 
-        if dry_run {
-            info!(
-                path = ?abs_path,
-                content_size = content.len(),
-                "[DRY RUN] Would write to file"
-            );
-            return Ok(());
-        }
-
-        // Ensure parent directory exists
-        if let Some(parent) = abs_path.parent() {
-            fs::create_dir_all(parent).await.map_err(|e| {
-                ServerError::Internal(format!("Failed to create parent directory: {}", e))
-            })?;
-        }
-
-        fs::write(&abs_path, content)
-            .await
-            .map_err(|e| ServerError::Internal(format!("Failed to write file: {}", e)))?;
-
-        info!(path = ?abs_path, "Wrote to file");
-        Ok(())
+        execute_with_dry_run(
+            dry_run,
+            // Preview function
+            || async {
+                Ok(json!({
+                    "operation": "write_file",
+                    "path": abs_path.to_string_lossy(),
+                    "content_size": content.len(),
+                    "exists": abs_path.exists(),
+                }))
+            },
+            // Execution function
+            || async {
+                if let Some(parent) = abs_path.parent() {
+                    fs::create_dir_all(parent).await.map_err(|e| {
+                        Box::new(ServerError::Internal(format!(
+                            "Failed to create parent directory: {}",
+                            e
+                        ))) as Box<dyn std::error::Error + Send + Sync>
+                    })?;
+                }
+                fs::write(&abs_path, &content).await.map_err(|e| {
+                    Box::new(ServerError::Internal(format!("Failed to write file: {}", e)))
+                        as Box<dyn std::error::Error + Send + Sync>
+                })?;
+                info!(path = ?abs_path, "Wrote to file");
+                Ok(json!({
+                    "operation": "write_file",
+                    "path": abs_path.to_string_lossy(),
+                    "written": true,
+                }))
+            },
+        )
+        .await
+        .map_err(|e| ServerError::Internal(e.to_string()))
     }
 
     /// Apply an edit plan to the filesystem atomically
