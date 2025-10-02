@@ -504,6 +504,19 @@ impl FileService {
                     }
                 }
 
+                // Queue the operation for tracking
+                let mut transaction = OperationTransaction::new(self.operation_queue.clone());
+                transaction.add_operation(FileOperation::new(
+                    "system".to_string(),
+                    OperationType::Delete,
+                    abs_path.clone(),
+                    json!({ "force": force }),
+                ));
+                transaction.commit().await.map_err(|e| {
+                    Box::new(e) as Box<dyn std::error::Error + Send + Sync>
+                })?;
+
+                // Actually perform the filesystem operation
                 fs::remove_file(&abs_path).await.map_err(|e| {
                     Box::new(ServerError::Internal(format!(
                         "Failed to delete file: {}",
