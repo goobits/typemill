@@ -370,9 +370,7 @@ impl FileService {
                 })?;
                 info!(path = ?abs_path, "Created file");
                 Ok(json!({
-                    "operation": "create_file",
-                    "path": abs_path.to_string_lossy(),
-                    "created": true,
+                    "success": true
                 }))
             },
         )
@@ -549,9 +547,7 @@ impl FileService {
                 })?;
                 info!(path = ?abs_path, "Wrote to file");
                 Ok(json!({
-                    "operation": "write_file",
-                    "path": abs_path.to_string_lossy(),
-                    "written": true,
+                    "success": true
                 }))
             },
         )

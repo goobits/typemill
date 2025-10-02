@@ -192,7 +192,8 @@ async fn test_large_message_handling() {
                 "create_file",
                 json!({
                     "file_path": large_file.to_string_lossy(),
-                    "content": large_content
+                    "content": large_content,
+                    "overwrite": true
                 }),
             )
             .await;
