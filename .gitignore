@@ -78,6 +78,11 @@ mcp/*/storage.json
 # Test playground and artifacts
 examples/playground/
 
+# Developer playground
+/playground/*
+!/playground/.gitkeep
+!/playground/README.md
+
 # Rust build artifacts
 target/
 **/*.rs.bk
