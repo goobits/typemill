@@ -1184,21 +1184,6 @@ impl FileService {
     }
 }
 
-/// Result of a file rename operation
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct FileRenameResult {
-    /// Original file path
-    pub old_path: String,
-    /// New file path
-    pub new_path: String,
-    /// Whether the rename was successful
-    pub success: bool,
-    /// Import update report if applicable
-    pub import_updates: Option<ImportUpdateReport>,
-    /// Error message if operation failed
-    pub error: Option<String>,
-}
-
 /// Result of documentation reference updates
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct DocumentationUpdateReport {
@@ -1210,25 +1195,6 @@ pub struct DocumentationUpdateReport {
     pub updated_files: Vec<String>,
     /// Files that failed to update
     pub failed_files: Vec<String>,
-}
-
-/// Result of a directory rename operation
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct DirectoryRenameResult {
-    /// Original directory path
-    pub old_path: String,
-    /// New directory path
-    pub new_path: String,
-    /// Whether the rename was successful
-    pub success: bool,
-    /// Total number of files moved
-    pub files_moved: usize,
-    /// Aggregated import update report
-    pub import_updates: ImportUpdateReport,
-    /// Documentation update report if applicable
-    pub documentation_updates: Option<DocumentationUpdateReport>,
-    /// Error message if operation failed
-    pub error: Option<String>,
 }
 
 /// Result of applying an edit plan
