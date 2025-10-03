@@ -354,8 +354,8 @@ async fn test_rename_directory_dry_run() {
         "Response should indicate rename_directory operation"
     );
     assert!(
-        result.get("changes").is_some(),
-        "Response should contain changes preview"
+        result.get("files_to_move").is_some(),
+        "Response should contain files_to_move preview"
     );
 
     // Assert that the directory was NOT actually renamed
