@@ -74,8 +74,128 @@ jobs:
     - name: Run Rust tests
       run: cd rust && cargo test
 
+    - name: Run benchmarks (compile only)
+      run: cargo bench --no-run
+
+  performance-benchmarks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo build
+      uses: actions/cache@v4
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-bench-target-${{ hashFiles('**/Cargo.lock') }}
+
     - name: Run benchmarks
-      run: cd rust && cargo bench --no-run
+      run: cargo bench --bench dispatch_benchmark -- --output-format bencher | tee benchmark-results.txt
+
+    - name: Download previous benchmark results
+      continue-on-error: true
+      uses: actions/cache@v4
+      with:
+        path: benchmark-baseline.txt
+        key: benchmark-baseline-${{ github.ref }}-${{ github.sha }}
+        restore-keys: |
+          benchmark-baseline-${{ github.ref }}-
+          benchmark-baseline-
+
+    - name: Compare with baseline
+      id: compare
+      continue-on-error: true
+      run: |
+        if [ -f benchmark-baseline.txt ]; then
+          echo "Comparing with baseline..."
+
+          # Extract timing data and compare (simple threshold-based check)
+          # If any benchmark regressed by more than 5%, flag it
+
+          REGRESSION_FOUND=false
+
+          # Parse current results
+          while IFS= read -r line; do
+            if [[ $line =~ ^test[[:space:]](.+)[[:space:]]bench:[[:space:]]+([0-9,]+)[[:space:]]ns/iter ]]; then
+              test_name="${BASH_REMATCH[1]}"
+              current_ns="${BASH_REMATCH[2]//,/}"
+
+              # Find corresponding baseline
+              baseline_line=$(grep "^test $test_name " benchmark-baseline.txt 2>/dev/null || echo "")
+              if [[ $baseline_line =~ bench:[[:space:]]+([0-9,]+)[[:space:]]ns/iter ]]; then
+                baseline_ns="${BASH_REMATCH[1]//,/}"
+
+                # Calculate percentage change
+                if [ "$baseline_ns" -gt 0 ]; then
+                  change=$(awk "BEGIN {printf \"%.2f\", (($current_ns - $baseline_ns) / $baseline_ns) * 100}")
+
+                  echo "$test_name: baseline=${baseline_ns}ns, current=${current_ns}ns, change=${change}%"
+
+                  # Check if regression exceeds 5%
+                  if (( $(awk "BEGIN {print ($change > 5)}") )); then
+                    echo "⚠️ REGRESSION DETECTED: $test_name regressed by ${change}%"
+                    REGRESSION_FOUND=true
+                  fi
+                fi
+              fi
+            fi
+          done < benchmark-results.txt
+
+          if [ "$REGRESSION_FOUND" = true ]; then
+            echo "regression_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "regression_detected=false" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "No baseline found, establishing new baseline"
+          echo "regression_detected=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Save new baseline
+      if: steps.compare.outputs.regression_detected != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: benchmark-results.txt
+        key: benchmark-baseline-${{ github.ref }}-${{ github.sha }}
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results
+        path: benchmark-results.txt
+
+    - name: Comment on PR with regression warning
+      if: steps.compare.outputs.regression_detected == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '⚠️ **Performance Regression Detected**\n\nOne or more benchmarks have regressed by more than 5%. Please review the benchmark results artifact for details.'
+          })
 
   release:
     needs: test

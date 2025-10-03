@@ -2,7 +2,7 @@
 //!
 //! Handles: achieve_intent, apply_edits
 
-use super::tool_handler::{ToolContext, ToolHandler};
+use super::compat::{ToolContext, ToolHandler};
 use crate::{ServerError, ServerResult};
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;

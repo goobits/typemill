@@ -1,202 +1,310 @@
-// BENCHMARKS DISABLED PENDING PLUGIN SYSTEM STABILIZATION
-//
-// The McpDispatcher was replaced by PluginDispatcher architecture in the
-// plugin system migration. These benchmarks need complete rewrite for the new
-// architecture once the plugin APIs stabilize.
-//
-// Tracking: When re-implementing, reference PluginDispatcher in
-// crates/cb-server/src/handlers/plugin_dispatcher.rs and follow the pattern
-// in crates/tests/tests/e2e_*.rs for creating test fixtures.
-//
-// For now, this file is kept for reference of what needs benchmarking:
-// - Plugin dispatch latency
-// - Concurrent plugin request handling
-// - Plugin initialization overhead
-// - LSP adapter forwarding performance
-#![cfg(disabled_pending_refactor)]
+//! Performance benchmarks for the unified plugin dispatch system
+//!
+//! This benchmark suite measures:
+//! - Plugin selection latency with different priority configurations
+//! - Tool dispatch overhead for simple vs complex operations
+//! - Concurrent request handling throughput
+//! - Plugin registry initialization time
 
-use cb_core::config::LspConfig;
-use cb_core::model::mcp::{McpMessage, McpRequest, ToolCall};
-use cb_server::handlers::{AppState, PluginDispatcher};
-use cb_server::services::{FileService, LockManager, OperationQueue};
-use cb_server::systems::LspManager;
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use serde_json::json;
+use cb_core::model::mcp::ToolCall;
+use cb_plugins::{Capabilities, LanguagePlugin, PluginMetadata, PluginRegistry, PluginRequest, PluginResponse, PluginResult};
+use cb_server::handlers::plugin_dispatcher::create_test_dispatcher;
+use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use async_trait::async_trait;
+use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 
-fn create_test_app_state() -> Arc<AppState> {
-    let lsp_config = LspConfig::default();
-    let lsp_manager = Arc::new(LspManager::new(lsp_config));
-    let project_root = PathBuf::from("/tmp");
-    let ast_cache = Arc::new(cb_ast::AstCache::new());
-    let lock_manager = Arc::new(LockManager::new());
-    let file_service = Arc::new(FileService::new(
-        project_root.clone(),
-        ast_cache.clone(),
-        lock_manager.clone(),
-    ));
-    let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
-
-    Arc::new(AppState {
-        lsp: lsp_manager,
-        file_service,
-        project_root,
-        lock_manager,
-        operation_queue,
-    })
+/// Benchmark plugin that simulates simple operations
+struct BenchmarkPlugin {
+    name: String,
+    extensions: Vec<String>,
+    capabilities: Capabilities,
+    priority: u32,
+    response_delay_ms: u64,
 }
 
-fn create_simple_tool_call() -> ToolCall {
-    ToolCall {
-        name: "get_project_info".to_string(),
-        arguments: Some(json!({})),
+impl BenchmarkPlugin {
+    fn new(name: &str, extensions: Vec<String>, priority: u32, response_delay_ms: u64) -> Self {
+        let mut capabilities = Capabilities::default();
+        capabilities.navigation.go_to_definition = true;
+        capabilities.navigation.find_references = true;
+        capabilities.intelligence.hover = true;
+
+        Self {
+            name: name.to_string(),
+            extensions,
+            capabilities,
+            priority,
+            response_delay_ms,
+        }
     }
 }
 
-fn create_complex_tool_call() -> ToolCall {
-    ToolCall {
-        name: "find_references".to_string(),
-        arguments: Some(json!({
-            "file_path": "/tmp/test.rs",
-            "symbol_name": "main",
-            "include_declaration": true
-        })),
+#[async_trait]
+impl LanguagePlugin for BenchmarkPlugin {
+    fn metadata(&self) -> PluginMetadata {
+        let mut meta = PluginMetadata::new(&self.name, "1.0.0-bench", "benchmark");
+        meta.priority = self.priority;
+        meta
+    }
+
+    fn supported_extensions(&self) -> Vec<String> {
+        self.extensions.clone()
+    }
+
+    fn capabilities(&self) -> Capabilities {
+        self.capabilities.clone()
+    }
+
+    async fn handle_request(&self, request: PluginRequest) -> PluginResult<PluginResponse> {
+        if self.response_delay_ms > 0 {
+            tokio::time::sleep(tokio::time::Duration::from_millis(self.response_delay_ms)).await;
+        }
+
+        Ok(PluginResponse {
+            success: true,
+            data: Some(json!({
+                "plugin": self.name,
+                "method": request.method,
+                "handled": true
+            })),
+            error: None,
+            request_id: request.request_id,
+            metadata: cb_plugins::protocol::ResponseMetadata {
+                plugin_name: self.name.clone(),
+                processing_time_ms: Some(self.response_delay_ms),
+                cached: false,
+                plugin_metadata: json!({}),
+            },
+        })
+    }
+
+    fn configure(&self, _config: Value) -> PluginResult<()> {
+        Ok(())
+    }
+
+    fn tool_definitions(&self) -> Vec<Value> {
+        vec![]
     }
 }
 
-fn bench_dispatch_simple(c: &mut Criterion) {
+/// Create a registry with multiple plugins of varying priorities
+fn create_benchmark_registry(num_plugins: usize, use_priorities: bool) -> PluginRegistry {
+    let mut registry = PluginRegistry::new();
+
+    for i in 0..num_plugins {
+        let priority = if use_priorities {
+            50 + (i as u32 * 10)
+        } else {
+            50
+        };
+
+        let plugin = Arc::new(BenchmarkPlugin::new(
+            &format!("bench-plugin-{}", i),
+            vec!["ts".to_string(), "js".to_string()],
+            priority,
+            0, // No delay for selection benchmarks
+        ));
+
+        registry.register_plugin(format!("bench-plugin-{}", i), plugin).unwrap();
+    }
+
+    registry
+}
+
+/// Benchmark: Plugin selection with varying numbers of plugins
+fn bench_plugin_selection(c: &mut Criterion) {
+    let mut group = c.benchmark_group("plugin_selection");
+
+    for num_plugins in [1, 5, 10, 20].iter() {
+        group.bench_with_input(
+            BenchmarkId::new("same_priority", num_plugins),
+            num_plugins,
+            |b, &num| {
+                let registry = create_benchmark_registry(num, false);
+                let file_path = PathBuf::from("test.ts");
+
+                b.iter(|| {
+                    let result = registry.find_best_plugin(
+                        black_box(&file_path),
+                        black_box("find_definition")
+                    );
+                    black_box(result)
+                });
+            },
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("different_priorities", num_plugins),
+            num_plugins,
+            |b, &num| {
+                let registry = create_benchmark_registry(num, true);
+                let file_path = PathBuf::from("test.ts");
+
+                b.iter(|| {
+                    let result = registry.find_best_plugin(
+                        black_box(&file_path),
+                        black_box("find_definition")
+                    );
+                    black_box(result)
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark: Priority override performance
+fn bench_priority_override(c: &mut Criterion) {
+    let mut registry = create_benchmark_registry(10, false);
+
+    c.bench_function("priority_override_lookup", |b| {
+        let mut overrides = HashMap::new();
+        overrides.insert("bench-plugin-5".to_string(), 100);
+        registry.set_priority_overrides(overrides);
+
+        let file_path = PathBuf::from("test.ts");
+
+        b.iter(|| {
+            let result = registry.find_best_plugin(
+                black_box(&file_path),
+                black_box("find_definition")
+            );
+            black_box(result)
+        });
+    });
+}
+
+/// Benchmark: Dispatch latency for simple tools
+fn bench_dispatch_simple_tool(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    let app_state = create_test_app_state();
-    let mut dispatcher = McpDispatcher::new(app_state);
-
-    // Register a simple mock tool
-    dispatcher.register_tool(
-        "get_project_info".to_string(),
-        |_app_state, _args| async move { Ok(json!({"status": "success"})) },
-    );
+    let dispatcher = create_test_dispatcher();
 
     c.bench_function("dispatch_simple_tool", |b| {
         b.to_async(&rt).iter(|| async {
-            let request = McpRequest {
-                id: Some(json!("bench-123")),
-                method: "tools/call".to_string(),
-                params: Some(json!({
-                    "name": "get_project_info",
-                    "arguments": {}
+            let tool_call = ToolCall {
+                name: "list_files".to_string(),
+                arguments: Some(json!({
+                    "path": ".",
+                    "recursive": false
                 })),
             };
-            let message = McpMessage::Request(request);
-            let _ = dispatcher.dispatch(black_box(message)).await;
+
+            let result = dispatcher.benchmark_tool_call(Some(json!(tool_call))).await;
+            black_box(result)
         });
     });
 }
 
-fn bench_dispatch_complex(c: &mut Criterion) {
+/// Benchmark: Dispatch latency for complex tools
+fn bench_dispatch_complex_tool(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    let app_state = create_test_app_state();
-    let mut dispatcher = McpDispatcher::new(app_state);
-
-    // Register a complex mock tool
-    dispatcher.register_tool(
-        "find_references".to_string(),
-        |_app_state, _args| async move {
-            let mut references = Vec::new();
-            for i in 0..50 {
-                references.push(json!({
-                    "uri": format!("file:///tmp/file_{}.rs", i),
-                    "range": {
-                        "start": { "line": i, "character": 0 },
-                        "end": { "line": i, "character": 10 }
-                    }
-                }));
-            }
-            Ok(json!({ "references": references }))
-        },
-    );
+    let dispatcher = create_test_dispatcher();
 
     c.bench_function("dispatch_complex_tool", |b| {
         b.to_async(&rt).iter(|| async {
-            let request = McpRequest {
-                id: Some(json!("bench-456")),
-                method: "tools/call".to_string(),
-                params: Some(json!({
-                    "name": "find_references",
-                    "arguments": {
-                        "file_path": "/tmp/test.rs",
-                        "symbol_name": "main",
-                        "include_declaration": true
-                    }
+            let tool_call = ToolCall {
+                name: "find_definition".to_string(),
+                arguments: Some(json!({
+                    "file_path": "test.ts",
+                    "line": 10,
+                    "character": 5
                 })),
             };
-            let message = McpMessage::Request(request);
-            let _ = dispatcher.dispatch(black_box(message)).await;
+
+            let result = dispatcher.benchmark_tool_call(Some(json!(tool_call))).await;
+            black_box(result)
         });
     });
 }
 
-fn bench_dispatch_parallel(c: &mut Criterion) {
+/// Benchmark: Concurrent dispatch throughput
+fn bench_dispatch_concurrency(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    let app_state = create_test_app_state();
-    let mut dispatcher = McpDispatcher::new(app_state);
 
-    // Register a simple tool for parallel testing
-    dispatcher.register_tool(
-        "parallel_test".to_string(),
-        |_app_state, _args| async move {
-            // Small delay to make concurrency visible
-            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-            Ok(json!({"status": "parallel_success"}))
-        },
-    );
+    let mut group = c.benchmark_group("dispatch_concurrency");
 
-    let dispatcher = Arc::new(dispatcher);
+    for num_concurrent in [1, 5, 10, 20].iter() {
+        group.bench_with_input(
+            BenchmarkId::from_parameter(num_concurrent),
+            num_concurrent,
+            |b, &num| {
+                let dispatcher = Arc::new(create_test_dispatcher());
 
-    c.bench_function("dispatch_parallel_tools", |b| {
-        b.to_async(&rt).iter(|| {
-            let dispatcher = dispatcher.clone();
-            async move {
-                let mut handles = vec![];
-                for _ in 0..10 {
+                b.to_async(&rt).iter(|| {
                     let dispatcher = dispatcher.clone();
-                    let handle = tokio::spawn(async move {
-                        let request = McpRequest {
-                            id: Some(json!("bench-parallel")),
-                            method: "tools/call".to_string(),
-                            params: Some(json!({
-                                "name": "parallel_test",
-                                "arguments": {}
-                            })),
-                        };
-                        let message = McpMessage::Request(request);
-                        let _ = dispatcher.dispatch(message).await;
-                    });
-                    handles.push(handle);
-                }
-                for handle in handles {
-                    let _ = handle.await;
-                }
-            }
+                    async move {
+                        let mut handles = vec![];
+
+                        for i in 0..num {
+                            let dispatcher = dispatcher.clone();
+                            let handle = tokio::spawn(async move {
+                                let tool_call = ToolCall {
+                                    name: "list_files".to_string(),
+                                    arguments: Some(json!({
+                                        "path": format!("./dir_{}", i),
+                                        "recursive": false
+                                    })),
+                                };
+
+                                dispatcher.benchmark_tool_call(Some(json!(tool_call))).await
+                            });
+                            handles.push(handle);
+                        }
+
+                        for handle in handles {
+                            let _ = handle.await;
+                        }
+                    }
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark: Registry initialization overhead
+fn bench_registry_initialization(c: &mut Criterion) {
+    c.bench_function("registry_initialization", |b| {
+        b.iter(|| {
+            let registry = create_benchmark_registry(black_box(10), black_box(true));
+            black_box(registry)
         });
     });
 }
 
-fn bench_create_dispatcher(c: &mut Criterion) {
-    let app_state = create_test_app_state();
+/// Benchmark: Tool scope detection
+fn bench_tool_scope_detection(c: &mut Criterion) {
+    let capabilities = Capabilities::default();
 
-    c.bench_function("create_dispatcher", |b| {
+    c.bench_function("tool_scope_detection_file", |b| {
         b.iter(|| {
-            let _ = McpDispatcher::new(black_box(app_state.clone()));
+            let scope = capabilities.get_tool_scope(black_box("find_definition"));
+            black_box(scope)
+        });
+    });
+
+    c.bench_function("tool_scope_detection_workspace", |b| {
+        b.iter(|| {
+            let scope = capabilities.get_tool_scope(black_box("search_workspace_symbols"));
+            black_box(scope)
         });
     });
 }
 
 criterion_group!(
     benches,
-    bench_dispatch_simple,
-    bench_dispatch_complex,
-    bench_dispatch_parallel,
-    bench_create_dispatcher
+    bench_plugin_selection,
+    bench_priority_override,
+    bench_dispatch_simple_tool,
+    bench_dispatch_complex_tool,
+    bench_dispatch_concurrency,
+    bench_registry_initialization,
+    bench_tool_scope_detection
 );
 criterion_main!(benches);

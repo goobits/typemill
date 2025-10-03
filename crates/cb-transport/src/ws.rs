@@ -413,6 +413,7 @@ mod tests {
             fuse: None,
             logging: LoggingConfig::default(),
             cache: CacheConfig::default(),
+            plugin_selection: Default::default(),
         }
     }
 

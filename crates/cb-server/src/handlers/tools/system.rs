@@ -1,14 +1,14 @@
 //! System and health tool handlers
 //!
-//! Handles: health_check, web_fetch
+//! Handles: health_check, web_fetch, system_status
 
 use super::{ToolHandler, ToolHandlerContext};
+use crate::handlers::compat::{ToolContext, ToolHandler as LegacyToolHandler};
 use crate::handlers::system_handler::SystemHandler as LegacySystemHandler;
-use crate::handlers::tool_handler::{ToolContext, ToolHandler as LegacyToolHandler};
 use crate::ServerResult;
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 pub struct SystemHandler {
     legacy_handler: LegacySystemHandler,
@@ -24,21 +24,24 @@ impl SystemHandler {
 
 #[async_trait]
 impl ToolHandler for SystemHandler {
-    fn supported_tools(&self) -> &[&'static str] {
-        &["health_check", "web_fetch"]
+    fn tool_names(&self) -> &[&str] {
+        &["health_check", "web_fetch", "system_status"]
     }
 
-    async fn handle(
+    async fn handle_tool_call(
         &self,
-        tool_name: &str,
-        params: Value,
         context: &ToolHandlerContext,
+        tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        // Convert to ToolCall for legacy handler
-        let tool_call = ToolCall {
-            name: tool_name.to_string(),
-            arguments: Some(params),
-        };
+        // Handle system_status directly
+        if tool_call.name == "system_status" {
+            // Return basic system status
+            return Ok(json!({
+                "status": "ok",
+                "uptime_seconds": context.app_state.start_time.elapsed().as_secs(),
+                "message": "System is operational"
+            }));
+        }
 
         // Convert new context to legacy context
         let legacy_context = ToolContext {
@@ -49,7 +52,7 @@ impl ToolHandler for SystemHandler {
 
         // Delegate to legacy handler
         self.legacy_handler
-            .handle_tool(tool_call, &legacy_context)
+            .handle_tool(tool_call.clone(), &legacy_context)
             .await
     }
 }

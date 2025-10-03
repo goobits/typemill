@@ -82,6 +82,7 @@ impl SystemToolsPlugin {
                 author: "Codeflow Buddy Team".to_string(),
                 config_schema: None,
                 min_system_version: env!("CARGO_PKG_VERSION").to_string(),
+                priority: 50, // Default priority
             },
             capabilities,
         }

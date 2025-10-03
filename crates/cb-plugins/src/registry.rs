@@ -16,6 +16,10 @@ pub struct PluginRegistry {
     method_map: HashMap<String, Vec<String>>,
     /// Plugin metadata cache
     metadata_cache: HashMap<String, PluginMetadata>,
+    /// Priority overrides for plugin selection (plugin_name -> priority)
+    priority_overrides: HashMap<String, u32>,
+    /// Whether to error on ambiguous selection
+    error_on_ambiguity: bool,
 }
 
 impl PluginRegistry {
@@ -26,7 +30,35 @@ impl PluginRegistry {
             extension_map: HashMap::new(),
             method_map: HashMap::new(),
             metadata_cache: HashMap::new(),
+            priority_overrides: HashMap::new(),
+            error_on_ambiguity: false,
         }
+    }
+
+    /// Set priority overrides for plugin selection
+    pub fn set_priority_overrides(&mut self, overrides: HashMap<String, u32>) {
+        self.priority_overrides = overrides;
+    }
+
+    /// Set whether to error on ambiguous selection
+    pub fn set_error_on_ambiguity(&mut self, error_on_ambiguity: bool) {
+        self.error_on_ambiguity = error_on_ambiguity;
+    }
+
+    /// Get the effective priority for a plugin
+    fn get_plugin_priority(&self, plugin_name: &str) -> u32 {
+        // Check override first
+        if let Some(&priority) = self.priority_overrides.get(plugin_name) {
+            return priority;
+        }
+
+        // Use plugin metadata priority
+        if let Some(metadata) = self.metadata_cache.get(plugin_name) {
+            return metadata.priority;
+        }
+
+        // Default priority
+        50
     }
 
     /// Register a new plugin
@@ -113,88 +145,107 @@ impl PluginRegistry {
         self.method_map.get(method).cloned().unwrap_or_default()
     }
 
-    /// Find the best plugin for a file and method combination
+    /// Find the best plugin for a file and method combination using scope-aware priority
+    ///
+    /// Selection strategy:
+    /// 1. Determine tool scope (File or Workspace) from capabilities
+    /// 2. For File-scoped tools: Only consider plugins that match both file extension AND method
+    /// 3. For Workspace-scoped tools: Consider plugins that match method only
+    /// 4. Within scope, highest priority wins
+    /// 5. Ties broken by lexicographic order (deterministic)
     pub fn find_best_plugin(&self, file_path: &Path, method: &str) -> PluginResult<String> {
-        // Special handling for system tools that don't have file associations
-        if matches!(
-            method,
-            "list_files"
-                | "analyze_imports"
-                | "find_dead_code"
-                | "rename_directory"
-                | "update_dependencies"
-                | "extract_function"
-                | "inline_variable"
-                | "extract_variable"
-                | "fix_imports"
-        ) {
-            // Check if we have the system plugin registered
-            if self.plugins.contains_key("system") {
-                return Ok("system".to_string());
-            }
-        }
-
-        // Special handling for workspace-level LSP operations
-        if matches!(method, "search_workspace_symbols") {
-            debug!(
-                method = %method,
-                available_plugins = ?self.plugins.keys().collect::<Vec<_>>(),
-                "Routing workspace-level operation"
-            );
-
-            // Route to any plugin that supports workspace symbols
-            let method_plugins = self.find_plugins_for_method(method);
-            if let Some(plugin_name) = method_plugins.first() {
-                debug!(
-                    selected_plugin = %plugin_name,
-                    "Workspace symbol request routed"
-                );
-                return Ok(plugin_name.clone());
-            }
-
-            // Fallback: try any LSP plugin (excluding system plugin)
-            for plugin_name in self.plugins.keys() {
-                if plugin_name != "system" {
-                    debug!(
-                        fallback_plugin = %plugin_name,
-                        "Using fallback plugin for workspace symbols"
-                    );
-                    return Ok(plugin_name.clone());
-                }
-            }
-
-            return Err(PluginError::plugin_not_found(
-                file_path.to_string_lossy(),
-                method,
-            ));
-        }
-
         let file_plugins = self.find_plugins_for_file(file_path);
         let method_plugins = self.find_plugins_for_method(method);
 
-        // Find intersection of plugins that support both the file and method
-        let compatible_plugins: Vec<String> = file_plugins
-            .into_iter()
-            .filter(|plugin| method_plugins.contains(plugin))
+        // Determine tool scope from first plugin that supports this method
+        let tool_scope = method_plugins
+            .first()
+            .and_then(|plugin_name| self.get_plugin(plugin_name))
+            .and_then(|plugin| {
+                let caps = plugin.capabilities();
+                caps.get_tool_scope(method)
+            });
+
+        let candidate_plugins = match tool_scope {
+            Some(crate::ToolScope::File) => {
+                // File-scoped tools require both file extension AND method match
+                file_plugins
+                    .into_iter()
+                    .filter(|plugin| method_plugins.contains(plugin))
+                    .collect()
+            }
+            Some(crate::ToolScope::Workspace) | None => {
+                // Workspace-scoped tools only need method match
+                // Also use this as fallback when scope is unknown
+                method_plugins
+            }
+        };
+
+        // Select best plugin from candidates based on priority
+        if let Some(best) = self.select_by_priority(&candidate_plugins, method)? {
+            return Ok(best);
+        }
+
+        // No compatible plugins found
+        Err(PluginError::plugin_not_found(
+            file_path.to_string_lossy(),
+            method,
+        ))
+    }
+
+    /// Select the best plugin from a list based on priority
+    ///
+    /// Returns None if the list is empty
+    /// Returns Err if there's an ambiguous selection (multiple plugins with same priority)
+    /// Returns Ok(Some(plugin_name)) otherwise
+    fn select_by_priority(
+        &self,
+        plugins: &[String],
+        method: &str,
+    ) -> PluginResult<Option<String>> {
+        if plugins.is_empty() {
+            return Ok(None);
+        }
+
+        if plugins.len() == 1 {
+            return Ok(Some(plugins[0].clone()));
+        }
+
+        // Find maximum priority
+        let max_priority = plugins
+            .iter()
+            .map(|p| self.get_plugin_priority(p))
+            .max()
+            .unwrap_or(50);
+
+        // Get all plugins with max priority
+        let mut best_plugins: Vec<&String> = plugins
+            .iter()
+            .filter(|p| self.get_plugin_priority(p) == max_priority)
             .collect();
 
-        match compatible_plugins.len() {
-            0 => Err(PluginError::plugin_not_found(
-                file_path.to_string_lossy(),
-                method,
-            )),
-            1 => Ok(compatible_plugins[0].clone()),
-            _ => {
-                // Multiple plugins support this combination
-                // For now, use priority-based selection (first wins)
-                // In the future, this could be more sophisticated
+        // Check for ambiguity
+        if best_plugins.len() > 1 {
+            if self.error_on_ambiguity {
+                return Err(PluginError::AmbiguousPluginSelection {
+                    method: method.to_string(),
+                    plugins: best_plugins.iter().map(|p| p.to_string()).collect(),
+                    priority: max_priority,
+                });
+            } else {
+                // Deterministic fallback: sort by name and pick first
+                best_plugins.sort();
                 debug!(
-                    "Multiple plugins support file {:?} and method '{}': {:?}",
-                    file_path, method, compatible_plugins
+                    method = %method,
+                    candidates = ?best_plugins,
+                    selected = %best_plugins[0],
+                    priority = max_priority,
+                    "Multiple plugins with same priority, using lexicographic order"
                 );
-                Ok(compatible_plugins[0].clone())
             }
         }
+
+        Ok(Some(best_plugins[0].clone()))
     }
 
     /// Get a plugin by name
@@ -392,12 +443,13 @@ mod tests {
         name: String,
         extensions: Vec<String>,
         capabilities: Capabilities,
+        metadata: Option<PluginMetadata>,
     }
 
     #[async_trait]
     impl LanguagePlugin for TestPlugin {
         fn metadata(&self) -> PluginMetadata {
-            PluginMetadata::new(&self.name, "1.0.0", "test")
+            self.metadata.clone().unwrap_or_else(|| PluginMetadata::new(&self.name, "1.0.0", "test"))
         }
 
         fn supported_extensions(&self) -> Vec<String> {
@@ -432,6 +484,7 @@ mod tests {
             name: "test-plugin".to_string(),
             extensions: vec!["test".to_string()],
             capabilities,
+            metadata: None,
         });
 
         assert!(registry.register_plugin("test-plugin", plugin).is_ok());
@@ -450,6 +503,7 @@ mod tests {
             name: "test-plugin".to_string(),
             extensions: vec!["test".to_string()],
             capabilities,
+            metadata: None,
         });
 
         registry.register_plugin("test-plugin", plugin).unwrap();
@@ -475,6 +529,7 @@ mod tests {
             name: "test-plugin".to_string(),
             extensions: vec!["test".to_string()],
             capabilities: Capabilities::default(),
+            metadata: None,
         });
 
         registry.register_plugin("test-plugin", plugin).unwrap();
@@ -496,6 +551,7 @@ mod tests {
             name: "test-plugin".to_string(),
             extensions: vec!["test".to_string()],
             capabilities,
+            metadata: None,
         });
 
         registry.register_plugin("test-plugin", plugin).unwrap();
@@ -517,6 +573,7 @@ mod tests {
             name: "test-plugin".to_string(),
             extensions: vec!["test".to_string(), "example".to_string()],
             capabilities,
+            metadata: None,
         });
 
         registry.register_plugin("test-plugin", plugin).unwrap();
@@ -526,5 +583,218 @@ mod tests {
         assert_eq!(stats.supported_extensions, 2);
         assert_eq!(stats.supported_methods, 2);
         assert_eq!(stats.average_methods_per_plugin, 2.0);
+    }
+
+    #[test]
+    fn test_scope_aware_file_tool_selection() {
+        // Test that file-scoped tools require both file extension AND method match
+        let mut registry = PluginRegistry::new();
+
+        // Plugin 1: Supports TypeScript files + find_definition (file-scoped)
+        let mut caps1 = Capabilities::default();
+        caps1.navigation.go_to_definition = true;
+        let plugin1 = Arc::new(TestPlugin {
+            name: "ts-plugin".to_string(),
+            extensions: vec!["ts".to_string()],
+            capabilities: caps1,
+            metadata: None,
+        });
+
+        // Plugin 2: Supports find_definition but not TypeScript files
+        let mut caps2 = Capabilities::default();
+        caps2.navigation.go_to_definition = true;
+        let plugin2 = Arc::new(TestPlugin {
+            name: "generic-plugin".to_string(),
+            extensions: vec!["js".to_string()],
+            capabilities: caps2,
+            metadata: None,
+        });
+
+        registry.register_plugin("ts-plugin", plugin1).unwrap();
+        registry.register_plugin("generic-plugin", plugin2).unwrap();
+
+        // File-scoped tool should only match plugin with matching file extension
+        let ts_file = PathBuf::from("example.ts");
+        let best = registry.find_best_plugin(&ts_file, "find_definition").unwrap();
+        assert_eq!(best, "ts-plugin");
+
+        let js_file = PathBuf::from("example.js");
+        let best = registry.find_best_plugin(&js_file, "find_definition").unwrap();
+        assert_eq!(best, "generic-plugin");
+    }
+
+    #[test]
+    fn test_scope_aware_workspace_tool_selection() {
+        // Test that workspace-scoped tools only need method match
+        let mut registry = PluginRegistry::new();
+
+        // Plugin supports workspace-scoped tool (search_workspace_symbols)
+        let mut caps = Capabilities::default();
+        caps.navigation.workspace_symbols = true;
+        let plugin = Arc::new(TestPlugin {
+            name: "workspace-plugin".to_string(),
+            extensions: vec!["ts".to_string()], // File extension shouldn't matter
+            capabilities: caps,
+            metadata: None,
+        });
+
+        registry.register_plugin("workspace-plugin", plugin).unwrap();
+
+        // Workspace tool should work regardless of file extension
+        let ts_file = PathBuf::from("example.ts");
+        let best = registry.find_best_plugin(&ts_file, "search_workspace_symbols").unwrap();
+        assert_eq!(best, "workspace-plugin");
+
+        let py_file = PathBuf::from("example.py");
+        let best = registry.find_best_plugin(&py_file, "search_workspace_symbols").unwrap();
+        assert_eq!(best, "workspace-plugin");
+    }
+
+    #[test]
+    fn test_priority_based_selection() {
+        // Test that priority-based selection works correctly
+        let mut registry = PluginRegistry::new();
+
+        // Plugin 1: Priority 40
+        let mut caps1 = Capabilities::default();
+        caps1.navigation.go_to_definition = true;
+        let mut meta1 = PluginMetadata::new("low-priority", "1.0.0", "test");
+        meta1.priority = 40;
+
+        let plugin1 = Arc::new(TestPlugin {
+            name: "low-priority".to_string(),
+            extensions: vec!["ts".to_string()],
+            capabilities: caps1,
+            metadata: Some(meta1),
+        });
+
+        // Plugin 2: Priority 60
+        let mut caps2 = Capabilities::default();
+        caps2.navigation.go_to_definition = true;
+        let mut meta2 = PluginMetadata::new("high-priority", "1.0.0", "test");
+        meta2.priority = 60;
+
+        let plugin2 = Arc::new(TestPlugin {
+            name: "high-priority".to_string(),
+            extensions: vec!["ts".to_string()],
+            capabilities: caps2,
+            metadata: Some(meta2),
+        });
+
+        registry.register_plugin("low-priority", plugin1).unwrap();
+        registry.register_plugin("high-priority", plugin2).unwrap();
+
+        // High priority plugin should be selected
+        let ts_file = PathBuf::from("example.ts");
+        let best = registry.find_best_plugin(&ts_file, "find_definition").unwrap();
+        assert_eq!(best, "high-priority");
+    }
+
+    #[test]
+    fn test_priority_override() {
+        // Test that priority overrides work correctly
+        let mut registry = PluginRegistry::new();
+
+        // Plugin 1: Default priority 50
+        let mut caps1 = Capabilities::default();
+        caps1.navigation.go_to_definition = true;
+        let plugin1 = Arc::new(TestPlugin {
+            name: "plugin1".to_string(),
+            extensions: vec!["ts".to_string()],
+            capabilities: caps1,
+            metadata: None,
+        });
+
+        // Plugin 2: Default priority 50
+        let mut caps2 = Capabilities::default();
+        caps2.navigation.go_to_definition = true;
+        let plugin2 = Arc::new(TestPlugin {
+            name: "plugin2".to_string(),
+            extensions: vec!["ts".to_string()],
+            capabilities: caps2,
+            metadata: None,
+        });
+
+        registry.register_plugin("plugin1", plugin1).unwrap();
+        registry.register_plugin("plugin2", plugin2).unwrap();
+
+        // Set priority override for plugin1
+        let mut overrides = HashMap::new();
+        overrides.insert("plugin1".to_string(), 100);
+        registry.set_priority_overrides(overrides);
+
+        let ts_file = PathBuf::from("example.ts");
+        let best = registry.find_best_plugin(&ts_file, "find_definition").unwrap();
+        assert_eq!(best, "plugin1");
+    }
+
+    #[test]
+    fn test_ambiguous_selection_error() {
+        // Test that ambiguous selection is detected when error_on_ambiguity is true
+        let mut registry = PluginRegistry::new();
+        registry.set_error_on_ambiguity(true);
+
+        // Two plugins with same priority
+        let mut caps1 = Capabilities::default();
+        caps1.navigation.go_to_definition = true;
+        let plugin1 = Arc::new(TestPlugin {
+            name: "plugin1".to_string(),
+            extensions: vec!["ts".to_string()],
+            capabilities: caps1,
+            metadata: None,
+        });
+
+        let mut caps2 = Capabilities::default();
+        caps2.navigation.go_to_definition = true;
+        let plugin2 = Arc::new(TestPlugin {
+            name: "plugin2".to_string(),
+            extensions: vec!["ts".to_string()],
+            capabilities: caps2,
+            metadata: None,
+        });
+
+        registry.register_plugin("plugin1", plugin1).unwrap();
+        registry.register_plugin("plugin2", plugin2).unwrap();
+
+        let ts_file = PathBuf::from("example.ts");
+        let result = registry.find_best_plugin(&ts_file, "find_definition");
+
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), PluginError::AmbiguousPluginSelection { .. }));
+    }
+
+    #[test]
+    fn test_ambiguous_selection_fallback() {
+        // Test that lexicographic fallback works when error_on_ambiguity is false
+        let mut registry = PluginRegistry::new();
+        registry.set_error_on_ambiguity(false);
+
+        // Two plugins with same priority
+        let mut caps1 = Capabilities::default();
+        caps1.navigation.go_to_definition = true;
+        let plugin1 = Arc::new(TestPlugin {
+            name: "zebra-plugin".to_string(),
+            extensions: vec!["ts".to_string()],
+            capabilities: caps1,
+            metadata: None,
+        });
+
+        let mut caps2 = Capabilities::default();
+        caps2.navigation.go_to_definition = true;
+        let plugin2 = Arc::new(TestPlugin {
+            name: "alpha-plugin".to_string(),
+            extensions: vec!["ts".to_string()],
+            capabilities: caps2,
+            metadata: None,
+        });
+
+        registry.register_plugin("zebra-plugin", plugin1).unwrap();
+        registry.register_plugin("alpha-plugin", plugin2).unwrap();
+
+        let ts_file = PathBuf::from("example.ts");
+        let best = registry.find_best_plugin(&ts_file, "find_definition").unwrap();
+
+        // Should select "alpha-plugin" due to lexicographic order
+        assert_eq!(best, "alpha-plugin");
     }
 }

@@ -2,7 +2,7 @@
 //!
 //! Handles: rename_file, create_file, delete_file, read_file, write_file, list_files
 
-use super::tool_handler::{ToolContext, ToolHandler};
+use super::compat::{ToolContext, ToolHandler};
 use crate::workspaces::WorkspaceManager;
 use crate::{ServerError, ServerResult};
 use async_trait::async_trait;

@@ -7,6 +7,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
+/// Tool scope defines whether a tool operates on files or workspace-wide
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ToolScope {
+    /// Tool operates on a specific file (requires file_path parameter)
+    File,
+    /// Tool operates at workspace level (no file_path required)
+    Workspace,
+}
+
 /// Complete set of capabilities a plugin can provide
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Capabilities {
@@ -190,6 +199,60 @@ impl Capabilities {
     pub fn add_custom(&mut self, name: String, value: Value) {
         self.custom.insert(name, value);
     }
+
+    /// Get the scope of a tool (File or Workspace)
+    pub fn get_tool_scope(&self, method: &str) -> Option<ToolScope> {
+        match method {
+            // File-scoped navigation tools
+            | "find_definition"
+            | "find_references"
+            | "find_implementations"
+            | "find_type_definition"
+            | "get_document_symbols"
+            | "prepare_call_hierarchy"
+            | "get_call_hierarchy_incoming_calls"
+            | "get_call_hierarchy_outgoing_calls" => Some(ToolScope::File),
+
+            // File-scoped editing tools
+            | "rename_symbol"
+            | "rename_symbol_strict"
+            | "format_document"
+            | "format_range"
+            | "get_code_actions"
+            | "organize_imports"
+            | "fix_imports" => Some(ToolScope::File),
+
+            // File-scoped refactoring tools
+            | "extract_function"
+            | "extract_variable"
+            | "inline_variable" => Some(ToolScope::File),
+
+            // File-scoped intelligence tools
+            | "get_hover"
+            | "get_completions"
+            | "get_signature_help" => Some(ToolScope::File),
+
+            // File-scoped diagnostic tools
+            | "get_diagnostics" => Some(ToolScope::File),
+
+            // File-scoped analysis tools
+            | "analyze_imports" => Some(ToolScope::File),
+
+            // Workspace-scoped tools
+            | "search_workspace_symbols"
+            | "list_files"
+            | "find_dead_code"
+            | "bulk_update_dependencies"
+            | "rename_file"
+            | "rename_directory"
+            | "extract_module_to_package" => Some(ToolScope::Workspace),
+
+            // Custom capabilities - default to workspace scope
+            _ if self.custom.contains_key(method) => Some(ToolScope::Workspace),
+
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -240,5 +303,33 @@ mod tests {
             caps.custom.get("rust.expand_macros"),
             Some(&json!({"supported": true}))
         );
+    }
+
+    #[test]
+    fn test_tool_scope() {
+        let caps = Capabilities::default();
+
+        // Test file-scoped tools
+        assert_eq!(caps.get_tool_scope("find_definition"), Some(ToolScope::File));
+        assert_eq!(caps.get_tool_scope("rename_symbol"), Some(ToolScope::File));
+        assert_eq!(caps.get_tool_scope("get_hover"), Some(ToolScope::File));
+        assert_eq!(caps.get_tool_scope("extract_function"), Some(ToolScope::File));
+
+        // Test workspace-scoped tools
+        assert_eq!(caps.get_tool_scope("search_workspace_symbols"), Some(ToolScope::Workspace));
+        assert_eq!(caps.get_tool_scope("list_files"), Some(ToolScope::Workspace));
+        assert_eq!(caps.get_tool_scope("rename_directory"), Some(ToolScope::Workspace));
+
+        // Test unknown tool
+        assert_eq!(caps.get_tool_scope("unknown_tool"), None);
+    }
+
+    #[test]
+    fn test_custom_tool_scope() {
+        let mut caps = Capabilities::default();
+        caps.add_custom("custom.analysis".to_string(), json!(true));
+
+        // Custom tools default to workspace scope
+        assert_eq!(caps.get_tool_scope("custom.analysis"), Some(ToolScope::Workspace));
     }
 }

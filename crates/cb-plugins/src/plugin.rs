@@ -77,6 +77,14 @@ pub struct PluginMetadata {
     pub min_system_version: String,
     /// Plugin-specific configuration schema (JSON Schema)
     pub config_schema: Option<Value>,
+    /// Priority for plugin selection (higher = higher priority)
+    /// Default is 50. User can configure in codebuddy.toml
+    #[serde(default = "default_priority")]
+    pub priority: u32,
+}
+
+fn default_priority() -> u32 {
+    50
 }
 
 impl PluginMetadata {
@@ -93,6 +101,7 @@ impl PluginMetadata {
             description: String::new(),
             min_system_version: crate::PLUGIN_SYSTEM_VERSION.to_string(),
             config_schema: None,
+            priority: default_priority(),
         }
     }
 
@@ -111,6 +120,12 @@ impl PluginMetadata {
     /// Set configuration schema
     pub fn with_config_schema(mut self, schema: Value) -> Self {
         self.config_schema = Some(schema);
+        self
+    }
+
+    /// Set plugin priority for selection
+    pub fn with_priority(mut self, priority: u32) -> Self {
+        self.priority = priority;
         self
     }
 }

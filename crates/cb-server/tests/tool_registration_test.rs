@@ -1,4 +1,4 @@
-use cb_server::create_test_dispatcher;
+use cb_server::handlers::plugin_dispatcher::create_test_dispatcher;
 
 #[tokio::test]
 async fn test_all_42_tools_are_registered() {

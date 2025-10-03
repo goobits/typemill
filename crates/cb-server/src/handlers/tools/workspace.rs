@@ -1,11 +1,12 @@
 //! Workspace operations tool handlers
 //!
-//! Handles: rename_directory, analyze_imports, find_dead_code, update_dependencies
+//! Handles: rename_directory, analyze_imports, find_dead_code, update_dependencies, extract_module_to_package
 
 use super::{ToolHandler, ToolHandlerContext};
+use crate::handlers::compat::{ToolContext, ToolHandler as LegacyToolHandler};
 use crate::handlers::file_operation_handler::FileOperationHandler as LegacyFileHandler;
+use crate::handlers::refactoring_handler::RefactoringHandler as LegacyRefactoringHandler;
 use crate::handlers::system_handler::SystemHandler as LegacySystemHandler;
-use crate::handlers::tool_handler::{ToolContext, ToolHandler as LegacyToolHandler};
 use crate::ServerResult;
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
@@ -14,6 +15,7 @@ use serde_json::Value;
 pub struct WorkspaceHandler {
     file_handler: LegacyFileHandler,
     system_handler: LegacySystemHandler,
+    refactoring_handler: LegacyRefactoringHandler,
 }
 
 impl WorkspaceHandler {
@@ -21,33 +23,28 @@ impl WorkspaceHandler {
         Self {
             file_handler: LegacyFileHandler::new(),
             system_handler: LegacySystemHandler::new(),
+            refactoring_handler: LegacyRefactoringHandler::new(),
         }
     }
 }
 
 #[async_trait]
 impl ToolHandler for WorkspaceHandler {
-    fn supported_tools(&self) -> &[&'static str] {
+    fn tool_names(&self) -> &[&str] {
         &[
             "rename_directory",
             "analyze_imports",
             "find_dead_code",
             "update_dependencies",
+            "extract_module_to_package",
         ]
     }
 
-    async fn handle(
+    async fn handle_tool_call(
         &self,
-        tool_name: &str,
-        params: Value,
         context: &ToolHandlerContext,
+        tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        // Convert to ToolCall for legacy handler
-        let tool_call = ToolCall {
-            name: tool_name.to_string(),
-            arguments: Some(params),
-        };
-
         // Convert new context to legacy context
         let legacy_context = ToolContext {
             app_state: context.app_state.clone(),
@@ -56,20 +53,25 @@ impl ToolHandler for WorkspaceHandler {
         };
 
         // Route to appropriate legacy handler
-        match tool_name {
+        match tool_call.name.as_str() {
             "rename_directory" => {
                 self.file_handler
-                    .handle_tool(tool_call, &legacy_context)
+                    .handle_tool(tool_call.clone(), &legacy_context)
                     .await
             }
             "analyze_imports" | "find_dead_code" | "update_dependencies" => {
                 self.system_handler
-                    .handle_tool(tool_call, &legacy_context)
+                    .handle_tool(tool_call.clone(), &legacy_context)
+                    .await
+            }
+            "extract_module_to_package" => {
+                self.refactoring_handler
+                    .handle_tool(tool_call.clone(), &legacy_context)
                     .await
             }
             _ => Err(crate::ServerError::InvalidRequest(format!(
                 "Unknown workspace tool: {}",
-                tool_name
+                tool_call.name
             ))),
         }
     }

@@ -3,7 +3,7 @@
 //! Handles: extract_function, inline_variable, extract_variable, extract_module_to_package, fix_imports
 
 use super::lsp_adapter::DirectLspAdapter;
-use super::tool_handler::{ToolContext, ToolHandler};
+use super::compat::{ToolContext, ToolHandler};
 use crate::workspaces::WorkspaceManager;
 use crate::{ServerError, ServerResult};
 use async_trait::async_trait;

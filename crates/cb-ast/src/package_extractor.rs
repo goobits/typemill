@@ -22,6 +22,7 @@ pub struct ExtractModuleToPackageParams {
     pub update_imports: Option<bool>,
     pub create_manifest: Option<bool>,
     pub dry_run: Option<bool>,
+    pub is_workspace_member: Option<bool>,
 }
 
 /// Recursively find all .rs files in a directory
@@ -519,66 +520,127 @@ pub async fn plan_extract_module_to_package(
         }
     }
 
-    // Step 8: Update workspace Cargo.toml to add new member
-    // Find workspace root by looking for Cargo.toml with [workspace]
-    let mut workspace_root = source_path.to_path_buf();
-    while let Some(parent) = workspace_root.parent() {
-        let potential_workspace = parent.join("Cargo.toml");
-        if potential_workspace.exists() {
-            if let Ok(content) = tokio::fs::read_to_string(&potential_workspace).await {
-                if content.contains("[workspace]") {
-                    workspace_root = parent.to_path_buf();
-                    break;
-                }
-            }
-        }
-        workspace_root = parent.to_path_buf();
-        if workspace_root.parent().is_none() {
-            break;
-        }
-    }
+    // Step 8: Update workspace Cargo.toml to add new member (if is_workspace_member is true)
+    if params.is_workspace_member.unwrap_or(false) {
+        debug!("is_workspace_member=true: searching for workspace root");
 
-    let workspace_cargo_toml = workspace_root.join("Cargo.toml");
-    if workspace_cargo_toml.exists() && workspace_cargo_toml != source_cargo_toml {
-        match tokio::fs::read_to_string(&workspace_cargo_toml).await {
-            Ok(workspace_content) => {
-                if workspace_content.contains("[workspace]") {
-                    match update_workspace_members(
-                        &workspace_content,
-                        &params.target_package_path,
-                        &workspace_root,
-                    ) {
-                        Ok(updated_workspace) => {
-                            if updated_workspace != workspace_content {
-                                edits.push(TextEdit {
-                                    file_path: Some(
-                                        workspace_cargo_toml.to_string_lossy().to_string(),
-                                    ),
-                                    edit_type: EditType::Replace,
-                                    location: EditLocation {
-                                        start_line: 0,
-                                        start_column: 0,
-                                        end_line: workspace_content.lines().count() as u32,
-                                        end_column: 0,
-                                    },
-                                    original_text: workspace_content,
-                                    new_text: updated_workspace,
-                                    priority: 50,
-                                    description: "Add new crate to workspace members".to_string(),
-                                });
-                                debug!("Created workspace Cargo.toml update TextEdit");
-                            }
-                        }
-                        Err(e) => {
-                            debug!(error = %e, "Failed to update workspace Cargo.toml");
-                        }
+        // Find workspace root by looking for Cargo.toml with [workspace]
+        let mut workspace_root = source_path.to_path_buf();
+        let mut found_workspace = false;
+
+        while let Some(parent) = workspace_root.parent() {
+            let potential_workspace = parent.join("Cargo.toml");
+            if potential_workspace.exists() {
+                if let Ok(content) = tokio::fs::read_to_string(&potential_workspace).await {
+                    if content.contains("[workspace]") {
+                        workspace_root = parent.to_path_buf();
+                        found_workspace = true;
+                        debug!(
+                            workspace_root = %workspace_root.display(),
+                            "Found workspace root"
+                        );
+                        break;
                     }
                 }
             }
-            Err(e) => {
-                debug!(error = %e, "Failed to read workspace Cargo.toml");
+            workspace_root = parent.to_path_buf();
+            if workspace_root.parent().is_none() {
+                break;
             }
         }
+
+        if !found_workspace {
+            debug!("No workspace root found, creating workspace at source crate parent");
+            // If no existing workspace found, create one at the parent of source_path
+            if let Some(parent) = source_path.parent() {
+                workspace_root = parent.to_path_buf();
+                let workspace_cargo_toml = workspace_root.join("Cargo.toml");
+
+                // Create a new workspace Cargo.toml if it doesn't exist
+                if !workspace_cargo_toml.exists() {
+                    let source_crate_rel = pathdiff::diff_paths(source_path, &workspace_root)
+                        .unwrap_or_else(|| source_path.to_path_buf());
+                    let target_crate_rel = pathdiff::diff_paths(&params.target_package_path, &workspace_root)
+                        .unwrap_or_else(|| Path::new(&params.target_package_path).to_path_buf());
+
+                    let workspace_content = format!(
+                        r#"[workspace]
+members = [
+    "{}",
+    "{}",
+]
+resolver = "2"
+"#,
+                        source_crate_rel.to_string_lossy(),
+                        target_crate_rel.to_string_lossy()
+                    );
+
+                    edits.push(TextEdit {
+                        file_path: Some(workspace_cargo_toml.to_string_lossy().to_string()),
+                        edit_type: EditType::Insert,
+                        location: EditLocation {
+                            start_line: 0,
+                            start_column: 0,
+                            end_line: 0,
+                            end_column: 0,
+                        },
+                        original_text: String::new(),
+                        new_text: workspace_content,
+                        priority: 50,
+                        description: "Create workspace Cargo.toml with members".to_string(),
+                    });
+                    debug!("Created workspace Cargo.toml creation TextEdit");
+                    found_workspace = true;
+                }
+            }
+        }
+
+        if found_workspace {
+            let workspace_cargo_toml = workspace_root.join("Cargo.toml");
+            if workspace_cargo_toml.exists() && workspace_cargo_toml != source_cargo_toml {
+                match tokio::fs::read_to_string(&workspace_cargo_toml).await {
+                    Ok(workspace_content) => {
+                        if workspace_content.contains("[workspace]") {
+                            match update_workspace_members(
+                                &workspace_content,
+                                &params.target_package_path,
+                                &workspace_root,
+                            ) {
+                                Ok(updated_workspace) => {
+                                    if updated_workspace != workspace_content {
+                                        edits.push(TextEdit {
+                                            file_path: Some(
+                                                workspace_cargo_toml.to_string_lossy().to_string(),
+                                            ),
+                                            edit_type: EditType::Replace,
+                                            location: EditLocation {
+                                                start_line: 0,
+                                                start_column: 0,
+                                                end_line: workspace_content.lines().count() as u32,
+                                                end_column: 0,
+                                            },
+                                            original_text: workspace_content,
+                                            new_text: updated_workspace,
+                                            priority: 50,
+                                            description: "Add new crate to workspace members".to_string(),
+                                        });
+                                        debug!("Created workspace Cargo.toml update TextEdit");
+                                    }
+                                }
+                                Err(e) => {
+                                    debug!(error = %e, "Failed to update workspace Cargo.toml");
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        debug!(error = %e, "Failed to read workspace Cargo.toml");
+                    }
+                }
+            }
+        }
+    } else {
+        debug!("is_workspace_member=false: skipping workspace configuration");
     }
 
     // Step 9: Find and update all use statements in the workspace
@@ -1144,6 +1206,7 @@ pub fn consume() {
             update_imports: Some(true),
             create_manifest: Some(true),
             dry_run: Some(false),
+            is_workspace_member: Some(true), // Test with workspace enabled
         };
 
         let result = plan_extract_module_to_package(params).await;
@@ -1493,5 +1556,216 @@ use other_crate::TypeC;"#;
 
         assert_eq!(count, 1);
         assert!(new_content.contains("use new_crate::module::*;"));
+    }
+
+    #[tokio::test]
+    async fn test_workspace_member_creation() {
+        // Test that is_workspace_member=true creates/updates workspace configuration
+        let temp_dir = tempdir().unwrap();
+        let project_root = temp_dir.path();
+
+        // Create source crate WITHOUT a workspace Cargo.toml
+        let src_crate = project_root.join("src_crate");
+        let src_dir = src_crate.join("src");
+        fs::create_dir_all(&src_dir).unwrap();
+
+        // Create Cargo.toml for source crate (no workspace)
+        fs::write(
+            src_crate.join("Cargo.toml"),
+            r#"[package]
+name = "src_crate"
+version = "0.1.0"
+edition = "2021"
+"#,
+        )
+        .unwrap();
+
+        // Create lib.rs with module declaration
+        fs::write(
+            src_dir.join("lib.rs"),
+            r#"pub mod my_module;
+
+pub fn main_function() {
+    println!("Main function");
+}
+"#,
+        )
+        .unwrap();
+
+        // Create the module to be extracted
+        fs::write(
+            src_dir.join("my_module.rs"),
+            r#"use std::collections::HashMap;
+
+pub fn module_function() {
+    let map: HashMap<String, i32> = HashMap::new();
+    println!("Module function");
+}
+"#,
+        )
+        .unwrap();
+
+        // Create target directory
+        let target_crate = project_root.join("extracted_crate");
+        fs::create_dir_all(&target_crate).unwrap();
+
+        // Run the extraction plan WITH is_workspace_member=true
+        let params = ExtractModuleToPackageParams {
+            source_package: src_crate.to_string_lossy().to_string(),
+            module_path: "my_module".to_string(),
+            target_package_path: target_crate.to_string_lossy().to_string(),
+            target_package_name: "extracted_module".to_string(),
+            update_imports: Some(true),
+            create_manifest: Some(true),
+            dry_run: Some(false),
+            is_workspace_member: Some(true),
+        };
+
+        let result = plan_extract_module_to_package(params).await;
+        assert!(result.is_ok(), "Plan should succeed: {:?}", result.err());
+
+        let edit_plan = result.unwrap();
+
+        // Verify that a workspace Cargo.toml edit was created
+        let workspace_cargo_edit = edit_plan
+            .edits
+            .iter()
+            .find(|e| {
+                e.file_path
+                    .as_ref()
+                    .map(|p| {
+                        p.ends_with("Cargo.toml")
+                            && !p.contains("src_crate")
+                            && !p.contains("extracted_crate")
+                    })
+                    .unwrap_or(false)
+                    && (e.description.contains("workspace") || e.description.contains("members"))
+            });
+
+        assert!(
+            workspace_cargo_edit.is_some(),
+            "Should have workspace Cargo.toml edit when is_workspace_member=true"
+        );
+
+        let ws_edit = workspace_cargo_edit.unwrap();
+
+        // The edit should either be Insert (new workspace) or Replace (updating existing)
+        assert!(
+            ws_edit.edit_type == EditType::Insert || ws_edit.edit_type == EditType::Replace,
+            "Workspace edit should be Insert or Replace, got {:?}",
+            ws_edit.edit_type
+        );
+
+        // Verify the workspace content includes both crates
+        assert!(
+            ws_edit.new_text.contains("[workspace]"),
+            "Workspace Cargo.toml should have [workspace] section"
+        );
+        assert!(
+            ws_edit.new_text.contains("members"),
+            "Workspace Cargo.toml should have members array"
+        );
+        assert!(
+            ws_edit.new_text.contains("src_crate") || ws_edit.new_text.contains("./src_crate"),
+            "Workspace members should include src_crate"
+        );
+        assert!(
+            ws_edit.new_text.contains("extracted_crate")
+                || ws_edit.new_text.contains("./extracted_crate"),
+            "Workspace members should include extracted_crate"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_no_workspace_member_creation() {
+        // Test that is_workspace_member=false skips workspace configuration
+        let temp_dir = tempdir().unwrap();
+        let project_root = temp_dir.path();
+
+        // Create source crate WITHOUT a workspace Cargo.toml
+        let src_crate = project_root.join("src_crate");
+        let src_dir = src_crate.join("src");
+        fs::create_dir_all(&src_dir).unwrap();
+
+        // Create Cargo.toml for source crate
+        fs::write(
+            src_crate.join("Cargo.toml"),
+            r#"[package]
+name = "src_crate"
+version = "0.1.0"
+edition = "2021"
+"#,
+        )
+        .unwrap();
+
+        // Create lib.rs with module declaration
+        fs::write(
+            src_dir.join("lib.rs"),
+            r#"pub mod my_module;
+"#,
+        )
+        .unwrap();
+
+        // Create the module to be extracted
+        fs::write(
+            src_dir.join("my_module.rs"),
+            r#"pub fn module_function() {
+    println!("Module function");
+}
+"#,
+        )
+        .unwrap();
+
+        // Create target directory
+        let target_crate = project_root.join("extracted_crate");
+        fs::create_dir_all(&target_crate).unwrap();
+
+        // Run the extraction plan WITH is_workspace_member=false
+        let params = ExtractModuleToPackageParams {
+            source_package: src_crate.to_string_lossy().to_string(),
+            module_path: "my_module".to_string(),
+            target_package_path: target_crate.to_string_lossy().to_string(),
+            target_package_name: "extracted_module".to_string(),
+            update_imports: Some(true),
+            create_manifest: Some(true),
+            dry_run: Some(false),
+            is_workspace_member: Some(false),
+        };
+
+        let result = plan_extract_module_to_package(params).await;
+        assert!(result.is_ok(), "Plan should succeed: {:?}", result.err());
+
+        let edit_plan = result.unwrap();
+
+        // Verify that NO workspace Cargo.toml edit was created
+        let workspace_cargo_edit = edit_plan.edits.iter().find(|e| {
+            e.file_path
+                .as_ref()
+                .map(|p| {
+                    p.ends_with("Cargo.toml")
+                        && !p.contains("src_crate")
+                        && !p.contains("extracted_crate")
+                })
+                .unwrap_or(false)
+                && (e.description.contains("workspace") || e.description.contains("members"))
+        });
+
+        assert!(
+            workspace_cargo_edit.is_none(),
+            "Should NOT have workspace Cargo.toml edit when is_workspace_member=false"
+        );
+
+        // Should still have source Cargo.toml edit (add dependency)
+        let src_cargo_edit = edit_plan.edits.iter().find(|e| {
+            e.file_path
+                .as_ref()
+                .map(|p| p.contains("src_crate/Cargo.toml"))
+                .unwrap_or(false)
+        });
+
+        assert!(
+            src_cargo_edit.is_some(),
+            "Should still have source Cargo.toml dependency edit"
+        );
     }
 }

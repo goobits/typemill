@@ -16,6 +16,7 @@ pub mod systems;
 pub mod utils;
 
 // Test helpers - available for integration tests
+#[cfg(any(test, feature = "test-helpers"))]
 pub mod test_helpers;
 
 // Re-export workspaces from cb-core for backward compatibility

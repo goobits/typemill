@@ -3,8 +3,8 @@
 //! Handles: notify_file_opened, notify_file_saved, notify_file_closed
 
 use super::{ToolHandler, ToolHandlerContext};
+use crate::handlers::compat::{ToolContext, ToolHandler as LegacyToolHandler};
 use crate::handlers::system_handler::SystemHandler as LegacySystemHandler;
-use crate::handlers::tool_handler::{ToolContext, ToolHandler as LegacyToolHandler};
 use crate::ServerResult;
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
@@ -24,7 +24,7 @@ impl LifecycleHandler {
 
 #[async_trait]
 impl ToolHandler for LifecycleHandler {
-    fn supported_tools(&self) -> &[&'static str] {
+    fn tool_names(&self) -> &[&str] {
         &[
             "notify_file_opened",
             "notify_file_saved",
@@ -32,18 +32,11 @@ impl ToolHandler for LifecycleHandler {
         ]
     }
 
-    async fn handle(
+    async fn handle_tool_call(
         &self,
-        tool_name: &str,
-        params: Value,
         context: &ToolHandlerContext,
+        tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        // Convert to ToolCall for legacy handler
-        let tool_call = ToolCall {
-            name: tool_name.to_string(),
-            arguments: Some(params),
-        };
-
         // Convert new context to legacy context
         let legacy_context = ToolContext {
             app_state: context.app_state.clone(),
@@ -53,7 +46,7 @@ impl ToolHandler for LifecycleHandler {
 
         // Delegate to legacy handler
         self.system_handler
-            .handle_tool(tool_call, &legacy_context)
+            .handle_tool(tool_call.clone(), &legacy_context)
             .await
     }
 }

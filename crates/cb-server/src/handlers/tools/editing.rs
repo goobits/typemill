@@ -5,8 +5,8 @@
 //! extract_function, extract_variable, inline_variable
 
 use super::{ToolHandler, ToolHandlerContext};
+use crate::handlers::compat::{ToolContext, ToolHandler as LegacyToolHandler};
 use crate::handlers::refactoring_handler::RefactoringHandler as LegacyRefactoringHandler;
-use crate::handlers::tool_handler::{ToolContext, ToolHandler as LegacyToolHandler};
 use crate::ServerResult;
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
@@ -26,7 +26,7 @@ impl EditingHandler {
 
 #[async_trait]
 impl ToolHandler for EditingHandler {
-    fn supported_tools(&self) -> &[&'static str] {
+    fn tool_names(&self) -> &[&str] {
         &[
             "rename_symbol",
             "rename_symbol_strict",
@@ -41,18 +41,11 @@ impl ToolHandler for EditingHandler {
         ]
     }
 
-    async fn handle(
+    async fn handle_tool_call(
         &self,
-        tool_name: &str,
-        params: Value,
         context: &ToolHandlerContext,
+        tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        // Convert to ToolCall for legacy handler
-        let tool_call = ToolCall {
-            name: tool_name.to_string(),
-            arguments: Some(params),
-        };
-
         // Convert new context to legacy context
         let legacy_context = ToolContext {
             app_state: context.app_state.clone(),
@@ -62,7 +55,7 @@ impl ToolHandler for EditingHandler {
 
         // Delegate to legacy handler
         self.legacy_handler
-            .handle_tool(tool_call, &legacy_context)
+            .handle_tool(tool_call.clone(), &legacy_context)
             .await
     }
 }

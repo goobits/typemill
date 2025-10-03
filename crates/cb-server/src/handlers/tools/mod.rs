@@ -5,6 +5,7 @@
 
 use crate::ServerResult;
 use async_trait::async_trait;
+use cb_core::model::mcp::ToolCall;
 use serde_json::Value;
 
 use super::lsp_adapter::DirectLspAdapter;
@@ -41,35 +42,59 @@ pub struct ToolHandlerContext {
     pub lsp_adapter: Arc<Mutex<Option<Arc<DirectLspAdapter>>>>,
 }
 
-/// Base trait for tool handlers
+// Compatibility alias for legacy handlers that still reference the old name
+pub type ToolContext = ToolHandlerContext;
+
+/// Unified trait for all tool handlers
 ///
-/// Each handler implements this trait to provide a set of related tools.
-/// Handlers are registered in the dispatcher and invoked when their tools are called.
+/// This is the single, canonical trait that all handlers must implement.
+/// It provides direct access to the shared context and handles tool calls uniformly.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use cb_server::handlers::tools::{ToolHandler, ToolHandlerContext};
+/// use cb_core::model::mcp::ToolCall;
+/// use async_trait::async_trait;
+///
+/// struct MyHandler;
+///
+/// #[async_trait]
+/// impl ToolHandler for MyHandler {
+///     fn tool_names(&self) -> &[&str] {
+///         &["my_tool"]
+///     }
+///
+///     async fn handle_tool_call(
+///         &self,
+///         context: &ToolHandlerContext,
+///         tool_call: &ToolCall,
+///     ) -> ServerResult<Value> {
+///         // Implementation
+///         Ok(json!({"success": true}))
+///     }
+/// }
+/// ```
 #[async_trait]
 pub trait ToolHandler: Send + Sync {
-    /// Get the list of tools this handler supports
-    fn supported_tools(&self) -> &[&'static str];
+    /// Returns a slice of tool names this handler is responsible for.
+    ///
+    /// Tool names must be unique across all handlers in the system.
+    fn tool_names(&self) -> &[&str];
 
-    /// Handle a tool call
+    /// Handles an incoming tool call.
     ///
     /// # Arguments
     ///
-    /// * `tool_name` - The name of the tool being called
-    /// * `params` - The parameters for the tool call
-    /// * `context` - The execution context with access to services
+    /// * `context` - The execution context providing access to all services
+    /// * `tool_call` - The MCP tool call containing name and arguments
     ///
     /// # Returns
     ///
-    /// The result of the tool execution as a JSON value
-    async fn handle(
+    /// The result of the tool execution as a JSON value, or a ServerError on failure.
+    async fn handle_tool_call(
         &self,
-        tool_name: &str,
-        params: Value,
         context: &ToolHandlerContext,
+        tool_call: &ToolCall,
     ) -> ServerResult<Value>;
-
-    /// Optional: Initialize handler (for setup, validation, etc.)
-    async fn initialize(&self) -> ServerResult<()> {
-        Ok(())
-    }
 }

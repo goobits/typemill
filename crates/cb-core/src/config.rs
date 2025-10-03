@@ -19,6 +19,9 @@ pub struct AppConfig {
     pub logging: LoggingConfig,
     /// Cache configuration
     pub cache: CacheConfig,
+    /// Plugin selection configuration
+    #[serde(default)]
+    pub plugin_selection: PluginSelectionConfig,
     /// External MCP server configuration (optional)
     #[cfg(feature = "mcp-proxy")]
     pub external_mcp: Option<ExternalMcpConfig>,
@@ -90,6 +93,26 @@ pub struct LspServerConfig {
     pub root_dir: Option<PathBuf>,
     /// Auto-restart interval in minutes (optional)
     pub restart_interval: Option<u64>,
+}
+
+/// Plugin selection configuration for multi-tiered priority system
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginSelectionConfig {
+    /// Plugin priority overrides (plugin_name -> priority)
+    /// Higher values = higher priority. Default is 50.
+    #[serde(default)]
+    pub priorities: HashMap<String, u32>,
+
+    /// Whether to error on ambiguous plugin selection
+    /// If true, errors when multiple plugins have same priority
+    /// If false, picks the first one (deterministic by name)
+    #[serde(default = "default_error_on_ambiguity")]
+    pub error_on_ambiguity: bool,
+}
+
+fn default_error_on_ambiguity() -> bool {
+    false
 }
 
 /// External MCP server configuration (optional)

@@ -36,12 +36,12 @@ pub enum PluginError {
     #[error("Method '{method}' not supported by plugin '{plugin}'")]
     MethodNotSupported { method: String, plugin: String },
 
-    /// Multiple plugins claim support for the same file/method
-    #[error("Multiple plugins support file '{file}' and method '{method}': {plugins:?}")]
+    /// Multiple plugins claim support for the same file/method with equal priority
+    #[error("Ambiguous plugin selection for method '{method}': plugins {plugins:?} all have priority {priority}")]
     AmbiguousPluginSelection {
-        file: String,
         method: String,
         plugins: Vec<String>,
+        priority: u32,
     },
 
     /// Plugin loading/unloading error
@@ -116,14 +116,14 @@ impl PluginError {
 
     /// Create an ambiguous plugin selection error
     pub fn ambiguous_selection(
-        file: impl Into<String>,
         method: impl Into<String>,
         plugins: Vec<String>,
+        priority: u32,
     ) -> Self {
         Self::AmbiguousPluginSelection {
-            file: file.into(),
             method: method.into(),
             plugins,
+            priority,
         }
     }
 
@@ -195,7 +195,7 @@ mod tests {
     #[test]
     fn test_ambiguous_selection_error() {
         let plugins = vec!["typescript".to_string(), "javascript".to_string()];
-        let error = PluginError::ambiguous_selection("test.js", "find_definition", plugins);
+        let error = PluginError::ambiguous_selection("find_definition", plugins, 50);
 
         assert!(matches!(
             error,
@@ -203,5 +203,6 @@ mod tests {
         ));
         assert!(error.to_string().contains("typescript"));
         assert!(error.to_string().contains("javascript"));
+        assert!(error.to_string().contains("priority 50"));
     }
 }

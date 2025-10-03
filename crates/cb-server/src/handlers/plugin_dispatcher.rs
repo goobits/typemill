@@ -3,6 +3,7 @@
 //! This is the new plugin-based dispatcher that replaces the monolithic
 //! dispatcher with a flexible plugin system.
 
+use crate::register_handlers_with_logging;
 use crate::services::planner::Planner;
 use crate::services::workflow_executor::WorkflowExecutor;
 use crate::workspaces::WorkspaceManager;
@@ -10,53 +11,15 @@ use crate::{ServerError, ServerResult};
 use async_trait::async_trait;
 use cb_api::AstService;
 use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
-use cb_plugins::{LspAdapterPlugin, PluginError, PluginManager, PluginRequest};
+use cb_plugins::{LspAdapterPlugin, PluginManager};
 use cb_transport::McpDispatcher;
 use serde_json::{json, Value};
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::{Mutex, OnceCell};
 use tracing::{debug, error, info, instrument, warn};
 
 use super::lsp_adapter::DirectLspAdapter;
-
-/// Adapter to bridge new ToolHandler trait with old ToolHandler trait
-/// This allows new handlers to work with the legacy tool registry
-struct ToolHandlerAdapter {
-    new_handler: Arc<dyn super::tools::ToolHandler>,
-    context: Arc<super::tools::ToolHandlerContext>,
-}
-
-impl ToolHandlerAdapter {
-    fn new(
-        new_handler: Arc<dyn super::tools::ToolHandler>,
-        context: Arc<super::tools::ToolHandlerContext>,
-    ) -> Self {
-        Self {
-            new_handler,
-            context,
-        }
-    }
-}
-
-#[async_trait]
-impl super::tool_handler::ToolHandler for ToolHandlerAdapter {
-    fn supported_tools(&self) -> Vec<&'static str> {
-        self.new_handler.supported_tools().to_vec()
-    }
-
-    async fn handle_tool(
-        &self,
-        tool_call: ToolCall,
-        _context: &super::tool_handler::ToolContext,
-    ) -> ServerResult<Value> {
-        let params = tool_call.arguments.unwrap_or(json!({}));
-        self.new_handler
-            .handle(&tool_call.name, params, &self.context)
-            .await
-    }
-}
 
 /// Application state containing services
 #[derive(Clone)]
@@ -89,11 +52,8 @@ pub struct PluginDispatcher {
     app_state: Arc<AppState>,
     /// LSP adapter for refactoring operations
     lsp_adapter: Arc<Mutex<Option<Arc<DirectLspAdapter>>>>,
-    /// Tool handler registry for automatic routing
-    #[cfg(test)]
+    /// Tool handler registry for automatic routing (public for testing)
     pub tool_registry: Arc<Mutex<super::tool_registry::ToolRegistry>>,
-    #[cfg(not(test))]
-    tool_registry: Arc<Mutex<super::tool_registry::ToolRegistry>>,
     /// Initialization flag
     initialized: OnceCell<()>,
 }
@@ -240,54 +200,20 @@ impl PluginDispatcher {
 
             // Register tool handlers for non-LSP operations
             {
+                use super::tools::*;
                 let mut registry = self.tool_registry.lock().await;
 
-                // Legacy handlers (keeping only what's not replaced by new modular handlers)
-                registry.register(Arc::new(super::file_operation_handler::FileOperationHandler::new()));
-                debug!("Registered FileOperationHandler with 7 tools");
-
-                registry.register(Arc::new(super::refactoring_handler::RefactoringHandler::new()));
-                debug!("Registered RefactoringHandler with 5 tools");
-
-                // New modular handlers (wrapped in adapters for compatibility)
-                // Create context for new handlers
-                let new_handler_context = Arc::new(super::tools::ToolHandlerContext {
-                    app_state: self.app_state.clone(),
-                    plugin_manager: self.plugin_manager.clone(),
-                    lsp_adapter: self.lsp_adapter.clone(),
+                // Register all handlers using the unified ToolHandler trait
+                // Using the declarative macro for clean, maintainable registration
+                register_handlers_with_logging!(registry, {
+                    SystemHandler => "SystemHandler with 3 tools (health_check, web_fetch, system_status)",
+                    LifecycleHandler => "LifecycleHandler with 3 tools (notify_file_opened, notify_file_saved, notify_file_closed)",
+                    WorkspaceHandler => "WorkspaceHandler with 5 tools (rename_directory, analyze_imports, find_dead_code, update_dependencies, extract_module_to_package)",
+                    AdvancedHandler => "AdvancedHandler with 2 tools (apply_edits, batch_execute)",
+                    FileOpsHandler => "FileOpsHandler with 6 tools (create_file, read_file, write_file, delete_file, rename_file, list_files)",
+                    EditingHandler => "EditingHandler with 10 tools (rename_symbol, rename_symbol_strict, rename_symbol_with_imports, organize_imports, fix_imports, get_code_actions, format_document, extract_function, extract_variable, inline_variable)",
+                    NavigationHandler => "NavigationHandler with 13 tools (find_definition, find_references, find_implementations, find_type_definition, get_document_symbols, search_workspace_symbols, get_hover, get_completions, get_signature_help, get_diagnostics, prepare_call_hierarchy, get_call_hierarchy_incoming_calls, get_call_hierarchy_outgoing_calls)",
                 });
-
-                // Register SystemHandler (new) - provides health_check + web_fetch
-                let system_handler = Arc::new(super::tools::SystemHandler::new());
-                registry.register(Arc::new(ToolHandlerAdapter::new(
-                    system_handler,
-                    new_handler_context.clone(),
-                )));
-                debug!("Registered SystemHandler (new) with 2 tools (health_check, web_fetch)");
-
-                // Register LifecycleHandler - provides file lifecycle notifications
-                let lifecycle_handler = Arc::new(super::tools::LifecycleHandler::new());
-                registry.register(Arc::new(ToolHandlerAdapter::new(
-                    lifecycle_handler,
-                    new_handler_context.clone(),
-                )));
-                debug!("Registered LifecycleHandler with 3 tools (notify_file_opened, notify_file_saved, notify_file_closed)");
-
-                // Register WorkspaceHandler - provides workspace operations including analyze_imports
-                let workspace_handler = Arc::new(super::tools::WorkspaceHandler::new());
-                registry.register(Arc::new(ToolHandlerAdapter::new(
-                    workspace_handler,
-                    new_handler_context.clone(),
-                )));
-                debug!("Registered WorkspaceHandler with 4 tools (rename_directory, analyze_imports, find_dead_code, update_dependencies)");
-
-                // Register AdvancedHandler - provides workflow operations + batch_execute
-                let advanced_handler = Arc::new(super::tools::AdvancedHandler::new());
-                registry.register(Arc::new(ToolHandlerAdapter::new(
-                    advanced_handler,
-                    new_handler_context.clone(),
-                )));
-                debug!("Registered AdvancedHandler with 3 tools (apply_edits, achieve_intent, batch_execute)");
             }
 
             Ok::<(), ServerError>(())
@@ -371,11 +297,11 @@ impl PluginDispatcher {
         Ok(json!({ "tools": tools }))
     }
 
-    /// Handle tools/call request using plugins
+    /// Handle tools/call request using the unified tool registry
     ///
-    /// This function serves as the main entry point for all tool executions, routing them
-    /// based on their type (e.g., file operation, refactoring, LSP, system tools).
-    /// It provides comprehensive telemetry including execution duration and success/failure status.
+    /// This function serves as the main entry point for all tool executions.
+    /// All tools are now handled by the unified tool registry, which delegates
+    /// to the appropriate handler based on the tool name.
     ///
     /// # Arguments
     ///
@@ -394,75 +320,21 @@ impl PluginDispatcher {
             .map_err(|e| ServerError::InvalidRequest(format!("Invalid tool call: {}", e)))?;
 
         let tool_name = tool_call.name.clone();
-        debug!(tool_name = %tool_name, "Calling tool with plugin system");
+        debug!(tool_name = %tool_name, "Dispatching tool call to unified registry");
 
-        // Execute the appropriate handler based on tool type
-        // Try tool registry first (for file operations, workflows, system tools, refactoring)
-        let result = {
-            let registry = self.tool_registry.lock().await;
-            if registry.has_tool(&tool_name) {
-                let context = super::tool_handler::ToolContext {
-                    app_state: self.app_state.clone(),
-                    plugin_manager: self.plugin_manager.clone(),
-                    lsp_adapter: self.lsp_adapter.clone(),
-                };
-                drop(registry); // Release lock before async operation
-                self.tool_registry
-                    .lock()
-                    .await
-                    .handle_tool(tool_call, &context)
-                    .await
-            } else {
-                // Fall back to plugin system for LSP operations only
-                // Validate that this is a known LSP tool
-                const LSP_TOOLS: &[&str] = &[
-                    "find_definition",
-                    "find_references",
-                    "find_implementations",
-                    "find_type_definition",
-                    "search_workspace_symbols",
-                    "get_document_symbols",
-                    "get_hover",
-                    "get_completions",
-                    "get_signature_help",
-                    "get_diagnostics",
-                    "prepare_call_hierarchy",
-                    "get_call_hierarchy_incoming_calls",
-                    "get_call_hierarchy_outgoing_calls",
-                ];
-
-                if !LSP_TOOLS.contains(&tool_name.as_str()) {
-                    return Err(ServerError::InvalidRequest(format!(
-                        "Unknown tool: {}",
-                        tool_name
-                    )));
-                }
-
-                let plugin_request = self.convert_tool_call_to_plugin_request(tool_call)?;
-
-                let plugin_start = Instant::now();
-                match self.plugin_manager.handle_request(plugin_request).await {
-                    Ok(response) => {
-                        let processing_time = plugin_start.elapsed().as_millis();
-                        debug!(
-                            processing_time_ms = processing_time,
-                            "Plugin request processed"
-                        );
-
-                        Ok(json!({
-                            "content": response.data.unwrap_or(json!(null)),
-                            "plugin": response.metadata.plugin_name,
-                            "processing_time_ms": response.metadata.processing_time_ms,
-                            "cached": response.metadata.cached
-                        }))
-                    }
-                    Err(err) => {
-                        error!(error = %err, "Plugin request failed");
-                        Err(self.convert_plugin_error_to_server_error(err))
-                    }
-                }
-            }
+        // Create the context all handlers now expect
+        let context = super::tools::ToolHandlerContext {
+            app_state: self.app_state.clone(),
+            plugin_manager: self.plugin_manager.clone(),
+            lsp_adapter: self.lsp_adapter.clone(),
         };
+
+        // Directly dispatch to the tool_registry. It now handles ALL tools.
+        let result = self.tool_registry
+            .lock()
+            .await
+            .handle_tool(tool_call, &context)
+            .await;
 
         // Log telemetry
         let duration = start_time.elapsed();
@@ -489,116 +361,11 @@ impl PluginDispatcher {
         result
     }
 
-    /// Convert MCP tool call to plugin request
-    fn convert_tool_call_to_plugin_request(
-        &self,
-        tool_call: ToolCall,
-    ) -> ServerResult<PluginRequest> {
-        let args = tool_call.arguments.unwrap_or(json!({}));
-
-        // Handle workspace-level operations that don't require a file path
-        let file_path = match tool_call.name.as_str() {
-            "search_workspace_symbols" => {
-                // Use a dummy file path for workspace symbols
-                PathBuf::from(".")
-            }
-            _ => {
-                // Extract file path for file-specific operations
-                let file_path_str =
-                    args.get("file_path")
-                        .and_then(|v| v.as_str())
-                        .ok_or_else(|| {
-                            ServerError::InvalidRequest("Missing file_path parameter".into())
-                        })?;
-                PathBuf::from(file_path_str)
-            }
-        };
-
-        let mut request = PluginRequest::new(tool_call.name, file_path);
-
-        // Extract position if available
-        // If line or character are provided, they must be valid numbers
-        let line_opt = match args.get("line") {
-            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
-                ServerError::InvalidRequest(format!(
-                    "Parameter 'line' must be a number, got: {}",
-                    val
-                ))
-            })?),
-            _ => None,
-        };
-
-        let character_opt = match args.get("character") {
-            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
-                ServerError::InvalidRequest(format!(
-                    "Parameter 'character' must be a number, got: {}",
-                    val
-                ))
-            })?),
-            _ => None,
-        };
-
-        if let (Some(line), Some(character)) = (line_opt, character_opt) {
-            request = request.with_position(line as u32 - 1, character as u32); // Convert to 0-indexed
-        }
-
-        // Extract range if available
-        // If range parameters are provided, they must be valid numbers
-        let start_line_opt = match args.get("start_line") {
-            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
-                ServerError::InvalidRequest(format!(
-                    "Parameter 'start_line' must be a number, got: {}",
-                    val
-                ))
-            })?),
-            _ => None,
-        };
-
-        let start_char_opt = match args.get("start_character") {
-            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
-                ServerError::InvalidRequest(format!(
-                    "Parameter 'start_character' must be a number, got: {}",
-                    val
-                ))
-            })?),
-            _ => None,
-        };
-
-        let end_line_opt = match args.get("end_line") {
-            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
-                ServerError::InvalidRequest(format!(
-                    "Parameter 'end_line' must be a number, got: {}",
-                    val
-                ))
-            })?),
-            _ => None,
-        };
-
-        let end_char_opt = match args.get("end_character") {
-            Some(val) if !val.is_null() => Some(val.as_u64().ok_or_else(|| {
-                ServerError::InvalidRequest(format!(
-                    "Parameter 'end_character' must be a number, got: {}",
-                    val
-                ))
-            })?),
-            _ => None,
-        };
-
-        if let (Some(start_line), Some(start_char), Some(end_line), Some(end_char)) =
-            (start_line_opt, start_char_opt, end_line_opt, end_char_opt)
-        {
-            request = request.with_range(
-                start_line as u32 - 1,
-                start_char as u32,
-                end_line as u32 - 1,
-                end_char as u32,
-            ); // Convert to 0-indexed
-        }
-
-        // Set parameters
-        request = request.with_params(args);
-
-        Ok(request)
+    /// Public method for benchmarking tool dispatch
+    ///
+    /// This method provides access to the tool dispatch logic for performance benchmarking
+    pub async fn benchmark_tool_call(&self, params: Option<Value>) -> ServerResult<Value> {
+        self.handle_tool_call(params).await
     }
 
     /// Handle MCP initialize request
@@ -624,26 +391,6 @@ impl PluginDispatcher {
 
         // Server is ready - return empty response for notification
         Ok(json!({}))
-    }
-
-    /// Convert plugin error to server error
-    fn convert_plugin_error_to_server_error(&self, error: PluginError) -> ServerError {
-        match error {
-            PluginError::PluginNotFound { file, method } => ServerError::Unsupported(format!(
-                "No plugin found for file '{}' and method '{}'",
-                file, method
-            )),
-            PluginError::MethodNotSupported { method, plugin } => ServerError::Unsupported(
-                format!("Method '{}' not supported by plugin '{}'", method, plugin),
-            ),
-            PluginError::PluginRequestFailed { plugin, message } => {
-                ServerError::Internal(format!("Plugin '{}' failed: {}", plugin, message))
-            }
-            PluginError::ConfigurationError { message } => {
-                ServerError::InvalidRequest(format!("Configuration error: {}", message))
-            }
-            _ => ServerError::Internal(format!("Plugin error: {}", error)),
-        }
     }
 
     /// Returns a reference to the plugin manager for advanced operations.
@@ -759,7 +506,6 @@ impl McpDispatcher for PluginDispatcher {
 
 /// Create a test dispatcher for testing purposes
 /// This is exposed publicly to support integration tests
-#[cfg(test)]
 pub fn create_test_dispatcher() -> PluginDispatcher {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let ast_cache = Arc::new(cb_ast::AstCache::new());

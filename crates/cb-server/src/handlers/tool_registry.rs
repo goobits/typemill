@@ -2,7 +2,7 @@
 //!
 //! Central registry for all tool handlers with automatic routing based on tool names.
 
-use super::tool_handler::{ToolContext, ToolHandler};
+use super::tools::{ToolHandler, ToolHandlerContext};
 use crate::{ServerError, ServerResult};
 use cb_core::model::mcp::ToolCall;
 use serde_json::Value;
@@ -29,14 +29,14 @@ impl ToolRegistry {
 
     /// Register a tool handler
     ///
-    /// All tools returned by `handler.supported_tools()` will be registered.
+    /// All tools returned by `handler.tool_names()` will be registered.
     /// If a tool name is already registered, it will be replaced and a warning logged.
     ///
     /// # Arguments
     ///
     /// * `handler` - The handler to register
     pub fn register(&mut self, handler: Arc<dyn ToolHandler>) {
-        for tool_name in handler.supported_tools() {
+        for tool_name in handler.tool_names() {
             debug!(tool_name = %tool_name, "Registering tool handler");
             if self
                 .handlers
@@ -65,10 +65,10 @@ impl ToolRegistry {
     pub async fn handle_tool(
         &self,
         tool_call: ToolCall,
-        context: &ToolContext,
+        context: &ToolHandlerContext,
     ) -> ServerResult<Value> {
         if let Some(handler) = self.handlers.get(&tool_call.name) {
-            handler.handle_tool(tool_call, context).await
+            handler.handle_tool_call(context, &tool_call).await
         } else {
             Err(ServerError::Unsupported(format!(
                 "No handler for tool: {}",
@@ -111,6 +111,7 @@ impl Default for ToolRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
     use async_trait::async_trait;
     use serde_json::json;
 
@@ -120,14 +121,14 @@ mod tests {
 
     #[async_trait]
     impl ToolHandler for TestHandler {
-        fn supported_tools(&self) -> Vec<&'static str> {
-            self.tools.clone()
+        fn tool_names(&self) -> &[&str] {
+            &self.tools
         }
 
-        async fn handle_tool(
+        async fn handle_tool_call(
             &self,
-            tool_call: ToolCall,
-            _context: &ToolContext,
+            _context: &ToolHandlerContext,
+            tool_call: &ToolCall,
         ) -> ServerResult<Value> {
             Ok(json!({
                 "tool": tool_call.name,

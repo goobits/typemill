@@ -3,7 +3,7 @@
 //! Handles: apply_edits, achieve_intent, batch_execute
 
 use super::{ToolHandler, ToolHandlerContext};
-use crate::handlers::tool_handler::{ToolContext, ToolHandler as LegacyToolHandler};
+use crate::handlers::compat::{ToolContext, ToolHandler as LegacyToolHandler};
 use crate::handlers::workflow_handler::WorkflowHandler as LegacyWorkflowHandler;
 use crate::ServerResult;
 use async_trait::async_trait;
@@ -24,22 +24,24 @@ impl AdvancedHandler {
 
 #[async_trait]
 impl ToolHandler for AdvancedHandler {
-    fn supported_tools(&self) -> &[&'static str] {
-        &["apply_edits", "achieve_intent", "batch_execute"]
+    fn tool_names(&self) -> &[&str] {
+        &["apply_edits", "batch_execute"]
     }
 
-    async fn handle(
+    async fn handle_tool_call(
         &self,
-        tool_name: &str,
-        params: Value,
         context: &ToolHandlerContext,
+        tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        match tool_name {
-            "apply_edits" | "achieve_intent" => {
+        let tool_name = &tool_call.name;
+        let params = tool_call.arguments.clone().unwrap_or_else(|| serde_json::json!({}));
+
+        match tool_name.as_str() {
+            "apply_edits" => {
                 // Convert to ToolCall for legacy handler
                 let tool_call = ToolCall {
                     name: tool_name.to_string(),
-                    arguments: Some(params),
+                    arguments: Some(params.clone()),
                 };
 
                 // Convert new context to legacy context
