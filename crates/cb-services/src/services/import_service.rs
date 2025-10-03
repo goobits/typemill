@@ -40,13 +40,16 @@ impl ImportService {
     }
 
     /// Update imports after a file rename
+    ///
+    /// Returns an EditPlan that should be applied via FileService.apply_edit_plan()
     pub async fn update_imports_for_rename(
         &self,
         old_path: &Path,
         new_path: &Path,
         rename_info: Option<&serde_json::Value>,
         dry_run: bool,
-    ) -> ServerResult<ImportUpdateReport> {
+        scan_scope: Option<cb_ast::language::ScanScope>,
+    ) -> ServerResult<cb_protocol::EditPlan> {
         info!(
             old_path = ?old_path,
             new_path = ?new_path,
@@ -76,55 +79,30 @@ impl ImportService {
             has_rename_info = rename_info.is_some(),
             "Calling update_imports_for_rename"
         );
-        let result = update_imports_for_rename(
+        let edit_plan = update_imports_for_rename(
             &old_abs,
             &new_abs,
             &self.project_root,
             &self.adapters,
             rename_info,
             dry_run,
+            scan_scope,
         )
         .await
         .map_err(|e| ServerError::Internal(format!("Failed to update imports: {}", e)))?;
 
         debug!(
-            files_updated = result.updated_files.len(),
-            imports_updated = result.imports_updated,
-            "update_imports_for_rename result"
+            edits_count = edit_plan.edits.len(),
+            "update_imports_for_rename created EditPlan"
         );
 
-        // Create report
-        let report = ImportUpdateReport {
-            files_updated: result.updated_files.len(),
-            imports_updated: result.imports_updated,
-            failed_files: result.failed_files.len(),
-            updated_paths: result
-                .updated_files
-                .iter()
-                .map(|p| p.to_string_lossy().to_string())
-                .collect(),
-            errors: result
-                .failed_files
-                .iter()
-                .map(|(p, e)| format!("{}: {}", p.display(), e))
-                .collect(),
-        };
+        info!(
+            edits = edit_plan.edits.len(),
+            dry_run = dry_run,
+            "Import update EditPlan created"
+        );
 
-        if dry_run {
-            info!(
-                files_affected = report.files_updated,
-                imports_affected = report.imports_updated,
-                "Dry run complete - no files were actually modified"
-            );
-        } else {
-            info!(
-                files_updated = report.files_updated,
-                imports_updated = report.imports_updated,
-                "Import update complete"
-            );
-        }
-
-        Ok(report)
+        Ok(edit_plan)
     }
 
     /// Find all files that would be affected by a rename

@@ -304,7 +304,46 @@ pub struct ImportUpdateResult {
     pub imports_updated: usize,
 }
 
+/// Helper function to create TextEdits from ModuleReferences for import path updates
+fn create_text_edits_from_references(
+    references: &[crate::language::ModuleReference],
+    file_path: &Path,
+    old_module_name: &str,
+    new_module_name: &str,
+) -> Vec<cb_protocol::TextEdit> {
+    use cb_protocol::{EditLocation, EditType, TextEdit};
+
+    references
+        .iter()
+        .map(|refer| TextEdit {
+            file_path: Some(file_path.to_string_lossy().to_string()),
+            edit_type: EditType::UpdateImport,
+            location: EditLocation {
+                start_line: (refer.line.saturating_sub(1)) as u32, // Convert to 0-based
+                start_column: refer.column as u32,
+                end_line: (refer.line.saturating_sub(1)) as u32,
+                end_column: (refer.column + refer.length) as u32,
+            },
+            original_text: refer.text.clone(),
+            new_text: refer.text.replace(old_module_name, new_module_name),
+            priority: 1,
+            description: format!(
+                "Update {} reference from '{}' to '{}'",
+                match refer.kind {
+                    crate::language::ReferenceKind::Declaration => "import",
+                    crate::language::ReferenceKind::QualifiedPath => "qualified path",
+                    crate::language::ReferenceKind::StringLiteral => "string literal",
+                },
+                old_module_name,
+                new_module_name
+            ),
+        })
+        .collect()
+}
+
 /// Update import paths in all affected files after a file/directory rename
+///
+/// Returns an EditPlan that can be applied via FileService.apply_edit_plan()
 pub async fn update_imports_for_rename(
     old_path: &Path,
     new_path: &Path,
@@ -312,30 +351,90 @@ pub async fn update_imports_for_rename(
     adapters: &[std::sync::Arc<dyn crate::language::LanguageAdapter>],
     rename_info: Option<&serde_json::Value>,
     dry_run: bool,
-) -> AstResult<ImportUpdateResult> {
+    scan_scope: Option<crate::language::ScanScope>,
+) -> AstResult<cb_protocol::EditPlan> {
     let resolver = ImportPathResolver::new(project_root);
 
     // Find all files that the adapters handle
     let project_files = find_project_files(project_root, adapters).await?;
 
     // Find files that import the renamed file
-    let affected_files = resolver
+    let mut affected_files = resolver
         .find_affected_files(old_path, &project_files)
         .await?;
+
+    // If scan_scope is provided, use enhanced scanning to find additional references
+    if let Some(scope) = scan_scope {
+        use std::collections::HashSet;
+
+        // Get module name from old path for searching
+        let module_name = old_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("");
+
+        // Use HashSet to avoid duplicates
+        let mut all_affected: HashSet<PathBuf> = affected_files.iter().cloned().collect();
+
+        debug!(
+            scan_scope = ?scope,
+            module_name = %module_name,
+            "Using enhanced scanning to find additional references"
+        );
+
+        // Scan all project files for module references
+        for file_path in &project_files {
+            // Find the appropriate adapter for this file
+            let adapter = if let Some(ext) = file_path.extension() {
+                let ext_str = ext.to_str().unwrap_or("");
+                adapters.iter().find(|a| a.handles_extension(ext_str))
+            } else {
+                None
+            };
+
+            if let Some(adapter) = adapter {
+                // Read file content
+                if let Ok(content) = tokio::fs::read_to_string(file_path).await {
+                    // Find module references using the enhanced scanner
+                    if let Ok(refs) = adapter.find_module_references(&content, module_name, scope) {
+                        if !refs.is_empty() {
+                            debug!(
+                                file = ?file_path,
+                                references = refs.len(),
+                                "Found module references via enhanced scanning"
+                            );
+                            all_affected.insert(file_path.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        affected_files = all_affected.into_iter().collect();
+    }
 
     info!(
         dry_run = dry_run,
         affected_files = affected_files.len(),
         old_path = ?old_path,
+        scan_scope = ?scan_scope,
         "Found files potentially affected by rename"
     );
 
-    let mut result = ImportUpdateResult {
-        updated_files: Vec::new(),
-        failed_files: Vec::new(),
-        imports_updated: 0,
-    };
+    // Get module names for reference replacement
+    let old_module_name = old_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+    let new_module_name = new_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
 
+    let mut all_edits = Vec::new();
+    let mut edited_file_count = 0;
+
+    // Build TextEdits for each affected file
     for file_path in affected_files {
         // Find the appropriate adapter for this file
         let adapter = if let Some(ext) = file_path.extension() {
@@ -358,59 +457,110 @@ pub async fn update_imports_for_rename(
             Ok(c) => c,
             Err(e) => {
                 warn!(error = %e, file = ?file_path, "Failed to read file");
-                result.failed_files.push((file_path, e.to_string()));
                 continue;
             }
         };
 
-        // Use adapter to rewrite imports
-        match adapter.rewrite_imports_for_rename(
-            &content,
-            old_path,
-            new_path,
-            &file_path,
-            project_root,
-            rename_info,
-        ) {
-            Ok((updated_content, count)) => {
-                if count > 0 {
-                    if !dry_run {
-                        // Write the updated content back to the file
-                        if let Err(e) = tokio::fs::write(&file_path, updated_content).await {
-                            warn!(error = %e, file = ?file_path, "Failed to write file");
-                            result.failed_files.push((file_path, e.to_string()));
-                            continue;
-                        }
-                        debug!(file = ?file_path, "Wrote updated imports to file");
-                    } else {
-                        debug!(file = ?file_path, changes = count, "[DRY RUN] Would update imports");
-                    }
-
-                    result.updated_files.push(file_path.clone());
-                    result.imports_updated += count;
-                    debug!(
-                        imports = count,
-                        file = ?file_path,
-                        dry_run = dry_run,
-                        "Updated imports in file"
+        // If scan_scope is provided, use find_module_references for precise edits
+        if let Some(scope) = scan_scope {
+            if let Ok(refs) = adapter.find_module_references(&content, old_module_name, scope) {
+                if !refs.is_empty() {
+                    let edits = create_text_edits_from_references(
+                        &refs,
+                        &file_path,
+                        old_module_name,
+                        new_module_name,
                     );
+                    debug!(
+                        file = ?file_path,
+                        edits = edits.len(),
+                        "Created precise TextEdits from module references"
+                    );
+                    all_edits.extend(edits);
+                    edited_file_count += 1;
                 }
             }
-            Err(e) => {
-                warn!(error = %e, file = ?file_path, "Failed to update imports");
-                result.failed_files.push((file_path, e.to_string()));
+        } else {
+            // Fallback to the old rewrite logic
+            match adapter.rewrite_imports_for_rename(
+                &content,
+                old_path,
+                new_path,
+                &file_path,
+                project_root,
+                rename_info,
+            ) {
+                Ok((updated_content, count)) => {
+                    if count > 0 && updated_content != content {
+                        // Create a single TextEdit for the entire file content replacement
+                        use cb_protocol::{EditLocation, EditType, TextEdit};
+                        let line_count = content.lines().count();
+                        let last_line_len = content.lines().last().map(|l| l.len()).unwrap_or(0);
+
+                        all_edits.push(TextEdit {
+                            file_path: Some(file_path.to_string_lossy().to_string()),
+                            edit_type: EditType::UpdateImport,
+                            location: EditLocation {
+                                start_line: 0,
+                                start_column: 0,
+                                end_line: line_count.saturating_sub(1) as u32,
+                                end_column: last_line_len as u32,
+                            },
+                            original_text: content.clone(),
+                            new_text: updated_content,
+                            priority: 1,
+                            description: format!(
+                                "Update imports in {} (legacy rewrite)",
+                                file_path.display()
+                            ),
+                        });
+                        edited_file_count += 1;
+                        debug!(
+                            file = ?file_path,
+                            imports_updated = count,
+                            "Created full-file TextEdit from legacy rewrite"
+                        );
+                    }
+                }
+                Err(e) => {
+                    warn!(error = %e, file = ?file_path, "Failed to rewrite imports");
+                }
             }
         }
     }
 
     info!(
-        files_updated = result.updated_files.len(),
-        imports_updated = result.imports_updated,
+        files_affected = edited_file_count,
+        edits_created = all_edits.len(),
         dry_run = dry_run,
-        "Import update complete"
+        scan_scope = ?scan_scope,
+        "Built EditPlan for import updates"
     );
 
-    Ok(result)
+    // Build and return the EditPlan
+    use cb_protocol::{EditPlan, EditPlanMetadata};
+
+    Ok(EditPlan {
+        source_file: old_path.to_string_lossy().to_string(),
+        edits: all_edits,
+        dependency_updates: Vec::new(),
+        validations: Vec::new(),
+        metadata: EditPlanMetadata {
+            intent_name: "rename_file_or_directory".to_string(),
+            intent_arguments: serde_json::json!({
+                "old_path": old_path.to_string_lossy(),
+                "new_path": new_path.to_string_lossy(),
+                "scan_scope": scan_scope.map(|s| format!("{:?}", s)),
+                "dry_run": dry_run,
+            }),
+            created_at: chrono::Utc::now(),
+            complexity: if scan_scope.is_some() { 7 } else { 5 },
+            impact_areas: vec![
+                "imports".to_string(),
+                "file_references".to_string(),
+            ],
+        },
+    })
 }
 
 /// Extract import path from an import/require statement

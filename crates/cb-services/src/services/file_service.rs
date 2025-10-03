@@ -136,9 +136,9 @@ impl FileService {
 
             let affected_files = self.import_service.find_affected_files(&old_abs).await?;
 
-            let import_report = self
+            let edit_plan = self
                 .import_service
-                .update_imports_for_rename(&old_abs, &new_abs, None, true)
+                .update_imports_for_rename(&old_abs, &new_abs, None, true, None)
                 .await?;
 
             Ok(DryRunnable::new(
@@ -148,7 +148,13 @@ impl FileService {
                     "old_path": old_abs.to_string_lossy(),
                     "new_path": new_abs.to_string_lossy(),
                     "affected_files": affected_files.len(),
-                    "import_updates": import_report,
+                    "import_updates": {
+                        "edits_planned": edit_plan.edits.len(),
+                        "files_to_modify": edit_plan.edits.iter()
+                            .filter_map(|e| e.file_path.as_ref())
+                            .collect::<std::collections::HashSet<_>>()
+                            .len(),
+                    },
                 }),
             ))
         } else {
@@ -171,19 +177,26 @@ impl FileService {
 
             info!("File renamed successfully");
 
-            let import_report = self
+            let edit_plan = self
                 .import_service
-                .update_imports_for_rename(&old_abs, &new_abs, None, false)
+                .update_imports_for_rename(&old_abs, &new_abs, None, false, None)
                 .await
                 .map_err(|e| {
                     warn!(error = %e, "File renamed but import updates failed");
                     ServerError::Internal(format!("Import updates failed: {}", e))
                 })?;
 
+            // Apply the edit plan to update imports
+            let edit_result = self.apply_edit_plan(&edit_plan).await.map_err(|e| {
+                warn!(error = %e, "Failed to apply import update edits");
+                ServerError::Internal(format!("Failed to apply import updates: {}", e))
+            })?;
+
             info!(
-                imports_updated = import_report.imports_updated,
-                files_updated = import_report.files_updated,
-                "Successfully updated imports"
+                edits_applied = edit_plan.edits.len(),
+                files_modified = edit_result.modified_files.len(),
+                success = edit_result.success,
+                "Successfully updated imports via EditPlan"
             );
 
             Ok(DryRunnable::new(
@@ -193,7 +206,11 @@ impl FileService {
                     "old_path": old_abs.to_string_lossy(),
                     "new_path": new_abs.to_string_lossy(),
                     "success": true,
-                    "import_updates": import_report,
+                    "import_updates": {
+                        "edits_applied": edit_plan.edits.len(),
+                        "files_modified": edit_result.modified_files,
+                        "success": edit_result.success,
+                    },
                 }),
             ))
         }
@@ -205,7 +222,7 @@ impl FileService {
         old_dir_path: &Path,
         new_dir_path: &Path,
         dry_run: bool,
-        _update_mode: Option<cb_ast::language::ScanScope>,
+        scan_scope: Option<cb_ast::language::ScanScope>,
     ) -> ServerResult<DryRunnable<Value>> {
         info!(old_path = ?old_dir_path, new_path = ?new_dir_path, dry_run, "Renaming directory");
 
@@ -287,7 +304,7 @@ impl FileService {
 
             info!("Directory renamed successfully");
 
-            let mut total_imports_updated = 0;
+            let mut total_edits_applied = 0;
             let mut total_files_updated = std::collections::HashSet::new();
             let mut all_errors = Vec::new();
 
@@ -302,20 +319,36 @@ impl FileService {
                         &new_file_path,
                         rename_info.as_ref(),
                         false,
+                        scan_scope,
                     )
                     .await
                 {
-                    Ok(report) => {
-                        total_imports_updated += report.imports_updated;
-                        for path_str in report.updated_paths {
-                            total_files_updated.insert(path_str);
+                    Ok(edit_plan) => {
+                        // Apply the edit plan
+                        match self.apply_edit_plan(&edit_plan).await {
+                            Ok(result) => {
+                                total_edits_applied += edit_plan.edits.len();
+                                for file in result.modified_files {
+                                    total_files_updated.insert(file);
+                                }
+                                if let Some(errors) = result.errors {
+                                    all_errors.extend(errors);
+                                }
+                            }
+                            Err(e) => {
+                                let error_msg = format!(
+                                    "Failed to apply import edits for {:?}: {}",
+                                    old_file_path, e
+                                );
+                                warn!(error = %e, file_path = %old_file_path.display(), "Failed to apply import edits");
+                                all_errors.push(error_msg);
+                            }
                         }
-                        all_errors.extend(report.errors);
                     }
                     Err(e) => {
                         let error_msg =
-                            format!("Failed to update imports for {:?}: {}", old_file_path, e);
-                        warn!(error = %e, file_path = %old_file_path.display(), "Failed to update imports");
+                            format!("Failed to create import plan for {:?}: {}", old_file_path, e);
+                        warn!(error = %e, file_path = %old_file_path.display(), "Failed to create import plan");
                         all_errors.push(error_msg);
                     }
                 }
@@ -338,7 +371,7 @@ impl FileService {
 
             info!(
                 files_moved = files_to_move.len(),
-                imports_updated = total_imports_updated,
+                edits_applied = total_edits_applied,
                 files_updated = total_files_updated.len(),
                 "Directory rename complete"
             );
@@ -352,7 +385,7 @@ impl FileService {
                     "files_moved": files_to_move.len(),
                     "import_updates": {
                         "files_updated": total_files_updated.len(),
-                        "imports_updated": total_imports_updated,
+                        "edits_applied": total_edits_applied,
                         "errors": all_errors,
                     },
                     "documentation_updates": doc_updates,
