@@ -214,10 +214,27 @@ impl FileOperationHandler {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
+        // Parse update_mode parameter (optional, defaults to Conservative)
+        let update_mode = args
+            .get("update_mode")
+            .and_then(|v| v.as_str())
+            .and_then(|s| match s.to_lowercase().as_str() {
+                "conservative" => Some(crate::handlers::tools::workspace::UpdateMode::Conservative),
+                "standard" => Some(crate::handlers::tools::workspace::UpdateMode::Standard),
+                "aggressive" => Some(crate::handlers::tools::workspace::UpdateMode::Aggressive),
+                _ => None
+            })
+            .unwrap_or(crate::handlers::tools::workspace::UpdateMode::Conservative);
+
         let result = context
             .app_state
             .file_service
-            .rename_directory_with_imports(Path::new(old_path), Path::new(new_path), dry_run)
+            .rename_directory_with_imports(
+                Path::new(old_path),
+                Path::new(new_path),
+                dry_run,
+                Some(update_mode.to_scan_scope())
+            )
             .await?;
 
         if result.dry_run {

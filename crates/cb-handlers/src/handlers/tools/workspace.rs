@@ -12,6 +12,29 @@ use cb_core::model::mcp::ToolCall;
 use cb_protocol::ApiResult as ServerResult;
 use serde_json::Value;
 
+/// Controls how aggressively imports are updated during rename operations
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UpdateMode {
+    /// Only update top-level import/use statements (current default behavior)
+    Conservative,
+    /// Update all import/use statements including function-scoped ones
+    Standard,
+    /// Update all imports and qualified paths (e.g., module::function, module.method)
+    Aggressive,
+}
+
+impl UpdateMode {
+    /// Convert UpdateMode to cb_ast::language::ScanScope
+    pub fn to_scan_scope(self) -> cb_ast::language::ScanScope {
+        use cb_ast::language::ScanScope;
+        match self {
+            UpdateMode::Conservative => ScanScope::TopLevelOnly,
+            UpdateMode::Standard => ScanScope::AllUseStatements,
+            UpdateMode::Aggressive => ScanScope::QualifiedPaths,
+        }
+    }
+}
+
 pub struct WorkspaceHandler {
     file_handler: LegacyFileHandler,
     system_handler: LegacySystemHandler,

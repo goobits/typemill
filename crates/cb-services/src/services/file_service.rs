@@ -205,6 +205,7 @@ impl FileService {
         old_dir_path: &Path,
         new_dir_path: &Path,
         dry_run: bool,
+        _update_mode: Option<cb_ast::language::ScanScope>,
     ) -> ServerResult<DryRunnable<Value>> {
         info!(old_path = ?old_dir_path, new_path = ?new_dir_path, dry_run, "Renaming directory");
 
