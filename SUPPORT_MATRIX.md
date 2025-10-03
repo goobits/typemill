@@ -72,8 +72,7 @@
 | Function | Status | TypeScript/JS | Python | Go | Rust | Notes |
 |----------|--------|---------------|--------|-----|------|-------|
 | `apply_edits` | ✅ Full | ✅ | ✅ | ✅ | ✅ | **Atomic multi-file edits with rollback** |
-| `rename_symbol_with_imports` | ✅ Full | ✅ | ✅ | ✅ | ✅ | **LSP-based symbol rename with automatic import updates**. Implemented as workflow via `achieve_intent` |
-| `achieve_intent` | ✅ Full | ✅ | ✅ | ✅ | ✅ | Workflow planning/execution, supports resume |
+| `batch_execute` | ✅ Full | ✅ | ✅ | ✅ | ✅ | **Batch file operations** with atomic guarantees |
 
 ### LSP Lifecycle Notifications
 
@@ -109,13 +108,13 @@
 
 ## 📚 Additional Resources
 
-- **[MCP_API.md](./MCP_API.md)** - Complete API reference with parameters, examples, and return types for all 41 tools
+- **[MCP_API.md](./MCP_API.md)** - Complete API reference with parameters, examples, and return types for all 42 tools
 - **[docs/architecture/ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md)** - Implementation architecture and design decisions
 - **[CLAUDE.md](./CLAUDE.md)** - Project overview and development guide
 
 ---
 
 **Notes**:
-- This matrix reflects the current codebase state as of 2025-10-02
+- This matrix reflects the current codebase state as of 2025-10-03
 - Language support depends on configured LSP servers in `.codebuddy/config.json`
 - **LSP-first with AST fallback** means the tool attempts to use LSP code actions first, and falls back to AST parsing if the language server doesn't support the operation

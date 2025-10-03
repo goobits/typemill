@@ -1,7 +1,7 @@
 # CodeBuddy Makefile
 # Simple build automation for common development tasks
 
-.PHONY: build release test install uninstall clean setup help
+.PHONY: build release test install uninstall clean setup help clippy fmt check check-duplicates
 
 # Configure sccache for faster builds (if installed)
 SCCACHE_BIN := $(shell command -v sccache 2>/dev/null)
@@ -72,6 +72,18 @@ setup:
 	@cargo install sccache
 	@./scripts/setup-dev-tools.sh
 
+# Code quality targets
+clippy:
+	cargo clippy --workspace -- -D warnings
+
+fmt:
+	cargo fmt --all --check
+
+check: fmt clippy test
+
+check-duplicates:
+	@./scripts/check-duplicates.sh
+
 # Show available commands
 help:
 	@echo "CodeBuddy - Available Commands"
@@ -87,6 +99,12 @@ help:
 	@echo "  make test     - Run all tests"
 	@echo "  make clean    - Remove build artifacts"
 	@echo "  make setup    - Install build optimization tools (sccache, mold)"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  make clippy   - Run clippy linter"
+	@echo "  make fmt      - Check code formatting"
+	@echo "  make check    - Run fmt + clippy + test"
+	@echo "  make check-duplicates - Detect duplicate code & complexity"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make setup    # First time only"

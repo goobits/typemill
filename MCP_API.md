@@ -9,15 +9,13 @@ Complete API documentation for all 42 MCP tools available in CodeBuddy.
 
 ## Table of Contents
 
-- [Navigation & Intelligence](#navigation--intelligence) (13 tools)
-- [Editing & Refactoring](#editing--refactoring) (9 tools)
+- [Navigation & Intelligence](#navigation--intelligence) (14 tools)
+- [Editing & Refactoring](#editing--refactoring) (10 tools)
 - [File Operations](#file-operations) (6 tools)
 - [Workspace Operations](#workspace-operations) (5 tools)
-- [Advanced Operations](#advanced-operations) (4 tools: apply_edits, batch_execute, rename_symbol_with_imports, achieve_intent)
+- [Advanced Operations](#advanced-operations) (2 tools)
 - [LSP Lifecycle](#lsp-lifecycle) (3 tools)
-- [System & Health](#system--health) (1 tool)
-- [Web/Network](#webnetwork) (1 tool)
-- [Specialized Tools](#specialized-tools) (1 tool)
+- [System & Health](#system--health) (2 tools)
 - [Common Patterns](#common-patterns)
 - [Error Reference](#error-reference)
 
@@ -25,7 +23,7 @@ Complete API documentation for all 42 MCP tools available in CodeBuddy.
 
 ## Navigation & Intelligence
 
-LSP-based navigation and code intelligence tools. Language support depends on configured LSP servers.
+LSP-based navigation and code intelligence tools (14 tools). Language support depends on configured LSP servers.
 
 ### `find_definition`
 
@@ -445,7 +443,7 @@ Find underlying type definition.
 
 ## Editing & Refactoring
 
-LSP-based editing and refactoring operations (9 tools).
+LSP-based editing and refactoring operations (10 tools).
 
 ### `rename_symbol`
 
@@ -1259,48 +1257,6 @@ Update project dependencies using package manager.
 
 ---
 
-## Specialized Tools
-
-### `extract_module_to_package`
-
-Extract a module to a separate package with multi-language support.
-
-**Parameters:**
-```json
-{
-  "source_package": "github.com/user/project",     // Required: Source package path
-  "module_path": "internal/utils",                 // Required: Path to module to extract
-  "target_package_path": "pkg/utils",              // Required: Target package path
-  "target_package_name": "utils",                  // Required: Target package name
-  "dry_run": false                                 // Optional: Preview changes (default: false)
-}
-```
-
-**Returns:**
-```json
-{
-  "success": true,
-  "files_created": 3,
-  "imports_updated": 12,
-  "files_affected": ["cmd/main.go", "internal/handler.go"],
-  "package_path": "pkg/utils"
-}
-```
-
-**Notes:**
-- **Multi-language support**: Rust, TypeScript/JavaScript, Python, Go, Java
-- **Language-specific behavior**:
-  - **Rust**: Uses `syn` crate for AST parsing, generates Cargo.toml
-  - **TypeScript/JS**: Directory-based modules, generates package.json
-  - **Python**: Package structure with __init__.py, generates pyproject.toml
-  - **Go**: Uses `go/parser` via subprocess, generates go.mod
-  - **Java**: Maven/Gradle package structure, generates pom.xml
-- Moves module files to new package
-- Updates all import statements across workspace using language-aware AST parsing
-- Creates package directory structure and manifest file
-
----
-
 ## Advanced Operations
 
 High-level operations combining multiple tools.
@@ -1680,6 +1636,8 @@ Notify LSP servers that a file was closed.
 
 ## System & Health
 
+System health monitoring and web fetching (2 tools).
+
 ### `health_check`
 
 Get server health status and statistics.
@@ -1714,8 +1672,6 @@ Get server health status and statistics.
 ```
 
 ---
-
-## Web/Network
 
 ### `web_fetch`
 

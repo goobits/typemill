@@ -26,15 +26,14 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Feature-gated with `#[cfg(all(unix, feature = "vfs"))]`
   - Build with: `cargo build --features vfs`
   - Not included in default build
-- **40 MCP Tools** - Complete implementation across all categories
-  - Navigation & Intelligence (13 tools)
-  - Editing & Refactoring (8 tools)
+- **42 MCP Tools** - Complete implementation across all categories
+  - Navigation & Intelligence (14 tools)
+  - Editing & Refactoring (10 tools)
   - File Operations (6 tools)
-  - Workspace Operations (4 tools)
-  - Advanced Operations (3 tools)
+  - Workspace Operations (5 tools)
+  - Advanced Operations (2 tools)
   - LSP Lifecycle (3 tools)
-  - System & Health (1 tool)
-  - Web/Network (1 tool)
+  - System & Health (2 tools)
 
 #### Changed
 - **Structured logging**: All production code now uses tracing framework
@@ -60,7 +59,7 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 #### Added
 - Core LSP integration with multiple language servers
-- MCP protocol support (40 tools)
+- MCP protocol support (42 tools)
 - Plugin architecture with LSP adapters
 - WebSocket transport with JWT authentication
 - Production-ready error handling

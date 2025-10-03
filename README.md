@@ -192,6 +192,10 @@ cargo test -- --nocapture     # With output
 cargo clippy                  # Linting
 cargo fmt                     # Formatting
 cargo check                   # Type checking
+make clippy                   # Run clippy linter
+make fmt                      # Check code formatting
+make check                    # Run fmt + clippy + test
+make check-duplicates         # Detect duplicate code & complexity
 ```
 
 **Directory Structure:**

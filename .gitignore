@@ -93,3 +93,9 @@ target/
 
 # Test outputs
 test-results/
+
+# Code quality reports
+.build/
+jscpd-report/
+*-report.json
+complexity-report.json

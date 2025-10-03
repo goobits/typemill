@@ -239,21 +239,12 @@ impl PluginDispatcher {
             {
                 let mut registry = self.tool_registry.lock().await;
 
-                // Legacy handlers (to be phased out)
+                // Legacy handlers (keeping only what's not replaced by new modular handlers)
                 registry.register(Arc::new(super::file_operation_handler::FileOperationHandler::new()));
                 debug!("Registered FileOperationHandler with 7 tools");
 
-                registry.register(Arc::new(super::workflow_handler::WorkflowHandler::new()));
-                debug!("Registered WorkflowHandler with 2 tools");
-
-                registry.register(Arc::new(super::system_handler::SystemHandler::new()));
-                debug!("Registered SystemHandler with 5 tools");
-
                 registry.register(Arc::new(super::refactoring_handler::RefactoringHandler::new()));
                 debug!("Registered RefactoringHandler with 5 tools");
-
-                registry.register(Arc::new(super::dependency_handler::DependencyHandler::new()));
-                debug!("Registered DependencyHandler with 1 tool");
 
                 // New modular handlers (wrapped in adapters for compatibility)
                 // Create context for new handlers
@@ -263,7 +254,31 @@ impl PluginDispatcher {
                     lsp_adapter: self.lsp_adapter.clone(),
                 });
 
-                // Register AdvancedHandler (includes batch_execute)
+                // Register SystemHandler (new) - provides health_check + web_fetch
+                let system_handler = Arc::new(super::tools::SystemHandler::new());
+                registry.register(Arc::new(ToolHandlerAdapter::new(
+                    system_handler,
+                    new_handler_context.clone(),
+                )));
+                debug!("Registered SystemHandler (new) with 2 tools (health_check, web_fetch)");
+
+                // Register LifecycleHandler - provides file lifecycle notifications
+                let lifecycle_handler = Arc::new(super::tools::LifecycleHandler::new());
+                registry.register(Arc::new(ToolHandlerAdapter::new(
+                    lifecycle_handler,
+                    new_handler_context.clone(),
+                )));
+                debug!("Registered LifecycleHandler with 3 tools (notify_file_opened, notify_file_saved, notify_file_closed)");
+
+                // Register WorkspaceHandler - provides workspace operations including analyze_imports
+                let workspace_handler = Arc::new(super::tools::WorkspaceHandler::new());
+                registry.register(Arc::new(ToolHandlerAdapter::new(
+                    workspace_handler,
+                    new_handler_context.clone(),
+                )));
+                debug!("Registered WorkspaceHandler with 4 tools (rename_directory, analyze_imports, find_dead_code, update_dependencies)");
+
+                // Register AdvancedHandler - provides workflow operations + batch_execute
                 let advanced_handler = Arc::new(super::tools::AdvancedHandler::new());
                 registry.register(Arc::new(ToolHandlerAdapter::new(
                     advanced_handler,

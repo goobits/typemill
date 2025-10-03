@@ -18,7 +18,7 @@ First off, thank you for considering contributing! It's people like you that mak
 
 2.  **Install build optimization tools (HIGHLY RECOMMENDED):**
     ```bash
-    ./deployment/scripts/setup-dev-tools.sh
+    ./scripts/setup-dev-tools.sh
     ```
     This installs `sccache` (compilation cache) and `mold` (fast linker), which can speed up builds by 2-10x.
 
@@ -59,6 +59,14 @@ We use the standard Rust formatting and linting tools to maintain a consistent c
 - **Linting:** We use `clippy` for catching common mistakes and improving code quality.
   ```bash
   cargo clippy --all-targets -- -D warnings
+  # Or use Makefile
+  make clippy
+  ```
+
+- **Code Quality Checks:**
+  ```bash
+  make check                # Run fmt + clippy + test
+  make check-duplicates     # Detect duplicate code & complexity
   ```
 
 ## Pull Request Process
