@@ -36,7 +36,8 @@ macro_rules! register_handlers {
 
 /// Register tool handlers with debug logging
 ///
-/// This variant logs each handler registration for better visibility during initialization.
+/// This variant logs each handler registration for better visibility during initialization
+/// and automatically captures the handler type name for diagnostics and CLI tools.
 ///
 /// # Example
 ///
@@ -46,6 +47,12 @@ macro_rules! register_handlers {
 ///     LifecycleHandler => "LifecycleHandler with 3 tools (notify_file_opened, notify_file_saved, notify_file_closed)",
 /// });
 /// ```
+///
+/// # Benefits
+///
+/// - **Automatic Type Tracking**: Handler type names are captured for `codebuddy list-tools`
+/// - **Debug Visibility**: Logs each registration with tool count
+/// - **Compile-Time Safety**: Ensures all handlers implement `ToolHandler` trait
 #[macro_export]
 macro_rules! register_handlers_with_logging {
     ($registry:expr, { $($handler:ident => $description:expr),* $(,)? }) => {
@@ -54,7 +61,8 @@ macro_rules! register_handlers_with_logging {
             use tracing::debug;
             $(
                 let handler = Arc::new($handler::new());
-                $registry.register(handler);
+                let handler_name = stringify!($handler);
+                $registry.register_with_name(handler, handler_name);
                 debug!("Registered {}", $description);
             )*
         }

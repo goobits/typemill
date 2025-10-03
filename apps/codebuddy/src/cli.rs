@@ -601,62 +601,48 @@ async fn handle_tools_command(format: &str) {
         }
     };
 
-    // Create MCP tools/list request
-    use cb_core::model::mcp::{McpMessage, McpRequest};
-    let request = McpRequest {
-        jsonrpc: "2.0".to_string(),
-        id: Some(serde_json::json!(1)),
-        method: "tools/list".to_string(),
-        params: None,
-    };
+    // Get tool list with handlers directly from the registry
+    let registry = dispatcher.tool_registry.lock().await;
+    let tools_with_handlers = registry.list_tools_with_handlers();
+    drop(registry); // Release lock
 
-    match dispatcher.dispatch(McpMessage::Request(request)).await {
-        Ok(McpMessage::Response(response)) => {
-            if let Some(result) = response.result {
-                match format {
-                    "json" => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
-                    "names" => {
-                        if let Some(tools) = result.get("tools").and_then(|t| t.as_array()) {
-                            for tool in tools {
-                                if let Some(name) = tool.get("name").and_then(|n| n.as_str()) {
-                                    println!("{}", name);
-                                }
-                            }
-                        }
-                    }
-                    _ => {
-                        // Table format
-                        println!("{:<30} {}", "TOOL NAME", "DESCRIPTION");
-                        println!("{}", "=".repeat(80));
-                        if let Some(tools) = result.get("tools").and_then(|t| t.as_array()) {
-                            for tool in tools {
-                                let name = tool
-                                    .get("name")
-                                    .and_then(|n| n.as_str())
-                                    .unwrap_or("unknown");
-                                let desc = tool
-                                    .get("description")
-                                    .and_then(|d| d.as_str())
-                                    .unwrap_or("");
-                                let desc_short = if desc.len() > 48 {
-                                    format!("{}...", &desc[..45])
-                                } else {
-                                    desc.to_string()
-                                };
-                                println!("{:<30} {}", name, desc_short);
-                            }
-                        }
-                    }
-                }
+    match format {
+        "json" => {
+            let json_output: Vec<serde_json::Value> = tools_with_handlers
+                .iter()
+                .map(|(name, handler)| {
+                    serde_json::json!({
+                        "name": name,
+                        "handler": handler
+                    })
+                })
+                .collect();
+            println!("{}", serde_json::to_string_pretty(&json_output).unwrap());
+        }
+        "names" => {
+            for (name, _) in &tools_with_handlers {
+                println!("{}", name);
             }
         }
-        Err(e) => {
-            eprintln!("Error listing tools: {}", e);
-            process::exit(1);
-        }
         _ => {
-            eprintln!("Unexpected response type");
-            process::exit(1);
+            // Table format with handler information
+            println!("┌{0:─<32}┬{0:─<20}┐", "");
+            println!("│ {:<30} │ {:<18} │", "TOOL NAME", "HANDLER");
+            println!("├{0:─<32}┼{0:─<20}┤", "");
+
+            for (tool_name, handler_name) in &tools_with_handlers {
+                println!("│ {:<30} │ {:<18} │", tool_name, handler_name);
+            }
+
+            println!("└{0:─<32}┴{0:─<20}┘", "");
+            println!();
+            println!("Total: {} tools across {} handlers",
+                tools_with_handlers.len(),
+                tools_with_handlers.iter()
+                    .map(|(_, h)| h)
+                    .collect::<std::collections::HashSet<_>>()
+                    .len()
+            );
         }
     }
 }

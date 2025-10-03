@@ -17,6 +17,8 @@ use tracing::{debug, warn};
 pub struct ToolRegistry {
     /// Map from tool name to handler
     handlers: HashMap<String, Arc<dyn ToolHandler>>,
+    /// Map from tool name to handler type name (for diagnostics)
+    handler_names: HashMap<String, String>,
 }
 
 impl ToolRegistry {
@@ -24,10 +26,11 @@ impl ToolRegistry {
     pub fn new() -> Self {
         Self {
             handlers: HashMap::new(),
+            handler_names: HashMap::new(),
         }
     }
 
-    /// Register a tool handler
+    /// Register a tool handler with its type name for diagnostics
     ///
     /// All tools returned by `handler.tool_names()` will be registered.
     /// If a tool name is already registered, it will be replaced and a warning logged.
@@ -35,9 +38,10 @@ impl ToolRegistry {
     /// # Arguments
     ///
     /// * `handler` - The handler to register
-    pub fn register(&mut self, handler: Arc<dyn ToolHandler>) {
+    /// * `handler_name` - The name of the handler type (e.g., "SystemHandler")
+    pub fn register_with_name(&mut self, handler: Arc<dyn ToolHandler>, handler_name: &str) {
         for tool_name in handler.tool_names() {
-            debug!(tool_name = %tool_name, "Registering tool handler");
+            debug!(tool_name = %tool_name, handler_name = %handler_name, "Registering tool handler");
             if self
                 .handlers
                 .insert(tool_name.to_string(), handler.clone())
@@ -48,7 +52,20 @@ impl ToolRegistry {
                     "Tool handler replaced (duplicate registration)"
                 );
             }
+            self.handler_names.insert(tool_name.to_string(), handler_name.to_string());
         }
+    }
+
+    /// Register a tool handler (legacy method for backward compatibility)
+    ///
+    /// All tools returned by `handler.tool_names()` will be registered.
+    /// If a tool name is already registered, it will be replaced and a warning logged.
+    ///
+    /// # Arguments
+    ///
+    /// * `handler` - The handler to register
+    pub fn register(&mut self, handler: Arc<dyn ToolHandler>) {
+        self.register_with_name(handler, "UnknownHandler")
     }
 
     /// Route a tool call to the appropriate handler
@@ -99,6 +116,42 @@ impl ToolRegistry {
         let mut tools: Vec<String> = self.handlers.keys().cloned().collect();
         tools.sort();
         tools
+    }
+
+    /// Get all registered tools with their handler information
+    ///
+    /// Returns a mapping of tool names to handler type names for diagnostics
+    /// and CLI tools. This is useful for the `codebuddy list-tools` command.
+    ///
+    /// # Returns
+    ///
+    /// Returns a vector of `(tool_name, handler_type)` tuples, sorted by tool name.
+    ///
+    /// # Example Output
+    ///
+    /// ```text
+    /// [
+    ///     ("find_definition", "NavigationHandler"),
+    ///     ("health_check", "SystemHandler"),
+    ///     ("read_file", "FileOpsHandler"),
+    /// ]
+    /// ```
+    pub fn list_tools_with_handlers(&self) -> Vec<(String, String)> {
+        let mut result: Vec<(String, String)> = self
+            .handlers
+            .keys()
+            .map(|tool_name| {
+                let handler_name = self
+                    .handler_names
+                    .get(tool_name)
+                    .cloned()
+                    .unwrap_or_else(|| "UnknownHandler".to_string());
+                (tool_name.clone(), handler_name)
+            })
+            .collect();
+
+        result.sort_by(|a, b| a.0.cmp(&b.0));
+        result
     }
 }
 
