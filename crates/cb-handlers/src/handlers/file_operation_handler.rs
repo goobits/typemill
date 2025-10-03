@@ -222,9 +222,23 @@ impl FileOperationHandler {
                 "conservative" => Some(crate::handlers::tools::workspace::UpdateMode::Conservative),
                 "standard" => Some(crate::handlers::tools::workspace::UpdateMode::Standard),
                 "aggressive" => Some(crate::handlers::tools::workspace::UpdateMode::Aggressive),
+                "full" => Some(crate::handlers::tools::workspace::UpdateMode::Full),
                 _ => None
             })
             .unwrap_or(crate::handlers::tools::workspace::UpdateMode::Conservative);
+
+        // Require dry_run=true for risky modes if not already in dry_run mode
+        if update_mode.is_risky() && !dry_run {
+            return Err(ServerError::InvalidRequest(format!(
+                "⚠️ {} mode requires dry_run=true for safety. Please run with dry_run=true first to preview changes, then re-run without dry_run if the changes look correct. {}",
+                match update_mode {
+                    crate::handlers::tools::workspace::UpdateMode::Aggressive => "Aggressive",
+                    crate::handlers::tools::workspace::UpdateMode::Full => "Full",
+                    _ => unreachable!()
+                },
+                update_mode.warning_message().unwrap_or("")
+            )));
+        }
 
         let result = context
             .app_state
@@ -237,21 +251,37 @@ impl FileOperationHandler {
             )
             .await?;
 
-        if result.dry_run {
+        // Add warning message to response for risky modes
+        let response = if result.dry_run {
             // Merge status into the result object instead of nesting
             if let Value::Object(mut obj) = result.result {
                 obj.insert("status".to_string(), json!("preview"));
-                Ok(Value::Object(obj))
+                if let Some(warning) = update_mode.warning_message() {
+                    obj.insert("warning".to_string(), json!(warning));
+                }
+                Value::Object(obj)
             } else {
                 // Fallback for non-object results
-                Ok(json!({
+                let mut response = json!({
                     "status": "preview",
                     "result": result.result
-                }))
+                });
+                if let Some(warning) = update_mode.warning_message() {
+                    response["warning"] = json!(warning);
+                }
+                response
             }
         } else {
-            Ok(result.result)
-        }
+            let mut response = result.result;
+            if let Some(warning) = update_mode.warning_message() {
+                if let Value::Object(ref mut obj) = response {
+                    obj.insert("warning".to_string(), json!(warning));
+                }
+            }
+            response
+        };
+
+        Ok(response)
     }
 
     async fn handle_create_file(
