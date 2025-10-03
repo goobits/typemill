@@ -306,14 +306,39 @@ impl FileService {
 
     /// Perform the actual file rename operation
     async fn perform_rename(&self, old_path: &Path, new_path: &Path) -> ServerResult<()> {
-        // Ensure parent directory exists
+        // Queue the operations for tracking
+        let mut transaction = OperationTransaction::new(self.operation_queue.clone());
+
+        if let Some(parent) = new_path.parent() {
+            if !parent.exists() {
+                transaction.add_operation(FileOperation::new(
+                    "system".to_string(),
+                    OperationType::CreateDir,
+                    parent.to_path_buf(),
+                    json!({ "recursive": true }),
+                ));
+            }
+        }
+
+        transaction.add_operation(FileOperation::new(
+            "system".to_string(),
+            OperationType::Rename,
+            old_path.to_path_buf(),
+            json!({ "new_path": new_path.to_string_lossy() }),
+        ));
+
+        transaction
+            .commit()
+            .await
+            .map_err(|e| ServerError::Internal(e.to_string()))?;
+
+        // Actually perform the filesystem operations
         if let Some(parent) = new_path.parent() {
             fs::create_dir_all(parent).await.map_err(|e| {
                 ServerError::Internal(format!("Failed to create parent directory: {}", e))
             })?;
         }
 
-        // Rename the file
         fs::rename(old_path, new_path)
             .await
             .map_err(|e| ServerError::Internal(format!("Failed to rename file: {}", e)))?;
