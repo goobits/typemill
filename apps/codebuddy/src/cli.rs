@@ -1,6 +1,7 @@
 //! CLI command handling for the codebuddy server
 
 use cb_core::config::{AppConfig, LogFormat};
+use cb_core::utils::system::command_exists;
 use clap::{Parser, Subcommand};
 use fs2::FileExt;
 use std::fs::{File, OpenOptions};
@@ -374,20 +375,6 @@ async fn handle_doctor() {
     println!("✨ Doctor's checkup complete.");
 }
 
-/// Helper to check if a command exists on the system's PATH
-fn command_exists(cmd: &str) -> bool {
-    std::process::Command::new(if cfg!(target_os = "windows") {
-        "where"
-    } else {
-        "command"
-    })
-    .arg("-v")
-    .arg(cmd)
-    .stdout(std::process::Stdio::null())
-    .stderr(std::process::Stdio::null())
-    .status()
-    .is_ok_and(|status| status.success())
-}
 
 /// Handle the stop command
 async fn handle_stop() {

@@ -1,7 +1,6 @@
 use crate::commands::{Command, GlobalArgs};
 use crate::ClientResult;
 use cb_core::config::AppConfig;
-use std::process::Command as OsCommand;
 
 pub struct DoctorCommand;
 
@@ -70,17 +69,7 @@ impl DoctorCommand {
 
     /// Helper to check if a command exists on the system's PATH.
     fn command_exists(&self, cmd: &str) -> bool {
-        OsCommand::new(if cfg!(target_os = "windows") {
-            "where"
-        } else {
-            "command"
-        })
-        .arg("-v")
-        .arg(cmd)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .is_ok_and(|status| status.success())
+        cb_core::utils::system::command_exists(cmd)
     }
 }
 

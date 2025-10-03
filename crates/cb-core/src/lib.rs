@@ -7,6 +7,7 @@ pub mod auth;
 pub mod config;
 pub mod dry_run;
 pub mod language;
+pub mod utils;
 pub mod workspaces;
 
 pub use config::AppConfig;
