@@ -33,6 +33,55 @@ codebuddy tool update_dependency '{
 
 ---
 
+### Git-Aware File Operations (Issue #2) - RESOLVED
+**Resolution Date:** 2025-10-03 (Pre-Phase 4 Sprint)
+**Tool Enhanced:** All file operation tools now use git when available
+
+**Original Problem:**
+- File operations didn't use `git mv`, losing git history tracking
+- Required manual `git add -A` to let git detect renames
+- Files showed as deleted + new instead of renamed
+
+**Solution:**
+Created GitService and integrated into FileService:
+- Auto-detects git repositories on initialization
+- Uses `git mv` for tracked files automatically
+- Falls back to filesystem operations when git unavailable
+- Runs git commands in `spawn_blocking` to avoid blocking async runtime
+
+**Files Modified:**
+- `crates/cb-services/src/services/git_service.rs` (new)
+- `crates/cb-services/src/services/file_service.rs` (enhanced)
+
+**Impact:** File operations now preserve git history automatically!
+
+---
+
+### Batch Dependency Updates (Enhancement #2) - PARTIALLY RESOLVED
+**Resolution Date:** 2025-10-03 (Pre-Phase 4 Sprint)
+**Tool Added:** `batch_update_dependencies` (44th MCP tool)
+
+**What's Implemented:**
+- ✅ Batch update mode for multi-file refactorings
+- ✅ Auto-detect from workspace root and update all referencing crates
+- ✅ Aggregated result reporting with success/failure counts
+
+**What's Still Needed:**
+- ❌ Support inline dependency features (`optional = true`, `features = [...]`)
+- ❌ Preserve existing metadata when renaming dependencies
+
+**Usage:**
+```bash
+codebuddy tool batch_update_dependencies '{
+  "updates": [
+    {"old_dep_name": "old-pkg", "new_dep_name": "new-pkg", "new_path": "../new-pkg"}
+  ]
+}'
+# Auto-discovers all Cargo.toml files and updates them
+```
+
+---
+
 ### E2E Test Config Loading (Issue #1) - RESOLVED
 **Resolution Date:** ce965a5
 **Root Cause:** Incorrect CacheConfig JSON structure in test fixtures
@@ -43,6 +92,7 @@ codebuddy tool update_dependency '{
 ## 🐛 Active Issues
 
 ### 1. Incomplete Import Path Updates During `rename_directory`
+**Priority:** HIGH
 **Severity:** Medium
 
 Only top-level `use` statements are updated. Missed references:
@@ -54,49 +104,7 @@ Only top-level `use` statements are updated. Missed references:
 
 ---
 
-### 2. Batch File Operations Don't Use Git
-**Severity:** Low
-**Component:** `batch_execute`, all file operation tools
-
-**Description:**
-File operations (rename_file, etc.) copy/move files without using `git mv`, losing Git history tracking.
-
-**Impact:**
-- Git shows files as deleted + new instead of renamed
-- Lose file history in `git log --follow`
-- Requires `git add -A` to let Git auto-detect renames
-
-**Example:**
-```bash
-# codebuddy creates:
-deleted:    old/file.rs
-new file:   new/file.rs
-
-# But git add -A recovers rename detection:
-renamed:    old/file.rs -> new/file.rs
-```
-
-**Enhancement Request:**
-Detect if working directory is a git repository and use `git mv` instead of filesystem operations. Fallback to regular fs ops if not in git repo.
-
-**Implementation Idea:**
-```rust
-fn is_git_repo() -> bool {
-    Command::new("git").args(&["rev-parse", "--git-dir"]).status().is_ok()
-}
-
-fn rename_file(old: &Path, new: &Path) -> Result<()> {
-    if is_git_repo() {
-        Command::new("git").args(&["mv", old, new]).status()?;
-    } else {
-        std::fs::rename(old, new)?;
-    }
-}
-```
-
----
-
-### 3. Test Flakiness
+### 2. Test Flakiness
 **Severity:** Low
 **Affected Test:** `resilience_tests::test_basic_filesystem_operations`
 
@@ -111,10 +119,10 @@ Intermittent timeouts and JSON parsing errors ("trailing characters"). Likely ti
 - Scan function-scoped imports
 - Configurable scope with pattern matching
 
-### 2. update_dependency Tool Improvements
+### 2. update_dependency Tool - Metadata Preservation
 - Support inline dependency features (e.g., `optional = true`, `features = [...]`)
-- Batch update mode for multi-file refactorings
-- Auto-detect from workspace root and update all referencing crates
+- Preserve existing metadata when renaming dependencies
+- **Note:** Batch mode and auto-discovery are already implemented (see Resolved Issues)
 
 ### 3. Post-Operation Validation
 - Run `cargo check` after refactoring operations
@@ -179,6 +187,6 @@ Even though batch_execute doesn't use git mv, running `git add -A` allowed Git t
 
 ---
 
-**Last Updated:** Phase 4 complete (2025-10-03)
-**Tool Count:** 43 MCP tools registered
+**Last Updated:** Pre-Phase 4 Sprint complete (2025-10-03)
+**Tool Count:** 44 MCP tools registered (added batch_update_dependencies)
 **Test Coverage:** 244 library tests, 13 CLI integration tests
