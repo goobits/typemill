@@ -7,6 +7,7 @@ pub mod adapters;
 pub mod capabilities;
 pub mod error;
 pub mod manager;
+pub mod mcp;
 pub mod plugin;
 pub mod protocol;
 pub mod registry;

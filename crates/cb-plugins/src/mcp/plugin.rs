@@ -1,10 +1,10 @@
 //! MCP Proxy as a LanguagePlugin
 
-use crate::ExternalMcpManager;
+use super::manager::ExternalMcpManager;
 use async_trait::async_trait;
 use cb_core::config::ExternalMcpServerConfig;
-use cb_plugins::{
-    Capabilities, LanguagePlugin, PluginMetadata, PluginRequest, PluginResponse, PluginResult,
+use crate::{
+    Capabilities, LanguagePlugin, PluginMetadata, PluginError, PluginRequest, PluginResponse, PluginResult,
 };
 use serde_json::Value;
 
@@ -26,7 +26,7 @@ impl McpProxyPlugin {
         self.manager
             .start_all_servers()
             .await
-            .map_err(|e| cb_plugins::PluginError::initialization_error("mcp-proxy", e.to_string()))
+            .map_err(|e| PluginError::initialization_error("mcp-proxy", e.to_string()))
     }
 }
 

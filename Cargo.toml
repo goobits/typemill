@@ -6,7 +6,6 @@ members = [
     "crates/cb-plugin-api",
     "crates/cb-ast",
     "crates/cb-plugins",
-    "crates/cb-mcp-proxy",
     "crates/cb-lsp",
     "crates/cb-services",
     "crates/cb-handlers",

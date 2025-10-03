@@ -11,7 +11,6 @@ cb-core = { path = "../cb-core" }
 cb-ast = { path = "../cb-ast" }
 cb-plugins = { path = "../cb-plugins" }
 cb-transport = { path = "../cb-transport" }
-cb-mcp-proxy = { path = "../cb-mcp-proxy", optional = true }
 cb-lsp = { path = "../cb-lsp" }
 cb-services = { path = "../cb-services" }
 cb-handlers = { path = "../cb-handlers" }
@@ -46,7 +45,7 @@ tempfile = "3.0"
 
 [features]
 default = []
-mcp-proxy = ["cb-mcp-proxy", "cb-core/mcp-proxy"]
+mcp-proxy = ["cb-core/mcp-proxy"]
 
 [dev-dependencies]
 tempfile = "3.0"

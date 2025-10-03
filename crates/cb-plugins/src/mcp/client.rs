@@ -1,7 +1,7 @@
 //! External MCP client for subprocess communication
 
-use crate::protocol::{McpRequest, McpResponse};
-use crate::{McpProxyError, McpProxyResult};
+use super::protocol::{McpRequest, McpResponse};
+use super::error::{McpProxyError, McpProxyResult};
 use serde_json::Value;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicU64, Ordering};
