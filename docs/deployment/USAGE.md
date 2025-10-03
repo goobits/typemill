@@ -97,19 +97,19 @@ codebuddy status
 codebuddy status --verbose
 ```
 
-### `call`
+### `tool`
 
-Execute a raw MCP tool on the server. This is useful for scripting and advanced operations.
+Execute an MCP tool directly. This is useful for scripting and advanced operations.
 
 ```bash
-# Read a file from the server's workspace
-codebuddy call read_file '{"file_path":"/path/to/your/file.txt"}'
+# Read a file from the workspace
+codebuddy tool read_file '{"file_path":"/path/to/your/file.txt"}'
 
 # List files in the root directory
-codebuddy call list_files '{"recursive":true}'
+codebuddy tool list_files '{"recursive":true}'
 
 # Output the result as raw JSON
-codebuddy call get_hover '{"file_path":"/src/index.ts","line":10,"character":5}' --format json
+codebuddy tool get_hover '{"file_path":"/src/index.ts","line":10,"character":5}' --format json
 ```
 
 ### `connect`

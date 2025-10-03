@@ -24,7 +24,7 @@ pub use cb_core::workspaces;
 
 use crate::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
 use crate::services::{DefaultAstService, FileService, LockManager, OperationQueue};
-pub use cb_api::{ApiError as ServerError, ApiResult as ServerResult, AstService, LspService};
+pub use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult, AstService, LspService};
 use cb_ast::AstCache;
 use cb_core::AppConfig;
 use std::path::PathBuf;

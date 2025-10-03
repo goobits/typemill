@@ -7,7 +7,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use cb_api::ApiResult;
+use cb_protocol::ApiResult;
 use cb_core::auth::generate_token;
 use cb_core::config::AppConfig;
 use cb_core::workspaces::{Workspace, WorkspaceManager};

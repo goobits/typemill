@@ -5,7 +5,7 @@
 //! (for MCP clients like Claude Code).
 
 use async_trait::async_trait;
-use cb_api::ApiResult;
+use cb_protocol::ApiResult;
 use cb_core::model::mcp::McpMessage;
 
 pub mod admin;

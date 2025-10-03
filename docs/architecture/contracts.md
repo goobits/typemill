@@ -35,7 +35,7 @@ cb-server --version
 The server implements **40 MCP tools** across 8 categories.
 
 > **For complete API documentation**, including parameters, return types, and examples for all 40 tools, see:
-> - **[MCP_API.md](../../MCP_API.md)** - Complete API reference
+> - **[API.md](../../API.md)** - Complete API reference
 > - **[SUPPORT_MATRIX.md](../../SUPPORT_MATRIX.md)** - Language support matrix
 
 ### Tool Categories (40 tools total)

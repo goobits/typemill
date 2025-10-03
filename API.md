@@ -56,7 +56,7 @@ Find the definition of a symbol at a specific position.
 
 **Example:**
 ```bash
-codebuddy call find_definition '{"file_path":"src/app.ts","line":15,"character":8}'
+codebuddy tool find_definition '{"file_path":"src/app.ts","line":15,"character":8}'
 ```
 
 ---
@@ -1130,10 +1130,10 @@ Rename a directory and automatically update all imports.
 **Example:**
 ```bash
 # Preview changes
-codebuddy call rename_directory '{"old_path":"crates","new_path":"lib","dry_run":true}'
+codebuddy tool rename_directory '{"old_path":"crates","new_path":"lib","dry_run":true}'
 
 # Apply changes
-codebuddy call rename_directory '{"old_path":"crates","new_path":"lib"}'
+codebuddy tool rename_directory '{"old_path":"crates","new_path":"lib"}'
 ```
 
 ---
@@ -1426,7 +1426,7 @@ Execute multiple file operations in a single batch with atomic guarantees.
 **Example:**
 ```bash
 # Create directory structure and move files
-codebuddy call batch_execute --arguments '{
+codebuddy tool batch_execute '{
   "operations": [
     {
       "type": "create_file",
@@ -1510,7 +1510,7 @@ High-level workflow combining symbol rename with import updates.
 
 **Invocation:**
 ```bash
-codebuddy call achieve_intent '{"intent":"refactor.renameSymbolWithImports","arguments":{...}}'
+codebuddy tool achieve_intent '{"intent":"refactor.renameSymbolWithImports","arguments":{...}}'
 ```
 
 ---
@@ -1727,10 +1727,10 @@ Tools supporting dry-run preview changes:
 
 ```bash
 # Preview
-codebuddy call rename_directory '{"old_path":"src","new_path":"lib","dry_run":true}'
+codebuddy tool rename_directory '{"old_path":"src","new_path":"lib","dry_run":true}'
 
 # Apply
-codebuddy call rename_directory '{"old_path":"src","new_path":"lib"}'
+codebuddy tool rename_directory '{"old_path":"src","new_path":"lib"}'
 ```
 
 **Tools with dry_run support:**

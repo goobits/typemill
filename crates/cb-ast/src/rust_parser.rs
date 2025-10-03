@@ -1,5 +1,5 @@
 use crate::error::{AstError, AstResult};
-use cb_api::{ImportInfo, ImportType, NamedImport, SourceLocation};
+use cb_protocol::{ImportInfo, ImportType, NamedImport, SourceLocation};
 use syn::{visit::Visit, File, Item, ItemUse, UseTree};
 
 // A visitor that will walk the AST and collect the names of all functions it finds.

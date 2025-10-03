@@ -1,13 +1,18 @@
 [workspace]
 members = [
-    "crates/cb-api",
     "crates/cb-core",
+    "crates/cb-types",
+    "crates/cb-protocol",
+    "crates/cb-plugin-api",
     "crates/cb-ast",
     "crates/cb-plugins",
     "crates/cb-mcp-proxy",
     "crates/cb-server",
     "crates/cb-client",
-    "crates/cb-transport", "apps/codebuddy", "integration-tests", "benchmarks",
+    "crates/cb-transport",
+    "apps/codebuddy",
+    "integration-tests",
+    "benchmarks",
 ]
 resolver = "2"
 

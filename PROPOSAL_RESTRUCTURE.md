@@ -32,17 +32,23 @@ This phase, adapted from the original proposal, focuses on improving the reposit
 *   ✅ **Action:** Remove old empty directories (`tests`, `deployment/scripts`, `crates/cb-ast/resources`)
 *   **Benefit:** A clean, uncluttered root directory.
 
-### Phase 2: Foundational Crate Refactoring (High Value)
+### Phase 2: Foundational Crate Refactoring (High Value) ✅ COMPLETED
 
 This phase implements the "Flat & Focused" structure for our foundational crates. This is a prerequisite for later phases.
 
-*   **Action:** **Split `cb-core`** into three focused crates:
+*   ✅ **Action:** **Split `cb-core`** into three focused crates:
     1.  **`cb-types` (New):** A new, logic-free crate for shared data structures (`models`) and `error` types. It will be a lightweight, stable foundation for the entire workspace.
     2.  **`cb-plugin-api` (New):** A new crate to formally define the plugin contract (traits and types).
-    3.  **`cb-core` (Edited):** A shrunken, logic-only crate that orchestrates core functionality.
-*   **Action:** **Rename `cb-api` to `cb-protocol`**.
+    3.  **`cb-core` (Edited):** A shrunken, logic-only crate that orchestrates core functionality with re-exports from cb-types for backwards compatibility.
+*   ✅ **Action:** **Rename `cb-api` to `cb-protocol`**.
     *   **Rationale:** This clarifies its specific purpose as the client-server network communication contract, distinguishing it from the new `cb-plugin-api`.
 *   **Benefit:** Establishes clear, logical boundaries at the core of the application, making all subsequent development easier.
+
+**Execution Notes:**
+- Used `codebuddy tool batch_execute` to create new crates
+- Used `codebuddy tool rename_directory` with automatic import updates
+- Manual fixes required for Cargo.toml dependencies and test files
+- All workspace tests pass after refactoring
 
 ### Phase 3: Deconstruct `cb-server`
 
@@ -110,7 +116,7 @@ codebuddy tool batch_execute '{
     {"type": "rename_file", "old_path": "BUG_REPORT.md", "new_path": "docs/proposals/BUG_REPORT.md"},
     {"type": "rename_file", "old_path": "CHANGELOG.md", "new_path": "docs/proposals/CHANGELOG.md"},
     {"type": "rename_file", "old_path": "CLAUDE.md", "new_path": "docs/proposals/CLAUDE.md"},
-    {"type": "rename_file", "old_path": "MCP_API.md", "new_path": "docs/proposals/MCP_API.md"},
+    {"type": "rename_file", "old_path": "API.md", "new_path": "docs/proposals/API.md"},
     {"type": "rename_file", "old_path": "ROADMAP.md", "new_path": "docs/proposals/ROADMAP.md"},
     {"type": "rename_file", "old_path": "SUPPORT_MATRIX.md", "new_path": "docs/proposals/SUPPORT_MATRIX.md"},
     {"type": "rename_file", "old_path": "PROPOSAL_ADVANCED_ANALYSIS.md", "new_path": "docs/proposals/PROPOSAL_ADVANCED_ANALYSIS.md"},
@@ -171,17 +177,17 @@ codebuddy tool batch_execute '{
 '
 
 # 2b: Move model directory from cb-core to cb-types
-codebuddy tool rename_directory '{"old_path":"crates/cb-core/src/model", "new_path":"crates/cb-types/src/model"}'
+codebuddy tool rename_directory '{"old_path":"crates/cb-types/src/model", "new_path":"crates/cb-types/src/model"}'
 
 # 2c: Move error.rs manually (single file)
 git mv crates/cb-core/src/error.rs crates/cb-types/src/error.rs
 
 # 2d: Rename cb-api to cb-protocol
-codebuddy tool rename_directory '{"old_path":"crates/cb-api", "new_path":"crates/cb-protocol"}'
+codebuddy tool rename_directory '{"old_path":"crates/cb-protocol", "new_path":"crates/cb-protocol"}'
 
 # 2e: Manual updates
 echo "1. Add '\"crates/cb-types\"', '\"crates/cb-plugin-api\"' to workspace members in root Cargo.toml"
-echo "2. Remove '\"crates/cb-api\"' from workspace members and add '\"crates/cb-protocol\"'"
+echo "2. Remove '\"crates/cb-protocol\"' from workspace members and add '\"crates/cb-protocol\"'"
 echo "3. Update dependencies in all Cargo.toml files (replace cb-api with cb-protocol, add cb-types where needed)"
 echo "4. Fix 'use' statements across the workspace"
 ```

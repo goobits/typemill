@@ -1,6 +1,6 @@
 //! Test helper functions and utilities
 
-use cb_api::{EditPlan, ImportGraph};
+use cb_protocol::{EditPlan, ImportGraph};
 use cb_core::{model::*, AppConfig};
 use serde_json::json;
 use std::path::Path;
@@ -44,7 +44,7 @@ pub fn create_test_mcp_response() -> McpMessage {
 
 /// Create a test import graph
 pub fn create_test_import_graph(source_file: &str) -> ImportGraph {
-    use cb_api::{ImportGraphMetadata, ImportInfo, ImportType, SourceLocation};
+    use cb_protocol::{ImportGraphMetadata, ImportInfo, ImportType, SourceLocation};
 
     ImportGraph {
         source_file: source_file.to_string(),
@@ -75,7 +75,7 @@ pub fn create_test_import_graph(source_file: &str) -> ImportGraph {
 
 /// Create a test edit plan
 pub fn create_test_edit_plan() -> EditPlan {
-    use cb_api::{EditLocation, EditPlanMetadata, EditType, TextEdit};
+    use cb_protocol::{EditLocation, EditPlanMetadata, EditType, TextEdit};
 
     EditPlan {
         source_file: "test.ts".to_string(),

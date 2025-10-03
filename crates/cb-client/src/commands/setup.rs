@@ -312,12 +312,12 @@ impl SetupCommand {
         ctx.interactive.info("Next steps:");
         println!("  1. Test your connection: codebuddy status");
         println!("  2. Start an interactive session: codebuddy connect");
-        println!("  3. Call a specific tool: codebuddy call <tool_name> [params]");
+        println!("  3. Call a specific tool: codebuddy tool <tool_name> <args>");
         println!();
 
         ctx.interactive
             .info("For help with any command, use --help flag");
-        println!("  Example: codebuddy call --help");
+        println!("  Example: codebuddy tool --help");
         println!();
 
         Ok(())

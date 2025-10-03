@@ -9,7 +9,7 @@ use crate::services::workflow_executor::WorkflowExecutor;
 use crate::workspaces::WorkspaceManager;
 use crate::{ServerError, ServerResult};
 use async_trait::async_trait;
-use cb_api::AstService;
+use cb_protocol::AstService;
 use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
 use cb_plugins::{LspAdapterPlugin, PluginManager};
 use cb_transport::McpDispatcher;
@@ -497,10 +497,10 @@ impl PluginDispatcher {
 
 #[async_trait]
 impl McpDispatcher for PluginDispatcher {
-    async fn dispatch(&self, message: McpMessage) -> cb_api::ApiResult<McpMessage> {
+    async fn dispatch(&self, message: McpMessage) -> cb_protocol::ApiResult<McpMessage> {
         self.dispatch(message)
             .await
-            .map_err(|e| cb_api::ApiError::internal(e.to_string()))
+            .map_err(|e| cb_protocol::ApiError::internal(e.to_string()))
     }
 }
 

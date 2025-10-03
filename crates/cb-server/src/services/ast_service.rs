@@ -4,11 +4,11 @@ use async_trait::async_trait;
 use std::path::Path;
 use std::sync::Arc;
 
-use cb_api::{ApiResult, CacheStats, ImportGraph};
+use cb_protocol::{ApiResult, CacheStats, ImportGraph};
 use cb_ast::AstCache;
 use tracing::{debug, trace};
 
-use cb_api::AstService;
+use cb_protocol::AstService;
 
 /// Default implementation of the AST service with caching
 pub struct DefaultAstService {
@@ -76,7 +76,7 @@ impl AstService for DefaultAstService {
 
         // Parse the file using the cb-ast crate
         let import_graph = cb_ast::parser::build_import_graph(&content, file)
-            .map_err(|e| cb_api::ApiError::internal(format!("AST parsing failed: {}", e)))?;
+            .map_err(|e| cb_protocol::ApiError::internal(format!("AST parsing failed: {}", e)))?;
 
         // Cache the result for future use
         if let Err(e) = self

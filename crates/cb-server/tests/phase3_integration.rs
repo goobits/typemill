@@ -1,7 +1,7 @@
 //! Integration tests for Phase 3 features
 //! These tests verify monitoring, batching, and deadlock warnings
 
-use cb_api::ApiError;
+use cb_protocol::ApiError;
 use cb_server::services::{FileOperation, LockManager, OperationQueue, OperationType};
 use serde_json::json;
 use std::path::PathBuf;

@@ -1,7 +1,7 @@
 //! WebSocket transport implementation
 
 use crate::McpDispatcher;
-use cb_api::{ApiError, ApiResult};
+use cb_protocol::{ApiError, ApiResult};
 use cb_core::auth::validate_token;
 use cb_core::config::AppConfig;
 use cb_core::model::mcp::{McpError, McpMessage, McpRequest, McpResponse};

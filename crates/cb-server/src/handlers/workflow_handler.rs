@@ -154,7 +154,7 @@ impl WorkflowHandler {
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'edit_plan' parameter".into()))?;
 
         // Parse the EditPlan from the JSON value
-        let edit_plan: cb_api::EditPlan = serde_json::from_value(edit_plan_value.clone())
+        let edit_plan: cb_protocol::EditPlan = serde_json::from_value(edit_plan_value.clone())
             .map_err(|e| ServerError::InvalidRequest(format!("Invalid edit_plan format: {}", e)))?;
 
         debug!(

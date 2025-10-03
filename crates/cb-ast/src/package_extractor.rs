@@ -7,7 +7,7 @@ use crate::error::AstResult;
 use crate::language::{
     GoAdapter, JavaAdapter, LanguageAdapter, PythonAdapter, RustAdapter, TypeScriptAdapter,
 };
-use cb_api::EditPlan;
+use cb_protocol::EditPlan;
 use cb_core::language::ProjectLanguage;
 use serde::Deserialize;
 use std::path::Path;
@@ -210,7 +210,7 @@ fn remove_module_declaration(source: &str, module_name: &str) -> AstResult<Strin
 pub async fn plan_extract_module_to_package(
     params: ExtractModuleToPackageParams,
 ) -> AstResult<EditPlan> {
-    use cb_api::{EditPlanMetadata, ValidationRule, ValidationType};
+    use cb_protocol::{EditPlanMetadata, ValidationRule, ValidationType};
     use cb_core::language::detect_project_language;
     use serde_json::json;
     use std::collections::HashMap;
@@ -312,7 +312,7 @@ pub async fn plan_extract_module_to_package(
     );
 
     // Step 6: Construct file modification plan
-    use cb_api::{EditLocation, EditType, TextEdit};
+    use cb_protocol::{EditLocation, EditType, TextEdit};
     let mut edits = Vec::new();
 
     // Edit 1: Create new Cargo.toml
@@ -786,7 +786,7 @@ resolver = "2"
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cb_api::EditType;
+    use cb_protocol::EditType;
     use std::fs;
     use tempfile::tempdir;
 

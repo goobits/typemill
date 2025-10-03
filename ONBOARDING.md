@@ -542,7 +542,7 @@ cargo bench
 ## Getting Help
 
 - **Documentation**: See [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) for system overview
-- **API Reference**: See [MCP_API.md](MCP_API.md) for complete tool API
+- **API Reference**: See [API.md](API.md) for complete tool API
 - **Issues**: Check [GitHub Issues](https://github.com/codebuddy/codebuddy/issues) for known problems
 - **Community**: Join discussions in GitHub Discussions
 

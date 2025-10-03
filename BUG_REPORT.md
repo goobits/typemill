@@ -213,4 +213,83 @@ For large refactorings:
 
 ---
 
-**Last Updated:** Phase 3 refactoring (October 2025)
+## 🔧 Phase 2 Refactoring Experience (2025-10-03)
+
+### Tools Used & Performance
+
+**Successful Operations:**
+1. ✅ `batch_execute` - Created multiple crate files efficiently in single transaction
+2. ✅ `rename_directory` - Moved `crates/cb-core/src/model` to `crates/cb-types/src/model`
+   - Automatically updated documentation references (PROPOSAL_RESTRUCTURE.md)
+   - Import updates: 0 files (expected, since model was being moved to new crate)
+3. ✅ `rename_directory` - Renamed `crates/cb-api` to `crates/cb-protocol`
+   - Automatically updated 3 import files with 4 import updates
+   - Updated 2 documentation files (PROPOSAL_RESTRUCTURE.md, CLAUDE.md)
+
+**Manual Fixes Required:**
+1. Cargo.toml dependency updates (5 files) - Not handled by tools
+2. Use statement updates for `cb_core::error` → `cb_types::error`
+3. Test file imports (`crates/cb-core/tests/error_tests.rs`)
+4. Workspace-wide `use cb_api::` → `use cb_protocol::` replacements
+
+### New Issues Discovered
+
+**5. MCP API Documentation Incorrect Command**
+
+**Severity:** Low (Documentation)
+**Affected File:** `MCP_API.md`
+
+**Description:**
+The MCP API documentation shows examples using `codebuddy call <tool>` but the actual CLI command is `codebuddy tool <tool>`.
+
+**Evidence:**
+```bash
+# Documentation shows:
+codebuddy call rename_directory '{"old_path":"...","new_path":"..."}'
+
+# Actual command:
+codebuddy tool rename_directory '{"old_path":"...","new_path":"..."}'
+```
+
+**Confirmed via:** `codebuddy --help` shows `tool` subcommand, not `call`
+
+**Status:** Documentation needs update
+
+---
+
+**6. Codebuddy `rename_directory` Does Not Update Cargo.toml Dependencies**
+
+**Severity:** Medium
+**Affected Tool:** `rename_directory`
+**Related to:** Issue #2 (Cargo Dependency Paths)
+
+**Description:**
+When using `rename_directory` to rename a crate directory (e.g., `cb-api` → `cb-protocol`), Cargo.toml `[dependencies]` sections that reference the old crate name are not automatically updated.
+
+**Example:**
+```toml
+# Before: crates/cb-server/Cargo.toml
+[dependencies]
+cb-api = { path = "../cb-api" }
+
+# After: codebuddy tool rename_directory cb-api → cb-protocol
+# Expected: cb-protocol = { path = "../cb-protocol" }
+# Actual: cb-api = { path = "../cb-api" }  # ❌ Not updated
+```
+
+**Impact:** Requires manual find/replace across all Cargo.toml files in workspace
+
+**Workaround:**
+```bash
+# Find all affected files
+grep -r "cb-api" --include="Cargo.toml" crates/
+
+# Manual sed replacement
+find crates/ -name "Cargo.toml" -exec sed -i 's/cb-api/cb-protocol/g' {} +
+```
+
+**Enhancement Request:** `rename_directory` should detect Cargo packages and update dependency names in addition to paths.
+
+---
+
+**Last Updated:** Phase 2 refactoring complete (2025-10-03)

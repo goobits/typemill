@@ -4,7 +4,7 @@ use crate::services::import_service::ImportService;
 use crate::services::lock_manager::LockManager;
 use crate::services::operation_queue::{FileOperation, OperationTransaction, OperationType};
 use crate::{ServerError, ServerResult};
-use cb_api::{DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit};
+use cb_protocol::{DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit};
 use cb_ast::AstCache;
 use cb_core::dry_run::DryRunnable;
 use serde_json::{json, Value};
@@ -1576,7 +1576,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_atomic_edit_plan_success() {
-        use cb_api::{DependencyUpdateType, EditLocation, EditType};
+        use cb_protocol::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
         let (service, queue) = create_test_service(&temp_dir);
@@ -1655,7 +1655,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_atomic_rollback_on_main_file_failure() {
-        use cb_api::{DependencyUpdateType, EditLocation, EditType};
+        use cb_protocol::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
         let (service, queue) = create_test_service(&temp_dir);
@@ -1730,7 +1730,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_atomic_rollback_on_dependency_failure() {
-        use cb_api::{DependencyUpdateType, EditLocation, EditType};
+        use cb_protocol::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
         let (service, queue) = create_test_service(&temp_dir);
@@ -1808,7 +1808,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_atomic_rollback_multiple_files() {
-        use cb_api::{DependencyUpdateType, EditLocation, EditType};
+        use cb_protocol::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
         let (service, queue) = create_test_service(&temp_dir);

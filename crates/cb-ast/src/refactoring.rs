@@ -6,7 +6,7 @@ use crate::python_parser::{
     find_variable_at_position, get_variable_usages_in_scope,
 };
 use async_trait::async_trait;
-use cb_api::{
+use cb_protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use serde::{Deserialize, Serialize};
@@ -191,7 +191,7 @@ async fn lsp_extract_function(
         .ok_or_else(|| AstError::analysis("Code action missing edit field".to_string()))?;
 
     // Convert to EditPlan
-    cb_api::EditPlan::from_lsp_workspace_edit(workspace_edit, file_path, "extract_function")
+    cb_protocol::EditPlan::from_lsp_workspace_edit(workspace_edit, file_path, "extract_function")
         .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
 }
 
@@ -238,7 +238,7 @@ async fn lsp_inline_variable(
         .get("edit")
         .ok_or_else(|| AstError::analysis("Code action missing edit field".to_string()))?;
 
-    cb_api::EditPlan::from_lsp_workspace_edit(workspace_edit, file_path, "inline_variable")
+    cb_protocol::EditPlan::from_lsp_workspace_edit(workspace_edit, file_path, "inline_variable")
         .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
 }
 
@@ -282,7 +282,7 @@ async fn lsp_extract_variable(
         .get("edit")
         .ok_or_else(|| AstError::analysis("Code action missing edit field".to_string()))?;
 
-    cb_api::EditPlan::from_lsp_workspace_edit(workspace_edit, file_path, "extract_variable")
+    cb_protocol::EditPlan::from_lsp_workspace_edit(workspace_edit, file_path, "extract_variable")
         .map_err(|e| AstError::analysis(format!("Failed to convert LSP edit: {}", e)))
 }
 

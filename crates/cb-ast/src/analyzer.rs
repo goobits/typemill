@@ -1,7 +1,7 @@
 //! AST analysis functionality
 
 use crate::error::{AstError, AstResult};
-use cb_api::{
+use cb_protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use cb_core::model::IntentSpec;

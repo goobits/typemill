@@ -145,7 +145,7 @@ curl http://localhost/health
 See [`deployment/docker/README.md`](deployment/docker/README.md) for detailed documentation.
 
 ## 📖 Documentation
-- **[MCP API Reference](MCP_API.md)** - Complete MCP tools documentation
+- **[API Reference](API.md)** - Complete MCP tools documentation
 - **[CLAUDE.md](CLAUDE.md)** - AI assistant integration guide
 - **[Architecture](docs/architecture/ARCHITECTURE.md)** - System design
 - **[Support Matrix](SUPPORT_MATRIX.md)** - Language support

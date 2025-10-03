@@ -10,7 +10,7 @@ Pure Rust MCP server bridging Language Server Protocol (LSP) functionality to AI
 
 ## MCP Tools
 
-Codebuddy provides 42 MCP tools for code intelligence and refactoring. See **[MCP_API.md](MCP_API.md)** for complete API reference.
+Codebuddy provides 42 MCP tools for code intelligence and refactoring. See **[API.md](API.md)** for complete API reference.
 
 ### Quick Reference
 
@@ -90,7 +90,7 @@ Most file-modifying operations support `dry_run: true` for safe previews:
 - Returns detailed preview of what would happen
 - Safe for testing and validation
 
-For detailed parameters, return types, and examples, see **[MCP_API.md](MCP_API.md)**.
+For detailed parameters, return types, and examples, see **[API.md](API.md)**.
 
 ## Development Commands
 
@@ -186,7 +186,7 @@ cargo check
   - Not recommended for production use
   - To disable: set `"fuse": null` in `.codebuddy/config.json`
   - Docker: Use `deployment/docker-compose --profile fuse up codebuddy-fuse` to enable
-- **API Interfaces** (`crates/cb-api/`) - Service trait definitions
+- **API Interfaces** (`crates/cb-protocol/`) - Service trait definitions
 - **Client Library** (`crates/cb-client/`) - CLI client and WebSocket client
 
 ### Data Flow

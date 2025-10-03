@@ -141,7 +141,7 @@ impl ApiError {
     /// This converts the internal error enum to a structured error format
     /// suitable for API responses with error codes and optional details.
     pub fn to_api_response(&self) -> cb_core::ApiError {
-        use cb_core::error::error_codes::*;
+        use cb_types::error::error_codes::*;
 
         match self {
             ApiError::Config { message } => cb_core::ApiError::new(E1001_INVALID_REQUEST, message),

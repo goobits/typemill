@@ -1,7 +1,7 @@
 //! Service for managing import updates across the codebase
 
 use crate::{ServerError, ServerResult};
-use cb_api::DependencyUpdate;
+use cb_protocol::DependencyUpdate;
 use cb_ast::{
     find_project_files, language::LanguageAdapter, update_imports_for_rename, ImportPathResolver,
 };
