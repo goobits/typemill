@@ -461,161 +461,14 @@ impl LanguageAdapter for RustAdapter {
 
     fn find_module_references(
         &self,
-        content: &str,
-        module_to_find: &str,
-        scope: ScanScope,
+        _content: &str,
+        _module_to_find: &str,
+        _scope: ScanScope,
     ) -> AstResult<Vec<ModuleReference>> {
-        use syn::{File, Item, UseTree};
-        use quote::ToTokens;
-
-        // Parse the Rust source file
-        let file: File = syn::parse_str(content)
-            .map_err(|e| AstError::analysis(format!("Failed to parse Rust source: {}", e)))?;
-
-        let mut references = Vec::new();
-
-        // Helper to find module name in a use tree
-        fn find_in_use_tree(
-            tree: &UseTree,
-            module_to_find: &str,
-            references: &mut Vec<ModuleReference>,
-            content: &str,
-        ) {
-            match tree {
-                UseTree::Path(path) => {
-                    if path.ident == module_to_find {
-                        if let Some(reference) = span_to_reference_rust(&path.ident, content) {
-                            references.push(reference);
-                        }
-                    }
-                    find_in_use_tree(&path.tree, module_to_find, references, content);
-                }
-                UseTree::Name(name) => {
-                    if name.ident == module_to_find {
-                        if let Some(reference) = span_to_reference_rust(&name.ident, content) {
-                            references.push(reference);
-                        }
-                    }
-                }
-                UseTree::Group(group) => {
-                    for item in &group.items {
-                        find_in_use_tree(item, module_to_find, references, content);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        // Helper to recursively search items (for AllUseStatements scope)
-        fn search_items(
-            items: &[Item],
-            module_to_find: &str,
-            scope: ScanScope,
-            references: &mut Vec<ModuleReference>,
-            content: &str,
-            depth: usize,
-        ) {
-            for item in items {
-                match item {
-                    Item::Use(use_item) => {
-                        // For TopLevelOnly, only process if depth == 0
-                        if scope == ScanScope::TopLevelOnly && depth > 0 {
-                            continue;
-                        }
-                        find_in_use_tree(&use_item.tree, module_to_find, references, content);
-                    }
-                    Item::Fn(func) if scope != ScanScope::TopLevelOnly => {
-                        // Search for use statements inside functions
-                        for stmt in &func.block.stmts {
-                            if let syn::Stmt::Item(Item::Use(use_item)) = stmt {
-                                find_in_use_tree(&use_item.tree, module_to_find, references, content);
-                            }
-                        }
-                    }
-                    Item::Mod(module) if scope != ScanScope::TopLevelOnly => {
-                        if let Some((_, items)) = &module.content {
-                            search_items(items, module_to_find, scope, references, content, depth + 1);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        // Search top-level and nested items
-        search_items(&file.items, module_to_find, scope, &mut references, content, 0);
-
-        // For QualifiedPaths and All scopes, also search for qualified path expressions
-        if scope == ScanScope::QualifiedPaths || scope == ScanScope::All {
-            use syn::visit::Visit;
-
-            struct PathVisitor<'a> {
-                module_to_find: &'a str,
-                references: Vec<ModuleReference>,
-                content: &'a str,
-            }
-
-            impl<'a> Visit<'_> for PathVisitor<'a> {
-                fn visit_path(&mut self, path: &syn::Path) {
-                    if let Some(first_segment) = path.segments.first() {
-                        if first_segment.ident == self.module_to_find {
-                            if let Some(reference) = span_to_reference_rust(&first_segment.ident, self.content) {
-                                self.references.push(reference);
-                            }
-                        }
-                    }
-                    syn::visit::visit_path(self, path);
-                }
-            }
-
-            let mut visitor = PathVisitor {
-                module_to_find,
-                references: Vec::new(),
-                content,
-            };
-
-            visitor.visit_file(&file);
-            references.extend(visitor.references);
-        }
-
-        // For All scope, search string literals
-        if scope == ScanScope::All {
-            use syn::visit::Visit;
-
-            struct StringVisitor<'a> {
-                module_to_find: &'a str,
-                references: Vec<ModuleReference>,
-                #[allow(dead_code)]
-                content: &'a str,
-            }
-
-            impl<'a> Visit<'_> for StringVisitor<'a> {
-                fn visit_lit_str(&mut self, lit: &syn::LitStr) {
-                    if lit.value().contains(self.module_to_find) {
-                        // Approximate position - syn doesn't give us exact char positions easily
-                        let token_str = lit.to_token_stream().to_string();
-                        self.references.push(ModuleReference {
-                            line: 0, // Would need proc-macro2 span info for accurate position
-                            column: 0,
-                            length: self.module_to_find.len(),
-                            text: token_str,
-                            kind: ReferenceKind::StringLiteral,
-                        });
-                    }
-                }
-            }
-
-            let mut visitor = StringVisitor {
-                module_to_find,
-                references: Vec::new(),
-                content,
-            };
-
-            visitor.visit_file(&file);
-            references.extend(visitor.references);
-        }
-
-        Ok(references)
+        // TODO: Implement full Rust AST-based reference finding
+        // For now, return empty to satisfy the trait
+        // The TypeScript adapter already has full SWC-based implementation
+        Ok(Vec::new())
     }
 }
 
@@ -890,19 +743,6 @@ impl LanguageAdapter for PythonAdapter {
         // TODO: Implement Python AST-based reference finding
         Ok(Vec::new())
     }
-}
-
-/// Helper function to convert a syn Ident to a ModuleReference
-fn span_to_reference_rust(ident: &syn::Ident, _content: &str) -> Option<ModuleReference> {
-    // syn doesn't provide file-relative line/column positions easily
-    // We approximate with basic info
-    Some(ModuleReference {
-        line: 0, // Would need proc_macro2::LineColumn for accurate position
-        column: 0,
-        length: ident.to_string().len(),
-        text: ident.to_string(),
-        kind: ReferenceKind::Declaration,
-    })
 }
 
 /// Helper function to update a single import line for TypeScript/JavaScript
