@@ -37,23 +37,63 @@ impl Manifest for CargoManifest {
         new_name: &str,
         new_path: Option<&str>,
     ) -> AstResult<()> {
+        // Helper function to preserve metadata when renaming
+        fn rename_in_table(
+            deps: &mut dyn toml_edit::TableLike,
+            old_name: &str,
+            new_name: &str,
+            new_path: Option<&str>,
+        ) {
+            if let Some(old_dep) = deps.remove(old_name) {
+                // Preserve all existing metadata
+                let new_dep = match old_dep {
+                    Item::Value(ref val) if val.is_inline_table() => {
+                        // It's an inline table, preserve all fields and update path
+                        if let Some(table) = val.as_inline_table() {
+                            let mut new_table = table.clone();
+                            if let Some(path) = new_path {
+                                new_table.insert("path", path.into());
+                            }
+                            value(new_table)
+                        } else {
+                            old_dep
+                        }
+                    }
+                    Item::Value(ref val) if val.is_str() => {
+                        // It's a version string
+                        if let Some(path) = new_path {
+                            // Convert to inline table with path
+                            let mut new_table = toml_edit::InlineTable::new();
+                            new_table.insert("path", path.into());
+                            value(new_table)
+                        } else {
+                            // Keep the version string
+                            old_dep
+                        }
+                    }
+                    _ => {
+                        // For other types, preserve as-is or create new table if path provided
+                        if let Some(path) = new_path {
+                            let mut new_table = toml_edit::InlineTable::new();
+                            new_table.insert("path", path.into());
+                            value(new_table)
+                        } else {
+                            old_dep
+                        }
+                    }
+                };
+
+                deps.insert(new_name, new_dep);
+            }
+        }
+
         // Update in [dependencies]
         if let Some(deps) = self
             .0
             .get_mut("dependencies")
             .and_then(Item::as_table_like_mut)
         {
-            if deps.contains_key(old_name) {
-                // Create new dependency entry
-                let mut new_dep_table = toml_edit::InlineTable::new();
-                if let Some(path) = new_path {
-                    new_dep_table.insert("path", path.into());
-                }
-
-                // Remove old and insert new
-                deps.remove(old_name);
-                deps.insert(new_name, value(new_dep_table));
-            }
+            rename_in_table(deps, old_name, new_name, new_path);
         }
 
         // Update in [dev-dependencies]
@@ -62,17 +102,16 @@ impl Manifest for CargoManifest {
             .get_mut("dev-dependencies")
             .and_then(Item::as_table_like_mut)
         {
-            if dev_deps.contains_key(old_name) {
-                // Create new dependency entry
-                let mut new_dep_table = toml_edit::InlineTable::new();
-                if let Some(path) = new_path {
-                    new_dep_table.insert("path", path.into());
-                }
+            rename_in_table(dev_deps, old_name, new_name, new_path);
+        }
 
-                // Remove old and insert new
-                dev_deps.remove(old_name);
-                dev_deps.insert(new_name, value(new_dep_table));
-            }
+        // Update in [build-dependencies]
+        if let Some(build_deps) = self
+            .0
+            .get_mut("build-dependencies")
+            .and_then(Item::as_table_like_mut)
+        {
+            rename_in_table(build_deps, old_name, new_name, new_path);
         }
 
         Ok(())
@@ -184,6 +223,37 @@ other-dep = "1.0"
         assert!(result.contains("cb-plugins"));
         assert!(!result.contains("cb-mcp-proxy"));
         assert!(result.contains("../cb-plugins"));
+    }
+
+    #[test]
+    fn test_cargo_manifest_preserves_metadata() {
+        let cargo_toml = r#"
+[package]
+name = "test-crate"
+
+[dependencies]
+my-dep = { path = "../my-dep", version = "0.1", optional = true, features = ["feat1", "feat2"], default-features = false }
+"#;
+
+        let doc = cargo_toml.parse::<DocumentMut>().unwrap();
+        let mut manifest = CargoManifest(doc);
+
+        manifest
+            .rename_dependency("my-dep", "renamed-dep", Some("../renamed-dep"))
+            .unwrap();
+
+        let result = manifest.to_string().unwrap();
+
+        // Verify the dependency was renamed
+        assert!(result.contains("renamed-dep"));
+        assert!(!result.contains("my-dep ="));
+
+        // Verify all metadata was preserved
+        assert!(result.contains("../renamed-dep"));
+        assert!(result.contains("optional = true"));
+        assert!(result.contains("features = [\"feat1\", \"feat2\"]"));
+        assert!(result.contains("default-features = false"));
+        assert!(result.contains("version = \"0.1\""));
     }
 
     #[test]

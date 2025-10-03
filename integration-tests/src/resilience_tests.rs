@@ -421,8 +421,15 @@ async fn test_find_dead_code_workflow() {
 }
 
 // Note: FUSE test is complex and requires kernel support, so we'll implement a basic version
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_basic_filesystem_operations() {
+    // Initialize tracing for diagnostics
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env()
+            .add_directive("debug".parse().unwrap()))
+        .with_test_writer()
+        .try_init();
+
     // This test validates filesystem-related tools work correctly
     // A full FUSE test would require mounting and unmounting filesystems
 
@@ -450,9 +457,15 @@ async fn test_basic_filesystem_operations() {
         }
     });
 
-    let response = client
-        .send_request(list_request)
-        .expect("list_files should work");
+    // Wrap in timeout to prevent hanging
+    let response = tokio::time::timeout(
+        Duration::from_secs(10),
+        async {
+            client.send_request(list_request)
+        }
+    ).await
+    .unwrap_or_else(|_| panic!("list_files request timed out after 10 seconds"))
+    .unwrap_or_else(|e| panic!("list_files request failed: {}", e));
     assert_eq!(response["id"], "fs-1");
     assert!(response["error"].is_null(), "list_files should not error");
 

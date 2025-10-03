@@ -58,6 +58,22 @@ ttl_seconds = 3600          # 1 hour
 persistent = false
 
 # =============================================================================
+# Git Integration Configuration
+# =============================================================================
+[git]
+enabled = true                # Auto-detect and use git if available
+require = false               # Fail if git expected but unavailable
+operations = ["mv", "rm"]     # Which git commands to use for file operations
+
+# =============================================================================
+# Validation Configuration
+# =============================================================================
+[validation]
+enabled = false               # Enable post-operation validation
+command = "cargo check"       # Command to run for validation
+on_failure = "Report"         # Action on failure: Report, Rollback, or Interactive
+
+# =============================================================================
 # External MCP Servers
 # =============================================================================
 [[external_mcp.servers]]

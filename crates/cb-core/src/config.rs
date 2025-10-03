@@ -19,6 +19,12 @@ pub struct AppConfig {
     pub logging: LoggingConfig,
     /// Cache configuration
     pub cache: CacheConfig,
+    /// Git integration configuration
+    #[serde(default)]
+    pub git: GitConfig,
+    /// Validation configuration
+    #[serde(default)]
+    pub validation: ValidationConfig,
     /// Plugin selection configuration
     #[serde(default)]
     pub plugin_selection: PluginSelectionConfig,
@@ -203,6 +209,43 @@ pub struct CacheConfig {
     pub cache_dir: Option<PathBuf>,
 }
 
+/// Git integration configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitConfig {
+    /// Auto-detect and use git if available
+    pub enabled: bool,
+    /// Fail if git expected but unavailable
+    pub require: bool,
+    /// Which git commands to use for file operations
+    pub operations: Vec<String>,
+}
+
+/// Validation configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidationConfig {
+    /// Enable post-operation validation
+    pub enabled: bool,
+    /// Command to run for validation
+    pub command: String,
+    /// Action on failure
+    pub on_failure: ValidationFailureAction,
+}
+
+/// Action to take when validation fails
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "PascalCase")]
+pub enum ValidationFailureAction {
+    /// Just report the error
+    #[default]
+    Report,
+    /// Rollback the operation using git
+    Rollback,
+    /// Ask the user what to do
+    Interactive,
+}
+
 impl Default for ServerConfig {
     fn default() -> Self {
         Self {
@@ -277,6 +320,26 @@ impl Default for CacheConfig {
             ttl_seconds: 3600,                 // 1 hour
             persistent: false,
             cache_dir: None,
+        }
+    }
+}
+
+impl Default for GitConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            require: false,
+            operations: vec!["mv".to_string(), "rm".to_string()],
+        }
+    }
+}
+
+impl Default for ValidationConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            command: "cargo check".to_string(),
+            on_failure: ValidationFailureAction::Report,
         }
     }
 }

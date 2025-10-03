@@ -135,6 +135,7 @@ pub mod error_codes {
 ///     code: error_codes::E1002_FILE_NOT_FOUND.to_string(),
 ///     message: "File does not exist".to_string(),
 ///     details: Some(json!({"path": "/path/to/missing/file.rs"})),
+///     suggestion: Some("Check that the file path is correct and the file exists".to_string()),
 /// };
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,6 +147,9 @@ pub struct ApiError {
     /// Optional additional context
     #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<Value>,
+    /// Optional actionable suggestion for fixing the error
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub suggestion: Option<String>,
 }
 
 impl ApiError {
@@ -155,6 +159,7 @@ impl ApiError {
             code: code.into(),
             message: message.into(),
             details: None,
+            suggestion: None,
         }
     }
 
@@ -168,6 +173,7 @@ impl ApiError {
             code: code.into(),
             message: message.into(),
             details: Some(details),
+            suggestion: None,
         }
     }
 
@@ -176,6 +182,26 @@ impl ApiError {
         self.details = Some(details);
         self
     }
+
+    /// Add a suggestion to an existing error
+    pub fn suggestion(mut self, suggestion: impl Into<String>) -> Self {
+        self.suggestion = Some(suggestion.into());
+        self
+    }
+
+    /// Create a new API error with a suggestion
+    pub fn with_suggestion(
+        code: impl Into<String>,
+        message: impl Into<String>,
+        suggestion: impl Into<String>,
+    ) -> Self {
+        Self {
+            code: code.into(),
+            message: message.into(),
+            details: None,
+            suggestion: Some(suggestion.into()),
+        }
+    }
 }
 
 impl std::fmt::Display for ApiError {
@@ -183,6 +209,9 @@ impl std::fmt::Display for ApiError {
         write!(f, "[{}] {}", self.code, self.message)?;
         if let Some(details) = &self.details {
             write!(f, " (details: {})", details)?;
+        }
+        if let Some(suggestion) = &self.suggestion {
+            write!(f, "\nSuggestion: {}", suggestion)?;
         }
         Ok(())
     }
