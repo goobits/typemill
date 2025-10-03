@@ -56,6 +56,7 @@
 | `delete_file` | ✅ Full | ✅ | ✅ | ✅ | ✅ | Checks for imports, force option |
 | `rename_file` | ✅ Full | ✅ | ✅ | ✅ | ✅ | **Updates imports automatically**, supports dry_run |
 | `list_files` | ✅ Full | ✅ | ✅ | ✅ | ✅ | Respects .gitignore, recursive option |
+| `create_directory` | ❌ Not Yet | ❌ | ❌ | ❌ | ❌ | **Not implemented**. Directories auto-created when files are written. Use `mkdir -p` manually if needed. |
 
 ### Workspace Operations
 

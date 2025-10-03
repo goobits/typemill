@@ -1,8 +1,8 @@
-use cb_server::dispatcher::create_test_dispatcher;
+use cb_server::create_test_dispatcher;
 
 #[tokio::test]
 async fn test_all_42_tools_are_registered() {
-    let dispatcher = create_test_dispatcher().await;
+    let dispatcher = create_test_dispatcher();
     dispatcher.initialize().await.unwrap();
 
     let registry = dispatcher.tool_registry.lock().await;

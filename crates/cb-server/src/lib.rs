@@ -15,6 +15,9 @@ pub mod services;
 pub mod systems;
 pub mod utils;
 
+// Test helpers - available for integration tests
+pub mod test_helpers;
+
 // Re-export workspaces from cb-core for backward compatibility
 pub use cb_core::workspaces;
 

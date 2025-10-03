@@ -16,6 +16,8 @@ pub mod workflow_handler;
 pub use file_operation_handler::FileOperationHandler;
 pub use lsp_adapter::DirectLspAdapter;
 pub use plugin_dispatcher::{AppState, PluginDispatcher};
+#[cfg(test)]
+pub use plugin_dispatcher::create_test_dispatcher;
 pub use refactoring_handler::RefactoringHandler;
 pub use system_handler::SystemHandler as LegacySystemHandler;
 pub use tool_handler::{ToolContext, ToolHandler};

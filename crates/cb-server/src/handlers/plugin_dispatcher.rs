@@ -90,6 +90,9 @@ pub struct PluginDispatcher {
     /// LSP adapter for refactoring operations
     lsp_adapter: Arc<Mutex<Option<Arc<DirectLspAdapter>>>>,
     /// Tool handler registry for automatic routing
+    #[cfg(test)]
+    pub tool_registry: Arc<Mutex<super::tool_registry::ToolRegistry>>,
+    #[cfg(not(test))]
     tool_registry: Arc<Mutex<super::tool_registry::ToolRegistry>>,
     /// Initialization flag
     initialized: OnceCell<()>,
@@ -752,6 +755,43 @@ impl McpDispatcher for PluginDispatcher {
             .await
             .map_err(|e| cb_api::ApiError::internal(e.to_string()))
     }
+}
+
+/// Create a test dispatcher for testing purposes
+/// This is exposed publicly to support integration tests
+#[cfg(test)]
+pub fn create_test_dispatcher() -> PluginDispatcher {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let ast_cache = Arc::new(cb_ast::AstCache::new());
+    let ast_service = Arc::new(crate::services::DefaultAstService::new(ast_cache.clone()));
+    let project_root = temp_dir.path().to_path_buf();
+    let lock_manager = Arc::new(crate::services::LockManager::new());
+    let operation_queue = Arc::new(crate::services::OperationQueue::new(lock_manager.clone()));
+    let file_service = Arc::new(crate::services::FileService::new(
+        project_root.clone(),
+        ast_cache.clone(),
+        lock_manager.clone(),
+        operation_queue.clone(),
+    ));
+    let planner = crate::services::planner::DefaultPlanner::new();
+    let plugin_manager = Arc::new(PluginManager::new());
+    let workflow_executor =
+        crate::services::workflow_executor::DefaultWorkflowExecutor::new(plugin_manager.clone());
+    let workspace_manager = Arc::new(WorkspaceManager::new());
+
+    let app_state = Arc::new(AppState {
+        ast_service,
+        file_service,
+        planner,
+        workflow_executor,
+        project_root,
+        lock_manager,
+        operation_queue,
+        start_time: std::time::Instant::now(),
+        workspace_manager,
+    });
+
+    PluginDispatcher::new(app_state, plugin_manager)
 }
 
 #[cfg(test)]
