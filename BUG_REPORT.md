@@ -57,7 +57,7 @@ Created GitService and integrated into FileService:
 
 ---
 
-### Batch Dependency Updates (Enhancement #2) - PARTIALLY RESOLVED
+### Batch Dependency Updates (Enhancement #2) - RESOLVED
 **Resolution Date:** 2025-10-03 (Pre-Phase 4 Sprint)
 **Tool Added:** `batch_update_dependencies` (44th MCP tool)
 
@@ -65,10 +65,8 @@ Created GitService and integrated into FileService:
 - ✅ Batch update mode for multi-file refactorings
 - ✅ Auto-detect from workspace root and update all referencing crates
 - ✅ Aggregated result reporting with success/failure counts
-
-**What's Still Needed:**
-- ❌ Support inline dependency features (`optional = true`, `features = [...]`)
-- ❌ Preserve existing metadata when renaming dependencies
+- ✅ Support for inline dependency features (`optional = true`, `features = [...]`)
+- ✅ Preserves all existing metadata when renaming dependencies
 
 **Usage:**
 ```bash
@@ -149,11 +147,6 @@ Intermittent timeouts and JSON parsing errors ("trailing characters"). Likely ti
 ---
 
 ## 📋 Enhancement Requests
-
-### 1. update_dependency Tool - Metadata Preservation
-- Support inline dependency features (e.g., `optional = true`, `features = [...]`)
-- Preserve existing metadata when renaming dependencies
-- **Note:** Batch mode and auto-discovery are already implemented (see Resolved Issues)
 
 ### 2. Post-Operation Validation
 - Run `cargo check` after refactoring operations

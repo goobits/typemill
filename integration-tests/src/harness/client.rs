@@ -67,17 +67,34 @@ impl TestClient {
         let stdout = process.stdout.take().unwrap();
         let stderr = process.stderr.take().unwrap();
 
-        // Spawn thread to read stdout
+        // Spawn thread to read stdout with frame delimiter support
         let (stdout_sender, stdout_receiver) = mpsc::channel();
         thread::spawn(move || {
-            let reader = BufReader::new(stdout);
-            for line in reader.lines().map_while(Result::ok) {
-                let trimmed = line.trim();
-                if !trimmed.is_empty()
-                    && trimmed.starts_with('{')
-                    && stdout_sender.send(line).is_err()
-                {
-                    break;
+            const FRAME_DELIMITER: &[u8] = b"\n---FRAME---\n";
+            let mut reader = BufReader::new(stdout);
+            let mut buffer = Vec::new();
+
+            loop {
+                // Read until newline
+                match reader.read_until(b'\n', &mut buffer) {
+                    Ok(0) => break, // EOF
+                    Ok(_) => {
+                        // Check if we've reached the frame delimiter
+                        if buffer.ends_with(FRAME_DELIMITER) {
+                            // Remove the delimiter
+                            buffer.truncate(buffer.len() - FRAME_DELIMITER.len());
+                            let message = String::from_utf8_lossy(&buffer).trim().to_string();
+
+                            // Send the complete framed message
+                            if !message.is_empty() && stdout_sender.send(message).is_err() {
+                                break;
+                            }
+
+                            // Clear buffer for next message
+                            buffer.clear();
+                        }
+                    }
+                    Err(_) => break,
                 }
             }
         });
@@ -106,8 +123,12 @@ impl TestClient {
 
     /// Send a JSON-RPC request and wait for response.
     pub fn send_request(&mut self, request: Value) -> Result<Value, Box<dyn std::error::Error>> {
+        const FRAME_DELIMITER: &[u8] = b"\n---FRAME---\n";
+
         let request_str = serde_json::to_string(&request)?;
-        writeln!(self.stdin, "{}", request_str)?;
+        // Send request followed by frame delimiter
+        self.stdin.write_all(request_str.as_bytes())?;
+        self.stdin.write_all(FRAME_DELIMITER)?;
         self.stdin.flush()?;
 
         // Wait for response with extended timeout for resilience tests
