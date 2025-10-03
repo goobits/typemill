@@ -77,6 +77,7 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
         ast_cache.clone(),
         lock_manager.clone(),
         operation_queue.clone(),
+        &options.config,
     ));
 
     // Create planner
@@ -190,6 +191,7 @@ pub async fn create_dispatcher_with_workspace(
         ast_cache.clone(),
         lock_manager.clone(),
         operation_queue.clone(),
+        &config,
     ));
 
     // Create planner

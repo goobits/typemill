@@ -4,6 +4,7 @@ use crate::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
 use crate::services::{DefaultAstService, FileService, LockManager, OperationQueue};
 use crate::workspaces::WorkspaceManager;
 use cb_ast::AstCache;
+use cb_core::AppConfig;
 use cb_plugins::PluginManager;
 use std::sync::Arc;
 
@@ -20,11 +21,16 @@ pub fn create_test_dispatcher() -> PluginDispatcher {
     let project_root = temp_dir;
     let lock_manager = Arc::new(LockManager::new());
     let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
+
+    // Use default config for tests
+    let config = AppConfig::default();
+
     let file_service = Arc::new(FileService::new(
         project_root.clone(),
         ast_cache.clone(),
         lock_manager.clone(),
         operation_queue.clone(),
+        &config,
     ));
     let planner = crate::services::planner::DefaultPlanner::new();
     let plugin_manager = Arc::new(PluginManager::new());

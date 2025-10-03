@@ -5,6 +5,7 @@ use crate::services::import_service::ImportService;
 use crate::services::lock_manager::LockManager;
 use crate::services::operation_queue::{FileOperation, OperationTransaction, OperationType};
 use cb_ast::AstCache;
+use cb_core::config::AppConfig;
 use cb_core::dry_run::DryRunnable;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use cb_protocol::{DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit};
@@ -41,12 +42,20 @@ impl FileService {
         ast_cache: Arc<AstCache>,
         lock_manager: Arc<LockManager>,
         operation_queue: Arc<super::operation_queue::OperationQueue>,
+        config: &AppConfig,
     ) -> Self {
         let project_root = project_root.as_ref().to_path_buf();
-        let use_git = GitService::is_git_repo(&project_root);
+
+        // Determine if we should use git based on:
+        // 1. Configuration git.enabled flag
+        // 2. Whether the project is actually a git repository
+        let is_git_repo = GitService::is_git_repo(&project_root);
+        let use_git = config.git.enabled && is_git_repo;
 
         debug!(
             project_root = %project_root.display(),
+            git_enabled_in_config = config.git.enabled,
+            is_git_repo,
             use_git,
             "Initializing FileService with git support"
         );
@@ -2139,7 +2148,8 @@ members = [
         let operation_queue = Arc::new(super::super::operation_queue::OperationQueue::new(
             lock_manager.clone(),
         ));
-        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager, operation_queue);
+        let config = cb_core::AppConfig::default();
+        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager, operation_queue, &config);
 
         // Moved deeper: 1 level
         assert_eq!(

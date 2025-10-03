@@ -518,11 +518,13 @@ pub fn create_test_dispatcher() -> PluginDispatcher {
     let operation_queue = Arc::new(cb_services::services::OperationQueue::new(
         lock_manager.clone(),
     ));
+    let config = cb_core::AppConfig::default();
     let file_service = Arc::new(cb_services::services::FileService::new(
         project_root.clone(),
         ast_cache.clone(),
         lock_manager.clone(),
         operation_queue.clone(),
+        &config,
     ));
     let planner = cb_services::services::planner::DefaultPlanner::new();
     let plugin_manager = Arc::new(PluginManager::new());
