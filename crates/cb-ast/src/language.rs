@@ -180,6 +180,112 @@ pub trait LanguageAdapter: Send + Sync {
     ) -> AstResult<Vec<ModuleReference>>;
 }
 
+/// Visitor for finding module references in Rust code using syn::visit
+struct RustModuleFinder<'a> {
+    module_to_find: &'a str,
+    scope: ScanScope,
+    references: Vec<ModuleReference>,
+}
+
+impl<'a> RustModuleFinder<'a> {
+    fn new(module_to_find: &'a str, scope: ScanScope) -> Self {
+        Self {
+            module_to_find,
+            scope,
+            references: Vec::new(),
+        }
+    }
+
+    fn into_references(self) -> Vec<ModuleReference> {
+        self.references
+    }
+
+    fn check_use_tree(&mut self, tree: &syn::UseTree) {
+        match tree {
+            syn::UseTree::Path(path) => {
+                if path.ident == self.module_to_find {
+                    self.references.push(ModuleReference {
+                        line: 0,
+                        column: 0,
+                        length: self.module_to_find.len(),
+                        text: self.module_to_find.to_string(),
+                        kind: ReferenceKind::Declaration,
+                    });
+                }
+                self.check_use_tree(&path.tree);
+            }
+            syn::UseTree::Name(name) => {
+                if name.ident == self.module_to_find {
+                    self.references.push(ModuleReference {
+                        line: 0,
+                        column: 0,
+                        length: self.module_to_find.len(),
+                        text: self.module_to_find.to_string(),
+                        kind: ReferenceKind::Declaration,
+                    });
+                }
+            }
+            syn::UseTree::Group(group) => {
+                for item in &group.items {
+                    self.check_use_tree(item);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+impl<'ast, 'a> syn::visit::Visit<'ast> for RustModuleFinder<'a> {
+    fn visit_item_use(&mut self, node: &'ast syn::ItemUse) {
+        // Check the use tree for our module
+        self.check_use_tree(&node.tree);
+
+        // Continue visiting child nodes
+        syn::visit::visit_item_use(self, node);
+    }
+
+    fn visit_expr_path(&mut self, node: &'ast syn::ExprPath) {
+        // Only check qualified paths if scope allows
+        if self.scope == ScanScope::QualifiedPaths || self.scope == ScanScope::All {
+            if let Some(segment) = node.path.segments.first() {
+                if segment.ident == self.module_to_find {
+                    self.references.push(ModuleReference {
+                        line: 0,
+                        column: 0,
+                        length: self.module_to_find.len(),
+                        text: quote::quote!(#node).to_string(),
+                        kind: ReferenceKind::QualifiedPath,
+                    });
+                }
+            }
+        }
+
+        // Continue visiting
+        syn::visit::visit_expr_path(self, node);
+    }
+
+    fn visit_expr_lit(&mut self, node: &'ast syn::ExprLit) {
+        // Only check string literals if scope is All
+        if self.scope == ScanScope::All {
+            if let syn::Lit::Str(lit_str) = &node.lit {
+                let value = lit_str.value();
+                if value.contains(self.module_to_find) {
+                    self.references.push(ModuleReference {
+                        line: 0,
+                        column: 0,
+                        length: self.module_to_find.len(),
+                        text: value,
+                        kind: ReferenceKind::StringLiteral,
+                    });
+                }
+            }
+        }
+
+        // Continue visiting
+        syn::visit::visit_expr_lit(self, node);
+    }
+}
+
 /// Rust language adapter
 pub struct RustAdapter;
 
@@ -465,130 +571,18 @@ impl LanguageAdapter for RustAdapter {
         module_to_find: &str,
         scope: ScanScope,
     ) -> AstResult<Vec<ModuleReference>> {
-        use syn::{File, Item, UseTree};
+        use syn::visit::Visit;
+        use syn::File;
 
         // Parse the Rust source file
         let file: File = syn::parse_str(content)
             .map_err(|e| AstError::analysis(format!("Failed to parse Rust source: {}", e)))?;
 
-        let mut references = Vec::new();
+        // Create and run visitor
+        let mut finder = RustModuleFinder::new(module_to_find, scope);
+        finder.visit_file(&file);
 
-        // Helper to find module name in a use tree
-        fn find_in_use_tree(
-            tree: &UseTree,
-            module_to_find: &str,
-            references: &mut Vec<ModuleReference>,
-        ) {
-            match tree {
-                UseTree::Path(path) => {
-                    if path.ident == module_to_find {
-                        references.push(ModuleReference {
-                            line: 0,
-                            column: 0,
-                            length: module_to_find.len(),
-                            text: module_to_find.to_string(),
-                            kind: ReferenceKind::Declaration,
-                        });
-                    }
-                    find_in_use_tree(&path.tree, module_to_find, references);
-                }
-                UseTree::Name(name) => {
-                    if name.ident == module_to_find {
-                        references.push(ModuleReference {
-                            line: 0,
-                            column: 0,
-                            length: module_to_find.len(),
-                            text: module_to_find.to_string(),
-                            kind: ReferenceKind::Declaration,
-                        });
-                    }
-                }
-                UseTree::Group(group) => {
-                    for item in &group.items {
-                        find_in_use_tree(item, module_to_find, references);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        // Helper to recursively search items
-        fn search_items(
-            items: &[Item],
-            module_to_find: &str,
-            scope: ScanScope,
-            references: &mut Vec<ModuleReference>,
-            depth: usize,
-        ) {
-            for item in items {
-                match item {
-                    Item::Use(use_item) => {
-                        // For TopLevelOnly, only process if depth == 0
-                        if scope == ScanScope::TopLevelOnly && depth > 0 {
-                            continue;
-                        }
-                        find_in_use_tree(&use_item.tree, module_to_find, references);
-                    }
-                    Item::Fn(func) if scope != ScanScope::TopLevelOnly => {
-                        // Search for use statements inside functions
-                        for stmt in &func.block.stmts {
-                            if let syn::Stmt::Item(Item::Use(use_item)) = stmt {
-                                find_in_use_tree(&use_item.tree, module_to_find, references);
-                            }
-                        }
-                    }
-                    Item::Mod(module) if scope != ScanScope::TopLevelOnly => {
-                        if let Some((_, items)) = &module.content {
-                            search_items(items, module_to_find, scope, references, depth + 1);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        // Search top-level and nested items
-        search_items(&file.items, module_to_find, scope, &mut references, 0);
-
-        // For QualifiedPaths and All scopes, use simple string matching as fallback
-        // TODO: Implement proper AST-based path finding without syn::visit to avoid compiler issues
-        if scope == ScanScope::QualifiedPaths || scope == ScanScope::All {
-            // Simple regex-based search for qualified paths like "module::function"
-            let pattern = format!(r"\b{}\s*::", regex::escape(module_to_find));
-            if let Ok(re) = regex::Regex::new(&pattern) {
-                for (line_num, line) in content.lines().enumerate() {
-                    if re.is_match(line) {
-                        references.push(ModuleReference {
-                            line: line_num,
-                            column: 0,
-                            length: module_to_find.len(),
-                            text: line.trim().to_string(),
-                            kind: ReferenceKind::QualifiedPath,
-                        });
-                    }
-                }
-            }
-        }
-
-        // For All scope, search string literals using regex
-        if scope == ScanScope::All {
-            let pattern = format!(r#""[^"]*{}[^"]*""#, regex::escape(module_to_find));
-            if let Ok(re) = regex::Regex::new(&pattern) {
-                for (line_num, line) in content.lines().enumerate() {
-                    if re.is_match(line) {
-                        references.push(ModuleReference {
-                            line: line_num,
-                            column: 0,
-                            length: module_to_find.len(),
-                            text: line.trim().to_string(),
-                            kind: ReferenceKind::StringLiteral,
-                        });
-                    }
-                }
-            }
-        }
-
-        Ok(references)
+        Ok(finder.into_references())
     }
 }
 
