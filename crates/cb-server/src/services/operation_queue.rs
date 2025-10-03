@@ -395,6 +395,16 @@ impl OperationQueue {
             && stats.total_operations == (stats.completed_operations + stats.failed_operations)
     }
 
+    /// Wait until the queue becomes idle (all operations completed).
+    /// This is useful for tests that need to wait for async operations to finish.
+    pub async fn wait_until_idle(&self) {
+        use tokio::time::{sleep, Duration};
+
+        while !self.is_idle().await {
+            sleep(Duration::from_millis(10)).await;
+        }
+    }
+
     /// Clear all pending operations
     pub async fn clear(&self) {
         let mut queue = self.queue.lock().await;

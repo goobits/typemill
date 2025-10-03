@@ -306,7 +306,7 @@ impl FileService {
 
     /// Perform the actual file rename operation
     async fn perform_rename(&self, old_path: &Path, new_path: &Path) -> ServerResult<()> {
-        // Queue the operations for tracking
+        // Queue the operations for execution by the background worker
         let mut transaction = OperationTransaction::new(self.operation_queue.clone());
 
         if let Some(parent) = new_path.parent() {
@@ -331,17 +331,6 @@ impl FileService {
             .commit()
             .await
             .map_err(|e| ServerError::Internal(e.to_string()))?;
-
-        // Actually perform the filesystem operations
-        if let Some(parent) = new_path.parent() {
-            fs::create_dir_all(parent).await.map_err(|e| {
-                ServerError::Internal(format!("Failed to create parent directory: {}", e))
-            })?;
-        }
-
-        fs::rename(old_path, new_path)
-            .await
-            .map_err(|e| ServerError::Internal(format!("Failed to rename file: {}", e)))?;
 
         Ok(())
     }
@@ -385,7 +374,7 @@ impl FileService {
                         as Box<dyn std::error::Error + Send + Sync>);
                 }
 
-                // Queue the operations for tracking
+                // Queue the operations for execution by the background worker
                 let mut transaction = OperationTransaction::new(self.operation_queue.clone());
 
                 if let Some(parent) = abs_path.parent() {
@@ -410,25 +399,10 @@ impl FileService {
                     Box::new(e) as Box<dyn std::error::Error + Send + Sync>
                 })?;
 
-                // Actually perform the filesystem operations
-                if let Some(parent) = abs_path.parent() {
-                    fs::create_dir_all(parent).await.map_err(|e| {
-                        Box::new(ServerError::Internal(format!(
-                            "Failed to create parent directory: {}",
-                            e
-                        ))) as Box<dyn std::error::Error + Send + Sync>
-                    })?;
-                }
-                fs::write(&abs_path, &content).await.map_err(|e| {
-                    Box::new(ServerError::Internal(format!(
-                        "Failed to write file: {}",
-                        e
-                    ))) as Box<dyn std::error::Error + Send + Sync>
-                })?;
-
-                info!(path = ?abs_path, "Created file");
+                info!(path = ?abs_path, "Queued create_file operation");
                 Ok(json!({
-                    "success": true
+                    "success": true,
+                    "status": "queued"
                 }))
             },
         )
@@ -541,19 +515,11 @@ impl FileService {
                     Box::new(e) as Box<dyn std::error::Error + Send + Sync>
                 })?;
 
-                // Actually perform the filesystem operation
-                fs::remove_file(&abs_path).await.map_err(|e| {
-                    Box::new(ServerError::Internal(format!(
-                        "Failed to delete file: {}",
-                        e
-                    ))) as Box<dyn std::error::Error + Send + Sync>
-                })?;
-
-                info!(path = ?abs_path, "Deleted file");
+                info!(path = ?abs_path, "Queued delete_file operation");
                 Ok(json!({
                     "operation": "delete_file",
                     "path": abs_path.to_string_lossy(),
-                    "deleted": true,
+                    "status": "queued"
                 }))
             },
         )
@@ -627,24 +593,10 @@ impl FileService {
                     Box::new(e) as Box<dyn std::error::Error + Send + Sync>
                 })?;
 
-                // Actually perform the filesystem operations
-                if let Some(parent) = abs_path.parent() {
-                    fs::create_dir_all(parent).await.map_err(|e| {
-                        Box::new(ServerError::Internal(format!(
-                            "Failed to create parent directory: {}",
-                            e
-                        ))) as Box<dyn std::error::Error + Send + Sync>
-                    })?;
-                }
-                fs::write(&abs_path, &content).await.map_err(|e| {
-                    Box::new(ServerError::Internal(format!(
-                        "Failed to write file: {}",
-                        e
-                    ))) as Box<dyn std::error::Error + Send + Sync>
-                })?;
-                info!(path = ?abs_path, "Wrote to file");
+                info!(path = ?abs_path, "Queued write_file operation");
                 Ok(json!({
-                    "success": true
+                    "success": true,
+                    "status": "queued"
                 }))
             },
         )
@@ -1512,17 +1464,56 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    fn create_test_service(temp_dir: &TempDir) -> FileService {
+    // Helper to start a background worker for tests
+    fn spawn_test_worker(queue: Arc<super::super::operation_queue::OperationQueue>) {
+        use crate::services::operation_queue::OperationType;
+        use tokio::fs;
+
+        tokio::spawn(async move {
+            queue.process_with(|op| {
+                async move {
+                    match op.operation_type {
+                        OperationType::CreateDir => {
+                            fs::create_dir_all(&op.file_path).await?;
+                        }
+                        OperationType::CreateFile | OperationType::Write => {
+                            let content = op.params.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                            fs::write(&op.file_path, content).await?;
+                        }
+                        OperationType::Delete => {
+                            if op.file_path.exists() {
+                                fs::remove_file(&op.file_path).await?;
+                            }
+                        }
+                        OperationType::Rename => {
+                            let new_path_str = op.params.get("new_path").and_then(|v| v.as_str())
+                                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "Missing new_path"))?;
+                            fs::rename(&op.file_path, new_path_str).await?;
+                        }
+                        _ => {}
+                    }
+                    Ok(serde_json::Value::Null)
+                }
+            }).await;
+        });
+    }
+
+    fn create_test_service(temp_dir: &TempDir) -> (FileService, Arc<super::super::operation_queue::OperationQueue>) {
         let ast_cache = Arc::new(AstCache::new());
         let lock_manager = Arc::new(LockManager::new());
         let operation_queue = Arc::new(super::super::operation_queue::OperationQueue::new(lock_manager.clone()));
-        FileService::new(temp_dir.path(), ast_cache, lock_manager, operation_queue)
+        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager, operation_queue.clone());
+
+        // Spawn background worker to process queued operations
+        spawn_test_worker(operation_queue.clone());
+
+        (service, operation_queue)
     }
 
     #[tokio::test]
     async fn test_create_and_read_file() {
         let temp_dir = TempDir::new().unwrap();
-        let service = create_test_service(&temp_dir);
+        let (service, queue) = create_test_service(&temp_dir);
 
         let file_path = Path::new("test.txt");
         let content = "Hello, World!";
@@ -1533,6 +1524,9 @@ mod tests {
             .await
             .unwrap();
 
+        // Wait for queue to process operations
+        queue.wait_until_idle().await;
+
         // Read file
         let read_content = service.read_file(file_path).await.unwrap();
         assert_eq!(read_content, content);
@@ -1541,7 +1535,7 @@ mod tests {
     #[tokio::test]
     async fn test_rename_file() {
         let temp_dir = TempDir::new().unwrap();
-        let service = create_test_service(&temp_dir);
+        let (service, queue) = create_test_service(&temp_dir);
 
         // Create initial file
         let old_path = Path::new("old.txt");
@@ -1550,6 +1544,7 @@ mod tests {
             .create_file(old_path, Some("content"), false, false)
             .await
             .unwrap();
+        queue.wait_until_idle().await;
 
         // Rename file
         let result = service
@@ -1557,6 +1552,7 @@ mod tests {
             .await
             .unwrap();
         assert!(result.result["success"].as_bool().unwrap_or(false));
+        queue.wait_until_idle().await;
 
         // Verify old file doesn't exist and new file does
         assert!(!temp_dir.path().join(old_path).exists());
@@ -1566,7 +1562,7 @@ mod tests {
     #[tokio::test]
     async fn test_delete_file() {
         let temp_dir = TempDir::new().unwrap();
-        let service = create_test_service(&temp_dir);
+        let (service, queue) = create_test_service(&temp_dir);
 
         let file_path = Path::new("to_delete.txt");
 
@@ -1575,9 +1571,11 @@ mod tests {
             .create_file(file_path, Some("temporary"), false, false)
             .await
             .unwrap();
+        queue.wait_until_idle().await;
         assert!(temp_dir.path().join(file_path).exists());
 
         service.delete_file(file_path, false, false).await.unwrap();
+        queue.wait_until_idle().await;
         assert!(!temp_dir.path().join(file_path).exists());
     }
 
@@ -1586,7 +1584,7 @@ mod tests {
         use cb_api::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
-        let service = create_test_service(&temp_dir);
+        let (service, queue) = create_test_service(&temp_dir);
 
         // Create test files
         let main_file = "main.ts";
@@ -1665,7 +1663,7 @@ mod tests {
         use cb_api::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
-        let service = create_test_service(&temp_dir);
+        let (service, queue) = create_test_service(&temp_dir);
 
         // Create test files with specific content
         let main_file = "main.ts";
@@ -1682,6 +1680,7 @@ mod tests {
             .create_file(Path::new(dep_file), Some(dep_original), false, false)
             .await
             .unwrap();
+        queue.wait_until_idle().await;
 
         // Create edit plan with invalid edit location that will fail
         let plan = EditPlan {
@@ -1739,7 +1738,7 @@ mod tests {
         use cb_api::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
-        let service = create_test_service(&temp_dir);
+        let (service, queue) = create_test_service(&temp_dir);
 
         // Create main file
         let main_file = "main.ts";
@@ -1758,6 +1757,7 @@ mod tests {
             .create_file(Path::new(dep_file), Some(dep_original), false, false)
             .await
             .unwrap();
+        queue.wait_until_idle().await;
 
         // Create edit plan that will fail when trying to parse the bad dependency file
         let plan = EditPlan {
@@ -1816,7 +1816,7 @@ mod tests {
         use cb_api::{DependencyUpdateType, EditLocation, EditType};
 
         let temp_dir = TempDir::new().unwrap();
-        let service = create_test_service(&temp_dir);
+        let (service, queue) = create_test_service(&temp_dir);
 
         // Create multiple files
         let main_file = "main.ts";
@@ -1845,6 +1845,7 @@ mod tests {
             .create_file(Path::new(dep_file3), Some(dep3_original), false, false)
             .await
             .unwrap();
+        queue.wait_until_idle().await;
 
         // Create edit plan that will fail on the last dependency due to parse error
         let plan = EditPlan {
@@ -1929,11 +1930,50 @@ mod workspace_tests {
     use super::*;
     use tempfile::TempDir;
 
-    fn create_test_service(temp_dir: &TempDir) -> FileService {
+    // Helper to start a background worker for tests
+    fn spawn_test_worker(queue: Arc<super::super::operation_queue::OperationQueue>) {
+        use crate::services::operation_queue::OperationType;
+        use tokio::fs;
+
+        tokio::spawn(async move {
+            queue.process_with(|op| {
+                async move {
+                    match op.operation_type {
+                        OperationType::CreateDir => {
+                            fs::create_dir_all(&op.file_path).await?;
+                        }
+                        OperationType::CreateFile | OperationType::Write => {
+                            let content = op.params.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                            fs::write(&op.file_path, content).await?;
+                        }
+                        OperationType::Delete => {
+                            if op.file_path.exists() {
+                                fs::remove_file(&op.file_path).await?;
+                            }
+                        }
+                        OperationType::Rename => {
+                            let new_path_str = op.params.get("new_path").and_then(|v| v.as_str())
+                                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "Missing new_path"))?;
+                            fs::rename(&op.file_path, new_path_str).await?;
+                        }
+                        _ => {}
+                    }
+                    Ok(serde_json::Value::Null)
+                }
+            }).await;
+        });
+    }
+
+    fn create_test_service(temp_dir: &TempDir) -> (FileService, Arc<super::super::operation_queue::OperationQueue>) {
         let ast_cache = Arc::new(AstCache::new());
         let lock_manager = Arc::new(LockManager::new());
         let operation_queue = Arc::new(super::super::operation_queue::OperationQueue::new(lock_manager.clone()));
-        FileService::new(temp_dir.path(), ast_cache, lock_manager, operation_queue)
+        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager, operation_queue.clone());
+
+        // Spawn background worker to process queued operations
+        spawn_test_worker(operation_queue.clone());
+
+        (service, operation_queue)
     }
 
     #[tokio::test]
@@ -1965,7 +2005,7 @@ members = [
         let new_crate_dir = project_root.join("crates/my-renamed-crate");
 
         // Setup FileService
-        let service = create_test_service(&temp_dir);
+        let (service, queue) = create_test_service(&temp_dir);
 
         // Run the update
         service
@@ -1990,7 +2030,11 @@ members = [
     #[test]
     fn test_adjust_relative_path_logic() {
         let temp_dir = TempDir::new().unwrap();
-        let service = create_test_service(&temp_dir);
+        // This test doesn't need async operations, so create service directly
+        let ast_cache = Arc::new(AstCache::new());
+        let lock_manager = Arc::new(LockManager::new());
+        let operation_queue = Arc::new(super::super::operation_queue::OperationQueue::new(lock_manager.clone()));
+        let service = FileService::new(temp_dir.path(), ast_cache, lock_manager, operation_queue);
 
         // Moved deeper: 1 level
         assert_eq!(
