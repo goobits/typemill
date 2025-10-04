@@ -57,11 +57,11 @@ struct DeadSymbol {
 /// 3. Check references for each symbol via LSP textDocument/references
 /// 4. Symbols with ≤1 reference (just the declaration) are considered dead
 async fn analyze_dead_code(
-    lsp_config: cb_core::config::LspConfig,
+    lsp_adapter: Arc<DirectLspAdapter>,
     _workspace_path: &str,
     config: AnalysisConfig,
 ) -> ServerResult<Vec<DeadSymbol>> {
-    let all_symbols = collect_workspace_symbols(&lsp_config).await?;
+    let all_symbols = collect_workspace_symbols(&lsp_adapter).await?;
     debug!(
         total_symbols = all_symbols.len(),
         "Collected symbols from language servers"
@@ -81,7 +81,7 @@ async fn analyze_dead_code(
     );
 
     let dead_symbols =
-        check_symbol_references(&lsp_config, symbols_to_check, config.max_concurrent_checks)
+        check_symbol_references(&lsp_adapter, symbols_to_check, config.max_concurrent_checks)
             .await?;
 
     info!(
@@ -92,49 +92,48 @@ async fn analyze_dead_code(
     Ok(dead_symbols)
 }
 
-/// Collect workspace symbols from all configured language servers
+/// Collect workspace symbols using the shared LSP adapter
+///
+/// Note: Some LSP servers (like rust-analyzer) don't support empty workspace/symbol queries
+/// and will return 0 symbols. This is a known limitation.
 async fn collect_workspace_symbols(
-    lsp_config: &cb_core::config::LspConfig,
+    lsp_adapter: &Arc<DirectLspAdapter>,
 ) -> ServerResult<Vec<Value>> {
-    let mut all_symbols = Vec::new();
+    // Use the adapter's built-in method to query all servers
+    // Try with wildcard query first (more compatible)
+    let query_attempts = vec!["*", ""];
 
-    for server_config in &lsp_config.servers {
-        if server_config.extensions.is_empty() {
-            continue;
-        }
-
-        let primary_ext = &server_config.extensions[0];
-        let adapter = DirectLspAdapter::new(
-            lsp_config.clone(),
-            server_config.extensions.clone(),
-            format!("dead-code-collector-{}", primary_ext),
-        );
-
-        match adapter
-            .request("workspace/symbol", json!({ "query": "" }))
+    for query in query_attempts {
+        match lsp_adapter
+            .request("workspace/symbol", json!({ "query": query }))
             .await
         {
             Ok(response) => {
                 if let Some(symbols) = response.as_array() {
-                    debug!(
-                        extension = %primary_ext,
-                        symbol_count = symbols.len(),
-                        "Collected symbols"
-                    );
-                    all_symbols.extend_from_slice(symbols);
+                    if !symbols.is_empty() {
+                        debug!(
+                            symbol_count = symbols.len(),
+                            query = query,
+                            "Collected symbols from workspace"
+                        );
+                        return Ok(symbols.clone());
+                    }
                 }
             }
             Err(e) => {
-                warn!(
-                    extension = %primary_ext,
+                debug!(
                     error = %e,
-                    "Failed to get symbols from language server"
+                    query = query,
+                    "Failed to get workspace symbols with query"
                 );
             }
         }
     }
 
-    Ok(all_symbols)
+    warn!(
+        "No workspace symbols found. Note: Some LSP servers (like rust-analyzer) don't support workspace/symbol queries and will return 0 symbols."
+    );
+    Ok(Vec::new())
 }
 
 /// Check if a symbol should be analyzed based on configuration
@@ -147,7 +146,7 @@ fn should_analyze_symbol(symbol: &Value, config: &AnalysisConfig) -> bool {
 
 /// Check references for symbols in parallel with concurrency limiting
 async fn check_symbol_references(
-    lsp_config: &cb_core::config::LspConfig,
+    lsp_adapter: &Arc<DirectLspAdapter>,
     symbols: Vec<&Value>,
     max_concurrent: usize,
 ) -> ServerResult<Vec<DeadSymbol>> {
@@ -156,12 +155,12 @@ async fn check_symbol_references(
 
     for symbol in symbols {
         let sem = semaphore.clone();
-        let lsp_config = lsp_config.clone();
+        let adapter = lsp_adapter.clone();
         let symbol = symbol.clone();
 
         tasks.push(tokio::spawn(async move {
             let _permit = sem.acquire().await.ok()?;
-            check_single_symbol_references(&lsp_config, &symbol).await
+            check_single_symbol_references(&adapter, &symbol).await
         }));
     }
 
@@ -177,7 +176,7 @@ async fn check_symbol_references(
 
 /// Check references for a single symbol using LSP textDocument/references
 async fn check_single_symbol_references(
-    lsp_config: &cb_core::config::LspConfig,
+    lsp_adapter: &Arc<DirectLspAdapter>,
     symbol: &Value,
 ) -> Option<DeadSymbol> {
     // Extract symbol metadata
@@ -189,29 +188,17 @@ async fn check_single_symbol_references(
     let line = start.get("line")?.as_u64()? as u32;
     let character = start.get("character")?.as_u64()? as u32;
 
-    // Extract file path and extension
+    // Extract file path from URI
     let file_path = uri.strip_prefix("file://").unwrap_or(uri);
-    let extension = std::path::Path::new(file_path)
-        .extension()?
-        .to_str()?
-        .to_string();
 
-    // Get LSP adapter for this file type
-    let adapter = DirectLspAdapter::new(
-        lsp_config.clone(),
-        vec![extension.clone()],
-        format!("ref-checker-{}", extension),
-    );
-    let client = adapter.get_or_create_client(&extension).await.ok()?;
-
-    // Query references via LSP
+    // Query references via shared LSP adapter
     let params = json!({
         "textDocument": { "uri": uri },
         "position": { "line": line, "character": character },
         "context": { "includeDeclaration": true }
     });
 
-    if let Ok(response) = client.send_request("textDocument/references", params).await {
+    if let Ok(response) = lsp_adapter.request("textDocument/references", params).await {
         let ref_count = response.as_array().map_or(0, |a| a.len());
 
         // Symbol is dead if it has ≤1 reference (just the declaration itself)
@@ -570,7 +557,7 @@ impl SystemHandler {
     async fn handle_find_dead_code(
         &self,
         tool_call: ToolCall,
-        _context: &ToolContext,
+        context: &ToolContext,
     ) -> ServerResult<Value> {
         let start_time = std::time::Instant::now();
         let args = tool_call.arguments.unwrap_or(json!({}));
@@ -581,13 +568,15 @@ impl SystemHandler {
 
         debug!(workspace_path = %workspace_path, "Handling find_dead_code request");
 
-        // Load LSP configuration
-        let app_config = cb_core::config::AppConfig::load()
-            .map_err(|e| ServerError::Internal(format!("Failed to load config: {}", e)))?;
+        // Get shared LSP adapter from context
+        let lsp_adapter = context.lsp_adapter.lock().await;
+        let adapter = lsp_adapter.as_ref().ok_or_else(|| {
+            ServerError::Internal("LSP adapter not initialized".to_string())
+        })?;
 
-        // Run dead code analysis using local implementation
+        // Run dead code analysis using shared LSP adapter
         let config = AnalysisConfig::default();
-        let dead_symbols = analyze_dead_code(app_config.lsp, workspace_path, config).await?;
+        let dead_symbols = analyze_dead_code(adapter.clone(), workspace_path, config).await?;
 
         // Format response with complete stats
         let dead_symbols_json: Vec<Value> = dead_symbols
