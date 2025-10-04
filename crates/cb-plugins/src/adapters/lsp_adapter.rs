@@ -15,6 +15,7 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{debug, error};
+use url::Url;
 
 /// Trait for LSP service integration
 /// This allows the adapter to work with any LSP implementation
@@ -257,9 +258,25 @@ impl LspAdapterPlugin {
 
     /// Build LSP parameters from plugin request
     fn build_lsp_params(&self, request: &PluginRequest, lsp_method: &str) -> PluginResult<Value> {
+        // Convert file path to absolute path if needed
+        let abs_path = if request.file_path.is_absolute() {
+            request.file_path.clone()
+        } else {
+            std::env::current_dir()
+                .unwrap_or_else(|_| std::path::PathBuf::from("/"))
+                .join(&request.file_path)
+        };
+
+        // Create proper file:// URI using the url crate
+        let file_uri = Url::from_file_path(&abs_path)
+            .map_err(|_| PluginError::configuration_error(
+                &format!("Invalid file path: {}", abs_path.display())
+            ))?
+            .to_string();
+
         let mut params = json!({
             "textDocument": {
-                "uri": format!("file://{}", request.file_path.display())
+                "uri": file_uri
             }
         });
 

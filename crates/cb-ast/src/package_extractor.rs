@@ -836,7 +836,7 @@ mod tests {
         // Create a module as a single file: src/my_module.rs
         fs::write(src_dir.join("my_module.rs"), "// my_module.rs").unwrap();
 
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let result = adapter
             .locate_module_files(temp_dir.path(), "my_module")
             .await;
@@ -862,7 +862,7 @@ mod tests {
         fs::create_dir(&module_dir).unwrap();
         fs::write(module_dir.join("mod.rs"), "// mod.rs").unwrap();
 
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let result = adapter
             .locate_module_files(temp_dir.path(), "my_module")
             .await;
@@ -888,7 +888,7 @@ mod tests {
         fs::create_dir(&services_dir).unwrap();
         fs::write(services_dir.join("planner.rs"), "// planner.rs").unwrap();
 
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let result = adapter
             .locate_module_files(temp_dir.path(), "services::planner")
             .await;
@@ -916,7 +916,7 @@ mod tests {
         fs::create_dir(&services_dir).unwrap();
         fs::write(services_dir.join("planner.rs"), "// planner.rs").unwrap();
 
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let result = adapter
             .locate_module_files(temp_dir.path(), "services.planner")
             .await;
@@ -939,7 +939,7 @@ mod tests {
         // Create lib.rs but no module files
         fs::write(src_dir.join("lib.rs"), "// lib.rs").unwrap();
 
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let result = adapter
             .locate_module_files(temp_dir.path(), "nonexistent")
             .await;
@@ -954,7 +954,7 @@ mod tests {
         // Create a temporary directory without src/
         let temp_dir = tempdir().unwrap();
 
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let result = adapter
             .locate_module_files(temp_dir.path(), "my_module")
             .await;
@@ -970,7 +970,7 @@ mod tests {
         let src_dir = temp_dir.path().join("src");
         fs::create_dir(&src_dir).unwrap();
 
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let result = adapter.locate_module_files(temp_dir.path(), "").await;
 
         assert!(result.is_err());
@@ -994,7 +994,7 @@ fn main() {
         let test_file = src_dir.join("test_module.rs");
         fs::write(&test_file, rust_content).unwrap();
 
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let result = adapter.parse_imports(&test_file).await;
 
         assert!(result.is_ok());
@@ -1006,7 +1006,7 @@ fn main() {
 
     #[test]
     fn test_generate_manifest_with_dependencies() {
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let dependencies = vec![
             "serde".to_string(),
             "tokio".to_string(),
@@ -1040,7 +1040,7 @@ fn main() {
 
     #[test]
     fn test_generate_manifest_no_dependencies() {
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let dependencies: Vec<String> = vec![];
 
         let manifest = adapter.generate_manifest("simple-crate", &dependencies);
@@ -1057,7 +1057,7 @@ fn main() {
 
     #[test]
     fn test_generate_manifest_single_dependency() {
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let dependencies = vec!["serde".to_string()];
 
         let manifest = adapter.generate_manifest("test-crate", &dependencies);
@@ -1070,7 +1070,7 @@ fn main() {
 
     #[test]
     fn test_generate_manifest_special_characters_in_name() {
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let dependencies = vec![];
 
         let manifest = adapter.generate_manifest("my-special_crate123", &dependencies);
@@ -1087,7 +1087,7 @@ fn main() {
     fn test_rust_adapter_no_changes_different_crate() {
         use serde_json::json;
 
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let source = r#"use some_other_crate::SomeType;"#;
 
         let rename_info = json!({
@@ -1113,7 +1113,7 @@ fn main() {
 
     #[test]
     fn test_rust_adapter_no_rename_info() {
-        let adapter = RustAdapter;
+        let adapter = &crate::language::RustAdapter;
         let source = r#"use old_crate::SomeType;"#;
 
         let (new_content, count) = adapter

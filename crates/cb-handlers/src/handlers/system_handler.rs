@@ -13,7 +13,7 @@ use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 // ============================================================================
 // Dead Code Analysis - Private Implementation
@@ -269,6 +269,8 @@ impl ToolHandler for SystemHandler {
             "notify_file_saved",
             "notify_file_closed",
             "find_dead_code",
+            "analyze_imports",
+            "update_dependencies",
         ]
     }
 
@@ -281,6 +283,12 @@ impl ToolHandler for SystemHandler {
             "notify_file_saved" => self.handle_notify_file_saved(tool_call, context).await,
             "notify_file_closed" => self.handle_notify_file_closed(tool_call, context).await,
             "find_dead_code" => self.handle_find_dead_code(tool_call, context).await,
+
+            // Delegate to plugin system (SystemToolsPlugin handles these)
+            "analyze_imports" | "update_dependencies" => {
+                self.delegate_to_plugin_system(tool_call, context).await
+            }
+
             _ => Err(ServerError::Unsupported(format!(
                 "Unknown system operation: {}",
                 tool_call.name
@@ -290,6 +298,62 @@ impl ToolHandler for SystemHandler {
 }
 
 impl SystemHandler {
+    /// Delegate tool call to the plugin system
+    /// Used for tools that are implemented in plugins (e.g., SystemToolsPlugin)
+    async fn delegate_to_plugin_system(
+        &self,
+        tool_call: ToolCall,
+        context: &ToolContext,
+    ) -> ServerResult<Value> {
+        use cb_plugins::PluginRequest;
+        use std::path::PathBuf;
+
+        // Extract file_path from arguments
+        let args = tool_call.arguments.clone().unwrap_or(json!({}));
+        let file_path = args
+            .get("file_path")
+            .and_then(|v| v.as_str())
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(".")); // Default for workspace operations
+
+        // Create plugin request
+        let plugin_request = PluginRequest {
+            method: tool_call.name.clone(),
+            file_path,
+            position: None,
+            range: None,
+            params: args,
+            request_id: None,
+        };
+
+        // Get the SystemToolsPlugin directly by name
+        let registry = context.plugin_manager.registry.read().await;
+        let system_plugin = registry
+            .get_plugin("system")
+            .ok_or_else(|| ServerError::Internal("SystemToolsPlugin not found".to_string()))?;
+
+        // Call the plugin directly
+        match system_plugin.handle_request(plugin_request).await {
+            Ok(response) => {
+                if response.success {
+                    Ok(response.data.unwrap_or(json!(null)))
+                } else {
+                    Err(ServerError::Internal(
+                        response.error.map(|e| e.to_string())
+                            .unwrap_or_else(|| "Plugin request failed".to_string())
+                    ))
+                }
+            }
+            Err(e) => {
+                error!(error = %e, tool = %tool_call.name, "Plugin request failed");
+                Err(ServerError::Internal(format!(
+                    "Failed to execute {}: {}",
+                    tool_call.name, e
+                )))
+            }
+        }
+    }
+
     async fn handle_health_check(
         &self,
         _tool_call: ToolCall,

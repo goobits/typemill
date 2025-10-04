@@ -16,6 +16,7 @@ cb-ast = { path = "../cb-ast" }
 ignore = "0.4"
 reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], default-features = false }
 html2md-rs = "0.10"
+url = "2.4"
 
 [dev-dependencies]
 tokio-test = "0.4"
