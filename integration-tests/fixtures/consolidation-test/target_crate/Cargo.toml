@@ -1,0 +1,7 @@
+[package]
+name = "target-crate"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Dependencies will be merged here during consolidation

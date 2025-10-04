@@ -1268,21 +1268,6 @@ impl FileService {
             )));
         }
 
-        // Validate that new_path exists and is a directory
-        if !new_abs.exists() {
-            return Err(ServerError::NotFound(format!(
-                "Target directory does not exist: {:?}",
-                new_abs
-            )));
-        }
-
-        if !new_abs.is_dir() {
-            return Err(ServerError::InvalidRequest(format!(
-                "Target path is not a directory: {:?}",
-                new_abs
-            )));
-        }
-
         let old_src_dir = old_abs.join("src");
         if !old_src_dir.exists() {
             return Err(ServerError::NotFound(format!(
@@ -1292,6 +1277,7 @@ impl FileService {
         }
 
         if dry_run {
+            // In dry run mode, don't create directories
             // Preview mode - return what would happen
             let old_cargo_toml = old_abs.join("Cargo.toml");
             let new_cargo_toml = new_abs.join("Cargo.toml");
