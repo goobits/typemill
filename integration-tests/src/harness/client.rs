@@ -111,8 +111,8 @@ impl TestClient {
             }
         });
 
-        // Wait for server startup
-        thread::sleep(Duration::from_millis(1500));
+        // Wait for server startup (longer wait for LSP preloading to complete)
+        thread::sleep(Duration::from_millis(5000));
 
         TestClient {
             process,

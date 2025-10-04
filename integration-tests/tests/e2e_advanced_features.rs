@@ -79,7 +79,7 @@ async fn test_fuse_filesystem_integration() {
 #[tokio::test]
 async fn test_advanced_lsp_features_availability() {
     let workspace = TestWorkspace::new();
-    workspace.setup_typescript_project("advanced-features");
+    workspace.setup_typescript_project_with_lsp("advanced-features");
     let mut client = TestClient::new(workspace.path());
     let file_path = workspace.path().join("src/advanced_test.ts");
     let content = r#"

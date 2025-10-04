@@ -122,8 +122,8 @@ impl LspSetupHelper {
                         "restartInterval": 5
                     }
                 ],
-                "defaultTimeoutMs": 10000,
-                "enablePreload": false
+                "defaultTimeoutMs": 30000,
+                "enablePreload": true
             },
             "logging": {
                 "level": "debug",
