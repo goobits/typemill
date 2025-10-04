@@ -1,6 +1,5 @@
 use integration_tests::harness::{TestClient, TestWorkspace};
-use serde_json::{json, Value};
-use std::path::Path;
+use serde_json::json;
 #[tokio::test]
 async fn test_apply_workspace_edit_single_file() {
     let workspace = TestWorkspace::new();
@@ -413,7 +412,7 @@ console.log(expensiveProducts);
         )
         .await
         .unwrap();
-    let actions = response["actions"].as_array().unwrap();
+    let _actions = response["actions"].as_array().unwrap();
     // Code actions may or may not be available depending on LSP state
     // No assertion needed - we just verify the call succeeds
 }
@@ -439,7 +438,7 @@ console.log(value);
         .await;
     // Should fail because line 100 doesn't exist in the file
     assert!(
-        response.is_err() || response.unwrap()["applied"].as_bool().unwrap_or(false) == false,
+        response.is_err() || !response.unwrap()["applied"].as_bool().unwrap_or(true),
         "Workspace edit with invalid line number should fail validation"
     );
     let unchanged_content = std::fs::read_to_string(&file_path).unwrap();

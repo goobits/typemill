@@ -5,7 +5,6 @@
 
 use crate::adapter_registry::LanguageAdapterRegistry;
 use crate::error::AstResult;
-use crate::language::LanguageAdapter;
 use cb_core::language::ProjectLanguage;
 use cb_protocol::EditPlan;
 use serde::Deserialize;
@@ -264,7 +263,7 @@ pub async fn plan_extract_module_to_package_with_registry(
     );
 
     // Step 2: Look up appropriate language adapter from registry
-    let manifest_ext = match detected_language {
+    let _manifest_ext = match detected_language {
         ProjectLanguage::Rust => "toml",
         ProjectLanguage::TypeScript => "json",
         ProjectLanguage::Python => "txt",
@@ -700,7 +699,7 @@ resolver = "2"
             }
 
             match tokio::fs::read_to_string(&file_path).await {
-                Ok(content) => {
+                Ok(_content) => {
                     // DEPRECATED: Rust parsing moved to cb-lang-rust plugin
                     // This entire extract_module_to_package functionality should be refactored
                     // to use language plugins instead of hardcoded adapters

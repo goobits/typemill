@@ -35,7 +35,7 @@ fn codebuddy_cmd() -> Command {
 #[test]
 fn test_tool_health_check_success() {
     let mut cmd = codebuddy_cmd();
-    cmd.args(&["tool", "health_check", "{}"]);
+    cmd.args(["tool", "health_check", "{}"]);
 
     cmd.assert()
         .success()
@@ -46,7 +46,7 @@ fn test_tool_health_check_success() {
 #[test]
 fn test_tool_health_check_pretty_format() {
     let mut cmd = codebuddy_cmd();
-    cmd.args(&["tool", "health_check", "{}", "--format", "pretty"]);
+    cmd.args(["tool", "health_check", "{}", "--format", "pretty"]);
 
     cmd.assert()
         .success()
@@ -57,7 +57,7 @@ fn test_tool_health_check_pretty_format() {
 #[test]
 fn test_tool_health_check_compact_format() {
     let mut cmd = codebuddy_cmd();
-    cmd.args(&["tool", "health_check", "{}", "--format", "compact"]);
+    cmd.args(["tool", "health_check", "{}", "--format", "compact"]);
 
     let output = cmd.assert().success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
@@ -70,7 +70,7 @@ fn test_tool_health_check_compact_format() {
 #[test]
 fn test_tool_invalid_json_arguments() {
     let mut cmd = codebuddy_cmd();
-    cmd.args(&["tool", "health_check", "not-valid-json"]);
+    cmd.args(["tool", "health_check", "not-valid-json"]);
 
     cmd.assert()
         .failure()
@@ -80,7 +80,7 @@ fn test_tool_invalid_json_arguments() {
 #[test]
 fn test_tool_invalid_file_path() {
     let mut cmd = codebuddy_cmd();
-    cmd.args(&[
+    cmd.args([
         "tool",
         "read_file",
         r#"{"file_path": "/nonexistent/file/path.txt"}"#,
@@ -101,7 +101,7 @@ fn test_tool_list_files_success() {
 
     let mut cmd = codebuddy_cmd();
     cmd.current_dir(temp_dir.path());
-    cmd.args(&["tool", "list_files", r#"{"path": "."}"#]);
+    cmd.args(["tool", "list_files", r#"{"path": "."}"#]);
 
     cmd.assert()
         .success()
@@ -117,7 +117,7 @@ fn test_tool_read_file_success() {
 
     let mut cmd = codebuddy_cmd();
     cmd.current_dir(temp_dir.path());
-    cmd.args(&["tool", "read_file", r#"{"file_path": "test.txt"}"#]);
+    cmd.args(["tool", "read_file", r#"{"file_path": "test.txt"}"#]);
 
     cmd.assert()
         .success()
@@ -130,7 +130,7 @@ fn test_tool_create_file_dry_run() {
 
     let mut cmd = codebuddy_cmd();
     cmd.current_dir(temp_dir.path());
-    cmd.args(&[
+    cmd.args([
         "tool",
         "create_file",
         r#"{"file_path": "new_file.txt", "content": "test", "dry_run": true}"#,
@@ -151,7 +151,7 @@ fn test_tool_create_and_read_file() {
     // Create file
     let mut cmd = codebuddy_cmd();
     cmd.current_dir(temp_dir.path());
-    cmd.args(&[
+    cmd.args([
         "tool",
         "create_file",
         r#"{"file_path": "created.txt", "content": "Created content"}"#,
@@ -165,7 +165,7 @@ fn test_tool_create_and_read_file() {
     // Read file back
     let mut cmd = codebuddy_cmd();
     cmd.current_dir(temp_dir.path());
-    cmd.args(&["tool", "read_file", r#"{"file_path": "created.txt"}"#]);
+    cmd.args(["tool", "read_file", r#"{"file_path": "created.txt"}"#]);
 
     cmd.assert()
         .success()
@@ -175,7 +175,7 @@ fn test_tool_create_and_read_file() {
 #[test]
 fn test_tool_unknown_tool_name() {
     let mut cmd = codebuddy_cmd();
-    cmd.args(&["tool", "nonexistent_tool", "{}"]);
+    cmd.args(["tool", "nonexistent_tool", "{}"]);
 
     cmd.assert()
         .failure()
@@ -186,7 +186,7 @@ fn test_tool_unknown_tool_name() {
 #[test]
 fn test_tool_missing_required_arguments() {
     let mut cmd = codebuddy_cmd();
-    cmd.args(&[
+    cmd.args([
         "tool",
         "read_file",
         "{}", // Missing required file_path argument
@@ -198,7 +198,7 @@ fn test_tool_missing_required_arguments() {
 #[test]
 fn test_tool_output_is_valid_json() {
     let mut cmd = codebuddy_cmd();
-    cmd.args(&["tool", "health_check", "{}", "--format", "compact"]);
+    cmd.args(["tool", "health_check", "{}", "--format", "compact"]);
 
     let output = cmd.assert().success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
@@ -211,7 +211,7 @@ fn test_tool_output_is_valid_json() {
 #[test]
 fn test_tool_error_output_is_valid_json() {
     let mut cmd = codebuddy_cmd();
-    cmd.args(&["tool", "read_file", r#"{"file_path": "/nonexistent.txt"}"#]);
+    cmd.args(["tool", "read_file", r#"{"file_path": "/nonexistent.txt"}"#]);
 
     let output = cmd.assert().failure();
     let stderr = String::from_utf8_lossy(&output.get_output().stderr);
