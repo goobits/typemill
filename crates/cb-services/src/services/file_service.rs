@@ -1357,12 +1357,20 @@ impl FileService {
         info!(files_moved = moved_files.len(), "Moved source files");
 
         // Step 2: Merge Cargo.toml dependencies
+        // Find the parent crate's Cargo.toml (traverse up from new_abs)
         let old_cargo_toml = old_abs.join("Cargo.toml");
-        let new_cargo_toml = new_abs.join("Cargo.toml");
+        let target_cargo_toml = self.find_parent_cargo_toml(&new_abs).await?;
 
-        if new_cargo_toml.exists() {
-            self.merge_cargo_dependencies(&old_cargo_toml, &new_cargo_toml)
+        if let Some(target_toml_path) = target_cargo_toml {
+            info!(
+                source = ?old_cargo_toml,
+                target = ?target_toml_path,
+                "Merging dependencies"
+            );
+            self.merge_cargo_dependencies(&old_cargo_toml, &target_toml_path)
                 .await?;
+        } else {
+            warn!("Could not find target crate's Cargo.toml for dependency merging");
         }
 
         // Step 3: Remove old crate from workspace members
@@ -1608,6 +1616,34 @@ impl FileService {
             Ok(content) => Ok(content.contains("[package]")),
             Err(_) => Ok(false),
         }
+    }
+
+    /// Find the parent crate's Cargo.toml by traversing up from a directory
+    ///
+    /// When consolidating to `target_crate/src/source`, this finds `target_crate/Cargo.toml`
+    async fn find_parent_cargo_toml(&self, start_path: &Path) -> ServerResult<Option<PathBuf>> {
+        let mut current = start_path;
+
+        while let Some(parent) = current.parent() {
+            let cargo_toml = parent.join("Cargo.toml");
+            if cargo_toml.exists() {
+                // Check if it's a package (not just a workspace)
+                if let Ok(content) = fs::read_to_string(&cargo_toml).await {
+                    if content.contains("[package]") {
+                        return Ok(Some(cargo_toml));
+                    }
+                }
+            }
+
+            // Stop at project root
+            if parent == self.project_root {
+                break;
+            }
+
+            current = parent;
+        }
+
+        Ok(None)
     }
 
     /// Extract consolidation rename information for import updating
