@@ -8,11 +8,14 @@ use crate::{
     PluginResult,
 };
 use async_trait::async_trait;
+use cb_ast::adapter_registry::LanguageAdapterRegistry;
+use cb_ast::language::{GoAdapter, JavaAdapter, PythonAdapter, RustAdapter, TypeScriptAdapter};
 use cb_core::language::detect_package_manager;
 use ignore::WalkBuilder;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::Path;
+use std::sync::Arc;
 use tokio::fs;
 use tracing::{debug, warn};
 
@@ -378,7 +381,12 @@ impl SystemToolsPlugin {
         })?;
 
         // Convert HTML to Markdown for easier AI processing
-        let markdown_content = html2md_rs::to_md::from_html_to_md(html_content);
+        let markdown_content =
+            html2md_rs::to_md::safe_from_html_to_md(html_content).map_err(|e| {
+                PluginError::IoError {
+                    message: format!("Failed to convert HTML to markdown: {}", e),
+                }
+            })?;
 
         Ok(json!({
             "url": args.url,
@@ -403,13 +411,24 @@ impl SystemToolsPlugin {
             "Extracting module to package"
         );
 
+        // Create language adapter registry
+        let mut registry = LanguageAdapterRegistry::new();
+        registry.register(Arc::new(RustAdapter));
+        registry.register(Arc::new(TypeScriptAdapter));
+        registry.register(Arc::new(PythonAdapter));
+        registry.register(Arc::new(GoAdapter));
+        registry.register(Arc::new(JavaAdapter));
+
         // Call the planning function from cb-ast
-        let edit_plan = cb_ast::package_extractor::plan_extract_module_to_package(parsed)
-            .await
-            .map_err(|e| PluginError::PluginRequestFailed {
-                plugin: "system-tools".to_string(),
-                message: format!("Failed to plan extract_module_to_package: {}", e),
-            })?;
+        let edit_plan = cb_ast::package_extractor::plan_extract_module_to_package_with_registry(
+            parsed,
+            &registry,
+        )
+        .await
+        .map_err(|e| PluginError::PluginRequestFailed {
+            plugin: "system-tools".to_string(),
+            message: format!("Failed to plan extract_module_to_package: {}", e),
+        })?;
 
         // Return the edit plan
         Ok(json!({

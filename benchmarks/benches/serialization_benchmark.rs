@@ -4,6 +4,7 @@ use serde_json::{json, Value};
 
 fn create_simple_request() -> McpRequest {
     McpRequest {
+        jsonrpc: "2.0".to_string(),
         id: Some(json!("bench-123")),
         method: "tools/call".to_string(),
         params: Some(json!({
@@ -15,6 +16,7 @@ fn create_simple_request() -> McpRequest {
 
 fn create_complex_request() -> McpRequest {
     McpRequest {
+        jsonrpc: "2.0".to_string(),
         id: Some(json!("bench-456")),
         method: "tools/call".to_string(),
         params: Some(json!({

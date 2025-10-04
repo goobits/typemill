@@ -466,7 +466,6 @@ pub trait MessageDispatcher: Send + Sync {
 
 /// Parameters for rename_directory operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct RenameDirectoryParams {
     /// Old directory path
     pub old_path: std::path::PathBuf,

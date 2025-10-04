@@ -116,6 +116,7 @@ fn bench_pagination_vs_full_response(c: &mut Criterion) {
 fn bench_complete_mcp_cycle_optimized(c: &mut Criterion) {
     // Complex find_references request
     let request = McpRequest {
+        jsonrpc: "2.0".to_string(),
         id: Some(json!("cycle-test")),
         method: "tools/call".to_string(),
         params: Some(json!({
