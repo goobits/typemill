@@ -1332,10 +1332,11 @@ impl<'a> JavaModuleFinder<'a> {
                 let import_path = self.node_text(import_node);
 
                 // Java imports are fully qualified: com.example.utils.Helper
-                // Check if this import references our module (package)
+                // Check if this import references our module (package or class)
                 if import_path.starts_with(&format!("{}.", self.module_to_find))
                     || import_path == self.module_to_find
                     || import_path.contains(&format!(".{}.", self.module_to_find))
+                    || import_path.ends_with(&format!(".{}", self.module_to_find))
                 {
                     self.references.push(ModuleReference {
                         line: import_node.start_position().row,

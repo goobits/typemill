@@ -20,6 +20,9 @@ pub mod transformer;
 #[cfg(test)]
 mod python_refactoring_test;
 
+#[cfg(test)]
+mod java_language_test;
+
 pub use analyzer::*;
 pub use cache::*;
 pub use error::{AstError, AstResult};

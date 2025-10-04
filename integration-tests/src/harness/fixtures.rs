@@ -222,6 +222,282 @@ export class Controller {
     workspace
 }
 
+/// Create a Java project with Maven structure and realistic code examples.
+pub fn create_java_project() -> TestWorkspace {
+    let workspace = TestWorkspace::new();
+    workspace.setup_java_project("java-test-project");
+
+    // Create Main.java
+    let main_content = r#"package com.codebuddy.example;
+
+import com.codebuddy.example.utils.Helper;
+import com.codebuddy.example.utils.StringProcessor;
+import com.codebuddy.example.data.DataItem;
+import com.codebuddy.example.data.DataProcessor;
+
+import java.util.List;
+import java.util.ArrayList;
+
+/**
+ * Main class demonstrating Java AST functionality
+ */
+public class Main {
+
+    public static void main(String[] args) {
+        System.out.println("Starting Java playground example");
+
+        // Use Helper utility
+        Helper.logInfo("Application started");
+
+        // Create data processor
+        DataProcessor processor = new DataProcessor();
+
+        // Create sample data items
+        List<DataItem> items = new ArrayList<>();
+        items.add(new DataItem(1, "First Item", 10.5));
+        items.add(new DataItem(2, "Second Item", 20.3));
+        items.add(new DataItem(3, "Third Item", 15.7));
+
+        // Process data
+        List<DataItem> processed = processor.processItems(items);
+
+        // Display results
+        for (DataItem item : processed) {
+            String formatted = StringProcessor.format(item.getName());
+            Helper.logInfo("Processed: " + formatted + " - Value: " + item.getValue());
+        }
+
+        // Calculate statistics
+        double average = processor.calculateAverage(processed);
+        Helper.logInfo("Average value: " + average);
+
+        // Use qualified static method call
+        Helper.printSeparator();
+    }
+}
+"#;
+    workspace.create_file("src/main/java/com/codebuddy/example/Main.java", main_content);
+
+    // Create Helper.java
+    let helper_content = r#"package com.codebuddy.example.utils;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+/**
+ * Helper utility class with static methods
+ */
+public class Helper {
+
+    private static final DateTimeFormatter FORMATTER =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    /**
+     * Log an informational message with timestamp
+     */
+    public static void logInfo(String message) {
+        String timestamp = LocalDateTime.now().format(FORMATTER);
+        System.out.println("[INFO] " + timestamp + " - " + message);
+    }
+
+    /**
+     * Log an error message
+     */
+    public static void logError(String message) {
+        System.err.println("[ERROR] " + message);
+    }
+
+    /**
+     * Print a separator line
+     */
+    public static void printSeparator() {
+        System.out.println("=".repeat(50));
+    }
+
+    /**
+     * Unused method for dead code detection
+     */
+    public static void unusedMethod(String param) {
+        System.out.println("This method is never called: " + param);
+    }
+}
+"#;
+    workspace.create_file(
+        "src/main/java/com/codebuddy/example/utils/Helper.java",
+        helper_content,
+    );
+
+    // Create StringProcessor.java
+    let processor_content = r#"package com.codebuddy.example.utils;
+
+/**
+ * String processing utilities
+ */
+public class StringProcessor {
+
+    /**
+     * Format a string by trimming and converting to title case
+     */
+    public static String format(String input) {
+        if (input == null || input.trim().isEmpty()) {
+            return "";
+        }
+
+        String trimmed = input.trim().toLowerCase();
+        return Character.toUpperCase(trimmed.charAt(0)) + trimmed.substring(1);
+    }
+
+    /**
+     * Validate that a string is not empty
+     */
+    public static boolean validate(String input) {
+        return input != null && !input.trim().isEmpty();
+    }
+
+    /**
+     * Truncate string to maximum length
+     */
+    public static String truncate(String input, int maxLength) {
+        if (input == null || input.length() <= maxLength) {
+            return input;
+        }
+        return input.substring(0, maxLength) + "...";
+    }
+}
+"#;
+    workspace.create_file(
+        "src/main/java/com/codebuddy/example/utils/StringProcessor.java",
+        processor_content,
+    );
+
+    // Create DataItem.java
+    let item_content = r#"package com.codebuddy.example.data;
+
+/**
+ * Represents a data item with id, name, and numeric value
+ */
+public class DataItem {
+    private int id;
+    private String name;
+    private double value;
+
+    public DataItem(int id, String name, double value) {
+        this.id = id;
+        this.name = name;
+        this.value = value;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public double getValue() {
+        return value;
+    }
+
+    public void setValue(double value) {
+        this.value = value;
+    }
+
+    @Override
+    public String toString() {
+        return "DataItem{id=" + id + ", name='" + name + "', value=" + value + "}";
+    }
+}
+"#;
+    workspace.create_file(
+        "src/main/java/com/codebuddy/example/data/DataItem.java",
+        item_content,
+    );
+
+    // Create DataProcessor.java
+    let data_processor_content = r#"package com.codebuddy.example.data;
+
+import com.codebuddy.example.utils.Helper;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+
+/**
+ * Processes collections of DataItem objects
+ */
+public class DataProcessor {
+    private int processedCount = 0;
+
+    /**
+     * Process a list of data items
+     */
+    public List<DataItem> processItems(List<DataItem> items) {
+        Helper.logInfo("Processing " + items.size() + " items");
+
+        List<DataItem> processed = items.stream()
+            .map(this::processItem)
+            .collect(Collectors.toList());
+
+        processedCount += processed.size();
+        return processed;
+    }
+
+    /**
+     * Process a single item
+     */
+    private DataItem processItem(DataItem item) {
+        // Apply some transformation
+        item.setValue(item.getValue() * 1.1);
+        return item;
+    }
+
+    /**
+     * Calculate average value from items
+     */
+    public double calculateAverage(List<DataItem> items) {
+        if (items == null || items.isEmpty()) {
+            return 0.0;
+        }
+
+        double sum = items.stream()
+            .mapToDouble(DataItem::getValue)
+            .sum();
+
+        return sum / items.size();
+    }
+
+    /**
+     * Get total processed count
+     */
+    public int getProcessedCount() {
+        return processedCount;
+    }
+
+    /**
+     * Reset processor state
+     */
+    public void reset() {
+        processedCount = 0;
+        Helper.logInfo("Processor reset");
+    }
+}
+"#;
+    workspace.create_file(
+        "src/main/java/com/codebuddy/example/data/DataProcessor.java",
+        data_processor_content,
+    );
+
+    workspace
+}
+
 /// Create a project with circular dependencies for testing.
 pub fn create_circular_dependency_project() -> TestWorkspace {
     let workspace = TestWorkspace::new();
