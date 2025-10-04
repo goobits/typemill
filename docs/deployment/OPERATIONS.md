@@ -6,12 +6,13 @@ This document provides comprehensive operational guidance for deploying, configu
 
 1. [Installation & Compilation](#installation--compilation)
 2. [Configuration](#configuration)
-3. [Running the Server](#running-the-server)
-4. [Testing](#testing)
-5. [Monitoring & Health Checks](#monitoring--health-checks)
-6. [Troubleshooting](#troubleshooting)
-7. [Maintenance](#maintenance)
-8. [Security](#security)
+3. [CLI Usage](#cli-usage)
+4. [Running the Server](#running-the-server)
+5. [Testing](#testing)
+6. [Monitoring & Health Checks](#monitoring--health-checks)
+7. [Troubleshooting](#troubleshooting)
+8. [Maintenance](#maintenance)
+9. [Security](#security)
 
 ## Installation & Compilation
 
@@ -196,6 +197,76 @@ codebuddy start
 
 # Used by MCP clients like Claude Code
 echo '{"jsonrpc":"2.0","id":"1","method":"tools/list","params":{}}' | codebuddy start
+```
+
+## CLI Usage
+
+### Environment Variables
+
+Configure the CLI using environment variables:
+
+- `CODEBUDDY_URL`: WebSocket URL of the Codebuddy server (e.g., `ws://localhost:3000`)
+- `CODEBUDDY_TOKEN`: Authentication token for the server
+
+```bash
+export CODEBUDDY_URL="ws://localhost:3000"
+export CODEBUDDY_TOKEN="your-secret-token"
+```
+
+### Shell Completions
+
+Generate auto-completion scripts for your shell:
+
+**Bash:**
+```bash
+# Add to ~/.bashrc
+source <(codebuddy completions bash)
+```
+
+**Zsh:**
+```bash
+# Add to ~/.zshrc
+source <(codebuddy completions zsh)
+```
+
+**Fish:**
+```fish
+# Add to ~/.config/fish/config.fish
+codebuddy completions fish | source
+```
+
+### Common Commands
+
+#### `status`
+Check client status and server connectivity:
+
+```bash
+# Basic status check
+codebuddy status
+
+# Verbose status with connection details
+codebuddy status --verbose
+```
+
+#### `tool`
+Execute MCP tools directly (useful for scripting):
+
+```bash
+# Read a file
+codebuddy tool read_file '{"file_path":"/path/to/file.txt"}'
+
+# List files recursively
+codebuddy tool list_files '{"recursive":true}'
+
+# Get hover information (raw JSON output)
+codebuddy tool get_hover '{"file_path":"/src/index.ts","line":10,"character":5}' --format json
+```
+
+#### `connect`
+Start interactive session with server:
+
+```bash
+codebuddy connect --url ws://custom-server:4000
 ```
 
 ### Process Management

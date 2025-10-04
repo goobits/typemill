@@ -2052,5 +2052,5 @@ async function callMcpTool(toolName: string, args: any) {
 
 - [SUPPORT_MATRIX.md](./SUPPORT_MATRIX.md) - Language support matrix
 - [docs/architecture/ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md) - Implementation architecture
-- [docs/deployment/USAGE.md](./docs/deployment/USAGE.md) - CLI usage guide
+- [docs/deployment/OPERATIONS.md](./docs/deployment/OPERATIONS.md) - Operations & CLI usage guide
 - [.codebuddy/workflows.json](./.codebuddy/workflows.json) - Workflow definitions

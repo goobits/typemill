@@ -166,46 +166,32 @@ cargo check
 ./target/release/codebuddy unlink   # Remove AI from config
 ```
 
-## Architecture
+## Architecture & Configuration
 
-### Core Components
+For detailed system architecture, see **[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)**.
 
-**MCP Server Layer** (`apps/codebuddy/src/main.rs`, `crates/cb-server/`)
+For operations and configuration details, see **[docs/deployment/OPERATIONS.md](docs/deployment/OPERATIONS.md)**.
 
-- Entry point that implements MCP protocol via stdio and WebSocket
-- Exposes comprehensive MCP tools covering navigation, refactoring, intelligence, diagnostics, and batch operations
-- Handles MCP client requests via plugin dispatcher system
-- CLI subcommand handling in `apps/codebuddy/src/cli.rs` for `setup`, `status`, `start`, `stop`, `serve`, `link`, `unlink`
+### Quick Configuration Example
 
-**LSP Client Layer** (`crates/cb-server/src/systems/lsp/`)
+The server loads configuration from `.codebuddy/config.json` in the current working directory. Run `codebuddy setup` for smart auto-detection.
 
-- Manages multiple LSP server processes concurrently
-- Handles LSP protocol communication (JSON-RPC over stdio)
-- Maps file extensions to appropriate language servers
-- Maintains process lifecycle and request/response correlation
+```json
+{
+  "servers": [
+    {
+      "extensions": ["ts", "tsx", "js", "jsx"],
+      "command": ["typescript-language-server", "--stdio"]
+    },
+    {
+      "extensions": ["py", "pyi"],
+      "command": ["pylsp"]
+    }
+  ]
+}
+```
 
-**MCP Tool Handlers** (`crates/cb-server/src/handlers/`)
-
-- Plugin dispatcher routing MCP requests to appropriate handlers
-- Native Rust tool implementations with compile-time type safety
-- Comprehensive error handling and validation
-- Integration with LSP client layer and service layer
-
-**Configuration System** (`.codebuddy/config.json`, `crates/cb-core/`)
-
-- Defines which LSP servers to use for different file extensions
-- Smart setup with auto-detection via `codebuddy setup` command
-- File scanning with gitignore support for project structure detection
-- Native Rust configuration parsing and validation
-
-**WebSocket Transport Layer** (`crates/cb-transport/`)
-
-- Production-ready WebSocket server with HTTP health endpoints
-- Stdio transport for MCP protocol over standard input/output
-- JWT authentication support for enterprise security
-- Structured logging and comprehensive monitoring
-
-**Service Layer** (`crates/cb-server/src/services/`)
+### Service Layer (`crates/cb-services/`)
 
 - File service for file system operations
 - AST service for code parsing and analysis

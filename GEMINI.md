@@ -17,20 +17,14 @@ The project is structured as a Rust workspace with multiple crates, each respons
 
 ### Architecture
 
-The project is divided into several crates, each with a specific responsibility:
+For detailed system architecture, see **[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)**.
 
-*   `apps/codebuddy`: The main binary application and CLI.
-*   `crates/cb-core`: Core data structures and configuration.
-*   `crates/cb-types`: Shared types used across the workspace.
-*   `crates/cb-protocol`: Defines the Model Context Protocol (MCP) data structures and service traits.
-*   `crates/cb-server`: The core server implementation, including the request dispatcher and service management.
-*   `crates/cb-lsp`: Manages communication with LSP servers.
-*   `crates/cb-ast`: Handles Abstract Syntax Tree (AST) parsing and analysis.
-*   `crates/cb-services`: Provides shared services like file I/O and Git operations.
-*   `crates/cb-handlers`: Contains the logic for handling specific MCP requests.
-*   `crates/cb-plugins`: Implements a plugin system for extending functionality.
-*   `integration-tests/`: Contains integration and end-to-end tests.
-*   `benchmarks/`: Contains performance benchmarks.
+Quick overview - the project is divided into crates:
+*   `apps/codebuddy`: Main binary and CLI
+*   `crates/cb-server`: Core server implementation
+*   `crates/cb-lsp`: LSP server communication
+*   `crates/cb-handlers`: MCP request handlers
+*   See architecture docs for complete crate breakdown
 
 ## Building and Running
 
@@ -80,5 +74,6 @@ The project uses the standard Rust toolchain (`cargo`) for building, testing, an
 *   **Code Style:** The project follows the standard Rust formatting guidelines, enforced by `cargo fmt`.
 *   **Linting:** `clippy` is used for linting. Run `cargo clippy --all-targets -- -D warnings` or `make clippy` to check for issues.
 *   **Testing:** The project has a comprehensive test suite in the `integration-tests/` directory and in individual crates. All tests can be run with `cargo test --workspace`.
-*   **Contributions:** Contributions are welcome. The `CONTRIBUTING.md` file provides detailed instructions for setting up the development environment and submitting pull requests.
-*   **Build Performance:** The project recommends using `sccache` and `mold` to speed up builds. These can be installed by running the `./scripts/setup-dev-tools.sh` script.
+*   **Contributions:** See **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup instructions and PR guidelines.
+*   **Build Performance:** Use `sccache` and `mold` to speed up builds (2-10x faster). Run `./scripts/setup-dev-tools.sh` to install.
+*   **Operations Guide:** See **[docs/deployment/OPERATIONS.md](docs/deployment/OPERATIONS.md)** for configuration and deployment.
