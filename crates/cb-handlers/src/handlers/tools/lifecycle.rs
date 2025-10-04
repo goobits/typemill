@@ -3,7 +3,7 @@
 //! Handles: notify_file_opened, notify_file_saved, notify_file_closed
 
 use super::{ToolHandler, ToolHandlerContext};
-use crate::handlers::compat::{ToolContext, ToolHandler as LegacyToolHandler};
+use crate::handlers::compat::ToolHandler as LegacyToolHandler;
 use crate::handlers::system_handler::SystemHandler as LegacySystemHandler;
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
@@ -11,13 +11,13 @@ use cb_protocol::ApiResult as ServerResult;
 use serde_json::Value;
 
 pub struct LifecycleHandler {
-    system_handler: LegacySystemHandler,
+    legacy_handler: LegacySystemHandler,
 }
 
 impl LifecycleHandler {
     pub fn new() -> Self {
         Self {
-            system_handler: LegacySystemHandler::new(),
+            legacy_handler: LegacySystemHandler::new(),
         }
     }
 }
@@ -37,16 +37,6 @@ impl ToolHandler for LifecycleHandler {
         context: &ToolHandlerContext,
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        // Convert new context to legacy context
-        let legacy_context = ToolContext {
-            app_state: context.app_state.clone(),
-            plugin_manager: context.plugin_manager.clone(),
-            lsp_adapter: context.lsp_adapter.clone(),
-        };
-
-        // Delegate to legacy handler
-        self.system_handler
-            .handle_tool(tool_call.clone(), &legacy_context)
-            .await
+        crate::delegate_to_legacy!(self, context, tool_call)
     }
 }

@@ -3,7 +3,7 @@
 //! Handles: health_check, web_fetch, system_status
 
 use super::{ToolHandler, ToolHandlerContext};
-use crate::handlers::compat::{ToolContext, ToolHandler as LegacyToolHandler};
+use crate::handlers::compat::ToolHandler as LegacyToolHandler;
 use crate::handlers::system_handler::SystemHandler as LegacySystemHandler;
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
@@ -43,16 +43,6 @@ impl ToolHandler for SystemHandler {
             }));
         }
 
-        // Convert new context to legacy context
-        let legacy_context = ToolContext {
-            app_state: context.app_state.clone(),
-            plugin_manager: context.plugin_manager.clone(),
-            lsp_adapter: context.lsp_adapter.clone(),
-        };
-
-        // Delegate to legacy handler
-        self.legacy_handler
-            .handle_tool(tool_call.clone(), &legacy_context)
-            .await
+        crate::delegate_to_legacy!(self, context, tool_call)
     }
 }

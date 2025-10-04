@@ -41,12 +41,7 @@ impl ToolHandler for AdvancedHandler {
 
         match tool_name.as_str() {
             "apply_edits" => {
-                // Convert to ToolCall for legacy handler
-                let tool_call = ToolCall {
-                    name: tool_name.to_string(),
-                    arguments: Some(params.clone()),
-                };
-
+                // Note: This handler wraps the workflow_handler, but the macro expects legacy_handler field
                 // Convert new context to legacy context
                 let legacy_context = ToolContext {
                     app_state: context.app_state.clone(),
@@ -55,7 +50,7 @@ impl ToolHandler for AdvancedHandler {
                 };
 
                 self.workflow_handler
-                    .handle_tool(tool_call, &legacy_context)
+                    .handle_tool(tool_call.clone(), &legacy_context)
                     .await
             }
             "batch_execute" => {
