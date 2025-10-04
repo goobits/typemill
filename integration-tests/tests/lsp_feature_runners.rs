@@ -542,7 +542,12 @@ use integration_tests::harness::test_fixtures::{LspComplianceBehavior, LspCompli
 /// Executes a single LSP compliance test case.
 pub async fn run_lsp_compliance_test(case: &LspComplianceTestCase) {
     // 1. Set up the test harness for the specified language.
-    let builder = LspTestBuilder::new(case.language_id).with_real_lsp();
+    let mut builder = LspTestBuilder::new(case.language_id).with_real_lsp();
+
+    // Add files to workspace
+    for (path, content) in case.files {
+        builder = builder.with_file(path, content);
+    }
 
     // 2. Build the service (skip if LSP server not installed)
     let (service, _workspace) = match builder.build().await {

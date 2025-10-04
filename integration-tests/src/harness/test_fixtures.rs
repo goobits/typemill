@@ -286,6 +286,8 @@ pub struct LspComplianceTestCase {
     pub method: &'static str,
     /// The params as JSON value
     pub params: fn() -> serde_json::Value,
+    /// Files to create in the workspace
+    pub files: &'static [(&'static str, &'static str)],
     /// The expected behavior from the server.
     pub expected_behavior: LspComplianceBehavior,
 }
@@ -295,16 +297,33 @@ fn workspace_symbol_empty_params() -> serde_json::Value {
     serde_json::json!({ "query": "" })
 }
 
+/// Helper function for workspace/symbol with specific query
+fn workspace_symbol_data_params() -> serde_json::Value {
+    serde_json::json!({ "query": "Data" })
+}
+
 /// The central array of all compliance tests to be run.
 pub const LSP_COMPLIANCE_TESTS: &[LspComplianceTestCase] = &[
     // Test case for rust-analyzer's handling of an empty workspace/symbol query.
     // We expect it to return an empty array, which is the behavior we need to work around.
     LspComplianceTestCase {
-        language_id: "rust",
+        language_id: "rs",
         feature_name: "workspace_symbol_empty_query",
         method: "workspace/symbol",
         params: workspace_symbol_empty_params,
+        files: &[
+            ("main.rs", "fn main() {}"),
+            ("lib.rs", "pub fn helper() {}"),
+        ],
         expected_behavior: LspComplianceBehavior::ReturnsEmptyArray,
     },
-    // Future test cases for other languages or features will be added here.
+    // Test case for TypeScript LSP - should support workspace/symbol with specific query
+    LspComplianceTestCase {
+        language_id: "ts",
+        feature_name: "workspace_symbol_specific_query",
+        method: "workspace/symbol",
+        params: workspace_symbol_data_params,
+        files: &[("models.ts", "export class DataModel {}")],
+        expected_behavior: LspComplianceBehavior::ReturnsNonEmptyArray,
+    },
 ];
