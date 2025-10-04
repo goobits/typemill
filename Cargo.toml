@@ -16,7 +16,6 @@ members = [
     "apps/codebuddy",
     "integration-tests",
     "benchmarks",
-    "experiments/syn-visitor-test",
 ]
 resolver = "2"
 
