@@ -30,6 +30,9 @@ swc_ecma_codegen = "17"
 cb-plugins = { path = "../cb-plugins" }
 cb-lang-rust = { path = "../languages/cb-lang-rust" }
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 futures-util = "0.3"
 chrono = "0.4"

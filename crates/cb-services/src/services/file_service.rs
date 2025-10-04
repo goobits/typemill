@@ -991,6 +991,11 @@ impl FileService {
 
     /// Apply edits with file coordination and atomic rollback on failure
     async fn apply_edits_with_coordination(&self, plan: &EditPlan) -> ServerResult<EditPlanResult> {
+        // Ensure all pending file operations are complete before creating snapshots
+        // This is critical for cross-process cache coherency
+        self.operation_queue.wait_until_idle().await;
+        debug!("Operation queue idle before creating snapshots");
+
         // Step 1: Identify all files that will be affected
         let mut affected_files = std::collections::HashSet::new();
 
@@ -1023,11 +1028,6 @@ impl FileService {
         }
 
         // Step 2: Create snapshots of all affected files before any modifications
-        // Add a delay to ensure filesystem cache coherency after batch file creation
-        // This is necessary because even with sync_all(), cross-process page cache
-        // coherency can take time (especially in virtualized/containerized environments)
-        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-
         let snapshots = self.create_file_snapshots(&affected_files).await?;
         debug!(
             snapshot_count = snapshots.len(),
@@ -1167,69 +1167,68 @@ impl FileService {
         let mut snapshots = HashMap::new();
 
         for file_path in file_paths {
-            // Retry logic to handle filesystem cache coherency issues
-            // After sync_all(), the page cache may take a moment to update
-            let mut attempts = 0;
-            let max_attempts = 5;
-            let mut last_error = None;
+            // Open file with explicit handle and force cache drop
+            let read_result = async {
+                use tokio::io::AsyncReadExt;
+                let mut file = fs::OpenOptions::new()
+                    .read(true)
+                    .open(file_path)
+                    .await?;
 
-            loop {
-                // Force fresh read by opening file explicitly
-                // This helps with cross-process cache coherency issues
-                let read_result = async {
-                    let mut file = fs::File::open(file_path).await?;
-                    let mut content = String::new();
-                    use tokio::io::AsyncReadExt;
-                    file.read_to_string(&mut content).await?;
-                    Ok::<String, std::io::Error>(content)
-                }.await;
+                // Force page cache invalidation on Unix systems
+                #[cfg(unix)]
+                {
+                    use std::os::unix::io::AsRawFd;
+                    unsafe {
+                        // POSIX_FADV_DONTNEED = 4
+                        libc::posix_fadvise(file.as_raw_fd(), 0, 0, 4);
+                    }
+                }
 
-                match read_result {
-                    Ok(content) => {
-                        debug!(
-                            file_path = %file_path.display(),
-                            content_len = content.len(),
-                            attempts = attempts + 1,
-                            "Snapshot created with content"
-                        );
-                        if content.is_empty() && attempts < max_attempts {
-                            // File exists but is empty - this might be a cache coherency issue
-                            // Retry with a small delay to allow cache to update
-                            warn!(
-                                file_path = %file_path.display(),
-                                attempt = attempts + 1,
-                                "WARNING: File read as empty, retrying to handle cache coherency"
-                            );
-                            attempts += 1;
-                            tokio::time::sleep(tokio::time::Duration::from_millis(10 * (1 << attempts))).await;
-                            continue;
-                        }
-                        snapshots.insert(file_path.clone(), content);
-                        break;
+                let mut content = String::new();
+                file.read_to_string(&mut content).await?;
+
+                // DEBUG: Log if we read empty content
+                if content.is_empty() {
+                    eprintln!("CACHE BUG: Read {} as EMPTY (should have content)!", file_path.display());
+                    // Try ONE more time with explicit sync
+                    drop(file);
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    let mut retry_file = fs::File::open(file_path).await?;
+                    let mut retry_content = String::new();
+                    retry_file.read_to_string(&mut retry_content).await?;
+                    if !retry_content.is_empty() {
+                        eprintln!("CACHE BUG CONFIRMED: Retry read {} bytes!", retry_content.len());
+                        return Ok(retry_content);
                     }
-                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                        // File doesn't exist yet - store empty string to indicate deletion on rollback
-                        debug!(
-                            file_path = %file_path.display(),
-                            "File does not exist yet, will be created during operation"
-                        );
-                        snapshots.insert(file_path.clone(), String::new());
-                        break;
-                    }
-                    Err(e) => {
-                        last_error = Some(e);
-                        if attempts < max_attempts {
-                            attempts += 1;
-                            tokio::time::sleep(tokio::time::Duration::from_millis(10 * (1 << attempts))).await;
-                            continue;
-                        }
-                        return Err(ServerError::Internal(format!(
-                            "Failed to read file {} for snapshot after {} attempts: {}",
-                            file_path.display(),
-                            max_attempts,
-                            last_error.as_ref().map(|e| e.to_string()).unwrap_or_else(|| "unknown error".to_string())
-                        )));
-                    }
+                }
+
+                Ok::<String, std::io::Error>(content)
+            }.await;
+
+            match read_result {
+                Ok(content) => {
+                    debug!(
+                        file_path = %file_path.display(),
+                        content_len = content.len(),
+                        "Snapshot created with content"
+                    );
+                    snapshots.insert(file_path.clone(), content);
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    // File doesn't exist yet - store empty string to indicate deletion on rollback
+                    debug!(
+                        file_path = %file_path.display(),
+                        "File does not exist yet, will be created during operation"
+                    );
+                    snapshots.insert(file_path.clone(), String::new());
+                }
+                Err(e) => {
+                    return Err(ServerError::Internal(format!(
+                        "Failed to read file {} for snapshot: {}",
+                        file_path.display(),
+                        e
+                    )));
                 }
             }
         }
