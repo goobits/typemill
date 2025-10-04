@@ -23,11 +23,9 @@ pub use cb_core::workspaces;
 pub use cb_handlers::handlers;
 pub use cb_services::services;
 
-use cb_ast::AstCache;
 use cb_core::AppConfig;
 use cb_handlers::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
 pub use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult, AstService, LspService};
-use cb_services::services::{DefaultAstService, FileService, LockManager, OperationQueue};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::oneshot;
@@ -60,74 +58,36 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
     // Get project root
     let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
-    // Create shared AST cache with configuration
+    // Use the app_state_factory to create services and app_state
+    use crate::utils::app_state_factory::create_services_bundle;
+    #[cfg(feature = "mcp-proxy")]
+    use crate::utils::app_state_factory::register_mcp_proxy_if_enabled;
+
     let cache_settings = cb_ast::CacheSettings::from_config(
         options.config.cache.enabled,
         options.config.cache.ttl_seconds,
         options.config.cache.max_size_bytes,
     );
-    let ast_cache = Arc::new(AstCache::with_settings(cache_settings));
 
-    // Create services
-    let ast_service: Arc<dyn AstService> = Arc::new(DefaultAstService::new(ast_cache.clone()));
-    let lock_manager = Arc::new(LockManager::new());
-    let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
-    let file_service = Arc::new(FileService::new(
-        &project_root,
-        ast_cache.clone(),
-        lock_manager.clone(),
-        operation_queue.clone(),
-        &options.config,
-    ));
-
-    // Create planner
-    let planner = cb_services::services::planner::DefaultPlanner::new();
-
-    // Create plugin manager and workflow executor
     let plugin_manager = Arc::new(cb_plugins::PluginManager::new());
 
     // Register MCP proxy plugin if feature enabled
     #[cfg(feature = "mcp-proxy")]
-    if let Some(external_mcp_config) = &options.config.external_mcp {
-        use cb_mcp_proxy::McpProxyPlugin;
-        use cb_plugins::LanguagePlugin;
+    register_mcp_proxy_if_enabled(&plugin_manager, options.config.external_mcp.as_ref()).await?;
 
-        tracing::info!(
-            servers_count = external_mcp_config.servers.len(),
-            "Registering MCP proxy plugin"
-        );
+    let services = create_services_bundle(&project_root, cache_settings, plugin_manager.clone(), &options.config);
 
-        let mut mcp_plugin = McpProxyPlugin::new(external_mcp_config.servers.clone());
-
-        // Initialize the plugin BEFORE wrapping in Arc
-        mcp_plugin.initialize().await.map_err(|e| {
-            ServerError::plugin(format!("Failed to initialize MCP proxy plugin: {}", e))
-        })?;
-
-        plugin_manager
-            .register_plugin("mcp-proxy", Arc::new(mcp_plugin))
-            .await
-            .map_err(|e| {
-                ServerError::plugin(format!("Failed to register MCP proxy plugin: {}", e))
-            })?;
-    }
-
-    let workflow_executor = cb_services::services::workflow_executor::DefaultWorkflowExecutor::new(
-        plugin_manager.clone(),
-    );
-
-    // Create workspace manager for tracking connected containers
     let workspace_manager = Arc::new(cb_core::workspaces::WorkspaceManager::new());
 
     // Create application state
     let app_state = Arc::new(AppState {
-        ast_service,
-        file_service,
-        planner,
-        workflow_executor,
+        ast_service: services.ast_service,
+        file_service: services.file_service,
+        planner: services.planner,
+        workflow_executor: services.workflow_executor,
         project_root,
-        lock_manager,
-        operation_queue,
+        lock_manager: services.lock_manager,
+        operation_queue: services.operation_queue,
         start_time: std::time::Instant::now(),
         workspace_manager,
     });
@@ -174,60 +134,31 @@ pub async fn create_dispatcher_with_workspace(
     // Get project root
     let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
-    // Create shared AST cache with configuration
+    // Use the app_state_factory to create services
+    use crate::utils::app_state_factory::create_services_bundle;
+    #[cfg(feature = "mcp-proxy")]
+    use crate::utils::app_state_factory::register_mcp_proxy_if_enabled;
+
     let cache_settings = cb_ast::CacheSettings::from_config(
         config.cache.enabled,
         config.cache.ttl_seconds,
         config.cache.max_size_bytes,
     );
-    let ast_cache = Arc::new(AstCache::with_settings(cache_settings));
 
-    // Create services
-    let ast_service: Arc<dyn AstService> = Arc::new(DefaultAstService::new(ast_cache.clone()));
-    let lock_manager = Arc::new(LockManager::new());
-    let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
-    let file_service = Arc::new(FileService::new(
-        &project_root,
-        ast_cache.clone(),
-        lock_manager.clone(),
-        operation_queue.clone(),
-        &config,
-    ));
-
-    // Create planner
-    let planner = cb_services::services::planner::DefaultPlanner::new();
-
-    // Create plugin manager and workflow executor
     let plugin_manager = Arc::new(cb_plugins::PluginManager::new());
 
     // Register MCP proxy plugin if feature enabled
     #[cfg(feature = "mcp-proxy")]
-    if let Some(external_mcp_config) = &config.external_mcp {
-        use cb_mcp_proxy::McpProxyPlugin;
-        use cb_plugins::LanguagePlugin;
+    register_mcp_proxy_if_enabled(&plugin_manager, config.external_mcp.as_ref()).await?;
 
-        tracing::info!(
-            servers_count = external_mcp_config.servers.len(),
-            "Registering MCP proxy plugin"
-        );
-
-        let mut mcp_plugin = McpProxyPlugin::new(external_mcp_config.servers.clone());
-
-        // Initialize the plugin BEFORE wrapping in Arc
-        mcp_plugin.initialize().await.map_err(|e| {
-            ServerError::plugin(format!("Failed to initialize MCP proxy plugin: {}", e))
-        })?;
-
-        plugin_manager
-            .register_plugin("mcp-proxy", Arc::new(mcp_plugin))
-            .await
-            .map_err(|e| {
-                ServerError::plugin(format!("Failed to register MCP proxy plugin: {}", e))
-            })?;
-    }
-
-    let workflow_executor = cb_services::services::workflow_executor::DefaultWorkflowExecutor::new(
-        plugin_manager.clone(),
+    let services = create_services_bundle(&project_root, cache_settings, plugin_manager.clone(), &config);
+    let (ast_service, file_service, planner, workflow_executor, lock_manager, operation_queue) = (
+        services.ast_service,
+        services.file_service,
+        services.planner,
+        services.workflow_executor,
+        services.lock_manager,
+        services.operation_queue,
     );
 
     // Start background processor for operation queue
