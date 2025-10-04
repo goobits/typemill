@@ -64,7 +64,7 @@ impl FileService {
 
         // Create language adapter registry with default adapters
         let mut adapter_registry = cb_ast::LanguageAdapterRegistry::new();
-        adapter_registry.register(Arc::new(cb_ast::language::RustAdapter));
+        adapter_registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
         adapter_registry.register(Arc::new(cb_ast::language::TypeScriptAdapter));
         adapter_registry.register(Arc::new(cb_ast::language::PythonAdapter));
         adapter_registry.register(Arc::new(cb_ast::language::GoAdapter));

@@ -1,77 +1,19 @@
-//! Rust Language Adapter for Refactoring Operations
+//! Rust Language Adapter Implementation
 //!
-//! This crate provides the `RustAdapter` which implements the `LanguageAdapter` trait
-//! for Rust-specific refactoring operations. It composes the `cb-lang-rust` intelligence
-//! plugin to leverage AST parsing capabilities.
-//!
-//! # Architecture
-//!
-//! The adapter pattern separates concerns:
-//! - **Intelligence** (`cb-lang-rust`): Pure AST parsing, symbol extraction
-//! - **Adapter** (this crate): Refactoring operations, import rewriting, file operations
-//!
-//! This separation allows the intelligence layer to remain pure and reusable across
-//! different tools while the adapter handles project-specific refactoring logic.
+//! This module implements the `LanguageAdapter` trait for Rust, providing
+//! refactoring operations, import rewriting, and file system navigation.
 
 use async_trait::async_trait;
 use cb_ast::error::{AstError, AstResult};
 use cb_ast::language::{LanguageAdapter, ModuleReference, ReferenceKind, ScanScope};
 use cb_core::language::ProjectLanguage;
-use cb_plugin_api::LanguageIntelligencePlugin;
 use std::path::Path;
-use std::sync::Arc;
 use tracing::debug;
 
-/// Rust language adapter for refactoring operations
-///
-/// Composes a `LanguageIntelligencePlugin` to provide refactoring capabilities
-/// built on top of Rust AST parsing.
-pub struct RustAdapter {
-    /// The intelligence plugin used for AST parsing
-    ///
-    /// Currently, most operations use direct calls to `cb_lang_rust` functions,
-    /// but this field enables future enhancements to use the trait-based API.
-    #[allow(dead_code)]
-    intelligence: Arc<dyn LanguageIntelligencePlugin>,
-}
-
-impl RustAdapter {
-    /// Create a new Rust adapter with the given intelligence plugin
-    ///
-    /// # Arguments
-    ///
-    /// * `intelligence` - The intelligence plugin to use for AST parsing
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// use cb_lang_rust::RustPlugin;
-    /// use cb_lang_rust_adapter::RustAdapter;
-    /// use std::sync::Arc;
-    ///
-    /// let intelligence = Arc::new(RustPlugin::new());
-    /// let adapter = RustAdapter::new(intelligence);
-    /// ```
-    pub fn new(intelligence: Arc<dyn LanguageIntelligencePlugin>) -> Self {
-        Self { intelligence }
-    }
-
-    /// Create a new Rust adapter with the default intelligence plugin
-    ///
-    /// This is a convenience method that creates a `RustPlugin` internally.
-    pub fn default_intelligence() -> Self {
-        Self::new(Arc::new(cb_lang_rust::RustPlugin::new()))
-    }
-}
-
-impl Default for RustAdapter {
-    fn default() -> Self {
-        Self::default_intelligence()
-    }
-}
+use crate::RustPlugin;
 
 #[async_trait]
-impl LanguageAdapter for RustAdapter {
+impl LanguageAdapter for RustPlugin {
     fn language(&self) -> ProjectLanguage {
         ProjectLanguage::Rust
     }
@@ -173,7 +115,7 @@ impl LanguageAdapter for RustAdapter {
     async fn parse_imports(&self, file_path: &Path) -> AstResult<Vec<String>> {
         debug!(
             file_path = %file_path.display(),
-            "Parsing Rust imports using intelligence plugin"
+            "Parsing Rust imports"
         );
 
         // Read file content
@@ -183,8 +125,8 @@ impl LanguageAdapter for RustAdapter {
                 message: format!("Failed to read file {}: {}", file_path.display(), e),
             })?;
 
-        // Use the intelligence plugin to parse
-        let imports = cb_lang_rust::parse_imports(&content)
+        // Use our own parse_imports function
+        let imports = crate::parser::parse_imports(&content)
             .map_err(|e| AstError::Analysis {
                 message: format!("Failed to parse imports: {}", e),
             })?;
@@ -288,12 +230,12 @@ impl LanguageAdapter for RustAdapter {
             "Rewriting Rust imports for crate rename"
         );
 
-        // Use cb-lang-rust to parse and rewrite
-        let _imports = cb_lang_rust::parse_imports(content)
+        // Use our own parse_imports to get the import info
+        let _imports = crate::parser::parse_imports(content)
             .map_err(|e| AstError::analysis(format!("Failed to parse imports: {}", e)))?;
 
         // For now, use simple string replacement
-        // TODO: Use cb-lang-rust::rewrite_use_tree for proper AST-based rewriting
+        // TODO: Use crate::parser::rewrite_use_tree for proper AST-based rewriting
         let mut updated_content = content.to_string();
         let mut changes_count = 0;
 

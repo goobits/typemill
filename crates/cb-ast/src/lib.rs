@@ -30,7 +30,7 @@ pub use cache::*;
 pub use error::{AstError, AstResult};
 pub use import_updater::{find_project_files, update_imports_for_rename, ImportPathResolver};
 pub use language::{
-    GoAdapter, JavaAdapter, LanguageAdapter, PythonAdapter, RustAdapter, TypeScriptAdapter,
+    GoAdapter, JavaAdapter, LanguageAdapter, PythonAdapter, TypeScriptAdapter,
 };
 pub use parser::*;
 pub use refactoring::*;

@@ -10,10 +10,13 @@ homepage.workspace = true
 # Our core plugin API
 cb-plugin-api = { path = "../../cb-plugin-api" }
 cb-protocol = { path = "../../cb-protocol" }
+cb-ast = { path = "../../cb-ast" }
+cb-core = { path = "../../cb-core" }
 
 # For parsing Rust code
-syn = { version = "2.0", features = ["full", "visit"] }
+syn = { version = "2.0", features = ["full", "visit", "extra-traits"] }
 quote = "1.0"
+tracing = { workspace = true }
 
 # For parsing Cargo.toml files
 toml_edit = "0.23"

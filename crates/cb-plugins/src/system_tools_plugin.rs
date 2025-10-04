@@ -9,7 +9,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use cb_ast::adapter_registry::LanguageAdapterRegistry;
-use cb_ast::language::{GoAdapter, JavaAdapter, PythonAdapter, RustAdapter, TypeScriptAdapter};
+use cb_ast::language::{GoAdapter, JavaAdapter, PythonAdapter, TypeScriptAdapter};
 use cb_core::language::detect_package_manager;
 use ignore::WalkBuilder;
 use serde::Deserialize;
@@ -410,7 +410,7 @@ impl SystemToolsPlugin {
 
         // Create language adapter registry
         let mut registry = LanguageAdapterRegistry::new();
-        registry.register(Arc::new(RustAdapter));
+        registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
         registry.register(Arc::new(TypeScriptAdapter));
         registry.register(Arc::new(PythonAdapter));
         registry.register(Arc::new(GoAdapter));

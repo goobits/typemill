@@ -1,15 +1,17 @@
 //! Rust Language Plugin for Codebuddy
 //!
-//! This crate provides a self-contained plugin for Rust language support,
-//! implementing the `LanguagePlugin` trait from `cb-plugin-api`.
+//! This crate provides complete Rust language support, implementing both:
+//! - `LanguageIntelligencePlugin` - AST parsing and symbol extraction
+//! - `LanguageAdapter` - Refactoring operations and import rewriting
 //!
 //! # Features
 //!
 //! - Full AST parsing using `syn`
 //! - Symbol extraction (functions, structs, enums, etc.)
-//! - Import analysis
+//! - Import analysis and rewriting
 //! - Cargo.toml manifest parsing and manipulation
 //! - Documentation extraction from doc comments
+//! - Module file location and reference finding
 //!
 //! # Example
 //!
@@ -22,6 +24,7 @@
 //! let functions = plugin.list_functions(source).await.unwrap();
 //! ```
 
+mod adapter;
 mod manifest;
 mod parser;
 

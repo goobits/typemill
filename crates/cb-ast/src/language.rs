@@ -180,350 +180,6 @@ pub trait LanguageAdapter: Send + Sync {
     ) -> AstResult<Vec<ModuleReference>>;
 }
 
-/// Visitor for finding module references in Rust code using syn::visit
-struct RustModuleFinder<'a> {
-    module_to_find: &'a str,
-    scope: ScanScope,
-    references: Vec<ModuleReference>,
-}
-
-impl<'a> RustModuleFinder<'a> {
-    fn new(module_to_find: &'a str, scope: ScanScope) -> Self {
-        Self {
-            module_to_find,
-            scope,
-            references: Vec::new(),
-        }
-    }
-
-    fn into_references(self) -> Vec<ModuleReference> {
-        self.references
-    }
-
-    fn check_use_tree(&mut self, tree: &syn::UseTree) {
-        match tree {
-            syn::UseTree::Path(path) => {
-                if path.ident == self.module_to_find {
-                    self.references.push(ModuleReference {
-                        line: 0,
-                        column: 0,
-                        length: self.module_to_find.len(),
-                        text: self.module_to_find.to_string(),
-                        kind: ReferenceKind::Declaration,
-                    });
-                }
-                self.check_use_tree(&path.tree);
-            }
-            syn::UseTree::Name(name) => {
-                if name.ident == self.module_to_find {
-                    self.references.push(ModuleReference {
-                        line: 0,
-                        column: 0,
-                        length: self.module_to_find.len(),
-                        text: self.module_to_find.to_string(),
-                        kind: ReferenceKind::Declaration,
-                    });
-                }
-            }
-            syn::UseTree::Group(group) => {
-                for item in &group.items {
-                    self.check_use_tree(item);
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
-impl<'ast, 'a> syn::visit::Visit<'ast> for RustModuleFinder<'a> {
-    fn visit_item_use(&mut self, node: &'ast syn::ItemUse) {
-        // Check the use tree for our module
-        self.check_use_tree(&node.tree);
-
-        // Continue visiting child nodes
-        syn::visit::visit_item_use(self, node);
-    }
-
-    fn visit_expr_path(&mut self, node: &'ast syn::ExprPath) {
-        // Only check qualified paths if scope allows
-        if self.scope == ScanScope::QualifiedPaths || self.scope == ScanScope::All {
-            if let Some(segment) = node.path.segments.first() {
-                if segment.ident == self.module_to_find {
-                    self.references.push(ModuleReference {
-                        line: 0,
-                        column: 0,
-                        length: self.module_to_find.len(),
-                        text: quote::quote!(#node).to_string(),
-                        kind: ReferenceKind::QualifiedPath,
-                    });
-                }
-            }
-        }
-
-        // Continue visiting
-        syn::visit::visit_expr_path(self, node);
-    }
-
-    fn visit_expr_lit(&mut self, node: &'ast syn::ExprLit) {
-        // Only check string literals if scope is All
-        if self.scope == ScanScope::All {
-            if let syn::Lit::Str(lit_str) = &node.lit {
-                let value = lit_str.value();
-                if value.contains(self.module_to_find) {
-                    self.references.push(ModuleReference {
-                        line: 0,
-                        column: 0,
-                        length: self.module_to_find.len(),
-                        text: value,
-                        kind: ReferenceKind::StringLiteral,
-                    });
-                }
-            }
-        }
-
-        // Continue visiting
-        syn::visit::visit_expr_lit(self, node);
-    }
-}
-
-/// Rust language adapter
-pub struct RustAdapter;
-
-#[async_trait]
-impl LanguageAdapter for RustAdapter {
-    fn language(&self) -> ProjectLanguage {
-        ProjectLanguage::Rust
-    }
-
-    fn manifest_filename(&self) -> &'static str {
-        "Cargo.toml"
-    }
-
-    fn source_dir(&self) -> &'static str {
-        "src"
-    }
-
-    fn entry_point(&self) -> &'static str {
-        "lib.rs"
-    }
-
-    fn module_separator(&self) -> &'static str {
-        "::"
-    }
-
-    async fn locate_module_files(
-        &self,
-        package_path: &Path,
-        module_path: &str,
-    ) -> AstResult<Vec<std::path::PathBuf>> {
-        use tracing::debug;
-
-        debug!(
-            package_path = %package_path.display(),
-            module_path = %module_path,
-            "Locating Rust module files"
-        );
-
-        // Start at the crate's source root (e.g., package_path/src)
-        let src_root = package_path.join(self.source_dir());
-
-        if !src_root.exists() {
-            return Err(crate::error::AstError::Analysis {
-                message: format!("Source directory not found: {}", src_root.display()),
-            });
-        }
-
-        // Split module path by either "::" or "." into segments
-        let segments: Vec<&str> = module_path
-            .split([':', '.'])
-            .filter(|s| !s.is_empty())
-            .collect();
-
-        if segments.is_empty() {
-            return Err(crate::error::AstError::Analysis {
-                message: "Module path cannot be empty".to_string(),
-            });
-        }
-
-        // Build path by joining segments
-        let mut current_path = src_root.clone();
-
-        // Navigate through all segments except the last
-        for segment in &segments[..segments.len() - 1] {
-            current_path = current_path.join(segment);
-        }
-
-        // For the final segment, check both naming conventions
-        let final_segment = segments[segments.len() - 1];
-        let mut found_files = Vec::new();
-
-        // Check for module_name.rs
-        let file_path = current_path.join(format!("{}.rs", final_segment));
-        if file_path.exists() && file_path.is_file() {
-            debug!(file_path = %file_path.display(), "Found module file");
-            found_files.push(file_path);
-        }
-
-        // Check for module_name/mod.rs
-        let mod_path = current_path.join(final_segment).join("mod.rs");
-        if mod_path.exists() && mod_path.is_file() {
-            debug!(file_path = %mod_path.display(), "Found mod.rs file");
-            found_files.push(mod_path);
-        }
-
-        if found_files.is_empty() {
-            return Err(crate::error::AstError::Analysis {
-                message: format!(
-                    "Module '{}' not found at {} (checked both {}.rs and {}/mod.rs)",
-                    module_path,
-                    current_path.display(),
-                    final_segment,
-                    final_segment
-                ),
-            });
-        }
-
-        debug!(
-            files_count = found_files.len(),
-            "Successfully located module files"
-        );
-
-        Ok(found_files)
-    }
-
-    async fn parse_imports(&self, file_path: &Path) -> AstResult<Vec<String>> {
-        
-        use tracing::debug;
-
-        debug!(
-            file_path = %file_path.display(),
-            "Parsing Rust imports"
-        );
-
-        // DEPRECATED: RustAdapter is no longer used. Rust parsing is now handled by cb-lang-rust plugin.
-        // Return empty result since this adapter is deprecated
-        tracing::debug!("RustAdapter::parse_imports is deprecated - use cb-lang-rust plugin instead");
-        Ok(vec![])
-    }
-
-    fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
-        use std::fmt::Write;
-
-        let mut manifest = String::new();
-
-        // [package] section
-        writeln!(manifest, "[package]").unwrap();
-        writeln!(manifest, "name = \"{}\"", package_name).unwrap();
-        writeln!(manifest, "version = \"0.1.0\"").unwrap();
-        writeln!(manifest, "edition = \"2021\"").unwrap();
-
-        // Add blank line before dependencies section if there are any
-        if !dependencies.is_empty() {
-            writeln!(manifest).unwrap();
-            writeln!(manifest, "[dependencies]").unwrap();
-
-            // Add each dependency with wildcard version
-            for dep in dependencies {
-                writeln!(manifest, "{} = \"*\"", dep).unwrap();
-            }
-        }
-
-        manifest
-    }
-
-    fn rewrite_import(&self, old_import: &str, new_package_name: &str) -> String {
-        // Transform internal import path to external crate import
-        // e.g., "crate::services::planner" -> "use cb_planner;"
-        // e.g., "crate::services::planner::Config" -> "use cb_planner::Config;"
-
-        // Remove common prefixes like "crate::", "self::", "super::"
-        let trimmed = old_import
-            .trim_start_matches("crate::")
-            .trim_start_matches("self::")
-            .trim_start_matches("super::");
-
-        // Find the extracted module name and what comes after
-        // The path segments after the module name become the new import path
-        let segments: Vec<&str> = trimmed.split("::").collect();
-
-        if segments.is_empty() {
-            // Just use the new package name
-            format!("use {};", new_package_name)
-        } else if segments.len() == 1 {
-            // Only the module name itself
-            format!("use {};", new_package_name)
-        } else {
-            // Module name plus additional path
-            // Skip the first segment (the old module name) and use the rest
-            let remaining_path = segments[1..].join("::");
-            format!("use {}::{};", new_package_name, remaining_path)
-        }
-    }
-
-    fn handles_extension(&self, ext: &str) -> bool {
-        matches!(ext, "rs")
-    }
-
-    fn rewrite_imports_for_rename(
-        &self,
-        content: &str,
-        _old_path: &Path,
-        _new_path: &Path,
-        _importing_file: &Path,
-        _project_root: &Path,
-        rename_info: Option<&serde_json::Value>,
-    ) -> AstResult<(String, usize)> {
-        
-
-        // If no rename_info provided, no rewriting needed
-        let rename_info = match rename_info {
-            Some(info) => info,
-            None => return Ok((content.to_string(), 0)),
-        };
-
-        // Extract old and new crate names from rename_info
-        let old_crate_name = rename_info["old_crate_name"]
-            .as_str()
-            .ok_or_else(|| AstError::analysis("Missing old_crate_name in rename_info"))?;
-
-        let new_crate_name = rename_info["new_crate_name"]
-            .as_str()
-            .ok_or_else(|| AstError::analysis("Missing new_crate_name in rename_info"))?;
-
-        tracing::debug!(
-            old_crate = %old_crate_name,
-            new_crate = %new_crate_name,
-            "Rewriting Rust imports for crate rename"
-        );
-
-        // Parse the Rust source file
-        // DEPRECATED: RustAdapter is no longer used. Rust parsing is now handled by cb-lang-rust plugin.
-        // Return original content unchanged since this adapter is deprecated
-        tracing::debug!("RustAdapter::rewrite_imports_for_rename is deprecated - use cb-lang-rust plugin instead");
-        Ok((content.to_string(), 0))
-    }
-
-    fn find_module_references(
-        &self,
-        content: &str,
-        module_to_find: &str,
-        scope: ScanScope,
-    ) -> AstResult<Vec<ModuleReference>> {
-        use syn::visit::Visit;
-        use syn::File;
-
-        // Parse the Rust source file
-        let file: File = syn::parse_str(content)
-            .map_err(|e| AstError::analysis(format!("Failed to parse Rust source: {}", e)))?;
-
-        // Create and run visitor
-        let mut finder = RustModuleFinder::new(module_to_find, scope);
-        finder.visit_file(&file);
-
-        Ok(finder.into_references())
-    }
-}
-
 /// TypeScript/JavaScript language adapter
 pub struct TypeScriptAdapter;
 
@@ -1733,5 +1389,46 @@ impl LanguageAdapter for JavaAdapter {
         finder.visit_node(root, &mut cursor);
 
         Ok(finder.into_references())
+    }
+}
+
+
+// Test-only mock for Rust adapter (for package_extractor tests)
+// The real Rust adapter is now in cb-lang-rust crate
+#[cfg(test)]
+pub struct RustAdapter;
+
+#[cfg(test)]
+#[async_trait]
+impl LanguageAdapter for RustAdapter {
+    fn language(&self) -> ProjectLanguage {
+        ProjectLanguage::Rust
+    }
+    fn manifest_filename(&self) -> &'static str { "Cargo.toml" }
+    fn source_dir(&self) -> &'static str { "src" }
+    fn entry_point(&self) -> &'static str { "lib.rs" }
+    fn module_separator(&self) -> &'static str { "::" }
+    async fn locate_module_files(&self, package_path: &Path, module_path: &str) -> AstResult<Vec<std::path::PathBuf>> {
+        let src_root = package_path.join("src");
+        let file_path = src_root.join(format!("{}.rs", module_path.replace("::", "/")));
+        Ok(vec![file_path])
+    }
+    async fn parse_imports(&self, _file_path: &Path) -> AstResult<Vec<String>> { Ok(vec![]) }
+    fn generate_manifest(&self, package_name: &str, _dependencies: &[String]) -> String {
+        format!("[package]
+name = \"{}\"
+version = \"0.1.0\"
+edition = \"2021\"
+", package_name)
+    }
+    fn rewrite_import(&self, _old_import: &str, new_package_name: &str) -> String {
+        format!("use {};", new_package_name)
+    }
+    fn handles_extension(&self, ext: &str) -> bool { ext == "rs" }
+    fn rewrite_imports_for_rename(&self, content: &str, _old_path: &Path, _new_path: &Path, _importing_file: &Path, _project_root: &Path, _rename_info: Option<&serde_json::Value>) -> AstResult<(String, usize)> {
+        Ok((content.to_string(), 0))
+    }
+    fn find_module_references(&self, _content: &str, _module_to_find: &str, _scope: ScanScope) -> AstResult<Vec<ModuleReference>> {
+        Ok(vec![])
     }
 }
