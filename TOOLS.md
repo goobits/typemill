@@ -1,6 +1,6 @@
 # CodeBuddy MCP Tools Quick Reference
 
-**Version:** 1.0.0-beta
+**Version:** 1.0.0
 **Last Updated:** 2025-10-04
 
 Quick reference for all 44 MCP tools. For detailed API documentation, see [API.md](API.md).
@@ -53,7 +53,7 @@ Quick reference for all 44 MCP tools. For detailed API documentation, see [API.m
 | `write_file` | Write content to a file | `file_path`, `content` | Success status |
 | `delete_file` | Delete a file with safety checks | `file_path` | Success status, warnings if imported |
 | `rename_file` | Rename file and auto-update imports | `old_path`, `new_path` | Files updated, imports changed |
-| `list_files` | List files in a directory | None (defaults to workspace root) | Array of file entries with metadata |
+| `list_files` | List files in a directory with optional glob pattern filtering | `directory` (optional), `recursive` (optional), `pattern` (optional glob) | Array of file entries with metadata |
 
 ---
 

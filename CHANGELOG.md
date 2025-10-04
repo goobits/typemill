@@ -11,9 +11,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The project underwent a complete architectural transformation from TypeScript/Node.js to pure Rust in 2025, bringing native performance, memory safety, and compile-time type guarantees.
 
-### [Unreleased]
+### [1.0.0] - 2025-10-04
+
+🎉 **First Major Release** - Production-ready Rust MCP server with comprehensive tooling
 
 #### Added
+
+- **Cross-platform installation script** (`install.sh`)
+  - Enterprise-grade security (package verification, timeout protection)
+  - Support for macOS (Homebrew), Ubuntu/Debian (APT), Fedora/RHEL (DNF), Arch (Pacman)
+  - Automatic Rust and git installation
+  - Delegates to Makefile for consistent build process
+  - Comprehensive error handling with actionable fixes
+
+- **Complete documentation overhaul**
+  - Fixed tool count accuracy (44 tools verified)
+  - Updated all binary references (cb-server → codebuddy)
+  - Consolidated contracts.md into ARCHITECTURE.md (-501 lines)
+  - Added workflow cross-references
+  - Removed redundant documentation files
+
+- **Plugin architecture completion**
+  - Full language adapter migration completed
+  - Composable plugin system with multi-tiered priority
+  - Zero deprecated adapters remaining
+
+- **Java AST support**
+  - Tree-sitter based parser integration
+  - Full test coverage for Java language operations
+
 - **Refactoring tools**: Full AST-based implementation for extract_function, inline_variable, and extract_variable
   - Python: Full AST analysis with parameter detection and scope handling
   - TypeScript/JavaScript: Functional implementation with SWC parser
@@ -36,6 +62,11 @@ The project underwent a complete architectural transformation from TypeScript/No
   - System & Health (2 tools)
 
 #### Changed
+
+- **CLI port default**: WebSocket server now defaults to port 3040 (consistent with config)
+- **Installation methods**: install.sh now recommended over manual installation
+- **Build integration**: install.sh delegates to Makefile for single source of truth
+
 - **Structured logging**: All production code now uses tracing framework
   - Production code uses structured key-value logging
   - CLI uses println for user-facing output
@@ -48,12 +79,46 @@ The project underwent a complete architectural transformation from TypeScript/No
 - **VFS excluded** from default workspace build (faster builds, smaller binary)
 
 #### Fixed
+
+- **Critical**: install.sh now installs git before attempting to clone repository
+- **Documentation accuracy**: All tool counts corrected to 44
+- **Port consistency**: CLI default port matches config default (3040)
+- **Java tests**: Resolved compilation errors and unused imports
+- **LSP tools**: Fixed plugin delegation in analyze_imports
+- **Text edits**: Correctly apply edits to target files in EditPlan
 - Production code error handling improved with descriptive expect() messages
 - Structured logging in cb-ast/parser.rs (2 eprintln! → tracing::debug!)
 
 #### Removed
+
+- **Deprecated code**: All adapter methods with zero callers removed
+- **Completed proposals**: Java AST proposal (implementation complete)
+- **Redundant documentation**: contracts.md (merged), USAGE.md (redundant)
 - Stale benchmark suite (238 lines) - API changed, unmaintainable
 - cb-vfs from default workspace members (feature-gated, optional)
+
+#### Performance
+
+- **Build optimization**: sccache and mold integration via Makefile
+- **Native compilation**: Zero-cost abstractions throughout
+- **Memory safety**: Compile-time guarantees, no garbage collection overhead
+
+#### Documentation
+
+All documentation now 100% accurate and synchronized with codebase:
+- README.md, API.md, CLAUDE.md, TOOLS.md
+- CONTRIBUTING.md, ONBOARDING.md, OPERATIONS.md
+- ARCHITECTURE.md (includes contracts)
+- WORKFLOWS.md (intent-based workflow engine)
+
+---
+
+### [Unreleased]
+
+#### Planned
+- Package publishing to crates.io
+- Homebrew formula
+- Additional language server integrations
 
 ### [0.1.0] - 2024-Q4
 

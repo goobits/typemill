@@ -1,6 +1,6 @@
 # CodeBuddy MCP Tools API Reference
 
-**Version:** 1.0.0-beta
+**Version:** 1.0.0
 **Last Updated:** 2025-10-04
 
 Complete API documentation for all 44 MCP tools available in CodeBuddy.
@@ -1025,42 +1025,35 @@ Rename a file and automatically update imports.
 
 ### `list_files`
 
-List files in a directory.
+List files in a directory with optional glob pattern filtering.
 
 **Parameters:**
 ```json
 {
-  "path": "src",                    // Optional: Directory path (default: workspace root)
+  "directory": "src",               // Optional: Directory path (default: ".")
   "recursive": true,                // Optional: Recurse subdirectories (default: false)
-  "pattern": "*.ts",                // Optional: Glob pattern filter
-  "include_hidden": false           // Optional: Include hidden files (default: false)
+  "pattern": "*.ts"                 // Optional: Glob pattern filter (e.g., "*.rs", "test_*.py")
 }
 ```
 
 **Returns:**
 ```json
 {
+  "success": true,
+  "directory": "src",
+  "pattern": "*.ts",               // Only present if pattern was specified
   "files": [
-    {
-      "path": "src/app.ts",
-      "name": "app.ts",
-      "size": 1024,
-      "is_dir": false,
-      "modified": "2025-10-01T10:00:00Z"
-    },
-    {
-      "path": "src/components",
-      "name": "components",
-      "is_dir": true
-    }
-  ],
-  "total": 25
+    "app.ts",
+    "utils.ts",
+    "index.ts"
+  ]
 }
 ```
 
 **Notes:**
-- Respects `.gitignore` patterns
-- Supports glob patterns (`*.ts`, `**/*.tsx`)
+- Returns simple array of filenames/paths
+- Pattern supports standard glob syntax: `*` (any characters), `?` (single char), `**` (recursive)
+- Examples: `*.rs`, `test_*.py`, `**/*.tsx`
 
 ---
 
