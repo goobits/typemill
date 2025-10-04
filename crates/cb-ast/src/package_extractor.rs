@@ -9,7 +9,6 @@ use cb_core::language::ProjectLanguage;
 use cb_protocol::EditPlan;
 use serde::Deserialize;
 use std::path::Path;
-use std::sync::Arc;
 use tracing::info;
 
 #[derive(Debug, Deserialize)]
@@ -198,31 +197,6 @@ fn remove_module_declaration(source: &str, module_name: &str) -> AstResult<Strin
     // Format with rustfmt-style spacing (basic)
     // Note: This is a simple approximation, real rustfmt would be better
     Ok(updated_source)
-}
-
-/// Main entry point for extracting a module to a package (deprecated)
-///
-/// This version uses hardcoded adapters for backward compatibility.
-/// New code should use `plan_extract_module_to_package_with_registry`.
-#[deprecated(
-    since = "1.0.0-beta",
-    note = "Use plan_extract_module_to_package_with_registry instead"
-)]
-pub async fn plan_extract_module_to_package(
-    params: ExtractModuleToPackageParams,
-) -> AstResult<EditPlan> {
-    use crate::language::{
-        GoAdapter, JavaAdapter, PythonAdapter, RustAdapter, TypeScriptAdapter,
-    };
-
-    let mut registry = LanguageAdapterRegistry::new();
-    registry.register(Arc::new(RustAdapter));
-    registry.register(Arc::new(TypeScriptAdapter));
-    registry.register(Arc::new(PythonAdapter));
-    registry.register(Arc::new(GoAdapter));
-    registry.register(Arc::new(JavaAdapter));
-
-    plan_extract_module_to_package_with_registry(params, &registry).await
 }
 
 /// Main entry point for extracting a module to a package
