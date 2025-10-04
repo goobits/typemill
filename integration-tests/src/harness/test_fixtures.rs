@@ -305,7 +305,8 @@ fn workspace_symbol_data_params() -> serde_json::Value {
 /// The central array of all compliance tests to be run.
 pub const LSP_COMPLIANCE_TESTS: &[LspComplianceTestCase] = &[
     // Test case for rust-analyzer's handling of an empty workspace/symbol query.
-    // We expect it to return an empty array, which is the behavior we need to work around.
+    // With the correct initializationOptions (workspace.symbol.search.kind = "all"),
+    // rust-analyzer should return all symbols, not just types.
     LspComplianceTestCase {
         language_id: "rs",
         feature_name: "workspace_symbol_empty_query",
@@ -315,7 +316,7 @@ pub const LSP_COMPLIANCE_TESTS: &[LspComplianceTestCase] = &[
             ("main.rs", "fn main() {}"),
             ("lib.rs", "pub fn helper() {}"),
         ],
-        expected_behavior: LspComplianceBehavior::ReturnsEmptyArray,
+        expected_behavior: LspComplianceBehavior::ReturnsNonEmptyArray,
     },
     // Test case for TypeScript LSP - documents that it needs project initialization
     // TypeScript LSP returns error "No Project" when workspace/symbol is called too quickly

@@ -17,6 +17,7 @@ pub struct LspTestBuilder {
     workspace: TestWorkspace,
     mode: LspTestMode,
     language: String,
+    initialization_options: Option<serde_json::Value>,
 }
 
 impl LspTestBuilder {
@@ -26,12 +27,19 @@ impl LspTestBuilder {
             workspace: TestWorkspace::new(),
             mode: LspTestMode::Mock, // Default to mock for speed
             language: language.to_string(),
+            initialization_options: None,
         }
     }
 
     /// Set the test to run against a real LSP server.
     pub fn with_real_lsp(mut self) -> Self {
         self.mode = LspTestMode::Real;
+        self
+    }
+
+    /// Set custom initialization options for the LSP server.
+    pub fn with_initialization_options(mut self, options: serde_json::Value) -> Self {
+        self.initialization_options = Some(options);
         self
     }
 
@@ -63,7 +71,12 @@ impl LspTestBuilder {
             LspTestMode::Mock => Arc::new(MockLspService::new()),
             LspTestMode::Real => {
                 let root_path = self.workspace.path();
-                let real_service = RealLspService::new(&self.language, root_path).await?;
+                let real_service = RealLspService::new_with_options(
+                    &self.language,
+                    root_path,
+                    self.initialization_options,
+                )
+                .await?;
                 Arc::new(real_service)
             }
         };

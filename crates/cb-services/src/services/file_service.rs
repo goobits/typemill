@@ -638,11 +638,23 @@ impl FileService {
                 .map_err(|e| ServerError::Internal(e.to_string()))?;
 
             info!(path = ?abs_path, "Queued create_file operation");
+
+            // Wait for the operation to complete before returning
+            self.operation_queue.wait_until_idle().await;
+
+            // Verify the file was created
+            if !abs_path.exists() {
+                return Err(ServerError::Internal(format!(
+                    "File creation failed: {:?}",
+                    abs_path
+                )));
+            }
+
             Ok(DryRunnable::new(
                 false,
                 json!({
                     "success": true,
-                    "status": "queued"
+                    "path": abs_path.to_string_lossy()
                 }),
             ))
         }
@@ -749,12 +761,23 @@ impl FileService {
                 .map_err(|e| ServerError::Internal(e.to_string()))?;
 
             info!(path = ?abs_path, "Queued delete_file operation");
+
+            // Wait for the operation to complete before returning
+            self.operation_queue.wait_until_idle().await;
+
+            // Verify the file was deleted
+            if abs_path.exists() {
+                return Err(ServerError::Internal(format!(
+                    "File deletion failed: {:?}",
+                    abs_path
+                )));
+            }
+
             Ok(DryRunnable::new(
                 false,
                 json!({
-                    "operation": "delete_file",
-                    "path": abs_path.to_string_lossy(),
-                    "status": "queued"
+                    "success": true,
+                    "path": abs_path.to_string_lossy()
                 }),
             ))
         }
@@ -827,11 +850,23 @@ impl FileService {
                 .map_err(|e| ServerError::Internal(e.to_string()))?;
 
             info!(path = ?abs_path, "Queued write_file operation");
+
+            // Wait for the operation to complete before returning
+            self.operation_queue.wait_until_idle().await;
+
+            // Verify the file was written
+            if !abs_path.exists() {
+                return Err(ServerError::Internal(format!(
+                    "File write failed: {:?}",
+                    abs_path
+                )));
+            }
+
             Ok(DryRunnable::new(
                 false,
                 json!({
                     "success": true,
-                    "status": "queued"
+                    "path": abs_path.to_string_lossy()
                 }),
             ))
         }

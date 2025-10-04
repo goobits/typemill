@@ -493,7 +493,7 @@ impl LspClient {
 
     /// Initialize the LSP server
     async fn initialize(&self) -> ServerResult<()> {
-        let initialize_params = json!({
+        let mut initialize_params = json!({
             "processId": std::process::id(),
             "clientInfo": {
                 "name": "codebuddy",
@@ -549,6 +549,17 @@ impl LspClient {
                 "name": "workspace"
             }]
         });
+
+        // Add initializationOptions if provided in the config
+        if let Some(ref init_options) = self.config.initialization_options {
+            if let Some(obj) = initialize_params.as_object_mut() {
+                obj.insert("initializationOptions".to_string(), init_options.clone());
+                debug!(
+                    initialization_options = ?init_options,
+                    "Including custom initializationOptions in LSP initialize request"
+                );
+            }
+        }
 
         debug!(params = ?initialize_params, "LSP initialize params");
 

@@ -99,6 +99,10 @@ pub struct LspServerConfig {
     pub root_dir: Option<PathBuf>,
     /// Auto-restart interval in minutes (optional)
     pub restart_interval: Option<u64>,
+    /// Custom initialization options to pass to the LSP server (optional)
+    /// These are sent in the initialize request's initializationOptions field
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initialization_options: Option<serde_json::Value>,
 }
 
 /// Plugin selection configuration for multi-tiered priority system
@@ -276,24 +280,28 @@ impl Default for LspConfig {
                     ],
                     root_dir: None,
                     restart_interval: Some(10),
+                    initialization_options: None,
                 },
                 LspServerConfig {
                     extensions: vec!["py".to_string()],
                     command: vec!["pylsp".to_string()],
                     root_dir: None,
                     restart_interval: Some(5),
+                    initialization_options: None,
                 },
                 LspServerConfig {
                     extensions: vec!["go".to_string()],
                     command: vec!["gopls".to_string()],
                     root_dir: None,
                     restart_interval: Some(10),
+                    initialization_options: None,
                 },
                 LspServerConfig {
                     extensions: vec!["rs".to_string()],
                     command: vec!["rust-analyzer".to_string()],
                     root_dir: None,
                     restart_interval: Some(15),
+                    initialization_options: None,
                 },
             ],
             default_timeout_ms: 5000,

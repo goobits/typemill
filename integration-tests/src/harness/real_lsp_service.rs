@@ -19,11 +19,21 @@ pub struct RealLspService {
     child: Arc<Mutex<Child>>,
     stdin_tx: mpsc::Sender<String>,
     responses: Arc<Mutex<HashMap<String, Message>>>,
+    initialization_options: Option<Value>,
 }
 
 impl RealLspService {
     /// Create a new RealLspService for the given language extension (e.g., "ts", "py").
     pub async fn new(extension: &str, root_path: &Path) -> Result<Self, ApiError> {
+        Self::new_with_options(extension, root_path, None).await
+    }
+
+    /// Create a new RealLspService with custom initialization options.
+    pub async fn new_with_options(
+        extension: &str,
+        root_path: &Path,
+        initialization_options: Option<Value>,
+    ) -> Result<Self, ApiError> {
         let cmd = LspSetupHelper::get_lsp_command(extension)?;
 
         // Augment PATH to include cargo bin and NVM node bin
@@ -208,6 +218,7 @@ impl RealLspService {
             child: Arc::new(Mutex::new(child)),
             stdin_tx,
             responses,
+            initialization_options,
         };
 
         // Initialize the LSP server
@@ -218,14 +229,23 @@ impl RealLspService {
 
     /// Send LSP initialize request
     async fn initialize(&self, root_path: &Path) -> Result<(), ApiError> {
+        let mut init_params = serde_json::json!({
+            "processId": std::process::id(),
+            "rootUri": format!("file://{}", root_path.display()),
+            "capabilities": {}
+        });
+
+        // Add initializationOptions if provided
+        if let Some(ref options) = self.initialization_options {
+            if let Some(obj) = init_params.as_object_mut() {
+                obj.insert("initializationOptions".to_string(), options.clone());
+            }
+        }
+
         let init_message = Message {
             id: Some("init".to_string()),
             method: "initialize".to_string(),
-            params: serde_json::json!({
-                "processId": std::process::id(),
-                "rootUri": format!("file://{}", root_path.display()),
-                "capabilities": {}
-            }),
+            params: init_params,
         };
 
         // Send initialize request

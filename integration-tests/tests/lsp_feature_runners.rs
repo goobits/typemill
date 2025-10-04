@@ -549,6 +549,19 @@ pub async fn run_lsp_compliance_test(case: &LspComplianceTestCase) {
         builder = builder.with_file(path, content);
     }
 
+    // Add initialization options for rust-analyzer to enable full symbol search
+    if case.language_id == "rs" {
+        builder = builder.with_initialization_options(json!({
+            "workspace": {
+                "symbol": {
+                    "search": {
+                        "kind": "all"
+                    }
+                }
+            }
+        }));
+    }
+
     // 2. Build the service (skip if LSP server not installed)
     let (service, _workspace) = match builder.build().await {
         Ok(result) => result,
