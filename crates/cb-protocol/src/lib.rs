@@ -463,3 +463,22 @@ pub trait MessageDispatcher: Send + Sync {
     /// Dispatch a message and return response
     async fn dispatch(&self, message: serde_json::Value) -> ApiResult<serde_json::Value>;
 }
+
+/// Parameters for rename_directory operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+pub struct RenameDirectoryParams {
+    /// Old directory path
+    pub old_path: std::path::PathBuf,
+    /// New directory path
+    pub new_path: std::path::PathBuf,
+    /// Whether to perform a dry run
+    #[serde(default)]
+    pub dry_run: bool,
+    /// Consolidate source package into target directory
+    #[serde(default)]
+    pub consolidate: bool,
+    /// Update mode for import statements
+    #[serde(default)]
+    pub update_mode: Option<String>,
+}

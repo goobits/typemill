@@ -188,23 +188,15 @@ impl FileOperationHandler {
             ServerError::InvalidRequest("Missing arguments for rename_directory".into())
         })?;
 
-        let old_path = args
-            .get("old_path")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'old_path' parameter".into()))?;
-        let new_path = args
-            .get("new_path")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'new_path' parameter".into()))?;
-        let dry_run = args
-            .get("dry_run")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+        // Deserialize into strongly-typed parameters
+        let params: cb_protocol::RenameDirectoryParams = serde_json::from_value(args).map_err(|e| {
+            ServerError::InvalidRequest(format!("Invalid rename_directory parameters: {}", e))
+        })?;
 
         // Parse update_mode parameter (optional, defaults to Conservative)
-        let update_mode = args
-            .get("update_mode")
-            .and_then(|v| v.as_str())
+        let update_mode = params
+            .update_mode
+            .as_ref()
             .and_then(|s| match s.to_lowercase().as_str() {
                 "conservative" => Some(crate::handlers::tools::workspace::UpdateMode::Conservative),
                 "standard" => Some(crate::handlers::tools::workspace::UpdateMode::Standard),
@@ -215,7 +207,7 @@ impl FileOperationHandler {
             .unwrap_or(crate::handlers::tools::workspace::UpdateMode::Conservative);
 
         // Require dry_run=true for risky modes if not already in dry_run mode
-        if update_mode.is_risky() && !dry_run {
+        if update_mode.is_risky() && !params.dry_run {
             return Err(ServerError::InvalidRequest(format!(
                 "⚠️ {} mode requires dry_run=true for safety. Please run with dry_run=true first to preview changes, then re-run without dry_run if the changes look correct. {}",
                 match update_mode {
@@ -231,9 +223,10 @@ impl FileOperationHandler {
             .app_state
             .file_service
             .rename_directory_with_imports(
-                Path::new(old_path),
-                Path::new(new_path),
-                dry_run,
+                &params.old_path,
+                &params.new_path,
+                params.dry_run,
+                params.consolidate,
                 Some(update_mode.to_scan_scope())
             )
             .await?;

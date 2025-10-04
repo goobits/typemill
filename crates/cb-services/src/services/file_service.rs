@@ -350,9 +350,15 @@ impl FileService {
         old_dir_path: &Path,
         new_dir_path: &Path,
         dry_run: bool,
+        consolidate: bool,
         scan_scope: Option<cb_ast::language::ScanScope>,
     ) -> ServerResult<DryRunnable<Value>> {
-        info!(old_path = ?old_dir_path, new_path = ?new_dir_path, dry_run, "Renaming directory");
+        info!(old_path = ?old_dir_path, new_path = ?new_dir_path, dry_run, consolidate, "Renaming directory");
+
+        // If consolidate flag is set, use consolidation logic instead
+        if consolidate {
+            return self.consolidate_rust_package(old_dir_path, new_dir_path, dry_run).await;
+        }
 
         let old_abs_dir = self.to_absolute_path(old_dir_path);
         let new_abs_dir = self.to_absolute_path(new_dir_path);
@@ -1233,6 +1239,379 @@ impl FileService {
         }
     }
 
+    /// Consolidate a Rust package into a target directory
+    ///
+    /// This function moves source code from old_package_path to new_package_path,
+    /// merges Cargo.toml dependencies, removes the old crate from workspace members,
+    /// and automatically updates all import statements across the workspace.
+    async fn consolidate_rust_package(
+        &self,
+        old_package_path: &Path,
+        new_package_path: &Path,
+        dry_run: bool,
+    ) -> ServerResult<DryRunnable<Value>> {
+        info!(
+            old_path = ?old_package_path,
+            new_path = ?new_package_path,
+            dry_run,
+            "Consolidating Rust package"
+        );
+
+        let old_abs = self.to_absolute_path(old_package_path);
+        let new_abs = self.to_absolute_path(new_package_path);
+
+        // Validate that old_path is a Cargo package
+        if !self.is_cargo_package(&old_abs).await? {
+            return Err(ServerError::InvalidRequest(format!(
+                "Source directory is not a Cargo package: {:?}",
+                old_abs
+            )));
+        }
+
+        // Validate that new_path exists and is a directory
+        if !new_abs.exists() {
+            return Err(ServerError::NotFound(format!(
+                "Target directory does not exist: {:?}",
+                new_abs
+            )));
+        }
+
+        if !new_abs.is_dir() {
+            return Err(ServerError::InvalidRequest(format!(
+                "Target path is not a directory: {:?}",
+                new_abs
+            )));
+        }
+
+        let old_src_dir = old_abs.join("src");
+        if !old_src_dir.exists() {
+            return Err(ServerError::NotFound(format!(
+                "Source directory does not have a src/ folder: {:?}",
+                old_abs
+            )));
+        }
+
+        if dry_run {
+            // Preview mode - return what would happen
+            let old_cargo_toml = old_abs.join("Cargo.toml");
+            let new_cargo_toml = new_abs.join("Cargo.toml");
+
+            // Calculate rename info for preview
+            let rename_info = self.extract_consolidation_rename_info(&old_abs, &new_abs).await?;
+            let old_crate_name = rename_info["old_crate_name"].as_str().unwrap_or("unknown");
+            let new_import_prefix = rename_info["new_import_prefix"].as_str().unwrap_or("unknown");
+            let submodule_name = rename_info["submodule_name"].as_str().unwrap_or("unknown");
+            let target_crate_name = rename_info["target_crate_name"].as_str().unwrap_or("unknown");
+
+            return Ok(DryRunnable::new(
+                true,
+                json!({
+                    "operation": "consolidate_rust_package",
+                    "old_path": old_abs.to_string_lossy(),
+                    "new_path": new_abs.to_string_lossy(),
+                    "actions": {
+                        "move_src": format!("{} -> {}", old_src_dir.display(), new_abs.display()),
+                        "merge_dependencies": format!("{} -> {}", old_cargo_toml.display(), new_cargo_toml.display()),
+                        "remove_from_workspace": "Remove old crate from workspace members",
+                        "update_imports": format!("use {}::... → use {}::...", old_crate_name, new_import_prefix),
+                        "delete_old_crate": format!("Delete {}", old_abs.display())
+                    },
+                    "import_changes": {
+                        "old_crate": old_crate_name,
+                        "new_prefix": new_import_prefix,
+                        "submodule": submodule_name,
+                        "target_crate": target_crate_name
+                    },
+                    "next_steps": format!("After consolidation, add 'pub mod {};' to {}/src/lib.rs", submodule_name, target_crate_name),
+                    "note": "This is a dry run. No changes will be made."
+                }),
+            ));
+        }
+
+        // Execution mode
+        // Calculate rename info before moving files
+        let rename_info = self.extract_consolidation_rename_info(&old_abs, &new_abs).await?;
+        let old_crate_name = rename_info["old_crate_name"].as_str().unwrap_or("unknown").to_string();
+        let new_import_prefix = rename_info["new_import_prefix"].as_str().unwrap_or("unknown").to_string();
+        let submodule_name = rename_info["submodule_name"].as_str().unwrap_or("unknown").to_string();
+        let target_crate_name = rename_info["target_crate_name"].as_str().unwrap_or("unknown").to_string();
+
+        info!(
+            old_crate = %old_crate_name,
+            new_prefix = %new_import_prefix,
+            submodule = %submodule_name,
+            "Calculated consolidation rename info"
+        );
+
+        // Step 1: Move src files to target directory
+        let mut moved_files = Vec::new();
+        let walker = ignore::WalkBuilder::new(&old_src_dir).hidden(false).build();
+        for entry in walker.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                let relative_path = path.strip_prefix(&old_src_dir).unwrap();
+                let target_path = new_abs.join(relative_path);
+
+                // Ensure parent directory exists
+                if let Some(parent) = target_path.parent() {
+                    fs::create_dir_all(parent).await.map_err(|e| {
+                        ServerError::Internal(format!("Failed to create directory: {}", e))
+                    })?;
+                }
+
+                // Move the file
+                fs::rename(path, &target_path).await.map_err(|e| {
+                    ServerError::Internal(format!("Failed to move file: {}", e))
+                })?;
+
+                moved_files.push(target_path.to_string_lossy().to_string());
+            }
+        }
+
+        info!(files_moved = moved_files.len(), "Moved source files");
+
+        // Step 2: Merge Cargo.toml dependencies
+        let old_cargo_toml = old_abs.join("Cargo.toml");
+        let new_cargo_toml = new_abs.join("Cargo.toml");
+
+        if new_cargo_toml.exists() {
+            self.merge_cargo_dependencies(&old_cargo_toml, &new_cargo_toml)
+                .await?;
+        }
+
+        // Step 3: Remove old crate from workspace members
+        if let Err(e) = self.remove_from_workspace_members(&old_abs).await {
+            warn!(error = %e, "Failed to update workspace manifest");
+        }
+
+        // Step 4: Delete the old crate directory
+        fs::remove_dir_all(&old_abs).await.map_err(|e| {
+            ServerError::Internal(format!("Failed to delete old crate directory: {}", e))
+        })?;
+
+        info!("Old crate directory deleted, starting import updates");
+
+        // Step 5: Update all imports across the workspace
+        let mut total_imports_updated = 0;
+        let mut files_with_import_updates = Vec::new();
+
+        // Use a "virtual" old file path for the import service
+        // This represents the old crate's "entry point" for import resolution
+        let virtual_old_path = old_abs.join("src/lib.rs");
+        let virtual_new_path = new_abs.join("lib.rs");
+
+        match self
+            .import_service
+            .update_imports_for_rename(
+                &virtual_old_path,
+                &virtual_new_path,
+                Some(&rename_info),
+                false,
+                Some(cb_ast::language::ScanScope::AllUseStatements),
+            )
+            .await
+        {
+            Ok(edit_plan) => {
+                info!(edits_planned = edit_plan.edits.len(), "Created import update plan");
+
+                // Apply the edit plan
+                match self.apply_edit_plan(&edit_plan).await {
+                    Ok(result) => {
+                        total_imports_updated = edit_plan.edits.len();
+                        files_with_import_updates = result.modified_files;
+                        info!(
+                            imports_updated = total_imports_updated,
+                            files_modified = files_with_import_updates.len(),
+                            "Successfully updated imports"
+                        );
+                    }
+                    Err(e) => {
+                        warn!(error = %e, "Failed to apply import updates, but consolidation was successful");
+                    }
+                }
+            }
+            Err(e) => {
+                warn!(error = %e, "Failed to create import update plan, but consolidation was successful");
+            }
+        }
+
+        // Step 6: Log lib.rs suggestion
+        let lib_rs_path = format!("{}/src/lib.rs", target_crate_name);
+        let suggestion = format!(
+            "📝 Next step: Add 'pub mod {};' to {} to make the consolidated module public",
+            submodule_name, lib_rs_path
+        );
+        info!(suggestion = %suggestion, "Consolidation complete");
+
+        info!(
+            old_path = ?old_abs,
+            new_path = ?new_abs,
+            files_moved = moved_files.len(),
+            imports_updated = total_imports_updated,
+            "Consolidation complete"
+        );
+
+        Ok(DryRunnable::new(
+            false,
+            json!({
+                "operation": "consolidate_rust_package",
+                "success": true,
+                "old_path": old_abs.to_string_lossy(),
+                "new_path": new_abs.to_string_lossy(),
+                "files_moved": moved_files.len(),
+                "import_updates": {
+                    "old_crate": old_crate_name,
+                    "new_prefix": new_import_prefix,
+                    "imports_updated": total_imports_updated,
+                    "files_modified": files_with_import_updates.len(),
+                    "modified_files": files_with_import_updates,
+                },
+                "next_steps": suggestion,
+                "note": format!("Consolidation complete! All imports have been automatically updated from '{}' to '{}'.", old_crate_name, new_import_prefix)
+            }),
+        ))
+    }
+
+    /// Merge Cargo.toml dependencies from source to target
+    async fn merge_cargo_dependencies(
+        &self,
+        source_toml_path: &Path,
+        target_toml_path: &Path,
+    ) -> ServerResult<()> {
+        use toml_edit::DocumentMut;
+
+        // Read both TOML files
+        let source_content = fs::read_to_string(source_toml_path)
+            .await
+            .map_err(|e| ServerError::Internal(format!("Failed to read source Cargo.toml: {}", e)))?;
+
+        let target_content = fs::read_to_string(target_toml_path)
+            .await
+            .map_err(|e| ServerError::Internal(format!("Failed to read target Cargo.toml: {}", e)))?;
+
+        // Parse both documents
+        let source_doc = source_content
+            .parse::<DocumentMut>()
+            .map_err(|e| ServerError::Internal(format!("Failed to parse source Cargo.toml: {}", e)))?;
+
+        let mut target_doc = target_content
+            .parse::<DocumentMut>()
+            .map_err(|e| ServerError::Internal(format!("Failed to parse target Cargo.toml: {}", e)))?;
+
+        let mut merged_count = 0;
+        let mut conflict_count = 0;
+
+        // Merge [dependencies], [dev-dependencies], and [build-dependencies]
+        for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+            if let Some(source_deps) = source_doc.get(section).and_then(|v| v.as_table()) {
+                // Ensure target has this section
+                if target_doc.get(section).is_none() {
+                    target_doc[section] = toml_edit::Item::Table(toml_edit::Table::new());
+                }
+
+                if let Some(target_deps) = target_doc[section].as_table_mut() {
+                    for (dep_name, dep_value) in source_deps.iter() {
+                        if target_deps.contains_key(dep_name) {
+                            warn!(
+                                dependency = %dep_name,
+                                section = %section,
+                                "Dependency already exists in target, skipping"
+                            );
+                            conflict_count += 1;
+                        } else {
+                            target_deps.insert(dep_name, dep_value.clone());
+                            info!(
+                                dependency = %dep_name,
+                                section = %section,
+                                "Merged dependency"
+                            );
+                            merged_count += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Write the updated target TOML
+        fs::write(target_toml_path, target_doc.to_string())
+            .await
+            .map_err(|e| ServerError::Internal(format!("Failed to write target Cargo.toml: {}", e)))?;
+
+        info!(
+            merged = merged_count,
+            conflicts = conflict_count,
+            "Dependency merge complete"
+        );
+
+        Ok(())
+    }
+
+    /// Remove a package path from workspace members in the root Cargo.toml
+    async fn remove_from_workspace_members(&self, package_path: &Path) -> ServerResult<()> {
+        use toml_edit::DocumentMut;
+
+        // Find the workspace root
+        let mut current_path = package_path.parent();
+
+        while let Some(path) = current_path {
+            let workspace_toml_path = path.join("Cargo.toml");
+            if workspace_toml_path.exists() {
+                let content = fs::read_to_string(&workspace_toml_path).await.map_err(|e| {
+                    ServerError::Internal(format!("Failed to read workspace Cargo.toml: {}", e))
+                })?;
+
+                if content.contains("[workspace]") {
+                    // Parse the workspace manifest
+                    let mut doc = content.parse::<DocumentMut>().map_err(|e| {
+                        ServerError::Internal(format!("Failed to parse workspace Cargo.toml: {}", e))
+                    })?;
+
+                    // Calculate relative path from workspace root to package
+                    let package_rel_path = package_path.strip_prefix(path).map_err(|_| {
+                        ServerError::Internal("Failed to calculate relative path".to_string())
+                    })?;
+
+                    let package_rel_str = package_rel_path.to_string_lossy().to_string();
+
+                    // Remove from workspace members
+                    let should_write = if let Some(members) = doc["workspace"]["members"].as_array_mut() {
+                        let index_opt = members.iter().position(|m| m.as_str() == Some(&package_rel_str));
+                        if let Some(index) = index_opt {
+                            members.remove(index);
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    };
+
+                    if should_write {
+                        // Write back
+                        fs::write(&workspace_toml_path, doc.to_string()).await.map_err(|e| {
+                            ServerError::Internal(format!("Failed to write workspace Cargo.toml: {}", e))
+                        })?;
+
+                        info!(
+                            workspace = ?workspace_toml_path,
+                            removed_member = %package_rel_str,
+                            "Removed package from workspace members"
+                        );
+                    }
+
+                    return Ok(());
+                }
+            }
+
+            if path == self.project_root {
+                break;
+            }
+            current_path = path.parent();
+        }
+
+        Ok(())
+    }
+
     /// Check if a directory is a Cargo package by looking for a Cargo.toml with a [package] section.
     async fn is_cargo_package(&self, dir: &Path) -> ServerResult<bool> {
         let cargo_toml_path = dir.join("Cargo.toml");
@@ -1243,6 +1622,94 @@ impl FileService {
             Ok(content) => Ok(content.contains("[package]")),
             Err(_) => Ok(false),
         }
+    }
+
+    /// Extract consolidation rename information for import updating
+    ///
+    /// This calculates:
+    /// - old_crate_name: The name from the old Cargo.toml
+    /// - new_import_prefix: The new import path (e.g., "target_crate::submodule")
+    /// - submodule_name: The name of the subdirectory that will contain the consolidated code
+    /// - target_crate_name: The name of the target crate
+    async fn extract_consolidation_rename_info(
+        &self,
+        old_package_path: &Path,
+        new_package_path: &Path,
+    ) -> ServerResult<serde_json::Value> {
+        use serde_json::json;
+
+        // Read the old Cargo.toml to get the old crate name
+        let old_cargo_toml = old_package_path.join("Cargo.toml");
+        let old_content = fs::read_to_string(&old_cargo_toml)
+            .await
+            .map_err(|e| ServerError::Internal(format!("Failed to read old Cargo.toml: {}", e)))?;
+
+        let old_doc = old_content
+            .parse::<toml_edit::DocumentMut>()
+            .map_err(|e| ServerError::Internal(format!("Failed to parse old Cargo.toml: {}", e)))?;
+
+        let old_crate_name = old_doc["package"]["name"]
+            .as_str()
+            .ok_or_else(|| {
+                ServerError::Internal("Missing [package].name in old Cargo.toml".to_string())
+            })?
+            .replace('-', "_"); // Normalize to underscores for imports
+
+        // Find the target crate by looking for Cargo.toml in parent directories
+        let mut target_crate_name = String::new();
+        let mut current = new_package_path;
+
+        while let Some(parent) = current.parent() {
+            let cargo_toml = parent.join("Cargo.toml");
+            if cargo_toml.exists() {
+                if let Ok(content) = fs::read_to_string(&cargo_toml).await {
+                    if content.contains("[package]") {
+                        // Found the target crate
+                        if let Ok(doc) = content.parse::<toml_edit::DocumentMut>() {
+                            if let Some(name) = doc["package"]["name"].as_str() {
+                                target_crate_name = name.replace('-', "_");
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            current = parent;
+        }
+
+        if target_crate_name.is_empty() {
+            return Err(ServerError::Internal(
+                "Could not find target crate Cargo.toml".to_string(),
+            ));
+        }
+
+        // Extract submodule name from the new path
+        // e.g., "crates/cb-types/src/protocol" -> "protocol"
+        let submodule_name = new_package_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or_else(|| ServerError::Internal("Invalid new directory path".to_string()))?
+            .to_string();
+
+        // Build the new import prefix
+        // e.g., "cb_types::protocol"
+        let new_import_prefix = format!("{}::{}", target_crate_name, submodule_name);
+
+        info!(
+            old_crate_name = %old_crate_name,
+            new_import_prefix = %new_import_prefix,
+            submodule_name = %submodule_name,
+            target_crate_name = %target_crate_name,
+            "Extracted consolidation rename information"
+        );
+
+        Ok(json!({
+            "old_crate_name": old_crate_name,
+            "new_crate_name": new_import_prefix.clone(), // For compatibility with update_imports_for_rename
+            "new_import_prefix": new_import_prefix,
+            "submodule_name": submodule_name,
+            "target_crate_name": target_crate_name,
+        }))
     }
 
     /// Extract Cargo package rename information for import rewriting
