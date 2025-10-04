@@ -929,9 +929,24 @@ impl FileService {
         // Step 1: Identify all files that will be affected
         let mut affected_files = std::collections::HashSet::new();
 
-        // Main source file
+        // Main source file (may not have edits if this is a rename operation)
         let main_file = self.to_absolute_path(Path::new(&plan.source_file));
         affected_files.insert(main_file.clone());
+
+        // Files affected by text edits (group by file_path)
+        use std::collections::HashMap;
+        let mut edits_by_file: HashMap<String, Vec<&cb_protocol::TextEdit>> = HashMap::new();
+
+        for edit in &plan.edits {
+            if let Some(file_path) = &edit.file_path {
+                let abs_path = self.to_absolute_path(Path::new(file_path));
+                affected_files.insert(abs_path);
+                edits_by_file.entry(file_path.clone()).or_insert_with(Vec::new).push(edit);
+            } else {
+                // Edit without explicit file_path goes to source_file
+                edits_by_file.entry(plan.source_file.clone()).or_insert_with(Vec::new).push(edit);
+            }
+        }
 
         // Files affected by dependency updates
         for dep_update in &plan.dependency_updates {
@@ -943,40 +958,48 @@ impl FileService {
         let snapshots = self.create_file_snapshots(&affected_files).await?;
         debug!(
             snapshot_count = snapshots.len(),
+            files_with_edits = edits_by_file.len(),
             "Created file snapshots for atomic operation"
         );
 
         let mut modified_files = Vec::new();
 
-        // Step 3: Apply main file edits with locking
-        let file_lock = self.lock_manager.get_lock(&main_file).await;
-        let _guard = file_lock.write().await;
+        // Step 3: Apply text edits grouped by file with locking
+        for (file_path, edits) in edits_by_file {
+            let abs_file_path = self.to_absolute_path(Path::new(&file_path));
+            let file_lock = self.lock_manager.get_lock(&abs_file_path).await;
+            let _guard = file_lock.write().await;
 
-        match self.apply_file_edits(&main_file, &plan.edits).await {
-            Ok(_) => {
-                modified_files.push(plan.source_file.clone());
-                info!(
-                    edits_count = plan.edits.len(),
-                    source_file = %plan.source_file,
-                    "Successfully applied edits"
-                );
+            // Convert &TextEdit to TextEdit for apply_file_edits
+            let owned_edits: Vec<cb_protocol::TextEdit> = edits.iter().map(|e| (*e).clone()).collect();
+
+            match self.apply_file_edits(&abs_file_path, &owned_edits).await {
+                Ok(_) => {
+                    if !modified_files.contains(&file_path) {
+                        modified_files.push(file_path.clone());
+                    }
+                    info!(
+                        edits_count = owned_edits.len(),
+                        file_path = %file_path,
+                        "Successfully applied edits to file"
+                    );
+                }
+                Err(e) => {
+                    error!(
+                        file_path = %file_path,
+                        error = %e,
+                        "Failed to apply edits to file"
+                    );
+                    // Rollback all changes and return error
+                    self.rollback_from_snapshots(&snapshots).await?;
+                    return Err(ServerError::Internal(format!(
+                        "Failed to apply edits to file {}: {}. All changes have been rolled back.",
+                        file_path, e
+                    )));
+                }
             }
-            Err(e) => {
-                error!(
-                    source_file = %plan.source_file,
-                    error = %e,
-                    "Failed to apply edits to main file"
-                );
-                // Rollback all changes and return error
-                self.rollback_from_snapshots(&snapshots).await?;
-                return Err(ServerError::Internal(format!(
-                    "Failed to apply edits to main file {}: {}. All changes have been rolled back.",
-                    plan.source_file, e
-                )));
-            }
+            // Guard is dropped here, releasing the lock
         }
-
-        // Guard is dropped here, releasing the lock
 
         // Step 4: Apply dependency updates to other files with locking
         for dep_update in &plan.dependency_updates {
