@@ -1714,11 +1714,13 @@ mod tests {
         let operation_queue = Arc::new(super::super::operation_queue::OperationQueue::new(
             lock_manager.clone(),
         ));
+        let config = cb_core::AppConfig::default();
         let service = FileService::new(
             temp_dir.path(),
             ast_cache,
             lock_manager,
             operation_queue.clone(),
+            &config,
         );
 
         // Spawn background worker to process queued operations
@@ -2201,11 +2203,13 @@ mod workspace_tests {
         let operation_queue = Arc::new(super::super::operation_queue::OperationQueue::new(
             lock_manager.clone(),
         ));
+        let config = cb_core::AppConfig::default();
         let service = FileService::new(
             temp_dir.path(),
             ast_cache,
             lock_manager,
             operation_queue.clone(),
+            &config,
         );
 
         // Spawn background worker to process queued operations

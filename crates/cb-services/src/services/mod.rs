@@ -1,5 +1,6 @@
 //! Services for coordinating complex operations
 
+pub mod app_state_factory;
 pub mod ast_service;
 pub mod file_service;
 pub mod git_service;

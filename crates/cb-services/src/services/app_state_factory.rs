@@ -1,8 +1,8 @@
 //! Factory for creating AppState instances
 //! Consolidates duplicate initialization logic
 
+use super::*;
 use cb_ast::AstCache;
-use cb_services::services::*;
 use std::path::PathBuf;
 use std::sync::Arc;
 

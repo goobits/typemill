@@ -3,6 +3,7 @@
 //! Handles: rename_file, create_file, delete_file, read_file, write_file, list_files
 
 use super::compat::{ToolContext, ToolHandler};
+use crate::utils::dry_run::wrap_dry_run_result;
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
 use cb_core::workspaces::WorkspaceManager;
@@ -175,21 +176,7 @@ impl FileOperationHandler {
             .rename_file_with_imports(Path::new(old_path), Path::new(new_path), dry_run)
             .await?;
 
-        if result.dry_run {
-            // Merge status into the result object instead of nesting
-            if let Value::Object(mut obj) = result.result {
-                obj.insert("status".to_string(), json!("preview"));
-                Ok(Value::Object(obj))
-            } else {
-                // Fallback for non-object results
-                Ok(json!({
-                    "status": "preview",
-                    "result": result.result
-                }))
-            }
-        } else {
-            Ok(result.result)
-        }
+        wrap_dry_run_result(result)
     }
 
     async fn handle_rename_directory(
@@ -251,35 +238,13 @@ impl FileOperationHandler {
             )
             .await?;
 
-        // Add warning message to response for risky modes
-        let response = if result.dry_run {
-            // Merge status into the result object instead of nesting
-            if let Value::Object(mut obj) = result.result {
-                obj.insert("status".to_string(), json!("preview"));
-                if let Some(warning) = update_mode.warning_message() {
-                    obj.insert("warning".to_string(), json!(warning));
-                }
-                Value::Object(obj)
-            } else {
-                // Fallback for non-object results
-                let mut response = json!({
-                    "status": "preview",
-                    "result": result.result
-                });
-                if let Some(warning) = update_mode.warning_message() {
-                    response["warning"] = json!(warning);
-                }
-                response
+        // Wrap with dry-run status, then add warning if present
+        let mut response = wrap_dry_run_result(result)?;
+        if let Some(warning) = update_mode.warning_message() {
+            if let Value::Object(ref mut obj) = response {
+                obj.insert("warning".to_string(), json!(warning));
             }
-        } else {
-            let mut response = result.result;
-            if let Some(warning) = update_mode.warning_message() {
-                if let Value::Object(ref mut obj) = response {
-                    obj.insert("warning".to_string(), json!(warning));
-                }
-            }
-            response
-        };
+        }
 
         Ok(response)
     }
@@ -313,21 +278,7 @@ impl FileOperationHandler {
             .create_file(Path::new(file_path), content, overwrite, dry_run)
             .await?;
 
-        if result.dry_run {
-            // Merge status into the result object instead of nesting
-            if let Value::Object(mut obj) = result.result {
-                obj.insert("status".to_string(), json!("preview"));
-                Ok(Value::Object(obj))
-            } else {
-                // Fallback for non-object results
-                Ok(json!({
-                    "status": "preview",
-                    "result": result.result
-                }))
-            }
-        } else {
-            Ok(result.result)
-        }
+        wrap_dry_run_result(result)
     }
 
     async fn handle_delete_file(
@@ -355,21 +306,7 @@ impl FileOperationHandler {
             .delete_file(Path::new(file_path), force, dry_run)
             .await?;
 
-        if result.dry_run {
-            // Merge status into the result object instead of nesting
-            if let Value::Object(mut obj) = result.result {
-                obj.insert("status".to_string(), json!("preview"));
-                Ok(Value::Object(obj))
-            } else {
-                // Fallback for non-object results
-                Ok(json!({
-                    "status": "preview",
-                    "result": result.result
-                }))
-            }
-        } else {
-            Ok(result.result)
-        }
+        wrap_dry_run_result(result)
     }
 
     async fn handle_read_file(
@@ -471,14 +408,7 @@ impl FileOperationHandler {
                 .write_file(Path::new(file_path), content, dry_run)
                 .await?;
 
-            if result.dry_run {
-                Ok(json!({
-                    "status": "preview",
-                    "preview": result.result
-                }))
-            } else {
-                Ok(result.result)
-            }
+            wrap_dry_run_result(result)
         }
     }
 

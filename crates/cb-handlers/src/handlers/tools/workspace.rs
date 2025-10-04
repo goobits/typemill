@@ -176,13 +176,61 @@ impl WorkspaceHandler {
         Ok(manifests)
     }
 
+    /// Helper to update a manifest dependency with the given parameters
+    /// Returns the updated manifest content as a string
+    async fn update_manifest_dependency(
+        manifest_path: &str,
+        old_dep_name: &str,
+        new_dep_name: &str,
+        new_path: Option<&str>,
+    ) -> ServerResult<String> {
+        use std::path::Path;
+        use tokio::fs;
+
+        // Read the manifest file
+        let content = fs::read_to_string(manifest_path).await.map_err(|e| {
+            cb_protocol::ApiError::Internal(format!(
+                "Failed to read manifest file at {}: {}",
+                manifest_path, e
+            ))
+        })?;
+
+        // Use the manifest factory to get the correct handler
+        let path = Path::new(manifest_path);
+        let mut manifest = cb_ast::manifest::load_manifest(path, &content).map_err(|e| {
+            cb_protocol::ApiError::Internal(format!("Failed to load manifest: {}", e))
+        })?;
+
+        // Update the dependency using the generic trait method
+        manifest
+            .rename_dependency(old_dep_name, new_dep_name, new_path)
+            .map_err(|e| {
+                cb_protocol::ApiError::Internal(format!("Failed to update dependency: {}", e))
+            })?;
+
+        // Serialize the updated manifest
+        let updated_content = manifest.to_string().map_err(|e| {
+            cb_protocol::ApiError::Internal(format!("Failed to serialize manifest: {}", e))
+        })?;
+
+        // Write the updated content back
+        fs::write(manifest_path, &updated_content)
+            .await
+            .map_err(|e| {
+                cb_protocol::ApiError::Internal(format!(
+                    "Failed to write manifest file at {}: {}",
+                    manifest_path, e
+                ))
+            })?;
+
+        Ok(updated_content)
+    }
+
     /// Handle update_dependency tool call
     /// Updates a dependency in any supported manifest file (Cargo.toml, package.json, etc.)
     /// This is language-agnostic and works across all supported package managers.
     async fn handle_update_dependency(&self, tool_call: &ToolCall) -> ServerResult<Value> {
         use serde_json::json;
-        use std::path::Path;
-        use tokio::fs;
 
         // Parse arguments
         let args = tool_call
@@ -223,40 +271,9 @@ impl WorkspaceHandler {
         // new_path is optional - if not provided, only rename the dependency
         let new_path = args.get("new_path").and_then(|v| v.as_str());
 
-        // Read the manifest file
-        let content = fs::read_to_string(manifest_path).await.map_err(|e| {
-            cb_protocol::ApiError::Internal(format!(
-                "Failed to read manifest file at {}: {}",
-                manifest_path, e
-            ))
-        })?;
-
-        // Use the manifest factory to get the correct handler
-        let path = Path::new(manifest_path);
-        let mut manifest = cb_ast::manifest::load_manifest(path, &content).map_err(|e| {
-            cb_protocol::ApiError::Internal(format!("Failed to load manifest: {}", e))
-        })?;
-
-        // Update the dependency using the generic trait method
-        manifest
-            .rename_dependency(old_dep_name, new_dep_name, new_path)
-            .map_err(|e| {
-                cb_protocol::ApiError::Internal(format!("Failed to update dependency: {}", e))
-            })?;
-
-        // Write the updated content back
-        let updated_content = manifest.to_string().map_err(|e| {
-            cb_protocol::ApiError::Internal(format!("Failed to serialize manifest: {}", e))
-        })?;
-
-        fs::write(manifest_path, updated_content)
-            .await
-            .map_err(|e| {
-                cb_protocol::ApiError::Internal(format!(
-                    "Failed to write manifest file at {}: {}",
-                    manifest_path, e
-                ))
-            })?;
+        // Use the helper to perform the update
+        Self::update_manifest_dependency(manifest_path, old_dep_name, new_dep_name, new_path)
+            .await?;
 
         Ok(json!({
             "success": true,
@@ -390,44 +407,9 @@ impl WorkspaceHandler {
         new_dep_name: &str,
         new_path: Option<&str>,
     ) -> ServerResult<()> {
-        use std::path::Path;
-        use tokio::fs;
-
-        // Read the manifest file
-        let content = fs::read_to_string(manifest_path).await.map_err(|e| {
-            cb_protocol::ApiError::Internal(format!(
-                "Failed to read manifest file at {}: {}",
-                manifest_path, e
-            ))
-        })?;
-
-        // Use the manifest factory to get the correct handler
-        let path = Path::new(manifest_path);
-        let mut manifest = cb_ast::manifest::load_manifest(path, &content).map_err(|e| {
-            cb_protocol::ApiError::Internal(format!("Failed to load manifest: {}", e))
-        })?;
-
-        // Update the dependency using the generic trait method
-        manifest
-            .rename_dependency(old_dep_name, new_dep_name, new_path)
-            .map_err(|e| {
-                cb_protocol::ApiError::Internal(format!("Failed to update dependency: {}", e))
-            })?;
-
-        // Write the updated content back
-        let updated_content = manifest.to_string().map_err(|e| {
-            cb_protocol::ApiError::Internal(format!("Failed to serialize manifest: {}", e))
-        })?;
-
-        fs::write(manifest_path, updated_content)
-            .await
-            .map_err(|e| {
-                cb_protocol::ApiError::Internal(format!(
-                    "Failed to write manifest file at {}: {}",
-                    manifest_path, e
-                ))
-            })?;
-
+        // Use the shared helper to perform the update
+        Self::update_manifest_dependency(manifest_path, old_dep_name, new_dep_name, new_path)
+            .await?;
         Ok(())
     }
 }

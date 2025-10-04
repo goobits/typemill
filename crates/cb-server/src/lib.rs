@@ -10,8 +10,6 @@
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
 
-pub mod utils;
-
 // Test helpers - available for integration tests
 #[cfg(test)]
 pub mod test_helpers;
@@ -59,9 +57,9 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
     let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
     // Use the app_state_factory to create services and app_state
-    use crate::utils::app_state_factory::create_services_bundle;
+    use cb_services::services::app_state_factory::create_services_bundle;
     #[cfg(feature = "mcp-proxy")]
-    use crate::utils::app_state_factory::register_mcp_proxy_if_enabled;
+    use cb_services::services::app_state_factory::register_mcp_proxy_if_enabled;
 
     let cache_settings = cb_ast::CacheSettings::from_config(
         options.config.cache.enabled,
@@ -135,9 +133,9 @@ pub async fn create_dispatcher_with_workspace(
     let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
     // Use the app_state_factory to create services
-    use crate::utils::app_state_factory::create_services_bundle;
+    use cb_services::services::app_state_factory::create_services_bundle;
     #[cfg(feature = "mcp-proxy")]
-    use crate::utils::app_state_factory::register_mcp_proxy_if_enabled;
+    use cb_services::services::app_state_factory::register_mcp_proxy_if_enabled;
 
     let cache_settings = cb_ast::CacheSettings::from_config(
         config.cache.enabled,

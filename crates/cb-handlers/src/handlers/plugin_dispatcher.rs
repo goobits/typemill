@@ -509,38 +509,29 @@ impl McpDispatcher for PluginDispatcher {
 /// This is exposed publicly to support integration tests
 pub fn create_test_dispatcher() -> PluginDispatcher {
     let temp_dir = tempfile::TempDir::new().unwrap();
-    let ast_cache = Arc::new(cb_ast::AstCache::new());
-    let ast_service = Arc::new(cb_services::services::DefaultAstService::new(
-        ast_cache.clone(),
-    ));
     let project_root = temp_dir.path().to_path_buf();
-    let lock_manager = Arc::new(cb_services::services::LockManager::new());
-    let operation_queue = Arc::new(cb_services::services::OperationQueue::new(
-        lock_manager.clone(),
-    ));
-    let config = cb_core::AppConfig::default();
-    let file_service = Arc::new(cb_services::services::FileService::new(
-        project_root.clone(),
-        ast_cache.clone(),
-        lock_manager.clone(),
-        operation_queue.clone(),
-        &config,
-    ));
-    let planner = cb_services::services::planner::DefaultPlanner::new();
+
+    let cache_settings = cb_ast::CacheSettings::default();
     let plugin_manager = Arc::new(PluginManager::new());
-    let workflow_executor = cb_services::services::workflow_executor::DefaultWorkflowExecutor::new(
+    let config = cb_core::AppConfig::default();
+
+    let services = cb_services::services::app_state_factory::create_services_bundle(
+        &project_root,
+        cache_settings,
         plugin_manager.clone(),
+        &config,
     );
+
     let workspace_manager = Arc::new(WorkspaceManager::new());
 
     let app_state = Arc::new(AppState {
-        ast_service,
-        file_service,
-        planner,
-        workflow_executor,
+        ast_service: services.ast_service,
+        file_service: services.file_service,
+        planner: services.planner,
+        workflow_executor: services.workflow_executor,
         project_root,
-        lock_manager,
-        operation_queue,
+        lock_manager: services.lock_manager,
+        operation_queue: services.operation_queue,
         start_time: std::time::Instant::now(),
         workspace_manager,
     });
