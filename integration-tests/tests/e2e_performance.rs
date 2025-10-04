@@ -73,7 +73,6 @@ async fn test_large_file_performance() {
 
     match response {
         Ok(resp) => {
-            eprintln!("GET_DOCUMENT_SYMBOLS RESPONSE: {}", serde_json::to_string_pretty(&resp).unwrap());
             println!(
                 "LSP document symbols on large file took: {:?}",
                 lsp_duration
@@ -81,10 +80,10 @@ async fn test_large_file_performance() {
             let result = resp
                 .get("result")
                 .expect("Response should have result field");
-            let symbols = result
+            let content = result
                 .get("content")
-                .and_then(|v| v.as_array())
-                .expect("Response should have content array");
+                .expect("Response should have content field");
+            let symbols = content["symbols"].as_array().unwrap();
             assert!(!symbols.is_empty());
         }
         Err(_) => {
@@ -432,6 +431,8 @@ const oldConstant{} = "old_value_{}";
         "Workspace edit across {} files took: {:?}",
         file_count, edit_duration
     );
+
+    eprintln!("APPLY_EDITS RESPONSE: {}", serde_json::to_string_pretty(&response).unwrap());
 
     let result = response
         .get("result")
