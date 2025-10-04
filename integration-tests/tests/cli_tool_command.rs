@@ -3,11 +3,33 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
+use std::path::PathBuf;
 use tempfile::TempDir;
 
-/// Helper to create a test binary command
+/// Helper to create a test binary command with helpful error messaging
 fn codebuddy_cmd() -> Command {
-    Command::cargo_bin("codebuddy").unwrap()
+    let binary_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("target/debug/codebuddy");
+
+    if !binary_path.exists() {
+        panic!(
+            "\n\n❌ codebuddy binary not found at: {}\n\
+            \n\
+            ℹ️  To run CLI integration tests, build the binary first:\n\
+            \n\
+                cargo build\n\
+            \n\
+            Then re-run the tests:\n\
+            \n\
+                cargo test --test cli_tool_command\n\n",
+            binary_path.display()
+        );
+    }
+
+    Command::cargo_bin("codebuddy")
+        .expect("codebuddy binary should exist after check above")
 }
 
 #[test]

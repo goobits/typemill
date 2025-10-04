@@ -233,6 +233,58 @@ path = "src/lib.rs"
         self.create_file("Cargo.toml", &content);
     }
 
+    /// Create a Java project structure with Maven
+    pub fn setup_java_project(&self, name: &str) {
+        self.create_pom_xml(name);
+        self.create_directory("src/main/java");
+        self.create_directory("src/main/resources");
+        self.create_directory("src/test/java");
+    }
+
+    /// Create a pom.xml file for a Java Maven project
+    pub fn create_pom_xml(&self, name: &str) {
+        // Extract artifact ID from name (replace hyphens with nothing for groupId)
+        let group_id = "com.codebuddy";
+        let artifact_id = name.to_lowercase().replace("_", "-");
+
+        let content = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>{}</groupId>
+    <artifactId>{}</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>{}</name>
+    <description>A test Java project</description>
+
+    <properties>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.9.0</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
+"#,
+            group_id, artifact_id, name
+        );
+
+        self.create_file("pom.xml", &content);
+    }
+
     /// Create a monorepo workspace structure.
     pub fn setup_monorepo_workspace(&self, name: &str) {
         // Root package.json for workspace
