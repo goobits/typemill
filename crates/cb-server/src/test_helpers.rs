@@ -16,9 +16,11 @@ fn spawn_test_worker(queue: Arc<OperationQueue>) {
     tokio::spawn(async move {
         eprintln!("DEBUG: Test worker started");
         queue
-            .process_with(|op| async move {
+            .process_with(|op, stats| async move {
                 eprintln!("DEBUG: Test worker processing: {:?} on {}", op.operation_type, op.file_path.display());
-                match op.operation_type {
+
+                // Process the operation
+                let result = match op.operation_type {
                     OperationType::CreateDir => {
                         fs::create_dir_all(&op.file_path).await.map_err(|e| {
                             cb_protocol::ApiError::Internal(format!(
@@ -26,7 +28,7 @@ fn spawn_test_worker(queue: Arc<OperationQueue>) {
                                 op.file_path.display(),
                                 e
                             ))
-                        })?;
+                        })
                     }
                     OperationType::CreateFile | OperationType::Write => {
                         let content = op
@@ -53,15 +55,16 @@ fn spawn_test_worker(queue: Arc<OperationQueue>) {
                             ))
                         })?;
 
+                        // CRITICAL: Sync file to disk BEFORE updating stats
                         file.sync_all().await.map_err(|e| {
                             cb_protocol::ApiError::Internal(format!(
                                 "Failed to sync file {}: {}",
                                 op.file_path.display(),
                                 e
                             ))
-                        })?;
-
-                        eprintln!("DEBUG: Wrote {} bytes to {} (with sync)", content.len(), op.file_path.display());
+                        }).map(|_| {
+                            eprintln!("DEBUG: Wrote {} bytes to {} (with sync)", content.len(), op.file_path.display());
+                        })
                     }
                     OperationType::Delete => {
                         if op.file_path.exists() {
@@ -71,7 +74,9 @@ fn spawn_test_worker(queue: Arc<OperationQueue>) {
                                     op.file_path.display(),
                                     e
                                 ))
-                            })?;
+                            })
+                        } else {
+                            Ok(())
                         }
                     }
                     OperationType::Rename => {
@@ -93,14 +98,36 @@ fn spawn_test_worker(queue: Arc<OperationQueue>) {
                                     new_path_str,
                                     e
                                 ))
-                            })?;
+                            })
                     }
                     OperationType::Read | OperationType::Format | OperationType::Refactor => {
                         // These operations don't modify filesystem, just log
                         eprintln!("DEBUG: Skipping non-modifying operation: {:?}", op.operation_type);
+                        Ok(())
+                    }
+                };
+
+                // Update stats AFTER all I/O is complete (including sync_all)
+                let mut stats_guard = stats.lock().await;
+                match result {
+                    Ok(_) => {
+                        stats_guard.completed_operations += 1;
+                        eprintln!(
+                            "DEBUG: Operation completed, stats updated (completed={})",
+                            stats_guard.completed_operations
+                        );
+                    }
+                    Err(ref e) => {
+                        stats_guard.failed_operations += 1;
+                        eprintln!(
+                            "DEBUG: Operation failed: {} (failed={})",
+                            e, stats_guard.failed_operations
+                        );
                     }
                 }
-                Ok(serde_json::json!({"success": true}))
+                drop(stats_guard); // Explicitly release lock
+
+                result.map(|_| serde_json::json!({"success": true}))
             })
             .await;
     });

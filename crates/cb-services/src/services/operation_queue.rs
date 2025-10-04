@@ -123,12 +123,12 @@ pub struct OperationQueue {
 }
 
 #[derive(Debug)]
-struct QueueStatsInternal {
-    total_operations: usize,
-    completed_operations: usize,
-    failed_operations: usize,
-    total_wait_time: Duration,
-    max_wait_time: Duration,
+pub struct QueueStatsInternal {
+    pub total_operations: usize,
+    pub completed_operations: usize,
+    pub failed_operations: usize,
+    pub total_wait_time: Duration,
+    pub max_wait_time: Duration,
 }
 
 impl OperationQueue {
@@ -209,9 +209,12 @@ impl OperationQueue {
     }
 
     /// Process operations with the given handler
+    ///
+    /// The handler receives both the operation and the stats object, and is responsible
+    /// for incrementing completed_operations/failed_operations AFTER all I/O completes.
     pub async fn process_with<F, Fut>(&self, mut handler: F)
     where
-        F: FnMut(FileOperation) -> Fut + Send + 'static,
+        F: FnMut(FileOperation, Arc<Mutex<QueueStatsInternal>>) -> Fut + Send + 'static,
         Fut: std::future::Future<Output = ServerResult<Value>> + Send,
     {
         loop {
@@ -266,17 +269,10 @@ impl OperationQueue {
                             "Processing operation {}: {}",
                             operation.id, operation.tool_name
                         );
-                        match handler(operation).await {
-                            Ok(_result) => {
-                                debug!("Operation completed successfully");
-                                let mut stats = self.stats.lock().await;
-                                stats.completed_operations += 1;
-                            }
-                            Err(e) => {
-                                error!(error = %e, "Operation failed");
-                                let mut stats = self.stats.lock().await;
-                                stats.failed_operations += 1;
-                            }
+                        // Handler is now responsible for updating stats after all I/O completes
+                        let stats = self.stats.clone();
+                        if let Err(e) = handler(operation, stats).await {
+                            error!(error = %e, "Handler returned error");
                         }
                     }
                     LockType::Write => {
@@ -332,22 +328,15 @@ impl OperationQueue {
                             file_path.display()
                         );
 
+                        // Handler is now responsible for updating stats after all I/O completes
+                        let stats = self.stats.clone();
                         for batched_op in batched_operations {
                             debug!(
                                 "Processing operation {}: {}",
                                 batched_op.id, batched_op.tool_name
                             );
-                            match handler(batched_op).await {
-                                Ok(_result) => {
-                                    debug!("Operation completed successfully");
-                                    let mut stats = self.stats.lock().await;
-                                    stats.completed_operations += 1;
-                                }
-                                Err(e) => {
-                                    error!(error = %e, "Operation failed");
-                                    let mut stats = self.stats.lock().await;
-                                    stats.failed_operations += 1;
-                                }
+                            if let Err(e) = handler(batched_op, stats.clone()).await {
+                                error!(error = %e, "Handler returned error");
                             }
                         }
                     }

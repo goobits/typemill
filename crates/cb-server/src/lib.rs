@@ -160,9 +160,10 @@ pub async fn create_dispatcher_with_workspace(
             use serde_json::Value;
             use std::path::Path;
             use tokio::fs;
+            use tokio::io::AsyncWriteExt;
 
             queue
-                .process_with(move |op| async move {
+                .process_with(move |op, stats| async move {
                     tracing::debug!(
                         operation_id = %op.id,
                         operation_type = ?op.operation_type,
@@ -183,9 +184,21 @@ pub async fn create_dispatcher_with_workspace(
                                 .get("content")
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("");
-                            fs::write(&op.file_path, content).await.map_err(|e| {
-                                ServerError::internal(format!("Failed to write file: {}", e))
+
+                            // Write and explicitly sync to disk to avoid caching issues
+                            let mut file = fs::File::create(&op.file_path).await.map_err(|e| {
+                                ServerError::internal(format!("Failed to create file: {}", e))
                             })?;
+
+                            file.write_all(content.as_bytes()).await.map_err(|e| {
+                                ServerError::internal(format!("Failed to write content: {}", e))
+                            })?;
+
+                            // CRITICAL: Sync file to disk BEFORE updating stats
+                            file.sync_all().await.map_err(|e| {
+                                ServerError::internal(format!("Failed to sync file: {}", e))
+                            })?;
+
                             Ok(Value::Null)
                         }
                         OperationType::Delete => {
@@ -217,23 +230,30 @@ pub async fn create_dispatcher_with_workspace(
                         ))),
                     };
 
+                    // Update stats AFTER all I/O is complete (including sync_all)
+                    let mut stats_guard = stats.lock().await;
                     match &result {
                         Ok(_) => {
+                            stats_guard.completed_operations += 1;
                             tracing::info!(
                                 operation_id = %op.id,
                                 operation_type = ?op.operation_type,
+                                completed = stats_guard.completed_operations,
                                 "Operation executed successfully"
                             );
                         }
                         Err(e) => {
+                            stats_guard.failed_operations += 1;
                             tracing::error!(
                                 operation_id = %op.id,
                                 operation_type = ?op.operation_type,
                                 error = %e,
+                                failed = stats_guard.failed_operations,
                                 "Operation execution failed"
                             );
                         }
                     }
+                    drop(stats_guard); // Explicitly release lock
 
                     result
                 })

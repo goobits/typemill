@@ -1023,6 +1023,11 @@ impl FileService {
         }
 
         // Step 2: Create snapshots of all affected files before any modifications
+        // Add a delay to ensure filesystem cache coherency after batch file creation
+        // This is necessary because even with sync_all(), cross-process page cache
+        // coherency can take time (especially in virtualized/containerized environments)
+        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+
         let snapshots = self.create_file_snapshots(&affected_files).await?;
         debug!(
             snapshot_count = snapshots.len(),
@@ -1162,35 +1167,69 @@ impl FileService {
         let mut snapshots = HashMap::new();
 
         for file_path in file_paths {
-            match fs::read_to_string(file_path).await {
-                Ok(content) => {
-                    debug!(
-                        file_path = %file_path.display(),
-                        content_len = content.len(),
-                        "Snapshot created with content"
-                    );
-                    if content.is_empty() {
-                        warn!(
+            // Retry logic to handle filesystem cache coherency issues
+            // After sync_all(), the page cache may take a moment to update
+            let mut attempts = 0;
+            let max_attempts = 5;
+            let mut last_error = None;
+
+            loop {
+                // Force fresh read by opening file explicitly
+                // This helps with cross-process cache coherency issues
+                let read_result = async {
+                    let mut file = fs::File::open(file_path).await?;
+                    let mut content = String::new();
+                    use tokio::io::AsyncReadExt;
+                    file.read_to_string(&mut content).await?;
+                    Ok::<String, std::io::Error>(content)
+                }.await;
+
+                match read_result {
+                    Ok(content) => {
+                        debug!(
                             file_path = %file_path.display(),
-                            "WARNING: Snapshot content is EMPTY even though file exists!"
+                            content_len = content.len(),
+                            attempts = attempts + 1,
+                            "Snapshot created with content"
                         );
+                        if content.is_empty() && attempts < max_attempts {
+                            // File exists but is empty - this might be a cache coherency issue
+                            // Retry with a small delay to allow cache to update
+                            warn!(
+                                file_path = %file_path.display(),
+                                attempt = attempts + 1,
+                                "WARNING: File read as empty, retrying to handle cache coherency"
+                            );
+                            attempts += 1;
+                            tokio::time::sleep(tokio::time::Duration::from_millis(10 * (1 << attempts))).await;
+                            continue;
+                        }
+                        snapshots.insert(file_path.clone(), content);
+                        break;
                     }
-                    snapshots.insert(file_path.clone(), content);
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                    // File doesn't exist yet - store empty string to indicate deletion on rollback
-                    debug!(
-                        file_path = %file_path.display(),
-                        "File does not exist yet, will be created during operation"
-                    );
-                    snapshots.insert(file_path.clone(), String::new());
-                }
-                Err(e) => {
-                    return Err(ServerError::Internal(format!(
-                        "Failed to read file {} for snapshot: {}",
-                        file_path.display(),
-                        e
-                    )));
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                        // File doesn't exist yet - store empty string to indicate deletion on rollback
+                        debug!(
+                            file_path = %file_path.display(),
+                            "File does not exist yet, will be created during operation"
+                        );
+                        snapshots.insert(file_path.clone(), String::new());
+                        break;
+                    }
+                    Err(e) => {
+                        last_error = Some(e);
+                        if attempts < max_attempts {
+                            attempts += 1;
+                            tokio::time::sleep(tokio::time::Duration::from_millis(10 * (1 << attempts))).await;
+                            continue;
+                        }
+                        return Err(ServerError::Internal(format!(
+                            "Failed to read file {} for snapshot after {} attempts: {}",
+                            file_path.display(),
+                            max_attempts,
+                            last_error.as_ref().map(|e| e.to_string()).unwrap_or_else(|| "unknown error".to_string())
+                        )));
+                    }
                 }
             }
         }
