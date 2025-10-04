@@ -125,19 +125,20 @@ fn initialize_tracing(config: &AppConfig) {
         tracing_subscriber::EnvFilter::from_default_env().add_directive(log_level.into());
 
     // Use configured format
+    // IMPORTANT: Always write logs to stderr to keep stdout clean for JSON-RPC messages
     match config.logging.format {
         LogFormat::Json => {
             // Use JSON formatter for structured logging
             tracing_subscriber::registry()
                 .with(env_filter)
-                .with(fmt::layer().with_ansi(false).compact())
+                .with(fmt::layer().with_ansi(false).compact().with_writer(std::io::stderr))
                 .init();
         }
         LogFormat::Pretty => {
             // Use pretty (human-readable) formatter
             tracing_subscriber::registry()
                 .with(env_filter)
-                .with(fmt::layer().pretty())
+                .with(fmt::layer().pretty().with_writer(std::io::stderr))
                 .init();
         }
     }
