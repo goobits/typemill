@@ -3,6 +3,7 @@ use serde_json::json;
 #[tokio::test]
 async fn test_apply_workspace_edit_single_file() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
     let file_path = workspace.path().join("edit_test.ts");
     let initial_content = r#"
@@ -34,6 +35,7 @@ const result = oldFunctionName(5);
 #[tokio::test]
 async fn test_apply_workspace_edit_multiple_files() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
     let file1 = workspace.path().join("types.ts");
     let file2 = workspace.path().join("usage.ts");
@@ -85,6 +87,7 @@ const item: OldInterface = {
 #[tokio::test]
 async fn test_apply_workspace_edit_atomic_failure() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
     let existing_file = workspace.path().join("existing.ts");
     let nonexistent_file = workspace.path().join("nonexistent.ts");
@@ -114,6 +117,7 @@ async fn test_apply_workspace_edit_atomic_failure() {
 #[tokio::test]
 async fn test_format_document_typescript() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
     let file_path = workspace.path().join("format_test.ts");
     let unformatted_content = r#"
@@ -147,6 +151,7 @@ const user=createUser({name:"John",email:"john@example.com"});
 #[tokio::test]
 async fn test_format_document_with_options() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
     let file_path = workspace.path().join("format_options.ts");
     let content = r#"
@@ -172,6 +177,7 @@ function test(){return"hello";}
 #[tokio::test]
 async fn test_get_code_actions_quick_fixes() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
     let file_path = workspace.path().join("code_actions.ts");
     let content_with_issues = r#"
@@ -244,6 +250,7 @@ export function usedImport(x: string): string {
 #[tokio::test]
 async fn test_get_code_actions_refactoring() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
     let file_path = workspace.path().join("refactor.ts");
     let content = r#"
@@ -285,6 +292,7 @@ class Calculator {
 #[tokio::test]
 async fn test_workspace_operations_integration() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
     let models_file = workspace.path().join("models.ts");
     let services_file = workspace.path().join("services.ts");
@@ -419,6 +427,7 @@ console.log(expensiveProducts);
 #[tokio::test]
 async fn test_workspace_edit_with_validation() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
     let file_path = workspace.path().join("validate.ts");
     let content = r#"
