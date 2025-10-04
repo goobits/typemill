@@ -1299,6 +1299,127 @@ impl LanguageAdapter for GoAdapter {
     }
 }
 
+/// Visitor for finding module references in Java code using tree-sitter
+struct JavaModuleFinder<'a> {
+    module_to_find: &'a str,
+    scope: ScanScope,
+    references: Vec<ModuleReference>,
+    source: &'a str,
+}
+
+impl<'a> JavaModuleFinder<'a> {
+    fn new(module_to_find: &'a str, scope: ScanScope, source: &'a str) -> Self {
+        Self {
+            module_to_find,
+            scope,
+            references: Vec::new(),
+            source,
+        }
+    }
+
+    fn into_references(self) -> Vec<ModuleReference> {
+        self.references
+    }
+
+    fn visit_node(&mut self, node: tree_sitter::Node, cursor: &mut tree_sitter::TreeCursor) {
+        // Check import declarations
+        if node.kind() == "import_declaration" {
+            // import_declaration contains either a scoped_identifier or identifier
+            if let Some(import_node) = node
+                .child_by_field_name("import")
+                .or_else(|| node.named_child(0))
+            {
+                let import_path = self.node_text(import_node);
+
+                // Java imports are fully qualified: com.example.utils.Helper
+                // Check if this import references our module (package)
+                if import_path.starts_with(&format!("{}.", self.module_to_find))
+                    || import_path == self.module_to_find
+                    || import_path.contains(&format!(".{}.", self.module_to_find))
+                {
+                    self.references.push(ModuleReference {
+                        line: import_node.start_position().row,
+                        column: import_node.start_position().column,
+                        length: self.module_to_find.len(),
+                        text: import_path,
+                        kind: ReferenceKind::Declaration,
+                    });
+                }
+            }
+        }
+
+        // Check qualified method calls (module.ClassName.method) if in appropriate scope
+        if matches!(self.scope, ScanScope::QualifiedPaths | ScanScope::All)
+            && node.kind() == "method_invocation"
+        {
+            // method_invocation: object.method()
+            if let Some(object) = node.child_by_field_name("object") {
+                if object.kind() == "field_access" {
+                    // Could be: MyClass.staticMethod() or instance.method()
+                    if let Some(field_object) = object.child_by_field_name("object") {
+                        let ident = self.node_text(field_object);
+                        if ident == self.module_to_find {
+                            let full_text = self.node_text(node);
+                            self.references.push(ModuleReference {
+                                line: field_object.start_position().row,
+                                column: field_object.start_position().column,
+                                length: self.module_to_find.len(),
+                                text: full_text,
+                                kind: ReferenceKind::QualifiedPath,
+                            });
+                        }
+                    }
+                } else if object.kind() == "identifier" {
+                    let ident = self.node_text(object);
+                    if ident == self.module_to_find {
+                        let full_text = self.node_text(node);
+                        self.references.push(ModuleReference {
+                            line: object.start_position().row,
+                            column: object.start_position().column,
+                            length: self.module_to_find.len(),
+                            text: full_text,
+                            kind: ReferenceKind::QualifiedPath,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Check string literals if scanning all
+        if self.scope == ScanScope::All && node.kind() == "string_literal" {
+            let text = self.node_text(node);
+            if text.contains(self.module_to_find) {
+                self.references.push(ModuleReference {
+                    line: node.start_position().row,
+                    column: node.start_position().column,
+                    length: self.module_to_find.len(),
+                    text,
+                    kind: ReferenceKind::StringLiteral,
+                });
+            }
+        }
+
+        // Recursively visit children
+        if cursor.goto_first_child() {
+            loop {
+                let child = cursor.node();
+                self.visit_node(child, cursor);
+
+                if !cursor.goto_next_sibling() {
+                    break;
+                }
+            }
+            cursor.goto_parent();
+        }
+    }
+
+    fn node_text(&self, node: tree_sitter::Node) -> String {
+        node.utf8_text(self.source.as_bytes())
+            .unwrap_or("")
+            .to_string()
+    }
+}
+
 /// Java language adapter
 pub struct JavaAdapter;
 
@@ -1589,11 +1710,27 @@ impl LanguageAdapter for JavaAdapter {
 
     fn find_module_references(
         &self,
-        _content: &str,
-        _module_to_find: &str,
-        _scope: ScanScope,
+        content: &str,
+        module_to_find: &str,
+        scope: ScanScope,
     ) -> AstResult<Vec<ModuleReference>> {
-        // TODO: Implement Java AST-based reference finding
-        Ok(Vec::new())
+        // Create tree-sitter parser with Java grammar
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(tree_sitter_java::language())
+            .map_err(|e| AstError::analysis(format!("Failed to set Java language: {:?}", e)))?;
+
+        // Parse the Java source code
+        let tree = parser
+            .parse(content, None)
+            .ok_or_else(|| AstError::analysis("Failed to parse Java source code"))?;
+
+        // Create and run visitor
+        let mut finder = JavaModuleFinder::new(module_to_find, scope, content);
+        let root = tree.root_node();
+        let mut cursor = root.walk();
+        finder.visit_node(root, &mut cursor);
+
+        Ok(finder.into_references())
     }
 }

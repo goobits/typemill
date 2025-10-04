@@ -28,6 +28,8 @@ rustpython-parser = "0.3"
 # Go AST parsing
 tree-sitter = "0.20"
 tree-sitter-go = "0.20"
+# Java AST parsing
+tree-sitter-java = "0.20"
 # Rust AST parsing
 syn = { version = "2.0", features = ["full", "extra-traits", "visit"] }
 quote = "1.0"
