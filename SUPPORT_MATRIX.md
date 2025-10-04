@@ -1,6 +1,6 @@
 # CodeBuddy MCP Tools Support Matrix
 
-**Last Updated:** 2025-10-02
+**Last Updated:** 2025-10-04
 **Version:** 1.0.0-beta
 
 ---
@@ -62,7 +62,7 @@
 
 | Function | Status | TypeScript/JS | Python | Go | Rust | Notes |
 |----------|--------|---------------|--------|-----|------|-------|
-| `rename_directory` | ✅ Full | ✅ | ✅ | ✅ | ✅ | **Automatically updates imports for all files**, supports dry_run |
+| `rename_directory` | ✅ Full | ✅ | ✅ | ✅ | ✅ | **Automatically updates imports for all files**, supports dry_run. **Rust-only**: consolidation mode merges crates |
 | `analyze_imports` | ✅ Full | ✅ AST | ✅ AST | ✅ AST | ✅ AST | **All languages use AST parsing**. Rust via syn, Go via go/parser, TS/JS via SWC, Python via native AST |
 | `find_dead_code` | ✅ Full | ✅ | ✅ | ✅ | ✅ | **LSP-based via workspace/symbol + textDocument/references** |
 | `update_dependencies` | ✅ Full | ✅ npm/yarn/pnpm | ✅ pip | ✅ go mod | ✅ cargo | **Executes package manager commands**, auto-detects via project files, returns stdout/stderr |
