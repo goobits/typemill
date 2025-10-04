@@ -45,6 +45,7 @@
 
 use async_trait::async_trait;
 use cb_types::error::ApiError;
+use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use std::path::Path;
 
@@ -257,6 +258,48 @@ pub enum DependencySource {
 }
 
 // ============================================================================
+// Refactoring Support Types (from LanguageAdapter)
+// ============================================================================
+
+/// Defines the scope of the import/reference scan
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ScanScope {
+    /// Only find top-level `import`/`use` statements
+    TopLevelOnly,
+    /// Find all `use` or `import` statements, including those inside functions
+    AllUseStatements,
+    /// Find all `use` statements and qualified paths (e.g., `my_module::MyStruct`)
+    QualifiedPaths,
+    /// Find all references, including string literals (requires confirmation)
+    All,
+}
+
+/// Represents a found reference to a module within a source file
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModuleReference {
+    /// Line number (1-indexed)
+    pub line: usize,
+    /// Column number (0-indexed)
+    pub column: usize,
+    /// Length of the reference in characters
+    pub length: usize,
+    /// The actual text that was found
+    pub text: String,
+    /// The type of reference
+    pub kind: ReferenceKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReferenceKind {
+    /// An `import` or `export` or `use` declaration
+    Declaration,
+    /// A qualified path (e.g., `my_module.MyStruct` or `my_module::function`)
+    QualifiedPath,
+    /// A reference inside a string literal
+    StringLiteral,
+}
+
+// ============================================================================
 // Core Plugin Trait
 // ============================================================================
 
@@ -363,6 +406,158 @@ pub trait LanguageIntelligencePlugin: Send + Sync {
         // Default implementation - override in specific plugins
         false
     }
+
+    // ========================================================================
+    // Refactoring Support Methods (from LanguageAdapter)
+    // ========================================================================
+
+    /// Get the language this plugin supports
+    fn language(&self) -> cb_core::language::ProjectLanguage {
+        // Default implementation based on name
+        use cb_core::language::ProjectLanguage;
+        match self.name().to_lowercase().as_str() {
+            "rust" => ProjectLanguage::Rust,
+            "go" => ProjectLanguage::Go,
+            "typescript" | "javascript" => ProjectLanguage::TypeScript,
+            "python" => ProjectLanguage::Python,
+            "java" => ProjectLanguage::Java,
+            _ => ProjectLanguage::Unknown,
+        }
+    }
+
+    /// Get the package manifest filename (e.g., "Cargo.toml", "package.json")
+    fn manifest_filename_str(&self) -> &'static str {
+        "" // Default: no manifest
+    }
+
+    /// Get the source directory name (e.g., "src" for Rust/TS, "" for Python)
+    fn source_dir(&self) -> &'static str {
+        "" // Default: no specific source dir
+    }
+
+    /// Get the entry point filename (e.g., "lib.rs", "index.ts", "__init__.py")
+    fn entry_point(&self) -> &'static str {
+        "" // Default: no entry point
+    }
+
+    /// Get the module path separator (e.g., "::" for Rust, "." for Python/TS)
+    fn module_separator(&self) -> &'static str {
+        "." // Default: dot separator
+    }
+
+    /// Locate module files given a module path within a package
+    ///
+    /// # Arguments
+    ///
+    /// * `package_path` - Path to the source package
+    /// * `module_path` - Dotted module path (e.g., "services.planner")
+    ///
+    /// # Returns
+    ///
+    /// Vector of file paths that comprise the module
+    async fn locate_module_files(
+        &self,
+        _package_path: &Path,
+        _module_path: &str,
+    ) -> PluginResult<Vec<std::path::PathBuf>> {
+        Err(PluginError::not_supported(format!(
+            "locate_module_files not supported for {}",
+            self.name()
+        )))
+    }
+
+    /// Parse imports/dependencies from a file
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path` - Path to the file to analyze
+    ///
+    /// # Returns
+    ///
+    /// Vector of import statements/paths found in the file
+    async fn parse_imports(&self, _file_path: &Path) -> PluginResult<Vec<String>> {
+        Err(PluginError::not_supported(format!(
+            "parse_imports not supported for {}",
+            self.name()
+        )))
+    }
+
+    /// Generate a package manifest for a new package
+    ///
+    /// # Arguments
+    ///
+    /// * `package_name` - Name of the new package
+    /// * `dependencies` - List of dependencies the package needs
+    ///
+    /// # Returns
+    ///
+    /// String containing the manifest file content
+    fn generate_manifest(&self, _package_name: &str, _dependencies: &[String]) -> String {
+        String::new() // Default: empty manifest
+    }
+
+    /// Update an import statement from internal to external
+    ///
+    /// # Arguments
+    ///
+    /// * `old_import` - Original import path (e.g., "crate::services::planner")
+    /// * `new_package_name` - New package name (e.g., "cb_planner")
+    ///
+    /// # Returns
+    ///
+    /// Updated import statement
+    fn rewrite_import(&self, _old_import: &str, new_package_name: &str) -> String {
+        new_package_name.to_string() // Default: just return new name
+    }
+
+    /// Rewrite import statements in file content for a rename operation
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - The file content to process
+    /// * `old_path` - Original path before rename
+    /// * `new_path` - New path after rename
+    /// * `importing_file` - Path of the file being processed
+    /// * `project_root` - Root directory of the project
+    /// * `rename_info` - Optional language-specific rename context (JSON)
+    ///
+    /// # Returns
+    ///
+    /// Tuple of (updated_content, number_of_changes)
+    fn rewrite_imports_for_rename(
+        &self,
+        content: &str,
+        _old_path: &Path,
+        _new_path: &Path,
+        _importing_file: &Path,
+        _project_root: &Path,
+        _rename_info: Option<&serde_json::Value>,
+    ) -> PluginResult<(String, usize)> {
+        Ok((content.to_string(), 0)) // Default: no changes
+    }
+
+    /// Find all references to a specific module within file content
+    ///
+    /// This is more powerful than `parse_imports` as it finds not just declarations,
+    /// but also qualified paths and other usages within the code based on the scope.
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - The file content to scan
+    /// * `module_to_find` - The module name/path to search for
+    /// * `scope` - The scope of the search (top-level only, all statements, qualified paths, etc.)
+    ///
+    /// # Returns
+    ///
+    /// Vector of all found references with their locations
+    fn find_module_references(
+        &self,
+        _content: &str,
+        _module_to_find: &str,
+        _scope: ScanScope,
+    ) -> PluginResult<Vec<ModuleReference>> {
+        Ok(Vec::new()) // Default: no references found
+    }
 }
 
 // ============================================================================
@@ -374,7 +569,7 @@ pub trait LanguageIntelligencePlugin: Send + Sync {
 /// This will be used by the main server to register and look up plugins
 /// based on file extensions.
 pub struct PluginRegistry {
-    plugins: Vec<Box<dyn LanguageIntelligencePlugin>>,
+    plugins: Vec<std::sync::Arc<dyn LanguageIntelligencePlugin>>,
 }
 
 impl PluginRegistry {
@@ -386,7 +581,7 @@ impl PluginRegistry {
     }
 
     /// Register a new language intelligence plugin
-    pub fn register(&mut self, plugin: Box<dyn LanguageIntelligencePlugin>) {
+    pub fn register(&mut self, plugin: std::sync::Arc<dyn LanguageIntelligencePlugin>) {
         self.plugins.push(plugin);
     }
 
@@ -395,11 +590,11 @@ impl PluginRegistry {
         self.plugins
             .iter()
             .find(|p| p.handles_extension(extension))
-            .map(|b| b.as_ref())
+            .map(|arc| arc.as_ref())
     }
 
     /// Get all registered plugins
-    pub fn all(&self) -> &[Box<dyn LanguageIntelligencePlugin>] {
+    pub fn all(&self) -> &[std::sync::Arc<dyn LanguageIntelligencePlugin>] {
         &self.plugins
     }
 }
