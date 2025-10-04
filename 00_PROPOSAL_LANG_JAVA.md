@@ -287,10 +287,10 @@ test result: ok. 15 passed; 0 failed
 - [x] Create unit tests (java_language_test.rs - 7 tests)
 - [x] Create E2E tests (e2e_java_ast.rs - 8 tests)
 - [x] Commit changes (`46ccd2d`)
-- [ ] Edit `workspace.rs` - Add `setup_java_project()` and `create_pom_xml()`
-- [ ] Edit `fixtures.rs` - Add `create_java_project()` function
-- [ ] Edit `mod.rs` - Export `create_java_project`
-- [ ] Edit `lib.rs` - Register `java_language_test` module
+- [x] Edit `workspace.rs` - Add `setup_java_project()` and `create_pom_xml()`
+- [x] Edit `fixtures.rs` - Add `create_java_project()` function
+- [x] Edit `mod.rs` - Export `create_java_project` (exports all via `pub use fixtures::*`)
+- [x] Edit `lib.rs` - Register `java_language_test` module
 - [ ] Run tests and verify all 15 tests pass
 - [ ] Commit integration changes
 - [ ] Update documentation (optional)

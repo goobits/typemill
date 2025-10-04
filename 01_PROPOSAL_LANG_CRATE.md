@@ -38,32 +38,41 @@ crates/languages/
 └── cb-lang-java-adapter/      # 🆕 Refactoring adapter
 ```
 
-## Implementation Plan
+## Implementation Checklist
 
 ### Phase 1: TypeScript (Template for Others)
-1. Create `cb-lang-typescript/` with `LanguageIntelligencePlugin` trait
-2. Create `cb-lang-typescript-adapter/` that composes intelligence plugin
-3. Extract `TypeScriptAdapter` logic from `language.rs` (lines ~530-900)
-4. Update registry to use new adapter
-5. Test and verify
+- [ ] Create `cb-lang-typescript/` with `LanguageIntelligencePlugin` trait
+- [ ] Create `cb-lang-typescript-adapter/` that composes intelligence plugin
+- [ ] Extract `TypeScriptAdapter` logic from `language.rs` (lines ~530-900)
+- [ ] Update registry to use new adapter
+- [ ] Test and verify
 
 ### Phase 2: Python
-- Follow TypeScript template
-- Extract `PythonAdapter` logic (lines ~900-1200)
+- [ ] Create `cb-lang-python/` with `LanguageIntelligencePlugin` trait
+- [ ] Create `cb-lang-python-adapter/` that composes intelligence plugin
+- [ ] Extract `PythonAdapter` logic from `language.rs` (lines ~900-1200)
+- [ ] Update registry to use new adapter
+- [ ] Test and verify
 
 ### Phase 3: Go
-- Follow TypeScript template
-- Extract `GoAdapter` logic (lines ~1200-1500)
+- [ ] Create `cb-lang-go/` with `LanguageIntelligencePlugin` trait
+- [ ] Create `cb-lang-go-adapter/` that composes intelligence plugin
+- [ ] Extract `GoAdapter` logic from `language.rs` (lines ~1200-1500)
+- [ ] Update registry to use new adapter
+- [ ] Test and verify
 
 ### Phase 4: Java
-- Follow TypeScript template
-- Extract `JavaAdapter` logic (lines ~1500-1737)
+- [ ] Create `cb-lang-java/` with `LanguageIntelligencePlugin` trait
+- [ ] Create `cb-lang-java-adapter/` that composes intelligence plugin
+- [ ] Extract `JavaAdapter` logic from `language.rs` (lines ~1500-1737)
+- [ ] Update registry to use new adapter
+- [ ] Test and verify
 
 ### Phase 5: Cleanup
-1. Delete old adapter structs from `language.rs`
-2. Keep only trait definitions (~200 lines)
-3. Update documentation
-4. Mark as deprecated any remaining references
+- [ ] Delete old adapter structs from `language.rs`
+- [ ] Keep only trait definitions (~200 lines)
+- [ ] Update documentation
+- [ ] Mark as deprecated any remaining references
 
 ## Architecture Pattern (Each Language)
 

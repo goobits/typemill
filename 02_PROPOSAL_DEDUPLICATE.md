@@ -24,6 +24,24 @@ The codebase compiles successfully with all tests passing:
 
 ---
 
+## Implementation Checklist (Summary)
+
+- [ ] **Phase 1:** Create shared utilities module (2-3 hours)
+- [ ] **Phase 2:** Extract workflow executor step logic - 90 lines (3-4 hours)
+- [ ] **Phase 3:** Consolidate AppState construction - 60-80 lines (4-5 hours)
+- [ ] **Phase 4:** Unify command existence checking - 12 lines (30 min)
+- [ ] **Phase 5:** Extract workspace manifest update logic - 37 lines (1-2 hours)
+- [ ] **Phase 6:** Consolidate remote command execution - 30-40 lines (1 hour)
+- [ ] **Phase 7:** Extract dry-run result wrapping - 40-50 lines (1 hour)
+- [ ] **Phase 8:** Refactor tool handler context conversion - 60-80 lines (1-2 hours)
+- [ ] **Phase 9:** Consolidate refactoring handler patterns - 40-50 lines (3-4 hours)
+- [ ] **Phase 10:** Test helper consolidation - 30-40 lines (1-2 hours)
+
+**Total Estimated Effort:** 18-24 hours
+**Expected Reduction:** 420-550 duplicate lines (4.67% → ~2.7%)
+
+---
+
 ## Executive Summary
 
 This proposal outlines a systematic plan to reduce code duplication in the codebuddy codebase from **4.67%** to approximately **2.7%**, eliminating 420-550 duplicate lines across 10 high-impact refactoring phases. The focus is on critical shared logic including workflow execution (90 duplicate lines), AppState construction (60+ lines), and remote command execution patterns.

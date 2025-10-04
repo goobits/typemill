@@ -19,6 +19,23 @@ This document outlines remaining backend development to transition the service t
 - ⚠️ **Phase 1: LSP Architecture Refactoring** - Adds complexity for unclear benefit
 - 🟡 **Phase 3: State Persistence** - Solves partial problem, needs broader container lifecycle strategy
 
+## Implementation Checklist
+
+### Phase 1: LSP Architecture Refactoring ⚠️ DEFERRED
+- [ ] ~~Move LSP servers to workspace containers~~ (Deferred - keep LSP local)
+
+### Phase 2: Multi-Tenancy & Scoped Access ✅ CRITICAL
+- [ ] Add `user_id` claim to JWT authentication
+- [ ] Partition `WorkspaceManager` by user
+- [ ] Scope all workspace operations to authenticated user
+- [ ] Add user isolation tests
+- [ ] Update documentation
+
+### Phase 3: State Persistence 🟡 NEEDS REDESIGN
+- [ ] ~~Add SQLite database for workspace persistence~~ (Needs broader container lifecycle strategy)
+- [ ] Design container lifecycle strategy (long-lived vs ephemeral)
+- [ ] Implement based on lifecycle decision
+
 ## 3. Recommended Approach
 
 1. **Implement Phase 2 immediately** - blocking security issue
