@@ -3,7 +3,7 @@
 **Version:** 1.0.0-rc1
 **Last Updated:** 2025-10-04
 
-Quick reference for all 40 public MCP tools. For detailed API documentation, see [API.md](API.md).
+Quick reference for all 39 public MCP tools. For detailed API documentation, see [API.md](API.md).
 
 **Note:** 5 additional internal tools exist for backend use only (lifecycle hooks, workflow plumbing). See [API.md Internal Tools](API.md#internal-tools) section for details.
 
@@ -58,7 +58,7 @@ Quick reference for all 40 public MCP tools. For detailed API documentation, see
 
 ---
 
-## Workspace Operations (6 tools)
+## Workspace Operations (5 tools)
 
 | Tool | Description | Required Parameters | Returns |
 |------|-------------|---------------------|---------|
@@ -67,7 +67,6 @@ Quick reference for all 40 public MCP tools. For detailed API documentation, see
 | `find_dead_code` | Find potentially unused code in workspace | None | Array of unused symbols |
 | `update_dependencies` | Update project dependencies via package manager | None (auto-detects) | Updated packages list |
 | `update_dependency` | Update a single dependency to specific version | `dependency_name`, `version` | Old/new version, success status |
-| `batch_update_dependencies` | Update multiple dependencies in one operation | `dependencies` (array) | Updated/failed package lists |
 | `extract_module_to_package` | Extract code to new package (Rust-specific) | `source_module`, `target_package`, `symbols` | Package created, symbols moved |
 
 ---

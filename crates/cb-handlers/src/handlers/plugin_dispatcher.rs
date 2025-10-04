@@ -212,7 +212,7 @@ impl PluginDispatcher {
                     LifecycleHandler => "LifecycleHandler with 3 INTERNAL tools (notify_file_opened, notify_file_saved, notify_file_closed)",
                     InternalEditingHandler => "InternalEditingHandler with 1 INTERNAL tool (rename_symbol_with_imports)",
                     InternalWorkspaceHandler => "InternalWorkspaceHandler with 1 INTERNAL tool (apply_workspace_edit)",
-                    WorkspaceHandler => "WorkspaceHandler with 7 tools (rename_directory, analyze_imports, find_dead_code, update_dependencies, extract_module_to_package, update_dependency, batch_update_dependencies)",
+                    WorkspaceHandler => "WorkspaceHandler with 6 tools (rename_directory, analyze_imports, find_dead_code, update_dependencies, extract_module_to_package, update_dependency)",
                     AdvancedHandler => "AdvancedHandler with 2 tools (apply_edits, batch_execute)",
                     FileOpsHandler => "FileOpsHandler with 6 tools (create_file, read_file, write_file, delete_file, rename_file, list_files)",
                     EditingHandler => "EditingHandler with 9 tools (rename_symbol, rename_symbol_strict, organize_imports, fix_imports, get_code_actions, format_document, extract_function, extract_variable, inline_variable)",

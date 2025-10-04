@@ -1,7 +1,7 @@
 use cb_server::handlers::plugin_dispatcher::create_test_dispatcher;
 
 #[tokio::test]
-async fn test_all_40_public_tools_are_registered() {
+async fn test_all_39_public_tools_are_registered() {
     let dispatcher = create_test_dispatcher();
     dispatcher.initialize().await.unwrap();
 
@@ -10,7 +10,7 @@ async fn test_all_40_public_tools_are_registered() {
 
     // Note: This tests PUBLIC tools only (visible to AI agents via MCP).
     // Internal tools (lifecycle hooks, etc.) are tested separately.
-    const EXPECTED_TOOLS: [&str; 40] = [
+    const EXPECTED_TOOLS: [&str; 39] = [
         // Navigation (14)
         "find_definition",
         "find_references",
@@ -43,14 +43,13 @@ async fn test_all_40_public_tools_are_registered() {
         "delete_file",
         "rename_file",
         "list_files",
-        // Workspace (6) - apply_workspace_edit moved to internal
+        // Workspace (5) - apply_workspace_edit moved to internal, batch_update_dependencies removed
         "rename_directory",
         "analyze_imports",
         "find_dead_code",
         "update_dependencies",
         "extract_module_to_package",
         "update_dependency",
-        "batch_update_dependencies",
         // Advanced (2)
         "apply_edits",
         "batch_execute",

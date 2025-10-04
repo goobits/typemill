@@ -3,7 +3,7 @@
 **Version:** 1.0.0-rc1
 **Last Updated:** 2025-10-04
 
-Complete API documentation for all 40 public MCP tools available in CodeBuddy.
+Complete API documentation for all 39 public MCP tools available in CodeBuddy.
 
 ---
 
@@ -12,7 +12,7 @@ Complete API documentation for all 40 public MCP tools available in CodeBuddy.
 - [Navigation & Intelligence](#navigation--intelligence) (13 tools)
 - [Editing & Refactoring](#editing--refactoring) (9 tools)
 - [File Operations](#file-operations) (6 tools)
-- [Workspace Operations](#workspace-operations) (6 tools)
+- [Workspace Operations](#workspace-operations) (5 tools)
 - [Advanced Operations](#advanced-operations) (2 tools)
 - [System & Health](#system--health) (3 tools)
 - [Internal Tools](#internal-tools) (5 tools - backend use only)
@@ -1059,7 +1059,7 @@ List files in a directory with optional glob pattern filtering.
 
 ## Workspace Operations
 
-Project-wide operations and analysis (6 tools).
+Project-wide operations and analysis (5 tools).
 
 ### `rename_directory`
 
