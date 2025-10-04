@@ -32,7 +32,7 @@ Codebuddy provides 42 MCP tools for code intelligence and refactoring. See **[AP
 - `list_files`
 
 **Workspace Operations** (5 tools)
-- `rename_directory` (auto-updates imports)
+- `rename_directory` (auto-updates imports, supports Rust crate consolidation)
 - `analyze_imports`, `find_dead_code`, `update_dependencies`
 
 **Advanced Operations** (2 tools)
@@ -81,7 +81,7 @@ Most file-modifying operations support `dry_run: true` for safe previews:
 
 **Supported operations:**
 - File operations: `create_file`, `write_file`, `delete_file`, `rename_file`
-- Directory operations: `rename_directory`
+- Directory operations: `rename_directory` (including consolidation mode)
 - Refactoring: `rename_symbol`, `rename_symbol_strict`, `extract_function`, `inline_variable`, `extract_variable`
 
 **Benefits:**
@@ -89,6 +89,42 @@ Most file-modifying operations support `dry_run: true` for safe previews:
 - No file system modifications occur
 - Returns detailed preview of what would happen
 - Safe for testing and validation
+
+### Rust Crate Consolidation
+
+The `rename_directory` tool supports a special **consolidation mode** for merging Rust crates:
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "rename_directory",
+    "arguments": {
+      "old_path": "crates/source-crate",
+      "new_path": "crates/target-crate/src/module",
+      "consolidate": true,
+      "dry_run": true
+    }
+  }
+}
+```
+
+**What consolidation does:**
+1. Moves `source-crate/src/*` into `target-crate/src/module/*`
+2. Merges dependencies from source `Cargo.toml` into target `Cargo.toml`
+3. Removes source crate from workspace members
+4. Updates all imports across workspace (`use source_crate::*` → `use target_crate::module::*`)
+5. Deletes the source crate directory
+
+**Important:** After consolidation, manually add to `target-crate/src/lib.rs`:
+```rust
+pub mod module;  // Exposes the consolidated code
+```
+
+**Use cases:**
+- Simplifying workspace structure by reducing number of crates
+- Merging experimental features back into main crate
+- Consolidating related functionality into a single package
 
 For detailed parameters, return types, and examples, see **[API.md](API.md)**.
 

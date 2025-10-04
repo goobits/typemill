@@ -1070,14 +1070,15 @@ Project-wide operations and analysis (7 tools).
 
 ### `rename_directory`
 
-Rename a directory and automatically update all imports.
+Rename a directory and automatically update all imports. Supports special **consolidation mode** for merging Rust crates.
 
 **Parameters:**
 ```json
 {
   "old_path": "src/components",    // Required: Current directory path
   "new_path": "src/ui",            // Required: New directory path
-  "dry_run": false                 // Optional: Preview changes (default: false)
+  "dry_run": false,                // Optional: Preview changes (default: false)
+  "consolidate": false             // Optional: Rust crate consolidation mode (default: false)
 }
 ```
 
@@ -1118,6 +1119,65 @@ Rename a directory and automatically update all imports.
 }
 ```
 
+**Consolidation Mode (`consolidate: true`):**
+
+When enabled, performs Rust crate consolidation by merging one crate into another:
+
+1. **Moves source code** from `old_path/src/*` to `new_path/*`
+2. **Merges dependencies** from source `Cargo.toml` into target crate's `Cargo.toml`
+3. **Removes old crate** from workspace members
+4. **Updates imports** across workspace (e.g., `use old_crate::*` → `use target_crate::module::*`)
+5. **Deletes old crate** directory
+
+**Consolidation Example:**
+```bash
+# Preview consolidation
+codebuddy tool rename_directory '{
+  "old_path": "crates/cb-protocol",
+  "new_path": "crates/cb-types/src/protocol",
+  "consolidate": true,
+  "dry_run": true
+}'
+
+# Execute consolidation
+codebuddy tool rename_directory '{
+  "old_path": "crates/cb-protocol",
+  "new_path": "crates/cb-types/src/protocol",
+  "consolidate": true
+}'
+```
+
+**Returns (consolidate mode):**
+```json
+{
+  "success": true,
+  "operation": "consolidate_rust_package",
+  "old_path": "crates/cb-protocol",
+  "new_path": "crates/cb-types/src/protocol",
+  "files_moved": 15,
+  "import_updates": {
+    "old_crate": "cb_protocol",
+    "new_prefix": "cb_types::protocol",
+    "imports_updated": 42,
+    "files_modified": 8,
+    "modified_files": ["crates/cb-server/src/main.rs", ...]
+  },
+  "next_steps": "📝 Next step: Add 'pub mod protocol;' to cb_types/src/lib.rs to make the consolidated module public",
+  "note": "Consolidation complete! All imports have been automatically updated from 'cb_protocol' to 'cb_types::protocol'."
+}
+```
+
+**Important: Manual Step Required After Consolidation**
+
+After consolidation completes, you must manually add the module declaration to make it public:
+
+```rust
+// In target_crate/src/lib.rs
+pub mod protocol;  // Add this line
+```
+
+This exposes the consolidated code at the new import path (`target_crate::protocol::*`).
+
 **Notes:**
 - **ALWAYS updates imports automatically** (no `update_imports` parameter)
 - Processes ALL files in directory recursively
@@ -1126,8 +1186,9 @@ Rename a directory and automatically update all imports.
 - Safe for large refactorings
 - **Performance:** Processing time scales with number of files in directory and workspace size
 - For Cargo packages: Also updates workspace manifests and package dependencies
+- **Consolidation is Rust-specific** - only use with Cargo projects
 
-**Example:**
+**Standard Rename Example:**
 ```bash
 # Preview changes
 codebuddy tool rename_directory '{"old_path":"crates","new_path":"lib","dry_run":true}'
