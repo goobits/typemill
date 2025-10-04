@@ -55,14 +55,14 @@ cd rust
 cargo build --release
 
 # Binary location
-./target/release/cb-server
+./target/release/codebuddy
 ```
 
 ### Installation
 
 ```bash
 # Copy binary to system location
-sudo cp target/release/cb-server /usr/local/bin/
+sudo cp target/release/codebuddy /usr/local/bin/
 
 # Or add to PATH
 export PATH="$PWD/target/release:$PATH"
@@ -149,7 +149,7 @@ The server validates configuration on startup and provides detailed error messag
 
 ```bash
 # Test configuration
-cb-server --validate-config
+codebuddy --validate-config
 
 # Example validation error
 Error: Invalid LSP server configuration
@@ -163,31 +163,31 @@ Error: Invalid LSP server configuration
 
 ```bash
 # Start WebSocket server on default port 3040
-cb-server serve
+codebuddy serve
 
 # Start with custom configuration
 cd /path/to/project
-cb-server serve
+codebuddy serve
 
 # Custom host/port via config or CLI args (future)
-cb-server serve --host 0.0.0.0 --port 8080
+codebuddy serve --host 0.0.0.0 --port 8080
 ```
 
 ### Stdio Mode (MCP Clients)
 
 ```bash
 # Start stdio server for MCP protocol
-cb-server start
+codebuddy start
 
 # Used by MCP clients like Claude Code
-echo '{"jsonrpc":"2.0","id":"1","method":"tools/list","params":{}}' | cb-server start
+echo '{"jsonrpc":"2.0","id":"1","method":"tools/list","params":{}}' | codebuddy start
 ```
 
 ### Process Management
 
 #### Systemd Service (Linux)
 
-Create `/etc/systemd/system/cb-server.service`:
+Create `/etc/systemd/system/codebuddy.service`:
 
 ```ini
 [Unit]
@@ -199,7 +199,7 @@ Type=simple
 User=codeflow
 Group=codeflow
 WorkingDirectory=/opt/codebuddy
-ExecStart=/usr/local/bin/cb-server serve
+ExecStart=/usr/local/bin/codebuddy serve
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -212,14 +212,14 @@ WantedBy=multi-user.target
 
 ```bash
 # Enable and start service
-sudo systemctl enable cb-server
-sudo systemctl start cb-server
+sudo systemctl enable codebuddy
+sudo systemctl start codebuddy
 
 # Check status
-sudo systemctl status cb-server
+sudo systemctl status codebuddy
 
 # View logs
-sudo journalctl -u cb-server -f
+sudo journalctl -u codebuddy -f
 ```
 
 #### Docker Deployment
@@ -239,18 +239,18 @@ RUN apt-get update && apt-get install -y \
 RUN npm install -g typescript-language-server typescript
 RUN pip3 install python-lsp-server
 
-COPY --from=builder /app/target/release/cb-server /usr/local/bin/
+COPY --from=builder /app/target/release/codebuddy /usr/local/bin/
 COPY config.json /app/.codebuddy/config.json
 
 WORKDIR /app
 EXPOSE 3040
-CMD ["cb-server", "serve"]
+CMD ["codebuddy", "serve"]
 ```
 
 ```bash
 # Build and run
-deployment/docker build -t cb-server .
-deployment/docker run -p 3040:3040 -v /path/to/workspace:/workspace cb-server
+deployment/docker build -t codebuddy .
+deployment/docker run -p 3040:3040 -v /path/to/workspace:/workspace codebuddy
 ```
 
 ## Testing
@@ -262,7 +262,7 @@ deployment/docker run -p 3040:3040 -v /path/to/workspace:/workspace cb-server
 cargo test --workspace
 
 # Run tests for specific crate
-cargo test -p cb-server
+cargo test -p codebuddy
 
 # Run with output
 cargo test --workspace -- --nocapture
@@ -302,7 +302,7 @@ TEST_RUST_BACKEND=true bun run test:e2e:rust
 ```bash
 # Load testing with multiple concurrent requests
 for i in {1..10}; do
-  (echo '{"jsonrpc":"2.0","id":"'$i'","method":"tools/list","params":{}}' | cb-server start) &
+  (echo '{"jsonrpc":"2.0","id":"'$i'","method":"tools/list","params":{}}' | codebuddy start) &
 done
 wait
 ```
@@ -345,20 +345,20 @@ curl http://localhost:3040/health/detailed
 
 ```bash
 # Check health via MCP tool
-echo '{"jsonrpc":"2.0","id":"health","method":"tools/call","params":{"name":"health_check","arguments":{}}}' | cb-server start
+echo '{"jsonrpc":"2.0","id":"health","method":"tools/call","params":{"name":"health_check","arguments":{}}}' | codebuddy start
 ```
 
 ### Log Analysis
 
 ```bash
 # View structured logs
-journalctl -u cb-server -o json | jq '.MESSAGE'
+journalctl -u codebuddy -o json | jq '.MESSAGE'
 
 # Monitor LSP server starts/failures
-journalctl -u cb-server | grep "LSP"
+journalctl -u codebuddy | grep "LSP"
 
 # Watch error patterns
-journalctl -u cb-server -f | grep "ERROR"
+journalctl -u codebuddy -f | grep "ERROR"
 ```
 
 ### Metrics Collection
@@ -423,7 +423,7 @@ Error: connection refused (os error 111)
 **Solution:**
 ```bash
 # Check if server is running
-ps aux | grep cb-server
+ps aux | grep codebuddy
 
 # Check port binding
 ss -tlnp | grep 3040
@@ -441,11 +441,11 @@ curl http://localhost:3040/health
 **Investigation:**
 ```bash
 # Check process memory
-ps aux | grep cb-server
+ps aux | grep codebuddy
 
 # Monitor memory over time
 while true; do
-  ps -p $(pgrep cb-server) -o pid,rss,vsz,pcpu,cmd
+  ps -p $(pgrep codebuddy) -o pid,rss,vsz,pcpu,cmd
   sleep 5
 done
 
@@ -486,29 +486,29 @@ echo '{"jsonrpc":"2.0","id":"1","method":"initialize","params":{}}' | timeout 10
 
 ```bash
 # Enable debug logging
-RUST_LOG=debug cb-server serve
+RUST_LOG=debug codebuddy serve
 
 # Enable LSP debug logging
 export TSS_LOG="-level verbose -file /tmp/tss.log"
-cb-server serve
+codebuddy serve
 
 # Trace all system calls (Linux)
-strace -e trace=network,file cb-server serve
+strace -e trace=network,file codebuddy serve
 ```
 
 ### Performance Analysis
 
 ```bash
 # Profile CPU usage
-perf record -g cb-server serve
+perf record -g codebuddy serve
 # ... run workload ...
 perf report
 
 # Memory profiling with Valgrind
-valgrind --tool=massif cb-server serve
+valgrind --tool=massif codebuddy serve
 
 # Analyze with heaptrack (if available)
-heaptrack cb-server serve
+heaptrack codebuddy serve
 ```
 
 ## Maintenance
@@ -543,13 +543,13 @@ git pull
 cargo build --release
 
 # Test new binary
-./target/release/cb-server --version
+./target/release/codebuddy --version
 
 # Deploy (systemd)
-sudo systemctl stop cb-server
-sudo cp target/release/cb-server /usr/local/bin/
-sudo systemctl start cb-server
-sudo systemctl status cb-server
+sudo systemctl stop codebuddy
+sudo cp target/release/codebuddy /usr/local/bin/
+sudo systemctl start codebuddy
+sudo systemctl status codebuddy
 ```
 
 #### Updating Language Servers
@@ -564,8 +564,8 @@ pip install --upgrade python-lsp-server
 # Rust
 rustup update
 
-# Restart cb-server to pick up changes
-sudo systemctl restart cb-server
+# Restart codebuddy to pick up changes
+sudo systemctl restart codebuddy
 ```
 
 ### Backup Procedures
@@ -575,10 +575,10 @@ sudo systemctl restart cb-server
 cp -r .codebuddy/ backup/config-$(date +%Y%m%d)/
 
 # Backup logs (if using file logging)
-tar czf logs-backup-$(date +%Y%m%d).tar.gz /var/log/cb-server/
+tar czf logs-backup-$(date +%Y%m%d).tar.gz /var/log/codebuddy/
 
 # Backup binary
-cp /usr/local/bin/cb-server backup/cb-server-$(cb-server --version)
+cp /usr/local/bin/codebuddy backup/codebuddy-$(codebuddy --version)
 ```
 
 ## Security
@@ -608,7 +608,7 @@ sudo chown -R codeflow:codeflow /opt/codebuddy
 
 # Restrict file permissions
 chmod 640 .codebuddy/config.json
-chmod 750 /usr/local/bin/cb-server
+chmod 750 /usr/local/bin/codebuddy
 ```
 
 ### Input Validation
@@ -622,13 +622,13 @@ The server validates all inputs:
 
 ```bash
 # Monitor failed connections
-journalctl -u cb-server | grep "connection refused\|invalid request"
+journalctl -u codebuddy | grep "connection refused\|invalid request"
 
 # Monitor suspicious file access
-journalctl -u cb-server | grep "permission denied\|access denied"
+journalctl -u codebuddy | grep "permission denied\|access denied"
 
 # Monitor LSP server crashes (potential DoS)
-journalctl -u cb-server | grep "LSP.*crashed\|LSP.*failed"
+journalctl -u codebuddy | grep "LSP.*crashed\|LSP.*failed"
 ```
 
 ### Security Best Practices

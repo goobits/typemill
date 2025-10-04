@@ -127,7 +127,7 @@ The current architecture uses a plugin-based dispatch system:
 
 ## Core Architecture: Unified Handlers & Plugins
 
-The "Foundations First" architecture unifies all 42 MCP tools through a consistent, high-performance handler pattern. This design eliminates technical debt, enables zero-cost abstractions, and provides a scalable foundation for future tool additions.
+The "Foundations First" architecture unifies all 44 MCP tools through a consistent, high-performance handler pattern. This design eliminates technical debt, enables zero-cost abstractions, and provides a scalable foundation for future tool additions.
 
 ### The Unified `ToolHandler` Trait
 
@@ -199,7 +199,7 @@ register_handlers_with_logging!(registry, {
 pub async fn initialize(&self) -> ServerResult<()> {
     let mut registry = self.tool_registry.lock().await;
 
-    // All 42 tools registered in ~10 lines of declarative code
+    // All 44 tools registered in ~10 lines of declarative code
     register_handlers_with_logging!(registry, {
         SystemHandler => "SystemHandler with 3 tools...",
         // ... 7 handlers total
@@ -333,7 +333,7 @@ When `error_on_ambiguity: false` (default):
 | **FileOpsHandler** | 6 | File | File read/write/delete/create operations |
 | **WorkspaceHandler** | 7 | Workspace | Workspace-wide analysis and refactoring |
 
-**Total: 42 Tools across 7 Handlers**
+**Total: 44 Tools across 7 Handlers**
 
 ### Dispatch Flow
 
@@ -389,8 +389,8 @@ async fn test_all_42_tools_are_registered() {
     let registry = dispatcher.tool_registry.lock().await;
     let registered_tools = registry.list_tools();
 
-    // Verify all 42 tools are present
-    assert_eq!(registered_tools.len(), 42);
+    // Verify all 44 tools are present
+    assert_eq!(registered_tools.len(), 44);
     assert!(registered_tools.contains(&"find_definition".to_string()));
     // ... validate all tools
 }
@@ -633,3 +633,96 @@ ApiError ← CoreError ← ServerError ← Transport-specific errors
 4. **Test Integration**: End-to-end testing
 
 This architecture provides a robust, scalable foundation for bridging MCP and LSP protocols while maintaining excellent performance and reliability characteristics through Rust's safety guarantees and zero-cost abstractions.
+
+---
+
+## API Contracts
+
+This section defines the external and internal contracts for the MCP server implementation.
+
+### Transport Layer Contracts
+
+#### WebSocket Transport (Default)
+- **Endpoint**: `ws://127.0.0.1:3040`
+- **Protocol**: JSON-RPC 2.0 over WebSocket
+- **Command**: `codebuddy serve`
+- **Features**: Session management, concurrent connections, health endpoints
+
+#### Stdio Transport
+- **Protocol**: JSON-RPC 2.0 over stdin/stdout (newline-delimited)
+- **Command**: `codebuddy start`
+- **Features**: MCP protocol compatibility, editor integration support
+- **Usage**: Designed for MCP clients like Claude Code
+
+### Request/Response Format Contract
+
+#### Standard MCP Request
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "unique-request-id",
+  "method": "tools/call",
+  "params": {
+    "name": "tool_name",
+    "arguments": {
+      "file_path": "/absolute/path/to/file",
+      "line": 10,
+      "character": 5
+    }
+  }
+}
+```
+
+#### Standard MCP Response
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "unique-request-id",
+  "result": {
+    "content": {
+      // Tool-specific response data
+    }
+  }
+}
+```
+
+#### Error Response Contract
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "unique-request-id",
+  "error": {
+    "code": -1,
+    "message": "Error description",
+    "data": null
+  }
+}
+```
+
+### Performance Contracts
+
+- **Bootstrap Time**: < 500ms (server initialization)
+- **Request Dispatch**: < 10ms average (routing and validation)
+- **Memory Baseline**: < 50MB (without LSP servers)
+- **Health Check**: < 5ms response time
+
+### Thread Safety Guarantees
+
+- All public types are `Send + Sync` where appropriate
+- Async functions are cancellation-safe
+- No global mutable state
+- All shared state protected by appropriate synchronization primitives (Arc, Mutex, RwLock)
+
+### Error Handling Contract
+
+- All errors implement `std::error::Error`
+- Errors are convertible to `CoreError` for cross-crate consistency
+- Error messages are descriptive and actionable
+- No panics in production code paths (all use `.expect()` with context)
+
+### Backward Compatibility
+
+- Public APIs are stable within major versions
+- Deprecated items have at least one minor version warning period
+- Migration guides provided for breaking changes
+- Semantic versioning strictly followed

@@ -109,7 +109,7 @@
 
 ## 📚 Additional Resources
 
-- **[API.md](./API.md)** - Complete API reference with parameters, examples, and return types for all 42 tools
+- **[API.md](./API.md)** - Complete API reference with parameters, examples, and return types for all 44 tools
 - **[docs/architecture/ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md)** - Implementation architecture and design decisions
 - **[CLAUDE.md](./CLAUDE.md)** - Project overview and development guide
 
