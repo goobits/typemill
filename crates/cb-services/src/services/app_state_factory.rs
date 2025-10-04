@@ -29,6 +29,10 @@ pub fn create_services_bundle(
     let ast_service = Arc::new(DefaultAstService::new(ast_cache.clone()));
     let lock_manager = Arc::new(LockManager::new());
     let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
+
+    // Spawn operation queue worker to process file operations
+    spawn_operation_worker(operation_queue.clone());
+
     let file_service = Arc::new(FileService::new(
         project_root,
         ast_cache.clone(),
@@ -47,6 +51,87 @@ pub fn create_services_bundle(
         planner,
         workflow_executor,
     }
+}
+
+/// Spawn background worker to process file operations from the queue
+fn spawn_operation_worker(queue: Arc<super::operation_queue::OperationQueue>) {
+    use super::operation_queue::OperationType;
+    use tokio::fs;
+
+    tokio::spawn(async move {
+        eprintln!("DEBUG: Operation queue worker started");
+        queue
+            .process_with(|op| async move {
+                eprintln!("DEBUG: Processing operation: {:?} on {}", op.operation_type, op.file_path.display());
+                match op.operation_type {
+                    OperationType::CreateDir => {
+                        fs::create_dir_all(&op.file_path).await.map_err(|e| {
+                            cb_protocol::ApiError::Internal(format!(
+                                "Failed to create directory {}: {}",
+                                op.file_path.display(),
+                                e
+                            ))
+                        })?;
+                    }
+                    OperationType::CreateFile | OperationType::Write => {
+                        let content = op
+                            .params
+                            .get("content")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        fs::write(&op.file_path, content).await.map_err(|e| {
+                            cb_protocol::ApiError::Internal(format!(
+                                "Failed to write file {}: {}",
+                                op.file_path.display(),
+                                e
+                            ))
+                        })?;
+                    }
+                    OperationType::Delete => {
+                        if op.file_path.exists() {
+                            fs::remove_file(&op.file_path).await.map_err(|e| {
+                                cb_protocol::ApiError::Internal(format!(
+                                    "Failed to delete file {}: {}",
+                                    op.file_path.display(),
+                                    e
+                                ))
+                            })?;
+                        }
+                    }
+                    OperationType::Rename => {
+                        let new_path_str = op
+                            .params
+                            .get("new_path")
+                            .and_then(|v| v.as_str())
+                            .ok_or_else(|| {
+                                cb_protocol::ApiError::InvalidRequest(
+                                    "Rename operation missing new_path".to_string(),
+                                )
+                            })?;
+                        fs::rename(&op.file_path, new_path_str)
+                            .await
+                            .map_err(|e| {
+                                cb_protocol::ApiError::Internal(format!(
+                                    "Failed to rename file {} to {}: {}",
+                                    op.file_path.display(),
+                                    new_path_str,
+                                    e
+                                ))
+                            })?;
+                    }
+                    OperationType::Read | OperationType::Format | OperationType::Refactor => {
+                        // These operations don't modify filesystem, just log
+                        tracing::trace!(
+                            op_type = ?op.operation_type,
+                            path = %op.file_path.display(),
+                            "Operation queued"
+                        );
+                    }
+                }
+                Ok(serde_json::json!({"success": true}))
+            })
+            .await;
+    });
 }
 
 /// Register MCP proxy plugin if feature is enabled

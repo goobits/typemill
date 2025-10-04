@@ -995,8 +995,11 @@ impl FileService {
         let mut affected_files = std::collections::HashSet::new();
 
         // Main source file (may not have edits if this is a rename operation)
-        let main_file = self.to_absolute_path(Path::new(&plan.source_file));
-        affected_files.insert(main_file.clone());
+        // Skip empty source_file (used in multi-file workspace edits)
+        if !plan.source_file.is_empty() {
+            let main_file = self.to_absolute_path(Path::new(&plan.source_file));
+            affected_files.insert(main_file.clone());
+        }
 
         // Files affected by text edits (group by file_path)
         use std::collections::HashMap;

@@ -385,6 +385,9 @@ const oldConstant{} = "old_value_{}";
         file_paths.push(file_path);
     }
 
+    // Give file system time to sync all files
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
     // Prepare large workspace edit
     let mut changes = json!({});
 
