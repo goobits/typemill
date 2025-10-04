@@ -1033,16 +1033,50 @@ impl FileService {
         let mut modified_files = Vec::new();
 
         // Step 3: Apply text edits grouped by file with locking
+        // Use snapshot content to avoid race conditions with file system
         for (file_path, edits) in edits_by_file {
             let abs_file_path = self.to_absolute_path(Path::new(&file_path));
             let file_lock = self.lock_manager.get_lock(&abs_file_path).await;
             let _guard = file_lock.write().await;
 
-            // Convert &TextEdit to TextEdit for apply_file_edits
+            // Convert &TextEdit to TextEdit
             let owned_edits: Vec<cb_protocol::TextEdit> = edits.iter().map(|e| (*e).clone()).collect();
 
-            match self.apply_file_edits(&abs_file_path, &owned_edits).await {
-                Ok(_) => {
+            // Get the original content from snapshot (guarantees atomicity)
+            let original_content = snapshots
+                .get(&abs_file_path)
+                .ok_or_else(|| {
+                    ServerError::Internal(format!(
+                        "File {} not found in snapshots",
+                        file_path
+                    ))
+                })?;
+
+            // DEBUG: Log snapshot content length
+            if original_content.is_empty() {
+                error!(
+                    file_path = %file_path,
+                    "BUG: Snapshot content is EMPTY for file!"
+                );
+            }
+
+            // Apply edits to the snapshot content (no I/O, fully synchronous)
+            match self.apply_edits_to_content(original_content, &owned_edits) {
+                Ok(modified_content) => {
+                    // Write the final modified content to disk
+                    if let Err(e) = fs::write(&abs_file_path, modified_content).await {
+                        error!(
+                            file_path = %file_path,
+                            error = %e,
+                            "Failed to write modified file"
+                        );
+                        self.rollback_from_snapshots(&snapshots).await?;
+                        return Err(ServerError::Internal(format!(
+                            "Failed to write file {}: {}. All changes have been rolled back.",
+                            file_path, e
+                        )));
+                    }
+
                     if !modified_files.contains(&file_path) {
                         modified_files.push(file_path.clone());
                     }
@@ -1056,7 +1090,7 @@ impl FileService {
                     error!(
                         file_path = %file_path,
                         error = %e,
-                        "Failed to apply edits to file"
+                        "Failed to apply edits to file content"
                     );
                     // Rollback all changes and return error
                     self.rollback_from_snapshots(&snapshots).await?;
@@ -1130,6 +1164,17 @@ impl FileService {
         for file_path in file_paths {
             match fs::read_to_string(file_path).await {
                 Ok(content) => {
+                    debug!(
+                        file_path = %file_path.display(),
+                        content_len = content.len(),
+                        "Snapshot created with content"
+                    );
+                    if content.is_empty() {
+                        warn!(
+                            file_path = %file_path.display(),
+                            "WARNING: Snapshot content is EMPTY even though file exists!"
+                        );
+                    }
                     snapshots.insert(file_path.clone(), content);
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -1219,6 +1264,43 @@ impl FileService {
     }
 
     /// Apply text edits to a single file
+    /// Apply edits to file content and return the modified content (synchronous, no I/O)
+    fn apply_edits_to_content(&self, original_content: &str, edits: &[TextEdit]) -> ServerResult<String> {
+        if edits.is_empty() {
+            return Ok(original_content.to_string());
+        }
+
+        // DEBUG: Log content length to diagnose empty content issue
+        if original_content.is_empty() {
+            error!(
+                edits_count = edits.len(),
+                "BUG: apply_edits_to_content called with EMPTY content! First edit: {:?}",
+                edits.first()
+            );
+        }
+
+        // Sort edits by position (highest line/column first) to avoid offset issues
+        let mut sorted_edits = edits.to_vec();
+        sorted_edits.sort_by(|a, b| {
+            let line_cmp = b.location.start_line.cmp(&a.location.start_line);
+            if line_cmp == std::cmp::Ordering::Equal {
+                b.location.start_column.cmp(&a.location.start_column)
+            } else {
+                line_cmp
+            }
+        });
+
+        // Apply edits from end to beginning to preserve positions
+        let mut modified_content = original_content.to_string();
+        for edit in sorted_edits {
+            modified_content = self.apply_single_edit(&modified_content, &edit)?;
+        }
+
+        Ok(modified_content)
+    }
+
+    /// Legacy wrapper for apply_edits_to_content that reads from file and writes back
+    /// Used for backward compatibility with existing code
     async fn apply_file_edits(&self, file_path: &Path, edits: &[TextEdit]) -> ServerResult<()> {
         if edits.is_empty() {
             return Ok(());
@@ -1236,22 +1318,8 @@ impl FileService {
             }
         };
 
-        // Sort edits by position (highest line/column first) to avoid offset issues
-        let mut sorted_edits = edits.to_vec();
-        sorted_edits.sort_by(|a, b| {
-            let line_cmp = b.location.start_line.cmp(&a.location.start_line);
-            if line_cmp == std::cmp::Ordering::Equal {
-                b.location.start_column.cmp(&a.location.start_column)
-            } else {
-                line_cmp
-            }
-        });
-
-        // Apply edits from end to beginning to preserve positions
-        let mut modified_content = content;
-        for edit in sorted_edits {
-            modified_content = self.apply_single_edit(&modified_content, &edit)?;
-        }
+        // Apply edits using the new function
+        let modified_content = self.apply_edits_to_content(&content, edits)?;
 
         // Write modified content back to file
         fs::write(file_path, modified_content).await.map_err(|e| {

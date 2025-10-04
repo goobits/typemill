@@ -783,6 +783,7 @@ mod tests {
             command: vec!["echo".to_string(), "test".to_string()], // Use echo for testing
             root_dir: None,
             restart_interval: None,
+            initialization_options: None,
         }
     }
 

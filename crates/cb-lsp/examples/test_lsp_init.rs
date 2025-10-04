@@ -16,6 +16,7 @@ async fn main() {
         command: vec![ts_lsp.to_string(), "--stdio".to_string()],
         root_dir: Some("/tmp".into()),
         restart_interval: None,
+        initialization_options: None,
     };
     
     println!("Creating LSP client...");

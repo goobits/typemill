@@ -148,7 +148,7 @@ See [`deployment/docker/README.md`](deployment/docker/README.md) for detailed do
 - **[API Reference](API.md)** - Complete MCP tools documentation
 - **[CLAUDE.md](CLAUDE.md)** - AI assistant integration guide
 - **[Architecture](docs/architecture/ARCHITECTURE.md)** - System design
-- **[Support Matrix](SUPPORT_MATRIX.md)** - Language support
+- **[Support Matrix](API.md#language-support-matrix)** - Language support by tool
 
 ## 🔧 Troubleshooting
 

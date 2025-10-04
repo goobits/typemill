@@ -3,12 +3,13 @@
 **Version:** 1.0.0-rc1
 **Last Updated:** 2025-10-04
 
-Complete API documentation for all 39 public MCP tools available in CodeBuddy.
+Complete API documentation for all MCP tools available in CodeBuddy.
 
 ---
 
 ## Table of Contents
 
+- [Language Support Matrix](#language-support-matrix) - Quick reference
 - [Navigation & Intelligence](#navigation--intelligence) (13 tools)
 - [Editing & Refactoring](#editing--refactoring) (9 tools)
 - [File Operations](#file-operations) (6 tools)
@@ -18,6 +19,76 @@ Complete API documentation for all 39 public MCP tools available in CodeBuddy.
 - [Internal Tools](#internal-tools) (5 tools - backend use only)
 - [Common Patterns](#common-patterns)
 - [Error Reference](#error-reference)
+
+---
+
+## Language Support Matrix
+
+**Total MCP Tools**: 42 (39 public + 3 lifecycle notifications)
+
+### Navigation & Intelligence (LSP-based)
+
+| Tool | TypeScript/JS | Python | Go | Rust | Notes |
+|------|---------------|--------|-----|------|-------|
+| `find_definition` | ✅ | ✅ | ✅ | ✅ | LSP-based, language server dependent |
+| `find_references` | ✅ | ✅ | ✅ | ✅ | Supports `include_declaration` param |
+| `find_implementations` | ✅ | ✅ | ✅ | ✅ | For interfaces/abstract classes |
+| `find_type_definition` | ✅ | ✅ | ✅ | ✅ | Find underlying type definitions |
+| `search_workspace_symbols` | ✅ | ✅ | ✅ | ✅ | Queries ALL active LSP servers |
+| `get_document_symbols` | ✅ | ✅ | ✅ | ✅ | Hierarchical symbol structure |
+| `prepare_call_hierarchy` | ✅ | ✅ | ✅ | ✅ | Returns call hierarchy item |
+| `get_call_hierarchy_incoming_calls` | ✅ | ✅ | ✅ | ✅ | Requires item from prepare step |
+| `get_call_hierarchy_outgoing_calls` | ✅ | ✅ | ✅ | ✅ | Requires item from prepare step |
+| `get_hover` | ✅ | ✅ | ✅ | ✅ | Documentation, types, signatures |
+| `get_completions` | ✅ | ✅ | ✅ | ✅ | Project-aware suggestions |
+| `get_signature_help` | ✅ | ✅ | ✅ | ✅ | Parameter information |
+| `get_diagnostics` | ✅ | ✅ | ✅ | ✅ | Errors, warnings, hints |
+
+### Editing & Refactoring (LSP-based)
+
+| Tool | TypeScript/JS | Python | Go | Rust | Notes |
+|------|---------------|--------|-----|------|-------|
+| `rename_symbol` | ✅ | ✅ | ✅ | ✅ | Supports dry_run |
+| `rename_symbol_strict` | ✅ | ✅ | ✅ | ✅ | Position-specific rename |
+| `organize_imports` | ✅ | ✅ | ✅ | ✅ | Language-specific conventions |
+| `get_code_actions` | ✅ | ✅ | ✅ | ✅ | Quick fixes, refactors |
+| `format_document` | ✅ | ✅ | ✅ | ✅ | Language server formatter |
+| `extract_function` | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | LSP-first with AST fallback |
+| `inline_variable` | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | LSP-first with AST fallback |
+| `extract_variable` | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | LSP-first with AST fallback |
+| `fix_imports` | ✅ | ✅ | ✅ | ✅ | Wrapper for organize_imports |
+
+### File Operations
+
+| Tool | TypeScript/JS | Python | Go | Rust | Notes |
+|------|---------------|--------|-----|------|-------|
+| `create_file` | ✅ | ✅ | ✅ | ✅ | Notifies LSP servers |
+| `read_file` | ✅ | ✅ | ✅ | ✅ | With locking |
+| `write_file` | ✅ | ✅ | ✅ | ✅ | Cache invalidation |
+| `delete_file` | ✅ | ✅ | ✅ | ✅ | Checks for imports |
+| `rename_file` | ✅ | ✅ | ✅ | ✅ | **Auto-updates imports** |
+| `list_files` | ✅ | ✅ | ✅ | ✅ | Respects .gitignore |
+
+### Workspace Operations
+
+| Tool | TypeScript/JS | Python | Go | Rust | Notes |
+|------|---------------|--------|-----|------|-------|
+| `rename_directory` | ✅ | ✅ | ✅ | ✅ | **Auto-updates imports**, Rust crate consolidation |
+| `analyze_imports` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | All languages use AST parsing |
+| `find_dead_code` | ✅ | ✅ | ✅ | ✅ | LSP-based |
+| `update_dependencies` | ✅ npm/yarn | ✅ pip | ✅ go mod | ✅ cargo | Executes package manager |
+| `extract_module_to_package` | ✅ | ✅ | ✅ | ✅ | Multi-language support |
+
+### Advanced & System
+
+| Tool | TypeScript/JS | Python | Go | Rust | Notes |
+|------|---------------|--------|-----|------|-------|
+| `apply_edits` | ✅ | ✅ | ✅ | ✅ | Atomic multi-file edits |
+| `batch_execute` | ✅ | ✅ | ✅ | ✅ | Batch operations |
+| `health_check` | ✅ | ✅ | ✅ | ✅ | Server status |
+| `web_fetch` | ✅ | ✅ | ✅ | ✅ | URL content fetching |
+
+**Note:** Language support depends on configured LSP servers in `.codebuddy/config.json`. LSP-first tools attempt LSP code actions, falling back to AST parsing if unsupported.
 
 ---
 
@@ -2050,7 +2121,7 @@ async function callMcpTool(toolName: string, args: any) {
 
 ## See Also
 
-- [SUPPORT_MATRIX.md](./SUPPORT_MATRIX.md) - Language support matrix
+- [Language Support Matrix](#language-support-matrix) - See above for language support table
 - [docs/architecture/ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md) - Implementation architecture
 - [docs/deployment/OPERATIONS.md](./docs/deployment/OPERATIONS.md) - Operations & CLI usage guide
 - [.codebuddy/workflows.json](./.codebuddy/workflows.json) - Workflow definitions

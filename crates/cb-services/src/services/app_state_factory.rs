@@ -83,9 +83,28 @@ fn spawn_operation_worker(queue: Arc<super::operation_queue::OperationQueue>) {
                             .get("content")
                             .and_then(|v| v.as_str())
                             .unwrap_or("");
-                        fs::write(&op.file_path, content).await.map_err(|e| {
+
+                        // Write and explicitly sync to disk to avoid caching issues
+                        let mut file = fs::File::create(&op.file_path).await.map_err(|e| {
                             cb_protocol::ApiError::Internal(format!(
-                                "Failed to write file {}: {}",
+                                "Failed to create file {}: {}",
+                                op.file_path.display(),
+                                e
+                            ))
+                        })?;
+
+                        use tokio::io::AsyncWriteExt;
+                        file.write_all(content.as_bytes()).await.map_err(|e| {
+                            cb_protocol::ApiError::Internal(format!(
+                                "Failed to write content to {}: {}",
+                                op.file_path.display(),
+                                e
+                            ))
+                        })?;
+
+                        file.sync_all().await.map_err(|e| {
+                            cb_protocol::ApiError::Internal(format!(
+                                "Failed to sync file {}: {}",
                                 op.file_path.display(),
                                 e
                             ))
