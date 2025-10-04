@@ -327,9 +327,10 @@ impl SystemHandler {
         };
 
         // Get the SystemToolsPlugin directly by name
-        let registry = context.plugin_manager.registry.read().await;
-        let system_plugin = registry
-            .get_plugin("system")
+        let system_plugin = context
+            .plugin_manager
+            .get_plugin_by_name("system")
+            .await
             .ok_or_else(|| ServerError::Internal("SystemToolsPlugin not found".to_string()))?;
 
         // Call the plugin directly

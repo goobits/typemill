@@ -289,7 +289,7 @@ impl PluginManager {
     /// Returns None if the plugin is not found
     pub async fn get_plugin_by_name(&self, name: &str) -> Option<Arc<dyn LanguagePlugin>> {
         let registry = self.registry.read().await;
-        registry.get_plugin(name).cloned()
+        registry.get_plugin(name)
     }
 
     /// Find plugins that can handle a specific file
