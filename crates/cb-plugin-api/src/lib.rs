@@ -48,6 +48,7 @@ use cb_types::error::ApiError;
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use std::path::Path;
+use std::sync::Arc;
 
 // ============================================================================
 // Error Types
@@ -646,7 +647,7 @@ mod tests {
     #[test]
     fn test_plugin_registry() {
         let mut registry = PluginRegistry::new();
-        registry.register(Box::new(MockPlugin));
+        registry.register(Arc::new(MockPlugin));
 
         assert!(registry.find_by_extension("mock").is_some());
         assert!(registry.find_by_extension("unknown").is_none());

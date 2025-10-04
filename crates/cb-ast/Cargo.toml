@@ -46,3 +46,4 @@ toml_edit = "0.23" # For parsing and modifying Cargo.toml files
 
 [dev-dependencies]
 tempfile = "3.0"
+cb-lang-rust = { path = "../languages/cb-lang-rust" }

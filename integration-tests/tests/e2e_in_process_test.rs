@@ -1,3 +1,4 @@
+use cb_core::model::mcp::{McpMessage, McpRequest};
 use cb_server::test_helpers::create_test_dispatcher_with_root;
 use serde_json::json;
 use std::time::Instant;
@@ -10,7 +11,7 @@ async fn test_workspace_edit_in_process() {
     let workspace_path = temp_dir.path().to_path_buf();
 
     // Create in-process dispatcher
-    let mut dispatcher = create_test_dispatcher_with_root(workspace_path.clone());
+    let dispatcher = create_test_dispatcher_with_root(workspace_path.clone());
 
     // Create 50 test files
     let file_count = 50;
@@ -34,22 +35,24 @@ const oldConstant{} = "old_value_{}";
             i, i, i, i, i
         );
 
-        let request = json!({
-            "jsonrpc": "2.0",
-            "id": format!("create-{}", i),
-            "method": "tools/call",
-            "params": {
+        let request = McpMessage::Request(McpRequest {
+            jsonrpc: "2.0".to_string(),
+            id: Some(json!(format!("create-{}", i))),
+            method: "tools/call".to_string(),
+            params: Some(json!({
                 "name": "create_file",
                 "arguments": {
                     "file_path": file_path.to_string_lossy(),
                     "content": content
                 }
-            }
+            })),
         });
 
-        let request_str = serde_json::to_string(&request).unwrap();
-        let response_str = dispatcher.handle_request(&request_str).await.unwrap();
-        let response: serde_json::Value = serde_json::from_str(&response_str).unwrap();
+        let response_msg = dispatcher.dispatch(request).await.unwrap();
+        let response = match response_msg {
+            McpMessage::Response(resp) => resp.result.unwrap_or_default(),
+            _ => panic!("Expected response message"),
+        };
 
         assert!(response.get("result").is_some());
         assert!(response["result"]["success"].as_bool().unwrap_or(false));
@@ -95,40 +98,37 @@ const oldConstant{} = "old_value_{}";
 
     // Execute large workspace edit
     let start = Instant::now();
-    let request = json!({
-        "jsonrpc": "2.0",
-        "id": "workspace-edit",
-        "method": "tools/call",
-        "params": {
+    let request = McpMessage::Request(McpRequest {
+        jsonrpc: "2.0".to_string(),
+        id: Some(json!("workspace-edit")),
+        method: "tools/call".to_string(),
+        params: Some(json!({
             "name": "apply_workspace_edit",
             "arguments": {
                 "changes": changes
             }
-        }
+        })),
     });
 
-    let request_str = serde_json::to_string(&request).unwrap();
-    let response_str = dispatcher.handle_request(&request_str).await.unwrap();
-    let response: serde_json::Value = serde_json::from_str(&response_str).unwrap();
+    let response_msg = dispatcher.dispatch(request).await.unwrap();
     let edit_duration = start.elapsed();
 
-    eprintln!(
-        "Workspace edit across {} files took: {:?}",
-        file_count, edit_duration
-    );
-    eprintln!(
-        "APPLY_EDITS RESPONSE: {}",
-        serde_json::to_string_pretty(&response).unwrap()
-    );
+    let result = match response_msg {
+        McpMessage::Response(resp) => {
+            eprintln!(
+                "Workspace edit across {} files took: {:?}",
+                file_count, edit_duration
+            );
 
-    // Check for errors
-    if let Some(error) = response.get("error") {
-        panic!("Workspace edit failed: {:?}", error);
-    }
+            if let Some(error) = resp.error {
+                panic!("Workspace edit failed: {:?}", error);
+            }
 
-    let result = response
-        .get("result")
-        .expect("Response should have result field");
+            resp.result.expect("Response should have result field")
+        }
+        _ => panic!("Expected response message"),
+    };
+
     assert!(
         result["applied"].as_bool().unwrap_or(false),
         "Workspace edit should be applied"

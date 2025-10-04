@@ -67,12 +67,6 @@ impl LockManager {
     pub async fn lock_count(&self) -> usize {
         self.locks.read().await.len()
     }
-
-    /// Clear all locks (use with caution - mainly for testing)
-    #[cfg(test)]
-    pub async fn clear_all(&self) {
-        self.locks.write().await.clear();
-    }
 }
 
 impl Default for LockManager {
