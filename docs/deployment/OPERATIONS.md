@@ -44,12 +44,27 @@ go install golang.org/x/tools/gopls@latest
 # Install clangd via your package manager
 ```
 
-### Compilation
+### Quick Installation
+
+**Automated Script (Recommended):**
+```bash
+# One-command install (handles all dependencies)
+curl -fsSL https://raw.githubusercontent.com/goobits/codebuddy/main/install.sh | bash
+```
+
+This script:
+- Installs Rust toolchain if needed
+- Clones repository
+- Builds from source
+- Installs to system location
+- Configures PATH automatically
+
+**Manual Compilation:**
 
 ```bash
 # Clone repository
-git clone <repository-url>
-cd rust
+git clone https://github.com/goobits/codebuddy.git
+cd codebuddy
 
 # Build release binary
 cargo build --release
@@ -58,14 +73,14 @@ cargo build --release
 ./target/release/codebuddy
 ```
 
-### Installation
+**Manual Installation:**
 
 ```bash
 # Copy binary to system location
 sudo cp target/release/codebuddy /usr/local/bin/
 
-# Or add to PATH
-export PATH="$PWD/target/release:$PATH"
+# Or use Makefile
+make install  # Installs to ~/.local/bin
 ```
 
 ## Configuration

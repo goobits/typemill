@@ -10,13 +10,19 @@ First off, thank you for considering contributing! It's people like you that mak
 
 ### Setup
 
-1.  **Clone the repository:**
+1.  **Quick start with install script:**
+    ```bash
+    # Automated installation (installs Rust if needed)
+    curl -fsSL https://raw.githubusercontent.com/goobits/codebuddy/main/install.sh | bash
+    ```
+
+2.  **Or clone the repository manually:**
     ```bash
     git clone https://github.com/goobits/codebuddy.git
     cd codebuddy
     ```
 
-2.  **Install build optimization tools (HIGHLY RECOMMENDED):**
+3.  **Install build optimization tools (HIGHLY RECOMMENDED):**
     ```bash
     ./scripts/setup-dev-tools.sh
     ```
@@ -29,7 +35,7 @@ First off, thank you for considering contributing! It's people like you that mak
 
     The tools are automatically configured in `.cargo/config.toml`.
 
-3.  **Build the project:**
+4.  **Build the project:**
     ```bash
     cargo build
     ```

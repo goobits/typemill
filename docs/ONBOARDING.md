@@ -12,11 +12,22 @@ Welcome to Codebuddy! This guide will help you get started with contributing to 
 
 ## Quick Start
 
-Before you begin, make sure you have:
+### Installation Options
 
-1. **Rust toolchain installed** (rustc, cargo)
-2. **Cloned the repository**
-3. **Built the project**: `cargo build`
+**Option 1: Automated Install Script (Recommended for first-time setup)**
+```bash
+curl -fsSL https://raw.githubusercontent.com/goobits/codebuddy/main/install.sh | bash
+```
+This installs Rust (if needed), clones the repo, and sets everything up.
+
+**Option 2: Manual Setup (For developers)**
+1. **Rust toolchain installed** (rustc, cargo) - Get from [rustup.rs](https://rustup.rs/)
+2. **Clone the repository**:
+   ```bash
+   git clone https://github.com/goobits/codebuddy.git
+   cd codebuddy
+   ```
+3. **Build the project**: `cargo build`
 4. **Run the tests**: `cargo test`
 
 ## Adding a New Tool to an Existing Handler

@@ -398,21 +398,30 @@ main() {
 
     cd codebuddy || handle_error "Failed to enter repository directory"
 
-    # Build release binary
-    log_info "Building release binary (this may take a few minutes)..."
-    if ! cargo build --release; then
-        handle_error "Failed to build codebuddy" \
-            "Check build logs above for details"
-    fi
-
-    # Install binary
-    log_info "Installing binary to ${INSTALL_DIR}..."
-    if [[ "${OS_TYPE}" == "macOS" ]]; then
-        cp target/release/codebuddy "${INSTALL_DIR}/" || \
-            handle_error "Failed to copy binary" "Try: sudo cp target/release/codebuddy ${INSTALL_DIR}/"
+    # Use Makefile if available, otherwise build directly
+    if [[ -f Makefile ]] && command_exists make; then
+        log_info "Building and installing via Makefile..."
+        if ! make install; then
+            handle_error "Failed to build via Makefile" \
+                "Check build logs above for details"
+        fi
     else
-        sudo cp target/release/codebuddy "${INSTALL_DIR}/" || \
-            handle_error "Failed to copy binary" "Check sudo permissions"
+        # Fallback: build directly with cargo
+        log_info "Building release binary (this may take a few minutes)..."
+        if ! cargo build --release; then
+            handle_error "Failed to build codebuddy" \
+                "Check build logs above for details"
+        fi
+
+        # Install binary
+        log_info "Installing binary to ${INSTALL_DIR}..."
+        if [[ "${OS_TYPE}" == "macOS" ]]; then
+            cp target/release/codebuddy "${INSTALL_DIR}/" || \
+                handle_error "Failed to copy binary" "Try: sudo cp target/release/codebuddy ${INSTALL_DIR}/"
+        else
+            sudo cp target/release/codebuddy "${INSTALL_DIR}/" || \
+                handle_error "Failed to copy binary" "Check sudo permissions"
+        fi
     fi
 
     # Verify installation
