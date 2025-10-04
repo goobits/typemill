@@ -74,27 +74,44 @@ Extend CodeBuddy beyond real-time code intelligence (LSP) into **batch whole-pro
 - McCabe complexity, nesting depth
 - Guide refactoring priorities
 
-## 4. Implementation Strategy
+## 4. Implementation Checklist
 
-**Phase 1: Foundation (Existing)**
-- ✅ AST parsing (cb-ast)
-- ✅ Multi-file traversal
-- ✅ LSP integration for type info
+### Phase 1: Foundation (Existing)
+- [x] AST parsing (cb-ast)
+- [x] Multi-file traversal
+- [x] LSP integration for type info
 
-**Phase 2: Graph Construction**
-- Build dependency graph (imports, calls, data flow)
-- Persist graph for incremental updates
-- Cache expensive computations
+### Phase 2: Graph Construction
+- [ ] Build dependency graph (imports, calls, data flow)
+- [ ] Persist graph for incremental updates
+- [ ] Cache expensive computations
 
-**Phase 3: Analysis Algorithms**
-- Start with #1 (circular deps) and #2 (dead code) - proven value
-- Add #3 (breaking changes) - high demand from library authors
-- Expand based on user feedback
+### Phase 3: Analysis Algorithms - High Value
+- [ ] Implement circular dependency detection
+- [ ] Implement dead code analysis (beyond functions)
+- [ ] Implement API breaking change impact analysis
+- [ ] Implement security vulnerability pattern detection
 
-**Phase 4: Delivery**
-- MCP tools (run from AI assistants)
-- CLI commands (`codebuddy analyze --dead-code`)
-- CI/CD integration (GitHub Actions, pre-commit hooks)
+### Phase 3b: Analysis Algorithms - Medium Value
+- [ ] Implement code duplication/clone detection
+- [ ] Implement architectural boundary violations
+- [ ] Implement error handling coverage
+
+### Phase 3c: Analysis Algorithms - Exploratory
+- [ ] Implement performance hotspot prediction
+- [ ] Implement data flow tracing
+- [ ] Implement code complexity heatmap
+
+### Phase 4: Delivery
+- [ ] Create MCP tools (run from AI assistants)
+- [ ] Create CLI commands (`codebuddy analyze --dead-code`)
+- [ ] Add CI/CD integration (GitHub Actions, pre-commit hooks)
+
+### Phase 5: Business Model
+- [ ] Validate demand via user interviews
+- [ ] Prototype circular deps + dead code analysis
+- [ ] Alpha test with early adopters
+- [ ] Finalize pricing model
 
 ## 5. Business Model Fit
 

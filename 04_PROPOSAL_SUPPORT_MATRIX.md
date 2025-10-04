@@ -1,4 +1,33 @@
-● Here's my final recommendation table for command naming improvements:
+# Proposal: Command Naming Improvements
+
+**Status**: Opinion - For Discussion
+**Date**: 2025-10-02
+
+## Implementation Checklist
+
+### High Priority Renames (🔴)
+- [ ] `prepare_call_hierarchy` → `get_call_hierarchy_root`
+- [ ] `get_call_hierarchy_incoming_calls` → `get_incoming_calls`
+- [ ] `get_call_hierarchy_outgoing_calls` → `get_outgoing_calls`
+- [ ] `get_hover` → `get_symbol_info`
+
+### Medium Priority Renames (🟡)
+- [ ] `rename_symbol_strict` → `rename_symbol_at_position`
+- [ ] `extract_module_to_package` → `extract_package`
+- [ ] `search_workspace_symbols` → `search_symbols`
+
+### Low Priority Renames (🟢)
+- [ ] `get_document_symbols` → `find_document_symbols`
+- [ ] `get_code_actions` → `find_code_actions`
+- [ ] `fix_imports` → `remove_unused_imports`
+- [ ] `rename_file` → `move_file`
+- [ ] `rename_directory` → `move_directory`
+- [ ] `batch_execute` → `batch_file_operations`
+- [ ] `update_dependencies` → `install_dependencies`
+
+---
+
+## Recommendation Table
 
   | Current Name                      | Suggested Name            | Priority  | Reason                                                               |
   |-----------------------------------|---------------------------|-----------|----------------------------------------------------------------------|
