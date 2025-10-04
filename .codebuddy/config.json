@@ -11,7 +11,7 @@
 ,
     {
       "extensions": ["rs"],
-      "command": ["rust-analyzer"]
+      "command": ["/home/developer/.cargo/bin/rust-analyzer"]
     }
 ]
 }

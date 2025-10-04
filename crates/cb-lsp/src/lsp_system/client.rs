@@ -79,8 +79,47 @@ impl LspClient {
             "Attempting to spawn LSP server"
         );
 
+        // Augment PATH to include common LSP installation locations
+        let current_path = std::env::var("PATH").unwrap_or_default();
+
+        // Build augmented PATH with common LSP locations
+        let mut path_additions = vec![];
+
+        // Add pipx bin directory (Linux/macOS)
+        if let Ok(home) = std::env::var("HOME") {
+            path_additions.push(format!("{}/.local/bin", home));
+        }
+
+        // Add npm global bin directory
+        if let Ok(npm_bin) = std::env::var("NPM_CONFIG_PREFIX") {
+            path_additions.push(format!("{}/bin", npm_bin));
+        } else if let Ok(home) = std::env::var("HOME") {
+            path_additions.push(format!("{}/.npm-global/bin", home));
+        }
+
+        // Add cargo bin directory
+        if let Ok(cargo_home) = std::env::var("CARGO_HOME") {
+            path_additions.push(format!("{}/bin", cargo_home));
+        } else if let Ok(home) = std::env::var("HOME") {
+            path_additions.push(format!("{}/.cargo/bin", home));
+        }
+
+        // Construct augmented PATH
+        let augmented_path = if path_additions.is_empty() {
+            current_path
+        } else {
+            format!("{}:{}", path_additions.join(":"), current_path)
+        };
+
+        tracing::debug!(
+            augmented_path = %augmented_path,
+            path_additions = ?path_additions,
+            "Using augmented PATH for LSP server"
+        );
+
         let mut child = Command::new(command)
             .args(args)
+            .env("PATH", augmented_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

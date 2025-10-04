@@ -48,25 +48,113 @@ impl EditingHandler {
 
         match context.plugin_manager.handle_request(request).await {
             Ok(response) => {
-                // Check if formatting was applied
-                let formatted = response
-                    .data
-                    .as_ref()
-                    .and_then(|d| d.as_bool())
-                    .unwrap_or(false);
+                // LSP textDocument/formatting returns an array of TextEdit objects
+                // Extract them and apply to the file
+                let text_edits = response.data.as_ref().and_then(|d| d.as_array());
 
-                Ok(json!({
-                    "formatted": formatted,
-                    "file_path": file_path_str,
-                    "plugin": response.metadata.plugin_name,
-                    "processing_time_ms": response.metadata.processing_time_ms,
-                }))
+                if let Some(edits) = text_edits {
+                    if !edits.is_empty() {
+                        // Read the current file content
+                        let content = context
+                            .app_state
+                            .file_service
+                            .read_file(&file_path)
+                            .await?;
+
+                        // Apply the text edits
+                        let formatted_content = Self::apply_text_edits(&content, edits)?;
+
+                        // Write the formatted content back
+                        context
+                            .app_state
+                            .file_service
+                            .write_file(&file_path, &formatted_content, false)
+                            .await?;
+
+                        Ok(json!({
+                            "formatted": true,
+                            "file_path": file_path_str,
+                            "plugin": response.metadata.plugin_name,
+                            "processing_time_ms": response.metadata.processing_time_ms,
+                        }))
+                    } else {
+                        // No formatting changes needed
+                        Ok(json!({
+                            "formatted": false,
+                            "file_path": file_path_str,
+                            "plugin": response.metadata.plugin_name,
+                            "processing_time_ms": response.metadata.processing_time_ms,
+                        }))
+                    }
+                } else {
+                    // No edits returned
+                    Ok(json!({
+                        "formatted": false,
+                        "file_path": file_path_str,
+                        "plugin": response.metadata.plugin_name,
+                        "processing_time_ms": response.metadata.processing_time_ms,
+                    }))
+                }
             }
             Err(err) => Err(cb_protocol::ApiError::Internal(format!(
                 "Format document failed: {}",
                 err
             ))),
         }
+    }
+
+    /// Apply LSP TextEdit array to content
+    /// LSP formatting typically returns a single edit that replaces the entire document
+    fn apply_text_edits(content: &str, edits: &[Value]) -> ServerResult<String> {
+        // For formatting, LSP usually returns a single TextEdit replacing the entire document
+        if edits.len() == 1 {
+            let edit = &edits[0];
+            if let Some(new_text) = edit["newText"].as_str() {
+                return Ok(new_text.to_string());
+            }
+        }
+
+        // If we have multiple edits, we need to apply them carefully
+        // Convert content to owned lines for modification
+        let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+
+        // Sort edits by reverse position to apply them from end to start
+        let mut sorted_edits: Vec<_> = edits.iter().collect();
+        sorted_edits.sort_by(|a, b| {
+            let a_range = &a["range"];
+            let b_range = &b["range"];
+            let a_start_line = a_range["start"]["line"].as_u64().unwrap_or(0);
+            let b_start_line = b_range["start"]["line"].as_u64().unwrap_or(0);
+            b_start_line.cmp(&a_start_line) // Reverse order
+        });
+
+        for edit in sorted_edits {
+            let range = &edit["range"];
+            let new_text = edit["newText"].as_str().unwrap_or("");
+
+            let start_line = range["start"]["line"].as_u64().ok_or_else(|| {
+                cb_protocol::ApiError::Internal("Invalid edit range".into())
+            })? as usize;
+            let start_char = range["start"]["character"].as_u64().ok_or_else(|| {
+                cb_protocol::ApiError::Internal("Invalid edit range".into())
+            })? as usize;
+            let end_line = range["end"]["line"].as_u64().ok_or_else(|| {
+                cb_protocol::ApiError::Internal("Invalid edit range".into())
+            })? as usize;
+            let end_char = range["end"]["character"].as_u64().ok_or_else(|| {
+                cb_protocol::ApiError::Internal("Invalid edit range".into())
+            })? as usize;
+
+            if start_line == end_line && start_line < lines.len() {
+                // Single line edit
+                let line = &mut lines[start_line];
+                let before = line.chars().take(start_char).collect::<String>();
+                let after = line.chars().skip(end_char).collect::<String>();
+                lines[start_line] = format!("{}{}{}", before, new_text, after);
+            }
+        }
+
+        Ok(lines.join("\n"))
     }
 
     async fn handle_get_code_actions(
