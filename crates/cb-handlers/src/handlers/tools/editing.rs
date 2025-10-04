@@ -222,7 +222,7 @@ impl ToolHandler for EditingHandler {
         &[
             "rename_symbol",
             "rename_symbol_strict",
-            "rename_symbol_with_imports",
+            // "rename_symbol_with_imports" moved to InternalEditingHandler
             "organize_imports",
             "fix_imports",
             "get_code_actions",

@@ -574,8 +574,11 @@ pub async fn run_lsp_compliance_test(case: &LspComplianceTestCase) {
         }
     };
 
-    // 3. Give LSP time to initialize
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    // 3. Give LSP time to initialize and index
+    // rust-analyzer needs more time to index Cargo projects
+    let sleep_duration = if case.language_id == "rs" { 5 } else { 2 };
+    eprintln!("⏳ Waiting {} seconds for LSP server to index workspace...", sleep_duration);
+    tokio::time::sleep(std::time::Duration::from_secs(sleep_duration)).await;
 
     // 4. Get method and params from the test case.
     let method = case.method;
@@ -594,6 +597,7 @@ pub async fn run_lsp_compliance_test(case: &LspComplianceTestCase) {
     match case.expected_behavior {
         LspComplianceBehavior::ReturnsNonEmptyArray => {
             let result = response.expect("Request should have succeeded.");
+            eprintln!("🔍 DEBUG: Full response: {:?}", result);
             if result.params.is_null() {
                 println!("WARNING: Response is null, treating as empty array");
                 panic!("Expected non-empty array but got null");
@@ -602,6 +606,7 @@ pub async fn run_lsp_compliance_test(case: &LspComplianceTestCase) {
                 println!("Response is not an array, got: {:?}", result.params);
                 panic!("Result should be an array");
             });
+            eprintln!("🔍 DEBUG: Array length: {}, content: {:?}", arr.len(), arr);
             assert!(!arr.is_empty(), "Expected a non-empty array, but got an empty one.");
         }
         LspComplianceBehavior::ReturnsEmptyArray => {

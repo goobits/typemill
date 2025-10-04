@@ -209,11 +209,13 @@ impl PluginDispatcher {
                 // Using the declarative macro for clean, maintainable registration
                 register_handlers_with_logging!(registry, {
                     SystemHandler => "SystemHandler with 3 tools (health_check, web_fetch, system_status)",
-                    LifecycleHandler => "LifecycleHandler with 3 tools (notify_file_opened, notify_file_saved, notify_file_closed)",
-                    WorkspaceHandler => "WorkspaceHandler with 5 tools (rename_directory, analyze_imports, find_dead_code, update_dependencies, extract_module_to_package)",
+                    LifecycleHandler => "LifecycleHandler with 3 INTERNAL tools (notify_file_opened, notify_file_saved, notify_file_closed)",
+                    InternalEditingHandler => "InternalEditingHandler with 1 INTERNAL tool (rename_symbol_with_imports)",
+                    InternalWorkspaceHandler => "InternalWorkspaceHandler with 1 INTERNAL tool (apply_workspace_edit)",
+                    WorkspaceHandler => "WorkspaceHandler with 7 tools (rename_directory, analyze_imports, find_dead_code, update_dependencies, extract_module_to_package, update_dependency, batch_update_dependencies)",
                     AdvancedHandler => "AdvancedHandler with 2 tools (apply_edits, batch_execute)",
                     FileOpsHandler => "FileOpsHandler with 6 tools (create_file, read_file, write_file, delete_file, rename_file, list_files)",
-                    EditingHandler => "EditingHandler with 10 tools (rename_symbol, rename_symbol_strict, rename_symbol_with_imports, organize_imports, fix_imports, get_code_actions, format_document, extract_function, extract_variable, inline_variable)",
+                    EditingHandler => "EditingHandler with 9 tools (rename_symbol, rename_symbol_strict, organize_imports, fix_imports, get_code_actions, format_document, extract_function, extract_variable, inline_variable)",
                     NavigationHandler => "NavigationHandler with 13 tools (find_definition, find_references, find_implementations, find_type_definition, get_document_symbols, search_workspace_symbols, get_hover, get_completions, get_signature_help, get_diagnostics, prepare_call_hierarchy, get_call_hierarchy_incoming_calls, get_call_hierarchy_outgoing_calls)",
                 });
             }

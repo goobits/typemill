@@ -292,9 +292,10 @@ pub struct LspComplianceTestCase {
     pub expected_behavior: LspComplianceBehavior,
 }
 
-/// Helper function to create params for workspace/symbol with empty query
+/// Helper function to create params for workspace/symbol with minimal query
+/// Using a single character to test if rust-analyzer returns symbols
 fn workspace_symbol_empty_params() -> serde_json::Value {
-    serde_json::json!({ "query": "" })
+    serde_json::json!({ "query": "m" })
 }
 
 /// Helper function for workspace/symbol with specific query
@@ -304,17 +305,22 @@ fn workspace_symbol_data_params() -> serde_json::Value {
 
 /// The central array of all compliance tests to be run.
 pub const LSP_COMPLIANCE_TESTS: &[LspComplianceTestCase] = &[
-    // Test case for rust-analyzer's handling of an empty workspace/symbol query.
+    // Test case for rust-analyzer's handling of a minimal workspace/symbol query.
     // With the correct initializationOptions (workspace.symbol.search.kind = "all"),
-    // rust-analyzer should return all symbols, not just types.
+    // rust-analyzer should return function symbols (not just types) for query "m" matching "main".
     LspComplianceTestCase {
         language_id: "rs",
         feature_name: "workspace_symbol_empty_query",
         method: "workspace/symbol",
         params: workspace_symbol_empty_params,
         files: &[
-            ("main.rs", "fn main() {}"),
-            ("lib.rs", "pub fn helper() {}"),
+            ("Cargo.toml", r#"[package]
+name = "test"
+version = "0.1.0"
+edition = "2021"
+"#),
+            ("src/main.rs", "fn main() {}\nfn my_func() {}"),
+            ("src/lib.rs", "pub fn helper() {}\npub fn make_something() {}"),
         ],
         expected_behavior: LspComplianceBehavior::ReturnsNonEmptyArray,
     },

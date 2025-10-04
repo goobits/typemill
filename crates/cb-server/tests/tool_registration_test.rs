@@ -1,7 +1,7 @@
 use cb_server::handlers::plugin_dispatcher::create_test_dispatcher;
 
 #[tokio::test]
-async fn test_all_42_public_tools_are_registered() {
+async fn test_all_40_public_tools_are_registered() {
     let dispatcher = create_test_dispatcher();
     dispatcher.initialize().await.unwrap();
 
@@ -10,7 +10,7 @@ async fn test_all_42_public_tools_are_registered() {
 
     // Note: This tests PUBLIC tools only (visible to AI agents via MCP).
     // Internal tools (lifecycle hooks, etc.) are tested separately.
-    const EXPECTED_TOOLS: [&str; 42] = [
+    const EXPECTED_TOOLS: [&str; 40] = [
         // Navigation (14)
         "find_definition",
         "find_references",
@@ -26,7 +26,7 @@ async fn test_all_42_public_tools_are_registered() {
         "get_call_hierarchy_incoming_calls",
         "get_call_hierarchy_outgoing_calls",
         "web_fetch",
-        // Editing (10)
+        // Editing (9) - rename_symbol_with_imports moved to internal
         "rename_symbol",
         "rename_symbol_strict",
         "organize_imports",
@@ -36,7 +36,6 @@ async fn test_all_42_public_tools_are_registered() {
         "inline_variable",
         "extract_variable",
         "fix_imports",
-        "rename_symbol_with_imports",
         // File Operations (6)
         "create_file",
         "read_file",
@@ -44,7 +43,7 @@ async fn test_all_42_public_tools_are_registered() {
         "delete_file",
         "rename_file",
         "list_files",
-        // Workspace (8)
+        // Workspace (6) - apply_workspace_edit moved to internal
         "rename_directory",
         "analyze_imports",
         "find_dead_code",
@@ -52,7 +51,6 @@ async fn test_all_42_public_tools_are_registered() {
         "extract_module_to_package",
         "update_dependency",
         "batch_update_dependencies",
-        "apply_workspace_edit",
         // Advanced (2)
         "apply_edits",
         "batch_execute",
@@ -105,10 +103,12 @@ async fn test_internal_tools_are_hidden() {
     let registry = dispatcher.tool_registry.lock().await;
 
     // Internal tools that should be hidden from MCP tool listings
-    const EXPECTED_INTERNAL_TOOLS: [&str; 3] = [
+    const EXPECTED_INTERNAL_TOOLS: [&str; 5] = [
         "notify_file_opened",
         "notify_file_saved",
         "notify_file_closed",
+        "rename_symbol_with_imports",
+        "apply_workspace_edit",
     ];
 
     // Get public tools (should NOT include internal tools)

@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 #[tokio::test]
 async fn test_large_file_performance() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
 
     // Create a large TypeScript file (50k lines)
@@ -107,6 +108,7 @@ async fn test_large_file_performance() {
 #[tokio::test]
 async fn test_many_small_files_performance() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
 
     let file_count = 100;
@@ -340,6 +342,7 @@ export class RapidClass{} {{
 #[tokio::test]
 async fn test_workspace_edit_performance() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
 
     // Create multiple files for large workspace edit
@@ -470,6 +473,7 @@ const oldConstant{} = "old_value_{}";
 #[tokio::test]
 async fn test_memory_usage_large_operations() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
 
     // Create a very large content string (5MB)
@@ -567,6 +571,7 @@ async fn test_memory_usage_large_operations() {
 #[tokio::test]
 async fn test_lsp_performance_complex_project() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
 
     // Create a complex TypeScript project structure
