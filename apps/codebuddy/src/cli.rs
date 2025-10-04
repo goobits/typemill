@@ -39,7 +39,7 @@ pub enum Commands {
         #[arg(long)]
         daemon: bool,
         /// Port to bind to
-        #[arg(long, default_value = "3000")]
+        #[arg(long, default_value = "3040")]
         port: u16,
     },
     /// Show status
