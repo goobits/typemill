@@ -891,28 +891,19 @@ pub async fn run_rename_directory_test(case: &RenameDirectoryTestCase, use_real_
             }
         }
     } else {
-        // Mock test using SystemToolsPlugin directly
-        use cb_plugins::system_tools_plugin::SystemToolsPlugin;
-        use cb_plugins::{LanguagePlugin, PluginRequest};
+        // Mock test using FileService directly
+        let app_state = create_mock_state(workspace.path().to_path_buf()).await;
 
-        let params = json!({
-            "old_path": old_path.to_string_lossy(),
-            "new_path": new_path.to_string_lossy(),
-            "update_imports": case.update_imports,
-            "dry_run": false
-        });
-
-        let plugin = SystemToolsPlugin::new();
-        let request = PluginRequest {
-            method: "rename_directory".to_string(),
-            file_path: old_path.clone(),
-            position: None,
-            range: None,
-            params,
-            request_id: Some("test-rename-directory".to_string()),
-        };
-
-        let result = plugin.handle_request(request).await;
+        let result = app_state
+            .file_service
+            .rename_directory_with_imports(
+                &old_path,
+                &new_path,
+                false, // dry_run
+                false, // consolidate
+                None,  // scan_scope (uses default)
+            )
+            .await;
 
         if case.expect_success {
             assert!(
@@ -920,13 +911,6 @@ pub async fn run_rename_directory_test(case: &RenameDirectoryTestCase, use_real_
                 "Test '{}': Expected success but got error: {:?}",
                 case.test_name,
                 result.err()
-            );
-
-            let response = result.unwrap();
-            assert!(
-                response.success,
-                "Test '{}': Plugin returned success=false: {:?}",
-                case.test_name, response.error
             );
 
             // Verify directory was renamed
