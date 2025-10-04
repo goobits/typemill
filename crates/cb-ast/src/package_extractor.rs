@@ -818,8 +818,10 @@ resolver = "2"
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::language::LanguageAdapter;
     use cb_protocol::EditType;
     use std::fs;
+    use std::sync::Arc;
     use tempfile::tempdir;
 
     #[tokio::test]

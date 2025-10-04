@@ -35,33 +35,6 @@ impl ImportService {
         }
     }
 
-    /// Create a new import service with default adapters (deprecated)
-    ///
-    /// This method creates a registry with the old hardcoded adapters for
-    /// backward compatibility. New code should use `new()` with a properly
-    /// configured registry.
-    #[deprecated(
-        since = "1.0.0-beta",
-        note = "Use ImportService::new() with a LanguageAdapterRegistry instead"
-    )]
-    pub fn with_default_adapters(project_root: impl AsRef<Path>) -> Self {
-        use cb_ast::language::{
-            GoAdapter, JavaAdapter, PythonAdapter, RustAdapter, TypeScriptAdapter,
-        };
-
-        let mut registry = LanguageAdapterRegistry::new();
-        registry.register(Arc::new(RustAdapter));
-        registry.register(Arc::new(TypeScriptAdapter));
-        registry.register(Arc::new(PythonAdapter));
-        registry.register(Arc::new(GoAdapter));
-        registry.register(Arc::new(JavaAdapter));
-
-        Self {
-            project_root: project_root.as_ref().to_path_buf(),
-            adapter_registry: Arc::new(registry),
-        }
-    }
-
     /// Update imports after a file rename
     ///
     /// Returns an EditPlan that should be applied via FileService.apply_edit_plan()
