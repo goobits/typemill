@@ -1,13 +1,12 @@
-//! Integration tests for Phase 2 features
+//! Integration tests for operation queue and lock manager
 //! These tests verify the operation queue, lock manager, and transaction support
 
 mod common;
 
 use cb_server::services::operation_queue::OperationTransaction;
-use cb_server::services::{FileOperation, LockManager, OperationQueue, OperationType};
+use cb_server::services::{FileOperation, OperationType};
 use serde_json::json;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 

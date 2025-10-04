@@ -1,10 +1,10 @@
-//! Integration tests for Phase 3 features
-//! These tests verify monitoring, batching, and deadlock warnings
+//! Integration tests for advanced queue features
+//! These tests verify monitoring, batching, and priority handling
 
 mod common;
 
 use cb_protocol::ApiError;
-use cb_server::services::{FileOperation, LockManager, OperationQueue, OperationType};
+use cb_server::services::{FileOperation, OperationType};
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
