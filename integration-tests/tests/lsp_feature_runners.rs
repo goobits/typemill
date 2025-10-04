@@ -21,6 +21,7 @@ pub async fn run_go_to_definition_test(case: &GoToDefinitionTestCase, use_real_l
 
     if use_real_lsp {
         let (service, workspace) = builder.build().await.unwrap();
+        // LSP indexing delay: Give the LSP server time to initialize and parse files.
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         let message = cb_protocol::Message {
@@ -112,6 +113,7 @@ pub async fn run_find_references_test(case: &FindReferencesTestCase, use_real_ls
 
     if use_real_lsp {
         let (service, workspace) = builder.build().await.unwrap();
+        // LSP indexing delay: Give the LSP server time to initialize and parse files.
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         let message = cb_protocol::Message {
@@ -190,6 +192,7 @@ pub async fn run_hover_test(case: &HoverTestCase, use_real_lsp: bool) {
 
     if use_real_lsp {
         let (service, workspace) = builder.build().await.unwrap();
+        // LSP indexing delay: Give the LSP server time to initialize and parse files.
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         let message = cb_protocol::Message {
@@ -264,6 +267,7 @@ pub async fn run_document_symbols_test(case: &DocumentSymbolsTestCase, use_real_
 
     if use_real_lsp {
         let (service, workspace) = builder.build().await.unwrap();
+        // LSP indexing delay: Give the LSP server time to initialize and parse files.
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         let message = cb_protocol::Message {
@@ -386,6 +390,7 @@ pub async fn run_completion_test(case: &CompletionTestCase, use_real_lsp: bool) 
 
     if use_real_lsp {
         let (service, workspace) = builder.build().await.unwrap();
+        // LSP indexing delay: Give the LSP server time to initialize and parse files.
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         let message = cb_protocol::Message {
@@ -460,6 +465,7 @@ pub async fn run_rename_test(case: &RenameTestCase, use_real_lsp: bool) {
 
     if use_real_lsp {
         let (service, workspace) = builder.build().await.unwrap();
+        // LSP indexing delay: Give the LSP server time to initialize and parse files.
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         let message = cb_protocol::Message {

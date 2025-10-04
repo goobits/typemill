@@ -111,6 +111,8 @@ function createProcessor<T>(type: string): DataProcessor<T> | null {
 }
 "#;
     std::fs::write(&file_path, content).unwrap();
+    // LSP indexing delay: Give TypeScript LSP time to parse the file and build its AST.
+    // Most LSP servers don't provide a reliable "ready" signal.
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
     let response = client
         .call_tool(
@@ -186,163 +188,14 @@ function createProcessor<T>(type: string): DataProcessor<T> | null {
         symbols.len()
     );
 }
-#[tokio::test]
-async fn test_complex_refactoring_scenarios() {
-    let workspace = TestWorkspace::new();
-    let mut client = TestClient::new(workspace.path());
-    let base_dir = workspace.path().join("refactoring_project");
-    std::fs::create_dir(&base_dir).unwrap();
-    std::fs::write(
-        base_dir.join("tsconfig.json"),
-        r#"{"compilerOptions": {"module": "ESNext", "target": "ESNext"}}"#,
-    )
-    .unwrap();
-    let models_file = base_dir.join("models.ts");
-    let services_file = base_dir.join("services.ts");
-    let controllers_file = base_dir.join("controllers.ts");
-    std::fs::write(
-        &models_file,
-        r#"
-export interface UserModel {
-    id: number;
-    username: string;
-    email: string;
-}
-
-export interface ProductModel {
-    id: number;
-    name: string;
-    price: number;
-    userId: number;
-}
-"#,
-    )
-    .unwrap();
-    std::fs::write(
-        &services_file,
-        r#"
-import { UserModel, ProductModel } from './models';
-
-export class UserService {
-    async findUser(id: number): Promise<UserModel | null> {
-        // Implementation here
-        return null;
-    }
-
-    async updateUser(user: UserModel): Promise<boolean> {
-        return true;
-    }
-}
-
-export class ProductService {
-    async findProductsByUser(userId: number): Promise<ProductModel[]> {
-        return [];
-    }
-}
-"#,
-    )
-    .unwrap();
-    std::fs::write(
-        &controllers_file,
-        r#"
-import { UserService, ProductService } from './services';
-import { UserModel } from './models';
-
-export class UserController {
-    constructor(
-        private userService: UserService,
-        private productService: ProductService
-    ) {}
-
-    async getUser(id: number): Promise<UserModel | null> {
-        return await this.userService.findUser(id);
-    }
-
-    async getUserProducts(userId: number) {
-        return await this.productService.findProductsByUser(userId);
-    }
-}
-"#,
-    )
-    .unwrap();
-    tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
-    let response = client
-        .call_tool(
-            "find_references",
-            json!(
-                { "file_path" : models_file.to_string_lossy(), "line" : 1, "character" :
-                18, "include_declaration" : true }
-            ),
-        )
-        .await;
-    if let Ok(response) = response {
-        if let Some(references) = response["references"].as_array() {
-            println!("Found {} references to UserModel", references.len());
-            if references.len() >= 1 {
-                println!("✅ Cross-file reference finding working");
-            }
-        } else {
-            println!("⚠️ References not in expected format");
-        }
-    } else {
-        println!("⚠️ Find references failed - LSP server may need more initialization time");
-    }
-    let response = client
-        .call_tool("search_workspace_symbols", json!({ "query" : "User" }))
-        .await;
-    if let Ok(response) = response {
-        if let Some(symbols) = response["symbols"].as_array() {
-            println!("Found {} User-related symbols", symbols.len());
-            if !symbols.is_empty() {
-                println!("✅ Workspace symbol search working");
-            }
-        } else {
-            println!("⚠️ Symbols not in expected format");
-        }
-    } else {
-        println!("⚠️ Workspace symbol search failed");
-    }
-    let response = client
-        .call_tool(
-            "apply_workspace_edit",
-            json!(
-                { "changes" : { models_file.to_string_lossy() : [{ "range" : { "start" :
-                { "line" : 1, "character" : 17 }, "end" : { "line" : 1, "character" : 26
-                } }, "newText" : "User" }], services_file.to_string_lossy() : [{ "range"
-                : { "start" : { "line" : 1, "character" : 9 }, "end" : { "line" : 1,
-                "character" : 18 } }, "newText" : "User" }, { "range" : { "start" : {
-                "line" : 5, "character" : 37 }, "end" : { "line" : 5, "character" : 46 }
-                }, "newText" : "User" }, { "range" : { "start" : { "line" : 9,
-                "character" : 25 }, "end" : { "line" : 9, "character" : 34 } }, "newText"
-                : "User" }], controllers_file.to_string_lossy() : [{ "range" : { "start"
-                : { "line" : 1, "character" : 9 }, "end" : { "line" : 1, "character" : 18
-                } }, "newText" : "User" }, { "range" : { "start" : { "line" : 9,
-                "character" : 33 }, "end" : { "line" : 9, "character" : 42 } }, "newText"
-                : "User" }] } }
-            ),
-        )
-        .await;
-    if let Ok(response) = response {
-        if response["applied"].as_bool().unwrap_or(false) {
-            println!("✅ Workspace edit applied successfully");
-        } else {
-            println!("⚠️ Workspace edit not applied");
-        }
-    } else {
-        println!("⚠️ Workspace edit failed");
-    }
-    if let Ok(models_content) = std::fs::read_to_string(&models_file) {
-        if models_content.contains("interface User") && !models_content.contains("UserModel") {
-            println!("✅ File-based refactoring verification successful");
-        } else {
-            println!(
-                "⚠️ File content still shows original names (workspace edit may not have been applied)"
-            );
-        }
-    } else {
-        println!("⚠️ Could not read models file for verification");
-    }
-}
+// Removed: test_complex_refactoring_scenarios - This was exploration/demo code, not a test.
+// It accepted any result (success/error/empty) and only printed emoji status messages.
+// No assertions that could fail - the test always passed regardless of behavior.
+//
+// Real cross-file refactoring is tested in:
+// - test_advanced_lsp_features_availability (lines 79-188) with strict assertions
+// - test_cross_language_project (lines 347-566)
+// - test_workspace_operations_integration (e2e_workspace_operations.rs)
 #[tokio::test]
 async fn test_cross_language_project() {
     let workspace = TestWorkspace::new();
@@ -607,6 +460,8 @@ export function {}Function{}(param: {}Interface{}): boolean {{
             workspace.create_file(&file_path, &content);
         }
     }
+    // LSP indexing delay: Large project with 20+ files needs 3-5 seconds for TypeScript LSP
+    // to parse and index all files. No reliable "ready" signal from typescript-language-server.
     tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
     let sample_files = vec![
         "src/components/components0.ts",
