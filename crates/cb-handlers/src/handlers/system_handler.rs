@@ -233,11 +233,15 @@ fn lsp_kind_to_string(kind: u64) -> String {
 // SystemHandler - Public Interface
 // ============================================================================
 
-pub struct SystemHandler;
+pub struct SystemHandler {
+    dependency_handler: super::dependency_handler::DependencyHandler,
+}
 
 impl SystemHandler {
     pub fn new() -> Self {
-        Self
+        Self {
+            dependency_handler: super::dependency_handler::DependencyHandler::new(),
+        }
     }
 }
 
@@ -271,8 +275,13 @@ impl ToolHandler for SystemHandler {
             "notify_file_closed" => self.handle_notify_file_closed(tool_call, context).await,
             "find_dead_code" => self.handle_find_dead_code(tool_call, context).await,
 
-            // Delegate to plugin system (SystemToolsPlugin handles these)
-            "analyze_imports" | "update_dependencies" => {
+            // Delegate to DependencyHandler
+            "update_dependencies" => {
+                self.dependency_handler.handle_tool(tool_call, context).await
+            }
+
+            // Delegate to plugin system (SystemToolsPlugin handles this)
+            "analyze_imports" => {
                 self.delegate_to_plugin_system(tool_call, context).await
             }
 
