@@ -507,12 +507,11 @@ async fn test_fix_imports_missing_file_path() {
     let response = client
         .call_tool("fix_imports", json!({ "dry_run" : true }))
         .await;
-    if let Ok(resp) = response {
-        eprintln!("Response: {}", serde_json::to_string_pretty(&resp).unwrap());
-        assert!(resp.get("error").is_some(), "Expected error in response");
-    } else {
-        assert!(true);
-    }
+    // Must return error - missing required file_path parameter
+    assert!(
+        response.is_err() || response.as_ref().unwrap().get("error").is_some(),
+        "Expected error for missing required file_path parameter"
+    );
 }
 #[tokio::test]
 async fn test_fix_imports_nonexistent_file() {
@@ -527,14 +526,11 @@ async fn test_fix_imports_nonexistent_file() {
             ),
         )
         .await;
-    match response {
-        Ok(resp) => {
-            assert!(resp.get("result").is_some() || resp.get("error").is_some());
-        }
-        Err(_) => {
-            assert!(true);
-        }
-    }
+    // Must return error for nonexistent file
+    assert!(
+        response.is_err() || response.as_ref().unwrap().get("error").is_some(),
+        "Expected error for nonexistent file"
+    );
 }
 #[tokio::test]
 async fn test_extract_function_refactoring() {
