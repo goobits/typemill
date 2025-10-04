@@ -26,19 +26,19 @@ The codebase compiles successfully with all tests passing:
 
 ## Implementation Checklist (Summary)
 
-- [ ] **Phase 1:** Create shared utilities module (2-3 hours)
-- [ ] **Phase 2:** Extract workflow executor step logic - 90 lines (3-4 hours)
+- [x] **Phase 1:** Create shared utilities module (2-3 hours) ✅ COMPLETE
+- [x] **Phase 2:** Extract workflow executor step logic - 90 lines (3-4 hours) ✅ COMPLETE
 - [ ] **Phase 3:** Consolidate AppState construction - 60-80 lines (4-5 hours)
-- [ ] **Phase 4:** Unify command existence checking - 12 lines (30 min)
-- [ ] **Phase 5:** Extract workspace manifest update logic - 37 lines (1-2 hours)
-- [ ] **Phase 6:** Consolidate remote command execution - 30-40 lines (1 hour)
-- [ ] **Phase 7:** Extract dry-run result wrapping - 40-50 lines (1 hour)
-- [ ] **Phase 8:** Refactor tool handler context conversion - 60-80 lines (1-2 hours)
+- [x] **Phase 4:** Unify command existence checking - 12 lines (30 min) ✅ COMPLETE
+- [x] **Phase 5:** Extract workspace manifest update logic - 37 lines (1-2 hours) ✅ COMPLETE
+- [x] **Phase 6:** Consolidate remote command execution - 30-40 lines (1 hour) ✅ COMPLETE
+- [x] **Phase 7:** Extract dry-run result wrapping - 40-50 lines (1 hour) ✅ COMPLETE
+- [x] **Phase 8:** Refactor tool handler context conversion - 60-80 lines (1-2 hours) ✅ COMPLETE
 - [ ] **Phase 9:** Consolidate refactoring handler patterns - 40-50 lines (3-4 hours)
 - [ ] **Phase 10:** Test helper consolidation - 30-40 lines (1-2 hours)
 
-**Total Estimated Effort:** 18-24 hours
-**Expected Reduction:** 420-550 duplicate lines (4.67% → ~2.7%)
+**Total Estimated Effort:** ~~18-24 hours~~ → **8-11 hours remaining** (7 phases complete!)
+**Expected Reduction:** ~~420-550 duplicate lines~~ → **~150-170 lines remaining** (70% complete!)
 
 ---
 
