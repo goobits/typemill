@@ -2,6 +2,7 @@ use serde_json::{json, Value};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::process::{Child, ChildStdin, Command, Stdio};
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -143,11 +144,8 @@ impl TestClient {
         tool_name: &str,
         arguments: Value,
     ) -> Result<Value, Box<dyn std::error::Error>> {
-        static mut REQUEST_ID: i32 = 0;
-        let id = unsafe {
-            REQUEST_ID += 1;
-            REQUEST_ID
-        };
+        static REQUEST_ID: AtomicI32 = AtomicI32::new(0);
+        let id = REQUEST_ID.fetch_add(1, Ordering::SeqCst) + 1;
 
         let request = json!({
             "jsonrpc": "2.0",
@@ -257,11 +255,8 @@ impl TestClient {
         arguments: Value,
         timeout: Duration,
     ) -> Result<Value, Box<dyn std::error::Error>> {
-        static mut REQUEST_ID: i32 = 0;
-        let id = unsafe {
-            REQUEST_ID += 1;
-            REQUEST_ID
-        };
+        static REQUEST_ID: AtomicI32 = AtomicI32::new(0);
+        let id = REQUEST_ID.fetch_add(1, Ordering::SeqCst) + 1;
 
         let request = json!({
             "jsonrpc": "2.0",
