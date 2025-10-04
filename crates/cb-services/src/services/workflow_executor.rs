@@ -143,6 +143,7 @@ impl DefaultWorkflowExecutor {
     ///
     /// This method handles parameter resolution, dry-run injection,
     /// plugin request creation, and execution with logging.
+    #[allow(clippy::too_many_arguments)]
     async fn execute_workflow_step(
         &self,
         step: &cb_core::model::workflow::Step,

@@ -1,6 +1,8 @@
 //! Factory for creating AppState instances
 //! Consolidates duplicate initialization logic
 
+#![allow(unexpected_cfgs)]
+
 use super::*;
 use cb_ast::AstCache;
 use std::path::PathBuf;

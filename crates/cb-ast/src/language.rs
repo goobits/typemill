@@ -855,6 +855,7 @@ impl LanguageAdapter for PythonAdapter {
         scope: ScanScope,
     ) -> AstResult<Vec<ModuleReference>> {
         // Parse Python source code
+        #[allow(deprecated)]
         let program = rustpython_parser::parse_program(content, "<string>")
             .map_err(|e| AstError::analysis(format!("Failed to parse Python source: {:?}", e)))?;
 
@@ -1056,41 +1057,41 @@ impl<'a> GoModuleFinder<'a> {
         }
 
         // Check qualified identifiers (module.Function calls) if in appropriate scope
-        if matches!(self.scope, ScanScope::QualifiedPaths | ScanScope::All) {
-            if node.kind() == "selector_expression" {
-                // selector_expression: operand.field
-                // Check if operand is our module
-                if let Some(operand) = node.child_by_field_name("operand") {
-                    if operand.kind() == "identifier" {
-                        let ident = self.node_text(operand);
-                        if ident == self.module_to_find {
-                            let full_text = self.node_text(node);
-                            self.references.push(ModuleReference {
-                                line: operand.start_position().row,
-                                column: operand.start_position().column,
-                                length: self.module_to_find.len(),
-                                text: full_text,
-                                kind: ReferenceKind::QualifiedPath,
-                            });
-                        }
+        if matches!(self.scope, ScanScope::QualifiedPaths | ScanScope::All)
+            && node.kind() == "selector_expression"
+        {
+            // selector_expression: operand.field
+            // Check if operand is our module
+            if let Some(operand) = node.child_by_field_name("operand") {
+                if operand.kind() == "identifier" {
+                    let ident = self.node_text(operand);
+                    if ident == self.module_to_find {
+                        let full_text = self.node_text(node);
+                        self.references.push(ModuleReference {
+                            line: operand.start_position().row,
+                            column: operand.start_position().column,
+                            length: self.module_to_find.len(),
+                            text: full_text,
+                            kind: ReferenceKind::QualifiedPath,
+                        });
                     }
                 }
             }
         }
 
         // Check string literals if scanning all
-        if self.scope == ScanScope::All {
-            if node.kind() == "interpreted_string_literal" || node.kind() == "raw_string_literal" {
-                let text = self.node_text(node);
-                if text.contains(self.module_to_find) {
-                    self.references.push(ModuleReference {
-                        line: node.start_position().row,
-                        column: node.start_position().column,
-                        length: self.module_to_find.len(),
-                        text,
-                        kind: ReferenceKind::StringLiteral,
-                    });
-                }
+        if self.scope == ScanScope::All
+            && (node.kind() == "interpreted_string_literal" || node.kind() == "raw_string_literal")
+        {
+            let text = self.node_text(node);
+            if text.contains(self.module_to_find) {
+                self.references.push(ModuleReference {
+                    line: node.start_position().row,
+                    column: node.start_position().column,
+                    length: self.module_to_find.len(),
+                    text,
+                    kind: ReferenceKind::StringLiteral,
+                });
             }
         }
 

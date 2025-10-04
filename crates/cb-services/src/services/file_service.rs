@@ -142,7 +142,7 @@ impl FileService {
                     );
 
                     let rollback_output = Command::new("git")
-                        .args(&["reset", "--hard", "HEAD"])
+                        .args(["reset", "--hard", "HEAD"])
                         .current_dir(&self.project_root)
                         .output();
 
