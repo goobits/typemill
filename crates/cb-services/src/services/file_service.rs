@@ -2932,12 +2932,14 @@ mod tests {
             lock_manager.clone(),
         ));
         let config = cb_core::AppConfig::default();
+        let plugin_registry = crate::services::build_language_plugin_registry();
         let service = FileService::new(
             temp_dir.path(),
             ast_cache,
             lock_manager,
             operation_queue.clone(),
             &config,
+            plugin_registry,
         );
 
         // Spawn background worker to process queued operations
@@ -3445,12 +3447,14 @@ mod workspace_tests {
             lock_manager.clone(),
         ));
         let config = cb_core::AppConfig::default();
+        let plugin_registry = crate::services::build_language_plugin_registry();
         let service = FileService::new(
             temp_dir.path(),
             ast_cache,
             lock_manager,
             operation_queue.clone(),
             &config,
+            plugin_registry,
         );
 
         // Spawn background worker to process queued operations
@@ -3520,12 +3524,14 @@ members = [
             lock_manager.clone(),
         ));
         let config = cb_core::AppConfig::default();
+        let plugin_registry = crate::services::build_language_plugin_registry();
         let service = FileService::new(
             temp_dir.path(),
             ast_cache,
             lock_manager,
             operation_queue,
             &config,
+            plugin_registry,
         );
 
         // Moved deeper: 1 level
