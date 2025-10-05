@@ -19,10 +19,10 @@ AST parsing and transformation crate for Codeflow Buddy.
   - Namespace imports (`import * as ...`)
   - Full AST traversal with `swc_ecma_visit`
 
-### Python Parsing
-- **Primary Parser**: RustPython AST (`rustpython-parser` v0.3)
-- **Fallback**: Regex patterns for edge cases
-- **Capabilities**: Standard Python import analysis
+### Language Plugin Architecture
+- **Python, Go, Rust**: Handled by dedicated language plugins in `crates/languages/`
+- See `crates/languages/README.md` for plugin implementation details
+- Plugins provide AST parsing, symbol extraction, and refactoring support
 
 ### Architecture
 - **parser.rs**: Import graph building with SWC

@@ -48,7 +48,7 @@ for PLUGIN_DIR in $PLUGINS; do
 
     # Check 1: Registry builder
     # Use grep -A to check feature flag and registration are together
-    if grep -A 5 "#\[cfg(feature = \"${FEATURE_NAME}\")\]" "$REGISTRY_FILE" | \
+    if grep -A 5 "cfg(feature = \"${FEATURE_NAME}\")" "$REGISTRY_FILE" | \
        grep -q "${PLUGIN_NAME}::"; then
         echo -e "  ${GREEN}✓${NC} Registered in registry_builder.rs"
     else
@@ -58,8 +58,7 @@ for PLUGIN_DIR in $PLUGINS; do
     fi
 
     # Check 2: Root Cargo.toml feature flag
-    if grep -q "^${FEATURE_NAME} = " "$ROOT_CARGO" || \
-       grep -q "\"${FEATURE_NAME}\"" "$ROOT_CARGO"; then
+    if grep -q "^${FEATURE_NAME} = " "$ROOT_CARGO"; then
         echo -e "  ${GREEN}✓${NC} Feature flag in root Cargo.toml"
     else
         echo -e "  ${RED}✗${NC} MISSING feature flag in root Cargo.toml"
