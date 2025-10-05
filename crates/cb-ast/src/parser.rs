@@ -27,16 +27,16 @@ pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {
             );
             Vec::new()
         }
-        "python" => match crate::python_parser::parse_python_imports_ast(source) {
-            Ok(ast_imports) => ast_imports,
-            Err(_) => {
-                tracing::debug!(
-                    file_path = % path.display(),
-                    "Python AST parsing failed, falling back to regex"
-                );
-                parse_python_imports(source)?
-            }
-        },
+        "python" => {
+            // Python import parsing is handled by cb-lang-python plugin
+            // Cannot be called here due to circular dependency (cb-lang-python depends on cb-ast)
+            // Use cb_lang_python::parser::parse_python_imports() directly when needed
+            tracing::debug!(
+                file_path = % path.display(),
+                "Python import parsing should use cb-lang-python plugin directly"
+            );
+            Vec::new()
+        }
         "rust" => {
             // Rust import parsing is handled by cb-lang-rust plugin
             // Cannot be called here due to circular dependency (cb-lang-rust depends on cb-ast)
@@ -249,106 +249,7 @@ fn parse_named_imports(inner: &str) -> AstResult<Vec<NamedImport>> {
     }
     Ok(named_imports)
 }
-/// Parse Python imports (basic implementation)
-fn parse_python_imports(source: &str) -> AstResult<Vec<ImportInfo>> {
-    let mut imports = Vec::new();
-    for (line_num, line) in source.lines().enumerate() {
-        let line = line.trim();
-        if line.starts_with("import ") && !line.contains("from ") {
-            let import_part = &line[7..];
-            for module in import_part.split(',') {
-                let module = module.trim();
-                if let Some(as_pos) = module.find(" as ") {
-                    let module_name = module[..as_pos].trim();
-                    let alias = module[as_pos + 4..].trim();
-                    imports.push(ImportInfo {
-                        module_path: module_name.to_string(),
-                        import_type: ImportType::EsModule,
-                        named_imports: vec![NamedImport {
-                            name: alias.to_string(),
-                            alias: None,
-                            type_only: false,
-                        }],
-                        default_import: None,
-                        namespace_import: None,
-                        type_only: false,
-                        location: SourceLocation {
-                            start_line: line_num as u32,
-                            start_column: 0,
-                            end_line: line_num as u32,
-                            end_column: line.len() as u32,
-                        },
-                    });
-                } else {
-                    imports.push(ImportInfo {
-                        module_path: module.to_string(),
-                        import_type: ImportType::EsModule,
-                        named_imports: Vec::new(),
-                        default_import: None,
-                        namespace_import: Some(module.to_string()),
-                        type_only: false,
-                        location: SourceLocation {
-                            start_line: line_num as u32,
-                            start_column: 0,
-                            end_line: line_num as u32,
-                            end_column: line.len() as u32,
-                        },
-                    });
-                }
-            }
-        } else if line.starts_with("from ") && line.contains(" import ") {
-            if let Some(import_pos) = line.find(" import ") {
-                let module_part = &line[5..import_pos];
-                let import_part = &line[import_pos + 8..];
-                let named_imports = if import_part.trim() == "*" {
-                    Vec::new()
-                } else {
-                    import_part
-                        .split(',')
-                        .map(|name| {
-                            let name = name.trim();
-                            if let Some(as_pos) = name.find(" as ") {
-                                let original = name[..as_pos].trim();
-                                let alias = name[as_pos + 4..].trim();
-                                NamedImport {
-                                    name: original.to_string(),
-                                    alias: Some(alias.to_string()),
-                                    type_only: false,
-                                }
-                            } else {
-                                NamedImport {
-                                    name: name.to_string(),
-                                    alias: None,
-                                    type_only: false,
-                                }
-                            }
-                        })
-                        .collect()
-                };
-                let namespace_import = if import_part.trim() == "*" {
-                    Some(module_part.to_string())
-                } else {
-                    None
-                };
-                imports.push(ImportInfo {
-                    module_path: module_part.to_string(),
-                    import_type: ImportType::EsModule,
-                    named_imports,
-                    default_import: None,
-                    namespace_import,
-                    type_only: false,
-                    location: SourceLocation {
-                        start_line: line_num as u32,
-                        start_column: 0,
-                        end_line: line_num as u32,
-                        end_column: line.len() as u32,
-                    },
-                });
-            }
-        }
-    }
-    Ok(imports)
-}
+
 /// Parse Rust imports using AST (syn crate)
 ///
 /// This provides accurate parsing of complex Rust import statements including:
@@ -522,34 +423,7 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
     // TypeScript/JavaScript import parsing tests have been moved to cb-lang-typescript plugin tests
-    #[test]
-    fn test_parse_python_imports() {
-        let source = r#"
-import os
-import sys as system
-from pathlib import Path
-from typing import Dict, List as ArrayList
-from . import utils
-from ..config import settings
-"#;
-        let imports = parse_python_imports(source).unwrap();
-        assert_eq!(imports.len(), 6);
-        assert_eq!(imports[0].module_path, "os");
-        assert_eq!(imports[0].namespace_import, Some("os".to_string()));
-        assert_eq!(imports[1].module_path, "sys");
-        assert_eq!(imports[1].named_imports[0].name, "system");
-        assert_eq!(imports[2].module_path, "pathlib");
-        assert_eq!(imports[2].named_imports[0].name, "Path");
-        assert_eq!(imports[3].module_path, "typing");
-        assert_eq!(imports[3].named_imports.len(), 2);
-        assert_eq!(imports[3].named_imports[0].name, "Dict");
-        assert_eq!(imports[3].named_imports[1].name, "List");
-        assert_eq!(
-            imports[3].named_imports[1].alias,
-            Some("ArrayList".to_string())
-        );
-    }
-    // test_build_import_graph for TypeScript removed - see cb-lang-typescript plugin tests
+    // Python import parsing tests have been moved to cb-lang-python plugin tests
     #[test]
     fn test_is_external_dependency() {
         assert!(is_external_dependency("react"));

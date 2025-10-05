@@ -2,8 +2,8 @@
 //!
 //! This crate provides sophisticated AST-based code analysis capabilities including
 //! import graph building, project-wide refactoring planning, and intelligent caching
-//! for performance optimization. It supports multiple languages (TypeScript, Python, etc.)
-//! and enables safe, automated code transformations.
+//! for performance optimization. Supports TypeScript/JavaScript with extensible
+//! plugin architecture for additional languages.
 
 pub mod analyzer;
 pub mod cache;
@@ -11,12 +11,8 @@ pub mod error;
 pub mod import_updater;
 pub mod package_extractor;
 pub mod parser;
-pub mod python_parser;
 pub mod refactoring;
 pub mod transformer;
-
-#[cfg(test)]
-mod python_refactoring_test;
 
 pub use analyzer::*;
 pub use cache::*;
