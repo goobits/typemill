@@ -1,5 +1,8 @@
 # 🤖 Codebuddy
-MCP server that exposes Language Server Protocol functionality to AI coding assistants
+
+**Give your AI coding assistant superpowers.**
+
+Codebuddy bridges the gap between AI assistants and your codebase by exposing Language Server Protocol (LSP) functionality through the Model Context Protocol (MCP). Think of it as a universal translator that lets AI tools like Claude understand your code the same way your IDE does—with full awareness of definitions, references, types, and refactoring capabilities.
 
 ## 📋 Table of Contents
 - [Key Features](#-key-features)
@@ -15,15 +18,32 @@ MCP server that exposes Language Server Protocol functionality to AI coding assi
 - [License](#-license)
 - [Support](#-support)
 
-## ✨ Key Features
-- **🔍 Navigation** - Find definitions, references, symbols via LSP
-- **🔧 Refactoring** - Rename symbols, extract functions, organize imports
-- **💡 Intelligence** - Completions, hover docs, diagnostics, call graphs
-- **⚡ Batch Operations** - Atomic multi-file edits and parallel execution
-- **🌐 Multi-Language** - TypeScript, Python, Go, Rust via configured LSP servers
-- **🛠️ Transport Options** - Stdio for MCP clients, WebSocket with JWT auth
+## ✨ What Can It Do?
+
+**Navigation & Understanding**
+- 🔍 Jump to definitions, find all references, search symbols across your entire workspace
+- 💡 Get hover documentation, completions, and signature help—just like in your IDE
+- 📊 Visualize call hierarchies and trace type definitions
+
+**Intelligent Refactoring**
+- 🔧 Rename symbols safely across files with automatic import updates
+- ⚡ Extract functions and variables, inline code, organize imports
+- 🎯 Apply code actions and fixes suggested by your language server
+
+**Powerful Operations**
+- 📦 Atomic multi-file edits that either succeed completely or roll back
+- 🚀 Batch operations with parallel execution for maximum speed
+- 🔄 Smart directory moves with automatic import path updates (including Rust crate consolidation)
+
+**Multi-Language Support**
+- 🌐 Works with TypeScript, Python, Go, Rust—any language with an LSP server
+- 🔌 Flexible transport: stdio for direct MCP integration or WebSocket with JWT auth
+- 🛡️ Built in Rust for memory safety and blazing performance
 
 ## 🚀 Quick Start
+
+Ready to get started? The setup is straightforward—just install, configure your language servers, and you're ready to go.
+
 ```bash
 # Install from source
 git clone https://github.com/goobits/codebuddy.git
@@ -31,17 +51,23 @@ cd codebuddy
 cargo build --release
 sudo cp target/release/codebuddy /usr/local/bin/
 
-# Setup language servers (interactive wizard)
+# Run the interactive setup wizard
+# It'll detect your project languages and help configure the right servers
 codebuddy setup
 
-# Start MCP server (stdio transport)
+# Start the MCP server (for Claude Code, Cursor, Aider, etc.)
 codebuddy start
 
-# Or start WebSocket server
+# Or start the WebSocket server (for custom integrations)
 codebuddy serve
 ```
 
+That's it! Your AI assistant now has deep code intelligence for your entire project.
+
 ## 🛠️ Language Server Setup
+
+Codebuddy works with any LSP-compatible language server. Here's how to install the most common ones:
+
 ```bash
 # TypeScript/JavaScript
 npm install -g typescript-language-server typescript
@@ -55,12 +81,15 @@ go install golang.org/x/tools/gopls@latest
 # Rust
 rustup component add rust-analyzer
 
-# Verify installation
+# Verify everything is working
 codebuddy status
 ```
 
+The `codebuddy setup` wizard will detect which languages you're using and guide you through configuration. No manual JSON editing required (unless you want to).
+
 ## 📚 MCP Integration
-Configure your MCP client to connect to Codebuddy:
+
+Connecting Codebuddy to your AI assistant is simple. Works with Claude Code, Cursor, Aider, and any MCP-compatible client. Add this to your MCP configuration:
 
 ```json
 {
@@ -73,16 +102,15 @@ Configure your MCP client to connect to Codebuddy:
 }
 ```
 
+Once connected, your AI assistant can navigate your code, suggest refactorings, and understand your project structure—all powered by the same language servers your IDE uses.
+
 ## ⚙️ Configuration
-```bash
-# Interactive setup
-codebuddy setup
 
-# View configuration
-codebuddy status
+**Prefer the easy way?** Just run `codebuddy setup` and follow the prompts. It'll scan your project, detect languages, and create the config automatically.
 
-# Manual configuration (.codebuddy/config.json)
-cat > .codebuddy/config.json << 'EOF'
+**Like to tinker?** Configuration lives in `.codebuddy/config.json`. Here's an example:
+
+```json
 {
   "servers": [
     {
@@ -96,7 +124,13 @@ cat > .codebuddy/config.json << 'EOF'
     }
   ]
 }
-EOF
+```
+
+Each server maps file extensions to an LSP command. The optional `restartInterval` helps with long-running server stability.
+
+```bash
+# View your current configuration
+codebuddy status
 ```
 
 ## 🎯 CLI Commands
@@ -141,25 +175,36 @@ See [`deployment/docker/README.md`](deployment/docker/README.md) for details.
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Development guide
 
 ## 🔧 Troubleshooting
-```bash
-# LSP server not starting
-codebuddy status                # Check installation
-RUST_LOG=debug codebuddy start  # View logs
 
-# Import updates failing
-codebuddy setup                 # Reconfigure servers
+Running into issues? Here's how to diagnose them:
+
+```bash
+# Check if language servers are installed and accessible
+codebuddy status
+
+# See detailed logs to understand what's happening
+RUST_LOG=debug codebuddy start
+
+# Run the full diagnostic suite
+codebuddy doctor
+
+# Reconfigure if something changed
+codebuddy setup
 ```
 
-Common issues:
-- LSP server not in PATH
-- File outside workspace root
-- LSP server doesn't support workspace edits
+**Common issues and fixes:**
+- **LSP server not starting** → Make sure it's installed and in your PATH
+- **Import updates failing** → The language server needs to support workspace edits (most do)
+- **Can't find definitions** → File might be outside workspace root, or server needs initialization time
 
 ## 🔗 Related Projects
 - **[Model Context Protocol](https://github.com/modelcontextprotocol/servers)** - MCP specification
 - **[Language Server Protocol](https://langserver.org/)** - LSP specification
 
 ## 🧪 Development
+
+Want to contribute or modify Codebuddy? We'd love to have you! The codebase is pure Rust with a focus on clarity and performance.
+
 ```bash
 # Build and test
 cargo build --release
@@ -167,25 +212,30 @@ cargo test
 cargo clippy
 cargo fmt
 
-# Or use Makefile
+# Or use the Makefile for convenience
 make setup       # Install dev tools (one-time)
-make             # Build debug
+make             # Build debug version
 make test        # Run tests
-make check       # fmt + clippy + test
+make check       # Run fmt + clippy + test
 
-# Run locally
+# Run locally for testing
 cargo run -- start
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guide.
+Check out [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code standards, and how to add new MCP tools. We welcome PRs!
 
 ## 📝 License
 MIT - see [LICENSE](LICENSE)
 
 ## 💡 Support
-- [Bug reports and features](https://github.com/goobits/codebuddy/issues)
-- [Discussions](https://github.com/goobits/codebuddy/discussions)
+
+Have questions? Found a bug? Want to request a feature?
+
+- **[Report issues](https://github.com/goobits/codebuddy/issues)** - Bug reports and feature requests
+- **[Join discussions](https://github.com/goobits/codebuddy/discussions)** - Ask questions, share ideas, show what you've built
+
+We're here to help make your AI coding experience better.
 
 ---
 
-**Credits**: Based on [ktnyt/cclsp](https://github.com/ktnyt/cclsp)
+**Credits**: Inspired by [ktnyt/cclsp](https://github.com/ktnyt/cclsp). Codebuddy is a ground-up Rust rewrite with production architecture, batch operations, plugin system, and enterprise features.
