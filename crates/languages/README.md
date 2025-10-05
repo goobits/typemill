@@ -2,6 +2,40 @@
 
 This directory contains language-specific plugins for Codebuddy. Each plugin implements the `LanguageIntelligencePlugin` trait to provide AST parsing, symbol extraction, import analysis, and refactoring support for a specific programming language.
 
+## Quick Start
+
+### Create a New Language Plugin
+
+```bash
+# Scaffold a complete plugin structure
+./new-lang.sh <language-name>
+
+# Example: Create a Java plugin
+./new-lang.sh java
+```
+
+This generates:
+- Complete directory structure with `src/`, `resources/`
+- `Cargo.toml` with all workspace dependencies
+- Skeleton `lib.rs` with trait implementation
+- Template `parser.rs` and `manifest.rs` files
+- Comprehensive `README.md` with TODOs
+- Step-by-step next actions
+
+### Validate Configuration
+
+```bash
+# Check all plugins are correctly registered
+./check-features.sh
+```
+
+Verifies:
+- ✅ Registration in `registry_builder.rs`
+- ✅ Feature flags in root `Cargo.toml`
+- ✅ Workspace dependencies configured
+- ✅ Integration with `cb-handlers/Cargo.toml`
+- ✅ No commented-out or incomplete configs
+
 ## Plugin Structure
 
 Each language plugin follows this directory structure:
@@ -336,7 +370,31 @@ cargo test -p cb-lang-{language} -- --nocapture
 
 Read these plugins' README.md files for language-specific implementation details.
 
-## Checklist for New Plugin
+## Development Workflow
+
+### Automated Approach (Recommended)
+
+```bash
+# 1. Scaffold new plugin
+cd crates/languages
+./new-lang.sh kotlin
+
+# 2. Implement parsing logic
+# Edit: cb-lang-kotlin/src/parser.rs
+# Edit: cb-lang-kotlin/src/manifest.rs
+
+# 3. Follow printed next steps to register plugin
+
+# 4. Validate configuration
+./check-features.sh
+
+# 5. Run tests
+cargo test -p cb-lang-kotlin
+
+# 6. Test with real projects
+```
+
+### Manual Checklist (If Not Using Scripts)
 
 - [ ] Create `crates/languages/cb-lang-{language}/` directory
 - [ ] Implement `LanguageIntelligencePlugin` trait in `src/lib.rs`
@@ -344,9 +402,10 @@ Read these plugins' README.md files for language-specific implementation details
 - [ ] Implement manifest parsing in `src/manifest.rs`
 - [ ] Add unit tests (minimum 8-12 tests)
 - [ ] Add logging using structured key-value format
-- [ ] Register plugin in `language_plugin_registry.rs`
+- [ ] Register plugin in `crates/cb-services/src/services/registry_builder.rs`
 - [ ] Add feature flag to workspace `Cargo.toml`
 - [ ] Add dependency to `cb-handlers/Cargo.toml`
 - [ ] Create plugin-specific `README.md`
 - [ ] Test with real projects
 - [ ] Document any limitations or fallback behaviors
+- [ ] Run `./check-features.sh` to verify all configuration
