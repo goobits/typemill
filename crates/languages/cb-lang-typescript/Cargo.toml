@@ -1,0 +1,24 @@
+[package]
+name = "cb-lang-typescript"
+version = "0.1.0"
+edition = "2021"
+authors = ["CodeBuddy Contributors"]
+description = "TypeScript/JavaScript language plugin for CodeBuddy"
+license = "MIT"
+
+[dependencies]
+cb-plugin-api = { path = "../../cb-plugin-api" }
+cb-protocol = { path = "../../cb-protocol" }
+cb-core = { path = "../../cb-core" }
+async-trait = "0.1"
+chrono = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1"
+thiserror = "2.0"
+regex = "1.10"
+tempfile = "3.0"
+
+[dev-dependencies]
+tokio-test = "0.4"
