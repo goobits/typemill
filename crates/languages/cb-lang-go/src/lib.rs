@@ -77,7 +77,7 @@
 //! full features when Go is available.
 
 mod manifest;
-mod parser;
+pub mod parser;
 
 use async_trait::async_trait;
 use cb_plugin_api::{

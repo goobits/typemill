@@ -4,6 +4,7 @@
 //! with the full codebuddy system using real Java test fixtures.
 
 use cb_ast::language::{JavaAdapter, LanguageAdapter, ScanScope};
+use cb_plugin_api::ReferenceKind;
 use integration_tests::harness::create_java_project;
 use std::fs;
 
@@ -70,7 +71,7 @@ async fn test_java_find_helper_references_in_main() {
     // Should find import declaration
     let declarations: Vec<_> = references
         .iter()
-        .filter(|r| matches!(r.kind, cb_core::model::ReferenceKind::Declaration))
+        .filter(|r| matches!(r.kind, ReferenceKind::Declaration))
         .collect();
 
     assert!(
@@ -81,7 +82,7 @@ async fn test_java_find_helper_references_in_main() {
     // Should find qualified method calls (Helper.logInfo, Helper.printSeparator)
     let qualified_calls: Vec<_> = references
         .iter()
-        .filter(|r| matches!(r.kind, cb_core::model::ReferenceKind::QualifiedPath))
+        .filter(|r| matches!(r.kind, ReferenceKind::QualifiedPath))
         .collect();
 
     assert!(
@@ -125,14 +126,14 @@ async fn test_java_find_dataprocessor_references() {
     assert!(
         references
             .iter()
-            .any(|r| matches!(r.kind, cb_core::model::ReferenceKind::Declaration)),
+            .any(|r| matches!(r.kind, ReferenceKind::Declaration)),
         "Should find Helper import in DataProcessor.java"
     );
 
     // Should find Helper qualified calls in methods
     let qualified: Vec<_> = references
         .iter()
-        .filter(|r| matches!(r.kind, cb_core::model::ReferenceKind::QualifiedPath))
+        .filter(|r| matches!(r.kind, ReferenceKind::QualifiedPath))
         .collect();
 
     assert!(
@@ -167,7 +168,7 @@ async fn test_java_find_utils_package_references() {
     // Verify all references are import declarations
     for reference in &references {
         assert!(
-            matches!(reference.kind, cb_core::model::ReferenceKind::Declaration),
+            matches!(reference.kind, ReferenceKind::Declaration),
             "All references should be import declarations in TopLevelOnly scope"
         );
 
@@ -197,7 +198,7 @@ async fn test_java_scope_variations() {
     assert!(
         top_level_refs
             .iter()
-            .all(|r| matches!(r.kind, cb_core::model::ReferenceKind::Declaration)),
+            .all(|r| matches!(r.kind, ReferenceKind::Declaration)),
         "TopLevelOnly should only find import declarations"
     );
 
@@ -215,7 +216,7 @@ async fn test_java_scope_variations() {
     assert!(
         qualified_refs
             .iter()
-            .any(|r| matches!(r.kind, cb_core::model::ReferenceKind::QualifiedPath)),
+            .any(|r| matches!(r.kind, ReferenceKind::QualifiedPath)),
         "QualifiedPaths should find qualified method calls"
     );
 }
@@ -274,14 +275,14 @@ async fn test_java_stringprocessor_static_methods() {
     assert!(
         references
             .iter()
-            .any(|r| matches!(r.kind, cb_core::model::ReferenceKind::Declaration)),
+            .any(|r| matches!(r.kind, ReferenceKind::Declaration)),
         "Should find StringProcessor import"
     );
 
     // Should find static method call (StringProcessor.format)
     let qualified: Vec<_> = references
         .iter()
-        .filter(|r| matches!(r.kind, cb_core::model::ReferenceKind::QualifiedPath))
+        .filter(|r| matches!(r.kind, ReferenceKind::QualifiedPath))
         .collect();
 
     assert!(

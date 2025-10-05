@@ -14,7 +14,11 @@ indexmap = "2.0"
 cb-core = { path = "../cb-core" }
 cb-ast = { path = "../cb-ast" }
 cb-plugin-api = { path = "../cb-plugin-api" }
+cb-protocol = { path = "../cb-protocol" }
 cb-lang-rust = { path = "../languages/cb-lang-rust" }
+cb-lang-go = { path = "../languages/cb-lang-go" }
+cb-lang-typescript = { path = "../languages/cb-lang-typescript" }
+chrono = "0.4"
 ignore = "0.4"
 reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], default-features = false }
 html2md-rs = "0.10"

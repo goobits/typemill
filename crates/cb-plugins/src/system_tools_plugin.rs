@@ -178,14 +178,32 @@ impl SystemToolsPlugin {
                     message: format!("Failed to read file: {}", e),
                 })?;
 
-        // Call cb_ast::parser::build_import_graph
+        // Create plugin registry
+        let mut registry = PluginRegistry::new();
+        registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
+        registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
+        registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
+
+        // Determine file extension
         let path = Path::new(&args.file_path);
-        let import_graph = cb_ast::parser::build_import_graph(&content, path).map_err(|e| {
-            PluginError::PluginRequestFailed {
+        let extension = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .ok_or_else(|| PluginError::PluginRequestFailed {
                 plugin: "system-tools".to_string(),
-                message: format!("Failed to analyze imports: {}", e),
-            }
-        })?;
+                message: "File has no extension".to_string(),
+            })?;
+
+        // Find appropriate plugin
+        let plugin = registry
+            .find_by_extension(extension)
+            .ok_or_else(|| PluginError::PluginRequestFailed {
+                plugin: "system-tools".to_string(),
+                message: format!("No plugin found for .{} files", extension),
+            })?;
+
+        // Build import graph using the plugin
+        let import_graph = build_import_graph_with_plugin(&content, path, plugin)?;
 
         // Calculate statistics
         let total_imports = import_graph.imports.len();
@@ -427,6 +445,101 @@ impl SystemToolsPlugin {
             "status": "success"
         }))
     }
+}
+
+/// Build import graph using a language plugin
+fn build_import_graph_with_plugin(
+    source: &str,
+    path: &Path,
+    plugin: &dyn cb_plugin_api::LanguageIntelligencePlugin,
+) -> PluginResult<cb_protocol::ImportGraph> {
+    use cb_protocol::{ImportGraph, ImportGraphMetadata, ImportInfo};
+    use std::collections::HashSet;
+
+    // For now, TypeScript plugin doesn't have a direct "analyze_imports" method
+    // that returns ImportGraph. We need to use the parser module from the plugin.
+    //
+    // This is a temporary bridge until we add analyze_imports to the trait.
+    // For TypeScript files, we'll use cb_lang_typescript::parser::analyze_imports
+    let language = plugin.name().to_lowercase();
+
+    let imports: Vec<ImportInfo> = match language.as_str() {
+        "typescript" => {
+            // Use TypeScript plugin's parser
+            let graph = cb_lang_typescript::parser::analyze_imports(source, Some(path))
+                .map_err(|e| PluginError::PluginRequestFailed {
+                    plugin: plugin.name().to_string(),
+                    message: format!("Failed to parse imports: {}", e),
+                })?;
+            graph.imports
+        }
+        "rust" => {
+            // Use Rust plugin's parser (returns Vec<ImportInfo> directly)
+            cb_lang_rust::parser::parse_imports(source)
+                .map_err(|e| PluginError::PluginRequestFailed {
+                    plugin: plugin.name().to_string(),
+                    message: format!("Failed to parse imports: {}", e),
+                })?
+        }
+        "go" => {
+            // Use Go plugin's parser
+            let graph = cb_lang_go::parser::analyze_imports(source, Some(path))
+                .map_err(|e| PluginError::PluginRequestFailed {
+                    plugin: plugin.name().to_string(),
+                    message: format!("Failed to parse imports: {}", e),
+                })?;
+            graph.imports
+        }
+        _ => {
+            return Err(PluginError::PluginRequestFailed {
+                plugin: plugin.name().to_string(),
+                message: format!("Unsupported language: {}", language),
+            });
+        }
+    };
+
+    // Detect external dependencies
+    let external_dependencies = imports
+        .iter()
+        .filter_map(|imp| {
+            if is_external_dependency(&imp.module_path) {
+                Some(imp.module_path.clone())
+            } else {
+                None
+            }
+        })
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
+
+    Ok(ImportGraph {
+        source_file: path.to_string_lossy().to_string(),
+        imports,
+        importers: Vec::new(),
+        metadata: ImportGraphMetadata {
+            language: language.clone(),
+            parsed_at: chrono::Utc::now(),
+            parser_version: "1.0.0-plugin".to_string(),
+            circular_dependencies: Vec::new(),
+            external_dependencies,
+        },
+    })
+}
+
+/// Check if a module path represents an external dependency
+fn is_external_dependency(module_path: &str) -> bool {
+    if module_path.starts_with("./") || module_path.starts_with("../") {
+        return false;
+    }
+    if module_path.starts_with("/") || module_path.starts_with("src/") {
+        return false;
+    }
+    if module_path.starts_with("@") {
+        return true;
+    }
+    !module_path.contains("/")
+        || module_path.contains("node_modules")
+        || !module_path.starts_with(".")
 }
 
 #[async_trait]
