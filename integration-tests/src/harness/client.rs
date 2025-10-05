@@ -268,8 +268,12 @@ impl TestClient {
             }
         });
 
+        const FRAME_DELIMITER: &[u8] = b"\n---FRAME---\n";
+
         let request_str = serde_json::to_string(&request)?;
-        writeln!(self.stdin, "{}", request_str)?;
+        // Send request followed by frame delimiter (same as send_request)
+        self.stdin.write_all(request_str.as_bytes())?;
+        self.stdin.write_all(FRAME_DELIMITER)?;
         self.stdin.flush()?;
 
         // Wait for response with custom timeout
