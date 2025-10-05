@@ -30,6 +30,9 @@ swc_ecma_ast = "15"
 swc_ecma_codegen = "17"
 cb-plugins = { path = "../cb-plugins" }
 cb-lang-rust = { path = "../languages/cb-lang-rust" }
+cb-lang-go = { path = "../languages/cb-lang-go" }
+cb-lang-typescript = { path = "../languages/cb-lang-typescript" }
+chrono = "0.4"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

@@ -74,9 +74,8 @@ impl AstService for DefaultAstService {
         // Read the file content
         let content = tokio::fs::read_to_string(&file_path).await?;
 
-        // Parse the file using the cb-ast crate
-        let import_graph = cb_ast::parser::build_import_graph(&content, file)
-            .map_err(|e| cb_protocol::ApiError::internal(format!("AST parsing failed: {}", e)))?;
+        // Use plugin-based parsing for languages with plugins
+        let import_graph = build_import_graph_with_plugin(&content, file)?;
 
         // Cache the result for future use
         if let Err(e) = self
@@ -100,4 +99,112 @@ impl AstService for DefaultAstService {
     async fn cache_stats(&self) -> CacheStats {
         self.cache.stats()
     }
+}
+
+/// Build import graph using language plugins
+fn build_import_graph_with_plugin(
+    source: &str,
+    path: &Path,
+) -> Result<cb_protocol::ImportGraph, cb_protocol::ApiError> {
+    use cb_plugin_api::PluginRegistry;
+    use cb_protocol::{ImportGraph, ImportGraphMetadata, ImportInfo};
+    use std::collections::HashSet;
+    use std::sync::Arc;
+
+    // Determine file extension
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .ok_or_else(|| cb_protocol::ApiError::internal("File has no extension"))?;
+
+    // For languages without plugins, fall back to cb-ast
+    if !matches!(extension, "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "rs" | "go") {
+        // Use legacy cb-ast for Python and other languages
+        return cb_ast::parser::build_import_graph(source, path)
+            .map_err(|e| cb_protocol::ApiError::internal(format!("AST parsing failed: {}", e)));
+    }
+
+    // Create plugin registry
+    let mut registry = PluginRegistry::new();
+    registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
+    registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
+    registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
+
+    // Find appropriate plugin
+    let plugin = registry
+        .find_by_extension(extension)
+        .ok_or_else(|| {
+            cb_protocol::ApiError::internal(format!("No plugin found for .{} files", extension))
+        })?;
+
+    let language = plugin.name().to_lowercase();
+
+    // Get imports from plugin
+    let imports: Vec<ImportInfo> = match language.as_str() {
+        "typescript" => {
+            let graph = cb_lang_typescript::parser::analyze_imports(source, Some(path))
+                .map_err(|e| {
+                    cb_protocol::ApiError::internal(format!("Failed to parse imports: {}", e))
+                })?;
+            graph.imports
+        }
+        "rust" => cb_lang_rust::parser::parse_imports(source).map_err(|e| {
+            cb_protocol::ApiError::internal(format!("Failed to parse imports: {}", e))
+        })?,
+        "go" => {
+            let graph = cb_lang_go::parser::analyze_imports(source, Some(path)).map_err(|e| {
+                cb_protocol::ApiError::internal(format!("Failed to parse imports: {}", e))
+            })?;
+            graph.imports
+        }
+        _ => {
+            return Err(cb_protocol::ApiError::internal(format!(
+                "Unsupported language: {}",
+                language
+            )));
+        }
+    };
+
+    // Detect external dependencies
+    let external_dependencies = imports
+        .iter()
+        .filter_map(|imp| {
+            if is_external_dependency(&imp.module_path) {
+                Some(imp.module_path.clone())
+            } else {
+                None
+            }
+        })
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
+
+    Ok(ImportGraph {
+        source_file: path.to_string_lossy().to_string(),
+        imports,
+        importers: Vec::new(),
+        metadata: ImportGraphMetadata {
+            language: language.clone(),
+            parsed_at: chrono::Utc::now(),
+            parser_version: "1.0.0-plugin".to_string(),
+            circular_dependencies: Vec::new(),
+            external_dependencies,
+        },
+    })
+}
+
+/// Check if a module path represents an external dependency
+fn is_external_dependency(module_path: &str) -> bool {
+    if module_path.starts_with("./") || module_path.starts_with("../") {
+        return false;
+    }
+    if module_path.starts_with("/") || module_path.starts_with("src/") {
+        return false;
+    }
+    if module_path.starts_with("@") {
+        return true;
+    }
+    !module_path.contains("/")
+        || module_path.contains("node_modules")
+        || !module_path.starts_with(".")
 }

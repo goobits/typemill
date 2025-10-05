@@ -2463,14 +2463,17 @@ mod tests {
     // Helper to start a background worker for tests
     fn spawn_test_worker(queue: Arc<super::super::operation_queue::OperationQueue>) {
         use crate::services::operation_queue::OperationType;
+        use cb_protocol::ApiError;
         use tokio::fs;
 
         tokio::spawn(async move {
             queue
-                .process_with(|op, _stats| async move {
-                    match op.operation_type {
+                .process_with(|op, stats| async move {
+                    let result: Result<(), ApiError> = match op.operation_type {
                         OperationType::CreateDir => {
-                            fs::create_dir_all(&op.file_path).await?;
+                            fs::create_dir_all(&op.file_path).await.map_err(|e| {
+                                ApiError::Internal(format!("Failed to create directory: {}", e))
+                            })
                         }
                         OperationType::CreateFile | OperationType::Write => {
                             let content = op
@@ -2478,11 +2481,17 @@ mod tests {
                                 .get("content")
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("");
-                            fs::write(&op.file_path, content).await?;
+                            fs::write(&op.file_path, content).await.map_err(|e| {
+                                ApiError::Internal(format!("Failed to write file: {}", e))
+                            })
                         }
                         OperationType::Delete => {
                             if op.file_path.exists() {
-                                fs::remove_file(&op.file_path).await?;
+                                fs::remove_file(&op.file_path).await.map_err(|e| {
+                                    ApiError::Internal(format!("Failed to delete file: {}", e))
+                                })
+                            } else {
+                                Ok(())
                             }
                         }
                         OperationType::Rename => {
@@ -2491,13 +2500,28 @@ mod tests {
                                 .get("new_path")
                                 .and_then(|v| v.as_str())
                                 .ok_or_else(|| {
-                                std::io::Error::new(std::io::ErrorKind::Other, "Missing new_path")
-                            })?;
-                            fs::rename(&op.file_path, new_path_str).await?;
+                                    ApiError::Internal("Missing new_path".to_string())
+                                })?;
+                            fs::rename(&op.file_path, new_path_str).await.map_err(|e| {
+                                ApiError::Internal(format!("Failed to rename file: {}", e))
+                            })
                         }
-                        _ => {}
+                        _ => Ok(()),
+                    };
+
+                    // Update stats after operation completes
+                    let mut stats_guard = stats.lock().await;
+                    match &result {
+                        Ok(_) => {
+                            stats_guard.completed_operations += 1;
+                        }
+                        Err(_) => {
+                            stats_guard.failed_operations += 1;
+                        }
                     }
-                    Ok(serde_json::Value::Null)
+                    drop(stats_guard);
+
+                    result.map(|_| serde_json::Value::Null)
                 })
                 .await;
         });
@@ -2952,14 +2976,17 @@ mod workspace_tests {
     // Helper to start a background worker for tests
     fn spawn_test_worker(queue: Arc<super::super::operation_queue::OperationQueue>) {
         use crate::services::operation_queue::OperationType;
+        use cb_protocol::ApiError;
         use tokio::fs;
 
         tokio::spawn(async move {
             queue
-                .process_with(|op, _stats| async move {
-                    match op.operation_type {
+                .process_with(|op, stats| async move {
+                    let result: Result<(), ApiError> = match op.operation_type {
                         OperationType::CreateDir => {
-                            fs::create_dir_all(&op.file_path).await?;
+                            fs::create_dir_all(&op.file_path).await.map_err(|e| {
+                                ApiError::Internal(format!("Failed to create directory: {}", e))
+                            })
                         }
                         OperationType::CreateFile | OperationType::Write => {
                             let content = op
@@ -2967,11 +2994,17 @@ mod workspace_tests {
                                 .get("content")
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("");
-                            fs::write(&op.file_path, content).await?;
+                            fs::write(&op.file_path, content).await.map_err(|e| {
+                                ApiError::Internal(format!("Failed to write file: {}", e))
+                            })
                         }
                         OperationType::Delete => {
                             if op.file_path.exists() {
-                                fs::remove_file(&op.file_path).await?;
+                                fs::remove_file(&op.file_path).await.map_err(|e| {
+                                    ApiError::Internal(format!("Failed to delete file: {}", e))
+                                })
+                            } else {
+                                Ok(())
                             }
                         }
                         OperationType::Rename => {
@@ -2980,13 +3013,28 @@ mod workspace_tests {
                                 .get("new_path")
                                 .and_then(|v| v.as_str())
                                 .ok_or_else(|| {
-                                std::io::Error::new(std::io::ErrorKind::Other, "Missing new_path")
-                            })?;
-                            fs::rename(&op.file_path, new_path_str).await?;
+                                    ApiError::Internal("Missing new_path".to_string())
+                                })?;
+                            fs::rename(&op.file_path, new_path_str).await.map_err(|e| {
+                                ApiError::Internal(format!("Failed to rename file: {}", e))
+                            })
                         }
-                        _ => {}
+                        _ => Ok(()),
+                    };
+
+                    // Update stats after operation completes
+                    let mut stats_guard = stats.lock().await;
+                    match &result {
+                        Ok(_) => {
+                            stats_guard.completed_operations += 1;
+                        }
+                        Err(_) => {
+                            stats_guard.failed_operations += 1;
+                        }
                     }
-                    Ok(serde_json::Value::Null)
+                    drop(stats_guard);
+
+                    result.map(|_| serde_json::Value::Null)
                 })
                 .await;
         });

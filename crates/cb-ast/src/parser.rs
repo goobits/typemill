@@ -6,13 +6,8 @@ use cb_protocol::{
 };
 use petgraph::graph::NodeIndex;
 use petgraph::{Direction, Graph};
-use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use swc_common::{sync::Lrc, FileName, FilePathMapping, SourceMap};
-use swc_ecma_ast::{CallExpr, ExportDecl, Expr, ImportDecl, Lit, Str};
-use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
-use swc_ecma_visit::{Visit, VisitWith};
 /// Build import graph for a source file
 pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {
     let language = match path.extension().and_then(|ext| ext.to_str()) {
@@ -24,16 +19,15 @@ pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {
         _ => "unknown",
     };
     let imports = match language {
-        "typescript" | "javascript" => match parse_js_ts_imports_swc(source, path) {
-            Ok(swc_imports) => swc_imports,
-            Err(_) => {
-                tracing::debug!(
-                    file_path = % path.display(),
-                    "SWC parsing failed, falling back to regex"
-                );
-                parse_js_ts_imports_enhanced(source)?
-            }
-        },
+        "typescript" | "javascript" => {
+            // TypeScript/JavaScript parsing is handled by cb-lang-typescript plugin
+            // Cannot be called here due to circular dependency (cb-lang-typescript depends on cb-ast)
+            tracing::debug!(
+                file_path = % path.display(),
+                "TypeScript/JavaScript import parsing should use cb-lang-typescript plugin directly"
+            );
+            Vec::new()
+        }
         "python" => match crate::python_parser::parse_python_imports_ast(source) {
             Ok(ast_imports) => ast_imports,
             Err(_) => {
@@ -84,312 +78,9 @@ pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {
         },
     })
 }
-/// Parse JavaScript/TypeScript imports using SWC AST
-fn parse_js_ts_imports_swc(source: &str, path: &Path) -> AstResult<Vec<ImportInfo>> {
-    let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-    let file_name = Lrc::new(FileName::Real(path.to_path_buf()));
-    let source_file = cm.new_source_file(file_name, source.to_string());
-    let lexer = Lexer::new(
-        Syntax::Typescript(TsSyntax {
-            tsx: path
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .map(|ext| ext == "tsx")
-                .unwrap_or(false),
-            decorators: false,
-            dts: false,
-            no_early_errors: true,
-            disallow_ambiguous_jsx_like: true,
-        }),
-        Default::default(),
-        StringInput::from(&*source_file),
-        None,
-    );
-    let mut parser = Parser::new_from(lexer);
-    let module = parser
-        .parse_module()
-        .map_err(|e| AstError::parse(format!("SWC parsing failed: {:?}", e)))?;
-    let mut visitor = ImportVisitor::new();
-    module.visit_with(&mut visitor);
-    Ok(visitor.imports)
-}
-/// Visitor that extracts import information from SWC AST
-struct ImportVisitor {
-    imports: Vec<ImportInfo>,
-    current_line: u32,
-}
-impl ImportVisitor {
-    fn new() -> Self {
-        Self {
-            imports: Vec::new(),
-            current_line: 0,
-        }
-    }
-    fn extract_string_literal(expr: &Expr) -> Option<String> {
-        match expr {
-            Expr::Lit(Lit::Str(Str { value, .. })) => Some(value.to_string()),
-            _ => None,
-        }
-    }
-}
-impl Visit for ImportVisitor {
-    fn visit_import_decl(&mut self, n: &ImportDecl) {
-        let module_path = n.src.value.to_string();
-        let type_only = n.type_only;
-        let mut named_imports = Vec::new();
-        let mut default_import = None;
-        let mut namespace_import = None;
-        for spec in &n.specifiers {
-            match spec {
-                swc_ecma_ast::ImportSpecifier::Named(named) => {
-                    let import_name = match &named.imported {
-                        Some(name) => match name {
-                            swc_ecma_ast::ModuleExportName::Ident(ident) => ident.sym.to_string(),
-                            swc_ecma_ast::ModuleExportName::Str(str_lit) => {
-                                str_lit.value.to_string()
-                            }
-                        },
-                        None => named.local.sym.to_string(),
-                    };
-                    let alias = if named.local.sym != import_name {
-                        Some(named.local.sym.to_string())
-                    } else {
-                        None
-                    };
-                    named_imports.push(NamedImport {
-                        name: import_name,
-                        alias,
-                        type_only: named.is_type_only,
-                    });
-                }
-                swc_ecma_ast::ImportSpecifier::Default(default) => {
-                    default_import = Some(default.local.sym.to_string());
-                }
-                swc_ecma_ast::ImportSpecifier::Namespace(namespace) => {
-                    namespace_import = Some(namespace.local.sym.to_string());
-                }
-            }
-        }
-        self.imports.push(ImportInfo {
-            module_path,
-            import_type: if type_only {
-                ImportType::TypeOnly
-            } else {
-                ImportType::EsModule
-            },
-            named_imports,
-            default_import,
-            namespace_import,
-            type_only,
-            location: SourceLocation {
-                start_line: self.current_line,
-                start_column: 0,
-                end_line: self.current_line,
-                end_column: 0,
-            },
-        });
-    }
-    fn visit_call_expr(&mut self, n: &CallExpr) {
-        if let swc_ecma_ast::Callee::Expr(callee_expr) = &n.callee {
-            if let Expr::Ident(ident) = &**callee_expr {
-                if ident.sym == "import" && n.args.len() == 1 {
-                    if let Some(module_path) = Self::extract_string_literal(&n.args[0].expr) {
-                        self.imports.push(ImportInfo {
-                            module_path,
-                            import_type: ImportType::Dynamic,
-                            named_imports: Vec::new(),
-                            default_import: None,
-                            namespace_import: None,
-                            type_only: false,
-                            location: SourceLocation {
-                                start_line: self.current_line,
-                                start_column: 0,
-                                end_line: self.current_line,
-                                end_column: 0,
-                            },
-                        });
-                    }
-                }
-                if ident.sym == "require" && n.args.len() == 1 {
-                    if let Some(module_path) = Self::extract_string_literal(&n.args[0].expr) {
-                        self.imports.push(ImportInfo {
-                            module_path,
-                            import_type: ImportType::CommonJs,
-                            named_imports: Vec::new(),
-                            default_import: None,
-                            namespace_import: None,
-                            type_only: false,
-                            location: SourceLocation {
-                                start_line: self.current_line,
-                                start_column: 0,
-                                end_line: self.current_line,
-                                end_column: 0,
-                            },
-                        });
-                    }
-                }
-            }
-        }
-        n.visit_children_with(self);
-    }
-    fn visit_export_decl(&mut self, n: &ExportDecl) {
-        n.visit_children_with(self);
-    }
-}
-/// Parse JavaScript/TypeScript imports using enhanced regex patterns
-pub fn parse_js_ts_imports_enhanced(source: &str) -> AstResult<Vec<ImportInfo>> {
-    let mut imports = Vec::new();
-    let es_import_re = Regex::new(
-            r#"^\s*import\s+(?:(type)\s+)?(?:(?:(\*)\s+as\s+(\w+))|(?:(\w+)(?:\s*,\s*\{([^}]+)\})?)|(?:\{([^}]+)\}))\s+from\s+['"]([^'"]+)['"]"#,
-        )
-        .expect("ES import regex pattern should be valid");
-    let dynamic_import_re = Regex::new(r#"import\s*\(\s*['"]([^'"]+)['"]\s*\)"#)
-        .expect("Dynamic import regex pattern should be valid");
-    let require_re = Regex::new(
-        r#"(?:const|let|var)\s+(?:\{([^}]+)\}|(\w+))\s*=\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)"#,
-    )
-    .expect("Require regex pattern should be valid");
-    let direct_require_re = Regex::new(r#"require\s*\(\s*['"]([^'"]+)['"]\s*\)"#)
-        .expect("Direct require regex pattern should be valid");
-    for (line_num, line) in source.lines().enumerate() {
-        let line = line.trim();
-        if line.starts_with("//") || line.starts_with("/*") || line.is_empty() {
-            continue;
-        }
-        if let Some(captures) = es_import_re.captures(line) {
-            let type_only = captures.get(1).is_some();
-            let is_namespace = captures.get(2).is_some();
-            let namespace_name = captures.get(3).map(|m| m.as_str().to_string());
-            let default_import = captures.get(4).map(|m| m.as_str().to_string());
-            let mixed_named = captures.get(5).map(|m| m.as_str());
-            let named_only = captures.get(6).map(|m| m.as_str());
-            let module_path = captures
-                .get(7)
-                .expect("ES import regex should always capture module path at index 7")
-                .as_str()
-                .to_string();
-            let named_imports = if let Some(named_str) = mixed_named.or(named_only) {
-                parse_named_imports_enhanced(named_str)?
-            } else {
-                Vec::new()
-            };
-            imports.push(ImportInfo {
-                module_path,
-                import_type: if type_only {
-                    ImportType::TypeOnly
-                } else {
-                    ImportType::EsModule
-                },
-                named_imports,
-                default_import,
-                namespace_import: if is_namespace { namespace_name } else { None },
-                type_only,
-                location: SourceLocation {
-                    start_line: line_num as u32,
-                    start_column: 0,
-                    end_line: line_num as u32,
-                    end_column: line.len() as u32,
-                },
-            });
-        }
-        for captures in dynamic_import_re.captures_iter(line) {
-            let module_path = captures
-                .get(1)
-                .expect("Dynamic import regex should always capture module path at index 1")
-                .as_str()
-                .to_string();
-            let full_match = captures
-                .get(0)
-                .expect("Regex match should always have capture group 0");
-            imports.push(ImportInfo {
-                module_path,
-                import_type: ImportType::Dynamic,
-                named_imports: Vec::new(),
-                default_import: None,
-                namespace_import: None,
-                type_only: false,
-                location: SourceLocation {
-                    start_line: line_num as u32,
-                    start_column: full_match.start() as u32,
-                    end_line: line_num as u32,
-                    end_column: full_match.end() as u32,
-                },
-            });
-        }
-        if let Some(captures) = require_re.captures(line) {
-            let module_path = captures
-                .get(3)
-                .expect("Require regex should always capture module path at index 3")
-                .as_str()
-                .to_string();
-            let named_imports = if let Some(destructured) = captures.get(1) {
-                parse_named_imports_enhanced(destructured.as_str())?
-            } else {
-                Vec::new()
-            };
-            let default_import = captures.get(2).map(|m| m.as_str().to_string());
-            imports.push(ImportInfo {
-                module_path,
-                import_type: ImportType::CommonJs,
-                named_imports,
-                default_import,
-                namespace_import: None,
-                type_only: false,
-                location: SourceLocation {
-                    start_line: line_num as u32,
-                    start_column: 0,
-                    end_line: line_num as u32,
-                    end_column: line.len() as u32,
-                },
-            });
-        } else if let Some(captures) = direct_require_re.captures(line) {
-            let module_path = captures
-                .get(1)
-                .expect("Direct require regex should always capture module path at index 1")
-                .as_str()
-                .to_string();
-            let full_match = captures
-                .get(0)
-                .expect("Regex match should always have capture group 0");
-            imports.push(ImportInfo {
-                module_path,
-                import_type: ImportType::CommonJs,
-                named_imports: Vec::new(),
-                default_import: None,
-                namespace_import: None,
-                type_only: false,
-                location: SourceLocation {
-                    start_line: line_num as u32,
-                    start_column: full_match.start() as u32,
-                    end_line: line_num as u32,
-                    end_column: full_match.end() as u32,
-                },
-            });
-        }
-    }
-    Ok(imports)
-}
-/// Parse named imports with enhanced regex support
-fn parse_named_imports_enhanced(named_str: &str) -> AstResult<Vec<NamedImport>> {
-    let mut named_imports = Vec::new();
-    let import_re = Regex::new(r#"(?:(type)\s+)?(\w+)(?:\s+as\s+(\w+))?"#)
-        .expect("Named import regex pattern should be valid");
-    for captures in import_re.captures_iter(named_str) {
-        let type_only = captures.get(1).is_some();
-        let name = captures
-            .get(2)
-            .expect("Named import regex should always capture name at index 2")
-            .as_str()
-            .to_string();
-        let alias = captures.get(3).map(|m| m.as_str().to_string());
-        named_imports.push(NamedImport {
-            name,
-            alias,
-            type_only,
-        });
-    }
-    Ok(named_imports)
-}
+// TypeScript/JavaScript import parsing has been moved to cb-lang-typescript plugin
+// The functions parse_js_ts_imports_swc() and parse_js_ts_imports_enhanced() have been removed
+// Use cb_lang_typescript::parser::analyze_imports() instead
 /// Basic import parsing (simplified for foundation)
 fn parse_imports_basic(source: &str) -> AstResult<Vec<ImportInfo>> {
     let mut imports = Vec::new();
@@ -830,69 +521,7 @@ fn find_cycles_dfs(
 mod tests {
     use super::*;
     use std::path::PathBuf;
-    #[test]
-    fn test_parse_es_module_imports() {
-        let source = r#"
-import React from 'react';
-import { useState, useEffect } from 'react';
-import type { User } from './types';
-import * as utils from './utils';
-import { Button as CustomButton } from '@ui/components';
-"#;
-        let imports = parse_js_ts_imports_enhanced(source).unwrap();
-        assert_eq!(imports.len(), 5);
-        assert_eq!(imports[0].module_path, "react");
-        assert_eq!(imports[0].default_import, Some("React".to_string()));
-        assert_eq!(imports[0].import_type, ImportType::EsModule);
-        assert_eq!(imports[1].module_path, "react");
-        assert_eq!(imports[1].named_imports.len(), 2);
-        assert_eq!(imports[1].named_imports[0].name, "useState");
-        assert_eq!(imports[1].named_imports[1].name, "useEffect");
-        assert_eq!(imports[2].module_path, "./types");
-        assert_eq!(imports[2].import_type, ImportType::TypeOnly);
-        assert!(imports[2].type_only);
-        assert_eq!(imports[3].module_path, "./utils");
-        assert_eq!(imports[3].namespace_import, Some("utils".to_string()));
-        assert_eq!(imports[4].module_path, "@ui/components");
-        assert_eq!(imports[4].named_imports[0].name, "Button");
-        assert_eq!(
-            imports[4].named_imports[0].alias,
-            Some("CustomButton".to_string())
-        );
-    }
-    #[test]
-    fn test_parse_commonjs_requires() {
-        let source = r#"
-const fs = require('fs');
-const { readFile, writeFile } = require('fs/promises');
-const express = require('express');
-require('dotenv/config');
-"#;
-        let imports = parse_js_ts_imports_enhanced(source).unwrap();
-        assert_eq!(imports.len(), 4);
-        assert_eq!(imports[0].module_path, "fs");
-        assert_eq!(imports[0].default_import, Some("fs".to_string()));
-        assert_eq!(imports[0].import_type, ImportType::CommonJs);
-        assert_eq!(imports[1].module_path, "fs/promises");
-        assert_eq!(imports[1].named_imports.len(), 2);
-        assert_eq!(imports[1].named_imports[0].name, "readFile");
-        assert_eq!(imports[1].named_imports[1].name, "writeFile");
-        assert_eq!(imports[3].module_path, "dotenv/config");
-        assert_eq!(imports[3].import_type, ImportType::CommonJs);
-    }
-    #[test]
-    fn test_parse_dynamic_imports() {
-        let source = r#"
-const module = await import('./dynamic-module');
-import('./another-module').then(mod => console.log(mod));
-"#;
-        let imports = parse_js_ts_imports_enhanced(source).unwrap();
-        assert_eq!(imports.len(), 2);
-        assert_eq!(imports[0].module_path, "./dynamic-module");
-        assert_eq!(imports[0].import_type, ImportType::Dynamic);
-        assert_eq!(imports[1].module_path, "./another-module");
-        assert_eq!(imports[1].import_type, ImportType::Dynamic);
-    }
+    // TypeScript/JavaScript import parsing tests have been moved to cb-lang-typescript plugin tests
     #[test]
     fn test_parse_python_imports() {
         let source = r#"
@@ -920,32 +549,7 @@ from ..config import settings
             Some("ArrayList".to_string())
         );
     }
-    #[test]
-    fn test_build_import_graph() {
-        let source = r#"
-import React from 'react';
-import { Component } from './component';
-import * as utils from '@shared/utils';
-require('dotenv/config');
-"#;
-        let path = PathBuf::from("src/index.ts");
-        let graph = build_import_graph(source, &path).unwrap();
-        assert_eq!(graph.source_file, "src/index.ts");
-        assert_eq!(graph.imports.len(), 4);
-        assert_eq!(graph.metadata.language, "typescript");
-        assert!(graph
-            .metadata
-            .external_dependencies
-            .contains(&"react".to_string()));
-        assert!(graph
-            .metadata
-            .external_dependencies
-            .contains(&"@shared/utils".to_string()));
-        assert!(graph
-            .metadata
-            .external_dependencies
-            .contains(&"dotenv/config".to_string()));
-    }
+    // test_build_import_graph for TypeScript removed - see cb-lang-typescript plugin tests
     #[test]
     fn test_is_external_dependency() {
         assert!(is_external_dependency("react"));
@@ -1004,20 +608,5 @@ require('dotenv/config');
         let importers = dep_graph.get_importers("b.ts");
         assert_eq!(importers.len(), 0);
     }
-    #[test]
-    fn test_parse_named_imports_enhanced() {
-        let named_str = "useState, useEffect, type User, Button as CustomButton";
-        let imports = parse_named_imports_enhanced(named_str).unwrap();
-        assert_eq!(imports.len(), 4);
-        assert_eq!(imports[0].name, "useState");
-        assert_eq!(imports[0].alias, None);
-        assert!(!imports[0].type_only);
-        assert_eq!(imports[1].name, "useEffect");
-        assert!(!imports[1].type_only);
-        assert_eq!(imports[2].name, "User");
-        assert!(imports[2].type_only);
-        assert_eq!(imports[3].name, "Button");
-        assert_eq!(imports[3].alias, Some("CustomButton".to_string()));
-        assert!(!imports[3].type_only);
-    }
+    // test_parse_named_imports_enhanced removed - see cb-lang-typescript plugin tests
 }
