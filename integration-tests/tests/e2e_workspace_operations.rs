@@ -453,3 +453,351 @@ console.log(value);
     let unchanged_content = std::fs::read_to_string(&file_path).unwrap();
     assert_eq!(unchanged_content.trim(), content.trim());
 }
+
+// ============================================================================
+// Advanced LSP Features Tests (from e2e_advanced_features.rs)
+// ============================================================================
+
+#[tokio::test]
+async fn test_advanced_lsp_features_availability() {
+    use integration_tests::harness::LspSetupHelper;
+
+    let workspace = TestWorkspace::new();
+    workspace.setup_typescript_project_with_lsp("advanced-features");
+    let mut client = TestClient::new(workspace.path());
+    let file_path = workspace.path().join("src/advanced_test.ts");
+    let content = r#"
+interface DataProcessor<T> {
+    process(data: T): Promise<T>;
+}
+
+class StringProcessor implements DataProcessor<string> {
+    async process(data: string): Promise<string> {
+        return data.toUpperCase();
+    }
+}
+
+class NumberProcessor implements DataProcessor<number> {
+    async process(data: number): Promise<number> {
+        return data * 2;
+    }
+}
+
+function createProcessor<T>(type: string): DataProcessor<T> | null {
+    switch (type) {
+        case 'string':
+            return new StringProcessor() as DataProcessor<T>;
+        case 'number':
+            return new NumberProcessor() as DataProcessor<T>;
+        default:
+            return null;
+    }
+}
+"#;
+    std::fs::write(&file_path, content).unwrap();
+    // LSP indexing delay: Give TypeScript LSP time to parse the file and build its AST.
+    // Most LSP servers don't provide a reliable "ready" signal.
+    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    let response = client
+        .call_tool(
+            "get_hover",
+            json!(
+                { "file_path" : file_path.to_string_lossy(), "line" : 1, "character" : 20
+                }
+            ),
+        )
+        .await
+        .expect("get_hover should succeed");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
+    let content_field = result
+        .get("content")
+        .expect("Result should have content field");
+    let hover_content = content_field
+        .get("hover")
+        .and_then(|h| h.get("contents"))
+        .or_else(|| content_field.get("contents"))
+        .expect("Content should have hover.contents or contents field");
+    let hover_text = hover_content.as_str().unwrap_or("");
+    assert!(
+        hover_text.contains("DataProcessor") || hover_text.contains("interface"),
+        "Hover should show interface information, got: {}",
+        hover_text
+    );
+    let response = client
+        .call_tool(
+            "find_definition",
+            json!(
+                { "file_path" : file_path.to_string_lossy(), "line" : 5, "character" : 45
+                }
+            ),
+        )
+        .await
+        .expect("find_definition should succeed");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
+    let content_field = result
+        .get("content")
+        .expect("Result should have content field");
+    let locations = content_field
+        .get("locations")
+        .expect("Content should have locations field")
+        .as_array()
+        .unwrap();
+    assert!(
+        !locations.is_empty(),
+        "Should find definition of DataProcessor interface"
+    );
+    let response = client
+        .call_tool(
+            "get_document_symbols",
+            json!({ "file_path" : file_path.to_string_lossy() }),
+        )
+        .await
+        .expect("get_document_symbols should succeed");
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
+    let content_field = result
+        .get("content")
+        .expect("Result should have content field");
+    let symbols = content_field
+        .get("symbols")
+        .expect("Content should have symbols field")
+        .as_array()
+        .unwrap();
+    assert!(
+        symbols.len() >= 4,
+        "Should find at least 4 symbols (interface, 2 classes, function), found {}",
+        symbols.len()
+    );
+}
+
+#[tokio::test]
+async fn test_cross_language_project() {
+    use integration_tests::harness::LspSetupHelper;
+    use std::time::Duration;
+
+    let workspace = TestWorkspace::new();
+    if let Err(msg) = LspSetupHelper::check_lsp_servers_available() {
+        println!("Skipping test_cross_language_project: {}", msg);
+        return;
+    }
+    LspSetupHelper::setup_lsp_config(&workspace);
+    let mut client = TestClient::new(workspace.path());
+    let ts_file = workspace.path().join("app.ts");
+    std::fs::write(
+        &ts_file,
+        r#"
+interface Config {
+    apiUrl: string;
+    timeout: number;
+}
+
+export function loadConfig(): Config {
+    return {
+        apiUrl: "http://localhost:3000",
+        timeout: 5000
+    };
+}
+
+export function validateConfig(config: Config): boolean {
+    return config.apiUrl.length > 0 && config.timeout > 0;
+}
+"#,
+    )
+    .expect("Failed to create TypeScript test file");
+    let js_file = workspace.path().join("utils.js");
+    std::fs::write(
+        &js_file,
+        r#"
+export function validateUserInput(input) {
+    return input && input.trim().length > 0;
+}
+
+export function formatResponse(data) {
+    return {
+        success: true,
+        data: data,
+        timestamp: new Date().toISOString()
+    };
+}
+"#,
+    )
+    .expect("Failed to create JavaScript test file");
+    let py_file = workspace.path().join("validate.py");
+    std::fs::write(
+        &py_file,
+        r#"
+def validate_user_data(user_data):
+    """Validate user data structure"""
+    required_fields = ['name', 'email', 'age']
+    return all(field in user_data for field in required_fields)
+
+def process_user_data(user_data):
+    """Process user data"""
+    if validate_user_data(user_data):
+        return {
+            'status': 'success',
+            'processed_data': user_data
+        }
+    return {'status': 'error', 'message': 'Invalid data'}
+"#,
+    )
+    .expect("Failed to create Python test file");
+    println!("DEBUG: Files in workspace:");
+    for entry in std::fs::read_dir(workspace.path()).unwrap() {
+        let entry = entry.unwrap();
+        println!("  {:?}", entry.path());
+    }
+    if workspace.file_exists("src") {
+        println!("DEBUG: Files in src/:");
+        for entry in std::fs::read_dir(workspace.path().join("src")).unwrap() {
+            let entry = entry.unwrap();
+            println!("  {:?}", entry.path());
+        }
+    }
+    // Give LSP servers time to initialize and index files (TypeScript LSP can be slow)
+    tokio::time::sleep(tokio::time::Duration::from_millis(3000)).await;
+    println!("DEBUG: Testing hover on Config interface...");
+    let hover_response = client
+        .call_tool(
+            "get_hover",
+            json!(
+                { "file_path" : ts_file.to_string_lossy(), "line" : 2, "character" : 10 }
+            ),
+        )
+        .await;
+    match hover_response {
+        Ok(resp) => {
+            println!(
+                "DEBUG: Hover response: {}",
+                serde_json::to_string_pretty(&resp).unwrap()
+            )
+        }
+        Err(e) => println!("DEBUG: Hover failed: {}", e),
+    }
+    println!("DEBUG: Testing document symbols...");
+    let response = client
+        .call_tool(
+            "get_document_symbols",
+            json!({ "file_path" : ts_file.to_string_lossy() }),
+        )
+        .await
+        .expect("TypeScript LSP call should succeed");
+    if let Some(error) = response.get("error") {
+        panic!(
+            "TypeScript LSP failed: {}",
+            error.get("message").unwrap_or(&json!("unknown error"))
+        );
+    }
+    println!(
+        "DEBUG: TypeScript response: {}",
+        serde_json::to_string_pretty(&response).unwrap()
+    );
+    let ts_symbols = if let Some(symbols) = response["symbols"].as_array() {
+        symbols
+    } else {
+        response["result"]["content"]["symbols"]
+            .as_array()
+            .expect("TypeScript LSP should return symbols array")
+    };
+    assert!(
+        !ts_symbols.is_empty(),
+        "TypeScript file should have detectable symbols"
+    );
+    let symbol_names: Vec<String> = ts_symbols
+        .iter()
+        .filter_map(|s| s["name"].as_str())
+        .map(|s| s.to_string())
+        .collect();
+    assert!(
+        symbol_names.iter().any(|name| name.contains("Config")),
+        "Should find Config interface in TypeScript symbols"
+    );
+    let response = client
+        .call_tool(
+            "get_document_symbols",
+            json!({ "file_path" : js_file.to_string_lossy() }),
+        )
+        .await
+        .expect("JavaScript LSP call should succeed");
+    if let Some(error) = response.get("error") {
+        panic!(
+            "JavaScript LSP failed: {}",
+            error.get("message").unwrap_or(&json!("unknown error"))
+        );
+    }
+    let js_symbols = response["result"]["content"]["symbols"]
+        .as_array()
+        .expect("JavaScript LSP should return symbols array");
+    assert!(
+        !js_symbols.is_empty(),
+        "JavaScript file should have detectable symbols"
+    );
+    let response = client
+        .call_tool_with_timeout(
+            "get_document_symbols",
+            json!({ "file_path" : py_file.to_string_lossy() }),
+            Duration::from_secs(30),
+        )
+        .await;
+    if let Err(e) = &response {
+        let stderr_logs = client.get_stderr_logs();
+        eprintln!("DEBUG: Python LSP call failed with: {}", e);
+        eprintln!("DEBUG: cb-server stderr logs:");
+        for log in stderr_logs {
+            eprintln!("  {}", log);
+        }
+    }
+    let response = response.expect("Python LSP call should succeed");
+    if let Some(error) = response.get("error") {
+        panic!(
+            "Python LSP failed: {}",
+            error.get("message").unwrap_or(&json!("unknown error"))
+        );
+    }
+    let py_symbols = response["result"]["content"]["symbols"]
+        .as_array()
+        .expect("Python LSP should return symbols array");
+    assert!(
+        !py_symbols.is_empty(),
+        "Python file should have detectable symbols"
+    );
+    let response = client
+        .call_tool("search_workspace_symbols", json!({ "query" : "validate" }))
+        .await
+        .expect("Workspace symbol search should succeed");
+    if let Some(error) = response.get("error") {
+        panic!(
+            "Workspace symbol search failed: {}",
+            error.get("message").unwrap_or(&json!("unknown error"))
+        );
+    }
+    let workspace_symbols = response["result"]["content"]
+        .as_array()
+        .expect("Workspace symbol search should return symbols array");
+    assert!(
+        !workspace_symbols.is_empty(),
+        "Should find validate symbols across languages"
+    );
+    let found_files: std::collections::HashSet<String> = workspace_symbols
+        .iter()
+        .filter_map(|s| s["location"]["uri"].as_str())
+        .map(|uri| uri.to_string())
+        .collect();
+    assert!(
+        found_files.len() >= 2,
+        "Should find validate symbols in multiple files (TypeScript and Python)"
+    );
+    println!("✅ Cross-language LSP test passed:");
+    println!("  - TypeScript symbols: {}", ts_symbols.len());
+    println!("  - JavaScript symbols: {}", js_symbols.len());
+    println!("  - Python symbols: {}", py_symbols.len());
+    println!(
+        "  - Workspace symbols for 'validate': {}",
+        workspace_symbols.len()
+    );
+}
