@@ -48,8 +48,10 @@ for PLUGIN_DIR in $PLUGINS; do
 
     # Check 1: Registry builder
     # Use grep -A to check feature flag and registration are together
+    # Note: Rust crate names use underscores (cb_lang_go) not hyphens (cb-lang-go)
+    RUST_PLUGIN_NAME=$(echo "$PLUGIN_NAME" | tr '-' '_')
     if grep -A 5 "cfg(feature = \"${FEATURE_NAME}\")" "$REGISTRY_FILE" | \
-       grep -q "${PLUGIN_NAME}::"; then
+       grep -q "${RUST_PLUGIN_NAME}::"; then
         echo -e "  ${GREEN}✓${NC} Registered in registry_builder.rs"
     else
         echo -e "  ${RED}✗${NC} MISSING from registry_builder.rs"
@@ -57,14 +59,8 @@ for PLUGIN_DIR in $PLUGINS; do
         PLUGIN_OK=false
     fi
 
-    # Check 2: Root Cargo.toml feature flag
-    if grep -q "^${FEATURE_NAME} = " "$ROOT_CARGO"; then
-        echo -e "  ${GREEN}✓${NC} Feature flag in root Cargo.toml"
-    else
-        echo -e "  ${RED}✗${NC} MISSING feature flag in root Cargo.toml"
-        ISSUES+=("Add '${FEATURE_NAME} = [\"${PLUGIN_NAME}\"]' to [features] in $ROOT_CARGO")
-        PLUGIN_OK=false
-    fi
+    # Check 2: Root Cargo.toml feature flag (SKIP - workspace manifests can't have features)
+    # Features are defined in cb-handlers/Cargo.toml instead
 
     # Check 3: Root Cargo.toml workspace dependencies
     if grep -q "^${PLUGIN_NAME} = " "$ROOT_CARGO"; then
