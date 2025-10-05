@@ -5,13 +5,18 @@
 //! of language-specific operations based on file extensions.
 
 use cb_plugin_api::{LanguageIntelligencePlugin, PluginRegistry};
+use cb_services::services::build_language_plugin_registry;
 use std::sync::Arc;
-use tracing::{debug, info};
+use tracing::debug;
 
 /// Language plugin registry for the handler layer
 ///
 /// This registry wraps the core `PluginRegistry` from `cb-plugin-api` and
 /// provides additional functionality for integration with the handler system.
+///
+/// **IMPORTANT**: This registry uses the centralized builder from
+/// `cb_services::build_language_plugin_registry()` to ensure all plugins are
+/// registered in a single location.
 #[derive(Clone)]
 pub struct LanguagePluginRegistry {
     inner: Arc<PluginRegistry>,
@@ -20,49 +25,14 @@ pub struct LanguagePluginRegistry {
 impl LanguagePluginRegistry {
     /// Create a new registry with all available language plugins
     ///
-    /// This method statically loads all language plugins that are compiled into
-    /// the application. In the future, this could be extended to support dynamic
-    /// plugin loading from external libraries.
+    /// This method uses the centralized plugin builder to ensure consistency
+    /// across the application. All plugin registration happens in
+    /// `crates/cb-services/src/services/registry_builder.rs`.
     pub fn new() -> Self {
-        let mut registry = PluginRegistry::new();
+        // Use the centralized builder - this is the ONLY correct way to create a registry
+        let registry = build_language_plugin_registry();
 
-        // Register Rust plugin
-        #[cfg(feature = "lang-rust")]
-        {
-            info!(plugin = "rust", "Registering Rust language plugin");
-            registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
-        }
-
-        // Register Go plugin
-        #[cfg(feature = "lang-go")]
-        {
-            info!(plugin = "go", "Registering Go language plugin");
-            registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
-        }
-
-        // Register TypeScript plugin
-        #[cfg(feature = "lang-typescript")]
-        {
-            info!(
-                plugin = "typescript",
-                "Registering TypeScript/JavaScript language plugin"
-            );
-            registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
-        }
-
-        // Future language plugins will be registered here
-        // #[cfg(feature = "lang-python")]
-        // registry.register(Arc::new(cb_lang_python::PythonPlugin::new()));
-
-        let plugin_count = registry.all().len();
-        info!(
-            plugin_count = plugin_count,
-            "Language plugin registry initialized"
-        );
-
-        Self {
-            inner: Arc::new(registry),
-        }
+        Self { inner: registry }
     }
 
     /// Get a plugin for a given file extension

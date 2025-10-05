@@ -106,6 +106,9 @@ impl PluginDispatcher {
             debug!("Inside initialize - loading app config");
             info!("Initializing plugin system with DirectLspAdapter (bypassing hard-coded mappings)");
 
+            // Build centralized language plugin registry for SystemToolsPlugin
+            let plugin_registry = cb_services::services::build_language_plugin_registry();
+
             // Get LSP configuration from app config
             let app_config = cb_core::config::AppConfig::load()
                 .map_err(|e| {
@@ -187,7 +190,10 @@ impl PluginDispatcher {
             }
 
             // Register System Tools plugin for workspace-level operations
-            let system_plugin = Arc::new(cb_plugins::system_tools_plugin::SystemToolsPlugin::new());
+            // Use the centralized plugin registry
+            let system_plugin = Arc::new(cb_plugins::system_tools_plugin::SystemToolsPlugin::new(
+                plugin_registry.clone(),
+            ));
             self.plugin_manager
                 .register_plugin("system", system_plugin)
                 .await
@@ -551,9 +557,14 @@ mod tests {
 
     fn create_test_app_state() -> Arc<AppState> {
         let temp_dir = TempDir::new().unwrap();
+
+        // Build centralized language plugin registry
+        let plugin_registry = cb_services::services::build_language_plugin_registry();
+
         let ast_cache = Arc::new(cb_ast::AstCache::new());
         let ast_service = Arc::new(cb_services::services::DefaultAstService::new(
             ast_cache.clone(),
+            plugin_registry.clone(),
         ));
         let project_root = temp_dir.path().to_path_buf();
         let lock_manager = Arc::new(cb_services::services::LockManager::new());
@@ -570,6 +581,7 @@ mod tests {
             lock_manager.clone(),
             operation_queue.clone(),
             &config,
+            plugin_registry.clone(),
         ));
         let planner = cb_services::services::planner::DefaultPlanner::new();
         let plugin_manager = Arc::new(PluginManager::new());

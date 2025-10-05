@@ -25,8 +25,14 @@ pub fn create_services_bundle(
     plugin_manager: Arc<cb_plugins::PluginManager>,
     config: &cb_core::AppConfig,
 ) -> ServicesBundle {
+    // Build the language plugin registry (centralized)
+    let plugin_registry = super::registry_builder::build_language_plugin_registry();
+
     let ast_cache = Arc::new(AstCache::with_settings(cache_settings));
-    let ast_service = Arc::new(DefaultAstService::new(ast_cache.clone()));
+    let ast_service = Arc::new(DefaultAstService::new(
+        ast_cache.clone(),
+        plugin_registry.clone(),
+    ));
     let lock_manager = Arc::new(LockManager::new());
     let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
 
@@ -39,6 +45,7 @@ pub fn create_services_bundle(
         lock_manager.clone(),
         operation_queue.clone(),
         config,
+        plugin_registry,
     ));
     let planner = planner::DefaultPlanner::new();
     let workflow_executor = workflow_executor::DefaultWorkflowExecutor::new(plugin_manager);

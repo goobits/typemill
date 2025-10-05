@@ -208,7 +208,11 @@ tracing = { workspace = true }
 
 ## Plugin Registration
 
-Add your plugin to `crates/cb-handlers/src/language_plugin_registry.rs:30-48`:
+### Centralized Registry Builder
+
+**IMPORTANT**: Plugins are registered in a **single location** via the centralized registry builder at `crates/cb-services/src/services/registry_builder.rs`. This is the ONLY place where plugins should be instantiated for production use.
+
+Add your plugin to `crates/cb-services/src/services/registry_builder.rs:50-90`:
 
 ```rust
 // Register YourLanguage plugin
@@ -216,8 +220,35 @@ Add your plugin to `crates/cb-handlers/src/language_plugin_registry.rs:30-48`:
 {
     info!(plugin = "yourlanguage", "Registering YourLanguage plugin");
     registry.register(Arc::new(cb_lang_yourlanguage::YourLanguagePlugin::new()));
+    plugin_count += 1;
 }
 ```
+
+**Why centralized registration?**
+- ✅ Single source of truth for all plugins
+- ✅ Easy to add/remove languages (one location)
+- ✅ Testable via dependency injection
+- ✅ No code duplication across services
+- ✅ Services receive registry via constructor injection
+
+**Services receive the registry via dependency injection:**
+
+```rust
+use cb_services::build_language_plugin_registry;
+
+// In service initialization:
+let plugin_registry = build_language_plugin_registry();
+let file_service = FileService::new(
+    project_root,
+    ast_cache,
+    lock_manager,
+    operation_queue,
+    config,
+    plugin_registry.clone(),
+);
+```
+
+**DO NOT create registries directly in services** - this defeats the purpose of centralized management.
 
 Add feature flag to workspace `Cargo.toml`:
 

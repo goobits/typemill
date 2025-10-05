@@ -8,6 +8,7 @@ pub mod import_service;
 pub mod lock_manager;
 pub mod operation_queue;
 pub mod planner;
+pub mod registry_builder;
 pub mod workflow_executor;
 
 #[cfg(test)]
@@ -22,3 +23,4 @@ pub use git_service::GitService;
 pub use import_service::ImportService;
 pub use lock_manager::{LockManager, LockType};
 pub use operation_queue::{FileOperation, OperationQueue, OperationType, QueueStats};
+pub use registry_builder::build_language_plugin_registry;

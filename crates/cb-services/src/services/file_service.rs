@@ -45,6 +45,7 @@ impl FileService {
         lock_manager: Arc<LockManager>,
         operation_queue: Arc<super::operation_queue::OperationQueue>,
         config: &AppConfig,
+        plugin_registry: Arc<cb_plugin_api::PluginRegistry>,
     ) -> Self {
         let project_root = project_root.as_ref().to_path_buf();
 
@@ -59,15 +60,11 @@ impl FileService {
             git_enabled_in_config = config.git.enabled,
             is_git_repo,
             use_git,
-            "Initializing FileService with git support"
+            "Initializing FileService with git support and injected plugin registry"
         );
 
-        // Create language plugin registry (only Rust for now)
-        let mut plugin_registry = cb_plugin_api::PluginRegistry::new();
-        plugin_registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
-
         Self {
-            import_service: ImportService::new(&project_root, Arc::new(plugin_registry)),
+            import_service: ImportService::new(&project_root, plugin_registry),
             project_root,
             ast_cache,
             lock_manager,

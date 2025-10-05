@@ -145,8 +145,14 @@ fn spawn_test_worker(queue: Arc<OperationQueue>) {
 
 /// Create a test dispatcher for integration tests with a custom project root
 pub fn create_test_dispatcher_with_root(project_root: std::path::PathBuf) -> PluginDispatcher {
+    // Build language plugin registry (centralized)
+    let plugin_registry = cb_services::services::build_language_plugin_registry();
+
     let ast_cache = Arc::new(AstCache::new());
-    let ast_service = Arc::new(DefaultAstService::new(ast_cache.clone()));
+    let ast_service = Arc::new(DefaultAstService::new(
+        ast_cache.clone(),
+        plugin_registry.clone(),
+    ));
     let lock_manager = Arc::new(LockManager::new());
     let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
 
@@ -162,6 +168,7 @@ pub fn create_test_dispatcher_with_root(project_root: std::path::PathBuf) -> Plu
         lock_manager.clone(),
         operation_queue.clone(),
         &config,
+        plugin_registry,
     ));
     let planner = crate::services::planner::DefaultPlanner::new();
     let plugin_manager = Arc::new(PluginManager::new());

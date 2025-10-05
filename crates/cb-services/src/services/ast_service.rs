@@ -5,6 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use cb_ast::AstCache;
+use cb_plugin_api::PluginRegistry;
 use cb_protocol::{ApiResult, CacheStats, ImportGraph};
 use tracing::{debug, trace};
 
@@ -14,20 +15,47 @@ use cb_protocol::AstService;
 pub struct DefaultAstService {
     /// Shared AST cache for performance optimization
     cache: Arc<AstCache>,
+    /// Language plugin registry for import parsing
+    plugin_registry: Arc<PluginRegistry>,
 }
 
 impl DefaultAstService {
-    /// Create a new DefaultAstService with the provided cache
-    pub fn new(cache: Arc<AstCache>) -> Self {
-        debug!("DefaultAstService created with shared cache");
-        Self { cache }
+    /// Create a new DefaultAstService with the provided cache and plugin registry
+    pub fn new(cache: Arc<AstCache>, plugin_registry: Arc<PluginRegistry>) -> Self {
+        debug!("DefaultAstService created with shared cache and plugin registry");
+        Self {
+            cache,
+            plugin_registry,
+        }
     }
 
-    /// Create a new DefaultAstService with a new cache instance
+    /// Create a new DefaultAstService with a new cache instance and registry
+    ///
+    /// **DEPRECATED**: This method creates its own registry, which defeats the purpose
+    /// of centralized registry management. Use `new()` with an injected registry instead.
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use new() with injected registry from cb_handlers::build_language_plugin_registry()"
+    )]
     pub fn new_with_cache() -> Self {
         let cache = Arc::new(AstCache::new());
-        debug!("DefaultAstService created with new cache instance");
-        Self { cache }
+        // For backward compatibility, build a registry
+        // In production code, this should be passed in
+        let plugin_registry = {
+            let mut registry = PluginRegistry::new();
+            #[cfg(feature = "lang-rust")]
+            registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
+            #[cfg(feature = "lang-go")]
+            registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
+            #[cfg(feature = "lang-typescript")]
+            registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
+            Arc::new(registry)
+        };
+        debug!("DefaultAstService created with new cache instance (deprecated method)");
+        Self {
+            cache,
+            plugin_registry,
+        }
     }
 
     /// Get cache statistics for monitoring
@@ -75,7 +103,8 @@ impl AstService for DefaultAstService {
         let content = tokio::fs::read_to_string(&file_path).await?;
 
         // Use plugin-based parsing for languages with plugins
-        let import_graph = build_import_graph_with_plugin(&content, file)?;
+        let import_graph =
+            build_import_graph_with_plugin(&content, file, self.plugin_registry.clone())?;
 
         // Cache the result for future use
         if let Err(e) = self
@@ -105,11 +134,10 @@ impl AstService for DefaultAstService {
 fn build_import_graph_with_plugin(
     source: &str,
     path: &Path,
+    registry: Arc<PluginRegistry>,
 ) -> Result<cb_protocol::ImportGraph, cb_protocol::ApiError> {
-    use cb_plugin_api::PluginRegistry;
     use cb_protocol::{ImportGraph, ImportGraphMetadata, ImportInfo};
     use std::collections::HashSet;
-    use std::sync::Arc;
 
     // Determine file extension
     let extension = path
@@ -127,13 +155,7 @@ fn build_import_graph_with_plugin(
             .map_err(|e| cb_protocol::ApiError::internal(format!("AST parsing failed: {}", e)));
     }
 
-    // Create plugin registry
-    let mut registry = PluginRegistry::new();
-    registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
-    registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
-    registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
-
-    // Find appropriate plugin
+    // Find appropriate plugin from injected registry
     let plugin = registry.find_by_extension(extension).ok_or_else(|| {
         cb_protocol::ApiError::internal(format!("No plugin found for .{} files", extension))
     })?;

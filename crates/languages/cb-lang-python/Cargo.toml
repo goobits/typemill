@@ -1,5 +1,5 @@
 [package]
-name = "cb-lang-go"
+name = "cb-lang-python"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -7,9 +7,10 @@ repository.workspace = true
 homepage.workspace = true
 
 [dependencies]
-# Codebuddy workspace dependencies
+# Core plugin API
 cb-plugin-api = { path = "../../cb-plugin-api" }
 cb-protocol = { path = "../../cb-protocol" }
+cb-core = { path = "../../cb-core" }
 
 # Async operations
 async-trait = { workspace = true }
@@ -19,7 +20,6 @@ tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 regex = "1.10"
-tempfile = "3.10"
 chrono = { version = "0.4", features = ["serde"] }
 
 # Error handling

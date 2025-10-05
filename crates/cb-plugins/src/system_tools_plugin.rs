@@ -9,7 +9,6 @@ use crate::{
 };
 use async_trait::async_trait;
 use cb_core::language::detect_package_manager;
-use cb_plugin_api::PluginRegistry;
 use ignore::WalkBuilder;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -22,16 +21,49 @@ use tracing::{debug, warn};
 pub struct SystemToolsPlugin {
     metadata: PluginMetadata,
     capabilities: Capabilities,
+    /// Language plugin registry for AST operations
+    plugin_registry: Arc<cb_plugin_api::PluginRegistry>,
 }
 
 impl Default for SystemToolsPlugin {
+    /// **DEPRECATED**: Do not use Default in production.
+    ///
+    /// This implementation exists only for backward compatibility and testing.
+    /// Production code MUST use `SystemToolsPlugin::new(registry)` with a
+    /// registry obtained from `cb_services::services::build_language_plugin_registry()`.
+    ///
+    /// # Why this exists
+    ///
+    /// Due to circular dependency constraints (cb-plugins cannot depend on cb-services),
+    /// we cannot call the centralized builder here. This Default impl creates a
+    /// minimal registry for non-production use only.
+    ///
+    /// # Production usage
+    ///
+    /// ```rust,ignore
+    /// let registry = cb_services::services::build_language_plugin_registry();
+    /// let plugin = SystemToolsPlugin::new(registry);
+    /// ```
     fn default() -> Self {
-        Self::new()
+        // IMPORTANT: This is NOT production code. Production code uses new() with
+        // a registry from cb_services::services::build_language_plugin_registry()
+        #[allow(unused_mut)] // mut needed when language features are enabled
+        let plugin_registry = {
+            let mut registry = cb_plugin_api::PluginRegistry::new();
+            #[cfg(feature = "lang-rust")]
+            registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
+            #[cfg(feature = "lang-go")]
+            registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
+            #[cfg(feature = "lang-typescript")]
+            registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
+            Arc::new(registry)
+        };
+        Self::new(plugin_registry)
     }
 }
 
 impl SystemToolsPlugin {
-    /// Creates a new instance of the `SystemToolsPlugin`.
+    /// Creates a new instance of the `SystemToolsPlugin` with injected registry.
     ///
     /// This plugin provides system-level tools that work across all file types, including:
     /// - File system operations (list_files, analyze_imports)
@@ -42,10 +74,14 @@ impl SystemToolsPlugin {
     /// The plugin advertises all available tools through its capabilities, even though
     /// some operations (like refactoring) are handled by the plugin dispatcher.
     ///
+    /// # Arguments
+    ///
+    /// * `plugin_registry` - Shared language plugin registry for AST operations
+    ///
     /// # Returns
     ///
     /// A new `SystemToolsPlugin` instance with all capabilities registered
-    pub fn new() -> Self {
+    pub fn new(plugin_registry: Arc<cb_plugin_api::PluginRegistry>) -> Self {
         let mut capabilities = Capabilities::default();
 
         // Add custom capabilities for system tools
@@ -84,6 +120,7 @@ impl SystemToolsPlugin {
                 priority: 50, // Default priority
             },
             capabilities,
+            plugin_registry,
         }
     }
 
@@ -178,12 +215,6 @@ impl SystemToolsPlugin {
                     message: format!("Failed to read file: {}", e),
                 })?;
 
-        // Create plugin registry
-        let mut registry = PluginRegistry::new();
-        registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
-        registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
-        registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
-
         // Determine file extension
         let path = Path::new(&args.file_path);
         let extension = path
@@ -194,8 +225,8 @@ impl SystemToolsPlugin {
                 message: "File has no extension".to_string(),
             })?;
 
-        // Find appropriate plugin
-        let plugin = registry.find_by_extension(extension).ok_or_else(|| {
+        // Find appropriate plugin from injected registry
+        let plugin = self.plugin_registry.find_by_extension(extension).ok_or_else(|| {
             PluginError::PluginRequestFailed {
                 plugin: "system-tools".to_string(),
                 message: format!("No plugin found for .{} files", extension),
@@ -425,13 +456,10 @@ impl SystemToolsPlugin {
             "Extracting module to package"
         );
 
-        // Create language plugin registry (only Rust for now)
-        let mut registry = PluginRegistry::new();
-        registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
-
-        // Call the planning function from cb-ast
+        // Call the planning function from cb-ast with injected registry
         let edit_plan = cb_ast::package_extractor::plan_extract_module_to_package_with_registry(
-            parsed, &registry,
+            parsed,
+            &self.plugin_registry,
         )
         .await
         .map_err(|e| PluginError::PluginRequestFailed {
