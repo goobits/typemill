@@ -403,10 +403,7 @@ async fn check_symbol_references(
     let start_time = Instant::now();
 
     // Fill initial batch
-    for symbol in symbols_iter
-        .by_ref()
-        .take(config.max_concurrent_checks)
-    {
+    for symbol in symbols_iter.by_ref().take(config.max_concurrent_checks) {
         let sem = semaphore.clone();
         let adapter = lsp_adapter.clone();
         let symbol = symbol.clone();
@@ -680,7 +677,8 @@ impl AnalysisHandler {
             .ok_or_else(|| ServerError::Internal("LSP adapter not initialized".to_string()))?;
 
         // Run dead code analysis using shared LSP adapter
-        let dead_symbols = analyze_dead_code(adapter.clone(), workspace_path, config.clone()).await?;
+        let dead_symbols =
+            analyze_dead_code(adapter.clone(), workspace_path, config.clone()).await?;
 
         // Compute statistics
         let files_analyzed = dead_symbols
@@ -694,13 +692,19 @@ impl AnalysisHandler {
             std::collections::HashMap::new();
 
         for symbol in &dead_symbols {
-            let entry = symbol_kind_stats.entry(symbol.kind.clone()).or_insert((0, 0));
+            let entry = symbol_kind_stats
+                .entry(symbol.kind.clone())
+                .or_insert((0, 0));
             entry.1 += 1; // dead count
         }
 
         // Check if analysis was truncated
-        let is_truncated = config.max_results.is_some_and(|max| dead_symbols.len() >= max)
-            || config.timeout.is_some_and(|timeout| start_time.elapsed() >= timeout);
+        let is_truncated = config
+            .max_results
+            .is_some_and(|max| dead_symbols.len() >= max)
+            || config
+                .timeout
+                .is_some_and(|timeout| start_time.elapsed() >= timeout);
 
         // Format dead symbols for response
         let dead_symbols_json: Vec<Value> = dead_symbols

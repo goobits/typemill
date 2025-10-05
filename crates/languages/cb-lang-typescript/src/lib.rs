@@ -210,7 +210,9 @@ impl LanguageIntelligencePlugin for TypeScriptPlugin {
             }
 
             // Try as directory with index
-            let index_path = package_path.join(&relative_path).join(format!("index.{}", ext));
+            let index_path = package_path
+                .join(&relative_path)
+                .join(format!("index.{}", ext));
             if index_path.exists() {
                 files.push(index_path);
             }
@@ -324,7 +326,8 @@ impl LanguageIntelligencePlugin for TypeScriptPlugin {
                 ScanScope::QualifiedPaths | ScanScope::All => {
                     // Look for any occurrence
                     if let Some(pos) = line.find(module_to_find) {
-                        let kind = if line.trim().starts_with("import") || line.contains("require(") {
+                        let kind = if line.trim().starts_with("import") || line.contains("require(")
+                        {
                             ReferenceKind::Declaration
                         } else {
                             ReferenceKind::QualifiedPath
@@ -355,7 +358,8 @@ fn calculate_relative_import(from_file: &Path, to_file: &Path) -> String {
     if let Ok(rel_path) = to_file.strip_prefix(from_dir) {
         // Remove file extension
         let path_str = rel_path.to_string_lossy();
-        let without_ext = path_str.trim_end_matches(".ts")
+        let without_ext = path_str
+            .trim_end_matches(".ts")
             .trim_end_matches(".tsx")
             .trim_end_matches(".js")
             .trim_end_matches(".jsx")

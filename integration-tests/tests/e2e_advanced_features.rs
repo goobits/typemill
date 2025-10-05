@@ -501,18 +501,42 @@ export function {}Function{}(param: {}Interface{}): boolean {{
     );
 
     // Try multiple possible paths for symbols
-    let symbols = response["symbols"].as_array()
-        .or_else(|| response.get("result").and_then(|r| r.get("content")).and_then(|c| c.get("symbols")).and_then(|s| s.as_array()))
-        .or_else(|| response.get("result").and_then(|r| r.get("content")).and_then(|c| c.as_array()))
+    let symbols = response["symbols"]
+        .as_array()
+        .or_else(|| {
+            response
+                .get("result")
+                .and_then(|r| r.get("content"))
+                .and_then(|c| c.get("symbols"))
+                .and_then(|s| s.as_array())
+        })
+        .or_else(|| {
+            response
+                .get("result")
+                .and_then(|r| r.get("content"))
+                .and_then(|c| c.as_array())
+        })
         .or_else(|| response.get("result").and_then(|r| r.as_array()))
         .unwrap_or_else(|| {
             eprintln!("ERROR: Could not find symbols in response at any expected path");
-            eprintln!("Response keys: {:?}", response.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+            eprintln!(
+                "Response keys: {:?}",
+                response.as_object().map(|o| o.keys().collect::<Vec<_>>())
+            );
             if let Some(result) = response.get("result") {
-                eprintln!("Result keys: {:?}", result.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+                eprintln!(
+                    "Result keys: {:?}",
+                    result.as_object().map(|o| o.keys().collect::<Vec<_>>())
+                );
                 if let Some(content) = result.get("content") {
-                    eprintln!("Content keys: {:?}", content.as_object().map(|o| o.keys().collect::<Vec<_>>()));
-                    eprintln!("Content value: {}", serde_json::to_string_pretty(content).unwrap_or_default());
+                    eprintln!(
+                        "Content keys: {:?}",
+                        content.as_object().map(|o| o.keys().collect::<Vec<_>>())
+                    );
+                    eprintln!(
+                        "Content value: {}",
+                        serde_json::to_string_pretty(content).unwrap_or_default()
+                    );
                 }
             }
             panic!("Workspace symbol search should return symbols array");

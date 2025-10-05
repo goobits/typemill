@@ -8,8 +8,8 @@ use crate::{
     PluginResult,
 };
 use async_trait::async_trait;
-use cb_plugin_api::PluginRegistry;
 use cb_core::language::detect_package_manager;
+use cb_plugin_api::PluginRegistry;
 use ignore::WalkBuilder;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -195,12 +195,12 @@ impl SystemToolsPlugin {
             })?;
 
         // Find appropriate plugin
-        let plugin = registry
-            .find_by_extension(extension)
-            .ok_or_else(|| PluginError::PluginRequestFailed {
+        let plugin = registry.find_by_extension(extension).ok_or_else(|| {
+            PluginError::PluginRequestFailed {
                 plugin: "system-tools".to_string(),
                 message: format!("No plugin found for .{} files", extension),
-            })?;
+            }
+        })?;
 
         // Build import graph using the plugin
         let import_graph = build_import_graph_with_plugin(&content, path, plugin)?;
@@ -466,28 +466,32 @@ fn build_import_graph_with_plugin(
     let imports: Vec<ImportInfo> = match language.as_str() {
         "typescript" => {
             // Use TypeScript plugin's parser
-            let graph = cb_lang_typescript::parser::analyze_imports(source, Some(path))
-                .map_err(|e| PluginError::PluginRequestFailed {
-                    plugin: plugin.name().to_string(),
-                    message: format!("Failed to parse imports: {}", e),
+            let graph =
+                cb_lang_typescript::parser::analyze_imports(source, Some(path)).map_err(|e| {
+                    PluginError::PluginRequestFailed {
+                        plugin: plugin.name().to_string(),
+                        message: format!("Failed to parse imports: {}", e),
+                    }
                 })?;
             graph.imports
         }
         "rust" => {
             // Use Rust plugin's parser (returns Vec<ImportInfo> directly)
-            cb_lang_rust::parser::parse_imports(source)
-                .map_err(|e| PluginError::PluginRequestFailed {
+            cb_lang_rust::parser::parse_imports(source).map_err(|e| {
+                PluginError::PluginRequestFailed {
                     plugin: plugin.name().to_string(),
                     message: format!("Failed to parse imports: {}", e),
-                })?
+                }
+            })?
         }
         "go" => {
             // Use Go plugin's parser
-            let graph = cb_lang_go::parser::analyze_imports(source, Some(path))
-                .map_err(|e| PluginError::PluginRequestFailed {
+            let graph = cb_lang_go::parser::analyze_imports(source, Some(path)).map_err(|e| {
+                PluginError::PluginRequestFailed {
                     plugin: plugin.name().to_string(),
                     message: format!("Failed to parse imports: {}", e),
-                })?;
+                }
+            })?;
             graph.imports
         }
         _ => {

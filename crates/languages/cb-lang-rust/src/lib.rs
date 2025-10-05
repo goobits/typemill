@@ -233,15 +233,13 @@ impl LanguageIntelligencePlugin for RustPlugin {
         );
 
         // Read file content
-        let content = tokio::fs::read_to_string(file_path)
-            .await
-            .map_err(|e| {
-                cb_plugin_api::PluginError::internal(format!(
-                    "Failed to read file {}: {}",
-                    file_path.display(),
-                    e
-                ))
-            })?;
+        let content = tokio::fs::read_to_string(file_path).await.map_err(|e| {
+            cb_plugin_api::PluginError::internal(format!(
+                "Failed to read file {}: {}",
+                file_path.display(),
+                e
+            ))
+        })?;
 
         // Use our own parse_imports function
         let imports = parser::parse_imports(&content).map_err(|e| {
@@ -328,17 +326,13 @@ impl LanguageIntelligencePlugin for RustPlugin {
         };
 
         // Extract old and new crate names from rename_info
-        let old_crate_name = rename_info["old_crate_name"]
-            .as_str()
-            .ok_or_else(|| {
-                cb_plugin_api::PluginError::invalid_input("Missing old_crate_name in rename_info")
-            })?;
+        let old_crate_name = rename_info["old_crate_name"].as_str().ok_or_else(|| {
+            cb_plugin_api::PluginError::invalid_input("Missing old_crate_name in rename_info")
+        })?;
 
-        let new_crate_name = rename_info["new_crate_name"]
-            .as_str()
-            .ok_or_else(|| {
-                cb_plugin_api::PluginError::invalid_input("Missing new_crate_name in rename_info")
-            })?;
+        let new_crate_name = rename_info["new_crate_name"].as_str().ok_or_else(|| {
+            cb_plugin_api::PluginError::invalid_input("Missing new_crate_name in rename_info")
+        })?;
 
         debug!(
             old_crate = %old_crate_name,

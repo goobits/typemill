@@ -118,7 +118,10 @@ fn build_import_graph_with_plugin(
         .ok_or_else(|| cb_protocol::ApiError::internal("File has no extension"))?;
 
     // For languages without plugins, fall back to cb-ast
-    if !matches!(extension, "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "rs" | "go") {
+    if !matches!(
+        extension,
+        "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "rs" | "go"
+    ) {
         // Use legacy cb-ast for Python and other languages
         return cb_ast::parser::build_import_graph(source, path)
             .map_err(|e| cb_protocol::ApiError::internal(format!("AST parsing failed: {}", e)));
@@ -131,19 +134,17 @@ fn build_import_graph_with_plugin(
     registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
 
     // Find appropriate plugin
-    let plugin = registry
-        .find_by_extension(extension)
-        .ok_or_else(|| {
-            cb_protocol::ApiError::internal(format!("No plugin found for .{} files", extension))
-        })?;
+    let plugin = registry.find_by_extension(extension).ok_or_else(|| {
+        cb_protocol::ApiError::internal(format!("No plugin found for .{} files", extension))
+    })?;
 
     let language = plugin.name().to_lowercase();
 
     // Get imports from plugin
     let imports: Vec<ImportInfo> = match language.as_str() {
         "typescript" => {
-            let graph = cb_lang_typescript::parser::analyze_imports(source, Some(path))
-                .map_err(|e| {
+            let graph =
+                cb_lang_typescript::parser::analyze_imports(source, Some(path)).map_err(|e| {
                     cb_protocol::ApiError::internal(format!("Failed to parse imports: {}", e))
                 })?;
             graph.imports

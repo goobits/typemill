@@ -40,9 +40,9 @@ pub fn parse_package_json(content: &str) -> PluginResult<ManifestData> {
     let json: Value = serde_json::from_str(content)
         .map_err(|e| PluginError::manifest(format!("Failed to parse package.json: {}", e)))?;
 
-    let obj = json.as_object().ok_or_else(|| {
-        PluginError::manifest("package.json root must be an object")
-    })?;
+    let obj = json
+        .as_object()
+        .ok_or_else(|| PluginError::manifest("package.json root must be an object"))?;
 
     // Extract package information
     let name = obj
@@ -147,11 +147,7 @@ fn parse_dependency_source(value: &Value) -> DependencySource {
 }
 
 /// Update a dependency version in package.json content
-pub fn update_dependency(
-    content: &str,
-    dep_name: &str,
-    new_version: &str,
-) -> PluginResult<String> {
+pub fn update_dependency(content: &str, dep_name: &str, new_version: &str) -> PluginResult<String> {
     debug!(
         dependency = %dep_name,
         version = %new_version,
@@ -161,9 +157,9 @@ pub fn update_dependency(
     let mut json: Value = serde_json::from_str(content)
         .map_err(|e| PluginError::manifest(format!("Failed to parse package.json: {}", e)))?;
 
-    let obj = json.as_object_mut().ok_or_else(|| {
-        PluginError::manifest("package.json root must be an object")
-    })?;
+    let obj = json
+        .as_object_mut()
+        .ok_or_else(|| PluginError::manifest("package.json root must be an object"))?;
 
     let mut found = false;
 
@@ -176,7 +172,10 @@ pub fn update_dependency(
     }
 
     // Update in devDependencies
-    if let Some(dev_deps) = obj.get_mut("devDependencies").and_then(|v| v.as_object_mut()) {
+    if let Some(dev_deps) = obj
+        .get_mut("devDependencies")
+        .and_then(|v| v.as_object_mut())
+    {
         if dev_deps.contains_key(dep_name) {
             dev_deps.insert(dep_name.to_string(), Value::String(new_version.to_string()));
             found = true;
@@ -184,7 +183,10 @@ pub fn update_dependency(
     }
 
     // Update in peerDependencies
-    if let Some(peer_deps) = obj.get_mut("peerDependencies").and_then(|v| v.as_object_mut()) {
+    if let Some(peer_deps) = obj
+        .get_mut("peerDependencies")
+        .and_then(|v| v.as_object_mut())
+    {
         if peer_deps.contains_key(dep_name) {
             peer_deps.insert(dep_name.to_string(), Value::String(new_version.to_string()));
             found = true;
@@ -192,7 +194,10 @@ pub fn update_dependency(
     }
 
     // Update in optionalDependencies
-    if let Some(opt_deps) = obj.get_mut("optionalDependencies").and_then(|v| v.as_object_mut()) {
+    if let Some(opt_deps) = obj
+        .get_mut("optionalDependencies")
+        .and_then(|v| v.as_object_mut())
+    {
         if opt_deps.contains_key(dep_name) {
             opt_deps.insert(dep_name.to_string(), Value::String(new_version.to_string()));
             found = true;
@@ -274,7 +279,8 @@ mod tests {
         }));
 
         assert!(manifest.dev_dependencies.iter().any(|d| {
-            d.name == "typescript" && matches!(&d.source, DependencySource::Version(v) if v == "^5.0.0")
+            d.name == "typescript"
+                && matches!(&d.source, DependencySource::Version(v) if v == "^5.0.0")
         }));
     }
 
@@ -292,14 +298,22 @@ mod tests {
         let manifest = parse_package_json(content).unwrap();
         assert_eq!(manifest.dependencies.len(), 2);
 
-        let git_dep = manifest.dependencies.iter().find(|d| d.name == "my-lib").unwrap();
+        let git_dep = manifest
+            .dependencies
+            .iter()
+            .find(|d| d.name == "my-lib")
+            .unwrap();
         assert!(matches!(
             &git_dep.source,
             DependencySource::Git { url, rev }
             if url == "git+https://github.com/user/repo.git" && rev.as_deref() == Some("v1.0.0")
         ));
 
-        let github_dep = manifest.dependencies.iter().find(|d| d.name == "other-lib").unwrap();
+        let github_dep = manifest
+            .dependencies
+            .iter()
+            .find(|d| d.name == "other-lib")
+            .unwrap();
         assert!(matches!(&github_dep.source, DependencySource::Git { .. }));
     }
 
@@ -317,10 +331,18 @@ mod tests {
         let manifest = parse_package_json(content).unwrap();
         assert_eq!(manifest.dependencies.len(), 2);
 
-        let local_dep = manifest.dependencies.iter().find(|d| d.name == "local-lib").unwrap();
+        let local_dep = manifest
+            .dependencies
+            .iter()
+            .find(|d| d.name == "local-lib")
+            .unwrap();
         assert!(matches!(&local_dep.source, DependencySource::Path(p) if p == "../local-lib"));
 
-        let relative_dep = manifest.dependencies.iter().find(|d| d.name == "relative-lib").unwrap();
+        let relative_dep = manifest
+            .dependencies
+            .iter()
+            .find(|d| d.name == "relative-lib")
+            .unwrap();
         assert!(matches!(&relative_dep.source, DependencySource::Path(p) if p == "./libs/my-lib"));
     }
 
@@ -338,7 +360,11 @@ mod tests {
         let manifest = parse_package_json(content).unwrap();
         assert_eq!(manifest.dependencies.len(), 2);
 
-        let ws_dep = manifest.dependencies.iter().find(|d| d.name == "workspace-lib").unwrap();
+        let ws_dep = manifest
+            .dependencies
+            .iter()
+            .find(|d| d.name == "workspace-lib")
+            .unwrap();
         assert!(matches!(&ws_dep.source, DependencySource::Version(v) if v == "workspace:*"));
     }
 

@@ -122,7 +122,7 @@ pub async fn start_admin_server(
         .route("/auth/generate-token", post(generate_auth_token))
         .route("/workspaces", get(list_workspaces))
         .route("/workspaces/register", post(register_workspace))
-        .route("/workspaces/:id/execute", post(execute_command))
+        .route("/workspaces/{id}/execute", post(execute_command))
         .layer(ServiceBuilder::new())
         .with_state(Arc::new(state));
 

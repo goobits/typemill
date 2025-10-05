@@ -300,7 +300,9 @@ impl LanguageIntelligencePlugin for GoPlugin {
             match scope {
                 ScanScope::TopLevelOnly | ScanScope::AllUseStatements => {
                     // Look for import statements
-                    if line.trim().starts_with("import") || line.contains(&format!("\"{}\"", module_to_find)) {
+                    if line.trim().starts_with("import")
+                        || line.contains(&format!("\"{}\"", module_to_find))
+                    {
                         if let Some(pos) = line.find(module_to_find) {
                             references.push(ModuleReference {
                                 line: line_num,

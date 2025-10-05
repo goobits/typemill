@@ -790,7 +790,7 @@ resolver = "2"
 mod tests {
     use super::*;
     use cb_lang_rust::RustPlugin;
-use cb_plugin_api::LanguageIntelligencePlugin;
+    use cb_plugin_api::LanguageIntelligencePlugin;
     use cb_protocol::EditType;
     use std::fs;
     use std::sync::Arc;

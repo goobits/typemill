@@ -245,8 +245,20 @@ fn is_external_dependency(module_path: &str) -> bool {
 
     // Node built-ins are external but special
     const NODE_BUILTINS: &[&str] = &[
-        "fs", "path", "http", "https", "crypto", "util", "events", "stream",
-        "buffer", "process", "os", "child_process", "url", "querystring",
+        "fs",
+        "path",
+        "http",
+        "https",
+        "crypto",
+        "util",
+        "events",
+        "stream",
+        "buffer",
+        "process",
+        "os",
+        "child_process",
+        "url",
+        "querystring",
     ];
 
     if NODE_BUILTINS.contains(&module_path) {
@@ -377,15 +389,26 @@ import('./dynamic-module');
         assert_eq!(imports.len(), 6);
 
         // Check ES6 imports
-        assert!(imports.iter().any(|i| i.module_path == "react" && matches!(i.import_type, ImportType::EsModule)));
-        assert!(imports.iter().any(|i| i.module_path == "./utils" && matches!(i.import_type, ImportType::EsModule)));
+        assert!(imports
+            .iter()
+            .any(|i| i.module_path == "react" && matches!(i.import_type, ImportType::EsModule)));
+        assert!(imports
+            .iter()
+            .any(|i| i.module_path == "./utils" && matches!(i.import_type, ImportType::EsModule)));
 
         // Check CommonJS
-        assert!(imports.iter().any(|i| i.module_path == "fs" && matches!(i.import_type, ImportType::CommonJs)));
-        assert!(imports.iter().any(|i| i.module_path == "path" && matches!(i.import_type, ImportType::CommonJs)));
+        assert!(imports
+            .iter()
+            .any(|i| i.module_path == "fs" && matches!(i.import_type, ImportType::CommonJs)));
+        assert!(imports
+            .iter()
+            .any(|i| i.module_path == "path" && matches!(i.import_type, ImportType::CommonJs)));
 
         // Check dynamic
-        assert!(imports.iter().any(|i| i.module_path == "./dynamic-module" && matches!(i.import_type, ImportType::Dynamic)));
+        assert!(imports
+            .iter()
+            .any(|i| i.module_path == "./dynamic-module"
+                && matches!(i.import_type, ImportType::Dynamic)));
     }
 
     #[test]
@@ -415,8 +438,16 @@ const lodash = require('lodash');
         assert!(graph.imports.len() >= 2);
 
         // Check external dependencies
-        assert!(graph.metadata.external_dependencies.contains(&"react".to_string()) ||
-                graph.metadata.external_dependencies.contains(&"lodash".to_string()));
+        assert!(
+            graph
+                .metadata
+                .external_dependencies
+                .contains(&"react".to_string())
+                || graph
+                    .metadata
+                    .external_dependencies
+                    .contains(&"lodash".to_string())
+        );
     }
 
     #[test]

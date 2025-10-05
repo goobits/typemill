@@ -37,9 +37,9 @@ fn spawn_test_worker(queue: Arc<OperationQueue>) {
                             .get("content")
                             .and_then(|v| v.as_str())
                             .unwrap_or("");
-                        fs::write(&op.file_path, content).await.map_err(|e| {
-                            ApiError::Internal(format!("Failed to write file: {}", e))
-                        })
+                        fs::write(&op.file_path, content)
+                            .await
+                            .map_err(|e| ApiError::Internal(format!("Failed to write file: {}", e)))
                     }
                     OperationType::Delete => {
                         if op.file_path.exists() {
@@ -55,9 +55,7 @@ fn spawn_test_worker(queue: Arc<OperationQueue>) {
                             .params
                             .get("new_path")
                             .and_then(|v| v.as_str())
-                            .ok_or_else(|| {
-                                ApiError::Internal("Missing new_path".to_string())
-                            })?;
+                            .ok_or_else(|| ApiError::Internal("Missing new_path".to_string()))?;
                         fs::rename(&op.file_path, new_path_str).await.map_err(|e| {
                             ApiError::Internal(format!("Failed to rename file: {}", e))
                         })

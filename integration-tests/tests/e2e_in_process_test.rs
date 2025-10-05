@@ -79,7 +79,11 @@ const oldConstant{} = "old_value_{}";
         let content = tokio::fs::read_to_string(file_path).await.unwrap();
         assert!(!content.is_empty(), "File {} should have content", i);
         if i < 3 {
-            eprintln!("DEBUG: File {} content (first 200 chars): {}", i, &content[..content.len().min(200)]);
+            eprintln!(
+                "DEBUG: File {} content (first 200 chars): {}",
+                i,
+                &content[..content.len().min(200)]
+            );
         }
     }
     eprintln!("DEBUG: All {} files verified to have content!", file_count);
@@ -154,9 +158,23 @@ const oldConstant{} = "old_value_{}";
     for (index, file_path) in file_paths.iter().enumerate().take(5) {
         let content = tokio::fs::read_to_string(file_path).await.unwrap();
         // Verify the edits were applied
-        assert!(content.contains(&format!("NewInterface{}", index)), "File {} should contain NewInterface{}", index, index);
-        assert!(content.contains("newProperty"), "File {} should contain newProperty", index);
-        assert!(content.contains(&format!("newFunction{}", index)), "File {} should contain newFunction{}", index, index);
+        assert!(
+            content.contains(&format!("NewInterface{}", index)),
+            "File {} should contain NewInterface{}",
+            index,
+            index
+        );
+        assert!(
+            content.contains("newProperty"),
+            "File {} should contain newProperty",
+            index
+        );
+        assert!(
+            content.contains(&format!("newFunction{}", index)),
+            "File {} should contain newFunction{}",
+            index,
+            index
+        );
         // Note: OldInterface still appears in the parameter type, so we don't check for its absence
     }
 

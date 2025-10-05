@@ -105,7 +105,10 @@ pub fn parse_go_mod(content: &str) -> PluginResult<ManifestData> {
 
     Ok(ManifestData {
         name: go_mod.module.clone(),
-        version: go_mod.go_version.clone().unwrap_or_else(|| "1.0.0".to_string()),
+        version: go_mod
+            .go_version
+            .clone()
+            .unwrap_or_else(|| "1.0.0".to_string()),
         dependencies,
         dev_dependencies,
         raw_data: serde_json::json!({
@@ -415,11 +418,7 @@ fn apply_replacement(dependencies: &mut Vec<Dependency>, replace: &GoReplace) {
 }
 
 /// Update a dependency version in go.mod content
-pub fn update_dependency(
-    content: &str,
-    dep_name: &str,
-    new_version: &str,
-) -> PluginResult<String> {
+pub fn update_dependency(content: &str, dep_name: &str, new_version: &str) -> PluginResult<String> {
     debug!(
         dependency = %dep_name,
         version = %new_version,
@@ -449,7 +448,8 @@ pub fn update_dependency(
 
         // Check if this line contains the dependency
         if trimmed.starts_with(&format!("{} ", dep_name))
-            || (in_require_block && trimmed.starts_with(dep_name)) {
+            || (in_require_block && trimmed.starts_with(dep_name))
+        {
             // Replace version
             let parts: Vec<&str> = trimmed.split_whitespace().collect();
             if parts.len() >= 2 {
@@ -483,11 +483,7 @@ pub fn update_dependency(
 
 /// Generate a new go.mod file
 pub fn generate_manifest(module_name: &str, go_version: &str) -> String {
-    format!(
-        "module {}\n\ngo {}\n",
-        module_name,
-        go_version
-    )
+    format!("module {}\n\ngo {}\n", module_name, go_version)
 }
 
 /// Load and parse a go.mod file from a path

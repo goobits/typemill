@@ -43,7 +43,10 @@ impl LanguagePluginRegistry {
         // Register TypeScript plugin
         #[cfg(feature = "lang-typescript")]
         {
-            info!(plugin = "typescript", "Registering TypeScript/JavaScript language plugin");
+            info!(
+                plugin = "typescript",
+                "Registering TypeScript/JavaScript language plugin"
+            );
             registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
         }
 
