@@ -40,12 +40,16 @@ impl LanguagePluginRegistry {
             registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
         }
 
+        // Register TypeScript plugin
+        #[cfg(feature = "lang-typescript")]
+        {
+            info!(plugin = "typescript", "Registering TypeScript/JavaScript language plugin");
+            registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
+        }
+
         // Future language plugins will be registered here
         // #[cfg(feature = "lang-python")]
-        // registry.register(Box::new(cb_lang_python::PythonPlugin::new()));
-        //
-        // #[cfg(feature = "lang-typescript")]
-        // registry.register(Box::new(cb_lang_typescript::TypeScriptPlugin::new()));
+        // registry.register(Arc::new(cb_lang_python::PythonPlugin::new()));
 
         let plugin_count = registry.all().len();
         info!(
