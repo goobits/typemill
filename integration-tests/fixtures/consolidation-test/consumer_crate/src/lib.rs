@@ -3,7 +3,14 @@ use source_crate::say_hello;
 use source_crate::get_version;
 
 pub fn greet() -> String {
-    format!("{} (version: {})", say_hello(), get_version())
+    // Bug #5 test: This inline fully-qualified path should be updated
+    let msg = source_crate::say_hello();
+    format!("{} (version: {})", msg, get_version())
+}
+
+pub fn format_user_greeting(name: &str) -> String {
+    // Bug #5 test: Another inline reference that should be updated
+    source_crate::utils::format_greeting(name)
 }
 
 #[cfg(test)]

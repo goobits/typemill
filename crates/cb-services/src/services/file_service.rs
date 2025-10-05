@@ -1725,10 +1725,33 @@ impl FileService {
         // Step 3.5: Update all workspace Cargo.toml files that depend on the old crate
         // IMPORTANT: Must happen BEFORE deleting the old crate directory
         let old_crate_name_for_deps = old_crate_name.replace('_', "-"); // Cargo.toml uses hyphens
+        let target_crate_name_for_deps = target_crate_name.replace('_', "-"); // Cargo.toml uses hyphens
+
+        // Find target crate root by walking up from new_abs to find Cargo.toml with [package]
+        let mut target_crate_root = None;
+        let mut current = new_abs.as_path();
+        while let Some(parent) = current.parent() {
+            let cargo_toml = parent.join("Cargo.toml");
+            if cargo_toml.exists() {
+                if let Ok(content) = fs::read_to_string(&cargo_toml).await {
+                    if content.contains("[package]") {
+                        target_crate_root = Some(parent.to_path_buf());
+                        break;
+                    }
+                }
+            }
+            current = parent;
+        }
+
+        let target_crate_path = target_crate_root.ok_or_else(|| {
+            ServerError::Internal("Could not find target crate root directory".to_string())
+        })?;
+
         match self
             .update_workspace_cargo_dependencies(
                 &old_abs,
-                &target_crate_name,
+                &target_crate_path,
+                &target_crate_name_for_deps,
                 &old_crate_name_for_deps,
             )
             .await
@@ -2004,6 +2027,7 @@ impl FileService {
     /// # Arguments
     ///
     /// * `old_crate_path` - Path to the old crate directory (to derive old crate name)
+    /// * `target_crate_path` - Path to the target crate directory
     /// * `target_crate_name` - Name of the target crate to use as replacement
     /// * `old_crate_name` - Name of the old crate (with hyphens, as appears in Cargo.toml)
     ///
@@ -2013,6 +2037,7 @@ impl FileService {
     async fn update_workspace_cargo_dependencies(
         &self,
         old_crate_path: &Path,
+        target_crate_path: &Path,
         target_crate_name: &str,
         old_crate_name: &str,
     ) -> ServerResult<usize> {
@@ -2021,6 +2046,7 @@ impl FileService {
         info!(
             old_crate = %old_crate_name,
             target_crate = %target_crate_name,
+            target_crate_path = ?target_crate_path,
             "Scanning workspace for Cargo.toml files with dependencies on old crate"
         );
 
@@ -2108,38 +2134,25 @@ impl FileService {
                                     if dep_table.contains_key("path") {
                                         // Calculate relative path from this Cargo.toml to target crate
                                         let this_cargo_dir = path.parent().unwrap();
-                                        let target_crate_path =
-                                            self.find_crate_path_by_name(target_crate_name).await;
-
-                                        if let Ok(Some(target_path)) = target_crate_path {
-                                            if let Some(rel_path) =
-                                                pathdiff::diff_paths(&target_path, this_cargo_dir)
-                                            {
-                                                let path_str =
-                                                    rel_path.to_string_lossy().to_string();
-                                                dep_table.insert(
-                                                    "path",
-                                                    toml_edit::Value::from(path_str).into(),
-                                                );
-                                            }
+                                        if let Some(rel_path) =
+                                            pathdiff::diff_paths(target_crate_path, this_cargo_dir)
+                                        {
+                                            let path_str = rel_path.to_string_lossy().to_string();
+                                            dep_table.insert(
+                                                "path",
+                                                toml_edit::Value::from(path_str).into(),
+                                            );
                                         }
                                     }
                                 } else if let Some(dep_table) = new_dep.as_table_mut() {
                                     if dep_table.contains_key("path") {
                                         // Same logic for regular tables
                                         let this_cargo_dir = path.parent().unwrap();
-                                        let target_crate_path =
-                                            self.find_crate_path_by_name(target_crate_name).await;
-
-                                        if let Ok(Some(target_path)) = target_crate_path {
-                                            if let Some(rel_path) =
-                                                pathdiff::diff_paths(&target_path, this_cargo_dir)
-                                            {
-                                                let path_str =
-                                                    rel_path.to_string_lossy().to_string();
-                                                dep_table
-                                                    .insert("path", toml_edit::value(path_str));
-                                            }
+                                        if let Some(rel_path) =
+                                            pathdiff::diff_paths(target_crate_path, this_cargo_dir)
+                                        {
+                                            let path_str = rel_path.to_string_lossy().to_string();
+                                            dep_table.insert("path", toml_edit::value(path_str));
                                         }
                                     }
                                 }

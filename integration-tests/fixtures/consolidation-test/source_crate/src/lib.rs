@@ -1,3 +1,5 @@
+pub mod utils;
+
 /// A simple greeting function for testing
 pub fn say_hello() -> String {
     "Hello from source_crate!".to_string()
