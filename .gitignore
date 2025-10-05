@@ -94,6 +94,9 @@ target/
 # Test outputs
 test-results/
 
+# Debug and development tools
+.debug/
+
 # Code quality reports
 .build/
 jscpd-report/

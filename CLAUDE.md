@@ -458,6 +458,15 @@ cargo build --release
 
 ---
 
+## Debug and Development Code Organization
+
+All debug scripts, test utilities, and development tools should be created in the `.debug/` directory:
+- **Location**: `.debug/` (gitignored, not committed to repository)
+- **Purpose**: Temporary debugging code, timing tests, integration flow analysis
+- **Cleanup**: Debug tools can be deleted after use - they are not part of the codebase
+
+Example: `.debug/test_integration_timing.rs`, `.debug/analyze_lsp_flow/`
+
 ## 📖 Additional Documentation
 
 ### For Contributors
