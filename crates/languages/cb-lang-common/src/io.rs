@@ -196,6 +196,8 @@ mod tests {
         file.write_all(b"[package]\nname = \"test\"")
             .await
             .unwrap();
+        file.flush().await.unwrap();
+        drop(file); // Ensure file is closed
 
         let content = read_manifest(&manifest_path).await.unwrap();
         assert!(content.contains("name = \"test\""));

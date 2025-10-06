@@ -26,6 +26,10 @@
 //! - [`testing`] - Test utilities and fixtures
 //! - [`plugin_scaffold`] - Plugin code generation
 //!
+//! ## Additional Utilities
+//! - [`import_graph`] - ImportGraph builder for consistent construction
+//! - [`parsing`] - Common parsing patterns (fallback strategies)
+//!
 //! # Examples
 //!
 //! ## Subprocess utilities
@@ -95,15 +99,31 @@ pub mod manifest_templates;
 pub mod testing;
 pub mod plugin_scaffold;
 
+// Additional utility modules
+pub mod import_graph;
+pub mod parsing;
+
 // Re-export commonly used types for convenience
 pub use refactoring::{CodeRange, LineExtractor, IndentationDetector};
 pub use subprocess::{SubprocessAstTool, run_ast_tool, run_ast_tool_raw};
 pub use manifest_common::{TomlWorkspace, JsonWorkspace};
 pub use error_helpers::ErrorBuilder;
-pub use import_parsing::{parse_import_alias, split_import_list, ExternalDependencyDetector};
-pub use location::LocationBuilder;
-pub use versioning::detect_dependency_source;
+pub use import_parsing::{
+    parse_import_alias, split_import_list, ExternalDependencyDetector,
+    extract_package_name, normalize_import_path,
+};
+pub use location::{
+    LocationBuilder, offset_to_position, position_to_offset, extract_text_at_location,
+};
+pub use versioning::{
+    detect_dependency_source, extract_version_number, parse_git_url, normalize_version,
+};
 pub use ast_deserialization::{AstSymbol, AstToolOutput, parse_ast_output};
+pub use import_graph::ImportGraphBuilder;
+pub use parsing::{parse_with_fallback, parse_with_optional_fallback, try_parsers};
+
+// Re-export IO utilities
+pub use io::{read_manifest, read_source, find_source_files, file_path_to_module};
 
 // Re-export macros
 pub use trait_helpers::{ImportSupportInternal, WorkspaceSupportInternal};
