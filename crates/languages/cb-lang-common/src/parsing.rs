@@ -126,7 +126,7 @@ pub fn try_parsers<T, E>(
 where
     E: std::fmt::Display,
 {
-    let mut parsers = parsers.into_iter();
+    let parsers = parsers.into_iter();
     let mut last_error = None;
 
     for parser in parsers {
