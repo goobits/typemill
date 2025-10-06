@@ -453,7 +453,7 @@ pub async fn update_imports_for_rename(
     old_path: &Path,
     new_path: &Path,
     project_root: &Path,
-    plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguageIntelligencePlugin>],
+    plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
     rename_info: Option<&serde_json::Value>,
     dry_run: bool,
     scan_scope: Option<cb_plugin_api::ScanScope>,
@@ -498,7 +498,22 @@ pub async fn update_imports_for_rename(
                 // Read file content
                 if let Ok(content) = tokio::fs::read_to_string(file_path).await {
                     // Find module references using the enhanced scanner
-                    if let Ok(refs) = plugin.find_module_references(&content, module_name, scope) {
+                    // We need to downcast to concrete plugin types to access find_module_references
+                    use cb_lang_rust::RustPlugin;
+                    use cb_lang_typescript::TypeScriptPlugin;
+                    use cb_lang_go::GoPlugin;
+
+                    let refs_opt = if let Some(rust_plugin) = plugin.as_any().downcast_ref::<RustPlugin>() {
+                        rust_plugin.find_module_references(&content, module_name, scope).ok()
+                    } else if let Some(ts_plugin) = plugin.as_any().downcast_ref::<TypeScriptPlugin>() {
+                        Some(ts_plugin.find_module_references(&content, module_name, scope))
+                    } else if let Some(go_plugin) = plugin.as_any().downcast_ref::<GoPlugin>() {
+                        go_plugin.find_module_references(&content, module_name, scope).ok()
+                    } else {
+                        None
+                    };
+
+                    if let Some(refs) = refs_opt {
                         if !refs.is_empty() {
                             debug!(
                                 file = ?file_path,
@@ -582,7 +597,22 @@ pub async fn update_imports_for_rename(
 
         // If scan_scope is provided, use find_module_references for precise edits
         if let Some(scope) = scan_scope {
-            if let Ok(refs) = plugin.find_module_references(&content, old_module_name, scope) {
+            // Downcast to concrete plugin types to access find_module_references
+            use cb_lang_rust::RustPlugin;
+            use cb_lang_typescript::TypeScriptPlugin;
+            use cb_lang_go::GoPlugin;
+
+            let refs_opt = if let Some(rust_plugin) = plugin.as_any().downcast_ref::<RustPlugin>() {
+                rust_plugin.find_module_references(&content, old_module_name, scope).ok()
+            } else if let Some(ts_plugin) = plugin.as_any().downcast_ref::<TypeScriptPlugin>() {
+                Some(ts_plugin.find_module_references(&content, old_module_name, scope))
+            } else if let Some(go_plugin) = plugin.as_any().downcast_ref::<GoPlugin>() {
+                go_plugin.find_module_references(&content, old_module_name, scope).ok()
+            } else {
+                None
+            };
+
+            if let Some(refs) = refs_opt {
                 if !refs.is_empty() {
                     let edits = create_text_edits_from_references(
                         &refs,
@@ -630,15 +660,23 @@ pub async fn update_imports_for_rename(
             }
         } else {
             // Fallback to the old rewrite logic
-            match plugin.rewrite_imports_for_rename(
-                &content,
-                old_path,
-                new_path,
-                &file_path,
-                project_root,
-                rename_info,
-            ) {
-                Ok((updated_content, count)) => {
+            // Downcast to concrete plugin types to access rewrite_imports_for_rename
+            use cb_lang_rust::RustPlugin;
+            use cb_lang_typescript::TypeScriptPlugin;
+            use cb_lang_go::GoPlugin;
+
+            let rewrite_result = if let Some(rust_plugin) = plugin.as_any().downcast_ref::<RustPlugin>() {
+                rust_plugin.rewrite_imports_for_rename(&content, old_path, new_path, &file_path, project_root, rename_info).ok()
+            } else if let Some(ts_plugin) = plugin.as_any().downcast_ref::<TypeScriptPlugin>() {
+                Some(ts_plugin.rewrite_imports_for_rename(&content, old_path, new_path, &file_path, project_root, rename_info))
+            } else if let Some(go_plugin) = plugin.as_any().downcast_ref::<GoPlugin>() {
+                go_plugin.rewrite_imports_for_rename(&content, old_path, new_path, &file_path, project_root, rename_info).ok()
+            } else {
+                None
+            };
+
+            match rewrite_result {
+                Some((updated_content, count)) => {
                     if count > 0 && updated_content != content {
                         // Create a single TextEdit for the entire file content replacement
                         use cb_protocol::{EditLocation, EditType, TextEdit};
@@ -670,8 +708,8 @@ pub async fn update_imports_for_rename(
                         );
                     }
                 }
-                Err(e) => {
-                    warn!(error = %e, file = ?file_path, "Failed to rewrite imports");
+                None => {
+                    warn!(file = ?file_path, "Plugin does not support rewrite_imports_for_rename");
                 }
             }
         }
@@ -738,14 +776,14 @@ pub fn extract_import_path(line: &str) -> Option<String> {
 /// Find all project files that match the language adapters
 pub async fn find_project_files(
     project_root: &Path,
-    plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguageIntelligencePlugin>],
+    plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
 ) -> AstResult<Vec<PathBuf>> {
     let mut files = Vec::new();
 
     fn collect_files<'a>(
         dir: &'a Path,
         files: &'a mut Vec<PathBuf>,
-        plugins: &'a [std::sync::Arc<dyn cb_plugin_api::LanguageIntelligencePlugin>],
+        plugins: &'a [std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AstResult<()>> + Send + 'a>> {
         Box::pin(async move {
             if dir.is_dir() {

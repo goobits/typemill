@@ -41,7 +41,7 @@
 //!
 //! ```rust
 //! use cb_lang_typescript::TypeScriptPlugin;
-//! use cb_plugin_api::LanguageIntelligencePlugin;
+//! use cb_plugin_api::LanguagePlugin;
 //! use std::path::Path;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -101,17 +101,21 @@ pub mod refactoring;
 
 use async_trait::async_trait;
 use cb_plugin_api::{
-    LanguageIntelligencePlugin, ManifestData, ModuleReference, ParsedSource, PluginError,
-    PluginResult, ReferenceKind, ScanScope,
+    LanguageCapabilities, LanguageMetadata, LanguagePlugin, ManifestData, ModuleReference,
+    ParsedSource, PluginError, PluginResult, ReferenceKind, ScanScope,
 };
 use std::path::{Path, PathBuf};
 
 /// TypeScript/JavaScript language plugin implementation.
-pub struct TypeScriptPlugin;
+pub struct TypeScriptPlugin {
+    metadata: LanguageMetadata,
+}
 
 impl TypeScriptPlugin {
     pub fn new() -> Self {
-        Self
+        Self {
+            metadata: LanguageMetadata::TYPESCRIPT,
+        }
     }
 }
 
@@ -122,13 +126,16 @@ impl Default for TypeScriptPlugin {
 }
 
 #[async_trait]
-impl LanguageIntelligencePlugin for TypeScriptPlugin {
-    fn name(&self) -> &'static str {
-        "TypeScript"
+impl LanguagePlugin for TypeScriptPlugin {
+    fn metadata(&self) -> &LanguageMetadata {
+        &self.metadata
     }
 
-    fn file_extensions(&self) -> Vec<&'static str> {
-        vec!["ts", "tsx", "js", "jsx", "mjs", "cjs"]
+    fn capabilities(&self) -> LanguageCapabilities {
+        LanguageCapabilities {
+            imports: true,
+            workspace: false, // TypeScript doesn't have workspace methods
+        }
     }
 
     async fn parse(&self, source: &str) -> PluginResult<ParsedSource> {
@@ -147,11 +154,17 @@ impl LanguageIntelligencePlugin for TypeScriptPlugin {
         manifest::load_package_json(path).await
     }
 
-    fn handles_manifest(&self, filename: &str) -> bool {
-        filename == "package.json"
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
+}
 
-    async fn update_dependency(
+// ============================================================================
+// Additional Methods (helper methods, not part of core trait)
+// ============================================================================
+
+impl TypeScriptPlugin {
+    pub async fn update_dependency(
         &self,
         manifest_path: &Path,
         _old_name: &str,
@@ -169,22 +182,6 @@ impl LanguageIntelligencePlugin for TypeScriptPlugin {
         })?;
 
         manifest::update_dependency(&content, new_name, version)
-    }
-
-    fn manifest_filename(&self) -> &'static str {
-        "package.json"
-    }
-
-    fn source_dir(&self) -> &'static str {
-        "src"
-    }
-
-    fn entry_point(&self) -> &'static str {
-        "index.ts"
-    }
-
-    fn module_separator(&self) -> &'static str {
-        "/"
     }
 
     async fn locate_module_files(
@@ -222,7 +219,7 @@ impl LanguageIntelligencePlugin for TypeScriptPlugin {
         Ok(files)
     }
 
-    async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
+    pub async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
         // Read the file
         let content = tokio::fs::read_to_string(file_path)
             .await
@@ -235,16 +232,16 @@ impl LanguageIntelligencePlugin for TypeScriptPlugin {
         Ok(graph.imports.into_iter().map(|i| i.module_path).collect())
     }
 
-    fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
+    pub fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
         manifest::generate_manifest(package_name, dependencies)
     }
 
-    fn rewrite_import(&self, _old_import: &str, new_package_name: &str) -> String {
+    pub fn rewrite_import(&self, _old_import: &str, new_package_name: &str) -> String {
         // TypeScript imports are module paths
         new_package_name.to_string()
     }
 
-    fn rewrite_imports_for_rename(
+    pub fn rewrite_imports_for_rename(
         &self,
         content: &str,
         old_path: &Path,
@@ -252,13 +249,13 @@ impl LanguageIntelligencePlugin for TypeScriptPlugin {
         importing_file: &Path,
         _project_root: &Path,
         _rename_info: Option<&serde_json::Value>,
-    ) -> PluginResult<(String, usize)> {
+    ) -> (String, usize) {
         // Calculate relative paths
         let old_import = calculate_relative_import(importing_file, old_path);
         let new_import = calculate_relative_import(importing_file, new_path);
 
         if old_import == new_import {
-            return Ok((content.to_string(), 0));
+            return (content.to_string(), 0);
         }
 
         // Replace all occurrences of the old import
@@ -295,15 +292,15 @@ impl LanguageIntelligencePlugin for TypeScriptPlugin {
             }
         }
 
-        Ok((new_content, changes))
+        (new_content, changes)
     }
 
-    fn find_module_references(
+    pub fn find_module_references(
         &self,
         content: &str,
         module_to_find: &str,
         scope: ScanScope,
-    ) -> PluginResult<Vec<ModuleReference>> {
+    ) -> Vec<ModuleReference> {
         let mut references = Vec::new();
 
         for (line_idx, line) in content.lines().enumerate() {
@@ -346,7 +343,7 @@ impl LanguageIntelligencePlugin for TypeScriptPlugin {
             }
         }
 
-        Ok(references)
+        references
     }
 }
 

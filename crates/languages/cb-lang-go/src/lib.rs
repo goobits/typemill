@@ -1,7 +1,7 @@
 //! Go Language Plugin for Codebuddy
 //!
 //! This crate provides complete Go language support, implementing the
-//! `LanguageIntelligencePlugin` trait from `cb-plugin-api`.
+//! `LanguagePlugin` trait from `cb-plugin-api`.
 //!
 //! # Features
 //!
@@ -35,7 +35,7 @@
 //!
 //! ```rust
 //! use cb_lang_go::GoPlugin;
-//! use cb_plugin_api::LanguageIntelligencePlugin;
+//! use cb_plugin_api::LanguagePlugin;
 //! use std::path::Path;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -82,17 +82,21 @@ pub mod refactoring;
 
 use async_trait::async_trait;
 use cb_plugin_api::{
-    LanguageIntelligencePlugin, ManifestData, ModuleReference, ParsedSource, PluginError,
-    PluginResult, ReferenceKind, ScanScope,
+    LanguagePlugin, LanguageMetadata, LanguageCapabilities, ManifestData, ModuleReference,
+    ParsedSource, PluginError, PluginResult, ReferenceKind, ScanScope,
 };
 use std::path::{Path, PathBuf};
 
 /// Go language plugin implementation.
-pub struct GoPlugin;
+pub struct GoPlugin {
+    metadata: LanguageMetadata,
+}
 
 impl GoPlugin {
     pub fn new() -> Self {
-        Self
+        Self {
+            metadata: LanguageMetadata::GO,
+        }
     }
 }
 
@@ -103,13 +107,16 @@ impl Default for GoPlugin {
 }
 
 #[async_trait]
-impl LanguageIntelligencePlugin for GoPlugin {
-    fn name(&self) -> &'static str {
-        "Go"
+impl LanguagePlugin for GoPlugin {
+    fn metadata(&self) -> &LanguageMetadata {
+        &self.metadata
     }
 
-    fn file_extensions(&self) -> Vec<&'static str> {
-        vec!["go"]
+    fn capabilities(&self) -> LanguageCapabilities {
+        LanguageCapabilities {
+            imports: true,
+            workspace: false,
+        }
     }
 
     async fn parse(&self, source: &str) -> PluginResult<ParsedSource> {
@@ -128,11 +135,14 @@ impl LanguageIntelligencePlugin for GoPlugin {
         manifest::load_go_mod(path).await
     }
 
-    fn handles_manifest(&self, filename: &str) -> bool {
-        filename == "go.mod"
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
+}
 
-    async fn update_dependency(
+// Additional methods for import and workspace support (will be moved to separate traits in Phase 2)
+impl GoPlugin {
+    pub async fn update_dependency(
         &self,
         manifest_path: &Path,
         _old_name: &str,
@@ -152,23 +162,7 @@ impl LanguageIntelligencePlugin for GoPlugin {
         manifest::update_dependency(&content, new_name, version)
     }
 
-    fn manifest_filename(&self) -> &'static str {
-        "go.mod"
-    }
-
-    fn source_dir(&self) -> &'static str {
-        "" // Go has no standard source directory
-    }
-
-    fn entry_point(&self) -> &'static str {
-        "" // Go has no single entry point file
-    }
-
-    fn module_separator(&self) -> &'static str {
-        "/" // Go uses slashes in module paths (e.g., github.com/user/repo)
-    }
-
-    async fn locate_module_files(
+    pub async fn locate_module_files(
         &self,
         package_path: &Path,
         module_path: &str,
@@ -218,7 +212,7 @@ impl LanguageIntelligencePlugin for GoPlugin {
         Ok(files)
     }
 
-    async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
+    pub async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
         // Read the file
         let content = tokio::fs::read_to_string(file_path)
             .await
@@ -231,7 +225,7 @@ impl LanguageIntelligencePlugin for GoPlugin {
         Ok(graph.imports.into_iter().map(|i| i.module_path).collect())
     }
 
-    fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
+    pub fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
         let mut result = manifest::generate_manifest(package_name, "1.21");
 
         if !dependencies.is_empty() {
@@ -246,12 +240,12 @@ impl LanguageIntelligencePlugin for GoPlugin {
         result
     }
 
-    fn rewrite_import(&self, _old_import: &str, new_package_name: &str) -> String {
+    pub fn rewrite_import(&self, _old_import: &str, new_package_name: &str) -> String {
         // Go imports are module paths, so just return the new package name
         new_package_name.to_string()
     }
 
-    fn rewrite_imports_for_rename(
+    pub fn rewrite_imports_for_rename(
         &self,
         content: &str,
         old_path: &Path,
@@ -287,7 +281,7 @@ impl LanguageIntelligencePlugin for GoPlugin {
         Ok((new_content, changes))
     }
 
-    fn find_module_references(
+    pub fn find_module_references(
         &self,
         content: &str,
         module_to_find: &str,

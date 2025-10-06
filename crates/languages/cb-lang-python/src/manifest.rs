@@ -22,7 +22,7 @@ pub async fn parse_requirements_txt(path: &Path) -> PluginResult<ManifestData> {
         .map_err(|e| PluginError::manifest(format!("Failed to read requirements.txt: {}", e)))?;
 
     let mut dependencies = Vec::new();
-    let mut dev_dependencies = Vec::new();
+    let dev_dependencies = Vec::new();
 
     for line in content.lines() {
         let line = line.trim();

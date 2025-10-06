@@ -1,8 +1,8 @@
 //! Rust Language Plugin for Codebuddy
 //!
 //! This crate provides complete Rust language support, implementing both:
-//! - `LanguageIntelligencePlugin` - AST parsing and symbol extraction
-//! - `LanguageAdapter` - Refactoring operations and import rewriting
+//! - `LanguagePlugin` - AST parsing and symbol extraction
+//! - Import and workspace support traits
 //!
 //! # Features
 //!
@@ -19,7 +19,7 @@
 //! use cb_lang_rust::RustPlugin;
 //! use cb_plugin_api::LanguagePlugin;
 //!
-//! let plugin = RustPlugin;
+//! let plugin = RustPlugin::new();
 //! let source = "fn main() { println!(\"Hello\"); }";
 //! let functions = plugin.list_functions(source).await.unwrap();
 //! ```
@@ -30,7 +30,7 @@ pub mod refactoring;
 mod workspace;
 
 use async_trait::async_trait;
-use cb_plugin_api::{LanguageIntelligencePlugin, ManifestData, ParsedSource, PluginResult};
+use cb_plugin_api::{LanguagePlugin, LanguageMetadata, LanguageCapabilities, ManifestData, ParsedSource, PluginResult};
 use std::path::Path;
 
 /// Rust language plugin implementation
@@ -40,12 +40,16 @@ use std::path::Path;
 /// - Import/use statement analysis
 /// - Cargo.toml manifest handling
 /// - Documentation extraction
-pub struct RustPlugin;
+pub struct RustPlugin {
+    metadata: LanguageMetadata,
+}
 
 impl RustPlugin {
     /// Create a new Rust plugin instance
     pub fn new() -> Self {
-        Self
+        Self {
+            metadata: LanguageMetadata::RUST,
+        }
     }
 }
 
@@ -56,13 +60,16 @@ impl Default for RustPlugin {
 }
 
 #[async_trait]
-impl LanguageIntelligencePlugin for RustPlugin {
-    fn name(&self) -> &'static str {
-        "Rust"
+impl LanguagePlugin for RustPlugin {
+    fn metadata(&self) -> &LanguageMetadata {
+        &self.metadata
     }
 
-    fn file_extensions(&self) -> Vec<&'static str> {
-        vec!["rs"]
+    fn capabilities(&self) -> LanguageCapabilities {
+        LanguageCapabilities {
+            imports: true,
+            workspace: true,
+        }
     }
 
     async fn parse(&self, source: &str) -> PluginResult<ParsedSource> {
@@ -104,7 +111,14 @@ impl LanguageIntelligencePlugin for RustPlugin {
         parser::list_functions(source)
     }
 
-    async fn update_dependency(
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+// Additional methods for import and workspace support (will be moved to separate traits in Phase 2)
+impl RustPlugin {
+    pub async fn update_dependency(
         &self,
         manifest_path: &Path,
         old_name: &str,
@@ -122,32 +136,7 @@ impl LanguageIntelligencePlugin for RustPlugin {
         manifest::rename_dependency(&content, old_name, new_name, new_path)
     }
 
-    fn handles_manifest(&self, filename: &str) -> bool {
-        filename == "Cargo.toml"
-    }
-
-    // LanguageAdapter methods
-    fn language(&self) -> cb_core::language::ProjectLanguage {
-        cb_core::language::ProjectLanguage::Rust
-    }
-
-    fn manifest_filename(&self) -> &'static str {
-        "Cargo.toml"
-    }
-
-    fn source_dir(&self) -> &'static str {
-        "src"
-    }
-
-    fn entry_point(&self) -> &'static str {
-        "lib.rs"
-    }
-
-    fn module_separator(&self) -> &'static str {
-        "::"
-    }
-
-    async fn locate_module_files(
+    pub async fn locate_module_files(
         &self,
         package_path: &Path,
         module_path: &str,
@@ -161,7 +150,7 @@ impl LanguageIntelligencePlugin for RustPlugin {
         );
 
         // Start at the crate's source root (e.g., package_path/src)
-        let src_root = package_path.join(self.source_dir());
+        let src_root = package_path.join(self.metadata().source_dir);
 
         if !src_root.exists() {
             return Err(cb_plugin_api::PluginError::internal(format!(
@@ -226,7 +215,7 @@ impl LanguageIntelligencePlugin for RustPlugin {
         Ok(found_files)
     }
 
-    async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
+    pub async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
         use tracing::debug;
 
         debug!(
@@ -256,7 +245,7 @@ impl LanguageIntelligencePlugin for RustPlugin {
         Ok(module_paths)
     }
 
-    fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
+    pub fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
         use std::fmt::Write;
 
         let mut manifest = String::new();
@@ -281,7 +270,7 @@ impl LanguageIntelligencePlugin for RustPlugin {
         manifest
     }
 
-    fn rewrite_import(&self, old_import: &str, new_package_name: &str) -> String {
+    pub fn rewrite_import(&self, old_import: &str, new_package_name: &str) -> String {
         // Transform internal import path to external crate import
         // e.g., "crate::services::planner" -> "use cb_planner;"
         // e.g., "crate::services::planner::Config" -> "use cb_planner::Config;"
@@ -310,7 +299,7 @@ impl LanguageIntelligencePlugin for RustPlugin {
         }
     }
 
-    fn rewrite_imports_for_rename(
+    pub fn rewrite_imports_for_rename(
         &self,
         content: &str,
         _old_path: &Path,
@@ -400,7 +389,7 @@ impl LanguageIntelligencePlugin for RustPlugin {
         Ok((result, changes_count))
     }
 
-    fn find_module_references(
+    pub fn find_module_references(
         &self,
         content: &str,
         module_to_find: &str,
@@ -421,7 +410,7 @@ impl LanguageIntelligencePlugin for RustPlugin {
         Ok(finder.into_references())
     }
 
-    async fn add_manifest_path_dependency(
+    pub async fn add_manifest_path_dependency(
         &self,
         manifest_content: &str,
         dep_name: &str,
@@ -431,7 +420,7 @@ impl LanguageIntelligencePlugin for RustPlugin {
         workspace::add_path_dependency(manifest_content, dep_name, dep_path, source_path)
     }
 
-    async fn add_workspace_member(
+    pub async fn add_workspace_member(
         &self,
         workspace_content: &str,
         new_member_path: &str,
@@ -440,7 +429,7 @@ impl LanguageIntelligencePlugin for RustPlugin {
         workspace::add_workspace_member(workspace_content, new_member_path, workspace_root)
     }
 
-    async fn generate_workspace_manifest(
+    pub async fn generate_workspace_manifest(
         &self,
         member_paths: &[&str],
         workspace_root: &Path,
@@ -448,11 +437,11 @@ impl LanguageIntelligencePlugin for RustPlugin {
         workspace::generate_workspace_manifest(member_paths, workspace_root)
     }
 
-    async fn is_workspace_manifest(&self, manifest_content: &str) -> PluginResult<bool> {
+    pub async fn is_workspace_manifest(&self, manifest_content: &str) -> PluginResult<bool> {
         Ok(workspace::is_workspace_manifest(manifest_content))
     }
 
-    async fn remove_module_declaration(
+    pub async fn remove_module_declaration(
         &self,
         source: &str,
         module_name: &str,
@@ -474,7 +463,7 @@ impl LanguageIntelligencePlugin for RustPlugin {
         Ok(quote::quote!(#file).to_string())
     }
 
-    async fn find_source_files(&self, dir: &Path) -> PluginResult<Vec<std::path::PathBuf>> {
+    pub async fn find_source_files(&self, dir: &Path) -> PluginResult<Vec<std::path::PathBuf>> {
         use std::fs;
         use cb_plugin_api::PluginError;
 
@@ -624,8 +613,8 @@ mod tests {
     async fn test_rust_plugin_basic() {
         let plugin = RustPlugin::new();
 
-        assert_eq!(plugin.name(), "Rust");
-        assert_eq!(plugin.file_extensions(), vec!["rs"]);
+        assert_eq!(plugin.metadata().name, "Rust");
+        assert_eq!(plugin.metadata().extensions, &["rs"]);
         assert!(plugin.handles_extension("rs"));
         assert!(!plugin.handles_extension("py"));
     }

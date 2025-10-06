@@ -77,7 +77,7 @@ pub async fn plan_extract_module_to_package_with_registry(
     let plugin = plugin_registry
         .all()
         .iter()
-        .find(|p| p.language() == detected_language)
+        .find(|p| p.metadata().language == detected_language)
         .ok_or_else(|| crate::error::AstError::Analysis {
             message: format!(
                 "No plugin registered for language: {}",
@@ -91,7 +91,17 @@ pub async fn plan_extract_module_to_package_with_registry(
     );
 
     // Step 3: Locate module files using the plugin
-    let located_files = plugin
+    // Downcast to RustPlugin to access locate_module_files
+    use cb_lang_rust::RustPlugin;
+
+    let rust_plugin = plugin
+        .as_any()
+        .downcast_ref::<RustPlugin>()
+        .ok_or_else(|| crate::error::AstError::Analysis {
+            message: "locate_module_files is only supported for Rust language".to_string(),
+        })?;
+
+    let located_files = rust_plugin
         .locate_module_files(source_path, &params.module_path)
         .await?;
 
@@ -106,7 +116,7 @@ pub async fn plan_extract_module_to_package_with_registry(
             "Parsing dependencies from file"
         );
 
-        match plugin.parse_imports(file_path).await {
+        match rust_plugin.parse_imports(file_path).await {
             Ok(deps) => {
                 for dep in deps {
                     all_dependencies.insert(dep);
@@ -133,7 +143,7 @@ pub async fn plan_extract_module_to_package_with_registry(
     );
 
     // Step 5: Generate new crate manifest
-    let generated_manifest = plugin.generate_manifest(&params.target_package_name, &dependencies);
+    let generated_manifest = rust_plugin.generate_manifest(&params.target_package_name, &dependencies);
 
     debug!(
         manifest_lines = generated_manifest.lines().count(),
@@ -146,7 +156,7 @@ pub async fn plan_extract_module_to_package_with_registry(
 
     // Edit 1: Create new Cargo.toml
     let manifest_path = Path::new(&params.target_package_path)
-        .join(plugin.manifest_filename())
+        .join(plugin.metadata().manifest_filename)
         .to_string_lossy()
         .to_string();
 
@@ -180,8 +190,8 @@ pub async fn plan_extract_module_to_package_with_registry(
             })?;
 
         let new_entrypoint_path = Path::new(&params.target_package_path)
-            .join(plugin.source_dir())
-            .join(plugin.entry_point())
+            .join(plugin.metadata().source_dir)
+            .join(plugin.metadata().entry_point)
             .to_string_lossy()
             .to_string();
 
@@ -235,11 +245,11 @@ pub async fn plan_extract_module_to_package_with_registry(
             let parent_file_path = if module_segments.len() == 1 {
                 // Top-level module, parent is lib.rs
                 source_path
-                    .join(plugin.source_dir())
-                    .join(plugin.entry_point())
+                    .join(plugin.metadata().source_dir)
+                    .join(plugin.metadata().entry_point)
             } else {
                 // Nested module, parent is the containing module's mod.rs or .rs file
-                let mut parent_path = source_path.join(plugin.source_dir());
+                let mut parent_path = source_path.join(plugin.metadata().source_dir);
                 for segment in &module_segments[..module_segments.len() - 1] {
                     parent_path = parent_path.join(segment);
                 }
@@ -257,7 +267,7 @@ pub async fn plan_extract_module_to_package_with_registry(
                 match tokio::fs::read_to_string(&parent_file_path).await {
                     Ok(parent_content) => {
                         // Parse and remove the module declaration using plugin method
-                        match plugin
+                        match rust_plugin
                             .remove_module_declaration(&parent_content, final_module_name)
                             .await
                         {
@@ -313,7 +323,7 @@ pub async fn plan_extract_module_to_package_with_registry(
     if source_cargo_toml.exists() {
         match tokio::fs::read_to_string(&source_cargo_toml).await {
             Ok(cargo_content) => {
-                match plugin
+                match rust_plugin
                     .add_manifest_path_dependency(
                         &cargo_content,
                         &params.target_package_name,
@@ -367,8 +377,8 @@ pub async fn plan_extract_module_to_package_with_registry(
             let potential_workspace = parent.join("Cargo.toml");
             if potential_workspace.exists() {
                 if let Ok(content) = tokio::fs::read_to_string(&potential_workspace).await {
-                    // Use plugin method to check if this is a workspace manifest
-                    if let Ok(is_workspace) = plugin.is_workspace_manifest(&content).await {
+                    // Use rust_plugin method to check if this is a workspace manifest
+                    if let Ok(is_workspace) = rust_plugin.is_workspace_manifest(&content).await {
                         if is_workspace {
                             workspace_root = parent.to_path_buf();
                             found_workspace = true;
@@ -399,7 +409,7 @@ pub async fn plan_extract_module_to_package_with_registry(
                     let source_crate_str = source_path.to_string_lossy().to_string();
                     let member_paths = vec![source_crate_str.as_str(), &params.target_package_path];
 
-                    if let Ok(workspace_content) = plugin
+                    if let Ok(workspace_content) = rust_plugin
                         .generate_workspace_manifest(&member_paths, &workspace_root)
                         .await
                     {
@@ -431,11 +441,11 @@ pub async fn plan_extract_module_to_package_with_registry(
             if workspace_cargo_toml.exists() && workspace_cargo_toml != source_cargo_toml {
                 match tokio::fs::read_to_string(&workspace_cargo_toml).await {
                     Ok(workspace_content) => {
-                        // Use plugin method to check if this is a workspace manifest
-                        if let Ok(is_workspace) = plugin.is_workspace_manifest(&workspace_content).await
+                        // Use rust_plugin method to check if this is a workspace manifest
+                        if let Ok(is_workspace) = rust_plugin.is_workspace_manifest(&workspace_content).await
                         {
                             if is_workspace {
-                                match plugin
+                                match rust_plugin
                                     .add_workspace_member(
                                         &workspace_content,
                                         &params.target_package_path,
@@ -487,7 +497,7 @@ pub async fn plan_extract_module_to_package_with_registry(
         debug!("Starting use statement updates across workspace");
 
         // Find all source files in the source crate using plugin method
-        let rust_files = plugin
+        let rust_files = rust_plugin
             .find_source_files(source_path)
             .await
             .map_err(|e| crate::error::AstError::Analysis {
@@ -534,7 +544,7 @@ pub async fn plan_extract_module_to_package_with_registry(
                         if is_match {
                             // Found an import that needs to be rewritten
                             let old_use_statement = format!("use {};", import.module_path);
-                            let new_use_statement = plugin
+                            let new_use_statement = rust_plugin
                                 .rewrite_import(&import.module_path, &params.target_package_name);
 
                             // Create a TextEdit to replace this import
@@ -599,7 +609,7 @@ pub async fn plan_extract_module_to_package_with_registry(
                 "module_path": params.module_path,
                 "target_package_path": params.target_package_path,
                 "target_package_name": params.target_package_name,
-                "plugin_selected": plugin.language().as_str(),
+                "plugin_selected": plugin.metadata().language.as_str(),
                 "located_files": located_files_strings,
                 "dependencies": dependencies,
                 "generated_manifest": generated_manifest,
@@ -611,7 +621,7 @@ pub async fn plan_extract_module_to_package_with_registry(
     };
 
     info!(
-        plugin = %plugin.language().as_str(),
+        plugin = %plugin.metadata().language.as_str(),
         files_count = located_files.len(),
         dependencies_count = dependencies.len(),
         edits_count = edit_plan.edits.len(),
@@ -625,7 +635,7 @@ pub async fn plan_extract_module_to_package_with_registry(
 mod tests {
     use super::*;
     use cb_lang_rust::RustPlugin;
-    use cb_plugin_api::LanguageIntelligencePlugin;
+    use cb_plugin_api::LanguagePlugin;
     use cb_protocol::EditType;
     use std::fs;
     use std::sync::Arc;

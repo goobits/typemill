@@ -1,6 +1,6 @@
 # cb-lang-go - Go Language Plugin for Codebuddy
 
-Complete Go language support plugin implementing the `LanguageIntelligencePlugin` trait.
+Complete Go language support plugin implementing the `LanguagePlugin` trait.
 
 ## Features
 
@@ -101,7 +101,7 @@ crates/languages/cb-lang-go/
 
 ```rust
 use cb_lang_go::GoPlugin;
-use cb_plugin_api::LanguageIntelligencePlugin;
+use cb_plugin_api::LanguagePlugin;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -145,7 +145,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use cb_lang_go::GoPlugin;
-use cb_plugin_api::LanguageIntelligencePlugin;
+use cb_plugin_api::LanguagePlugin;
 use std::path::Path;
 
 #[tokio::main]
@@ -169,7 +169,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use cb_lang_go::GoPlugin;
-use cb_plugin_api::LanguageIntelligencePlugin;
+use cb_plugin_api::LanguagePlugin;
 use std::path::Path;
 
 #[tokio::main]
@@ -326,7 +326,7 @@ registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
 
 For creating new language plugins, see the **[Language Plugins Guide](../README.md)** which covers:
 - Plugin structure and schema requirements
-- `LanguageIntelligencePlugin` trait implementation
+- `LanguagePlugin` trait implementation
 - Plugin registration steps
 - Testing and logging standards
 

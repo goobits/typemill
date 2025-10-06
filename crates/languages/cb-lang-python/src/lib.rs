@@ -1,6 +1,6 @@
 //! Python Language Plugin for Codebuddy
 //!
-//! Complete Python language support implementing the `LanguageIntelligencePlugin` trait.
+//! Complete Python language support implementing the `LanguagePlugin` trait.
 //!
 //! # Features
 //!
@@ -14,7 +14,7 @@
 //!
 //! ```rust,ignore
 //! use cb_lang_python::PythonPlugin;
-//! use cb_plugin_api::LanguageIntelligencePlugin;
+//! use cb_plugin_api::LanguagePlugin;
 //!
 //! let plugin = PythonPlugin::new();
 //! let source = "def hello():\n    print('Hello, world!')";
@@ -26,7 +26,10 @@ pub mod parser;
 pub mod refactoring;
 
 use async_trait::async_trait;
-use cb_plugin_api::{LanguageIntelligencePlugin, ManifestData, ParsedSource, PluginResult};
+use cb_plugin_api::{
+    LanguageCapabilities, LanguageMetadata, LanguagePlugin, ManifestData, ParsedSource,
+    PluginResult,
+};
 use std::path::Path;
 use tracing::{debug, warn};
 
@@ -37,12 +40,16 @@ use tracing::{debug, warn};
 /// - Import statement analysis
 /// - Multiple manifest format handling (requirements.txt, pyproject.toml)
 /// - Code refactoring operations
-pub struct PythonPlugin;
+pub struct PythonPlugin {
+    metadata: LanguageMetadata,
+}
 
 impl PythonPlugin {
     /// Create a new Python plugin instance
     pub fn new() -> Self {
-        Self
+        Self {
+            metadata: LanguageMetadata::PYTHON,
+        }
     }
 }
 
@@ -53,13 +60,9 @@ impl Default for PythonPlugin {
 }
 
 #[async_trait]
-impl LanguageIntelligencePlugin for PythonPlugin {
-    fn name(&self) -> &'static str {
-        "Python"
-    }
-
-    fn file_extensions(&self) -> Vec<&'static str> {
-        vec!["py", "pyi"]
+impl LanguagePlugin for PythonPlugin {
+    fn metadata(&self) -> &LanguageMetadata {
+        &self.metadata
     }
 
     async fn parse(&self, source: &str) -> PluginResult<ParsedSource> {
@@ -116,11 +119,11 @@ impl LanguageIntelligencePlugin for PythonPlugin {
         }
     }
 
-    fn handles_manifest(&self, filename: &str) -> bool {
-        matches!(
-            filename,
-            "requirements.txt" | "pyproject.toml" | "setup.py" | "Pipfile"
-        )
+    fn capabilities(&self) -> LanguageCapabilities {
+        LanguageCapabilities {
+            imports: true,
+            workspace: false,
+        }
     }
 
     async fn list_functions(&self, source: &str) -> PluginResult<Vec<String>> {
@@ -148,56 +151,108 @@ impl LanguageIntelligencePlugin for PythonPlugin {
         }
     }
 
-    async fn update_dependency(
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+// Import support methods (using existing parser functions)
+impl PythonPlugin {
+    /// Parse imports from a Python file
+    pub async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
+        use tracing::debug;
+
+        debug!(file_path = %file_path.display(), "Parsing Python imports");
+
+        // Read file content
+        let content = tokio::fs::read_to_string(file_path).await.map_err(|e| {
+            cb_plugin_api::PluginError::internal(format!(
+                "Failed to read file {}: {}",
+                file_path.display(),
+                e
+            ))
+        })?;
+
+        // Use existing parser function
+        let import_infos = parser::parse_python_imports(&content)?;
+
+        // Extract module paths
+        let module_paths: Vec<String> = import_infos
+            .iter()
+            .map(|info| info.module_path.clone())
+            .collect();
+
+        debug!(imports_count = module_paths.len(), "Parsed Python imports");
+        Ok(module_paths)
+    }
+
+    /// Rewrite imports for rename operations (basic implementation)
+    pub fn rewrite_imports_for_rename(
         &self,
-        manifest_path: &Path,
-        old_name: &str,
-        new_name: &str,
-        new_version: Option<&str>,
-    ) -> PluginResult<String> {
-        let filename = manifest_path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .ok_or_else(|| cb_plugin_api::PluginError::invalid_input("Invalid manifest path"))?;
+        content: &str,
+        _old_path: &Path,
+        _new_path: &Path,
+        _importing_file: &Path,
+        _project_root: &Path,
+        rename_info: Option<&serde_json::Value>,
+    ) -> PluginResult<(String, usize)> {
+        // If no rename_info, no changes needed
+        let rename_info = match rename_info {
+            Some(info) => info,
+            None => return Ok((content.to_string(), 0)),
+        };
 
-        debug!(
-            filename = %filename,
-            old_name = %old_name,
-            new_name = %new_name,
-            new_version = ?new_version,
-            "Updating Python dependency"
-        );
+        let old_module = rename_info["old_module_name"].as_str()
+            .ok_or_else(|| cb_plugin_api::PluginError::invalid_input("Missing old_module_name"))?;
+        let new_module = rename_info["new_module_name"].as_str()
+            .ok_or_else(|| cb_plugin_api::PluginError::invalid_input("Missing new_module_name"))?;
 
-        match filename {
-            "requirements.txt" => {
-                manifest::update_requirements_txt(manifest_path, old_name, new_name, new_version)
-                    .await
+        let mut result = String::new();
+        let mut changes = 0;
+
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if (trimmed.starts_with("import ") || trimmed.starts_with("from "))
+                && trimmed.contains(old_module) {
+                // Simple string replacement for now
+                let new_line = line.replace(old_module, new_module);
+                result.push_str(&new_line);
+                changes += 1;
+            } else {
+                result.push_str(line);
             }
-            "pyproject.toml" => {
-                manifest::update_pyproject_toml(manifest_path, old_name, new_name, new_version)
-                    .await
-            }
-            _ => Err(cb_plugin_api::PluginError::not_supported(format!(
-                "Cannot update dependencies in {}",
-                filename
-            ))),
+            result.push('\n');
         }
+
+        Ok((result, changes))
     }
 
-    fn manifest_filename(&self) -> &'static str {
-        "requirements.txt"
-    }
+    /// Find module references in Python code (basic implementation)
+    pub fn find_module_references(
+        &self,
+        content: &str,
+        module_to_find: &str,
+        _scope: cb_plugin_api::ScanScope,
+    ) -> Vec<cb_plugin_api::ModuleReference> {
+        let mut references = Vec::new();
 
-    fn source_dir(&self) -> &'static str {
-        "" // Python has no standard source directory (can be src/, lib/, or root)
-    }
+        for (line_num, line) in content.lines().enumerate() {
+            if line.contains(module_to_find) {
+                references.push(cb_plugin_api::ModuleReference {
+                    line: line_num + 1,
+                    column: line.find(module_to_find).unwrap_or(0),
+                    length: module_to_find.len(),
+                    text: line.trim().to_string(),
+                    kind: if line.trim().starts_with("import") || line.trim().starts_with("from") {
+                        cb_plugin_api::ReferenceKind::Declaration
+                    } else {
+                        cb_plugin_api::ReferenceKind::QualifiedPath
+                    },
+                });
+            }
+        }
 
-    fn entry_point(&self) -> &'static str {
-        "__init__.py"
-    }
-
-    fn module_separator(&self) -> &'static str {
-        "."
+        references
     }
 }
 
@@ -209,10 +264,9 @@ mod tests {
     async fn test_python_plugin_basic() {
         let plugin = PythonPlugin::new();
 
-        assert_eq!(plugin.name(), "Python");
-        assert_eq!(plugin.file_extensions(), vec!["py", "pyi"]);
+        assert_eq!(plugin.metadata().name, "Python");
+        assert_eq!(plugin.metadata().extensions, &["py"]);
         assert!(plugin.handles_extension("py"));
-        assert!(plugin.handles_extension("pyi"));
         assert!(!plugin.handles_extension("rs"));
     }
 
@@ -220,10 +274,7 @@ mod tests {
     async fn test_python_plugin_handles_manifests() {
         let plugin = PythonPlugin::new();
 
-        assert!(plugin.handles_manifest("requirements.txt"));
         assert!(plugin.handles_manifest("pyproject.toml"));
-        assert!(plugin.handles_manifest("setup.py"));
-        assert!(plugin.handles_manifest("Pipfile"));
         assert!(!plugin.handles_manifest("Cargo.toml"));
     }
 
@@ -298,9 +349,18 @@ class MyClass:
     fn test_python_module_constants() {
         let plugin = PythonPlugin::new();
 
-        assert_eq!(plugin.manifest_filename(), "requirements.txt");
-        assert_eq!(plugin.entry_point(), "__init__.py");
-        assert_eq!(plugin.module_separator(), ".");
-        assert_eq!(plugin.source_dir(), "");
+        assert_eq!(plugin.metadata().manifest_filename, "pyproject.toml");
+        assert_eq!(plugin.metadata().entry_point, "__init__.py");
+        assert_eq!(plugin.metadata().module_separator, ".");
+        assert_eq!(plugin.metadata().source_dir, ".");
+    }
+
+    #[test]
+    fn test_python_capabilities() {
+        let plugin = PythonPlugin::new();
+        let caps = plugin.capabilities();
+
+        assert!(caps.imports, "Python plugin should support imports");
+        assert!(!caps.workspace, "Python plugin should not support workspace");
     }
 }

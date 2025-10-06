@@ -1,10 +1,10 @@
 //! Language Plugin Registry for dynamic language support
 //!
 //! This module provides a registry for language plugins that implement the
-//! `LanguageIntelligencePlugin` trait. The registry allows for dynamic discovery and routing
+//! `LanguagePlugin` trait. The registry allows for dynamic discovery and routing
 //! of language-specific operations based on file extensions.
 
-use cb_plugin_api::{LanguageIntelligencePlugin, PluginRegistry};
+use cb_plugin_api::{LanguagePlugin, PluginRegistry};
 use cb_services::services::build_language_plugin_registry;
 use std::sync::Arc;
 use tracing::debug;
@@ -44,7 +44,7 @@ impl LanguagePluginRegistry {
     /// # Returns
     ///
     /// An `Arc` to the language plugin if found, `None` otherwise
-    pub fn get_plugin(&self, extension: &str) -> Option<&dyn LanguageIntelligencePlugin> {
+    pub fn get_plugin(&self, extension: &str) -> Option<&dyn LanguagePlugin> {
         debug!(extension = extension, "Looking up language plugin");
         let result = self.inner.find_by_extension(extension);
 
@@ -61,7 +61,7 @@ impl LanguagePluginRegistry {
     }
 
     /// Get all registered language plugins
-    pub fn all_plugins(&self) -> &[Arc<dyn LanguageIntelligencePlugin>] {
+    pub fn all_plugins(&self) -> &[Arc<dyn LanguagePlugin>] {
         self.inner.all()
     }
 
@@ -69,7 +69,7 @@ impl LanguagePluginRegistry {
     pub fn supported_extensions(&self) -> Vec<String> {
         let mut extensions = Vec::new();
         for plugin in self.inner.all() {
-            for ext in plugin.file_extensions() {
+            for ext in plugin.metadata().extensions {
                 extensions.push(ext.to_string());
             }
         }
@@ -95,14 +95,14 @@ impl LanguagePluginRegistry {
     pub fn get_plugin_for_manifest(
         &self,
         filename: &str,
-    ) -> Option<&dyn LanguageIntelligencePlugin> {
+    ) -> Option<&dyn LanguagePlugin> {
         debug!(filename = filename, "Looking up plugin for manifest");
 
         for plugin in self.inner.all() {
             if plugin.handles_manifest(filename) {
                 debug!(
                     filename = filename,
-                    plugin = plugin.name(),
+                    plugin = plugin.metadata().name,
                     "Found plugin for manifest"
                 );
                 return Some(plugin.as_ref());

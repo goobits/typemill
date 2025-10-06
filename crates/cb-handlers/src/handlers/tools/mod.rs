@@ -76,7 +76,7 @@ mod dispatch {
         operation: F,
     ) -> ApiResult<T>
     where
-        F: FnOnce(&dyn cb_plugin_api::LanguageIntelligencePlugin, String) -> Fut,
+        F: FnOnce(&dyn cb_plugin_api::LanguagePlugin, String) -> Fut,
         Fut: std::future::Future<Output = cb_plugin_api::PluginResult<T>>,
     {
         // Get file extension

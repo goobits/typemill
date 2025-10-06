@@ -160,7 +160,7 @@ fn build_import_graph_with_plugin(
         cb_protocol::ApiError::internal(format!("No plugin found for .{} files", extension))
     })?;
 
-    let language = plugin.name().to_lowercase();
+    let language = plugin.metadata().name.to_lowercase();
 
     // Get imports from plugin
     let imports: Vec<ImportInfo> = match language.as_str() {

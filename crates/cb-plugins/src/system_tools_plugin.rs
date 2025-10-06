@@ -479,7 +479,7 @@ impl SystemToolsPlugin {
 fn build_import_graph_with_plugin(
     source: &str,
     path: &Path,
-    plugin: &dyn cb_plugin_api::LanguageIntelligencePlugin,
+    plugin: &dyn cb_plugin_api::LanguagePlugin,
 ) -> PluginResult<cb_protocol::ImportGraph> {
     use cb_protocol::{ImportGraph, ImportGraphMetadata, ImportInfo};
     use std::collections::HashSet;
@@ -489,7 +489,7 @@ fn build_import_graph_with_plugin(
     //
     // This is a temporary bridge until we add analyze_imports to the trait.
     // For TypeScript files, we'll use cb_lang_typescript::parser::analyze_imports
-    let language = plugin.name().to_lowercase();
+    let language = plugin.metadata().name.to_lowercase();
 
     let imports: Vec<ImportInfo> = match language.as_str() {
         "typescript" => {
@@ -497,7 +497,7 @@ fn build_import_graph_with_plugin(
             let graph =
                 cb_lang_typescript::parser::analyze_imports(source, Some(path)).map_err(|e| {
                     PluginError::PluginRequestFailed {
-                        plugin: plugin.name().to_string(),
+                        plugin: plugin.metadata().name.to_string(),
                         message: format!("Failed to parse imports: {}", e),
                     }
                 })?;
@@ -507,7 +507,7 @@ fn build_import_graph_with_plugin(
             // Use Rust plugin's parser (returns Vec<ImportInfo> directly)
             cb_lang_rust::parser::parse_imports(source).map_err(|e| {
                 PluginError::PluginRequestFailed {
-                    plugin: plugin.name().to_string(),
+                    plugin: plugin.metadata().name.to_string(),
                     message: format!("Failed to parse imports: {}", e),
                 }
             })?
@@ -516,7 +516,7 @@ fn build_import_graph_with_plugin(
             // Use Go plugin's parser
             let graph = cb_lang_go::parser::analyze_imports(source, Some(path)).map_err(|e| {
                 PluginError::PluginRequestFailed {
-                    plugin: plugin.name().to_string(),
+                    plugin: plugin.metadata().name.to_string(),
                     message: format!("Failed to parse imports: {}", e),
                 }
             })?;
@@ -524,7 +524,7 @@ fn build_import_graph_with_plugin(
         }
         _ => {
             return Err(PluginError::PluginRequestFailed {
-                plugin: plugin.name().to_string(),
+                plugin: plugin.metadata().name.to_string(),
                 message: format!("Unsupported language: {}", language),
             });
         }
