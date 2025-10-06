@@ -283,14 +283,294 @@ impl AnalysisHandler {
 
     async fn handle_suggest_refactoring(
         &self,
-        _context: &ToolHandlerContext,
-        _tool_call: &ToolCall,
+        context: &ToolHandlerContext,
+        tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        // TODO: Implement in next phase
-        Err(ServerError::Unsupported(
-            "suggest_refactoring not yet implemented".to_string(),
-        ))
+        let args = tool_call.arguments.clone().unwrap_or(json!({}));
+
+        let file_path_str = args
+            .get("file_path")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ServerError::InvalidRequest("Missing file_path parameter".into()))?;
+
+        debug!(
+            file_path = %file_path_str,
+            "Suggesting refactorings"
+        );
+
+        let file_path = Path::new(file_path_str);
+
+        // Get file extension
+        let extension = file_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .ok_or_else(|| {
+                ServerError::InvalidRequest(format!("File has no extension: {}", file_path_str))
+            })?;
+
+        // Read file content
+        let content = context
+            .app_state
+            .file_service
+            .read_file(file_path)
+            .await
+            .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+
+        // Find language plugin
+        let plugin = context
+            .app_state
+            .language_plugins
+            .get_plugin(extension)
+            .ok_or_else(|| {
+                ServerError::Unsupported(format!(
+                    "No language plugin found for extension: {}",
+                    extension
+                ))
+            })?;
+
+        // Parse file to get symbols
+        let parsed = plugin
+            .parse(&content)
+            .await
+            .map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
+
+        let language = plugin.metadata().name;
+
+        info!(
+            file_path = %file_path_str,
+            language = %language,
+            symbols_count = parsed.symbols.len(),
+            "Analyzing for refactoring suggestions"
+        );
+
+        // Generate refactoring suggestions based on patterns
+        let mut suggestions = Vec::new();
+
+        // 1. Check for high complexity functions
+        let complexity_report =
+            cb_ast::complexity::analyze_file_complexity(file_path_str, &content, &parsed.symbols, language);
+
+        for func in &complexity_report.functions {
+            if let Some(recommendation) = &func.recommendation {
+                suggestions.push(RefactoringSuggestion {
+                    kind: RefactoringKind::ReduceComplexity,
+                    location: func.line,
+                    function_name: Some(func.name.clone()),
+                    description: format!(
+                        "Function '{}' has cyclomatic complexity of {} ({})",
+                        func.name,
+                        func.complexity,
+                        func.rating.description()
+                    ),
+                    suggestion: recommendation.clone(),
+                    priority: match func.rating {
+                        cb_ast::complexity::ComplexityRating::VeryComplex => "high",
+                        cb_ast::complexity::ComplexityRating::Complex => "medium",
+                        _ => "low",
+                    }.to_string(),
+                });
+            }
+        }
+
+        // 2. Check for long functions (>50 lines is a code smell)
+        for symbol in &parsed.symbols {
+            if matches!(symbol.kind, cb_plugin_api::SymbolKind::Function | cb_plugin_api::SymbolKind::Method) {
+                // Estimate function length using heuristic
+                let func_body = extract_function_body_for_refactoring(&content, &symbol.location);
+                let line_count = func_body.lines().count();
+
+                if line_count > 50 {
+                    suggestions.push(RefactoringSuggestion {
+                        kind: RefactoringKind::ExtractFunction,
+                        location: symbol.location.line,
+                        function_name: Some(symbol.name.clone()),
+                        description: format!(
+                            "Function '{}' is {} lines long (>50 lines)",
+                            symbol.name,
+                            line_count
+                        ),
+                        suggestion: "Consider breaking this function into smaller, more focused functions".to_string(),
+                        priority: if line_count > 100 { "high" } else { "medium" }.to_string(),
+                    });
+                }
+            }
+        }
+
+        // 3. Check for duplicate code patterns
+        let duplicate_suggestions = detect_duplicate_patterns(&content, language);
+        suggestions.extend(duplicate_suggestions);
+
+        // 4. Check for magic numbers
+        let magic_number_suggestions = detect_magic_numbers(&content, &parsed.symbols, language);
+        suggestions.extend(magic_number_suggestions);
+
+        // Sort suggestions by priority
+        suggestions.sort_by(|a, b| {
+            let priority_order = |p: &str| match p {
+                "high" => 0,
+                "medium" => 1,
+                "low" => 2,
+                _ => 3,
+            };
+            priority_order(&a.priority).cmp(&priority_order(&b.priority))
+        });
+
+        info!(
+            file_path = %file_path_str,
+            suggestions_count = suggestions.len(),
+            "Refactoring analysis complete"
+        );
+
+        Ok(json!({
+            "file_path": file_path_str,
+            "language": language,
+            "suggestions": suggestions,
+            "total_suggestions": suggestions.len(),
+            "complexity_report": {
+                "average_complexity": complexity_report.average_complexity,
+                "max_complexity": complexity_report.max_complexity,
+                "total_functions": complexity_report.total_functions,
+            }
+        }))
     }
+}
+
+// ============================================================================
+// Refactoring Suggestion Types
+// ============================================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+struct RefactoringSuggestion {
+    kind: RefactoringKind,
+    location: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    function_name: Option<String>,
+    description: String,
+    suggestion: String,
+    priority: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum RefactoringKind {
+    ReduceComplexity,
+    ExtractFunction,
+    ExtractVariable,
+    RemoveDuplication,
+    ReplaceMagicNumber,
+}
+
+// ============================================================================
+// Helper Functions for Refactoring Analysis
+// ============================================================================
+
+/// Extract function body for refactoring analysis (simplified version)
+fn extract_function_body_for_refactoring(content: &str, location: &cb_plugin_api::SourceLocation) -> String {
+    let lines: Vec<&str> = content.lines().collect();
+    let start_line = location.line.saturating_sub(1);
+
+    if start_line >= lines.len() {
+        return String::new();
+    }
+
+    let mut body_lines = Vec::new();
+    let mut brace_count = 0;
+    let mut started = false;
+
+    for (idx, line) in lines.iter().enumerate().skip(start_line) {
+        body_lines.push(*line);
+
+        for ch in line.chars() {
+            match ch {
+                '{' => {
+                    brace_count += 1;
+                    started = true;
+                }
+                '}' => {
+                    brace_count -= 1;
+                    if started && brace_count == 0 {
+                        return body_lines.join("\n");
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if idx - start_line > 500 {
+            break;
+        }
+    }
+
+    body_lines.join("\n")
+}
+
+/// Detect duplicate code patterns
+fn detect_duplicate_patterns(_content: &str, _language: &str) -> Vec<RefactoringSuggestion> {
+    // Simple heuristic-based duplicate detection
+    // This is a placeholder for more sophisticated duplicate detection
+    // Could be enhanced with:
+    // - Abstract Syntax Tree-based similarity detection
+    // - Token-based duplicate detection
+    // - Structural similarity analysis
+
+    // For now, return empty vec - this is a complex feature that would need significant implementation
+    Vec::new()
+}
+
+/// Detect magic numbers (numeric literals that should be named constants)
+fn detect_magic_numbers(content: &str, _symbols: &[cb_plugin_api::Symbol], language: &str) -> Vec<RefactoringSuggestion> {
+    let mut suggestions = Vec::new();
+
+    // Language-specific numeric literal patterns
+    let number_pattern = match language.to_lowercase().as_str() {
+        "rust" | "go" | "java" | "typescript" | "javascript" => {
+            // Match numeric literals: 42, 3.14, 0x1A, etc.
+            // Exclude: 0, 1 (commonly used and acceptable)
+            Regex::new(r"\b(?:[2-9]|[1-9]\d+)(?:\.\d+)?\b").ok()
+        }
+        "python" => {
+            Regex::new(r"\b(?:[2-9]|[1-9]\d+)(?:\.\d+)?\b").ok()
+        }
+        _ => None,
+    };
+
+    if let Some(pattern) = number_pattern {
+        let mut found_numbers = std::collections::HashMap::new();
+
+        for line in content.lines() {
+            // Skip comments and strings (simple heuristic)
+            if line.trim().starts_with("//") || line.trim().starts_with('#') {
+                continue;
+            }
+
+            for cap in pattern.find_iter(line) {
+                let number = cap.as_str();
+                *found_numbers.entry(number.to_string()).or_insert(0) += 1;
+            }
+        }
+
+        // Suggest extracting numbers that appear multiple times
+        for (number, count) in found_numbers {
+            if count >= 2 {
+                suggestions.push(RefactoringSuggestion {
+                    kind: RefactoringKind::ReplaceMagicNumber,
+                    location: 1, // Would need better location tracking
+                    function_name: None,
+                    description: format!(
+                        "Magic number '{}' appears {} times",
+                        number, count
+                    ),
+                    suggestion: format!(
+                        "Consider extracting '{}' to a named constant",
+                        number
+                    ),
+                    priority: if count > 3 { "medium" } else { "low" }.to_string(),
+                });
+            }
+        }
+    }
+
+    suggestions
 }
 
 // ============================================================================
