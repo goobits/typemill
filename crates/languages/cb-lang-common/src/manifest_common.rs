@@ -6,7 +6,7 @@
 use cb_plugin_api::{PluginError, PluginResult};
 use serde_json::Value as JsonValue;
 use toml_edit::{value, Array, DocumentMut, Item};
-use tracing::{debug, warn};
+use tracing::debug;
 
 /// TOML-based workspace utilities (for Rust Cargo.toml, Python pyproject.toml)
 pub struct TomlWorkspace;

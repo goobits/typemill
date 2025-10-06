@@ -274,8 +274,9 @@ mod tests {{
 
     #[tokio::test]
     async fn test_analyze_manifest() {{
+        use std::io::Write;
         let mut temp_file = NamedTempFile::new().unwrap();
-        writeln!(temp_file, "# Test manifest").unwrap();
+        write!(temp_file, "test").unwrap();
 
         let result = analyze_manifest(temp_file.path()).await;
         assert!(result.is_ok());

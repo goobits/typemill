@@ -67,8 +67,9 @@ fn parse_symbol_kind(kind_str: &str) -> SymbolKind {
         "variable" | "var" | "let" => SymbolKind::Variable,
         "method" => SymbolKind::Method,
         "module" | "mod" | "namespace" => SymbolKind::Module,
-        "type" | "typedef" => SymbolKind::Type,
-        "trait" => SymbolKind::Trait,
+        "field" => SymbolKind::Field,
+        // Map type aliases and traits to Other since they're not in the enum
+        "type" | "typedef" | "trait" => SymbolKind::Other,
         _ => SymbolKind::Other,
     }
 }

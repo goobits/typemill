@@ -91,6 +91,35 @@ impl ErrorBuilder {
         self
     }
 
+    /// Get formatted context as string
+    ///
+    /// Useful for logging or debugging before building the error
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use cb_lang_common::error_helpers::ErrorBuilder;
+    ///
+    /// let builder = ErrorBuilder::parse("Invalid syntax")
+    ///     .with_line(42)
+    ///     .with_column(10);
+    ///
+    /// let context = builder.format_context();
+    /// assert_eq!(context, "line=42, column=10");
+    /// ```
+    pub fn format_context(&self) -> String {
+        if self.context.is_empty() {
+            String::new()
+        } else {
+            let context_parts: Vec<String> = self
+                .context
+                .iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect();
+            context_parts.join(", ")
+        }
+    }
+
     /// Build the final PluginError
     pub fn build(self) -> PluginError {
         let mut final_message = self.message;

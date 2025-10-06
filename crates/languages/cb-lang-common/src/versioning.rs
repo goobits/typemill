@@ -10,7 +10,6 @@ use cb_plugin_api::DependencySource;
 /// Supports common patterns across package managers:
 /// - Git URLs: `git+https://...`, `https://...git`, `git@github.com:...`
 /// - Local paths: `./...`, `../...`, `file:...`
-/// - Workspace references: `workspace:*`, `workspace:^`
 /// - Version ranges: everything else
 ///
 /// # Example
@@ -20,13 +19,10 @@ use cb_plugin_api::DependencySource;
 /// use cb_plugin_api::DependencySource;
 ///
 /// let git = detect_dependency_source("git+https://github.com/user/repo.git");
-/// assert!(matches!(git, DependencySource::Git(_)));
+/// assert!(matches!(git, DependencySource::Git { .. }));
 ///
 /// let path = detect_dependency_source("./local/package");
 /// assert!(matches!(path, DependencySource::Path(_)));
-///
-/// let workspace = detect_dependency_source("workspace:*");
-/// assert!(matches!(workspace, DependencySource::Workspace));
 ///
 /// let version = detect_dependency_source("^1.2.3");
 /// assert!(matches!(version, DependencySource::Version(_)));
@@ -42,12 +38,8 @@ pub fn detect_dependency_source(spec: &str) -> DependencySource {
         || spec.starts_with("gitlab:")
         || spec.starts_with("bitbucket:")
     {
-        return DependencySource::Git(spec.to_string());
-    }
-
-    // Workspace sources
-    if spec.starts_with("workspace:") {
-        return DependencySource::Workspace;
+        let (url, rev) = parse_git_url(spec);
+        return DependencySource::Git { url, rev };
     }
 
     // Path sources
@@ -55,7 +47,12 @@ pub fn detect_dependency_source(spec: &str) -> DependencySource {
         || spec.starts_with("../")
         || spec.starts_with("file:")
         || spec.starts_with('/')
-        || (cfg!(windows) && spec.len() >= 3 && spec.chars().nth(1) == Some(':'))
+        || (cfg!(windows) && (
+            // C:\path style
+            (spec.len() >= 3 && spec.chars().nth(1) == Some(':'))
+            // \\server\share UNC style
+            || spec.starts_with(r"\\")
+        ))
     {
         return DependencySource::Path(spec.to_string());
     }
@@ -156,17 +153,17 @@ mod tests {
     fn test_detect_dependency_source_git() {
         assert!(matches!(
             detect_dependency_source("git+https://github.com/user/repo.git"),
-            DependencySource::Git(_)
+            DependencySource::Git { .. }
         ));
 
         assert!(matches!(
             detect_dependency_source("git@github.com:user/repo.git"),
-            DependencySource::Git(_)
+            DependencySource::Git { .. }
         ));
 
         assert!(matches!(
             detect_dependency_source("github:user/repo"),
-            DependencySource::Git(_)
+            DependencySource::Git { .. }
         ));
     }
 
@@ -186,20 +183,22 @@ mod tests {
             detect_dependency_source("file:///absolute/path"),
             DependencySource::Path(_)
         ));
+
+        // Windows paths (only tested on Windows)
+        #[cfg(windows)]
+        {
+            assert!(matches!(
+                detect_dependency_source(r"C:\Users\project"),
+                DependencySource::Path(_)
+            ));
+
+            assert!(matches!(
+                detect_dependency_source(r"\\server\share\path"),
+                DependencySource::Path(_)
+            ));
+        }
     }
 
-    #[test]
-    fn test_detect_dependency_source_workspace() {
-        assert!(matches!(
-            detect_dependency_source("workspace:*"),
-            DependencySource::Workspace
-        ));
-
-        assert!(matches!(
-            detect_dependency_source("workspace:^1.0.0"),
-            DependencySource::Workspace
-        ));
-    }
 
     #[test]
     fn test_detect_dependency_source_version() {

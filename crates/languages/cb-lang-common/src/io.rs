@@ -148,6 +148,8 @@ pub fn relative_path(from: &Path, to: &Path) -> PathBuf {
 
 /// Convert a file path to a module path using given separator
 ///
+/// Automatically strips any file extension, making this work with any language.
+///
 /// # Example
 ///
 /// ```rust,ignore
@@ -158,19 +160,21 @@ pub fn relative_path(from: &Path, to: &Path) -> PathBuf {
 /// assert_eq!(module, "src::utils::helpers");
 /// ```
 pub fn file_path_to_module(path: &Path, separator: &str) -> String {
-    let path_str = path.to_string_lossy();
-
-    // Remove file extension
-    let without_ext = path_str
-        .strip_suffix(".rs")
-        .or_else(|| path_str.strip_suffix(".py"))
-        .or_else(|| path_str.strip_suffix(".ts"))
-        .or_else(|| path_str.strip_suffix(".tsx"))
-        .or_else(|| path_str.strip_suffix(".js"))
-        .or_else(|| path_str.strip_suffix(".jsx"))
-        .or_else(|| path_str.strip_suffix(".go"))
-        .or_else(|| path_str.strip_suffix(".java"))
-        .unwrap_or(&path_str);
+    // Strip extension if present by reconstructing path from parent + stem
+    let without_ext = if let Some(stem) = path.file_stem() {
+        if let Some(parent) = path.parent() {
+            let parent_str = parent.to_string_lossy();
+            if parent_str.is_empty() || parent_str == "." {
+                stem.to_string_lossy().to_string()
+            } else {
+                format!("{}/{}", parent_str, stem.to_string_lossy())
+            }
+        } else {
+            stem.to_string_lossy().to_string()
+        }
+    } else {
+        path.to_string_lossy().to_string()
+    };
 
     // Replace path separators with module separator
     without_ext.replace('/', separator).replace('\\', separator)

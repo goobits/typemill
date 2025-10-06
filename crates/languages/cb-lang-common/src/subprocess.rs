@@ -76,9 +76,9 @@ impl SubprocessAstTool {
         self
     }
 
-    /// Add command-line arguments
+    /// Add command-line arguments (extends existing args)
     pub fn with_args(mut self, args: Vec<String>) -> Self {
-        self.args = args;
+        self.args.extend(args);
         self
     }
 
@@ -95,28 +95,10 @@ impl SubprocessAstTool {
     }
 }
 
-/// Run an AST tool subprocess and parse its JSON output
+/// Execute an AST tool subprocess and return raw stdout bytes
 ///
-/// # Arguments
-///
-/// * `tool` - Configuration for the subprocess tool
-/// * `source` - Source code to pass to the tool via stdin
-///
-/// # Returns
-///
-/// Deserialized output of type `T` from the tool's stdout
-///
-/// # Errors
-///
-/// Returns `PluginError` if:
-/// - Failed to create temporary directory or file
-/// - Failed to spawn subprocess
-/// - Subprocess returned non-zero exit code
-/// - Failed to deserialize JSON output
-pub fn run_ast_tool<T: DeserializeOwned>(
-    tool: SubprocessAstTool,
-    source: &str,
-) -> PluginResult<T> {
+/// Internal helper function that handles the common subprocess execution logic.
+fn execute_subprocess(tool: SubprocessAstTool, source: &str) -> PluginResult<Vec<u8>> {
     debug!(
         runtime = %tool.runtime,
         filename = %tool.temp_filename,
@@ -208,17 +190,44 @@ pub fn run_ast_tool<T: DeserializeOwned>(
         )));
     }
 
+    Ok(output.stdout)
+}
+
+/// Run an AST tool subprocess and parse its JSON output
+///
+/// # Arguments
+///
+/// * `tool` - Configuration for the subprocess tool
+/// * `source` - Source code to pass to the tool via stdin
+///
+/// # Returns
+///
+/// Deserialized output of type `T` from the tool's stdout
+///
+/// # Errors
+///
+/// Returns `PluginError` if:
+/// - Failed to create temporary directory or file
+/// - Failed to spawn subprocess
+/// - Subprocess returned non-zero exit code
+/// - Failed to deserialize JSON output
+pub fn run_ast_tool<T: DeserializeOwned>(
+    tool: SubprocessAstTool,
+    source: &str,
+) -> PluginResult<T> {
+    let stdout = execute_subprocess(tool, source)?;
+
     // Deserialize JSON output
-    serde_json::from_slice(&output.stdout).map_err(|e| {
-        let stdout_preview = String::from_utf8_lossy(&output.stdout);
+    serde_json::from_slice(&stdout).map_err(|e| {
+        let stdout_preview = String::from_utf8_lossy(&stdout);
         warn!(
             error = %e,
             stdout_preview = %stdout_preview.chars().take(200).collect::<String>(),
             "Failed to parse JSON output"
         );
         PluginError::parse(format!(
-            "Failed to parse JSON from {} AST tool: {}",
-            tool.runtime, e
+            "Failed to parse JSON from AST tool: {}",
+            e
         ))
     })
 }
@@ -231,85 +240,8 @@ pub fn run_ast_tool_raw(
     tool: SubprocessAstTool,
     source: &str,
 ) -> PluginResult<String> {
-    debug!(
-        runtime = %tool.runtime,
-        filename = %tool.temp_filename,
-        "Running subprocess AST tool (raw output)"
-    );
-
-    // Create temporary directory
-    let tmp_dir = Builder::new()
-        .prefix(&tool.temp_prefix)
-        .tempdir()
-        .map_err(|e| {
-            PluginError::internal(format!("Failed to create temp dir: {}", e))
-        })?;
-
-    // Write embedded tool to temporary file
-    let tool_path = tmp_dir.path().join(&tool.temp_filename);
-    std::fs::write(&tool_path, &tool.embedded_source).map_err(|e| {
-        PluginError::internal(format!(
-            "Failed to write {} to temp file: {}",
-            tool.temp_filename, e
-        ))
-    })?;
-
-    // Build command arguments
-    let mut cmd_args = Vec::new();
-
-    if tool.runtime == "java" && tool.temp_filename.ends_with(".jar") {
-        cmd_args.push("-jar".to_string());
-    }
-
-    if tool.runtime == "go" {
-        cmd_args.push("run".to_string());
-    }
-
-    cmd_args.push(tool_path.to_string_lossy().to_string());
-    cmd_args.extend(tool.args);
-
-    // Spawn subprocess
-    let mut child = Command::new(&tool.runtime)
-        .args(&cmd_args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| {
-            PluginError::parse(format!(
-                "Failed to spawn {} subprocess: {}",
-                tool.runtime, e
-            ))
-        })?;
-
-    // Write source code to stdin
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(source.as_bytes()).map_err(|e| {
-            PluginError::parse(format!(
-                "Failed to write to {} subprocess stdin: {}",
-                tool.runtime, e
-            ))
-        })?;
-    }
-
-    // Wait for subprocess to complete
-    let output = child.wait_with_output().map_err(|e| {
-        PluginError::parse(format!(
-            "Failed to wait for {} subprocess: {}",
-            tool.runtime, e
-        ))
-    })?;
-
-    // Check exit status
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(PluginError::parse(format!(
-            "{} AST tool failed: {}",
-            tool.runtime, stderr
-        )));
-    }
-
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    let stdout = execute_subprocess(tool, source)?;
+    Ok(String::from_utf8_lossy(&stdout).to_string())
 }
 
 #[cfg(test)]

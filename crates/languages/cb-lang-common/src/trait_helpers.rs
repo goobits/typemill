@@ -92,16 +92,16 @@ macro_rules! import_support_impl {
                 }
             }
 
-            fn has_import(&self, content: &str, import_path: &str) -> bool {
-                self.parse_imports(content).contains(&import_path.to_string())
+            fn contains_import(&self, content: &str, module: &str) -> bool {
+                self.parse_imports(content).contains(&module.to_string())
             }
 
-            fn add_import(&self, content: &str, import_path: &str) -> String {
-                if self.has_import(content, import_path) {
+            fn add_import(&self, content: &str, module: &str) -> String {
+                if self.contains_import(content, module) {
                     return content.to_string();
                 }
 
-                match self.add_import_internal(content, import_path) {
+                match self.add_import_internal(content, module) {
                     Ok(result) => result,
                     Err(e) => {
                         tracing::warn!(error = %e, "Failed to add import");
@@ -110,8 +110,8 @@ macro_rules! import_support_impl {
                 }
             }
 
-            fn remove_import(&self, content: &str, import_path: &str) -> String {
-                match self.remove_import_internal(content, import_path) {
+            fn remove_import(&self, content: &str, module: &str) -> String {
+                match self.remove_import_internal(content, module) {
                     Ok(result) => result,
                     Err(e) => {
                         tracing::warn!(error = %e, "Failed to remove import");

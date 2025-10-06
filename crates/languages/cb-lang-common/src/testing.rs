@@ -3,9 +3,8 @@
 //! Provides helpers for creating test fixtures, mocking AST tool output,
 //! and asserting on plugin results.
 
-use cb_plugin_api::{PluginError, PluginResult};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tempfile::{NamedTempFile, TempDir};
 
 /// Create a temporary manifest file for testing
