@@ -53,7 +53,7 @@ impl ImportGraphBuilder {
 
     /// Set the source file path
     ///
-    /// If `path` is `None`, defaults to "in-memory.<ext>" where ext is inferred
+    /// If `path` is `None`, defaults to "in-memory.{ext}" where ext is inferred
     /// from the language.
     pub fn with_source_file(mut self, path: Option<&Path>) -> Self {
         self.source_file = if let Some(p) = path {

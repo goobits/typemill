@@ -129,7 +129,7 @@ where
     let mut parsers = parsers.into_iter();
     let mut last_error = None;
 
-    while let Some(parser) = parsers.next() {
+    for parser in parsers {
         match parser() {
             Ok(result) => return Ok(result),
             Err(e) => {

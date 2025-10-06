@@ -177,7 +177,7 @@ pub fn file_path_to_module(path: &Path, separator: &str) -> String {
     };
 
     // Replace path separators with module separator
-    without_ext.replace('/', separator).replace('\\', separator)
+    without_ext.replace(['/', '\\'], separator)
 }
 
 #[cfg(test)]

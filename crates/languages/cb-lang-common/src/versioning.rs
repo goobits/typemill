@@ -58,11 +58,10 @@ pub fn detect_dependency_source(spec: &str) -> DependencySource {
     }
 
     // HTTP/HTTPS tarballs
-    if spec.starts_with("http://") || spec.starts_with("https://") {
-        if !spec.contains(".git") {
+    if (spec.starts_with("http://") || spec.starts_with("https://"))
+        && !spec.contains(".git") {
             return DependencySource::Path(spec.to_string());
         }
-    }
 
     // Default: version specifier
     DependencySource::Version(spec.to_string())

@@ -162,13 +162,13 @@ impl LanguagePatterns {
         match language.to_lowercase().as_str() {
             "rust" | "go" | "java" => Self {
                 decision_keywords: vec![
-                    "if", "else if", "for", "while", "match", "case", "catch",
+                    "if", "for", "while", "match", "case", "catch",
                 ],
                 logical_operators: vec!["&&", "||"],
             },
             "typescript" | "javascript" => Self {
                 decision_keywords: vec![
-                    "if", "else if", "for", "while", "do", "switch", "case", "catch",
+                    "if", "for", "while", "do", "switch", "case", "catch",
                 ],
                 logical_operators: vec!["&&", "||", "?"],
             },

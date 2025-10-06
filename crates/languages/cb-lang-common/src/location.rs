@@ -194,8 +194,8 @@ pub fn extract_text_at_location(source: &str, location: &SourceLocation) -> Opti
         result.push('\n');
 
         // Middle lines
-        for i in (start_line + 1)..end_line {
-            result.push_str(lines[i]);
+        for line in lines.iter().take(end_line).skip(start_line + 1) {
+            result.push_str(line);
             result.push('\n');
         }
 

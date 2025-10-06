@@ -273,7 +273,7 @@ impl IndentationDetector {
         let gcd = space_counts
             .iter()
             .copied()
-            .reduce(|a, b| gcd(a, b))
+            .reduce(gcd)
             .unwrap_or(4);
 
         (' ', gcd.max(1))
@@ -282,7 +282,7 @@ impl IndentationDetector {
     /// Create an indentation string for a given level
     pub fn indent_string(level: usize, indent_char: char, indent_size: usize) -> String {
         let count = level * indent_size;
-        std::iter::repeat(indent_char).take(count).collect()
+        std::iter::repeat_n(indent_char, count).collect()
     }
 }
 
