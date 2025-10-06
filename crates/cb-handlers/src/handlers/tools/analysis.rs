@@ -346,20 +346,46 @@ impl AnalysisHandler {
         // Generate refactoring suggestions based on patterns
         let mut suggestions = Vec::new();
 
-        // 1. Check for high complexity functions
+        // 1. Analyze complexity and code metrics
         let complexity_report =
             cb_ast::complexity::analyze_file_complexity(file_path_str, &content, &parsed.symbols, language);
 
         for func in &complexity_report.functions {
+            // Add all issues detected by complexity analysis
+            for issue in &func.issues {
+                let (kind, priority) = if issue.contains("cognitive complexity") {
+                    (RefactoringKind::ReduceComplexity, "high")
+                } else if issue.contains("parameters") {
+                    (RefactoringKind::ConsolidateParameters, "medium")
+                } else if issue.contains("nesting") {
+                    (RefactoringKind::ReduceNesting, "high")
+                } else if issue.contains("comment ratio") {
+                    (RefactoringKind::ImproveDocumentation, "low")
+                } else {
+                    (RefactoringKind::ReduceComplexity, "medium")
+                };
+
+                suggestions.push(RefactoringSuggestion {
+                    kind,
+                    location: func.line,
+                    function_name: Some(func.name.clone()),
+                    description: format!("Function '{}': {}", func.name, issue),
+                    suggestion: generate_suggestion_text(&kind, func),
+                    priority: priority.to_string(),
+                });
+            }
+
+            // Add general complexity recommendation if provided
             if let Some(recommendation) = &func.recommendation {
                 suggestions.push(RefactoringSuggestion {
                     kind: RefactoringKind::ReduceComplexity,
                     location: func.line,
                     function_name: Some(func.name.clone()),
                     description: format!(
-                        "Function '{}' has cyclomatic complexity of {} ({})",
+                        "Function '{}' has cognitive complexity of {} (cyclomatic: {}, rating: {})",
                         func.name,
-                        func.complexity,
+                        func.complexity.cognitive,
+                        func.complexity.cyclomatic,
                         func.rating.description()
                     ),
                     suggestion: recommendation.clone(),
@@ -370,29 +396,21 @@ impl AnalysisHandler {
                     }.to_string(),
                 });
             }
-        }
 
-        // 2. Check for long functions (>50 lines is a code smell)
-        for symbol in &parsed.symbols {
-            if matches!(symbol.kind, cb_plugin_api::SymbolKind::Function | cb_plugin_api::SymbolKind::Method) {
-                // Estimate function length using heuristic
-                let func_body = extract_function_body_for_refactoring(&content, &symbol.location);
-                let line_count = func_body.lines().count();
-
-                if line_count > 50 {
-                    suggestions.push(RefactoringSuggestion {
-                        kind: RefactoringKind::ExtractFunction,
-                        location: symbol.location.line,
-                        function_name: Some(symbol.name.clone()),
-                        description: format!(
-                            "Function '{}' is {} lines long (>50 lines)",
-                            symbol.name,
-                            line_count
-                        ),
-                        suggestion: "Consider breaking this function into smaller, more focused functions".to_string(),
-                        priority: if line_count > 100 { "high" } else { "medium" }.to_string(),
-                    });
-                }
+            // 2. Check for long functions using SLOC instead of total lines
+            if func.metrics.sloc > 50 {
+                suggestions.push(RefactoringSuggestion {
+                    kind: RefactoringKind::ExtractFunction,
+                    location: func.line,
+                    function_name: Some(func.name.clone()),
+                    description: format!(
+                        "Function '{}' has {} source lines of code (>50 SLOC recommended)",
+                        func.name,
+                        func.metrics.sloc
+                    ),
+                    suggestion: "Consider breaking this function into smaller, more focused functions. Extract logical blocks into separate functions with descriptive names.".to_string(),
+                    priority: if func.metrics.sloc > 100 { "high" } else { "medium" }.to_string(),
+                });
             }
         }
 
@@ -428,8 +446,13 @@ impl AnalysisHandler {
             "total_suggestions": suggestions.len(),
             "complexity_report": {
                 "average_complexity": complexity_report.average_complexity,
+                "average_cognitive_complexity": complexity_report.average_cognitive_complexity,
                 "max_complexity": complexity_report.max_complexity,
+                "max_cognitive_complexity": complexity_report.max_cognitive_complexity,
                 "total_functions": complexity_report.total_functions,
+                "total_sloc": complexity_report.total_sloc,
+                "average_sloc": complexity_report.average_sloc,
+                "total_issues": complexity_report.total_issues,
             }
         }))
     }
@@ -450,10 +473,13 @@ struct RefactoringSuggestion {
     priority: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum RefactoringKind {
     ReduceComplexity,
+    ReduceNesting,
+    ConsolidateParameters,
+    ImproveDocumentation,
     ExtractFunction,
     ExtractVariable,
     RemoveDuplication,
@@ -463,6 +489,67 @@ enum RefactoringKind {
 // ============================================================================
 // Helper Functions for Refactoring Analysis
 // ============================================================================
+
+/// Generate actionable suggestion text based on refactoring kind and function metrics
+fn generate_suggestion_text(kind: &RefactoringKind, func: &cb_ast::complexity::FunctionComplexity) -> String {
+    match kind {
+        RefactoringKind::ReduceComplexity => {
+            if func.complexity.cognitive > 20 {
+                format!(
+                    "This function has very high cognitive complexity ({}). Consider:
+- Breaking it into smaller functions (extract method pattern)
+- Using early returns to reduce nesting
+- Extracting complex conditional logic into named boolean functions
+- Simplifying nested if statements with guard clauses",
+                    func.complexity.cognitive
+                )
+            } else {
+                "Consider refactoring to reduce complexity. Break down complex logic into smaller, testable functions.".to_string()
+            }
+        }
+        RefactoringKind::ReduceNesting => {
+            format!(
+                "Reduce nesting depth from {} to 2-3 levels using:
+- Early returns (guard clauses): if (!condition) return;
+- Extract nested blocks into separate functions
+- Invert conditions to flatten structure
+- Replace nested if-else with strategy pattern or lookup tables",
+                func.complexity.max_nesting_depth
+            )
+        }
+        RefactoringKind::ConsolidateParameters => {
+            format!(
+                "Consolidate {} parameters using:
+- Create a configuration object/struct grouping related parameters
+- Use the builder pattern for complex initialization
+- Consider if this function is doing too much (Single Responsibility Principle)",
+                func.metrics.parameters
+            )
+        }
+        RefactoringKind::ImproveDocumentation => {
+            format!(
+                "Add documentation (current comment ratio: {:.2}):
+- Add function/method docstring describing purpose
+- Document parameters and return values
+- Include usage examples for complex functions
+- Explain non-obvious business logic",
+                func.metrics.comment_ratio
+            )
+        }
+        RefactoringKind::ExtractFunction => {
+            "Extract logical blocks into separate functions with descriptive names. Each function should do one thing well.".to_string()
+        }
+        RefactoringKind::ExtractVariable => {
+            "Extract complex expressions into named variables to improve readability.".to_string()
+        }
+        RefactoringKind::RemoveDuplication => {
+            "Extract duplicate code into a shared function. Follow the DRY (Don't Repeat Yourself) principle.".to_string()
+        }
+        RefactoringKind::ReplaceMagicNumber => {
+            "Replace magic numbers with named constants to improve code clarity.".to_string()
+        }
+    }
+}
 
 /// Extract function body for refactoring analysis (simplified version)
 fn extract_function_body_for_refactoring(content: &str, location: &cb_plugin_api::SourceLocation) -> String {
