@@ -3,6 +3,10 @@ name = "cb-plugin-api"
 version = "1.0.0-beta"
 edition = "2021"
 
+[build-dependencies]
+serde = { workspace = true }
+toml = "0.9"
+
 [dependencies]
 cb-types = { path = "../cb-types" }
 cb-core = { path = "../cb-core" }
