@@ -25,11 +25,12 @@ pub mod import_support;
 pub mod manifest;
 pub mod parser;
 pub mod refactoring;
+pub mod workspace_support;
 
 use async_trait::async_trait;
 use cb_plugin_api::{
     ImportSupport, LanguageCapabilities, LanguageMetadata, LanguagePlugin, ManifestData,
-    ParsedSource, PluginResult,
+    ParsedSource, PluginResult, WorkspaceSupport,
 };
 use std::path::Path;
 use tracing::{debug, warn};
@@ -44,6 +45,7 @@ use tracing::{debug, warn};
 pub struct PythonPlugin {
     metadata: LanguageMetadata,
     import_support: import_support::PythonImportSupport,
+    workspace_support: workspace_support::PythonWorkspaceSupport,
 }
 
 impl PythonPlugin {
@@ -52,6 +54,7 @@ impl PythonPlugin {
         Self {
             metadata: LanguageMetadata::PYTHON,
             import_support: import_support::PythonImportSupport,
+            workspace_support: workspace_support::PythonWorkspaceSupport::new(),
         }
     }
 }
@@ -125,7 +128,7 @@ impl LanguagePlugin for PythonPlugin {
     fn capabilities(&self) -> LanguageCapabilities {
         LanguageCapabilities {
             imports: true,
-            workspace: false,
+            workspace: true,  // ✅ Poetry/PDM/Hatch workspace support
         }
     }
 
@@ -160,6 +163,10 @@ impl LanguagePlugin for PythonPlugin {
 
     fn import_support(&self) -> Option<&dyn ImportSupport> {
         Some(&self.import_support)
+    }
+
+    fn workspace_support(&self) -> Option<&dyn WorkspaceSupport> {
+        Some(&self.workspace_support)
     }
 }
 
@@ -268,6 +275,12 @@ class MyClass:
         let caps = plugin.capabilities();
 
         assert!(caps.imports, "Python plugin should support imports");
-        assert!(!caps.workspace, "Python plugin should not support workspace");
+        assert!(caps.workspace, "Python plugin should support workspace");
+    }
+
+    #[test]
+    fn test_python_workspace_support() {
+        let plugin = PythonPlugin::new();
+        assert!(plugin.workspace_support().is_some(), "Python should have workspace support");
     }
 }
