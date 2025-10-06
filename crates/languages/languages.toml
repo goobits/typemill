@@ -1,0 +1,60 @@
+# Language Plugin Registry
+#
+# This file is the single source of truth for all language plugin metadata.
+# It is used by build.rs to generate:
+# - ProjectLanguage enum variants (crates/cb-core/src/language.rs)
+# - LanguageMetadata constants (crates/cb-plugin-api/src/metadata.rs)
+# - Workspace dependencies (root Cargo.toml)
+# - Plugin registration (crates/cb-services/src/services/registry_builder.rs)
+#
+# DO NOT edit the generated files directly. Edit this file and run `cargo build`.
+
+[languages.rust]
+display_name = "Rust"
+extensions = ["rs"]
+manifest_filename = "Cargo.toml"
+source_dir = "src"
+entry_point = "lib.rs"
+module_separator = "::"
+crate_name = "cb-lang-rust"
+feature_name = "lang-rust"
+
+[languages.typescript]
+display_name = "TypeScript"
+extensions = ["ts", "tsx", "js", "jsx"]
+manifest_filename = "package.json"
+source_dir = "src"
+entry_point = "index.ts"
+module_separator = "."
+crate_name = "cb-lang-typescript"
+feature_name = "lang-typescript"
+
+[languages.go]
+display_name = "Go"
+extensions = ["go"]
+manifest_filename = "go.mod"
+source_dir = "."
+entry_point = "main.go"
+module_separator = "."
+crate_name = "cb-lang-go"
+feature_name = "lang-go"
+
+[languages.python]
+display_name = "Python"
+extensions = ["py"]
+manifest_filename = "pyproject.toml"
+source_dir = "."
+entry_point = "__init__.py"
+module_separator = "."
+crate_name = "cb-lang-python"
+feature_name = "lang-python"
+
+[languages.java]
+display_name = "Java"
+extensions = ["java"]
+manifest_filename = "pom.xml"
+source_dir = "src/main/java"
+entry_point = ""  # No single entry point
+module_separator = "."
+crate_name = "cb-lang-java"
+feature_name = "lang-java"

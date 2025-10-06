@@ -17,6 +17,10 @@ figment = { version = "0.10", features = ["toml", "env"] }
 jsonwebtoken = { workspace = true }
 dashmap = { workspace = true }
 
+[build-dependencies]
+serde = { workspace = true }
+toml = "0.9"
+
 [features]
 default = []
 mcp-proxy = []

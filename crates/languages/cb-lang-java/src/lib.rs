@@ -4,9 +4,11 @@
 
 mod parser;
 mod manifest;
+pub mod import_support;
 
 use cb_plugin_api::{
-    LanguagePlugin, LanguageMetadata, LanguageCapabilities, ManifestData, ParsedSource, PluginResult,
+    ImportSupport, LanguagePlugin, LanguageMetadata, LanguageCapabilities, ManifestData,
+    ParsedSource, PluginResult,
 };
 use async_trait::async_trait;
 use std::path::Path;
@@ -14,12 +16,14 @@ use std::path::Path;
 /// Java language plugin
 pub struct JavaPlugin {
     metadata: LanguageMetadata,
+    import_support: import_support::JavaImportSupport,
 }
 
 impl JavaPlugin {
     pub fn new() -> Self {
         Self {
             metadata: LanguageMetadata::JAVA,
+            import_support: import_support::JavaImportSupport::new(),
         }
     }
 }
@@ -46,9 +50,13 @@ impl LanguagePlugin for JavaPlugin {
 
     fn capabilities(&self) -> LanguageCapabilities {
         LanguageCapabilities {
-            imports: false,  // Java doesn't have import support yet
+            imports: true,   // ✅ AST-based import support via JavaParser
             workspace: false, // Java doesn't have workspace support yet
         }
+    }
+
+    fn import_support(&self) -> Option<&dyn ImportSupport> {
+        Some(&self.import_support)
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -79,8 +87,14 @@ mod tests {
         let plugin = JavaPlugin::new();
         let caps = plugin.capabilities();
 
-        assert!(!caps.imports, "Java plugin should not support imports yet");
+        assert!(caps.imports, "Java plugin should support imports via AST");
         assert!(!caps.workspace, "Java plugin should not support workspace yet");
+    }
+
+    #[test]
+    fn test_java_import_support() {
+        let plugin = JavaPlugin::new();
+        assert!(plugin.import_support().is_some(), "Java should have import support");
     }
 
     #[test]
