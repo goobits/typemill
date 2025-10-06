@@ -36,7 +36,7 @@ Codebuddy bridges the gap between AI assistants and your codebase by exposing La
 - 🔄 Smart directory moves with automatic import path updates (including Rust crate consolidation)
 
 **Multi-Language Support**
-- 🌐 Works with TypeScript, Python, Go, Rust—any language with an LSP server
+- 🌐 Native plugins for Rust, TypeScript, Go, Python, Java—plus any language with an LSP server
 - 🔌 Flexible transport: stdio for direct MCP integration or WebSocket with JWT auth
 - 🛡️ Built in Rust for memory safety and blazing performance
 
@@ -80,6 +80,10 @@ go install golang.org/x/tools/gopls@latest
 
 # Rust
 rustup component add rust-analyzer
+
+# Java
+# Download and install jdtls from https://download.eclipse.org/jdtls/snapshots/
+# Or use your IDE's bundled language server
 
 # Verify everything is working
 codebuddy status

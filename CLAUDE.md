@@ -300,6 +300,8 @@ Supported language servers (configurable):
 - TypeScript: `typescript-language-server`
 - Python: `pylsp`
 - Go: `gopls`
+- Rust: `rust-analyzer`
+- Java: `jdtls` (Eclipse JDT Language Server)
 
 ## Configuration
 
