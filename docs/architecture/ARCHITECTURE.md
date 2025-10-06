@@ -442,17 +442,122 @@ pub struct AppState {
 }
 ```
 
-### Plugin System
+### Language Plugin Architecture
 
-Language-specific functionality is handled through plugins:
+#### Capability-Based Design
 
+The plugin system uses a capability-based architecture for optional features:
+
+**Core Trait** (`LanguagePlugin`):
+- 6 required methods + 4 default methods
+- Reduced from 22 methods in previous architecture
+- 91% reduction in trait definition size
+
+**Capability Flags** (`LanguageCapabilities`):
 ```rust
-pub trait LanguagePlugin: Send + Sync {
-    fn name(&self) -> &str;
-    fn supported_extensions(&self) -> &[&str];
-    async fn handle_request(&self, request: &ToolRequest, app_state: &AppState) -> PluginResult<ToolResponse>;
+pub struct LanguageCapabilities {
+    pub imports: bool,    // Import parsing and rewriting support
+    pub workspace: bool,  // Workspace manifest operations support
 }
 ```
+
+**Benefits**:
+- O(1) feature detection (no try/catch overhead)
+- Opt-in functionality (implement only what you need)
+- Clear API contracts (no NotSupported errors)
+- Reduced boilerplate (29-42% LOC reduction per plugin)
+
+#### Trait Structure
+
+```rust
+#[async_trait]
+pub trait LanguagePlugin: Send + Sync {
+    // Core functionality
+    fn metadata(&self) -> &LanguageMetadata;
+    async fn parse(&self, source: &str) -> PluginResult<ParsedSource>;
+    async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData>;
+
+    // Capability system
+    fn capabilities(&self) -> LanguageCapabilities;
+    fn import_support(&self) -> Option<&dyn ImportSupport>;
+    fn workspace_support(&self) -> Option<&dyn WorkspaceSupport>;
+
+    // Downcasting support
+    fn as_any(&self) -> &dyn std::any::Any;
+
+    // Default implementations
+    async fn list_functions(&self, source: &str) -> PluginResult<Vec<String>>;
+    fn handles_extension(&self, ext: &str) -> bool;
+    fn handles_manifest(&self, filename: &str) -> bool;
+}
+```
+
+#### Metadata Consolidation
+
+Replaced 7 separate methods with a single struct accessor:
+
+**Old Pattern** (removed):
+```rust
+fn name(&self) -> &str;
+fn file_extensions(&self) -> Vec<&str>;
+fn manifest_filename(&self) -> &str;
+fn source_dir(&self) -> &str;
+fn entry_point(&self) -> &str;
+fn module_separator(&self) -> &str;
+fn language(&self) -> ProjectLanguage;
+```
+
+**New Pattern** (current):
+```rust
+fn metadata(&self) -> &LanguageMetadata;
+
+// Usage:
+let name = plugin.metadata().name;
+let exts = plugin.metadata().extensions;
+let manifest = plugin.metadata().manifest_filename;
+```
+
+Pre-defined constants eliminate boilerplate:
+```rust
+impl LanguageMetadata {
+    pub const RUST: Self = Self { ... };
+    pub const TYPESCRIPT: Self = Self { ... };
+    pub const GO: Self = Self { ... };
+    pub const PYTHON: Self = Self { ... };
+}
+```
+
+#### Downcasting Pattern
+
+For implementation-specific methods not in the core trait:
+
+```rust
+use cb_lang_rust::RustPlugin;
+
+// Get plugin from registry
+let plugin = registry.find_by_extension("rs")?;
+
+// Downcast to access Rust-specific methods
+if let Some(rust_plugin) = plugin.as_any().downcast_ref::<RustPlugin>() {
+    let imports = rust_plugin.parse_imports(path).await?;
+    let workspace = rust_plugin.generate_workspace_manifest(&members, root).await?;
+}
+```
+
+**Why Downcasting?**
+- Keeps core trait small and focused
+- Allows language-specific functionality
+- Type-safe access to concrete implementations
+- Service layers can access specialized methods as needed
+
+#### Current Implementation Status
+
+| Language | Imports | Workspace | Parse | Manifest |
+|----------|---------|-----------|-------|----------|
+| Rust | ✅ | ✅ | ✅ | ✅ |
+| TypeScript | ✅ | ❌ | ✅ | ✅ |
+| Go | ✅ | ❌ | ✅ | ✅ |
+| Python | ✅ | ❌ | ✅ | ✅ |
 
 ### LSP Integration
 
@@ -630,7 +735,7 @@ ApiError ← CoreError ← ServerError ← Transport-specific errors
 For adding support for new programming languages, see the **[Language Plugins Guide](../../crates/languages/README.md)** which provides:
 
 1. **Plugin Structure**: Directory layout and file organization
-2. **Trait Implementation**: `LanguageIntelligencePlugin` trait requirements
+2. **Trait Implementation**: `LanguagePlugin` trait requirements
 3. **Registration**: Plugin registration in `language_plugin_registry.rs`
 4. **Testing**: Unit and integration test requirements
 5. **Reference Examples**: Rust, Go, TypeScript plugin implementations

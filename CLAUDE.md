@@ -447,7 +447,7 @@ cargo build --release
 
 **See [crates/languages/README.md](crates/languages/README.md)** for complete guide on implementing language plugins:
 - Plugin structure and schema requirements
-- `LanguageIntelligencePlugin` trait implementation
+- `LanguagePlugin` trait implementation
 - Data types (ParsedSource, Symbol, ManifestData)
 - Plugin registration and testing
 - Reference implementations (Rust, Go, TypeScript)

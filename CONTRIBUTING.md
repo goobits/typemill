@@ -104,7 +104,7 @@ We use the standard Rust formatting and linting tools to maintain a consistent c
 To add support for a new programming language, see the **[Language Plugins Guide](crates/languages/README.md)** which provides:
 
 - Complete plugin structure and schema requirements
-- Required trait implementations (`LanguageIntelligencePlugin`)
+- Required trait implementations (`LanguagePlugin`)
 - Data types (ParsedSource, Symbol, ManifestData)
 - Plugin registration steps
 - Implementation patterns (dual-mode vs pure Rust)

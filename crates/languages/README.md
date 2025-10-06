@@ -1,8 +1,139 @@
 # Language Plugins Guide
 
-This directory contains language-specific plugins for Codebuddy. Each plugin implements the `LanguageIntelligencePlugin` trait to provide AST parsing, symbol extraction, import analysis, and refactoring support for a specific programming language.
+This directory contains language-specific plugins for Codebuddy. Each plugin implements the `LanguagePlugin` trait to provide AST parsing, symbol extraction, import analysis, and refactoring support for a specific programming language.
 
-## Quick Start
+## Quick Start: Implementing a New Language Plugin
+
+### 1. Define Your Plugin Struct
+
+```rust
+use cb_plugin_api::{LanguagePlugin, LanguageMetadata, LanguageCapabilities};
+
+pub struct MyLanguagePlugin {
+    metadata: LanguageMetadata,
+}
+
+impl MyLanguagePlugin {
+    pub fn new() -> Self {
+        Self {
+            metadata: LanguageMetadata {
+                name: "MyLanguage",
+                extensions: &["mylang"],
+                manifest_filename: "mylang.toml",
+                source_dir: "src",
+                entry_point: "main.mylang",
+                module_separator: "::",
+                language: cb_core::language::ProjectLanguage::Unknown,
+            },
+        }
+    }
+}
+```
+
+### 2. Implement Core Trait (Required)
+
+```rust
+#[async_trait]
+impl LanguagePlugin for MyLanguagePlugin {
+    fn metadata(&self) -> &LanguageMetadata {
+        &self.metadata
+    }
+
+    async fn parse(&self, source: &str) -> PluginResult<ParsedSource> {
+        // TODO: Implement AST parsing for your language
+        todo!()
+    }
+
+    async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
+        // TODO: Parse your language's manifest file
+        todo!()
+    }
+
+    fn capabilities(&self) -> LanguageCapabilities {
+        LanguageCapabilities {
+            imports: false,    // Set to true if you implement import methods
+            workspace: false,  // Set to true if you implement workspace methods
+        }
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+```
+
+### 3. Add Import Support (Optional)
+
+If your language has imports, add these public methods:
+
+```rust
+impl MyLanguagePlugin {
+    pub async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
+        // Parse import statements from file
+        todo!()
+    }
+
+    pub fn rewrite_imports_for_rename(
+        &self,
+        content: &str,
+        old_path: &Path,
+        new_path: &Path,
+        importing_file: &Path,
+        project_root: &Path,
+        rename_info: Option<&serde_json::Value>,
+    ) -> PluginResult<(String, usize)> {
+        // Rewrite imports when files are renamed
+        todo!()
+    }
+
+    pub fn find_module_references(
+        &self,
+        content: &str,
+        module_to_find: &str,
+        scope: cb_plugin_api::ScanScope,
+    ) -> PluginResult<Vec<cb_plugin_api::ModuleReference>> {
+        // Find all references to a module
+        todo!()
+    }
+}
+```
+
+Then set `capabilities().imports = true`.
+
+### 4. Add Workspace Support (Optional)
+
+If your language has workspace manifests (like Rust's Cargo.toml workspaces):
+
+```rust
+impl MyLanguagePlugin {
+    pub async fn add_workspace_member(
+        &self,
+        workspace_content: &str,
+        new_member_path: &str,
+        workspace_root: &Path,
+    ) -> PluginResult<String> {
+        // Add member to workspace manifest
+        todo!()
+    }
+
+    pub async fn is_workspace_manifest(&self, manifest_content: &str) -> PluginResult<bool> {
+        // Check if manifest is a workspace root
+        todo!()
+    }
+
+    // ... other workspace methods
+}
+```
+
+Then set `capabilities().workspace = true`.
+
+### Reference Implementations
+
+- **Full example**: See `crates/languages/cb-lang-rust/src/lib.rs` (imports + workspace)
+- **Imports only**: See `crates/languages/cb-lang-typescript/src/lib.rs`
+- **Minimal**: See `crates/languages/cb-lang-python/src/lib.rs`
+
+## Original Quick Start
 
 ### Create a New Language Plugin
 
@@ -47,71 +178,52 @@ crates/languages/cb-lang-{language}/
 ├── resources/              # Optional: embedded tools (e.g., ast_tool.go, ast_tool.js)
 │   └── ast_tool.*          # Language-native AST parser subprocess
 └── src/
-    ├── lib.rs              # Plugin implementation (LanguageIntelligencePlugin trait)
+    ├── lib.rs              # Plugin implementation (LanguagePlugin trait)
     ├── parser.rs           # Symbol extraction and import parsing
     └── manifest.rs         # Manifest file handling (Cargo.toml, package.json, go.mod, etc.)
 ```
 
 ## Required Trait Implementation
 
-### Core Trait: `LanguageIntelligencePlugin`
+### Core Trait: `LanguagePlugin`
 
-Located in `crates/cb-plugin-api/src/lib.rs:319-562`
+Located in `crates/cb-plugin-api/src/lib.rs:331-383`
 
 #### Required Methods
 
 ```rust
 #[async_trait]
-impl LanguageIntelligencePlugin for YourPlugin {
-    /// Returns language name (e.g., "Rust", "Go", "TypeScript")
-    fn name(&self) -> &'static str;
-
-    /// Returns file extensions (e.g., vec!["rs"], vec!["go"], vec!["ts", "tsx", "js", "jsx"])
-    fn file_extensions(&self) -> Vec<&'static str>;
+impl LanguagePlugin for YourPlugin {
+    /// Returns language metadata (name, extensions, manifest filename, etc.)
+    fn metadata(&self) -> &LanguageMetadata;
 
     /// Parses source code into AST and extracts symbols
     async fn parse(&self, source: &str) -> PluginResult<ParsedSource>;
 
     /// Analyzes manifest file (Cargo.toml, package.json, go.mod, etc.)
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData>;
+
+    /// Returns capability flags for optional features
+    fn capabilities(&self) -> LanguageCapabilities;
+
+    /// Downcasting support for plugin-specific methods
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 ```
 
-#### Refactoring Methods (Optional but Recommended)
+#### Plugin-Specific Implementation Methods (Optional)
 
-These methods enable file/directory rename operations and import rewriting:
+These methods are **not part of the core trait**. Instead, they are public methods implemented directly on plugin structs. Services access them via downcasting when needed.
+
+**For Import Support** (when `capabilities().imports = true`):
 
 ```rust
-    /// Get manifest filename (e.g., "Cargo.toml", "package.json", "go.mod")
-    fn manifest_filename(&self) -> &'static str;
-
-    /// Get source directory name (e.g., "src" for Rust/TS, "" for Python)
-    fn source_dir(&self) -> &'static str;
-
-    /// Get entry point filename (e.g., "lib.rs", "index.ts", "__init__.py")
-    fn entry_point(&self) -> &'static str;
-
-    /// Get module path separator (e.g., "::" for Rust, "." for Python/TS/Go)
-    fn module_separator(&self) -> &'static str;
-
-    /// Locate module files given a module path within a package
-    async fn locate_module_files(
-        &self,
-        package_path: &Path,
-        module_path: &str,
-    ) -> PluginResult<Vec<PathBuf>>;
-
+impl YourPlugin {
     /// Parse imports/use statements from a file
-    async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>>;
-
-    /// Generate manifest file content for a new package
-    fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String;
-
-    /// Update import statement from internal to external
-    fn rewrite_import(&self, old_import: &str, new_package_name: &str) -> String;
+    pub async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>>;
 
     /// Rewrite import statements in file content for rename operations
-    fn rewrite_imports_for_rename(
+    pub fn rewrite_imports_for_rename(
         &self,
         content: &str,
         old_path: &Path,
@@ -122,22 +234,56 @@ These methods enable file/directory rename operations and import rewriting:
     ) -> PluginResult<(String, usize)>;
 
     /// Find all references to a module within file content
-    fn find_module_references(
+    pub fn find_module_references(
         &self,
         content: &str,
         module_to_find: &str,
         scope: ScanScope,
     ) -> PluginResult<Vec<ModuleReference>>;
+}
+```
+
+**For Workspace Support** (when `capabilities().workspace = true`):
+
+```rust
+impl YourPlugin {
+    /// Add a new member to workspace manifest
+    pub async fn add_workspace_member(
+        &self,
+        workspace_content: &str,
+        new_member_path: &str,
+        workspace_root: &Path,
+    ) -> PluginResult<String>;
+
+    /// Check if manifest is a workspace root
+    pub async fn is_workspace_manifest(&self, manifest_content: &str) -> PluginResult<bool>;
+
+    /// Remove a member from workspace manifest
+    pub async fn remove_workspace_member(
+        &self,
+        workspace_content: &str,
+        member_path: &str,
+    ) -> PluginResult<String>;
+
+    /// Merge dependencies from one manifest into another
+    pub async fn merge_dependencies(
+        &self,
+        source_manifest: &str,
+        target_manifest: &str,
+    ) -> PluginResult<String>;
 
     /// Update dependency in manifest file
-    async fn update_dependency(
+    pub async fn update_dependency(
         &self,
         manifest_path: &Path,
         old_name: &str,
         new_name: &str,
         new_path: Option<&str>,
     ) -> PluginResult<String>;
+}
 ```
+
+**Note:** Metadata fields like `manifest_filename`, `source_dir`, `entry_point`, and `module_separator` are now accessed via `plugin.metadata()` instead of individual trait methods.
 
 ## Data Types
 
@@ -397,7 +543,7 @@ cargo test -p cb-lang-kotlin
 ### Manual Checklist (If Not Using Scripts)
 
 - [ ] Create `crates/languages/cb-lang-{language}/` directory
-- [ ] Implement `LanguageIntelligencePlugin` trait in `src/lib.rs`
+- [ ] Implement `LanguagePlugin` trait in `src/lib.rs`
 - [ ] Implement symbol extraction in `src/parser.rs`
 - [ ] Implement manifest parsing in `src/manifest.rs`
 - [ ] Add unit tests (minimum 8-12 tests)

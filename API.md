@@ -10,6 +10,7 @@ Complete API documentation for all MCP tools available in CodeBuddy.
 ## Table of Contents
 
 - [Language Support Matrix](#language-support-matrix) - Quick reference
+- [Language Plugin Architecture](#language-plugin-architecture) - Capability-based plugin system
 - [Navigation & Intelligence](#navigation--intelligence) (13 tools)
 - [Editing & Refactoring](#editing--refactoring) (9 tools)
 - [File Operations](#file-operations) (6 tools)
@@ -89,6 +90,59 @@ Complete API documentation for all MCP tools available in CodeBuddy.
 | `web_fetch` | ✅ | ✅ | ✅ | ✅ | URL content fetching |
 
 **Note:** Language support depends on configured LSP servers in `.codebuddy/config.json`. LSP-first tools attempt LSP code actions, falling back to AST parsing if unsupported.
+
+---
+
+## Language Plugin Architecture
+
+### Capability-Based System
+
+Plugins declare their features via capability flags:
+
+```rust
+let plugin = registry.find_by_extension("rs")?;
+let caps = plugin.capabilities();
+
+if caps.imports {
+    // Plugin supports import parsing and rewriting
+}
+if caps.workspace {
+    // Plugin supports workspace manifest operations
+}
+```
+
+### Current Plugin Capabilities
+
+| Language | Import Support | Workspace Support |
+|----------|---------------|-------------------|
+| Rust | ✅ Yes | ✅ Yes |
+| TypeScript | ✅ Yes | ❌ No |
+| Go | ✅ Yes | ❌ No |
+| Python | ✅ Yes | ❌ No |
+
+### Metadata Access Pattern
+
+```rust
+// Access language metadata
+let plugin = registry.find_by_extension("rs")?;
+let name = plugin.metadata().name;           // "Rust"
+let exts = plugin.metadata().extensions;     // &["rs"]
+let manifest = plugin.metadata().manifest_filename; // "Cargo.toml"
+```
+
+### Downcasting for Plugin-Specific Methods
+
+Some methods are implementation-specific and require downcasting:
+
+```rust
+use cb_lang_rust::RustPlugin;
+
+if let Some(rust_plugin) = plugin.as_any().downcast_ref::<RustPlugin>() {
+    // Access Rust-specific implementation methods
+    let imports = rust_plugin.parse_imports(path).await?;
+    let manifest = rust_plugin.generate_manifest("my-crate", &deps);
+}
+```
 
 ---
 
