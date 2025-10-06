@@ -117,14 +117,16 @@ fn rewrite_with_modules(content: &str, members: &[String]) -> Result<String, Str
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Eof) => break,
-            Ok(Event::Start(ref e)) if e.name().as_ref() == b"modules" => {
+            Ok(Event::Start(ref e)) if e.name().as_ref() == b"modules" && !in_modules => {
                 // Replace entire modules section
                 write_modules_section(&mut writer, members)?;
                 in_modules = true;
                 modules_written = true;
+                // Don't write the original <modules> tag
             }
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"modules" => {
+            Ok(Event::End(ref e)) if e.name().as_ref() == b"modules" && in_modules => {
                 in_modules = false;
+                // Don't write the original </modules> tag since we already wrote our own
             }
             Ok(Event::End(ref e)) if e.name().as_ref() == b"packaging" && !modules_written => {
                 // No modules section exists yet, add after packaging
@@ -132,11 +134,14 @@ fn rewrite_with_modules(content: &str, members: &[String]) -> Result<String, Str
                 write_modules_section(&mut writer, members)?;
                 modules_written = true;
             }
-            Ok(ref e) if !in_modules => {
-                writer.write_event(e).map_err(|e| e.to_string())?;
+            Ok(ref e) => {
+                // Only write events if we're not inside the modules section
+                if !in_modules {
+                    writer.write_event(e).map_err(|e| e.to_string())?;
+                }
+                // Otherwise skip (we're inside the old modules section)
             }
             Err(e) => return Err(format!("XML parse error: {}", e)),
-            _ => {} // Skip content inside modules section
         }
         buf.clear();
     }
