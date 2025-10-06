@@ -38,10 +38,24 @@ async fn test_rename_file_uses_git_mv() {
     // Create a codebuddy.toml with git enabled
     let config_content = r#"
 [server]
+host = "127.0.0.1"
 port = 3000
+timeoutMs = 30000
 
 [lsp]
-servers = []
+defaultTimeoutMs = 10000
+enablePreload = false
+
+[[lsp.servers]]
+extensions = ["txt"]
+command = ["cat"]
+
+[logging]
+level = "info"
+format = "pretty"
+
+[cache]
+enabled = false
 
 [git]
 enabled = true
@@ -50,8 +64,6 @@ operations = ["mv", "rm"]
 
 [validation]
 enabled = false
-command = "cargo check"
-on_failure = "Report"
 "#;
     std::fs::write(project_path.join("codebuddy.toml"), config_content)
         .expect("Failed to write codebuddy.toml");
@@ -138,10 +150,24 @@ async fn test_rename_file_falls_back_without_git() {
     // Create a codebuddy.toml with git enabled (but no git repo exists)
     let config_content = r#"
 [server]
+host = "127.0.0.1"
 port = 3000
+timeoutMs = 30000
 
 [lsp]
-servers = []
+defaultTimeoutMs = 10000
+enablePreload = false
+
+[[lsp.servers]]
+extensions = ["txt"]
+command = ["cat"]
+
+[logging]
+level = "info"
+format = "pretty"
+
+[cache]
+enabled = false
 
 [git]
 enabled = true
@@ -221,10 +247,24 @@ async fn test_git_disabled_in_config() {
     // Create config with git DISABLED
     let config_content = r#"
 [server]
+host = "127.0.0.1"
 port = 3000
+timeoutMs = 30000
 
 [lsp]
-servers = []
+defaultTimeoutMs = 10000
+enablePreload = false
+
+[[lsp.servers]]
+extensions = ["txt"]
+command = ["cat"]
+
+[logging]
+level = "info"
+format = "pretty"
+
+[cache]
+enabled = false
 
 [git]
 enabled = false
