@@ -29,6 +29,7 @@
 //! ```
 
 use cb_plugin_api::{Dependency, DependencySource, ManifestData, PluginError, PluginResult};
+use cb_lang_common::read_manifest;
 use std::path::Path;
 use tracing::{debug, warn};
 
@@ -488,10 +489,7 @@ pub fn generate_manifest(module_name: &str, go_version: &str) -> String {
 
 /// Load and parse a go.mod file from a path
 pub async fn load_go_mod(path: &Path) -> PluginResult<ManifestData> {
-    let content = tokio::fs::read_to_string(path)
-        .await
-        .map_err(|e| PluginError::manifest(format!("Failed to read go.mod: {}", e)))?;
-
+    let content = read_manifest(path).await?;
     parse_go_mod(&content)
 }
 

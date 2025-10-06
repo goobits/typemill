@@ -1,7 +1,7 @@
 //! Go import parsing and symbol extraction logic for the cb-lang-go plugin.
 
 use cb_plugin_api::{PluginError, PluginResult, Symbol, SymbolKind};
-use cb_protocol::{ImportGraph, ImportGraphMetadata, ImportInfo, ImportType, SourceLocation};
+use cb_protocol::{ImportGraph, ImportInfo, ImportType, SourceLocation};
 use cb_lang_common::{SubprocessAstTool, run_ast_tool, parse_with_fallback, ImportGraphBuilder};
 use serde::Deserialize;
 use std::path::Path;
@@ -27,14 +27,10 @@ pub fn analyze_imports(source: &str, file_path: Option<&Path>) -> PluginResult<I
 fn parse_go_imports_ast(source: &str) -> Result<Vec<ImportInfo>, PluginError> {
     const AST_TOOL_GO: &str = include_str!("../resources/ast_tool.go");
 
-    let tool = SubprocessAstTool::builder()
-        .command("go")
-        .args(vec!["run".to_string()])
-        .script_content(AST_TOOL_GO)
-        .script_extension("go")
-        .script_args(vec!["analyze-imports".to_string()])
-        .prefix("codebuddy-go-ast")
-        .build()?;
+    let tool = SubprocessAstTool::new("go")
+        .with_embedded_str(AST_TOOL_GO)
+        .with_temp_filename("ast_tool.go")
+        .with_args(vec!["run".to_string(), "{script}".to_string(), "analyze-imports".to_string()]);
 
     run_ast_tool(tool, source)
 }
@@ -226,59 +222,23 @@ struct GoLocation {
 /// Extract symbols from Go source code using AST-based parsing.
 /// Falls back to empty list if Go is not available.
 pub fn extract_symbols(source: &str) -> PluginResult<Vec<Symbol>> {
-    match extract_symbols_ast(source) {
-        Ok(symbols) => Ok(symbols),
-        Err(e) => {
-            tracing::debug!(error = %e, "Go symbol extraction failed, returning empty list");
-            // Return empty list instead of failing - symbol extraction is optional
-            Ok(Vec::new())
-        }
-    }
+    parse_with_fallback(
+        || extract_symbols_ast(source),
+        || Ok(Vec::new()),
+        "Go symbol extraction"
+    )
 }
 
 /// Spawns the bundled `ast_tool.go` script to extract symbols from source.
 fn extract_symbols_ast(source: &str) -> Result<Vec<Symbol>, PluginError> {
     const AST_TOOL_GO: &str = include_str!("../resources/ast_tool.go");
 
-    let tmp_dir = Builder::new()
-        .prefix("codebuddy-go-ast")
-        .tempdir()
-        .map_err(|e| PluginError::internal(format!("Failed to create temp dir: {}", e)))?;
-    let tool_path = tmp_dir.path().join("ast_tool.go");
-    std::fs::write(&tool_path, AST_TOOL_GO).map_err(|e| {
-        PluginError::internal(format!("Failed to write Go tool to temp file: {}", e))
-    })?;
+    let tool = SubprocessAstTool::new("go")
+        .with_embedded_str(AST_TOOL_GO)
+        .with_temp_filename("ast_tool.go")
+        .with_args(vec!["run".to_string(), "{script}".to_string(), "extract-symbols".to_string()]);
 
-    let mut child = Command::new("go")
-        .arg("run")
-        .arg(&tool_path)
-        .arg("extract-symbols")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| PluginError::parse(format!("Failed to spawn Go AST tool: {}", e)))?;
-
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(source.as_bytes()).map_err(|e| {
-            PluginError::parse(format!("Failed to write to Go AST tool stdin: {}", e))
-        })?;
-    }
-
-    let output = child
-        .wait_with_output()
-        .map_err(|e| PluginError::parse(format!("Failed to wait for Go AST tool: {}", e)))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(PluginError::parse(format!(
-            "Go AST tool failed: {}",
-            stderr
-        )));
-    }
-
-    let go_symbols: Vec<GoSymbolInfo> = serde_json::from_slice(&output.stdout)
-        .map_err(|e| PluginError::parse(format!("Failed to parse Go AST tool output: {}", e)))?;
+    let go_symbols: Vec<GoSymbolInfo> = run_ast_tool(tool, source)?;
 
     // Convert GoSymbolInfo to cb_plugin_api::Symbol
     let symbols = go_symbols
