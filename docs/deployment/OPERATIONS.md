@@ -704,6 +704,81 @@ The server validates all inputs:
 - Path traversal prevention for file operations
 - Command injection prevention (LSP commands from config only)
 
+### Local Development Security Model
+
+Codebuddy operates under a **local development trust model**:
+
+- ✅ **No authentication required** - Assumes local user has legitimate access
+- ✅ **OS-level permissions** - Respects filesystem permissions
+- ✅ **Project-scoped operations** - All file paths anchored to project root
+- ✅ **No network exposure** - stdio-based MCP protocol (no listening ports)
+
+**Trust Boundary:** If the user's account is compromised, Codebuddy offers no additional attack surface beyond what the user already has access to (similar to git, cargo, npm).
+
+### Validation Rollback Behavior ⚠️
+
+**Config:** `.codebuddy/config.json`
+
+```json
+{
+  "validation": {
+    "enabled": true,
+    "command": "cargo check",
+    "on_failure": "Rollback"  // ⚠️ DANGER: Runs "git reset --hard HEAD"
+  }
+}
+```
+
+**⚠️ Warning:** `on_failure: "Rollback"` will **discard all uncommitted changes** if validation fails.
+
+**Safe alternatives:**
+- `"Report"` - Show errors but keep changes (recommended)
+- `"Interactive"` - Prompt user to decide (requires manual action)
+
+**Best practice:** Always commit work before risky operations when using Rollback mode.
+
+### WebSocket Mode Security
+
+**For Docker/CI/CD deployments:**
+
+```json
+{
+  "websocket": {
+    "enabled": true,
+    "port": 3000
+  },
+  "auth": {
+    "enabled": true,
+    "jwt_secret": "your-secret-key-here"  // ⚠️ Use strong random value
+  }
+}
+```
+
+**⚠️ Important:** Only enable JWT auth for network-exposed instances. Not needed for local development.
+
+**Without JWT auth (NOT recommended for production):**
+```json
+{
+  "websocket": { "enabled": true },
+  "auth": { "enabled": false }  // ⚠️ DANGER: Anyone can connect
+}
+```
+
+### Dependency Security
+
+Run monthly security audits:
+
+```bash
+# Check for known vulnerabilities
+cargo audit
+
+# Known issues in 1.0.0:
+# - atty 0.2.14 (unmaintained, terminal detection, LOW severity)
+# - paste 1.0.15 (unmaintained, compile-time only, LOW severity)
+```
+
+See [docs/security/AUDIT.md](../security/AUDIT.md) for latest audit report.
+
 ### Monitoring for Security Issues
 
 ```bash
