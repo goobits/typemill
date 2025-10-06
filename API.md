@@ -13,7 +13,7 @@ Complete API documentation for all MCP tools available in CodeBuddy.
 - [Language Plugin Architecture](#language-plugin-architecture) - Capability-based plugin system
 - [Navigation & Intelligence](#navigation--intelligence) (13 tools)
 - [Editing & Refactoring](#editing--refactoring) (10 tools)
-- [Code Analysis](#code-analysis) (3 tools)
+- [Code Analysis](#code-analysis) (5 tools)
 - [File Operations](#file-operations) (6 tools)
 - [Workspace Operations](#workspace-operations) (5 tools)
 - [Advanced Operations](#advanced-operations) (2 tools)
@@ -26,7 +26,7 @@ Complete API documentation for all MCP tools available in CodeBuddy.
 
 ## Language Support Matrix
 
-**Total MCP Tools**: 45 (41 public + 4 lifecycle notifications)
+**Total MCP Tools**: 47 (43 public + 4 lifecycle notifications)
 
 ### Navigation & Intelligence (LSP-based)
 
@@ -68,6 +68,8 @@ Complete API documentation for all MCP tools available in CodeBuddy.
 | `find_unused_imports` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Pattern-based import usage detection |
 | `analyze_complexity` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Cyclomatic complexity metrics |
 | `suggest_refactoring` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Pattern-based refactoring suggestions |
+| `analyze_project_complexity` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Project-wide complexity analysis with class aggregation |
+| `find_complexity_hotspots` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Top N most complex functions/classes |
 
 ### File Operations
 
@@ -1237,6 +1239,174 @@ Each suggestion includes specific, actionable advice:
 - Provides **multi-line, detailed suggestions** with bullet points
 - Results sorted by priority (high → medium → low)
 - Includes enhanced complexity report with SLOC and issue counts
+
+---
+
+### `analyze_project_complexity`
+
+Scan an entire directory or project for complexity metrics across all supported files. Provides project-wide statistics, file-level summaries, and class/module-level aggregations.
+
+**Parameters:**
+```json
+{
+  "directory_path": "src/",                    // Required: Directory to analyze
+  "pattern": "**/*.{rs,py,ts,js}",            // Optional: Glob pattern for file filtering
+  "include_tests": false                       // Optional: Include test files (default: false)
+}
+```
+
+**Returns:**
+```json
+{
+  "directory": "src/",
+  "total_files": 45,
+  "total_functions": 234,
+  "total_classes": 23,
+  "average_complexity": 4.2,
+  "average_cognitive_complexity": 3.8,
+  "max_complexity": 28,
+  "max_cognitive_complexity": 35,
+  "total_sloc": 12450,
+  "files": [
+    {
+      "file_path": "src/handlers/analysis.rs",
+      "function_count": 12,
+      "class_count": 1,
+      "average_complexity": 5.3,
+      "average_cognitive_complexity": 4.8,
+      "max_complexity": 15,
+      "total_issues": 2
+    }
+  ],
+  "classes": [
+    {
+      "name": "AnalysisHandler",
+      "file_path": "src/handlers/analysis.rs",
+      "line": 25,
+      "function_count": 12,
+      "total_complexity": 64,
+      "total_cognitive_complexity": 58,
+      "average_complexity": 5.3,
+      "average_cognitive_complexity": 4.8,
+      "max_complexity": 15,
+      "max_cognitive_complexity": 18,
+      "total_sloc": 450,
+      "rating": "moderate",
+      "issues": []
+    }
+  ],
+  "hotspots_summary": "234 functions analyzed across 45 files. 12 issues detected that need attention.",
+  "errors": []  // Optional: Files that failed to parse
+}
+```
+
+**Class Aggregation:**
+- **Python/Java/TypeScript**: Groups methods by class (detects `ClassName.methodName` pattern)
+- **Rust/Go**: Groups functions by module/file (treats file as "class")
+- Calculates aggregate metrics: total complexity, average complexity, function count, SLOC
+
+**File Filtering:**
+- Uses `FileService.list_files_with_pattern()` (respects .gitignore)
+- Filters by supported language extensions automatically
+- Optional test file exclusion (checks for "test" or "spec" in path)
+- Sequential processing to avoid AST cache thrashing
+
+**Error Handling:**
+- Continues on per-file errors (parse failures, read errors)
+- Collects errors in `errors` array without failing entire batch
+- Logs warnings for failed files
+
+**Use Cases:**
+- CI/CD pipeline quality gates
+- Technical debt assessment
+- Codebase health monitoring
+- Identifying refactoring candidates across projects
+
+**Language Support:** All languages with AST support (Rust, Go, Java, TypeScript, JavaScript, Python)
+
+---
+
+### `find_complexity_hotspots`
+
+Find the most complex functions and classes in a project (top N worst offenders). Useful for prioritizing refactoring efforts.
+
+**Parameters:**
+```json
+{
+  "directory_path": "src/",        // Required: Directory to scan
+  "limit": 10,                      // Optional: Number of top items (default: 10)
+  "metric": "cognitive"             // Optional: "cognitive" or "cyclomatic" (default: "cognitive")
+}
+```
+
+**Returns:**
+```json
+{
+  "directory": "src/",
+  "metric": "cognitive",
+  "top_functions": [
+    {
+      "name": "processComplexData",
+      "file_path": "src/processor.ts",
+      "line": 145,
+      "complexity": 28,
+      "cognitive_complexity": 35,
+      "rating": "very_complex",
+      "sloc": 234
+    },
+    {
+      "name": "validatePayment",
+      "file_path": "src/payment.ts",
+      "line": 89,
+      "complexity": 20,
+      "cognitive_complexity": 32,
+      "rating": "very_complex",
+      "sloc": 156
+    }
+  ],
+  "top_classes": [
+    {
+      "name": "PaymentProcessor",
+      "file_path": "src/payment.ts",
+      "line": 25,
+      "function_count": 18,
+      "total_complexity": 145,
+      "total_cognitive_complexity": 178,
+      "average_complexity": 8.1,
+      "average_cognitive_complexity": 9.9,
+      "max_complexity": 28,
+      "max_cognitive_complexity": 35,
+      "total_sloc": 890,
+      "rating": "moderate",
+      "issues": []
+    }
+  ],
+  "summary": "Top 10 complexity hotspots identified. 3 very complex functions require immediate refactoring."
+}
+```
+
+**Sorting:**
+- **cognitive metric**: Sorts by cognitive complexity (recommended - better predicts maintenance difficulty)
+- **cyclomatic metric**: Sorts by cyclomatic complexity (traditional approach)
+- Returns top N functions and top N classes separately
+
+**Hotspot Prioritization:**
+- Focuses on "very_complex" functions (cognitive complexity > 20)
+- Provides actionable summary of critical issues
+- Includes file path and line number for quick navigation
+
+**Use Cases:**
+- Sprint planning for technical debt reduction
+- Code review focus areas
+- Onboarding documentation (avoid complex modules)
+- Identifying candidates for extraction/refactoring
+
+**Performance:**
+- Sequential file processing (optimized for AST cache)
+- Typical performance: 100-500 files in <10 seconds
+- Lightweight - only extracts complexity metrics, no full analysis
+
+**Language Support:** All languages with AST support (Rust, Go, Java, TypeScript, JavaScript, Python)
 
 ---
 

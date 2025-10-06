@@ -1311,4 +1311,299 @@ function validate(data: any): boolean {
         assert!(metrics.cognitive > 0, "Should calculate cognitive complexity");
         assert!(metrics.max_nesting_depth >= 1, "Should track nesting");
     }
+
+    #[test]
+    fn test_extract_class_name_python() {
+        // Python class method
+        assert_eq!(
+            extract_class_name("MyClass.my_method", "python"),
+            Some("MyClass".to_string())
+        );
+
+        // Top-level function
+        assert_eq!(extract_class_name("standalone_function", "python"), None);
+
+        // Nested class
+        assert_eq!(
+            extract_class_name("OuterClass.InnerClass.method", "python"),
+            Some("OuterClass.InnerClass".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_class_name_typescript() {
+        // TypeScript class method
+        assert_eq!(
+            extract_class_name("Calculator.add", "typescript"),
+            Some("Calculator".to_string())
+        );
+
+        // Top-level function
+        assert_eq!(extract_class_name("helperFunction", "typescript"), None);
+    }
+
+    #[test]
+    fn test_extract_class_name_rust() {
+        // Rust uses file-level grouping, should return None
+        assert_eq!(extract_class_name("impl_method", "rust"), None);
+        assert_eq!(extract_class_name("free_function", "rust"), None);
+    }
+
+    #[test]
+    fn test_aggregate_class_complexity_empty() {
+        let functions = vec![];
+        let classes = aggregate_class_complexity("test.py", &functions, "python");
+        assert_eq!(classes.len(), 0);
+    }
+
+    #[test]
+    fn test_aggregate_class_complexity_python() {
+        use cb_plugin_api::SourceLocation;
+
+        // Create sample function complexities
+        let functions = vec![
+            FunctionComplexity {
+                name: "Calculator.add".to_string(),
+                line: 10,
+                complexity: ComplexityMetrics {
+                    cyclomatic: 2,
+                    cognitive: 1,
+                    max_nesting_depth: 1,
+                },
+                metrics: CodeMetrics {
+                    sloc: 5,
+                    total_lines: 6,
+                    comment_lines: 1,
+                    comment_ratio: 0.2,
+                    parameters: 2,
+                },
+                rating: ComplexityRating::Simple,
+                issues: vec![],
+                recommendation: None,
+            },
+            FunctionComplexity {
+                name: "Calculator.subtract".to_string(),
+                line: 20,
+                complexity: ComplexityMetrics {
+                    cyclomatic: 3,
+                    cognitive: 2,
+                    max_nesting_depth: 1,
+                },
+                metrics: CodeMetrics {
+                    sloc: 8,
+                    total_lines: 9,
+                    comment_lines: 1,
+                    comment_ratio: 0.125,
+                    parameters: 2,
+                },
+                rating: ComplexityRating::Simple,
+                issues: vec![],
+                recommendation: None,
+            },
+            FunctionComplexity {
+                name: "standalone_function".to_string(),
+                line: 30,
+                complexity: ComplexityMetrics {
+                    cyclomatic: 1,
+                    cognitive: 0,
+                    max_nesting_depth: 0,
+                },
+                metrics: CodeMetrics {
+                    sloc: 3,
+                    total_lines: 3,
+                    comment_lines: 0,
+                    comment_ratio: 0.0,
+                    parameters: 0,
+                },
+                rating: ComplexityRating::Simple,
+                issues: vec![],
+                recommendation: None,
+            },
+        ];
+
+        let classes = aggregate_class_complexity("test.py", &functions, "python");
+
+        // Should have 2 classes: Calculator and <module>
+        assert_eq!(classes.len(), 2);
+
+        // Find Calculator class
+        let calculator = classes.iter().find(|c| c.name == "Calculator");
+        assert!(calculator.is_some(), "Should find Calculator class");
+
+        let calculator = calculator.unwrap();
+        assert_eq!(calculator.function_count, 2);
+        assert_eq!(calculator.total_complexity, 5); // 2 + 3
+        assert_eq!(calculator.total_cognitive_complexity, 3); // 1 + 2
+        assert_eq!(calculator.total_sloc, 13); // 5 + 8
+        assert_eq!(calculator.average_complexity, 2.5); // (2 + 3) / 2
+        assert_eq!(calculator.average_cognitive_complexity, 1.5); // (1 + 2) / 2
+
+        // Find module-level functions
+        let module = classes.iter().find(|c| c.name == "<module>");
+        assert!(module.is_some(), "Should find <module> for top-level functions");
+
+        let module = module.unwrap();
+        assert_eq!(module.function_count, 1);
+        assert_eq!(module.total_complexity, 1);
+    }
+
+    #[test]
+    fn test_aggregate_class_complexity_rust() {
+        // For Rust, all functions should go to <module>
+        let functions = vec![
+            FunctionComplexity {
+                name: "parse_data".to_string(),
+                line: 10,
+                complexity: ComplexityMetrics {
+                    cyclomatic: 5,
+                    cognitive: 4,
+                    max_nesting_depth: 2,
+                },
+                metrics: CodeMetrics {
+                    sloc: 20,
+                    total_lines: 25,
+                    comment_lines: 5,
+                    comment_ratio: 0.25,
+                    parameters: 1,
+                },
+                rating: ComplexityRating::Simple,
+                issues: vec![],
+                recommendation: None,
+            },
+            FunctionComplexity {
+                name: "validate_input".to_string(),
+                line: 40,
+                complexity: ComplexityMetrics {
+                    cyclomatic: 3,
+                    cognitive: 2,
+                    max_nesting_depth: 1,
+                },
+                metrics: CodeMetrics {
+                    sloc: 10,
+                    total_lines: 12,
+                    comment_lines: 2,
+                    comment_ratio: 0.2,
+                    parameters: 2,
+                },
+                rating: ComplexityRating::Simple,
+                issues: vec![],
+                recommendation: None,
+            },
+        ];
+
+        let classes = aggregate_class_complexity("lib.rs", &functions, "rust");
+
+        // Should have 1 "class" (module-level)
+        assert_eq!(classes.len(), 1);
+        assert_eq!(classes[0].name, "<module>");
+        assert_eq!(classes[0].function_count, 2);
+        assert_eq!(classes[0].total_complexity, 8); // 5 + 3
+        assert_eq!(classes[0].total_cognitive_complexity, 6); // 4 + 2
+    }
+
+    #[test]
+    fn test_aggregate_class_complexity_large_class() {
+        // Test that large classes get flagged with issues
+        let mut functions = vec![];
+
+        // Create 25 functions in the same class
+        for i in 0..25 {
+            functions.push(FunctionComplexity {
+                name: format!("LargeClass.method{}", i),
+                line: 10 + i * 10,
+                complexity: ComplexityMetrics {
+                    cyclomatic: 2,
+                    cognitive: 1,
+                    max_nesting_depth: 1,
+                },
+                metrics: CodeMetrics {
+                    sloc: 5,
+                    total_lines: 6,
+                    comment_lines: 1,
+                    comment_ratio: 0.2,
+                    parameters: 1,
+                },
+                rating: ComplexityRating::Simple,
+                issues: vec![],
+                recommendation: None,
+            });
+        }
+
+        let classes = aggregate_class_complexity("large.py", &functions, "python");
+
+        assert_eq!(classes.len(), 1);
+        let large_class = &classes[0];
+        assert_eq!(large_class.name, "LargeClass");
+        assert_eq!(large_class.function_count, 25);
+
+        // Should have issue about large class
+        assert!(
+            large_class
+                .issues
+                .iter()
+                .any(|issue| issue.contains("Large class")),
+            "Should flag large class as an issue"
+        );
+    }
+
+    #[test]
+    fn test_aggregate_class_complexity_high_average() {
+        // Test that high average complexity gets flagged
+        let functions = vec![
+            FunctionComplexity {
+                name: "ComplexClass.method1".to_string(),
+                line: 10,
+                complexity: ComplexityMetrics {
+                    cyclomatic: 15,
+                    cognitive: 12,
+                    max_nesting_depth: 4,
+                },
+                metrics: CodeMetrics {
+                    sloc: 50,
+                    total_lines: 60,
+                    comment_lines: 10,
+                    comment_ratio: 0.2,
+                    parameters: 3,
+                },
+                rating: ComplexityRating::Complex,
+                issues: vec![],
+                recommendation: None,
+            },
+            FunctionComplexity {
+                name: "ComplexClass.method2".to_string(),
+                line: 80,
+                complexity: ComplexityMetrics {
+                    cyclomatic: 18,
+                    cognitive: 15,
+                    max_nesting_depth: 5,
+                },
+                metrics: CodeMetrics {
+                    sloc: 70,
+                    total_lines: 85,
+                    comment_lines: 15,
+                    comment_ratio: 0.214,
+                    parameters: 4,
+                },
+                rating: ComplexityRating::Complex,
+                issues: vec![],
+                recommendation: None,
+            },
+        ];
+
+        let classes = aggregate_class_complexity("complex.py", &functions, "python");
+
+        assert_eq!(classes.len(), 1);
+        let complex_class = &classes[0];
+        assert_eq!(complex_class.name, "ComplexClass");
+        assert_eq!(complex_class.average_cognitive_complexity, 13.5); // (12 + 15) / 2
+
+        // Should have issue about high complexity
+        assert!(
+            complex_class
+                .issues
+                .iter()
+                .any(|issue| issue.contains("High average cognitive complexity")),
+            "Should flag high average complexity as an issue"
+        );
+    }
 }
