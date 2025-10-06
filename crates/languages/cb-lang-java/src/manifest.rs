@@ -18,12 +18,20 @@ struct PomProject {
     version: String,
     #[serde(default, rename = "dependencies")]
     dependencies: PomDependencies,
+    #[serde(default, rename = "modules")]
+    modules: PomModules,
 }
 
 #[derive(Debug, Deserialize, Default, serde::Serialize)]
 struct PomDependencies {
     #[serde(default, rename = "dependency")]
     dependency: Vec<PomDependency>,
+}
+
+#[derive(Debug, Deserialize, Default, serde::Serialize)]
+struct PomModules {
+    #[serde(default, rename = "module")]
+    module: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, serde::Serialize)]

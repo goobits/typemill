@@ -5,10 +5,11 @@
 mod parser;
 mod manifest;
 pub mod import_support;
+pub mod workspace_support;
 
 use cb_plugin_api::{
     ImportSupport, LanguagePlugin, LanguageMetadata, LanguageCapabilities, ManifestData,
-    ParsedSource, PluginResult,
+    ParsedSource, PluginResult, WorkspaceSupport,
 };
 use async_trait::async_trait;
 use std::path::Path;
@@ -17,6 +18,7 @@ use std::path::Path;
 pub struct JavaPlugin {
     metadata: LanguageMetadata,
     import_support: import_support::JavaImportSupport,
+    workspace_support: workspace_support::JavaWorkspaceSupport,
 }
 
 impl JavaPlugin {
@@ -24,6 +26,7 @@ impl JavaPlugin {
         Self {
             metadata: LanguageMetadata::JAVA,
             import_support: import_support::JavaImportSupport::new(),
+            workspace_support: workspace_support::JavaWorkspaceSupport::new(),
         }
     }
 }
@@ -50,13 +53,17 @@ impl LanguagePlugin for JavaPlugin {
 
     fn capabilities(&self) -> LanguageCapabilities {
         LanguageCapabilities {
-            imports: true,   // ✅ AST-based import support via JavaParser
-            workspace: false, // Java doesn't have workspace support yet
+            imports: true,    // ✅ AST-based import support via JavaParser
+            workspace: true,  // ✅ Maven multi-module workspace support via quick-xml
         }
     }
 
     fn import_support(&self) -> Option<&dyn ImportSupport> {
         Some(&self.import_support)
+    }
+
+    fn workspace_support(&self) -> Option<&dyn WorkspaceSupport> {
+        Some(&self.workspace_support)
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -88,13 +95,19 @@ mod tests {
         let caps = plugin.capabilities();
 
         assert!(caps.imports, "Java plugin should support imports via AST");
-        assert!(!caps.workspace, "Java plugin should not support workspace yet");
+        assert!(caps.workspace, "Java plugin should support workspace via quick-xml");
     }
 
     #[test]
     fn test_java_import_support() {
         let plugin = JavaPlugin::new();
         assert!(plugin.import_support().is_some(), "Java should have import support");
+    }
+
+    #[test]
+    fn test_java_workspace_support() {
+        let plugin = JavaPlugin::new();
+        assert!(plugin.workspace_support().is_some(), "Java should have workspace support");
     }
 
     #[test]
