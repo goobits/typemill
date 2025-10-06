@@ -104,16 +104,31 @@ async fn test_apply_workspace_edit_atomic_failure() {
             ),
         )
         .await;
+
     match response {
         Ok(resp) => {
-            assert!(
-                !resp["result"]["applied"].as_bool().unwrap_or(true),
-                "Should fail atomically when applying to nonexistent file"
-            );
+            // The MCP call succeeded, but check if the edit operation failed
+            if resp.get("error").is_some() {
+                // Error in response means atomic rollback happened - verify file unchanged
+                let content = std::fs::read_to_string(&existing_file).unwrap();
+                assert_eq!(content, "const x = 1;", "File should be unchanged after rollback");
+            } else if let Some(result) = resp.get("result") {
+                // No error - check if applied is false
+                assert!(
+                    !result["applied"].as_bool().unwrap_or(true),
+                    "Should fail atomically when applying to nonexistent file"
+                );
+                // Verify file unchanged
+                let content = std::fs::read_to_string(&existing_file).unwrap();
+                assert_eq!(content, "const x = 1;", "File should be unchanged when not applied");
+            } else {
+                panic!("Response has neither error nor result field");
+            }
         }
-        Err(_) => {
+        Err(e) => {
+            // Network/MCP error - also verify file unchanged
             let content = std::fs::read_to_string(&existing_file).unwrap();
-            assert_eq!(content, "const x = 1;");
+            assert_eq!(content, "const x = 1;", "File should be unchanged after error: {:?}", e);
         }
     }
 }
