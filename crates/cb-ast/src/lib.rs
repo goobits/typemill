@@ -7,6 +7,7 @@
 
 pub mod analyzer;
 pub mod cache;
+pub mod complexity;
 pub mod error;
 pub mod import_updater;
 pub mod package_extractor;

@@ -1,7 +1,7 @@
 use cb_server::handlers::plugin_dispatcher::create_test_dispatcher;
 
 #[tokio::test]
-async fn test_all_38_public_tools_are_registered() {
+async fn test_all_42_public_tools_are_registered() {
     let dispatcher = create_test_dispatcher();
     dispatcher.initialize().await.unwrap();
 
@@ -10,7 +10,7 @@ async fn test_all_38_public_tools_are_registered() {
 
     // Note: This tests PUBLIC tools only (visible to AI agents via MCP).
     // Internal tools (lifecycle hooks, etc.) are tested separately.
-    const EXPECTED_TOOLS: [&str; 38] = [
+    const EXPECTED_TOOLS: [&str; 42] = [
         // Navigation (14)
         "find_definition",
         "find_references",
@@ -26,15 +26,20 @@ async fn test_all_38_public_tools_are_registered() {
         "get_call_hierarchy_incoming_calls",
         "get_call_hierarchy_outgoing_calls",
         "web_fetch",
-        // Editing (8) - rename_symbol_with_imports moved to internal
+        // Editing (9) - rename_symbol_with_imports moved to internal
         "rename_symbol",
         "rename_symbol_strict",
         "organize_imports",
+        "optimize_imports",
         "get_code_actions",
         "format_document",
         "extract_function",
         "inline_variable",
         "extract_variable",
+        // Analysis (3)
+        "find_unused_imports",
+        "analyze_complexity",
+        "suggest_refactoring",
         // File Operations (6)
         "create_file",
         "read_file",
