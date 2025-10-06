@@ -326,14 +326,12 @@ impl RefactoringScenarios {
                 Language::TypeScript => (
                     "function process() {\n    const multiplier = 2;\n    const result = 10 * multiplier;\n    return result;\n}\n",
                     RefactoringOperation::InlineVariable {
-                        line: 2,
-                        character: 11,
+                        line: 1,
+                        character: 10,
                     },
-                    // TypeScript inline variable has coordinate detection issues in test harness
-                    // Actual functionality works but needs LSP-based coordinate detection
-                    ExpectedBehavior::ExpectedError {
-                        message_contains: None,
-                    },
+                    // TypeScript LSP server (typescript-language-server) does not support inline variable
+                    // Only extract_function and extract_variable are supported via LSP
+                    ExpectedBehavior::NotSupported,
                 ),
                 Language::Rust => (
                     "fn process() -> i32 {\n    let multiplier = 2;\n    let result = 10 * multiplier;\n    result\n}\n",
