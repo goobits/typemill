@@ -271,13 +271,12 @@ impl RefactoringScenarios {
                     RefactoringOperation::ExtractFunction {
                         new_name: "addNumbers".to_string(),
                         start_line: 1,
-                        start_char: 0,
+                        start_char: 4,
                         end_line: 3,
-                        end_char: 0,
+                        end_char: 24,
                     },
-                    // TypeScript LSP returns invalid edit coordinates for multiline extractions
-                    // Works for single-line extracts (see extract_simple_expression test)
-                    ExpectedBehavior::NotSupported,
+                    // Now uses AST first (reliable), LSP as fallback
+                    ExpectedBehavior::Success,
                 ),
                 Language::Rust => (
                     "fn main() {\n    let x = 1;\n    let y = 2;\n    let result = x + y;\n    println!(\"{}\", result);\n}\n",
@@ -288,8 +287,8 @@ impl RefactoringScenarios {
                         end_line: 3,
                         end_char: 22,
                     },
-                    // LSP returns invalid edit coordinates (same issue as TypeScript)
-                    ExpectedBehavior::NotSupported
+                    // Now uses AST first (reliable), LSP as fallback
+                    ExpectedBehavior::Success
                 ),
                 Language::Go => (
                     "func main() {\n    x := 1\n    y := 2\n    result := x + y\n    fmt.Println(result)\n}\n",
@@ -300,8 +299,8 @@ impl RefactoringScenarios {
                         end_line: 3,
                         end_char: 19,
                     },
-                    // LSP returns invalid edit coordinates (same issue as TypeScript/Rust)
-                    ExpectedBehavior::NotSupported
+                    // Now uses AST first (reliable), LSP as fallback
+                    ExpectedBehavior::Success
                 ),
             };
 

@@ -234,11 +234,11 @@ async fn test_extract_multiline_function_cross_language() {
         success_count, total_supported
     );
 
-    // Python supports this via AST fallback
-    // TypeScript/Rust/Go have LSP coordinate issues with multiline extractions
+    // All languages support this via AST (Python, TypeScript, Rust, Go)
+    // AST-first approach bypasses LSP coordinate issues
     assert!(
-        success_count >= 1,
-        "At least 1 language should support extract_function (Python)"
+        success_count >= 4,
+        "At least 4 languages should support extract_function via AST"
     );
 }
 

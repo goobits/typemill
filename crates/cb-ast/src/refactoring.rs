@@ -306,22 +306,8 @@ pub async fn plan_extract_function(
     file_path: &str,
     lsp_service: Option<&dyn LspRefactoringService>,
 ) -> AstResult<EditPlan> {
-    // Try LSP first if available
-    if let Some(lsp) = lsp_service {
-        match lsp_extract_function(lsp, file_path, range, new_function_name).await {
-            Ok(plan) => return Ok(plan),
-            Err(e) => {
-                debug!(
-                    error = %e,
-                    file_path = %file_path,
-                    "LSP extract function failed, falling back to AST"
-                );
-            }
-        }
-    }
-
-    // Fallback to AST-based implementation
-    match detect_language(file_path) {
+    // Try AST first (faster, more reliable, under our control)
+    let ast_result = match detect_language(file_path) {
         "typescript" | "javascript" => {
             cb_lang_typescript::refactoring::plan_extract_function(
                 source, range.start_line, range.end_line, new_function_name, file_path
@@ -350,11 +336,41 @@ pub async fn plan_extract_function(
             )
                 .map_err(|e| AstError::analysis(e.to_string()))
         }
-        _ => Err(AstError::analysis(format!(
-            "Language not supported. LSP server may provide this via code actions for: {}",
-            file_path
-        ))),
+        _ => {
+            // Unsupported language - will try LSP fallback below
+            Err(AstError::analysis(format!("AST implementation not available for: {}", file_path)))
+        }
+    };
+
+    // Return AST result if successful
+    if let Ok(plan) = ast_result {
+        return Ok(plan);
     }
+
+    // Fallback to LSP if AST failed or not available
+    if let Some(lsp) = lsp_service {
+        debug!(
+            file_path = %file_path,
+            "AST extract function not available or failed, trying LSP fallback"
+        );
+
+        match lsp_extract_function(lsp, file_path, range, new_function_name).await {
+            Ok(plan) => return Ok(plan),
+            Err(e) => {
+                debug!(
+                    error = %e,
+                    file_path = %file_path,
+                    "LSP extract function also failed"
+                );
+            }
+        }
+    }
+
+    // Both AST and LSP failed
+    Err(AstError::analysis(format!(
+        "Extract function not supported for: {}. Neither AST nor LSP implementation succeeded.",
+        file_path
+    )))
 }
 
 /// Generate edit plan for extract function refactoring (TypeScript/JavaScript) using AST
