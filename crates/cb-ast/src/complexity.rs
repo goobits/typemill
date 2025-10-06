@@ -527,13 +527,32 @@ pub fn calculate_code_metrics(function_body: &str, language: &str) -> CodeMetric
 ///
 /// This is a heuristic that counts commas in the parameter list.
 fn count_parameters(function_body: &str, language: &str) -> u32 {
-    // Find the function signature (first line typically)
-    let first_line = function_body.lines().next().unwrap_or("");
+    // Language-specific function declaration keywords
+    let fn_keyword = match language.to_lowercase().as_str() {
+        "rust" => "fn ",
+        "python" => "def ",
+        "typescript" | "javascript" => "function ",
+        "go" => "func ",
+        "java" => "public ", // Simplified - methods usually start with visibility
+        _ => "fn ",
+    };
+
+    // Find the line with the function declaration (skip comments and empty lines)
+    let fn_line = function_body
+        .lines()
+        .find(|line| {
+            let trimmed = line.trim_start();
+            trimmed.starts_with(fn_keyword)
+                || trimmed.starts_with("pub fn ")
+                || trimmed.starts_with("async fn ")
+                || trimmed.starts_with("const fn ")
+        })
+        .unwrap_or("");
 
     // Find parameter list between ( and )
-    if let Some(paren_start) = first_line.find('(') {
-        if let Some(paren_end) = first_line[paren_start..].find(')') {
-            let params_str = &first_line[paren_start + 1..paren_start + paren_end];
+    if let Some(paren_start) = fn_line.find('(') {
+        if let Some(paren_end) = fn_line[paren_start..].find(')') {
+            let params_str = &fn_line[paren_start + 1..paren_start + paren_end];
 
             // Empty parameter list
             if params_str.trim().is_empty() {
