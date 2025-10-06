@@ -377,9 +377,9 @@ pub async fn plan_extract_module_to_package_with_registry(
             let potential_workspace = parent.join("Cargo.toml");
             if potential_workspace.exists() {
                 if let Ok(content) = tokio::fs::read_to_string(&potential_workspace).await {
-                    // Use rust_plugin method to check if this is a workspace manifest
-                    if let Ok(is_workspace) = rust_plugin.is_workspace_manifest(&content).await {
-                        if is_workspace {
+                    // Use workspace capability to check if this is a workspace manifest
+                    if let Some(workspace_support) = plugin.workspace_support() {
+                        if workspace_support.is_workspace_manifest(&content) {
                             workspace_root = parent.to_path_buf();
                             found_workspace = true;
                             debug!(
@@ -441,43 +441,34 @@ pub async fn plan_extract_module_to_package_with_registry(
             if workspace_cargo_toml.exists() && workspace_cargo_toml != source_cargo_toml {
                 match tokio::fs::read_to_string(&workspace_cargo_toml).await {
                     Ok(workspace_content) => {
-                        // Use rust_plugin method to check if this is a workspace manifest
-                        if let Ok(is_workspace) = rust_plugin.is_workspace_manifest(&workspace_content).await
-                        {
-                            if is_workspace {
-                                match rust_plugin
-                                    .add_workspace_member(
-                                        &workspace_content,
-                                        &params.target_package_path,
-                                        &workspace_root,
-                                    )
-                                    .await
-                                {
-                                    Ok(updated_workspace) => {
-                                    if updated_workspace != workspace_content {
-                                        edits.push(TextEdit {
-                                            file_path: Some(
-                                                workspace_cargo_toml.to_string_lossy().to_string(),
-                                            ),
-                                            edit_type: EditType::Replace,
-                                            location: EditLocation {
-                                                start_line: 0,
-                                                start_column: 0,
-                                                end_line: workspace_content.lines().count() as u32,
-                                                end_column: 0,
-                                            },
-                                            original_text: workspace_content,
-                                            new_text: updated_workspace,
-                                            priority: 50,
-                                            description: "Add new crate to workspace members"
-                                                .to_string(),
-                                        });
-                                        debug!("Created workspace Cargo.toml update TextEdit");
-                                    }
-                                }
-                                    Err(e) => {
-                                        debug!(error = %e, "Failed to update workspace Cargo.toml");
-                                    }
+                        // Use workspace capability to check if this is a workspace manifest
+                        if let Some(workspace_support) = plugin.workspace_support() {
+                            if workspace_support.is_workspace_manifest(&workspace_content) {
+                                // Use workspace capability to add member (sync call, no .await)
+                                let updated_workspace = workspace_support.add_workspace_member(
+                                    &workspace_content,
+                                    &params.target_package_path,
+                                );
+
+                                if updated_workspace != workspace_content {
+                                    edits.push(TextEdit {
+                                        file_path: Some(
+                                            workspace_cargo_toml.to_string_lossy().to_string(),
+                                        ),
+                                        edit_type: EditType::Replace,
+                                        location: EditLocation {
+                                            start_line: 0,
+                                            start_column: 0,
+                                            end_line: workspace_content.lines().count() as u32,
+                                            end_column: 0,
+                                        },
+                                        original_text: workspace_content,
+                                        new_text: updated_workspace,
+                                        priority: 50,
+                                        description: "Add new crate to workspace members"
+                                            .to_string(),
+                                    });
+                                    debug!("Created workspace Cargo.toml update TextEdit");
                                 }
                             }
                         }

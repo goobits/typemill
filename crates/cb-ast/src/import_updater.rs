@@ -668,7 +668,7 @@ pub async fn update_imports_for_rename(
             let rewrite_result = if let Some(rust_plugin) = plugin.as_any().downcast_ref::<RustPlugin>() {
                 rust_plugin.rewrite_imports_for_rename(&content, old_path, new_path, &file_path, project_root, rename_info).ok()
             } else if let Some(ts_plugin) = plugin.as_any().downcast_ref::<TypeScriptPlugin>() {
-                Some(ts_plugin.rewrite_imports_for_rename(&content, old_path, new_path, &file_path, project_root, rename_info))
+                ts_plugin.rewrite_imports_for_rename(&content, old_path, new_path, &file_path, project_root, rename_info).ok()
             } else if let Some(go_plugin) = plugin.as_any().downcast_ref::<GoPlugin>() {
                 go_plugin.rewrite_imports_for_rename(&content, old_path, new_path, &file_path, project_root, rename_info).ok()
             } else {

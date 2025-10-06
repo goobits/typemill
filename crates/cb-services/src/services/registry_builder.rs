@@ -112,7 +112,7 @@ mod tests {
         // Should be able to find plugin for .rs files
         let plugin = registry.find_by_extension("rs");
         assert!(plugin.is_some());
-        assert_eq!(plugin.unwrap().name(), "Rust");
+        assert_eq!(plugin.unwrap().metadata().name, "Rust");
     }
 
     #[cfg(feature = "lang-go")]
@@ -123,7 +123,7 @@ mod tests {
         // Should be able to find plugin for .go files
         let plugin = registry.find_by_extension("go");
         assert!(plugin.is_some());
-        assert_eq!(plugin.unwrap().name(), "Go");
+        assert_eq!(plugin.unwrap().metadata().name, "Go");
     }
 
     #[cfg(feature = "lang-typescript")]
@@ -134,7 +134,7 @@ mod tests {
         // Should be able to find plugin for .ts files
         let plugin = registry.find_by_extension("ts");
         assert!(plugin.is_some());
-        assert_eq!(plugin.unwrap().name(), "TypeScript");
+        assert_eq!(plugin.unwrap().metadata().name, "TypeScript");
     }
 
     #[cfg(feature = "lang-python")]
@@ -145,7 +145,7 @@ mod tests {
         // Should be able to find plugin for .py files
         let plugin = registry.find_by_extension("py");
         assert!(plugin.is_some());
-        assert_eq!(plugin.unwrap().name(), "Python");
+        assert_eq!(plugin.unwrap().metadata().name, "Python");
     }
 
     #[test]

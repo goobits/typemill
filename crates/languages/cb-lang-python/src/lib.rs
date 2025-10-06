@@ -21,14 +21,15 @@
 //! let parsed = plugin.parse(source).await.unwrap();
 //! ```
 
+pub mod import_support;
 pub mod manifest;
 pub mod parser;
 pub mod refactoring;
 
 use async_trait::async_trait;
 use cb_plugin_api::{
-    LanguageCapabilities, LanguageMetadata, LanguagePlugin, ManifestData, ParsedSource,
-    PluginResult,
+    ImportSupport, LanguageCapabilities, LanguageMetadata, LanguagePlugin, ManifestData,
+    ParsedSource, PluginResult,
 };
 use std::path::Path;
 use tracing::{debug, warn};
@@ -42,6 +43,7 @@ use tracing::{debug, warn};
 /// - Code refactoring operations
 pub struct PythonPlugin {
     metadata: LanguageMetadata,
+    import_support: import_support::PythonImportSupport,
 }
 
 impl PythonPlugin {
@@ -49,6 +51,7 @@ impl PythonPlugin {
     pub fn new() -> Self {
         Self {
             metadata: LanguageMetadata::PYTHON,
+            import_support: import_support::PythonImportSupport,
         }
     }
 }
@@ -154,105 +157,9 @@ impl LanguagePlugin for PythonPlugin {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-}
 
-// Import support methods (using existing parser functions)
-impl PythonPlugin {
-    /// Parse imports from a Python file
-    pub async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
-        use tracing::debug;
-
-        debug!(file_path = %file_path.display(), "Parsing Python imports");
-
-        // Read file content
-        let content = tokio::fs::read_to_string(file_path).await.map_err(|e| {
-            cb_plugin_api::PluginError::internal(format!(
-                "Failed to read file {}: {}",
-                file_path.display(),
-                e
-            ))
-        })?;
-
-        // Use existing parser function
-        let import_infos = parser::parse_python_imports(&content)?;
-
-        // Extract module paths
-        let module_paths: Vec<String> = import_infos
-            .iter()
-            .map(|info| info.module_path.clone())
-            .collect();
-
-        debug!(imports_count = module_paths.len(), "Parsed Python imports");
-        Ok(module_paths)
-    }
-
-    /// Rewrite imports for rename operations (basic implementation)
-    pub fn rewrite_imports_for_rename(
-        &self,
-        content: &str,
-        _old_path: &Path,
-        _new_path: &Path,
-        _importing_file: &Path,
-        _project_root: &Path,
-        rename_info: Option<&serde_json::Value>,
-    ) -> PluginResult<(String, usize)> {
-        // If no rename_info, no changes needed
-        let rename_info = match rename_info {
-            Some(info) => info,
-            None => return Ok((content.to_string(), 0)),
-        };
-
-        let old_module = rename_info["old_module_name"].as_str()
-            .ok_or_else(|| cb_plugin_api::PluginError::invalid_input("Missing old_module_name"))?;
-        let new_module = rename_info["new_module_name"].as_str()
-            .ok_or_else(|| cb_plugin_api::PluginError::invalid_input("Missing new_module_name"))?;
-
-        let mut result = String::new();
-        let mut changes = 0;
-
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if (trimmed.starts_with("import ") || trimmed.starts_with("from "))
-                && trimmed.contains(old_module) {
-                // Simple string replacement for now
-                let new_line = line.replace(old_module, new_module);
-                result.push_str(&new_line);
-                changes += 1;
-            } else {
-                result.push_str(line);
-            }
-            result.push('\n');
-        }
-
-        Ok((result, changes))
-    }
-
-    /// Find module references in Python code (basic implementation)
-    pub fn find_module_references(
-        &self,
-        content: &str,
-        module_to_find: &str,
-        _scope: cb_plugin_api::ScanScope,
-    ) -> Vec<cb_plugin_api::ModuleReference> {
-        let mut references = Vec::new();
-
-        for (line_num, line) in content.lines().enumerate() {
-            if line.contains(module_to_find) {
-                references.push(cb_plugin_api::ModuleReference {
-                    line: line_num + 1,
-                    column: line.find(module_to_find).unwrap_or(0),
-                    length: module_to_find.len(),
-                    text: line.trim().to_string(),
-                    kind: if line.trim().starts_with("import") || line.trim().starts_with("from") {
-                        cb_plugin_api::ReferenceKind::Declaration
-                    } else {
-                        cb_plugin_api::ReferenceKind::QualifiedPath
-                    },
-                });
-            }
-        }
-
-        references
+    fn import_support(&self) -> Option<&dyn ImportSupport> {
+        Some(&self.import_support)
     }
 }
 

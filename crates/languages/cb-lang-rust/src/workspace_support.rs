@@ -1,0 +1,274 @@
+//! Workspace support implementation for Rust language plugin
+//!
+//! This module implements the `WorkspaceSupport` trait for Rust, providing
+//! synchronous methods for manipulating Cargo.toml workspace manifests.
+
+use cb_plugin_api::workspace_support::WorkspaceSupport;
+use toml_edit::DocumentMut;
+use tracing::debug;
+
+/// Rust workspace support implementation
+pub struct RustWorkspaceSupport;
+
+impl WorkspaceSupport for RustWorkspaceSupport {
+    fn add_workspace_member(&self, content: &str, member: &str) -> String {
+        debug!(member = %member, "Adding workspace member");
+
+        match add_workspace_member_impl(content, member) {
+            Ok(result) => result,
+            Err(e) => {
+                debug!(error = %e, "Failed to add workspace member, returning original content");
+                content.to_string()
+            }
+        }
+    }
+
+    fn remove_workspace_member(&self, content: &str, member: &str) -> String {
+        debug!(member = %member, "Removing workspace member");
+
+        match remove_workspace_member_impl(content, member) {
+            Ok(result) => result,
+            Err(e) => {
+                debug!(error = %e, "Failed to remove workspace member, returning original content");
+                content.to_string()
+            }
+        }
+    }
+
+    fn is_workspace_manifest(&self, content: &str) -> bool {
+        // Check for the presence of [workspace] section
+        let is_workspace = content.contains("[workspace]");
+        debug!(is_workspace = %is_workspace, "Checked if manifest is workspace");
+        is_workspace
+    }
+
+    fn list_workspace_members(&self, content: &str) -> Vec<String> {
+        debug!("Listing workspace members");
+
+        match list_workspace_members_impl(content) {
+            Ok(members) => {
+                debug!(members_count = members.len(), "Found workspace members");
+                members
+            }
+            Err(e) => {
+                debug!(error = %e, "Failed to list workspace members");
+                Vec::new()
+            }
+        }
+    }
+
+    fn update_package_name(&self, content: &str, new_name: &str) -> String {
+        debug!(new_name = %new_name, "Updating package name");
+
+        match update_package_name_impl(content, new_name) {
+            Ok(result) => result,
+            Err(e) => {
+                debug!(error = %e, "Failed to update package name, returning original content");
+                content.to_string()
+            }
+        }
+    }
+}
+
+// Implementation functions that return Results for error handling
+
+fn add_workspace_member_impl(content: &str, member: &str) -> Result<String, String> {
+    let mut doc = content
+        .parse::<DocumentMut>()
+        .map_err(|e| format!("Failed to parse Cargo.toml: {}", e))?;
+
+    // Ensure [workspace.members] exists
+    if !doc.contains_key("workspace") {
+        doc["workspace"] = toml_edit::table();
+    }
+
+    let workspace = doc["workspace"]
+        .as_table_mut()
+        .ok_or_else(|| "[workspace] is not a table".to_string())?;
+
+    if !workspace.contains_key("members") {
+        workspace["members"] = toml_edit::value(toml_edit::Array::new());
+    }
+
+    let members = workspace["members"]
+        .as_array_mut()
+        .ok_or_else(|| "[workspace.members] is not an array".to_string())?;
+
+    // Add new member if not already present
+    let member_exists = members.iter().any(|v| v.as_str() == Some(member));
+
+    if !member_exists {
+        members.push(member);
+        debug!(member = %member, "Added new member to workspace");
+    } else {
+        debug!(member = %member, "Member already exists in workspace");
+    }
+
+    Ok(doc.to_string())
+}
+
+fn remove_workspace_member_impl(content: &str, member: &str) -> Result<String, String> {
+    let mut doc = content
+        .parse::<DocumentMut>()
+        .map_err(|e| format!("Failed to parse Cargo.toml: {}", e))?;
+
+    // Get workspace members array
+    if let Some(workspace) = doc.get_mut("workspace").and_then(|w| w.as_table_mut()) {
+        if let Some(members) = workspace
+            .get_mut("members")
+            .and_then(|m| m.as_array_mut())
+        {
+            // Find and remove the member
+            let original_len = members.len();
+            members.retain(|v| v.as_str() != Some(member));
+
+            if members.len() < original_len {
+                debug!(member = %member, "Removed member from workspace");
+            } else {
+                debug!(member = %member, "Member not found in workspace");
+            }
+        }
+    }
+
+    Ok(doc.to_string())
+}
+
+fn list_workspace_members_impl(content: &str) -> Result<Vec<String>, String> {
+    let doc = content
+        .parse::<DocumentMut>()
+        .map_err(|e| format!("Failed to parse Cargo.toml: {}", e))?;
+
+    // Get workspace members array
+    if let Some(workspace) = doc.get("workspace").and_then(|w| w.as_table()) {
+        if let Some(members) = workspace.get("members").and_then(|m| m.as_array()) {
+            let member_list: Vec<String> = members
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect();
+            return Ok(member_list);
+        }
+    }
+
+    Ok(Vec::new())
+}
+
+fn update_package_name_impl(content: &str, new_name: &str) -> Result<String, String> {
+    let mut doc = content
+        .parse::<DocumentMut>()
+        .map_err(|e| format!("Failed to parse Cargo.toml: {}", e))?;
+
+    // Update package name in [package] section
+    if let Some(package) = doc.get_mut("package").and_then(|p| p.as_table_mut()) {
+        package["name"] = toml_edit::value(new_name);
+        debug!(new_name = %new_name, "Updated package name");
+    } else {
+        return Err("No [package] section found in manifest".to_string());
+    }
+
+    Ok(doc.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_add_workspace_member() {
+        let support = RustWorkspaceSupport;
+        let content = r#"
+[workspace]
+members = ["crate1"]
+"#;
+
+        let result = support.add_workspace_member(content, "crate2");
+        assert!(result.contains("[workspace]"));
+        assert!(result.contains("crate1"));
+        assert!(result.contains("crate2"));
+    }
+
+    #[test]
+    fn test_add_workspace_member_duplicate() {
+        let support = RustWorkspaceSupport;
+        let content = r#"
+[workspace]
+members = ["crate1"]
+"#;
+
+        let result = support.add_workspace_member(content, "crate1");
+        // Should not duplicate
+        assert_eq!(result.matches("crate1").count(), 1);
+    }
+
+    #[test]
+    fn test_remove_workspace_member() {
+        let support = RustWorkspaceSupport;
+        let content = r#"
+[workspace]
+members = ["crate1", "crate2", "crate3"]
+"#;
+
+        let result = support.remove_workspace_member(content, "crate2");
+        assert!(result.contains("crate1"));
+        assert!(!result.contains("crate2"));
+        assert!(result.contains("crate3"));
+    }
+
+    #[test]
+    fn test_is_workspace_manifest() {
+        let support = RustWorkspaceSupport;
+
+        let workspace_content = r#"
+[workspace]
+members = []
+"#;
+        assert!(support.is_workspace_manifest(workspace_content));
+
+        let package_content = r#"
+[package]
+name = "my-crate"
+"#;
+        assert!(!support.is_workspace_manifest(package_content));
+    }
+
+    #[test]
+    fn test_list_workspace_members() {
+        let support = RustWorkspaceSupport;
+        let content = r#"
+[workspace]
+members = ["crate1", "crate2", "crate3"]
+"#;
+
+        let members = support.list_workspace_members(content);
+        assert_eq!(members.len(), 3);
+        assert!(members.contains(&"crate1".to_string()));
+        assert!(members.contains(&"crate2".to_string()));
+        assert!(members.contains(&"crate3".to_string()));
+    }
+
+    #[test]
+    fn test_list_workspace_members_empty() {
+        let support = RustWorkspaceSupport;
+        let content = r#"
+[package]
+name = "my-crate"
+"#;
+
+        let members = support.list_workspace_members(content);
+        assert_eq!(members.len(), 0);
+    }
+
+    #[test]
+    fn test_update_package_name() {
+        let support = RustWorkspaceSupport;
+        let content = r#"
+[package]
+name = "old-name"
+version = "0.1.0"
+"#;
+
+        let result = support.update_package_name(content, "new-name");
+        assert!(result.contains("new-name"));
+        assert!(!result.contains("old-name"));
+        assert!(result.contains("version"));
+    }
+}

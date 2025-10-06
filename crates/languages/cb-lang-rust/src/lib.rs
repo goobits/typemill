@@ -29,6 +29,10 @@ pub mod parser;
 pub mod refactoring;
 mod workspace;
 
+// Capability trait implementations
+pub mod import_support;
+pub mod workspace_support;
+
 use async_trait::async_trait;
 use cb_plugin_api::{LanguagePlugin, LanguageMetadata, LanguageCapabilities, ManifestData, ParsedSource, PluginResult};
 use std::path::Path;
@@ -42,6 +46,8 @@ use std::path::Path;
 /// - Documentation extraction
 pub struct RustPlugin {
     metadata: LanguageMetadata,
+    import_support: import_support::RustImportSupport,
+    workspace_support: workspace_support::RustWorkspaceSupport,
 }
 
 impl RustPlugin {
@@ -49,6 +55,8 @@ impl RustPlugin {
     pub fn new() -> Self {
         Self {
             metadata: LanguageMetadata::RUST,
+            import_support: import_support::RustImportSupport,
+            workspace_support: workspace_support::RustWorkspaceSupport,
         }
     }
 }
@@ -114,302 +122,186 @@ impl LanguagePlugin for RustPlugin {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn import_support(&self) -> Option<&dyn cb_plugin_api::ImportSupport> {
+        Some(&self.import_support)
+    }
+
+    fn workspace_support(&self) -> Option<&dyn cb_plugin_api::WorkspaceSupport> {
+        Some(&self.workspace_support)
+    }
 }
 
-// Additional methods for import and workspace support (will be moved to separate traits in Phase 2)
+// ============================================================================
+// Plugin-specific helper methods for consumers
+// These are NOT part of capability traits - they're Rust-specific utilities
+// ============================================================================
+
 impl RustPlugin {
+    /// Update a dependency in Cargo.toml manifest
     pub async fn update_dependency(
         &self,
         manifest_path: &Path,
         old_name: &str,
         new_name: &str,
-        new_path: Option<&str>,
+        new_version: Option<&str>,
     ) -> PluginResult<String> {
-        // Read the current manifest content
         let content = tokio::fs::read_to_string(manifest_path)
             .await
-            .map_err(|e| {
-                cb_plugin_api::PluginError::manifest(format!("Failed to read manifest: {}", e))
-            })?;
+            .map_err(|e| cb_plugin_api::PluginError::manifest(format!("Failed to read Cargo.toml: {}", e)))?;
 
-        // Use our manifest module to update the dependency
-        manifest::rename_dependency(&content, old_name, new_name, new_path)
+        // For Rust, new_version might be a path or a version
+        // If it looks like a path, use path dependency; otherwise use version
+        if let Some(version_or_path) = new_version {
+            if version_or_path.contains('/') || version_or_path.contains('\\') {
+                // It's a path dependency - use rename with path
+                manifest::rename_dependency(&content, old_name, new_name, Some(version_or_path))
+            } else {
+                // It's a version - use rename with version as path (Cargo.toml uses same field)
+                manifest::rename_dependency(&content, old_name, new_name, Some(version_or_path))
+            }
+        } else {
+            // No version provided, just update the name
+            manifest::rename_dependency(&content, old_name, new_name, None)
+        }
     }
 
+    /// Locate module files for a given module path
+    ///
+    /// Navigates the Rust module system to find .rs files for a module path like "services::planner"
     pub async fn locate_module_files(
         &self,
         package_path: &Path,
         module_path: &str,
     ) -> PluginResult<Vec<std::path::PathBuf>> {
-        use tracing::debug;
-
-        debug!(
-            package_path = %package_path.display(),
-            module_path = %module_path,
-            "Locating Rust module files"
-        );
-
-        // Start at the crate's source root (e.g., package_path/src)
-        let src_root = package_path.join(self.metadata().source_dir);
-
-        if !src_root.exists() {
-            return Err(cb_plugin_api::PluginError::internal(format!(
-                "Source directory not found: {}",
-                src_root.display()
-            )));
-        }
-
-        // Split module path by either "::" or "." into segments
-        let segments: Vec<&str> = module_path
-            .split([':', '.'])
-            .filter(|s| !s.is_empty())
-            .collect();
-
-        if segments.is_empty() {
+        // Handle empty module path
+        if module_path.is_empty() {
             return Err(cb_plugin_api::PluginError::invalid_input(
-                "Module path cannot be empty".to_string(),
+                "Module path cannot be empty",
             ));
         }
 
-        // Build path by joining segments
-        let mut current_path = src_root.clone();
+        // Normalize module path (handle both :: and . separators)
+        let normalized = module_path.replace('.', "::");
+        let parts: Vec<&str> = normalized.split("::").collect();
 
-        // Navigate through all segments except the last
-        for segment in &segments[..segments.len() - 1] {
-            current_path = current_path.join(segment);
-        }
-
-        // For the final segment, check both naming conventions
-        let final_segment = segments[segments.len() - 1];
-        let mut found_files = Vec::new();
-
-        // Check for module_name.rs
-        let file_path = current_path.join(format!("{}.rs", final_segment));
-        if file_path.exists() && file_path.is_file() {
-            debug!(file_path = %file_path.display(), "Found module file");
-            found_files.push(file_path);
-        }
-
-        // Check for module_name/mod.rs
-        let mod_path = current_path.join(final_segment).join("mod.rs");
-        if mod_path.exists() && mod_path.is_file() {
-            debug!(file_path = %mod_path.display(), "Found mod.rs file");
-            found_files.push(mod_path);
-        }
-
-        if found_files.is_empty() {
+        // Start from src/ directory
+        let src_dir = package_path.join("src");
+        if !src_dir.exists() {
             return Err(cb_plugin_api::PluginError::internal(format!(
-                "Module '{}' not found at {} (checked both {}.rs and {}/mod.rs)",
-                module_path,
-                current_path.display(),
-                final_segment,
-                final_segment
+                "Source directory not found: {}",
+                src_dir.display()
             )));
         }
 
-        debug!(
-            files_count = found_files.len(),
-            "Successfully located module files"
-        );
+        let mut current_path = src_dir;
+        let mut result_files = Vec::new();
 
-        Ok(found_files)
-    }
+        // Navigate through module path components
+        for (i, part) in parts.iter().enumerate() {
+            let is_last = i == parts.len() - 1;
 
-    pub async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
-        use tracing::debug;
+            if is_last {
+                // Check for module.rs or module/mod.rs
+                let single_file = current_path.join(format!("{}.rs", part));
+                let mod_dir = current_path.join(part).join("mod.rs");
 
-        debug!(
-            file_path = %file_path.display(),
-            "Parsing Rust imports"
-        );
-
-        // Read file content
-        let content = tokio::fs::read_to_string(file_path).await.map_err(|e| {
-            cb_plugin_api::PluginError::internal(format!(
-                "Failed to read file {}: {}",
-                file_path.display(),
-                e
-            ))
-        })?;
-
-        // Use our own parse_imports function
-        let imports = parser::parse_imports(&content).map_err(|e| {
-            cb_plugin_api::PluginError::parse(format!("Failed to parse imports: {}", e))
-        })?;
-
-        // Extract module paths from import info
-        let module_paths: Vec<String> = imports.iter().map(|imp| imp.module_path.clone()).collect();
-
-        debug!(imports_count = module_paths.len(), "Parsed imports");
-
-        Ok(module_paths)
-    }
-
-    pub fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
-        use std::fmt::Write;
-
-        let mut manifest = String::new();
-
-        // [package] section
-        writeln!(manifest, "[package]").unwrap();
-        writeln!(manifest, "name = \"{}\"", package_name).unwrap();
-        writeln!(manifest, "version = \"0.1.0\"").unwrap();
-        writeln!(manifest, "edition = \"2021\"").unwrap();
-
-        // Add blank line before dependencies section if there are any
-        if !dependencies.is_empty() {
-            writeln!(manifest).unwrap();
-            writeln!(manifest, "[dependencies]").unwrap();
-
-            // Add each dependency with wildcard version
-            for dep in dependencies {
-                writeln!(manifest, "{} = \"*\"", dep).unwrap();
-            }
-        }
-
-        manifest
-    }
-
-    pub fn rewrite_import(&self, old_import: &str, new_package_name: &str) -> String {
-        // Transform internal import path to external crate import
-        // e.g., "crate::services::planner" -> "use cb_planner;"
-        // e.g., "crate::services::planner::Config" -> "use cb_planner::Config;"
-
-        // Remove common prefixes like "crate::", "self::", "super::"
-        let trimmed = old_import
-            .trim_start_matches("crate::")
-            .trim_start_matches("self::")
-            .trim_start_matches("super::");
-
-        // Find the extracted module name and what comes after
-        // The path segments after the module name become the new import path
-        let segments: Vec<&str> = trimmed.split("::").collect();
-
-        if segments.is_empty() {
-            // Just use the new package name
-            format!("use {};", new_package_name)
-        } else if segments.len() == 1 {
-            // Only the module name itself
-            format!("use {};", new_package_name)
-        } else {
-            // Module name plus additional path
-            // Skip the first segment (the old module name) and use the rest
-            let remaining_path = segments[1..].join("::");
-            format!("use {}::{};", new_package_name, remaining_path)
-        }
-    }
-
-    pub fn rewrite_imports_for_rename(
-        &self,
-        content: &str,
-        _old_path: &Path,
-        _new_path: &Path,
-        _importing_file: &Path,
-        _project_root: &Path,
-        rename_info: Option<&serde_json::Value>,
-    ) -> PluginResult<(String, usize)> {
-        use tracing::debug;
-
-        // If no rename_info provided, no rewriting needed
-        let rename_info = match rename_info {
-            Some(info) => info,
-            None => return Ok((content.to_string(), 0)),
-        };
-
-        // Extract old and new crate names from rename_info
-        let old_crate_name = rename_info["old_crate_name"].as_str().ok_or_else(|| {
-            cb_plugin_api::PluginError::invalid_input("Missing old_crate_name in rename_info")
-        })?;
-
-        let new_crate_name = rename_info["new_crate_name"].as_str().ok_or_else(|| {
-            cb_plugin_api::PluginError::invalid_input("Missing new_crate_name in rename_info")
-        })?;
-
-        debug!(
-            old_crate = %old_crate_name,
-            new_crate = %new_crate_name,
-            "Rewriting Rust imports for crate rename"
-        );
-
-        let mut result = String::new();
-        let mut changes_count = 0;
-        let lines: Vec<&str> = content.lines().collect();
-
-        // Process line by line, using AST-based rewriting for use statements only
-        for (idx, line) in lines.iter().enumerate() {
-            let trimmed = line.trim();
-
-            // Check if this line is a use statement containing our crate name
-            if trimmed.starts_with("use ") && trimmed.contains(old_crate_name) {
-                // Try to parse this line as a use statement
-                match syn::parse_str::<syn::ItemUse>(trimmed) {
-                    Ok(item_use) => {
-                        // Try to rewrite using AST-based transformation
-                        if let Some(new_tree) =
-                            parser::rewrite_use_tree(&item_use.tree, old_crate_name, new_crate_name)
-                        {
-                            // Preserve original indentation
-                            let indent = line.len() - trimmed.len();
-                            let indent_str = &line[..indent];
-
-                            // Write rewritten use statement with original indentation
-                            result.push_str(indent_str);
-                            result.push_str(&format!("use {};", quote::quote!(#new_tree)));
-
-                            // Add newline if not last line
-                            if idx < lines.len() - 1 {
-                                result.push('\n');
-                            }
-                            changes_count += 1;
-                            continue;
-                        }
-                    }
-                    Err(_) => {
-                        // If parsing fails (e.g., multi-line use statement), keep original
-                        // This is safe - we won't break anything, just won't rewrite it
-                        debug!(
-                            line = %line,
-                            "Could not parse use statement, keeping original"
-                        );
-                    }
+                if single_file.exists() {
+                    result_files.push(single_file);
+                } else if mod_dir.exists() {
+                    result_files.push(mod_dir);
+                } else {
+                    return Err(cb_plugin_api::PluginError::invalid_input(format!(
+                        "Module not found: {}",
+                        module_path
+                    )));
+                }
+            } else {
+                // Navigate to subdirectory
+                current_path = current_path.join(part);
+                if !current_path.exists() {
+                    return Err(cb_plugin_api::PluginError::invalid_input(format!(
+                        "Module path not found: {}",
+                        current_path.display()
+                    )));
                 }
             }
+        }
 
-            // Keep original line (either not a use statement, or parsing failed)
-            result.push_str(line);
+        Ok(result_files)
+    }
 
-            // Add newline if not last line
-            if idx < lines.len() - 1 {
-                result.push('\n');
+    /// Parse imports from a file path (async wrapper)
+    pub async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
+        let content = tokio::fs::read_to_string(file_path)
+            .await
+            .map_err(|e| cb_plugin_api::PluginError::internal(format!("Failed to read file: {}", e)))?;
+
+        // Use the parser module to extract imports
+        let import_infos = parser::parse_imports(&content)?;
+
+        // Extract just the module paths
+        Ok(import_infos.iter().map(|i| i.module_path.clone()).collect())
+    }
+
+    /// Generate a Cargo.toml manifest
+    pub fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
+        let mut lines = vec![
+            "[package]".to_string(),
+            format!("name = \"{}\"", package_name),
+            "version = \"0.1.0\"".to_string(),
+            "edition = \"2021\"".to_string(),
+            String::new(),
+        ];
+
+        if !dependencies.is_empty() {
+            lines.push("[dependencies]".to_string());
+            for dep in dependencies {
+                lines.push(format!("{} = \"*\"", dep));
             }
         }
 
-        debug!(changes = changes_count, "Rewrote Rust imports using AST");
-
-        Ok((result, changes_count))
+        lines.join("\n")
     }
 
-    pub fn find_module_references(
+    /// Remove module declaration from source
+    pub async fn remove_module_declaration(
         &self,
-        content: &str,
-        module_to_find: &str,
-        scope: cb_plugin_api::ScanScope,
-    ) -> PluginResult<Vec<cb_plugin_api::ModuleReference>> {
-        use syn::visit::Visit;
-        use syn::File;
+        source: &str,
+        module_name: &str,
+    ) -> PluginResult<String> {
+        use syn::{File, Item};
 
-        // Parse the Rust source file
-        let file: File = syn::parse_str(content).map_err(|e| {
-            cb_plugin_api::PluginError::parse(format!("Failed to parse Rust source: {}", e))
+        // Parse the source file
+        let ast: File = syn::parse_file(source).map_err(|e| {
+            cb_plugin_api::PluginError::parse(format!("Failed to parse Rust code: {}", e))
         })?;
 
-        // Create and run visitor
-        let mut finder = RustModuleFinder::new(module_to_find, scope);
-        finder.visit_file(&file);
+        // Filter out module declarations matching the name
+        let filtered_items: Vec<Item> = ast
+            .items
+            .into_iter()
+            .filter(|item| {
+                if let Item::Mod(item_mod) = item {
+                    item_mod.ident != module_name
+                } else {
+                    true
+                }
+            })
+            .collect();
 
-        Ok(finder.into_references())
+        // Reconstruct the file
+        let new_ast = File {
+            shebang: ast.shebang,
+            attrs: ast.attrs,
+            items: filtered_items,
+        };
+
+        // Convert back to source code
+        Ok(quote::quote!(#new_ast).to_string())
     }
 
+    /// Add path dependency to manifest
     pub async fn add_manifest_path_dependency(
         &self,
         manifest_content: &str,
@@ -420,15 +312,7 @@ impl RustPlugin {
         workspace::add_path_dependency(manifest_content, dep_name, dep_path, source_path)
     }
 
-    pub async fn add_workspace_member(
-        &self,
-        workspace_content: &str,
-        new_member_path: &str,
-        workspace_root: &Path,
-    ) -> PluginResult<String> {
-        workspace::add_workspace_member(workspace_content, new_member_path, workspace_root)
-    }
-
+    /// Generate workspace manifest
     pub async fn generate_workspace_manifest(
         &self,
         member_paths: &[&str],
@@ -437,164 +321,110 @@ impl RustPlugin {
         workspace::generate_workspace_manifest(member_paths, workspace_root)
     }
 
-    pub async fn is_workspace_manifest(&self, manifest_content: &str) -> PluginResult<bool> {
-        Ok(workspace::is_workspace_manifest(manifest_content))
+    /// Find source files in directory
+    pub async fn find_source_files(&self, dir: &Path) -> PluginResult<Vec<std::path::PathBuf>> {
+        use tokio::fs;
+
+        let mut result = Vec::new();
+        let mut queue = vec![dir.to_path_buf()];
+
+        while let Some(current_dir) = queue.pop() {
+            let mut entries = fs::read_dir(&current_dir).await.map_err(|e| {
+                cb_plugin_api::PluginError::internal(format!(
+                    "Failed to read directory {}: {}",
+                    current_dir.display(),
+                    e
+                ))
+            })?;
+
+            while let Some(entry) = entries.next_entry().await.map_err(|e| {
+                cb_plugin_api::PluginError::internal(format!("Failed to read entry: {}", e))
+            })? {
+                let path = entry.path();
+                let metadata = entry.metadata().await.map_err(|e| {
+                    cb_plugin_api::PluginError::internal(format!("Failed to get metadata: {}", e))
+                })?;
+
+                if metadata.is_dir() {
+                    queue.push(path);
+                } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+                    result.push(path);
+                }
+            }
+        }
+
+        Ok(result)
     }
 
-    pub async fn remove_module_declaration(
+    /// Rewrite import statement
+    pub fn rewrite_import(&self, old_import: &str, new_package_name: &str) -> String {
+        // Transform "crate::module" or "crate" to "new_package::module"
+        if old_import == "crate" {
+            format!("use {};", new_package_name)
+        } else if let Some(rest) = old_import.strip_prefix("crate::") {
+            format!("use {}::{};", new_package_name, rest)
+        } else {
+            // If it doesn't start with crate::, return as-is
+            format!("use {};", old_import)
+        }
+    }
+
+    /// Find module references with full signature
+    pub fn find_module_references(
         &self,
-        source: &str,
-        module_name: &str,
-    ) -> PluginResult<String> {
-        let mut file = syn::parse_file(source).map_err(|e| {
-            cb_plugin_api::PluginError::parse(format!("Failed to parse Rust source: {}", e))
+        content: &str,
+        module_to_find: &str,
+        _scope: cb_plugin_api::ScanScope,
+    ) -> PluginResult<Vec<cb_plugin_api::ModuleReference>> {
+        use syn::{File, Item};
+        use cb_plugin_api::{ModuleReference, ReferenceKind};
+
+        let ast: File = syn::parse_file(content).map_err(|e| {
+            cb_plugin_api::PluginError::parse(format!("Failed to parse Rust code: {}", e))
         })?;
 
-        // Remove module declarations matching the module name
-        file.items.retain(|item| {
-            if let syn::Item::Mod(item_mod) = item {
-                item_mod.ident != module_name
+        let mut references = Vec::new();
+
+        for (line_num, item) in ast.items.iter().enumerate() {
+            if let Item::Use(item_use) = item {
+                let use_str = quote::quote!(#item_use).to_string();
+                if use_str.contains(module_to_find) {
+                    references.push(ModuleReference {
+                        line: line_num + 1, // 1-based
+                        column: 0,
+                        length: use_str.len(),
+                        text: use_str,
+                        kind: ReferenceKind::Declaration,
+                    });
+                }
+            }
+        }
+
+        Ok(references)
+    }
+
+    /// Rewrite imports for rename with full signature
+    pub fn rewrite_imports_for_rename(
+        &self,
+        content: &str,
+        _old_path: &Path,
+        _new_path: &Path,
+        _importing_file: &Path,
+        _project_root: &Path,
+        rename_info: Option<&serde_json::Value>,
+    ) -> PluginResult<(String, usize)> {
+        // Delegate to import capability with simpler signature
+        if let Some(import_support) = self.import_support() {
+            if let Some(info) = rename_info {
+                let old_name = info["old_crate_name"].as_str().unwrap_or("");
+                let new_name = info["new_crate_name"].as_str().unwrap_or("");
+                Ok(import_support.rewrite_imports_for_rename(content, old_name, new_name))
             } else {
-                true
+                Ok((content.to_string(), 0))
             }
-        });
-
-        // Convert back to source code
-        Ok(quote::quote!(#file).to_string())
-    }
-
-    pub async fn find_source_files(&self, dir: &Path) -> PluginResult<Vec<std::path::PathBuf>> {
-        use std::fs;
-        use cb_plugin_api::PluginError;
-
-        let mut source_files = Vec::new();
-        let entries = fs::read_dir(dir)
-            .map_err(|e| PluginError::internal(format!("Failed to read directory: {}", e)))?;
-
-        for entry in entries {
-            let entry = entry.map_err(|e| {
-                PluginError::internal(format!("Failed to read directory entry: {}", e))
-            })?;
-            let path = entry.path();
-
-            if path.is_file() {
-                if let Some(ext) = path.extension() {
-                    if ext == "rs" {
-                        source_files.push(path);
-                    }
-                }
-            }
+        } else {
+            Ok((content.to_string(), 0))
         }
-
-        Ok(source_files)
-    }
-}
-
-/// Visitor for finding module references in Rust code using syn::visit
-struct RustModuleFinder<'a> {
-    module_to_find: &'a str,
-    scope: cb_plugin_api::ScanScope,
-    references: Vec<cb_plugin_api::ModuleReference>,
-}
-
-impl<'a> RustModuleFinder<'a> {
-    fn new(module_to_find: &'a str, scope: cb_plugin_api::ScanScope) -> Self {
-        Self {
-            module_to_find,
-            scope,
-            references: Vec::new(),
-        }
-    }
-
-    fn into_references(self) -> Vec<cb_plugin_api::ModuleReference> {
-        self.references
-    }
-
-    fn check_use_tree(&mut self, tree: &syn::UseTree) {
-        match tree {
-            syn::UseTree::Path(path) => {
-                if path.ident == self.module_to_find {
-                    self.references.push(cb_plugin_api::ModuleReference {
-                        line: 0,
-                        column: 0,
-                        length: self.module_to_find.len(),
-                        text: self.module_to_find.to_string(),
-                        kind: cb_plugin_api::ReferenceKind::Declaration,
-                    });
-                }
-                self.check_use_tree(&path.tree);
-            }
-            syn::UseTree::Name(name) => {
-                if name.ident == self.module_to_find {
-                    self.references.push(cb_plugin_api::ModuleReference {
-                        line: 0,
-                        column: 0,
-                        length: self.module_to_find.len(),
-                        text: self.module_to_find.to_string(),
-                        kind: cb_plugin_api::ReferenceKind::Declaration,
-                    });
-                }
-            }
-            syn::UseTree::Group(group) => {
-                for item in &group.items {
-                    self.check_use_tree(item);
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
-impl<'ast, 'a> syn::visit::Visit<'ast> for RustModuleFinder<'a> {
-    fn visit_item_use(&mut self, node: &'ast syn::ItemUse) {
-        // Check the use tree for our module
-        self.check_use_tree(&node.tree);
-
-        // Continue visiting child nodes
-        syn::visit::visit_item_use(self, node);
-    }
-
-    fn visit_expr_path(&mut self, node: &'ast syn::ExprPath) {
-        // Only check qualified paths if scope allows
-        if self.scope == cb_plugin_api::ScanScope::QualifiedPaths
-            || self.scope == cb_plugin_api::ScanScope::All
-        {
-            if let Some(segment) = node.path.segments.first() {
-                if segment.ident == self.module_to_find {
-                    self.references.push(cb_plugin_api::ModuleReference {
-                        line: 0,
-                        column: 0,
-                        length: self.module_to_find.len(),
-                        text: quote::quote!(#node).to_string(),
-                        kind: cb_plugin_api::ReferenceKind::QualifiedPath,
-                    });
-                }
-            }
-        }
-
-        // Continue visiting
-        syn::visit::visit_expr_path(self, node);
-    }
-
-    fn visit_expr_lit(&mut self, node: &'ast syn::ExprLit) {
-        // Only check string literals if scope is All
-        if self.scope == cb_plugin_api::ScanScope::All {
-            if let syn::Lit::Str(lit_str) = &node.lit {
-                let value = lit_str.value();
-                if value.contains(self.module_to_find) {
-                    self.references.push(cb_plugin_api::ModuleReference {
-                        line: 0,
-                        column: 0,
-                        length: self.module_to_find.len(),
-                        text: value,
-                        kind: cb_plugin_api::ReferenceKind::StringLiteral,
-                    });
-                }
-            }
-        }
-
-        // Continue visiting
-        syn::visit::visit_expr_lit(self, node);
     }
 }
 
@@ -703,21 +533,13 @@ impl Wrapper {
     }
 }"#;
 
-        let rename_info = serde_json::json!({
-            "old_crate_name": "old_crate",
-            "new_crate_name": "new_crate",
-        });
-
-        let (result, count) = plugin
-            .rewrite_imports_for_rename(
-                source,
-                Path::new(""),
-                Path::new(""),
-                Path::new(""),
-                Path::new(""),
-                Some(&rename_info),
-            )
-            .unwrap();
+        // Use the ImportSupport trait method instead
+        let import_support = plugin.import_support().unwrap();
+        let (result, count) = import_support.rewrite_imports_for_rename(
+            source,
+            "old_crate",
+            "new_crate",
+        );
 
         // Should have changed exactly 2 use statements
         assert_eq!(count, 2);

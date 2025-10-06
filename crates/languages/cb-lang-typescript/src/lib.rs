@@ -98,23 +98,26 @@
 mod manifest;
 pub mod parser;
 pub mod refactoring;
+pub mod import_support;
 
 use async_trait::async_trait;
 use cb_plugin_api::{
-    LanguageCapabilities, LanguageMetadata, LanguagePlugin, ManifestData, ModuleReference,
-    ParsedSource, PluginError, PluginResult, ReferenceKind, ScanScope,
+    ImportSupport, LanguageCapabilities, LanguageMetadata, LanguagePlugin, ManifestData,
+    ParsedSource, PluginError, PluginResult,
 };
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// TypeScript/JavaScript language plugin implementation.
 pub struct TypeScriptPlugin {
     metadata: LanguageMetadata,
+    import_support: import_support::TypeScriptImportSupport,
 }
 
 impl TypeScriptPlugin {
     pub fn new() -> Self {
         Self {
             metadata: LanguageMetadata::TYPESCRIPT,
+            import_support: import_support::TypeScriptImportSupport::new(),
         }
     }
 }
@@ -157,10 +160,14 @@ impl LanguagePlugin for TypeScriptPlugin {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn import_support(&self) -> Option<&dyn ImportSupport> {
+        Some(&self.import_support)
+    }
 }
 
 // ============================================================================
-// Additional Methods (helper methods, not part of core trait)
+// Additional Methods (utility methods for manifest operations)
 // ============================================================================
 
 impl TypeScriptPlugin {
@@ -184,189 +191,51 @@ impl TypeScriptPlugin {
         manifest::update_dependency(&content, new_name, version)
     }
 
-    async fn locate_module_files(
-        &self,
-        package_path: &Path,
-        module_path: &str,
-    ) -> PluginResult<Vec<PathBuf>> {
-        // In TypeScript/JavaScript, modules can be:
-        // 1. A single file: src/utils.ts
-        // 2. A directory with index: src/utils/index.ts
-        // 3. Package with package.json
-
-        let module_parts: Vec<&str> = module_path.split('/').collect();
-        let relative_path = module_parts.join("/");
-
-        let mut files = Vec::new();
-
-        // Try various file extensions
-        for ext in &["ts", "tsx", "js", "jsx", "mjs", "cjs"] {
-            // Try as direct file
-            let file_path = package_path.join(format!("{}.{}", relative_path, ext));
-            if file_path.exists() {
-                files.push(file_path);
-            }
-
-            // Try as directory with index
-            let index_path = package_path
-                .join(&relative_path)
-                .join(format!("index.{}", ext));
-            if index_path.exists() {
-                files.push(index_path);
-            }
-        }
-
-        Ok(files)
-    }
-
-    pub async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
-        // Read the file
-        let content = tokio::fs::read_to_string(file_path)
-            .await
-            .map_err(|e| PluginError::internal(format!("Failed to read file: {}", e)))?;
-
-        // Use the existing import parser
-        let graph = parser::analyze_imports(&content, Some(file_path))?;
-
-        // Extract just the module paths
-        Ok(graph.imports.into_iter().map(|i| i.module_path).collect())
-    }
-
     pub fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
         manifest::generate_manifest(package_name, dependencies)
     }
 
-    pub fn rewrite_import(&self, _old_import: &str, new_package_name: &str) -> String {
-        // TypeScript imports are module paths
-        new_package_name.to_string()
-    }
-
-    pub fn rewrite_imports_for_rename(
-        &self,
-        content: &str,
-        old_path: &Path,
-        new_path: &Path,
-        importing_file: &Path,
-        _project_root: &Path,
-        _rename_info: Option<&serde_json::Value>,
-    ) -> (String, usize) {
-        // Calculate relative paths
-        let old_import = calculate_relative_import(importing_file, old_path);
-        let new_import = calculate_relative_import(importing_file, new_path);
-
-        if old_import == new_import {
-            return (content.to_string(), 0);
-        }
-
-        // Replace all occurrences of the old import
-        let mut new_content = content.to_string();
-        let mut changes = 0;
-
-        // ES6 imports
-        let es6_pattern = format!(r#"from ['"]{}['"]"#, regex::escape(&old_import));
-        if let Ok(re) = regex::Regex::new(&es6_pattern) {
-            let replaced = re.replace_all(&new_content, format!(r#"from "{}""#, new_import));
-            if replaced != new_content {
-                new_content = replaced.to_string();
-                changes += 1;
-            }
-        }
-
-        // CommonJS require
-        let require_pattern = format!(r#"require\(['"]{}['"]\)"#, regex::escape(&old_import));
-        if let Ok(re) = regex::Regex::new(&require_pattern) {
-            let replaced = re.replace_all(&new_content, format!(r#"require("{}")"#, new_import));
-            if replaced != new_content {
-                new_content = replaced.to_string();
-                changes += 1;
-            }
-        }
-
-        // Dynamic import
-        let dynamic_pattern = format!(r#"import\(['"]{}['"]\)"#, regex::escape(&old_import));
-        if let Ok(re) = regex::Regex::new(&dynamic_pattern) {
-            let replaced = re.replace_all(&new_content, format!(r#"import("{}")"#, new_import));
-            if replaced != new_content {
-                new_content = replaced.to_string();
-                changes += 1;
-            }
-        }
-
-        (new_content, changes)
-    }
-
+    /// Find module references (minimal implementation for compatibility)
     pub fn find_module_references(
         &self,
         content: &str,
         module_to_find: &str,
-        scope: ScanScope,
-    ) -> Vec<ModuleReference> {
+        _scope: cb_plugin_api::ScanScope,
+    ) -> Vec<cb_plugin_api::ModuleReference> {
+        use cb_plugin_api::{ModuleReference, ReferenceKind};
+
         let mut references = Vec::new();
 
-        for (line_idx, line) in content.lines().enumerate() {
-            let line_num = line_idx + 1;
-
-            match scope {
-                ScanScope::TopLevelOnly | ScanScope::AllUseStatements => {
-                    // Look for import/require statements
-                    if line.trim().starts_with("import") || line.contains("require(") {
-                        if let Some(pos) = line.find(module_to_find) {
-                            references.push(ModuleReference {
-                                line: line_num,
-                                column: pos,
-                                length: module_to_find.len(),
-                                text: module_to_find.to_string(),
-                                kind: ReferenceKind::Declaration,
-                            });
-                        }
-                    }
-                }
-                ScanScope::QualifiedPaths | ScanScope::All => {
-                    // Look for any occurrence
-                    if let Some(pos) = line.find(module_to_find) {
-                        let kind = if line.trim().starts_with("import") || line.contains("require(")
-                        {
-                            ReferenceKind::Declaration
-                        } else {
-                            ReferenceKind::QualifiedPath
-                        };
-
-                        references.push(ModuleReference {
-                            line: line_num,
-                            column: pos,
-                            length: module_to_find.len(),
-                            text: module_to_find.to_string(),
-                            kind,
-                        });
-                    }
-                }
+        // Simple line-based search for import statements containing the module
+        for (line_num, line) in content.lines().enumerate() {
+            if (line.contains("import") || line.contains("from")) && line.contains(module_to_find) {
+                references.push(ModuleReference {
+                    line: line_num + 1,
+                    column: 0,
+                    length: line.len(),
+                    text: line.to_string(),
+                    kind: ReferenceKind::Declaration,
+                });
             }
         }
 
         references
     }
-}
 
-/// Calculate relative import path from one file to another
-fn calculate_relative_import(from_file: &Path, to_file: &Path) -> String {
-    // Get parent directories
-    let from_dir = from_file.parent().unwrap_or(Path::new("."));
-
-    // Try to get relative path
-    if let Ok(rel_path) = to_file.strip_prefix(from_dir) {
-        // Remove file extension
-        let path_str = rel_path.to_string_lossy();
-        let without_ext = path_str
-            .trim_end_matches(".ts")
-            .trim_end_matches(".tsx")
-            .trim_end_matches(".js")
-            .trim_end_matches(".jsx")
-            .trim_end_matches(".mjs")
-            .trim_end_matches(".cjs");
-
-        format!("./{}", without_ext)
-    } else {
-        // Fall back to absolute-ish path
-        to_file.to_string_lossy().to_string()
+    /// Rewrite imports for rename (minimal implementation for compatibility)
+    pub fn rewrite_imports_for_rename(
+        &self,
+        content: &str,
+        old_path: &Path,
+        new_path: &Path,
+        _importing_file: &Path,
+        _project_root: &Path,
+        _rename_info: Option<&serde_json::Value>,
+    ) -> PluginResult<(String, usize)> {
+        if let Some(import_support) = self.import_support() {
+            Ok(import_support.rewrite_imports_for_move(content, old_path, new_path))
+        } else {
+            Ok((content.to_string(), 0))
+        }
     }
 }
