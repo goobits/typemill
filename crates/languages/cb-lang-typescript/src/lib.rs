@@ -97,6 +97,7 @@
 
 mod manifest;
 pub mod parser;
+pub mod refactoring;
 
 use async_trait::async_trait;
 use cb_plugin_api::{

@@ -26,6 +26,7 @@
 
 mod manifest;
 pub mod parser;
+pub mod refactoring;
 mod workspace;
 
 use async_trait::async_trait;
