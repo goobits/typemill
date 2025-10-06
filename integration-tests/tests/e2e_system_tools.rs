@@ -426,6 +426,7 @@ app.listen(PORT, () => {
 #[tokio::test]
 async fn test_organize_imports_dry_run() {
     let workspace = TestWorkspace::new();
+    workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
     let test_file = workspace.path().join("test.ts");
     std::fs::write(

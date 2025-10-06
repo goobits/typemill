@@ -106,7 +106,10 @@ async fn test_apply_workspace_edit_atomic_failure() {
         .await;
     match response {
         Ok(resp) => {
-            assert!(resp["result"]["applied"].as_bool().unwrap_or(false));
+            assert!(
+                !resp["result"]["applied"].as_bool().unwrap_or(true),
+                "Should fail atomically when applying to nonexistent file"
+            );
         }
         Err(_) => {
             let content = std::fs::read_to_string(&existing_file).unwrap();
@@ -215,7 +218,21 @@ export function usedImport(x: string): string {
 "#,
     )
     .unwrap();
-    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+    let tsconfig = workspace.path().join("tsconfig.json");
+    std::fs::write(
+        &tsconfig,
+        r#"{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "strict": true
+  }
+}"#,
+    )
+    .unwrap();
+    tokio::time::sleep(tokio::time::Duration::from_millis(3000)).await;
     let response = client
         .call_tool(
             "get_code_actions",

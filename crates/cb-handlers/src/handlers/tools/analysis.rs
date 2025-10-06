@@ -36,6 +36,8 @@ impl ToolHandler for AnalysisHandler {
             "find_unused_imports",
             "analyze_complexity",
             "suggest_refactoring",
+            "analyze_project_complexity",
+            "find_complexity_hotspots",
         ]
     }
 
@@ -50,6 +52,14 @@ impl ToolHandler for AnalysisHandler {
             }
             "analyze_complexity" => self.handle_analyze_complexity(context, tool_call).await,
             "suggest_refactoring" => self.handle_suggest_refactoring(context, tool_call).await,
+            "analyze_project_complexity" => {
+                self.handle_analyze_project_complexity(context, tool_call)
+                    .await
+            }
+            "find_complexity_hotspots" => {
+                self.handle_find_complexity_hotspots(context, tool_call)
+                    .await
+            }
             _ => Err(ServerError::InvalidRequest(format!(
                 "Unknown analysis tool: {}",
                 tool_call.name
