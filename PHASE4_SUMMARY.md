@@ -229,11 +229,11 @@ Total cross-language test coverage: 21 scenarios (vs 4 before Phase 4)
 |----------|----------------------|-------------------|-----------------|
 | Python | extract_func ✅, inline_var ✅, extract_var ✅ | update_dependency ✅ | 4/4 (100%) |
 | TypeScript | extract_func ✅, inline_var ❌*, extract_var ✅ | update_dependency ✅ | 3/4 (75%) |
-| Rust | extract_func ⏳, inline_var ⏳, extract_var ⏳ | update_dependency ✅ | 1/4 (25%)** |
-| Go | extract_func ⏳, inline_var ⏳, extract_var ⏳ | update_dependency ✅ | 1/4 (25%)** |
+| Rust | extract_func ⏳**, inline_var ⏳**, extract_var ⏳** | update_dependency ✅ | 1/4 (25%) |
+| Go | extract_func ⏳**, inline_var ⏳**, extract_var ⏳** | update_dependency ✅ | 1/4 (25%) |
 
 *TypeScript inline_variable not supported by typescript-language-server LSP
-**Rust/Go refactoring not yet implemented (planned for future phases)
+**Rust/Go refactoring deferred - requires EditPlan schema updates and circular dependency resolution
 
 ## Benefits Realized
 
@@ -301,18 +301,20 @@ Total cross-language test coverage: 21 scenarios (vs 4 before Phase 4)
 
 ### Immediate Opportunities
 
-1. **Add Manifest Update Tests**
-   - Cross-language manifest dependency updates
-   - Per-language manifest format tests
+1. ✅ **Manifest Update Tests** - COMPLETED
+   - Cross-language manifest tests added (4/4 passing)
+   - Python, TypeScript, Rust, Go all covered
 
-2. **Implement Rust/Go Refactoring**
-   - Add refactoring.rs to cb-lang-rust
-   - Add refactoring.go helper to cb-lang-go
-   - Tests already in place, just update ExpectedBehavior
+2. ⏳ **Implement Rust/Go Refactoring** - DEFERRED
+   - Requires EditPlan schema updates (schema changed significantly)
+   - Requires resolving circular dependencies (cb-ast ↔ language plugins)
+   - Tests framework ready, awaiting implementation
+   - Estimated effort: 2-3 days after schema stabilization
 
-3. **Fix TypeScript Inline Variable Coordinates**
-   - Investigate LSP-based coordinate detection
-   - Update test fixture with correct positions
+3. ❌ **TypeScript Inline Variable** - LSP LIMITATION
+   - typescript-language-server does not support inline_variable operation
+   - Extract function and extract variable work via LSP
+   - Not fixable without LSP server changes
 
 ### Long-term Vision
 
