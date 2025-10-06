@@ -22,6 +22,10 @@ toml_edit = "0.23"
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+# For refactoring operations
+regex = "1.10"
+chrono = { version = "0.4", features = ["serde"] }
+
 # Path utilities for workspace operations
 pathdiff = "0.2"
 

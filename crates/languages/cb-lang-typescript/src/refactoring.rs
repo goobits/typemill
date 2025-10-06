@@ -3,6 +3,7 @@
 //! This module provides AST-based refactoring capabilities for TypeScript/JavaScript code.
 
 use cb_protocol::{EditPlan, EditPlanMetadata, EditLocation, EditType, TextEdit, ValidationRule, ValidationType};
+use std::collections::HashMap;
 use std::error::Error;
 
 /// Code range for refactoring operations
@@ -97,24 +98,16 @@ pub fn plan_inline_variable(
         });
 
         Ok(EditPlan {
+            source_file: file_path.to_string(),
             edits,
+            dependency_updates: Vec::new(),
+            validations: vec![ValidationRule {
+                rule_type: ValidationType::SyntaxCheck,
+                description: "Verify TypeScript syntax is valid after inlining".to_string(),
+                parameters: HashMap::new(),
+            }],
             metadata: EditPlanMetadata {
-                operation: "inline_variable".to_string(),
-                description: format!("Inline variable '{}' with value '{}'", var_name, initializer),
-                language: "typescript".to_string(),
-                file_path: file_path.to_string(),
-                affected_symbols: vec![var_name.to_string()],
-                validation_rules: vec![
-                    ValidationRule {
-                        rule_type: ValidationType::SyntaxCheck,
-                        description: "Verify syntax is valid after inlining".to_string(),
-                    },
-                ],
-                reversible: true,
-                estimated_impact: "low".to_string(),
-                safety_score: 85,
-                requires_user_input: false,
-                intent_classification: "refactoring".to_string(),
+                intent_name: "inline_variable".to_string(),
                 intent_arguments: serde_json::json!({
                     "variable_name": var_name,
                     "value": initializer
@@ -202,24 +195,16 @@ pub fn plan_extract_function(
     });
 
     Ok(EditPlan {
+        source_file: file_path.to_string(),
         edits,
+        dependency_updates: Vec::new(),
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::SyntaxCheck,
+            description: "Verify TypeScript syntax is valid after extraction".to_string(),
+            parameters: HashMap::new(),
+        }],
         metadata: EditPlanMetadata {
-            operation: "extract_function".to_string(),
-            description: format!("Extract {} lines into function '{}'", end_line - start_line + 1, function_name),
-            language: "typescript".to_string(),
-            file_path: file_path.to_string(),
-            affected_symbols: vec![function_name.to_string()],
-            validation_rules: vec![
-                ValidationRule {
-                    rule_type: ValidationType::SyntaxCheck,
-                    description: "Verify syntax is valid after extraction".to_string(),
-                },
-            ],
-            reversible: true,
-            estimated_impact: "medium".to_string(),
-            safety_score: 75,
-            requires_user_input: false,
-            intent_classification: "refactoring".to_string(),
+            intent_name: "extract_function".to_string(),
             intent_arguments: serde_json::json!({
                 "function_name": function_name,
                 "line_count": end_line - start_line + 1
@@ -312,24 +297,16 @@ pub fn plan_extract_variable(
     });
 
     Ok(EditPlan {
+        source_file: file_path.to_string(),
         edits,
+        dependency_updates: Vec::new(),
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::SyntaxCheck,
+            description: "Verify TypeScript syntax is valid after extraction".to_string(),
+            parameters: HashMap::new(),
+        }],
         metadata: EditPlanMetadata {
-            operation: "extract_variable".to_string(),
-            description: format!("Extract expression into variable '{}'", var_name),
-            language: "typescript".to_string(),
-            file_path: file_path.to_string(),
-            affected_symbols: vec![var_name.clone()],
-            validation_rules: vec![
-                ValidationRule {
-                    rule_type: ValidationType::SyntaxCheck,
-                    description: "Verify syntax is valid after extraction".to_string(),
-                },
-            ],
-            reversible: true,
-            estimated_impact: "low".to_string(),
-            safety_score: 85,
-            requires_user_input: false,
-            intent_classification: "refactoring".to_string(),
+            intent_name: "extract_variable".to_string(),
             intent_arguments: serde_json::json!({
                 "variable_name": var_name,
                 "expression": expression
