@@ -162,14 +162,15 @@ pub fn plan_extract_function(
 
     let mut edits = Vec::new();
 
-    // Insert new function above the selected code
+    // Insert new function at the start of the file (before all code)
+    // This avoids coordinate conflicts with the replace edit
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Insert,
         location: EditLocation {
-            start_line: start_line,
+            start_line: 0,
             start_column: 0,
-            end_line: start_line,
+            end_line: 0,
             end_column: 0,
         },
         original_text: String::new(),
@@ -179,13 +180,14 @@ pub fn plan_extract_function(
     });
 
     // Replace selected code with function call
+    // Note: EditLocation uses 0-indexed line numbers (file_service expects this)
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Replace,
         location: EditLocation {
-            start_line,
+            start_line,  // Already using the correct line index from source
             start_column: 0,
-            end_line,
+            end_line,  // Already using the correct line index from source
             end_column: lines[end_line as usize].len() as u32,
         },
         original_text: selected_code.clone(),

@@ -223,6 +223,7 @@ impl PluginDispatcher {
                     FileOpsHandler => "FileOpsHandler with 6 tools (create_file, read_file, write_file, delete_file, rename_file, list_files)",
                     EditingHandler => "EditingHandler with 9 tools (rename_symbol, rename_symbol_strict, organize_imports, fix_imports, get_code_actions, format_document, extract_function, extract_variable, inline_variable)",
                     NavigationHandler => "NavigationHandler with 13 tools (find_definition, find_references, find_implementations, find_type_definition, get_document_symbols, search_workspace_symbols, get_hover, get_completions, get_signature_help, get_diagnostics, prepare_call_hierarchy, get_call_hierarchy_incoming_calls, get_call_hierarchy_outgoing_calls)",
+                    AnalysisHandler => "AnalysisHandler with 3 tools (find_unused_imports, analyze_complexity, suggest_refactoring)",
                 });
             }
 

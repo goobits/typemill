@@ -16,6 +16,7 @@ use tokio::sync::Mutex;
 
 // Tool handler modules
 pub mod advanced;
+pub mod analysis;
 pub mod editing;
 pub mod file_ops;
 pub mod internal_editing;
@@ -27,6 +28,7 @@ pub mod workspace;
 
 // Re-export handlers
 pub use advanced::AdvancedHandler;
+pub use analysis::AnalysisHandler;
 pub use editing::EditingHandler;
 pub use file_ops::FileOpsHandler;
 pub use internal_editing::InternalEditingHandler;

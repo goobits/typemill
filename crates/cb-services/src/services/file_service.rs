@@ -1338,32 +1338,29 @@ impl FileService {
         }
 
         // Sort edits by position (highest line/column first) to avoid offset issues
+        // For multi-line edits, we need to consider end_line to ensure proper ordering
         let mut sorted_edits = edits.to_vec();
         sorted_edits.sort_by(|a, b| {
-            let line_cmp = b.location.start_line.cmp(&a.location.start_line);
-            if line_cmp == std::cmp::Ordering::Equal {
-                b.location.start_column.cmp(&a.location.start_column)
-            } else {
-                line_cmp
+            // Primary sort: by end_line (descending) - apply edits that end later first
+            let end_line_cmp = b.location.end_line.cmp(&a.location.end_line);
+            if end_line_cmp != std::cmp::Ordering::Equal {
+                return end_line_cmp;
             }
+
+            // Secondary sort: by start_line (descending)
+            let start_line_cmp = b.location.start_line.cmp(&a.location.start_line);
+            if start_line_cmp != std::cmp::Ordering::Equal {
+                return start_line_cmp;
+            }
+
+            // Tertiary sort: by start_column (descending)
+            b.location.start_column.cmp(&a.location.start_column)
         });
 
         // Apply edits from end to beginning to preserve positions
         let mut modified_content = original_content.to_string();
-        for (idx, edit) in sorted_edits.iter().enumerate() {
-            eprintln!(
-                "DEBUG: Before edit #{}, content.len={}, first 50 chars: {:?}",
-                idx,
-                modified_content.len(),
-                &modified_content.chars().take(50).collect::<String>()
-            );
+        for edit in sorted_edits.iter() {
             modified_content = self.apply_single_edit(&modified_content, edit)?;
-            eprintln!(
-                "DEBUG: After edit #{}, content.len={}, first 50 chars: {:?}",
-                idx,
-                modified_content.len(),
-                &modified_content.chars().take(50).collect::<String>()
-            );
         }
 
         Ok(modified_content)

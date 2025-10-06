@@ -342,6 +342,110 @@ impl EditingHandler {
             ))),
         }
     }
+
+    /// Handle optimize_imports - extends organize_imports with dead import removal
+    async fn handle_optimize_imports(
+        &self,
+        context: &ToolHandlerContext,
+        tool_call: &ToolCall,
+    ) -> ServerResult<Value> {
+        use std::path::Path;
+
+        let args = tool_call.arguments.clone().unwrap_or(json!({}));
+
+        let file_path_str = args
+            .get("file_path")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                cb_protocol::ApiError::InvalidRequest("Missing file_path parameter".into())
+            })?;
+
+        let dry_run = args
+            .get("dry_run")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        // Step 1: Run organize_imports first (LSP-based sorting/grouping)
+        let mut organize_call = tool_call.clone();
+        organize_call.name = "organize_imports".to_string();
+
+        let organize_result = self.handle_organize_imports(context, &organize_call).await?;
+
+        // Step 2: Find unused imports
+        let file_path = Path::new(file_path_str);
+
+        // Get file extension
+        let extension = file_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .ok_or_else(|| {
+                cb_protocol::ApiError::InvalidRequest(format!("File has no extension: {}", file_path_str))
+            })?;
+
+        // Read current file content
+        let content = context
+            .app_state
+            .file_service
+            .read_file(file_path)
+            .await
+            .map_err(|e| cb_protocol::ApiError::Internal(format!("Failed to read file: {}", e)))?;
+
+        // Find language plugin
+        let plugin = context
+            .app_state
+            .language_plugins
+            .get_plugin(extension)
+            .ok_or_else(|| {
+                cb_protocol::ApiError::Unsupported(format!(
+                    "No language plugin found for extension: {}",
+                    extension
+                ))
+            })?;
+
+        // Get import support
+        let import_support = plugin.import_support().ok_or_else(|| {
+            cb_protocol::ApiError::Unsupported(format!(
+                "Language {} does not support import operations",
+                plugin.metadata().name
+            ))
+        })?;
+
+        // Parse imports
+        let imports = import_support.parse_imports(&content);
+
+        // Step 3: Remove unused imports (simple heuristic)
+        let mut optimized_content = content.clone();
+        let mut removed_count = 0;
+
+        for import_path in &imports {
+            // Simple check: if import appears only once, it's unused
+            let occurrences = optimized_content.matches(import_path).count();
+
+            if occurrences <= 1 {
+                optimized_content = import_support.remove_import(&optimized_content, import_path);
+                removed_count += 1;
+            }
+        }
+
+        // Step 4: Write back if not dry_run
+        if !dry_run && removed_count > 0 {
+            context
+                .app_state
+                .file_service
+                .write_file(file_path, &optimized_content, false)
+                .await?;
+        }
+
+        Ok(json!({
+            "operation": "optimize_imports",
+            "file_path": file_path_str,
+            "dry_run": dry_run,
+            "imports_organized": organize_result.get("organized").and_then(|v| v.as_bool()).unwrap_or(false),
+            "imports_removed": removed_count,
+            "total_imports": imports.len(),
+            "optimized": removed_count > 0,
+        }))
+    }
 }
 
 #[async_trait]
@@ -352,6 +456,7 @@ impl ToolHandler for EditingHandler {
             "rename_symbol_strict",
             // "rename_symbol_with_imports" moved to InternalEditingHandler
             "organize_imports",
+            "optimize_imports",
             "get_code_actions",
             "format_document",
             "extract_function",
@@ -369,6 +474,7 @@ impl ToolHandler for EditingHandler {
             "format_document" => self.handle_format_document(context, tool_call).await,
             "get_code_actions" => self.handle_get_code_actions(context, tool_call).await,
             "organize_imports" => self.handle_organize_imports(context, tool_call).await,
+            "optimize_imports" => self.handle_optimize_imports(context, tool_call).await,
             _ => crate::delegate_to_legacy!(self, context, tool_call),
         }
     }
