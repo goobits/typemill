@@ -510,6 +510,10 @@ impl FileService {
                 }
             }
 
+            // Track manifest updates (Cargo.toml files)
+            let mut manifest_updated_files: Vec<PathBuf> = Vec::new();
+            let mut manifest_errors: Vec<String> = Vec::new();
+
             if is_cargo_pkg {
                 // Update workspace members array
                 if let Err(e) = self
@@ -517,24 +521,30 @@ impl FileService {
                     .await
                 {
                     warn!(error = %e, "Failed to update workspace manifest");
-                    all_errors.push(format!("Failed to update workspace manifest: {}", e));
+                    let error_msg = format!("Failed to update workspace manifest: {}", e);
+                    all_errors.push(error_msg.clone());
+                    manifest_errors.push(error_msg);
                 }
 
                 // Update path dependencies in other crates that depend on this one
                 if let Some(ref info) = rename_info {
-                    if let Some(old_crate_name) = info.get("old_crate_name").and_then(|v| v.as_str()) {
-                        match self.update_dependent_crate_paths(old_crate_name, &new_abs_dir).await {
+                    // Use old_package_name (with hyphens) for Cargo.toml dependency lookups
+                    if let Some(old_package_name) = info.get("old_package_name").and_then(|v| v.as_str()) {
+                        match self.update_dependent_crate_paths(old_package_name, &new_abs_dir).await {
                             Ok(updated_files) => {
                                 if !updated_files.is_empty() {
                                     info!(
                                         files_updated = updated_files.len(),
                                         "Updated Cargo.toml path dependencies in dependent crates"
                                     );
+                                    manifest_updated_files.extend(updated_files);
                                 }
                             }
                             Err(e) => {
                                 warn!(error = %e, "Failed to update dependent crate paths");
-                                all_errors.push(format!("Failed to update dependent crate paths: {}", e));
+                                let error_msg = format!("Failed to update dependent crate paths: {}", e);
+                                all_errors.push(error_msg.clone());
+                                manifest_errors.push(error_msg);
                             }
                         }
                     }
@@ -556,6 +566,19 @@ impl FileService {
             // Run post-operation validation if configured
             let validation_result = self.run_validation().await;
 
+            // Build manifest updates report (consistent format with other reports)
+            let manifest_updates = if is_cargo_pkg {
+                Some(json!({
+                    "files_updated": manifest_updated_files.len(),
+                    "updated_files": manifest_updated_files.iter()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .collect::<Vec<_>>(),
+                    "errors": manifest_errors,
+                }))
+            } else {
+                None
+            };
+
             let mut result = json!({
                 "operation": "rename_directory",
                 "old_path": old_abs_dir.to_string_lossy(),
@@ -567,6 +590,7 @@ impl FileService {
                     "errors": all_errors,
                 },
                 "documentation_updates": doc_updates,
+                "manifest_updates": manifest_updates,
                 "success": all_errors.is_empty(),
             });
 
@@ -2538,7 +2562,8 @@ impl FileService {
         );
 
         Ok(json!({
-            "old_crate_name": old_crate_name.replace('-', "_"), // Normalize to underscores for comparison
+            "old_crate_name": old_crate_name.replace('-', "_"), // For Rust import updates (use statements)
+            "old_package_name": old_crate_name, // For Cargo.toml dependency lookups (keep hyphens)
             "new_crate_name": new_crate_import, // Use underscores for imports
             "new_package_name": new_crate_name, // Keep hyphens for Cargo.toml
         }))
