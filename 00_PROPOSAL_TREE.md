@@ -77,7 +77,7 @@
 │   ├── cb-lang-common/            # MOVED: from crates/cb-lang-common/
 │   │   ├── src/
 │   │   └── Cargo.toml
-│   ├── cb-lang-go/                # MOVED: from crates/languages/cb-lang-go/
+│   ├── cb-lang-go/                # MOVED: from crates/cb-lang-go/
 │   │   ├── src/
 │   │   └── Cargo.toml
 │   ├── cb-lang-java/              # MOVED: from crates/languages/cb-lang-java/
@@ -252,7 +252,7 @@ rename_file: crates/languages/PLUGIN_DEVELOPMENT_GUIDE.md → docs/development/l
 
 ```bash
 rename_directory: crates/cb-lang-common → crates/cb-lang-common
-rename_directory: crates/languages/cb-lang-go → crates/cb-lang-go
+rename_directory: crates/cb-lang-go → crates/cb-lang-go
 rename_directory: crates/languages/cb-lang-java → crates/cb-lang-java
 rename_directory: crates/languages/cb-lang-python → crates/cb-lang-python
 rename_directory: crates/languages/cb-lang-rust → crates/cb-lang-rust
