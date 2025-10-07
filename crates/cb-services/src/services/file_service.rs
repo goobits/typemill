@@ -516,14 +516,19 @@ impl FileService {
 
             if is_cargo_pkg {
                 // Update workspace members array
-                if let Err(e) = self
+                match self
                     .update_workspace_manifests(&old_abs_dir, &new_abs_dir)
                     .await
                 {
-                    warn!(error = %e, "Failed to update workspace manifest");
-                    let error_msg = format!("Failed to update workspace manifest: {}", e);
-                    all_errors.push(error_msg.clone());
-                    manifest_errors.push(error_msg);
+                    Ok(updated_files) => {
+                        manifest_updated_files.extend(updated_files);
+                    }
+                    Err(e) => {
+                        warn!(error = %e, "Failed to update workspace manifest");
+                        let error_msg = format!("Failed to update workspace manifest: {}", e);
+                        all_errors.push(error_msg.clone());
+                        manifest_errors.push(error_msg);
+                    }
                 }
 
                 // Update path dependencies in other crates that depend on this one
@@ -2570,11 +2575,14 @@ impl FileService {
     }
 
     /// Find the parent Cargo workspace and update the members array to reflect a renamed package.
+    ///
+    /// Returns the list of Cargo.toml files that were updated (workspace root + moved package)
     async fn update_workspace_manifests(
         &self,
         old_package_path: &Path,
         new_package_path: &Path,
-    ) -> ServerResult<()> {
+    ) -> ServerResult<Vec<PathBuf>> {
+        let mut updated_files = Vec::new();
         let mut current_path = old_package_path.parent();
 
         while let Some(path) = current_path {
@@ -2634,22 +2642,28 @@ impl FileService {
                                     e
                                 ))
                             })?;
+
+                        updated_files.push(workspace_toml_path.clone());
                     }
 
                     // Also update relative path dependencies in the moved package's Cargo.toml
                     let package_cargo_toml = new_package_path.join("Cargo.toml");
                     if package_cargo_toml.exists() {
-                        self.update_package_relative_paths(
+                        let package_updated = self.update_package_relative_paths(
                             &package_cargo_toml,
                             old_package_path,
                             new_package_path,
                             path,
                         )
                         .await?;
+
+                        if package_updated {
+                            updated_files.push(package_cargo_toml);
+                        }
                     }
 
                     // If we found the workspace, we can stop searching.
-                    return Ok(());
+                    return Ok(updated_files);
                 }
             }
 
@@ -2659,7 +2673,7 @@ impl FileService {
             current_path = path.parent();
         }
 
-        Ok(())
+        Ok(updated_files)
     }
 
     /// Update path dependencies in other crates that depend on the moved crate
@@ -2816,7 +2830,7 @@ impl FileService {
         old_package_path: &Path,
         new_package_path: &Path,
         workspace_root: &Path,
-    ) -> ServerResult<()> {
+    ) -> ServerResult<bool> {
         let content = fs::read_to_string(package_cargo_toml).await.map_err(|e| {
             ServerError::Internal(format!("Failed to read package Cargo.toml: {}", e))
         })?;
@@ -2902,7 +2916,7 @@ impl FileService {
             debug!("No relative path dependencies needed updating");
         }
 
-        Ok(())
+        Ok(updated_count > 0)
     }
 
     /// Adjust a relative path based on depth change
