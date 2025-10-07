@@ -513,12 +513,33 @@ impl FileService {
             }
 
             if is_cargo_pkg {
+                // Update workspace members array
                 if let Err(e) = self
                     .update_workspace_manifests(&old_abs_dir, &new_abs_dir)
                     .await
                 {
                     warn!(error = %e, "Failed to update workspace manifest");
                     all_errors.push(format!("Failed to update workspace manifest: {}", e));
+                }
+
+                // Update path dependencies in other crates that depend on this one
+                if let Some(ref info) = rename_info {
+                    if let Some(old_crate_name) = info.get("old_crate_name").and_then(|v| v.as_str()) {
+                        match self.update_dependent_crate_paths(old_crate_name, &new_abs_dir).await {
+                            Ok(updated_files) => {
+                                if !updated_files.is_empty() {
+                                    info!(
+                                        files_updated = updated_files.len(),
+                                        "Updated Cargo.toml path dependencies in dependent crates"
+                                    );
+                                }
+                            }
+                            Err(e) => {
+                                warn!(error = %e, "Failed to update dependent crate paths");
+                                all_errors.push(format!("Failed to update dependent crate paths: {}", e));
+                            }
+                        }
+                    }
                 }
             }
 
@@ -2578,6 +2599,111 @@ impl FileService {
         }
 
         Ok(())
+    }
+
+    /// Update path dependencies in other crates that depend on the moved crate
+    ///
+    /// When a crate moves, other crates with path dependencies need their paths updated.
+    /// For example, if cb-lang-common moves from crates/languages/ to crates/, then
+    /// cb-lang-go's Cargo.toml needs: path = "../cb-lang-common" → "../../cb-lang-common"
+    async fn update_dependent_crate_paths(
+        &self,
+        moved_crate_name: &str,
+        new_crate_path: &Path,
+    ) -> ServerResult<Vec<PathBuf>> {
+        let mut updated_files = Vec::new();
+
+        // Find all Cargo.toml files in the workspace
+        let walker = ignore::WalkBuilder::new(&self.project_root)
+            .hidden(false)
+            .build();
+
+        for entry in walker.flatten() {
+            let path = entry.path();
+            if path.file_name() == Some(std::ffi::OsStr::new("Cargo.toml")) {
+                // Skip the moved crate's own Cargo.toml
+                if path.parent() == Some(new_crate_path) {
+                    continue;
+                }
+
+                // Try to update this Cargo.toml if it depends on the moved crate
+                match self.update_cargo_toml_dependency_path(path, moved_crate_name, new_crate_path).await {
+                    Ok(true) => {
+                        info!(cargo_toml = %path.display(), "Updated path dependency");
+                        updated_files.push(path.to_path_buf());
+                    }
+                    Ok(false) => {
+                        // File doesn't depend on the moved crate, skip
+                    }
+                    Err(e) => {
+                        warn!(
+                            error = %e,
+                            cargo_toml = %path.display(),
+                            "Failed to update dependency path"
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(updated_files)
+    }
+
+    /// Update a single Cargo.toml's path dependency if it depends on the moved crate
+    ///
+    /// Returns Ok(true) if the file was updated, Ok(false) if no update was needed
+    async fn update_cargo_toml_dependency_path(
+        &self,
+        cargo_toml_path: &Path,
+        moved_crate_name: &str,
+        new_crate_path: &Path,
+    ) -> ServerResult<bool> {
+        let content = fs::read_to_string(cargo_toml_path)
+            .await
+            .map_err(|e| ServerError::Internal(format!("Failed to read Cargo.toml: {}", e)))?;
+
+        let mut doc = content
+            .parse::<toml_edit::DocumentMut>()
+            .map_err(|e| ServerError::Internal(format!("Failed to parse Cargo.toml: {}", e)))?;
+
+        let mut updated = false;
+
+        // Check [dependencies] section
+        if let Some(deps) = doc.get_mut("dependencies").and_then(|d| d.as_table_like_mut()) {
+            if let Some(dep) = deps.get_mut(moved_crate_name) {
+                if let Some(dep_table) = dep.as_inline_table_mut() {
+                    if dep_table.contains_key("path") {
+                        // Calculate new relative path
+                        let cargo_toml_dir = cargo_toml_path.parent().unwrap();
+                        let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
+                            .ok_or_else(|| ServerError::Internal("Failed to calculate relative path".to_string()))?;
+
+                        let new_path_str = new_rel_path.to_string_lossy().to_string();
+                        dep_table.insert("path", toml_edit::Value::from(new_path_str));
+                        updated = true;
+                    }
+                } else if let Some(dep_table) = dep.as_table_mut() {
+                    if dep_table.contains_key("path") {
+                        // Calculate new relative path
+                        let cargo_toml_dir = cargo_toml_path.parent().unwrap();
+                        let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
+                            .ok_or_else(|| ServerError::Internal("Failed to calculate relative path".to_string()))?;
+
+                        let new_path_str = new_rel_path.to_string_lossy().to_string();
+                        dep_table.insert("path", toml_edit::value(new_path_str));
+                        updated = true;
+                    }
+                }
+            }
+        }
+
+        if updated {
+            fs::write(cargo_toml_path, doc.to_string())
+                .await
+                .map_err(|e| ServerError::Internal(format!("Failed to write Cargo.toml: {}", e)))?;
+        }
+
+        Ok(updated)
     }
 
     /// Update relative `path` dependencies in a package's Cargo.toml after it moves
