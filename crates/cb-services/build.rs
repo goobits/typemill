@@ -30,10 +30,10 @@ struct LanguageEntry {
 
 fn main() {
     // Path to languages.toml relative to workspace root
-    let config_path = PathBuf::from("../languages/languages.toml");
+    let config_path = PathBuf::from("../../config/languages/languages.toml");
 
     // Tell Cargo to rerun this script if languages.toml changes
-    println!("cargo:rerun-if-changed=../languages/languages.toml");
+    println!("cargo:rerun-if-changed=../../config/languages/languages.toml");
 
     let config_content = fs::read_to_string(&config_path)
         .expect("Failed to read languages.toml (expected at crates/languages/languages.toml)");

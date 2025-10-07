@@ -223,22 +223,30 @@
 
 **Note:** All file operations use CodeBuddy MCP tools with automatic import updates. The `rename_directory` and `rename_file` tools automatically update all imports across the workspace - **no manual file edits needed**.
 
-### Phase 1: Flatten Language Crates
-**Goal:** Promote language crates to top level
+### Phase 1: Move Language Metadata Files
+**Goal:** Relocate language configuration and documentation files
 
-**MCP Tool:** `batch_execute`
+**MCP Tool:** Individual `rename_file` calls (batch_execute had timeout issues)
 
-```json
-{
-  "operations": [
-    {"type": "rename_file", "old_path": "crates/languages/languages.toml", "new_path": "config/languages/languages.toml"},
-    {"type": "rename_file", "old_path": "crates/languages/check-features.sh", "new_path": "scripts/check-features.sh"},
-    {"type": "rename_file", "old_path": "crates/languages/new-lang.sh", "new_path": "scripts/new-lang.sh"},
-    {"type": "rename_file", "old_path": "crates/languages/README.md", "new_path": "docs/development/languages/README.md"},
-    {"type": "rename_file", "old_path": "crates/languages/SCAFFOLDING.md", "new_path": "docs/development/languages/SCAFFOLDING.md"}
-  ]
-}
+```bash
+# Move config file
+rename_file: crates/languages/languages.toml → config/languages/languages.toml
+
+# Move documentation (scripts already in scripts/)
+rename_file: crates/languages/README.md → docs/development/languages/README.md
+rename_file: crates/languages/PLUGIN_DEVELOPMENT_GUIDE.md → docs/development/languages/PLUGIN_DEVELOPMENT_GUIDE.md
 ```
+
+**Notes:**
+- `check-features.sh` and `new-lang.sh` already exist in `scripts/` directory
+- Build scripts (cb-core, cb-plugin-api, cb-services) will need manual path updates to reference `config/languages/languages.toml`
+
+**Validation:** `cargo check --workspace` (build scripts may fail if not updated)
+
+---
+
+### Phase 2: Promote Language Crates to Flat Structure
+**Goal:** Move all 6 language crates from `crates/languages/*` to `crates/*`
 
 **MCP Tool:** `rename_directory` (6 separate calls - cannot batch directories)
 
@@ -251,11 +259,15 @@ rename_directory: crates/languages/cb-lang-rust → crates/cb-lang-rust
 rename_directory: crates/languages/cb-lang-typescript → crates/cb-lang-typescript
 ```
 
+**Notes:**
+- Each crate will have imports automatically updated by CodeBuddy
+- Empty `crates/languages/` directory can be removed after
+
 **Validation:** `cargo check --workspace`
 
 ---
 
-### Phase 2: Reorganize Workspace Crates
+### Phase 3: Reorganize Workspace Crates
 **Goal:** Rename benchmarks crate, establish flat workspace structure
 
 **MCP Tool:** `rename_directory` (1 call)
@@ -276,7 +288,7 @@ rename_directory: benchmarks → crates/codebuddy-bench
 
 ---
 
-### Phase 3: Split Integration Tests
+### Phase 4: Split Integration Tests
 **Goal:** Create test-support crate, reorganize tests
 
 **MCP Tool:** `batch_execute` (create test-support structure)
@@ -320,7 +332,7 @@ rename_directory: integration-tests/tests → apps/codebuddy/tests
 
 ---
 
-### Phase 4: Organize Documentation
+### Phase 5: Organize Documentation
 **Goal:** Clean up root, organize proposals
 
 **MCP Tool:** `batch_execute`
