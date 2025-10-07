@@ -45,9 +45,6 @@ jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Config
-config = "0.15"
-
 # Testing
 mockall = "0.13"
 
