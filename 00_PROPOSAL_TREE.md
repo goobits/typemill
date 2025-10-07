@@ -74,7 +74,7 @@
 │   ├── cb-types/                  # STAYS
 │   │   ├── src/
 │   │   └── Cargo.toml
-│   ├── cb-lang-common/            # MOVED: from crates/languages/cb-lang-common/
+│   ├── cb-lang-common/            # MOVED: from crates/cb-lang-common/
 │   │   ├── src/
 │   │   └── Cargo.toml
 │   ├── cb-lang-go/                # MOVED: from crates/languages/cb-lang-go/
@@ -251,7 +251,7 @@ rename_file: crates/languages/PLUGIN_DEVELOPMENT_GUIDE.md → docs/development/l
 **MCP Tool:** `rename_directory` (6 separate calls - cannot batch directories)
 
 ```bash
-rename_directory: crates/languages/cb-lang-common → crates/cb-lang-common
+rename_directory: crates/cb-lang-common → crates/cb-lang-common
 rename_directory: crates/languages/cb-lang-go → crates/cb-lang-go
 rename_directory: crates/languages/cb-lang-java → crates/cb-lang-java
 rename_directory: crates/languages/cb-lang-python → crates/cb-lang-python

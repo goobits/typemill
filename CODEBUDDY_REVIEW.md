@@ -60,7 +60,7 @@ The `API_REFERENCE.md` was extremely helpful:
 **Version:** codebuddy v1.0.0-beta
 
 #### Reproduction Steps:
-1. Run dry run: `rename_directory` with `dry_run: true` for `crates/languages/cb-lang-common` → `crates/cb-lang-common`
+1. Run dry run: `rename_directory` with `dry_run: true` for `crates/cb-lang-common` → `crates/cb-lang-common`
    - **Result:** Preview succeeded, showed 17 files to move
 2. Execute actual operation: `rename_directory` without dry_run
    - **Result:** Failed with 13 import update errors

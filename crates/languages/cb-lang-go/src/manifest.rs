@@ -27,12 +27,12 @@
 //!
 //! replace example.com/dependency => ../local/path
 //! ```
-
-use cb_plugin_api::{Dependency, DependencySource, ManifestData, PluginError, PluginResult};
+use cb_plugin_api::{
+    Dependency, DependencySource, ManifestData, PluginError, PluginResult,
+};
 use cb_lang_common::read_manifest;
 use std::path::Path;
 use tracing::{debug, warn};
-
 /// Represents a parsed go.mod file structure
 #[derive(Debug, Clone)]
 struct GoMod {
@@ -42,7 +42,6 @@ struct GoMod {
     replaces: Vec<GoReplace>,
     excludes: Vec<GoExclude>,
 }
-
 /// A require directive
 #[derive(Debug, Clone)]
 struct GoRequire {
@@ -50,7 +49,6 @@ struct GoRequire {
     version: String,
     indirect: bool,
 }
-
 /// A replace directive
 #[derive(Debug, Clone)]
 struct GoReplace {
@@ -59,87 +57,54 @@ struct GoReplace {
     new_path: String,
     new_version: Option<String>,
 }
-
 /// An exclude directive
 #[derive(Debug, Clone)]
 struct GoExclude {
     path: String,
     version: String,
 }
-
 /// Parse a go.mod file and extract manifest information
 pub fn parse_go_mod(content: &str) -> PluginResult<ManifestData> {
     debug!("Parsing go.mod content");
-
     let go_mod = parse_go_mod_internal(content)?;
-
-    // Convert requires to dependencies
     let mut dependencies = Vec::new();
     let mut dev_dependencies = Vec::new();
-
     for require in go_mod.requires.iter() {
         let dep = Dependency {
             name: require.path.clone(),
             source: DependencySource::Version(require.version.clone()),
         };
-
-        // In Go, indirect dependencies are like dev dependencies
         if require.indirect {
             dev_dependencies.push(dep);
         } else {
             dependencies.push(dep);
         }
     }
-
-    // Apply replacements to dependencies
     for replace in go_mod.replaces.iter() {
         apply_replacement(&mut dependencies, replace);
         apply_replacement(&mut dev_dependencies, replace);
     }
-
     debug!(
-        module = %go_mod.module,
-        dependencies_count = dependencies.len(),
-        dev_dependencies_count = dev_dependencies.len(),
-        "Parsed go.mod successfully"
+        module = % go_mod.module, dependencies_count = dependencies.len(),
+        dev_dependencies_count = dev_dependencies.len(), "Parsed go.mod successfully"
     );
-
     Ok(ManifestData {
         name: go_mod.module.clone(),
-        version: go_mod
-            .go_version
-            .clone()
-            .unwrap_or_else(|| "1.0.0".to_string()),
+        version: go_mod.go_version.clone().unwrap_or_else(|| "1.0.0".to_string()),
         dependencies,
         dev_dependencies,
-        raw_data: serde_json::json!({
-            "module": go_mod.module,
-            "go_version": go_mod.go_version,
-            "requires": go_mod.requires.iter().map(|r| {
-                serde_json::json!({
-                    "path": r.path,
-                    "version": r.version,
-                    "indirect": r.indirect
-                })
-            }).collect::<Vec<_>>(),
-            "replaces": go_mod.replaces.iter().map(|r| {
-                serde_json::json!({
-                    "old_path": r.old_path,
-                    "old_version": r.old_version,
-                    "new_path": r.new_path,
-                    "new_version": r.new_version
-                })
-            }).collect::<Vec<_>>(),
-            "excludes": go_mod.excludes.iter().map(|e| {
-                serde_json::json!({
-                    "path": e.path,
-                    "version": e.version
-                })
-            }).collect::<Vec<_>>(),
-        }),
+        raw_data: serde_json::json!(
+            { "module" : go_mod.module, "go_version" : go_mod.go_version, "requires" :
+            go_mod.requires.iter().map(| r | { serde_json::json!({ "path" : r.path,
+            "version" : r.version, "indirect" : r.indirect }) }).collect::< Vec < _ >>
+            (), "replaces" : go_mod.replaces.iter().map(| r | { serde_json::json!({
+            "old_path" : r.old_path, "old_version" : r.old_version, "new_path" : r
+            .new_path, "new_version" : r.new_version }) }).collect::< Vec < _ >> (),
+            "excludes" : go_mod.excludes.iter().map(| e | { serde_json::json!({ "path" :
+            e.path, "version" : e.version }) }).collect::< Vec < _ >> (), }
+        ),
     })
 }
-
 /// Internal parser for go.mod files
 fn parse_go_mod_internal(content: &str) -> PluginResult<GoMod> {
     let mut module = String::new();
@@ -147,54 +112,39 @@ fn parse_go_mod_internal(content: &str) -> PluginResult<GoMod> {
     let mut requires = Vec::new();
     let mut replaces = Vec::new();
     let mut excludes = Vec::new();
-
     let mut lines = content.lines().peekable();
-
     while let Some(line) = lines.next() {
         let line = line.trim();
-
-        // Skip empty lines and comments
         if line.is_empty() || line.starts_with("//") {
             continue;
         }
-
-        // Parse directive type
         if line.starts_with("module ") {
             module = parse_module_directive(line)?;
         } else if line.starts_with("go ") {
             go_version = Some(parse_go_directive(line)?);
         } else if line.starts_with("require ") {
             if line.contains('(') {
-                // Multi-line require block
                 requires.extend(parse_require_block(&mut lines)?);
             } else {
-                // Single-line require
                 requires.push(parse_require_line(line)?);
             }
         } else if line.starts_with("replace ") {
             if line.contains('(') {
-                // Multi-line replace block
                 replaces.extend(parse_replace_block(&mut lines)?);
             } else {
-                // Single-line replace
                 replaces.push(parse_replace_line(line)?);
             }
         } else if line.starts_with("exclude ") {
             if line.contains('(') {
-                // Multi-line exclude block
                 excludes.extend(parse_exclude_block(&mut lines)?);
             } else {
-                // Single-line exclude
                 excludes.push(parse_exclude_line(line)?);
             }
         }
-        // Ignore retract directives for now (not relevant for dependency management)
     }
-
     if module.is_empty() {
         return Err(PluginError::manifest("Missing module directive in go.mod"));
     }
-
     Ok(GoMod {
         module,
         go_version,
@@ -203,7 +153,6 @@ fn parse_go_mod_internal(content: &str) -> PluginResult<GoMod> {
         excludes,
     })
 }
-
 /// Parse module directive: "module example.com/mymodule"
 fn parse_module_directive(line: &str) -> PluginResult<String> {
     let parts: Vec<&str> = line.split_whitespace().collect();
@@ -212,7 +161,6 @@ fn parse_module_directive(line: &str) -> PluginResult<String> {
     }
     Ok(parts[1].to_string())
 }
-
 /// Parse go directive: "go 1.21"
 fn parse_go_directive(line: &str) -> PluginResult<String> {
     let parts: Vec<&str> = line.split_whitespace().collect();
@@ -221,89 +169,65 @@ fn parse_go_directive(line: &str) -> PluginResult<String> {
     }
     Ok(parts[1].to_string())
 }
-
 /// Parse a single require line: "require example.com/pkg v1.2.3"
 fn parse_require_line(line: &str) -> PluginResult<GoRequire> {
     let line = line.trim_start_matches("require").trim();
     parse_require_entry(line)
 }
-
 /// Parse a require entry (without the "require" keyword)
 fn parse_require_entry(entry: &str) -> PluginResult<GoRequire> {
     let parts: Vec<&str> = entry.split_whitespace().collect();
-
     if parts.len() < 2 {
-        return Err(PluginError::manifest(format!(
-            "Invalid require entry: {}",
-            entry
-        )));
+        return Err(PluginError::manifest(format!("Invalid require entry: {}", entry)));
     }
-
     let path = parts[0].to_string();
     let version = parts[1].to_string();
     let indirect = parts.get(2).is_some_and(|&s| s == "//indirect");
-
     Ok(GoRequire {
         path,
         version,
         indirect,
     })
 }
-
 /// Parse a multi-line require block
-fn parse_require_block<'a, I>(lines: &mut std::iter::Peekable<I>) -> PluginResult<Vec<GoRequire>>
+fn parse_require_block<'a, I>(
+    lines: &mut std::iter::Peekable<I>,
+) -> PluginResult<Vec<GoRequire>>
 where
     I: Iterator<Item = &'a str>,
 {
     let mut requires = Vec::new();
-
     while let Some(&line) = lines.peek() {
         let line = line.trim();
-
         if line.is_empty() || line.starts_with("//") {
             lines.next();
             continue;
         }
-
         if line == ")" {
             lines.next();
             break;
         }
-
         requires.push(parse_require_entry(line)?);
         lines.next();
     }
-
     Ok(requires)
 }
-
 /// Parse a single replace line: "replace old => new"
 fn parse_replace_line(line: &str) -> PluginResult<GoReplace> {
     let line = line.trim_start_matches("replace").trim();
     parse_replace_entry(line)
 }
-
 /// Parse a replace entry (without the "replace" keyword)
 fn parse_replace_entry(entry: &str) -> PluginResult<GoReplace> {
     let parts: Vec<&str> = entry.split("=>").collect();
-
     if parts.len() != 2 {
-        return Err(PluginError::manifest(format!(
-            "Invalid replace entry: {}",
-            entry
-        )));
+        return Err(PluginError::manifest(format!("Invalid replace entry: {}", entry)));
     }
-
     let old_parts: Vec<&str> = parts[0].split_whitespace().collect();
     let new_parts: Vec<&str> = parts[1].split_whitespace().collect();
-
     if old_parts.is_empty() || new_parts.is_empty() {
-        return Err(PluginError::manifest(format!(
-            "Invalid replace entry: {}",
-            entry
-        )));
+        return Err(PluginError::manifest(format!("Invalid replace entry: {}", entry)));
     }
-
     Ok(GoReplace {
         old_path: old_parts[0].to_string(),
         old_version: old_parts.get(1).map(|s| s.to_string()),
@@ -311,89 +235,72 @@ fn parse_replace_entry(entry: &str) -> PluginResult<GoReplace> {
         new_version: new_parts.get(1).map(|s| s.to_string()),
     })
 }
-
 /// Parse a multi-line replace block
-fn parse_replace_block<'a, I>(lines: &mut std::iter::Peekable<I>) -> PluginResult<Vec<GoReplace>>
+fn parse_replace_block<'a, I>(
+    lines: &mut std::iter::Peekable<I>,
+) -> PluginResult<Vec<GoReplace>>
 where
     I: Iterator<Item = &'a str>,
 {
     let mut replaces = Vec::new();
-
     while let Some(&line) = lines.peek() {
         let line = line.trim();
-
         if line.is_empty() || line.starts_with("//") {
             lines.next();
             continue;
         }
-
         if line == ")" {
             lines.next();
             break;
         }
-
         replaces.push(parse_replace_entry(line)?);
         lines.next();
     }
-
     Ok(replaces)
 }
-
 /// Parse a single exclude line: "exclude example.com/pkg v1.2.3"
 fn parse_exclude_line(line: &str) -> PluginResult<GoExclude> {
     let line = line.trim_start_matches("exclude").trim();
     parse_exclude_entry(line)
 }
-
 /// Parse an exclude entry (without the "exclude" keyword)
 fn parse_exclude_entry(entry: &str) -> PluginResult<GoExclude> {
     let parts: Vec<&str> = entry.split_whitespace().collect();
-
     if parts.len() < 2 {
-        return Err(PluginError::manifest(format!(
-            "Invalid exclude entry: {}",
-            entry
-        )));
+        return Err(PluginError::manifest(format!("Invalid exclude entry: {}", entry)));
     }
-
     Ok(GoExclude {
         path: parts[0].to_string(),
         version: parts[1].to_string(),
     })
 }
-
 /// Parse a multi-line exclude block
-fn parse_exclude_block<'a, I>(lines: &mut std::iter::Peekable<I>) -> PluginResult<Vec<GoExclude>>
+fn parse_exclude_block<'a, I>(
+    lines: &mut std::iter::Peekable<I>,
+) -> PluginResult<Vec<GoExclude>>
 where
     I: Iterator<Item = &'a str>,
 {
     let mut excludes = Vec::new();
-
     while let Some(&line) = lines.peek() {
         let line = line.trim();
-
         if line.is_empty() || line.starts_with("//") {
             lines.next();
             continue;
         }
-
         if line == ")" {
             lines.next();
             break;
         }
-
         excludes.push(parse_exclude_entry(line)?);
         lines.next();
     }
-
     Ok(excludes)
 }
-
 /// Apply a replacement to a dependency list
 fn apply_replacement(dependencies: &mut [Dependency], replace: &GoReplace) {
     for dep in dependencies.iter_mut() {
         if dep.name == replace.old_path {
-            // Check if version matches (if specified)
             if let Some(ref old_version) = replace.old_version {
                 if let DependencySource::Version(ref version) = dep.source {
                     if version != old_version {
@@ -401,57 +308,45 @@ fn apply_replacement(dependencies: &mut [Dependency], replace: &GoReplace) {
                     }
                 }
             }
-
-            // Apply replacement
             if replace.new_path.starts_with('.') || replace.new_path.starts_with('/') {
-                // Local path replacement
                 dep.source = DependencySource::Path(replace.new_path.clone());
             } else if let Some(ref new_version) = replace.new_version {
-                // Module replacement with version
                 dep.name = replace.new_path.clone();
                 dep.source = DependencySource::Version(new_version.clone());
             } else {
-                // Module replacement without version (keep existing version)
                 dep.name = replace.new_path.clone();
             }
         }
     }
 }
-
 /// Update a dependency version in go.mod content
-pub fn update_dependency(content: &str, dep_name: &str, new_version: &str) -> PluginResult<String> {
+pub fn update_dependency(
+    content: &str,
+    dep_name: &str,
+    new_version: &str,
+) -> PluginResult<String> {
     debug!(
-        dependency = %dep_name,
-        version = %new_version,
-        "Updating dependency in go.mod"
+        dependency = % dep_name, version = % new_version, "Updating dependency in go.mod"
     );
-
     let lines: Vec<&str> = content.lines().collect();
     let mut result = Vec::new();
     let mut in_require_block = false;
     let mut found = false;
-
     for line in lines {
         let trimmed = line.trim();
-
-        // Track if we're in a require block
         if trimmed.starts_with("require (") {
             in_require_block = true;
             result.push(line.to_string());
             continue;
         }
-
         if in_require_block && trimmed == ")" {
             in_require_block = false;
             result.push(line.to_string());
             continue;
         }
-
-        // Check if this line contains the dependency
         if trimmed.starts_with(&format!("{} ", dep_name))
             || (in_require_block && trimmed.starts_with(dep_name))
         {
-            // Replace version
             let parts: Vec<&str> = trimmed.split_whitespace().collect();
             if parts.len() >= 2 {
                 let indent = line.len() - line.trim_start().len();
@@ -461,43 +356,34 @@ pub fn update_dependency(content: &str, dep_name: &str, new_version: &str) -> Pl
                 } else {
                     String::new()
                 };
-
                 result.push(format!("{}{} {}{}", prefix, dep_name, new_version, suffix));
                 found = true;
                 continue;
             }
         }
-
         result.push(line.to_string());
     }
-
     if !found {
-        warn!(dependency = %dep_name, "Dependency not found in go.mod");
-        return Err(PluginError::manifest(format!(
-            "Dependency {} not found in go.mod",
-            dep_name
-        )));
+        warn!(dependency = % dep_name, "Dependency not found in go.mod");
+        return Err(
+            PluginError::manifest(format!("Dependency {} not found in go.mod", dep_name)),
+        );
     }
-
     Ok(result.join("\n"))
 }
-
 /// Generate a new go.mod file
 #[allow(dead_code)]
 pub fn generate_manifest(module_name: &str, go_version: &str) -> String {
     format!("module {}\n\ngo {}\n", module_name, go_version)
 }
-
 /// Load and parse a go.mod file from a path
 pub async fn load_go_mod(path: &Path) -> PluginResult<ManifestData> {
     let content = read_manifest(path).await?;
     parse_go_mod(&content)
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn test_parse_simple_go_mod() {
         let content = r#"
@@ -510,18 +396,15 @@ require (
     another.module/pkg v0.1.0
 )
 "#;
-
         let manifest = parse_go_mod(content).unwrap();
         assert_eq!(manifest.name, "example.com/mymodule");
         assert_eq!(manifest.version, "1.21");
         assert_eq!(manifest.dependencies.len(), 2);
-
-        assert!(manifest.dependencies.iter().any(|d| {
-            d.name == "example.com/dependency"
-                && matches!(&d.source, DependencySource::Version(v) if v == "v1.2.3")
-        }));
+        assert!(
+            manifest.dependencies.iter().any(| d | { d.name == "example.com/dependency"
+            && matches!(& d.source, DependencySource::Version(v) if v == "v1.2.3") })
+        );
     }
-
     #[test]
     fn test_parse_go_mod_with_replace() {
         let content = r#"
@@ -535,15 +418,14 @@ require (
 
 replace example.com/dependency => ../local/path
 "#;
-
         let manifest = parse_go_mod(content).unwrap();
         assert_eq!(manifest.dependencies.len(), 1);
-
         let dep = &manifest.dependencies[0];
         assert_eq!(dep.name, "example.com/dependency");
-        assert!(matches!(&dep.source, DependencySource::Path(p) if p == "../local/path"));
+        assert!(
+            matches!(& dep.source, DependencySource::Path(p) if p == "../local/path")
+        );
     }
-
     #[test]
     fn test_parse_go_mod_with_indirect() {
         let content = r#"
@@ -556,15 +438,12 @@ require (
     example.com/indirect v0.1.0 //indirect
 )
 "#;
-
         let manifest = parse_go_mod(content).unwrap();
         assert_eq!(manifest.dependencies.len(), 1);
         assert_eq!(manifest.dev_dependencies.len(), 1);
-
         assert_eq!(manifest.dependencies[0].name, "example.com/direct");
         assert_eq!(manifest.dev_dependencies[0].name, "example.com/indirect");
     }
-
     #[test]
     fn test_update_dependency() {
         let content = r#"module example.com/mymodule
@@ -576,19 +455,17 @@ require (
     another.module/pkg v0.1.0
 )
 "#;
-
-        let result = update_dependency(content, "example.com/dependency", "v1.3.0").unwrap();
+        let result = update_dependency(content, "example.com/dependency", "v1.3.0")
+            .unwrap();
         assert!(result.contains("example.com/dependency v1.3.0"));
-        assert!(!result.contains("v1.2.3"));
+        assert!(! result.contains("v1.2.3"));
     }
-
     #[test]
     fn test_generate_manifest() {
         let result = generate_manifest("example.com/mymodule", "1.21");
         assert!(result.contains("module example.com/mymodule"));
         assert!(result.contains("go 1.21"));
     }
-
     #[test]
     fn test_parse_single_line_require() {
         let content = r#"
@@ -598,12 +475,10 @@ go 1.21
 
 require example.com/dependency v1.2.3
 "#;
-
         let manifest = parse_go_mod(content).unwrap();
         assert_eq!(manifest.dependencies.len(), 1);
         assert_eq!(manifest.dependencies[0].name, "example.com/dependency");
     }
-
     #[test]
     fn test_parse_replace_with_version() {
         let content = r#"
@@ -617,15 +492,12 @@ require (
 
 replace example.com/dependency v1.2.3 => example.com/fork v1.2.4
 "#;
-
         let manifest = parse_go_mod(content).unwrap();
         assert_eq!(manifest.dependencies.len(), 1);
-
         let dep = &manifest.dependencies[0];
         assert_eq!(dep.name, "example.com/fork");
-        assert!(matches!(&dep.source, DependencySource::Version(v) if v == "v1.2.4"));
+        assert!(matches!(& dep.source, DependencySource::Version(v) if v == "v1.2.4"));
     }
-
     #[test]
     fn test_parse_exclude() {
         let content = r#"
@@ -639,12 +511,8 @@ require (
 
 exclude example.com/dependency v1.2.0
 "#;
-
-        // Excludes don't affect the final dependency list
         let manifest = parse_go_mod(content).unwrap();
         assert_eq!(manifest.dependencies.len(), 1);
-
-        // But they should be in raw_data
         let raw = &manifest.raw_data;
         assert!(raw["excludes"].as_array().unwrap().len() == 1);
     }

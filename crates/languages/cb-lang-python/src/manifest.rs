@@ -5,48 +5,38 @@
 //! - pyproject.toml (Poetry, PDM, setuptools)
 //! - setup.py (legacy setuptools)
 //! - Pipfile (Pipenv)
-
-use cb_plugin_api::{Dependency, DependencySource, ManifestData, PluginError, PluginResult};
+use cb_plugin_api::{
+    Dependency, DependencySource, ManifestData, PluginError, PluginResult,
+};
 use cb_lang_common::read_manifest;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 use std::path::Path;
 use tracing::{debug, warn};
-
 /// Parse requirements.txt file
 ///
 /// Format: package==version or package>=version or package
 pub async fn parse_requirements_txt(path: &Path) -> PluginResult<ManifestData> {
     let content = read_manifest(path).await?;
-
     let mut dependencies = Vec::new();
     let dev_dependencies = Vec::new();
-
     for line in content.lines() {
         let line = line.trim();
-
-        // Skip comments and empty lines
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-
-        // Parse dependency spec
         if let Some((name, version)) = parse_requirement_line(line) {
-            // requirements.txt doesn't distinguish dev deps, so all go in main
-            dependencies.push(Dependency {
-                name,
-                source: DependencySource::Version(version),
-            });
+            dependencies
+                .push(Dependency {
+                    name,
+                    source: DependencySource::Version(version),
+                });
         }
     }
-
     debug!(
-        dependencies_count = dependencies.len(),
-        path = ?path,
-        "Parsed requirements.txt"
+        dependencies_count = dependencies.len(), path = ? path, "Parsed requirements.txt"
     );
-
     Ok(ManifestData {
         name: path
             .parent()
@@ -54,31 +44,26 @@ pub async fn parse_requirements_txt(path: &Path) -> PluginResult<ManifestData> {
             .and_then(|n| n.to_str())
             .unwrap_or("python-project")
             .to_string(),
-        version: "0.1.0".to_string(), // requirements.txt doesn't specify project version
+        version: "0.1.0".to_string(),
         dependencies,
         dev_dependencies,
-        raw_data: json!({ "format": "requirements.txt" }),
+        raw_data: json!({ "format" : "requirements.txt" }),
     })
 }
-
 /// Parse a single requirement line
 ///
 /// Supports: package==1.0.0, package>=1.0.0, package, package[extras]
 fn parse_requirement_line(line: &str) -> Option<(String, String)> {
     let line = line.trim();
-
-    // Handle extras: package[extra]==1.0.0
     let clean_line = if let Some(bracket_pos) = line.find('[') {
         if let Some(bracket_end) = line.find(']') {
-            format!("{}{}", &line[..bracket_pos], &line[bracket_end + 1..])
+            format!("{}{}", & line[..bracket_pos], & line[bracket_end + 1..])
         } else {
             line.to_string()
         }
     } else {
         line.to_string()
     };
-
-    // Try to parse version specifier
     for sep in &["==", ">=", "<=", "~=", ">", "<", "!="] {
         if let Some(pos) = clean_line.find(sep) {
             let name = clean_line[..pos].trim().to_string();
@@ -86,124 +71,115 @@ fn parse_requirement_line(line: &str) -> Option<(String, String)> {
             return Some((name, version));
         }
     }
-
-    // No version specified
     if !clean_line.is_empty() {
         Some((clean_line.trim().to_string(), "*".to_string()))
     } else {
         None
     }
 }
-
 /// Parse pyproject.toml file
 ///
 /// Supports both Poetry and PDM formats
 pub async fn parse_pyproject_toml(path: &Path) -> PluginResult<ManifestData> {
     let content = read_manifest(path).await?;
-
     let toml: PyProjectToml = toml::from_str(&content)
-        .map_err(|e| PluginError::parse(format!("Failed to parse pyproject.toml: {}", e)))?;
-
-    // Extract project metadata
+        .map_err(|e| PluginError::parse(
+            format!("Failed to parse pyproject.toml: {}", e),
+        ))?;
     let name = toml
         .project
         .as_ref()
         .and_then(|p| p.name.clone())
-        .or_else(|| toml.tool.as_ref().and_then(|t| t.poetry.as_ref().and_then(|p| p.name.clone())))
+        .or_else(|| {
+            toml.tool
+                .as_ref()
+                .and_then(|t| t.poetry.as_ref().and_then(|p| p.name.clone()))
+        })
         .unwrap_or_else(|| "python-project".to_string());
-
     let version = toml
         .project
         .as_ref()
         .and_then(|p| p.version.clone())
-        .or_else(|| toml.tool.as_ref().and_then(|t| t.poetry.as_ref().and_then(|p| p.version.clone())))
+        .or_else(|| {
+            toml.tool
+                .as_ref()
+                .and_then(|t| t.poetry.as_ref().and_then(|p| p.version.clone()))
+        })
         .unwrap_or_else(|| "0.1.0".to_string());
-
-    // Extract dependencies (try Poetry format first, then PEP 621)
     let mut dependencies = Vec::new();
     let mut dev_dependencies = Vec::new();
-
     if let Some(tool) = &toml.tool {
         if let Some(poetry) = &tool.poetry {
-            // Poetry format
             if let Some(deps) = &poetry.dependencies {
                 for (name, spec) in deps {
                     if name != "python" {
                         let version = dependency_spec_to_version(spec);
-                        dependencies.push(Dependency {
-                            name: name.clone(),
-                            source: DependencySource::Version(version),
-                        });
+                        dependencies
+                            .push(Dependency {
+                                name: name.clone(),
+                                source: DependencySource::Version(version),
+                            });
                     }
                 }
             }
-
             if let Some(dev_deps) = &poetry.dev_dependencies {
                 for (name, spec) in dev_deps {
                     let version = dependency_spec_to_version(spec);
-                    dev_dependencies.push(Dependency {
-                        name: name.clone(),
-                        source: DependencySource::Version(version),
-                    });
+                    dev_dependencies
+                        .push(Dependency {
+                            name: name.clone(),
+                            source: DependencySource::Version(version),
+                        });
                 }
             }
         }
     }
-
-    // PEP 621 format (fallback)
     if dependencies.is_empty() {
         if let Some(project) = &toml.project {
             if let Some(deps) = &project.dependencies {
                 for dep in deps {
                     if let Some((name, version)) = parse_requirement_line(dep) {
-                        dependencies.push(Dependency {
-                            name,
-                            source: DependencySource::Version(version),
-                        });
+                        dependencies
+                            .push(Dependency {
+                                name,
+                                source: DependencySource::Version(version),
+                            });
                     }
                 }
             }
         }
     }
-
     debug!(
-        name = %name,
-        version = %version,
-        dependencies_count = dependencies.len(),
-        dev_dependencies_count = dev_dependencies.len(),
-        "Parsed pyproject.toml"
+        name = % name, version = % version, dependencies_count = dependencies.len(),
+        dev_dependencies_count = dev_dependencies.len(), "Parsed pyproject.toml"
     );
-
     Ok(ManifestData {
         name,
         version,
         dependencies,
         dev_dependencies,
-        raw_data: json!({ "format": "pyproject.toml" }),
+        raw_data: json!({ "format" : "pyproject.toml" }),
     })
 }
-
 /// Convert Poetry/PDM dependency spec to version string
 fn dependency_spec_to_version(spec: &DependencySpec) -> String {
     match spec {
         DependencySpec::Simple(version) => version.clone(),
-        DependencySpec::Detailed(details) => details.version.clone().unwrap_or_else(|| "*".to_string()),
+        DependencySpec::Detailed(details) => {
+            details.version.clone().unwrap_or_else(|| "*".to_string())
+        }
     }
 }
-
 /// Parse setup.py file
 ///
 /// Extracts basic metadata and dependencies from setup.py
 /// Note: This is a best-effort parser for common setup.py patterns
 pub async fn parse_setup_py(path: &Path) -> PluginResult<ManifestData> {
     let content = read_manifest(path).await?;
-
     let mut name = "python-project".to_string();
     let mut version = "0.1.0".to_string();
     let mut dependencies = Vec::new();
     let mut dev_dependencies = Vec::new();
-
-    // Extract name from setup(name="...")
     if let Some(name_match) = regex::Regex::new(r#"name\s*=\s*["']([^"']+)["']"#)
         .unwrap()
         .captures(&content)
@@ -212,8 +188,6 @@ pub async fn parse_setup_py(path: &Path) -> PluginResult<ManifestData> {
             name = n.as_str().to_string();
         }
     }
-
-    // Extract version from setup(version="...")
     if let Some(version_match) = regex::Regex::new(r#"version\s*=\s*["']([^"']+)["']"#)
         .unwrap()
         .captures(&content)
@@ -222,130 +196,107 @@ pub async fn parse_setup_py(path: &Path) -> PluginResult<ManifestData> {
             version = v.as_str().to_string();
         }
     }
-
-    // Extract install_requires dependencies
-    if let Some(install_requires) = extract_list_from_setup(&content, "install_requires") {
+    if let Some(install_requires) = extract_list_from_setup(
+        &content,
+        "install_requires",
+    ) {
         for dep in install_requires {
             if let Some((dep_name, dep_version)) = parse_requirement_line(&dep) {
-                dependencies.push(Dependency {
-                    name: dep_name,
-                    source: DependencySource::Version(dep_version),
-                });
+                dependencies
+                    .push(Dependency {
+                        name: dep_name,
+                        source: DependencySource::Version(dep_version),
+                    });
             }
         }
     }
-
-    // Extract extras_require dependencies (treat as dev dependencies)
     if let Some(extras_require) = extract_list_from_setup(&content, "extras_require") {
         for dep in extras_require {
             if let Some((dep_name, dep_version)) = parse_requirement_line(&dep) {
-                dev_dependencies.push(Dependency {
-                    name: dep_name,
-                    source: DependencySource::Version(dep_version),
-                });
+                dev_dependencies
+                    .push(Dependency {
+                        name: dep_name,
+                        source: DependencySource::Version(dep_version),
+                    });
             }
         }
     }
-
     debug!(
-        name = %name,
-        version = %version,
-        dependencies_count = dependencies.len(),
-        dev_dependencies_count = dev_dependencies.len(),
-        "Parsed setup.py"
+        name = % name, version = % version, dependencies_count = dependencies.len(),
+        dev_dependencies_count = dev_dependencies.len(), "Parsed setup.py"
     );
-
     Ok(ManifestData {
         name,
         version,
         dependencies,
         dev_dependencies,
-        raw_data: json!({ "format": "setup.py" }),
+        raw_data: json!({ "format" : "setup.py" }),
     })
 }
-
 /// Extract list values from setup() call
 fn extract_list_from_setup(content: &str, key: &str) -> Option<Vec<String>> {
     let pattern = format!(r#"{}\s*=\s*\[(.*?)\]"#, regex::escape(key));
     let re = regex::Regex::new(&pattern).ok()?;
-
     let captures = re.captures(content)?;
     let list_content = captures.get(1)?.as_str();
-
     let mut items = Vec::new();
     for item in list_content.split(',') {
         let item = item.trim();
-        // Remove quotes
         let item = item.trim_matches(|c| c == '"' || c == '\'');
         if !item.is_empty() {
             items.push(item.to_string());
         }
     }
-
     Some(items)
 }
-
 /// Parse Pipfile
 ///
 /// Pipfile uses TOML-like format for dependency management
 pub async fn parse_pipfile(path: &Path) -> PluginResult<ManifestData> {
     let content = read_manifest(path).await?;
-
     let pipfile: PipfileFormat = toml::from_str(&content)
         .map_err(|e| PluginError::parse(format!("Failed to parse Pipfile: {}", e)))?;
-
-    // Extract project name from directory
     let name = path
         .parent()
         .and_then(|p| p.file_name())
         .and_then(|n| n.to_str())
         .unwrap_or("python-project")
         .to_string();
-
-    let version = "0.1.0".to_string(); // Pipfile doesn't specify version
-
+    let version = "0.1.0".to_string();
     let mut dependencies = Vec::new();
     let mut dev_dependencies = Vec::new();
-
-    // Parse regular packages
     if let Some(packages) = pipfile.packages {
         for (name, spec) in packages {
             let version = pipfile_spec_to_version(&spec);
-            dependencies.push(Dependency {
-                name,
-                source: DependencySource::Version(version),
-            });
+            dependencies
+                .push(Dependency {
+                    name,
+                    source: DependencySource::Version(version),
+                });
         }
     }
-
-    // Parse dev-packages
     if let Some(dev_packages) = pipfile.dev_packages {
         for (name, spec) in dev_packages {
             let version = pipfile_spec_to_version(&spec);
-            dev_dependencies.push(Dependency {
-                name,
-                source: DependencySource::Version(version),
-            });
+            dev_dependencies
+                .push(Dependency {
+                    name,
+                    source: DependencySource::Version(version),
+                });
         }
     }
-
     debug!(
-        name = %name,
-        version = %version,
-        dependencies_count = dependencies.len(),
-        dev_dependencies_count = dev_dependencies.len(),
-        "Parsed Pipfile"
+        name = % name, version = % version, dependencies_count = dependencies.len(),
+        dev_dependencies_count = dev_dependencies.len(), "Parsed Pipfile"
     );
-
     Ok(ManifestData {
         name,
         version,
         dependencies,
         dev_dependencies,
-        raw_data: json!({ "format": "Pipfile" }),
+        raw_data: json!({ "format" : "Pipfile" }),
     })
 }
-
 /// Convert Pipfile dependency spec to version string
 fn pipfile_spec_to_version(spec: &PipfileSpec) -> String {
     match spec {
@@ -359,7 +310,6 @@ fn pipfile_spec_to_version(spec: &PipfileSpec) -> String {
         }
     }
 }
-
 /// Update a dependency in requirements.txt
 pub async fn update_requirements_txt(
     path: &Path,
@@ -368,17 +318,12 @@ pub async fn update_requirements_txt(
     new_version: Option<&str>,
 ) -> PluginResult<String> {
     let content = read_manifest(path).await?;
-
     let mut lines = Vec::new();
     let mut updated = false;
-
     for line in content.lines() {
         let trimmed = line.trim();
-
-        // Check if this line contains the old dependency
         if let Some((name, _version)) = parse_requirement_line(trimmed) {
             if name == old_name {
-                // Update this line
                 let new_line = if let Some(ver) = new_version {
                     format!("{}=={}", new_name, ver)
                 } else {
@@ -389,22 +334,16 @@ pub async fn update_requirements_txt(
                 continue;
             }
         }
-
-        // Keep the line as-is
         lines.push(line.to_string());
     }
-
     if !updated {
         warn!(
-            old_name = %old_name,
-            path = ?path,
+            old_name = % old_name, path = ? path,
             "Dependency not found in requirements.txt"
         );
     }
-
     Ok(lines.join("\n") + "\n")
 }
-
 /// Update a dependency in pyproject.toml
 pub async fn update_pyproject_toml(
     path: &Path,
@@ -413,13 +352,11 @@ pub async fn update_pyproject_toml(
     new_version: Option<&str>,
 ) -> PluginResult<String> {
     let content = read_manifest(path).await?;
-
     let mut toml: toml::Value = toml::from_str(&content)
-        .map_err(|e| PluginError::parse(format!("Failed to parse pyproject.toml: {}", e)))?;
-
+        .map_err(|e| PluginError::parse(
+            format!("Failed to parse pyproject.toml: {}", e),
+        ))?;
     let mut updated = false;
-
-    // Try updating Poetry dependencies
     if let Some(tool) = toml.get_mut("tool") {
         if let Some(poetry) = tool.get_mut("poetry") {
             if let Some(deps) = poetry.get_mut("dependencies") {
@@ -436,7 +373,6 @@ pub async fn update_pyproject_toml(
                     }
                 }
             }
-
             if let Some(dev_deps) = poetry.get_mut("dev-dependencies") {
                 if let Some(dev_deps_table) = dev_deps.as_table_mut() {
                     if dev_deps_table.contains_key(old_name) {
@@ -453,8 +389,6 @@ pub async fn update_pyproject_toml(
             }
         }
     }
-
-    // Try updating PEP 621 dependencies
     if !updated {
         if let Some(project) = toml.get_mut("project") {
             if let Some(deps) = project.get_mut("dependencies") {
@@ -477,21 +411,17 @@ pub async fn update_pyproject_toml(
             }
         }
     }
-
     if !updated {
         warn!(
-            old_name = %old_name,
-            path = ?path,
+            old_name = % old_name, path = ? path,
             "Dependency not found in pyproject.toml"
         );
     }
-
     toml::to_string(&toml)
-        .map_err(|e| PluginError::internal(format!("Failed to serialize pyproject.toml: {}", e)))
+        .map_err(|e| PluginError::internal(
+            format!("Failed to serialize pyproject.toml: {}", e),
+        ))
 }
-
-// TOML data structures
-
 #[derive(Debug, Deserialize, Serialize)]
 struct PyProjectToml {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -499,7 +429,6 @@ struct PyProjectToml {
     #[serde(skip_serializing_if = "Option::is_none")]
     tool: Option<ToolConfig>,
 }
-
 #[derive(Debug, Deserialize, Serialize)]
 struct ProjectMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -509,13 +438,11 @@ struct ProjectMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     dependencies: Option<Vec<String>>,
 }
-
 #[derive(Debug, Deserialize, Serialize)]
 struct ToolConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     poetry: Option<PoetryConfig>,
 }
-
 #[derive(Debug, Deserialize, Serialize)]
 struct PoetryConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -527,14 +454,12 @@ struct PoetryConfig {
     #[serde(skip_serializing_if = "Option::is_none", rename = "dev-dependencies")]
     dev_dependencies: Option<HashMap<String, DependencySpec>>,
 }
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(untagged)]
 enum DependencySpec {
     Simple(String),
     Detailed(DetailedDependency),
 }
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct DetailedDependency {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -544,9 +469,6 @@ struct DetailedDependency {
     #[serde(skip_serializing_if = "Option::is_none")]
     git: Option<String>,
 }
-
-// Pipfile data structures
-
 #[derive(Debug, Deserialize, Serialize)]
 struct PipfileFormat {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -554,14 +476,12 @@ struct PipfileFormat {
     #[serde(skip_serializing_if = "Option::is_none", rename = "dev-packages")]
     dev_packages: Option<HashMap<String, PipfileSpec>>,
 }
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(untagged)]
 enum PipfileSpec {
     Simple(String),
     Detailed(PipfileDetailedDependency),
 }
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct PipfileDetailedDependency {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -571,58 +491,48 @@ struct PipfileDetailedDependency {
     #[serde(skip_serializing_if = "Option::is_none")]
     git: Option<String>,
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
-
     #[test]
     fn test_parse_requirement_line() {
         assert_eq!(
-            parse_requirement_line("django==3.2.0"),
-            Some(("django".to_string(), "3.2.0".to_string()))
+            parse_requirement_line("django==3.2.0"), Some(("django".to_string(), "3.2.0"
+            .to_string()))
         );
-
         assert_eq!(
-            parse_requirement_line("requests>=2.25.1"),
-            Some(("requests".to_string(), "2.25.1".to_string()))
+            parse_requirement_line("requests>=2.25.1"), Some(("requests".to_string(),
+            "2.25.1".to_string()))
         );
-
         assert_eq!(
-            parse_requirement_line("flask"),
-            Some(("flask".to_string(), "*".to_string()))
+            parse_requirement_line("flask"), Some(("flask".to_string(), "*".to_string()))
         );
-
         assert_eq!(
-            parse_requirement_line("pytest[testing]==7.0.0"),
-            Some(("pytest".to_string(), "7.0.0".to_string()))
+            parse_requirement_line("pytest[testing]==7.0.0"), Some(("pytest".to_string(),
+            "7.0.0".to_string()))
         );
     }
-
     #[tokio::test]
     async fn test_parse_requirements_txt() {
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(
-            file,
-            "# Test requirements\ndjango==3.2.0\nrequests>=2.25.1\nflask"
-        )
-        .unwrap();
-
+        writeln!(file, "# Test requirements\ndjango==3.2.0\nrequests>=2.25.1\nflask")
+            .unwrap();
         let manifest = parse_requirements_txt(file.path()).await.unwrap();
-
-        assert!(manifest.dependencies.iter().any(|d| d.name == "django"));
-        let django_dep = manifest.dependencies.iter().find(|d| d.name == "django").unwrap();
+        assert!(manifest.dependencies.iter().any(| d | d.name == "django"));
+        let django_dep = manifest
+            .dependencies
+            .iter()
+            .find(|d| d.name == "django")
+            .unwrap();
         match &django_dep.source {
             DependencySource::Version(v) => assert_eq!(v, "3.2.0"),
             _ => panic!("Expected version source"),
         }
-
-        assert!(manifest.dependencies.iter().any(|d| d.name == "requests"));
-        assert!(manifest.dependencies.iter().any(|d| d.name == "flask"));
+        assert!(manifest.dependencies.iter().any(| d | d.name == "requests"));
+        assert!(manifest.dependencies.iter().any(| d | d.name == "flask"));
     }
-
     #[tokio::test]
     async fn test_parse_pyproject_toml_poetry() {
         let mut file = NamedTempFile::new().unwrap();
@@ -642,30 +552,29 @@ requests = ">=2.25.1"
 pytest = "^7.0.0"
 "#
         )
-        .unwrap();
-
+            .unwrap();
         let manifest = parse_pyproject_toml(file.path()).await.unwrap();
-
         assert_eq!(manifest.name, "my-project");
         assert_eq!(manifest.version, "1.0.0");
-        assert!(manifest.dependencies.iter().any(|d| d.name == "django"));
-        assert!(manifest.dependencies.iter().any(|d| d.name == "requests"));
-        assert!(manifest.dev_dependencies.iter().any(|d| d.name == "pytest"));
+        assert!(manifest.dependencies.iter().any(| d | d.name == "django"));
+        assert!(manifest.dependencies.iter().any(| d | d.name == "requests"));
+        assert!(manifest.dev_dependencies.iter().any(| d | d.name == "pytest"));
     }
-
     #[tokio::test]
     async fn test_update_requirements_txt() {
         let mut file = NamedTempFile::new().unwrap();
         writeln!(file, "django==3.2.0\nrequests>=2.25.1").unwrap();
-
-        let updated = update_requirements_txt(file.path(), "django", "django", Some("4.0.0"))
+        let updated = update_requirements_txt(
+                file.path(),
+                "django",
+                "django",
+                Some("4.0.0"),
+            )
             .await
             .unwrap();
-
         assert!(updated.contains("django==4.0.0"));
         assert!(updated.contains("requests>=2.25.1"));
     }
-
     #[tokio::test]
     async fn test_update_pyproject_toml() {
         let mut file = NamedTempFile::new().unwrap();
@@ -677,12 +586,15 @@ django = "^3.2.0"
 requests = "^2.25.1"
 "#
         )
-        .unwrap();
-
-        let updated = update_pyproject_toml(file.path(), "django", "django", Some("4.0.0"))
+            .unwrap();
+        let updated = update_pyproject_toml(
+                file.path(),
+                "django",
+                "django",
+                Some("4.0.0"),
+            )
             .await
             .unwrap();
-
         assert!(updated.contains("django"));
         assert!(updated.contains("4.0"));
     }

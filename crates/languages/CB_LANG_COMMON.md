@@ -1,7 +1,7 @@
 # cb-lang-common Utility Reference
 
 **Version**: 1.0.0-rc2
-**Location**: `/workspace/crates/languages/cb-lang-common`
+**Location**: `/workspace/crates/cb-lang-common`
 **Last Updated**: 2025-10-07
 
 Quick reference for the `cb-lang-common` utility crate that provides shared functionality for all language plugins. For detailed implementation examples, see [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md).

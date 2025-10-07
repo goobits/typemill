@@ -21,7 +21,7 @@ Steps to reproduce the behavior:
 2. **Run dry run first** (succeeds):
    ```bash
    ./target/release/codebuddy tool rename_directory '{
-     "old_path": "crates/languages/cb-lang-common",
+     "old_path": "crates/cb-lang-common",
      "new_path": "crates/cb-lang-common",
      "dry_run": true
    }'
@@ -31,7 +31,7 @@ Steps to reproduce the behavior:
 3. **Execute actual rename** (fails):
    ```bash
    ./target/release/codebuddy tool rename_directory '{
-     "old_path": "crates/languages/cb-lang-common",
+     "old_path": "crates/cb-lang-common",
      "new_path": "crates/cb-lang-common"
    }'
    ```
@@ -41,7 +41,7 @@ Steps to reproduce the behavior:
 ## Expected behavior
 
 The tool should:
-1. Move all 17 files from `crates/languages/cb-lang-common/` to `crates/cb-lang-common/`
+1. Move all 17 files from `crates/cb-lang-common/` to `crates/cb-lang-common/`
 2. Update all import statements across the workspace (e.g., `use cb_lang_common::*`)
 3. Update all `Cargo.toml` path dependencies
 4. Return `"success": true` with import update statistics
@@ -72,24 +72,24 @@ This is exactly how `rename_file` works, which successfully handles the same imp
   "import_updates": {
     "edits_applied": 0,
     "errors": [
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/trait_helpers.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 79 is beyond line length 50. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/io.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-ast/src/import_updater.rs: Invalid request: Edit end column 35 is beyond line length 0. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/subprocess.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 79 is beyond line length 61. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/refactoring.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-handlers/src/handlers/refactoring_handler.rs: Invalid request: Edit end column 68 is beyond line length 46. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/parsing.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 89 is beyond line length 32. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/error_helpers.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 39 is beyond line length 27. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/import_graph.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 44 is beyond line length 3. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/manifest_templates.rs\": Internal error: Failed to apply edits to file /workspace/crates/languages/cb-lang-rust/src/lib.rs: Invalid request: Edit end column 109 is beyond line length 34. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/ast_deserialization.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 81 is beyond line length 55. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/import_parsing.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 148 is beyond line length 58. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/versioning.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 115 is beyond line length 55. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/location.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 112 is beyond line length 70. All changes have been rolled back.",
-      "Failed to apply import edits for \"/workspace/crates/languages/cb-lang-common/src/manifest_common.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 62 is beyond line length 3. All changes have been rolled back."
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/trait_helpers.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 79 is beyond line length 50. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/io.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-ast/src/import_updater.rs: Invalid request: Edit end column 35 is beyond line length 0. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/subprocess.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 79 is beyond line length 61. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/refactoring.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-handlers/src/handlers/refactoring_handler.rs: Invalid request: Edit end column 68 is beyond line length 46. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/parsing.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 89 is beyond line length 32. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/error_helpers.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 39 is beyond line length 27. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/import_graph.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 44 is beyond line length 3. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/manifest_templates.rs\": Internal error: Failed to apply edits to file /workspace/crates/languages/cb-lang-rust/src/lib.rs: Invalid request: Edit end column 109 is beyond line length 34. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/ast_deserialization.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 81 is beyond line length 55. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/import_parsing.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 148 is beyond line length 58. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/versioning.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 115 is beyond line length 55. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/location.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 112 is beyond line length 70. All changes have been rolled back.",
+      "Failed to apply import edits for \"/workspace/crates/cb-lang-common/src/manifest_common.rs\": Internal error: Failed to apply edits to file /workspace/crates/cb-lang-common/src/lib.rs: Invalid request: Edit end column 62 is beyond line length 3. All changes have been rolled back."
     ],
     "files_updated": 0
   },
   "new_path": "/workspace/crates/cb-lang-common",
-  "old_path": "/workspace/crates/languages/cb-lang-common",
+  "old_path": "/workspace/crates/cb-lang-common",
   "operation": "rename_directory",
   "success": false
 }
@@ -160,7 +160,7 @@ This bug **blocks large-scale refactoring** operations. Workaround requires:
 ```bash
 # Move directory - import updates fail
 ./target/release/codebuddy tool rename_directory '{
-  "old_path": "crates/languages/cb-lang-common",
+  "old_path": "crates/cb-lang-common",
   "new_path": "crates/cb-lang-common"
 }'
 # Result: success=false, files moved but imports broken

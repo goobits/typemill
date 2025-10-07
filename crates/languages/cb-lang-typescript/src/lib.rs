@@ -94,13 +94,11 @@
 //! - `.jsx` - JavaScript with JSX
 //! - `.mjs` - ES Module JavaScript
 //! - `.cjs` - CommonJS JavaScript
-
 mod manifest;
 pub mod parser;
 pub mod refactoring;
 pub mod import_support;
 pub mod workspace_support;
-
 use async_trait::async_trait;
 use cb_plugin_api::{
     ImportSupport, LanguageCapabilities, LanguageMetadata, LanguagePlugin, ManifestData,
@@ -108,14 +106,12 @@ use cb_plugin_api::{
 };
 use cb_lang_common::read_manifest;
 use std::path::Path;
-
 /// TypeScript/JavaScript language plugin implementation.
 pub struct TypeScriptPlugin {
     metadata: LanguageMetadata,
     import_support: import_support::TypeScriptImportSupport,
     workspace_support: workspace_support::TypeScriptWorkspaceSupport,
 }
-
 impl TypeScriptPlugin {
     pub fn new() -> Self {
         Self {
@@ -125,59 +121,44 @@ impl TypeScriptPlugin {
         }
     }
 }
-
 impl Default for TypeScriptPlugin {
     fn default() -> Self {
         Self::new()
     }
 }
-
 #[async_trait]
 impl LanguagePlugin for TypeScriptPlugin {
     fn metadata(&self) -> &LanguageMetadata {
         &self.metadata
     }
-
     fn capabilities(&self) -> LanguageCapabilities {
         LanguageCapabilities {
             imports: true,
-            workspace: true,  // ✅ npm/yarn/pnpm workspace support
+            workspace: true,
         }
     }
-
     async fn parse(&self, source: &str) -> PluginResult<ParsedSource> {
         let symbols = parser::extract_symbols(source)?;
-
         Ok(ParsedSource {
-            data: serde_json::json!({
-                "language": "typescript",
-                "symbols_count": symbols.len()
-            }),
+            data: serde_json::json!(
+                { "language" : "typescript", "symbols_count" : symbols.len() }
+            ),
             symbols,
         })
     }
-
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
         manifest::load_package_json(path).await
     }
-
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
     fn import_support(&self) -> Option<&dyn ImportSupport> {
         Some(&self.import_support)
     }
-
     fn workspace_support(&self) -> Option<&dyn WorkspaceSupport> {
         Some(&self.workspace_support)
     }
 }
-
-// ============================================================================
-// Additional Methods (utility methods for manifest operations)
-// ============================================================================
-
 impl TypeScriptPlugin {
     pub async fn update_dependency(
         &self,
@@ -186,21 +167,22 @@ impl TypeScriptPlugin {
         new_name: &str,
         new_version: Option<&str>,
     ) -> PluginResult<String> {
-        // Read the manifest file
         let content = read_manifest(manifest_path).await?;
-
-        // Update the dependency
-        let version = new_version.ok_or_else(|| {
-            PluginError::invalid_input("Version required for package.json dependency updates")
-        })?;
-
+        let version = new_version
+            .ok_or_else(|| {
+                PluginError::invalid_input(
+                    "Version required for package.json dependency updates",
+                )
+            })?;
         manifest::update_dependency(&content, new_name, version)
     }
-
-    pub fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
+    pub fn generate_manifest(
+        &self,
+        package_name: &str,
+        dependencies: &[String],
+    ) -> String {
         manifest::generate_manifest(package_name, dependencies)
     }
-
     /// Find module references (minimal implementation for compatibility)
     pub fn find_module_references(
         &self,
@@ -209,25 +191,23 @@ impl TypeScriptPlugin {
         _scope: cb_plugin_api::ScanScope,
     ) -> Vec<cb_plugin_api::ModuleReference> {
         use cb_plugin_api::{ModuleReference, ReferenceKind};
-
         let mut references = Vec::new();
-
-        // Simple line-based search for import statements containing the module
         for (line_num, line) in content.lines().enumerate() {
-            if (line.contains("import") || line.contains("from")) && line.contains(module_to_find) {
-                references.push(ModuleReference {
-                    line: line_num + 1,
-                    column: 0,
-                    length: line.len(),
-                    text: line.to_string(),
-                    kind: ReferenceKind::Declaration,
-                });
+            if (line.contains("import") || line.contains("from"))
+                && line.contains(module_to_find)
+            {
+                references
+                    .push(ModuleReference {
+                        line: line_num + 1,
+                        column: 0,
+                        length: line.len(),
+                        text: line.to_string(),
+                        kind: ReferenceKind::Declaration,
+                    });
             }
         }
-
         references
     }
-
     /// Rewrite imports for rename (minimal implementation for compatibility)
     pub fn rewrite_imports_for_rename(
         &self,
@@ -245,23 +225,22 @@ impl TypeScriptPlugin {
         }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn test_typescript_capabilities() {
         let plugin = TypeScriptPlugin::new();
         let caps = plugin.capabilities();
-
         assert!(caps.imports, "TypeScript plugin should support imports");
         assert!(caps.workspace, "TypeScript plugin should support workspace");
     }
-
     #[test]
     fn test_typescript_workspace_support() {
         let plugin = TypeScriptPlugin::new();
-        assert!(plugin.workspace_support().is_some(), "TypeScript should have workspace support");
+        assert!(
+            plugin.workspace_support().is_some(),
+            "TypeScript should have workspace support"
+        );
     }
 }
