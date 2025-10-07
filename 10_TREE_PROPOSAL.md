@@ -113,7 +113,7 @@ This is a comprehensive tool validation exercise that will test:
 ### 🔄 Phase 2: Promote Language Crates to Flat Structure (IN PROGRESS)
 - ✅ Move `crates/languages/cb-lang-common` → `crates/cb-lang-common`
   - ✅ Commit: `cb1024e` - "refactor: move cb-lang-common to flat crates layout"
-- ❌ Move `crates/languages/cb-lang-java` → `crates/cb-lang-java`
+- ❌ Move `crates/cb-lang-java` → `crates/cb-lang-java`
 - ❌ Move `crates/languages/cb-lang-python` → `crates/cb-lang-python`
 - ❌ Move `crates/languages/cb-lang-rust` → `crates/cb-lang-rust`
 - ❌ Move `crates/languages/cb-lang-typescript` → `crates/cb-lang-typescript`
@@ -278,7 +278,7 @@ rename_file: crates/languages/PLUGIN_DEVELOPMENT_GUIDE.md → docs/development/l
 rename_directory: crates/languages/cb-lang-common → crates/cb-lang-common
 
 # ⚠️ BLOCKED - Fixing rename_directory bugs first
-rename_directory: crates/languages/cb-lang-java → crates/cb-lang-java
+rename_directory: crates/cb-lang-java → crates/cb-lang-java
 rename_directory: crates/languages/cb-lang-python → crates/cb-lang-python
 rename_directory: crates/languages/cb-lang-rust → crates/cb-lang-rust
 rename_directory: crates/languages/cb-lang-typescript → crates/cb-lang-typescript

@@ -43,7 +43,7 @@ CodeBuddy currently supports 4 languages via LSP integration and language plugin
 
 ### Phase 2: Enterprise Languages (🟡 Medium Priority)
 
-- [ ] **Java Support** (`crates/languages/cb-lang-java`)
+- [ ] **Java Support** (`crates/cb-lang-java`)
   - LSP: `jdtls` (Eclipse JDT Language Server)
   - AST parsing via `tree-sitter-java`
   - Manifest: `pom.xml`, `build.gradle`, `build.gradle.kts`

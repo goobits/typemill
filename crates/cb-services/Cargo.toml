@@ -38,13 +38,13 @@ cb-lang-rust = { path = "../languages/cb-lang-rust", optional = true }
 cb-lang-go = { path = "../cb-lang-go", optional = true }
 cb-lang-typescript = { path = "../languages/cb-lang-typescript", optional = true }
 cb-lang-python = { path = "../languages/cb-lang-python", optional = true }
-cb-lang-java = { path = "../languages/cb-lang-java", optional = true }
+cb-lang-java = { path = "../cb-lang-java", optional = true }
 chrono = "0.4"
 
 [features]
 default = ["lang-rust", "lang-go", "lang-typescript", "lang-python"]
 # Note: lang-java requires Maven to build the Java parser JAR first
-# Run: cd crates/languages/cb-lang-java/resources/java-parser && mvn package
+# Run: cd crates/cb-lang-java/resources/java-parser && mvn package
 lang-rust = ["dep:cb-lang-rust"]
 lang-go = ["dep:cb-lang-go"]
 lang-typescript = ["dep:cb-lang-typescript"]

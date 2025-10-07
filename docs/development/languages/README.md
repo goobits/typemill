@@ -68,7 +68,7 @@ cd crates/languages
 ./new-lang.sh java
 
 # This creates:
-# - crates/languages/cb-lang-java/
+# - crates/cb-lang-java/
 # - src/lib.rs (skeleton implementation)
 # - Cargo.toml
 # - tests/

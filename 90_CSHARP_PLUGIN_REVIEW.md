@@ -168,7 +168,7 @@ java --version
 
 **Build Parser**:
 ```bash
-cd crates/languages/cb-lang-java/resources/java-parser
+cd crates/cb-lang-java/resources/java-parser
 mvn package
 
 # Verify artifact
@@ -319,7 +319,7 @@ make build-parsers
 **Manual approach**:
 ```bash
 # Java
-cd crates/languages/cb-lang-java/resources/java-parser && mvn package && cd -
+cd crates/cb-lang-java/resources/java-parser && mvn package && cd -
 
 # C#
 cd crates/languages/cb-lang-csharp/resources/csharp-parser && \
@@ -1342,8 +1342,8 @@ echo "🔍 Checking external parser artifacts..."
 MISSING=()
 
 # Check Java parser
-JAVA_JAR="crates/languages/cb-lang-java/resources/java-parser/target/java-parser-1.0-SNAPSHOT.jar"
-if [ -d "crates/languages/cb-lang-java" ] && [ ! -f "$JAVA_JAR" ]; then
+JAVA_JAR="crates/cb-lang-java/resources/java-parser/target/java-parser-1.0-SNAPSHOT.jar"
+if [ -d "crates/cb-lang-java" ] && [ ! -f "$JAVA_JAR" ]; then
     MISSING+=("Java parser JAR")
 fi
 
@@ -1381,7 +1381,7 @@ echo "✅ All parser artifacts present"
 build-parsers:
 	@echo "🔨 Building external language parsers..."
 	@echo "Building Java parser..."
-	@cd crates/languages/cb-lang-java/resources/java-parser && mvn package
+	@cd crates/cb-lang-java/resources/java-parser && mvn package
 	@echo "Building C# parser..."
 	@cd crates/languages/cb-lang-csharp/resources/csharp-parser && \
 		dotnet publish -c Release -r linux-x64 --self-contained

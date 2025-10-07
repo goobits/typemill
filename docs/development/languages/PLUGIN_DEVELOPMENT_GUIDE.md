@@ -182,7 +182,7 @@ cd crates/languages
 
 **Output example:**
 ```
-Created crates/languages/cb-lang-java/
+Created crates/cb-lang-java/
   ✅ Cargo.toml
   ✅ src/lib.rs
   ✅ src/parser.rs
@@ -202,7 +202,7 @@ After scaffolding, you **must** manually integrate the plugin into the workspace
 [workspace.dependencies]
 # ... existing plugins ...
 cb-lang-go = { path = "crates/languages/cb-lang-go" }
-cb-lang-java = { path = "crates/languages/cb-lang-java" } # ← Add this
+cb-lang-java = { path = "crates/cb-lang-java" } # ← Add this
 cb-lang-rust = { path = "crates/languages/cb-lang-rust" }
 ```
 
