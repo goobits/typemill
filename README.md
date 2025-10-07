@@ -5,7 +5,7 @@
 Codebuddy bridges the gap between AI assistants and your codebase by exposing Language Server Protocol (LSP) functionality through the Model Context Protocol (MCP). Think of it as a universal translator that lets AI tools like Claude understand your code the same way your IDE does—with full awareness of definitions, references, types, and refactoring capabilities.
 
 ## 📋 Table of Contents
-- [Key Features](#-key-features)
+- [What Can It Do?](#-what-can-it-do)
 - [Quick Start](#-quick-start)
 - [Language Server Setup](#️-language-server-setup)
 - [MCP Integration](#-mcp-integration)
@@ -20,25 +20,13 @@ Codebuddy bridges the gap between AI assistants and your codebase by exposing La
 
 ## ✨ What Can It Do?
 
-**Navigation & Understanding**
-- 🔍 Jump to definitions, find all references, search symbols across your entire workspace
-- 💡 Get hover documentation, completions, and signature help—just like in your IDE
-- 📊 Visualize call hierarchies and trace type definitions
+Your AI assistant can finally understand your codebase the way your IDE does:
 
-**Intelligent Refactoring**
-- 🔧 Rename symbols safely across files with automatic import updates
-- ⚡ Extract functions and variables, inline code, organize imports
-- 🎯 Apply code actions and fixes suggested by your language server
+- **Navigate intelligently** - Jump to definitions, find references, search symbols across your workspace
+- **Refactor safely** - Rename across files, extract functions, organize imports—with automatic updates
+- **Scale confidently** - Atomic multi-file edits, batch operations, smart directory moves
 
-**Powerful Operations**
-- 📦 Atomic multi-file edits that either succeed completely or roll back
-- 🚀 Batch operations with parallel execution for maximum speed
-- 🔄 Smart directory moves with automatic import path updates (including Rust crate consolidation)
-
-**Multi-Language Support**
-- 🌐 Native plugins for Rust, TypeScript, Go, Python, Java—plus any language with an LSP server
-- 🔌 Flexible transport: stdio for direct MCP integration or WebSocket with JWT auth
-- 🛡️ Built in Rust for memory safety and blazing performance
+Supports TypeScript, Python, Go, Rust, Java—any language with an LSP server. Built in Rust for memory safety and blazing performance.
 
 ## 🚀 Quick Start
 
@@ -66,7 +54,12 @@ That's it! Your AI assistant now has deep code intelligence for your entire proj
 
 ## 🛠️ Language Server Setup
 
-Codebuddy works with any LSP-compatible language server. Here's how to install the most common ones:
+**Quick setup:** Run `codebuddy setup` and it'll auto-detect your project languages and guide you through configuration.
+
+**Manual installation?** Expand for LSP server install commands:
+
+<details>
+<summary>Click to show language server installation</summary>
 
 ```bash
 # TypeScript/JavaScript
@@ -82,18 +75,16 @@ go install golang.org/x/tools/gopls@latest
 rustup component add rust-analyzer
 
 # Java
-# Download and install jdtls from https://download.eclipse.org/jdtls/snapshots/
+# Download from https://download.eclipse.org/jdtls/snapshots/
 # Or use your IDE's bundled language server
-
-# Verify everything is working
-codebuddy status
 ```
 
-The `codebuddy setup` wizard will detect which languages you're using and guide you through configuration. No manual JSON editing required (unless you want to).
+Verify with: `codebuddy status`
+</details>
 
 ## 📚 MCP Integration
 
-Connecting Codebuddy to your AI assistant is simple. Works with Claude Code, Cursor, Aider, and any MCP-compatible client. Add this to your MCP configuration:
+Already using Claude Code or Cursor? Add this one snippet to your MCP configuration and you're done:
 
 ```json
 {
@@ -138,6 +129,17 @@ codebuddy status
 ```
 
 ## 🎯 CLI Commands
+
+**Most used:**
+```bash
+codebuddy start    # Start the server
+codebuddy status   # Check what's running
+codebuddy setup    # Configure languages
+```
+
+<details>
+<summary>See all commands</summary>
+
 ```bash
 # Server lifecycle
 codebuddy start          # Start stdio MCP server
@@ -155,6 +157,7 @@ codebuddy unlink         # Remove links
 codebuddy tool <name>    # Execute MCP tool
 codebuddy tools          # List tools
 ```
+</details>
 
 ## 🐳 Docker Deployment
 ```bash
