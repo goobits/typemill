@@ -4,12 +4,12 @@
 
 ```
 /
-├── Cargo.toml                     # EDITED: Virtual manifest, members = ["crates/*"], resolver = "2"
+├── Cargo.toml                     # EDITED: Virtual manifest, members = ["crates/*", "apps/codebuddy"], resolver = "2"
 ├── Cargo.lock
-├── crates/
-│   ├── codebuddy/                 # MOVED: from apps/codebuddy/
-│   │   ├── src/
-│   │   ├── tests/                 # MOVED: integration tests from /integration-tests/tests/
+├── apps/
+│   └── codebuddy/                 # STAYS: main binary (Rust convention)
+│       ├── src/
+│       ├── tests/                 # MOVED: integration tests from /integration-tests/tests/
 │   │   │   ├── cli_tool_command.rs
 │   │   │   ├── contract_validation.rs
 │   │   │   ├── debug_hover.rs
@@ -29,7 +29,7 @@
 │   │   │   ├── lsp_features.rs
 │   │   │   ├── mcp_file_operations.rs
 │   │   │   └── mcp_handler_runners.rs
-│   │   └── Cargo.toml             # EDITED: Add test-support as dev-dependency
+│       └── Cargo.toml             # EDITED: Add test-support as dev-dependency
 │   ├── cb-ast/                    # STAYS
 │   │   ├── src/
 │   │   ├── Cargo.toml
@@ -189,10 +189,9 @@
 └── vm.yaml                        # STAYS
 
 # REMOVED directories:
-# - apps/                          # Removed after moving codebuddy to crates/
 # - benchmarks/                    # Removed after moving to crates/codebuddy-bench/
 # - crates/languages/              # Removed after flattening language crates
-# - integration-tests/             # Removed after splitting into test-support + crates/codebuddy/tests/
+# - integration-tests/             # Removed after splitting into test-support + apps/codebuddy/tests/
 # - tests/                         # Was empty, not recreated
 
 # REMOVED files:
@@ -257,22 +256,23 @@ rename_directory: crates/languages/cb-lang-typescript → crates/cb-lang-typescr
 ---
 
 ### Phase 2: Reorganize Workspace Crates
-**Goal:** Move main binary, rename benchmarks
+**Goal:** Rename benchmarks crate, establish flat workspace structure
 
-**MCP Tool:** `rename_directory` (2 separate calls)
+**MCP Tool:** `rename_directory` (1 call)
 
 ```bash
-rename_directory: apps/codebuddy → crates/codebuddy
 rename_directory: benchmarks → crates/codebuddy-bench
 ```
 
 **Manual Edits Required:**
 ```bash
-# Update root Cargo.toml (virtual manifest)
+# Update root Cargo.toml (virtual manifest with members = ["crates/*", "apps/codebuddy"])
 # Update crates/codebuddy-bench/Cargo.toml (package name)
 ```
 
 **Validation:** `cargo check --workspace`
+
+**Note:** The main binary stays at `apps/codebuddy` per Rust convention - only library crates and supporting crates go in `crates/`.
 
 ---
 
@@ -295,7 +295,7 @@ rename_directory: benchmarks → crates/codebuddy-bench
 ```bash
 rename_directory: integration-tests/src/harness → crates/test-support/src/harness
 rename_directory: integration-tests/fixtures → crates/test-support/fixtures
-rename_directory: integration-tests/tests → crates/codebuddy/tests
+rename_directory: integration-tests/tests → apps/codebuddy/tests
 ```
 
 **MCP Tool:** `batch_execute` (move individual files)
@@ -312,7 +312,7 @@ rename_directory: integration-tests/tests → crates/codebuddy/tests
 
 **Manual Edits Required:**
 ```bash
-# Update crates/codebuddy/Cargo.toml (add test-support dev-dependency)
+# Update apps/codebuddy/Cargo.toml (add test-support dev-dependency)
 # Update test files to use `use test_support::*;`
 ```
 

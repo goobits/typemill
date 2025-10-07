@@ -170,10 +170,10 @@ docker-compose -f docker-compose.production.yml up -d
 curl http://localhost/health
 ```
 
-See [`deployment/docker/README.md`](deployment/docker/README.md) for details.
+See [`docs/deployment/DOCKER_DEPLOYMENT.md`](docs/deployment/DOCKER_DEPLOYMENT.md) for details.
 
 ## 📖 Documentation
-- **[API.md](API.md)** - MCP tools reference
+- **[API_REFERENCE.md](API_REFERENCE.md)** - MCP tools reference
 - **[CLAUDE.md](CLAUDE.md)** - AI assistant guide
 - **[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)** - System design
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Development guide

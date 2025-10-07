@@ -2755,5 +2755,5 @@ async function callMcpTool(toolName: string, args: any) {
 
 - [Language Support Matrix](#language-support-matrix) - See above for language support table
 - [docs/architecture/ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md) - Implementation architecture
-- [deployment/docker/README.md](../deployment/docker/README.md) - Docker deployment guide
+- [docs/deployment/DOCKER_DEPLOYMENT.md](./docs/deployment/DOCKER_DEPLOYMENT.md) - Docker deployment guide
 - [.codebuddy/workflows.json](./.codebuddy/workflows.json) - Workflow definitions

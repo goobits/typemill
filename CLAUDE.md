@@ -26,9 +26,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - Log levels and conventions
    - Anti-patterns to avoid
 
-5. **[deployment/docker/README.md](deployment/docker/README.md)** - Docker deployment guide
+5. **[docs/deployment/DOCKER_DEPLOYMENT.md](docs/deployment/DOCKER_DEPLOYMENT.md)** - Docker deployment guide
    - Development and production deployment
-   - Container configuration
+   - Security best practices and troubleshooting
 
 ## Project Information
 
@@ -198,7 +198,7 @@ cargo check
 
 For detailed system architecture, see **[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)**.
 
-For Docker deployment details, see **[deployment/docker/README.md](deployment/docker/README.md)**. For CLI usage, see the CLI Commands section above.
+For Docker deployment details, see **[docs/deployment/DOCKER_DEPLOYMENT.md](docs/deployment/DOCKER_DEPLOYMENT.md)**. For CLI usage, see the CLI Commands section above.
 
 ### Quick Configuration Example
 
@@ -489,7 +489,7 @@ All debug scripts, test analysis, and experimental code goes in `.debug/` (gitig
 - **[integration-tests/TESTING_GUIDE.md](integration-tests/TESTING_GUIDE.md)** - Testing architecture
 
 ### For Operators
-- **[deployment/docker/README.md](deployment/docker/README.md)** - Docker deployment (development and production)
+- **[docs/deployment/DOCKER_DEPLOYMENT.md](docs/deployment/DOCKER_DEPLOYMENT.md)** - Docker deployment (development and production)
 
 ### For Understanding the System
 - **[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)** - Complete system architecture
