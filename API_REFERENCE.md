@@ -1,9 +1,9 @@
-# CodeBuddy MCP Tools API Reference
+# Codebuddy MCP Tools API Reference
 
 **Version:** 1.0.0-rc1
 **Last Updated:** 2025-10-04
 
-Complete API documentation for all MCP tools available in CodeBuddy.
+Your complete guide to all MCP tools available in Codebuddy. Use this reference to understand parameters, return types, and see practical examples for each tool.
 
 ---
 
@@ -2387,7 +2387,7 @@ Get basic system operational status.
 
 **Backend-only tools (5 tools) - Not exposed via MCP `tools/list`**
 
-These tools are used internally by the CodeBuddy workflow system and LSP protocol interop. They are **not visible** to AI agents via MCP tool listings, but remain callable by the backend for orchestration and plugin lifecycle management.
+These tools are used internally by the Codebuddy workflow system and LSP protocol interop. They are **not visible** to AI agents via MCP tool listings, but remain callable by the backend for orchestration and plugin lifecycle management.
 
 **Why hidden:**
 - AI agents use higher-level tools (e.g., `rename_symbol` instead of `rename_symbol_with_imports`)
@@ -2496,7 +2496,7 @@ These tools are used internally by the CodeBuddy workflow system and LSP protoco
 
 **Purpose:** Apply LSP workspace edits (multi-file refactoring operations)
 
-**Implementation:** Converts LSP `WorkspaceEdit` format to CodeBuddy `EditPlan` and applies atomically
+**Implementation:** Converts LSP `WorkspaceEdit` format to Codebuddy `EditPlan` and applies atomically
 
 **Parameters:**
 ```json
@@ -2585,7 +2585,7 @@ codebuddy tool rename_directory '{"old_path":"src","new_path":"lib"}'
 
 ## Error Reference
 
-CodeBuddy uses a standardized error response format across all MCP tools for consistent error handling and programmatic parsing.
+Codebuddy uses a standardized error response format across all MCP tools for consistent error handling and programmatic parsing.
 
 ### Error Response Structure
 

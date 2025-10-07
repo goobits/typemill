@@ -1,6 +1,6 @@
 # Structured Logging Guidelines
 
-This document provides comprehensive guidelines for structured logging in the Codebuddy Rust codebase using the `tracing` crate.
+Your guide to structured logging in Codebuddy using the `tracing` crate. Follow these patterns to keep logs consistent, machine-readable, and easy to debug in production.
 
 ## Overview
 

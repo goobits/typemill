@@ -1,6 +1,6 @@
 # Docker Deployment
 
-Complete guide for deploying Codebuddy with Docker in development and production environments.
+Everything you need to deploy Codebuddy with Docker—from local development to production.
 
 ## Quick Start: Development
 

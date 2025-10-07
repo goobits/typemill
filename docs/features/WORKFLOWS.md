@@ -1,5 +1,7 @@
 # Intent-Based Workflow Engine
 
+Automate complex, multi-step operations with high-level intents. Instead of calling individual tools, declare what you want to achieve and let Codebuddy plan and execute the workflow.
+
 ## Table of Contents
 - [Overview](#overview)
 - [Core Concepts](#core-concepts)

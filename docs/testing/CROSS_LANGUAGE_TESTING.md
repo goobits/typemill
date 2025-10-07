@@ -1,6 +1,6 @@
 # Cross-Language Testing Guide
 
-This document explains the parameterized cross-language testing framework for refactoring operations.
+Learn how to test refactoring operations across multiple languages using our parameterized testing framework. Write once, test everywhere.
 
 ## Table of Contents
 - [Overview](#overview)

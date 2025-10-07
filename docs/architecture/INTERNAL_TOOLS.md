@@ -1,5 +1,7 @@
 # Internal Tools Policy
 
+Understanding which tools are visible to AI agents and which are reserved for backend operations.
+
 ## Table of Contents
 - [Overview](#overview)
 - [Internal vs Public Tools](#internal-vs-public-tools)
@@ -10,7 +12,7 @@
 
 ## Overview
 
-CodeBuddy distinguishes between **public tools** (exposed to AI agents via MCP) and **internal tools** (backend-only, hidden from MCP listings).
+Codebuddy distinguishes between **public tools** (exposed to AI agents via MCP) and **internal tools** (backend-only, hidden from MCP listings).
 
 ## Internal vs Public Tools
 

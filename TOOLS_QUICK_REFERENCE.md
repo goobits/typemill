@@ -1,6 +1,6 @@
 # MCP Tools Quick Reference
 
-**Purpose:** Fast lookup table for all CodeBuddy MCP tools
+**Purpose:** Fast lookup table for all Codebuddy MCP tools
 **Format:** Tool name → Parameters → Returns (no examples or details)
 **For detailed documentation:** See [API_REFERENCE.md](API_REFERENCE.md)
 
