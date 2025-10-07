@@ -35,6 +35,7 @@ pub mod workspace_support;
 
 use async_trait::async_trait;
 use cb_plugin_api::{LanguagePlugin, LanguageMetadata, LanguageCapabilities, ManifestData, ParsedSource, PluginResult};
+use cb_lang_common::read_manifest;
 use std::path::Path;
 
 /// Rust language plugin implementation
@@ -146,9 +147,7 @@ impl RustPlugin {
         new_name: &str,
         new_version: Option<&str>,
     ) -> PluginResult<String> {
-        let content = tokio::fs::read_to_string(manifest_path)
-            .await
-            .map_err(|e| cb_plugin_api::PluginError::manifest(format!("Failed to read Cargo.toml: {}", e)))?;
+        let content = read_manifest(manifest_path).await?;
 
         // For Rust, new_version might be a path or a version
         // If it looks like a path, use path dependency; otherwise use version
@@ -233,9 +232,7 @@ impl RustPlugin {
 
     /// Parse imports from a file path (async wrapper)
     pub async fn parse_imports(&self, file_path: &Path) -> PluginResult<Vec<String>> {
-        let content = tokio::fs::read_to_string(file_path)
-            .await
-            .map_err(|e| cb_plugin_api::PluginError::internal(format!("Failed to read file: {}", e)))?;
+        let content = read_manifest(file_path).await?;
 
         // Use the parser module to extract imports
         let import_infos = parser::parse_imports(&content)?;

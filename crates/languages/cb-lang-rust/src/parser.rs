@@ -4,7 +4,8 @@
 //! extracting symbols, and analyzing imports.
 
 use cb_plugin_api::{PluginError, PluginResult, SourceLocation, Symbol, SymbolKind};
-use cb_protocol::{ImportInfo, ImportType, NamedImport};
+use cb_protocol::{ImportGraph, ImportInfo, ImportType, NamedImport};
+use cb_lang_common::ImportGraphBuilder;
 use syn::{visit::Visit, File, Item, ItemUse, UseTree};
 
 /// A visitor that walks the AST and collects function names
@@ -343,6 +344,27 @@ pub fn rewrite_use_tree(tree: &UseTree, old_crate: &str, new_crate: &str) -> Opt
             }
         }
     }
+}
+
+/// Analyzes Rust source code to produce an import graph.
+/// Uses native syn AST parsing (no subprocess required).
+pub fn analyze_imports(source: &str, file_path: Option<&std::path::Path>) -> PluginResult<ImportGraph> {
+    let imports = parse_imports(source)?;
+
+    Ok(ImportGraphBuilder::new("rust")
+        .with_source_file(file_path)
+        .with_imports(imports)
+        .extract_external_dependencies(|path| is_external_dependency(path))
+        .with_parser_version("0.1.0-plugin")
+        .build())
+}
+
+/// Check if a module path represents an external dependency
+fn is_external_dependency(module_path: &str) -> bool {
+    // External crates don't start with crate::, self::, or super::
+    !module_path.starts_with("crate")
+        && !module_path.starts_with("self")
+        && !module_path.starts_with("super")
 }
 
 #[cfg(test)]

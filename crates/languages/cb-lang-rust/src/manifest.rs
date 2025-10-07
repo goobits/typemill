@@ -4,6 +4,7 @@
 //! manifest files, extracting dependency information, and updating dependencies.
 
 use cb_plugin_api::{Dependency, DependencySource, ManifestData, PluginError, PluginResult};
+use cb_lang_common::read_manifest;
 use std::path::Path;
 use toml_edit::{value, DocumentMut, Item};
 
@@ -197,10 +198,7 @@ pub fn rename_dependency(
 
 /// Load and parse a Cargo.toml file from a path
 pub async fn load_cargo_toml(path: &Path) -> PluginResult<ManifestData> {
-    let content = tokio::fs::read_to_string(path)
-        .await
-        .map_err(|e| PluginError::manifest(format!("Failed to read Cargo.toml: {}", e)))?;
-
+    let content = read_manifest(path).await?;
     parse_cargo_toml(&content)
 }
 
