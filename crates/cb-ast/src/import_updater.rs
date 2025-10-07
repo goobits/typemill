@@ -1,5 +1,4 @@
 //! Import path resolution and updating functionality
-use std :: collections :: HashMap ;
 use crate::error::{AstError, AstResult};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

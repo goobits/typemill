@@ -14,7 +14,7 @@
 //! - Module file location and reference finding
 //!
 //! # Example
-pub use parser :: { extract_symbols , list_functions , parse_imports , rewrite_use_tree } ;
+//!
 //! ```rust,ignore
 //! use cb_lang_rust::RustPlugin;
 //! use cb_plugin_api::LanguagePlugin;
@@ -391,13 +391,11 @@ impl RustPlugin {
                         ""
                     };
 
-                    // Find the actual position of the module name in the source line
-                    let (column, length) = if let Some(start_pos) = actual_line.find(module_to_find) {
-                        (start_pos, module_to_find.len())
-                    } else {
-                        // Fallback: replace entire line
-                        (0, actual_line.len())
-                    };
+                    // We need to replace the entire use statement line, not just the module name
+                    // The text field contains the full formatted import from quote::quote!
+                    // So column should be 0 and length should be the entire line length
+                    let column = 0;
+                    let length = actual_line.len();
 
                     references.push(ModuleReference {
                         line: line_num + 1, // 1-based
