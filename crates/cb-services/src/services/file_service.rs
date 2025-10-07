@@ -2712,6 +2712,12 @@ impl FileService {
 
     /// Update a single Cargo.toml's path dependency if it depends on the moved crate
     ///
+    /// Handles all dependency sections:
+    /// - [dependencies], [dev-dependencies], [build-dependencies]
+    /// - [target.'cfg(...)'.dependencies]
+    /// - [workspace.dependencies]
+    /// - [patch.crates-io], [patch.'...']
+    ///
     /// Returns Ok(true) if the file was updated, Ok(false) if no update was needed
     async fn update_cargo_toml_dependency_path(
         &self,
@@ -2728,31 +2734,67 @@ impl FileService {
             .map_err(|e| ServerError::Internal(format!("Failed to parse Cargo.toml: {}", e)))?;
 
         let mut updated = false;
+        let cargo_toml_dir = cargo_toml_path.parent().unwrap();
 
-        // Check [dependencies] section
-        if let Some(deps) = doc.get_mut("dependencies").and_then(|d| d.as_table_like_mut()) {
-            if let Some(dep) = deps.get_mut(moved_crate_name) {
-                if let Some(dep_table) = dep.as_inline_table_mut() {
-                    if dep_table.contains_key("path") {
-                        // Calculate new relative path
-                        let cargo_toml_dir = cargo_toml_path.parent().unwrap();
-                        let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
-                            .ok_or_else(|| ServerError::Internal("Failed to calculate relative path".to_string()))?;
+        // Helper to update a dependency table
+        let update_dep_in_table = |dep: &mut toml_edit::Item, updated: &mut bool| -> ServerResult<()> {
+            if let Some(dep_table) = dep.as_inline_table_mut() {
+                if dep_table.contains_key("path") {
+                    let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
+                        .ok_or_else(|| ServerError::Internal("Failed to calculate relative path".to_string()))?;
+                    dep_table.insert("path", toml_edit::Value::from(new_rel_path.to_string_lossy().to_string()));
+                    *updated = true;
+                }
+            } else if let Some(dep_table) = dep.as_table_mut() {
+                if dep_table.contains_key("path") {
+                    let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
+                        .ok_or_else(|| ServerError::Internal("Failed to calculate relative path".to_string()))?;
+                    dep_table.insert("path", toml_edit::value(new_rel_path.to_string_lossy().to_string()));
+                    *updated = true;
+                }
+            }
+            Ok(())
+        };
 
-                        let new_path_str = new_rel_path.to_string_lossy().to_string();
-                        dep_table.insert("path", toml_edit::Value::from(new_path_str));
-                        updated = true;
+        // Check standard dependency sections
+        for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+            if let Some(deps) = doc.get_mut(section).and_then(|d| d.as_table_like_mut()) {
+                if let Some(dep) = deps.get_mut(moved_crate_name) {
+                    update_dep_in_table(dep, &mut updated)?;
+                }
+            }
+        }
+
+        // Check [workspace.dependencies]
+        if let Some(workspace) = doc.get_mut("workspace").and_then(|w| w.as_table_mut()) {
+            if let Some(deps) = workspace.get_mut("dependencies").and_then(|d| d.as_table_like_mut()) {
+                if let Some(dep) = deps.get_mut(moved_crate_name) {
+                    update_dep_in_table(dep, &mut updated)?;
+                }
+            }
+        }
+
+        // Check [target.'cfg(...)'.dependencies] sections
+        if let Some(target) = doc.get_mut("target").and_then(|t| t.as_table_mut()) {
+            for (_target_name, target_table) in target.iter_mut() {
+                if let Some(target_table) = target_table.as_table_mut() {
+                    for dep_section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+                        if let Some(deps) = target_table.get_mut(dep_section).and_then(|d| d.as_table_like_mut()) {
+                            if let Some(dep) = deps.get_mut(moved_crate_name) {
+                                update_dep_in_table(dep, &mut updated)?;
+                            }
+                        }
                     }
-                } else if let Some(dep_table) = dep.as_table_mut() {
-                    if dep_table.contains_key("path") {
-                        // Calculate new relative path
-                        let cargo_toml_dir = cargo_toml_path.parent().unwrap();
-                        let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
-                            .ok_or_else(|| ServerError::Internal("Failed to calculate relative path".to_string()))?;
+                }
+            }
+        }
 
-                        let new_path_str = new_rel_path.to_string_lossy().to_string();
-                        dep_table.insert("path", toml_edit::value(new_path_str));
-                        updated = true;
+        // Check [patch.crates-io] and [patch.'...'] sections
+        if let Some(patch) = doc.get_mut("patch").and_then(|p| p.as_table_mut()) {
+            for (_registry, registry_table) in patch.iter_mut() {
+                if let Some(registry_table) = registry_table.as_table_like_mut() {
+                    if let Some(dep) = registry_table.get_mut(moved_crate_name) {
+                        update_dep_in_table(dep, &mut updated)?;
                     }
                 }
             }
