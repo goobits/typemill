@@ -1,6 +1,6 @@
-# Contributing to Codeflow Buddy (Rust)
+# Contributing to Codebuddy
 
-First off, thank you for considering contributing! It's people like you that make Codeflow Buddy such a great tool.
+First off, thank you for considering contributing! It's people like you that make Codebuddy such a great tool.
 
 ## Getting Started
 
