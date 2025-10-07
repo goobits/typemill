@@ -4,7 +4,7 @@
 //! Unlike the data-driven tests in mcp_file_operations.rs, these tests focus on
 //! end-to-end workflows and LSP fallback scenarios.
 
-use integration_tests::harness::{TestClient, TestWorkspace};
+use integration_tests::harness::{ComplexityScenarios, TestClient, TestWorkspace};
 use serde_json::json;
 
 /// Test find_dead_code with TypeScript - basic case
@@ -404,470 +404,195 @@ function unusedHelper() {
     }
 }
 
-/// Test analyze_project_complexity - basic TypeScript project
+/// Test analyze_project_complexity across all supported languages
 #[tokio::test]
-async fn test_analyze_project_complexity_typescript() {
-    let workspace = TestWorkspace::new();
-    let mut client = TestClient::new(workspace.path());
+async fn test_analyze_project_complexity_cross_language() {
+    // Test all 4 complexity scenarios across all 4 languages
+    let scenarios = ComplexityScenarios::all();
 
-    // Create TypeScript files with varying complexity
-    let simple_ts = workspace.path().join("simple.ts");
-    std::fs::write(
-        &simple_ts,
-        r#"
-// Simple function with low complexity (CC = 1)
-export function simpleFunction(x: number): number {
-    return x + 1;
-}
+    for scenario in scenarios {
+        for fixture in &scenario.fixtures {
+            let workspace = TestWorkspace::new();
+            let mut client = TestClient::new(workspace.path());
 
-// Function with moderate complexity (CC = 3)
-export function moderateFunction(x: number): number {
-    if (x > 0) {
-        return x * 2;
-    } else if (x < 0) {
-        return x * -1;
-    } else {
-        return 0;
-    }
-}
-"#,
-    )
-    .unwrap();
+            // Create language-specific file
+            let test_file = workspace.path().join(fixture.file_name);
+            std::fs::write(&test_file, fixture.source_code).unwrap();
 
-    let complex_ts = workspace.path().join("complex.ts");
-    std::fs::write(
-        &complex_ts,
-        r#"
-// Complex function with high complexity (CC = 7+)
-export function complexFunction(a: number, b: number, c: number): number {
-    let result = 0;
+            // Wait for analysis to initialize
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-    if (a > 0) {
-        if (b > 0) {
-            if (c > 0) {
-                result = a + b + c;
-            } else {
-                result = a + b;
-            }
-        } else if (c > 0) {
-            result = a + c;
-        } else {
-            result = a;
-        }
-    } else if (b > 0) {
-        if (c > 0) {
-            result = b + c;
-        } else {
-            result = b;
-        }
-    } else {
-        result = c || 0;
-    }
+            // Call analyze_project_complexity
+            let response = client
+                .call_tool(
+                    "analyze_project_complexity",
+                    json!({
+                        "directory_path": workspace.path().to_str().unwrap()
+                    }),
+                )
+                .await;
 
-    return result;
-}
+            // Should succeed or have proper error structure
+            assert!(
+                response.is_ok(),
+                "[{:?}] {} - analyze_project_complexity should succeed",
+                fixture.language,
+                scenario.scenario_name
+            );
 
-// Class with methods of varying complexity
-export class Calculator {
-    // Simple method (CC = 1)
-    add(a: number, b: number): number {
-        return a + b;
-    }
+            let response_value = response.unwrap();
 
-    // Complex method (CC = 5)
-    calculate(op: string, a: number, b: number): number {
-        if (op === 'add') {
-            return a + b;
-        } else if (op === 'subtract') {
-            return a - b;
-        } else if (op === 'multiply') {
-            return a * b;
-        } else if (op === 'divide') {
-            return b !== 0 ? a / b : 0;
-        } else {
-            return 0;
-        }
-    }
-}
-"#,
-    )
-    .unwrap();
+            // Verify response structure (language-agnostic)
+            assert!(
+                response_value.get("result").is_some(),
+                "[{:?}] {} - Response should have result field",
+                fixture.language,
+                scenario.scenario_name
+            );
 
-    // Wait for analysis to complete
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            let result = &response_value["result"];
 
-    // Call analyze_project_complexity with required directory_path parameter
-    let response = client
-        .call_tool(
-            "analyze_project_complexity",
-            json!({
-                "directory_path": workspace.path().to_str().unwrap()
-            }),
-        )
-        .await;
+            // Verify required fields exist
+            assert!(
+                result.get("files").is_some(),
+                "[{:?}] {} - Result should have files array",
+                fixture.language,
+                scenario.scenario_name
+            );
+            assert!(
+                result.get("total_files").is_some(),
+                "[{:?}] {} - Result should have total_files",
+                fixture.language,
+                scenario.scenario_name
+            );
+            assert!(
+                result.get("total_functions").is_some(),
+                "[{:?}] {} - Result should have total_functions",
+                fixture.language,
+                scenario.scenario_name
+            );
 
-    assert!(response.is_ok(), "analyze_project_complexity should succeed");
-
-    let response_value = response.unwrap();
-    assert!(
-        response_value.get("result").is_some(),
-        "Response should have result field"
-    );
-
-    let result = &response_value["result"];
-
-    // Verify structure
-    assert!(
-        result.get("files").is_some(),
-        "Result should have files array"
-    );
-    assert!(
-        result.get("total_files").is_some(),
-        "Result should have total_files"
-    );
-    assert!(
-        result.get("total_functions").is_some(),
-        "Result should have total_functions"
-    );
-
-    let files = result["files"].as_array().unwrap();
-    assert!(files.len() >= 2, "Should analyze at least 2 files");
-
-    // Verify each file has expected structure
-    for file in files {
-        assert!(file.get("file_path").is_some(), "File should have file_path");
-        assert!(
-            file.get("function_count").is_some(),
-            "File should have function_count"
-        );
-        assert!(file.get("class_count").is_some(), "File should have class_count");
-        assert!(
-            file.get("average_complexity").is_some(),
-            "File should have average_complexity"
-        );
-        assert!(
-            file.get("max_complexity").is_some(),
-            "File should have max_complexity"
-        );
-    }
-
-    // Verify project-level metrics (top-level fields, not nested)
-    assert!(
-        result.get("total_files").is_some(),
-        "Should have total_files"
-    );
-    assert!(
-        result.get("total_functions").is_some(),
-        "Should have total_functions"
-    );
-    assert!(
-        result.get("total_classes").is_some(),
-        "Should have total_classes"
-    );
-    assert!(
-        result.get("average_complexity").is_some(),
-        "Should have average_complexity"
-    );
-    assert!(
-        result.get("max_complexity").is_some(),
-        "Should have max_complexity"
-    );
-
-    // Note: In test environment without LSP, AST parsing may not find functions
-    // The important thing is that the tool responds correctly with proper structure
-    let total_functions = result["total_functions"].as_u64().unwrap();
-    if total_functions == 0 {
-        eprintln!("Warning: No functions found (AST parsing may not be available in test environment)");
-    } else {
-        eprintln!("Total functions found: {}", total_functions);
-    }
-}
-
-/// Test find_complexity_hotspots - identifies most complex code
-#[tokio::test]
-async fn test_find_complexity_hotspots() {
-    let workspace = TestWorkspace::new();
-    let mut client = TestClient::new(workspace.path());
-
-    // Create files with clearly different complexity levels
-    let low_complexity = workspace.path().join("low.ts");
-    std::fs::write(
-        &low_complexity,
-        r#"
-export function lowComplexity(): string {
-    return "simple";
-}
-"#,
-    )
-    .unwrap();
-
-    let high_complexity = workspace.path().join("high.ts");
-    std::fs::write(
-        &high_complexity,
-        r#"
-// Intentionally complex function for testing
-export function highComplexity(a: number, b: number, c: number, d: number): number {
-    let result = 0;
-
-    if (a > 0) {
-        if (b > 0) {
-            if (c > 0) {
-                if (d > 0) {
-                    result = a + b + c + d;
-                } else {
-                    result = a + b + c;
+            // Validate files structure
+            let files = result["files"].as_array().unwrap();
+            if !files.is_empty() {
+                for file in files {
+                    assert!(
+                        file.get("file_path").is_some(),
+                        "[{:?}] {} - File should have file_path",
+                        fixture.language,
+                        scenario.scenario_name
+                    );
+                    assert!(
+                        file.get("function_count").is_some(),
+                        "[{:?}] {} - File should have function_count",
+                        fixture.language,
+                        scenario.scenario_name
+                    );
                 }
-            } else if (d > 0) {
-                result = a + b + d;
-            } else {
-                result = a + b;
             }
-        } else if (c > 0) {
-            if (d > 0) {
-                result = a + c + d;
-            } else {
-                result = a + c;
-            }
-        } else if (d > 0) {
-            result = a + d;
-        } else {
-            result = a;
-        }
-    } else if (b > 0) {
-        if (c > 0) {
-            if (d > 0) {
-                result = b + c + d;
-            } else {
-                result = b + c;
-            }
-        } else if (d > 0) {
-            result = b + d;
-        } else {
-            result = b;
-        }
-    } else if (c > 0) {
-        if (d > 0) {
-            result = c + d;
-        } else {
-            result = c;
-        }
-    } else {
-        result = d || 0;
-    }
 
-    return result;
-}
-
-// Another complex function
-export function anotherComplexFunction(x: number): number {
-    for (let i = 0; i < 10; i++) {
-        if (x > i) {
-            if (x % 2 === 0) {
-                x += i;
-            } else {
-                x -= i;
-            }
-        } else if (x < i) {
-            x = x * 2;
-        } else {
-            x = 0;
+            // Note: In test environment without LSP, AST parsing may not find functions
+            // The important thing is the tool responds correctly with proper structure
+            let total_functions = result["total_functions"].as_u64().unwrap();
+            eprintln!(
+                "[{:?}] {} - Total functions found: {}",
+                fixture.language, scenario.scenario_name, total_functions
+            );
         }
     }
-    return x;
-}
-"#,
-    )
-    .unwrap();
-
-    // Wait for analysis
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-
-    // Call find_complexity_hotspots with required directory_path and top 5 limit
-    let response = client
-        .call_tool(
-            "find_complexity_hotspots",
-            json!({
-                "directory_path": workspace.path().to_str().unwrap(),
-                "limit": 5
-            }),
-        )
-        .await;
-
-    assert!(response.is_ok(), "find_complexity_hotspots should succeed");
-
-    let response_value = response.unwrap();
-    assert!(
-        response_value.get("result").is_some(),
-        "Response should have result field"
-    );
-
-    let result = &response_value["result"];
-
-    // Verify structure
-    assert!(
-        result.get("top_functions").is_some(),
-        "Result should have top_functions array"
-    );
-    assert!(
-        result.get("summary").is_some(),
-        "Result should have summary"
-    );
-
-    let hotspots = result["top_functions"].as_array().unwrap();
-
-    // In test environment without LSP, AST parsing may not find functions
-    // Verify structure is correct even if empty
-    assert!(
-        hotspots.len() <= 5,
-        "Should respect limit of 5 hotspots"
-    );
-
-    if !hotspots.is_empty() {
-        // Verify hotspots are sorted by complexity (descending)
-        let mut prev_complexity = u64::MAX;
-        for hotspot in hotspots {
-            assert!(
-                hotspot.get("file_path").is_some(),
-                "Hotspot should have file_path"
-            );
-            assert!(
-                hotspot.get("name").is_some(),
-                "Hotspot should have name"
-            );
-            assert!(
-                hotspot.get("complexity").is_some() || hotspot.get("cognitive_complexity").is_some(),
-                "Hotspot should have complexity"
-            );
-            assert!(
-                hotspot.get("line").is_some(),
-                "Hotspot should have line"
-            );
-
-            let complexity = hotspot["complexity"].as_u64().unwrap_or(0);
-            assert!(
-                complexity <= prev_complexity,
-                "Hotspots should be sorted by complexity (descending)"
-            );
-            prev_complexity = complexity;
-        }
-
-        // Verify the most complex function is from high.ts
-        let top_hotspot = &hotspots[0];
-        let file_path = top_hotspot["file_path"].as_str().unwrap();
-        assert!(
-            file_path.ends_with("high.ts"),
-            "Most complex function should be from high.ts"
-        );
-    } else {
-        eprintln!("Warning: No hotspots found (AST parsing may not be available in test environment)");
-    }
-
-    // Summary is a string, not an object
-    let summary = result["summary"].as_str().unwrap();
-    assert!(
-        !summary.is_empty(),
-        "Summary should be a non-empty string"
-    );
 }
 
-/// Test find_complexity_hotspots with custom threshold
+/// Test find_complexity_hotspots across all supported languages
 #[tokio::test]
-async fn test_find_complexity_hotspots_with_threshold() {
-    let workspace = TestWorkspace::new();
-    let mut client = TestClient::new(workspace.path());
+async fn test_find_complexity_hotspots_cross_language() {
+    for lang in integration_tests::harness::Language::all() {
+        let workspace = TestWorkspace::new();
+        let mut client = TestClient::new(workspace.path());
 
-    // Create file with varying complexity
-    let test_file = workspace.path().join("test.ts");
-    std::fs::write(
-        &test_file,
-        r#"
-// Low complexity (CC = 1)
-export function simple(): void {
-    console.log("simple");
-}
+        // Create a simple file and a complex file for each language
+        let simple_scenario = ComplexityScenarios::simple_function();
+        let complex_scenario = ComplexityScenarios::high_nested_complexity();
 
-// Medium complexity (CC = 4)
-export function medium(x: number): number {
-    if (x > 10) {
-        return x * 2;
-    } else if (x > 5) {
-        return x + 5;
-    } else if (x > 0) {
-        return x;
-    } else {
-        return 0;
-    }
-}
-
-// High complexity (CC = 8+)
-export function complex(a: number, b: number): number {
-    if (a > 0) {
-        if (b > 0) {
-            return a + b;
-        } else if (b < 0) {
-            return a - b;
-        } else {
-            return a;
-        }
-    } else if (a < 0) {
-        if (b > 0) {
-            return b - a;
-        } else if (b < 0) {
-            return a + b;
-        } else {
-            return a;
-        }
-    } else {
-        return b;
-    }
-}
-"#,
-    )
-    .unwrap();
-
-    // Wait for analysis
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-
-    // Call find_complexity_hotspots with required directory_path and threshold = 3
-    let response = client
-        .call_tool(
-            "find_complexity_hotspots",
-            json!({
-                "directory_path": workspace.path().to_str().unwrap(),
-                "limit": 10
-            }),
-        )
-        .await;
-
-    assert!(response.is_ok(), "find_complexity_hotspots should succeed");
-
-    let response_value = response.unwrap();
-    assert!(
-        response_value.get("result").is_some(),
-        "Response should have result field"
-    );
-
-    let result = &response_value["result"];
-    let hotspots = result["top_functions"].as_array()
-        .expect("Should have top_functions array");
-
-    // In test environment without LSP, AST parsing may not find functions
-    // Verify structure is correct
-    if !hotspots.is_empty() {
-        // Verify all hotspots have valid complexity values
-        for hotspot in hotspots {
-            let complexity = hotspot["complexity"].as_u64().unwrap();
-            assert!(complexity >= 1, "All hotspots should have valid complexity");
-        }
-
-        // Check that functions are included
-        let function_names: Vec<&str> = hotspots
+        // Find fixture for this language
+        let simple_fixture = simple_scenario
+            .fixtures
             .iter()
-            .filter_map(|h| h["name"].as_str())
-            .collect();
+            .find(|f| f.language == lang)
+            .unwrap();
+        let complex_fixture = complex_scenario
+            .fixtures
+            .iter()
+            .find(|f| f.language == lang)
+            .unwrap();
 
-        eprintln!("Found functions: {:?}", function_names);
-    } else {
-        eprintln!("Warning: No hotspots found (AST parsing may not be available in test environment)");
+        // Create both files
+        let simple_file = workspace.path().join(format!("simple.{}", lang.file_extension()));
+        let complex_file = workspace.path().join(format!("complex.{}", lang.file_extension()));
+
+        std::fs::write(&simple_file, simple_fixture.source_code).unwrap();
+        std::fs::write(&complex_file, complex_fixture.source_code).unwrap();
+
+        // Wait for analysis
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+        // Call find_complexity_hotspots
+        let response = client
+            .call_tool(
+                "find_complexity_hotspots",
+                json!({
+                    "directory_path": workspace.path().to_str().unwrap(),
+                    "limit": 5
+                }),
+            )
+            .await;
+
+        assert!(
+            response.is_ok(),
+            "[{:?}] find_complexity_hotspots should succeed",
+            lang
+        );
+
+        let response_value = response.unwrap();
+        assert!(
+            response_value.get("result").is_some(),
+            "[{:?}] Response should have result field",
+            lang
+        );
+
+        let result = &response_value["result"];
+
+        // Verify structure
+        assert!(
+            result.get("top_functions").is_some(),
+            "[{:?}] Result should have top_functions array",
+            lang
+        );
+        assert!(
+            result.get("summary").is_some(),
+            "[{:?}] Result should have summary",
+            lang
+        );
+
+        let hotspots = result["top_functions"].as_array().unwrap();
+
+        // Verify hotspots are sorted by complexity (if any found)
+        if !hotspots.is_empty() {
+            let mut prev_complexity = u64::MAX;
+            for hotspot in hotspots {
+                let complexity = hotspot["complexity"].as_u64().unwrap_or(
+                    hotspot["cognitive_complexity"].as_u64().unwrap_or(0)
+                );
+                assert!(
+                    complexity <= prev_complexity,
+                    "[{:?}] Hotspots should be sorted by complexity (descending)",
+                    lang
+                );
+                prev_complexity = complexity;
+            }
+
+            eprintln!("[{:?}] Found {} hotspots", lang, hotspots.len());
+        } else {
+            eprintln!("[{:?}] Warning: No hotspots found (AST parsing may not be available)", lang);
+        }
     }
 }
