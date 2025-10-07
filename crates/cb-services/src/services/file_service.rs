@@ -464,51 +464,49 @@ impl FileService {
             let mut total_files_updated = std::collections::HashSet::new();
             let mut all_errors = Vec::new();
 
-            for old_file_path in &files_to_move {
-                let relative_path = old_file_path.strip_prefix(&old_abs_dir).unwrap();
-                let new_file_path = new_abs_dir.join(relative_path);
-
-                match self
-                    .import_service
-                    .update_imports_for_rename(
-                        old_file_path,
-                        &new_file_path,
-                        rename_info.as_ref(),
-                        false,
-                        scan_scope,
-                    )
-                    .await
-                {
-                    Ok(edit_plan) => {
-                        // Apply the edit plan
-                        match self.apply_edit_plan(&edit_plan).await {
-                            Ok(result) => {
-                                total_edits_applied += edit_plan.edits.len();
-                                for file in result.modified_files {
-                                    total_files_updated.insert(file);
-                                }
-                                if let Some(errors) = result.errors {
-                                    all_errors.extend(errors);
-                                }
+            // Call update_imports_for_rename ONCE for the entire directory rename
+            // This prevents creating duplicate edits for the same affected files
+            match self
+                .import_service
+                .update_imports_for_rename(
+                    &old_abs_dir,  // Use directory paths instead of individual files
+                    &new_abs_dir,
+                    rename_info.as_ref(),
+                    false,
+                    scan_scope,
+                )
+                .await
+            {
+                Ok(edit_plan) => {
+                    match self.apply_edit_plan(&edit_plan).await {
+                        Ok(result) => {
+                            total_edits_applied += edit_plan.edits.len();
+                            let files_modified_count = result.modified_files.len();
+                            for file in result.modified_files {
+                                total_files_updated.insert(file);
                             }
-                            Err(e) => {
-                                let error_msg = format!(
-                                    "Failed to apply import edits for {:?}: {}",
-                                    old_file_path, e
-                                );
-                                warn!(error = %e, file_path = %old_file_path.display(), "Failed to apply import edits");
-                                all_errors.push(error_msg);
+                            if let Some(errors) = result.errors {
+                                all_errors.extend(errors);
                             }
+                            info!(
+                                edits_applied = edit_plan.edits.len(),
+                                files_modified = files_modified_count,
+                                "Successfully updated imports for directory rename"
+                            );
+                        }
+                        Err(e) => {
+                            let error_msg = format!(
+                                "Failed to apply import edits for directory rename: {}",
+                                e
+                            );
+                            warn!(error = %e, "Import update failed for directory");
+                            all_errors.push(error_msg);
                         }
                     }
-                    Err(e) => {
-                        let error_msg = format!(
-                            "Failed to create import plan for {:?}: {}",
-                            old_file_path, e
-                        );
-                        warn!(error = %e, file_path = %old_file_path.display(), "Failed to create import plan");
-                        all_errors.push(error_msg);
-                    }
+                }
+                Err(e) => {
+                    warn!(error = %e, old_dir = ?old_abs_dir, "Failed to update imports for directory");
+                    all_errors.push(format!("Failed to update imports for directory: {}", e));
                 }
             }
 
@@ -1439,6 +1437,8 @@ impl FileService {
             end_line = edit.location.end_line,
             end_col = edit.location.end_column,
             total_lines = lines.len(),
+            new_text_len = edit.new_text.len(),
+            new_text_has_newlines = edit.new_text.contains('\n'),
             "Applying single text edit"
         );
 
@@ -1449,6 +1449,42 @@ impl FileService {
                 edit.location.start_line,
                 lines.len()
             )));
+        }
+
+        // Special case: Full-file replacement
+        // When an edit replaces the entire file (start=0,0 and end=last_line,last_col),
+        // and new_text contains the complete file content with embedded newlines,
+        // we should use new_text directly instead of trying to splice it line-by-line.
+        if edit.location.start_line == 0
+            && edit.location.start_column == 0
+            && edit.location.end_line as usize == lines.len().saturating_sub(1)
+        {
+            let last_line_len = lines.last().map(|l| l.chars().count()).unwrap_or(0);
+            if edit.location.end_column as usize >= last_line_len {
+                debug!(
+                    original_lines = lines.len(),
+                    new_text_lines = edit.new_text.lines().count(),
+                    "Detected full-file replacement, using new_text directly"
+                );
+
+                let mut final_content = edit.new_text.clone();
+
+                // Preserve original file's trailing newline behavior
+                if original_had_newline && !final_content.ends_with('\n') {
+                    final_content.push('\n');
+                } else if !original_had_newline && final_content.ends_with('\n') {
+                    // Remove trailing newline if original didn't have one
+                    final_content = final_content.trim_end_matches('\n').to_string();
+                }
+
+                debug!(
+                    final_lines = final_content.lines().count(),
+                    has_trailing_newline = final_content.ends_with('\n'),
+                    "Full-file replacement applied successfully"
+                );
+
+                return Ok(final_content);
+            }
         }
 
         if edit.location.end_line as usize >= lines.len() {
