@@ -1,297 +1,257 @@
 # Project Structure Reorganization Proposal
 
+## 🎯 Primary Goal: Dogfood ALL CodeBuddy Tools
+
+**The entire point of this proposal is to ensure ALL of CodeBuddy's MCP tools work correctly by using them on CodeBuddy's own codebase.**
+
+This is a comprehensive tool validation exercise that will test:
+
+### Core File Operations
+- ✅ `rename_file` - Moving individual files with import updates
+- 🔄 `rename_directory` - Moving entire directories with automatic refactoring
+- ⏳ `batch_execute` - Coordinated multi-file operations
+- ⏳ `create_file` - Creating new crate structures
+- ⏳ `delete_file` - Cleaning up duplicate files
+- ⏳ `write_file` - Updating configuration files
+
+### Refactoring & Analysis Tools
+- ⏳ `find_references` - Validating all references are updated
+- ⏳ `get_diagnostics` - Ensuring no errors after refactoring
+- ⏳ `organize_imports` - Cleaning up import statements
+- ⏳ `format_document` - Maintaining code style
+
+### Workspace Operations
+- ⏳ `analyze_imports` - Verifying import graph integrity
+- ⏳ `find_dead_code` - Identifying orphaned code after moves
+- ⏳ `update_dependencies` - Cargo.toml path updates
+
+### Validation Tools
+- ⏳ `get_document_symbols` - Ensuring symbols still resolve
+- ⏳ `find_definition` - Verifying cross-crate navigation
+- ⏳ `health_check` - System integrity after changes
+
+**Secondary Benefit**: Achieve a cleaner, Rust-standard workspace layout with flat crate structure.
+
+**Success Criteria**: All tools work correctly without manual intervention, discovering and fixing any bugs encountered.
+
+---
+
+## 📋 Progress Tracker
+
+### ✅ Phase 1: Move Language Metadata Files (COMPLETE)
+- ✅ Move `crates/languages/languages.toml` → `config/languages/languages.toml`
+- ✅ Move `crates/languages/README.md` → `docs/development/languages/README.md`
+- ✅ Move `crates/languages/PLUGIN_DEVELOPMENT_GUIDE.md` → `docs/development/languages/PLUGIN_DEVELOPMENT_GUIDE.md`
+- ✅ Commit: `7632bec` - "refactor: Phase 1 - relocate language metadata and configuration files"
+
+### 🔄 Phase 2: Promote Language Crates to Flat Structure (IN PROGRESS)
+- ✅ Move `crates/languages/cb-lang-common` → `crates/cb-lang-common`
+  - ✅ Commit: `cb1024e` - "refactor: move cb-lang-common to flat crates layout"
+- ❌ Move `crates/languages/cb-lang-java` → `crates/cb-lang-java`
+- ❌ Move `crates/languages/cb-lang-python` → `crates/cb-lang-python`
+- ❌ Move `crates/languages/cb-lang-rust` → `crates/cb-lang-rust`
+- ❌ Move `crates/languages/cb-lang-typescript` → `crates/cb-lang-typescript`
+- ⚠️ **BLOCKER**: `rename_directory` bug creating duplicate imports - fixing in parallel
+
+### ❌ Phase 3: Reorganize Workspace Crates (NOT STARTED)
+- ❌ Move `benchmarks` → `crates/codebuddy-bench`
+- ❌ Update `crates/codebuddy-bench/Cargo.toml` (package name)
+- ❌ Update root `Cargo.toml` (workspace members)
+
+### ❌ Phase 4: Split Integration Tests (NOT STARTED)
+- ❌ Create `crates/test-support/` crate structure
+- ❌ Move `integration-tests/src/harness` → `crates/test-support/src/harness`
+- ❌ Move `integration-tests/fixtures` → `crates/test-support/fixtures`
+- ❌ Move `integration-tests/tests` → `apps/codebuddy/tests`
+- ❌ Move helper files to test-support
+- ❌ Update `apps/codebuddy/Cargo.toml` (add test-support dev-dependency)
+
+### ❌ Phase 5: Organize Documentation (NOT STARTED)
+- ❌ Move proposal files to `docs/proposals/`
+- ❌ Move `FAILING_TESTS.md` → `docs/development/FAILING_TESTS.md`
+- ❌ Delete duplicate files (`install.sh`, `test_scanner`)
+- ❌ Update CLAUDE.md, Makefile, justfile with new paths
+
+---
+
+## 🐛 Current Blocker: rename_directory Bug
+
+**Status**: Investigating and fixing duplicate import bug
+
+**Issue**: `rename_directory` creates malformed duplicate imports:
+```rust
+use cb_plugin_api :: import_support :: ImportSupport ;  // MALFORMED DUPLICATE
+use cb_plugin_api::import_support::ImportSupport;     // ORIGINAL
+```
+
+**Root Causes Found**:
+1. **Bug #1 (Orchestration)**: Calling `update_imports_for_rename()` once per moved file instead of once for entire directory
+2. **Bug #2 (Application)**: Full-file replacements treated incorrectly, multi-line content pushed as single element
+
+**Fixes Applied** (in stash):
+- Agent 1's fix: Batch import updates (single call for directory)
+- Agent 2's fix: Special case for full-file replacements
+
+**Next Steps**:
+1. Test fixes with actual import-triggering scenario
+2. Commit if successful
+3. Resume Phase 2 reorganization
+
+---
+
 ## Proposed Tree Structure
 
 ```
 /
-├── Cargo.toml                     # EDITED: Virtual manifest, members = ["crates/*", "apps/codebuddy"], resolver = "2"
-├── Cargo.lock
+├── Cargo.toml                     # EDITED: Virtual manifest, members = ["crates/*", "apps/codebuddy"]
 ├── apps/
 │   └── codebuddy/                 # STAYS: main binary (Rust convention)
 │       ├── src/
-│       ├── tests/                 # MOVED: integration tests from /integration-tests/tests/
-│   │   │   ├── cli_tool_command.rs
-│   │   │   ├── contract_validation.rs
-│   │   │   ├── debug_hover.rs
-│   │   │   ├── e2e_analysis_features.rs
-│   │   │   ├── e2e_consolidation.rs
-│   │   │   ├── e2e_error_scenarios.rs
-│   │   │   ├── e2e_git_operations.rs
-│   │   │   ├── e2e_manifest_cross_language.rs
-│   │   │   ├── e2e_performance.rs
-│   │   │   ├── e2e_python_language_specific.rs
-│   │   │   ├── e2e_refactoring_cross_language.rs
-│   │   │   ├── e2e_server_lifecycle.rs
-│   │   │   ├── e2e_system_tools.rs
-│   │   │   ├── e2e_workspace_operations.rs
-│   │   │   ├── integration_services.rs
-│   │   │   ├── lsp_feature_runners.rs
-│   │   │   ├── lsp_features.rs
-│   │   │   ├── mcp_file_operations.rs
-│   │   │   └── mcp_handler_runners.rs
-│       └── Cargo.toml             # EDITED: Add test-support as dev-dependency
+│       ├── tests/                 # MOVED: from integration-tests/tests/
+│       └── Cargo.toml             # EDITED: Add test-support dev-dependency
+├── crates/
 │   ├── cb-ast/                    # STAYS
-│   │   ├── src/
-│   │   ├── Cargo.toml
-│   │   └── README.md
 │   ├── cb-client/                 # STAYS
-│   │   ├── src/
-│   │   └── Cargo.toml
-│   ├── cb-core/                   # STAYS
-│   │   ├── src/
-│   │   ├── tests/
-│   │   ├── build.rs               # EDITED: ../languages/languages.toml → ../config/languages/languages.toml
-│   │   └── Cargo.toml
+│   ├── cb-core/                   # STAYS (build.rs updated for config path)
 │   ├── cb-handlers/               # STAYS
-│   │   ├── src/
-│   │   └── Cargo.toml
 │   ├── cb-lsp/                    # STAYS
-│   │   ├── examples/
-│   │   ├── src/
-│   │   └── Cargo.toml
-│   ├── cb-plugin-api/             # STAYS
-│   │   ├── src/
-│   │   ├── build.rs               # EDITED: ../languages/languages.toml → ../config/languages/languages.toml
-│   │   └── Cargo.toml
+│   ├── cb-plugin-api/             # STAYS (build.rs updated for config path)
 │   ├── cb-plugins/                # STAYS
-│   │   ├── src/
-│   │   ├── tests/
-│   │   └── Cargo.toml
 │   ├── cb-protocol/               # STAYS
-│   │   ├── src/
-│   │   └── Cargo.toml
 │   ├── cb-server/                 # STAYS
-│   │   ├── src/
-│   │   ├── tests/
-│   │   └── Cargo.toml
-│   ├── cb-services/               # STAYS
-│   │   ├── src/
-│   │   ├── build.rs               # EDITED: ../languages/languages.toml → ../config/languages/languages.toml
-│   │   └── Cargo.toml
+│   ├── cb-services/               # STAYS (build.rs updated for config path)
 │   ├── cb-transport/              # STAYS
-│   │   ├── src/
-│   │   └── Cargo.toml
 │   ├── cb-types/                  # STAYS
-│   │   ├── src/
-│   │   └── Cargo.toml
-│   ├── cb-lang-common/            # MOVED: from crates/cb-lang-common/
-│   │   ├── src/
-│   │   └── Cargo.toml
-│   ├── cb-lang-go/                # MOVED: from crates/cb-lang-go/
-│   │   ├── src/
-│   │   └── Cargo.toml
-│   ├── cb-lang-java/              # MOVED: from crates/languages/cb-lang-java/
-│   │   ├── src/
-│   │   └── Cargo.toml
-│   ├── cb-lang-python/            # MOVED: from crates/languages/cb-lang-python/
-│   │   ├── src/
-│   │   └── Cargo.toml
-│   ├── cb-lang-rust/              # MOVED: from crates/languages/cb-lang-rust/
-│   │   ├── src/
-│   │   └── Cargo.toml
-│   ├── cb-lang-typescript/        # MOVED: from crates/languages/cb-lang-typescript/
-│   │   ├── src/
-│   │   └── Cargo.toml
-│   ├── codebuddy-bench/           # MOVED+RENAMED: from benchmarks/
-│   │   ├── benches/
-│   │   │   ├── dispatch_benchmark.rs
-│   │   │   ├── forwarding_benchmark.rs
-│   │   │   ├── optimization_benchmark.rs
-│   │   │   └── serialization_benchmark.rs
-│   │   └── Cargo.toml             # EDITED: name = "codebuddy-bench"
-│   └── test-support/              # NEW: extracted from integration-tests/
+│   ├── cb-lang-common/            # ✅ MOVED from crates/languages/
+│   ├── cb-lang-go/                # MOVED from crates/languages/ (currently testing)
+│   ├── cb-lang-java/              # TO MOVE from crates/languages/
+│   ├── cb-lang-python/            # TO MOVE from crates/languages/
+│   ├── cb-lang-rust/              # TO MOVE from crates/languages/
+│   ├── cb-lang-typescript/        # TO MOVE from crates/languages/
+│   ├── codebuddy-bench/           # TO MOVE from benchmarks/
+│   └── test-support/              # TO CREATE (extracted from integration-tests/)
 │       ├── src/
-│       │   ├── harness/           # MOVED: from integration-tests/src/harness/
-│       │   ├── helpers.rs         # MOVED: from integration-tests/src/helpers.rs
-│       │   ├── mocks.rs           # MOVED: from integration-tests/src/mocks.rs
-│       │   └── lib.rs             # NEW: exports helpers + fixtures_dir()
-│       ├── fixtures/              # MOVED+MERGED: from integration-tests/{fixtures,test-fixtures}/
-│       │   ├── consolidation-test/
-│       │   ├── atomic-refactoring-test/
-│       │   ├── java/
-│       │   ├── python/
-│       │   ├── rust/
-│       │   ├── src/
-│       │   ├── test-workspace-symbols/
-│       │   ├── app_config.json
-│       │   ├── import_graph.json
-│       │   ├── intent_spec.json
-│       │   ├── mcp_request.json
-│       │   ├── mcp_response.json
-│       │   └── README.md
-│       └── Cargo.toml             # NEW: publish = false
-├── config/                        # NEW
+│       │   ├── harness/
+│       │   ├── helpers.rs
+│       │   ├── mocks.rs
+│       │   └── lib.rs
+│       ├── fixtures/
+│       └── Cargo.toml
+├── config/                        # ✅ CREATED
 │   └── languages/
-│       └── languages.toml         # MOVED: from crates/languages/languages.toml
-├── examples/                      # STAYS
-│   ├── backend/
-│   │   ├── main.py
-│   │   └── requirements.txt
-│   ├── database/
-│   │   └── init.sql
-│   ├── frontend/
-│   │   ├── src/
-│   │   └── package.json
-│   ├── README.md
-│   └── tenant-client.ts
+│       └── languages.toml         # ✅ MOVED from crates/languages/
 ├── docs/
 │   ├── architecture/              # STAYS
-│   │   ├── ARCHITECTURE.md
-│   │   └── INTERNAL_TOOLS.md
 │   ├── development/
-│   │   ├── languages/             # NEW
-│   │   │   ├── README.md          # MOVED: from crates/languages/README.md
-│   │   │   ├── PLUGIN_DEVELOPMENT_GUIDE.md  # MOVED: from root (if exists)
-│   │   │   └── SCAFFOLDING.md     # MOVED: from crates/languages/SCAFFOLDING.md
-│   │   ├── FAILING_TESTS.md       # MOVED: from root
+│   │   ├── languages/             # ✅ CREATED
+│   │   │   ├── README.md          # ✅ MOVED from crates/languages/
+│   │   │   └── PLUGIN_DEVELOPMENT_GUIDE.md  # ✅ MOVED
+│   │   ├── FAILING_TESTS.md       # TO MOVE from root
 │   │   └── LOGGING_GUIDELINES.md  # STAYS
 │   ├── features/                  # STAYS
-│   │   └── WORKFLOWS.md
-│   ├── proposals/                 # NEW
-│   │   ├── 00_PROPOSAL_LANGUAGE_PLUGIN_REFACTOR.md  # MOVED: from root
-│   │   ├── 04_PROPOSAL_SUPPORT_MATRIX.md            # MOVED: from root
-│   │   ├── 05_PROPOSAL_LANG_SUPPORT.md              # MOVED: from root
-│   │   ├── 06_PROPOSAL_BATCH_EXECUTE.md             # MOVED: from root
-│   │   ├── 07_PROPOSAL_BACKEND_ARCHITECTURE.md      # MOVED: from root
-│   │   └── 08_PROPOSAL_ADVANCED_ANALYSIS.md         # MOVED: from root
+│   ├── proposals/                 # TO CREATE
+│   │   ├── 00_PROPOSAL_LANGUAGE_PLUGIN_REFACTOR.md  # TO MOVE
+│   │   ├── 04_PROPOSAL_SUPPORT_MATRIX.md            # TO MOVE
+│   │   ├── 05_PROPOSAL_LANG_SUPPORT.md              # TO MOVE
+│   │   ├── 06_PROPOSAL_BATCH_EXECUTE.md             # TO MOVE
+│   │   ├── 07_PROPOSAL_BACKEND_ARCHITECTURE.md      # TO MOVE
+│   │   └── 08_PROPOSAL_ADVANCED_ANALYSIS.md         # TO MOVE
 │   ├── security/                  # STAYS
-│   │   └── AUDIT.md
 │   └── testing/                   # STAYS
-│       ├── CROSS_LANGUAGE_TESTING.md
-│       └── INTEGRATION_GUIDE.md   # MOVED: from integration-tests/TESTING_GUIDE.md
 ├── deployment/                    # STAYS
-│   └── docker/
-│       ├── agent.py
-│       ├── docker-compose.production.yml
-│       ├── docker-compose.yml
-│       ├── Dockerfile
-│       ├── nginx.conf
-│       └── README.md
 ├── scripts/                       # STAYS
-│   ├── check-duplicates.sh        # STAYS
-│   ├── check-features.sh          # MOVED: from crates/languages/ + EDITED: path refs
-│   ├── install.sh                 # STAYS
-│   ├── new-lang.sh                # MOVED: from crates/languages/ + EDITED: path refs
-│   └── setup-dev-tools.sh         # STAYS
-├── API.md                         # STAYS
-├── CHANGELOG.md                   # STAYS
-├── CLAUDE.md                      # EDITED: update all path references
-├── codebuddy.example.toml         # STAYS
-├── codebuddy.toml                 # STAYS
-├── CONTRIBUTING.md                # STAYS
-├── GEMINI.md -> CLAUDE.md         # STAYS
-├── justfile                       # EDITED: update benchmark paths, test paths
-├── LICENSE                        # STAYS
-├── Makefile                       # EDITED: update benchmark paths, test paths
-├── README.md                      # STAYS
-├── rust-toolchain.toml            # STAYS
-├── SECURITY.md                    # STAYS
-└── vm.yaml                        # STAYS
+│   ├── check-features.sh          # Already moved in earlier work
+│   └── new-lang.sh                # Already moved in earlier work
+└── [root files]                   # STAYS (README, CLAUDE.md, etc.)
 
-# REMOVED directories:
-# - benchmarks/                    # Removed after moving to crates/codebuddy-bench/
-# - crates/languages/              # Removed after flattening language crates
-# - integration-tests/             # Removed after splitting into test-support + apps/codebuddy/tests/
-# - tests/                         # Was empty, not recreated
-
-# REMOVED files:
-# - install.sh (root)              # Duplicate of scripts/install.sh
-# - test_scanner (root)            # Moved to scripts/ or removed
-# - 00_PROPOSAL_*.md (6 files)     # Moved to docs/proposals/
-# - FAILING_TESTS.md (root)        # Moved to docs/development/
+# REMOVED after completion:
+# - crates/languages/              # After all language crates moved
+# - benchmarks/                    # After moving to crates/codebuddy-bench/
+# - integration-tests/             # After splitting into test-support + apps/codebuddy/tests/
 ```
+
+---
 
 ## Key Benefits
 
-1. **Rust-standard flat workspace** - All crates at `crates/*` level
-2. **Integration tests in binary crate** - `crates/codebuddy/tests/` per Cargo convention
-3. **Language config centralized** - `config/languages/languages.toml` for build scripts
-4. **Documentation organized** - Proposals, testing guides, language docs properly filed
-5. **Clean root** - Only essential files, no proposal docs or duplicate scripts
-
-## Migration Notes
-
-- All `git mv` operations preserve history
-- Build scripts need path updates: `../languages/languages.toml` → `../config/languages/languages.toml`
-- CI/Make/just files need benchmark path updates: `benchmarks` → `crates/codebuddy-bench`
-- Integration tests import: `use test_support::*;`
-- Test-support crate marked `publish = false`
+1. **Dog-fooding**: Stress-test CodeBuddy's own refactoring tools on a real-world workspace
+2. **Bug discovery**: Already found and fixing critical `rename_directory` bugs
+3. **Rust-standard flat workspace**: All crates at `crates/*` level
+4. **Integration tests in binary**: `apps/codebuddy/tests/` per Cargo convention
+5. **Centralized config**: `config/languages/languages.toml` for build scripts
+6. **Organized documentation**: Proposals, testing guides, language docs properly filed
+7. **Clean root directory**: Only essential files
 
 ---
 
 ## Execution Plan Using CodeBuddy MCP Tools
 
-**Note:** All file operations use CodeBuddy MCP tools with automatic import updates. The `rename_directory` and `rename_file` tools automatically update all imports across the workspace - **no manual file edits needed**.
+**Primary Tool Being Tested**: `rename_directory` with automatic import updates
 
-### Phase 1: Move Language Metadata Files
-**Goal:** Relocate language configuration and documentation files
+### Phase 1: Move Language Metadata Files ✅ COMPLETE
 
-**MCP Tool:** Individual `rename_file` calls (batch_execute had timeout issues)
+**MCP Tool**: `rename_file` (individual calls)
 
 ```bash
-# Move config file
+# ✅ DONE - Commit 7632bec
 rename_file: crates/languages/languages.toml → config/languages/languages.toml
-
-# Move documentation (scripts already in scripts/)
 rename_file: crates/languages/README.md → docs/development/languages/README.md
 rename_file: crates/languages/PLUGIN_DEVELOPMENT_GUIDE.md → docs/development/languages/PLUGIN_DEVELOPMENT_GUIDE.md
 ```
 
-**Notes:**
-- `check-features.sh` and `new-lang.sh` already exist in `scripts/` directory
-- Build scripts (cb-core, cb-plugin-api, cb-services) will need manual path updates to reference `config/languages/languages.toml`
-
-**Validation:** `cargo check --workspace` (build scripts may fail if not updated)
+**Validation**: ✅ `cargo check --workspace` passed
 
 ---
 
-### Phase 2: Promote Language Crates to Flat Structure
-**Goal:** Move all 6 language crates from `crates/languages/*` to `crates/*`
+### Phase 2: Promote Language Crates to Flat Structure 🔄 IN PROGRESS
 
-**MCP Tool:** `rename_directory` (6 separate calls - cannot batch directories)
+**MCP Tool**: `rename_directory` (6 separate calls - testing tool capabilities)
 
 ```bash
-rename_directory: crates/cb-lang-common → crates/cb-lang-common
-rename_directory: crates/cb-lang-go → crates/cb-lang-go
+# ✅ DONE - Commit cb1024e
+rename_directory: crates/languages/cb-lang-common → crates/cb-lang-common
+
+# ⚠️ BLOCKED - Fixing rename_directory bugs first
 rename_directory: crates/languages/cb-lang-java → crates/cb-lang-java
 rename_directory: crates/languages/cb-lang-python → crates/cb-lang-python
 rename_directory: crates/languages/cb-lang-rust → crates/cb-lang-rust
 rename_directory: crates/languages/cb-lang-typescript → crates/cb-lang-typescript
 ```
 
-**Notes:**
-- Each crate will have imports automatically updated by CodeBuddy
-- Empty `crates/languages/` directory can be removed after
+**Expected Behavior**:
+- CodeBuddy automatically updates all imports across workspace
+- No duplicate imports created
+- Properly formatted output (no extra spaces)
 
-**Validation:** `cargo check --workspace`
+**Actual Behavior (bug being fixed)**:
+- Duplicate imports created
+- Malformed formatting with spaces around `::`
+
+**Validation**: `cargo check --workspace` (after fixes committed)
 
 ---
 
-### Phase 3: Reorganize Workspace Crates
-**Goal:** Rename benchmarks crate, establish flat workspace structure
+### Phase 3: Reorganize Workspace Crates ❌ NOT STARTED
 
-**MCP Tool:** `rename_directory` (1 call)
+**MCP Tool**: `rename_directory`
 
 ```bash
 rename_directory: benchmarks → crates/codebuddy-bench
 ```
 
-**Manual Edits Required:**
+**Manual Edits Required**:
 ```bash
-# Update root Cargo.toml (virtual manifest with members = ["crates/*", "apps/codebuddy"])
-# Update crates/codebuddy-bench/Cargo.toml (package name)
+# Update root Cargo.toml workspace members
+# Update crates/codebuddy-bench/Cargo.toml package name
 ```
 
-**Validation:** `cargo check --workspace`
-
-**Note:** The main binary stays at `apps/codebuddy` per Rust convention - only library crates and supporting crates go in `crates/`.
+**Validation**: `cargo check --workspace`
 
 ---
 
-### Phase 4: Split Integration Tests
-**Goal:** Create test-support crate, reorganize tests
+### Phase 4: Split Integration Tests ❌ NOT STARTED
 
-**MCP Tool:** `batch_execute` (create test-support structure)
+**MCP Tool**: `batch_execute` (create test-support structure)
 
 ```json
 {
@@ -302,7 +262,7 @@ rename_directory: benchmarks → crates/codebuddy-bench
 }
 ```
 
-**MCP Tool:** `rename_directory` (move test utilities)
+**MCP Tool**: `rename_directory` (move test utilities)
 
 ```bash
 rename_directory: integration-tests/src/harness → crates/test-support/src/harness
@@ -310,7 +270,7 @@ rename_directory: integration-tests/fixtures → crates/test-support/fixtures
 rename_directory: integration-tests/tests → apps/codebuddy/tests
 ```
 
-**MCP Tool:** `batch_execute` (move individual files)
+**MCP Tool**: `batch_execute` (move individual files)
 
 ```json
 {
@@ -322,20 +282,19 @@ rename_directory: integration-tests/tests → apps/codebuddy/tests
 }
 ```
 
-**Manual Edits Required:**
+**Manual Edits Required**:
 ```bash
 # Update apps/codebuddy/Cargo.toml (add test-support dev-dependency)
 # Update test files to use `use test_support::*;`
 ```
 
-**Validation:** `cargo test --workspace`
+**Validation**: `cargo test --workspace`
 
 ---
 
-### Phase 5: Organize Documentation
-**Goal:** Clean up root, organize proposals
+### Phase 5: Organize Documentation ❌ NOT STARTED
 
-**MCP Tool:** `batch_execute`
+**MCP Tool**: `batch_execute`
 
 ```json
 {
@@ -353,14 +312,14 @@ rename_directory: integration-tests/tests → apps/codebuddy/tests
 }
 ```
 
-**Manual Edits Required:**
+**Manual Edits Required**:
 ```bash
 # Update CLAUDE.md with new paths
 # Update Makefile/justfile with new benchmark paths
 # Update .github/workflows/*.yml with new paths
 ```
 
-**Validation:**
+**Validation**:
 ```bash
 cargo fmt
 cargo clippy --workspace
@@ -372,15 +331,72 @@ cargo bench -p codebuddy-bench --no-run
 
 ## Validation Checklist
 
-After each phase, run:
+**After each phase**:
 - ✅ `cargo check --workspace` - Verify compilation
 - ✅ `cargo test --workspace` - Verify tests pass
 - ✅ `git status` - Review changed files
+- ✅ Commit working changes
 
-Final validation:
+**Final validation**:
 - ✅ `cargo fmt`
 - ✅ `cargo clippy --workspace -- -D warnings`
 - ✅ `cargo test --workspace --verbose`
 - ✅ `cargo bench -p codebuddy-bench --no-run`
 - ✅ `cargo build --release -p codebuddy`
 - ✅ `./target/release/codebuddy status`
+
+---
+
+## Migration Notes
+
+- All file operations use CodeBuddy MCP tools with automatic import updates
+- `rename_directory` and `rename_file` automatically update all imports - no manual edits needed
+- Build scripts need manual path updates: `../languages/languages.toml` → `../config/languages/languages.toml`
+- CI/Make/just files need manual benchmark path updates
+- Test-support crate marked `publish = false`
+- Git history preserved through all moves
+
+---
+
+## 🧪 Comprehensive Tool Test Plan
+
+This proposal serves as a **complete validation suite** for CodeBuddy's capabilities. Each phase exercises different tools:
+
+### Already Tested (Phase 1)
+- ✅ `rename_file` - Moved 3 files successfully
+- ✅ `create_file` - Created `config/languages/` directory
+- ✅ Import graph analysis - Verified no broken references
+- ✅ `health_check` - System remained healthy
+
+### Currently Testing (Phase 2)
+- 🔄 `rename_directory` - **Found critical bugs!**
+  - Bug #1: Duplicate imports from redundant scans
+  - Bug #2: Malformed full-file replacements
+- 🔄 Cross-crate refactoring validation
+- 🔄 Cargo.toml dependency path updates
+
+### Upcoming Tests (Phases 3-5)
+- ⏳ `batch_execute` with multiple operations
+- ⏳ Complex directory moves (benchmarks → crates)
+- ⏳ Test fixture reorganization
+- ⏳ Documentation reference updates
+- ⏳ `delete_file` for cleanup
+- ⏳ Full workspace integrity validation
+
+### Validation Tools To Use Throughout
+- `find_references` - After each move, verify all references
+- `get_diagnostics` - Ensure no compilation errors
+- `analyze_imports` - Verify import graph integrity
+- `find_dead_code` - Identify orphaned code
+- `organize_imports` - Clean up after refactoring
+- `format_document` - Maintain code style
+- `get_document_symbols` - Ensure symbols resolve
+- `find_definition` - Test cross-crate navigation
+
+**Success Metric**: Complete the entire reorganization using ONLY CodeBuddy's MCP tools, with zero manual file edits (except Cargo.toml workspace configuration).
+
+**Current Learning Outcomes**:
+- ✅ Discovered critical `rename_directory` bugs
+- ✅ Identified need for better full-file replacement logic
+- ✅ Validated `rename_file` works correctly
+- 🔄 Testing real-world workspace reorganization at scale
