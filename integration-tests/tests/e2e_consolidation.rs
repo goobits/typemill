@@ -334,6 +334,262 @@ edition = "2021"
     );
 }
 
+/// Test manifest updates with workspace.dependencies, patch, and target sections
+#[tokio::test]
+async fn test_rename_directory_updates_all_manifest_sections() {
+    let workspace = TestWorkspace::new();
+    let workspace_path = workspace.path();
+
+    // Create a complex workspace structure with various Cargo.toml dependency types
+
+    // Root workspace Cargo.toml with workspace.dependencies
+    fs::write(
+        workspace_path.join("Cargo.toml"),
+        r#"[workspace]
+members = ["crates/my-plugin", "crates/core", "crates/utils"]
+resolver = "2"
+
+[workspace.dependencies]
+my-plugin = { path = "crates/my-plugin" }
+serde = "1.0"
+
+[patch.crates-io]
+my-plugin = { path = "crates/my-plugin" }
+"#,
+    )
+    .unwrap();
+
+    // Create my-plugin crate (to be moved)
+    fs::create_dir_all(workspace_path.join("crates/my-plugin/src")).unwrap();
+    fs::write(
+        workspace_path.join("crates/my-plugin/Cargo.toml"),
+        r#"[package]
+name = "my-plugin"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = "1.0"
+"#,
+    )
+    .unwrap();
+    fs::write(
+        workspace_path.join("crates/my-plugin/src/lib.rs"),
+        "pub fn plugin_function() -> &'static str { \"hello\" }\n",
+    )
+    .unwrap();
+
+    // Create core crate that depends on my-plugin via workspace.dependencies
+    fs::create_dir_all(workspace_path.join("crates/core/src")).unwrap();
+    fs::write(
+        workspace_path.join("crates/core/Cargo.toml"),
+        r#"[package]
+name = "core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+my-plugin = { workspace = true }
+
+[dev-dependencies]
+my-plugin = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+my-plugin = { path = "../my-plugin" }
+"#,
+    )
+    .unwrap();
+    fs::write(
+        workspace_path.join("crates/core/src/lib.rs"),
+        "pub fn core_function() {}\n",
+    )
+    .unwrap();
+
+    // Create utils crate with regular path dependency
+    fs::create_dir_all(workspace_path.join("crates/utils/src")).unwrap();
+    fs::write(
+        workspace_path.join("crates/utils/Cargo.toml"),
+        r#"[package]
+name = "utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+my-plugin = { path = "../my-plugin" }
+
+[build-dependencies]
+my-plugin = { path = "../my-plugin" }
+"#,
+    )
+    .unwrap();
+    fs::write(
+        workspace_path.join("crates/utils/src/lib.rs"),
+        "pub fn utils_function() {}\n",
+    )
+    .unwrap();
+
+    let mut client = TestClient::new(workspace_path);
+
+    // Rename my-plugin from crates/my-plugin to plugins/my-plugin
+    let old_path = workspace_path.join("crates/my-plugin");
+    let new_path = workspace_path.join("plugins/my-plugin");
+
+    let response = client
+        .call_tool(
+            "rename_directory",
+            json!({
+                "old_path": old_path.to_str().unwrap(),
+                "new_path": new_path.to_str().unwrap(),
+            }),
+        )
+        .await
+        .expect("rename_directory should succeed");
+
+    let result = response
+        .get("result")
+        .expect("Response should have result field");
+
+    // Verify operation succeeded
+    assert!(
+        result["success"].as_bool().unwrap_or(false),
+        "Rename should succeed. Result: {:?}",
+        result
+    );
+
+    // Verify manifest_updates section is present
+    let manifest_updates = result
+        .get("manifest_updates")
+        .expect("Result should have manifest_updates field");
+
+    assert!(
+        manifest_updates.is_object(),
+        "manifest_updates should be an object"
+    );
+
+    // Verify files were updated
+    let files_updated = manifest_updates["files_updated"]
+        .as_u64()
+        .expect("Should have files_updated count");
+
+    assert!(
+        files_updated >= 3,
+        "Should update at least 3 Cargo.toml files (root + core + utils), got {}",
+        files_updated
+    );
+
+    let updated_files = manifest_updates["updated_files"]
+        .as_array()
+        .expect("Should have updated_files array");
+
+    // Verify root Cargo.toml was updated
+    let root_toml_path = workspace_path.join("Cargo.toml");
+    assert!(
+        updated_files
+            .iter()
+            .any(|f| f.as_str().unwrap().contains("Cargo.toml")
+                && Path::new(f.as_str().unwrap()) == root_toml_path),
+        "Root Cargo.toml should be in updated files list"
+    );
+
+    // === Verify Root Cargo.toml [workspace.dependencies] ===
+    let root_toml = fs::read_to_string(&root_toml_path).unwrap();
+
+    assert!(
+        root_toml.contains(r#"my-plugin = { path = "plugins/my-plugin" }"#),
+        "[workspace.dependencies] should be updated to new path. Content:\n{}",
+        root_toml
+    );
+
+    assert!(
+        !root_toml.contains(r#"crates/my-plugin"#),
+        "Old path should not exist in root Cargo.toml. Content:\n{}",
+        root_toml
+    );
+
+    // === Verify Root Cargo.toml [patch.crates-io] ===
+    assert!(
+        root_toml.contains(r#"my-plugin = { path = "plugins/my-plugin" }"#),
+        "[patch.crates-io] should be updated to new path. Content:\n{}",
+        root_toml
+    );
+
+    // === Verify core crate [target.'cfg(unix)'.dependencies] ===
+    let core_toml = fs::read_to_string(workspace_path.join("crates/core/Cargo.toml")).unwrap();
+
+    assert!(
+        core_toml.contains(r#"my-plugin = { path = "../../plugins/my-plugin" }"#),
+        "[target.'cfg(unix)'.dependencies] should be updated with relative path. Content:\n{}",
+        core_toml
+    );
+
+    assert!(
+        !core_toml.contains(r#"../my-plugin"#),
+        "Old relative path should not exist. Content:\n{}",
+        core_toml
+    );
+
+    // === Verify utils crate [dependencies] and [build-dependencies] ===
+    let utils_toml = fs::read_to_string(workspace_path.join("crates/utils/Cargo.toml")).unwrap();
+
+    assert!(
+        utils_toml.contains(r#"my-plugin = { path = "../../plugins/my-plugin" }"#),
+        "[dependencies] should be updated. Content:\n{}",
+        utils_toml
+    );
+
+    // Verify both sections were updated
+    let path_occurrences = utils_toml.matches(r#"../../plugins/my-plugin"#).count();
+    assert!(
+        path_occurrences >= 2,
+        "Both [dependencies] and [build-dependencies] should be updated, found {} occurrences",
+        path_occurrences
+    );
+
+    // === Verify files were actually moved ===
+    assert!(
+        !old_path.exists(),
+        "Old directory should no longer exist"
+    );
+
+    assert!(
+        new_path.join("src/lib.rs").exists(),
+        "Files should exist at new location"
+    );
+
+    // === Verify no errors were reported ===
+    let errors = manifest_updates["errors"]
+        .as_array()
+        .expect("Should have errors array");
+
+    assert!(
+        errors.is_empty(),
+        "Should have no manifest update errors. Errors: {:?}",
+        errors
+    );
+
+    // === Verify workspace structure is maintained ===
+    // Check that workspace members array was updated to reflect new location
+    assert!(
+        root_toml.contains(r#""plugins/my-plugin""#) || root_toml.contains(r#"'plugins/my-plugin'"#),
+        "Workspace members should include new path. Content:\n{}",
+        root_toml
+    );
+
+    assert!(
+        !root_toml.contains(r#""crates/my-plugin""#),
+        "Workspace members should not contain old path. Content:\n{}",
+        root_toml
+    );
+
+    println!("✅ Manifest update test passed:");
+    println!("  - Files updated: {}", files_updated);
+    println!("  - workspace.dependencies: updated ✓");
+    println!("  - patch.crates-io: updated ✓");
+    println!("  - target.'cfg(unix)'.dependencies: updated ✓");
+    println!("  - Standard dependency sections: updated ✓");
+    println!("  - Workspace structure maintained ✓");
+}
+
 /// Helper function to recursively copy directories
 fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
     if !dst.exists() {
