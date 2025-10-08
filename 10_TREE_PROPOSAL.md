@@ -116,7 +116,7 @@ This is a comprehensive tool validation exercise that will test:
 - ❌ Move `crates/cb-lang-java` → `crates/cb-lang-java`
 - ❌ Move `crates/cb-lang-python` → `crates/cb-lang-python`
 - ❌ Move `crates/cb-lang-rust` → `crates/cb-lang-rust`
-- ❌ Move `crates/languages/cb-lang-typescript` → `crates/cb-lang-typescript`
+- ❌ Move `crates/cb-lang-typescript` → `crates/cb-lang-typescript`
 - ⚠️ **BLOCKER**: `rename_directory` bug creating duplicate imports - fixing in parallel
 
 ### ❌ Phase 3: Reorganize Workspace Crates (NOT STARTED)
@@ -281,7 +281,7 @@ rename_directory: crates/languages/cb-lang-common → crates/cb-lang-common
 rename_directory: crates/cb-lang-java → crates/cb-lang-java
 rename_directory: crates/cb-lang-python → crates/cb-lang-python
 rename_directory: crates/cb-lang-rust → crates/cb-lang-rust
-rename_directory: crates/languages/cb-lang-typescript → crates/cb-lang-typescript
+rename_directory: crates/cb-lang-typescript → crates/cb-lang-typescript
 ```
 
 **Expected Behavior**:

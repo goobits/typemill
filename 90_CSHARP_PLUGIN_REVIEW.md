@@ -277,7 +277,7 @@ node --version  # Should be v18.x or later
 
 **Build Parser**:
 ```bash
-cd crates/languages/cb-lang-typescript/resources
+cd crates/cb-lang-typescript/resources
 npm install
 
 # Verify
@@ -326,7 +326,7 @@ cd crates/languages/cb-lang-csharp/resources/csharp-parser && \
   dotnet publish -c Release -r linux-x64 --self-contained && cd -
 
 # TypeScript
-cd crates/languages/cb-lang-typescript/resources && npm install && cd -
+cd crates/cb-lang-typescript/resources && npm install && cd -
 ```
 
 ---

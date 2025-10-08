@@ -10,7 +10,7 @@ cb-core = { path = "../cb-core" }
 cb-protocol = { path = "../cb-protocol" }
 cb-plugin-api = { path = "../cb-plugin-api" }
 cb-lang-python = { workspace = true }
-cb-lang-typescript = { path = "../languages/cb-lang-typescript" }
+cb-lang-typescript = { path = "../cb-lang-typescript" }
 cb-lang-rust = { path = "../cb-lang-rust" }
 cb-lang-go = { path = "../cb-lang-go" }
 serde = { workspace = true }

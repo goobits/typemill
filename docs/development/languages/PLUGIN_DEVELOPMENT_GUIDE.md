@@ -1393,7 +1393,7 @@ Use this checklist to ensure your plugin is complete:
 |----------|---------------|----------|
 | **Subprocess AST (compiled language)** | Go plugin | `/workspace/crates/languages/cb-lang-go/` |
 | **Subprocess AST (dynamic language)** | Python plugin | `/workspace/crates/cb-lang-python/` |
-| **Subprocess AST (JavaScript ecosystem)** | TypeScript plugin | `/workspace/crates/languages/cb-lang-typescript/` |
+| **Subprocess AST (JavaScript ecosystem)** | TypeScript plugin | `/workspace/crates/cb-lang-typescript/` |
 | **Native Rust parsing** | Rust plugin | `/workspace/crates/cb-lang-rust/` |
 | **ImportSupport implementation** | All plugins | `src/import_support.rs` in any plugin |
 | **WorkspaceSupport implementation** | Rust, Go, TypeScript | `src/workspace_support.rs` |
@@ -1413,10 +1413,10 @@ Use this checklist to ensure your plugin is complete:
 ### Key Files to Study
 
 1. **Start here**: `/workspace/crates/languages/cb-lang-go/src/lib.rs` (cleanest structure)
-2. **AST subprocess pattern**: `/workspace/crates/languages/cb-lang-typescript/src/parser.rs`
+2. **AST subprocess pattern**: `/workspace/crates/cb-lang-typescript/src/parser.rs`
 3. **Import rewriting**: `/workspace/crates/cb-lang-rust/src/import_support.rs`
 4. **Workspace operations**: `/workspace/crates/cb-lang-rust/src/workspace_support.rs`
-5. **Manifest parsing**: `/workspace/crates/languages/cb-lang-typescript/src/manifest.rs`
+5. **Manifest parsing**: `/workspace/crates/cb-lang-typescript/src/manifest.rs`
 
 ---
 
