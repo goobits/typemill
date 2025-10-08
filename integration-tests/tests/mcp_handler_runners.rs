@@ -84,7 +84,7 @@ fn spawn_test_worker(queue: Arc<OperationQueue>) {
 /// Create a mock AppState for direct service testing
 async fn create_mock_state(workspace_root: PathBuf) -> Arc<AppState> {
     let ast_cache = Arc::new(AstCache::new());
-    let plugin_registry = Arc::new(cb_plugin_api::PluginRegistry::new());
+    let plugin_registry = cb_server::services::registry_builder::build_language_plugin_registry();
     let ast_service: Arc<dyn AstService> = Arc::new(DefaultAstService::new(ast_cache.clone(), plugin_registry.clone()));
     let lock_manager = Arc::new(LockManager::new());
     let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
@@ -741,7 +741,7 @@ pub async fn run_analyze_imports_test(case: &AnalyzeImportsTestCase, use_real_mc
             "file_path": file_path.to_string_lossy()
         });
 
-        let plugin_registry = Arc::new(cb_plugin_api::PluginRegistry::new());
+        let plugin_registry = cb_server::services::registry_builder::build_language_plugin_registry();
         let plugin = SystemToolsPlugin::new(plugin_registry);
         let request = PluginRequest {
             method: "analyze_imports".to_string(),

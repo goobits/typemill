@@ -142,7 +142,7 @@ This is a comprehensive tool validation exercise that will test:
 - ❌ Move proposal files to `docs/proposals/`
 - ❌ Move `FAILING_TESTS.md` → `docs/development/FAILING_TESTS.md`
 - ❌ Delete duplicate files (`install.sh`, `test_scanner`)
-- ❌ Update CLAUDE.md, Makefile, justfile with new paths
+- ❌ Update CLAUDE.md, Makefile with new paths
 
 ---
 
@@ -387,7 +387,7 @@ rename_directory: integration-tests/tests → apps/codebuddy/tests
 **Manual Edits Required**:
 ```bash
 # Update CLAUDE.md with new paths
-# Update Makefile/justfile with new benchmark paths
+# Update Makefile with new benchmark paths
 # Update .github/workflows/*.yml with new paths
 ```
 
@@ -424,7 +424,7 @@ cargo bench -p codebuddy-bench --no-run
 - All file operations use CodeBuddy MCP tools with automatic import updates
 - `rename_directory` and `rename_file` automatically update all imports - no manual edits needed
 - Build scripts need manual path updates: `../languages/languages.toml` → `../config/languages/languages.toml`
-- CI/Make/just files need manual benchmark path updates
+- CI/Makefile need manual benchmark path updates
 - Test-support crate marked `publish = false`
 - Git history preserved through all moves
 

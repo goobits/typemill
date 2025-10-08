@@ -432,19 +432,27 @@ import { oldFunction as alias } from './utils';
 
     #[test]
     fn test_rewrite_imports_for_move() {
-        let support = TypeScriptImportSupport::new();
+        use std::path::PathBuf;
+
         let source = r#"import { foo } from './old/path';
 const bar = require('./old/path');
 import('./old/path');
 "#;
 
-        let old_path = Path::new("./old/path");
-        let new_path = Path::new("./new/path");
+        let workspace = PathBuf::from("workspace");
+        let old_path = workspace.join("old").join("path.ts");
+        let new_path = workspace.join("new").join("path.ts");
+        let importing_file = workspace.join("main.ts");
 
-        let (updated, changes) = support.rewrite_imports_for_move(source, old_path, new_path);
-        assert!(updated.contains("from \"./new/path\""));
-        assert!(updated.contains("require(\"./new/path\")"));
-        assert!(updated.contains("import(\"./new/path\")"));
+        let (updated, changes) = rewrite_imports_for_move_with_context(
+            source,
+            &old_path,
+            &new_path,
+            &importing_file,
+        );
+        assert!(updated.contains("from './new/path'"), "Expected single quotes preserved, got: {}", updated);
+        assert!(updated.contains("require('./new/path')"));
+        assert!(updated.contains("import('./new/path')"));
         assert!(changes > 0);
     }
 }
