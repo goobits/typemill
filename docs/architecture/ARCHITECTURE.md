@@ -10,77 +10,75 @@ The system is built on a multi-crate architecture with focused responsibilities 
 
 ```mermaid
 graph TD
-    A[apps/codebuddy] --> B[cb-server]
-    B --> C[cb-api]
-    B --> D[cb-core]
-    B --> E[cb-ast]
-    B --> F[cb-transport]
-    B --> G[cb-vfs]
-    B --> H[cb-plugins]
+    subgraph Application
+        A[apps/codebuddy]
+    end
 
-    D --> C
-    E --> C
+    subgraph Core
+        B[cb-server]
+        C[cb-core]
+        D[cb-types]
+        E[cb-protocol]
+    end
+
+    subgraph Services
+        F[cb-ast]
+        G[cb-plugins]
+        H[cb-lsp]
+        I[cb-services]
+        J[cb-handlers]
+        K[cb-transport]
+    end
+
+    subgraph LanguagePlugins
+        L[cb-lang-*]
+    end
+
+    A --> B
+    B --> C
+    B --> F
+    B --> G
+    B --> H
+    B --> I
+    B --> J
+    B --> K
+
+    C --> D
     F --> C
-    G --> C
-    H --> C
-
-    I[cb-client] --> C
-    I --> D
-
-    J[tests] --> K[All crates]
+    F --> E
+    F --> G
+    G --> L
+    J --> I
+    I --> F
 ```
 
 ## Crate Responsibilities
 
-### Foundation Layer
+### Core Layer
 
-**`cb-api`** - The contract crate
-- Defines shared traits: `AstService`, `LspService`
-- Data structures: `EditPlan`, `ImportGraph`, error types
-- No dependencies on other cb-* crates
-- Ensures clear interfaces between components
-
-**`cb-core`** - Configuration and core types
-- Application configuration (`AppConfig`, `LspConfig`)
-- Core data models and utilities
-- Depends only on `cb-api`
+- **`cb-types`**: Defines the fundamental data structures used across the entire application, such as `Symbol`, `SourceLocation`, and `FileEdit`. It has no dependencies on other workspace crates.
+- **`cb-protocol`**: Contains the definitions for the Model Context Protocol (MCP), including request and response formats. Depends only on `cb-types`.
+- **`cb-core`**: Provides application-wide services like configuration management, logging, and error handling. Depends on `cb-types`.
+- **`cb-server`**: The central orchestration crate that wires all services together. It initializes the application state and manages the main request loop.
 
 ### Service Layer
 
-**`cb-ast`** - Language intelligence
-- Code parsing, analysis, and transformation
-- Import graph management and refactoring
-- Implements `AstService` trait from `cb-api`
+- **`cb-ast`**: Handles Abstract Syntax Tree (AST) parsing, code analysis, and transformations. It's responsible for language intelligence features like finding unused imports and analyzing code complexity.
+- **`cb-plugins`**: Manages the language plugin system, including plugin registration, discovery, and dispatching requests to the appropriate language plugin.
+- **`cb-lsp`**: Provides the integration with the Language Server Protocol (LSP), managing LSP clients and translating between MCP and LSP.
+- **`cb-services`**: Contains business logic for file operations, import management, and other core services.
+- **`cb-handlers`**: Defines the handlers for each MCP tool, mapping tool requests to the corresponding service implementations.
+- **`cb-transport`**: Implements the communication protocols, including WebSocket and stdio, for receiving MCP requests and sending responses.
 
-**`cb-transport`** - Communication protocols
-- WebSocket and stdio transport layers
-- MCP protocol implementation
-- Session management and message routing
+### Language Plugin Layer
 
-**`cb-vfs`** - Virtual filesystem
-- FUSE filesystem implementation
-- File system abstraction and caching
-- Read-only workspace mounting
-
-**`cb-plugins`** - Extensibility system
-- Plugin management and registry
-- Language-specific adapters
-- Tool registration and dispatch
-
-### Orchestration Layer
-
-**`cb-server`** - Central orchestration
-- Implements all service traits
-- Wires services together in `AppState`
-- Message dispatching and request routing
-- LSP client management
+- **`cb-lang-*`**: A collection of individual crates, each providing language-specific support for a particular programming language (e.g., `cb-lang-rust`, `cb-lang-typescript`).
+- **`cb-lang-common`**: A utility crate that provides shared code and helpers for language plugin development, reducing boilerplate.
+- **`cb-plugin-api`**: Defines the `LanguagePlugin` trait and other core APIs that all language plugins must implement.
 
 ### Application Layer
 
-**`apps/codebuddy`** - Executable entry point
-- CLI argument parsing
-- Server bootstrap and initialization
-- Process management (stdio/WebSocket modes)
+- **`apps/codebuddy`**: The executable entry point for the application. It handles CLI argument parsing, server bootstrap, and process management.
 
 ## Request Lifecycle
 

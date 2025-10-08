@@ -26,7 +26,7 @@ Your complete guide to all MCP tools available in Codebuddy. Use this reference 
 
 ## Language Support Matrix
 
-**Total MCP Tools**: 50 (45 public + 5 internal)
+**Total MCP Tools**: 49 (44 public + 5 internal)
 
 ### Navigation & Intelligence (LSP-based)
 
@@ -89,6 +89,7 @@ Your complete guide to all MCP tools available in Codebuddy. Use this reference 
 | `analyze_imports` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | All languages use AST parsing |
 | `find_dead_code` | ✅ | ✅ | ✅ | ✅ | ✅ | LSP-based |
 | `update_dependencies` | ✅ npm/yarn | ✅ pip | ✅ go mod | ✅ cargo | ✅ mvn | Executes package manager |
+| `update_dependency` | ✅ npm/yarn | ✅ pip | ✅ go mod | ✅ cargo | ✅ mvn | Executes package manager |
 | `extract_module_to_package` | ✅ | ✅ | ✅ | ✅ | ✅ | Multi-language support |
 
 ### Advanced & System
@@ -99,6 +100,7 @@ Your complete guide to all MCP tools available in Codebuddy. Use this reference 
 | `batch_execute` | ✅ | ✅ | ✅ | ✅ | ✅ | Batch operations |
 | `health_check` | ✅ | ✅ | ✅ | ✅ | ✅ | Server status |
 | `web_fetch` | ✅ | ✅ | ✅ | ✅ | ✅ | URL content fetching |
+| `system_status` | ✅ | ✅ | ✅ | ✅ | ✅ | Lightweight server status |
 
 **Note:** Language support depends on configured LSP servers in `.codebuddy/config.json`. LSP-first tools attempt LSP code actions, falling back to AST parsing if unsupported.
 
@@ -2004,43 +2006,6 @@ Update a single dependency to a specific version.
   "old_version": "18.2.0",
   "new_version": "18.3.0",
   "package_manager": "npm"
-}
-```
-
----
-
-### `batch_update_dependencies`
-
-Update multiple dependencies in a single operation.
-
-**Parameters:**
-```json
-{
-  "dependencies": [                   // Required: Array of dependency updates
-    {
-      "name": "react",
-      "version": "18.3.0"
-    },
-    {
-      "name": "typescript",
-      "version": "5.3.0"
-    }
-  ],
-  "project_path": "/project",        // Optional: Project path (default: current dir)
-  "package_manager": "auto"          // Optional: npm|yarn|pnpm|pip|cargo|go (default: auto)
-}
-```
-
-**Returns:**
-```json
-{
-  "success": true,
-  "package_manager": "npm",
-  "updated": [
-    {"name": "react", "old_version": "18.2.0", "new_version": "18.3.0"},
-    {"name": "typescript", "old_version": "5.2.0", "new_version": "5.3.0"}
-  ],
-  "failed": []
 }
 ```
 

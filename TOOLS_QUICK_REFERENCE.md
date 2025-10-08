@@ -22,7 +22,7 @@
 
 ---
 
-**Tools:** 45 public MCP tools
+**Tools:** 44 public MCP tools
 **Internal tools:** 5 backend-only tools (see [API_REFERENCE.md Internal Tools](API_REFERENCE.md#internal-tools))
 
 ---
@@ -47,7 +47,7 @@
 
 ---
 
-## Editing & Refactoring (10 tools)
+## Editing & Refactoring (9 tools)
 
 | Tool | Description | Required Parameters | Returns |
 |------|-------------|---------------------|---------|
