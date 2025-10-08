@@ -123,7 +123,7 @@ This is a comprehensive tool validation exercise that will test:
 - ✅ **BLOCKER RESOLVED**: Fixed `rename_directory` manifest update bugs, all moves completed successfully with automatic Cargo.toml updates
 
 ### ❌ Phase 3: Reorganize Workspace Crates (NOT STARTED)
-- ❌ Move `benchmarks` → `crates/codebuddy-bench`
+- ❌ Move `crates/codebuddy-bench` → `crates/codebuddy-bench`
 - ❌ Update `crates/codebuddy-bench/Cargo.toml` (package name)
 - ❌ Update root `Cargo.toml` (workspace members)
 
@@ -197,7 +197,7 @@ use cb_plugin_api::import_support::ImportSupport;     // ORIGINAL
 │   ├── cb-lang-python/            # TO MOVE from crates/languages/
 │   ├── cb-lang-rust/              # TO MOVE from crates/languages/
 │   ├── cb-lang-typescript/        # TO MOVE from crates/languages/
-│   ├── codebuddy-bench/           # TO MOVE from benchmarks/
+│   ├── codebuddy-bench/           # TO MOVE from crates/codebuddy-bench/
 │   └── test-support/              # TO CREATE (extracted from integration-tests/)
 │       ├── src/
 │       │   ├── harness/
@@ -235,7 +235,7 @@ use cb_plugin_api::import_support::ImportSupport;     // ORIGINAL
 
 # REMOVED after completion:
 # - crates/languages/              # After all language crates moved
-# - benchmarks/                    # After moving to crates/codebuddy-bench/
+# - crates/codebuddy-bench/                    # After moving to crates/codebuddy-bench/
 # - integration-tests/             # After splitting into test-support + apps/codebuddy/tests/
 ```
 
@@ -305,7 +305,7 @@ rename_directory: crates/cb-lang-typescript → crates/cb-lang-typescript
 **MCP Tool**: `rename_directory`
 
 ```bash
-rename_directory: benchmarks → crates/codebuddy-bench
+rename_directory: crates/codebuddy-bench → crates/codebuddy-bench
 ```
 
 **Manual Edits Required**:
@@ -446,7 +446,7 @@ This proposal serves as a **complete validation suite** for CodeBuddy's capabili
 
 ### Upcoming Tests (Phases 3-5)
 - ⏳ `batch_execute` with multiple operations
-- ⏳ Complex directory moves (benchmarks → crates)
+- ⏳ Complex directory moves (crates/codebuddy-bench → crates)
 - ⏳ Test fixture reorganization
 - ⏳ Documentation reference updates
 - ⏳ `delete_file` for cleanup

@@ -270,7 +270,7 @@ Many features have been reimplemented in Rust with enhanced performance and safe
   - Multi-strategy import resolution (exact match, extensions, index files)
   - Background file preloading to warm LSP servers
   - Intelligent caching with deduplication to prevent redundant work
-  - **Performance Impact**: 99.9% faster LSP operations on imported files (validated with benchmarks)
+  - **Performance Impact**: 99.9% faster LSP operations on imported files (validated with crates/codebuddy-bench)
 
 - **📦 Client Package**: Complete WebSocket client SDK with CLI and library interfaces
   - WebSocket client with automatic reconnection and session management
@@ -320,7 +320,7 @@ Many features have been reimplemented in Rust with enhanced performance and safe
   - `predictiveLoadingExtensions`: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'] - File extensions to process
 
 ### Developer Experience
-- **package.json**: New `test:performance` script for running performance benchmarks
+- **package.json**: New `test:performance` script for running performance crates/codebuddy-bench
 - **Architecture Docs**: Comprehensive system documentation with Mermaid diagrams
 - **Performance Validation**: Tools to verify and measure system improvements
 - **Configuration Examples**: Clear configuration patterns and best practices

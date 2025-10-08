@@ -14,8 +14,7 @@ members = [
     "crates/cb-transport",
     "crates/languages/*",
     "apps/codebuddy",
-    "integration-tests",
-    "benchmarks",
+    "integration-tests", "crates/codebuddy-bench",
 ]
 resolver = "2"
 
