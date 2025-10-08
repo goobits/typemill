@@ -69,7 +69,7 @@ Configuration is managed via environment variables in `docker-compose.*.yml` fil
 
 **Optional:**
 - `RUST_LOG` - Log level (debug/info/warn/error)
-- `PORT` - Application port (default: 3040)
+- `PORT` - Application port (default: 3000)
 
 **Using .env File:**
 ```bash
@@ -113,13 +113,13 @@ docker-compose logs -f nginx
 
 ```bash
 # Application health (direct)
-curl http://localhost:3040/health
+curl http://localhost:3000/health
 
 # Application health (via nginx - production)
 curl http://localhost/health
 
 # Detailed status
-curl http://localhost:3040/api/v1/status
+curl http://localhost:3000/api/v1/status
 ```
 
 ### Expected Responses
@@ -189,7 +189,7 @@ Set `"fuse": null` in `.codebuddy/config.json`
 **Port already in use:**
 ```bash
 # Check what's using the port
-lsof -i :3040
+lsof -i :3000
 
 # Use different port
 PORT=3041 docker-compose up

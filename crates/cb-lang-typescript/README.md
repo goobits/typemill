@@ -1,6 +1,6 @@
 # TypeScript/JavaScript Language Plugin
 
-Implements `LanguageIntelligencePlugin` for TypeScript and JavaScript language support.
+Implements `LanguagePlugin` for TypeScript and JavaScript language support.
 
 ## Features
 
@@ -83,7 +83,7 @@ lang-typescript = ["dep:cb-lang-typescript"]
 
 ```rust
 use cb_lang_typescript::TypeScriptPlugin;
-use cb_plugin_api::LanguageIntelligencePlugin;
+use cb_plugin_api::LanguagePlugin;
 use std::path::Path;
 
 let plugin = TypeScriptPlugin::new();

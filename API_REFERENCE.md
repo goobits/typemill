@@ -11,14 +11,14 @@ Your complete guide to all MCP tools available in Codebuddy. Use this reference 
 
 - [Language Support Matrix](#language-support-matrix) - Quick reference
 - [Language Plugin Architecture](#language-plugin-architecture) - Capability-based plugin system
-- [Navigation & Intelligence](#navigation--intelligence) (13 tools)
-- [Editing & Refactoring](#editing--refactoring) (10 tools)
-- [Code Analysis](#code-analysis) (5 tools)
-- [File Operations](#file-operations) (6 tools)
-- [Workspace Operations](#workspace-operations) (5 tools)
-- [Advanced Operations](#advanced-operations) (2 tools)
-- [System & Health](#system--health) (3 tools)
-- [Internal Tools](#internal-tools) (5 tools - backend use only)
+- [Navigation & Intelligence](#navigation--intelligence)
+- [Editing & Refactoring](#editing--refactoring)
+- [Code Analysis](#code-analysis)
+- [File Operations](#file-operations)
+- [Workspace Operations](#workspace-operations)
+- [Advanced Operations](#advanced-operations)
+- [System & Health](#system--health)
+- [Internal Tools](#internal-tools)
 - [Common Patterns](#common-patterns)
 - [Error Reference](#error-reference)
 
@@ -26,81 +26,81 @@ Your complete guide to all MCP tools available in Codebuddy. Use this reference 
 
 ## Language Support Matrix
 
-**Total MCP Tools**: 49 (44 public + 5 internal)
+**MCP Tools**
 
 ### Navigation & Intelligence (LSP-based)
 
-| Tool | TypeScript/JS | Python | Go | Rust | Java | Notes |
-|------|---------------|--------|-----|------|------|-------|
-| `find_definition` | ✅ | ✅ | ✅ | ✅ | ✅ | LSP-based, language server dependent |
-| `find_references` | ✅ | ✅ | ✅ | ✅ | ✅ | Supports `include_declaration` param |
-| `find_implementations` | ✅ | ✅ | ✅ | ✅ | ✅ | For interfaces/abstract classes |
-| `find_type_definition` | ✅ | ✅ | ✅ | ✅ | ✅ | Find underlying type definitions |
-| `search_workspace_symbols` | ✅ | ✅ | ✅ | ✅ | ✅ | Queries ALL active LSP servers |
-| `get_document_symbols` | ✅ | ✅ | ✅ | ✅ | ✅ | Hierarchical symbol structure |
-| `prepare_call_hierarchy` | ✅ | ✅ | ✅ | ✅ | ✅ | Returns call hierarchy item |
-| `get_call_hierarchy_incoming_calls` | ✅ | ✅ | ✅ | ✅ | ✅ | Requires item from prepare step |
-| `get_call_hierarchy_outgoing_calls` | ✅ | ✅ | ✅ | ✅ | ✅ | Requires item from prepare step |
-| `get_hover` | ✅ | ✅ | ✅ | ✅ | ✅ | Documentation, types, signatures |
-| `get_completions` | ✅ | ✅ | ✅ | ✅ | ✅ | Project-aware suggestions |
-| `get_signature_help` | ✅ | ✅ | ✅ | ✅ | ✅ | Parameter information |
-| `get_diagnostics` | ✅ | ✅ | ✅ | ✅ | ✅ | Errors, warnings, hints |
+| Tool | TypeScript/JS | Python | Go | Rust | Java | Swift | Notes |
+|------|---------------|--------|-----|------|------|-------|-------|
+| `find_definition` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | LSP-based, language server dependent |
+| `find_references` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Supports `include_declaration` param |
+| `find_implementations` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | For interfaces/abstract classes |
+| `find_type_definition` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Find underlying type definitions |
+| `search_workspace_symbols` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Queries ALL active LSP servers |
+| `get_document_symbols` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Hierarchical symbol structure |
+| `prepare_call_hierarchy` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Returns call hierarchy item |
+| `get_call_hierarchy_incoming_calls` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Requires item from prepare step |
+| `get_call_hierarchy_outgoing_calls` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Requires item from prepare step |
+| `get_hover` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Documentation, types, signatures |
+| `get_completions` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Project-aware suggestions |
+| `get_signature_help` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Parameter information |
+| `get_diagnostics` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Errors, warnings, hints |
 
 ### Editing & Refactoring (LSP-based)
 
-| Tool | TypeScript/JS | Python | Go | Rust | Java | Notes |
-|------|---------------|--------|-----|------|------|-------|
-| `rename_symbol` | ✅ | ✅ | ✅ | ✅ | ✅ | Supports dry_run |
-| `rename_symbol_strict` | ✅ | ✅ | ✅ | ✅ | ✅ | Position-specific rename |
-| `organize_imports` | ✅ | ✅ | ✅ | ✅ | ✅ | Language-specific conventions |
-| `optimize_imports` | ✅ | ✅ | ✅ | ✅ | ✅ | Organize + remove unused imports |
-| `get_code_actions` | ✅ | ✅ | ✅ | ✅ | ✅ | Quick fixes, refactors |
-| `format_document` | ✅ | ✅ | ✅ | ✅ | ✅ | Language server formatter |
-| `extract_function` | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | LSP-first with AST fallback |
-| `inline_variable` | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | LSP-first with AST fallback |
-| `extract_variable` | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | LSP-first with AST fallback |
+| Tool | TypeScript/JS | Python | Go | Rust | Java | Swift | Notes |
+|------|---------------|--------|-----|------|------|-------|-------|
+| `rename_symbol` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Supports dry_run |
+| `rename_symbol_strict` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Position-specific rename |
+| `organize_imports` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Language-specific conventions |
+| `optimize_imports` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Organize + remove unused imports |
+| `get_code_actions` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Quick fixes, refactors |
+| `format_document` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Language server formatter |
+| `extract_function` | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ | LSP-first with AST fallback |
+| `inline_variable` | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ | LSP-first with AST fallback |
+| `extract_variable` | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ LSP/AST | ✅ | LSP-first with AST fallback |
 
 ### Code Analysis (AST-based)
 
-| Tool | TypeScript/JS | Python | Go | Rust | Java | Notes |
-|------|---------------|--------|-----|------|------|-------|
-| `find_unused_imports` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Pattern-based import usage detection |
-| `analyze_complexity` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Cyclomatic complexity metrics |
-| `suggest_refactoring` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Pattern-based refactoring suggestions |
-| `analyze_project_complexity` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Project-wide complexity analysis with class aggregation |
-| `find_complexity_hotspots` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Top N most complex functions/classes |
+| Tool | TypeScript/JS | Python | Go | Rust | Java | Swift | Notes |
+|------|---------------|--------|-----|------|------|-------|-------|
+| `find_unused_imports` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ | Pattern-based import usage detection |
+| `analyze_complexity` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ | Cyclomatic complexity metrics |
+| `suggest_refactoring` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ | Pattern-based refactoring suggestions |
+| `analyze_project_complexity` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ | Project-wide complexity analysis with class aggregation |
+| `find_complexity_hotspots` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ | Top N most complex functions/classes |
 
 ### File Operations
 
-| Tool | TypeScript/JS | Python | Go | Rust | Java | Notes |
-|------|---------------|--------|-----|------|------|-------|
-| `create_file` | ✅ | ✅ | ✅ | ✅ | ✅ | Notifies LSP servers |
-| `read_file` | ✅ | ✅ | ✅ | ✅ | ✅ | With locking |
-| `write_file` | ✅ | ✅ | ✅ | ✅ | ✅ | Cache invalidation |
-| `delete_file` | ✅ | ✅ | ✅ | ✅ | ✅ | Checks for imports |
-| `rename_file` | ✅ | ✅ | ✅ | ✅ | ✅ | **Auto-updates imports** |
-| `list_files` | ✅ | ✅ | ✅ | ✅ | ✅ | Respects .gitignore |
+| Tool | TypeScript/JS | Python | Go | Rust | Java | Swift | Notes |
+|------|---------------|--------|-----|------|------|-------|-------|
+| `create_file` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Notifies LSP servers |
+| `read_file` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | With locking |
+| `write_file` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Cache invalidation |
+| `delete_file` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Checks for imports |
+| `rename_file` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | **Auto-updates imports** |
+| `list_files` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Respects .gitignore |
 
 ### Workspace Operations
 
-| Tool | TypeScript/JS | Python | Go | Rust | Java | Notes |
-|------|---------------|--------|-----|------|------|-------|
-| `rename_directory` | ✅ | ✅ | ✅ | ✅ | ✅ | **Auto-updates imports**, Rust crate consolidation |
-| `analyze_imports` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | All languages use AST parsing |
-| `find_dead_code` | ✅ | ✅ | ✅ | ✅ | ✅ | LSP-based |
-| `update_dependencies` | ✅ npm/yarn | ✅ pip | ✅ go mod | ✅ cargo | ✅ mvn | Executes package manager |
-| `update_dependency` | ✅ npm/yarn | ✅ pip | ✅ go mod | ✅ cargo | ✅ mvn | Executes package manager |
-| `extract_module_to_package` | ✅ | ✅ | ✅ | ✅ | ✅ | Multi-language support |
+| Tool | TypeScript/JS | Python | Go | Rust | Java | Swift | Notes |
+|------|---------------|--------|-----|------|------|-------|-------|
+| `rename_directory` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | **Auto-updates imports**, Rust crate consolidation |
+| `analyze_imports` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ | All languages use AST parsing |
+| `find_dead_code` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | LSP-based |
+| `update_dependencies` | ✅ npm/yarn | ✅ pip | ✅ go mod | ✅ cargo | ✅ mvn | ✅ | Executes package manager |
+| `update_dependency` | ✅ npm/yarn | ✅ pip | ✅ go mod | ✅ cargo | ✅ mvn | ✅ | Executes package manager |
+| `extract_module_to_package` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Multi-language support |
 
 ### Advanced & System
 
-| Tool | TypeScript/JS | Python | Go | Rust | Java | Notes |
-|------|---------------|--------|-----|------|------|-------|
-| `apply_edits` | ✅ | ✅ | ✅ | ✅ | ✅ | Atomic multi-file edits |
-| `batch_execute` | ✅ | ✅ | ✅ | ✅ | ✅ | Batch operations |
-| `health_check` | ✅ | ✅ | ✅ | ✅ | ✅ | Server status |
-| `web_fetch` | ✅ | ✅ | ✅ | ✅ | ✅ | URL content fetching |
-| `system_status` | ✅ | ✅ | ✅ | ✅ | ✅ | Lightweight server status |
+| Tool | TypeScript/JS | Python | Go | Rust | Java | Swift | Notes |
+|------|---------------|--------|-----|------|------|-------|-------|
+| `apply_edits` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Atomic multi-file edits |
+| `batch_execute` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Batch operations |
+| `health_check` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Server status |
+| `web_fetch` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | URL content fetching |
+| `system_status` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Lightweight server status |
 
 **Note:** Language support depends on configured LSP servers in `.codebuddy/config.json`. LSP-first tools attempt LSP code actions, falling back to AST parsing if unsupported.
 
@@ -149,6 +149,7 @@ if plugin.capabilities().workspace {
 | Go         | ✅ Yes         | ❌ No             |
 | Python     | ✅ Yes         | ❌ No             |
 | Java       | ✅ Yes         | ✅ Yes            |
+| Swift      | ✅ Yes         | ❌ No             |
 
 ### Metadata Access Pattern
 
@@ -178,7 +179,7 @@ if let Some(rust_plugin) = plugin.as_any().downcast_ref::<RustPlugin>() {
 
 ## Navigation & Intelligence
 
-LSP-based navigation and code intelligence tools (13 tools). Language support depends on configured LSP servers.
+LSP-based navigation and code intelligence tools. Language support depends on configured LSP servers.
 
 ### `find_definition`
 
@@ -598,7 +599,7 @@ Find underlying type definition.
 
 ## Editing & Refactoring
 
-LSP-based editing and refactoring operations (10 tools).
+LSP-based editing and refactoring operations.
 
 ### `rename_symbol`
 
@@ -802,8 +803,8 @@ Extract selected code into a new function.
 ```json
 {
   "file_path": "src/app.ts",      // Required: File path
-  "start_line": 10,               // Required: Start line (0-indexed for LSP)
-  "end_line": 15,                 // Required: End line (0-indexed for LSP)
+  "start_line": 10,               // Required: Start line of the selection (1-indexed)
+  "end_line": 15,                 // Required: End line of the selection (1-indexed)
   "function_name": "handleClick", // Required: New function name
   "dry_run": false                // Optional: Preview changes (default: false)
 }
@@ -877,9 +878,9 @@ Extract an expression into a new variable.
 ```json
 {
   "file_path": "src/app.ts",       // Required: File path
-  "start_line": 10,                // Required: Expression start line (0-indexed)
+  "start_line": 10,                // Required: Expression start line (1-indexed)
   "start_character": 5,            // Required: Expression start character (0-indexed)
-  "end_line": 10,                  // Required: Expression end line (0-indexed)
+  "end_line": 10,                  // Required: Expression end line (1-indexed)
   "end_character": 20,             // Required: Expression end character (0-indexed)
   "variable_name": "result",       // Required: New variable name
   "dry_run": false                 // Optional: Preview changes (default: false)
@@ -941,7 +942,7 @@ Organize imports AND remove unused imports (combines organize_imports + import c
 
 ## Code Analysis
 
-AST-based code analysis tools for detecting code smells and optimization opportunities (3 tools).
+AST-based code analysis tools for detecting code smells and optimization opportunities.
 
 ### `find_unused_imports`
 
@@ -1686,7 +1687,7 @@ List files in a directory with optional glob pattern filtering.
 
 ## Workspace Operations
 
-Project-wide operations and analysis (5 tools).
+Project-wide operations and analysis.
 
 ### `rename_directory`
 
@@ -2255,7 +2256,7 @@ codebuddy tool batch_execute '{
 
 ## System & Health
 
-System health monitoring and web fetching (3 tools).
+System health monitoring and web fetching.
 
 ### `health_check`
 
@@ -2350,7 +2351,7 @@ Get basic system operational status.
 
 ## Internal Tools
 
-**Backend-only tools (5 tools) - Not exposed via MCP `tools/list`**
+**Backend-only tools - Not exposed via MCP `tools/list`**
 
 These tools are used internally by the Codebuddy workflow system and LSP protocol interop. They are **not visible** to AI agents via MCP tool listings, but remain callable by the backend for orchestration and plugin lifecycle management.
 
@@ -2537,8 +2538,12 @@ codebuddy tool rename_directory '{"old_path":"src","new_path":"lib"}'
 
 ### Position Indexing
 
-- **Lines**: 1-indexed in user-facing APIs, 0-indexed in LSP protocol
-- **Characters**: 0-indexed (always)
+All position parameters in this API follow a standard convention to align with common editor user interfaces:
+
+- **Line numbers** (e.g., `line`, `start_line`) are **1-indexed**. The first line in a file is line 1.
+- **Character/column positions** (e.g., `character`, `start_character`) are **0-indexed**. The first character on a line is at position 0.
+
+The server handles any necessary conversion to the underlying LSP protocol format internally.
 
 ### File Paths
 

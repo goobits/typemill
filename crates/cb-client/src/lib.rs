@@ -627,6 +627,6 @@ mod tests {
     fn test_version_info() {
         let version = version_info();
         assert!(version.contains("cb-client"));
-        assert!(version.contains("1.0.1-beta"));
+        assert!(version.contains("1.0.0-rc3"));
     }
 }

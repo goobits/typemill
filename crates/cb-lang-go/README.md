@@ -78,7 +78,7 @@ crates/languages/cb-lang-go/
     └── parser.rs           # Import and symbol extraction (357 lines)
 ```
 
-**Total: ~1,648 lines of code (including tests and docs)**
+**Total: A comprehensive implementation (including tests and docs)**
 
 ## Implementation Status
 
@@ -199,23 +199,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 cargo test -p cb-lang-go
 ```
 
-**Current results: 12 tests passing ✅**
-
-```
-running 12 tests
-test manifest::tests::test_generate_manifest ... ok
-test manifest::tests::test_parse_go_mod_with_indirect ... ok
-test manifest::tests::test_parse_simple_go_mod ... ok
-test manifest::tests::test_parse_exclude ... ok
-test manifest::tests::test_parse_replace_with_version ... ok
-test manifest::tests::test_parse_go_mod_with_replace ... ok
-test manifest::tests::test_parse_single_line_require ... ok
-test manifest::tests::test_update_dependency ... ok
-test parser::tests::test_is_external_dependency ... ok
-test parser::tests::test_parse_go_imports_regex ... ok
-test parser::tests::test_extract_symbols_graceful_fallback ... ok
-test parser::tests::test_analyze_imports ... ok
-```
+The plugin includes a comprehensive suite of unit tests.
 
 ### Run Clippy
 

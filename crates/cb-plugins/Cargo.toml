@@ -1,6 +1,5 @@
 [package]
 name = "cb-plugins"
-version = "1.0.1-beta"
 edition = "2021"
 
 [dependencies]

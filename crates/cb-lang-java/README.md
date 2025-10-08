@@ -1,6 +1,6 @@
 # Java Language Plugin
 
-Java language support for Codebuddy via the `LanguageIntelligencePlugin` trait.
+Java language support for Codebuddy via the `LanguagePlugin` trait.
 
 ## Features
 

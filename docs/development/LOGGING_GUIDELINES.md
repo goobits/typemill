@@ -282,6 +282,20 @@ handle_request().await;
 - `transport`: Transport type (websocket, stdio)
 - Additional fields can be added via `span.record()`
 
+### Log Output
+
+**Note:** Codebuddy writes all logs to standard error (`stderr`). Native file logging (e.g., via a `LOG_FILE` variable) is not currently supported.
+
+To save logs to a file, use your shell's redirection capabilities:
+
+```bash
+# Redirect only stderr (where logs go) to app.log
+./codebuddy serve 2> app.log
+
+# To redirect both stdout and stderr (useful for development)
+./codebuddy serve &> app.log
+```
+
 ## Migration Guidelines
 
 When updating existing code:
