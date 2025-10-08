@@ -213,9 +213,9 @@ async fn test_go_to_definition_real() {
 
 ---
 
-### Phase 3: Tooling & Documentation (Optional - 1 hour)
+### Phase 3: Tooling & Documentation (1 hour)
 
-#### 3.1 Add `cargo-nextest` Support
+#### 3.1 Add `cargo-nextest` Support (Recommended)
 
 **File:** `Makefile`
 
@@ -245,10 +245,45 @@ test-lsp:
 - Better parallelization (per-test instead of per-file)
 - Cleaner output with progress bars
 - 20-40% faster than `cargo test`
+- Industry best practice for Rust test execution
+
+**Impact:** This is highly recommended, not optional. The 20-40% speedup compounds with our other optimizations.
 
 ---
 
-#### 3.2 Update Documentation
+#### 3.2 Add Target Directory Cleanup
+
+**File:** `Makefile`
+
+**Changes:**
+```makefile
+# Add new cleanup target
+clean-cache:
+	@echo "🧹 Cleaning build cache..."
+	cargo clean
+	@echo "💡 Tip: Install cargo-sweep for smarter cleanup: cargo install cargo-sweep"
+
+# Add to help menu
+help:
+	# ... existing help text ...
+	@echo "  make clean-cache - Remove all build artifacts (frees ~30-40GB)"
+```
+
+**Rationale:** The `target/` directory grows to 46GB over time. Providing an easy cleanup command helps developers manage disk space.
+
+**Alternative (advanced):**
+```bash
+# Install cargo-sweep for smarter cleanup
+cargo install cargo-sweep
+
+# Add to Makefile
+clean-old:
+	cargo-sweep --time 30  # Remove artifacts older than 30 days
+```
+
+---
+
+#### 3.3 Update Documentation
 
 **File:** `CLAUDE.md` (Development Commands section)
 
@@ -307,10 +342,14 @@ cargo test --workspace --features heavy-tests
 3. Verify: Check that all tests still pass and panics are visible
 4. Commit: `perf: parallelize LSP feature test fixtures for 3-5x speedup`
 
-### Step 4: Documentation & Tooling (30 min)
-1. Update `Makefile` with `cargo-nextest` support
-2. Update `CLAUDE.md` with new testing workflow
-3. Commit: `docs: document fast test workflow and cargo-nextest usage`
+### Step 4: Tooling & Documentation (45 min)
+1. Install `cargo-nextest`: `cargo install cargo-nextest`
+2. Update `Makefile`:
+   - Add `cargo-nextest` targets (test-fast, test-full, test-lsp)
+   - Add `clean-cache` target for disk cleanup
+3. Update `CLAUDE.md` with new testing workflow
+4. Test all new make targets
+5. Commit: `chore: add nextest support and cleanup tooling`
 
 ---
 
@@ -395,11 +434,12 @@ cargo test --workspace --features heavy-tests
 5. Full test suite completes in < 90 seconds
 6. Documentation updated with new workflow
 7. `cargo-nextest` integrated into Makefile
+8. `make clean-cache` command available for disk cleanup
 
 ✅ **Nice to Have:**
-8. CI pipeline updated to use fast tests by default
-9. Pre-commit hook uses fast tests
-10. Target directory cleanup automation
+9. CI pipeline updated to use fast tests by default
+10. Pre-commit hook uses fast tests
+11. Target directory cleanup automation with cargo-sweep
 
 ---
 
@@ -433,8 +473,9 @@ This proposal requires approval before implementation. Key decision points:
 1. ✅ **Approve build optimizations** (`.cargo/config.toml`)
 2. ✅ **Approve feature-gated tests** (`integration-tests/Cargo.toml`)
 3. ✅ **Approve parallelization strategy** (using `join_all`, not `tokio::spawn`)
-4. 🤔 **Optional:** Include `cargo-nextest` setup?
+4. ✅ **Recommended:** Include `cargo-nextest` setup (20-40% additional speedup)
 5. 🤔 **Optional:** Update CI/CD workflows?
+6. 🤔 **Optional:** Add `cargo-sweep` for advanced cache management?
 
 ---
 
