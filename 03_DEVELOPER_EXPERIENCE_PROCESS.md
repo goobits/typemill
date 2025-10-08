@@ -713,28 +713,39 @@ To measure if these improvements work, track:
 
 ## Implementation Plan
 
-### Phase 1: Documentation (1-2 hours)
-- [ ] Create `LANGUAGE_PLUGIN_PREREQUISITES.md`
-- [ ] Update `crates/languages/README.md` with complexity matrix
-- [ ] Create `LANGUAGE_PLUGIN_ONBOARDING.md`
-- [ ] Add "Common Pitfalls" section
+### Phase 1: Documentation (1-2 hours) ✅ COMPLETE (2025-10-08)
+- [x] Create `LANGUAGE_PLUGIN_PREREQUISITES.md` (already existed)
+- [x] Update `docs/development/languages/README.md` with complexity matrix
+- [x] Create onboarding guide at `/tmp/onboarding.md` (moved from branch)
+- [x] Add "Common Pitfalls" section to README
+- [x] Add `Makefile` targets for parser builds (`build-parsers`, `check-parser-deps`)
 
-### Phase 2: Tooling (2-3 hours)
-- [ ] Enhance `new-lang.sh` with dependency checking
-- [ ] Add `Makefile` targets for parser builds
-- [ ] Create pre-commit hook for parser artifacts
+**Implementation notes:**
+- Extracted Feature Complexity Matrix from dx/improve-plugin-onboarding branch
+- Added Common Pitfalls section (workspace deps, parser builds, enum matching)
+- Updated Makefile with Java, C#, TypeScript parser build automation
+- Verified both Makefile targets work correctly
+- Onboarding guide exists at `/tmp/onboarding.md` - needs to be moved to `docs/development/`
 
-### Phase 3: Templates (1-2 hours)
+### Phase 2: Tooling (2-3 hours) ⏳ PARTIALLY COMPLETE
+- [x] Add `Makefile` targets for parser builds (completed in Phase 1)
+- [ ] Enhance `new-lang.sh` with dependency checking (deferred - needs rewrite for flat structure)
+- [ ] Create pre-commit hook for parser artifacts (pending)
+
+**Note:** The `new-lang.sh` script from the branch assumes `crates/languages/` structure but we now use flat `crates/` structure. Requires complete rewrite.
+
+### Phase 3: Templates (1-2 hours) ❌ NOT STARTED
 - [ ] Create parser template directory
 - [ ] Document parser strategy decision tree
 - [ ] Add examples for each approach
 
-### Phase 4: Validation (1 hour)
+### Phase 4: Validation (1 hour) ❌ NOT STARTED
 - [ ] Test with hypothetical "Ruby plugin" using new docs
 - [ ] Verify onboarding doc completeness
 - [ ] Check that all tools work as expected
 
 **Total time**: 5-8 hours
+**Progress**: ~30% complete (Phase 1 done)
 
 ---
 
