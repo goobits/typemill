@@ -177,7 +177,7 @@ proptest! {
         content in prop::collection::vec("[a-z]+", 1..10).prop_map(|v| v.join("\n")),
         line in "[A-Z]+",
     ) {
-        let line_count = content.lines().count();
+        let _line_count = content.lines().count();
         let result = insert_line_at(&content, 1000, &line);
         let last_line = result.lines().last().unwrap_or("");
         prop_assert_eq!(last_line, line, "Inserted line should be last when inserted beyond end");

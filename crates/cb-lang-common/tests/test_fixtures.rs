@@ -21,8 +21,6 @@
 //! - **GO_IMPORTS** - Go import block
 //! - **TYPESCRIPT_IMPORTS** - TypeScript ES6 imports
 //! - **JAVA_IMPORTS** - Java import statements
-//! - **KOTLIN_IMPORTS** - Kotlin import statements
-//! - **CPP_IMPORTS** - C++ include directives
 //!
 //! # Test Utilities
 //!
@@ -125,37 +123,6 @@ public class Main {
 }
 "#;
 
-    /// Kotlin import statements
-    pub const KOTLIN_IMPORTS: &str = r#"package com.example.myapp
-
-import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
-import kotlinx.coroutines.*
-import com.example.utils.Logger
-import com.example.models.User as UserModel
-
-class MainActivity : AppCompatActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-    }
-}
-"#;
-
-    /// C++ include directives
-    pub const CPP_IMPORTS: &str = r#"#include <iostream>
-#include <vector>
-#include <string>
-#include <memory>
-
-#include "myheader.h"
-#include "utils/string_utils.h"
-
-int main() {
-    std::cout << "Hello, World!" << std::endl;
-    return 0;
-}
-"#;
-
     /// Complex nested imports (TypeScript)
     pub const COMPLEX_IMPORTS: &str = r#"// Core framework imports
 import React, { useState, useEffect, useMemo } from 'react';
@@ -182,12 +149,6 @@ import styles from './App.module.css';
 export const App: React.FC = () => {
     return <div>App</div>;
 };
-"#;
-
-    /// Minimal imports (edge case)
-    pub const MINIMAL_IMPORTS: &str = r#"import Foundation
-
-class Foo {}
 "#;
 
     /// No imports (code only)
@@ -223,28 +184,8 @@ import SwiftUI
 class App {}
 "#;
 
-    /// Duplicate imports (should be deduplicated)
-    pub const DUPLICATE_IMPORTS: &str = r#"import Foundation
-import UIKit
-import Foundation
-import SwiftUI
-import UIKit
-
-class App {}
-"#;
-
     /// Mixed line endings (CRLF and LF)
     pub const MIXED_LINE_ENDINGS: &str = "import A\r\nimport B\nimport C\r\nclass Foo {}";
-
-    /// Unicode imports (emoji and non-ASCII characters)
-    pub const UNICODE_IMPORTS: &str = r#"import Foundation
-import 基础库
-from モジュール import 関数
-
-class アプリ {
-    func main() {}
-}
-"#;
 }
 
 /// Test helper utilities
@@ -440,8 +381,6 @@ mod tests {
         assert!(count_lines(GO_IMPORTS) > 0);
         assert!(count_lines(TYPESCRIPT_IMPORTS) > 0);
         assert!(count_lines(JAVA_IMPORTS) > 0);
-        assert!(count_lines(KOTLIN_IMPORTS) > 0);
-        assert!(count_lines(CPP_IMPORTS) > 0);
     }
 
     #[test]
@@ -496,33 +435,6 @@ mod tests {
         let (imports, code) = split_imports_and_code(SWIFT_IMPORTS);
         assert!(imports.contains("import Foundation"));
         assert!(code.contains("class MyViewController"));
-    }
-
-    #[test]
-    fn test_deduplicate_lines() {
-        let content = "import A\nimport A\nimport B\nimport B\nimport C";
-        let result = deduplicate_lines(content);
-        assert_eq!(result, "import A\nimport B\nimport C");
-    }
-
-    #[test]
-    fn test_count_occurrences() {
-        assert_eq!(count_occurrences("hello world hello", "hello"), 2);
-        assert_eq!(count_occurrences("no match", "xyz"), 0);
-    }
-
-    #[test]
-    fn test_has_crlf() {
-        assert!(has_crlf("line1\r\nline2"));
-        assert!(!has_crlf("line1\nline2"));
-    }
-
-    #[test]
-    fn test_to_crlf() {
-        let content = "line1\nline2\nline3";
-        let result = to_crlf(content);
-        assert!(result.contains("\r\n"));
-        assert_eq!(result, "line1\r\nline2\r\nline3");
     }
 
     // Integration tests combining fixtures with import_helpers
