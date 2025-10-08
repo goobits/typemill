@@ -376,7 +376,7 @@ The RefactoringSupport trait (from C# branch) moves language-specific logic OUT 
 ### Swift Plugin Structure
 
 ```
-crates/languages/cb-lang-swift/
+crates/cb-lang-swift/
 ├── Cargo.toml              ✅ Clean dependencies
 ├── README.md               ✅ Comprehensive (97 lines)
 ├── src/
@@ -615,7 +615,7 @@ sourcekitten version
 
 **Upgrade to SourceKitten** (future work):
 ```bash
-cd crates/languages/cb-lang-swift/src
+cd crates/cb-lang-swift/src
 # Replace parse_source() regex implementation with:
 # sourcekitten structure --file <file>.swift
 ```

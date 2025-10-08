@@ -18,10 +18,9 @@ members = [
     "crates/cb-lang-python",
     "crates/cb-lang-rust",
     "crates/cb-lang-typescript",
-    "crates/languages/cb-lang-swift",
     "apps/codebuddy",
     "integration-tests",
-    "crates/codebuddy-bench",
+    "crates/codebuddy-bench", "crates/cb-lang-swift",
 ]
 resolver = "2"
 
@@ -69,7 +68,7 @@ cb-lang-go = { path = "crates/cb-lang-go" }
 cb-lang-typescript = { path = "crates/cb-lang-typescript" }
 cb-lang-python = { path = "crates/cb-lang-python" }
 cb-lang-java = { path = "crates/cb-lang-java" }
-cb-lang-swift = { path = "crates/languages/cb-lang-swift" }
+cb-lang-swift = { path = "crates/cb-lang-swift" }
 
 [profile.release]
 opt-level = 3

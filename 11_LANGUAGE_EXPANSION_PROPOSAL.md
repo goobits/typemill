@@ -72,7 +72,7 @@ CodeBuddy currently supports 4 languages via LSP integration and language plugin
   - Build systems: Make, CMake
   - Estimated effort: 2-3 weeks
 
-- [ ] **Swift Support** (`crates/languages/cb-lang-swift`)
+- [ ] **Swift Support** (`crates/cb-lang-swift`)
   - LSP: `sourcekit-lsp`
   - AST parsing via `tree-sitter-swift`
   - Build: Swift Package Manager
