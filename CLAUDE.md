@@ -1,3 +1,4 @@
+<!-- This file is synchronized with GEMINI.md. Please make changes here, as this is the source of truth. -->
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -201,7 +202,7 @@ The test suite is organized into categories for fast iteration:
 ```bash
 # Fast tests only (mock-based, ~10s)
 cargo test --workspace
-cargo nextest run --workspace  # Recommended (faster)
+cargo nextest run --workspace  # Recommended (faster). To install: cargo install nextest
 
 # With LSP server tests (~60s, requires LSP servers installed)
 cargo test --workspace --features lsp-tests -- --include-ignored

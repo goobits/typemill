@@ -8,6 +8,9 @@
 
 ---
 
+> [!WARNING]
+> **This document reviews an unmerged feature branch (`feat/add-swift-language-plugin`).** The features and code described herein may not be present in the `main` branch.
+
 ## Executive Summary
 
 Jules successfully delivered a **Swift language plugin** with a well-researched AST parser design (SourceKitten-based), but faced **environmental blockers** that prevented full implementation. Despite this, the final code quality is good and demonstrates clear understanding of the problem space.

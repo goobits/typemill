@@ -1,5 +1,9 @@
 # Proposal: Consolidate Import Support Logic Using cb-lang-common
 
+> [!WARNING]
+> **STATUS: ARCHIVED**
+> This proposal is archived and no longer relevant. Key utilities it references, such as `ExternalDependencyDetector` and `split_import_list`, were removed from the codebase due to zero usage, making the core premise of this proposal obsolete.
+
 **Author**: Analysis Bot
 **Date**: 2025-10-08
 **Status**: Proposal

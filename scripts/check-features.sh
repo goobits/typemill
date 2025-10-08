@@ -150,7 +150,7 @@ if [ $ERROR_COUNT -eq 0 ]; then
 else
     echo -e "${RED}✗ Found $ERROR_COUNT plugin(s) with configuration issues${NC}\n"
     echo -e "${YELLOW}Tips:${NC}"
-    echo -e "  • Run ${GREEN}./crates/languages/new-lang.sh <language>${NC} to scaffold new plugins"
+    echo -e "  • Run ${GREEN}./scripts/new-lang.sh <language>${NC} to scaffold new plugins"
     echo -e "  • See ${GREEN}crates/languages/README.md${NC} for manual setup instructions"
     echo -e "  • Check reference plugins: ${GREEN}cb-lang-rust, cb-lang-go, cb-lang-typescript${NC}"
     echo ""

@@ -1,5 +1,9 @@
 # Proposal: Language Support Expansion
 
+> [!WARNING]
+> **STATUS: OUTDATED**
+> This proposal is kept for historical context. The language support status described herein is no longer accurate. Please refer to `API_REFERENCE.md` for the current support matrix.
+
 **Status**: Proposal - For Discussion
 **Date**: 2025-10-05
 

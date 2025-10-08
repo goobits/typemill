@@ -207,7 +207,29 @@ cargo test --test lsp_features -- --nocapture
 cargo test --test lsp_features test_go_to_definition_mock
 
 # Run real LSP tests (requires LSP servers installed)
-cargo test --test lsp_features -- --ignored --test-threads=1
+cargo test --features lsp-tests --test lsp_features -- --ignored --test-threads=1
+```
+
+## Test Feature Flags
+
+The test suite uses Cargo feature flags to categorize tests, allowing you to run subsets of the test suite for faster iteration.
+
+-   `fast-tests` (default): Runs mock-based unit and integration tests that do not require external dependencies like LSP servers. These are very fast and are run by default with `cargo test`.
+-   `lsp-tests`: Enables tests that require real LSP servers to be installed and available in the environment. Use this to validate real-world integration.
+-   `e2e-tests`: End-to-end workflow tests that may be slower and require a more complete environment setup.
+-   `heavy-tests`: Includes performance benchmarks and property-based tests that are very slow and not typically run during development.
+
+**How to use them:**
+
+```bash
+# Run only the fast tests (default behavior)
+cargo test --workspace
+
+# Run fast tests and the LSP integration tests
+cargo test --workspace --features lsp-tests
+
+# Run the full test suite, including all categories
+cargo test --workspace --all-features -- --include-ignored
 ```
 
 ## Testing Workflow Execution

@@ -8,6 +8,9 @@
 
 ---
 
+> [!WARNING]
+> **This document reviews an unmerged feature branch (`csharp-support-with-refactor`).** The features and code described herein may not be present in the `main` branch.
+
 ## Executive Summary
 
 Jules successfully delivered a **high-quality C# language plugin** with an **architectural improvement** (RefactoringSupport trait) that benefits the entire codebase. However, the process revealed **documentation gaps** and **workflow friction** that can be addressed with targeted improvements.
@@ -460,13 +463,13 @@ touch docs/development/LANGUAGE_PLUGIN_PREREQUISITES.md
 
 **Solution**: Add dependency validation to scaffolding script
 
-**Location**: `crates/languages/new-lang.sh`
+**Location**: `scripts/new-lang.sh`
 
 **Changes**:
 
 ```bash
 #!/bin/bash
-# File: crates/languages/new-lang.sh
+# File: scripts/new-lang.sh
 # ... existing code ...
 
 # AFTER plugin generation, ADD this section:
@@ -547,7 +550,7 @@ Press Enter to continue or Ctrl+C to fix now...
 
 **Implementation**:
 ```bash
-# Edit crates/languages/new-lang.sh
+# Edit scripts/new-lang.sh
 # Add dependency checking section after plugin generation
 # Test with: ./new-lang.sh test-lang --manifest "*.test" --extensions tst
 ```
