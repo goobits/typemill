@@ -4,7 +4,7 @@ set -euo pipefail
 # new-lang.sh - Scaffold a new language plugin for Codebuddy
 #
 # Usage: ./new-lang.sh <language-name> [options]
-# Example: ./new-lang.sh csharp
+# Example: ./new-lang.sh csharp --manifest "*.csproj" --extensions cs,csx
 #
 # Options:
 #   --extensions <ext1,ext2>  Comma-separated file extensions (default: language-name)
@@ -15,8 +15,9 @@ set -euo pipefail
 #   --dry-run                 Show what would be done without making changes
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LANGUAGES_DIR="$SCRIPT_DIR"
-WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CRATES_DIR="$WORKSPACE_ROOT/crates"
+LANGUAGES_TOML="$WORKSPACE_ROOT/config/languages/languages.toml"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -124,7 +125,7 @@ for ext in "${EXT_ARR[@]}"; do
 done
 
 PLUGIN_NAME="cb-lang-${LANG_LOWER}"
-PLUGIN_DIR="${LANGUAGES_DIR}/${PLUGIN_NAME}"
+PLUGIN_DIR="${CRATES_DIR}/${PLUGIN_NAME}"
 
 echo -e "${BLUE}Creating ${LANG_TITLE} language plugin...${NC}"
 echo -e "  Extensions: ${GREEN}$EXTENSIONS${NC}"
@@ -176,9 +177,9 @@ homepage.workspace = true
 
 [dependencies]
 # Codebuddy workspace dependencies
-cb-plugin-api = { path = "../../cb-plugin-api" }
-cb-protocol = { path = "../../cb-protocol" }
-cb-core = { path = "../../cb-core" }
+cb-plugin-api = { path = "../cb-plugin-api" }
+cb-protocol = { path = "../cb-protocol" }
+cb-core = { path = "../cb-core" }
 cb-lang-common = { path = "../cb-lang-common" }
 
 # Async operations
@@ -308,7 +309,7 @@ echo -e "${GREEN}✓${NC} Generated src/lib.rs"
 
 # Create parser.rs
 if [ "$DRY_RUN" = false ]; then
-cat > "$PLUGIN_DIR/src/parser.rs" << EOF
+cat > "$PLUGIN_DIR/src/parser.rs" << 'EOF'
 //! ${LANG_TITLE} source code parsing and symbol extraction
 //!
 //! This module can use cb-lang-common utilities:
@@ -317,14 +318,15 @@ cat > "$PLUGIN_DIR/src/parser.rs" << EOF
 //! - ErrorBuilder for rich error context
 
 use cb_plugin_api::{ParsedSource, PluginResult};
-use cb_lang_common::{SubprocessAstTool, run_ast_tool, parse_with_fallback};
 
 /// Parse ${LANG_TITLE} source code and extract symbols
 ///
 /// TODO: Implement actual parsing logic
 ///
 /// Example using subprocess AST parser:
-/// \`\`\`rust,ignore
+/// ```rust,ignore
+/// use cb_lang_common::{SubprocessAstTool, run_ast_tool};
+///
 /// const AST_TOOL: &str = include_str!("../resources/ast_tool.py");
 ///
 /// let tool = SubprocessAstTool::new("python3")
@@ -332,16 +334,18 @@ use cb_lang_common::{SubprocessAstTool, run_ast_tool, parse_with_fallback};
 ///     .with_temp_filename("ast_tool.py");
 ///
 /// let symbols = run_ast_tool(tool, source)?;
-/// \`\`\`
+/// ```
 ///
 /// Example using fallback pattern:
-/// \`\`\`rust,ignore
+/// ```rust,ignore
+/// use cb_lang_common::parse_with_fallback;
+///
 /// let symbols = parse_with_fallback(
 ///     || parse_with_ast(source),
 ///     || parse_with_regex(source),
 ///     "symbol extraction"
 /// )?;
-/// \`\`\`
+/// ```
 pub fn parse_source(source: &str) -> PluginResult<ParsedSource> {
     tracing::warn!(
         source_length = source.len(),
@@ -382,12 +386,14 @@ mod tests {
     }
 }
 EOF
+# Replace template variables in parser.rs
+sed -i "s/\${LANG_TITLE}/$LANG_TITLE/g" "$PLUGIN_DIR/src/parser.rs"
 fi
 echo -e "${GREEN}✓${NC} Generated src/parser.rs"
 
 # Create manifest.rs
 if [ "$DRY_RUN" = false ]; then
-cat > "$PLUGIN_DIR/src/manifest.rs" << EOF
+cat > "$PLUGIN_DIR/src/manifest.rs" << 'EOF'
 //! ${LANG_TITLE} manifest file parsing
 //!
 //! Handles ${MANIFEST} files for ${LANG_TITLE} projects.
@@ -397,8 +403,8 @@ cat > "$PLUGIN_DIR/src/manifest.rs" << EOF
 //! - TomlWorkspace/JsonWorkspace for workspace operations
 //! - ErrorBuilder for rich error context
 
-use cb_plugin_api::{ManifestData, PluginError, PluginResult};
-use cb_lang_common::{read_manifest, ErrorBuilder};
+use cb_plugin_api::{ManifestData, PluginResult};
+use cb_lang_common::read_manifest;
 use std::path::Path;
 
 /// Analyze ${LANG_TITLE} manifest file
@@ -406,7 +412,9 @@ use std::path::Path;
 /// TODO: Implement actual manifest parsing logic
 ///
 /// Example using cb-lang-common:
-/// \`\`\`rust,ignore
+/// ```rust,ignore
+/// use cb_lang_common::ErrorBuilder;
+///
 /// let content = read_manifest(path).await?;
 ///
 /// let manifest: MyManifest = toml::from_str(&content)
@@ -414,7 +422,7 @@ use std::path::Path;
 ///         .with_path(path)
 ///         .with_context("error", e.to_string())
 ///         .build())?;
-/// \`\`\`
+/// ```
 pub async fn analyze_manifest(path: &Path) -> PluginResult<ManifestData> {
     tracing::warn!(
         manifest_path = %path.display(),
@@ -468,6 +476,9 @@ mod tests {
     }
 }
 EOF
+# Replace template variables in manifest.rs
+sed -i "s/\${LANG_TITLE}/$LANG_TITLE/g" "$PLUGIN_DIR/src/manifest.rs"
+sed -i "s/\${MANIFEST}/$MANIFEST/g" "$PLUGIN_DIR/src/manifest.rs"
 fi
 echo -e "${GREEN}✓${NC} Generated src/manifest.rs"
 
@@ -504,23 +515,21 @@ This plugin has been scaffolded but requires implementation of its core features
 1. **Implement parser.rs**: Add actual AST parsing logic
    - Use \`SubprocessAstTool\` from cb-lang-common for external parsers
    - Use \`parse_with_fallback\` for AST + regex pattern
-   - Use \`ErrorBuilder\` for rich error context
    - Extract symbols (functions, classes, etc.)
 
 2. **Implement manifest.rs**: Parse ${MANIFEST} files
    - Use \`read_manifest\` from cb-lang-common
-   - Use \`TomlWorkspace\` or \`JsonWorkspace\` for workspace operations
-   - Use \`ErrorBuilder\` for manifest errors
    - Extract project metadata and dependencies
 
 3. **Add Import Support** (optional): Implement \`ImportSupport\` trait
    - Use \`ImportGraphBuilder\` from cb-lang-common
-   - Use \`parse_import_alias\` and \`split_import_list\` helpers
-   - Use \`ExternalDependencyDetector\` for dependency analysis
+   - Estimated time: 2-4 hours
 
 4. **Add Workspace Support** (optional): Implement \`WorkspaceSupport\` trait
    - Use workspace utilities from cb-lang-common
-   - Use trait helper macros to reduce boilerplate
+   - Estimated time: 2-4 hours
+
+See [docs/development/LANGUAGE_PLUGIN_ONBOARDING.md](../../docs/development/LANGUAGE_PLUGIN_ONBOARDING.md) for detailed guidance.
 
 ## Testing
 
@@ -537,40 +546,23 @@ cargo test -p ${PLUGIN_NAME} parser::tests
 
 ## Integration
 
-This plugin has been automatically registered in:
+This plugin will be automatically registered when you run \`cargo build\`:
 - Root \`Cargo.toml\` workspace dependencies
 - \`crates/cb-handlers/Cargo.toml\` with feature gate \`lang-${LANG_LOWER}\`
 - \`crates/cb-services/src/services/registry_builder.rs\`
 - \`crates/cb-core/src/language.rs\` (ProjectLanguage enum)
 - \`crates/cb-plugin-api/src/metadata.rs\` (LanguageMetadata constant)
 
-## Common Utilities (cb-lang-common)
-
-This plugin has access to **cb-lang-common**, a utility crate with:
-
-- **Subprocess utilities**: \`SubprocessAstTool\`, \`run_ast_tool\`
-- **Parsing patterns**: \`parse_with_fallback\`, \`try_parsers\`
-- **Error handling**: \`ErrorBuilder\` with context
-- **Import utilities**: \`ImportGraphBuilder\`, \`parse_import_alias\`, \`ExternalDependencyDetector\`
-- **File I/O**: \`read_manifest\`, \`read_source\`, \`find_source_files\`
-- **Location tracking**: \`LocationBuilder\`, \`offset_to_position\`
-- **Versioning**: \`detect_dependency_source\`, \`parse_git_url\`
-- **Workspace ops**: \`TomlWorkspace\`, \`JsonWorkspace\`
-- **Testing**: Test fixture generators and utilities
-
-See [cb-lang-common documentation](../cb-lang-common/src/lib.rs) for complete API.
-
 ## References
 
-- [Language Plugin Guide](../README.md)
-- [Common Utilities Guide](../cb-lang-common/src/lib.rs)
-- [API Documentation](../../cb-plugin-api/src/lib.rs)
+- [Language Plugin Onboarding](../../docs/development/LANGUAGE_PLUGIN_ONBOARDING.md)
+- [Language Plugin Guide](../../docs/development/languages/README.md)
+- [CB Lang Common Utilities](../cb-lang-common/README.md)
 - Reference implementations:
   - \`cb-lang-rust\` - Full implementation with import and workspace support
-  - \`cb-lang-go\` - Dual-mode parser (subprocess + regex fallback)
   - \`cb-lang-typescript\` - Subprocess-based parser with ImportGraph
-  - \`cb-lang-python\` - Python-specific patterns with subprocess
-  - \`cb-lang-java\` - Java integration example
+  - \`cb-lang-python\` - Python-specific patterns
+  - \`cb-lang-go\` - Dual-mode parser (subprocess + regex fallback)
 EOF
 fi
 echo -e "${GREEN}✓${NC} Generated README.md"
@@ -580,9 +572,7 @@ echo -e "${GREEN}✓${NC} Generated README.md"
 # ============================================================================
 
 echo ""
-echo -e "${BLUE}Phase 3: Registering language in languages.toml${NC}"
-
-LANGUAGES_TOML="${LANGUAGES_DIR}/languages.toml"
+echo -e "${BLUE}Phase 3: Registering language in config/languages/languages.toml${NC}"
 
 if [ "$DRY_RUN" = false ]; then
     # Check if language already exists
@@ -630,7 +620,7 @@ echo -e "${BLUE}Plugin location:${NC}"
 echo -e "  ${PLUGIN_DIR}"
 echo ""
 echo -e "${BLUE}Configuration:${NC}"
-echo -e "  ${GREEN}✓${NC} crates/languages/languages.toml (language registration)"
+echo -e "  ${GREEN}✓${NC} config/languages/languages.toml (language registration)"
 echo ""
 echo -e "${YELLOW}Note: Build scripts will auto-generate integration code on next build.${NC}"
 echo -e "      Run 'cargo build' to regenerate:"
@@ -653,14 +643,14 @@ echo -e "3. ${BLUE}Run tests:${NC}"
 echo -e "   ${GREEN}cargo test -p ${PLUGIN_NAME}${NC}"
 echo ""
 echo -e "4. ${BLUE}Optional - Add capability traits:${NC}"
-echo -e "   - Implement ImportSupport for import analysis"
-echo -e "   - Implement WorkspaceSupport for workspace operations"
+echo -e "   - Implement ImportSupport for import analysis (2-4h)"
+echo -e "   - Implement WorkspaceSupport for workspace operations (2-4h)"
 echo ""
-echo -e "5. ${BLUE}Verify feature gate configuration:${NC}"
-echo -e "   ${GREEN}./crates/languages/check-features.sh${NC}"
+echo -e "${BLUE}For detailed guidance, see:${NC}"
+echo -e "  ${GREEN}docs/development/LANGUAGE_PLUGIN_ONBOARDING.md${NC}"
 echo ""
 echo -e "${BLUE}For implementation examples, see:${NC}"
-echo -e "  - Full-featured: ${GREEN}crates/languages/cb-lang-rust${NC}"
-echo -e "  - Dual parser:   ${GREEN}crates/languages/cb-lang-go${NC}"
-echo -e "  - Tree-sitter:   ${GREEN}crates/languages/cb-lang-typescript${NC}"
+echo -e "  - Full-featured: ${GREEN}crates/cb-lang-rust${NC}"
+echo -e "  - Dual parser:   ${GREEN}crates/cb-lang-go${NC}"
+echo -e "  - Tree-sitter:   ${GREEN}crates/cb-lang-typescript${NC}"
 echo ""
