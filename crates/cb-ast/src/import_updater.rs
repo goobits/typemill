@@ -547,11 +547,24 @@ pub async fn update_imports_for_rename(
         affected_files = all_affected.into_iter().collect();
     }
 
-    // Filter out files inside the moved directory (applies after scan_scope rebuild too)
-    // These files use relative imports and don't need updating
-    affected_files.retain(|file| {
-        !file.starts_with(new_path)
-    });
+    // Filter out files that shouldn't be updated based on the type of move
+    // Two cases:
+    // 1. Moving within same parent (e.g., renaming subdir): exclude all files in that parent
+    // 2. Moving to different parent: exclude files inside the new destination
+    if let (Some(old_parent), Some(new_parent)) = (old_path.parent(), new_path.parent()) {
+        if old_parent == new_parent {
+            // Case 1: Renaming within same parent directory
+            // Files in the parent use relative imports and don't need updating
+            affected_files.retain(|file| !file.starts_with(old_parent));
+        } else {
+            // Case 2: Moving to a different parent directory
+            // Exclude files inside the moved directory (they use relative imports)
+            affected_files.retain(|file| !file.starts_with(new_path));
+        }
+    } else {
+        // Fallback: exclude files inside new_path if we can't determine parents
+        affected_files.retain(|file| !file.starts_with(new_path));
+    }
 
     info!(
         dry_run = dry_run,
