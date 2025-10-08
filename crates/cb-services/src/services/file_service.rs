@@ -572,10 +572,13 @@ impl FileService {
             let validation_result = self.run_validation().await;
 
             // Build manifest updates report (consistent format with other reports)
+            // Deduplicate manifest files (same manifest can be touched in multiple phases)
             let manifest_updates = if is_cargo_pkg {
+                let unique_manifests: std::collections::HashSet<_> =
+                    manifest_updated_files.into_iter().collect();
                 Some(json!({
-                    "files_updated": manifest_updated_files.len(),
-                    "updated_files": manifest_updated_files.iter()
+                    "files_updated": unique_manifests.len(),
+                    "updated_files": unique_manifests.iter()
                         .map(|p| p.to_string_lossy().to_string())
                         .collect::<Vec<_>>(),
                     "errors": manifest_errors,
@@ -2872,26 +2875,61 @@ impl FileService {
             .map(|p| p.components().count())
             .unwrap_or(0);
 
-        // Update [dependencies] and [dev-dependencies]
-        for section in ["dependencies", "dev-dependencies"] {
-            if let Some(deps) = doc[section].as_table_mut() {
-                for (name, value) in deps.iter_mut() {
-                    if let Some(table) = value.as_inline_table_mut() {
-                        if let Some(path_value) = table.get_mut("path") {
-                            if let Some(old_path_str) = path_value.as_str() {
-                                let new_path_str =
-                                    self.adjust_relative_path(old_path_str, old_depth, new_depth);
-                                if new_path_str != old_path_str {
-                                    info!(
-                                        dependency = %name,
-                                        old_path = %old_path_str,
-                                        new_path = %new_path_str,
-                                        "Updating relative path dependency"
-                                    );
-                                    *path_value = new_path_str.as_str().into();
-                                    updated_count += 1;
-                                }
+        // Helper closure to update path dependencies in a dependency table
+        let update_deps_in_table = |deps: &mut toml_edit::Table, updated: &mut usize| {
+            for (name, value) in deps.iter_mut() {
+                if let Some(table) = value.as_inline_table_mut() {
+                    if let Some(path_value) = table.get_mut("path") {
+                        if let Some(old_path_str) = path_value.as_str() {
+                            let new_path_str =
+                                self.adjust_relative_path(old_path_str, old_depth, new_depth);
+                            if new_path_str != old_path_str {
+                                info!(
+                                    dependency = %name,
+                                    old_path = %old_path_str,
+                                    new_path = %new_path_str,
+                                    "Updating relative path dependency"
+                                );
+                                *path_value = new_path_str.as_str().into();
+                                *updated += 1;
                             }
+                        }
+                    }
+                } else if let Some(table) = value.as_table_mut() {
+                    if let Some(path_value) = table.get_mut("path") {
+                        if let Some(old_path_str) = path_value.as_str() {
+                            let new_path_str =
+                                self.adjust_relative_path(old_path_str, old_depth, new_depth);
+                            if new_path_str != old_path_str {
+                                info!(
+                                    dependency = %name,
+                                    old_path = %old_path_str,
+                                    new_path = %new_path_str,
+                                    "Updating relative path dependency"
+                                );
+                                *path_value = new_path_str.as_str().into();
+                                *updated += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Update standard dependency sections
+        for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+            if let Some(deps) = doc[section].as_table_mut() {
+                update_deps_in_table(deps, &mut updated_count);
+            }
+        }
+
+        // Update target-specific dependency sections
+        if let Some(target) = doc.get_mut("target").and_then(|t| t.as_table_mut()) {
+            for (_target_spec, target_value) in target.iter_mut() {
+                if let Some(target_table) = target_value.as_table_mut() {
+                    for dep_section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+                        if let Some(deps) = target_table.get_mut(dep_section).and_then(|d| d.as_table_mut()) {
+                            update_deps_in_table(deps, &mut updated_count);
                         }
                     }
                 }

@@ -110,14 +110,17 @@ This is a comprehensive tool validation exercise that will test:
 - ✅ Move `crates/languages/PLUGIN_DEVELOPMENT_GUIDE.md` → `docs/development/languages/PLUGIN_DEVELOPMENT_GUIDE.md`
 - ✅ Commit: `7632bec` - "refactor: Phase 1 - relocate language metadata and configuration files"
 
-### 🔄 Phase 2: Promote Language Crates to Flat Structure (IN PROGRESS)
+### ✅ Phase 2: Promote Language Crates to Flat Structure (COMPLETE)
 - ✅ Move `crates/languages/cb-lang-common` → `crates/cb-lang-common`
   - ✅ Commit: `cb1024e` - "refactor: move cb-lang-common to flat crates layout"
-- ❌ Move `crates/cb-lang-java` → `crates/cb-lang-java`
-- ❌ Move `crates/cb-lang-python` → `crates/cb-lang-python`
-- ❌ Move `crates/cb-lang-rust` → `crates/cb-lang-rust`
-- ❌ Move `crates/cb-lang-typescript` → `crates/cb-lang-typescript`
-- ⚠️ **BLOCKER**: `rename_directory` bug creating duplicate imports - fixing in parallel
+- ⏭️ Skip `crates/cb-lang-java` → `crates/cb-lang-java` (not yet implemented)
+- ✅ Move `crates/cb-lang-python` → `crates/cb-lang-python`
+  - ✅ Commit: `7e669ce` - "refactor: move cb-lang-python to flat crates layout"
+- ✅ Move `crates/cb-lang-rust` → `crates/cb-lang-rust`
+  - ✅ Commit: `5f01892` - "refactor: move cb-lang-rust to flat crates layout"
+- ✅ Move `crates/cb-lang-typescript` → `crates/cb-lang-typescript`
+  - ✅ Commit: `e133a0c` - "refactor: move cb-lang-typescript to flat crates layout"
+- ✅ **BLOCKER RESOLVED**: Fixed `rename_directory` manifest update bugs, all moves completed successfully with automatic Cargo.toml updates
 
 ### ❌ Phase 3: Reorganize Workspace Crates (NOT STARTED)
 - ❌ Move `benchmarks` → `crates/codebuddy-bench`
