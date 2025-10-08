@@ -573,12 +573,15 @@ impl FileService {
 
             // Build manifest updates report (consistent format with other reports)
             // Deduplicate manifest files (same manifest can be touched in multiple phases)
+            // Sort for deterministic output (important for snapshot testing and stable API)
             let manifest_updates = if is_cargo_pkg {
                 let unique_manifests: std::collections::HashSet<_> =
                     manifest_updated_files.into_iter().collect();
+                let mut sorted_manifests: Vec<_> = unique_manifests.into_iter().collect();
+                sorted_manifests.sort();
                 Some(json!({
-                    "files_updated": unique_manifests.len(),
-                    "updated_files": unique_manifests.iter()
+                    "files_updated": sorted_manifests.len(),
+                    "updated_files": sorted_manifests.iter()
                         .map(|p| p.to_string_lossy().to_string())
                         .collect::<Vec<_>>(),
                     "errors": manifest_errors,
