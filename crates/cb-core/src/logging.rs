@@ -71,14 +71,16 @@ pub fn initialize(config: &AppConfig) {
 /// # Example
 ///
 /// ```rust
-/// let request_id = uuid::Uuid::new_v4();
-/// let span = cb_core::logging::request_span(&request_id.to_string(), "websocket");
+/// use cb_core::logging::request_span;
+///
+/// let request_id = "req-12345";
+/// let span = request_span(request_id, "websocket");
 /// let _enter = span.enter();
 ///
 /// // All logs within this scope automatically include:
 /// // - request_id
 /// // - transport (websocket or stdio)
-/// handle_request().await;
+/// tracing::info!("Processing request");
 /// ```
 pub fn request_span(request_id: &str, transport: &str) -> tracing::Span {
     tracing::info_span!(
