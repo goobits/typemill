@@ -14,14 +14,13 @@ members = [
     "crates/cb-transport",
     "crates/languages/*",
     "apps/codebuddy",
-    "integration-tests",
-    "benchmarks",
+    "integration-tests", "crates/codebuddy-bench",
 ]
 resolver = "2"
 
 # Package metadata for cargo install
 [workspace.package]
-version = "1.0.0-rc2"
+version = "1.0.0-rc3"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/goobits/codebuddy"
@@ -53,12 +52,16 @@ uuid = { version = "1.0", features = ["v4"] }
 dashmap = "5.5"
 futures = "0.3"
 
+# Note: Multiple versions of hashbrown, bitflags, dirs, and getrandom exist
+# due to transitive dependencies from upstream crates (dashmap, lsp-types, swc_*, etc.)
+# These cannot be consolidated without upstream updates
+
 # Language plugins
-cb-lang-rust = { path = "crates/languages/cb-lang-rust" }
+cb-lang-rust = { path = "crates/cb-lang-rust" }
 cb-lang-go = { path = "crates/cb-lang-go" }
-cb-lang-typescript = { path = "crates/languages/cb-lang-typescript" }
-cb-lang-python = { path = "crates/languages/cb-lang-python" }
-cb-lang-java = { path = "crates/languages/cb-lang-java" }
+cb-lang-typescript = { path = "crates/cb-lang-typescript" }
+cb-lang-python = { path = "crates/cb-lang-python" }
+cb-lang-java = { path = "crates/cb-lang-java" }
 
 [profile.release]
 opt-level = 3

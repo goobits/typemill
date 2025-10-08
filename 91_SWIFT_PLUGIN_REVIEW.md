@@ -336,7 +336,7 @@ cargo test -p cb-lang-swift  # Should also find swift
 
 ### 3. Document Java Parser Build
 
-**File**: `crates/languages/cb-lang-java/README.md`
+**File**: `crates/cb-lang-java/README.md`
 
 **Recommendation**: Add "Build Instructions" section
 

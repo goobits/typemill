@@ -110,19 +110,25 @@ This is a comprehensive tool validation exercise that will test:
 - ✅ Move `crates/languages/PLUGIN_DEVELOPMENT_GUIDE.md` → `docs/development/languages/PLUGIN_DEVELOPMENT_GUIDE.md`
 - ✅ Commit: `7632bec` - "refactor: Phase 1 - relocate language metadata and configuration files"
 
-### 🔄 Phase 2: Promote Language Crates to Flat Structure (IN PROGRESS)
+### ✅ Phase 2: Promote Language Crates to Flat Structure (COMPLETE)
 - ✅ Move `crates/languages/cb-lang-common` → `crates/cb-lang-common`
   - ✅ Commit: `cb1024e` - "refactor: move cb-lang-common to flat crates layout"
-- ❌ Move `crates/languages/cb-lang-java` → `crates/cb-lang-java`
-- ❌ Move `crates/languages/cb-lang-python` → `crates/cb-lang-python`
-- ❌ Move `crates/languages/cb-lang-rust` → `crates/cb-lang-rust`
-- ❌ Move `crates/languages/cb-lang-typescript` → `crates/cb-lang-typescript`
-- ⚠️ **BLOCKER**: `rename_directory` bug creating duplicate imports - fixing in parallel
+- ⏭️ Skip `crates/cb-lang-java` → `crates/cb-lang-java` (not yet implemented)
+- ✅ Move `crates/cb-lang-python` → `crates/cb-lang-python`
+  - ✅ Commit: `7e669ce` - "refactor: move cb-lang-python to flat crates layout"
+- ✅ Move `crates/cb-lang-rust` → `crates/cb-lang-rust`
+  - ✅ Commit: `5f01892` - "refactor: move cb-lang-rust to flat crates layout"
+- ✅ Move `crates/cb-lang-typescript` → `crates/cb-lang-typescript`
+  - ✅ Commit: `e133a0c` - "refactor: move cb-lang-typescript to flat crates layout"
+- ✅ **BLOCKER RESOLVED**: Fixed `rename_directory` manifest update bugs, all moves completed successfully with automatic Cargo.toml updates
 
-### ❌ Phase 3: Reorganize Workspace Crates (NOT STARTED)
-- ❌ Move `benchmarks` → `crates/codebuddy-bench`
-- ❌ Update `crates/codebuddy-bench/Cargo.toml` (package name)
-- ❌ Update root `Cargo.toml` (workspace members)
+### ✅ Phase 3: Reorganize Workspace Crates (COMPLETE)
+- ✅ Move `benchmarks` → `crates/codebuddy-bench`
+  - ✅ Commit: `8fec74d` - "refactor: move benchmarks to crates/codebuddy-bench (Phase 3)"
+  - ✅ Package name automatically updated: `benchmarks` → `codebuddy-bench`
+  - ✅ Workspace members automatically updated in root Cargo.toml
+  - ✅ Path dependencies automatically updated: `../crates/*` → `../../crates/*`
+  - ✅ Documentation references updated (3 files, 8 references)
 
 ### ❌ Phase 4: Split Integration Tests (NOT STARTED)
 - ❌ Create `crates/test-support/` crate structure
@@ -194,7 +200,7 @@ use cb_plugin_api::import_support::ImportSupport;     // ORIGINAL
 │   ├── cb-lang-python/            # TO MOVE from crates/languages/
 │   ├── cb-lang-rust/              # TO MOVE from crates/languages/
 │   ├── cb-lang-typescript/        # TO MOVE from crates/languages/
-│   ├── codebuddy-bench/           # TO MOVE from benchmarks/
+│   ├── codebuddy-bench/           # TO MOVE from crates/codebuddy-bench/
 │   └── test-support/              # TO CREATE (extracted from integration-tests/)
 │       ├── src/
 │       │   ├── harness/
@@ -232,7 +238,7 @@ use cb_plugin_api::import_support::ImportSupport;     // ORIGINAL
 
 # REMOVED after completion:
 # - crates/languages/              # After all language crates moved
-# - benchmarks/                    # After moving to crates/codebuddy-bench/
+# - crates/codebuddy-bench/                    # After moving to crates/codebuddy-bench/
 # - integration-tests/             # After splitting into test-support + apps/codebuddy/tests/
 ```
 
@@ -278,10 +284,10 @@ rename_file: crates/languages/PLUGIN_DEVELOPMENT_GUIDE.md → docs/development/l
 rename_directory: crates/languages/cb-lang-common → crates/cb-lang-common
 
 # ⚠️ BLOCKED - Fixing rename_directory bugs first
-rename_directory: crates/languages/cb-lang-java → crates/cb-lang-java
-rename_directory: crates/languages/cb-lang-python → crates/cb-lang-python
-rename_directory: crates/languages/cb-lang-rust → crates/cb-lang-rust
-rename_directory: crates/languages/cb-lang-typescript → crates/cb-lang-typescript
+rename_directory: crates/cb-lang-java → crates/cb-lang-java
+rename_directory: crates/cb-lang-python → crates/cb-lang-python
+rename_directory: crates/cb-lang-rust → crates/cb-lang-rust
+rename_directory: crates/cb-lang-typescript → crates/cb-lang-typescript
 ```
 
 **Expected Behavior**:
@@ -302,7 +308,7 @@ rename_directory: crates/languages/cb-lang-typescript → crates/cb-lang-typescr
 **MCP Tool**: `rename_directory`
 
 ```bash
-rename_directory: benchmarks → crates/codebuddy-bench
+rename_directory: crates/codebuddy-bench → crates/codebuddy-bench
 ```
 
 **Manual Edits Required**:
@@ -443,7 +449,7 @@ This proposal serves as a **complete validation suite** for CodeBuddy's capabili
 
 ### Upcoming Tests (Phases 3-5)
 - ⏳ `batch_execute` with multiple operations
-- ⏳ Complex directory moves (benchmarks → crates)
+- ⏳ Complex directory moves (crates/codebuddy-bench → crates)
 - ⏳ Test fixture reorganization
 - ⏳ Documentation reference updates
 - ⏳ `delete_file` for cleanup

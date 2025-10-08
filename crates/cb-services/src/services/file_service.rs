@@ -510,31 +510,46 @@ impl FileService {
                 }
             }
 
+            // Track manifest updates (Cargo.toml files)
+            let mut manifest_updated_files: Vec<PathBuf> = Vec::new();
+            let mut manifest_errors: Vec<String> = Vec::new();
+
             if is_cargo_pkg {
                 // Update workspace members array
-                if let Err(e) = self
+                match self
                     .update_workspace_manifests(&old_abs_dir, &new_abs_dir)
                     .await
                 {
-                    warn!(error = %e, "Failed to update workspace manifest");
-                    all_errors.push(format!("Failed to update workspace manifest: {}", e));
+                    Ok(updated_files) => {
+                        manifest_updated_files.extend(updated_files);
+                    }
+                    Err(e) => {
+                        warn!(error = %e, "Failed to update workspace manifest");
+                        let error_msg = format!("Failed to update workspace manifest: {}", e);
+                        all_errors.push(error_msg.clone());
+                        manifest_errors.push(error_msg);
+                    }
                 }
 
                 // Update path dependencies in other crates that depend on this one
                 if let Some(ref info) = rename_info {
-                    if let Some(old_crate_name) = info.get("old_crate_name").and_then(|v| v.as_str()) {
-                        match self.update_dependent_crate_paths(old_crate_name, &new_abs_dir).await {
+                    // Use old_package_name (with hyphens) for Cargo.toml dependency lookups
+                    if let Some(old_package_name) = info.get("old_package_name").and_then(|v| v.as_str()) {
+                        match self.update_dependent_crate_paths(old_package_name, &new_abs_dir).await {
                             Ok(updated_files) => {
                                 if !updated_files.is_empty() {
                                     info!(
                                         files_updated = updated_files.len(),
                                         "Updated Cargo.toml path dependencies in dependent crates"
                                     );
+                                    manifest_updated_files.extend(updated_files);
                                 }
                             }
                             Err(e) => {
                                 warn!(error = %e, "Failed to update dependent crate paths");
-                                all_errors.push(format!("Failed to update dependent crate paths: {}", e));
+                                let error_msg = format!("Failed to update dependent crate paths: {}", e);
+                                all_errors.push(error_msg.clone());
+                                manifest_errors.push(error_msg);
                             }
                         }
                     }
@@ -556,6 +571,25 @@ impl FileService {
             // Run post-operation validation if configured
             let validation_result = self.run_validation().await;
 
+            // Build manifest updates report (consistent format with other reports)
+            // Deduplicate manifest files (same manifest can be touched in multiple phases)
+            // Sort for deterministic output (important for snapshot testing and stable API)
+            let manifest_updates = if is_cargo_pkg {
+                let unique_manifests: std::collections::HashSet<_> =
+                    manifest_updated_files.into_iter().collect();
+                let mut sorted_manifests: Vec<_> = unique_manifests.into_iter().collect();
+                sorted_manifests.sort();
+                Some(json!({
+                    "files_updated": sorted_manifests.len(),
+                    "updated_files": sorted_manifests.iter()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .collect::<Vec<_>>(),
+                    "errors": manifest_errors,
+                }))
+            } else {
+                None
+            };
+
             let mut result = json!({
                 "operation": "rename_directory",
                 "old_path": old_abs_dir.to_string_lossy(),
@@ -567,6 +601,7 @@ impl FileService {
                     "errors": all_errors,
                 },
                 "documentation_updates": doc_updates,
+                "manifest_updates": manifest_updates,
                 "success": all_errors.is_empty(),
             });
 
@@ -2538,18 +2573,22 @@ impl FileService {
         );
 
         Ok(json!({
-            "old_crate_name": old_crate_name.replace('-', "_"), // Normalize to underscores for comparison
+            "old_crate_name": old_crate_name.replace('-', "_"), // For Rust import updates (use statements)
+            "old_package_name": old_crate_name, // For Cargo.toml dependency lookups (keep hyphens)
             "new_crate_name": new_crate_import, // Use underscores for imports
             "new_package_name": new_crate_name, // Keep hyphens for Cargo.toml
         }))
     }
 
     /// Find the parent Cargo workspace and update the members array to reflect a renamed package.
+    ///
+    /// Returns the list of Cargo.toml files that were updated (workspace root + moved package)
     async fn update_workspace_manifests(
         &self,
         old_package_path: &Path,
         new_package_path: &Path,
-    ) -> ServerResult<()> {
+    ) -> ServerResult<Vec<PathBuf>> {
+        let mut updated_files = Vec::new();
         let mut current_path = old_package_path.parent();
 
         while let Some(path) = current_path {
@@ -2609,22 +2648,28 @@ impl FileService {
                                     e
                                 ))
                             })?;
+
+                        updated_files.push(workspace_toml_path.clone());
                     }
 
                     // Also update relative path dependencies in the moved package's Cargo.toml
                     let package_cargo_toml = new_package_path.join("Cargo.toml");
                     if package_cargo_toml.exists() {
-                        self.update_package_relative_paths(
+                        let package_updated = self.update_package_relative_paths(
                             &package_cargo_toml,
                             old_package_path,
                             new_package_path,
                             path,
                         )
                         .await?;
+
+                        if package_updated {
+                            updated_files.push(package_cargo_toml);
+                        }
                     }
 
                     // If we found the workspace, we can stop searching.
-                    return Ok(());
+                    return Ok(updated_files);
                 }
             }
 
@@ -2634,7 +2679,7 @@ impl FileService {
             current_path = path.parent();
         }
 
-        Ok(())
+        Ok(updated_files)
     }
 
     /// Update path dependencies in other crates that depend on the moved crate
@@ -2687,6 +2732,12 @@ impl FileService {
 
     /// Update a single Cargo.toml's path dependency if it depends on the moved crate
     ///
+    /// Handles all dependency sections:
+    /// - [dependencies], [dev-dependencies], [build-dependencies]
+    /// - [target.'cfg(...)'.dependencies]
+    /// - [workspace.dependencies]
+    /// - [patch.crates-io], [patch.'...']
+    ///
     /// Returns Ok(true) if the file was updated, Ok(false) if no update was needed
     async fn update_cargo_toml_dependency_path(
         &self,
@@ -2703,31 +2754,67 @@ impl FileService {
             .map_err(|e| ServerError::Internal(format!("Failed to parse Cargo.toml: {}", e)))?;
 
         let mut updated = false;
+        let cargo_toml_dir = cargo_toml_path.parent().unwrap();
 
-        // Check [dependencies] section
-        if let Some(deps) = doc.get_mut("dependencies").and_then(|d| d.as_table_like_mut()) {
-            if let Some(dep) = deps.get_mut(moved_crate_name) {
-                if let Some(dep_table) = dep.as_inline_table_mut() {
-                    if dep_table.contains_key("path") {
-                        // Calculate new relative path
-                        let cargo_toml_dir = cargo_toml_path.parent().unwrap();
-                        let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
-                            .ok_or_else(|| ServerError::Internal("Failed to calculate relative path".to_string()))?;
+        // Helper to update a dependency table
+        let update_dep_in_table = |dep: &mut toml_edit::Item, updated: &mut bool| -> ServerResult<()> {
+            if let Some(dep_table) = dep.as_inline_table_mut() {
+                if dep_table.contains_key("path") {
+                    let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
+                        .ok_or_else(|| ServerError::Internal("Failed to calculate relative path".to_string()))?;
+                    dep_table.insert("path", toml_edit::Value::from(new_rel_path.to_string_lossy().to_string()));
+                    *updated = true;
+                }
+            } else if let Some(dep_table) = dep.as_table_mut() {
+                if dep_table.contains_key("path") {
+                    let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
+                        .ok_or_else(|| ServerError::Internal("Failed to calculate relative path".to_string()))?;
+                    dep_table.insert("path", toml_edit::value(new_rel_path.to_string_lossy().to_string()));
+                    *updated = true;
+                }
+            }
+            Ok(())
+        };
 
-                        let new_path_str = new_rel_path.to_string_lossy().to_string();
-                        dep_table.insert("path", toml_edit::Value::from(new_path_str));
-                        updated = true;
+        // Check standard dependency sections
+        for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+            if let Some(deps) = doc.get_mut(section).and_then(|d| d.as_table_like_mut()) {
+                if let Some(dep) = deps.get_mut(moved_crate_name) {
+                    update_dep_in_table(dep, &mut updated)?;
+                }
+            }
+        }
+
+        // Check [workspace.dependencies]
+        if let Some(workspace) = doc.get_mut("workspace").and_then(|w| w.as_table_mut()) {
+            if let Some(deps) = workspace.get_mut("dependencies").and_then(|d| d.as_table_like_mut()) {
+                if let Some(dep) = deps.get_mut(moved_crate_name) {
+                    update_dep_in_table(dep, &mut updated)?;
+                }
+            }
+        }
+
+        // Check [target.'cfg(...)'.dependencies] sections
+        if let Some(target) = doc.get_mut("target").and_then(|t| t.as_table_mut()) {
+            for (_target_name, target_table) in target.iter_mut() {
+                if let Some(target_table) = target_table.as_table_mut() {
+                    for dep_section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+                        if let Some(deps) = target_table.get_mut(dep_section).and_then(|d| d.as_table_like_mut()) {
+                            if let Some(dep) = deps.get_mut(moved_crate_name) {
+                                update_dep_in_table(dep, &mut updated)?;
+                            }
+                        }
                     }
-                } else if let Some(dep_table) = dep.as_table_mut() {
-                    if dep_table.contains_key("path") {
-                        // Calculate new relative path
-                        let cargo_toml_dir = cargo_toml_path.parent().unwrap();
-                        let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
-                            .ok_or_else(|| ServerError::Internal("Failed to calculate relative path".to_string()))?;
+                }
+            }
+        }
 
-                        let new_path_str = new_rel_path.to_string_lossy().to_string();
-                        dep_table.insert("path", toml_edit::value(new_path_str));
-                        updated = true;
+        // Check [patch.crates-io] and [patch.'...'] sections
+        if let Some(patch) = doc.get_mut("patch").and_then(|p| p.as_table_mut()) {
+            for (_registry, registry_table) in patch.iter_mut() {
+                if let Some(registry_table) = registry_table.as_table_like_mut() {
+                    if let Some(dep) = registry_table.get_mut(moved_crate_name) {
+                        update_dep_in_table(dep, &mut updated)?;
                     }
                 }
             }
@@ -2749,7 +2836,7 @@ impl FileService {
         old_package_path: &Path,
         new_package_path: &Path,
         workspace_root: &Path,
-    ) -> ServerResult<()> {
+    ) -> ServerResult<bool> {
         let content = fs::read_to_string(package_cargo_toml).await.map_err(|e| {
             ServerError::Internal(format!("Failed to read package Cargo.toml: {}", e))
         })?;
@@ -2791,26 +2878,61 @@ impl FileService {
             .map(|p| p.components().count())
             .unwrap_or(0);
 
-        // Update [dependencies] and [dev-dependencies]
-        for section in ["dependencies", "dev-dependencies"] {
-            if let Some(deps) = doc[section].as_table_mut() {
-                for (name, value) in deps.iter_mut() {
-                    if let Some(table) = value.as_inline_table_mut() {
-                        if let Some(path_value) = table.get_mut("path") {
-                            if let Some(old_path_str) = path_value.as_str() {
-                                let new_path_str =
-                                    self.adjust_relative_path(old_path_str, old_depth, new_depth);
-                                if new_path_str != old_path_str {
-                                    info!(
-                                        dependency = %name,
-                                        old_path = %old_path_str,
-                                        new_path = %new_path_str,
-                                        "Updating relative path dependency"
-                                    );
-                                    *path_value = new_path_str.as_str().into();
-                                    updated_count += 1;
-                                }
+        // Helper closure to update path dependencies in a dependency table
+        let update_deps_in_table = |deps: &mut toml_edit::Table, updated: &mut usize| {
+            for (name, value) in deps.iter_mut() {
+                if let Some(table) = value.as_inline_table_mut() {
+                    if let Some(path_value) = table.get_mut("path") {
+                        if let Some(old_path_str) = path_value.as_str() {
+                            let new_path_str =
+                                self.adjust_relative_path(old_path_str, old_depth, new_depth);
+                            if new_path_str != old_path_str {
+                                info!(
+                                    dependency = %name,
+                                    old_path = %old_path_str,
+                                    new_path = %new_path_str,
+                                    "Updating relative path dependency"
+                                );
+                                *path_value = new_path_str.as_str().into();
+                                *updated += 1;
                             }
+                        }
+                    }
+                } else if let Some(table) = value.as_table_mut() {
+                    if let Some(path_value) = table.get_mut("path") {
+                        if let Some(old_path_str) = path_value.as_str() {
+                            let new_path_str =
+                                self.adjust_relative_path(old_path_str, old_depth, new_depth);
+                            if new_path_str != old_path_str {
+                                info!(
+                                    dependency = %name,
+                                    old_path = %old_path_str,
+                                    new_path = %new_path_str,
+                                    "Updating relative path dependency"
+                                );
+                                *path_value = new_path_str.as_str().into();
+                                *updated += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Update standard dependency sections
+        for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+            if let Some(deps) = doc[section].as_table_mut() {
+                update_deps_in_table(deps, &mut updated_count);
+            }
+        }
+
+        // Update target-specific dependency sections
+        if let Some(target) = doc.get_mut("target").and_then(|t| t.as_table_mut()) {
+            for (_target_spec, target_value) in target.iter_mut() {
+                if let Some(target_table) = target_value.as_table_mut() {
+                    for dep_section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+                        if let Some(deps) = target_table.get_mut(dep_section).and_then(|d| d.as_table_mut()) {
+                            update_deps_in_table(deps, &mut updated_count);
                         }
                     }
                 }
@@ -2835,7 +2957,7 @@ impl FileService {
             debug!("No relative path dependencies needed updating");
         }
 
-        Ok(())
+        Ok(updated_count > 0)
     }
 
     /// Adjust a relative path based on depth change

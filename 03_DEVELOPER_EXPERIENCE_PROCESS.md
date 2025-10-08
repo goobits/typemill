@@ -41,7 +41,7 @@ cd crates/languages && ./new-lang.sh csharp --manifest "*.csproj" --extensions c
 
 **Action taken**:
 ```bash
-cd crates/languages/cb-lang-java/resources/java-parser && mvn package
+cd crates/cb-lang-java/resources/java-parser && mvn package
 ```
 
 **Lesson**: Build dependencies should be pre-checked or documented.
@@ -413,7 +413,7 @@ done
 missing_artifacts=()
 
 # Check Java parser
-if [ ! -f "crates/languages/cb-lang-java/resources/java-parser/target/java-parser-1.0-SNAPSHOT.jar" ]; then
+if [ ! -f "crates/cb-lang-java/resources/java-parser/target/java-parser-1.0-SNAPSHOT.jar" ]; then
     missing_artifacts+=("Java parser JAR")
 fi
 
@@ -443,7 +443,7 @@ fi
 .PHONY: build-parsers
 build-parsers:
 	@echo "Building external language parsers..."
-	cd crates/languages/cb-lang-java/resources/java-parser && mvn package
+	cd crates/cb-lang-java/resources/java-parser && mvn package
 	cd crates/languages/cb-lang-csharp/resources/csharp-parser && \
 		dotnet publish -c Release -r linux-x64 --self-contained
 	@echo "✅ All parsers built"

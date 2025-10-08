@@ -35,7 +35,7 @@ CodeBuddy currently supports 4 languages via LSP integration and language plugin
 
 ### Phase 1: Complete Existing Support (🔴 High Priority)
 
-- [ ] **Python Language Plugin** (`crates/languages/cb-lang-python`)
+- [ ] **Python Language Plugin** (`crates/cb-lang-python`)
   - AST parsing for import analysis
   - Manifest parsing (`requirements.txt`, `pyproject.toml`, `setup.py`)
   - Extract function/variable refactoring support
@@ -43,7 +43,7 @@ CodeBuddy currently supports 4 languages via LSP integration and language plugin
 
 ### Phase 2: Enterprise Languages (🟡 Medium Priority)
 
-- [ ] **Java Support** (`crates/languages/cb-lang-java`)
+- [ ] **Java Support** (`crates/cb-lang-java`)
   - LSP: `jdtls` (Eclipse JDT Language Server)
   - AST parsing via `tree-sitter-java`
   - Manifest: `pom.xml`, `build.gradle`, `build.gradle.kts`

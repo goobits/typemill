@@ -1,6 +1,6 @@
 [package]
 name = "cb-handlers"
-version = "1.0.0-beta"
+version = "1.0.1-beta"
 edition = "2021"
 
 [features]
@@ -22,11 +22,11 @@ cb-ast = { path = "../cb-ast" }
 cb-plugins = { path = "../cb-plugins" }
 
 # Language plugins (feature-gated)
-cb-lang-rust = { path = "../languages/cb-lang-rust", optional = true }
+cb-lang-rust = { path = "../cb-lang-rust", optional = true }
 cb-lang-go = { path = "../cb-lang-go", optional = true }
-cb-lang-typescript = { path = "../languages/cb-lang-typescript", optional = true }
-cb-lang-python = { path = "../languages/cb-lang-python", optional = true }
-cb-lang-java = { path = "../languages/cb-lang-java", optional = true }
+cb-lang-typescript = { path = "../cb-lang-typescript", optional = true }
+cb-lang-python = { path = "../cb-lang-python", optional = true }
+cb-lang-java = { path = "../cb-lang-java", optional = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
