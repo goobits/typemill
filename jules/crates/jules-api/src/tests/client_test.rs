@@ -27,12 +27,12 @@ async fn test_list_sources_success() {
 
     Mock::given(method("GET"))
         .and(path("/sources"))
-        .and(header("Authorization", "Bearer test-key"))
+        .and(header("X-Goog-Api-Key", "test-key"))
         .respond_with(ResponseTemplate::new(200).set_body_json(response_body))
         .mount(&server)
         .await;
 
-    let result = client.list_sources(None, None).await;
+    let result = client.list_sources(None, None, None).await;
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(response.sources.len(), 1);
@@ -52,7 +52,7 @@ async fn test_get_source_success() {
 
     Mock::given(method("GET"))
         .and(path("/sources/source1"))
-        .and(header("Authorization", "Bearer test-key"))
+        .and(header("X-Goog-Api-Key", "test-key"))
         .respond_with(ResponseTemplate::new(200).set_body_json(response_body))
         .mount(&server)
         .await;
@@ -79,7 +79,7 @@ async fn test_create_session_success() {
 
     Mock::given(method("POST"))
         .and(path("/sessions"))
-        .and(header("Authorization", "Bearer test-key"))
+        .and(header("X-Goog-Api-Key", "test-key"))
         .and(body_json(&request_body))
         .respond_with(ResponseTemplate::new(201).set_body_json(response_body))
         .mount(&server)
@@ -97,7 +97,7 @@ async fn test_delete_session_success() {
 
     Mock::given(method("DELETE"))
         .and(path("/sessions/session1"))
-        .and(header("Authorization", "Bearer test-key"))
+        .and(header("X-Goog-Api-Key", "test-key"))
         .respond_with(ResponseTemplate::new(204))
         .mount(&server)
         .await;

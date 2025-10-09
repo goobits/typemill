@@ -8,6 +8,7 @@ use serde_json::Value;
 
 #[derive(Debug, Deserialize)]
 struct ListSourcesParams {
+    filter: Option<String>,
     page_size: Option<u32>,
     page_token: Option<String>,
 }
@@ -21,7 +22,7 @@ impl Tool for ListSources {
             serde_json::from_value(params).map_err(|e| (-32602, e.to_string()))?;
 
         let response = client
-            .list_sources(params.page_size, params.page_token.as_deref())
+            .list_sources(params.page_size, params.page_token.as_deref(), params.filter.as_deref())
             .await
             .map_err(|e| (-32000, e.to_string()))?;
 

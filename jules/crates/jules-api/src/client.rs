@@ -35,17 +35,21 @@ impl JulesClient {
     }
 
     fn add_auth(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
-        builder.bearer_auth(&self.api_key)
+        builder.header("X-Goog-Api-Key", &self.api_key)
     }
 
     pub async fn list_sources(
         &self,
         page_size: Option<u32>,
         page_token: Option<&str>,
+        filter: Option<&str>,
     ) -> Result<crate::types::SourcesResponse> {
         let mut url = format!("{}/sources", self.base_url);
         let mut query_params = Vec::new();
 
+        if let Some(f) = filter {
+            query_params.push(("filter", f.to_string()));
+        }
         if let Some(size) = page_size {
             query_params.push(("pageSize", size.to_string()));
         }

@@ -13,9 +13,12 @@ pub enum SourcesCommand {
 
 #[derive(Args)]
 pub struct ListSourcesArgs {
+    /// Filter sources (e.g., 'name=sources/source1 OR name=sources/source2')
+    #[arg(short, long)]
+    filter: Option<String>,
     #[arg(short, long)]
     page_size: Option<u32>,
-    #[arg(short, long)]
+    #[arg(short = 't', long)]
     page_token: Option<String>,
 }
 
@@ -34,7 +37,7 @@ pub async fn handle_sources_command(
     match command {
         SourcesCommand::List(args) => {
             let response = client
-                .list_sources(args.page_size, args.page_token.as_deref())
+                .list_sources(args.page_size, args.page_token.as_deref(), args.filter.as_deref())
                 .await?;
             formatter::print_sources_response(&response, format)?;
         }
