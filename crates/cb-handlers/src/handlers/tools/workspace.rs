@@ -163,46 +163,96 @@ impl WorkspaceHandler {
         // us to use FileService for reading and benefit from caching/locking.
 
         // Downcast to concrete plugin types to access update_dependency
-        use cb_lang_go::GoPlugin;
-        use cb_lang_rust::RustPlugin;
-        use cb_lang_typescript::TypeScriptPlugin;
+        // Each plugin is feature-gated to avoid compilation errors when features are disabled
 
-        let updated_content =
+        // Try Rust plugin
+        #[cfg(feature = "lang-rust")]
+        {
+            use cb_lang_rust::RustPlugin;
             if let Some(rust_plugin) = plugin.as_any().downcast_ref::<RustPlugin>() {
-                rust_plugin
+                let updated_content = rust_plugin
                     .update_dependency(path, old_dep_name, new_dep_name, new_path)
                     .await
-            } else if let Some(ts_plugin) = plugin.as_any().downcast_ref::<TypeScriptPlugin>() {
-                ts_plugin
-                    .update_dependency(path, old_dep_name, new_dep_name, new_path)
+                    .map_err(|e| {
+                        cb_protocol::ApiError::Internal(format!("Failed to update dependency: {}", e))
+                    })?;
+
+                context
+                    .app_state
+                    .file_service
+                    .write_file(path, &updated_content, false)
                     .await
-            } else if let Some(go_plugin) = plugin.as_any().downcast_ref::<GoPlugin>() {
-                go_plugin
-                    .update_dependency(path, old_dep_name, new_dep_name, new_path)
-                    .await
-            } else {
-                Err(cb_plugin_api::PluginError::not_supported(
-                    "update_dependency",
-                ))
+                    .map_err(|e| {
+                        cb_protocol::ApiError::Internal(format!(
+                            "Failed to write manifest file at {}: {}",
+                            manifest_path, e
+                        ))
+                    })?;
+
+                return Ok(updated_content);
             }
-            .map_err(|e| {
-                cb_protocol::ApiError::Internal(format!("Failed to update dependency: {}", e))
-            })?;
+        }
 
-        // Write the updated content back using FileService for caching/locking/virtual workspace support
-        context
-            .app_state
-            .file_service
-            .write_file(path, &updated_content, false)
-            .await
-            .map_err(|e| {
-                cb_protocol::ApiError::Internal(format!(
-                    "Failed to write manifest file at {}: {}",
-                    manifest_path, e
-                ))
-            })?;
+        // Try TypeScript plugin
+        #[cfg(feature = "lang-typescript")]
+        {
+            use cb_lang_typescript::TypeScriptPlugin;
+            if let Some(ts_plugin) = plugin.as_any().downcast_ref::<TypeScriptPlugin>() {
+                let updated_content = ts_plugin
+                    .update_dependency(path, old_dep_name, new_dep_name, new_path)
+                    .await
+                    .map_err(|e| {
+                        cb_protocol::ApiError::Internal(format!("Failed to update dependency: {}", e))
+                    })?;
 
-        Ok(updated_content)
+                context
+                    .app_state
+                    .file_service
+                    .write_file(path, &updated_content, false)
+                    .await
+                    .map_err(|e| {
+                        cb_protocol::ApiError::Internal(format!(
+                            "Failed to write manifest file at {}: {}",
+                            manifest_path, e
+                        ))
+                    })?;
+
+                return Ok(updated_content);
+            }
+        }
+
+        // Try Go plugin
+        #[cfg(feature = "lang-go")]
+        {
+            use cb_lang_go::GoPlugin;
+            if let Some(go_plugin) = plugin.as_any().downcast_ref::<GoPlugin>() {
+                let updated_content = go_plugin
+                    .update_dependency(path, old_dep_name, new_dep_name, new_path)
+                    .await
+                    .map_err(|e| {
+                        cb_protocol::ApiError::Internal(format!("Failed to update dependency: {}", e))
+                    })?;
+
+                context
+                    .app_state
+                    .file_service
+                    .write_file(path, &updated_content, false)
+                    .await
+                    .map_err(|e| {
+                        cb_protocol::ApiError::Internal(format!(
+                            "Failed to write manifest file at {}: {}",
+                            manifest_path, e
+                        ))
+                    })?;
+
+                return Ok(updated_content);
+            }
+        }
+
+        // No plugin supports update_dependency
+        Err(cb_protocol::ApiError::Internal(
+            "No language plugin found with update_dependency support for this manifest type".to_string()
+        ))
     }
 
     /// Handle update_dependency tool call
