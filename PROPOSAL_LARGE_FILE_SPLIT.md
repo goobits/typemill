@@ -1,96 +1,93 @@
 # Large File Split Checklist
 
-**Status**: Ready for Implementation  
-**Goal**: Split 6 files exceeding 400 lines into manageable modules  
-**Target**: All files ≤400 lines
+**Status**: Ready for implementation  
+**Goal**: Shrink the six over-sized modules into focused files without widening public APIs  
+**Target**: Each new module stays comfortably ≤400 lines
 
-## 📋 Phase 1: Independent Files (Low Risk)
+## 📋 Phase 1 – Low-Risk Splits
 
-### ✅ 1. file_service.rs (3,849 → ~300 lines each)
-- [ ] Create `file_service/` directory
-- [ ] Split into modules:
-  - [ ] `mod.rs` - FileService struct, re-exports (~150 lines)
-  - [ ] `basic_ops.rs` - create/read/write/delete/list (~400 lines)
-  - [ ] `rename.rs` - rename_file/directory with imports (~400 lines)
-  - [ ] `edit_plan/mod.rs` - apply_edit_plan entry (~100 lines)
-  - [ ] `edit_plan/coordinator.rs` - coordination logic (~200 lines)
-  - [ ] `edit_plan/snapshots.rs` - snapshot/rollback (~200 lines)
-  - [ ] `edit_plan/edits.rs` - text edits (~200 lines)
-  - [ ] `cargo/mod.rs` - consolidate_rust_package entry (~100 lines)
-  - [ ] `cargo/consolidation.rs` - consolidation logic (~300 lines)
-  - [ ] `cargo/dependencies.rs` - dependency updates (~400 lines)
-  - [ ] `cargo/workspace.rs` - workspace operations (~300 lines)
-  - [ ] `cargo/paths.rs` - path updates (~300 lines)
-- [ ] Move tests to `tests/file_service/`
-- [ ] Run: `cargo test file_service`
+These files have minimal coupling to other large modules, so we can refactor them independently.
 
-### ✅ 2. lsp_adapter.rs (1,100 → ~250 lines each)
-- [ ] Create `lsp_adapter/` directory
-- [ ] Split into modules:
-  - [ ] `mod.rs` - LspAdapterPlugin struct (~150 lines)
-  - [ ] `translation.rs` - translate_request (~300 lines)
-  - [ ] `handler.rs` - handle_request (~200 lines)
-  - [ ] `capabilities.rs` - capabilities (~150 lines)
-- [ ] Move tests to `tests/lsp_adapter_test.rs`
-- [ ] Run: `cargo test lsp_adapter`
+### 1. `file_service.rs` (3,849 → ≤400 each)
+- [ ] Create `crates/cb-services/src/services/file_service/`
+- [ ] Introduce lean modules:
+  - [ ] `mod.rs` – `FileService` struct, constructor, shared state wiring, re-exports (~150 lines)
+  - [ ] `basic_ops.rs` – `create_file`, `delete_file`, `read_file`, `write_file`, `list_files` and queue helpers (~400 lines)
+  - [ ] `rename.rs` – file & directory rename logic with import updates (~350 lines)
+  - [ ] `edit_plan.rs` – `apply_edit_plan`, coordination, snapshots/rollback, edit helpers, `EditPlanResult` (~350 lines)
+  - [ ] `cargo.rs` – `consolidate_rust_package`, dependency merging, workspace/path updates (~400 lines)
+  - [ ] `utils.rs` – `run_validation`, `to_absolute_path`, `adjust_relative_path`, shared dry-run helpers (~250 lines)
+  - [ ] `tests.rs` – move the existing `#[cfg(test)]` block and keep submodules local
+- [ ] Run targeted regression: `cargo test -p cb-services -- file_service`
 
-### ✅ 3. package_extractor.rs (1,147 → ~200 lines each)
-- [ ] Create `package_extractor/` directory
-- [ ] Split into modules:
-  - [ ] `mod.rs` - ExtractModuleToPackageParams, main entry (~200 lines)
-  - [ ] `planner.rs` - orchestration logic (~250 lines)
-  - [ ] `edits.rs` - file edit builders (~200 lines)
-  - [ ] `workspace.rs` - workspace operations (~200 lines)
-- [ ] Move tests to `tests/package_extractor_test.rs`
-- [ ] Run: `cargo test package_extractor`
+### 2. `lsp_adapter.rs` (≈1,100 → ≤250 each)
+- [ ] Create `crates/cb-plugins/src/adapters/lsp_adapter/`
+- [ ] Split into focused modules:
+  - [ ] `mod.rs` – `LspAdapterPlugin`, `LanguagePlugin` impl, re-exports (~180 lines)
+  - [ ] `constructors.rs` – `new()`, language-specific constructors, capability presets (~200 lines)
+  - [ ] `translator.rs` – request translation & cache (`translate_request`, `build_lsp_params`) (~250 lines)
+  - [ ] `responses.rs` – `translate_response` and `normalize_*` helpers (~220 lines)
+  - [ ] `tools.rs` – `tool_definitions()` JSON specs (~200 lines)
+  - [ ] `tests.rs` – preserve adapter tests beside implementation
+- [ ] Validation: `cargo test -p cb-plugins -- lsp_adapter`
 
-## 📋 Phase 2: Coordinated Files (Medium Risk)
+### 3. `package_extractor.rs` (1,147 → ≤250 each)
+- [ ] Create `crates/cb-ast/src/package_extractor/`
+- [ ] Move logic into four modules:
+  - [ ] `mod.rs` – `ExtractModuleToPackageParams`, public entry point (~180 lines)
+  - [ ] `planner.rs` – orchestration (`plan_extract_module_to_package_with_registry`) (~250 lines)
+  - [ ] `edits.rs` – file copy & edit builders, dependency aggregation (~220 lines)
+  - [ ] `workspace.rs` – workspace discovery, manifest updates, membership helpers (~220 lines)
+  - [ ] `tests.rs` – relocate the current `#[cfg(test)]` block intact
+- [ ] Check: `cargo test -p cb-ast -- package_extractor`
 
-### ✅ 4. complexity.rs (1,630 → ~250 lines each)
-- [ ] Create `complexity/` directory
-- [ ] Split into modules:
-  - [ ] `mod.rs` - re-exports (~150 lines)
-  - [ ] `types.rs` - ComplexityRating, report structs (~200 lines)
-  - [ ] `calculator.rs` - calculate_* functions (~300 lines)
-  - [ ] `analyzer.rs` - analyze_file_complexity (~250 lines)
-  - [ ] `language_patterns.rs` - LanguagePatterns (~150 lines)
-  - [ ] `helpers.rs` - extract_*, count_* (~250 lines)
-- [ ] **Update `analysis.rs` imports**
-- [ ] Move tests to `tests/complexity_test.rs`
-- [ ] Run: `cargo test complexity`
+## 📋 Phase 2 – Coordinated Splits
 
-### ✅ 5. refactoring.rs (1,224 → ~400 lines each)
-- [ ] Create `refactoring/` directory
-- [ ] Split into modules:
-  - [ ] `mod.rs` - common types, re-exports (~100 lines)
-  - [ ] `extract_function.rs` - plan_extract_function (~400 lines)
-  - [ ] `inline_variable.rs` - plan_inline_variable (~400 lines)
-  - [ ] `extract_variable.rs` - plan_extract_variable (~300 lines)
-- [ ] **Update `refactoring_handler.rs` imports**
-- [ ] Run: `cargo test refactoring`
+These modules are consumed by other large files; refactor and immediately update the dependents.
 
-### ✅ 6. analysis.rs (1,321 → ~250 lines each)
-- [ ] Create `tools/analysis/` directory
-- [ ] Split into modules:
-  - [ ] `mod.rs` - AnalysisHandler, dispatch (~100 lines)
-  - [ ] `unused_imports.rs` - find_unused_imports (~250 lines)
-  - [ ] `complexity.rs` - analyze_complexity (~150 lines)
-  - [ ] `refactoring.rs` - suggest_refactoring (~400 lines)
-  - [ ] `project_complexity.rs` - analyze_project_complexity (~300 lines)
-  - [ ] `hotspots.rs` - find_complexity_hotspots (~250 lines)
-- [ ] Move tests to `tests/analysis_test.rs`
-- [ ] Run: `cargo test analysis`
+### 4. `complexity.rs` + `tools/analysis.rs`
+- [ ] Create `crates/cb-ast/src/complexity/` with:
+  - [ ] `mod.rs` – re-export public API used by handlers
+  - [ ] `analyzer.rs` – `analyze_file_complexity` traversal
+  - [ ] `aggregation.rs` – `aggregate_class_complexity`, workspace totals
+  - [ ] `metrics.rs` – counting helpers, language heuristics
+  - [ ] `models.rs` – `ComplexityRating`, `ComplexityReport`, DTOs
+  - [ ] `tests.rs` – move existing tests
+- [ ] Update `crates/cb-handlers/src/handlers/tools/analysis.rs` to use the new module paths (consider adding a tiny `complexity::api` facade for stability)
+- [ ] Run: `cargo test -p cb-ast -- complexity` and `cargo test -p cb-handlers -- analysis`
+
+### 5. `refactoring.rs` + `refactoring_handler.rs`
+- [ ] Create `crates/cb-ast/src/refactoring/` comprising:
+  - [ ] `mod.rs` – shared types, public re-exports
+  - [ ] `extract_function.rs`
+  - [ ] `extract_variable.rs`
+  - [ ] `inline_variable.rs`
+  - [ ] `common.rs` – shared AST utilities & edit builders
+  - [ ] `tests.rs`
+- [ ] Update `crates/cb-handlers/src/handlers/refactoring_handler.rs` to import the new modules (optionally split handler helpers once AST modules are in place)
+- [ ] Run: `cargo test -p cb-ast -- refactoring` and `cargo test -p cb-handlers -- refactoring_handler`
+
+### 6. `tools/analysis.rs` follow-up
+- [ ] Create `crates/cb-handlers/src/handlers/tools/analysis/`
+- [ ] Reorganize into:
+  - [ ] `mod.rs` – dispatcher & `AnalysisHandler`
+  - [ ] `unused_imports.rs`
+  - [ ] `complexity.rs` – now thin wrappers over the refactored AST complexity API
+  - [ ] `refactoring.rs` – refactoring suggestions
+  - [ ] `hotspots.rs` – project complexity & hotspot analysis
+  - [ ] `tests.rs` – relocate handler-specific tests
+- [ ] Ensure imports are updated and no duplicate logic remains
+- [ ] Run: `cargo test -p cb-handlers -- analysis`
 
 ## ✅ Validation
 
-- [ ] Full test suite: `cargo test --workspace`
-- [ ] Linting: `cargo clippy --workspace`
-- [ ] Integration tests: `cargo test --features lsp-tests -- --include-ignored`
-- [ ] Check file sizes: `find crates -name "*.rs" -exec wc -l {} + | awk '$1 > 400 {print}'`
+- [ ] Full regression: `cargo test --workspace`
+- [ ] Lint: `cargo clippy --workspace`
+- [ ] Integration (if applicable): `cargo test --features lsp-tests -- --include-ignored`
+- [ ] Confirm line counts: `find crates -name '*.rs' -exec wc -l {} + | awk '$1 > 400 {print}'`
 
 ## 📊 Success Criteria
 
-- ✅ No file exceeds 400 lines
-- ✅ All tests pass
-- ✅ No clippy warnings
-- ✅ Public API unchanged
+- ✅ No refactored module exceeds ~400 lines
+- ✅ Public APIs and behaviour remain unchanged
+- ✅ All unit, integration, and lint checks pass
