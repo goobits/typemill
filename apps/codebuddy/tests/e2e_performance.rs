@@ -112,11 +112,25 @@ async fn test_large_file_performance() {
 
 #[tokio::test]
 #[cfg(feature = "heavy-tests")]
-#[ignore = "TypeScript LSP workspace/symbol requires tsconfig.json or didOpen notifications"]
 async fn test_many_small_files_performance() {
     let workspace = TestWorkspace::new();
     workspace.setup_lsp_config();
     let mut client = TestClient::new(workspace.path());
+
+    // Create tsconfig.json for proper TypeScript LSP indexing
+    let tsconfig = workspace.path().join("tsconfig.json");
+    fs::write(
+        &tsconfig,
+        r#"{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "strict": true
+  },
+  "include": ["*.ts"]
+}"#,
+    )
+    .unwrap();
 
     let file_count = 100;
     let mut file_paths = Vec::new();
