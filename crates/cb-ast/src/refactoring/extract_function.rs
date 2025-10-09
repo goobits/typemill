@@ -105,6 +105,9 @@ pub async fn plan_extract_function(
         "go" => {
             ast_extract_function_go(source, range, new_function_name, file_path)
         }
+        "java" => {
+            ast_extract_function_java(source, range, new_function_name, file_path)
+        }
         _ => {
             // Unsupported language - will try LSP fallback below
             Err(AstError::analysis(format!(
@@ -275,6 +278,30 @@ fn ast_extract_function_go(
         file_path,
     )
     .map_err(|e| AstError::analysis(format!("Go refactoring error: {}", e)))
+}
+
+/// Generate edit plan for extract function refactoring (Java) using AST
+fn ast_extract_function_java(
+    source: &str,
+    range: &CodeRange,
+    new_function_name: &str,
+    file_path: &str,
+) -> AstResult<EditPlan> {
+    // Convert cb-ast CodeRange to cb-lang-java CodeRange
+    let java_range = cb_lang_java::refactoring::CodeRange {
+        start_line: range.start_line,
+        start_col: range.start_col,
+        end_line: range.end_line,
+        end_col: range.end_col,
+    };
+
+    cb_lang_java::refactoring::plan_extract_function(
+        source,
+        &java_range,
+        new_function_name,
+        file_path,
+    )
+    .map_err(|e| AstError::analysis(format!("Java refactoring error: {}", e)))
 }
 
 /// Visitor for analyzing code selection for function extraction

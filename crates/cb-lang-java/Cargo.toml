@@ -27,8 +27,12 @@ thiserror = { workspace = true }
 # Logging
 tracing = { workspace = true }
 
+# Parsing
+tree-sitter = "0.20"
+tree-sitter-java = "0.20"
+
 # Utilities (uncomment as needed)
 # regex = "1.10"
-# chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
 tempfile = "3.10"
 quick-xml = { version = "0.31", features = ["serialize"] }

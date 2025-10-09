@@ -13,6 +13,8 @@ pub fn detect_language(file_path: &str) -> &str {
         "rust"
     } else if file_path.ends_with(".go") {
         "go"
+    } else if file_path.ends_with(".java") {
+        "java"
     } else {
         "unknown"
     }

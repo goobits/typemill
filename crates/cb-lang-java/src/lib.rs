@@ -5,6 +5,7 @@
 pub mod import_support;
 mod manifest;
 mod parser;
+pub mod refactoring;
 pub mod workspace_support;
 
 use async_trait::async_trait;
