@@ -30,59 +30,46 @@ Supports TypeScript, Python, Go, Rust, Java—any language with an LSP server. B
 
 ## 🚀 Quick Start
 
-### For End Users
+### For End Users (Use the tool)
 
-Ready to get started? The setup is straightforward—just install, configure your language servers, and you're ready to go.
+Install the pre-built binary:
 
-The easiest way to install is with the `install.sh` script:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/goobits/codebuddy/main/install.sh | bash
 ```
 
-Once installed, run the setup wizard:
+Then configure and start:
+
 ```bash
-# Run the interactive setup wizard
-# It'll detect your project languages and help configure the right servers
-codebuddy setup
-
-# Start the MCP server (for Claude Code, Cursor, Aider, etc.)
-codebuddy start
-
-# Or start the WebSocket server (for custom integrations)
-codebuddy serve
+codebuddy setup    # Configure LSP servers for your project
+codebuddy start    # Start the MCP server
 ```
 
-That's it! Your AI assistant now has deep code intelligence for your entire project.
+**That's it!** Your AI assistant now has deep code intelligence.
 
-### For Developers (Building from Source)
+---
 
-Building from source requires additional tools for external language parsers. Don't worry—the build will tell you what's missing!
+### For Developers (Build from source)
 
-**Prerequisites:**
-- **Rust** (get from [rustup.rs](https://rustup.rs/))
-- **Java SDK + Maven** (for Java parser) - optional but recommended
-- **.NET SDK** (for C# parser) - optional but recommended
-- **Node.js** (for TypeScript parser) - optional but recommended
+**One command does everything:**
 
-> 💡 **Missing a tool?** The core Rust project builds fine without external parsers. Only install what you need for the languages you use.
-
-**Quick setup:**
 ```bash
-# Clone the repository
 git clone https://github.com/goobits/codebuddy.git
 cd codebuddy
-
-# Check what you have installed
-make check-parser-deps
-
-# One-command setup (installs tools, builds parsers, runs tests)
-make first-time-setup
-
-# Or use VS Code Dev Container for zero-setup development
-# (Includes all tools pre-configured)
+make first-time-setup  # Installs all tools, builds parsers, runs tests (~3-5 min)
 ```
 
-See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development workflow, architecture, and how to add new MCP tools.
+**What gets installed:**
+- cargo-nextest, sccache, cargo-watch, cargo-audit (via cargo-binstall)
+- mold linker (if sudo available)
+- LSP servers: typescript-language-server, pylsp, gopls, rust-analyzer
+- External parsers: Java, TypeScript, C# (if Maven/.NET/Node.js available)
+
+**Or use Dev Container for zero-setup:**
+- Open in VS Code → Automatically installs everything
+- Perfect for quick experimentation
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for development workflow and architecture.
 
 ## 🛠️ Language Server Setup
 

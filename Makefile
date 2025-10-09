@@ -1,7 +1,7 @@
 # CodeBuddy Makefile
 # Simple build automation for common development tasks
 
-.PHONY: build release test test-fast test-full test-lsp install uninstall clean clean-cache setup help clippy fmt audit check check-duplicates dev watch ci build-parsers check-parser-deps
+.PHONY: build release test test-fast test-full test-lsp install uninstall clean clean-cache first-time-setup install-lsp-servers validate-setup help clippy fmt audit check check-duplicates dev watch ci build-parsers check-parser-deps
 
 # Default target - show help
 .DEFAULT_GOAL := help
@@ -94,64 +94,8 @@ clean-cache:
 	cargo clean
 	@echo "💡 Tip: Install cargo-sweep for smarter cleanup: cargo install cargo-sweep"
 
-# Quick setup - installs only essential tools (~30 seconds with binstall)
-setup:
-	@echo "📦 Installing essential build tools (fast setup)..."
-	@echo ""
-	@# Install cargo-binstall if not present (downloads pre-built binaries)
-	@if ! command -v cargo-binstall >/dev/null 2>&1; then \
-		echo "  → Installing cargo-binstall (enables fast binary downloads)..."; \
-		curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash; \
-		echo "  ✅ cargo-binstall installed"; \
-	else \
-		echo "  ✅ cargo-binstall already installed"; \
-	fi
-	@echo ""
-	@# Install essential tools via binstall (pre-built binaries, super fast)
-	@echo "  → Installing cargo-nextest (test runner)..."
-	@cargo binstall --no-confirm cargo-nextest 2>/dev/null || cargo install cargo-nextest --locked
-	@echo "  ✅ cargo-nextest installed"
-	@echo ""
-	@echo "✅ Essential setup complete! (~30 seconds)"
-	@echo ""
-	@echo "💡 Optional enhancements:"
-	@echo "  make setup-full         - Install all dev tools (sccache, cargo-watch, etc.)"
-	@echo "  make install-lsp-servers - Install LSP servers for testing"
-
-# Full developer setup - installs all optimization tools (~2-3 minutes with binstall)
-setup-full:
-	@echo "📦 Installing full development environment..."
-	@echo "   This includes sccache, mold, cargo-watch, and more (~2-3 min)"
-	@echo ""
-	@# Ensure binstall is available
-	@if ! command -v cargo-binstall >/dev/null 2>&1; then \
-		echo "  → Installing cargo-binstall first..."; \
-		curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash; \
-	fi
-	@echo ""
-	@echo "  → Installing cargo tools via binstall (pre-built binaries)..."
-	@cargo binstall --no-confirm cargo-nextest sccache cargo-watch cargo-audit cargo-edit
-	@echo ""
-	@# Install mold linker (system package, requires sudo)
-	@echo "  → Installing mold linker (fast linking)..."
-	@if command -v mold >/dev/null 2>&1; then \
-		echo "  ✅ mold already installed"; \
-	elif command -v brew >/dev/null 2>&1; then \
-		brew install mold && echo "  ✅ mold installed via Homebrew"; \
-	elif command -v apt-get >/dev/null 2>&1; then \
-		sudo apt-get update -qq && sudo apt-get install -y mold clang && echo "  ✅ mold installed via apt"; \
-	elif command -v dnf >/dev/null 2>&1; then \
-		sudo dnf install -y mold clang && echo "  ✅ mold installed via dnf"; \
-	elif command -v pacman >/dev/null 2>&1; then \
-		sudo pacman -S --needed --noconfirm mold clang && echo "  ✅ mold installed via pacman"; \
-	else \
-		echo "  ⚠️  No package manager found, skipping mold"; \
-		echo "     Install manually: https://github.com/rui314/mold#installation"; \
-	fi
-	@echo ""
-	@echo "✅ Full setup complete!"
-	@echo ""
-	@echo "💡 Next: Run 'make install-lsp-servers' for LSP testing support"
+# Removed: Use 'make first-time-setup' instead (does everything)
+# This provides a complete, one-command setup experience
 
 # Install LSP servers for testing (TypeScript, Python, Go, Rust)
 install-lsp-servers:
@@ -276,46 +220,71 @@ check-parser-deps:
 	@command -v sourcekitten >/dev/null 2>&1 && echo "  ✅ SourceKitten (Swift parser - optional)" || echo "  ⚠️  SourceKitten not found (optional for Swift)"
 	@echo "✅ Dependency check complete."
 
-# First-time developer setup workflow
+# First-time developer setup workflow - THE complete setup command
 first-time-setup:
 	@echo "╔══════════════════════════════════════════════════════════╗"
 	@echo "║  🚀 First-Time Developer Setup for Codebuddy            ║"
-	@echo "║  This will install tools and build the project (~5min)  ║"
+	@echo "║  This will install everything you need (~3-5 minutes)   ║"
 	@echo "╚══════════════════════════════════════════════════════════╝"
 	@echo ""
-	@echo "📋 Step 1/5: Checking parser build dependencies..."
+	@echo "📋 Step 1/8: Checking parser build dependencies..."
 	@make check-parser-deps
 	@echo ""
-	@echo "🔧 Step 2/5: Installing Rust development tools..."
-	@make setup
+	@echo "🔧 Step 2/8: Installing cargo-binstall (fast binary downloads)..."
+	@if ! command -v cargo-binstall >/dev/null 2>&1; then \
+		curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash; \
+		echo "  ✅ cargo-binstall installed"; \
+	else \
+		echo "  ✅ cargo-binstall already installed"; \
+	fi
 	@echo ""
-	@echo "🔨 Step 3/5: Building external language parsers..."
+	@echo "🛠️  Step 3/8: Installing Rust development tools (pre-built binaries)..."
+	@cargo binstall --no-confirm cargo-nextest sccache cargo-watch cargo-audit
+	@echo "  ✅ Rust dev tools installed"
+	@echo ""
+	@echo "🔗 Step 4/8: Installing mold linker (3-10x faster linking)..."
+	@if command -v mold >/dev/null 2>&1; then \
+		echo "  ✅ mold already installed"; \
+	elif command -v brew >/dev/null 2>&1; then \
+		brew install mold && echo "  ✅ mold installed via Homebrew" || echo "  ⚠️  mold install failed (optional)"; \
+	elif command -v apt-get >/dev/null 2>&1; then \
+		sudo apt-get update -qq && sudo apt-get install -y mold clang && echo "  ✅ mold installed via apt" || echo "  ⚠️  mold install failed (optional)"; \
+	elif command -v dnf >/dev/null 2>&1; then \
+		sudo dnf install -y mold clang && echo "  ✅ mold installed via dnf" || echo "  ⚠️  mold install failed (optional)"; \
+	elif command -v pacman >/dev/null 2>&1; then \
+		sudo pacman -S --needed --noconfirm mold clang && echo "  ✅ mold installed via pacman" || echo "  ⚠️  mold install failed (optional)"; \
+	else \
+		echo "  ⚠️  No package manager found, skipping mold (optional)"; \
+	fi
+	@echo ""
+	@echo "🔨 Step 5/8: Building external language parsers..."
 	@make build-parsers
 	@echo ""
-	@echo "🏗️  Step 4/5: Building main Rust project (this may take a few minutes)..."
+	@echo "🏗️  Step 6/8: Building main Rust project (this may take a few minutes)..."
 	@make build
 	@echo ""
-	@echo "🔍 Step 5/5: Validating installation..."
+	@echo "🌐 Step 7/8: Installing LSP servers (for testing)..."
+	@make install-lsp-servers
+	@echo ""
+	@echo "🔍 Step 8/8: Validating installation..."
 	@make validate-setup
 	@echo ""
 	@echo "╔══════════════════════════════════════════════════════════╗"
 	@echo "║  ✅ Setup Complete! Development Environment Ready       ║"
 	@echo "╚══════════════════════════════════════════════════════════╝"
 	@echo ""
-	@echo "📝 Next Steps:"
-	@echo "  1. Configure LSP servers:  codebuddy setup"
-	@echo "  2. Verify everything works: make test"
-	@echo "  3. Start developing:        cargo build"
+	@echo "🎉 Everything installed:"
+	@echo "  • cargo-nextest, sccache, cargo-watch, cargo-audit"
+	@echo "  • mold linker (if sudo available)"
+	@echo "  • LSP servers: typescript-language-server, pylsp, gopls, rust-analyzer"
+	@echo "  • External parsers: Java, TypeScript, C# (if dependencies available)"
 	@echo ""
-	@echo "📚 Documentation:"
-	@echo "  • Development workflow:  CONTRIBUTING.md"
-	@echo "  • Project structure:     docs/architecture/ARCHITECTURE.md"
-	@echo "  • Tool reference:        API_REFERENCE.md"
-	@echo ""
-	@echo "💡 Quick commands:"
+	@echo "🚀 Ready to develop!"
 	@echo "  make test        - Run fast tests (~10s)"
 	@echo "  make dev         - Auto-rebuild on file changes"
-	@echo "  make help        - Show all available commands"
+	@echo "  cargo build      - Build the project"
+	@echo ""
+	@echo "📚 See CONTRIBUTING.md for development workflow"
 
 # Validate that the development environment is correctly configured
 validate-setup:
@@ -376,9 +345,7 @@ help:
 	@echo "  make uninstall         - Remove installed binary"
 	@echo ""
 	@echo "💻 Development:"
-	@echo "  make dev               - Build in watch mode (auto-rebuild on changes)"
-	@echo "  make setup             - Quick setup: cargo-nextest only (~30s)"
-	@echo "  make setup-full        - Full setup: sccache, mold, cargo-watch, etc. (~2-3min)"
+	@echo "  make dev               - Build in watch mode (auto-rebuild on file changes)"
 	@echo "  make install-lsp-servers - Install LSP servers for testing"
 	@echo ""
 	@echo "✅ Testing (uses cargo-nextest):"
