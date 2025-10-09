@@ -659,9 +659,10 @@ mod tests {
             method: "tools/list".to_string(),
             params: None,
         };
+        let session_info = cb_transport::SessionInfo::default();
 
         let response = dispatcher
-            .dispatch(McpMessage::Request(request))
+            .dispatch(McpMessage::Request(request), &session_info)
             .await
             .unwrap();
 
