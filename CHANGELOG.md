@@ -11,87 +11,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The project underwent a complete architectural transformation from TypeScript/Node.js to pure Rust in 2025, bringing native performance, memory safety, and compile-time type guarantees.
 
-### [1.0.0-rc3] - 2025-10-08
-
-🚀 **Release Candidate 3** - Swift language support, comprehensive documentation overhaul, build/test optimizations, and critical import handling fixes
+### [Unreleased]
 
 #### Added
 
-- **Swift language support** - Complete implementation with comprehensive AST-based parsing
-  - Swift AST parsing for accurate symbol extraction
-  - Import manipulation (add, remove, rewrite, parse module declarations)
-  - Swift Package Manager workspace support (Package.swift)
-  - Full ImportSupport and WorkspaceSupport trait implementations
-  - **Note**: Developed in separate branch, documentation updated for unmerged status
-
-- **Build and test performance optimizations** (implemented from PROPOSAL_BUILD_TEST_OPTIMIZATION.md)
-  - Build configuration: Added `codegen-units=256` and sparse registry protocol in `.cargo/config.toml`
-  - Test gating: Feature flags for `fast`/`lsp`/`e2e`/`heavy` test categories
-  - Test parallelization: Used `join_all` for concurrent test execution
-  - Tooling: Added `cargo-nextest` support and `clean-cache` Makefile target
-  - **Performance Impact**: Faster builds and more flexible test execution
-
-- **Import support refactoring** (implemented from PROPOSAL_IMPORT_REFACTORING.md)
-  - Comprehensive import support refactoring across all 6 language plugins
-  - New `cb-lang-common` primitives: `find_last_matching_line`, `insert_line_at`, `remove_lines_matching`, `replace_in_lines`
-  - **Code Reduction**: 260 lines saved (15% reduction) with zero regressions
-  - **Test Coverage**: 37 unit tests + 27 property-based tests (~2,700 generated cases)
-  - **Performance**: All primitives exceed targets by 3-50×
-  - All 6 plugins migrated successfully (Swift, Go, Python, TypeScript, Rust, Java)
+- **SWC-to-TypeScript Plugin Refactoring** - Consolidated SWC dependencies into TypeScript language plugin
+  - Moved SWC parsing functionality from core to `cb-lang-typescript` plugin
+  - Reduced core dependencies and improved modularity
+  - Better separation of concerns for language-specific parsing
 
 #### Fixed
 
-- **Import handling in `rename_directory`** - Exclude files inside moved directory from import updates
-  - Prevents duplicate imports being created when directory contents are moved
-  - Fixes wrong lines being replaced in import statements
-  - Resolves malformed spacing in import statements
-  - Files inside a moved directory use relative imports that don't need updating
-
-#### Documentation
-
-- **Comprehensive documentation audit** (20+ issues addressed)
-  - Standardized version to `1.0.0-rc3` across all Cargo.toml files
-  - Updated all outdated file paths (e.g., `crates/languages/` → correct paths)
-  - Corrected script paths and trait names throughout documentation
-  - Removed hardcoded metrics (line counts, test counts, tool counts) for maintainability
-  - Fixed Docker documentation (port 3040 → 3000, corrected `docker-compose` commands)
-  - Added `cargo-nextest` installation instructions
-  - Added disclaimers to C# and Swift reviews for unmerged branches
-  - Standardized position indexing descriptions in API_REFERENCE.md
-  - Clarified logging guidelines (file logging unsupported, use shell redirection)
-  - Added Swift to all language support matrices
-  - Synchronized CLAUDE.md and GEMINI.md with source of truth markers
-
-#### Removed
-
-- **Completed proposal documents** (1398 lines removed)
-  - `PROPOSAL_BUILD_TEST_OPTIMIZATION.md` (implemented in 977344f)
-  - `PROPOSAL_IMPORT_REFACTORING.md` (implemented in fc71336)
-
----
-
-### [1.0.1] - 2025-10-08
-
-🐛 **Patch Release** - Bug fixes and code quality improvements
-
-#### Fixed
-
-- **Code quality improvements** - Resolved dead code, unused variables, and test warnings
-- **Deterministic output** - Ensured consistent ordering in `manifest_updates` output from `rename_directory`
+- **Code Quality** - Resolved clippy warnings for improved code quality (e7be34f:1)
+- **Test Infrastructure** - Fixed TestClient to use `codebuddy` binary instead of `cb-server` for parallel test execution (fd9221d:1)
 
 #### Changed
 
-- **Benchmark organization** - Moved benchmarks to `crates/cb-bench` for better project structure (Phase 3)
+- **Crate Naming** - Renamed `test-support` crate to `cb-test-support` for consistency (4b24e1f:1)
 
 #### Documentation
 
-- Updated `10_TREE_PROPOSAL.md` to mark Phase 3 complete
+- **MCP API Cleanup** - Consolidated MCP API cleanup proposals into single document (f0123c5:1)
+- **Self-Refactoring Planning** - Added execution plan with major goals table for MCP API cleanup (67b9b71:1, a7505c9:1)
+- **Large Module Refactoring** - Updated large file split proposal with current status (f68d75a:1)
+- **Semantic Naming** - Added semantic naming proposal, superseding command naming proposal (edc4b25:1)
 
 ---
 
-### [1.0.0] - 2025-10-07
+### [1.0.0-rc3] - 2025-10-09
 
-🎉 **First Stable Release** - Production-ready with advanced analysis tools and enhanced workspace operations
+🚀 **Release Candidate 3** - Swift language support, comprehensive documentation overhaul, build/test optimizations, and critical import handling fixes
 
 #### Added
 
@@ -118,6 +67,28 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Shared error handling and parsing helpers
   - Cross-language code reuse infrastructure
 
+- **Swift language support** - Complete implementation with comprehensive AST-based parsing
+  - Swift AST parsing for accurate symbol extraction
+  - Import manipulation (add, remove, rewrite, parse module declarations)
+  - Swift Package Manager workspace support (Package.swift)
+  - Full ImportSupport and WorkspaceSupport trait implementations
+  - **Note**: Developed in separate branch, documentation updated for unmerged status
+
+- **Build and test performance optimizations** (implemented from PROPOSAL_BUILD_TEST_OPTIMIZATION.md)
+  - Build configuration: Added `codegen-units=256` and sparse registry protocol in `.cargo/config.toml`
+  - Test gating: Feature flags for `fast`/`lsp`/`e2e`/`heavy` test categories
+  - Test parallelization: Used `join_all` for concurrent test execution
+  - Tooling: Added `cargo-nextest` support and `clean-cache` Makefile target
+  - **Performance Impact**: Faster builds and more flexible test execution
+
+- **Import support refactoring** (implemented from PROPOSAL_IMPORT_REFACTORING.md)
+  - Comprehensive import support refactoring across all 6 language plugins
+  - New `cb-lang-common` primitives: `find_last_matching_line`, `insert_line_at`, `remove_lines_matching`, `replace_in_lines`
+  - **Code Reduction**: 260 lines saved (15% reduction) with zero regressions
+  - **Test Coverage**: 37 unit tests + 27 property-based tests (~2,700 generated cases)
+  - **Performance**: All primitives exceed targets by 3-50×
+  - All 6 plugins migrated successfully (Swift, Go, Python, TypeScript, Rust, Java)
+
 #### Changed
 
 - **Language Plugin Integration** - All language plugins now integrate with cb-lang-common utilities
@@ -131,12 +102,22 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Relocated `cb-lang-java`, `cb-lang-python`, `cb-lang-rust`, `cb-lang-typescript`, `cb-lang-common`
   - Improved project structure and dependency management
 
+- **Benchmark organization** - Moved benchmarks to `crates/cb-bench` for better project structure (Phase 3)
+
 #### Fixed
+
+- **Code quality improvements** - Resolved dead code, unused variables, and test warnings
+- **Deterministic output** - Ensured consistent ordering in `manifest_updates` output from `rename_directory`
 
 - **Import Handling**
   - Prevent duplicate imports in `rename_directory` operations
   - Replace entire import line instead of just module name for accuracy
   - Column position errors in `rename_directory` resolved
+  - Exclude files inside moved directory from import updates
+  - Prevents duplicate imports being created when directory contents are moved
+  - Fixes wrong lines being replaced in import statements
+  - Resolves malformed spacing in import statements
+  - Files inside a moved directory use relative imports that don't need updating
 
 - **Testing Infrastructure**
   - Fixed 4 failing tests to achieve 100% test pass rate (550/550 tests passing)
@@ -152,15 +133,33 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 #### Documentation
 
+- **Comprehensive documentation audit** (20+ issues addressed)
+  - Standardized version to `1.0.0-rc3` across all Cargo.toml files
+  - Updated all outdated file paths (e.g., `crates/languages/` → correct paths)
+  - Corrected script paths and trait names throughout documentation
+  - Removed hardcoded metrics (line counts, test counts, tool counts) for maintainability
+  - Fixed Docker documentation (port 3040 → 3000, corrected `docker-compose` commands)
+  - Added `cargo-nextest` installation instructions
+  - Added disclaimers to C# and Swift reviews for unmerged branches
+  - Standardized position indexing descriptions in API_REFERENCE.md
+  - Clarified logging guidelines (file logging unsupported, use shell redirection)
+  - Added Swift to all language support matrices
+  - Synchronized CLAUDE.md and GEMINI.md with source of truth markers
 - Complete API.md documentation for MCP Tools Enhancement
-- Comprehensive documentation for 1.0.0 release
 - Enhanced .debug/ directory documentation in CLAUDE.md
 - Synchronization of all documentation with codebase
 - Fixed API.md references to API_REFERENCE.md throughout docs
+- Updated `10_TREE_PROPOSAL.md` to mark Phase 3 complete
+
+#### Removed
+
+- **Completed proposal documents** (1398 lines removed)
+  - `PROPOSAL_BUILD_TEST_OPTIMIZATION.md` (implemented in 977344f)
+  - `PROPOSAL_IMPORT_REFACTORING.md` (implemented in fc71336)
 
 ---
 
-### [1.0.0-rc2] - 2025-10-06
+### [1.0.0-rc2] - 2025-10-05
 
 🚀 **Release Candidate 2** - Plugin architecture modernization, workspace operations, and 5-language support
 
@@ -267,7 +266,7 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 ---
 
-### [1.0.0-rc1] - 2025-10-04
+### [1.0.0-rc1] - 2025-10-03
 
 🎉 **Release Candidate 1** - Production-ready Rust MCP server with comprehensive tooling
 
