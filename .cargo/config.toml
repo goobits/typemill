@@ -43,7 +43,8 @@ rustflags = ["-C", "link-arg=-fuse-ld=/opt/homebrew/opt/mold/libexec/mold"]
 [profile.dev]
 # Enable incremental compilation
 incremental = true
-codegen-units = 256  # ADD: More parallelism for faster dev builds (default: 16)
+codegen-units = 256  # More parallelism for faster dev builds (default: 16)
+split-debuginfo = "unpacked"  # Faster debug info generation on Unix
 
 # Optimize dependencies for better runtime performance during development
 # while keeping our code unoptimized for fast compile times

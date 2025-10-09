@@ -40,7 +40,16 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Async runtime
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1.0", features = [
+    "rt-multi-thread",  # Multi-threaded runtime
+    "macros",           # #[tokio::main], #[tokio::test]
+    "io-util",          # AsyncRead/AsyncWrite helpers
+    "net",              # TCP/UDP networking
+    "sync",             # Async synchronization primitives
+    "time",             # Timers and delays
+    "fs",               # Async filesystem operations
+    "signal",           # Unix signal handling
+] }
 async-trait = "0.1"
 
 # Error handling
@@ -72,6 +81,10 @@ cb-lang-typescript = { path = "crates/cb-lang-typescript" }
 cb-lang-python = { path = "crates/cb-lang-python" }
 cb-lang-java = { path = "crates/cb-lang-java" }
 cb-lang-swift = { path = "crates/cb-lang-swift" }
+
+# Optimize build times for dev dependencies
+[profile.dev.build-override]
+opt-level = 2  # Optimize build scripts for faster execution
 
 [profile.release]
 opt-level = 3
