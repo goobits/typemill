@@ -1,6 +1,6 @@
 # PROPOSAL: MCP API Cleanup (Beta Breaking Changes)
 
-**Status:** Proposal
+**Status:** Ready for Implementation
 **Date:** 2025-10-08
 **Total Effort:** ~34 hours
 **Impact:** 44 tools → 31 tools (-30%)
@@ -9,7 +9,11 @@
 
 ## Summary
 
-Aggressive cleanup of MCP API surface now that we're in beta (no backwards compatibility needed). This proposal consolidates redundant tools, removes/internalizes non-essential tools, improves semantic naming, and standardizes the API. Includes a self-refactoring execution plan using Codebuddy's own MCP tools to prove production readiness.
+Aggressive cleanup of MCP API surface now that we're in beta (no backwards compatibility needed). This proposal consolidates redundant tools, removes/internalizes non-essential tools, improves semantic naming, and standardizes the API.
+
+**⚠️ IMPORTANT: This is a COMPLETE implementation proposal. All changes listed below must be implemented together as a single cohesive refactoring. Do NOT implement only part of this proposal - it's all or nothing.**
+
+The changes are organized by type (MERGE, DELETE, RENAME, etc.) for clarity, but ALL items must be completed to achieve the final API design of 31 tools.
 
 ---
 
@@ -171,151 +175,182 @@ Aggressive cleanup of MCP API surface now that we're in beta (no backwards compa
 
 ---
 
-## Implementation Order
+## Implementation Checklist
 
-### Phase 1: Quick Wins (9 hours) - Self-Refactoring Proof of Concept
+**⚠️ ALL items below must be completed. This is not a phased implementation.**
 
-**🎯 Goal:** Prove Codebuddy can refactor itself using only its own MCP tools
+### Category 1: Tool Renames (Verb-Noun Consistency) - 6 items, ~6 hours
 
-**Tools Used:** `rename_symbol`, `write_file`, `execute_batch` (soon to be `execute_batch`)
+- [ ] `apply_edits` → `execute_edits`
+- [ ] `batch_execute` → `execute_batch`
+- [ ] `get_hover` → `get_symbol_info`
+- [ ] `rename_file` → `move_file`
+- [ ] `rename_directory` → `move_directory`
+- [ ] `search_workspace_symbols` → `search_symbols`
 
-**Changes:**
-1. **Renames** (2h):
-   - `apply_edits` → `execute_edits`
-   - `batch_execute` → `execute_batch`
-   - `get_hover` → `get_symbol_info`
-   - `search_workspace_symbols` → `search_symbols`
+**Implementation Notes:**
+- Update handler implementations in respective files
+- Update all string literals in tool registration/dispatch
+- Update workflow files (`.codebuddy/workflows.json`)
+- Update all documentation references
 
-2. **Deletions** (2h):
-   - Remove `web_fetch`
-   - Remove `rename_symbol_strict`
+### Category 2: Tool Deletions - 2 items, ~2 hours
 
-3. **Internalize** (2h):
-   - Mark `get_completions` as internal
-   - Mark `get_signature_help` as internal
+- [ ] Delete `web_fetch` (Claude has built-in WebFetch, security risk)
+- [ ] Delete `rename_symbol_strict` (redundant with `rename_symbol`)
 
-4. **File Operations** (3h):
-   - `rename_file` → `move_file`
-   - `rename_directory` → `move_directory`
+**Implementation Notes:**
+- Remove from `crates/cb-plugins/src/system_tools_plugin.rs` (web_fetch)
+- Remove from `crates/cb-handlers/src/handlers/tools/editing.rs` (rename_symbol_strict)
+- Remove all handler code and tests
+- Clean up documentation references
+- Remove workflows that depend on deleted tools
 
-**Self-Refactoring Details:**
+### Category 3: Internalize Tools - 2 items, ~2 hours
 
-| # | Change | Tool | Why Interesting |
-|---|--------|------|-----------------|
-| 1-3 | Rename 3 Rust methods (`handle_apply_edits` → `handle_execute_edits`, etc.) | `rename_symbol` | ⭐ Tests LSP cross-file ref tracking |
-| 4-12 | Update string literals in tool registration/dispatch | `write_file` | Pattern matching, JSON configs |
-| 13-14 | Create `internal_intelligence.rs` handler | `write_file` | New file creation |
-| 15-18 | Delete `web_fetch` handler and registration | `write_file` | Complete removal |
-| 19-20 | Add internal filtering logic | `write_file` | Hide from MCP listing |
-| 21-26 | Update tests and test harness | `write_file` | Test data updates |
-| 27-30 | Update 4 documentation files | `execute_batch` | Batch efficiency test |
+- [ ] Mark `get_completions` as internal-only
+- [ ] Mark `get_signature_help` as internal-only
 
-**Total: 30 changes across 12 files**
+**Implementation Notes:**
+- Create new `crates/cb-handlers/src/handlers/tools/internal_intelligence.rs`
+- Move implementations to new handler
+- Set `is_internal() = true` so they don't appear in public MCP listings
+- Keep functionality for potential backend use
 
-**Success Criteria:**
-- ✅ `rename_symbol` updates all cross-file references automatically
-- ✅ `write_file` handles string literals, pattern matching, configs
-- ✅ `execute_batch` updates multiple docs in single operation
-- ✅ Full test suite passes: `cargo test --workspace`
-- ✅ Tool count: 44 → 34 tools (Phase 1 only)
+### Category 4: Simple Tool Merges - 2 items, ~4 hours
 
-### Phase 2: Simple Merges (4 hours)
+- [ ] Merge `optimize_imports` into `organize_imports(remove_unused: bool)`
+  - Add `remove_unused` parameter (default: true)
+  - When true, performs optimization (remove unused imports)
+  - When false, only organizes (sorts/groups) imports
 
-- `organize_imports(remove_unused: bool)` - 2h
-- `health_check(level: "basic"|"full")` - 2h
+- [ ] Merge `system_status` into `health_check(level: "basic"|"full")`
+  - Add `level` parameter (default: "full")
+  - "basic" returns lightweight status (was `system_status`)
+  - "full" returns comprehensive health info (was `health_check`)
 
-### Phase 3: Complex Merges (19 hours)
+**Implementation Notes:**
+- Update `crates/cb-handlers/src/handlers/tools/editing.rs` (organize_imports)
+- Update `crates/cb-handlers/src/handlers/tools/system.rs` (health_check)
+- Keep backward compatibility in parameter defaults
+- Update parameter types in `crates/cb-protocol/src/types.rs`
 
-- `analyze_code(include_suggestions: bool)` - 4h
-- `analyze_project(output, limit)` - 6h
-- `get_call_hierarchy(direction)` - 8h
+### Category 5: Complex Tool Merges - 3 items, ~18 hours
 
-### Phase 4: Final Semantic Renames (2 hours)
+- [ ] Merge `analyze_complexity` + `suggest_refactoring` → `analyze_code(include_suggestions: bool)`
+  - Add `include_suggestions` parameter (default: true)
+  - Always returns complexity metrics
+  - When true, also includes refactoring suggestions based on metrics
 
-- Already completed in Phase 1
+- [ ] Merge `analyze_project_complexity` + `find_complexity_hotspots` → `analyze_project(output: "full"|"hotspots"|"summary", limit: int)`
+  - Add `output` parameter (default: "full")
+  - "full" = complete complexity analysis of all files
+  - "hotspots" = top N most complex areas (controlled by `limit`)
+  - "summary" = high-level overview statistics
+  - Add optional `limit` parameter (default: 10, only used in "hotspots" mode)
+
+- [ ] Merge `prepare_call_hierarchy` + `get_call_hierarchy_incoming_calls` + `get_call_hierarchy_outgoing_calls` → `get_call_hierarchy(direction: "incoming"|"outgoing"|"both")`
+  - Add `direction` parameter (required)
+  - Hides LSP's 2-step protocol from users
+  - "incoming" = who calls this function
+  - "outgoing" = what this function calls
+  - "both" = complete call graph
+
+**Implementation Notes:**
+- Update `crates/cb-handlers/src/handlers/tools/analysis.rs` (complexity tools)
+- Update `crates/cb-handlers/src/handlers/tools/navigation.rs` (call hierarchy)
+- Implement unified handlers that branch based on parameters
+- Update parameter types in `crates/cb-protocol/src/types.rs`
+- Comprehensive test coverage for all parameter combinations
 
 ---
 
-## Files to Modify
+## Files to Modify (Complete List)
 
-### Phase 1 (Self-Refactoring)
-- `crates/cb-handlers/src/handlers/workflow_handler.rs`
-- `crates/cb-handlers/src/handlers/tools/advanced.rs`
-- `crates/cb-handlers/src/handlers/tools/intelligence.rs`
-- `crates/cb-handlers/src/handlers/tools/file_ops.rs`
-- `crates/cb-services/src/file_service/edit_plan.rs`
-- `crates/cb-plugins/src/system_tools_plugin.rs`
-- `integration-tests/tests/e2e_workflow_execution.rs`
-- `integration-tests/tests/tool_registration_test.rs`
-- `crates/cb-test-support/src/harness/client.rs`
-- `.codebuddy/workflows.json`
-- Documentation: `API_REFERENCE.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `TOOLS_QUICK_REFERENCE.md`
+### Core Handler Files
+- `crates/cb-handlers/src/handlers/tools/advanced.rs` - Rename batch_execute → execute_batch
+- `crates/cb-handlers/src/handlers/tools/navigation.rs` - Call hierarchy merge, rename search_workspace_symbols → search_symbols, rename get_hover → get_symbol_info
+- `crates/cb-handlers/src/handlers/tools/editing.rs` - Remove rename_symbol_strict, merge optimize_imports, rename apply_edits → execute_edits
+- `crates/cb-handlers/src/handlers/tools/analysis.rs` - Complexity tools merge
+- `crates/cb-handlers/src/handlers/tools/system.rs` - Health check merge
+- `crates/cb-handlers/src/handlers/tools/file_ops.rs` - Rename rename_file → move_file
+- `crates/cb-handlers/src/handlers/tools/workspace.rs` - Rename rename_directory → move_directory
+- `crates/cb-handlers/src/handlers/tools/internal_intelligence.rs` - NEW FILE - Internal tools
+- `crates/cb-handlers/src/handlers/tools/mod.rs` - Add internal_intelligence module
 
-### Phases 2-3 (Merges)
-- `crates/cb-handlers/src/handlers/intelligence.rs` - Call hierarchy merge
-- `crates/cb-handlers/src/handlers/editing.rs` - Import tools merge
-- `crates/cb-handlers/src/handlers/analysis.rs` - Complexity tools merge
-- `crates/cb-handlers/src/handlers/system.rs` - Health check merge
-- `crates/cb-handlers/src/lib.rs` - Tool registration updates
-- `crates/cb-protocol/src/types.rs` - Parameter type updates
+### Plugin Files
+- `crates/cb-plugins/src/system_tools_plugin.rs` - Remove web_fetch
 
-### Tests
-- `apps/codebuddy/tests/intelligence_tests.rs` - Call hierarchy tests
-- `apps/codebuddy/tests/editing_tests.rs` - Import tests
-- `apps/codebuddy/tests/analysis_tests.rs` - Complexity tests
+### Protocol/Types
+- `crates/cb-protocol/src/types.rs` - Add new parameter types for merged tools
+
+### Configuration
+- `.codebuddy/workflows.json` - Update tool names, remove web_fetch workflows
+
+### Tests (Update for new tool names and merged functionality)
+- `crates/cb-server/tests/tool_registration_test.rs` - Update tool counts and names
+- `integration-tests/tests/e2e_workflow_execution.rs` - Update workflow tests
+- `integration-tests/src/harness/client.rs` - Update test client
+- `apps/codebuddy/tests/navigation_tests.rs` - Call hierarchy and symbol search tests
+- `apps/codebuddy/tests/editing_tests.rs` - Import and rename tests
+- `apps/codebuddy/tests/analysis_tests.rs` - Complexity analysis tests
 - `apps/codebuddy/tests/system_tests.rs` - Health check tests
+- `apps/codebuddy/tests/file_ops_tests.rs` - File move tests
+- `apps/codebuddy/tests/workspace_tests.rs` - Directory move tests
+
+### Documentation (ALL must be updated)
+- `API_REFERENCE.md` - Complete tool reference update
+- `CLAUDE.md` - Tool listings and examples
+- `CONTRIBUTING.md` - Tool development examples
+- `TOOLS_QUICK_REFERENCE.md` - Quick reference guide
+- `CHANGELOG.md` - Add breaking changes entry
 
 ---
 
-## Self-Refactoring Execution Commands (Phase 1)
+## Implementation Strategy
 
-### Step 1: Symbol Renames (Tests LSP Integration ⭐)
+### Recommended Approach
 
-```bash
-# Dry run first to preview changes
-./target/release/codebuddy tool rename_symbol \
-  '{"file_path":"crates/cb-handlers/src/handlers/workflow_handler.rs",
-    "symbol_name":"handle_apply_edits",
-    "new_name":"handle_execute_edits",
-    "symbol_kind":"method",
-    "dry_run":true}'
+**Option A: Manual Implementation (Recommended for correctness)**
+- Systematically work through each category in the checklist above
+- Start with renames (simpler), then deletions, then merges (most complex)
+- Run `cargo test --workspace` after each category
+- Run `cargo clippy` to catch any issues
+- Update documentation as you go
 
-# Execute if preview looks good
-./target/release/codebuddy tool rename_symbol \
-  '{"file_path":"crates/cb-handlers/src/handlers/workflow_handler.rs",
-    "symbol_name":"handle_apply_edits",
-    "new_name":"handle_execute_edits",
-    "symbol_kind":"method"}'
+**Option B: Hybrid Approach (Faster but riskier)**
+- Use `rename_symbol` tool for Rust function/method renames
+- Manually implement parameter additions and merges
+- Use `write_file` for documentation updates
+- Note: Tool merges require careful logic changes that can't be automated
 
-# Repeat for other method renames...
-```
+### Testing Strategy
 
-### Step 2: String Literal Updates
+After implementing ALL changes, verify:
 
 ```bash
-# Use read_file → modify → write_file pattern
-./target/release/codebuddy tool read_file \
-  '{"file_path":"crates/cb-handlers/src/handlers/tools/advanced.rs"}' \
-  | jq -r '.content' \
-  | sed 's/"apply_edits"/"execute_edits"/g; s/"batch_execute"/"execute_batch"/g' \
-  > /tmp/advanced.rs.new
+# Full test suite must pass
+cargo test --workspace --all-features -- --include-ignored
 
-./target/release/codebuddy tool write_file \
-  "{\"file_path\":\"crates/cb-handlers/src/handlers/tools/advanced.rs\",
-    \"content\":$(cat /tmp/advanced.rs.new | jq -Rs .)}"
+# No clippy warnings
+cargo clippy --all-targets --all-features
+
+# Verify tool count
+cargo run -- serve &
+# Check MCP tools/list shows exactly 31 public tools
+# Verify internal tools are hidden but still functional
+
+# Documentation accuracy
+# Manually verify API_REFERENCE.md matches actual implementation
+# Check all examples still work with renamed tools
 ```
 
-### Step 3: Batch Documentation Updates
+### Rollback Plan
 
-```bash
-./target/release/codebuddy tool execute_batch \
-  '{"operations":[
-    {"type":"write_file","path":"API_REFERENCE.md","content":"<updated_content>"},
-    {"type":"write_file","path":"CLAUDE.md","content":"<updated_content>"},
-    {"type":"write_file","path":"CONTRIBUTING.md","content":"<updated_content>"},
-    {"type":"write_file","path":"TOOLS_QUICK_REFERENCE.md","content":"<updated_content>"}
-  ]}'
-```
+If issues arise:
+1. This is a breaking change, so no backward compatibility required
+2. However, keep feature branch until thoroughly tested
+3. Consider creating a compatibility shim if clients need migration time
 
 ---
 
@@ -362,35 +397,70 @@ Aggressive cleanup of MCP API surface now that we're in beta (no backwards compa
 
 ---
 
-## Production Readiness Validation (Phase 1)
+## Success Criteria (All Must Pass)
 
-| Feature | Test | Pass Criteria |
-|---------|------|---------------|
-| **LSP Integration** | `rename_symbol` on Rust methods | All cross-file references updated |
-| **Cross-file Tracking** | Methods called from multiple files | No broken references |
-| **Pattern Matching** | Match arms updated | Compiles correctly |
-| **JSON Handling** | Large file contents in tool calls | No escaping errors |
-| **Batch Efficiency** | 4 docs updated at once | Single operation succeeds |
-| **Dry-run Mode** | Preview before applying changes | Accurate preview matches execution |
+| Category | Validation | Pass Criteria |
+|----------|------------|---------------|
+| **Tool Count** | `tools/list` MCP call | Exactly 31 public tools returned |
+| **Internal Tools** | Direct handler test | `get_completions` and `get_signature_help` work but don't appear in public list |
+| **Compilation** | `cargo build --release` | Clean build with no errors |
+| **Tests** | `cargo test --workspace --all-features -- --include-ignored` | 100% pass rate |
+| **Code Quality** | `cargo clippy --all-targets --all-features` | Zero warnings |
+| **Documentation** | Manual review | All docs reference correct tool names, no broken examples |
+| **API Contracts** | Integration tests | All merged tools support new parameters correctly |
+| **Backward Compat** | N/A | Breaking change is intentional, no compatibility required |
 
-**Bottom Line:** If Codebuddy can refactor itself using only its own MCP tools, the tools are production-ready! 🚀
+**Final Verification Checklist:**
+- [ ] Tool count reduced from 44 → 31 public tools
+- [ ] All 6 renames completed and working
+- [ ] Both deletions complete (web_fetch, rename_symbol_strict)
+- [ ] Both internalizations complete (get_completions, get_signature_help)
+- [ ] All 2 simple merges implemented with new parameters
+- [ ] All 3 complex merges implemented with new parameters
+- [ ] All documentation updated (5 files minimum)
+- [ ] All tests passing
+- [ ] Zero clippy warnings
+- [ ] CHANGELOG.md updated with breaking changes notice
 
 ---
 
 ## Next Steps
 
-1. ✅ Review and approve proposal
-2. 🔨 Execute Phase 1 (Self-Refactoring Quick Wins) - 9 hours
-   - Validates MCP tools production readiness
-   - Reduces tools from 44 → 34
-3. 🔨 Execute Phase 2 (Simple Merges) - 4 hours
-4. 🔨 Execute Phase 3 (Complex Merges) - 19 hours
-5. 📝 Update all documentation (included in phases)
-6. ✅ Run full test suite (continuous validation)
-7. 🚀 Release as breaking v1.0.0
+**⚠️ CRITICAL: Do NOT implement this proposal partially. It must be completed in its entirety.**
 
-**Total Timeline:** ~34 hours over 1-2 weeks
+1. ✅ Review and approve proposal
+2. 🔨 **Implement ALL changes** (~34 hours total)
+   - Complete all 6 renames
+   - Complete all 2 deletions
+   - Complete all 2 internalizations
+   - Complete all 2 simple merges
+   - Complete all 3 complex merges
+   - Update all documentation
+   - Fix all tests
+3. ✅ Verify all success criteria pass
+4. 🚀 Release as breaking v1.0.0 or v2.0.0
+
+**Estimated Timeline:** 3-5 days of focused work
+
+**Status Tracking:**
+- [ ] Category 1: Tool Renames (6 items)
+- [ ] Category 2: Tool Deletions (2 items)
+- [ ] Category 3: Internalize Tools (2 items)
+- [ ] Category 4: Simple Merges (2 items)
+- [ ] Category 5: Complex Merges (3 items)
+- [ ] Documentation Updates (5 files)
+- [ ] Test Updates (all test files)
+- [ ] Final Verification (10 criteria)
 
 ---
 
-**Approval Required:** @maintainer
+## Historical Note
+
+**⚠️ WARNING:** A previous implementation attempted to do "Phase 1 only" of this proposal. That partial implementation is INCOMPLETE and should NOT be considered done. This proposal requires ALL categories to be completed together to achieve the final API design.
+
+The branch `feature/mcp-api-cleanup` contains only partial work (renames, deletions, internalizations) but is missing all the tool merges. If continuing from that branch, you must complete Categories 4-5 and ensure all success criteria pass.
+
+---
+
+**Implementation Owner:** TBD
+**Target Release:** v2.0.0 (breaking changes)
