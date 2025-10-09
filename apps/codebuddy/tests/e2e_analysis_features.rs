@@ -408,10 +408,8 @@ function unusedHelper() {
 
 /// Test analyze_project_complexity across all installed language plugins
 ///
-/// NOTE: This test requires language plugins and may timeout on slower systems.
-/// Marked as ignored to avoid blocking CI/CD pipelines.
+/// Tests analyze_project_complexity across all available language plugins with fixtures.
 #[tokio::test]
-#[ignore = "Requires language plugins, may timeout on slower systems"]
 async fn test_analyze_project_complexity_cross_language() {
     let plugins_with_fixtures = discover_plugins_with_fixtures();
 
@@ -518,10 +516,8 @@ async fn test_analyze_project_complexity_cross_language() {
 
 /// Test find_complexity_hotspots across all installed language plugins
 ///
-/// NOTE: This test requires language plugins and may timeout on slower systems.
-/// Marked as ignored to avoid blocking CI/CD pipelines.
+/// Tests find_complexity_hotspots across all available language plugins with fixtures.
 #[tokio::test]
-#[ignore = "Requires language plugins, may timeout on slower systems"]
 async fn test_find_complexity_hotspots_cross_language() {
     let plugins_with_fixtures = discover_plugins_with_fixtures();
 

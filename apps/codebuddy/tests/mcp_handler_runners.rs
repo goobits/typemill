@@ -608,7 +608,7 @@ pub async fn run_list_files_test(case: &ListFilesTestCase, use_real_mcp: bool) {
         }
 
         // Use the actual SystemToolsPlugin to test the real application logic
-        let plugin_registry = Arc::new(cb_plugin_api::PluginRegistry::new());
+        let plugin_registry = cb_server::services::registry_builder::build_language_plugin_registry();
         let plugin = SystemToolsPlugin::new(plugin_registry);
         let request = PluginRequest {
             method: "list_files".to_string(),
