@@ -78,14 +78,10 @@ impl WorkspaceHandler {
 impl ToolHandler for WorkspaceHandler {
     fn tool_names(&self) -> &[&str] {
         &[
-            "rename_directory",
-            "analyze_imports",
+            "move_directory",
             "find_dead_code",
             "update_dependencies",
-            "extract_module_to_package",
             "update_dependency",
-            // "batch_update_dependencies" removed - use batch_execute instead
-            // "apply_workspace_edit" moved to InternalWorkspaceHandler
         ]
     }
 
@@ -102,25 +98,23 @@ impl ToolHandler for WorkspaceHandler {
         };
 
         // Route to appropriate legacy handler
-        match tool_call.name.as_str() {
+        let mut call = tool_call.clone();
+        if call.name == "move_directory" {
+            call.name = "rename_directory".to_string();
+        }
+
+        match call.name.as_str() {
             "rename_directory" => {
                 self.file_handler
-                    .handle_tool(tool_call.clone(), &legacy_context)
+                    .handle_tool(call, &legacy_context)
                     .await
             }
-            "analyze_imports" | "find_dead_code" | "update_dependencies" => {
+            "find_dead_code" | "update_dependencies" => {
                 self.system_handler
-                    .handle_tool(tool_call.clone(), &legacy_context)
+                    .handle_tool(call, &legacy_context)
                     .await
             }
-            "extract_module_to_package" => {
-                self.refactoring_handler
-                    .handle_tool(tool_call.clone(), &legacy_context)
-                    .await
-            }
-            "update_dependency" => self.handle_update_dependency(context, tool_call).await,
-            // "batch_update_dependencies" removed - use batch_execute instead
-            // "apply_workspace_edit" moved to InternalWorkspaceHandler
+            "update_dependency" => self.handle_update_dependency(context, &call).await,
             _ => Err(cb_protocol::ApiError::InvalidRequest(format!(
                 "Unknown workspace tool: {}",
                 tool_call.name

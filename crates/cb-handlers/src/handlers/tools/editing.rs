@@ -99,11 +99,14 @@ impl EditingHandler {
         }
     }
 
+    /// Combines LSP-based import sorting with dead import removal.
     async fn handle_organize_imports(
         &self,
         context: &ToolHandlerContext,
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
+        use std::path::Path;
+
         let args = tool_call.arguments.clone().unwrap_or(json!({}));
 
         let file_path_str = args
@@ -119,84 +122,50 @@ impl EditingHandler {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        let file_path = PathBuf::from(&file_path_str);
-        let mut request = PluginRequest::new("organize_imports".to_string(), file_path.clone());
+        let file_path = Path::new(&file_path_str);
+        let mut request = PluginRequest::new("organize_imports".to_string(), file_path.to_path_buf());
 
         // Set parameters
-        request = request.with_params(args);
+        request = request.with_params(args.clone());
 
-        match context.plugin_manager.handle_request(request).await {
-            Ok(response) => {
-                // LSP textDocument/codeAction returns an array of CodeAction objects
-                // Extract TextEdit[] from the first CodeAction's edit field
-                let code_actions = response.data.as_ref().and_then(|d| d.as_array());
+        // Step 1: Run organize_imports first (LSP-based sorting/grouping)
+        let lsp_response_result = context.plugin_manager.handle_request(request).await;
 
-                if let Some(actions) = code_actions {
-                    if !actions.is_empty() {
-                        // Get first CodeAction with kind "source.organizeImports"
-                        let organize_action = actions.iter().find(|action| {
-                            action
-                                .get("kind")
-                                .and_then(|k| k.as_str())
-                                .map(|k| k.starts_with("source.organizeImports"))
-                                .unwrap_or(false)
-                        });
+        let mut organized_content: Option<String> = None;
+        let mut lsp_organized = false;
+        let lsp_plugin_name = if let Ok(response) = &lsp_response_result {
+            response.metadata.plugin_name.clone()
+        } else {
+            "unknown".to_string()
+        };
 
-                        if let Some(action) = organize_action {
-                            // Extract TextEdit[] from action.edit.changes[file_uri]
-                            if let Some(edit) = action.get("edit") {
-                                if let Some(changes) = edit.get("changes") {
-                                    // Get the first (and usually only) file's edits
-                                    if let Some(changes_obj) = changes.as_object() {
-                                        for (_uri, edits) in changes_obj {
-                                            if let Some(text_edits) = edits.as_array() {
-                                                if !text_edits.is_empty() {
-                                                    if dry_run {
-                                                        // Preview mode - don't apply changes
-                                                        return Ok(json!({
-                                                            "operation": "organize_imports",
-                                                            "dry_run": true,
-                                                            "modified": false,
-                                                            "status": "preview",
-                                                            "file_path": file_path_str,
-                                                            "plugin": response.metadata.plugin_name,
-                                                            "processing_time_ms": response.metadata.processing_time_ms,
-                                                            "preview": {
-                                                                "edits_count": text_edits.len(),
-                                                                "edits": text_edits
-                                                            }
-                                                        }));
-                                                    }
+        if let Ok(lsp_response) = lsp_response_result {
+            let code_actions = lsp_response.data.as_ref().and_then(|d| d.as_array());
 
-                                                    // Apply mode - apply the text edits
-                                                    let content = context
-                                                        .app_state
-                                                        .file_service
-                                                        .read_file(&file_path)
-                                                        .await?;
-
-                                                    let organized_content = Self::apply_text_edits(
-                                                        &content, text_edits,
-                                                    )?;
-
-                                                    context
-                                                        .app_state
-                                                        .file_service
-                                                        .write_file(
-                                                            &file_path,
-                                                            &organized_content,
-                                                            false,
-                                                        )
-                                                        .await?;
-
-                                                    return Ok(json!({
-                                                        "organized": true,
-                                                        "file_path": file_path_str,
-                                                        "plugin": response.metadata.plugin_name,
-                                                        "processing_time_ms": response.metadata.processing_time_ms,
-                                                    }));
-                                                }
-                                            }
+            if let Some(actions) = code_actions {
+                if let Some(organize_action) = actions.iter().find(|action| {
+                    action
+                        .get("kind")
+                        .and_then(|k| k.as_str())
+                        .map(|k| k.starts_with("source.organizeImports"))
+                        .unwrap_or(false)
+                }) {
+                    if let Some(edit) = organize_action.get("edit") {
+                        if let Some(changes) = edit.get("changes") {
+                            if let Some(changes_obj) = changes.as_object() {
+                                if let Some((_uri, edits)) = changes_obj.iter().next() {
+                                    if let Some(text_edits) = edits.as_array() {
+                                        if !text_edits.is_empty() {
+                                            let original_content = context
+                                                .app_state
+                                                .file_service
+                                                .read_file(file_path)
+                                                .await?;
+                                            organized_content = Some(Self::apply_text_edits(
+                                                &original_content,
+                                                text_edits,
+                                            )?);
+                                            lsp_organized = true;
                                         }
                                     }
                                 }
@@ -204,32 +173,61 @@ impl EditingHandler {
                         }
                     }
                 }
+            }
+        }
 
-                // No organize imports action available or no edits needed
-                if dry_run {
-                    Ok(json!({
-                        "operation": "organize_imports",
-                        "dry_run": true,
-                        "modified": false,
-                        "status": "preview",
-                        "file_path": file_path_str,
-                        "plugin": response.metadata.plugin_name,
-                        "processing_time_ms": response.metadata.processing_time_ms,
-                    }))
-                } else {
-                    Ok(json!({
-                        "organized": false,
-                        "file_path": file_path_str,
-                        "plugin": response.metadata.plugin_name,
-                        "processing_time_ms": response.metadata.processing_time_ms,
-                    }))
+        // If LSP didn't provide edits, use the original content for dead import analysis
+        let content_for_optimization = if let Some(ref content) = organized_content {
+            content.clone()
+        } else {
+            context.app_state.file_service.read_file(file_path).await?
+        };
+
+        // Step 2: Find and remove unused imports
+        let mut final_content = content_for_optimization;
+        let mut removed_count = 0;
+        let mut total_imports = 0;
+
+        let extension = file_path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+        if let Some(plugin) = context.app_state.language_plugins.get_plugin(extension) {
+            if let Some(import_support) = plugin.import_support() {
+                let imports = import_support.parse_imports(&final_content);
+                total_imports = imports.len();
+
+                for import_path in &imports {
+                    // Simple check: if import appears only once, it's unused
+                    let occurrences = final_content.matches(import_path).count();
+                    if occurrences <= 1 {
+                        final_content = import_support.remove_import(&final_content, import_path);
+                        removed_count += 1;
+                    }
                 }
             }
-            Err(err) => Err(cb_protocol::ApiError::Internal(format!(
-                "Organize imports failed: {}",
-                err
-            ))),
         }
+
+        let modified = lsp_organized || (removed_count > 0);
+
+        // Step 3: Write back if not dry_run
+        if !dry_run && modified {
+            context
+                .app_state
+                .file_service
+                .write_file(file_path, &final_content, false)
+                .await?;
+        }
+
+        Ok(json!({
+            "operation": "organize_imports",
+            "file_path": file_path_str,
+            "dry_run": dry_run,
+            "modified": modified,
+            "details": {
+                "lsp_organized": lsp_organized,
+                "dead_imports_removed": removed_count,
+                "total_imports_analyzed": total_imports,
+            },
+            "plugin": lsp_plugin_name,
+        }))
     }
 
     /// Apply LSP TextEdit array to content
@@ -347,115 +345,6 @@ impl EditingHandler {
             ))),
         }
     }
-
-    /// Handle optimize_imports - extends organize_imports with dead import removal
-    async fn handle_optimize_imports(
-        &self,
-        context: &ToolHandlerContext,
-        tool_call: &ToolCall,
-    ) -> ServerResult<Value> {
-        use std::path::Path;
-
-        let args = tool_call.arguments.clone().unwrap_or(json!({}));
-
-        let file_path_str = args
-            .get("file_path")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                cb_protocol::ApiError::InvalidRequest("Missing file_path parameter".into())
-            })?;
-
-        let dry_run = args
-            .get("dry_run")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-
-        // Step 1: Run organize_imports first (LSP-based sorting/grouping)
-        let mut organize_call = tool_call.clone();
-        organize_call.name = "organize_imports".to_string();
-
-        let organize_result = self
-            .handle_organize_imports(context, &organize_call)
-            .await?;
-
-        // Step 2: Find unused imports
-        let file_path = Path::new(file_path_str);
-
-        // Get file extension
-        let extension = file_path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .ok_or_else(|| {
-                cb_protocol::ApiError::InvalidRequest(format!(
-                    "File has no extension: {}",
-                    file_path_str
-                ))
-            })?;
-
-        // Read current file content
-        let content = context
-            .app_state
-            .file_service
-            .read_file(file_path)
-            .await
-            .map_err(|e| cb_protocol::ApiError::Internal(format!("Failed to read file: {}", e)))?;
-
-        // Find language plugin
-        let plugin = context
-            .app_state
-            .language_plugins
-            .get_plugin(extension)
-            .ok_or_else(|| {
-                cb_protocol::ApiError::Unsupported(format!(
-                    "No language plugin found for extension: {}",
-                    extension
-                ))
-            })?;
-
-        // Get import support
-        let import_support = plugin.import_support().ok_or_else(|| {
-            cb_protocol::ApiError::Unsupported(format!(
-                "Language {} does not support import operations",
-                plugin.metadata().name
-            ))
-        })?;
-
-        // Parse imports
-        let imports = import_support.parse_imports(&content);
-
-        // Step 3: Remove unused imports (simple heuristic)
-        let mut optimized_content = content.clone();
-        let mut removed_count = 0;
-
-        for import_path in &imports {
-            // Simple check: if import appears only once, it's unused
-            let occurrences = optimized_content.matches(import_path).count();
-
-            if occurrences <= 1 {
-                optimized_content = import_support.remove_import(&optimized_content, import_path);
-                removed_count += 1;
-            }
-        }
-
-        // Step 4: Write back if not dry_run
-        if !dry_run && removed_count > 0 {
-            context
-                .app_state
-                .file_service
-                .write_file(file_path, &optimized_content, false)
-                .await?;
-        }
-
-        Ok(json!({
-            "operation": "optimize_imports",
-            "file_path": file_path_str,
-            "dry_run": dry_run,
-            "imports_organized": organize_result.get("organized").and_then(|v| v.as_bool()).unwrap_or(false),
-            "imports_removed": removed_count,
-            "total_imports": imports.len(),
-            "optimized": removed_count > 0,
-        }))
-    }
 }
 
 #[async_trait]
@@ -463,10 +352,8 @@ impl ToolHandler for EditingHandler {
     fn tool_names(&self) -> &[&str] {
         &[
             "rename_symbol",
-            "rename_symbol_strict",
             // "rename_symbol_with_imports" moved to InternalEditingHandler
             "organize_imports",
-            "optimize_imports",
             "get_code_actions",
             "format_document",
             "extract_function",
@@ -484,7 +371,6 @@ impl ToolHandler for EditingHandler {
             "format_document" => self.handle_format_document(context, tool_call).await,
             "get_code_actions" => self.handle_get_code_actions(context, tool_call).await,
             "organize_imports" => self.handle_organize_imports(context, tool_call).await,
-            "optimize_imports" => self.handle_optimize_imports(context, tool_call).await,
             _ => crate::delegate_to_legacy!(self, context, tool_call),
         }
     }

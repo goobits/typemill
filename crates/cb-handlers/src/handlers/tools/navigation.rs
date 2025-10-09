@@ -23,7 +23,7 @@ impl NavigationHandler {
     }
 
     /// Handle workspace symbol search across all plugins
-    async fn handle_workspace_symbols(
+    async fn handle_search_symbols(
         &self,
         context: &ToolHandlerContext,
         tool_call: &ToolCall,
@@ -31,7 +31,7 @@ impl NavigationHandler {
         use std::time::Instant;
         use tracing::debug;
 
-        debug!("handle_workspace_symbols: Starting multi-plugin workspace search");
+        debug!("handle_search_symbols: Starting multi-plugin workspace search");
 
         let start_time = Instant::now();
         let args = tool_call.arguments.clone().unwrap_or(json!({}));
@@ -41,7 +41,7 @@ impl NavigationHandler {
         debug!(
             plugin_count = plugin_names.len(),
             plugins = ?plugin_names,
-            "handle_workspace_symbols: Found registered plugins"
+            "handle_search_symbols: Found registered plugins"
         );
 
         let mut all_symbols = Vec::new();
@@ -63,6 +63,7 @@ impl NavigationHandler {
                     continue; // Skip plugins with no extensions
                 };
 
+                // Use the legacy name for the actual plugin request
                 let mut request =
                     PluginRequest::new("search_workspace_symbols".to_string(), file_path);
                 request = request.with_params(args.clone());
@@ -124,7 +125,7 @@ impl NavigationHandler {
 
         // Handle workspace-level operations that don't require a file path
         let file_path = match tool_call.name.as_str() {
-            "search_workspace_symbols" => {
+            "search_symbols" => {
                 // Use a dummy file path for workspace symbols
                 PathBuf::from(".")
             }
@@ -149,7 +150,7 @@ impl NavigationHandler {
             args.get("line").and_then(|v| v.as_u64()),
             args.get("character").and_then(|v| v.as_u64()),
         ) {
-            request = request.with_position(line as u32 - 1, character as u32);
+            request = request.with_position(line.saturating_sub(1) as u32, character as u32);
         }
 
         // Extract range if available
@@ -183,14 +184,10 @@ impl ToolHandler for NavigationHandler {
             "find_implementations",
             "find_type_definition",
             "get_document_symbols",
-            "search_workspace_symbols",
-            "get_hover",
-            "get_completions",
-            "get_signature_help",
+            "search_symbols",
+            "get_symbol_info",
             "get_diagnostics",
-            "prepare_call_hierarchy",
-            "get_call_hierarchy_incoming_calls",
-            "get_call_hierarchy_outgoing_calls",
+            "get_call_hierarchy",
         ]
     }
 
@@ -206,14 +203,32 @@ impl ToolHandler for NavigationHandler {
             "NavigationHandler::handle_tool_call called"
         );
 
+        let mut call = tool_call.clone();
+
+        // Handle renames for backward compatibility with legacy plugins
+        if call.name == "get_symbol_info" {
+            call.name = "get_hover".to_string();
+        }
+
+        if call.name == "get_call_hierarchy" {
+            let args = call.arguments.clone().unwrap_or(json!({}));
+            let hierarchy_type = args.get("type").and_then(|v| v.as_str());
+
+            call.name = match hierarchy_type {
+                Some("incoming") => "get_call_hierarchy_incoming_calls".to_string(),
+                Some("outgoing") => "get_call_hierarchy_outgoing_calls".to_string(),
+                _ => "prepare_call_hierarchy".to_string(),
+            };
+        }
+
         // Special handling for workspace symbols - query all plugins
-        if tool_call.name == "search_workspace_symbols" {
-            debug!("Routing to handle_workspace_symbols for multi-plugin query");
-            return self.handle_workspace_symbols(context, tool_call).await;
+        if tool_call.name == "search_symbols" {
+            debug!("Routing to handle_search_symbols for multi-plugin query");
+            return self.handle_search_symbols(context, tool_call).await;
         }
 
         // Convert to plugin request and delegate to plugin system
-        let plugin_request = self.convert_tool_call_to_plugin_request(tool_call)?;
+        let plugin_request = self.convert_tool_call_to_plugin_request(&call)?;
 
         match context.plugin_manager.handle_request(plugin_request).await {
             Ok(response) => Ok(json!({

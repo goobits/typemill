@@ -25,7 +25,7 @@ impl AdvancedHandler {
 #[async_trait]
 impl ToolHandler for AdvancedHandler {
     fn tool_names(&self) -> &[&str] {
-        &["apply_edits", "batch_execute"]
+        &["execute_edits", "execute_batch"]
     }
 
     async fn handle_tool_call(
@@ -40,7 +40,7 @@ impl ToolHandler for AdvancedHandler {
             .unwrap_or_else(|| serde_json::json!({}));
 
         match tool_name.as_str() {
-            "apply_edits" => {
+            "execute_edits" => {
                 // Note: This handler wraps the workflow_handler, but the macro expects legacy_handler field
                 // Convert new context to legacy context
                 let legacy_context = ToolContext {
@@ -49,11 +49,15 @@ impl ToolHandler for AdvancedHandler {
                     lsp_adapter: context.lsp_adapter.clone(),
                 };
 
+                // The legacy tool was `apply_edits`, so we need to clone and modify the call
+                let mut legacy_tool_call = tool_call.clone();
+                legacy_tool_call.name = "apply_edits".to_string();
+
                 self.workflow_handler
-                    .handle_tool(tool_call.clone(), &legacy_context)
+                    .handle_tool(legacy_tool_call, &legacy_context)
                     .await
             }
-            "batch_execute" => {
+            "execute_batch" => {
                 use cb_services::services::OperationType;
                 use serde::Deserialize;
                 use serde_json::json;
@@ -92,17 +96,17 @@ impl ToolHandler for AdvancedHandler {
                     },
                 }
 
-                // Define the structure for the overall batch_execute parameters
+                // Define the structure for the overall execute_batch parameters
                 #[derive(Deserialize, Debug)]
-                struct BatchExecuteParams {
+                struct ExecuteBatchParams {
                     operations: Vec<BatchOperation>,
                 }
 
                 // 1. Deserialize the incoming parameters
-                let batch_params: BatchExecuteParams =
+                let batch_params: ExecuteBatchParams =
                     serde_json::from_value(params).map_err(|e| {
                         cb_protocol::ApiError::runtime(format!(
-                            "Failed to parse batch_execute params: {}",
+                            "Failed to parse execute_batch params: {}",
                             e
                         ))
                     })?;
@@ -290,7 +294,7 @@ impl ToolHandler for AdvancedHandler {
                     };
 
                     let file_op = cb_services::services::FileOperation::new(
-                        "batch_execute".to_string(),
+                        "execute_batch".to_string(),
                         operation_type,
                         file_path,
                         operation_params,

@@ -7,7 +7,14 @@ use serde_json::{json, Value};
 use std::path::Path;
 use tracing::{debug, info};
 
-pub async fn handle_suggest_refactoring(
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
+enum AnalysisReportFormat {
+    Full,
+    Complexity,
+}
+
+pub async fn handle_analyze_code(
     context: &ToolHandlerContext,
     tool_call: &ToolCall,
 ) -> ServerResult<Value> {
@@ -18,14 +25,16 @@ pub async fn handle_suggest_refactoring(
         .and_then(|v| v.as_str())
         .ok_or_else(|| ServerError::InvalidRequest("Missing file_path parameter".into()))?;
 
+    let report_format: AnalysisReportFormat =
+        serde_json::from_value(args.get("report_format").cloned().unwrap_or(json!("full"))).unwrap_or(AnalysisReportFormat::Full);
+
     debug!(
         file_path = %file_path_str,
-        "Suggesting refactorings"
+        "Analyzing code"
     );
 
     let file_path = Path::new(file_path_str);
 
-    // Get file extension
     let extension = file_path
         .extension()
         .and_then(|ext| ext.to_str())
@@ -33,7 +42,6 @@ pub async fn handle_suggest_refactoring(
             ServerError::InvalidRequest(format!("File has no extension: {}", file_path_str))
         })?;
 
-    // Read file content
     let content = context
         .app_state
         .file_service
@@ -41,7 +49,6 @@ pub async fn handle_suggest_refactoring(
         .await
         .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
 
-    // Find language plugin
     let plugin = context
         .app_state
         .language_plugins
@@ -53,34 +60,36 @@ pub async fn handle_suggest_refactoring(
             ))
         })?;
 
-    // Parse file to get symbols
     let parsed = plugin
         .parse(&content)
         .await
         .map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
 
-    let language = plugin.metadata().name;
+    let language = plugin.metadata().name.clone();
 
     info!(
         file_path = %file_path_str,
         language = %language,
         symbols_count = parsed.symbols.len(),
-        "Analyzing for refactoring suggestions"
+        "Generating code analysis report"
     );
 
-    // Generate refactoring suggestions based on patterns
-    let mut suggestions = Vec::new();
-
-    // 1. Analyze complexity and code metrics
     let complexity_report = cb_ast::complexity::analyze_file_complexity(
         file_path_str,
         &content,
         &parsed.symbols,
-        language,
+        &language,
     );
 
+    if matches!(report_format, AnalysisReportFormat::Complexity) {
+        return serde_json::to_value(complexity_report)
+            .map_err(|e| ServerError::Internal(format!("Failed to serialize report: {}", e)));
+    }
+
+    // Full report (formerly suggest_refactoring)
+    let mut suggestions = Vec::new();
+
     for func in &complexity_report.functions {
-        // Add all issues detected by complexity analysis
         for issue in &func.issues {
             let (kind, priority) = if issue.contains("cognitive complexity") {
                 (RefactoringKind::ReduceComplexity, "high")
@@ -104,7 +113,6 @@ pub async fn handle_suggest_refactoring(
             });
         }
 
-        // Add general complexity recommendation if provided
         if let Some(recommendation) = &func.recommendation {
             suggestions.push(RefactoringSuggestion {
                 kind: RefactoringKind::ReduceComplexity,
@@ -127,7 +135,6 @@ pub async fn handle_suggest_refactoring(
             });
         }
 
-        // 2. Check for long functions using SLOC instead of total lines
         if func.metrics.sloc > 50 {
             suggestions.push(RefactoringSuggestion {
                 kind: RefactoringKind::ExtractFunction,
@@ -138,21 +145,18 @@ pub async fn handle_suggest_refactoring(
                     func.name,
                     func.metrics.sloc
                 ),
-                suggestion: "Consider breaking this function into smaller, more focused functions. Extract logical blocks into separate functions with descriptive names.".to_string(),
+                suggestion: "Consider breaking this function into smaller, more focused functions.".to_string(),
                 priority: if func.metrics.sloc > 100 { "high" } else { "medium" }.to_string(),
             });
         }
     }
 
-    // 3. Check for duplicate code patterns
-    let duplicate_suggestions = detect_duplicate_patterns(&content, language);
+    let duplicate_suggestions = detect_duplicate_patterns(&content, &language);
     suggestions.extend(duplicate_suggestions);
 
-    // 4. Check for magic numbers
-    let magic_number_suggestions = detect_magic_numbers(&content, &parsed.symbols, language);
+    let magic_number_suggestions = detect_magic_numbers(&content, &parsed.symbols, &language);
     suggestions.extend(magic_number_suggestions);
 
-    // Sort suggestions by priority
     suggestions.sort_by(|a, b| {
         let priority_order = |p: &str| match p {
             "high" => 0,
@@ -174,7 +178,7 @@ pub async fn handle_suggest_refactoring(
         "language": language,
         "suggestions": suggestions,
         "total_suggestions": suggestions.len(),
-        "complexity_report": {
+        "complexity_summary": {
             "average_complexity": complexity_report.average_complexity,
             "average_cognitive_complexity": complexity_report.average_cognitive_complexity,
             "max_complexity": complexity_report.max_complexity,
@@ -216,61 +220,14 @@ fn generate_suggestion_text(
     func: &cb_ast::complexity::FunctionComplexity,
 ) -> String {
     match kind {
-        RefactoringKind::ReduceComplexity => {
-            if func.complexity.cognitive > 20 {
-                format!(
-                    "This function has very high cognitive complexity ({}). Consider:
-- Breaking it into smaller functions (extract method pattern)
-- Using early returns to reduce nesting
-- Extracting complex conditional logic into named boolean functions
-- Simplifying nested if statements with guard clauses",
-                    func.complexity.cognitive
-                )
-            } else {
-                "Consider refactoring to reduce complexity. Break down complex logic into smaller, testable functions.".to_string()
-            }
-        }
-        RefactoringKind::ReduceNesting => {
-            format!(
-                "Reduce nesting depth from {} to 2-3 levels using:
-- Early returns (guard clauses): if (!condition) return;
-- Extract nested blocks into separate functions
-- Invert conditions to flatten structure
-- Replace nested if-else with strategy pattern or lookup tables",
-                func.complexity.max_nesting_depth
-            )
-        }
-        RefactoringKind::ConsolidateParameters => {
-            format!(
-                "Consolidate {} parameters using:
-- Create a configuration object/struct grouping related parameters
-- Use the builder pattern for complex initialization
-- Consider if this function is doing too much (Single Responsibility Principle)",
-                func.metrics.parameters
-            )
-        }
-        RefactoringKind::ImproveDocumentation => {
-            format!(
-                "Add documentation (current comment ratio: {:.2}):
-- Add function/method docstring describing purpose
-- Document parameters and return values
-- Include usage examples for complex functions
-- Explain non-obvious business logic",
-                func.metrics.comment_ratio
-            )
-        }
-        RefactoringKind::ExtractFunction => {
-            "Extract logical blocks into separate functions with descriptive names. Each function should do one thing well.".to_string()
-        }
-        RefactoringKind::ExtractVariable => {
-            "Extract complex expressions into named variables to improve readability.".to_string()
-        }
-        RefactoringKind::RemoveDuplication => {
-            "Extract duplicate code into a shared function. Follow the DRY (Don't Repeat Yourself) principle.".to_string()
-        }
-        RefactoringKind::ReplaceMagicNumber => {
-            "Replace magic numbers with named constants to improve code clarity.".to_string()
-        }
+        RefactoringKind::ReduceComplexity => "Consider refactoring to reduce complexity.".to_string(),
+        RefactoringKind::ReduceNesting => "Reduce nesting depth using early returns or guard clauses.".to_string(),
+        RefactoringKind::ConsolidateParameters => "Consolidate parameters using a configuration object/struct.".to_string(),
+        RefactoringKind::ImproveDocumentation => "Add documentation to explain the function's purpose.".to_string(),
+        RefactoringKind::ExtractFunction => "Extract logical blocks into separate functions.".to_string(),
+        RefactoringKind::ExtractVariable => "Extract complex expressions into named variables.".to_string(),
+        RefactoringKind::RemoveDuplication => "Extract duplicate code into a shared function.".to_string(),
+        RefactoringKind::ReplaceMagicNumber => "Replace magic numbers with named constants.".to_string(),
     }
 }
 
@@ -285,40 +242,36 @@ fn detect_magic_numbers(
 ) -> Vec<RefactoringSuggestion> {
     let mut suggestions = Vec::new();
     let number_pattern = match language.to_lowercase().as_str() {
-        "rust" | "go" | "java" | "typescript" | "javascript" => {
+        "rust" | "go" | "java" | "typescript" | "javascript" | "python" => {
             Regex::new(r"\b(?:[2-9]|[1-9]\d+)(?:\.\d+)?\b").ok()
         }
-        "python" => Regex::new(r"\b(?:[2-9]|[1-9]\d+)(?:\.\d+)?\b").ok(),
         _ => None,
     };
 
     if let Some(pattern) = number_pattern {
         let mut found_numbers = std::collections::HashMap::new();
-
-        for line in content.lines() {
+        for (i, line) in content.lines().enumerate() {
             if line.trim().starts_with("//") || line.trim().starts_with('#') {
                 continue;
             }
-
             for cap in pattern.find_iter(line) {
                 let number = cap.as_str();
-                *found_numbers.entry(number.to_string()).or_insert(0) += 1;
+                found_numbers.entry(number.to_string()).or_insert_with(Vec::new).push(i + 1);
             }
         }
 
-        for (number, count) in found_numbers {
-            if count >= 2 {
+        for (number, lines) in found_numbers {
+            if lines.len() >= 2 {
                 suggestions.push(RefactoringSuggestion {
                     kind: RefactoringKind::ReplaceMagicNumber,
-                    location: 1,
+                    location: lines[0],
                     function_name: None,
-                    description: format!("Magic number '{}' appears {} times", number, count),
+                    description: format!("Magic number '{}' appears {} times", number, lines.len()),
                     suggestion: format!("Consider extracting '{}' to a named constant", number),
-                    priority: if count > 3 { "medium" } else { "low" }.to_string(),
+                    priority: if lines.len() > 3 { "medium" } else { "low" }.to_string(),
                 });
             }
         }
     }
-
     suggestions
 }
