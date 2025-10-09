@@ -1,5 +1,11 @@
 # Backend Multi-Tenancy Implementation
 
+**Status: Implemented** (2025-10-09)
+
+This proposal has been fully implemented. The server now supports multi-tenancy with JWT-based user isolation for all workspace operations.
+
+---
+
 ## Overview
 
 The CodeBuddy server can manage remote workspace containers, execute commands within them, and perform complex AST-aware refactorings on their files.

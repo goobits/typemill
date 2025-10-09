@@ -62,6 +62,8 @@ impl<R: tokio::io::AsyncRead + Unpin, W: tokio::io::AsyncWrite + Unpin> StdioTra
     }
 }
 
+use crate::SessionInfo;
+
 /// Start the stdio MCP server
 pub async fn start_stdio_server(
     dispatcher: Arc<dyn McpDispatcher>,
@@ -73,6 +75,9 @@ pub async fn start_stdio_server(
     let mut transport = StdioTransport::new(stdin, stdout);
 
     tracing::info!("Codebuddy Server running on stdio");
+
+    // For stdio, there is no user context, so we use a default SessionInfo.
+    let session_info = SessionInfo::default();
 
     loop {
         let message = match transport.read_message().await {
@@ -137,7 +142,7 @@ pub async fn start_stdio_server(
         };
 
         // Handle the message
-        let response = match dispatcher.dispatch(mcp_message).await {
+        let response = match dispatcher.dispatch(mcp_message, &session_info).await {
             Ok(response) => response,
             Err(e) => {
                 // Convert to structured API error

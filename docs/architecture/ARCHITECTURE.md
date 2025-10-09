@@ -713,6 +713,26 @@ ApiError ← CoreError ← ServerError ← Transport-specific errors
 - **Parse Errors**: Detailed error messages with context
 - **Resource Exhaustion**: Configurable limits and throttling
 
+## Multi-Tenancy Architecture
+
+To support multiple users securely, Codebuddy implements a multi-tenancy model that ensures user data and workspaces are isolated.
+
+### Core Principles
+
+1.  **User-Scoped Workspaces**: All workspace operations are scoped to the currently authenticated user. A user cannot see, access, or modify another user's workspaces.
+2.  **JWT-Based Authentication**: User identity is established via a JSON Web Token (JWT) passed in the `Authorization` header of API requests.
+3.  **Centralized Enforcement**: Multi-tenancy is enforced at the API gateway and service layers, ensuring consistent security across all workspace-related tools.
+
+### Implementation Details
+
+-   **`user_id` Claim**: The JWT payload must contain a `user_id` claim, which is a unique identifier for the user.
+-   **`WorkspaceManager` Partitioning**: The `WorkspaceManager` no longer uses a simple `workspace_id` as the key. Instead, it uses a composite key `(user_id, workspace_id)`. This change in `crates/cb-core/src/workspaces.rs` is the core of the data isolation model.
+-   **API Endpoint Authorization**: Endpoints that manage workspaces (e.g., `/workspaces/register`, `/workspaces/{id}/execute`) now extract the `user_id` from the JWT. All subsequent calls to the `WorkspaceManager` must provide this `user_id`, ensuring that operations are performed only on the workspaces owned by that user.
+
+This architecture provides a robust and secure foundation for multi-user environments, preventing data leakage and unauthorized access.
+
+---
+
 ## Performance Architecture
 
 ### Async Runtime

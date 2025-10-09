@@ -1,7 +1,8 @@
 //! JWT authentication utilities
 
 use crate::CoreError;
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{encode, EncodingKey, Header};
+pub use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -20,6 +21,8 @@ pub struct Claims {
     pub aud: Option<String>,
     /// Project ID (custom claim)
     pub project_id: Option<String>,
+    /// User ID (custom claim for multi-tenancy)
+    pub user_id: Option<String>,
 }
 
 /// Validate a JWT token and return true if valid
@@ -71,6 +74,7 @@ pub fn generate_token(
     issuer: &str,
     audience: &str,
     project_id: Option<String>,
+    user_id: Option<String>,
 ) -> Result<String, CoreError> {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -86,6 +90,7 @@ pub fn generate_token(
         iss: Some(issuer.to_string()),
         aud: Some(audience.to_string()),
         project_id,
+        user_id,
     };
 
     let header = Header::default();
@@ -114,6 +119,7 @@ mod tests {
             iss: Some("codebuddy".to_string()),
             aud: Some("codeflow-clients".to_string()),
             project_id,
+            user_id: None,
         };
 
         let header = Header::default();

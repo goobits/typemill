@@ -24,6 +24,33 @@ Your complete guide to all MCP tools available in Codebuddy. Use this reference 
 
 ---
 
+## Authentication & Multi-Tenancy
+
+Codebuddy now operates in a multi-tenant mode to ensure user isolation and security. All operations that interact with workspaces (e.g., `register_workspace`, `list_workspaces`, `execute_command` in a workspace) are scoped to the authenticated user.
+
+### JWT `user_id` Claim (Required)
+
+To support multi-tenancy, all API requests that affect a user's workspace must include a JSON Web Token (JWT) in the `Authorization` header. This JWT **must** contain a `user_id` claim.
+
+**Example JWT Payload:**
+```json
+{
+  "sub": "api_client",
+  "exp": 1732992134,
+  "iat": 1732988534,
+  "iss": "codebuddy_server",
+  "aud": "codebuddy_clients",
+  "project_id": "project-123",
+  "user_id": "user-abc-456"
+}
+```
+
+- **`user_id`**: This new claim is **required** for all workspace operations. It uniquely identifies the user and ensures that they can only access their own registered workspaces.
+
+Requests to endpoints like `/workspaces` or `/workspaces/{id}/execute` without a valid JWT containing a `user_id` will be rejected with a `401 Unauthorized` error.
+
+---
+
 ## Language Support Matrix
 
 **MCP Tools**

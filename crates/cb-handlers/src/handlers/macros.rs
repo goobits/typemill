@@ -97,6 +97,7 @@ macro_rules! register_handlers_with_logging {
 macro_rules! delegate_to_legacy {
     ($self:expr, $context:expr, $tool_call:expr) => {{
         let legacy_context = $crate::handlers::compat::ToolContext {
+            user_id: $context.user_id.clone(),
             app_state: $context.app_state.clone(),
             plugin_manager: $context.plugin_manager.clone(),
             lsp_adapter: $context.lsp_adapter.clone(),
