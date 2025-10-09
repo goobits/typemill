@@ -3,6 +3,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 use std::path::Path;
+use std::sync::Arc;
 use crate::error::AnalysisError;
 use crate::types::AnalysisMetadata;
 
@@ -29,7 +30,7 @@ pub trait AnalysisEngine: Send + Sync {
     /// Run analysis with the given configuration
     async fn analyze(
         &self,
-        lsp: std::sync::Arc<dyn LspProvider>,
+        lsp: Arc<dyn LspProvider>,
         workspace_path: &Path,
         config: Self::Config,
     ) -> Result<Self::Result, AnalysisError>;

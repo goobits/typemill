@@ -25,7 +25,7 @@ members = [
     "crates/cb-test-support",
     "crates/cb-lang-csharp",
     "analysis/cb-analysis-common",
-    "analysis/cb-analysis-dead-code",
+    "analysis/cb-analysis-deep-dead-code",
 ]
 resolver = "2"
 

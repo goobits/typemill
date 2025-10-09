@@ -9,22 +9,17 @@ use super::compat::{ToolContext, ToolHandler};
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
-use serde_json::{json, Value};
+use serde_json::Value;
 use tracing::debug;
 
-// Feature-gated implementation module
+// Feature-gated implementation module for the new analysis subsystem.
 #[cfg(feature = "analysis-dead-code")]
 mod analysis_impl {
     use super::super::lsp_adapter::DirectLspAdapter;
-    use crate::ToolContext;
+    use crate::handlers::compat::ToolContext;
     use async_trait::async_trait;
     use cb_analysis_common::{AnalysisEngine, AnalysisError, LspProvider};
-    use cb_analysis_dead_code::{
-        config::DeadCodeConfig,
-        types::DeadCodeReport,
-        utils::{lsp_kind_to_string, parse_symbol_kind},
-        DeadCodeAnalyzer,
-    };
+    use cb_analysis_deep_dead_code::{DeepDeadCodeAnalyzer, DeepDeadCodeConfig, DeepDeadCodeReport};
     use cb_core::model::mcp::ToolCall;
     use cb_plugins::LspService;
     use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
@@ -33,7 +28,7 @@ mod analysis_impl {
     use std::sync::Arc;
     use tracing::debug;
 
-    /// Adapter to make DirectLspAdapter compatible with LspProvider trait
+    /// Adapter to make DirectLspAdapter compatible with LspProvider trait.
     pub struct DirectLspProviderAdapter {
         adapter: Arc<DirectLspAdapter>,
     }
@@ -85,58 +80,15 @@ mod analysis_impl {
         }
     }
 
-    /// Build DeadCodeConfig from tool call arguments
-    fn config_from_params(args: &Value) -> DeadCodeConfig {
-        let mut config = DeadCodeConfig::default();
-
-        if let Some(kinds) = args.get("symbol_kinds").and_then(|v| v.as_array()) {
-            let parsed_kinds: Vec<u64> = kinds
-                .iter()
-                .filter_map(|k| k.as_str())
-                .filter_map(parse_symbol_kind)
-                .collect();
-            if !parsed_kinds.is_empty() {
-                config.symbol_kinds = parsed_kinds;
-            }
-        }
-
-        if let Some(max_conc) = args.get("max_concurrency").and_then(|v| v.as_u64()) {
-            config.max_concurrency = (max_conc as usize).clamp(1, 100);
-        }
-
-        if let Some(min_refs) = args.get("min_references").and_then(|v| v.as_u64()) {
-            config.min_reference_threshold = min_refs as usize;
-        }
-
-        if let Some(types) = args.get("file_types").and_then(|v| v.as_array()) {
-            let file_types: Vec<String> = types
-                .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect();
-            if !file_types.is_empty() {
-                config.file_types = Some(file_types);
-            }
-        }
-
-        if let Some(inc_exp) = args.get("include_exported").and_then(|v| v.as_bool()) {
-            config.include_exported = inc_exp;
-        }
-
-        if let Some(max_res) = args.get("max_results").and_then(|v| v.as_u64()) {
-            config.max_results = Some(max_res as usize);
-        }
-
-        if let Some(timeout_sec) = args.get("timeout_seconds").and_then(|v| v.as_u64()) {
-            config.timeout = Some(std::time::Duration::from_secs(timeout_sec));
-        }
-
-        config
+    /// Parses tool call arguments into the analysis configuration.
+    fn config_from_params(_args: &Value) -> DeepDeadCodeConfig {
+        DeepDeadCodeConfig::default()
     }
 
-    /// Format the analysis report into the MCP JSON response
+    /// Formats the analysis report into the final JSON response for the user.
     fn format_mcp_response(
-        report: DeadCodeReport,
-        config: &DeadCodeConfig,
+        report: DeepDeadCodeReport,
+        workspace_path: &Path,
     ) -> ServerResult<Value> {
         let dead_symbols_json: Vec<Value> = report
             .dead_symbols
@@ -144,50 +96,22 @@ mod analysis_impl {
             .map(|s| {
                 json!({
                     "name": s.name,
-                    "kind": s.kind,
                     "file": s.file_path,
-                    "line": s.line,
-                    "column": s.column,
-                    "referenceCount": s.reference_count,
+                    "is_public": s.is_public,
                 })
             })
             .collect();
 
-        let symbol_kinds_analyzed: Vec<String> = config
-            .symbol_kinds
-            .iter()
-            .map(|k| lsp_kind_to_string(*k))
-            .collect();
-
-        let truncated = config
-            .max_results
-            .is_some_and(|max| report.dead_symbols.len() >= max)
-            || config
-                .timeout
-                .is_some_and(|t| report.stats.duration_ms >= t.as_millis());
-
         Ok(json!({
-            "workspacePath": report.workspace_path.display().to_string(),
+            "workspacePath": workspace_path.display().to_string(),
             "deadSymbols": dead_symbols_json,
             "analysisStats": {
-                "filesAnalyzed": report.stats.files_analyzed,
-                "symbolsAnalyzed": report.stats.symbols_analyzed,
-                "deadSymbolsFound": report.stats.dead_symbols_found,
-                "analysisDurationMs": report.stats.duration_ms,
-                "symbolKindsAnalyzed": &symbol_kinds_analyzed,
-                "truncated": truncated,
+                "deadSymbolsFound": dead_symbols_json.len(),
             },
-            "configUsed": {
-                "symbolKinds": symbol_kinds_analyzed,
-                "maxConcurrency": config.max_concurrency,
-                "minReferences": config.min_reference_threshold,
-                "includeExported": config.include_exported,
-                "fileTypes": config.file_types,
-            }
         }))
     }
 
-    /// The new implementation of find_dead_code using the analysis crate
+    /// The new implementation of find_dead_code using the deep analysis crate.
     pub async fn handle_find_dead_code_impl(
         tool_call: ToolCall,
         context: &ToolContext,
@@ -198,30 +122,24 @@ mod analysis_impl {
             .and_then(|v| v.as_str())
             .unwrap_or(".");
         let workspace_path = Path::new(workspace_path_str);
-
-        // Build configuration from parameters
         let config = config_from_params(&args);
-        debug!(?config, "Handling find_dead_code request with config");
 
-        // Get shared LSP adapter from context
+        debug!(?config, "Handling deep find_dead_code request");
+
         let lsp_adapter_lock = context.lsp_adapter.lock().await;
         let lsp_adapter = lsp_adapter_lock
             .as_ref()
             .ok_or_else(|| ServerError::Internal("LSP adapter not initialized".to_string()))?
             .clone();
 
-        // Wrap it in the provider trait
         let lsp_provider = Arc::new(DirectLspProviderAdapter::new(lsp_adapter));
-
-        // Run analysis engine
-        let analyzer = DeadCodeAnalyzer;
+        let analyzer = DeepDeadCodeAnalyzer;
         let report = analyzer
-            .analyze(lsp_provider, workspace_path, config.clone())
+            .analyze(lsp_provider, workspace_path, config)
             .await
             .map_err(|e| ServerError::Internal(e.to_string()))?;
 
-        // Format the report into the final MCP response
-        format_mcp_response(report, &config)
+        format_mcp_response(report, workspace_path)
     }
 }
 
