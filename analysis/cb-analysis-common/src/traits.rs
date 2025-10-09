@@ -1,0 +1,39 @@
+// analysis/cb-analysis-common/src/traits.rs
+
+use async_trait::async_trait;
+use serde_json::Value;
+use std::path::Path;
+use crate::error::AnalysisError;
+use crate::types::AnalysisMetadata;
+
+/// Abstraction for LSP communication (dependency inversion)
+#[async_trait]
+pub trait LspProvider: Send + Sync {
+    /// Query LSP workspace/symbol
+    async fn workspace_symbols(&self, query: &str) -> Result<Vec<Value>, AnalysisError>;
+
+    /// Query LSP textDocument/references
+    async fn find_references(&self, uri: &str, line: u32, character: u32)
+        -> Result<Vec<Value>, AnalysisError>;
+
+    /// Query LSP textDocument/documentSymbol
+    async fn document_symbols(&self, uri: &str) -> Result<Vec<Value>, AnalysisError>;
+}
+
+/// Core analysis engine trait
+#[async_trait]
+pub trait AnalysisEngine: Send + Sync {
+    type Config;
+    type Result;
+
+    /// Run analysis with the given configuration
+    async fn analyze(
+        &self,
+        lsp: std::sync::Arc<dyn LspProvider>,
+        workspace_path: &Path,
+        config: Self::Config,
+    ) -> Result<Self::Result, AnalysisError>;
+
+    /// Get analysis metadata (name, version, capabilities)
+    fn metadata(&self) -> AnalysisMetadata;
+}
