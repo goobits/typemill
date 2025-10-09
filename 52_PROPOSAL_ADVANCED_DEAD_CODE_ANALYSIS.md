@@ -60,6 +60,8 @@ Total: 42 unused symbols (estimate: 3,200 lines can be deleted)
 
 ## Implementation
 
+**Prerequisite:** Build on the shared dependency and call graph infrastructure so symbol reachability queries stay consistent with other analyses.
+
 ### 1. Symbol Extraction
 
 **For each language, extract:**
@@ -172,31 +174,38 @@ function extractTypes(sourceFile: ts.SourceFile): TypeSymbol[] {
 - Type assertions/casts (`value as MyType`)
 - Import statements (`import { User } from './types'`)
 
-**Implementation:**
+**Implementation:** Use a fully qualified symbol identity (`QualifiedSymbolId = { module_path, symbol_name, signature }`) so that similarly named symbols in different scopes do not collide.
 ```rust
-pub struct UsageTracker {
-    /// Symbol definitions: name -> definition location
-    definitions: HashMap<String, SymbolDefinition>,
+#[derive(Clone, Hash, Eq, PartialEq)]
+pub struct QualifiedSymbolId {
+    pub module: ModulePath,
+    pub name: String,
+    pub signature: Option<String>, // e.g., generics or type params
+}
 
-    /// Symbol usages: name -> [usage locations]
-    usages: HashMap<String, Vec<UsageLocation>>,
+pub struct UsageTracker {
+    /// Symbol definitions: fully-qualified id -> definition metadata
+    definitions: HashMap<QualifiedSymbolId, SymbolDefinition>,
+
+    /// Symbol usages: fully-qualified id -> [usage locations]
+    usages: HashMap<QualifiedSymbolId, Vec<UsageLocation>>,
 }
 
 impl UsageTracker {
     /// Track a type usage in source code
-    pub fn track_usage(&mut self, symbol: &str, location: Location, context: UsageContext) {
+    pub fn track_usage(&mut self, symbol: QualifiedSymbolId, location: Location, context: UsageContext) {
         self.usages
-            .entry(symbol.to_string())
+            .entry(symbol.clone())
             .or_default()
             .push(UsageLocation { location, context });
     }
 
     /// Find all symbols with zero usages
-    pub fn find_unused(&self) -> Vec<String> {
+    pub fn find_unused(&self) -> Vec<QualifiedSymbolId> {
         self.definitions
             .keys()
-            .filter(|name| {
-                self.usages.get(*name).map_or(true, |uses| uses.is_empty())
+            .filter(|qid| {
+                self.usages.get(*qid).map_or(true, |uses| uses.is_empty())
             })
             .cloned()
             .collect()
@@ -214,6 +223,8 @@ pub enum UsageContext {
     FunctionReturn,      // fn foo() -> Type
 }
 ```
+
+**Type resolution:** Hook into compiler-grade language services to resolve `QualifiedSymbolId`s (e.g., TypeScript's `Program`, rust-analyzer's salsa queries, mypy daemon). Plain text search remains a fallback only for languages without richer support.
 
 ### 3. Generic/Template Handling
 

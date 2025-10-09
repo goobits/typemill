@@ -109,9 +109,10 @@ pub struct CallSite {
 ```
 
 **Implementation:**
-- Use LSP `find_references` for accurate call sites
-- Handle polymorphism via type information
-- Support cross-language calls (FFI, RPC)
+- Build language-specific indexers that operate on parsed ASTs or compiler APIs (e.g., rust-analyzer query engine, TypeScript compiler program)
+- Use LSP responses only as an optional fallback for languages without richer APIs, with rate-limiting safeguards
+- Handle polymorphism via type information resolved by the indexers
+- Support cross-language calls (FFI, RPC) through dedicated plugins
 
 ### 3. Incremental Update Strategy
 
@@ -158,8 +159,9 @@ impl GraphInvalidation {
 
 **Format:**
 - Use MessagePack or bincode for efficient binary serialization
-- Store metadata: build timestamp, file hashes, language versions
-- Validate cache on load (check file hashes, invalidate if mismatch)
+- Store metadata: build timestamp, watched file list, language versions
+- Maintain a per-file hash index so only touched files require recomputation
+- Validate cache on load with a fast metadata check, then fall back to hash verification for changed files
 
 **Cache Structure:**
 ```
@@ -167,22 +169,27 @@ impl GraphInvalidation {
 ├── dependency_graph.bin
 ├── call_graph.bin
 ├── metadata.json
-└── file_hashes.json
+└── file_index.json  # per-file digests for targeted validation
 ```
 
 **Cache Validation:**
 ```rust
 pub struct CacheMetadata {
     pub build_timestamp: SystemTime,
-    pub codebase_hash: String,  // Hash of all file hashes
+    pub watched_files: Vec<PathBuf>,
     pub language_plugin_versions: HashMap<String, String>,
+    pub metadata_hash_index: HashMap<PathBuf, FileDigest>,
 }
 
 impl Cache {
     pub fn is_valid(&self) -> bool {
-        // Check if any files have changed
-        let current_hashes = compute_file_hashes(&self.watched_files);
-        current_hashes == self.metadata.file_hashes
+        // Fast path: rely on file metadata deltas
+        if files_unchanged_since(&self.watched_files, self.build_timestamp) {
+            return true;
+        }
+
+        // Slow path: verify hashed chunks for modified files only
+        diff_and_verify_changed_files(&self.watched_files, &self.metadata_hash_index)
     }
 }
 ```

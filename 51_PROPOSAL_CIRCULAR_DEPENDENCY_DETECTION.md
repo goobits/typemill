@@ -49,11 +49,13 @@ Cycle 3 (5 modules):
 
 ## Implementation
 
+**Prerequisite:** Reuse the shared dependency graph infrastructure from the Analysis Platform proposal once available; initial versions can operate on per-directory scans for smaller codebases.
+
 ### 1. Dependency Graph Construction
 
 **Input:** All source files in the project
 **Process:** Extract import/use/require statements
-**Output:** Directed graph where nodes = modules, edges = imports
+**Output:** Directed graph where nodes = modules, edges = imports (runtime-only)
 
 **Example (TypeScript):**
 ```typescript
@@ -64,6 +66,8 @@ import { log } from '../utils/logger';    // Edge: user.ts → logger.ts
 
 **Leverages existing infrastructure:**
 - Use language plugins to parse import statements
+- Filter out type-only or compile-time-only relationships (e.g., `import type`, Rust `pub use`, Python guarded imports)
+- Rely on the upcoming analysis platform graphs when available; fall back to on-demand extraction for smaller scopes
 - Reuse AST parsing from `cb-ast`
 - Build graph using `petgraph` crate
 
@@ -106,6 +110,7 @@ pub fn find_cycles(graph: &DependencyGraph) -> Vec<Vec<NodeId>> {
 - All modules involved
 - Import chain showing the cycle
 - File locations of import statements
+- Whether each edge is runtime-relevant (skip flagged type-only edges in output)
 - Suggested fixes (if possible)
 
 **Output Format (JSON for MCP):**
@@ -189,11 +194,11 @@ Shall I create the new module and update the imports?"
 
 ### Rust
 - Parse `use` statements from AST
-- Handle re-exports (`pub use`)
+- Separate re-exports (`pub use`) from runtime dependencies
 - Track both module-level and crate-level dependencies
 
 ### TypeScript/JavaScript
-- Parse `import` and `require()` statements
+- Parse `import` and `require()` statements while ignoring `import type`
 - Handle ES6 imports, CommonJS, AMD
 - Track dynamic imports (`import()`)
 
@@ -203,7 +208,7 @@ Shall I create the new module and update the imports?"
 
 ### Python
 - Parse `import` and `from ... import` statements
-- Handle relative imports (`from . import foo`)
+- Handle relative imports (`from . import foo`) and conditional imports guarded by runtime checks (skip when clearly environment-specific)
 - Track package-level cycles
 
 ## MCP Tool Definition
