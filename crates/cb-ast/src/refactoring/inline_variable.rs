@@ -97,6 +97,7 @@ pub async fn plan_inline_variable(
         "rust" => ast_inline_variable_rust(source, variable_line, variable_col, file_path),
         "go" => ast_inline_variable_go(source, variable_line, variable_col, file_path),
         "java" => ast_inline_variable_java(source, variable_line, variable_col, file_path),
+        "swift" => ast_inline_variable_swift(source, variable_line, variable_col, file_path),
         _ => Err(AstError::analysis(format!(
             "Inline variable refactoring requires LSP service for file: {}. Language plugins provide AST fallback.",
             file_path
@@ -166,4 +167,20 @@ fn ast_inline_variable_go(
         file_path,
     )
     .map_err(|e| AstError::analysis(format!("Go refactoring error: {}", e)))
+}
+
+/// Generate edit plan for inline variable refactoring (Swift) using AST
+fn ast_inline_variable_swift(
+    source: &str,
+    variable_line: u32,
+    variable_col: u32,
+    file_path: &str,
+) -> AstResult<EditPlan> {
+    cb_lang_swift::refactoring::plan_inline_variable(
+        source,
+        variable_line,
+        variable_col,
+        file_path,
+    )
+    .map_err(|e| AstError::analysis(format!("Swift refactoring error: {}", e)))
 }

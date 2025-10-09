@@ -13,6 +13,7 @@ cb-lang-typescript = { path = "../cb-lang-typescript" }
 cb-lang-rust = { path = "../cb-lang-rust" }
 cb-lang-go = { path = "../cb-lang-go" }
 cb-lang-java = { path = "../cb-lang-java" }
+cb-lang-swift = { path = "../cb-lang-swift" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

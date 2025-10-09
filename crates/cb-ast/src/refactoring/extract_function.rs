@@ -108,6 +108,9 @@ pub async fn plan_extract_function(
         "java" => {
             ast_extract_function_java(source, range, new_function_name, file_path)
         }
+        "swift" => {
+            ast_extract_function_swift(source, range, new_function_name, file_path)
+        }
         _ => {
             // Unsupported language - will try LSP fallback below
             Err(AstError::analysis(format!(
@@ -302,6 +305,30 @@ fn ast_extract_function_java(
         file_path,
     )
     .map_err(|e| AstError::analysis(format!("Java refactoring error: {}", e)))
+}
+
+/// Generate edit plan for extract function refactoring (Swift) using AST
+fn ast_extract_function_swift(
+    source: &str,
+    range: &CodeRange,
+    new_function_name: &str,
+    file_path: &str,
+) -> AstResult<EditPlan> {
+    // Convert cb-ast CodeRange to cb-lang-swift CodeRange
+    let swift_range = cb_lang_swift::refactoring::CodeRange {
+        start_line: range.start_line,
+        start_col: range.start_col,
+        end_line: range.end_line,
+        end_col: range.end_col,
+    };
+
+    cb_lang_swift::refactoring::plan_extract_function(
+        source,
+        &swift_range,
+        new_function_name,
+        file_path,
+    )
+    .map_err(|e| AstError::analysis(format!("Swift refactoring error: {}", e)))
 }
 
 /// Visitor for analyzing code selection for function extraction

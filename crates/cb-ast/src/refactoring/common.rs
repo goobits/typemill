@@ -15,6 +15,8 @@ pub fn detect_language(file_path: &str) -> &str {
         "go"
     } else if file_path.ends_with(".java") {
         "java"
+    } else if file_path.ends_with(".swift") {
+        "swift"
     } else {
         "unknown"
     }

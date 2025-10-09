@@ -5,6 +5,7 @@
 mod import_support;
 mod manifest;
 mod parser;
+pub mod refactoring;
 
 use crate::import_support::SwiftImportSupport;
 use async_trait::async_trait;
