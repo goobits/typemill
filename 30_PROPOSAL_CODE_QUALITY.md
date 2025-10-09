@@ -1,10 +1,35 @@
 # 🏚️ Legacy Code Analysis Report
 *Generated: 2025-10-09 18:44 UTC*
+*Updated: 2025-10-09 22:30 UTC*
 
-## 📊 Summary
+## ✅ Cleanup Status Update
+
+**HIGH RISK Items - Verified 2025-10-09:**
+
+✅ **Deprecated Methods** - **NO ACTION NEEDED**
+- `ast_service.rs:new_with_cache()` - Defined but **never called** in production
+- `SystemToolsPlugin::default()` - Defined but **never called** in production
+- Production code already uses correct patterns (injected registries)
+
+⚠️ **Legacy Git Branches** - **Requires Remote Access**
+- `origin/legacy/main`, `origin/backup/main` - Remote only
+- Deletion requires push access: `git push origin --delete legacy/main backup/main`
+- Low impact (remote branches only)
+
+📋 **Compat Layer** - **Deferred (1-2 days work)**
+- 13 handler files delegate to RefactoringHandler via compat layer
+- Involves complex LSP + AST refactoring logic migration
+- **Decision:** Non-blocking internal refactoring, defer to future sprint
+
+**Result:** Foundation is stable. Ready for #50 Analysis Platform implementation.
+
+---
+
+## 📊 Original Summary
 **Total Legacy Items:** 67
 **Files Affected:** 41
 **Estimated Cleanup Effort:** 3-5 days
+**Actual Immediate Work:** ~45 minutes (verification + documentation)
 
 ---
 
