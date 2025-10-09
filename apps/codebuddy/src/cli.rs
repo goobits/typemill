@@ -2,6 +2,7 @@
 
 use cb_core::config::AppConfig;
 use cb_core::utils::system::command_exists;
+use cb_transport::SessionInfo;
 use clap::{Parser, Subcommand};
 use fs2::FileExt;
 use std::fs::{File, OpenOptions};
@@ -674,9 +675,10 @@ async fn handle_tool_command(tool_name: &str, args_json: &str, format: &str) {
         params: Some(params),
     };
     let message = McpMessage::Request(request);
+    let session_info = SessionInfo::default();
 
     // Execute tool call via dispatcher
-    match dispatcher.dispatch(message).await {
+    match dispatcher.dispatch(message, &session_info).await {
         Ok(McpMessage::Response(response)) => {
             // Wait for async operations (like batch_execute) to complete
             let operation_queue = dispatcher.operation_queue();

@@ -4,7 +4,7 @@
 
 use super::compat::{ToolContext, ToolHandler};
 use super::lsp_adapter::DirectLspAdapter;
-use crate::utils::remote_exec::execute_remote_command;
+use crate::utils::remote_exec;
 use async_trait::async_trait;
 use cb_ast::refactoring::{CodeRange, LspRefactoringService};
 use cb_core::model::mcp::ToolCall;
@@ -160,14 +160,21 @@ impl RefactoringHandler {
     /// Read file content from local filesystem or remote workspace
     async fn read_file_content(
         workspace_id: Option<&str>,
+        user_id: Option<&str>,
         file_path: &str,
         file_service: &cb_services::services::FileService,
         workspace_manager: &cb_core::workspaces::WorkspaceManager,
     ) -> ServerResult<String> {
         if let Some(workspace_id) = workspace_id {
+            let user_id = user_id.ok_or_else(|| {
+                ServerError::InvalidRequest(
+                    "A user_id is required for remote workspace operations".into(),
+                )
+            })?;
             let command = format!("cat '{}'", Self::escape_shell_arg(file_path));
-            crate::utils::remote_exec::execute_remote_command(
+            remote_exec::execute_in_workspace(
                 workspace_manager,
+                user_id,
                 workspace_id,
                 &command,
             )
@@ -252,6 +259,7 @@ impl RefactoringHandler {
 
                 let content = Self::read_file_content(
                     parsed.workspace_id.as_deref(),
+                    context.user_id.as_deref(),
                     &parsed.file_path,
                     &context.app_state.file_service,
                     &context.app_state.workspace_manager,
@@ -303,6 +311,7 @@ impl RefactoringHandler {
 
                 let content = Self::read_file_content(
                     parsed.workspace_id.as_deref(),
+                    context.user_id.as_deref(),
                     &parsed.file_path,
                     &context.app_state.file_service,
                     &context.app_state.workspace_manager,
@@ -339,6 +348,7 @@ impl RefactoringHandler {
 
                 let content = Self::read_file_content(
                     parsed.workspace_id.as_deref(),
+                    context.user_id.as_deref(),
                     &parsed.file_path,
                     &context.app_state.file_service,
                     &context.app_state.workspace_manager,
@@ -410,6 +420,11 @@ impl RefactoringHandler {
             }
 
             if let Some(file_edit) = edit_plan.edits.first() {
+                let user_id = context.user_id.as_deref().ok_or_else(|| {
+                    ServerError::InvalidRequest(
+                        "A user_id is required for remote workspace operations".into(),
+                    )
+                })?;
                 let target_file = file_edit
                     .file_path
                     .as_ref()
@@ -419,8 +434,9 @@ impl RefactoringHandler {
                     Self::escape_shell_arg(&file_edit.new_text),
                     Self::escape_shell_arg(target_file)
                 );
-                execute_remote_command(
+                remote_exec::execute_in_workspace(
                     &context.app_state.workspace_manager,
+                    user_id,
                     workspace_id,
                     &command,
                 )

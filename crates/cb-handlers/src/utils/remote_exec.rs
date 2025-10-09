@@ -8,15 +8,21 @@ use std::time::Duration;
 use tracing::error;
 
 /// Execute a command on a remote workspace via the workspace agent
-pub async fn execute_remote_command(
+pub async fn execute_in_workspace(
     workspace_manager: &WorkspaceManager,
+    user_id: &str,
     workspace_id: &str,
     command: &str,
 ) -> ServerResult<String> {
-    // Look up workspace
-    let workspace = workspace_manager.get(workspace_id).ok_or_else(|| {
-        ServerError::InvalidRequest(format!("Workspace '{}' not found", workspace_id))
-    })?;
+    // Look up workspace for the specified user
+    let workspace = workspace_manager
+        .get(user_id, workspace_id)
+        .ok_or_else(|| {
+            ServerError::InvalidRequest(format!(
+                "Workspace '{}' not found for user '{}'",
+                workspace_id, user_id
+            ))
+        })?;
 
     // Build agent URL
     let agent_url = format!("{}/execute", workspace.agent_url);

@@ -13,6 +13,13 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 ### [Unreleased]
 
+#### Breaking Change
+
+- **Multi-Tenancy and User Isolation**
+  - **BREAKING**: All workspace-related API endpoints (`/workspaces`, `/workspaces/register`, `/workspaces/{id}/execute`) now require a JWT with a `user_id` claim for authentication. Requests without a valid `user_id` will be rejected.
+  - The core `WorkspaceManager` has been re-architected to use a `(user_id, workspace_id)` composite key, ensuring complete data isolation between users.
+  - This change is fundamental to supporting secure, multi-user environments.
+
 #### Added
 
 - **SWC-to-TypeScript Plugin Refactoring** - Consolidated SWC dependencies into TypeScript language plugin

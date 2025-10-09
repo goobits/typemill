@@ -18,7 +18,8 @@ pub struct Workspace {
 /// Manages the collection of registered workspaces in a thread-safe manner.
 #[derive(Debug, Clone, Default)]
 pub struct WorkspaceManager {
-    workspaces: Arc<DashMap<String, Workspace>>,
+    // The key is a tuple of (user_id, workspace_id) to enforce multi-tenancy.
+    workspaces: Arc<DashMap<(String, String), Workspace>>,
 }
 
 impl WorkspaceManager {
@@ -27,21 +28,25 @@ impl WorkspaceManager {
         Self::default()
     }
 
-    /// Registers a new workspace or updates an existing one.
-    pub fn register(&self, workspace: Workspace) {
-        self.workspaces.insert(workspace.id.clone(), workspace);
+    /// Registers a new workspace or updates an existing one for a specific user.
+    pub fn register(&self, user_id: &str, workspace: Workspace) {
+        self.workspaces
+            .insert((user_id.to_string(), workspace.id.clone()), workspace);
     }
 
-    /// Retrieves a list of all registered workspaces.
-    pub fn list(&self) -> Vec<Workspace> {
+    /// Retrieves a list of all registered workspaces for a specific user.
+    pub fn list(&self, user_id: &str) -> Vec<Workspace> {
         self.workspaces
             .iter()
+            .filter(|entry| entry.key().0 == user_id)
             .map(|entry| entry.value().clone())
             .collect()
     }
 
-    /// Retrieves a workspace by ID.
-    pub fn get(&self, id: &str) -> Option<Workspace> {
-        self.workspaces.get(id).map(|entry| entry.value().clone())
+    /// Retrieves a specific workspace by its ID for a given user.
+    pub fn get(&self, user_id: &str, id: &str) -> Option<Workspace> {
+        self.workspaces
+            .get(&(user_id.to_string(), id.to_string()))
+            .map(|entry| entry.value().clone())
     }
 }

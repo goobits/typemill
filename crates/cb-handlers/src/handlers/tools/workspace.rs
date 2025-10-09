@@ -96,6 +96,7 @@ impl ToolHandler for WorkspaceHandler {
     ) -> ServerResult<Value> {
         // Convert new context to legacy context
         let legacy_context = ToolContext {
+            user_id: context.user_id.clone(),
             app_state: context.app_state.clone(),
             plugin_manager: context.plugin_manager.clone(),
             lsp_adapter: context.lsp_adapter.clone(),

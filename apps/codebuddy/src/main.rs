@@ -12,6 +12,7 @@ use axum::{
 };
 use cb_server::handlers::plugin_dispatcher::PluginDispatcher;
 use cb_server::workspaces::WorkspaceManager;
+use cb_transport::SessionInfo;
 use std::sync::Arc;
 use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::{debug, error, info};
@@ -47,6 +48,7 @@ pub async fn run_stdio_mode() {
             return;
         }
     };
+    let session_info = SessionInfo::default();
     debug!("Plugin dispatcher initialized successfully");
 
     let stdin = io::stdin();
@@ -66,7 +68,7 @@ pub async fn run_stdio_mode() {
                 match serde_json::from_str(&line) {
                     Ok(mcp_message) => {
                         debug!("Parsed MCP message, dispatching");
-                        match dispatcher.dispatch(mcp_message).await {
+                        match dispatcher.dispatch(mcp_message, &session_info).await {
                             Ok(response) => {
                                 let response_json = match serde_json::to_string(&response) {
                                     Ok(json) => json,
@@ -190,11 +192,12 @@ async fn ws_handler(
 }
 
 async fn handle_socket(mut socket: WebSocket, dispatcher: Arc<PluginDispatcher>) {
+    let session_info = SessionInfo::default();
     loop {
         match socket.recv().await {
             Some(Ok(Message::Text(text))) => {
                 let response = match serde_json::from_str(&text) {
-                    Ok(mcp_message) => dispatcher.dispatch(mcp_message).await,
+                    Ok(mcp_message) => dispatcher.dispatch(mcp_message, &session_info).await,
                     Err(e) => {
                         // Handle deserialization error
                         error!(error = %e, "Failed to deserialize message");

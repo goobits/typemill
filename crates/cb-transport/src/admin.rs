@@ -2,14 +2,19 @@
 
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::Json,
     routing::{get, post},
     Router,
 };
-use cb_core::auth::generate_token;
-use cb_core::config::AppConfig;
-use cb_core::workspaces::{Workspace, WorkspaceManager};
+use cb_core::{
+    auth::{
+        jwt::{decode, Claims, DecodingKey, Validation},
+        generate_token,
+    },
+    config::AppConfig,
+    workspaces::{Workspace, WorkspaceManager},
+};
 use cb_protocol::ApiResult;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -88,6 +93,8 @@ pub struct ExecuteCommandResponse {
 pub struct GenerateTokenRequest {
     /// Optional project ID to embed in token
     pub project_id: Option<String>,
+    /// Optional user ID for multi-tenancy
+    pub user_id: Option<String>,
     /// Optional custom expiry in seconds (defaults to config value)
     pub expiry_seconds: Option<u64>,
 }
@@ -206,40 +213,92 @@ fn get_current_log_level() -> String {
         .to_string()
 }
 
-/// Register a new workspace
+/// Extracts the user_id from the JWT token in the Authorization header.
+fn extract_user_id_from_jwt(
+    headers: &HeaderMap,
+    config: &AppConfig,
+) -> Result<String, (StatusCode, String)> {
+    // 1. Extract Authorization header
+    let auth_header = headers
+        .get(axum::http::header::AUTHORIZATION)
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, "Missing Authorization header".to_string()))?
+        .to_str()
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid Authorization header".to_string()))?;
+
+    // 2. Extract token (Bearer <token>)
+    let token = auth_header
+        .strip_prefix("Bearer ")
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, "Invalid Authorization format".to_string()))?;
+
+    // 3. Validate and decode JWT
+    let auth_config = config
+        .server
+        .auth
+        .as_ref()
+        .ok_or_else(|| (StatusCode::SERVICE_UNAVAILABLE, "Auth not configured".to_string()))?;
+
+    let key = DecodingKey::from_secret(auth_config.jwt_secret.as_ref());
+    let mut validation = Validation::default();
+    validation.validate_aud = false;
+
+    let token_data = decode::<Claims>(token, &key, &validation)
+        .map_err(|e| (StatusCode::UNAUTHORIZED, format!("Invalid token: {}", e)))?;
+
+    // 4. Extract user_id claim
+    token_data.claims.user_id.ok_or_else(|| {
+        (
+            StatusCode::UNAUTHORIZED,
+            "Token missing user_id claim".to_string(),
+        )
+    })
+}
+
+/// Register a new workspace, scoped to the authenticated user.
 async fn register_workspace(
     State(state): State<Arc<AdminState>>,
+    headers: HeaderMap,
     Json(workspace): Json<Workspace>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    info!(workspace_id = %workspace.id, "Registering new workspace");
-    state.workspace_manager.register(workspace);
+    let user_id = extract_user_id_from_jwt(&headers, &state.config)?;
+    info!(workspace_id = %workspace.id, user_id = %user_id, "Registering workspace");
+    state.workspace_manager.register(&user_id, workspace);
     Ok(Json(json!({ "status": "registered" })))
 }
 
-/// List all registered workspaces
-async fn list_workspaces(State(state): State<Arc<AdminState>>) -> Json<Vec<Workspace>> {
-    Json(state.workspace_manager.list())
+/// List all registered workspaces for the authenticated user.
+async fn list_workspaces(
+    State(state): State<Arc<AdminState>>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<Workspace>>, (StatusCode, String)> {
+    let user_id = extract_user_id_from_jwt(&headers, &state.config)?;
+    Ok(Json(state.workspace_manager.list(&user_id)))
 }
 
-/// Execute command in a workspace
+/// Execute command in a workspace, scoped to the authenticated user.
 async fn execute_command(
     State(state): State<Arc<AdminState>>,
+    headers: HeaderMap,
     Path(workspace_id): Path<String>,
     Json(request): Json<ExecuteCommandRequest>,
 ) -> Result<Json<ExecuteCommandResponse>, (StatusCode, String)> {
+    let user_id = extract_user_id_from_jwt(&headers, &state.config)?;
     info!(
         workspace_id = %workspace_id,
         command = %request.command,
+        user_id = %user_id,
         "Executing command in workspace"
     );
 
-    // Look up workspace
-    let workspace = state.workspace_manager.get(&workspace_id).ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            format!("Workspace '{}' not found", workspace_id),
-        )
-    })?;
+    // Look up workspace for the specific user
+    let workspace = state
+        .workspace_manager
+        .get(&user_id, &workspace_id)
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                format!("Workspace '{}' not found for this user", workspace_id),
+            )
+        })?;
 
     // Build agent URL
     let agent_url = format!("{}/execute", workspace.agent_url);
@@ -342,6 +401,7 @@ async fn generate_auth_token(
         &auth_config.jwt_issuer,
         &auth_config.jwt_audience,
         request.project_id,
+        request.user_id.clone(),
     )
     .map_err(|e| {
         error!(error = %e, "Failed to generate token");
@@ -358,6 +418,7 @@ async fn generate_auth_token(
 
     info!(
         expiry_seconds = expiry_seconds,
+        user_id = ?request.user_id,
         "Generated authentication token"
     );
 

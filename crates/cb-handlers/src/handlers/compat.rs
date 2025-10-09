@@ -16,6 +16,8 @@ use tokio::sync::Mutex;
 
 /// Legacy context for old tool handlers
 pub struct ToolContext {
+    /// The ID of the user making the request, for multi-tenancy.
+    pub user_id: Option<String>,
     /// Application state containing all services
     pub app_state: Arc<AppState>,
     /// Plugin manager for LSP operations

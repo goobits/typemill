@@ -228,6 +228,7 @@ async fn test_cache_performance_improvement() {
 async fn test_workspace_edit_in_process() {
     use cb_core::model::mcp::{McpMessage, McpRequest};
     use cb_server::test_helpers::create_test_dispatcher_with_root;
+    use cb_transport::SessionInfo;
     use std::time::Instant;
     use tempfile::TempDir;
 
@@ -237,6 +238,7 @@ async fn test_workspace_edit_in_process() {
 
     // Create in-process dispatcher
     let dispatcher = create_test_dispatcher_with_root(workspace_path.clone());
+    let session_info = SessionInfo::default();
 
     // Create 50 test files
     let file_count = 50;
@@ -273,7 +275,7 @@ const oldConstant{} = "old_value_{}";
             })),
         });
 
-        let response_msg = dispatcher.dispatch(request).await.unwrap();
+        let response_msg = dispatcher.dispatch(request, &session_info).await.unwrap();
         let response = match response_msg {
             McpMessage::Response(resp) => {
                 if let Some(error) = resp.error {
@@ -355,7 +357,7 @@ const oldConstant{} = "old_value_{}";
         })),
     });
 
-    let response_msg = dispatcher.dispatch(request).await.unwrap();
+    let response_msg = dispatcher.dispatch(request, &session_info).await.unwrap();
     let edit_duration = start.elapsed();
 
     let result = match response_msg {

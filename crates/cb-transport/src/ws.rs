@@ -1,9 +1,11 @@
 //! WebSocket transport implementation
 
-use crate::McpDispatcher;
-use cb_core::auth::validate_token;
-use cb_core::config::AppConfig;
-use cb_core::model::mcp::{McpError, McpMessage, McpRequest, McpResponse};
+use crate::{McpDispatcher, SessionInfo};
+use cb_core::{
+    auth::jwt::{decode, Claims, DecodingKey, Validation},
+    config::AppConfig,
+    model::mcp::{McpError, McpMessage, McpRequest, McpResponse},
+};
 use cb_protocol::{ApiError, ApiResult};
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -57,6 +59,8 @@ pub struct Session {
     pub project_root: Option<String>,
     /// Whether the session is initialized
     pub initialized: bool,
+    /// The ID of the user for this session.
+    pub user_id: Option<String>,
 }
 
 impl Session {
@@ -66,6 +70,7 @@ impl Session {
             project_id: None,
             project_root: None,
             initialized: false,
+            user_id: None,
         }
     }
 }
@@ -105,6 +110,7 @@ async fn handle_connection(
         .peer_addr()
         .unwrap_or_else(|_| "unknown".parse().unwrap());
 
+    let mut user_id_from_token: Option<String> = None;
     let config_clone = config.clone();
 
     // Perform WebSocket handshake with authorization header validation
@@ -120,14 +126,16 @@ async fn handle_connection(
             if let Some(auth_value) = auth_header {
                 // Check for Bearer token
                 if let Some(token) = auth_value.strip_prefix("Bearer ") {
-                    // Validate token
-                    match validate_token(token, &auth_config.jwt_secret) {
-                        Ok(true) => {
+                    // Decode token to validate and extract user_id
+                    let key = DecodingKey::from_secret(auth_config.jwt_secret.as_ref());
+                    let mut validation = Validation::default();
+                    validation.validate_aud = false;
+
+                    match decode::<Claims>(token, &key, &validation) {
+                        Ok(token_data) => {
                             tracing::debug!("WebSocket connection authenticated");
+                            user_id_from_token = token_data.claims.user_id;
                             return Ok(response);
-                        }
-                        Ok(false) => {
-                            tracing::warn!("WebSocket connection rejected: invalid token");
                         }
                         Err(e) => {
                             tracing::warn!(error = %e, "WebSocket connection rejected: token validation failed");
@@ -140,7 +148,7 @@ async fn handle_connection(
                 tracing::warn!("WebSocket connection rejected: missing Authorization header");
             }
 
-            // Reject with 401 Unauthorized - create HttpResponse<Option<String>>
+            // Reject with 401 Unauthorized
             let mut error_response: HttpResponse<Option<String>> = HttpResponse::new(Some("Unauthorized".to_string()));
             *error_response.status_mut() = StatusCode::UNAUTHORIZED;
             error_response.headers_mut().insert(
@@ -169,6 +177,7 @@ async fn handle_connection(
     tracing::info!("WebSocket connection established");
     let (mut write, mut read) = ws_stream.split();
     let mut session = Session::new();
+    session.user_id = user_id_from_token;
 
     // Message processing loop with idle timeout
     const IDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300); // 5 minutes
@@ -224,9 +233,14 @@ async fn handle_connection(
                     }
                 };
 
+                // Create session info for this request
+                let session_info = SessionInfo {
+                    user_id: session.user_id.clone(),
+                };
+
                 // Handle the message
                 let response =
-                    match handle_message(&mut session, mcp_message, &config, dispatcher.as_ref())
+                    match handle_message(&mut session, mcp_message, &config, dispatcher.as_ref(), &session_info)
                         .await
                     {
                         Ok(response) => response,
@@ -305,6 +319,7 @@ async fn handle_message(
     message: McpMessage,
     config: &AppConfig,
     dispatcher: &dyn McpDispatcher,
+    session_info: &SessionInfo,
 ) -> ApiResult<McpMessage> {
     match message {
         McpMessage::Request(request) => {
@@ -325,12 +340,12 @@ async fn handle_message(
                 }))
             } else {
                 // Dispatch to regular handler
-                dispatcher.dispatch(McpMessage::Request(request)).await
+                dispatcher.dispatch(McpMessage::Request(request), session_info).await
             }
         }
         other => {
             // Forward other message types to dispatcher
-            dispatcher.dispatch(other).await
+            dispatcher.dispatch(other, session_info).await
         }
     }
 }

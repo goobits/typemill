@@ -130,6 +130,8 @@ mod dispatch {
 
 /// Context provided to tool handlers
 pub struct ToolHandlerContext {
+    /// The ID of the user making the request, for multi-tenancy.
+    pub user_id: Option<String>,
     /// Application state containing all services
     pub app_state: Arc<AppState>,
     /// Plugin manager for LSP operations

@@ -253,13 +253,17 @@ impl PluginDispatcher {
     ///
     /// * `Ok(McpMessage)` - The response message or echoed notification
     /// * `Err(ServerError)` - If initialization fails or the request cannot be handled
-    #[instrument(skip(self, message), fields(request_id = %uuid::Uuid::new_v4()))]
-    pub async fn dispatch(&self, message: McpMessage) -> ServerResult<McpMessage> {
+    #[instrument(skip(self, message, session_info), fields(request_id = %uuid::Uuid::new_v4()))]
+    pub async fn dispatch(
+        &self,
+        message: McpMessage,
+        session_info: &cb_transport::SessionInfo,
+    ) -> ServerResult<McpMessage> {
         // Ensure initialization
         self.initialize().await?;
 
         match message {
-            McpMessage::Request(request) => self.handle_request(request).await,
+            McpMessage::Request(request) => self.handle_request(request, session_info).await,
             McpMessage::Response(response) => Ok(McpMessage::Response(response)),
             McpMessage::Notification(notification) => {
                 debug!(
@@ -278,8 +282,12 @@ impl PluginDispatcher {
     }
 
     /// Handle an MCP request using plugins
-    #[instrument(skip(self, request), fields(method = %request.method))]
-    async fn handle_request(&self, request: McpRequest) -> ServerResult<McpMessage> {
+    #[instrument(skip(self, request, session_info), fields(method = %request.method))]
+    async fn handle_request(
+        &self,
+        request: McpRequest,
+        session_info: &cb_transport::SessionInfo,
+    ) -> ServerResult<McpMessage> {
         debug!(
             method = %request.method,
             has_params = request.params.is_some(),
@@ -290,7 +298,7 @@ impl PluginDispatcher {
             "initialize" => self.handle_initialize(request.params).await?,
             "initialized" | "notifications/initialized" => self.handle_initialized().await?,
             "tools/list" => self.handle_list_tools().await?,
-            "tools/call" => self.handle_tool_call(request.params).await?,
+            "tools/call" => self.handle_tool_call(request.params, session_info).await?,
             _ => {
                 return Err(ServerError::Unsupported(format!(
                     "Unknown method: {}",
@@ -327,8 +335,12 @@ impl PluginDispatcher {
     /// # Returns
     ///
     /// Returns a JSON value containing the tool execution result, or an error if the tool call fails
-    #[instrument(skip(self, params))]
-    async fn handle_tool_call(&self, params: Option<Value>) -> ServerResult<Value> {
+    #[instrument(skip(self, params, session_info))]
+    async fn handle_tool_call(
+        &self,
+        params: Option<Value>,
+        session_info: &cb_transport::SessionInfo,
+    ) -> ServerResult<Value> {
         let start_time = Instant::now();
 
         let params = params.ok_or_else(|| ServerError::InvalidRequest("Missing params".into()))?;
@@ -339,8 +351,9 @@ impl PluginDispatcher {
         let tool_name = tool_call.name.clone();
         debug!(tool_name = %tool_name, "Dispatching tool call to unified registry");
 
-        // Create the context all handlers now expect
+        // Create the context all handlers now expect, including the user_id
         let context = super::tools::ToolHandlerContext {
+            user_id: session_info.user_id.clone(),
             app_state: self.app_state.clone(),
             plugin_manager: self.plugin_manager.clone(),
             lsp_adapter: self.lsp_adapter.clone(),
@@ -382,8 +395,12 @@ impl PluginDispatcher {
     /// Public method for benchmarking tool dispatch
     ///
     /// This method provides access to the tool dispatch logic for performance benchmarking
-    pub async fn benchmark_tool_call(&self, params: Option<Value>) -> ServerResult<Value> {
-        self.handle_tool_call(params).await
+    pub async fn benchmark_tool_call(
+        &self,
+        params: Option<Value>,
+        session_info: &cb_transport::SessionInfo,
+    ) -> ServerResult<Value> {
+        self.handle_tool_call(params, session_info).await
     }
 
     /// Handle MCP initialize request
@@ -515,8 +532,12 @@ impl PluginDispatcher {
 
 #[async_trait]
 impl McpDispatcher for PluginDispatcher {
-    async fn dispatch(&self, message: McpMessage) -> cb_protocol::ApiResult<McpMessage> {
-        self.dispatch(message)
+    async fn dispatch(
+        &self,
+        message: McpMessage,
+        session_info: &cb_transport::SessionInfo,
+    ) -> cb_protocol::ApiResult<McpMessage> {
+        self.dispatch(message, session_info)
             .await
             .map_err(|e| cb_protocol::ApiError::internal(e.to_string()))
     }
