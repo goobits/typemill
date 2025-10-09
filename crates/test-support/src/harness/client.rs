@@ -19,10 +19,12 @@ pub struct TestClient {
 impl TestClient {
     /// Spawns cb-server in stdio mode with the given working directory.
     pub fn new(working_dir: &Path) -> Self {
-        // Determine the path to the cb-server binary relative to the workspace root
+        // Determine the path to the cb-server binary by finding the workspace root
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
             .expect("CARGO_MANIFEST_DIR not set. Please run tests with `cargo test`.");
-        let server_path = std::path::Path::new(&manifest_dir).join("../target/debug/cb-server");
+        let workspace_root = find_workspace_root(&manifest_dir)
+            .expect("Failed to find workspace root. Ensure tests are run within a Cargo workspace.");
+        let server_path = workspace_root.join("target/debug/cb-server");
 
         eprintln!(
             "DEBUG: TestClient using server path: {}",
@@ -545,5 +547,23 @@ impl Drop for TestClient {
     fn drop(&mut self) {
         let _ = self.process.kill();
         let _ = self.process.wait();
+    }
+}
+
+/// Finds the workspace root by traversing up from a starting directory.
+fn find_workspace_root(start_dir: &str) -> Option<std::path::PathBuf> {
+    let mut current_dir = std::path::PathBuf::from(start_dir);
+    loop {
+        let cargo_toml_path = current_dir.join("Cargo.toml");
+        if cargo_toml_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&cargo_toml_path) {
+                if content.contains("[workspace]") {
+                    return Some(current_dir);
+                }
+            }
+        }
+        if !current_dir.pop() {
+            return None;
+        }
     }
 }
