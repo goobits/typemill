@@ -17,6 +17,8 @@ pub fn detect_language(file_path: &str) -> &str {
         "java"
     } else if file_path.ends_with(".swift") {
         "swift"
+    } else if file_path.ends_with(".cs") {
+        "csharp"
     } else {
         "unknown"
     }

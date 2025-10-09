@@ -111,6 +111,9 @@ pub async fn plan_extract_function(
         "swift" => {
             ast_extract_function_swift(source, range, new_function_name, file_path)
         }
+        "csharp" => {
+            ast_extract_function_csharp(source, range, new_function_name, file_path)
+        }
         _ => {
             // Unsupported language - will try LSP fallback below
             Err(AstError::analysis(format!(
@@ -329,6 +332,30 @@ fn ast_extract_function_swift(
         file_path,
     )
     .map_err(|e| AstError::analysis(format!("Swift refactoring error: {}", e)))
+}
+
+/// Generate edit plan for extract function refactoring (C#) using AST
+fn ast_extract_function_csharp(
+    source: &str,
+    range: &CodeRange,
+    new_function_name: &str,
+    file_path: &str,
+) -> AstResult<EditPlan> {
+    // Convert cb-ast CodeRange to cb-lang-csharp CodeRange
+    let csharp_range = cb_lang_csharp::refactoring::CodeRange {
+        start_line: range.start_line,
+        start_col: range.start_col,
+        end_line: range.end_line,
+        end_col: range.end_col,
+    };
+
+    cb_lang_csharp::refactoring::plan_extract_function(
+        source,
+        &csharp_range,
+        new_function_name,
+        file_path,
+    )
+    .map_err(|e| AstError::analysis(format!("C# refactoring error: {}", e)))
 }
 
 /// Visitor for analyzing code selection for function extraction

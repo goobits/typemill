@@ -27,7 +27,12 @@ thiserror = { workspace = true }
 # Logging
 tracing = { workspace = true }
 
+# Parsing
+tree-sitter = "0.20"
+tree-sitter-c-sharp = "0.20"
+
 # Utilities
+chrono = { version = "0.4", features = ["serde"] }
 regex = "1.10"
 quick-xml = { version = "0.31", features = ["serialize"] }
 

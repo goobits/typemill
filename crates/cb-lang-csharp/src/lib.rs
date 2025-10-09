@@ -5,6 +5,7 @@
 // Modules for plugin functionality
 mod manifest;
 mod parser;
+pub mod refactoring;
 
 // Core plugin traits and types
 use async_trait::async_trait;
