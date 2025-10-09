@@ -38,6 +38,83 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 ---
 
+### [1.0.0-rc4] - 2025-10-09
+
+🚀 **Release Candidate 4** - Analysis subsystem architecture, Go refactoring parity, and major setup simplification
+
+#### Added
+
+- **Analysis Subsystem Architecture** - Complete implementation of advanced analysis subsystem
+  - New `analysis/cb-analysis-common` crate with shared traits (`AnalysisEngine`, `LspProvider`)
+  - New `analysis/cb-analysis-deep-dead-code` crate with dependency graph analysis
+  - Cross-file dead code detection with import/export tracking
+  - Configurable analysis via feature flags (`analysis-dead-code`)
+  - Trait-based architecture for dependency inversion and extensibility
+
+- **Go Language Refactoring Parity** - Go now has full AST-based refactoring support
+  - Wired up Go routing in `extract_function.rs`, `extract_variable.rs`, `inline_variable.rs`
+  - Go refactoring operations now route to `cb-lang-go::refactoring` implementations
+  - 4 out of 7 languages now have complete refactoring support (TypeScript, Python, Rust, Go)
+  - Java, Swift, C# still require refactoring implementation (tracked in proposal #30)
+
+- **Dev Container Support** - VS Code Dev Container and GitHub Codespaces configuration
+  - `.devcontainer/devcontainer.json` with pre-configured Rust toolchain
+  - Automatic extension installation (rust-analyzer, Docker, PostgreSQL)
+  - Port forwarding for WebSocket server (3000)
+  - Remote development ready
+
+- **Version Flag** - Added `--version` flag to CLI for version information
+
+#### Changed
+
+- **Radically Simplified Setup** - Setup flow reduced from 6 paths to 2 paths
+  - Eliminated 4 edge case paths for cleaner user experience
+  - Removed 674 lines of setup complexity
+  - Faster, more reliable configuration process
+  - Better error messages and validation
+
+- **Documentation Migration** - Completed migration to cargo-nextest
+  - All documentation now references `cargo nextest run` instead of `cargo test`
+  - Removed outdated references to `cargo test` in CI/CD docs
+  - Updated test commands in CLAUDE.md, CONTRIBUTING.md, and TESTING_GUIDE.md
+
+- **Proposal Organization** - Proposals reordered by implementation priority
+  - Renumbered proposals to reflect easier-first implementation order
+  - Removed completed proposals from main directory
+  - Clearer roadmap for contributors
+
+#### Fixed
+
+- **Rust/Python AST Refactoring** - Wire up Python and Rust AST-based refactoring
+  - Fixed routing layer to properly dispatch to language-specific implementations
+  - Resolved signature mismatches between routing layer and language plugins
+  - All AST-based refactoring operations now functional
+
+- **Import Update Assertions** - Skip import update assertions in tests without LSP support
+  - E2E tests no longer fail when LSP servers are unavailable
+  - Better test environment flexibility
+
+#### Removed
+
+- **Jules Duplicate Crates** - Removed duplicate Jules crates from workspace
+  - Cleaned up `crates/jules-*` duplicate entries
+  - Consolidated into single `jules/` directory
+  - Improved workspace organization
+
+- **Temporal References** - Remove temporal references from proposals
+  - Proposals now have priority numbers instead of dates
+  - More maintainable documentation structure
+
+#### Documentation
+
+- **Comprehensive Documentation Updates**
+  - Synchronized CLAUDE.md and GEMINI.md
+  - Updated all code examples to match current API
+  - Fixed broken links and outdated references
+  - Added language parity matrix documentation
+
+---
+
 ### [1.0.0-rc3] - 2025-10-09
 
 🚀 **Release Candidate 3** - Swift language support, comprehensive documentation overhaul, build/test optimizations, and critical import handling fixes
