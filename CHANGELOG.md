@@ -22,37 +22,19 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 #### Added
 
-- **Java Refactoring Support** - Cherry-picked from `feat/add-refactoring-for-more-languages` branch
-  - Complete AST-based refactoring implementation using tree-sitter-java v0.20
-  - Extract function, extract variable, and inline variable operations
-  - Full integration with cb-ast refactoring subsystem
-  - 100% test pass rate (3/3 refactoring tests passing)
-
-- **Swift Refactoring Support** - Cherry-picked from `feat/add-refactoring-for-more-languages` branch
-  - Complete AST-based refactoring implementation using tree-sitter-swift v0.3
-  - Extract function, extract variable, and inline variable operations
-  - Full integration with cb-ast refactoring subsystem
-  - 100% test pass rate (3/3 refactoring tests passing)
-
-- **C# Refactoring Support** - Cherry-picked from `feat/add-refactoring-for-more-languages` branch (partial)
-  - AST-based refactoring implementation using tree-sitter-c-sharp v0.20
-  - Extract function operation working correctly (1/3 tests passing)
-  - Extract variable and inline variable have known bugs documented in PROPOSAL_CSHARP_REFACTORING_FIXES.md
-  - .NET SDK 8.0 support on Ubuntu 24.04
-
-- **SWC-to-TypeScript Plugin Refactoring** - Consolidated SWC dependencies into TypeScript language plugin
-  - Moved SWC parsing functionality from core to `cb-lang-typescript` plugin
-  - Reduced core dependencies and improved modularity
-  - Better separation of concerns for language-specific parsing
+- **Java Refactoring Support** - AST-based extract function, extract/inline variable operations using tree-sitter-java
+- **Swift Refactoring Support** - AST-based extract function, extract/inline variable operations using tree-sitter-swift
+- **C# Refactoring Support** (partial) - Extract function working; extract/inline variable have known bugs
+- **SWC-to-TypeScript Plugin** - Consolidated SWC parsing into TypeScript plugin for better modularity
 
 #### Fixed
 
-- **Code Quality** - Resolved clippy warnings for improved code quality (e7be34f:1)
-- **Test Infrastructure** - Fixed TestClient to use `codebuddy` binary instead of `cb-server` for parallel test execution (fd9221d:1)
+- Resolved clippy warnings for improved code quality
+- Fixed TestClient to use `codebuddy` binary for parallel test execution
 
 #### Changed
 
-- **Crate Naming** - Renamed `test-support` crate to `cb-test-support` for consistency (4b24e1f:1)
+- Renamed `test-support` crate to `cb-test-support` for consistency
 
 #### Documentation
 
@@ -65,18 +47,10 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Documented refactoring support for newly added languages
   - Updated LSP-based and AST-based tool compatibility tables
 
-- **Proposal Documentation** - Comprehensive proposal updates
-  - Added `60_PROPOSAL_DOCUMENTATION_ACCURACY_REVIEW.md` - Systematic documentation review checklist with 130+ verification items
-  - Updated `40_LANGUAGE_EXPANSION_PROPOSAL.md` - Accurate status tracking (70% complete, 3 languages remaining)
-    - Detailed implementation checklists for C++, C, and PHP
-    - Success metrics and lessons learned from 7 completed plugins
-    - Clear next steps with estimated timelines
-  - Moved `TOOLS_QUICK_REFERENCE.md` to `docs/` directory for better organization
-
-- **MCP API Cleanup** - Consolidated MCP API cleanup proposals into single document (f0123c5:1)
-- **Self-Refactoring Planning** - Added execution plan with major goals table for MCP API cleanup (67b9b71:1, a7505c9:1)
-- **Large Module Refactoring** - Updated large file split proposal with current status (f68d75a:1)
-- **Semantic Naming** - Added semantic naming proposal, superseding command naming proposal (edc4b25:1)
+- **Proposal Documentation**
+  - Added documentation accuracy review proposal with comprehensive verification checklist
+  - Updated language expansion proposal with accurate 70% completion status and remaining work items
+  - Moved TOOLS_QUICK_REFERENCE.md to docs/ directory
 
 ---
 
@@ -480,39 +454,8 @@ The project underwent a complete architectural transformation from TypeScript/No
 #### Documentation
 
 All documentation now 100% accurate and synchronized with codebase:
-- README.md, API.md, CLAUDE.md, TOOLS.md
-- CONTRIBUTING.md, ONBOARDING.md, OPERATIONS.md
-- ARCHITECTURE.md (includes contracts)
-- WORKFLOWS.md (intent-based workflow engine)
-
----
-
-### [Unreleased]
-
-#### Planned
-- Package publishing to crates.io
-- Homebrew formula
-- Additional language server integrations
-
-### [0.1.0] - 2024-Q4
-
-#### Added
-- Core LSP integration with multiple language servers
-- MCP protocol support (44 tools)
-- Plugin architecture with LSP adapters
-- WebSocket transport with JWT authentication
-- Production-ready error handling
-- Structured logging with tracing framework
-- Smart setup with auto-detection via `codebuddy setup`
-- Complete CLI: setup, start, stop, serve, status, link, unlink
-
-#### Technical Debt Resolved
-- ✅ Structured Logging - Complete
-- ✅ Error Handling (.unwrap() removal) - Complete
-- ✅ Dependency Cleanup - Complete
-- ✅ VFS Feature-gating - Complete
-- ✅ Benchmark Suite cleanup - Complete
-- ✅ SWC Integration - Complete
+- README.md, API_REFERENCE.md, CLAUDE.md
+- CONTRIBUTING.md, ARCHITECTURE.md, WORKFLOWS.md
 
 ---
 
