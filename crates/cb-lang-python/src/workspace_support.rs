@@ -69,6 +69,7 @@ impl WorkspaceSupport for PythonWorkspaceSupport {
 
 /// Python workspace tool detection
 #[derive(Debug, PartialEq)]
+#[allow(clippy::upper_case_acronyms)]
 enum PythonWorkspaceTool {
     PDM,    // [tool.pdm.workspace.members]
     Poetry, // [tool.poetry.packages]

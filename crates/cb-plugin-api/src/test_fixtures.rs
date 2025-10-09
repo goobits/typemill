@@ -4,8 +4,6 @@
 //! integration testing. When a new language plugin is added, it can
 //! define its own test contracts without modifying the test framework.
 
-use serde::{Deserialize, Serialize};
-
 /// Collection of test fixtures a language plugin can provide
 #[derive(Debug, Clone, Default)]
 pub struct LanguageTestFixtures {

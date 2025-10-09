@@ -422,6 +422,7 @@ impl ExtractFunctionAnalyzer {
 }
 
 struct InlineVariableAnalyzer {
+    #[allow(dead_code)]
     target_line: u32,
     variable_info: Option<InlineVariableAnalysis>,
 }
