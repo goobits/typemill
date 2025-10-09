@@ -3,9 +3,8 @@ use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 
-pub mod complexity;
-pub mod hotspots;
-pub mod refactoring;
+pub mod code;
+pub mod project;
 pub mod unused_imports;
 
 #[cfg(test)]
@@ -22,13 +21,7 @@ impl AnalysisHandler {
 #[async_trait]
 impl ToolHandler for AnalysisHandler {
     fn tool_names(&self) -> &[&str] {
-        &[
-            "find_unused_imports",
-            "analyze_complexity",
-            "suggest_refactoring",
-            "analyze_project_complexity",
-            "find_complexity_hotspots",
-        ]
+        &["find_unused_imports", "analyze_code", "analyze_project"]
     }
 
     async fn handle_tool_call(
@@ -40,16 +33,8 @@ impl ToolHandler for AnalysisHandler {
             "find_unused_imports" => {
                 unused_imports::handle_find_unused_imports(context, tool_call).await
             }
-            "analyze_complexity" => complexity::handle_analyze_complexity(context, tool_call).await,
-            "suggest_refactoring" => {
-                refactoring::handle_suggest_refactoring(context, tool_call).await
-            }
-            "analyze_project_complexity" => {
-                hotspots::handle_analyze_project_complexity(context, tool_call).await
-            }
-            "find_complexity_hotspots" => {
-                hotspots::handle_find_complexity_hotspots(context, tool_call).await
-            }
+            "analyze_code" => code::handle_analyze_code(context, tool_call).await,
+            "analyze_project" => project::handle_analyze_project(context, tool_call).await,
             _ => Err(ServerError::InvalidRequest(format!(
                 "Unknown analysis tool: {}",
                 tool_call.name

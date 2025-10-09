@@ -1,68 +1,53 @@
 use cb_server::handlers::plugin_dispatcher::create_test_dispatcher;
 
 #[tokio::test]
-async fn test_all_44_public_tools_are_registered() {
+async fn test_all_32_public_tools_are_registered() {
     let dispatcher = create_test_dispatcher();
     dispatcher.initialize().await.unwrap();
 
     let registry = dispatcher.tool_registry.lock().await;
     let registered_tools = registry.list_tools();
 
-    // Note: This tests PUBLIC tools only (visible to AI agents via MCP).
-    // Internal tools (lifecycle hooks, etc.) are tested separately.
-    const EXPECTED_TOOLS: [&str; 44] = [
-        // Navigation (14)
+    const EXPECTED_TOOLS: [&str; 32] = [
+        // Navigation (9)
         "find_definition",
         "find_references",
         "find_implementations",
         "find_type_definition",
         "get_document_symbols",
-        "search_workspace_symbols",
-        "get_hover",
-        "get_completions",
-        "get_signature_help",
+        "search_symbols",
+        "get_symbol_info",
         "get_diagnostics",
-        "prepare_call_hierarchy",
-        "get_call_hierarchy_incoming_calls",
-        "get_call_hierarchy_outgoing_calls",
-        "web_fetch",
-        // Editing (9) - rename_symbol_with_imports moved to internal
+        "get_call_hierarchy",
+        // Editing (7)
         "rename_symbol",
-        "rename_symbol_strict",
         "organize_imports",
-        "optimize_imports",
         "get_code_actions",
         "format_document",
         "extract_function",
         "inline_variable",
         "extract_variable",
-        // Analysis (5) - added analyze_project_complexity, find_complexity_hotspots
+        // Analysis (3)
         "find_unused_imports",
-        "analyze_complexity",
-        "suggest_refactoring",
-        "analyze_project_complexity",
-        "find_complexity_hotspots",
+        "analyze_code",
+        "analyze_project",
         // File Operations (6)
         "create_file",
         "read_file",
         "write_file",
         "delete_file",
-        "rename_file",
+        "move_file",
         "list_files",
-        // Workspace (6) - apply_workspace_edit moved to internal, batch_update_dependencies removed
-        "rename_directory",
-        "analyze_imports",
+        // Workspace (4)
+        "move_directory",
         "find_dead_code",
         "update_dependencies",
-        "extract_module_to_package",
         "update_dependency",
         // Advanced (2)
-        "apply_edits",
-        "batch_execute",
-        // Lifecycle (0) - All lifecycle tools are now internal
-        // System (2)
+        "execute_edits",
+        "execute_batch",
+        // System (1)
         "health_check",
-        "system_status",
     ];
 
     fn find_missing<'a>(expected: &'a [&str], actual: &[String]) -> Vec<&'a str> {
@@ -80,7 +65,6 @@ async fn test_all_44_public_tools_are_registered() {
             .collect()
     }
 
-    // This assertion will fail until the refactoring is complete.
     assert_eq!(
         registered_tools.len(),
         EXPECTED_TOOLS.len(),
@@ -91,7 +75,6 @@ async fn test_all_44_public_tools_are_registered() {
         find_extra(&EXPECTED_TOOLS, &registered_tools)
     );
 
-    // Also assert that all expected tools are present
     let missing = find_missing(&EXPECTED_TOOLS, &registered_tools);
     assert!(
         missing.is_empty(),
@@ -101,22 +84,27 @@ async fn test_all_44_public_tools_are_registered() {
 }
 
 #[tokio::test]
-async fn test_internal_tools_are_hidden() {
+async fn test_all_7_internal_tools_are_registered_and_hidden() {
     let dispatcher = create_test_dispatcher();
     dispatcher.initialize().await.unwrap();
 
     let registry = dispatcher.tool_registry.lock().await;
 
-    // Internal tools that should be hidden from MCP tool listings
-    const EXPECTED_INTERNAL_TOOLS: [&str; 5] = [
+    const EXPECTED_INTERNAL_TOOLS: [&str; 7] = [
+        // Lifecycle
         "notify_file_opened",
         "notify_file_saved",
         "notify_file_closed",
+        // Editing
         "rename_symbol_with_imports",
+        // Workspace
         "apply_workspace_edit",
+        // Intelligence
+        "get_completions",
+        "get_signature_help",
     ];
 
-    // Get public tools (should NOT include internal tools)
+    // 1. Verify they are NOT in the public list
     let public_tools = registry.list_tools();
     for internal_tool in &EXPECTED_INTERNAL_TOOLS {
         assert!(
@@ -126,8 +114,15 @@ async fn test_internal_tools_are_hidden() {
         );
     }
 
-    // Get internal tools (should include all expected internal tools)
+    // 2. Verify they ARE in the internal list
     let internal_tools = registry.list_internal_tools();
+    assert_eq!(
+        internal_tools.len(),
+        EXPECTED_INTERNAL_TOOLS.len(),
+        "Expected {} internal tools, but found {}",
+        EXPECTED_INTERNAL_TOOLS.len(),
+        internal_tools.len()
+    );
     for expected in &EXPECTED_INTERNAL_TOOLS {
         assert!(
             internal_tools.contains(&expected.to_string()),
@@ -136,7 +131,7 @@ async fn test_internal_tools_are_hidden() {
         );
     }
 
-    // Verify internal tools are still registered (can be looked up)
+    // 3. Verify they are still registered in the main registry
     for tool_name in &EXPECTED_INTERNAL_TOOLS {
         assert!(
             registry.has_tool(tool_name),

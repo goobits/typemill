@@ -220,16 +220,20 @@ impl PluginDispatcher {
                 // Register all handlers using the unified ToolHandler trait
                 // Using the declarative macro for clean, maintainable registration
                 register_handlers_with_logging!(registry, {
-                    SystemHandler => "SystemHandler with 3 tools (health_check, web_fetch, system_status)",
+                    // Public handlers (visible to AI)
+                    SystemHandler => "SystemHandler with 1 tool (health_check)",
+                    WorkspaceHandler => "WorkspaceHandler with 4 tools (move_directory, find_dead_code, update_dependencies, update_dependency)",
+                    AdvancedHandler => "AdvancedHandler with 2 tools (execute_edits, execute_batch)",
+                    FileOpsHandler => "FileOpsHandler with 6 tools (create_file, read_file, write_file, delete_file, move_file, list_files)",
+                    EditingHandler => "EditingHandler with 7 tools (rename_symbol, organize_imports, get_code_actions, format_document, extract_function, extract_variable, inline_variable)",
+                    NavigationHandler => "NavigationHandler with 9 tools (find_definition, find_references, find_implementations, find_type_definition, get_document_symbols, search_symbols, get_symbol_info, get_diagnostics, get_call_hierarchy)",
+                    AnalysisHandler => "AnalysisHandler with 3 tools (find_unused_imports, analyze_code, analyze_project)",
+
+                    // Internal handlers (backend-only)
                     LifecycleHandler => "LifecycleHandler with 3 INTERNAL tools (notify_file_opened, notify_file_saved, notify_file_closed)",
                     InternalEditingHandler => "InternalEditingHandler with 1 INTERNAL tool (rename_symbol_with_imports)",
                     InternalWorkspaceHandler => "InternalWorkspaceHandler with 1 INTERNAL tool (apply_workspace_edit)",
-                    WorkspaceHandler => "WorkspaceHandler with 6 tools (rename_directory, analyze_imports, find_dead_code, update_dependencies, extract_module_to_package, update_dependency)",
-                    AdvancedHandler => "AdvancedHandler with 2 tools (apply_edits, batch_execute)",
-                    FileOpsHandler => "FileOpsHandler with 6 tools (create_file, read_file, write_file, delete_file, rename_file, list_files)",
-                    EditingHandler => "EditingHandler with 10 tools (rename_symbol, rename_symbol_strict, organize_imports, optimize_imports, get_code_actions, format_document, extract_function, extract_variable, inline_variable)",
-                    NavigationHandler => "NavigationHandler with 13 tools (find_definition, find_references, find_implementations, find_type_definition, get_document_symbols, search_workspace_symbols, get_hover, get_completions, get_signature_help, get_diagnostics, prepare_call_hierarchy, get_call_hierarchy_incoming_calls, get_call_hierarchy_outgoing_calls)",
-                    AnalysisHandler => "AnalysisHandler with 5 tools (find_unused_imports, analyze_complexity, suggest_refactoring, analyze_project_complexity, find_complexity_hotspots)",
+                    InternalIntelligenceHandler => "InternalIntelligenceHandler with 2 INTERNAL tools (get_completions, get_signature_help)"
                 });
             }
 
