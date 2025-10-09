@@ -9,6 +9,7 @@ lang-go = ["cb-lang-go"]
 lang-typescript = ["cb-lang-typescript"]
 lang-python = ["cb-lang-python"]
 lang-java = ["dep:cb-lang-java"]
+analysis-dead-code = ["dep:cb-analysis-dead-code", "dep:cb-analysis-common"]
 
 [dependencies]
 cb-protocol = { path = "../cb-protocol" }
@@ -26,6 +27,10 @@ cb-lang-go = { path = "../cb-lang-go", optional = true }
 cb-lang-typescript = { path = "../cb-lang-typescript", optional = true }
 cb-lang-python = { path = "../cb-lang-python", optional = true }
 cb-lang-java = { path = "../cb-lang-java", optional = true }
+
+# Analysis crates (optional)
+cb-analysis-common = { path = "../../analysis/cb-analysis-common", optional = true }
+cb-analysis-dead-code = { path = "../../analysis/cb-analysis-dead-code", optional = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
