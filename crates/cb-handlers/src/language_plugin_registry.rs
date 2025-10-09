@@ -28,9 +28,9 @@ impl LanguagePluginRegistry {
     /// This method uses the centralized plugin builder to ensure consistency
     /// across the application. All plugin registration happens in
     /// `crates/cb-services/src/services/registry_builder.rs`.
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         // Use the centralized builder - this is the ONLY correct way to create a registry
-        let registry = build_language_plugin_registry();
+        let registry = build_language_plugin_registry().await;
 
         Self { inner: registry }
     }
@@ -149,26 +149,31 @@ impl LanguagePluginRegistry {
     }
 }
 
-impl Default for LanguagePluginRegistry {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// The Default trait cannot be implemented because `new` is async.
+// The registry must be initialized in an async context.
+//
+// impl Default for LanguagePluginRegistry {
+//     fn default() -> Self {
+//         // This would require `new` to be synchronous or for `default` to be async,
+//         // which is not possible.
+//         todo!("Initialize in an async context using LanguagePluginRegistry::new().await")
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_registry_initialization() {
-        let registry = LanguagePluginRegistry::new();
+    #[tokio::test]
+    async fn test_registry_initialization() {
+        let registry = LanguagePluginRegistry::new().await;
         assert!(!registry.all_plugins().is_empty());
     }
 
     #[cfg(feature = "lang-rust")]
-    #[test]
-    fn test_rust_plugin_registered() {
-        let registry = LanguagePluginRegistry::new();
+    #[tokio::test]
+    async fn test_rust_plugin_registered() {
+        let registry = LanguagePluginRegistry::new().await;
 
         // Should find plugin for .rs files
         assert!(registry.get_plugin("rs").is_some());
@@ -179,18 +184,18 @@ mod tests {
         assert!(extensions.contains(&"rs".to_string()));
     }
 
-    #[test]
-    fn test_unsupported_extension() {
-        let registry = LanguagePluginRegistry::new();
+    #[tokio::test]
+    async fn test_unsupported_extension() {
+        let registry = LanguagePluginRegistry::new().await;
 
         // Should not find plugin for unsupported extension
         assert!(registry.get_plugin("xyz").is_none());
         assert!(!registry.supports_extension("xyz"));
     }
 
-    #[test]
-    fn test_supported_extensions_list() {
-        let registry = LanguagePluginRegistry::new();
+    #[tokio::test]
+    async fn test_supported_extensions_list() {
+        let registry = LanguagePluginRegistry::new().await;
         let extensions = registry.supported_extensions();
 
         // Should have at least one extension (Rust)

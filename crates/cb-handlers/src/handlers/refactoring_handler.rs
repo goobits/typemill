@@ -388,7 +388,7 @@ impl RefactoringHandler {
                     })?;
 
                 // Use centralized language plugin registry
-                let registry = build_language_plugin_registry();
+                let registry = build_language_plugin_registry().await;
 
                 let plan = cb_ast::package_extractor::plan_extract_module_to_package_with_registry(
                     parsed, &registry,

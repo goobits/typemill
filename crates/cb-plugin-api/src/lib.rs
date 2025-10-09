@@ -55,6 +55,7 @@ use std::path::Path;
 
 pub mod import_support;
 pub mod metadata;
+pub mod server;
 pub mod test_fixtures;
 pub mod workspace_support;
 
@@ -62,6 +63,7 @@ pub mod workspace_support;
 pub use cb_core::language::ProjectLanguage;
 pub use import_support::ImportSupport;
 pub use metadata::LanguageMetadata;
+pub use server::PluginServer;
 pub use test_fixtures::{
     ComplexityFixture, LanguageTestFixtures, RefactoringFixture, RefactoringOperation,
 };

@@ -78,7 +78,8 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
         cache_settings,
         plugin_manager.clone(),
         &options.config,
-    );
+    )
+    .await;
 
     let workspace_manager = Arc::new(cb_core::workspaces::WorkspaceManager::new());
 
@@ -160,7 +161,8 @@ pub async fn create_dispatcher_with_workspace(
         cache_settings,
         plugin_manager.clone(),
         &config,
-    );
+    )
+    .await;
 
     // Start background processor for operation queue
     {

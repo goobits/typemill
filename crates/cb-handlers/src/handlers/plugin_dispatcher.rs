@@ -107,7 +107,7 @@ impl PluginDispatcher {
             info!("Initializing plugin system with DirectLspAdapter (bypassing hard-coded mappings)");
 
             // Build centralized language plugin registry for SystemToolsPlugin
-            let plugin_registry = cb_services::services::build_language_plugin_registry();
+            let plugin_registry = cb_services::services::build_language_plugin_registry().await;
 
             // Get LSP configuration from app config
             let app_config = cb_core::config::AppConfig::load()
@@ -587,11 +587,11 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    fn create_test_app_state() -> Arc<AppState> {
+    async fn create_test_app_state() -> Arc<AppState> {
         let temp_dir = TempDir::new().unwrap();
 
         // Build centralized language plugin registry
-        let plugin_registry = cb_services::services::build_language_plugin_registry();
+        let plugin_registry = cb_services::services::build_language_plugin_registry().await;
 
         let ast_cache = Arc::new(cb_ast::AstCache::new());
         let ast_service = Arc::new(cb_services::services::DefaultAstService::new(
@@ -637,7 +637,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_plugin_dispatcher_initialization() {
-        let app_state = create_test_app_state();
+        let app_state = create_test_app_state().await;
         let plugin_manager = Arc::new(PluginManager::new());
         let dispatcher = PluginDispatcher::new(app_state, plugin_manager);
 
@@ -653,7 +653,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tools_list() {
-        let app_state = create_test_app_state();
+        let app_state = create_test_app_state().await;
         let plugin_manager = Arc::new(PluginManager::new());
         let dispatcher = PluginDispatcher::new(app_state, plugin_manager);
 
@@ -668,7 +668,7 @@ mod tests {
         let response = dispatcher
             .dispatch(McpMessage::Request(request), &session_info)
             .await
-            .unwrap();
+.unwrap();
 
         if let McpMessage::Response(resp) = response {
             assert!(resp.result.is_some());
@@ -688,7 +688,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_method_support_checking() {
-        let app_state = create_test_app_state();
+        let app_state = create_test_app_state().await;
         let plugin_manager = Arc::new(PluginManager::new());
         let dispatcher = PluginDispatcher::new(app_state, plugin_manager);
 
@@ -713,7 +713,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_plugin_statistics() {
-        let app_state = create_test_app_state();
+        let app_state = create_test_app_state().await;
         let plugin_manager = Arc::new(PluginManager::new());
         let dispatcher = PluginDispatcher::new(app_state, plugin_manager);
 
