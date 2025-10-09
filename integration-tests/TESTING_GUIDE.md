@@ -356,6 +356,35 @@ cargo test -- --nocapture
 cargo test -- --ignored --test-threads=1
 ```
 
+## Test Infrastructure: TestClient and Binaries
+
+### Binary Architecture
+
+The codebase has **two server binaries**:
+
+1. **`codebuddy`** (apps/codebuddy) - CLI wrapper with lifecycle management
+   - Uses a global PID lock file at `/tmp/codebuddy.pid`
+   - Prevents multiple instances via file locking
+   - Provides commands: `start`, `stop`, `status`, `serve`, etc.
+   - **Not suitable for parallel tests** due to lock conflicts
+
+2. **`cb-server`** (crates/cb-server) - Core MCP server
+   - No PID lock file
+   - Can run multiple instances in parallel
+   - **Used by TestClient for integration tests**
+   - Automatically built by cargo when running tests
+
+### Why TestClient Uses `cb-server`
+
+The `TestClient` (in `crates/cb-test-support/src/harness/client.rs`) spawns `cb-server` instead of `codebuddy` to allow tests to run in parallel without PID lock conflicts. Each test gets its own isolated server instance.
+
+**Important**: `cb-server` is **always available** when running tests because:
+- It's part of the workspace dependencies
+- Cargo automatically builds it when running `cargo test`
+- No additional setup required
+
+If you see test failures about "server already running", it means the test is incorrectly trying to use `codebuddy` instead of `cb-server`.
+
 ## Test Organization
 
 ```
