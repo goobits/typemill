@@ -3,6 +3,8 @@
 //! Provides import parsing, analysis, and rewriting capabilities.
 //! Languages implement this trait only if they support import operations.
 
+use crate::{PluginError, PluginResult};
+use cb_protocol::DependencyUpdate;
 use std::path::Path;
 
 /// Optional trait for languages that support import operations
@@ -87,4 +89,40 @@ pub trait ImportSupport: Send + Sync {
     /// # Returns
     /// Updated content with import removed
     fn remove_import(&self, content: &str, module: &str) -> String;
+
+    /// Update an import reference in a file using AST-based transformation.
+    ///
+    /// This is a more powerful, AST-aware version of import rewriting.
+    ///
+    /// # Arguments
+    /// * `file_path` - The path to the file being modified.
+    /// * `content` - The source code content of the file.
+    /// * `update` - The dependency update information.
+    ///
+    /// # Returns
+    /// The updated file content as a `String`.
+    fn update_import_reference(
+        &self,
+        _file_path: &Path,
+        content: &str,
+        _update: &DependencyUpdate,
+    ) -> PluginResult<String> {
+        // Default implementation returns original content, indicating no change.
+        Ok(content.to_string())
+    }
+
+    /// Remove a specific named import from a single line of code.
+    ///
+    /// # Arguments
+    /// * `line` - A single line of code containing an import statement.
+    /// * `import_name` - The name of the import to remove (e.g., "useState").
+    ///
+    /// # Returns
+    /// The modified line. If the named import was the only one, it may return an empty string.
+    fn remove_named_import(&self, line: &str, _import_name: &str) -> PluginResult<String> {
+        Err(PluginError::not_supported(format!(
+            "{} does not support removing named imports",
+            line
+        )))
+    }
 }

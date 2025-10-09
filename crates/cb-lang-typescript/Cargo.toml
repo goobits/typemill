@@ -31,5 +31,12 @@ thiserror = { workspace = true }
 # Logging
 tracing = { workspace = true }
 
+# SWC for AST-based parsing (moved from cb-ast)
+swc_common = "14"
+swc_ecma_parser = "24"
+swc_ecma_ast = "15"
+swc_ecma_visit = "15"
+swc_ecma_codegen = "17"
+
 [dev-dependencies]
 tokio-test = "0.4"

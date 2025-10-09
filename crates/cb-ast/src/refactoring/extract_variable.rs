@@ -5,105 +5,71 @@ use cb_protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use std::collections::HashMap;
-use swc_common::{sync::Lrc, FileName, SourceMap};
-use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 use tracing::debug;
 
-/// Analyze a selected expression for extraction into a variable
+/// Analyze a selected expression for extraction into a variable (simplified fallback)
 pub fn analyze_extract_variable(
     source: &str,
     start_line: u32,
     start_col: u32,
     end_line: u32,
     end_col: u32,
-    file_path: &str,
+    _file_path: &str,
 ) -> AstResult<ExtractVariableAnalysis> {
-    let cm: Lrc<SourceMap> = Default::default();
+    // Simplified text-based analysis (language plugins should provide AST-based analysis)
+    let expression_range = CodeRange {
+        start_line,
+        start_col,
+        end_line,
+        end_col,
+    };
 
-    let fm = cm.new_source_file(
-        FileName::Real(file_path.into()).into(),
-        source.to_string(),
-    );
+    let expression = extract_range_text(source, &expression_range)?;
 
-    let lexer = Lexer::new(
-        Syntax::Typescript(TsSyntax {
-            tsx: file_path.ends_with(".tsx"),
-            decorators: true,
-            ..Default::default()
-        }),
-        Default::default(),
-        StringInput::from(&*fm),
-        None,
-    );
+    // Check if this is a valid expression (not a statement, declaration, etc.)
+    let mut can_extract = true;
+    let mut blocking_reasons = Vec::new();
 
-    let mut parser = Parser::new_from(lexer);
-
-    match parser.parse_module() {
-        Ok(_module) => {
-            // TODO: Use parsed AST module for advanced code analysis
-            // The module contains the full syntax tree which could be used for:
-            // - Precise variable scope analysis
-            // - Function dependency detection
-            // - Complex expression evaluation
-            // Currently using simplified text-based extraction instead
-
-            // Extract the selected expression text
-            let expression_range = CodeRange {
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-            };
-
-            let expression = extract_range_text(source, &expression_range)?;
-
-            // Check if this is a valid expression (not a statement, declaration, etc.)
-            let mut can_extract = true;
-            let mut blocking_reasons = Vec::new();
-
-            // Simple heuristics for what can be extracted
-            if expression.starts_with("function ") || expression.starts_with("class ") {
-                can_extract = false;
-                blocking_reasons.push("Cannot extract function or class declarations".to_string());
-            }
-
-            if expression.starts_with("const ")
-                || expression.starts_with("let ")
-                || expression.starts_with("var ")
-            {
-                can_extract = false;
-                blocking_reasons.push("Cannot extract variable declarations".to_string());
-            }
-
-            if expression.contains(';') && !expression.starts_with('(') {
-                can_extract = false;
-                blocking_reasons.push("Selection contains multiple statements".to_string());
-            }
-
-            // Generate a suggested variable name based on the expression
-            let suggested_name = suggest_variable_name(&expression);
-
-            // Find the best insertion point (beginning of current scope)
-            // For simplicity, we'll insert at the beginning of the line containing the expression
-            let insertion_point = CodeRange {
-                start_line,
-                start_col: 0,
-                end_line: start_line,
-                end_col: 0,
-            };
-
-            Ok(ExtractVariableAnalysis {
-                expression,
-                expression_range,
-                can_extract,
-                suggested_name,
-                insertion_point,
-                blocking_reasons,
-                scope_type: "function".to_string(), // Simplified for now
-            })
-        }
-        Err(e) => Err(AstError::parse(format!("Failed to parse file: {:?}", e))),
+    // Simple heuristics for what can be extracted
+    if expression.starts_with("function ") || expression.starts_with("class ") {
+        can_extract = false;
+        blocking_reasons.push("Cannot extract function or class declarations".to_string());
     }
+
+    if expression.starts_with("const ")
+        || expression.starts_with("let ")
+        || expression.starts_with("var ")
+    {
+        can_extract = false;
+        blocking_reasons.push("Cannot extract variable declarations".to_string());
+    }
+
+    if expression.contains(';') && !expression.starts_with('(') {
+        can_extract = false;
+        blocking_reasons.push("Selection contains multiple statements".to_string());
+    }
+
+    // Generate a suggested variable name based on the expression
+    let suggested_name = suggest_variable_name(&expression);
+
+    // Find the best insertion point (beginning of current scope)
+    // For simplicity, we'll insert at the beginning of the line containing the expression
+    let insertion_point = CodeRange {
+        start_line,
+        start_col: 0,
+        end_line: start_line,
+        end_col: 0,
+    };
+
+    Ok(ExtractVariableAnalysis {
+        expression,
+        expression_range,
+        can_extract,
+        suggested_name,
+        insertion_point,
+        blocking_reasons,
+        scope_type: "function".to_string(), // Simplified for now
+    })
 }
 
 /// Suggest a variable name based on the expression

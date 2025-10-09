@@ -1,8 +1,5 @@
 use super::{CodeRange, ExtractableFunction};
 use crate::error::{AstError, AstResult};
-use swc_common::{sync::Lrc, FileName, FilePathMapping, SourceMap};
-use swc_ecma_ast::Module;
-use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 
 /// Detect file language from file path
 pub fn detect_language(file_path: &str) -> &str {
@@ -22,36 +19,6 @@ pub fn detect_language(file_path: &str) -> &str {
 }
 
 /// Helper functions
-pub fn create_source_map(source: &str, file_path: &str) -> AstResult<Lrc<SourceMap>> {
-    let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-    let file_name = Lrc::new(FileName::Real(std::path::PathBuf::from(file_path)));
-    let _source_file = cm.new_source_file(file_name, source.to_string());
-    Ok(cm)
-}
-
-pub fn parse_module(source: &str, file_path: &str) -> AstResult<Module> {
-    let cm = create_source_map(source, file_path)?;
-    let file_name = Lrc::new(FileName::Real(std::path::PathBuf::from(file_path)));
-    let source_file = cm.new_source_file(file_name, source.to_string());
-
-    let lexer = Lexer::new(
-        Syntax::Typescript(TsSyntax {
-            tsx: file_path.ends_with(".tsx"),
-            decorators: false,
-            dts: false,
-            no_early_errors: true,
-            disallow_ambiguous_jsx_like: true,
-        }),
-        Default::default(),
-        StringInput::from(&*source_file),
-        None,
-    );
-
-    let mut parser = Parser::new_from(lexer);
-    parser
-        .parse_module()
-        .map_err(|e| AstError::parse(format!("Failed to parse module: {:?}", e)))
-}
 
 pub fn extract_range_text(source: &str, range: &CodeRange) -> AstResult<String> {
     let lines: Vec<&str> = source.lines().collect();

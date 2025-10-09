@@ -95,6 +95,7 @@
 //! - `.mjs` - ES Module JavaScript
 //! - `.cjs` - CommonJS JavaScript
 pub mod import_support;
+pub mod imports;
 mod manifest;
 pub mod parser;
 pub mod refactoring;

@@ -7,16 +7,14 @@ use cb_protocol::{
 use std::collections::HashMap;
 use tracing::debug;
 
-/// Analyze code selection for function extraction
+/// Analyze code selection for function extraction (simplified fallback)
 pub fn analyze_extract_function(
-    source: &str,
+    _source: &str,
     range: &CodeRange,
-    file_path: &str,
+    _file_path: &str,
 ) -> AstResult<ExtractableFunction> {
-    super::common::create_source_map(source, file_path)?;
-    super::common::parse_module(source, file_path)?;
-
-    let analyzer = ExtractFunctionAnalyzer::new(source, range.clone());
+    // Simplified text-based analysis (language plugins should provide AST-based analysis)
+    let analyzer = ExtractFunctionAnalyzer::new(range.clone());
     // Note: Using simplified text-based analysis for TypeScript/JavaScript
     // Full AST traversal with scope analysis is planned but not required for basic functionality
     // Python implementation demonstrates this approach works well for common refactoring cases
@@ -214,7 +212,7 @@ struct ExtractFunctionAnalyzer {
 }
 
 impl ExtractFunctionAnalyzer {
-    fn new(_source: &str, range: CodeRange) -> Self {
+    fn new(range: CodeRange) -> Self {
         Self {
             selection_range: range,
             contains_return: false,

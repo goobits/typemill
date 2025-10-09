@@ -399,7 +399,7 @@ impl RefactoringHandler {
         };
 
         // Apply edits with workspace routing
-        if let Some(workspace_id) = &workspace_id {
+        if let Some(workspace_id) = workspace_id.as_deref() {
             if dry_run {
                 return Ok(json!({
                     "status": "preview",

@@ -3,10 +3,12 @@
 //! Provides synchronous import parsing, analysis, and rewriting capabilities
 //! for TypeScript and JavaScript source code.
 
+use crate::imports::{remove_named_import_from_line, update_import_reference_ast};
 use cb_lang_common::import_helpers::{
     find_last_matching_line, insert_line_at, remove_lines_matching,
 };
-use cb_plugin_api::import_support::ImportSupport;
+use cb_plugin_api::{import_support::ImportSupport, PluginResult};
+use cb_protocol::DependencyUpdate;
 use std::path::Path;
 use tracing::{debug, warn};
 
@@ -169,6 +171,19 @@ impl ImportSupport for TypeScriptImportSupport {
         });
 
         new_content
+    }
+
+    fn update_import_reference(
+        &self,
+        file_path: &Path,
+        content: &str,
+        update: &DependencyUpdate,
+    ) -> PluginResult<String> {
+        update_import_reference_ast(file_path, content, update)
+    }
+
+    fn remove_named_import(&self, line: &str, import_name: &str) -> PluginResult<String> {
+        remove_named_import_from_line(line, import_name)
     }
 }
 

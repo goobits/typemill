@@ -7,6 +7,7 @@ serde = { workspace = true }
 toml = "0.9"
 
 [dependencies]
+cb-protocol = { path = "../cb-protocol" }
 cb-types = { path = "../cb-types" }
 cb-core = { path = "../cb-core" }
 async-trait = { workspace = true }
