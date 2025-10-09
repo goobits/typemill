@@ -65,6 +65,14 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Documented refactoring support for newly added languages
   - Updated LSP-based and AST-based tool compatibility tables
 
+- **Proposal Documentation** - Comprehensive proposal updates
+  - Added `60_PROPOSAL_DOCUMENTATION_ACCURACY_REVIEW.md` - Systematic documentation review checklist with 130+ verification items
+  - Updated `40_LANGUAGE_EXPANSION_PROPOSAL.md` - Accurate status tracking (70% complete, 3 languages remaining)
+    - Detailed implementation checklists for C++, C, and PHP
+    - Success metrics and lessons learned from 7 completed plugins
+    - Clear next steps with estimated timelines
+  - Moved `TOOLS_QUICK_REFERENCE.md` to `docs/` directory for better organization
+
 - **MCP API Cleanup** - Consolidated MCP API cleanup proposals into single document (f0123c5:1)
 - **Self-Refactoring Planning** - Added execution plan with major goals table for MCP API cleanup (67b9b71:1, a7505c9:1)
 - **Large Module Refactoring** - Updated large file split proposal with current status (f68d75a:1)
