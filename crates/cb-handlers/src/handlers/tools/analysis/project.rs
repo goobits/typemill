@@ -94,7 +94,7 @@ pub async fn handle_analyze_project(
             Some(p) => p,
             None => continue,
         };
-        let language = plugin.metadata().name.clone();
+        let language = plugin.metadata().name;
 
         let content = match context.app_state.file_service.read_file(file_path).await {
             Ok(c) => c,

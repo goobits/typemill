@@ -34,6 +34,8 @@ cb-lang-go = { path = "../cb-lang-go", optional = true }
 cb-lang-typescript = { path = "../cb-lang-typescript", optional = true }
 cb-lang-python = { path = "../cb-lang-python", optional = true }
 cb-lang-java = { path = "../cb-lang-java", optional = true }
+cb-lang-csharp = { path = "../cb-lang-csharp", optional = true }
+cb-lang-swift = { path = "../cb-lang-swift", optional = true }
 chrono = "0.4"
 
 [features]
@@ -45,6 +47,8 @@ lang-go = ["dep:cb-lang-go"]
 lang-typescript = ["dep:cb-lang-typescript"]
 lang-python = ["dep:cb-lang-python"]
 lang-java = ["dep:cb-lang-java"]
+lang-csharp = ["dep:cb-lang-csharp"]
+lang-swift = ["dep:cb-lang-swift"]
 mcp-proxy = ["cb-core/mcp-proxy", "cb-plugins/mcp-proxy"]
 
 [target.'cfg(unix)'.dependencies]

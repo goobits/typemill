@@ -23,6 +23,7 @@ pub async fn run_analysis(
     config: &DeadCodeConfig,
 ) -> Result<DeadCodeReport, AnalysisError> {
     let start_time = Instant::now();
+    #[allow(unused_assignments)] // Value is assigned before first read
     let mut files_analyzed = 0;
 
     // 1. Collect all symbols from the workspace

@@ -17,6 +17,7 @@ struct SwiftManifest {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)] // Fields used by serde during deserialization
 struct Platform {
     #[serde(rename = "platformName")]
     platform_name: String,
@@ -30,6 +31,7 @@ struct SwiftDependency {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)] // Fields used by serde during deserialization
 struct SourceControl {
     identity: String,
     location: SourceControlLocation,
@@ -37,11 +39,13 @@ struct SourceControl {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)] // Fields used by serde during deserialization
 struct SourceControlLocation {
     remote: Vec<Remote>,
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)] // Fields used by serde during deserialization
 struct Remote {
     url: String,
 }

@@ -70,8 +70,7 @@ pub async fn analyze_manifest(path: &Path) -> PluginResult<ManifestData> {
     let name = project
         .property_groups
         .iter()
-        .find_map(|p| p.assembly_name.as_ref())
-        .map(|s| s.clone())
+        .find_map(|p| p.assembly_name.as_ref()).cloned()
         .unwrap_or_else(|| {
             path.file_stem()
                 .and_then(|s| s.to_str())
@@ -82,8 +81,7 @@ pub async fn analyze_manifest(path: &Path) -> PluginResult<ManifestData> {
     let version = project
         .property_groups
         .iter()
-        .find_map(|p| p.version.as_ref())
-        .map(|s| s.clone())
+        .find_map(|p| p.version.as_ref()).cloned()
         .unwrap_or_else(|| "0.0.0".to_string());
 
     let mut dependencies = vec![];

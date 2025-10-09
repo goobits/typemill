@@ -1,6 +1,6 @@
-use cb_core::model::mcp::{McpError, McpRequest, McpResponse, ToolCall};
+use cb_core::model::mcp::{McpError, McpRequest, McpResponse};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use serde_json::{json, Value};
+use serde_json::json;
 
 fn create_simple_request() -> McpRequest {
     McpRequest {

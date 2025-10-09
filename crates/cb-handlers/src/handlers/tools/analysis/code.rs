@@ -65,7 +65,7 @@ pub async fn handle_analyze_code(
         .await
         .map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
 
-    let language = plugin.metadata().name.clone();
+    let language = plugin.metadata().name;
 
     info!(
         file_path = %file_path_str,

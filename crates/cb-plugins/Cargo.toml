@@ -25,6 +25,9 @@ url = "2.4"
 [features]
 default = []
 mcp-proxy = []
+lang-rust = []
+lang-go = []
+lang-typescript = []
 
 [dev-dependencies]
 tokio-test = "0.4"

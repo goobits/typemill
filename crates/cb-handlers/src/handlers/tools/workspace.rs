@@ -61,6 +61,7 @@ impl UpdateMode {
 pub struct WorkspaceHandler {
     file_handler: LegacyFileHandler,
     system_handler: LegacySystemHandler,
+    #[allow(dead_code)] // Reserved for future workspace-level refactoring operations
     refactoring_handler: LegacyRefactoringHandler,
 }
 
