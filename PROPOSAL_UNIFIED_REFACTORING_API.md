@@ -34,8 +34,12 @@ Every refactoring operation follows two steps:
 
 ### Unified Plan Structure
 
+All `*.plan` commands return a discriminated union type with validation metadata:
+
 ```json
 {
+  "plan_type": "RenamePlan" | "ExtractPlan" | "InlinePlan" | "MovePlan" | "ReorderPlan" | "TransformPlan" | "DeletePlan",
+  "plan_version": "1.0",
   "edits": [ /* LSP workspace edits */ ],
   "summary": {
     "affected_files": 3,
@@ -48,10 +52,21 @@ Every refactoring operation follows two steps:
   "metadata": {
     "kind": "rename",
     "language": "rust",
-    "estimated_impact": "low"
+    "estimated_impact": "low",
+    "created_at": "2025-10-10T12:00:00Z"
+  },
+  "file_checksums": {
+    "src/lib.rs": "sha256:abc123...",
+    "src/app.rs": "sha256:def456..."
   }
 }
 ```
+
+**Key fields**:
+- `plan_type`: Discriminator for type-safe validation in `workspace.apply_edit`
+- `plan_version`: API version for backward compatibility
+- `file_checksums`: SHA-256 hashes to detect stale plans
+- `created_at`: Timestamp for plan expiration checks
 
 ---
 
@@ -309,11 +324,18 @@ workspace.apply_edit(plan, options) → Result
   "plan": { /* any plan from above */ },
   "options": {
     "dry_run": false,
-    "validate": true,
+    "validate_checksums": true,  // fail if files changed since plan creation
+    "validate_plan_type": true,  // verify plan_type matches expected schema
+    "force": false,              // skip all validation
     "rollback_on_error": true
   }
 }
 ```
+
+**Validation behavior**:
+- `validate_checksums`: Rejects plans if file content has changed since plan creation
+- `validate_plan_type`: Ensures plan structure matches expected discriminated type
+- `force`: Bypasses all validation (dangerous, use only for recovery scenarios)
 
 **Result**:
 ```json
@@ -344,12 +366,18 @@ workspace.apply_edit(plan, options) → Result
 ### Phase 3: Legacy Wrappers (Week 3)
 - Keep existing 35 commands as thin wrappers
 - Map old params → new `*.plan` calls → `workspace.apply_edit`
-- Mark legacy commands as deprecated in docs
+- Mark legacy commands as `@deprecated` in docs and schemas
 
-### Phase 4: Cleanup (Week 4+)
-- Remove legacy commands after migration period
-- Update all documentation and examples
+### Phase 4: Deprecation (Weeks 4-8)
+- Add deprecation warnings to legacy command responses
+- Emit telemetry events tracking legacy vs new command usage
+- Publish migration guide with side-by-side examples
+
+### Phase 5: Cleanup (Weeks 9-12)
+- Review telemetry: if legacy usage < 5%, proceed with removal
+- Remove legacy commands from codebase
 - Final API surface: **14 commands**
+- **Hard deadline**: 3 months from Phase 3 start, regardless of usage
 
 ---
 
@@ -402,19 +430,49 @@ workspace.apply_edit(plan, options) → Result
 
 ---
 
-## Open Questions
+## Design Decisions
 
-1. **Naming**: `workspace.apply_edit` vs `refactor.apply`?
-   - **Recommendation**: Keep `workspace.apply_edit` (aligns with LSP terminology)
+### 1. Naming: `workspace.apply_edit` (LOCKED)
+**Decision**: Use `workspace.apply_edit` as the single executor.
 
-2. **Dry-run default**: Should `dry_run` default to `true`?
-   - **Recommendation**: Default `false` for apply, but `*.plan` never writes anyway
+**Rationale**:
+- Aligns with LSP terminology (`WorkspaceEdit`)
+- Familiar to developers using language servers
+- Alternative `refactor.apply` considered but rejected for consistency
 
-3. **Plan validation**: Should plans expire or include checksums?
-   - **Recommendation**: Phase 2 - add optional file hash validation
+### 2. Plan Validation: Checksums Required (LOCKED)
+**Decision**: All plans include `file_checksums` and `plan_type` discriminators.
 
-4. **Batch operations**: Support array of plans in single apply?
-   - **Recommendation**: Phase 3 - add `workspace.apply_batch([plan1, plan2])`
+**Rationale**:
+- Prevents stale plans from corrupting code
+- Type-safe validation before apply
+- `validate_checksums` option defaults to `true`
+- `force: true` escape hatch for recovery scenarios
+
+### 3. Legacy Deprecation: 3-Month Hard Deadline (LOCKED)
+**Decision**: Legacy commands removed 3 months after Phase 3, or when usage < 5%.
+
+**Rationale**:
+- Clear timeline prevents indefinite maintenance burden
+- Telemetry tracks actual usage for data-driven decisions
+- Deprecation warnings give users time to migrate
+- Migration guide published in Phase 4
+
+### 4. Dry-run Default: False (LOCKED)
+**Decision**: `dry_run` defaults to `false` in `workspace.apply_edit`.
+
+**Rationale**:
+- `*.plan` commands already provide preview (never write files)
+- Explicit opt-in for dry-run in apply step
+- Matches typical "preview then execute" workflow
+
+### 5. Batch Operations: Phase 3+ (DEFERRED)
+**Decision**: Add `workspace.apply_batch([plan1, plan2])` in Phase 3 if needed.
+
+**Rationale**:
+- Not critical for MVP
+- Can evaluate need after Phase 1-2 usage data
+- Atomic multi-plan apply requires careful transaction design
 
 ---
 

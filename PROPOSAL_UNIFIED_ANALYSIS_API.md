@@ -72,7 +72,9 @@ All analysis commands return the same shape:
     }
   ],
   "summary": {
-    "total_findings": 12,
+    "total_findings": 5432,      // total available
+    "returned_findings": 1000,   // in this response (respects limit)
+    "has_more": true,            // more results available via pagination
     "by_severity": { "high": 3, "medium": 5, "low": 4 },
     "files_analyzed": 45,
     "symbols_analyzed": 234,
@@ -97,11 +99,11 @@ All analysis commands return the same shape:
 
 **Command**: `analyze.quality(kind, scope, options)` → `QualityReport`
 
-**Kinds**:
-- `complexity` - Cyclomatic and cognitive complexity analysis
-- `smells` - Code smell detection (long methods, god classes, etc.)
-- `maintainability` - Overall maintainability metrics
-- `readability` - Readability issues (nesting, magic numbers, etc.)
+**Supported `kind` Values** (LOCKED):
+- `"complexity"` - Cyclomatic and cognitive complexity analysis
+- `"smells"` - Code smell detection (long methods, god classes, magic numbers, etc.)
+- `"maintainability"` - Overall maintainability metrics
+- `"readability"` - Readability issues (nesting depth, parameter count, function length)
 
 **Arguments**:
 ```json
@@ -121,9 +123,10 @@ All analysis commands return the same shape:
       "parameter_count": 5,
       "function_length": 50
     },
-    "severity_filter": "high" | "medium" | "low",
-    "limit": 100,
-    "format": "detailed" | "summary",
+    "severity_filter": null,  // null = all, or "high" | "medium" | "low"
+    "limit": 1000,            // default: 1000 findings max
+    "offset": 0,              // for pagination
+    "format": "detailed",     // "detailed" | "summary"
     "include_suggestions": true
   }
 }
@@ -164,13 +167,13 @@ analyze.quality("readability", { type: "file", path: "src/app.rs" })
 
 **Command**: `analyze.dead_code(kind, scope, options)` → `DeadCodeReport`
 
-**Kinds**:
-- `unused_symbols` - Functions, classes, variables never referenced
-- `unused_imports` - Import statements not used
-- `unreachable_code` - Code after return/throw/break
-- `unused_parameters` - Function parameters never accessed
-- `unused_types` - Type definitions never referenced
-- `unused_variables` - Local variables never read
+**Supported `kind` Values** (LOCKED):
+- `"unused_symbols"` - Functions, classes, variables never referenced
+- `"unused_imports"` - Import statements not used
+- `"unreachable_code"` - Code after return/throw/break
+- `"unused_parameters"` - Function parameters never accessed
+- `"unused_types"` - Type definitions never referenced
+- `"unused_variables"` - Local variables never read
 
 **Arguments**:
 ```json
@@ -223,13 +226,13 @@ analyze.dead_code("unreachable_code", { type: "workspace" }, { aggressive: true 
 
 **Command**: `analyze.dependencies(kind, scope, options)` → `DependencyReport`
 
-**Kinds**:
-- `imports` - Import structure and categorization
-- `graph` - Full dependency graph (file/module level)
-- `circular` - Circular dependency detection
-- `coupling` - Module coupling strength analysis
-- `cohesion` - Module cohesion metrics
-- `depth` - Transitive dependency depth
+**Supported `kind` Values** (LOCKED):
+- `"imports"` - Import structure and categorization
+- `"graph"` - Full dependency graph (file/module level)
+- `"circular"` - Circular dependency detection
+- `"coupling"` - Module coupling strength analysis
+- `"cohesion"` - Module cohesion metrics
+- `"depth"` - Transitive dependency depth
 
 **Arguments**:
 ```json
@@ -289,12 +292,12 @@ analyze.dependencies("graph", { type: "workspace" }, {
 
 **Command**: `analyze.structure(kind, scope, options)` → `StructureReport`
 
-**Kinds**:
-- `symbols` - Hierarchical symbol tree (LSP-based)
-- `hierarchy` - Class/type hierarchy analysis
-- `interfaces` - Interface usage and adoption patterns
-- `inheritance` - Inheritance depth and breadth
-- `modules` - Module organization and structure
+**Supported `kind` Values** (LOCKED):
+- `"symbols"` - Hierarchical symbol tree (LSP-based)
+- `"hierarchy"` - Class/type hierarchy analysis
+- `"interfaces"` - Interface usage and adoption patterns
+- `"inheritance"` - Inheritance depth and breadth
+- `"modules"` - Module organization and structure
 
 **Arguments**:
 ```json
@@ -351,12 +354,12 @@ analyze.structure("interfaces", { type: "workspace" }, {
 
 **Command**: `analyze.documentation(kind, scope, options)` → `DocumentationReport`
 
-**Kinds**:
-- `coverage` - Documentation coverage metrics
-- `quality` - Documentation quality assessment
-- `missing` - Undocumented public APIs
-- `outdated` - Comments contradicting code
-- `todos` - TODO/FIXME/HACK markers
+**Supported `kind` Values** (LOCKED):
+- `"coverage"` - Documentation coverage metrics
+- `"quality"` - Documentation quality assessment
+- `"missing"` - Undocumented public APIs
+- `"outdated"` - Comments contradicting code
+- `"todos"` - TODO/FIXME/HACK markers
 
 **Arguments**:
 ```json
@@ -407,11 +410,11 @@ analyze.documentation("todos", { type: "workspace" }, {
 
 **Command**: `analyze.tests(kind, scope, options)` → `TestReport`
 
-**Kinds**:
-- `coverage` - Test coverage percentage per file/function
-- `untested` - Functions/modules without tests
-- `quality` - Test quality metrics (assertions, mocks, etc.)
-- `smells` - Test smells (slow tests, fragile tests, etc.)
+**Supported `kind` Values** (LOCKED):
+- `"coverage"` - Test coverage percentage per file/function
+- `"untested"` - Functions/modules without tests
+- `"quality"` - Test quality metrics (assertions, mocks, etc.)
+- `"smells"` - Test smells (slow tests, fragile tests, etc.)
 
 **Arguments**:
 ```json
@@ -540,9 +543,20 @@ analyze.batch([
     "total_findings": 45,
     "total_files_analyzed": 123,
     "analysis_time_ms": 456
+  },
+  "optimization": {
+    "shared_parsing": true,      // AST parsed once, reused across analyses
+    "cache_hits": 42,            // number of cached results reused
+    "sequential_execution": true // queries run sequentially to maximize cache sharing
   }
 }
 ```
+
+**Optimization Strategy**:
+- Files are parsed once, AST reused across all analyses in the batch
+- Symbol tables and LSP queries cached between analyses
+- Queries executed sequentially (not parallel) to maximize cache sharing
+- Cache strategy configurable via `batch_optimization` option
 
 ---
 
@@ -667,22 +681,61 @@ console.log(`Complexity reduced from ${quality.findings[0].metrics.cyclomatic_co
 
 ---
 
-## Open Questions
+## Design Decisions
 
-1. **Batch optimization**: Should batch analysis share AST parsing and other computation?
-   - **Recommendation**: Yes, implement caching in Phase 3
+### 1. Explicit `kind` Enumerations (LOCKED)
+**Decision**: All `kind` values explicitly documented per category.
 
-2. **Suggestion ranking**: How to prioritize multiple suggestions per finding?
-   - **Recommendation**: Order by estimated impact, add `priority` field
+**Rationale**:
+- Clients know exactly what values are valid
+- Better IDE autocomplete and validation
+- No ambiguity about available analysis types
+- Each section lists supported kinds as string literals
 
-3. **Historical tracking**: Should analysis support comparing results over time?
-   - **Recommendation**: Phase 2+ feature, store results with timestamps
+### 2. Defaults & Pagination (LOCKED)
+**Decision**: Default `limit=1000`, `offset=0`, `severity_filter=null`.
 
-4. **Export formats**: Beyond JSON, support CSV/Markdown for reporting?
-   - **Recommendation**: Add `export_format` option in Phase 2
+**Rationale**:
+- 1000 findings sufficient for most use cases
+- `offset` enables pagination for larger result sets
+- `null` severity filter includes all findings by default
+- `has_more` flag in summary indicates additional results available
 
-5. **Thresholds**: Should thresholds be configurable per-project (config file)?
-   - **Recommendation**: Support both inline options and `.codebuddy/analysis.json`
+### 3. Batch Resource Sharing (LOCKED)
+**Decision**: Batch queries share AST parsing, execute sequentially.
+
+**Rationale**:
+- Massive performance win for multi-analysis workflows
+- Sequential execution maximizes cache hits
+- `optimization` object in result provides transparency
+- Configurable via `batch_optimization` option
+
+### 4. Suggestion Validation (LOCKED)
+**Decision**: CI validates all `suggestion.refactor_call` references.
+
+**Rationale**:
+- Prevents broken suggestions from reaching production
+- Ensures refactor commands exist and accept correct parameters
+- CI test runs all analyzers, validates suggestion structure
+- Regression protection as refactoring API evolves
+
+### 5. Suggestion Ranking (LOCKED)
+**Decision**: Suggestions ordered by estimated impact, highest first.
+
+**Rationale**:
+- Users see most valuable suggestions first
+- Optional `priority` field for manual override
+- `estimated_impact` required for all suggestions
+- AI agents can pick top suggestion without extra logic
+
+### 6. Project-Level Thresholds (DEFERRED)
+**Decision**: Phase 2+ feature, support `.codebuddy/analysis.json` config.
+
+**Rationale**:
+- Inline options sufficient for MVP
+- Config file enables per-project defaults
+- Not critical for initial rollout
+- Can add without breaking existing API
 
 ---
 
