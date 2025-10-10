@@ -2,7 +2,8 @@
 //!
 //! This module provides a parameterized testing framework for refactoring operations
 //! across multiple programming languages. It enables writing a single test that runs
-//! against equivalent code in Python, TypeScript, Rust, and Go.
+//! against equivalent code in TypeScript and Rust.
+//! Note: Language support temporarily reduced during unified API refactoring.
 //!
 //! ## Design Philosophy
 //!
@@ -27,36 +28,31 @@ use serde_json::json;
 use std::collections::HashMap;
 
 /// Supported programming languages
+/// Note: Language support temporarily reduced to TypeScript + Rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Language {
-    Python,
     TypeScript,
     Rust,
-    Go,
 }
 
 impl Language {
     pub fn all() -> Vec<Language> {
         vec![
-            Language::Python,
             Language::TypeScript,
             Language::Rust,
-            Language::Go,
         ]
     }
 
     pub fn file_extension(&self) -> &'static str {
         match self {
-            Language::Python => "py",
             Language::TypeScript => "ts",
             Language::Rust => "rs",
-            Language::Go => "go",
         }
     }
 
     pub fn supports_refactoring(&self) -> bool {
-        // All languages now have AST-based stub implementations
-        // LSP is tried first, with AST fallback for all languages
+        // All languages have AST-based stub implementations
+        // LSP is tried first, with AST fallback
         true
     }
 }
@@ -192,17 +188,6 @@ impl RefactoringScenarios {
     pub fn extract_simple_expression() -> RefactoringTestCase {
         RefactoringTestCase::new("extract_simple_expression").with_all_languages(|lang| {
             let (source, operation, behavior) = match lang {
-                Language::Python => (
-                    "def calculate():\n    result = 10 + 20\n    return result\n",
-                    RefactoringOperation::ExtractVariable {
-                        variable_name: "sum".to_string(),
-                        start_line: 1,
-                        start_char: 13,
-                        end_line: 1,
-                        end_char: 19,
-                    },
-                    ExpectedBehavior::Success,
-                ),
                 Language::TypeScript => (
                     "function calculate() {\n    const result = 10 + 20;\n    return result;\n}\n",
                     RefactoringOperation::ExtractVariable {
@@ -226,18 +211,6 @@ impl RefactoringScenarios {
                     // AST fallback stub now exists (will be fully implemented later)
                     ExpectedBehavior::Success,
                 ),
-                Language::Go => (
-                    "func calculate() int {\n    result := 10 + 20\n    return result\n}\n",
-                    RefactoringOperation::ExtractVariable {
-                        variable_name: "sum".to_string(),
-                        start_line: 1,
-                        start_char: 14,
-                        end_line: 1,
-                        end_char: 20,
-                    },
-                    // AST fallback stub now exists (will be fully implemented later)
-                    ExpectedBehavior::Success,
-                ),
             };
 
             (
@@ -255,17 +228,6 @@ impl RefactoringScenarios {
     pub fn extract_multiline_function() -> RefactoringTestCase {
         RefactoringTestCase::new("extract_multiline_function").with_all_languages(|lang| {
             let (source, operation, behavior) = match lang {
-                Language::Python => (
-                    "def main():\n    x = 1\n    y = 2\n    result = x + y\n    print(result)\n",
-                    RefactoringOperation::ExtractFunction {
-                        new_name: "add_numbers".to_string(),
-                        start_line: 1,
-                        start_char: 4,
-                        end_line: 3,
-                        end_char: 18,
-                    },
-                    ExpectedBehavior::Success,
-                ),
                 Language::TypeScript => (
                     "function main() {\n    const x = 1;\n    const y = 2;\n    const result = x + y;\n}\n",
                     RefactoringOperation::ExtractFunction {
@@ -290,18 +252,6 @@ impl RefactoringScenarios {
                     // Now uses AST first (reliable), LSP as fallback
                     ExpectedBehavior::Success
                 ),
-                Language::Go => (
-                    "func main() {\n    x := 1\n    y := 2\n    result := x + y\n    fmt.Println(result)\n}\n",
-                    RefactoringOperation::ExtractFunction {
-                        new_name: "addNumbers".to_string(),
-                        start_line: 1,
-                        start_char: 4,
-                        end_line: 3,
-                        end_char: 19,
-                    },
-                    // Now uses AST first (reliable), LSP as fallback
-                    ExpectedBehavior::Success
-                ),
             };
 
             (
@@ -319,14 +269,6 @@ impl RefactoringScenarios {
     pub fn inline_simple_variable() -> RefactoringTestCase {
         RefactoringTestCase::new("inline_simple_variable").with_all_languages(|lang| {
             let (source, operation, behavior) = match lang {
-                Language::Python => (
-                    "def process():\n    multiplier = 2\n    result = 10 * multiplier\n    return result\n",
-                    RefactoringOperation::InlineVariable {
-                        line: 1,
-                        character: 4,
-                    },
-                    ExpectedBehavior::Success,
-                ),
                 Language::TypeScript => (
                     "function process() {\n    const multiplier = 2;\n    const result = 10 * multiplier;\n    return result;\n}\n",
                     RefactoringOperation::InlineVariable {
@@ -341,15 +283,6 @@ impl RefactoringScenarios {
                     RefactoringOperation::InlineVariable {
                         line: 1,
                         character: 8,
-                    },
-                    // AST fallback stub now exists (will be fully implemented later)
-                    ExpectedBehavior::Success
-                ),
-                Language::Go => (
-                    "func process() int {\n    multiplier := 2\n    result := 10 * multiplier\n    return result\n}\n",
-                    RefactoringOperation::InlineVariable {
-                        line: 1,
-                        character: 4,
                     },
                     // AST fallback stub now exists (will be fully implemented later)
                     ExpectedBehavior::Success
@@ -383,31 +316,25 @@ mod tests {
 
     #[test]
     fn test_language_extensions() {
-        assert_eq!(Language::Python.file_extension(), "py");
         assert_eq!(Language::TypeScript.file_extension(), "ts");
         assert_eq!(Language::Rust.file_extension(), "rs");
-        assert_eq!(Language::Go.file_extension(), "go");
     }
 
     #[test]
     fn test_refactoring_support() {
-        // All languages now have AST-based stub implementations
-        assert!(Language::Python.supports_refactoring());
+        // All languages have AST-based stub implementations
         assert!(Language::TypeScript.supports_refactoring());
         assert!(Language::Rust.supports_refactoring());
-        assert!(Language::Go.supports_refactoring());
     }
 
     #[test]
     fn test_scenario_has_all_languages() {
         let scenario = RefactoringScenarios::extract_simple_expression();
-        assert_eq!(scenario.fixtures.len(), 4);
+        assert_eq!(scenario.fixtures.len(), 2);
 
         let languages: Vec<Language> = scenario.fixtures.iter().map(|f| f.language).collect();
-        assert!(languages.contains(&Language::Python));
         assert!(languages.contains(&Language::TypeScript));
         assert!(languages.contains(&Language::Rust));
-        assert!(languages.contains(&Language::Go));
     }
 
     #[test]

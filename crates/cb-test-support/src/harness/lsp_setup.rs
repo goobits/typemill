@@ -7,6 +7,7 @@ pub struct LspSetupHelper;
 
 impl LspSetupHelper {
     /// Check if required LSP servers are available on the system
+    /// Note: Language support temporarily reduced to TypeScript + Rust
     pub fn check_lsp_servers_available() -> Result<(), String> {
         // Check TypeScript language server
         if !Self::is_command_available("typescript-language-server") {
@@ -18,15 +19,8 @@ impl LspSetupHelper {
             );
         }
 
-        // Check Python language server
-        if !Self::is_command_available("pylsp") {
-            return Err(
-                "Python LSP test requires 'pylsp' (Python LSP Server) to be installed.\n\
-                Install with: pip install python-lsp-server[all]\n\
-                Or use conda/system package manager."
-                    .to_string(),
-            );
-        }
+        // Note: rust-analyzer is typically available if Rust toolchain is installed
+        // We don't fail if it's missing since it's usually present
 
         Ok(())
     }
@@ -88,22 +82,19 @@ impl LspSetupHelper {
     }
 
     /// Create a .codebuddy/config.json file for LSP configuration in test workspace
+    /// Note: Language support temporarily reduced to TypeScript + Rust
     pub fn setup_lsp_config(workspace: &TestWorkspace) {
         workspace.create_directory(".codebuddy");
 
         // Resolve absolute paths for LSP servers to avoid PATH issues
         let ts_lsp_path = Self::resolve_command_path("typescript-language-server")
             .unwrap_or_else(|| "typescript-language-server".to_string());
-        let pylsp_path = Self::resolve_command_path("pylsp").unwrap_or_else(|| "pylsp".to_string());
         let rust_analyzer_path = Self::resolve_command_path("rust-analyzer")
             .unwrap_or_else(|| "rust-analyzer".to_string());
-        let gopls_path = Self::resolve_command_path("gopls").unwrap_or_else(|| "gopls".to_string());
 
         // Always log LSP paths for debugging test failures
         eprintln!("DEBUG: Resolved TypeScript LSP path: {}", ts_lsp_path);
-        eprintln!("DEBUG: Resolved Python LSP path: {}", pylsp_path);
         eprintln!("DEBUG: Resolved Rust LSP path: {}", rust_analyzer_path);
-        eprintln!("DEBUG: Resolved Go LSP path: {}", gopls_path);
 
         // Create a full AppConfig structure to ensure proper deserialization
         let config = json!({
@@ -121,20 +112,8 @@ impl LspSetupHelper {
                         "restartInterval": 5
                     },
                     {
-                        "extensions": ["py"],
-                        "command": [pylsp_path],
-                        "rootDir": null,
-                        "restartInterval": 5
-                    },
-                    {
                         "extensions": ["rs"],
                         "command": [rust_analyzer_path],
-                        "rootDir": null,
-                        "restartInterval": 5
-                    },
-                    {
-                        "extensions": ["go"],
-                        "command": [gopls_path],
                         "rootDir": null,
                         "restartInterval": 5
                     }
@@ -229,6 +208,7 @@ impl LspSetupHelper {
     }
 
     /// Get the LSP command for a given file extension
+    /// Note: Language support temporarily reduced to TypeScript + Rust
     pub fn get_lsp_command(extension: &str) -> Result<Vec<String>, cb_protocol::ApiError> {
         match extension {
             "ts" | "tsx" | "js" | "jsx" => {
@@ -236,18 +216,13 @@ impl LspSetupHelper {
                     .unwrap_or_else(|| "typescript-language-server".to_string());
                 Ok(vec![ts_lsp_path, "--stdio".to_string()])
             }
-            "py" => {
-                let pylsp_path =
-                    Self::resolve_command_path("pylsp").unwrap_or_else(|| "pylsp".to_string());
-                Ok(vec![pylsp_path])
-            }
             "rs" => {
                 let rust_analyzer_path = Self::resolve_command_path("rust-analyzer")
                     .unwrap_or_else(|| "rust-analyzer".to_string());
                 Ok(vec![rust_analyzer_path])
             }
             _ => Err(cb_protocol::ApiError::lsp(format!(
-                "No LSP server configured for extension: {}",
+                "No LSP server configured for extension: {} (only TypeScript and Rust supported)",
                 extension
             ))),
         }

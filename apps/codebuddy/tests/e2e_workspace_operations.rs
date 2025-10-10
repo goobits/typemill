@@ -726,26 +726,8 @@ export function formatResponse(data) {
 "#,
     )
     .expect("Failed to create JavaScript test file");
-    let py_file = workspace.path().join("validate.py");
-    std::fs::write(
-        &py_file,
-        r#"
-def validate_user_data(user_data):
-    """Validate user data structure"""
-    required_fields = ['name', 'email', 'age']
-    return all(field in user_data for field in required_fields)
-
-def process_user_data(user_data):
-    """Process user data"""
-    if validate_user_data(user_data):
-        return {
-            'status': 'success',
-            'processed_data': user_data
-        }
-    return {'status': 'error', 'message': 'Invalid data'}
-"#,
-    )
-    .expect("Failed to create Python test file");
+    // Note: Language support temporarily reduced to TypeScript + Rust
+    // Removed Python fixture - test now focuses on TypeScript/JavaScript only
     println!("DEBUG: Files in workspace:");
     for entry in std::fs::read_dir(workspace.path()).unwrap() {
         let entry = entry.unwrap();
@@ -764,11 +746,11 @@ def process_user_data(user_data):
         .wait_for_lsp_ready(&ts_file, 5000)
         .await
         .expect("TypeScript LSP should index file");
-    println!("DEBUG: TypeScript file indexed, waiting for Python file...");
+    println!("DEBUG: TypeScript file indexed, waiting for JavaScript file...");
     client
-        .wait_for_lsp_ready(&py_file, 5000)
+        .wait_for_lsp_ready(&js_file, 5000)
         .await
-        .expect("Python LSP should index file");
+        .expect("JavaScript LSP should index file");
     println!("DEBUG: Both files indexed, testing hover on Config interface...");
     let hover_response = client
         .call_tool(
@@ -846,35 +828,6 @@ def process_user_data(user_data):
         "JavaScript file should have detectable symbols"
     );
     let response = client
-        .call_tool_with_timeout(
-            "get_document_symbols",
-            json!({ "file_path" : py_file.to_string_lossy() }),
-            Duration::from_secs(30),
-        )
-        .await;
-    if let Err(e) = &response {
-        let stderr_logs = client.get_stderr_logs();
-        eprintln!("DEBUG: Python LSP call failed with: {}", e);
-        eprintln!("DEBUG: cb-server stderr logs:");
-        for log in stderr_logs {
-            eprintln!("  {}", log);
-        }
-    }
-    let response = response.expect("Python LSP call should succeed");
-    if let Some(error) = response.get("error") {
-        panic!(
-            "Python LSP failed: {}",
-            error.get("message").unwrap_or(&json!("unknown error"))
-        );
-    }
-    let py_symbols = response["result"]["content"]["symbols"]
-        .as_array()
-        .expect("Python LSP should return symbols array");
-    assert!(
-        !py_symbols.is_empty(),
-        "Python file should have detectable symbols"
-    );
-    let response = client
         .call_tool("search_symbols", json!({ "query" : "validate" }))
         .await
         .expect("Workspace symbol search should succeed");
@@ -898,14 +851,14 @@ def process_user_data(user_data):
         .collect();
     assert!(
         found_files.len() >= 2,
-        "Should find validate symbols in multiple files (TypeScript and Python)"
+        "Should find validate symbols in multiple files (TypeScript and JavaScript)"
     );
     println!("✅ Cross-language LSP test passed:");
     println!("  - TypeScript symbols: {}", ts_symbols.len());
     println!("  - JavaScript symbols: {}", js_symbols.len());
-    println!("  - Python symbols: {}", py_symbols.len());
     println!(
         "  - Workspace symbols for 'validate': {}",
         workspace_symbols.len()
     );
+    println!("Note: Language support temporarily reduced to TypeScript + Rust");
 }
