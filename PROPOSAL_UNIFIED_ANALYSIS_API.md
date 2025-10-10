@@ -281,12 +281,12 @@ analyze.dependencies("graph", { type: "workspace" }, {
 ```
 
 **Replaces**:
-- `analyze_imports` ✅
-- `analyze_dependencies` ❌
-- `find_circular_dependencies` ❌
-- `find_coupling` ❌
-- `find_cohesion` ❌
-- `analyze_dependency_depth` ❌
+- `analyze_imports` ✅ (implemented)
+- `analyze_dependencies` ⚠️ (via kind="graph", not yet implemented)
+- `find_circular_dependencies` ⚠️ (via kind="circular", not yet implemented)
+- `find_coupling` ⚠️ (via kind="coupling", not yet implemented)
+- `find_cohesion` ⚠️ (via kind="cohesion", not yet implemented)
+- `analyze_dependency_depth` ⚠️ (via kind="depth", not yet implemented)
 
 ---
 
@@ -344,11 +344,16 @@ analyze.structure("interfaces", { type: "workspace" }, {
 
 **Replaces**:
 - `get_document_symbols` ✅
-- `search_workspace_symbols` ✅ (via filters)
-- `analyze_inheritance` ❌
-- `analyze_interface_usage` ❌
+- `analyze_inheritance` ⚠️ (via kind="hierarchy")
+- `analyze_interface_usage` ⚠️ (via kind="interfaces")
 
-**Note**: Navigation commands (`find_definition`, `find_references`, `find_implementations`) remain separate as they are point-queries, not bulk analysis.
+**Does NOT replace**:
+- `search_workspace_symbols` - **Kept as navigation command** (see Navigation Commands section)
+- `find_definition` - Point-query, not bulk analysis
+- `find_references` - Point-query, not bulk analysis
+- `find_implementations` - Point-query, not bulk analysis
+
+**Note**: Navigation commands are fundamentally different from bulk analysis. They accept specific queries/positions and return targeted results, not workspace-wide findings.
 
 ---
 
@@ -463,6 +468,39 @@ analyze.tests("smells", { type: "directory", path: "tests/" })
 - `find_untested_code` ❌
 - `analyze_test_quality` ❌
 - `find_test_smells` ❌
+
+---
+
+## Navigation Commands (Separate from Analysis)
+
+**The following commands remain as dedicated navigation tools** (not replaced by `analyze.*`):
+
+### `search_workspace_symbols(query, options)` → `SymbolList`
+
+**Why separate**: String-based symbol search is a point-query operation, fundamentally different from bulk workspace analysis.
+
+**Arguments**:
+```json
+{
+  "query": "processOrder",
+  "match_mode": "substring" | "fuzzy" | "exact",
+  "kind_filter": ["function", "class", "interface"],
+  "limit": 100
+}
+```
+
+**Example**:
+```javascript
+search_workspace_symbols("process", { match_mode: "fuzzy", kind_filter: ["function"] })
+```
+
+### Other Navigation Commands (Unchanged)
+
+- `find_definition(file_path, position)` → Location
+- `find_references(file_path, position)` → LocationList
+- `find_implementations(file_path, position)` → LocationList
+
+**These are point-queries for IDE workflows, not bulk analysis operations.**
 
 ---
 
@@ -591,6 +629,17 @@ analyze.batch([
 | **TOTAL** | **37** | **6** | **-84%** |
 
 **Plus**: 1 batch command for multi-analysis workflows
+
+**Navigation commands preserved** (not counted in reduction):
+- `search_workspace_symbols`
+- `find_definition`
+- `find_references`
+- `find_implementations`
+
+**Legend**:
+- ✅ = Already implemented in current system
+- ⚠️ = Covered by new API via `kind` parameter, implementation pending
+- ❌ = Not covered, would be a regression
 
 ---
 

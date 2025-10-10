@@ -191,26 +191,56 @@ workspace.apply_edit(plan) → Result
 {
   "kind": "symbol" | "to_module" | "to_namespace" | "consolidate",
   "source": {
+    // For symbol/module moves
     "file_path": "src/old.rs",
     "position": { "line": 10, "character": 5 },
-    "range": { "start": {...}, "end": {...} }  // for multi-line moves
+    "range": { "start": {...}, "end": {...} },
+
+    // For consolidate moves (Rust crate consolidation)
+    "directory": "crates/old-crate"
   },
   "destination": {
+    // For symbol/module moves
     "file_path": "src/new.rs",
     "module_path": "crate::new::module",
-    "namespace": "new_namespace"
+    "namespace": "new_namespace",
+
+    // For consolidate moves
+    "directory": "crates/target-crate/src/module"
   },
   "options": {
     "dry_run": true,
-    "update_imports": true
+    "update_imports": true,
+    "merge_dependencies": true  // for consolidate: merge Cargo.toml deps
   }
 }
 ```
 
+**Schema rules**:
+- `kind="symbol" | "to_module" | "to_namespace"`: Use `source.file_path` + `destination.file_path` or `module_path`
+- `kind="consolidate"`: Use `source.directory` + `destination.directory`
+
 **Examples**:
-- `move.plan("symbol", { file_path: "old.rs", position: {...} }, { file_path: "new.rs" })`
-- `move.plan("to_module", { file_path: "app.rs", range: {...} }, { module_path: "utils" })`
-- `move.plan("consolidate", { source_dir: "crates/old" }, { target_dir: "crates/new/module" })`
+```javascript
+// Move symbol to different file
+move.plan("symbol",
+  { file_path: "old.rs", position: { line: 10, character: 5 } },
+  { file_path: "new.rs" }
+)
+
+// Move code block to module
+move.plan("to_module",
+  { file_path: "app.rs", range: { start: {...}, end: {...} } },
+  { module_path: "crate::utils" }
+)
+
+// Consolidate Rust crate (directory-level move)
+move.plan("consolidate",
+  { directory: "crates/old-crate" },
+  { directory: "crates/target-crate/src/module" },
+  { merge_dependencies: true }
+)
+```
 
 ---
 
@@ -294,9 +324,15 @@ workspace.apply_edit(plan) → Result
 {
   "kind": "unused_imports" | "dead_code" | "redundant_code" | "file",
   "target": {
+    // For file-scoped deletions (unused_imports, file)
     "file_path": "src/app.rs",
-    "scope": "workspace" | "file" | "directory",
-    "range": { "start": {...}, "end": {...} }  // for specific ranges
+
+    // For workspace/directory-scoped deletions (dead_code, redundant_code)
+    "scope": "workspace" | "file" | "directory",  // optional, inferred from kind
+    "path": "src/",  // optional, for directory scope
+
+    // For range-specific deletions
+    "range": { "start": {...}, "end": {...} }
   },
   "options": {
     "dry_run": true,
@@ -305,10 +341,32 @@ workspace.apply_edit(plan) → Result
 }
 ```
 
+**Scope inference rules**:
+- `kind="file"`: `scope` inferred as `"file"` from `file_path`, explicit `scope` ignored
+- `kind="unused_imports"`: `scope` inferred as `"file"` from `file_path`
+- `kind="dead_code"`: `scope` required (can be `"workspace"`, `"file"`, or `"directory"`)
+- `kind="redundant_code"`: `scope` optional, defaults to `"file"` if `file_path` provided
+
 **Examples**:
-- `delete.plan("unused_imports", { file_path: "app.rs" })`
-- `delete.plan("dead_code", { scope: "workspace" }, { aggressive: true })`
-- `delete.plan("file", { file_path: "old.rs" })`
+```javascript
+// Delete unused imports from single file (scope inferred)
+delete.plan("unused_imports", { file_path: "app.rs" })
+
+// Delete dead code workspace-wide (scope explicit)
+delete.plan("dead_code", { scope: "workspace" }, { aggressive: true })
+
+// Delete dead code in directory (scope + path)
+delete.plan("dead_code", { scope: "directory", path: "src/legacy/" })
+
+// Delete specific file (scope inferred)
+delete.plan("file", { file_path: "old.rs" })
+
+// Delete redundant code in range (scope inferred from file_path)
+delete.plan("redundant_code", {
+  file_path: "app.rs",
+  range: { start: { line: 10, character: 0 }, end: { line: 20, character: 0 } }
+})
+```
 
 ---
 
