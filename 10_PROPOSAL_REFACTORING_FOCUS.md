@@ -315,49 +315,6 @@ All commands should be organized and documented by their pillar to reinforce the
 - `find_undocumented_exports` ⬜
 - `find_todo_comments` ⬜
 
-**Testing**
-- `analyze_test_coverage` ⬜
-- `find_untested_code` ⬜
-
----
-
-## Documentation & Messaging Changes
-
-### README.md Repositioning
-
-**Before:**
-> Codebuddy is a pure Rust MCP server bridging Language Server Protocol (LSP) functionality to AI coding assistants.
-
-**After:**
-> **TypeMill** is a refactoring powerhouse for AI-assisted development. Built on LSP and AST intelligence, it provides **refactoring primitives** (rename, extract, move, inline) and **analysis primitives** (complexity, smells, dead code) that compose into sophisticated code transformations.
-
-### Tagline Options
-
-1. "Precision refactoring for AI agents"
-2. "The refactoring engine behind AI code assistants"
-3. "Composable refactoring primitives for intelligent code transformation"
-4. "Turn complexity into clarity - automated refactoring at scale"
-
-### API_REFERENCE.md Reorganization
-
-Current organization:
-- Navigation & Intelligence
-- Editing & Refactoring
-- Code Analysis
-- File Operations
-- Workspace Operations
-- Advanced Operations
-
-**Proposed organization:**
-
-```markdown
-# TypeMill API Reference
-
-## Refactoring Primitives (Transform Code)
-
-### Rename Operations
-- rename_symbol
-- rename_symbol_strict
 - rename_file
 - rename_directory
 - rename_parameter (🚧 coming soon)
@@ -434,284 +391,132 @@ Current organization:
 
 ## Implementation Roadmap
 
-### Phase 1: Foundation (Weeks 1-2) - **Documentation & Messaging**
+### Phase 1: Foundation (Weeks 1-2) — **Primitive Catalog & Enforcement**
 
 **Goals:**
-- Establish refactoring-first identity in all documentation
-- Reorganize API reference by pillars
-- Create clear "coming soon" roadmap
+- Encode refactoring and analysis pillars as first-class metadata in the codebase
+- Guarantee every tool is registered with machine-readable capabilities
+- Produce automated coverage reports that highlight missing primitives
 
 **Tasks:**
-1. Update README.md with new positioning
-2. Reorganize API_REFERENCE.md by pillars
-3. Update CLAUDE.md/AGENTS.md with refactoring focus
-4. Create visual primitive hierarchy diagram
-5. Add "🚧 Coming Soon" badges to planned primitives
-6. Write blog post: "Why TypeMill Focuses on Refactoring"
+1. Introduce `PrimitivePillar`/`PrimitiveKind` metadata in `cb-protocol` and extend all tool registration paths in `cb-handlers` to require it.
+2. Generate a build-time primitive catalog (`primitive_inventory.rs`) that enumerates every tool, pillar, language, and feature flag; expose it via the MCP `get_document_symbols` or a new `list_primitives` endpoint.
+3. Add validation to CI (`apps/codebuddy/src/bin/codebuddy.rs` or dedicated checker) that fails builds when a registered tool lacks metadata, pillar assignment, or coverage annotation.
+4. Emit structured telemetry events (behind feature flag) for primitive invocations so coverage tooling can rely on real usage data.
 
 **Success Criteria:**
-- [ ] All docs reflect refactoring-first vision
-- [ ] API organized by Refactoring/Analysis pillars
-- [ ] Clear roadmap visible to users
+- [ ] All existing tools compile only when tagged with pillar metadata
+- [ ] Primitive catalog accessible through a programmatic API and CLI subcommand
+- [ ] CI guardrails prevent introducing unclassified primitives
+- [ ] Telemetry schema established for usage tracking (even if disabled by default)
 
-### Phase 2: Quick Wins (Weeks 3-4) - **Low-Hanging Fruit Primitives**
+### Phase 2: Quick Wins (Weeks 3-4) — **Low-Complexity Primitives**
 
 **Goals:**
-- Implement 3-5 missing primitives that leverage existing infrastructure
-- Demonstrate progress toward completeness
+- Implement missing primitives that reuse existing analyses or LSP features
+- Exercise the new catalog and validation pipeline
 
-**Candidates:**
-
-1. **`delete_dead_code`** (High Priority)
-   - Leverage existing `find_dead_code` analysis
-   - Implement removal with safety checks
-   - Atomic multi-file deletion with rollback
-
-2. **`extract_constant`** (High Priority)
-   - Leverage existing magic number detection
-   - Extract to module-level constant
-   - Update all occurrences
-
-3. **`find_unused_parameters`** (High Priority)
-   - AST-based parameter analysis
-   - Check for parameter usage in function body
-   - Report location + suggestion
-
-4. **`inline_function`** (High Priority)
-   - LSP-first approach (code action)
-   - AST fallback for simple cases
-   - Multi-language support
-
-5. **`find_undocumented_exports`** (Medium Priority)
-   - AST-based public API detection
-   - Check for doc comments
-   - Language-specific conventions (JSDoc, docstrings, etc.)
+**Deliverables:**
+- `delete_dead_code`: batch delete API wired to `find_dead_code` results with rollback support in `cb-services`
+- `extract_constant`: AST-powered constant extraction with import/update handling for TS, Python, Go, Rust
+- `find_unused_parameters`: language plugin support for parameter reachability checks
+- `inline_function`: initial implementation using LSP code actions with AST fallback in TypeScript/Python
+- Optional: `find_undocumented_exports` if bandwidth permits
 
 **Success Criteria:**
-- [ ] 5 new primitives implemented
-- [ ] Tests pass for all languages
-- [ ] Documentation complete with examples
+- [ ] New primitives registered with metadata, tests, and usage telemetry hooks
+- [ ] Multi-language harness updates validating each primitive in at least three languages
+- [ ] No regression in existing primitive test suites (`cargo nextest run --package cb-handlers`)
 
-### Phase 3: Core Gaps (Weeks 5-8) - **Critical Missing Primitives**
+### Phase 3: Core Gaps (Weeks 5-8) — **Structural Refactors**
 
 **Goals:**
-- Fill critical gaps in refactoring capabilities
-- Enable common refactoring workflows
+- Deliver move/extract capabilities required for large-scale refactors
+- Stand up dependency analysis powering cycle detection
 
-**Priorities:**
-
-1. **Move Operations** (Weeks 5-6)
-   - `move_symbol` - Move function/class to different file
-   - `move_to_module` - Move to existing module
-   - Leverage existing import update infrastructure
-   - Multi-language support
-
-2. **Advanced Extraction** (Week 7)
-   - `extract_module` - Extract symbols to new file
-   - `extract_interface` - Extract interface from class (OOP languages)
-   - Complex import generation
-
-3. **Circular Dependency Detection** (Week 8)
-   - `find_circular_dependencies` - Detect import cycles
-   - Graph-based analysis (see proposal #51)
-   - Suggest breaking strategies
+**Deliverables:**
+- Move suite: `move_symbol`, `move_to_module`, and supporting filesystem/import rewriting utilities in `cb-services`
+- Advanced extraction: `extract_module`, `extract_interface` with new AST transforms and import synthesis helpers
+- Dependency graph service shared by `find_circular_dependencies` and other analyses (builds on proposals #40/#50)
 
 **Success Criteria:**
-- [ ] Move operations work across 7 languages
-- [ ] Advanced extraction for TypeScript/Python/Java/C#
-- [ ] Circular dependency detection functional
+- [ ] Symbol moves preserve imports and compile in 7 supported languages (verified via integration tests)
+- [ ] Extraction primitives handle multi-file output with atomic edits
+- [ ] Dependency graph accessible through a dedicated API and backing cache
 
-### Phase 4: Advanced Analysis (Weeks 9-12) - **Code Smell Detection**
+### Phase 4: Advanced Analysis (Weeks 9-12) — **Smell Detection**
 
 **Goals:**
-- Implement sophisticated pattern detection
-- Enable AI-guided refactoring suggestions
+- Build higher-order analyzers that feed refactoring automation
+- Ensure outputs integrate with existing primitive workflows
 
-**Priorities:**
-
-1. **Duplication Detection** (Weeks 9-10)
-   - `find_duplicated_code` - AST-based clone detection
-   - Token-based similarity analysis
-   - Report location pairs + similarity score
-
-2. **God Class Detection** (Week 11)
-   - `find_god_classes` - Detect classes with too many responsibilities
-   - Metrics: method count, field count, complexity, coupling
-   - Suggest extraction candidates
-
-3. **Dependency Graph Analysis** (Week 12)
-   - `analyze_dependencies` - Full dependency graph
-   - Coupling/cohesion metrics
-   - Visualization-ready output (GraphViz, Mermaid)
+**Deliverables:**
+- `find_duplicated_code` using token/AST clone detection with tunable thresholds
+- `find_god_classes` leveraging metrics from dependency graph + complexity analysis
+- `analyze_dependencies` surface coupling/cohesion metrics, expose GraphViz/Mermaid export helpers
 
 **Success Criteria:**
-- [ ] Duplication detection with configurable thresholds
-- [ ] God class detection with actionable suggestions
-- [ ] Dependency graph export to standard formats
+- [ ] Analyzers deliver structured results consumable by MCP clients
+- [ ] Performance budgets met (sub-second analysis on mid-sized projects via caching)
+- [ ] Regression tests cover representative projects for each language
 
-### Phase 5: Test Integration (Weeks 13-16) - **Coverage Analysis**
+### Phase 5: Test Integration (Weeks 13-16) — **Safety Net**
 
 **Goals:**
-- Integrate with test coverage tools
-- Enable "refactor with confidence" workflows
+- Incorporate coverage data into refactoring workflows
+- Provide guardrails that prevent risky transformations
 
-**Priorities:**
-
-1. **Coverage Integration** (Weeks 13-14)
-   - `analyze_test_coverage` - Parse coverage reports (lcov, cobertura)
-   - Per-function coverage mapping
-   - Integration with language-specific tools (pytest-cov, nyc, tarpaulin)
-
-2. **Untested Code Detection** (Week 15)
-   - `find_untested_code` - Functions with 0% coverage
-   - Prioritize by complexity (high complexity + low coverage = refactor risk)
-
-3. **Refactoring Safety Checks** (Week 16)
-   - Pre-refactor coverage snapshot
-   - Post-refactor coverage comparison
-   - Warn if refactor reduces coverage
+**Deliverables:**
+- Coverage parsers (`lcov`, `cobertura`, `jacoco`) with unified schema in `cb-analysis-*`
+- `find_untested_code` and `analyze_test_coverage` primitives connected to coverage schema
+- Refactoring safety checks that compare pre/post coverage snapshots when running batch operations
 
 **Success Criteria:**
-- [ ] Coverage parsing for 3+ coverage formats
-- [ ] Untested code detection working
-- [ ] Safety checks prevent coverage regression
+- [ ] Coverage ingestion supports at least three formats across two languages
+- [ ] Untested code detection integrated into refactoring workflows (e.g., optional pre-check)
+- [ ] Safety checks enforce configurable thresholds, failing operations when coverage regresses
 
 ---
 
-## Success Metrics
-
-### User-Facing Metrics
-
-1. **Refactoring Operations Per Session**
-   - Track: rename, extract, move, inline operations
-   - Goal: 10+ primitives per refactoring session
-
-2. **Code Quality Improvements**
-   - Measure: Average complexity reduction
-   - Measure: Dead code removal percentage
-   - Goal: 20% complexity reduction in typical refactor
-
-3. **Time Savings**
-   - Baseline: Manual refactoring time
-   - Measure: Time with TypeMill assistance
-   - Goal: 5x faster refactoring
-
-### Technical Metrics
+## Engineering Metrics
 
 1. **Primitive Coverage**
-   - Current: ~40% of proposed primitives
-   - Phase 2: 60% coverage
-   - Phase 3: 80% coverage
-   - Phase 5: 95% coverage
+   - Baseline produced by Phase 1 catalog
+   - Phase 2 target: ≥60% of planned primitives implemented or in progress
+   - Phase 3 target: ≥80%
+   - Phase 5 target: ≥95%
 
 2. **Language Parity**
-   - All primitives work across 7 supported languages
-   - LSP-first ensures consistency
-   - AST fallback for LSP gaps
+   - Integration tests confirm each new primitive works across the seven supported languages
+   - Fallback paths documented in code (LSP vs AST) and validated in CI
 
-3. **Workflow Composition**
-   - Number of built-in refactoring workflows
-   - Current: 3-5 workflows
-   - Goal: 20+ workflows (see docs/features/WORKFLOWS.md)
+3. **Analysis Throughput**
+   - Complex analyzers (duplication, dependency graph) execute within acceptable latency budgets (sub-second for midsize projects, <5s for large workspaces)
+   - Telemetry emitted in Phase 1 used to spot regressions
 
----
-
-## Positioning vs. Competitors
-
-### TypeMill vs. IDE Refactoring Tools
-
-| Feature | IntelliJ | VS Code | TypeMill |
-|---------|----------|---------|----------|
-| **Rename** | ✅ | ✅ | ✅ Multi-language |
-| **Extract** | ✅ | ⚠️ Limited | ✅ Multi-language |
-| **Move** | ✅ Java-focused | ❌ | 🚧 Coming soon |
-| **Complexity Analysis** | ⚠️ Plugins | ❌ | ✅ Built-in |
-| **Dead Code Detection** | ⚠️ Plugins | ⚠️ Limited | ✅ LSP-based |
-| **Circular Dependencies** | ⚠️ Plugins | ❌ | 🚧 Coming soon |
-| **AI Integration** | ❌ | ⚠️ Copilot | ✅ MCP protocol |
-| **Multi-Language** | ❌ Per-IDE | ⚠️ Per-extension | ✅ Unified |
-| **Atomic Multi-File** | ⚠️ Limited | ❌ | ✅ Built-in |
-
-**TypeMill Advantage**: Unified, AI-native, multi-language refactoring across all codebases.
-
-### TypeMill vs. AI Coding Assistants
-
-| Feature | GitHub Copilot | Cursor | Claude Code | TypeMill |
-|---------|----------------|--------|-------------|----------|
-| **Code Generation** | ✅ | ✅ | ✅ | ❌ (not focus) |
-| **Refactoring** | ⚠️ Manual | ⚠️ Manual | ⚠️ Manual | ✅ Automated |
-| **Analysis** | ❌ | ❌ | ⚠️ Limited | ✅ Deep |
-| **LSP Integration** | ❌ | ⚠️ Basic | ⚠️ Basic | ✅ Full |
-| **Multi-Language** | ✅ | ✅ | ✅ | ✅ |
-| **Atomic Edits** | ❌ | ❌ | ❌ | ✅ |
-| **Dry-Run Mode** | ❌ | ❌ | ❌ | ✅ |
-
-**TypeMill Advantage**: AI assistants use TypeMill as the refactoring engine, composing primitives intelligently.
-
----
-
-## Communication Plan
-
-### Internal Alignment
-
-1. **Team Discussion** (Week 1)
-   - Review this proposal
-   - Prioritize primitives for Phases 2-5
-   - Assign ownership for implementation
-
-2. **Documentation Sprint** (Week 2)
-   - Update all docs with new positioning
-   - Create visual diagrams of primitive hierarchy
-   - Write migration guide for existing users
-
-### External Messaging
-
-1. **Blog Post Series**
-   - Week 2: "Introducing TypeMill: Refactoring-First AI Tool"
-   - Week 4: "Refactoring Primitives: The Building Blocks of Clean Code"
-   - Week 8: "Analysis Primitives: Understanding Before Transforming"
-
-2. **Social Media**
-   - Thread: "Why we're focusing on refactoring, not code generation"
-   - Demo videos: Before/after refactoring examples
-   - Metrics: Show complexity reduction, dead code elimination
-
-3. **Integration Examples**
-   - Claude Code integration guide
-   - Cursor integration example
-   - MCP protocol showcase
+4. **Safety Guardrails**
+   - Coverage-aware refactoring checks fail builds when guard thresholds are exceeded
+   - Regression tests ensure rollback/atomic edit systems leave projects in consistent state
 
 ---
 
 ## Risks & Mitigations
 
-### Risk 1: Scope Creep
-**Impact**: High - Could delay core primitives
-**Mitigation**:
-- Strict prioritization by phase
-- "No" to features outside two pillars
-- Focus on primitive completeness over fancy workflows
+### Risk 1: Metadata Drift
+**Impact**: High — primitives could fall out of sync with the catalog, breaking coverage metrics.
+**Mitigation**: Enforce metadata validation in CI (Phase 1) and add regression tests that load the catalog during `cargo test`.
 
-### Risk 2: LSP Server Gaps
-**Impact**: Medium - Some primitives may be LSP-unsupported
-**Mitigation**:
-- AST fallback for all critical primitives
-- Contribute upstream to LSP servers (rust-analyzer, typescript-language-server)
-- Document LSP support matrix clearly
+### Risk 2: LSP Capability Gaps
+**Impact**: Medium — some languages may lack code actions needed for `inline_function` or move operations.
+**Mitigation**: Provide AST fallbacks and mark pillar support per language in metadata so clients can degrade gracefully.
 
-### Risk 3: User Confusion (Positioning Change)
-**Impact**: Low - Existing users may expect broader tool
-**Mitigation**:
-- Clear communication in CHANGELOG
-- Emphasize "better at refactoring, still supports basics"
-- Showcase improved primitives as value-add
+### Risk 3: Dependency Graph Performance
+**Impact**: Medium — whole-workspace graph builds may exceed acceptable latency.
+**Mitigation**: Introduce incremental caches keyed by file hash and reuse graph slices across analyses; include benchmarks in CI.
 
-### Risk 4: AI Integration Complexity
-**Impact**: Medium - AI agents must orchestrate primitives correctly
-**Mitigation**:
-- Provide built-in workflows for common patterns
-- Excellent documentation with examples
-- Integration guides for major AI assistants
+### Risk 4: Coverage Integration Fragility
+**Impact**: Medium — inconsistent coverage schema across languages could invalidate safety checks.
+**Mitigation**: Normalize to a single internal representation with explicit adapters and contract tests for each parser.
 
 ---
 
@@ -740,9 +545,9 @@ Current organization:
 ## Open Questions
 
 1. **Naming Convention for Primitives**
-   - Should we use `refactor_*` prefix (e.g., `refactor_extract_function`)?
-   - Or keep short names (`extract_function`) with pillar organization?
-   - **Recommendation**: Keep short names, organize by pillar in docs
+   - Should we encode prefixing in the metadata or rename functions (e.g., `refactor_extract_function`)?
+   - Or keep short names (`extract_function`) and rely on the `PrimitivePillar` catalog entry?
+   - **Recommendation**: Keep short names; metadata and catalog provide disambiguation
 
 2. **Dry-Run Default Behavior**
    - Should destructive operations default to dry-run=true?
@@ -764,38 +569,29 @@ Current organization:
 ## Next Steps
 
 1. **Approve Proposal** (Week 1)
-   - Gather team feedback
-   - Finalize primitive priorities
-   - Commit to refactoring-first positioning
+   - Confirm pillar metadata schema and catalog format
+   - Lock the target primitive list per phase
 
 2. **Begin Phase 1** (Week 1-2)
-   - Documentation updates
-   - API reorganization
-   - Visual diagrams
+   - Implement metadata types and registry enforcement
+   - Wire catalog generation and CI validation
+   - Add telemetry instrumentation behind feature flag
 
-3. **Launch Phase 2** (Week 3)
-   - Implement quick-win primitives
-   - Publish progress updates
-   - Gather user feedback
+3. **Launch Phase 2 Prep** (Week 2-3)
+   - Finalize API contracts for `delete_dead_code`, `extract_constant`, `find_unused_parameters`, `inline_function`
+   - Ensure language plugins expose hooks needed by those primitives
 
-4. **Track Metrics** (Ongoing)
-   - Primitive coverage percentage
-   - User refactoring session metrics
-   - Code quality improvements
+4. **Establish Monitoring** (Ongoing)
+   - Use Phase 1 telemetry to track primitive coverage and latency
+   - Add regression tests/benchmarks for new primitives and analyzers
 
 ---
 
 ## Conclusion
 
-Repositioning TypeMill as a **refactoring-first tool** with **Refactoring Primitives** and **Analysis Primitives** provides:
+This roadmap enumerates the code changes required to make refactoring and analysis primitives first-class, enforceable concepts inside the TypeMill stack. It sequences the work so foundational metadata lands first, quick-win primitives follow, and heavier structural/analysis features build on shared services.
 
-✅ **Clear differentiation** in crowded AI coding assistant market
-✅ **Leverage core strengths** (LSP, AST, multi-language, atomic edits)
-✅ **Measurable value** (complexity reduction, dead code removal, test coverage)
-✅ **Natural AI composition** (primitives compose into workflows)
-✅ **Focused roadmap** (fill gaps in two pillars, not sprawl)
-
-**Recommendation**: **Approve and proceed** with Phase 1 (Documentation & Messaging).
+**Recommendation**: Approve and proceed with Phase 1 (Primitive Catalog & Enforcement) to unblock subsequent implementation phases.
 
 ---
 
@@ -891,66 +687,3 @@ The table above reflects analysis primitives only. When combined with the refact
 **Expected Outcome**: God class split into 3-5 focused modules
 
 ---
-
-## Appendix C: Where to Document This
-
-### Primary Location
-
-**`/workspace/PROPOSAL_REFACTORING_FOCUS.md`** (this document)
-- Source of truth for vision and roadmap
-- Updated quarterly with progress
-- Referenced in all planning discussions
-
-### Integration into Existing Docs
-
-1. **`README.md`** (Introduction)
-   ```markdown
-   # TypeMill
-
-   **Precision refactoring for AI-assisted development**
-
-   TypeMill provides refactoring primitives (rename, extract, move, inline) and
-   analysis primitives (complexity, smells, dead code) that compose into
-   sophisticated code transformations.
-
-   See [PROPOSAL_REFACTORING_FOCUS.md](PROPOSAL_REFACTORING_FOCUS.md) for vision.
-   ```
-
-2. **`API_REFERENCE.md`** (Header)
-   ```markdown
-   # TypeMill API Reference
-
-   **Refactoring-First Design**: All tools organized by Refactoring Primitives
-   (transform code) and Analysis Primitives (understand code). See
-   [PROPOSAL_REFACTORING_FOCUS.md](PROPOSAL_REFACTORING_FOCUS.md) for details.
-   ```
-
-3. **`CLAUDE.md` / `AGENTS.md`** (Project Information)
-   ```markdown
-   ## Vision
-
-   TypeMill is a **refactoring-first tool** built on two pillars:
-   1. **Refactoring Primitives** - Atomic code transformations
-   2. **Analysis Primitives** - Code understanding operations
-
-   See [PROPOSAL_REFACTORING_FOCUS.md](PROPOSAL_REFACTORING_FOCUS.md) for
-   complete vision and roadmap.
-   ```
-
-4. **`CONTRIBUTING.md`** (Adding New Tools)
-   ```markdown
-   ### Tool Categories
-
-   When adding new tools, categorize by pillar:
-   - **Refactoring Primitives**: rename_*, extract_*, inline_*, move_*, delete_*
-   - **Analysis Primitives**: analyze_*, find_*, suggest_*
-
-   See [PROPOSAL_REFACTORING_FOCUS.md](PROPOSAL_REFACTORING_FOCUS.md) for
-   priority primitives.
-   ```
-
-5. **New File: `docs/vision/REFACTORING_FIRST.md`** (User-Facing)
-   - Simplified version of this proposal
-   - Focus on "why refactoring matters"
-   - Examples of before/after transformations
-   - Link to full proposal for contributors
