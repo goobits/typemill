@@ -97,7 +97,8 @@ clean-cache:
 # Removed: Use 'make first-time-setup' instead (does everything)
 # This provides a complete, one-command setup experience
 
-# Install LSP servers for testing (TypeScript, Python, Go, Rust)
+# Install LSP servers for testing (TypeScript, Rust)
+# Note: Language support temporarily reduced to TS + Rust during unified API refactoring
 install-lsp-servers:
 	@echo "🌐 Installing LSP servers for testing..."
 	@echo ""
@@ -112,32 +113,6 @@ install-lsp-servers:
 	else \
 		echo "  ⚠️  npm not found, skipping TypeScript LSP server"; \
 		echo "     Install Node.js from: https://nodejs.org/"; \
-	fi
-	@echo ""
-	@# Python
-	@if command -v pip >/dev/null 2>&1 || command -v pip3 >/dev/null 2>&1; then \
-		if command -v pylsp >/dev/null 2>&1; then \
-			echo "  ✅ pylsp already installed"; \
-		else \
-			echo "  → Installing python-lsp-server..."; \
-			(pip install --user "python-lsp-server[all]" || pip3 install --user "python-lsp-server[all]") && echo "  ✅ pylsp installed" || echo "  ⚠️  Failed to install pylsp"; \
-		fi; \
-	else \
-		echo "  ⚠️  pip not found, skipping Python LSP server"; \
-		echo "     Install Python from: https://www.python.org/"; \
-	fi
-	@echo ""
-	@# Go
-	@if command -v go >/dev/null 2>&1; then \
-		if command -v gopls >/dev/null 2>&1; then \
-			echo "  ✅ gopls already installed"; \
-		else \
-			echo "  → Installing gopls..."; \
-			go install golang.org/x/tools/gopls@latest && echo "  ✅ gopls installed" || echo "  ⚠️  Failed to install gopls"; \
-		fi; \
-	else \
-		echo "  ⚠️  go not found, skipping Go LSP server"; \
-		echo "     Install Go from: https://go.dev/"; \
 	fi
 	@echo ""
 	@# Rust
@@ -155,6 +130,7 @@ install-lsp-servers:
 	@echo "✅ LSP server installation complete!"
 	@echo ""
 	@echo "💡 Verify installation with: codebuddy status"
+	@echo "📝 Note: Additional LSP servers (Python/pylsp, Go/gopls) available in git tag 'pre-language-reduction'"
 
 # Install optional development tools (quality analysis and debugging)
 dev-extras:
@@ -307,8 +283,11 @@ first-time-setup:
 	@echo "🎉 Everything installed:"
 	@echo "  • cargo-nextest, sccache, cargo-watch, cargo-audit"
 	@echo "  • mold linker (if sudo available)"
-	@echo "  • LSP servers: typescript-language-server, pylsp, gopls, rust-analyzer"
-	@echo "  • External parsers: Java, TypeScript, C# (if dependencies available)"
+	@echo "  • LSP servers: typescript-language-server, rust-analyzer"
+	@echo "  • TypeScript parser (if Node.js available)"
+	@echo ""
+	@echo "📝 Note: Language support focused on TypeScript + Rust"
+	@echo "   Additional languages available in git tag 'pre-language-reduction'"
 	@echo ""
 	@echo "🚀 Ready to develop!"
 	@echo "  make test        - Run fast tests (~10s)"
@@ -335,9 +314,8 @@ validate-setup:
 	@echo ""
 	@echo "Checking LSP servers (for testing):"
 	@command -v typescript-language-server >/dev/null 2>&1 && echo "  ✅ typescript-language-server" || echo "  ⚠️  typescript-language-server not installed (run: make install-lsp-servers)"
-	@command -v pylsp >/dev/null 2>&1 && echo "  ✅ pylsp" || echo "  ⚠️  pylsp not installed (run: make install-lsp-servers)"
-	@command -v gopls >/dev/null 2>&1 && echo "  ✅ gopls" || echo "  ⚠️  gopls not installed (run: make install-lsp-servers)"
 	@command -v rust-analyzer >/dev/null 2>&1 && echo "  ✅ rust-analyzer" || echo "  ⚠️  rust-analyzer not installed (run: make install-lsp-servers)"
+	@echo "📝 Note: Language support focused on TypeScript + Rust"
 	@echo ""
 	@echo "Checking build artifacts:"
 	@if [ -f "target/debug/codebuddy" ]; then \
