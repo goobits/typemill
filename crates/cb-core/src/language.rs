@@ -83,28 +83,7 @@ pub fn detect_project_language(project_path: &Path) -> ProjectLanguage {
         return ProjectLanguage::TypeScript;
     }
 
-    // Check for Go
-    if project_path.join("go.mod").exists() {
-        debug!("Detected Go project (found go.mod)");
-        return ProjectLanguage::Go;
-    }
-
-    // Check for Python (multiple possible manifest files)
-    if project_path.join("pyproject.toml").exists()
-        || project_path.join("requirements.txt").exists()
-        || project_path.join("setup.py").exists()
-    {
-        debug!("Detected Python project");
-        return ProjectLanguage::Python;
-    }
-
-    // Check for Java
-    if project_path.join("pom.xml").exists() || project_path.join("build.gradle").exists() {
-        debug!("Detected Java project");
-        return ProjectLanguage::Java;
-    }
-
-    debug!("Could not detect project language");
+    debug!("Could not detect project language (only Rust and TypeScript supported)");
     ProjectLanguage::Unknown
 }
 

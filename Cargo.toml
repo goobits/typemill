@@ -13,17 +13,12 @@ members = [
     "crates/cb-client",
     "crates/cb-transport",
     "crates/cb-lang-common",
-    "crates/cb-lang-go",
-    "crates/cb-lang-java",
-    "crates/cb-lang-python",
     "crates/cb-lang-rust",
     "crates/cb-lang-typescript",
     "apps/codebuddy",
     "integration-tests",
-    "crates/cb-lang-swift",
     "crates/cb-bench",
     "crates/cb-test-support",
-    "crates/cb-lang-csharp",
     "analysis/cb-analysis-common",
     "analysis/cb-analysis-dead-code",
     "analysis/cb-analysis-graph",
@@ -94,14 +89,9 @@ cb-analysis-graph = { path = "analysis/cb-analysis-graph" }
 # due to transitive dependencies from upstream crates (dashmap, lsp-types, swc_*, etc.)
 # These cannot be consolidated without upstream updates
 
-# Language plugins
+# Language plugins (temporarily reduced to TS + Rust during unified API refactoring)
 cb-lang-rust = { path = "crates/cb-lang-rust" }
-cb-lang-go = { path = "crates/cb-lang-go" }
 cb-lang-typescript = { path = "crates/cb-lang-typescript" }
-cb-lang-python = { path = "crates/cb-lang-python" }
-cb-lang-java = { path = "crates/cb-lang-java" }
-cb-lang-swift = { path = "crates/cb-lang-swift" }
-cb-lang-csharp = { path = "crates/cb-lang-csharp" }
 
 # Optimize build times for dev dependencies
 [profile.dev.build-override]

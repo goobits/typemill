@@ -8,6 +8,10 @@
 # - Plugin registration (crates/cb-services/src/services/registry_builder.rs)
 #
 # DO NOT edit the generated files directly. Edit this file and run `cargo build`.
+#
+# NOTE: Language support temporarily reduced to TypeScript + Rust during unified API refactoring.
+#       Multi-language support (Python, Go, Java, Swift, C#) preserved in git tag `pre-language-reduction`
+#       and will be restored after unified API is stable.
 
 [languages.Rust]
 display_name = "Rust"
@@ -28,53 +32,3 @@ entry_point = "index.ts"
 module_separator = "."
 crate_name = "cb-lang-typescript"
 feature_name = "lang-typescript"
-
-[languages.Go]
-display_name = "Go"
-extensions = ["go"]
-manifest_filename = "go.mod"
-source_dir = "."
-entry_point = "main.go"
-module_separator = "."
-crate_name = "cb-lang-go"
-feature_name = "lang-go"
-
-[languages.Python]
-display_name = "Python"
-extensions = ["py"]
-manifest_filename = "pyproject.toml"
-source_dir = "."
-entry_point = "__init__.py"
-module_separator = "."
-crate_name = "cb-lang-python"
-feature_name = "lang-python"
-
-[languages.Java]
-display_name = "Java"
-extensions = ["java"]
-manifest_filename = "pom.xml"
-source_dir = "src/main/java"
-entry_point = ""  # No single entry point
-module_separator = "."
-crate_name = "cb-lang-java"
-feature_name = "lang-java"
-
-[languages.Swift]
-display_name = "Swift"
-extensions = ["swift"]
-manifest_filename = "Package.swift"
-source_dir = "Sources"
-entry_point = "main.swift"
-module_separator = "."
-crate_name = "cb-lang-swift"
-feature_name = "lang-swift"
-
-[languages.CSharp]
-display_name = "C#"
-extensions = ["cs"]
-manifest_filename = "*.csproj"
-source_dir = "src"
-entry_point = "main.cs"
-module_separator = "."
-crate_name = "cb-lang-csharp"
-feature_name = "lang-csharp"

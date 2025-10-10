@@ -29,26 +29,15 @@ globset = "0.4"
 toml_edit = "0.23"
 pathdiff = "0.2"
 cb-plugins = { path = "../cb-plugins" }
-cb-lang-rust = { path = "../cb-lang-rust", optional = true }
-cb-lang-go = { path = "../cb-lang-go", optional = true }
-cb-lang-typescript = { path = "../cb-lang-typescript", optional = true }
-cb-lang-python = { path = "../cb-lang-python", optional = true }
-cb-lang-java = { path = "../cb-lang-java", optional = true }
-cb-lang-csharp = { path = "../cb-lang-csharp", optional = true }
-cb-lang-swift = { path = "../cb-lang-swift", optional = true }
+cb-lang-rust = { workspace = true, optional = true }
+cb-lang-typescript = { workspace = true, optional = true }
 chrono = "0.4"
 
 [features]
-default = ["lang-rust", "lang-go", "lang-typescript", "lang-python"]
-# Note: lang-java requires Maven to build the Java parser JAR first
-# Run: cd crates/cb-lang-java/resources/java-parser && mvn package
+default = ["lang-rust", "lang-typescript"]
+# Note: Language support temporarily reduced to TS + Rust during unified API refactoring
 lang-rust = ["dep:cb-lang-rust"]
-lang-go = ["dep:cb-lang-go"]
 lang-typescript = ["dep:cb-lang-typescript"]
-lang-python = ["dep:cb-lang-python"]
-lang-java = ["dep:cb-lang-java"]
-lang-csharp = ["dep:cb-lang-csharp"]
-lang-swift = ["dep:cb-lang-swift"]
 mcp-proxy = ["cb-core/mcp-proxy", "cb-plugins/mcp-proxy"]
 
 [target.'cfg(unix)'.dependencies]

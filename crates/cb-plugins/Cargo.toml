@@ -14,9 +14,8 @@ cb-core = { path = "../cb-core" }
 cb-ast = { path = "../cb-ast" }
 cb-plugin-api = { path = "../cb-plugin-api" }
 cb-protocol = { path = "../cb-protocol" }
-cb-lang-rust = { path = "../cb-lang-rust" }
-cb-lang-go = { path = "../cb-lang-go" }
-cb-lang-typescript = { path = "../cb-lang-typescript" }
+cb-lang-rust = { workspace = true }
+cb-lang-typescript = { workspace = true }
 chrono = "0.4"
 ignore = "0.4"
 reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], default-features = false }
@@ -27,7 +26,6 @@ url = "2.4"
 default = []
 mcp-proxy = []
 lang-rust = []
-lang-go = []
 lang-typescript = []
 
 [dev-dependencies]
