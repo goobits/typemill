@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 #[tokio::test]
 async fn test_monitoring_api() {
     // Test the queue stats functionality
-    let (app_state, _temp_dir) = common::create_test_app_state();
+    let (app_state, _temp_dir) = common::create_test_app_state().await;
     let operation_queue = app_state.operation_queue.clone();
 
     // Add some operations to the queue
@@ -60,7 +60,7 @@ async fn test_monitoring_api() {
 #[tokio::test]
 async fn test_operation_batching() {
     // Test that multiple operations for the same file are batched
-    let (app_state, _temp_dir) = common::create_test_app_state();
+    let (app_state, _temp_dir) = common::create_test_app_state().await;
     let queue = app_state.operation_queue.clone();
 
     // Track when locks are acquired
@@ -141,7 +141,7 @@ async fn test_operation_batching() {
 #[tokio::test]
 async fn test_batch_with_priority() {
     // Test that batching respects priority ordering
-    let (app_state, _temp_dir) = common::create_test_app_state();
+    let (app_state, _temp_dir) = common::create_test_app_state().await;
     let queue = app_state.operation_queue.clone();
 
     let target_file = PathBuf::from("/priority-batch.txt");

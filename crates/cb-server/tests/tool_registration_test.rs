@@ -2,7 +2,7 @@ use cb_server::handlers::plugin_dispatcher::create_test_dispatcher;
 
 #[tokio::test]
 async fn test_all_33_public_tools_are_registered() {
-    let dispatcher = create_test_dispatcher();
+    let dispatcher = create_test_dispatcher().await;
     dispatcher.initialize().await.unwrap();
 
     let registry = dispatcher.tool_registry.lock().await;
@@ -86,7 +86,7 @@ async fn test_all_33_public_tools_are_registered() {
 
 #[tokio::test]
 async fn test_all_7_internal_tools_are_registered_and_hidden() {
-    let dispatcher = create_test_dispatcher();
+    let dispatcher = create_test_dispatcher().await;
     dispatcher.initialize().await.unwrap();
 
     let registry = dispatcher.tool_registry.lock().await;

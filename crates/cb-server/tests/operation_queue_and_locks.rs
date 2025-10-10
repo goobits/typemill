@@ -13,7 +13,7 @@ use uuid::Uuid;
 #[tokio::test]
 async fn test_concurrent_reads() {
     // Test that multiple read operations can proceed concurrently
-    let (app_state, _temp_dir) = common::create_test_app_state();
+    let (app_state, _temp_dir) = common::create_test_app_state().await;
     let lock_manager = app_state.lock_manager.clone();
     let test_file = PathBuf::from("/test/file.rs");
 
@@ -56,7 +56,7 @@ async fn test_concurrent_reads() {
 #[tokio::test]
 async fn test_write_blocks_reads() {
     // Test that a write operation blocks concurrent reads
-    let (app_state, _temp_dir) = common::create_test_app_state();
+    let (app_state, _temp_dir) = common::create_test_app_state().await;
     let lock_manager = app_state.lock_manager.clone();
     let test_file = PathBuf::from("/test/file.rs");
 
@@ -89,7 +89,7 @@ async fn test_write_blocks_reads() {
 #[tokio::test]
 async fn test_priority_ordering() {
     // Test that operations are processed in priority order
-    let (app_state, _temp_dir) = common::create_test_app_state();
+    let (app_state, _temp_dir) = common::create_test_app_state().await;
     let queue = app_state.operation_queue.clone();
 
     // Enqueue operations with different priorities
@@ -139,7 +139,7 @@ async fn test_priority_ordering() {
 #[tokio::test]
 async fn test_operation_stats() {
     // Test operation queue statistics
-    let (app_state, _temp_dir) = common::create_test_app_state();
+    let (app_state, _temp_dir) = common::create_test_app_state().await;
     let queue = app_state.operation_queue.clone();
 
     // Initial stats should be empty
@@ -170,7 +170,7 @@ async fn test_operation_stats() {
 #[tokio::test]
 async fn test_transaction_creation() {
     // Test that transactions group multiple file operations
-    let (app_state, _temp_dir) = common::create_test_app_state();
+    let (app_state, _temp_dir) = common::create_test_app_state().await;
     let queue = app_state.operation_queue.clone();
 
     // Start a transaction
@@ -211,7 +211,7 @@ async fn test_transaction_creation() {
 #[tokio::test]
 async fn test_clear_queue() {
     // Test clearing the operation queue
-    let (app_state, _temp_dir) = common::create_test_app_state();
+    let (app_state, _temp_dir) = common::create_test_app_state().await;
     let queue = app_state.operation_queue.clone();
 
     // Add multiple operations

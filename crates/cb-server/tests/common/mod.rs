@@ -4,7 +4,7 @@ use cb_handlers::handlers::plugin_dispatcher::AppState;
 use std::sync::Arc;
 use tempfile::TempDir;
 
-pub fn create_test_app_state() -> (Arc<AppState>, TempDir) {
+pub async fn create_test_app_state() -> (Arc<AppState>, TempDir) {
     use cb_core::workspaces::WorkspaceManager;
     use cb_plugins::PluginManager;
     use cb_services::services::app_state_factory::create_services_bundle;
@@ -20,7 +20,7 @@ pub fn create_test_app_state() -> (Arc<AppState>, TempDir) {
         cache_settings,
         plugin_manager.clone(),
         &config,
-    );
+    ).await;
     let workspace_manager = Arc::new(WorkspaceManager::new());
 
     let app_state = Arc::new(AppState {
@@ -33,7 +33,7 @@ pub fn create_test_app_state() -> (Arc<AppState>, TempDir) {
         operation_queue: services.operation_queue,
         start_time: std::time::Instant::now(),
         workspace_manager,
-        language_plugins: cb_handlers::LanguagePluginRegistry::new(),
+        language_plugins: cb_handlers::LanguagePluginRegistry::new().await,
     });
 
     (app_state, temp_dir)

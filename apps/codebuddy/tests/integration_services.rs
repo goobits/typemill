@@ -237,7 +237,7 @@ async fn test_workspace_edit_in_process() {
     let workspace_path = temp_dir.path().to_path_buf();
 
     // Create in-process dispatcher
-    let dispatcher = create_test_dispatcher_with_root(workspace_path.clone());
+    let dispatcher = create_test_dispatcher_with_root(workspace_path.clone()).await;
     let session_info = SessionInfo::default();
 
     // Create 50 test files
