@@ -1,430 +1,447 @@
-# Unified API Contracts
+# Unified Analysis & Refactoring API Contracts
 
-**Status**: Specification
-**Version**: 1.0
-**Date**: 2025-10-10
+## Scope
+- Defines canonical request/response contracts for the unified analysis and refactoring APIs.
+- Applies to MCP tools exposed by the `codebuddy` server in the unified release.
+- Overrides conflicting details in proposal drafts; downstream docs should link here.
 
-Formal contracts for Unified Refactoring and Analysis APIs.
+## Serialization Conventions
+- Transport format: UTF-8 JSON.
+- Identifiers: lowercase snake case (`plan_type`, `file_path`).
+- Timestamps: ISO-8601 UTC (`YYYY-MM-DDTHH:MM:SSZ`).
+- Numbers: use JSON numbers (no quoted numerics); floats allowed only where noted.
+- Strings enumerated in this document are case-sensitive.
+- Objects are closed by default (unknown properties rejected) **unless** a section explicitly notes `// additional properties allowed`. Extension points must be documented here.
 
----
+## Shared Types
 
-## Common Types
-
-### LSP-Compatible Types (Reused)
-
-We reuse LSP types where possible to avoid parallel type systems:
-
-```typescript
-Position = { line: number, character: number }  // 0-indexed
-Range = { start: Position, end: Position }
-Location = { uri: string, range: Range }
-TextEdit = { range: Range, newText: string }
-WorkspaceEdit = { changes: { [uri: string]: TextEdit[] } }  // LSP standard
+### `Position`
+```json
+{ "line": 0, "character": 0 }
 ```
+Zero-based indices aligned with LSP.
 
-### Extensions (Our Types)
-
-```typescript
-FileChecksum = string  // Format: "sha256:{64-hex-chars}"
-Timestamp = string     // ISO-8601: "2025-10-10T12:34:56Z"
-Severity = "high" | "medium" | "low"
-Language = "typescript" | "rust"
+### `Range`
+```json
+{ "start": { "line": 0, "character": 0 }, "end": { "line": 0, "character": 0 } }
 ```
+End is exclusive. Required for regions.
 
----
-
-## Refactoring API Contracts
-
-### Plan Structure (All Plan Types)
-
-All `*.plan` commands return a discriminated union:
-
-```typescript
-interface BasePlan {
-  plan_type: "RenamePlan" | "ExtractPlan" | "InlinePlan" | "MovePlan" |
-             "ReorderPlan" | "TransformPlan" | "DeletePlan";
-  plan_version: "1.0";
-  edits: WorkspaceEdit;  // LSP standard
-  summary: {
-    affected_files: number;
-    created_files: number;
-    deleted_files: number;
-  };
-  warnings: Warning[];
-  metadata: {
-    kind: string;  // e.g., "symbol", "function", "unused_imports"
-    language: Language;
-    estimated_impact: "low" | "medium" | "high";
-    created_at: Timestamp;
-  };
-  file_checksums: { [file_path: string]: FileChecksum };
-}
-
-interface Warning {
-  code: string;          // e.g., "AMBIGUOUS_TARGET"
-  message: string;
-  severity: Severity;
-  candidates?: any[];    // Optional additional context
-}
+### `Location`
+```json
+{ "file_path": "src/lib.rs", "range": { ... } }
 ```
+`file_path` is workspace-relative POSIX path.
 
-### Example: rename.plan Response
-
+### `SymbolIdentifier`
 ```json
 {
-  "plan_type": "RenamePlan",
-  "plan_version": "1.0",
-  "edits": {
-    "changes": {
-      "file:///src/lib.rs": [
-        { "range": {...}, "newText": "new_name" }
-      ]
-    }
-  },
-  "summary": {
-    "affected_files": 3,
-    "created_files": 0,
-    "deleted_files": 0
-  },
-  "warnings": [],
-  "metadata": {
-    "kind": "symbol",
-    "language": "rust",
-    "estimated_impact": "low",
-    "created_at": "2025-10-10T12:34:56Z"
-  },
-  "file_checksums": {
-    "/src/lib.rs": "sha256:abc123...",
-    "/src/app.rs": "sha256:def456..."
-  }
+  "symbol": "process_order",
+  "symbol_kind": "function",
+  "language": "rust"
 }
 ```
+`symbol_kind` matches LSP `SymbolKind` enums (lowercase strings).
 
-### workspace.apply_edit Request
-
-```typescript
-interface ApplyEditRequest {
-  plan: BasePlan;  // Any plan type
-  options?: {
-    dry_run?: boolean;              // default: false
-    validate_checksums?: boolean;   // default: true
-    validate_plan_type?: boolean;   // default: true
-    force?: boolean;                // default: false (skip validation)
-    rollback_on_error?: boolean;    // default: true
-  };
-}
-```
-
-### workspace.apply_edit Response
-
-```typescript
-interface ApplyEditResult {
-  success: boolean;
-  applied_files: string[];
-  created_files: string[];
-  deleted_files: string[];
-  warnings: Warning[];
-  rollback_available: boolean;
-  error?: ErrorPayload;  // if success=false
-}
-```
+### `Severity`
+Enumerated string: `"high" | "medium" | "low"`.
 
 ---
 
 ## Analysis API Contracts
 
-### AnalysisResult Structure (All analyze.* Commands)
-
-```typescript
-interface AnalysisResult {
-  findings: Finding[];
-  summary: {
-    total_findings: number;       // Total available
-    returned_findings: number;    // In this response (≤ limit)
-    has_more: boolean;            // More results available via pagination
-    by_severity: {
-      high: number;
-      medium: number;
-      low: number;
-    };
-    files_analyzed: number;
-    symbols_analyzed?: number;    // Optional
-    analysis_time_ms: number;
-  };
-  metadata: {
-    category: "quality" | "dead_code" | "dependencies" | "structure" |
-              "documentation" | "tests";
-    kind: string;  // e.g., "complexity", "unused_symbols", "circular"
-    scope: {
-      type: "workspace" | "directory" | "file" | "symbol";
-      path?: string;
-    };
-    language: Language;
-    timestamp: Timestamp;
-    thresholds?: { [key: string]: number };  // e.g., {"complexity": 15}
-  };
-}
-
-interface Finding {
-  id: string;           // Unique within result
-  kind: string;         // e.g., "complexity_hotspot", "unused_parameter"
-  severity: Severity;
-  location: Location;   // LSP type
-  symbol?: string;      // Optional symbol name
-  symbol_kind?: string; // Optional: "function", "class", etc.
-  metrics?: { [key: string]: number };  // e.g., {"cyclomatic_complexity": 25}
-  message: string;
-  suggestions: Suggestion[];
-}
-
-interface Suggestion {
-  action: string;  // e.g., "extract_function", "inline_variable"
-  description: string;
-  priority?: number;  // Higher = more important
-  estimated_impact?: string;  // e.g., "reduces complexity by 8 points"
-  refactor_call: {
-    command: string;  // e.g., "extract.plan"
-    arguments: any;   // Arguments for the refactor command
-  };
-}
-```
-
-### Pagination
-
-```typescript
-interface PaginationOptions {
-  limit?: number;   // default: 1000, max results to return
-  offset?: number;  // default: 0, starting index
-}
-
-// Response includes in summary:
-{
-  total_findings: 5432,      // Total available
-  returned_findings: 1000,   // This response (min(limit, total - offset))
-  has_more: true            // offset + returned < total
-}
-
-// Next page request:
-{ limit: 1000, offset: 1000 }
-```
-
-### Example: analyze.quality Response
-
+### Request Envelope
 ```json
 {
-  "findings": [
-    {
-      "id": "complexity-1",
-      "kind": "complexity_hotspot",
-      "severity": "high",
-      "location": {
-        "uri": "file:///src/app.rs",
-        "range": {
-          "start": { "line": 10, "character": 0 },
-          "end": { "line": 45, "character": 1 }
-        }
-      },
-      "symbol": "process_order",
-      "symbol_kind": "function",
-      "metrics": {
-        "cyclomatic_complexity": 25,
-        "cognitive_complexity": 18
-      },
-      "message": "Function has high cyclomatic complexity (25)",
-      "suggestions": [
-        {
-          "action": "extract_function",
-          "description": "Extract nested block to reduce complexity",
-          "estimated_impact": "reduces complexity from 25 to 17",
-          "refactor_call": {
-            "command": "extract.plan",
-            "arguments": {
-              "kind": "function",
-              "source": {
-                "file_path": "/src/app.rs",
-                "range": { "start": { "line": 15, "character": 4 }, "end": { "line": 23, "character": 5 } },
-                "name": "validate_order"
-              }
-            }
-          }
-        }
-      ]
-    }
-  ],
+  "category": "quality",
+  "kind": "complexity",
+  "scope": { ... },
+  "options": { ... }
+}
+```
+- `category`: `"quality" | "dead_code" | "dependencies" | "structure" | "documentation" | "tests"`.
+- `kind`: category-specific enumerations (see below).
+- `scope`: filters target files.
+- `options`: category-specific parameters; all optional unless marked required.
+
+#### `Scope`
+```json
+{
+  "type": "workspace" | "directory" | "file" | "symbol",
+  "path": "src/",
+  "symbol_name": "MyStruct",
+  "include": ["*.rs"],
+  "exclude": ["tests/"]
+}
+```
+- `type` required.
+- `path` required for `directory` and `file`.
+- `symbol_name` required when `type="symbol"`.
+- `include`/`exclude` arrays use glob syntax; treat empty arrays as unset.
+
+#### Pagination
+Available for all categories. Clients may omit `options` entirely or send `{}` to rely on defaults.
+```json
+{
+  "limit": 1000,
+  "offset": 0
+}
+```
+- `limit`: integer 1–5000 (default 1000).
+- `offset`: integer ≥0 (default 0).
+- Pagination parameters live inside `options`.
+
+### Response Envelope `AnalysisResult`
+```json
+{
+  "findings": [ { ... } ],
   "summary": {
-    "total_findings": 12,
-    "returned_findings": 12,
+    "total_findings": 0,
+    "returned_findings": 0,
     "has_more": false,
-    "by_severity": { "high": 3, "medium": 5, "low": 4 },
-    "files_analyzed": 45,
-    "symbols_analyzed": 234,
-    "analysis_time_ms": 234
+    "by_severity": { "high": 0, "medium": 0, "low": 0 },
+    "files_analyzed": 0,
+    "symbols_analyzed": 0,
+    "analysis_time_ms": 0
   },
   "metadata": {
     "category": "quality",
     "kind": "complexity",
-    "scope": { "type": "workspace", "path": "/src" },
+    "scope": { ... },
     "language": "rust",
-    "timestamp": "2025-10-10T12:34:56Z",
-    "thresholds": { "complexity": 15 }
+    "timestamp": "2025-10-10T12:00:00Z",
+    "thresholds": { "cyclomatic_complexity": 15 }
   }
 }
 ```
+- `findings`: array length ≤ `limit`.
+- `summary.has_more` true when additional findings exist beyond `offset + return_count`.
+- `summary.by_severity` must include keys for all Severity values (0 allowed); omission implies 0.
+- `metadata.language` optional; omit when heterogeneous.
+- `metadata.thresholds` echoes applied thresholds; empty object allowed.
 
-### analyze.batch Response
-
-```typescript
-interface BatchAnalysisResult {
-  results: {
-    command: string;  // e.g., "analyze.quality"
-    result: AnalysisResult;  // Standard AnalysisResult
-  }[];
-  summary: {
-    total_findings: number;        // Sum across all analyses
-    total_files_analyzed: number;
-    analysis_time_ms: number;
-  };
-  optimization: {
-    shared_parsing: boolean;
-    cache_hits: number;
-    sequential_execution: boolean;
-  };
+#### `Finding`
+```json
+{
+  "id": "complexity-1",
+  "kind": "complexity_hotspot",
+  "severity": "high",
+  "location": { ... },
+  "symbol": { ... },
+  "metrics": { "cyclomatic_complexity": 25 },
+  "message": "Function has high cyclomatic complexity (25)",
+  "suggestions": [ { ... } ]
 }
 ```
+- `id`: stable identifier within result set.
+- `kind`: category-specific enumeration (snake case).
+- `symbol`: optional `SymbolIdentifier`.
+- `metrics`: numeric or string values; explicit keys per category documented below. Keys may be omitted when not applicable. Additional keys are forbidden unless the category explicitly allows extensions.
+- `suggestions`: optional array (see Refactoring integration).
 
----
-
-## Error Handling
-
-### Error Payload Structure
-
-```typescript
-interface ErrorPayload {
-  code: string;          // Machine-readable error code
-  message: string;       // Human-readable message
-  severity: "error" | "warning";
-  details?: any;         // Optional context (file path, position, etc.)
-  retryable: boolean;    // Whether operation can be retried
+#### `Suggestion`
+```json
+{
+  "action": "extract_function",
+  "description": "Extract nested conditional block",
+  "target": { "range": { ... } },
+  "estimated_impact": "reduces complexity by ~8 points",
+  "refactor_call": {
+    "command": "extract.plan",
+    "arguments": { ... }
+  }
 }
 ```
+- `refactor_call` is required when actionable.
+- `command` references unified refactor API commands.
+- `arguments` must conform to target plan schema.
 
-### Common Error Codes
+### Category Enumerations & Metrics
 
-**Refactoring Errors**:
-- `STALE_PLAN`: File checksums don't match (file modified since plan created)
-- `INVALID_PLAN_TYPE`: Plan type doesn't match expected schema
-- `INVALID_POSITION`: Position out of file range
-- `SYMBOL_NOT_FOUND`: No symbol at specified position
-- `AMBIGUOUS_TARGET`: Multiple symbols match (use strict mode)
-- `FILE_NOT_FOUND`: Source file doesn't exist
-- `INVALID_KIND`: Unknown kind value for operation
+#### Quality (`analyze.quality`)
+`kind`: `"complexity" | "smells" | "maintainability" | "readability"`.
+- `metrics` keys:
+  - `cyclomatic_complexity` (int ≥0)
+  - `cognitive_complexity` (int ≥0)
+  - `maintainability_index` (float 0–100)
+  - `nesting_depth` (int ≥0)
+  - `parameter_count` (int ≥0)
+  - `function_length` (int ≥0)
+- `options.thresholds` may include matching keys; omit others.
 
-**Analysis Errors**:
-- `INVALID_KIND`: Unknown kind value for category
-- `INVALID_SCOPE`: Scope type invalid for operation
-- `FILE_NOT_FOUND`: Target file/directory doesn't exist
-- `LSP_ERROR`: Language server error (details in error.details)
-- `PARSE_ERROR`: File couldn't be parsed (syntax error)
+#### Dead Code (`analyze.dead_code`)
+`kind`: `"unused_symbols" | "unused_imports" | "unreachable_code" | "unused_parameters" | "unused_types" | "unused_variables"`.
+- `metrics` optional; use:
+  - `occurrences` (int ≥1)
+  - `last_reference_ts` (ISO timestamp) when available.
+- `options.aggressive`: boolean (default false).
+- `options.include_tests`: boolean (default false).
+- `options.include_private`: boolean (default true).
 
-**Retryability**:
-- `STALE_PLAN`: Retryable (re-run *.plan to get fresh checksums)
-- `LSP_ERROR`: Retryable (transient language server issue)
-- `INVALID_KIND`, `INVALID_POSITION`: Not retryable (fix request)
-- `FILE_NOT_FOUND`: Not retryable (create file first)
+#### Dependencies (`analyze.dependencies`)
+`kind`: `"imports" | "graph" | "circular" | "coupling" | "cohesion" | "depth"`.
+- `metrics` keys:
+  - `in_degree`, `out_degree` (ints)
+  - `circular_path` (string array) for circular
+  - `coupling_score` / `cohesion_score` (floats 0–1)
+  - `dependency_depth` (int ≥0)
+- `options.format`: `"detailed" | "summary" | "graph"`.
+  - When `"graph"`, response includes `graph` under `metadata`:
+    ```json
+    {
+      "graph": {
+        "format": "mermaid",
+        "payload": "graph TD...",
+        "encoding": "utf8",
+        "size_bytes": 1280
+      }
+    }
+    ```
+  - `payload` must be UTF-8 text when `encoding="utf8"`. Binary exports must set `encoding="base64"` and provide the original byte size in `size_bytes`.
+  - Servers must cap `size_bytes` at 5_242_880 (5 MiB); exceedances should return `PAYLOAD_TOO_LARGE`.
+- `options.export_format`: `"json" | "graphviz" | "mermaid"` (default `"json"`).
+
+#### Structure (`analyze.structure`)
+`kind`: `"symbols" | "hierarchy" | "interfaces" | "inheritance" | "modules"`.
+- `metrics` keys vary:
+  - `inheritance_depth`, `implementation_count`, `child_count`.
+- `options.symbol_kinds`: array of lowercase LSP symbol kinds.
+- `options.include_private`: boolean (default false).
+
+#### Documentation (`analyze.documentation`)
+`kind`: `"coverage" | "quality" | "missing" | "outdated" | "todos"`.
+- `metrics` keys:
+  - `coverage_ratio` (float 0–1)
+  - `todo_count` (int ≥0)
+  - `staleness_days` (int ≥0)
+- `options.visibility`: `"public" | "all"` (default `"public"`).
+- `options.require_examples`: boolean (default false).
+
+#### Tests (`analyze.tests`)
+`kind`: `"coverage" | "untested" | "quality" | "smells"`.
+- `metrics` keys:
+  - `coverage_ratio` (float 0–1)
+  - `missing_tests` (int ≥0)
+  - `assertion_count` (int ≥0)
+  - `smell_labels` (string array).
+- Coverage ingestion requires `options.coverage_format` (`"lcov" | "cobertura" | "jacoco"`) and `options.coverage_file`.
+
+### Error Contract
+```json
+{
+  "error": {
+    "code": "INVALID_SCOPE",
+    "message": "Scope path must be provided for type 'directory'",
+    "details": { "field": "scope.path" }
+  }
+}
+```
+- `code`: uppercase snake case stable identifiers.
+- `message`: human-readable English sentence.
+- `details`: optional object; may include `field`, `expected`, `actual`.
+- Use HTTP-style semantics over MCP transport (e.g., 400 for validation, 500 for internal), documented in tool metadata.
 
 ---
 
-## Serialization Rules
+## Refactoring API Contracts
 
-### Data Types
-
-**Timestamps**: ISO-8601 strings in UTC
-```typescript
-"2025-10-10T12:34:56Z"  // Always UTC, always 'Z' suffix
+### Plan Request Envelope
+```json
+{
+  "operation": "rename",
+  "kind": "symbol",
+  "arguments": { ... },
+  "options": { ... }
+}
 ```
+- `operation`: `"rename" | "extract" | "inline" | "move" | "reorder" | "transform" | "delete"`.
+- `kind`: operation-specific enumeration.
+- Command name mapping: `rename.plan`, `extract.plan`, etc.
 
-**Numbers**: Always numeric, never strings
-```typescript
-{ "complexity": 25 }      // ✅ Correct
-{ "complexity": "25" }    // ❌ Wrong
+### Plan Response (`PlanBase`)
+```json
+{
+  "plan_type": "RenamePlan",
+  "plan_version": "1.0",
+  "edits": [ /* WorkspaceEdit */ ],
+  "summary": {
+    "affected_files": 0,
+    "created_files": 0,
+    "deleted_files": 0
+  },
+  "warnings": [ { "code": "AMBIGUOUS_TARGET", "message": "..." } ],
+  "metadata": {
+    "kind": "rename.symbol",
+    "language": "rust",
+    "estimated_impact": "low",
+    "created_at": "2025-10-10T12:00:00Z"
+  },
+  "file_checksums": {
+    "src/lib.rs": "sha256:abc123"
+  }
+}
 ```
+- `plan_type`: `"RenamePlan" | "ExtractPlan" | "InlinePlan" | "MovePlan" | "ReorderPlan" | "TransformPlan" | "DeletePlan"`.
+- `plan_version`: string, default `"1.0"`. Increment when breaking plan schema.
+- `edits`: conforms to LSP `WorkspaceEdit` (no filesystem side effects beyond edits).
+- `summary`: counts must match unique file paths in `edits`.
+- `warnings`: optional array. `code` enumerations documented below.
+- `metadata.estimated_impact`: `"low" | "medium" | "high"` (development impact).
+- `metadata` object required; omit optional fields instead of setting `null`.
+- `file_checksums`: map of `file_path` → `sha256:<hex>`. Required when `validate_checksums` default is true.
+  - Omit entries for files created by the plan; absence signals new files.
+  - For deletions, include the last known checksum when available; omission indicates unavailable.
 
-**File Checksums**: SHA-256 with prefix
-```typescript
-"sha256:abc123def456..."  // Lowercase hex, 64 chars
+#### Warning Codes
+- `AMBIGUOUS_TARGET`: multiple matches for target selector.
+- `POTENTIAL_BEHAVIOR_CHANGE`: transformation may alter semantics.
+- `PARTIAL_APPLY`: plan omits unsupported files.
+- `VALIDATION_SKIPPED`: generated under `force: true`.
+Additional codes must be documented before release.
+
+### Operation-Specific Arguments
+
+#### `rename.plan`
+- `kind`: `"symbol" | "parameter" | "type" | "file" | "directory"`.
+- `arguments.target`:
+  ```json
+  {
+    "path": "src/lib.rs",
+    "selector": {
+      "position": { "line": 0, "character": 0 },
+      "name": "old_name"
+    }
+  }
+  ```
+- `arguments.new_name`: non-empty string; validated against language rules when possible.
+- `options`:
+  - `strict` (bool, default false)
+  - `update_imports` (bool, default true)
+  - `validate_scope` (bool, default true)
+  - `workspace_limits` (string array of allowed path prefixes)
+
+#### `extract.plan`
+- `kind`: `"function" | "variable" | "module" | "interface" | "class" | "constant" | "type_alias"`.
+- `arguments.source` requires `file_path` and `range`.
+- Optional `destination` path or module.
+- `options.visibility`: `"public" | "private"` (default `"private"`).
+- `options.destination_path`: file path for extracted artifact.
+
+#### `inline.plan`
+- `kind`: `"variable" | "function" | "constant" | "type_alias"`.
+- `arguments.target`: `{ "file_path": "...", "position": { ... } }`.
+- `options.inline_all`: boolean (default false).
+
+#### `move.plan`
+- `kind`: `"symbol" | "to_module" | "to_namespace" | "consolidate"`.
+- For symbol moves:
+  ```json
+  {
+    "source": { "file_path": "...", "position": { ... } },
+    "destination": { "file_path": "...", "module_path": "crate::foo" }
+  }
+  ```
+- For consolidation:
+  ```json
+  {
+    "source": { "directory": "crates/old" },
+    "destination": { "directory": "crates/new/src/module" }
+  }
+  ```
+- `options.merge_dependencies`: boolean (default true) for consolidation.
+
+#### `reorder.plan`
+- `kind`: `"parameters" | "imports" | "members" | "statements"`.
+- `arguments.target`: `file_path` plus either `position` or `range`.
+- `arguments.new_order`: array of zero-based indices; required when no `strategy`.
+- `options.strategy`: `"alphabetical" | "visibility" | "dependency"`; mutually exclusive with `new_order`.
+
+#### `transform.plan`
+- `kind`: `"to_arrow_function" | "to_async" | "loop_to_iterator" | "callback_to_promise" | "add_null_check" | "remove_dead_branch"`.
+- `arguments.target`: `file_path` and `position` or `range`.
+- `options.language_specific`: object (`// additional properties allowed`); document accepted keys per language module.
+
+#### `delete.plan`
+- `kind`: `"unused_imports" | "dead_code" | "redundant_code" | "file"`.
+- `arguments.target`:
+  - For file-based deletions: `file_path`.
+  - For scoped deletions: `scope` (`"workspace" | "file" | "directory"`) and optional `path`.
+  - Optional `range` for precise deletions.
+- `options.aggressive`: boolean (default false).
+
+### Apply Command
+
+#### `workspace.apply_edit`
+```json
+{
+  "plan": { ... },
+  "options": {
+    "dry_run": false,
+    "validate_checksums": true,
+    "validate_plan_type": true,
+    "force": false,
+    "rollback_on_error": true
+  }
+}
 ```
+- `plan` must include `plan_type`, `plan_version`, and (when required) `file_checksums`.
+- `dry_run`: when true, simulate edits without file writes; still validates.
+- `validate_checksums`: compares provided hashes; failure returns error code `STALE_PLAN`.
+- `validate_plan_type`: ensures plan structure matches expected schema.
+- `force`: bypasses validations (sets `warnings` entry `VALIDATION_SKIPPED`).
+- `rollback_on_error`: when true, partial application reverts edits via snapshot.
 
-**File Paths**: Absolute paths by default
-```typescript
-"/src/lib.rs"                    // Absolute (preferred)
-"file:///src/lib.rs"            // URI format (LSP compatibility)
+#### Apply Response
+```json
+{
+  "success": true,
+  "applied_files": ["src/app.rs"],
+  "created_files": [],
+  "deleted_files": [],
+  "warnings": [],
+  "rollback_available": true,
+  "snapshot_id": "rollback-123"
+}
 ```
+- `success`: boolean.
+- `applied_files`: list of file paths touched (empty on dry run).
+- `created_files`/`deleted_files`: unique sets.
+- `warnings`: any warnings emitted during apply.
+- `rollback_available`: indicates snapshot stored for undo.
+- `snapshot_id`: optional identifier clients must persist to request rollback once that command is available. Omitted when no snapshot created. Rollback tooling is deferred but must accept this identifier when delivered.
 
-### Large Payloads
-
-**WorkspaceEdit**: No chunking needed (LSP handles efficiently)
-
-**Batch Results**: No pagination (client controls batch size)
-
-**Analysis Results**: Use `limit`/`offset` for pagination
+#### Apply Error Contract
+```json
+{
+  "error": {
+    "code": "STALE_PLAN",
+    "message": "Plan checksums no longer match workspace state",
+    "details": { "file_path": "src/app.rs" }
+  }
+}
+```
+- Additional apply errors:
+  - `INVALID_PLAN_TYPE`: plan_type unrecognized.
+  - `CHECKSUM_MISMATCH`: specific file mismatch.
+  - `APPLY_FAILED`: underlying edit apply failed (include `details.reason`).
+  - `ROLLBACK_FAILED`: rollback attempt unsuccessful (log actionable info).
 
 ---
 
-## Validation
-
-### Client-Side Validation
-
-1. **Before calling *.plan**: Validate file exists, position in range
-2. **Before calling workspace.apply_edit**: Check `plan.file_checksums` still valid
-3. **After receiving results**: Validate against expected structure
-
-### Server-Side Validation
-
-1. **All requests**: Validate required fields present
-2. **Plans**: Validate `plan_type` matches schema
-3. **Apply**: Validate checksums, plan version
-4. **Analysis**: Validate `kind` is supported, scope is valid
-
-### Contract Tests (CI)
-
-Located in `tests/contracts/`:
-- Validate response structure matches contract
-- Golden file tests for common scenarios
-- Error code coverage (all codes can be triggered)
+## Contract Validation & Tooling
+- Maintain JSON Schema files (`schemas/unified_analysis.schema.json`, `schemas/unified_refactor.schema.json`) mirroring this doc for automated validation (future work).
+- CI must:
+  - Validate sample payloads against schemas.
+  - Ensure `suggestions[].refactor_call` references valid `*.plan` operations.
+  - Confirm all plan implementations set `plan_type`, `plan_version`, and `file_checksums`.
+- Documentation updates must reference this file; proposals should defer to it for authoritative contracts.
+- Follow-up actions:
+  - Create tracking issues for JSON Schema publication and rollback command implementation referencing this contract.
 
 ---
 
-## Kind Values Reference
-
-### Refactoring (by operation)
-
-- **rename.plan**: symbol, parameter, type, file, directory
-- **extract.plan**: function, variable, module, interface, class, constant, type_alias
-- **inline.plan**: variable, function, constant, type_alias
-- **move.plan**: symbol, to_module, to_namespace, consolidate
-- **reorder.plan**: parameters, imports, members, statements
-- **transform.plan**: to_arrow_function, to_async, loop_to_iterator, callback_to_promise, add_null_check, remove_dead_branch
-- **delete.plan**: unused_imports, dead_code, redundant_code, file
-
-### Analysis (by category)
-
-- **analyze.quality**: complexity, smells, maintainability, readability
-- **analyze.dead_code**: unused_symbols, unused_imports, unreachable_code, unused_parameters, unused_types, unused_variables
-- **analyze.dependencies**: imports, graph, circular, coupling, cohesion, depth
-- **analyze.structure**: symbols, hierarchy, interfaces, inheritance, modules
-- **analyze.documentation**: coverage, quality, missing, outdated, todos
-- **analyze.tests**: coverage, untested, quality, smells
-
----
-
-## Breaking Changes Policy
-
-**Version**: All APIs versioned via `plan_version` and response metadata
-
-**Backward compatibility**:
-- New `kind` values: Non-breaking (ignored by old clients)
-- New optional fields: Non-breaking
-- Required field changes: Breaking (bump `plan_version`)
-- Error code changes: Non-breaking (clients should handle unknown codes)
-
-**Deprecation**: Beta product, no formal deprecation period. Breaking changes announced in changelog.
+## Change Management
+- Increment `plan_version` when making breaking changes to plan payloads.
+- Add new enum values by appending to lists above and updating schemas; never recycle identifiers.
+- Record contract updates in `CHANGELOG.md` under “Contracts” section.
+- Consumers must treat unknown fields as errors unless explicitly allowed.
