@@ -631,7 +631,7 @@ mod tests {
             operation_queue,
             start_time: std::time::Instant::now(),
             workspace_manager,
-            language_plugins: crate::LanguagePluginRegistry::new(),
+            language_plugins: crate::LanguagePluginRegistry::new().await,
         })
     }
 
