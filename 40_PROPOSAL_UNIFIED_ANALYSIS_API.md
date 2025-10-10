@@ -640,20 +640,45 @@ analyze.batch([
 
 **No long-term legacy support**: This is a beta product with no external users. We will not maintain dual APIs long-term.
 
-**Build first, remove second** (staged by category):
+**Phased implementation** (see [35_IMPLEMENTATION_SEQUENCING.md](35_IMPLEMENTATION_SEQUENCING.md) for detailed timeline):
 
-### Phase 1: Implement New Commands
+### Phase 0: Foundation (PREREQUISITE)
+- **Self-registration system** for plugin capability discovery
+- Registry descriptors enable dynamic validation of `kind` values
+- **Blocks**: All unified API work until complete
+- **Timeline**: 2-3 weeks
+
+### Phase 2A: Core Analysis (3-4 weeks, staged by category)
 For each analysis category:
 1. Implement `analyze.<category>` with all `kind` variants
 2. Verify each `kind` produces correct results (tests pass)
-3. Add actionable suggestions linking to refactoring commands
-4. Update internal callsites to use new API
+3. Add basic suggestions linking to refactoring commands
+4. **No config/safety metadata yet** - inline options only
 
-### Phase 2: Remove Legacy (Per Category)
-Only after Phase 1 completes for a category:
+### Phase 2B: Configuration (1-2 weeks, parallel with 2C)
+1. `.codebuddy/analysis.toml` loader
+2. Preset resolution with overrides
+3. Config validation against registry
+
+### Phase 2C: Safety Metadata (2-3 weeks, parallel with 2B)
+1. Safety classification logic per suggestion type
+2. Confidence scoring algorithms
+3. Reversibility analysis
+4. Safety-first ranking algorithm
+5. CI validation of metadata
+
+### Phase 3: Batch Operations (2-3 weeks)
+1. `analyze.batch` with shared AST parsing
+2. Cache optimization
+3. Performance benchmarks
+
+### Legacy Removal (Per Category)
+Only after Phase 2A completes for a category:
 1. Remove legacy commands for that category
 2. Update documentation
 3. Verify no regressions
+
+**Critical dependency**: Phase 0 (self-registration) must complete before Phase 2A.
 
 ### Suggested Implementation Order
 

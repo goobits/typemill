@@ -437,13 +437,42 @@ workspace.apply_edit(plan, options) → Result
 
 **No migration needed**: This is a beta product with no external users.
 
-**Direct implementation**:
-1. Implement all 14 new commands (`*.plan` + `workspace.apply_edit`)
-2. Remove all 35 legacy commands immediately
-3. Update all internal callsites to use new API
-4. Update documentation
+**Phased implementation** (see [35_IMPLEMENTATION_SEQUENCING.md](35_IMPLEMENTATION_SEQUENCING.md) for detailed timeline):
 
-**No deprecation period, no legacy wrappers, no telemetry tracking.**
+### Phase 0: Foundation (PREREQUISITE)
+- **Self-registration system** for plugin capability discovery
+- Registry descriptors enable dynamic validation of `kind` values
+- **Blocks**: All unified API work until complete
+- **Timeline**: 2-3 weeks
+
+### Phase 1A: Core Refactoring (4-5 weeks)
+1. Implement all 14 new commands (`*.plan` + `workspace.apply_edit`)
+2. Plan validation (checksums, types)
+3. Rollback mechanism
+4. **No config/validation yet** - inline options only
+
+### Phase 1B: Configuration (1-2 weeks, parallel with 1C)
+1. `.codebuddy/refactor.toml` loader
+2. Preset resolution with overrides
+3. Config validation against registry
+
+### Phase 1C: Post-Apply Validation (1-2 weeks, parallel with 1B)
+1. Command executor in `workspace.apply_edit`
+2. Automatic rollback on validation failure
+3. Timeout handling
+
+### Phase 4: Client Utilities (1-2 weeks)
+1. `formatPlan(plan)` utility in client library
+2. Plan diff visualization
+
+### Legacy Removal
+- Remove all 35 legacy commands after Phase 1C complete
+- Update all internal callsites to use new API
+- Update documentation
+
+**Critical dependency**: Phase 0 (self-registration) must complete before Phase 1A.
+
+**No deprecation period, no legacy wrappers during beta.**
 
 ---
 
