@@ -170,19 +170,27 @@ impl PluginDispatcher {
 
             {
                 use super::tools::*;
+                use super::*;
                 let mut registry = self.tool_registry.lock().await;
                 register_handlers_with_logging!(registry, {
                     SystemToolsHandler => "SystemToolsHandler with 1 tool (health_check)",
-                    WorkspaceToolsHandler => "WorkspaceToolsHandler with 4 tools (move_directory, find_dead_code, update_dependencies, update_dependency)",
                     AdvancedToolsHandler => "AdvancedToolsHandler with 2 tools (execute_edits, execute_batch)",
-                    FileToolsHandler => "FileToolsHandler with 6 tools (create_file, read_file, write_file, delete_file, move_file, list_files)",
-                    EditingToolsHandler => "EditingToolsHandler with 7 tools (rename_symbol, organize_imports, get_code_actions, format_document, extract_function, extract_variable, inline_variable)",
                     NavigationHandler => "NavigationHandler with 9 tools (find_definition, find_references, find_implementations, find_type_definition, get_document_symbols, search_symbols, get_symbol_info, get_diagnostics, get_call_hierarchy)",
                     AnalysisHandler => "AnalysisHandler with 3 tools (find_unused_imports, analyze_code, analyze_project)",
                     LifecycleHandler => "LifecycleHandler with 3 INTERNAL tools (notify_file_opened, notify_file_saved, notify_file_closed)",
                     InternalEditingToolsHandler => "InternalEditingToolsHandler with 1 INTERNAL tool (rename_symbol_with_imports)",
                     InternalWorkspaceHandler => "InternalWorkspaceHandler with 1 INTERNAL tool (apply_workspace_edit)",
-                    InternalIntelligenceHandler => "InternalIntelligenceHandler with 2 INTERNAL tools (get_completions, get_signature_help)"
+                    InternalIntelligenceHandler => "InternalIntelligenceHandler with 2 INTERNAL tools (get_completions, get_signature_help)",
+
+                    // New unified refactoring handlers
+                    RenameHandler => "Unified rename handler",
+                    ExtractHandler => "Unified extract handler",
+                    InlineHandler => "Unified inline handler",
+                    MoveHandler => "Unified move handler",
+                    ReorderHandler => "Unified reorder handler",
+                    TransformHandler => "Unified transform handler",
+                    DeleteHandler => "Unified delete handler",
+                    WorkspaceApplyHandler => "Unified workspace apply handler"
                 });
             }
 

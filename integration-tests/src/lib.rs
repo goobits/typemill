@@ -14,6 +14,9 @@ pub mod dry_run_integration;
 #[cfg(test)]
 pub mod resilience_tests;
 
+#[cfg(test)]
+pub mod test_unified_refactoring_api;
+
 pub use harness::{TestClient, TestWorkspace};
 pub use helpers::*;
 pub use mocks::{MockAstService, MockLspService};

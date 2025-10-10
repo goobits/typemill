@@ -53,9 +53,7 @@ Codebuddy provides comprehensive MCP tools for code intelligence and refactoring
 - `find_implementations`, `find_type_definition`, `web_fetch`
 
 **Editing & Refactoring**
-- `rename_symbol`, `rename_symbol_strict`
-- `organize_imports`, `get_code_actions`, `format_document`
-- `extract_function`, `inline_variable`, `extract_variable`
+- `*.plan` / `workspace.apply_edit` (Unified Refactoring API)
 
 **File Operations**
 - `create_file`, `read_file`, `write_file`, `delete_file`
@@ -91,9 +89,14 @@ Codebuddy provides comprehensive MCP tools for code intelligence and refactoring
 }
 ```
 
-### Dry Run Mode
+### Dry Run and Previews
 
-Most file-modifying operations support `dry_run: true` for safe previews:
+The Unified Refactoring API is designed for safety with a `plan -> apply` pattern.
+
+- **`*.plan()` commands are always dry runs.** They generate a plan of changes but never write to the filesystem. This is the primary way to preview a refactoring.
+- **`workspace.apply_edit`** can be run with `dry_run: true` in its options for a final preview before execution.
+
+File and workspace operations also support `dry_run: true`:
 
 ```json
 {
@@ -112,7 +115,6 @@ Most file-modifying operations support `dry_run: true` for safe previews:
 **Supported operations:**
 - File operations: `create_file`, `write_file`, `delete_file`, `rename_file`
 - Directory operations: `rename_directory` (including consolidation mode)
-- Refactoring: `rename_symbol`, `rename_symbol_strict`, `extract_function`, `inline_variable`, `extract_variable`
 
 **Benefits:**
 - Preview changes before applying them

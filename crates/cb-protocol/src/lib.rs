@@ -6,8 +6,10 @@
 
 pub mod error;
 pub mod plugin_protocol;
+pub mod refactor_plan;
 
 pub use error::{ApiError, ApiResult};
+pub use refactor_plan::*;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
