@@ -602,17 +602,58 @@ analyze.batch([
 
 ## Implementation Approach
 
-**No migration needed**: This is a beta product with no external users.
+**No long-term legacy support**: This is a beta product with no external users. We will not maintain dual APIs long-term.
 
-**Direct implementation**:
-1. Implement all 6 `analyze.*` commands with unified `AnalysisResult` structure
-2. Add actionable suggestions linking to refactoring commands
-3. Implement `analyze.batch` with shared parsing optimization
-4. Remove all 37 legacy commands immediately
-5. Update all internal callsites to use new API
-6. Update documentation
+**Build first, remove second** (staged by category):
 
-**No deprecation period, no legacy wrappers, no telemetry tracking.**
+### Phase 1: Implement New Commands
+For each analysis category:
+1. Implement `analyze.<category>` with all `kind` variants
+2. Verify each `kind` produces correct results (tests pass)
+3. Add actionable suggestions linking to refactoring commands
+4. Update internal callsites to use new API
+
+### Phase 2: Remove Legacy (Per Category)
+Only after Phase 1 completes for a category:
+1. Remove legacy commands for that category
+2. Update documentation
+3. Verify no regressions
+
+### Suggested Implementation Order
+
+**1. Quality Analysis** (remove 10 legacy commands)
+- Implement: `analyze.quality` with kinds: complexity, smells, maintainability, readability
+- Remove: analyze_complexity, find_complexity_hotspots, suggest_refactoring, find_god_classes, etc.
+
+**2. Dead Code Analysis** (remove 6 legacy commands)
+- Implement: `analyze.dead_code` with kinds: unused_symbols, unused_imports, unreachable_code, unused_parameters, unused_types, unused_variables
+- Remove: find_dead_code, find_unused_imports, find_unused_parameters, etc.
+
+**3. Dependency Analysis** (remove 6 legacy commands)
+- Implement: `analyze.dependencies` with kinds: imports, graph, circular, coupling, cohesion, depth
+- Remove: analyze_imports, find_circular_dependencies, etc.
+
+**4. Structure Analysis** (remove 7 legacy commands)
+- Implement: `analyze.structure` with kinds: symbols, hierarchy, interfaces, inheritance, modules
+- Remove: get_document_symbols, analyze_inheritance, etc.
+- Note: Keep navigation commands (search_workspace_symbols, find_definition, etc.)
+
+**5. Documentation Analysis** (remove 4 legacy commands)
+- Implement: `analyze.documentation` with kinds: coverage, quality, missing, outdated, todos
+- Remove: analyze_comment_ratio, find_undocumented_exports, etc.
+
+**6. Test Analysis** (remove 4 legacy commands)
+- Implement: `analyze.tests` with kinds: coverage, untested, quality, smells
+- Remove: analyze_test_coverage, find_untested_code, etc.
+
+**7. Batch Support** (add new capability)
+- Implement: `analyze.batch` with shared parsing optimization
+
+### Timeline
+
+**No fixed timeline** - we're the only users. Implement at comfortable pace, verify each category works before removing legacy.
+
+**Key principle**: Never remove a legacy command until its replacement is implemented and tested.
 
 ---
 
@@ -781,15 +822,26 @@ console.log(`Complexity reduced from ${quality.findings[0].metrics.cyclomatic_co
 
 ## Success Criteria
 
+**Per-category completion** (repeat for each of 6 categories):
+- [ ] `analyze.<category>` command implemented with all `kind` variants
+- [ ] All `kind` values for category produce correct results
+- [ ] Tests pass for all kinds in category
+- [ ] Actionable suggestions generated for category findings
+- [ ] Internal callsites updated to use new API
+- [ ] Legacy commands for category removed
+- [ ] Documentation updated for category
+
+**Overall completion**:
 - [ ] All 6 `analyze.*` commands implemented and tested
-- [ ] Unified `AnalysisResult` structure used consistently
-- [ ] Actionable suggestions generated for all finding types
+- [ ] Unified `AnalysisResult` structure used consistently across all categories
 - [ ] `analyze.batch` supports multi-analysis workflows with shared parsing
-- [ ] All 37 legacy commands removed from codebase
-- [ ] Integration tests cover all analysis kinds
-- [ ] All internal callsites updated to new API
+- [ ] All 37 legacy commands removed from codebase (staged by category)
+- [ ] Integration tests cover all analysis kinds (24 total kind values)
 - [ ] Documentation shows analyze → refactor workflows
 - [ ] CI validates suggestion `refactor_call` references valid commands
+- [ ] Navigation commands preserved (search_workspace_symbols, find_definition, etc.)
+
+**Key milestone**: Can complete categories in any order. Each category is independently shippable.
 
 ---
 
@@ -797,4 +849,6 @@ console.log(`Complexity reduced from ${quality.findings[0].metrics.cyclomatic_co
 
 This unified analysis API reduces complexity by 84% while providing actionable insights that bridge directly into refactoring workflows. The consistent result structure and suggestion system enable AI agents to reason about code quality and automatically apply improvements.
 
-**Recommendation**: Approve and coordinate with Refactoring API implementation (PROPOSAL_UNIFIED_REFACTORING_API.md) for Phase 1 rollout.
+**Implementation strategy**: Build first, remove second. Each category is implemented and tested before removing its legacy commands. No functionality gaps, no regressions.
+
+**Recommendation**: Approve and begin with Quality Analysis category (easiest, most used). Coordinate with Refactoring API implementation (PROPOSAL_UNIFIED_REFACTORING_API.md) for end-to-end workflows.
