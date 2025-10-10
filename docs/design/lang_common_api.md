@@ -1,72 +1,55 @@
 # Language Plugin Common API
 
 ## Scope
-- Defines reusable line-level primitives for import manipulation in `cb-lang-common`.
-- Applicable to core languages (TypeScript, Rust) and external language plugins.
-- Extractable utilities proven across multiple language implementations.
-
-## Plugin Architecture
-- **Core plugins** (bundled): TypeScript, Rust
-- **External plugins** (community): Access via `cb-lang-common` dependency
-- All utilities are language-agnostic line-level primitives
-- Plugin architecture unchanged - supports any language with proper implementation
-
-## Design Principles
-1. **Extract from proven patterns** - Functions appearing in multiple plugin implementations
-2. **Primitives over frameworks** - Simple, composable utilities
-3. **Conservative scope** - Better to add later than remove unused code
-4. **Zero abstraction penalty** - As fast as hand-written code
-5. **100% test coverage** - Every function thoroughly tested
-
----
+- Defines canonical contracts for line-level import primitives in `cb-lang-common`.
+- Applies to core plugins (TypeScript, Rust) and external language plugins.
+- Overrides any conflicting implementation details; code must conform to this spec.
 
 ## Module Structure
 
-### Current (Preserved)
+**Current (preserved):**
 ```
 cb-lang-common/src/
-├── import_parsing.rs     # Existing utilities
-├── import_graph.rs       # ImportGraphBuilder
-└── lib.rs                # Public exports
+├── import_parsing.rs
+├── import_graph.rs
+└── lib.rs
 ```
 
-### Addition
+**Addition:**
 ```
 cb-lang-common/src/
-└── import_helpers.rs     # NEW: Line-level operations (4 functions, ~100 lines)
+└── import_helpers.rs     # 4 functions, ~100 lines
 ```
 
 ---
 
-## API Reference
+## API Contracts
 
 ### `find_last_matching_line`
 
 ```rust
 pub fn find_last_matching_line<F>(content: &str, predicate: F) -> Option<usize>
-where
-    F: Fn(&str) -> bool,
-{
-    content
-        .lines()
-        .enumerate()
-        .filter(|(_, line)| predicate(line))
-        .last()
-        .map(|(idx, _)| idx)
-}
+where F: Fn(&str) -> bool
 ```
 
-**Purpose:** Find 0-based index of last line matching predicate. Returns `None` if no match.
+**Contract:**
+- **Input**: UTF-8 string content, predicate function
+- **Output**: `Some(index)` for last matching line (0-based), `None` if no match
+- **Complexity**: O(n) single pass, no early exit
+- **Panics**: Never
+- **Thread safety**: Safe (immutable inputs)
 
-**Complexity:** O(n) - single pass
+**Invariants:**
+- Line indices are 0-based and count from start
+- Empty content always returns `None`
+- Predicate receives each line exactly once in order
+- Return value < total line count when `Some`
 
-**Usage:**
+**Edge cases:**
 ```rust
-// TypeScript: find last import
-find_last_matching_line(content, |line| line.trim().starts_with("import "))
-
-// Rust: find last use statement
-find_last_matching_line(content, |line| line.trim().starts_with("use "))
+find_last_matching_line("", |_| true)           // → None
+find_last_matching_line("a\nb", |l| l == "b")  // → Some(1)
+find_last_matching_line("a\na", |l| l == "a")  // → Some(1) (last occurrence)
 ```
 
 ---
@@ -74,29 +57,34 @@ find_last_matching_line(content, |line| line.trim().starts_with("use "))
 ### `insert_line_at`
 
 ```rust
-pub fn insert_line_at(content: &str, position: usize, new_line: &str) -> String {
-    let mut lines: Vec<&str> = content.lines().collect();
-
-    if position >= lines.len() {
-        if lines.is_empty() {
-            return new_line.to_string();
-        }
-        lines.push(new_line);
-    } else {
-        lines.insert(position, new_line);
-    }
-
-    lines.join("\n")
-}
+pub fn insert_line_at(content: &str, position: usize, new_line: &str) -> String
 ```
 
-**Purpose:** Insert line at 0-based position. Appends if position beyond end.
+**Contract:**
+- **Input**: UTF-8 content, 0-based position, UTF-8 line to insert
+- **Output**: New string with line inserted
+- **Complexity**: O(n) - split, insert, join
+- **Panics**: Never
+- **Allocation**: Always allocates new `String`
 
-**Complexity:** O(n) - split, insert, join
+**Behavior:**
+- `position < line_count`: Insert at exact position (shifts existing lines down)
+- `position >= line_count`: Append to end
+- Empty content: Returns `new_line` only
+- Line separator: Always `\n` (LF)
+
+**Invariants:**
+- Result line count = original count + 1
+- All original lines preserved in order
+- No trailing newline added
 
 **Edge cases:**
-- Position beyond end → appends to end
-- Empty content → returns new_line only
+```rust
+insert_line_at("", 0, "x")              // → "x"
+insert_line_at("", 999, "x")            // → "x"
+insert_line_at("a\nb", 1, "x")          // → "a\nx\nb"
+insert_line_at("a\nb", 999, "x")        // → "a\nb\nx"
+```
 
 ---
 
@@ -104,33 +92,33 @@ pub fn insert_line_at(content: &str, position: usize, new_line: &str) -> String 
 
 ```rust
 pub fn remove_lines_matching<F>(content: &str, predicate: F) -> String
-where
-    F: Fn(&str) -> bool,
-{
-    content
-        .lines()
-        .filter(|line| !predicate(line))
-        .collect::<Vec<_>>()
-        .join("\n")
-}
+where F: Fn(&str) -> bool
 ```
 
-**Purpose:** Filter out all lines where predicate returns `true`.
+**Contract:**
+- **Input**: UTF-8 content, predicate function
+- **Output**: New string with matching lines removed
+- **Complexity**: O(n) single pass filter
+- **Panics**: Never
+- **Allocation**: Always allocates new `String`
 
-**Complexity:** O(n) - single pass filter
+**Behavior:**
+- Lines where `predicate(line) == true` are excluded
+- Preserved lines maintain original order
+- Line separator: Always `\n` (LF)
+- All matches removed (no partial filtering)
 
-**Usage:**
+**Invariants:**
+- Result line count ≤ original line count
+- No line appears in result if predicate returned `true` for it
+- All non-matching lines preserved exactly
+
+**Edge cases:**
 ```rust
-// Remove TypeScript imports
-remove_lines_matching(content, |line| {
-    line.trim() == format!("import {}", module)
-})
-
-// Remove Rust use statements
-remove_lines_matching(content, |line| {
-    let t = line.trim();
-    t.starts_with("use ") && t.contains(&format!("use {}", module))
-})
+remove_lines_matching("", |_| true)                 // → ""
+remove_lines_matching("a\nb\nc", |_| false)        // → "a\nb\nc"
+remove_lines_matching("a\nb\nc", |_| true)         // → ""
+remove_lines_matching("a\nb", |l| l == "b")        // → "a"
 ```
 
 ---
@@ -139,101 +127,73 @@ remove_lines_matching(content, |line| {
 
 ```rust
 pub fn find_first_non_matching_line<F>(content: &str, predicate: F) -> Option<usize>
-where
-    F: Fn(&str) -> bool,
-{
-    content
-        .lines()
-        .enumerate()
-        .find(|(_, line)| !predicate(line))
-        .map(|(idx, _)| idx)
-}
+where F: Fn(&str) -> bool
 ```
 
-**Purpose:** Find first line that does NOT match predicate. Useful for finding end of import blocks.
+**Contract:**
+- **Input**: UTF-8 content, predicate function
+- **Output**: `Some(index)` for first non-matching line (0-based), `None` if all match
+- **Complexity**: O(n) with early exit on first non-match
+- **Panics**: Never
+- **Thread safety**: Safe (immutable inputs)
 
-**Complexity:** O(n) - early exit on first non-match
+**Invariants:**
+- Returns first line where `predicate(line) == false`
+- Empty content always returns `None`
+- If returned, all lines before index matched predicate
+- Return value < total line count when `Some`
 
-**Usage:**
+**Edge cases:**
 ```rust
-// Find where imports end (Python-style)
-find_first_non_matching_line(content, |line| {
-    let t = line.trim();
-    t.starts_with("import ") || t.starts_with("from ") || t.is_empty()
-}).unwrap_or(0)
+find_first_non_matching_line("", |_| true)              // → None
+find_first_non_matching_line("a\nb", |_| true)         // → None (all match)
+find_first_non_matching_line("a\nb", |l| l == "a")     // → Some(1)
+find_first_non_matching_line("x\ny", |l| l == "a")     // → Some(0) (first non-match)
 ```
 
 ---
 
-## Modifications to Existing Code
+## Modifications to `import_parsing.rs`
 
-### `import_parsing.rs` Changes
+### Immediate Removals (No Deprecation)
 
-**Remove (unused):**
-- `split_import_list(text: &str) -> Vec<(String, Option<String>)>` - No plugin uses comma-separated import parsing
-- `ExternalDependencyDetector` struct - No plugin uses builder pattern
+**Delete:**
+- `split_import_list(text: &str) -> Vec<(String, Option<String>)>` - Unused by any plugin
+- `ExternalDependencyDetector` struct - Unused by any plugin
 
-**Keep (proven usage):**
-- `parse_import_alias(text: &str) -> (String, Option<String>)` - Multiple plugins use
-- `extract_package_name(path: &str) -> String` - TypeScript and others use
-- `normalize_import_path(path: &str) -> String` - All plugins normalize paths
+**Rationale:** No deprecation window needed (beta product, no external users)
 
-**Deprecation:**
-```rust
-#[deprecated(since = "0.2.0", note = "Unused by any plugin, will be removed in 0.3.0")]
-pub fn split_import_list(text: &str) -> Vec<(String, Option<String>)> { /* ... */ }
-```
+### Preserved Functions
 
----
-
-## Migration Pattern
-
-### Before (manual iteration)
-```rust
-let mut lines: Vec<&str> = content.lines().collect();
-let mut last_import_idx = None;
-
-for (idx, line) in lines.iter().enumerate() {
-    let trimmed = line.trim();
-    if trimmed.starts_with("import ") {
-        last_import_idx = Some(idx);
-    }
-}
-
-if let Some(idx) = last_import_idx {
-    lines.insert(idx + 1, &new_import_line);
-    lines.join("\n")
-} else {
-    format!("{}\n{}", new_import_line, content)
-}
-```
-
-### After (using primitives)
-```rust
-use cb_lang_common::import_helpers::{find_last_matching_line, insert_line_at};
-
-let last_import_idx = find_last_matching_line(content, |line| {
-    line.trim().starts_with("import ")
-});
-
-match last_import_idx {
-    Some(idx) => insert_line_at(content, idx + 1, &new_import_line),
-    None => insert_line_at(content, 0, &new_import_line),
-}
-```
-
-**Impact:** 15 lines → 6 lines (60% reduction), clearer intent
+**Keep:**
+- `parse_import_alias(text: &str) -> (String, Option<String>)` - Used by TypeScript, Python plugins
+- `extract_package_name(path: &str) -> String` - Used by TypeScript plugin
+- `normalize_import_path(path: &str) -> String` - Used by all plugins
 
 ---
 
 ## Performance Requirements
 
-**Target benchmarks:**
-- 10K line files: < 1ms per operation
-- No allocation penalty vs hand-written code
-- Linear scaling O(n) with content size
+### Acceptance Criteria (CI Gates)
 
-**Benchmark suite:**
+**Benchmarks must pass:**
+```rust
+// Gate 1: 10K line file operations
+bench_find_last_import_10k_lines:  max 1.0ms  (fail if > 1ms)
+bench_insert_line_at_middle:       max 1.5ms  (fail if > 1.5ms)
+bench_remove_lines_matching:       max 1.2ms  (fail if > 1.2ms)
+bench_find_first_non_matching:     max 0.8ms  (fail if > 0.8ms)
+
+// Gate 2: Allocation overhead
+All functions: max 5% overhead vs hand-written loops (fail if > 5%)
+
+// Gate 3: Scaling
+100K line files: max 10x of 10K baseline (fail if > 10x)
+```
+
+**Failure action:** Block merge until optimized
+
+**Benchmark suite (required):**
 ```rust
 #[bench]
 fn bench_find_last_import_10k_lines(b: &mut Bencher) {
@@ -242,134 +202,215 @@ fn bench_find_last_import_10k_lines(b: &mut Bencher) {
         find_last_matching_line(&content, |line| line.trim().starts_with("import "))
     });
 }
+
+#[bench]
+fn bench_insert_line_at_middle(b: &mut Bencher) {
+    let content = generate_test_file(10_000);
+    b.iter(|| {
+        insert_line_at(&content, 5_000, "import new")
+    });
+}
+
+#[bench]
+fn bench_remove_lines_matching(b: &mut Bencher) {
+    let content = generate_test_file_with_imports(10_000, 50);
+    b.iter(|| {
+        remove_lines_matching(&content, |l| l.trim().starts_with("import "))
+    });
+}
 ```
 
 ---
 
 ## Testing Requirements
 
+### CI Gates (Mandatory)
+
 **Unit tests (per function):**
-- Happy path (3+ tests per function)
-- Edge cases: empty content, no matches, all matches
-- Performance tests: 10K line files
-- Property-based tests with `proptest`
-- Doc examples must compile and pass
+- ✅ Happy path: 3+ tests per function (fail if < 3)
+- ✅ Edge cases: empty content, no matches, all matches (fail if missing)
+- ✅ Boundary: first line, last line, middle (fail if missing)
+- ✅ Property-based: `proptest` with 1000 cases (fail if < 1000)
 
 **Integration tests:**
+- ✅ TypeScript import pattern (fail if missing)
+- ✅ Rust use statement pattern (fail if missing)
+- ✅ Cross-function composition (fail if missing)
+
+**Documentation:**
+- ✅ All doc examples compile (fail if any error)
+- ✅ All doc examples pass `cargo test --doc` (fail if any failure)
+
+**Coverage:**
+- ✅ Line coverage: 100% (fail if < 100%)
+- ✅ Branch coverage: 100% (fail if < 100%)
+
+**Quality:**
+- ✅ `cargo clippy`: 0 warnings (fail if any)
+- ✅ `cargo fmt --check`: no changes (fail if dirty)
+
+### Required Test Cases
+
+**`find_last_matching_line`:**
 ```rust
-#[test]
-fn test_typescript_add_import_pattern() {
-    let content = r#"import { foo } from 'bar';
+#[test] fn returns_none_for_empty_content()
+#[test] fn returns_none_when_no_match()
+#[test] fn returns_last_match_when_multiple()
+#[test] fn returns_only_match_when_single()
+```
 
-const x = 1;"#;
+**`insert_line_at`:**
+```rust
+#[test] fn inserts_at_beginning()
+#[test] fn inserts_in_middle()
+#[test] fn appends_when_position_beyond_end()
+#[test] fn handles_empty_content()
+```
 
-    let last_idx = find_last_matching_line(content, |l| {
-        l.trim().starts_with("import ")
-    }).unwrap();
+**`remove_lines_matching`:**
+```rust
+#[test] fn removes_all_matching_lines()
+#[test] fn preserves_non_matching_lines()
+#[test] fn returns_empty_when_all_match()
+#[test] fn returns_unchanged_when_none_match()
+```
 
-    let result = insert_line_at(content, last_idx + 1, "import { baz } from 'qux';");
-
-    assert!(result.contains("import { foo } from 'bar';"));
-    assert!(result.contains("import { baz } from 'qux';"));
-}
-
-#[test]
-fn test_rust_add_use_pattern() {
-    let content = r#"use std::collections::HashMap;
-
-fn main() {}"#;
-
-    let last_idx = find_last_matching_line(content, |l| {
-        l.trim().starts_with("use ")
-    }).unwrap();
-
-    let result = insert_line_at(content, last_idx + 1, "use std::fs;");
-
-    assert!(result.contains("use std::collections::HashMap;"));
-    assert!(result.contains("use std::fs;"));
-}
+**`find_first_non_matching_line`:**
+```rust
+#[test] fn returns_first_non_match()
+#[test] fn returns_none_when_all_match()
+#[test] fn returns_zero_when_first_non_match()
 ```
 
 ---
 
-## Design Decisions
+## Error Handling
 
-**Q: Return `Result<T, E>` or `Option<T>`?**
-**A:** `Option<T>` - "not found" is not an error condition
+**Contract:** All functions are infallible (no `Result` return types).
 
-**Q: String allocation vs `Cow<str>`?**
-**A:** Always allocate - simpler API, negligible cost for import operations
+**Rationale:**
+- "Not found" is not an error (return `Option::None`)
+- Invalid position handled gracefully (append to end)
+- Empty content is valid input
 
-**Q: Async functions?**
-**A:** Synchronous - content is small, already in memory, async overhead unnecessary
-
-**Q: Line ending normalization?**
-**A:** Always use `\n` - LSP protocol standard
+**Panic policy:** Functions must never panic. Violations constitute contract breach.
 
 ---
 
-## Out of Scope
+## Thread Safety
 
-### Excluded from cb-lang-common
+**Contract:** All functions are `Send + Sync` safe.
+
+**Guarantees:**
+- Immutable input references only
+- No shared mutable state
+- No interior mutability
+- Safe for concurrent execution from multiple threads
+
+---
+
+## Migration Path
+
+### For Plugin Authors
+
+**Before:**
+```rust
+let mut lines: Vec<&str> = content.lines().collect();
+let mut last_import_idx = None;
+for (idx, line) in lines.iter().enumerate() {
+    if line.trim().starts_with("import ") {
+        last_import_idx = Some(idx);
+    }
+}
+if let Some(idx) = last_import_idx {
+    lines.insert(idx + 1, &new_import_line);
+    lines.join("\n")
+} else {
+    format!("{}\n{}", new_import_line, content)
+}
+```
+
+**After:**
+```rust
+use cb_lang_common::import_helpers::{find_last_matching_line, insert_line_at};
+
+let last_idx = find_last_matching_line(content, |l| l.trim().starts_with("import "));
+match last_idx {
+    Some(idx) => insert_line_at(content, idx + 1, &new_import_line),
+    None => insert_line_at(content, 0, &new_import_line),
+}
+```
+
+**Benefits:** 15 lines → 6 lines, no manual index tracking, guaranteed correctness
+
+---
+
+## Out of Scope (Explicitly Excluded)
 
 **Language-specific logic:**
-```rust
-// ❌ Python-specific
-fn skip_docstrings_and_shebang(content: &str) -> usize
+- Python docstring skipping
+- Go import block parsing
+- Any AST-based manipulation
 
-// ❌ Go-specific
-fn parse_import_block(content: &str) -> Vec<String>
-```
-
-**Complex parsers:**
-```rust
-// ❌ Requires AST parsing - keep in plugins
-pub struct ImportRewriter {
-    language: Language,
-    style: ImportStyle,
-}
-```
+**Complex abstractions:**
+- Builder patterns
+- Import rewriters
+- Style formatters
 
 **Anticipatory features:**
-```rust
-// ❌ No plugin uses yet
-pub fn sort_imports_by_group(imports: Vec<String>) -> Vec<String>
+- Import sorting/grouping
+- Multi-line handling
+- Relative import detection
 
-// ❌ Only 1 plugin needs
-pub fn detect_relative_import(path: &str) -> bool
-```
-
-**AST-based parsing:**
-- Each language has unique AST structure
-- Keep `syn`, `tree-sitter`, `swc` in language plugins
+**Rationale:** Keep primitives language-agnostic. Complex logic belongs in individual plugins.
 
 ---
 
-## Future Considerations
+## Design Decisions (Locked)
 
-**Add if 3+ plugins develop similar patterns:**
-- Import grouping/sorting utilities
-- Import statement normalization
-- Multi-line import handling helpers
+**Q: Return `Result<T, E>` or `Option<T>`?**
+**A:** `Option<T>` - "not found" is not an error condition. Locked.
 
-**Possible custom Clippy lint:**
-```rust
-#[warn(manual_import_iteration)]
-// Suggests: use cb_lang_common::import_helpers::find_last_matching_line
-```
+**Q: String allocation vs `Cow<str>`?**
+**A:** Always allocate - simpler API, 3-5% overhead acceptable for import ops. Locked.
+
+**Q: Async functions?**
+**A:** Synchronous - content in memory, async overhead (20-30%) not justified. Locked.
+
+**Q: Line ending normalization?**
+**A:** Always `\n` - LSP protocol standard, simplifies cross-platform. Locked.
 
 ---
 
-## Contract Summary
+## Contract Validation
 
-**4 core utilities:**
-1. `find_last_matching_line` - Find last import for insertion
-2. `insert_line_at` - Insert line at position
-3. `remove_lines_matching` - Filter out import lines
-4. `find_first_non_matching_line` - Find end of import block
+**CI must enforce:**
+- All benchmarks pass thresholds
+- All test gates pass (100% coverage)
+- Zero Clippy warnings
+- All doc examples compile and pass
+- Functions never panic (verified via `#[should_panic]` absence)
 
-**Scope:** ~100-120 lines of truly reusable code
+**Breaking changes:**
+- Require major version bump
+- Must document migration path
+- Beta product: no backwards compatibility guarantees
 
-**Adoption:** Purely additive, no breaking changes, external plugins can adopt incrementally
+---
 
-**Quality gates:** 100% test coverage, zero Clippy warnings, all doc examples pass, benchmarks show zero overhead
+## Summary
+
+**4 infallible primitives:**
+1. `find_last_matching_line(content, predicate) -> Option<usize>`
+2. `insert_line_at(content, position, new_line) -> String`
+3. `remove_lines_matching(content, predicate) -> String`
+4. `find_first_non_matching_line(content, predicate) -> Option<usize>`
+
+**Guarantees:**
+- O(n) or better complexity
+- Thread-safe (Send + Sync)
+- Never panic
+- 100% test coverage
+- Performance gates enforced
+
+**Scope:** ~100 lines of production code, language-agnostic primitives only
