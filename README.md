@@ -26,7 +26,7 @@ Your AI assistant can finally understand your codebase the way your IDE does:
 - **Refactor safely** - Rename across files, extract functions, organize imports—with automatic updates
 - **Scale confidently** - Atomic multi-file edits, batch operations, smart directory moves
 
-Supports TypeScript, Python, Go, Rust, Java—any language with an LSP server. Built in Rust for memory safety and blazing performance.
+Currently supports **TypeScript and Rust** with full AST analysis and refactoring capabilities. Additional language support (Python, Go, Java, Swift, C#) available via git tag `pre-language-reduction`. Built in Rust for memory safety and blazing performance.
 
 ## 🚀 Quick Start
 
@@ -59,13 +59,13 @@ cd codebuddy
 make first-time-setup  # Installs all tools, builds parsers, runs tests (~3-5 min)
 ```
 
-**Note:** Building all features requires external SDKs like the Java SDK, .NET SDK, and Node.js. See [CONTRIBUTING.md](CONTRIBUTING.md) for a full list of prerequisites.
+**Note:** Building requires Node.js for the TypeScript language plugin. See [CONTRIBUTING.md](CONTRIBUTING.md) for prerequisites.
 
 **What gets installed:**
 - cargo-nextest, sccache, cargo-watch, cargo-audit (via cargo-binstall)
 - mold linker (if sudo available)
-- LSP servers: typescript-language-server, pylsp, gopls, rust-analyzer
-- External parsers: Java, TypeScript, C# (if Maven/.NET/Node.js available)
+- LSP servers: typescript-language-server, rust-analyzer
+- TypeScript parser (if Node.js available)
 
 **Or use Dev Container for zero-setup:**
 - Open in VS Code → Automatically installs everything
@@ -86,19 +86,11 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for development workflow and architec
 # TypeScript/JavaScript
 npm install -g typescript-language-server typescript
 
-# Python
-pip install "python-lsp-server[all]"
-
-# Go
-go install golang.org/x/tools/gopls@latest
-
 # Rust
 rustup component add rust-analyzer
-
-# Java
-# Download from https://download.eclipse.org/jdtls/snapshots/
-# Or use your IDE's bundled language server
 ```
+
+**Note:** Additional languages (Python, Go, Java, Swift, C#) are available in git tag `pre-language-reduction`. Current focus is on TypeScript and Rust for unified API development.
 
 Verify with: `codebuddy status`
 </details>
@@ -130,13 +122,13 @@ Once connected, your AI assistant can navigate your code, suggest refactorings, 
 {
   "servers": [
     {
-      "extensions": ["py", "pyi"],
-      "command": ["pylsp"],
+      "extensions": ["js", "ts", "jsx", "tsx"],
+      "command": ["npx", "--", "typescript-language-server", "--stdio"],
       "restartInterval": 30
     },
     {
-      "extensions": ["js", "ts", "jsx", "tsx"],
-      "command": ["npx", "--", "typescript-language-server", "--stdio"]
+      "extensions": ["rs"],
+      "command": ["rust-analyzer"]
     }
   ]
 }

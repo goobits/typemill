@@ -217,9 +217,11 @@ cargo nextest run --workspace --features heavy-tests
 
 **Test Categories:**
 - `fast-tests` (default): Mock-based unit and integration tests
-- `lsp-tests`: Tests requiring real LSP servers (TypeScript, Python, Rust)
+- `lsp-tests`: Tests requiring real LSP servers (TypeScript, Rust)
 - `e2e-tests`: End-to-end workflow tests
 - `heavy-tests`: Performance benchmarks and property-based testing
+
+**Note:** Language support temporarily reduced to TypeScript + Rust during unified API refactoring. Multi-language support (Python, Go, Java, Swift, C#) preserved in git tag `pre-language-reduction`.
 
 ## Architecture & Configuration
 
@@ -325,10 +327,9 @@ The system spawns separate LSP server processes per configuration. Each server:
 Supported language servers (configurable):
 
 - TypeScript: `typescript-language-server`
-- Python: `pylsp`
-- Go: `gopls`
 - Rust: `rust-analyzer`
-- Java: `jdtls` (Eclipse JDT Language Server)
+
+**Note:** Additional language servers (Python/pylsp, Go/gopls, Java/jdtls) can be configured but require language plugins from git tag `pre-language-reduction`.
 
 ## Configuration
 
@@ -479,7 +480,9 @@ cargo build --release
 - `LanguagePlugin` trait implementation
 - Data types (ParsedSource, Symbol, ManifestData)
 - Plugin registration and testing
-- Reference implementations (Rust, Go, TypeScript)
+- Reference implementations (Rust, TypeScript)
+
+**Note:** Additional language plugin implementations (Python, Go, Java, Swift, C#) available in git tag `pre-language-reduction`.
 
 ### Adding New MCP Tools
 
