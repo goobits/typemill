@@ -63,7 +63,14 @@ fn initialize_registry() -> LanguagePluginRegistry {
 /// ```
 pub fn discover_plugins_with_fixtures() -> Vec<(&'static dyn LanguagePlugin, LanguageTestFixtures)>
 {
-    REGISTRY.plugins_with_fixtures()
+    let cell = REGISTRY.get_or_init(|| {
+        let registry = initialize_registry();
+        Mutex::new(Some(registry))
+    });
+
+    let guard = cell.lock().expect("Failed to lock registry");
+    let registry = guard.as_ref().expect("Registry not initialized");
+    registry.plugins_with_fixtures()
 }
 
 /// Get the display name of a language plugin
