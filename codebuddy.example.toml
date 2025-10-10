@@ -19,14 +19,12 @@ command = ["typescript-language-server", "--stdio"]
 restartInterval = 10
 
 [[lsp.servers]]
-extensions = ["py"]
-command = ["pylsp"]
-restartInterval = 5
-
-[[lsp.servers]]
 extensions = ["rs"]
 command = ["rust-analyzer"]
 restartInterval = 15
+
+# Note: Language support temporarily reduced to TypeScript + Rust during unified API refactoring
+# Additional LSP servers (Python/pylsp, Go/gopls) available in git tag 'pre-language-reduction'
 
 [logging]
 level = "info"

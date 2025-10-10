@@ -23,23 +23,14 @@ extensions = ["ts", "tsx", "js", "jsx"]
 command = ["typescript-language-server", "--stdio"]
 restart_interval = 10
 
-# Python
-[[lsp.servers]]
-extensions = ["py"]
-command = ["pylsp"]
-restart_interval = 5
-
-# Go
-[[lsp.servers]]
-extensions = ["go"]
-command = ["gopls"]
-restart_interval = 10
-
 # Rust
 [[lsp.servers]]
 extensions = ["rs"]
 command = ["rust-analyzer"]
 restart_interval = 15
+
+# Note: Language support temporarily reduced to TypeScript + Rust during unified API refactoring
+# Additional LSP servers (Python/pylsp, Go/gopls) available in git tag 'pre-language-reduction'
 
 # =============================================================================
 # Logging Configuration
@@ -140,15 +131,15 @@ jwt_audience = "codebuddy-clients"
 [environments.production.lsp]
 default_timeout_ms = 30000
 
-# Only TypeScript and Python in production (lighter footprint)
+# TypeScript and Rust in production
 [[environments.production.lsp.servers]]
 extensions = ["ts", "tsx", "js", "jsx"]
 command = ["typescript-language-server", "--stdio"]
 restart_interval = 30
 
 [[environments.production.lsp.servers]]
-extensions = ["py"]
-command = ["pylsp"]
+extensions = ["rs"]
+command = ["rust-analyzer"]
 restart_interval = 15
 
 [environments.production.fuse]

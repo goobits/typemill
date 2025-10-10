@@ -4,6 +4,10 @@ set -e
 # Codeflow Buddy MCP Server Installer
 # Builds and installs from local source
 #
+# NOTE: Language support temporarily reduced to TypeScript + Rust during unified API refactoring.
+#       This script installs Python/Go LSP servers for development purposes, but they won't be
+#       used by default. For multi-language support, checkout git tag 'pre-language-reduction'.
+#
 # Usage:
 #   ./install.sh                        # Interactive mode (prompts for location)
 #   CODEBUDDY_INSTALL_MODE=system ./install.sh  # System-wide (/usr/local/bin)

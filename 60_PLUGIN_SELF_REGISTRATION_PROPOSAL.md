@@ -38,7 +38,7 @@ This coupling bloats maintenance and makes restoring additional languages painfu
 
 ## Proposed Solution
 
-### 1. Shared Registry Crate
+### 1. Shared Registry Crate (replaces languages.toml codegen)
 
 Create `crates/cb-plugin-registry` exposing:
 
@@ -58,7 +58,7 @@ pub fn iter_plugins() -> impl Iterator<Item = &'static PluginDescriptor>;
 - `PluginCapabilities` encodes support for analysis kinds, refactors, etc.
 - `LspConfig` holds default language-server command hints (optional).
 
-Descriptors live in a static registry populated at link time.
+Descriptors live in a static registry populated at link time. This completely replaces the `config/languages/languages.toml` → `build.rs` pipeline; those files and build scripts will be removed once the registry is in place.
 
 ### 2. Self-Registration Macro
 
@@ -78,16 +78,16 @@ codebuddy_plugin! {
 - Macro expands to a `PluginDescriptor` constant and registers it via `inventory` or a custom linker section.
 - No manual updates to core crates required when a plugin crate is added to the workspace.
 
-### 3. Runtime Discovery
+### 3. Runtime Discovery (no generated enums)
 
-- Startup path (`cb-services` / `cb-core`) replaces hard-coded language lists with:
+- Startup path (`cb-services` / `cb-core`) replaces both hard-coded language lists and generated enums with:
   ```rust
   for descriptor in cb_plugin_registry::iter_plugins() {
       registry.register(descriptor.factory());
   }
   ```
 - Configuration resolution maps file extensions to descriptors.
-- Capability checks (analysis/refactor availability) consult the descriptor flags instead of language-specific branches.
+- Capability checks consult descriptor flags instead of codegen outputs.
 
 ### 4. Test Strategy
 
@@ -106,17 +106,19 @@ codebuddy_plugin! {
 ## Implementation Plan (Sequence, Not Timeline)
 
 1. **Introduce Registry Crate**
-   - Add `cb-plugin-registry` with descriptor type, iterator, macro scaffolding (temporary manual list).
+   - Add `cb-plugin-registry` with descriptor type, iterator, macro scaffolding.
    - Implement contract tests ensuring uniqueness of names/extensions.
+   - Delete `config/languages/languages.toml` and all related build script outputs; temporarily stub runtime lookups until plugins self-register.
 
 2. **Implement Macro-Based Registration**
    - Use `inventory` (nightly-safe) or `linkme` for static registration. Provide a fallback builder for environments that forbid link-time registries.
    - Macro generates descriptor constant + registration shim.
 
 3. **Refactor Core to Consume Registry**
-   - Replace `match`/`enum` patterns in `cb-core`, `cb-services`, `cb-ast`, `cb-plugins` with calls to `iter_plugins()`.
-   - Update configuration loading to derive available languages from descriptors.
-   - Remove language-specific fixture imports from core tests.
+- Remove legacy codegen: delete `build.rs` generators in `cb-core`, `cb-plugin-api`, and `cb-services` that emitted language enums/metadata.
+- Replace `match`/`enum` patterns in `cb-core`, `cb-services`, `cb-ast`, `cb-plugins` with calls to `iter_plugins()`.
+- Update configuration loading to derive available languages from descriptors.
+- Remove language-specific fixture imports from core tests.
 
 4. **Migrate Existing Plugins**
    - TypeScript & Rust crates invoke the macro, bundle their metadata (capabilities, LSP defaults).

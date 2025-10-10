@@ -66,7 +66,7 @@ strip = true        # Strip symbols to reduce binary size
 # =============================================================================
 
 [env]
-# Ensure ~/.local/bin is in PATH for language servers (pylsp, gopls, etc.)
+# Ensure ~/.local/bin is in PATH for language servers (typescript-language-server, rust-analyzer, etc.)
 # This is needed for tests that require LSP servers installed via pipx/go install
 # Also ensure ~/.cargo/bin and other standard paths are included
 PATH = { value = "$HOME/.local/bin:$HOME/.cargo/bin:/usr/bin:$PATH", force = true, relative = false }
