@@ -1,0 +1,706 @@
+# Proposal: Unified Analysis API
+
+**Status**: Draft
+**Author**: Project Team
+**Date**: 2025-10-10
+
+---
+
+## Executive Summary
+
+Consolidate 35+ analysis commands into **6 unified commands** using a consistent **analyze → results** pattern. This reduces API surface by 80%+ while providing actionable insights that bridge directly into refactoring workflows.
+
+---
+
+## Problem
+
+Current API has fragmentation:
+- **35+ separate analysis commands** with overlapping functionality
+- **Inconsistent result formats** (some return arrays, some objects, some metrics)
+- **No unified filtering or thresholds**
+- **Difficult to compose** multi-faceted analysis
+- **No actionable suggestions** linking analysis to refactoring
+- **High cognitive load** for users and AI agents
+
+---
+
+## Solution
+
+### Core Pattern: Analyze → Results
+
+Every analysis operation follows a single-step pattern:
+
+```javascript
+analyze.<category>(kind, scope, options) → AnalysisResult
+```
+
+**Key principle**: Analysis is read-only, so no "apply" step is needed. All commands return a consistent result structure with findings, metrics, and actionable suggestions.
+
+### Unified Result Structure
+
+All analysis commands return the same shape:
+
+```json
+{
+  "findings": [
+    {
+      "id": "complexity-1",
+      "kind": "complexity_hotspot",
+      "severity": "high" | "medium" | "low",
+      "location": {
+        "file_path": "src/app.rs",
+        "range": { "start": { "line": 10, "character": 0 }, "end": { "line": 45, "character": 1 } },
+        "symbol": "process_order",
+        "symbol_kind": "function"
+      },
+      "metrics": {
+        "cyclomatic_complexity": 25,
+        "cognitive_complexity": 18,
+        "nesting_depth": 5,
+        "parameter_count": 8,
+        "line_count": 35
+      },
+      "message": "Function 'process_order' has high cyclomatic complexity (25)",
+      "suggestions": [
+        {
+          "action": "extract_function",
+          "description": "Extract nested conditional block to separate function",
+          "target": { "range": { "start": {...}, "end": {...} } },
+          "estimated_impact": "reduces complexity by ~8 points"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_findings": 12,
+    "by_severity": { "high": 3, "medium": 5, "low": 4 },
+    "files_analyzed": 45,
+    "symbols_analyzed": 234,
+    "analysis_time_ms": 234
+  },
+  "metadata": {
+    "category": "quality",
+    "kind": "complexity",
+    "scope": { "type": "workspace", "path": "/src" },
+    "language": "rust",
+    "timestamp": "2025-10-10T12:00:00Z",
+    "thresholds": { "complexity": 15, "nesting_depth": 4 }
+  }
+}
+```
+
+---
+
+## New API Surface
+
+### 1. Quality Analysis
+
+**Command**: `analyze.quality(kind, scope, options)` → `QualityReport`
+
+**Kinds**:
+- `complexity` - Cyclomatic and cognitive complexity analysis
+- `smells` - Code smell detection (long methods, god classes, etc.)
+- `maintainability` - Overall maintainability metrics
+- `readability` - Readability issues (nesting, magic numbers, etc.)
+
+**Arguments**:
+```json
+{
+  "kind": "complexity" | "smells" | "maintainability" | "readability",
+  "scope": {
+    "type": "workspace" | "directory" | "file" | "symbol",
+    "path": "src/",
+    "include": ["*.rs"],
+    "exclude": ["tests/", "examples/"]
+  },
+  "options": {
+    "thresholds": {
+      "cyclomatic_complexity": 15,
+      "cognitive_complexity": 10,
+      "nesting_depth": 4,
+      "parameter_count": 5,
+      "function_length": 50
+    },
+    "severity_filter": "high" | "medium" | "low",
+    "limit": 100,
+    "format": "detailed" | "summary",
+    "include_suggestions": true
+  }
+}
+```
+
+**Examples**:
+```javascript
+// Find complexity hotspots across workspace
+analyze.quality("complexity", { type: "workspace" }, {
+  thresholds: { cyclomatic_complexity: 20 },
+  severity_filter: "high"
+})
+
+// Detect code smells in specific directory
+analyze.quality("smells", { type: "directory", path: "src/handlers" }, {
+  include_suggestions: true
+})
+
+// Check readability of single file
+analyze.quality("readability", { type: "file", path: "src/app.rs" })
+```
+
+**Replaces**:
+- `analyze_complexity` ✅
+- `analyze_project_complexity` ✅
+- `find_complexity_hotspots` ✅
+- `suggest_refactoring` ✅
+- `find_magic_numbers` ⚠️
+- `find_long_methods` ⚠️
+- `find_god_classes` ❌
+- `analyze_nesting_depth` ⚠️
+- `analyze_parameter_count` ⚠️
+- `analyze_function_length` ⚠️
+
+---
+
+### 2. Dead Code Analysis
+
+**Command**: `analyze.dead_code(kind, scope, options)` → `DeadCodeReport`
+
+**Kinds**:
+- `unused_symbols` - Functions, classes, variables never referenced
+- `unused_imports` - Import statements not used
+- `unreachable_code` - Code after return/throw/break
+- `unused_parameters` - Function parameters never accessed
+- `unused_types` - Type definitions never referenced
+- `unused_variables` - Local variables never read
+
+**Arguments**:
+```json
+{
+  "kind": "unused_symbols" | "unused_imports" | "unreachable_code" | "unused_parameters" | "unused_types" | "unused_variables",
+  "scope": {
+    "type": "workspace" | "directory" | "file",
+    "path": "src/",
+    "include": ["*.rs"],
+    "exclude": ["tests/"]
+  },
+  "options": {
+    "aggressive": false,
+    "include_tests": false,
+    "include_private": true,
+    "severity_filter": "high" | "medium" | "low",
+    "limit": 100,
+    "format": "detailed" | "summary",
+    "include_suggestions": true
+  }
+}
+```
+
+**Examples**:
+```javascript
+// Find all unused symbols workspace-wide
+analyze.dead_code("unused_symbols", { type: "workspace" }, {
+  include_private: true,
+  include_suggestions: true  // suggests delete.plan calls
+})
+
+// Find unused imports in specific file
+analyze.dead_code("unused_imports", { type: "file", path: "src/lib.rs" })
+
+// Detect unreachable code with aggressive mode
+analyze.dead_code("unreachable_code", { type: "workspace" }, { aggressive: true })
+```
+
+**Replaces**:
+- `find_dead_code` ✅
+- `find_unused_imports` ✅
+- `find_unused_parameters` ❌
+- `find_unreachable_code` ❌
+- `find_unused_variables` ❌
+- `find_unused_types` ❌
+
+---
+
+### 3. Dependency Analysis
+
+**Command**: `analyze.dependencies(kind, scope, options)` → `DependencyReport`
+
+**Kinds**:
+- `imports` - Import structure and categorization
+- `graph` - Full dependency graph (file/module level)
+- `circular` - Circular dependency detection
+- `coupling` - Module coupling strength analysis
+- `cohesion` - Module cohesion metrics
+- `depth` - Transitive dependency depth
+
+**Arguments**:
+```json
+{
+  "kind": "imports" | "graph" | "circular" | "coupling" | "cohesion" | "depth",
+  "scope": {
+    "type": "workspace" | "directory" | "file",
+    "path": "src/",
+    "include": ["*.rs"],
+    "exclude": ["tests/"]
+  },
+  "options": {
+    "max_depth": 5,
+    "show_external": false,
+    "group_by": "module" | "file" | "package",
+    "format": "detailed" | "summary" | "graph",
+    "export_format": "json" | "graphviz" | "mermaid",
+    "thresholds": {
+      "coupling": 0.7,
+      "cohesion": 0.3
+    },
+    "include_suggestions": true
+  }
+}
+```
+
+**Examples**:
+```javascript
+// Detect circular dependencies
+analyze.dependencies("circular", { type: "workspace" }, {
+  include_suggestions: true  // suggests how to break cycles
+})
+
+// Analyze coupling between modules
+analyze.dependencies("coupling", { type: "directory", path: "src/handlers" }, {
+  thresholds: { coupling: 0.5 }
+})
+
+// Generate dependency graph
+analyze.dependencies("graph", { type: "workspace" }, {
+  format: "graph",
+  export_format: "mermaid"
+})
+```
+
+**Replaces**:
+- `analyze_imports` ✅
+- `analyze_dependencies` ❌
+- `find_circular_dependencies` ❌
+- `find_coupling` ❌
+- `find_cohesion` ❌
+- `analyze_dependency_depth` ❌
+
+---
+
+### 4. Structure Analysis
+
+**Command**: `analyze.structure(kind, scope, options)` → `StructureReport`
+
+**Kinds**:
+- `symbols` - Hierarchical symbol tree (LSP-based)
+- `hierarchy` - Class/type hierarchy analysis
+- `interfaces` - Interface usage and adoption patterns
+- `inheritance` - Inheritance depth and breadth
+- `modules` - Module organization and structure
+
+**Arguments**:
+```json
+{
+  "kind": "symbols" | "hierarchy" | "interfaces" | "inheritance" | "modules",
+  "scope": {
+    "type": "workspace" | "directory" | "file" | "symbol",
+    "path": "src/",
+    "symbol_name": "MyClass",
+    "include": ["*.rs"],
+    "exclude": ["tests/"]
+  },
+  "options": {
+    "depth": 5,
+    "include_private": false,
+    "symbol_kinds": ["function", "class", "interface"],
+    "format": "detailed" | "summary" | "tree",
+    "include_metrics": true
+  }
+}
+```
+
+**Examples**:
+```javascript
+// Get all symbols in workspace
+analyze.structure("symbols", { type: "workspace" }, {
+  symbol_kinds: ["function", "class"],
+  format: "tree"
+})
+
+// Analyze class hierarchy
+analyze.structure("hierarchy", { type: "file", path: "src/models.rs" }, {
+  depth: 3,
+  include_metrics: true
+})
+
+// Find interface implementations
+analyze.structure("interfaces", { type: "workspace" }, {
+  format: "detailed"
+})
+```
+
+**Replaces**:
+- `get_document_symbols` ✅
+- `search_workspace_symbols` ✅ (via filters)
+- `analyze_inheritance` ❌
+- `analyze_interface_usage` ❌
+
+**Note**: Navigation commands (`find_definition`, `find_references`, `find_implementations`) remain separate as they are point-queries, not bulk analysis.
+
+---
+
+### 5. Documentation Analysis
+
+**Command**: `analyze.documentation(kind, scope, options)` → `DocumentationReport`
+
+**Kinds**:
+- `coverage` - Documentation coverage metrics
+- `quality` - Documentation quality assessment
+- `missing` - Undocumented public APIs
+- `outdated` - Comments contradicting code
+- `todos` - TODO/FIXME/HACK markers
+
+**Arguments**:
+```json
+{
+  "kind": "coverage" | "quality" | "missing" | "outdated" | "todos",
+  "scope": {
+    "type": "workspace" | "directory" | "file",
+    "path": "src/",
+    "include": ["*.rs"],
+    "exclude": ["tests/", "examples/"]
+  },
+  "options": {
+    "visibility": "public" | "all",
+    "require_examples": false,
+    "min_comment_ratio": 0.2,
+    "format": "detailed" | "summary",
+    "include_suggestions": true
+  }
+}
+```
+
+**Examples**:
+```javascript
+// Find undocumented public APIs
+analyze.documentation("missing", { type: "workspace" }, {
+  visibility: "public",
+  include_suggestions: true
+})
+
+// Calculate documentation coverage
+analyze.documentation("coverage", { type: "directory", path: "src/handlers" })
+
+// Extract all TODO comments
+analyze.documentation("todos", { type: "workspace" }, {
+  format: "detailed"
+})
+```
+
+**Replaces**:
+- `analyze_comment_ratio` ⚠️
+- `find_undocumented_exports` ❌
+- `find_outdated_comments` ❌
+- `find_todo_comments` ❌
+
+---
+
+### 6. Test Analysis
+
+**Command**: `analyze.tests(kind, scope, options)` → `TestReport`
+
+**Kinds**:
+- `coverage` - Test coverage percentage per file/function
+- `untested` - Functions/modules without tests
+- `quality` - Test quality metrics (assertions, mocks, etc.)
+- `smells` - Test smells (slow tests, fragile tests, etc.)
+
+**Arguments**:
+```json
+{
+  "kind": "coverage" | "untested" | "quality" | "smells",
+  "scope": {
+    "type": "workspace" | "directory" | "file",
+    "path": "src/",
+    "include": ["*.rs"],
+    "exclude": ["tests/"]
+  },
+  "options": {
+    "coverage_format": "lcov" | "cobertura" | "jacoco",
+    "coverage_file": ".coverage/lcov.info",
+    "min_coverage": 0.8,
+    "include_private": false,
+    "format": "detailed" | "summary",
+    "include_suggestions": true
+  }
+}
+```
+
+**Examples**:
+```javascript
+// Parse coverage report and find gaps
+analyze.tests("coverage", { type: "workspace" }, {
+  coverage_format: "lcov",
+  coverage_file: "coverage/lcov.info",
+  min_coverage: 0.8
+})
+
+// Find untested public functions
+analyze.tests("untested", { type: "workspace" }, {
+  include_private: false,
+  include_suggestions: true  // suggests test templates
+})
+
+// Detect test smells
+analyze.tests("smells", { type: "directory", path: "tests/" })
+```
+
+**Replaces**:
+- `analyze_test_coverage` ❌
+- `find_untested_code` ❌
+- `analyze_test_quality` ❌
+- `find_test_smells` ❌
+
+---
+
+## Actionable Suggestions
+
+All analysis results include `suggestions` that link directly to refactoring operations:
+
+```json
+{
+  "findings": [{
+    "kind": "complexity_hotspot",
+    "location": { "file_path": "src/app.rs", "range": {...} },
+    "suggestions": [
+      {
+        "action": "extract_function",
+        "description": "Extract nested block to reduce complexity",
+        "refactor_call": {
+          "command": "extract.plan",
+          "arguments": {
+            "kind": "function",
+            "source": {
+              "file_path": "src/app.rs",
+              "range": { "start": { "line": 15, "character": 4 }, "end": { "line": 23, "character": 5 } },
+              "name": "validate_order"
+            }
+          }
+        },
+        "estimated_impact": "reduces complexity from 25 to 17"
+      },
+      {
+        "action": "inline_variable",
+        "description": "Inline temporary variable 'temp'",
+        "refactor_call": {
+          "command": "inline.plan",
+          "arguments": {
+            "kind": "variable",
+            "target": { "file_path": "src/app.rs", "position": { "line": 12, "character": 8 } }
+          }
+        },
+        "estimated_impact": "reduces complexity by 1 point"
+      }
+    ]
+  }]
+}
+```
+
+**Benefits**:
+- AI agents can **directly execute** suggested refactorings
+- Users get **actionable next steps**, not just metrics
+- **Closed-loop workflow**: analyze → suggest → refactor → re-analyze
+
+---
+
+## Batch Analysis
+
+For workflows that need multiple analyses, support batch queries:
+
+```javascript
+analyze.batch(queries) → BatchAnalysisResult
+```
+
+**Example**:
+```javascript
+analyze.batch([
+  { command: "analyze.quality", kind: "complexity", scope: { type: "workspace" } },
+  { command: "analyze.dead_code", kind: "unused_symbols", scope: { type: "workspace" } },
+  { command: "analyze.dependencies", kind: "circular", scope: { type: "workspace" } }
+])
+```
+
+**Result**:
+```json
+{
+  "results": [
+    { "command": "analyze.quality", "result": { /* QualityReport */ } },
+    { "command": "analyze.dead_code", "result": { /* DeadCodeReport */ } },
+    { "command": "analyze.dependencies", "result": { /* DependencyReport */ } }
+  ],
+  "summary": {
+    "total_findings": 45,
+    "total_files_analyzed": 123,
+    "analysis_time_ms": 456
+  }
+}
+```
+
+---
+
+## Migration Path
+
+### Phase 1: Add New Commands (Weeks 1-2)
+- Implement 6 `analyze.*` commands
+- Wire to existing analysis infrastructure
+- All commands return unified `AnalysisResult` structure
+
+### Phase 2: Add Suggestions (Week 3)
+- Generate actionable suggestions for each finding
+- Link suggestions to refactoring commands
+- Add estimated impact calculations
+
+### Phase 3: Batch Support (Week 3)
+- Implement `analyze.batch` for multi-analysis workflows
+- Optimize shared computation (e.g., single AST parse)
+
+### Phase 4: Legacy Wrappers (Week 4)
+- Keep existing 35+ commands as thin wrappers
+- Map old params → new `analyze.*` calls
+- Mark legacy commands as deprecated in docs
+
+### Phase 5: Cleanup (Week 5+)
+- Remove legacy commands after migration period
+- Update all documentation and examples
+- Final API surface: **6-7 commands**
+
+---
+
+## Command Reduction Summary
+
+| Analysis Category | Old Commands | New Commands | Reduction |
+|------------------|-------------|--------------|-----------|
+| Quality/Complexity | 10 | 1 | -90% |
+| Dead Code | 6 | 1 | -83% |
+| Dependencies | 6 | 1 | -83% |
+| Structure | 7 | 1 | -86% |
+| Documentation | 4 | 1 | -75% |
+| Test Coverage | 4 | 1 | -75% |
+| **TOTAL** | **37** | **6** | **-84%** |
+
+**Plus**: 1 batch command for multi-analysis workflows
+
+---
+
+## Benefits
+
+### 1. Consistency
+- Every analysis follows identical pattern
+- Uniform result structure across all categories
+- Consistent filtering and threshold options
+
+### 2. Actionability
+- Every finding includes refactoring suggestions
+- Direct links to `*.plan` commands
+- Estimated impact for each suggestion
+
+### 3. Composability
+- Batch analysis for workflows
+- Results can be filtered, sorted, merged
+- AI agents can reason about findings
+
+### 4. Simplicity
+- 84% fewer commands to learn
+- Single result format to parse
+- Clear categorization by analysis type
+
+### 5. Extensibility
+- New analysis `kind` values added without new commands
+- Options extend without breaking changes
+- Language-specific features via `kind` + `options`
+
+### 6. Discoverability
+- `kind` parameter self-documents available analyses
+- Shared structure across all categories
+- Better IDE autocomplete and validation
+
+### 7. Integration
+- Bridges seamlessly to refactoring API
+- Closed-loop: analyze → refactor → re-analyze
+- Workflow automation-ready
+
+---
+
+## Integration with Refactoring API
+
+Analysis and refactoring APIs work together:
+
+```javascript
+// 1. Analyze code quality
+const quality = await analyze.quality("complexity", { type: "workspace" }, {
+  thresholds: { cyclomatic_complexity: 20 },
+  severity_filter: "high",
+  include_suggestions: true
+});
+
+// 2. Pick a suggestion
+const suggestion = quality.findings[0].suggestions[0];
+
+// 3. Execute the suggested refactoring
+const plan = await extract.plan(
+  suggestion.refactor_call.arguments.kind,
+  suggestion.refactor_call.arguments.source
+);
+
+// 4. Preview and apply
+if (plan.warnings.length === 0) {
+  await workspace.apply_edit(plan);
+}
+
+// 5. Re-analyze to verify improvement
+const newQuality = await analyze.quality("complexity", {
+  type: "file",
+  path: quality.findings[0].location.file_path
+});
+
+console.log(`Complexity reduced from ${quality.findings[0].metrics.cyclomatic_complexity}
+             to ${newQuality.findings[0].metrics.cyclomatic_complexity}`);
+```
+
+---
+
+## Open Questions
+
+1. **Batch optimization**: Should batch analysis share AST parsing and other computation?
+   - **Recommendation**: Yes, implement caching in Phase 3
+
+2. **Suggestion ranking**: How to prioritize multiple suggestions per finding?
+   - **Recommendation**: Order by estimated impact, add `priority` field
+
+3. **Historical tracking**: Should analysis support comparing results over time?
+   - **Recommendation**: Phase 2+ feature, store results with timestamps
+
+4. **Export formats**: Beyond JSON, support CSV/Markdown for reporting?
+   - **Recommendation**: Add `export_format` option in Phase 2
+
+5. **Thresholds**: Should thresholds be configurable per-project (config file)?
+   - **Recommendation**: Support both inline options and `.codebuddy/analysis.json`
+
+---
+
+## Success Criteria
+
+- [ ] All 6 `analyze.*` commands implemented and tested
+- [ ] Unified `AnalysisResult` structure used consistently
+- [ ] Actionable suggestions generated for all finding types
+- [ ] `analyze.batch` supports multi-analysis workflows
+- [ ] Legacy 35+ commands wrapped and deprecated
+- [ ] Integration tests cover all analysis kinds
+- [ ] Documentation shows analyze → refactor workflows
+- [ ] CI validates suggestion `refactor_call` references valid commands
+
+---
+
+## Conclusion
+
+This unified analysis API reduces complexity by 84% while providing actionable insights that bridge directly into refactoring workflows. The consistent result structure and suggestion system enable AI agents to reason about code quality and automatically apply improvements.
+
+**Recommendation**: Approve and coordinate with Refactoring API implementation (PROPOSAL_UNIFIED_REFACTORING_API.md) for Phase 1 rollout.
