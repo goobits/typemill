@@ -7,17 +7,38 @@
 
 use cb_handlers::LanguagePluginRegistry;
 use cb_plugin_api::{LanguagePlugin, LanguageTestFixtures};
-use once_cell::sync::Lazy;
+use once_cell::sync::OnceCell;
+use std::sync::Mutex;
+use tokio::runtime::Handle;
 
 // Create a single, static instance of the plugin registry.
 // This ensures that the registry and its plugins live for the entire
 // duration of the test run, solving the lifetime issue.
-// Note: This uses a sync initialization via block_on to work with static/lazy initialization
-static REGISTRY: Lazy<LanguagePluginRegistry> = Lazy::new(|| {
-    tokio::runtime::Runtime::new()
-        .expect("Failed to create runtime for plugin registry")
-        .block_on(LanguagePluginRegistry::new())
-});
+//
+// IMPORTANT: This uses Handle::try_current() to detect if we're already
+// in a tokio runtime (e.g., inside #[tokio::test]). If so, it uses that
+// runtime to avoid the "Cannot start a runtime from within a runtime" panic.
+// If no runtime exists, it creates one in a separate thread.
+static REGISTRY: OnceCell<Mutex<Option<LanguagePluginRegistry>>> = OnceCell::new();
+
+fn initialize_registry() -> LanguagePluginRegistry {
+    match Handle::try_current() {
+        Ok(handle) => {
+            // We're in a tokio runtime - use it
+            handle.block_on(LanguagePluginRegistry::new())
+        }
+        Err(_) => {
+            // No runtime - create one in a new thread to avoid nesting issues
+            std::thread::spawn(|| {
+                tokio::runtime::Runtime::new()
+                    .expect("Failed to create runtime for plugin registry")
+                    .block_on(LanguagePluginRegistry::new())
+            })
+            .join()
+            .expect("Failed to join registry initialization thread")
+        }
+    }
+}
 
 /// Discover all installed language plugins that provide test fixtures
 ///
