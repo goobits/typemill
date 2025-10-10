@@ -6,7 +6,7 @@
 > Language support temporarily reduced to **TypeScript + Rust only** (as of 2025-10-10) to accelerate unified API development.
 > Multi-language support (Python, Go, Java, Swift, C#) preserved in git tag `pre-language-reduction` and will be restored after unified API is stable.
 >
-> See [PROPOSAL_LANGUAGE_REDUCTION.md](PROPOSAL_LANGUAGE_REDUCTION.md) for strategy and [PROPOSAL_UNIFIED_REFACTORING_API.md](PROPOSAL_UNIFIED_REFACTORING_API.md) for unified API design.
+> See [10_PROPOSAL_LANGUAGE_REDUCTION.md](10_PROPOSAL_LANGUAGE_REDUCTION.md) for strategy and [30_PROPOSAL_UNIFIED_REFACTORING_API.md](30_PROPOSAL_UNIFIED_REFACTORING_API.md) for unified API design.
 
 > [!NOTE]
 > **ORIGINAL STATUS: 70% COMPLETE - 3 Languages Remaining**

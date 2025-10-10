@@ -852,4 +852,4 @@ This unified analysis API reduces complexity by 84% while providing actionable i
 
 **Implementation strategy**: Build first, remove second. Each category is implemented and tested before removing its legacy commands. No functionality gaps, no regressions.
 
-**Recommendation**: Approve and begin with Quality Analysis category (easiest, most used). Coordinate with Refactoring API implementation (PROPOSAL_UNIFIED_REFACTORING_API.md) for end-to-end workflows.
+**Recommendation**: Approve and begin with Quality Analysis category (easiest, most used). Coordinate with Refactoring API implementation (30_PROPOSAL_UNIFIED_REFACTORING_API.md) for end-to-end workflows.

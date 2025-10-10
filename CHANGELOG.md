@@ -13,50 +13,42 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 ### [Unreleased]
 
-#### Breaking Change
+---
 
-- **Multi-Tenancy and User Isolation**
-  - **BREAKING**: All workspace-related API endpoints (`/workspaces`, `/workspaces/register`, `/workspaces/{id}/execute`) now require a JWT with a `user_id` claim for authentication. Requests without a valid `user_id` will be rejected.
-  - The core `WorkspaceManager` has been re-architected to use a `(user_id, workspace_id)` composite key, ensuring complete data isolation between users.
-  - This change is fundamental to supporting secure, multi-user environments.
+### [1.0.0-rc5] - 2025-10-10
 
-#### Added
+🚀 **Release Candidate 5** - Temporary language reduction for unified API refactoring
 
-- **Java Refactoring Support** - AST-based extract function, extract/inline variable operations using tree-sitter-java
-- **Swift Refactoring Support** - AST-based extract function, extract/inline variable operations using tree-sitter-swift
-- **C# Refactoring Support** - Complete AST-based extract function, extract variable, and inline variable operations
-- **SWC-to-TypeScript Plugin** - Consolidated SWC parsing into TypeScript plugin for better modularity
+#### Breaking Changes
 
-#### Fixed
-
-- **C# Refactoring Operations** - Fixed extract variable and inline variable implementations
-  - Corrected test coordinates for accurate AST node selection
-  - Expanded insertion point search to include C#-specific AST nodes (return_statement, assignment_expression, argument)
-  - Rewrote AST node finding algorithm for proper smallest-node selection
-  - Replaced field-based AST traversal with direct child node traversal by kind for better C# grammar compatibility
-  - All 3 refactoring operations now fully functional (extract method, extract variable, inline variable)
-- Resolved clippy warnings for improved code quality
-- Fixed TestClient to use `codebuddy` binary for parallel test execution
+- **Temporary Language Reduction** - Language support temporarily reduced to TypeScript + Rust
+  - **BREAKING**: Python, Go, Java, Swift, and C# language plugins temporarily removed from codebase
+  - Removed to enable focused refactoring on unified API architecture
+  - All language plugin code preserved in git tag `pre-language-reduction` for future restoration
+  - **Impact**: Only TypeScript and Rust projects supported in this release
+  - **Timeline**: Multi-language support to be restored after unified API implementation complete
 
 #### Changed
 
-- Renamed `test-support` crate to `cb-test-support` for consistency
+- **Language Support Matrix** - Updated all documentation to reflect TypeScript + Rust focus
+- **Test Infrastructure** - Simplified test harness for two-language focus
+- **Build Configuration** - Updated Makefile and build scripts for TS + Rust
 
 #### Documentation
 
-- **Documentation Rename** - Renamed CLAUDE.md to AGENTS.md with symlink for backwards compatibility
-  - AGENTS.md is now the primary documentation file for AI agent instructions
-  - CLAUDE.md symlinks to AGENTS.md for compatibility with existing tooling
+- **Comprehensive Documentation Updates** - All docs updated for language reduction with disclaimers and git tag references
+- **API Contracts and Proposals** - Refined unified API implementation plans
 
-- **Language Support Updates** - Updated API_REFERENCE.md to reflect new language support
-  - Added Java, Swift, and C# columns to all language support matrices
-  - Documented refactoring support for newly added languages
-  - Updated LSP-based and AST-based tool compatibility tables
+#### Removed
 
-- **Proposal Documentation**
-  - Added documentation accuracy review proposal with comprehensive verification checklist
-  - Updated language expansion proposal with accurate 70% completion status and remaining work items
-  - Moved TOOLS_QUICK_REFERENCE.md to docs/ directory
+- **Language Plugin Source Code** - Temporarily removed 5 language plugins: Python, Go, Java, Swift, and C# (preserved in git tag `pre-language-reduction`)
+- **Language-Specific Tests** - Removed tests for deleted languages
+
+#### Migration Notes
+
+- **For users needing Python/Go/Java/Swift/C# support**: Use git tag `pre-language-reduction` or version `1.0.0-rc4`
+- **For contributors**: Multi-language support will be restored in future release after unified API implementation
+- **Git tag preservation**: `git checkout pre-language-reduction` to access full multi-language implementation
 
 ---
 
@@ -73,67 +65,25 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Configurable analysis via feature flags (`analysis-dead-code`)
   - Trait-based architecture for dependency inversion and extensibility
 
-- **Go Language Refactoring Parity** - Go now has full AST-based refactoring support
-  - Wired up Go routing in `extract_function.rs`, `extract_variable.rs`, `inline_variable.rs`
-  - Go refactoring operations now route to `cb-lang-go::refactoring` implementations
-  - 4 out of 7 languages now have complete refactoring support (TypeScript, Python, Rust, Go)
-  - Java, Swift, C# still require refactoring implementation (tracked in proposal #30)
+- **Go Language Refactoring Parity** - Go now has full AST-based refactoring support (4 of 7 languages complete: TypeScript, Python, Rust, Go)
 
-- **Dev Container Support** - VS Code Dev Container and GitHub Codespaces configuration
-  - `.devcontainer/devcontainer.json` with pre-configured Rust toolchain
-  - Automatic extension installation (rust-analyzer, Docker, PostgreSQL)
-  - Port forwarding for WebSocket server (3000)
-  - Remote development ready
-
-- **Version Flag** - Added `--version` flag to CLI for version information
+- **Dev Container Support** - VS Code Dev Container and GitHub Codespaces configuration with pre-configured Rust toolchain
+- **Version Flag** - Added `--version` flag to CLI
 
 #### Changed
 
-- **Radically Simplified Setup** - Setup flow reduced from 6 paths to 2 paths
-  - Eliminated 4 edge case paths for cleaner user experience
-  - Removed 674 lines of setup complexity
-  - Faster, more reliable configuration process
-  - Better error messages and validation
-
-- **Documentation Migration** - Completed migration to cargo-nextest
-  - All documentation now references `cargo nextest run` instead of `cargo test`
-  - Removed outdated references to `cargo test` in CI/CD docs
-  - Updated test commands in CLAUDE.md, CONTRIBUTING.md, and TESTING_GUIDE.md
-
-- **Proposal Organization** - Proposals reordered by implementation priority
-  - Renumbered proposals to reflect easier-first implementation order
-  - Removed completed proposals from main directory
-  - Clearer roadmap for contributors
+- **Radically Simplified Setup** - Setup flow reduced from 6 paths to 2 paths (eliminated 674 lines of complexity)
+- **Documentation Migration** - Completed migration to cargo-nextest across all docs
 
 #### Fixed
 
-- **Rust/Python AST Refactoring** - Wire up Python and Rust AST-based refactoring
-  - Fixed routing layer to properly dispatch to language-specific implementations
-  - Resolved signature mismatches between routing layer and language plugins
-  - All AST-based refactoring operations now functional
-
+- **Rust/Python AST Refactoring** - Fixed routing layer to properly dispatch to language-specific implementations
 - **Import Update Assertions** - Skip import update assertions in tests without LSP support
-  - E2E tests no longer fail when LSP servers are unavailable
-  - Better test environment flexibility
 
 #### Removed
 
 - **Jules Duplicate Crates** - Removed duplicate Jules crates from workspace
-  - Cleaned up `crates/jules-*` duplicate entries
-  - Consolidated into single `jules/` directory
-  - Improved workspace organization
-
-- **Temporal References** - Remove temporal references from proposals
-  - Proposals now have priority numbers instead of dates
-  - More maintainable documentation structure
-
-#### Documentation
-
-- **Comprehensive Documentation Updates**
-  - Synchronized CLAUDE.md and GEMINI.md
-  - Updated all code examples to match current API
-  - Fixed broken links and outdated references
-  - Added language parity matrix documentation
+- **Temporal References** - Proposals now use priority numbers instead of dates
 
 ---
 
@@ -143,28 +93,11 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 #### Added
 
-- **Advanced MCP Analysis Tools** (3 new tools)
-  - `find_unused_imports` - Detect and report unused import statements across codebases
-  - `optimize_imports` - Automatically optimize import organization
-  - `analyze_complexity` - Comprehensive code complexity analysis with cognitive complexity metrics
-  - `suggest_refactoring` - AI-powered refactoring suggestions based on code metrics and complexity analysis
+- **Advanced MCP Analysis Tools** - Added 4 new tools: `find_unused_imports`, `optimize_imports`, `analyze_complexity`, `suggest_refactoring`
+- **Cognitive Complexity Metrics** - Enhanced code metrics with cognitive complexity scoring
 
-- **Cognitive Complexity Metrics**
-  - Enhanced code metrics with cognitive complexity scoring
-  - Comprehensive complexity analysis features in cb-ast
-  - Multi-dimensional code quality assessment
-
-- **Enhanced `rename_directory` Workspace Operations**
-  - Auto-update Cargo.toml path dependencies when renaming directories
-  - Capture and surface workspace manifest updates in operation output
-  - Expand manifest updates to all dependency sections (dependencies, dev-dependencies, build-dependencies)
-  - Full integration with Rust workspace dependency tracking
-
-- **cb-lang-common Utility Library**
-  - Comprehensive utility modules for language plugins
-  - ImportGraph builder and parsing utilities
-  - Shared error handling and parsing helpers
-  - Cross-language code reuse infrastructure
+- **Enhanced `rename_directory` Workspace Operations** - Auto-update Cargo.toml path dependencies and manifest updates
+- **cb-lang-common Utility Library** - Shared utility modules for language plugins with ImportGraph builder
 
 - **Swift language support** - Complete implementation with comprehensive AST-based parsing
   - Swift AST parsing for accurate symbol extraction
