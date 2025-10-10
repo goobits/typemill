@@ -52,8 +52,6 @@ impl Default for SystemToolsPlugin {
             let mut registry = cb_plugin_api::PluginRegistry::new();
             #[cfg(feature = "lang-rust")]
             registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
-            #[cfg(feature = "lang-go")]
-            registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
             #[cfg(feature = "lang-typescript")]
             registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
             Arc::new(registry)
@@ -512,16 +510,6 @@ fn build_import_graph_with_plugin(
                     message: format!("Failed to parse imports: {}", e),
                 }
             })?
-        }
-        "go" => {
-            // Use Go plugin's parser
-            let graph = cb_lang_go::parser::analyze_imports(source, Some(path)).map_err(|e| {
-                PluginError::PluginRequestFailed {
-                    plugin: plugin.metadata().name.to_string(),
-                    message: format!("Failed to parse imports: {}", e),
-                }
-            })?;
-            graph.imports
         }
         _ => {
             return Err(PluginError::PluginRequestFailed {

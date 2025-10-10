@@ -9,12 +9,11 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 /// Build import graph for a source file
 pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {
+    // Note: Only Rust and TypeScript supported after language reduction
     let language = match path.extension().and_then(|ext| ext.to_str()) {
         Some("ts") | Some("tsx") => "typescript",
         Some("js") | Some("jsx") => "javascript",
-        Some("py") => "python",
         Some("rs") => "rust",
-        Some("go") => "go",
         _ => "unknown",
     };
     let imports = match language {
@@ -27,27 +26,11 @@ pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {
             );
             Vec::new()
         }
-        "python" => {
-            // Python import parsing is handled by cb-lang-python plugin
-            // Cannot be called here due to circular dependency (cb-lang-python depends on cb-ast)
-            // Use cb_lang_python::parser::parse_python_imports() directly when needed
-            tracing::debug!(
-                file_path = % path.display(),
-                "Python import parsing should use cb-lang-python plugin directly"
-            );
-            Vec::new()
-        }
         "rust" => {
             // Rust import parsing is handled by cb-lang-rust plugin
             // Cannot be called here due to circular dependency (cb-lang-rust depends on cb-ast)
             // Use cb_lang_rust::parse_imports() directly when needed
             tracing::debug!("Rust import parsing should use cb-lang-rust plugin directly");
-            Vec::new()
-        }
-        "go" => {
-            // Go import parsing is handled by cb-lang-go plugin
-            // Use the plugin directly when needed
-            tracing::debug!("Go import parsing should use cb-lang-go plugin directly");
             Vec::new()
         }
         _ => parse_imports_basic(source)?,

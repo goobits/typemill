@@ -45,8 +45,6 @@ impl DefaultAstService {
             let mut registry = PluginRegistry::new();
             #[cfg(feature = "lang-rust")]
             registry.register(Arc::new(cb_lang_rust::RustPlugin::new()));
-            #[cfg(feature = "lang-go")]
-            registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
             #[cfg(feature = "lang-typescript")]
             registry.register(Arc::new(cb_lang_typescript::TypeScriptPlugin::new()));
             Arc::new(registry)
@@ -146,11 +144,12 @@ fn build_import_graph_with_plugin(
         .ok_or_else(|| cb_protocol::ApiError::internal("File has no extension"))?;
 
     // For languages without plugins, fall back to cb-ast
+    // Note: Only Rust and TypeScript supported after language reduction
     if !matches!(
         extension,
-        "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "rs" | "go"
+        "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "rs"
     ) {
-        // Use legacy cb-ast for Python and other languages
+        // Use legacy cb-ast for other languages (if any remain)
         return cb_ast::parser::build_import_graph(source, path)
             .map_err(|e| cb_protocol::ApiError::internal(format!("AST parsing failed: {}", e)));
     }
@@ -174,12 +173,6 @@ fn build_import_graph_with_plugin(
         "rust" => cb_lang_rust::parser::parse_imports(source).map_err(|e| {
             cb_protocol::ApiError::internal(format!("Failed to parse imports: {}", e))
         })?,
-        "go" => {
-            let graph = cb_lang_go::parser::analyze_imports(source, Some(path)).map_err(|e| {
-                cb_protocol::ApiError::internal(format!("Failed to parse imports: {}", e))
-            })?;
-            graph.imports
-        }
         _ => {
             return Err(cb_protocol::ApiError::internal(format!(
                 "Unsupported language: {}",

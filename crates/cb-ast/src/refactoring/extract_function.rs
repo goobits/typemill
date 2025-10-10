@@ -92,32 +92,18 @@ pub async fn plan_extract_function(
     lsp_service: Option<&dyn LspRefactoringService>,
 ) -> AstResult<EditPlan> {
     // Try AST first (faster, more reliable, under our control)
+    // Note: Only TypeScript and Rust supported after language reduction
     let ast_result = match detect_language(file_path) {
         "typescript" | "javascript" => {
             ast_extract_function_ts_js(source, range, new_function_name, file_path)
         }
-        "python" => {
-            ast_extract_function_python(source, range, new_function_name, file_path)
-        }
         "rust" => {
             ast_extract_function_rust(source, range, new_function_name, file_path)
-        }
-        "go" => {
-            ast_extract_function_go(source, range, new_function_name, file_path)
-        }
-        "java" => {
-            ast_extract_function_java(source, range, new_function_name, file_path)
-        }
-        "swift" => {
-            ast_extract_function_swift(source, range, new_function_name, file_path)
-        }
-        "csharp" => {
-            ast_extract_function_csharp(source, range, new_function_name, file_path)
         }
         _ => {
             // Unsupported language - will try LSP fallback below
             Err(AstError::analysis(format!(
-                "AST implementation not available for: {}",
+                "AST implementation not available for: {} (only TypeScript and Rust supported)",
                 file_path
             )))
         }
@@ -222,30 +208,6 @@ fn ast_extract_function_ts_js(
     })
 }
 
-/// Generate edit plan for extract function refactoring (Python) using AST
-fn ast_extract_function_python(
-    source: &str,
-    range: &CodeRange,
-    new_function_name: &str,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    // Convert cb-ast CodeRange to cb-lang-python CodeRange
-    let python_range = cb_lang_python::refactoring::CodeRange {
-        start_line: range.start_line,
-        start_col: range.start_col,
-        end_line: range.end_line,
-        end_col: range.end_col,
-    };
-
-    cb_lang_python::refactoring::plan_extract_function(
-        source,
-        &python_range,
-        new_function_name,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Python refactoring error: {}", e)))
-}
-
 /// Generate edit plan for extract function refactoring (Rust) using AST
 fn ast_extract_function_rust(
     source: &str,
@@ -264,98 +226,6 @@ fn ast_extract_function_rust(
         file_path,
     )
     .map_err(|e| AstError::analysis(format!("Rust refactoring error: {}", e)))
-}
-
-/// Generate edit plan for extract function refactoring (Go) using AST
-fn ast_extract_function_go(
-    source: &str,
-    range: &CodeRange,
-    new_function_name: &str,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    let start_line = range.start_line;
-    let end_line = range.end_line;
-
-    cb_lang_go::refactoring::plan_extract_function(
-        source,
-        start_line,
-        end_line,
-        new_function_name,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Go refactoring error: {}", e)))
-}
-
-/// Generate edit plan for extract function refactoring (Java) using AST
-fn ast_extract_function_java(
-    source: &str,
-    range: &CodeRange,
-    new_function_name: &str,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    // Convert cb-ast CodeRange to cb-lang-java CodeRange
-    let java_range = cb_lang_java::refactoring::CodeRange {
-        start_line: range.start_line,
-        start_col: range.start_col,
-        end_line: range.end_line,
-        end_col: range.end_col,
-    };
-
-    cb_lang_java::refactoring::plan_extract_function(
-        source,
-        &java_range,
-        new_function_name,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Java refactoring error: {}", e)))
-}
-
-/// Generate edit plan for extract function refactoring (Swift) using AST
-fn ast_extract_function_swift(
-    source: &str,
-    range: &CodeRange,
-    new_function_name: &str,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    // Convert cb-ast CodeRange to cb-lang-swift CodeRange
-    let swift_range = cb_lang_swift::refactoring::CodeRange {
-        start_line: range.start_line,
-        start_col: range.start_col,
-        end_line: range.end_line,
-        end_col: range.end_col,
-    };
-
-    cb_lang_swift::refactoring::plan_extract_function(
-        source,
-        &swift_range,
-        new_function_name,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Swift refactoring error: {}", e)))
-}
-
-/// Generate edit plan for extract function refactoring (C#) using AST
-fn ast_extract_function_csharp(
-    source: &str,
-    range: &CodeRange,
-    new_function_name: &str,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    // Convert cb-ast CodeRange to cb-lang-csharp CodeRange
-    let csharp_range = cb_lang_csharp::refactoring::CodeRange {
-        start_line: range.start_line,
-        start_col: range.start_col,
-        end_line: range.end_line,
-        end_col: range.end_col,
-    };
-
-    cb_lang_csharp::refactoring::plan_extract_function(
-        source,
-        &csharp_range,
-        new_function_name,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("C# refactoring error: {}", e)))
 }
 
 /// Visitor for analyzing code selection for function extraction

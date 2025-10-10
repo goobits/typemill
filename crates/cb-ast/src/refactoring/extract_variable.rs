@@ -201,20 +201,11 @@ pub async fn plan_extract_variable(
         debug!(file_path = %file_path, "No LSP service provided, using AST fallback");
     }
 
-    // Fallback to AST-based implementation
+    // Fallback to AST-based implementation (only TypeScript and Rust supported after language reduction)
     match detect_language(file_path) {
         "typescript" | "javascript" => ast_extract_variable_ts_js(
             source,
             &analyze_extract_variable(source, start_line, start_col, end_line, end_col, file_path)?,
-            variable_name,
-            file_path,
-        ),
-        "python" => ast_extract_variable_python(
-            source,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
             variable_name,
             file_path,
         ),
@@ -227,70 +218,11 @@ pub async fn plan_extract_variable(
             variable_name,
             file_path,
         ),
-        "go" => ast_extract_variable_go(
-            source,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            variable_name,
-            file_path,
-        ),
-        "java" => ast_extract_variable_java(
-            source,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            variable_name,
-            file_path,
-        ),
-        "swift" => ast_extract_variable_swift(
-            source,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            variable_name,
-            file_path,
-        ),
-        "csharp" => ast_extract_variable_csharp(
-            source,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            variable_name,
-            file_path,
-        ),
         _ => Err(AstError::analysis(format!(
-            "Language not supported. LSP server may provide this via code actions for: {}",
+            "Language not supported (only TypeScript and Rust). LSP server may provide this via code actions for: {}",
             file_path
         ))),
     }
-}
-
-/// Generate edit plan for extract variable refactoring (Java) using AST
-#[allow(clippy::too_many_arguments)]
-fn ast_extract_variable_java(
-    source: &str,
-    start_line: u32,
-    start_col: u32,
-    end_line: u32,
-    end_col: u32,
-    variable_name: Option<String>,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    cb_lang_java::refactoring::plan_extract_variable(
-        source,
-        start_line,
-        start_col,
-        end_line,
-        end_col,
-        variable_name,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Java refactoring error: {}", e)))
 }
 
 /// Generate edit plan for extract variable refactoring (TypeScript/JavaScript)
@@ -372,29 +304,6 @@ fn ast_extract_variable_ts_js(
     })
 }
 
-/// Generate edit plan for extract variable refactoring (Python) using AST
-#[allow(clippy::too_many_arguments)]
-fn ast_extract_variable_python(
-    source: &str,
-    start_line: u32,
-    start_col: u32,
-    end_line: u32,
-    end_col: u32,
-    variable_name: Option<String>,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    cb_lang_python::refactoring::plan_extract_variable(
-        source,
-        start_line,
-        start_col,
-        end_line,
-        end_col,
-        variable_name,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Python refactoring error: {}", e)))
-}
-
 /// Generate edit plan for extract variable refactoring (Rust) using AST
 #[allow(clippy::too_many_arguments)]
 fn ast_extract_variable_rust(
@@ -418,71 +327,3 @@ fn ast_extract_variable_rust(
     .map_err(|e| AstError::analysis(format!("Rust refactoring error: {}", e)))
 }
 
-/// Generate edit plan for extract variable refactoring (Go) using AST
-#[allow(clippy::too_many_arguments)]
-fn ast_extract_variable_go(
-    source: &str,
-    start_line: u32,
-    start_col: u32,
-    end_line: u32,
-    end_col: u32,
-    variable_name: Option<String>,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    cb_lang_go::refactoring::plan_extract_variable(
-        source,
-        start_line,
-        start_col,
-        end_line,
-        end_col,
-        variable_name,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Go refactoring error: {}", e)))
-}
-
-/// Generate edit plan for extract variable refactoring (Swift) using AST
-#[allow(clippy::too_many_arguments)]
-fn ast_extract_variable_swift(
-    source: &str,
-    start_line: u32,
-    start_col: u32,
-    end_line: u32,
-    end_col: u32,
-    variable_name: Option<String>,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    cb_lang_swift::refactoring::plan_extract_variable(
-        source,
-        start_line,
-        start_col,
-        end_line,
-        end_col,
-        variable_name,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Swift refactoring error: {}", e)))
-}
-
-/// Generate edit plan for extract variable refactoring (C#) using AST
-#[allow(clippy::too_many_arguments)]
-fn ast_extract_variable_csharp(
-    source: &str,
-    start_line: u32,
-    start_col: u32,
-    end_line: u32,
-    end_col: u32,
-    variable_name: Option<String>,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    cb_lang_csharp::refactoring::plan_extract_variable(
-        source,
-        start_line,
-        start_col,
-        end_line,
-        end_col,
-        variable_name,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("C# refactoring error: {}", e)))
-}

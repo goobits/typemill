@@ -91,19 +91,14 @@ pub async fn plan_inline_variable(
         }
     }
 
-    // Fallback to AST-based implementation
+    // Fallback to AST-based implementation (only TypeScript and Rust supported after language reduction)
     match detect_language(file_path) {
-        "python" => ast_inline_variable_python(source, variable_line, variable_col, file_path),
         "typescript" | "javascript" => {
             ast_inline_variable_typescript(source, variable_line, variable_col, file_path)
         }
         "rust" => ast_inline_variable_rust(source, variable_line, variable_col, file_path),
-        "go" => ast_inline_variable_go(source, variable_line, variable_col, file_path),
-        "java" => ast_inline_variable_java(source, variable_line, variable_col, file_path),
-        "swift" => ast_inline_variable_swift(source, variable_line, variable_col, file_path),
-        "csharp" => ast_inline_variable_csharp(source, variable_line, variable_col, file_path),
         _ => Err(AstError::analysis(format!(
-            "Inline variable refactoring requires LSP service for file: {}. Language plugins provide AST fallback.",
+            "Inline variable refactoring requires LSP service for file: {} (only TypeScript and Rust supported via AST)",
             file_path
         ))),
     }
@@ -125,38 +120,6 @@ fn ast_inline_variable_typescript(
     .map_err(|e| AstError::analysis(format!("TypeScript refactoring error: {}", e)))
 }
 
-/// Generate edit plan for inline variable refactoring (Java) using AST
-fn ast_inline_variable_java(
-    source: &str,
-    variable_line: u32,
-    variable_col: u32,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    cb_lang_java::refactoring::plan_inline_variable(
-        source,
-        variable_line,
-        variable_col,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Java refactoring error: {}", e)))
-}
-
-/// Generate edit plan for inline variable refactoring (Python) using AST
-fn ast_inline_variable_python(
-    source: &str,
-    variable_line: u32,
-    variable_col: u32,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    cb_lang_python::refactoring::plan_inline_variable(
-        source,
-        variable_line,
-        variable_col,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Python refactoring error: {}", e)))
-}
-
 /// Generate edit plan for inline variable refactoring (Rust) using AST
 fn ast_inline_variable_rust(
     source: &str,
@@ -173,50 +136,3 @@ fn ast_inline_variable_rust(
     .map_err(|e| AstError::analysis(format!("Rust refactoring error: {}", e)))
 }
 
-/// Generate edit plan for inline variable refactoring (Go) using AST
-fn ast_inline_variable_go(
-    source: &str,
-    variable_line: u32,
-    variable_col: u32,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    cb_lang_go::refactoring::plan_inline_variable(
-        source,
-        variable_line,
-        variable_col,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Go refactoring error: {}", e)))
-}
-
-/// Generate edit plan for inline variable refactoring (Swift) using AST
-fn ast_inline_variable_swift(
-    source: &str,
-    variable_line: u32,
-    variable_col: u32,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    cb_lang_swift::refactoring::plan_inline_variable(
-        source,
-        variable_line,
-        variable_col,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("Swift refactoring error: {}", e)))
-}
-
-/// Generate edit plan for inline variable refactoring (C#) using AST
-fn ast_inline_variable_csharp(
-    source: &str,
-    variable_line: u32,
-    variable_col: u32,
-    file_path: &str,
-) -> AstResult<EditPlan> {
-    cb_lang_csharp::refactoring::plan_inline_variable(
-        source,
-        variable_line,
-        variable_col,
-        file_path,
-    )
-    .map_err(|e| AstError::analysis(format!("C# refactoring error: {}", e)))
-}

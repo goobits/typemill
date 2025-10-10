@@ -151,17 +151,6 @@ mod tests {
         assert_eq!(plugin.unwrap().metadata().name, "Rust");
     }
 
-    #[cfg(feature = "lang-go")]
-    #[test]
-    fn test_registry_builder_includes_go_plugin() {
-        let registry = build_language_plugin_registry();
-
-        // Should be able to find plugin for .go files
-        let plugin = registry.find_by_extension("go");
-        assert!(plugin.is_some());
-        assert_eq!(plugin.unwrap().metadata().name, "Go");
-    }
-
     #[cfg(feature = "lang-typescript")]
     #[test]
     fn test_registry_builder_includes_typescript_plugin() {
@@ -171,17 +160,6 @@ mod tests {
         let plugin = registry.find_by_extension("ts");
         assert!(plugin.is_some());
         assert_eq!(plugin.unwrap().metadata().name, "TypeScript");
-    }
-
-    #[cfg(feature = "lang-python")]
-    #[test]
-    fn test_registry_builder_includes_python_plugin() {
-        let registry = build_language_plugin_registry();
-
-        // Should be able to find plugin for .py files
-        let plugin = registry.find_by_extension("py");
-        assert!(plugin.is_some());
-        assert_eq!(plugin.unwrap().metadata().name, "Python");
     }
 
     #[test]

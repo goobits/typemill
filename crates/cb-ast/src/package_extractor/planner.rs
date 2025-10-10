@@ -27,17 +27,13 @@ pub(crate) async fn plan_extract_module_to_package(
     );
 
     // Step 2: Look up appropriate language plugin from registry
+    // Note: Only Rust and TypeScript supported after language reduction
     let _manifest_ext = match detected_language {
         ProjectLanguage::Rust => "toml",
         ProjectLanguage::TypeScript => "json",
-        ProjectLanguage::Python => "txt",
-        ProjectLanguage::Go => "mod",
-        ProjectLanguage::Java => "xml",
-        ProjectLanguage::Swift => "swift",
-        ProjectLanguage::CSharp => "csproj",
         ProjectLanguage::Unknown => {
             return Err(crate::error::AstError::Analysis {
-                message: "Could not detect project language - no manifest files found".to_string(),
+                message: "Could not detect project language - only Rust and TypeScript supported".to_string(),
             });
         }
     };

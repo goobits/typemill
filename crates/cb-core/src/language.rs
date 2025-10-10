@@ -171,9 +171,6 @@ mod tests {
     fn test_language_as_str() {
         assert_eq!(ProjectLanguage::Rust.as_str(), "rust");
         assert_eq!(ProjectLanguage::TypeScript.as_str(), "typescript");
-        assert_eq!(ProjectLanguage::Python.as_str(), "python");
-        assert_eq!(ProjectLanguage::Go.as_str(), "go");
-        assert_eq!(ProjectLanguage::Java.as_str(), "java");
         assert_eq!(ProjectLanguage::Unknown.as_str(), "unknown");
     }
 
@@ -194,12 +191,6 @@ mod tests {
             ProjectLanguage::TypeScript.manifest_filename(),
             "package.json"
         );
-        assert_eq!(
-            ProjectLanguage::Python.manifest_filename(),
-            "pyproject.toml"
-        );
-        assert_eq!(ProjectLanguage::Go.manifest_filename(), "go.mod");
-        assert_eq!(ProjectLanguage::Java.manifest_filename(), "pom.xml");
     }
 
     #[test]
@@ -226,77 +217,6 @@ mod tests {
         assert_eq!(result, ProjectLanguage::TypeScript);
     }
 
-    #[test]
-    fn test_detect_python_project_pyproject() {
-        use std::fs::File;
-        use tempfile::tempdir;
-
-        let dir = tempdir().unwrap();
-        File::create(dir.path().join("pyproject.toml")).unwrap();
-
-        let result = detect_project_language(dir.path());
-        assert_eq!(result, ProjectLanguage::Python);
-    }
-
-    #[test]
-    fn test_detect_python_project_requirements() {
-        use std::fs::File;
-        use tempfile::tempdir;
-
-        let dir = tempdir().unwrap();
-        File::create(dir.path().join("requirements.txt")).unwrap();
-
-        let result = detect_project_language(dir.path());
-        assert_eq!(result, ProjectLanguage::Python);
-    }
-
-    #[test]
-    fn test_detect_python_project_setup() {
-        use std::fs::File;
-        use tempfile::tempdir;
-
-        let dir = tempdir().unwrap();
-        File::create(dir.path().join("setup.py")).unwrap();
-
-        let result = detect_project_language(dir.path());
-        assert_eq!(result, ProjectLanguage::Python);
-    }
-
-    #[test]
-    fn test_detect_go_project() {
-        use std::fs::File;
-        use tempfile::tempdir;
-
-        let dir = tempdir().unwrap();
-        File::create(dir.path().join("go.mod")).unwrap();
-
-        let result = detect_project_language(dir.path());
-        assert_eq!(result, ProjectLanguage::Go);
-    }
-
-    #[test]
-    fn test_detect_java_project_maven() {
-        use std::fs::File;
-        use tempfile::tempdir;
-
-        let dir = tempdir().unwrap();
-        File::create(dir.path().join("pom.xml")).unwrap();
-
-        let result = detect_project_language(dir.path());
-        assert_eq!(result, ProjectLanguage::Java);
-    }
-
-    #[test]
-    fn test_detect_java_project_gradle() {
-        use std::fs::File;
-        use tempfile::tempdir;
-
-        let dir = tempdir().unwrap();
-        File::create(dir.path().join("build.gradle")).unwrap();
-
-        let result = detect_project_language(dir.path());
-        assert_eq!(result, ProjectLanguage::Java);
-    }
 
     #[test]
     fn test_detect_unknown_project() {

@@ -221,35 +221,8 @@ impl WorkspaceHandler {
             }
         }
 
-        // Try Go plugin
-        #[cfg(feature = "lang-go")]
-        {
-            use cb_lang_go::GoPlugin;
-            if let Some(go_plugin) = plugin.as_any().downcast_ref::<GoPlugin>() {
-                let updated_content = go_plugin
-                    .update_dependency(path, old_dep_name, new_dep_name, new_path)
-                    .await
-                    .map_err(|e| {
-                        cb_protocol::ApiError::Internal(format!("Failed to update dependency: {}", e))
-                    })?;
-
-                context
-                    .app_state
-                    .file_service
-                    .write_file(path, &updated_content, false)
-                    .await
-                    .map_err(|e| {
-                        cb_protocol::ApiError::Internal(format!(
-                            "Failed to write manifest file at {}: {}",
-                            manifest_path, e
-                        ))
-                    })?;
-
-                return Ok(updated_content);
-            }
-        }
-
         // No plugin supports update_dependency
+        // Note: Only Rust and TypeScript supported after language reduction
         Err(cb_protocol::ApiError::Internal(
             "No language plugin found with update_dependency support for this manifest type".to_string()
         ))

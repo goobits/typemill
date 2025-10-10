@@ -76,7 +76,7 @@ pub(crate) async fn build_import_update_plan(
                 if let Ok(content) = tokio::fs::read_to_string(file_path).await {
                     // Find module references using the enhanced scanner
                     // We need to downcast to concrete plugin types to access find_module_references
-                    use cb_lang_go::GoPlugin;
+                    // Note: Only Rust and TypeScript supported after language reduction
                     use cb_lang_rust::RustPlugin;
                     use cb_lang_typescript::TypeScriptPlugin;
 
@@ -89,10 +89,6 @@ pub(crate) async fn build_import_update_plan(
                             plugin.as_any().downcast_ref::<TypeScriptPlugin>()
                         {
                             Some(ts_plugin.find_module_references(&content, module_name, scope))
-                        } else if let Some(go_plugin) = plugin.as_any().downcast_ref::<GoPlugin>() {
-                            go_plugin
-                                .find_module_references(&content, module_name, scope)
-                                .ok()
                         } else {
                             None
                         };
@@ -201,7 +197,7 @@ pub(crate) async fn build_import_update_plan(
         // If scan_scope is provided, use find_module_references for precise edits
         if let Some(scope) = scan_scope {
             // Downcast to concrete plugin types to access find_module_references
-            use cb_lang_go::GoPlugin;
+            // Note: Only Rust and TypeScript supported after language reduction
             use cb_lang_rust::RustPlugin;
             use cb_lang_typescript::TypeScriptPlugin;
 
@@ -211,10 +207,6 @@ pub(crate) async fn build_import_update_plan(
                     .ok()
             } else if let Some(ts_plugin) = plugin.as_any().downcast_ref::<TypeScriptPlugin>() {
                 Some(ts_plugin.find_module_references(&content, old_module_name, scope))
-            } else if let Some(go_plugin) = plugin.as_any().downcast_ref::<GoPlugin>() {
-                go_plugin
-                    .find_module_references(&content, old_module_name, scope)
-                    .ok()
             } else {
                 None
             };
@@ -268,7 +260,7 @@ pub(crate) async fn build_import_update_plan(
         } else {
             // Fallback to the old rewrite logic
             // Downcast to concrete plugin types to access rewrite_imports_for_rename
-            use cb_lang_go::GoPlugin;
+            // Note: Only Rust and TypeScript supported after language reduction
             use cb_lang_rust::RustPlugin;
             use cb_lang_typescript::TypeScriptPlugin;
 
@@ -286,17 +278,6 @@ pub(crate) async fn build_import_update_plan(
                         .ok()
                 } else if let Some(ts_plugin) = plugin.as_any().downcast_ref::<TypeScriptPlugin>() {
                     ts_plugin
-                        .rewrite_imports_for_rename(
-                            &content,
-                            old_path,
-                            new_path,
-                            &file_path,
-                            project_root,
-                            rename_info,
-                        )
-                        .ok()
-                } else if let Some(go_plugin) = plugin.as_any().downcast_ref::<GoPlugin>() {
-                    go_plugin
                         .rewrite_imports_for_rename(
                             &content,
                             old_path,
