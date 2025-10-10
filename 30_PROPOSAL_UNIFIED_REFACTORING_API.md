@@ -388,7 +388,13 @@ workspace.apply_edit(plan, options) → Result
     "validate_checksums": true,  // fail if files changed since plan creation
     "validate_plan_type": true,  // verify plan_type matches expected schema
     "force": false,              // skip all validation
-    "rollback_on_error": true
+    "rollback_on_error": true,
+    "validation": {              // post-apply validation (optional)
+      "command": "cargo check --workspace",
+      "timeout_seconds": 60,
+      "working_dir": ".",        // optional, defaults to workspace root
+      "fail_on_stderr": false    // some tools write warnings to stderr
+    }
   }
 }
 ```
@@ -397,6 +403,7 @@ workspace.apply_edit(plan, options) → Result
 - `validate_checksums`: Rejects plans if file content has changed since plan creation
 - `validate_plan_type`: Ensures plan structure matches expected discriminated type
 - `force`: Bypasses all validation (dangerous, use only for recovery scenarios)
+- `validation`: If provided, runs command after applying edits. If command fails (non-zero exit), automatically rolls back changes.
 
 **Result**:
 ```json
@@ -406,9 +413,23 @@ workspace.apply_edit(plan, options) → Result
   "created_files": ["src/new.rs"],
   "deleted_files": [],
   "warnings": [],
-  "rollback_available": true
+  "validation": {
+    "passed": true,
+    "command": "cargo check --workspace",
+    "exit_code": 0,
+    "stdout": "    Checking codebuddy v1.0.0\n    Finished check in 2.34s",
+    "stderr": "",
+    "duration_ms": 2340
+  },
+  "rollback_available": false  // consumed by validation if run
 }
 ```
+
+**Validation workflow**:
+1. Apply edits to filesystem
+2. If `validation` specified, run validation command
+3. If validation fails (non-zero exit), automatically rollback all changes
+4. Return result with validation details (passed/failed, output, timing)
 
 ---
 
@@ -511,7 +532,66 @@ workspace.apply_edit(plan, options) → Result
 - Explicit opt-in for dry-run in apply step
 - Matches typical "preview then execute" workflow
 
-### 5. Batch Operations: Phase 3+ (DEFERRED)
+### 5. Project-Level Configuration (PROMOTED TO PHASE 1)
+**Decision**: Support `.codebuddy/refactor.toml` for preset configurations.
+
+**Rationale**:
+- Dramatically improves DX by eliminating repetitive option passing
+- Ensures consistency across team members and AI agents
+- Config file serves as living documentation of project standards
+- Can be overridden per-call when needed
+
+**Configuration format**:
+```toml
+# .codebuddy/refactor.toml
+[presets.safe]
+strict = true
+validate_scope = true
+update_imports = true
+
+[presets.aggressive]
+strict = false
+force = true
+
+[defaults]
+dry_run = false
+rollback_on_error = true
+validate_checksums = true
+```
+
+**Usage**:
+```javascript
+// Use preset
+rename.plan(target, new_name, { preset: "safe" })
+
+// Override specific options
+rename.plan(target, new_name, { preset: "safe", strict: false })
+```
+
+### 6. Plan Formatting Utility: Phase 2 (CLIENT LIBRARY)
+**Decision**: Provide `formatPlan(plan)` utility in client libraries, NOT in plan structure.
+
+**Rationale**:
+- Keeps plan structure lightweight and focused on data
+- Avoids redundancy (description duplicates structured summary)
+- Allows customization of formatting without plan versioning concerns
+- Enables localization if needed in future
+- No maintenance burden for keeping descriptions accurate
+
+**Example usage**:
+```javascript
+// Client-side utility (not part of plan)
+import { formatPlan } from '@codebuddy/client';
+
+const plan = await rename.plan(...);
+const description = formatPlan(plan);
+// Returns: "Renames function 'process_data' to 'parse_and_process_data' across 3 files"
+
+// Use for logging, debugging, human-readable output
+console.log(`Plan: ${description}`);
+```
+
+### 7. Batch Operations: Phase 3+ (DEFERRED)
 **Decision**: Add `workspace.apply_batch([plan1, plan2])` in Phase 3 if needed.
 
 **Rationale**:
@@ -525,11 +605,16 @@ workspace.apply_edit(plan, options) → Result
 
 - [ ] All 14 new commands implemented and tested
 - [ ] `workspace.apply_edit` handles all 7 plan types
+- [ ] Post-apply validation with automatic rollback implemented and tested
+- [ ] Project-level configuration (`.codebuddy/refactor.toml`) with preset support
+- [ ] Plan formatting utility (`formatPlan(plan)`) in client library
 - [ ] All 35 legacy commands removed from codebase
 - [ ] Integration tests cover all operation kinds
+- [ ] Integration tests cover validation scenarios (pass/fail/timeout)
 - [ ] All internal callsites updated to new API
-- [ ] Documentation updated
+- [ ] Documentation updated with validation and config examples
 - [ ] CI validates no direct file writes in `*.plan` commands
+- [ ] CI validates preset loading and override behavior
 
 ---
 

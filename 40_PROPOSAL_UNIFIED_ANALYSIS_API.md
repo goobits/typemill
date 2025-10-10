@@ -69,7 +69,10 @@ All analysis commands return the same shape:
           "action": "extract_function",
           "description": "Extract nested conditional block to separate function",
           "target": { "range": { "start": {...}, "end": {...} } },
-          "estimated_impact": "reduces complexity by ~8 points"
+          "estimated_impact": "reduces complexity by ~8 points",
+          "safety": "requires_review",
+          "confidence": 0.85,
+          "reversible": true
         }
       ]
     }
@@ -518,6 +521,9 @@ All analysis results include `suggestions` that link directly to refactoring ope
       {
         "action": "extract_function",
         "description": "Extract nested block to reduce complexity",
+        "safety": "requires_review",
+        "confidence": 0.85,
+        "reversible": true,
         "refactor_call": {
           "command": "extract.plan",
           "arguments": {
@@ -534,6 +540,9 @@ All analysis results include `suggestions` that link directly to refactoring ope
       {
         "action": "inline_variable",
         "description": "Inline temporary variable 'temp'",
+        "safety": "safe",
+        "confidence": 0.95,
+        "reversible": true,
         "refactor_call": {
           "command": "inline.plan",
           "arguments": {
@@ -542,16 +551,42 @@ All analysis results include `suggestions` that link directly to refactoring ope
           }
         },
         "estimated_impact": "reduces complexity by 1 point"
+      },
+      {
+        "action": "delete_unused_import",
+        "description": "Remove unused import 'std::collections::HashMap'",
+        "safety": "safe",
+        "confidence": 0.98,
+        "reversible": true,
+        "refactor_call": {
+          "command": "delete.plan",
+          "arguments": {
+            "kind": "unused_imports",
+            "target": { "file_path": "src/app.rs" }
+          }
+        },
+        "estimated_impact": "no complexity change, improves code cleanliness"
       }
     ]
   }]
 }
 ```
 
+**Suggestion metadata fields**:
+- **`safety`**: Risk level for applying the suggestion
+  - `"safe"` - No logic changes, preserves semantics exactly (auto-apply safe)
+  - `"requires_review"` - Logic changes, preserves intent but needs human verification
+  - `"experimental"` - Significant changes, requires thorough testing
+- **`confidence`**: Algorithm confidence score (0.0 to 1.0) in suggestion correctness
+- **`reversible`**: Whether the refactoring can be undone without information loss
+- **`estimated_impact`**: Human-readable description of expected improvement
+
 **Benefits**:
-- AI agents can **directly execute** suggested refactorings
-- Users get **actionable next steps**, not just metrics
+- AI agents can **autonomously apply safe suggestions** (safety="safe", confidence > 0.9)
+- AI agents know when to **request human review** (safety="requires_review" or low confidence)
+- Users get **risk-assessed actionable next steps**, not just metrics
 - **Closed-loop workflow**: analyze → suggest → refactor → re-analyze
+- **Progressive automation**: safe → requires_review → experimental
 
 ---
 
@@ -793,31 +828,84 @@ console.log(`Complexity reduced from ${quality.findings[0].metrics.cyclomatic_co
 - Configurable via `batch_optimization` option
 
 ### 4. Suggestion Validation (LOCKED)
-**Decision**: CI validates all `suggestion.refactor_call` references.
+**Decision**: CI validates all `suggestion.refactor_call` references and safety metadata.
 
 **Rationale**:
 - Prevents broken suggestions from reaching production
 - Ensures refactor commands exist and accept correct parameters
+- Validates safety level and confidence score are present and reasonable
 - CI test runs all analyzers, validates suggestion structure
 - Regression protection as refactoring API evolves
 
+**Validation checks**:
+- `refactor_call.command` references valid refactoring command
+- `refactor_call.arguments` match command schema
+- `safety` is one of: "safe", "requires_review", "experimental"
+- `confidence` is float between 0.0 and 1.0
+- `reversible` is boolean
+- `estimated_impact` is non-empty string
+
 ### 5. Suggestion Ranking (LOCKED)
-**Decision**: Suggestions ordered by estimated impact, highest first.
+**Decision**: Suggestions ordered by safety (safe first), then confidence, then estimated impact.
 
 **Rationale**:
-- Users see most valuable suggestions first
+- AI agents should see safest, highest-confidence suggestions first
+- Enables progressive automation: apply all "safe" suggestions, then ask for human review on others
 - Optional `priority` field for manual override
 - `estimated_impact` required for all suggestions
-- AI agents can pick top suggestion without extra logic
 
-### 6. Project-Level Thresholds (DEFERRED)
-**Decision**: Phase 2+ feature, support `.codebuddy/analysis.json` config.
+**Ranking algorithm**:
+1. Primary: Safety level ("safe" > "requires_review" > "experimental")
+2. Secondary: Confidence score (higher is better)
+3. Tertiary: Estimated impact (parsed heuristically from string)
+
+### 6. Project-Level Configuration (PROMOTED TO PHASE 1)
+**Decision**: Support `.codebuddy/analysis.toml` for preset configurations.
 
 **Rationale**:
-- Inline options sufficient for MVP
-- Config file enables per-project defaults
-- Not critical for initial rollout
-- Can add without breaking existing API
+- Dramatically improves DX by eliminating repetitive option passing
+- Ensures consistency across team members and AI agents
+- Config file serves as living documentation of project quality standards
+- Can be overridden per-call when needed
+
+**Configuration format**:
+```toml
+# .codebuddy/analysis.toml
+[presets.strict]
+thresholds = { cyclomatic_complexity = 10, nesting_depth = 3, parameter_count = 4 }
+severity_filter = "high"
+limit = 100
+
+[presets.permissive]
+thresholds = { cyclomatic_complexity = 25, nesting_depth = 6, parameter_count = 8 }
+severity_filter = "medium"
+limit = 500
+
+[presets.ci]
+thresholds = { cyclomatic_complexity = 15, nesting_depth = 4 }
+severity_filter = "high"
+limit = 1000
+include_suggestions = true
+
+[defaults]
+# Applied to all analysis commands unless overridden
+scope = { type = "workspace", exclude = ["tests/", "examples/", "benches/"] }
+limit = 1000
+format = "detailed"
+include_suggestions = true
+```
+
+**Usage**:
+```javascript
+// Use preset
+analyze.quality("complexity", { preset: "strict" })
+
+// Preset with scope override
+analyze.quality("complexity", { preset: "strict", scope: { type = "file", path = "src/lib.rs" } })
+
+// Override specific options
+analyze.quality("complexity", { preset: "strict", thresholds: { cyclomatic_complexity: 12 } })
+```
 
 ---
 
@@ -827,7 +915,8 @@ console.log(`Complexity reduced from ${quality.findings[0].metrics.cyclomatic_co
 - [ ] `analyze.<category>` command implemented with all `kind` variants
 - [ ] All `kind` values for category produce correct results
 - [ ] Tests pass for all kinds in category
-- [ ] Actionable suggestions generated for category findings
+- [ ] Actionable suggestions generated with safety/confidence/reversible metadata
+- [ ] Suggestions ordered by safety, then confidence, then impact
 - [ ] Internal callsites updated to use new API
 - [ ] Legacy commands for category removed
 - [ ] Documentation updated for category
@@ -835,11 +924,17 @@ console.log(`Complexity reduced from ${quality.findings[0].metrics.cyclomatic_co
 **Overall completion**:
 - [ ] All 6 `analyze.*` commands implemented and tested
 - [ ] Unified `AnalysisResult` structure used consistently across all categories
+- [ ] Project-level configuration (`.codebuddy/analysis.toml`) with preset support
+- [ ] All suggestions include safety, confidence, and reversible fields
+- [ ] Suggestion ranking algorithm implemented (safety → confidence → impact)
 - [ ] `analyze.batch` supports multi-analysis workflows with shared parsing
 - [ ] All 37 legacy commands removed from codebase (staged by category)
 - [ ] Integration tests cover all analysis kinds (24 total kind values)
-- [ ] Documentation shows analyze → refactor workflows
+- [ ] Integration tests cover preset loading and override behavior
+- [ ] Documentation shows analyze → refactor workflows with safety examples
 - [ ] CI validates suggestion `refactor_call` references valid commands
+- [ ] CI validates safety metadata (valid levels, confidence range, etc.)
+- [ ] CI validates suggestion ranking order
 - [ ] Navigation commands preserved (search_workspace_symbols, find_definition, etc.)
 
 **Key milestone**: Can complete categories in any order. Each category is independently shippable.
