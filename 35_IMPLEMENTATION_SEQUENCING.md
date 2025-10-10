@@ -50,10 +50,10 @@ trait PluginRegistry {
 **Blocks**: Phase 1 of both unified APIs
 
 **Success criteria**:
-- [ ] Plugins expose `get_capabilities()` method
-- [ ] Registry can enumerate all valid `kind` values per category/operation
-- [ ] Dynamic schema validation for plugin arguments
-- [ ] CI fails if plugin doesn't provide descriptors
+- [x] Plugins expose `get_capabilities()` method
+- [x] Registry can enumerate all valid `kind` values per category/operation
+- [x] Dynamic schema validation for plugin arguments
+- [x] CI fails if plugin doesn't provide descriptors
 
 ---
 

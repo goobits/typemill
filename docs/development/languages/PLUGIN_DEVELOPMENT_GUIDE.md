@@ -1374,9 +1374,9 @@ Use this checklist to ensure your plugin is complete:
 ### Integration Checklist
 
 - [ ] **Registration**
-  - [ ] Entry added to `languages.toml`
+  - [ ] Plugin calls `codebuddy_plugin!` macro in `src/lib.rs`
   - [ ] `cargo build` succeeds
-  - [ ] Plugin appears in `./check-features.sh` output
+  - [ ] Plugin appears in registry at runtime
 
 - [ ] **Dependencies**
   - [ ] All dependencies use workspace versions
@@ -1429,13 +1429,10 @@ Use this checklist to ensure your plugin is complete:
 **Symptom**: `cargo build` fails with "no such crate `cb-lang-mylanguage`"
 
 **Solution**:
-1. Check `languages.toml` has your entry
-2. Run `cargo build` again (build scripts run before compilation)
-3. Verify feature flag in root `Cargo.toml`:
-   ```toml
-   [features]
-   lang-mylanguage = ["cb-lang-mylanguage"]
-   ```
+1. Check that your plugin calls `codebuddy_plugin!` macro in `src/lib.rs`
+2. Verify plugin crate is linked to workspace in root `Cargo.toml`
+3. Run `cargo build` again to ensure plugin is discovered
+4. Check that `build_language_plugin_registry()` discovers your plugin at runtime
 
 #### Issue 2: "Subprocess AST tool fails"
 

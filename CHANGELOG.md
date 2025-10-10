@@ -38,6 +38,7 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 - **Comprehensive Documentation Updates** - All docs updated for language reduction with disclaimers and git tag references
 - **API Contracts and Proposals** - Refined unified API implementation plans
+- **Plugin Development Guide** - Updated to use `codebuddy_plugin!` macro instead of `languages.toml`
 
 #### Added
 
@@ -55,6 +56,8 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Replaced build-time code generation with runtime discovery via `iter_plugins()`
   - Language detection now iterates over registered plugins dynamically
   - Registry builder discovers all plugins at startup automatically
+  - Enhanced registry builder with validation for duplicate names and extension conflicts
+  - Removed unused `lazy_static` dependency from cb-plugin-registry
 
 #### Removed
 

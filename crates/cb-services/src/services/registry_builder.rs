@@ -13,18 +13,62 @@
 
 use cb_plugin_api::PluginRegistry;
 use cb_plugin_registry::iter_plugins;
+use std::collections::{HashSet, HashMap};
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// Build the language plugin registry.
 ///
 /// This function iterates over all self-registered plugins discovered by
 /// `cb-plugin-registry` and adds them to a new `PluginRegistry`.
+///
+/// # Validation
+///
+/// - Validates that plugin names are unique
+/// - Validates that file extensions don't conflict between plugins
+/// - Logs warnings for any conflicts detected
 pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
     let mut registry = PluginRegistry::new();
     let mut plugin_count = 0;
 
+    // Validation sets
+    let mut seen_names = HashSet::new();
+    let mut extension_to_plugin: HashMap<&str, &str> = HashMap::new();
+
     for descriptor in iter_plugins() {
+        // Validate unique plugin name
+        if !seen_names.insert(descriptor.name) {
+            warn!(
+                plugin_name = descriptor.name,
+                "Duplicate plugin name detected - only the first registration will be used"
+            );
+            continue;
+        }
+
+        // Validate unique extensions
+        let mut has_conflict = false;
+        for ext in descriptor.extensions {
+            if let Some(existing_plugin) = extension_to_plugin.get(ext) {
+                warn!(
+                    extension = ext,
+                    existing_plugin = existing_plugin,
+                    new_plugin = descriptor.name,
+                    "File extension conflict - extension already claimed by another plugin"
+                );
+                has_conflict = true;
+            } else {
+                extension_to_plugin.insert(ext, descriptor.name);
+            }
+        }
+
+        if has_conflict {
+            warn!(
+                plugin_name = descriptor.name,
+                "Skipping plugin due to extension conflicts"
+            );
+            continue;
+        }
+
         let plugin = (descriptor.factory)();
         registry.register(plugin.into());
         plugin_count += 1;
