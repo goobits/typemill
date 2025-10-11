@@ -339,7 +339,8 @@ impl InlineHandler {
                     let mut hasher = Sha256::new();
                     hasher.update(content.as_bytes());
                     let hash = hasher.finalize();
-                    let hash_str = format!("sha256:{:x}", hash);
+                    // Use bare hex format (no prefix) to match rename_handler and workspace_apply_handler
+                    let hash_str = format!("{:x}", hash);
                     checksums.insert(file_path.clone(), hash_str);
                 }
                 Err(e) => {
