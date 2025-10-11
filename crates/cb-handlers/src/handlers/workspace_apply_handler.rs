@@ -469,10 +469,72 @@ fn convert_to_edit_plan(
                                 });
                             }
                         }
-                        DocumentChangeOperation::Op(_op) => {
-                            // File operations (create/rename/delete) are handled separately
-                            // by the plan type (e.g., MovePlan, DeletePlan)
-                            debug!("Skipping document operation (handled by plan type)");
+                        DocumentChangeOperation::Op(resource_op) => {
+                            // Handle file operations (create/rename/delete)
+                            match resource_op {
+                                lsp_types::ResourceOp::Create(create_file) => {
+                                    debug!(uri = ?create_file.uri, "File create operation detected");
+                                    // Create operation - add to metadata for tracking
+                                    edits.push(TextEdit {
+                                        file_path: Some(create_file.uri.path().to_string()),
+                                        edit_type: cb_protocol::EditType::Create,
+                                        location: cb_protocol::EditLocation {
+                                            start_line: 0,
+                                            start_column: 0,
+                                            end_line: 0,
+                                            end_column: 0,
+                                        },
+                                        original_text: String::new(),
+                                        new_text: String::new(),
+                                        priority: 0,
+                                        description: format!("Create file {}", create_file.uri.path()),
+                                    });
+                                }
+                                lsp_types::ResourceOp::Rename(rename_file) => {
+                                    debug!(
+                                        old_uri = ?rename_file.old_uri,
+                                        new_uri = ?rename_file.new_uri,
+                                        "File rename operation detected"
+                                    );
+                                    // Rename operation - add to metadata for tracking
+                                    edits.push(TextEdit {
+                                        file_path: Some(rename_file.old_uri.path().to_string()),
+                                        edit_type: cb_protocol::EditType::Move,
+                                        location: cb_protocol::EditLocation {
+                                            start_line: 0,
+                                            start_column: 0,
+                                            end_line: 0,
+                                            end_column: 0,
+                                        },
+                                        original_text: String::new(),
+                                        new_text: rename_file.new_uri.path().to_string(),
+                                        priority: 0,
+                                        description: format!(
+                                            "Rename {} to {}",
+                                            rename_file.old_uri.path(),
+                                            rename_file.new_uri.path()
+                                        ),
+                                    });
+                                }
+                                lsp_types::ResourceOp::Delete(delete_file) => {
+                                    debug!(uri = ?delete_file.uri, "File delete operation detected");
+                                    // Delete operation - add to metadata for tracking
+                                    edits.push(TextEdit {
+                                        file_path: Some(delete_file.uri.path().to_string()),
+                                        edit_type: cb_protocol::EditType::Delete,
+                                        location: cb_protocol::EditLocation {
+                                            start_line: 0,
+                                            start_column: 0,
+                                            end_line: 0,
+                                            end_column: 0,
+                                        },
+                                        original_text: String::new(),
+                                        new_text: String::new(),
+                                        priority: 0,
+                                        description: format!("Delete file {}", delete_file.uri.path()),
+                                    });
+                                }
+                            }
                         }
                     }
                 }

@@ -295,6 +295,10 @@ pub enum EditType {
     Replace,
     /// Reformat code
     Format,
+    /// Create a new file
+    Create,
+    /// Move/rename a file
+    Move,
 }
 
 /// Location of an edit in the source file

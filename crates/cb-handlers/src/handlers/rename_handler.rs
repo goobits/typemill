@@ -289,11 +289,41 @@ impl RenameHandler {
             calculate_checksum(&content),
         );
 
-        // Create WorkspaceEdit representing file rename
-        // LSP doesn't have a direct "rename file" edit, so we use document changes
+        // Create WorkspaceEdit representing file rename using LSP ResourceOp
+        use lsp_types::{DocumentChanges, DocumentChangeOperation, ResourceOp, RenameFile, Uri};
+
+        let old_url = url::Url::from_file_path(&abs_old).map_err(|_| {
+            ServerError::Internal(format!("Invalid old path: {}", abs_old.display()))
+        })?;
+
+        let old_uri: Uri = old_url.as_str().parse().map_err(|e| {
+            ServerError::Internal(format!("Failed to parse URI: {}", e))
+        })?;
+
+        let abs_new = std::fs::canonicalize(new_path.parent().unwrap_or(Path::new(".")))
+            .unwrap_or_else(|_| new_path.parent().unwrap_or(Path::new(".")).to_path_buf())
+            .join(new_path.file_name().unwrap_or(new_path.as_os_str()));
+
+        let new_url = url::Url::from_file_path(&abs_new).map_err(|_| {
+            ServerError::Internal(format!("Invalid new path: {}", abs_new.display()))
+        })?;
+
+        let new_uri: Uri = new_url.as_str().parse().map_err(|e| {
+            ServerError::Internal(format!("Failed to parse URI: {}", e))
+        })?;
+
+        let rename_op = ResourceOp::Rename(RenameFile {
+            old_uri,
+            new_uri,
+            options: None,
+            annotation_id: None,
+        });
+
         let workspace_edit = WorkspaceEdit {
             changes: None,
-            document_changes: None,
+            document_changes: Some(DocumentChanges::Operations(vec![
+                DocumentChangeOperation::Op(rename_op)
+            ])),
             change_annotations: None,
         };
 
@@ -385,10 +415,41 @@ impl RenameHandler {
             }
         }
 
-        // Create WorkspaceEdit representing directory rename
+        // Create WorkspaceEdit representing directory rename using LSP ResourceOp
+        use lsp_types::{DocumentChanges, DocumentChangeOperation, ResourceOp, RenameFile, Uri};
+
+        let old_url = url::Url::from_file_path(&abs_old).map_err(|_| {
+            ServerError::Internal(format!("Invalid old path: {}", abs_old.display()))
+        })?;
+
+        let old_uri: Uri = old_url.as_str().parse().map_err(|e| {
+            ServerError::Internal(format!("Failed to parse URI: {}", e))
+        })?;
+
+        let abs_new = std::fs::canonicalize(new_path.parent().unwrap_or(Path::new(".")))
+            .unwrap_or_else(|_| new_path.parent().unwrap_or(Path::new(".")).to_path_buf())
+            .join(new_path.file_name().unwrap_or(new_path.as_os_str()));
+
+        let new_url = url::Url::from_file_path(&abs_new).map_err(|_| {
+            ServerError::Internal(format!("Invalid new path: {}", abs_new.display()))
+        })?;
+
+        let new_uri: Uri = new_url.as_str().parse().map_err(|e| {
+            ServerError::Internal(format!("Failed to parse URI: {}", e))
+        })?;
+
+        let rename_op = ResourceOp::Rename(RenameFile {
+            old_uri,
+            new_uri,
+            options: None,
+            annotation_id: None,
+        });
+
         let workspace_edit = WorkspaceEdit {
             changes: None,
-            document_changes: None,
+            document_changes: Some(DocumentChanges::Operations(vec![
+                DocumentChangeOperation::Op(rename_op)
+            ])),
             change_annotations: None,
         };
 
