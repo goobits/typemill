@@ -115,10 +115,14 @@ impl ToolHandler for DeleteHandler {
             }
         };
 
-        // Serialize plan to JSON
-        serde_json::to_value(&plan).map_err(|e| {
+        // Serialize plan to JSON and wrap in content field for MCP protocol
+        let plan_json = serde_json::to_value(&plan).map_err(|e| {
             ServerError::Internal(format!("Failed to serialize delete plan: {}", e))
-        })
+        })?;
+
+        Ok(serde_json::json!({
+            "content": plan_json
+        }))
     }
 }
 

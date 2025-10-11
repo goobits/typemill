@@ -160,7 +160,10 @@ impl ToolHandler for WorkspaceApplyHandler {
 
         // Step 4: Dry run preview
         if params.options.dry_run {
-            return Ok(serde_json::to_value(create_dry_run_result(&edit_plan)).unwrap());
+            let result_json = serde_json::to_value(create_dry_run_result(&edit_plan)).unwrap();
+            return Ok(serde_json::json!({
+                "content": result_json
+            }));
         }
 
         // Step 5: Apply edits atomically with automatic backup for rollback
@@ -186,7 +189,7 @@ impl ToolHandler for WorkspaceApplyHandler {
                                     "Post-apply validation passed"
                                 );
 
-                                Ok(serde_json::to_value(ApplyResult {
+                                let result_json = serde_json::to_value(ApplyResult {
                                     success: true,
                                     applied_files: result.modified_files.clone(),
                                     created_files: extract_created_files(&edit_plan),
@@ -195,7 +198,11 @@ impl ToolHandler for WorkspaceApplyHandler {
                                     validation: Some(validation_result),
                                     rollback_available: false, // Validation consumed backup
                                 })
-                                .unwrap())
+                                .unwrap();
+
+                                Ok(serde_json::json!({
+                                    "content": result_json
+                                }))
                             } else {
                                 // Validation failed - rollback changes
                                 warn!(
@@ -240,7 +247,7 @@ impl ToolHandler for WorkspaceApplyHandler {
                     }
                 } else {
                     // No validation - return success immediately
-                    Ok(serde_json::to_value(ApplyResult {
+                    let result_json = serde_json::to_value(ApplyResult {
                         success: true,
                         applied_files: result.modified_files.clone(),
                         created_files: extract_created_files(&edit_plan),
@@ -249,7 +256,11 @@ impl ToolHandler for WorkspaceApplyHandler {
                         validation: None,
                         rollback_available: true, // No validation, backup still available in principle
                     })
-                    .unwrap())
+                    .unwrap();
+
+                    Ok(serde_json::json!({
+                        "content": result_json
+                    }))
                 }
             }
             Err(e) => {

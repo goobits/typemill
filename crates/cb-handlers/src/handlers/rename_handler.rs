@@ -118,10 +118,14 @@ impl ToolHandler for RenameHandler {
             }
         };
 
-        // Serialize plan to JSON
-        serde_json::to_value(&plan).map_err(|e| {
+        // Serialize plan to JSON and wrap in content field for MCP protocol
+        let plan_json = serde_json::to_value(&plan).map_err(|e| {
             ServerError::Internal(format!("Failed to serialize rename plan: {}", e))
-        })
+        })?;
+
+        Ok(json!({
+            "content": plan_json
+        }))
     }
 }
 

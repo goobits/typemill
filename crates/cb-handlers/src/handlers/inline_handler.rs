@@ -73,9 +73,13 @@ impl InlineHandler {
             _ => unreachable!("Already validated kind"),
         };
 
-        // Serialize and return
-        serde_json::to_value(&plan)
-            .map_err(|e| ServerError::Internal(format!("Failed to serialize plan: {}", e)))
+        // Serialize plan and wrap in content field for MCP protocol
+        let plan_json = serde_json::to_value(&plan)
+            .map_err(|e| ServerError::Internal(format!("Failed to serialize plan: {}", e)))?;
+
+        Ok(json!({
+            "content": plan_json
+        }))
     }
 
     /// Plan inline variable operation
