@@ -80,24 +80,29 @@ async fn test_all_27_public_tools_are_registered() {
 }
 
 #[tokio::test]
-async fn test_all_7_internal_tools_are_registered_and_hidden() {
+async fn test_all_11_internal_tools_are_registered_and_hidden() {
     let dispatcher = create_test_dispatcher().await;
     dispatcher.initialize().await.unwrap();
 
     let registry = dispatcher.tool_registry.lock().await;
 
-    const EXPECTED_INTERNAL_TOOLS: [&str; 7] = [
-        // Lifecycle
+    const EXPECTED_INTERNAL_TOOLS: [&str; 11] = [
+        // Lifecycle (3)
         "notify_file_opened",
         "notify_file_saved",
         "notify_file_closed",
-        // Editing
+        // Internal Editing (1)
         "rename_symbol_with_imports",
-        // Workspace
+        // Internal Workspace (1)
         "apply_workspace_edit",
-        // Intelligence
+        // Internal Intelligence (2)
         "get_completions",
         "get_signature_help",
+        // Workspace Tools (4) - Made internal, replaced by Unified API
+        "move_directory",
+        "find_dead_code",
+        "update_dependencies",
+        "update_dependency",
     ];
 
     // 1. Verify they are NOT in the public list
