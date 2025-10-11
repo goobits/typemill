@@ -642,27 +642,33 @@ rename.plan(target, new_name, { preset: "safe" })
 rename.plan(target, new_name, { preset: "safe", strict: false })
 ```
 
-### 6. Plan Formatting Utility: Phase 2 (CLIENT LIBRARY)
-**Decision**: Provide `formatPlan(plan)` utility in client libraries, NOT in plan structure.
+### 6. Plan Formatting Utility: Server-Side Only (IMPLEMENTED)
+**Decision**: Provide `formatPlan(plan)` utility in Rust server/client only, NOT in plan structure or other language clients.
 
 **Rationale**:
 - Keeps plan structure lightweight and focused on data
 - Avoids redundancy (description duplicates structured summary)
-- Allows customization of formatting without plan versioning concerns
-- Enables localization if needed in future
-- No maintenance burden for keeping descriptions accurate
+- Single source of truth - no need to maintain multiple language implementations
+- Client libraries already have structured plan data for custom formatting
+- Server-side formatting sufficient for CLI, logs, debugging
 
-**Example usage**:
+**Implementation** (Rust):
+```rust
+use cb_client::format_plan;
+
+let plan: RefactorPlan = rename.plan(...)?;
+let description = format_plan(&plan);
+println!("{}", description);
+// Output: "Renames function across 3 files"
+```
+
+**For Other Languages**:
+Clients receive structured plan data and can format it themselves if needed:
 ```javascript
-// Client-side utility (not part of plan)
-import { formatPlan } from '@codebuddy/client';
-
+// TypeScript/JavaScript clients format using plan data directly
 const plan = await rename.plan(...);
-const description = formatPlan(plan);
-// Returns: "Renames function 'process_data' to 'parse_and_process_data' across 3 files"
-
-// Use for logging, debugging, human-readable output
-console.log(`Plan: ${description}`);
+const { affected_files, created_files } = plan.summary;
+const description = `Renames ${plan.metadata.kind} across ${affected_files} file${affected_files > 1 ? 's' : ''}`;
 ```
 
 ### 7. Batch Operations: Phase 3+ (DEFERRED)
@@ -694,17 +700,17 @@ console.log(`Plan: ${description}`);
 
 The core unified refactoring API is **fully implemented and functional in this repository**. The unchecked items are out-of-scope for the main `codebuddy` server codebase:
 
-1. **Plan formatting utility** (`formatPlan(plan)`) - **PARTIALLY COMPLETE**
-   - **Rust Implementation**: ✅ **COMPLETE** - Available in `crates/cb-client/src/formatting.rs`
+1. **Plan formatting utility** (`formatPlan(plan)`) - ✅ **COMPLETE**
+   - **Implementation**: `crates/cb-client/src/formatting.rs`
      - Exported as `cb_client::format_plan(&RefactorPlan) -> String`
      - Comprehensive test coverage (10 test cases)
      - Handles all 7 plan types with proper pluralization
      - Example: `format_plan(&plan)` → `"Renames function across 3 files"`
-   - **TypeScript/JavaScript Implementation**: ❌ **NOT STARTED**
-     - **Repository**: Separate client library package (`@codebuddy/client`)
-     - Purpose: Human-readable plan descriptions for JS/TS consumers
-     - Not required for server functionality
-     - **Action**: Track in separate repository/project when client library work begins
+   - **Architecture Decision**: Server-side utility only (Rust)
+     - Used by Rust components: CLI output, server logs, debugging
+     - Other language clients format plans using structured data directly
+     - No TypeScript/JavaScript implementation needed - clients have access to structured plan data
+     - Avoids duplication and maintains single source of truth
 
 2. **CI validations** - **OUT OF SCOPE (CI/CD Infrastructure)**
    - **Repository**: CI/CD pipeline configuration (e.g., `.github/workflows/`)

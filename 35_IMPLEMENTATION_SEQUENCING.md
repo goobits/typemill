@@ -29,16 +29,17 @@
 - Automatic rollback on validation failure
 - Comprehensive test coverage (pass/fail/timeout)
 
-**Phase 4: Client Utilities (Partial)** - `formatPlan` utility for Rust
-- Human-readable plan descriptions
+**Phase 4: Client Utilities (Partial)** - `formatPlan` utility (server-side only)
+- Human-readable plan descriptions for Rust components
 - Handles all 7 plan types with proper pluralization
 - Exported from `crates/cb-client`
+- **Architecture Decision**: Server-side only (Rust), no TypeScript implementation needed
 
 ### 🔄 Pending Phases
 
 **Phase 2A-C: Unified Analysis API** - Not started (separate proposal)
 **Phase 3: Batch Operations** - Not started
-**Phase 4 (Remaining)**: Plan diff visualization, TypeScript client utilities
+**Phase 4 (Remaining)**: Plan diff visualization
 
 ---
 
@@ -279,9 +280,10 @@ trait PluginRegistry {
 
 **Success criteria**:
 - [x] `formatPlan` generates human-readable descriptions (Rust only)
-- [ ] TypeScript/JavaScript `formatPlan` in separate `@codebuddy/client` package
+- [x] Documentation with examples (formatPlan documented)
+- [x] **Architecture Decision**: No TypeScript/JavaScript implementation - clients use structured plan data
+- [ ] Plan diff visualization (pending)
 - [ ] AI agent helpers for safety decisions (requires Phase 2C)
-- [ ] Documentation with examples (formatPlan documented)
 
 ---
 

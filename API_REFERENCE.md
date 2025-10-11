@@ -898,9 +898,9 @@ codebuddy tool workspace.apply_edit "{\"plan\": $PLAN}"
 
 ---
 
-### Formatting Plans (Rust Client Utility)
+### Formatting Plans (Server-Side Utility)
 
-The Rust client library (`crates/cb-client`) provides a `format_plan` utility for generating human-readable descriptions of refactoring plans.
+The Rust server/client (`crates/cb-client`) provides a `format_plan` utility for generating human-readable descriptions of refactoring plans. This is a **server-side utility** used for CLI output, logging, and debugging.
 
 **Function Signature:**
 ```rust
@@ -934,7 +934,11 @@ println!("{}", description);
 - Reports file creation/deletion when applicable
 - Lightweight utility for logging, debugging, and UI display
 
-**Note:** This utility is available in the Rust client only. A TypeScript/JavaScript implementation would be provided in a separate `@codebuddy/client` npm package for JS/TS consumers.
+**Architecture Decision:**
+- **Rust only** - No TypeScript/JavaScript implementation needed
+- Client libraries in other languages can format plans using the structured data already present in plan objects
+- Avoids duplication and maintains a single source of truth
+- Plans already contain all necessary data: `summary.affected_files`, `metadata.kind`, etc.
 
 ---
 
