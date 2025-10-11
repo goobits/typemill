@@ -54,10 +54,17 @@ impl FileService {
         }
 
         // Files affected by text edits (group by file_path)
+        // Skip file operations (Move, Create, Delete) - they're handled separately
         use std::collections::HashMap;
+        use cb_protocol::EditType;
         let mut edits_by_file: HashMap<String, Vec<&cb_protocol::TextEdit>> = HashMap::new();
 
         for edit in &plan.edits {
+            // Skip file operations - they're handled in Step 3
+            if matches!(edit.edit_type, EditType::Move | EditType::Create | EditType::Delete) {
+                continue;
+            }
+
             if let Some(file_path) = &edit.file_path {
                 let abs_path = self.to_absolute_path(Path::new(file_path));
                 affected_files.insert(abs_path);
@@ -89,8 +96,107 @@ impl FileService {
         );
 
         let mut modified_files = Vec::new();
+        let mut created_files = Vec::new();
+        let mut deleted_files = Vec::new();
 
-        // Step 3: Apply text edits grouped by file with locking
+        // Step 3: Process file operations (Move, Create, Delete) first
+        for edit in &plan.edits {
+            match edit.edit_type {
+                EditType::Move => {
+                    // File rename/move operation
+                    if let Some(old_path_str) = &edit.file_path {
+                        let new_path_str = &edit.new_text;
+                        let old_path = Path::new(old_path_str);
+                        let new_path = Path::new(new_path_str);
+
+                        info!(
+                            old_path = %old_path_str,
+                            new_path = %new_path_str,
+                            "Executing file rename operation"
+                        );
+
+                        // Perform low-level file rename without import updates
+                        // (import updates should be handled separately via dependency_updates in the plan)
+                        let abs_old_path = self.to_absolute_path(old_path);
+                        let abs_new_path = self.to_absolute_path(new_path);
+
+                        // Create parent directory for new path if needed
+                        if let Some(parent) = abs_new_path.parent() {
+                            fs::create_dir_all(parent).await.map_err(|e| {
+                                ServerError::Internal(format!(
+                                    "Failed to create parent directory for {}: {}",
+                                    new_path_str, e
+                                ))
+                            })?;
+                        }
+
+                        // Perform the actual file system rename
+                        fs::rename(&abs_old_path, &abs_new_path).await.map_err(|e| {
+                            error!(error = %e, "File rename failed");
+                            ServerError::Internal(format!(
+                                "Failed to rename {} to {}: {}",
+                                old_path_str, new_path_str, e
+                            ))
+                        })?;
+
+                        modified_files.push(new_path_str.clone());
+                        deleted_files.push(old_path_str.clone());
+                    }
+                }
+                EditType::Create => {
+                    // File creation operation
+                    if let Some(file_path_str) = &edit.file_path {
+                        let file_path = Path::new(file_path_str);
+
+                        info!(file_path = %file_path_str, "Executing file create operation");
+
+                        // Create parent directories if needed
+                        if let Some(parent) = file_path.parent() {
+                            fs::create_dir_all(parent).await.map_err(|e| {
+                                ServerError::Internal(format!(
+                                    "Failed to create parent directory for {}: {}",
+                                    file_path_str, e
+                                ))
+                            })?;
+                        }
+
+                        // Create empty file or with initial content from new_text
+                        fs::write(file_path, &edit.new_text).await.map_err(|e| {
+                            ServerError::Internal(format!(
+                                "Failed to create file {}: {}",
+                                file_path_str, e
+                            ))
+                        })?;
+
+                        created_files.push(file_path_str.clone());
+                        modified_files.push(file_path_str.clone());
+                    }
+                }
+                EditType::Delete => {
+                    // File deletion operation
+                    if let Some(file_path_str) = &edit.file_path {
+                        let file_path = Path::new(file_path_str);
+
+                        info!(file_path = %file_path_str, "Executing file delete operation");
+
+                        // Delete the file
+                        fs::remove_file(file_path).await.map_err(|e| {
+                            ServerError::Internal(format!(
+                                "Failed to delete file {}: {}",
+                                file_path_str, e
+                            ))
+                        })?;
+
+                        deleted_files.push(file_path_str.clone());
+                    }
+                }
+                _ => {
+                    // Not a file operation - will be handled in text edit phase
+                }
+            }
+        }
+
+        // Step 4: Apply text edits grouped by file with locking
         // Use snapshot content to avoid race conditions with file system
         for (file_path, edits) in edits_by_file {
             let abs_file_path = self.to_absolute_path(Path::new(&file_path));
@@ -157,7 +263,7 @@ impl FileService {
             // Guard is dropped here, releasing the lock
         }
 
-        // Step 4: Apply dependency updates to other files with locking
+        // Step 5: Apply dependency updates to other files with locking
         for dep_update in &plan.dependency_updates {
             let target_file = self.to_absolute_path(Path::new(&dep_update.target_file));
             let file_lock = self.lock_manager.get_lock(&target_file).await;
@@ -187,14 +293,14 @@ impl FileService {
             // Guard is dropped here after each file
         }
 
-        // Step 5: Invalidate AST cache for all modified files
+        // Step 6: Invalidate AST cache for all modified files
         for file_path in &modified_files {
             let abs_path = self.to_absolute_path(Path::new(file_path));
             self.ast_cache.invalidate(&abs_path);
             debug!(file_path = %file_path, "Invalidated AST cache");
         }
 
-        // Step 6: All operations successful - snapshots can be dropped
+        // Step 7: All operations successful - snapshots can be dropped
         info!(
             modified_files_count = modified_files.len(),
             "Edit plan completed successfully with atomic guarantees"
