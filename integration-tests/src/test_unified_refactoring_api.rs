@@ -110,17 +110,15 @@ async fn test_extract_plan_and_apply_workflow() {
         .call_tool(
             "extract.plan",
             json!({
-                "target": {
-                    "kind": "function",
-                    "path": file_path.to_string_lossy(),
-                    "selector": {
-                        "range": {
-                            "start": {"line": 1, "character": 4},
-                            "end": {"line": 3, "character": 23}
-                        }
-                    }
-                },
-                "function_name": "calculate_sum"
+                "kind": "function",
+                "source": {
+                    "file_path": file_path.to_string_lossy(),
+                    "range": {
+                        "start": {"line": 1, "character": 4},
+                        "end": {"line": 3, "character": 23}
+                    },
+                    "name": "calculate_sum"
+                }
             }),
         )
         .await;
