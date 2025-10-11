@@ -84,17 +84,6 @@ impl Default for QualityThresholds {
     }
 }
 
-#[derive(Deserialize, Debug)]
-struct QualityScopeParam {
-    #[serde(rename = "type")]
-    scope_type: Option<String>,
-    #[serde(default)]
-    path: Option<String>,
-    #[serde(default)]
-    include: Vec<String>,
-    #[serde(default)]
-    exclude: Vec<String>,
-}
 
 pub struct QualityHandler;
 
@@ -524,6 +513,9 @@ fn detect_magic_numbers_for_smells(
 /// Analyze readability issues in functions
 fn analyze_readability(
     complexity_report: &cb_ast::complexity::ComplexityReport,
+    _content: &str,
+    _symbols: &[cb_plugin_api::Symbol],
+    _language: &str,
     file_path: &str,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -743,6 +735,9 @@ fn analyze_readability(
 /// Analyze overall maintainability metrics for a file or workspace
 fn analyze_maintainability(
     complexity_report: &cb_ast::complexity::ComplexityReport,
+    _content: &str,
+    _symbols: &[cb_plugin_api::Symbol],
+    _language: &str,
     file_path: &str,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -930,7 +925,6 @@ impl ToolHandler for QualityHandler {
         context: &ToolHandlerContext,
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        let start_time = Instant::now();
         let args = tool_call.arguments.clone().unwrap_or(json!({}));
 
         // Parse kind (required)
@@ -939,7 +933,7 @@ impl ToolHandler for QualityHandler {
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'kind' parameter".into()))?;
 
-        // Support complexity, smells, maintainability, and readability
+        // Validate kind
         if !matches!(kind, "complexity" | "smells" | "maintainability" | "readability") {
             return Err(ServerError::InvalidRequest(format!(
                 "Unsupported kind '{}'. Supported: 'complexity', 'smells', 'maintainability', 'readability'",
@@ -949,180 +943,127 @@ impl ToolHandler for QualityHandler {
 
         debug!(kind = %kind, "Handling analyze.quality request");
 
-        // Parse scope
-        let scope_param: QualityScopeParam = if let Some(scope_value) = args.get("scope") {
-            serde_json::from_value(scope_value.clone())
-                .map_err(|e| ServerError::InvalidRequest(format!("Invalid scope: {}", e)))?
-        } else {
-            QualityScopeParam {
-                scope_type: None,
-                path: None,
-                include: vec![],
-                exclude: vec![],
+        // Dispatch to appropriate analysis function based on kind
+        match kind {
+            "complexity" => {
+                // Complexity requires custom threshold handling, so we process it inline
+                let start_time = Instant::now();
+
+                // Parse scope
+                let scope_param = super::engine::parse_scope_param(&args)?;
+                let file_path = super::engine::extract_file_path(&args, &scope_param)?;
+                let scope_type = scope_param.scope_type.unwrap_or_else(|| "file".to_string());
+
+                // Parse options for thresholds and include_suggestions
+                let options: QualityOptions = args
+                    .get("options")
+                    .map(|v| serde_json::from_value(v.clone()))
+                    .transpose()
+                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid options: {}", e)))?
+                    .unwrap_or_else(|| QualityOptions {
+                        thresholds: None,
+                        severity_filter: None,
+                        limit: default_limit(),
+                        offset: 0,
+                        format: default_format(),
+                        include_suggestions: default_include_suggestions(),
+                    });
+
+                let thresholds = options.thresholds.unwrap_or_default();
+                let include_suggestions = options.include_suggestions;
+
+                info!(
+                    file_path = %file_path,
+                    kind = %kind,
+                    scope_type = %scope_type,
+                    "Analyzing code quality"
+                );
+
+                // Read file
+                let file_path_obj = Path::new(&file_path);
+                let extension = file_path_obj
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .ok_or_else(|| {
+                        ServerError::InvalidRequest(format!("File has no extension: {}", file_path))
+                    })?;
+
+                let content = context
+                    .app_state
+                    .file_service
+                    .read_file(file_path_obj)
+                    .await
+                    .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+
+                // Get language plugin
+                let plugin = context
+                    .app_state
+                    .language_plugins
+                    .get_plugin(extension)
+                    .ok_or_else(|| {
+                        ServerError::Unsupported(format!(
+                            "No language plugin found for extension: {}",
+                            extension
+                        ))
+                    })?;
+
+                // Parse file
+                let parsed = plugin
+                    .parse(&content)
+                    .await
+                    .map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
+
+                let language = plugin.metadata().name;
+
+                // Analyze complexity
+                let complexity_report = cb_ast::complexity::analyze_file_complexity(
+                    &file_path,
+                    &content,
+                    &parsed.symbols,
+                    &language,
+                );
+
+                // Build scope for result
+                let scope = AnalysisScope {
+                    scope_type,
+                    path: file_path.clone(),
+                    include: scope_param.include,
+                    exclude: scope_param.exclude,
+                };
+
+                // Transform to AnalysisResult
+                let mut result = self.transform_complexity_report(
+                    complexity_report,
+                    &thresholds,
+                    include_suggestions,
+                    scope,
+                    start_time.elapsed().as_millis() as u64,
+                );
+
+                // Set language in metadata
+                result.metadata.language = Some(language.to_string());
+
+                info!(
+                    file_path = %file_path,
+                    findings_count = result.summary.total_findings,
+                    analysis_time_ms = result.summary.analysis_time_ms,
+                    "Quality analysis complete"
+                );
+
+                // Serialize to JSON
+                serde_json::to_value(result)
+                    .map_err(|e| ServerError::Internal(format!("Failed to serialize result: {}", e)))
             }
-        };
-
-        // Determine file path (for MVP, only support file scope)
-        let file_path = scope_param
-            .path
-            .or_else(|| args.get("file_path").and_then(|v| v.as_str()).map(String::from))
-            .ok_or_else(|| {
-                ServerError::InvalidRequest(
-                    "Missing file path. For MVP, only file-level analysis is supported via scope.path or file_path parameter".into(),
-                )
-            })?;
-
-        let scope_type = scope_param.scope_type.unwrap_or_else(|| "file".to_string());
-
-        // Parse options
-        let options: QualityOptions = args
-            .get("options")
-            .map(|v| serde_json::from_value(v.clone()))
-            .transpose()
-            .map_err(|e| ServerError::InvalidRequest(format!("Invalid options: {}", e)))?
-            .unwrap_or_else(|| QualityOptions {
-                thresholds: None,
-                severity_filter: None,
-                limit: default_limit(),
-                offset: 0,
-                format: default_format(),
-                include_suggestions: default_include_suggestions(),
-            });
-
-        let thresholds = options.thresholds.unwrap_or_default();
-
-        info!(
-            file_path = %file_path,
-            kind = %kind,
-            scope_type = %scope_type,
-            "Analyzing code quality"
-        );
-
-        // Read file
-        let file_path_obj = Path::new(&file_path);
-        let extension = file_path_obj
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .ok_or_else(|| {
-                ServerError::InvalidRequest(format!("File has no extension: {}", file_path))
-            })?;
-
-        let content = context
-            .app_state
-            .file_service
-            .read_file(file_path_obj)
-            .await
-            .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
-
-        // Get language plugin
-        let plugin = context
-            .app_state
-            .language_plugins
-            .get_plugin(extension)
-            .ok_or_else(|| {
-                ServerError::Unsupported(format!(
-                    "No language plugin found for extension: {}",
-                    extension
-                ))
-            })?;
-
-        // Parse file
-        let parsed = plugin
-            .parse(&content)
-            .await
-            .map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
-
-        let language = plugin.metadata().name;
-
-        // Analyze complexity
-        let complexity_report = cb_ast::complexity::analyze_file_complexity(
-            &file_path,
-            &content,
-            &parsed.symbols,
-            &language,
-        );
-
-        // Build scope for result
-        let scope = AnalysisScope {
-            scope_type,
-            path: file_path.clone(),
-            include: scope_param.include,
-            exclude: scope_param.exclude,
-        };
-
-        // Transform to AnalysisResult based on kind
-        let mut result = if kind == "complexity" {
-            self.transform_complexity_report(
-                complexity_report,
-                &thresholds,
-                options.include_suggestions,
-                scope,
-                start_time.elapsed().as_millis() as u64,
-            )
-        } else if kind == "smells" {
-            // Code smell detection
-            let mut result = AnalysisResult::new("quality", "smells", scope);
-
-            let findings = detect_smells(
-                &complexity_report,
-                &content,
-                &parsed.symbols,
-                &language,
-                &file_path,
-            );
-
-            for finding in findings {
-                result.add_finding(finding);
+            "smells" => {
+                super::engine::run_analysis(context, tool_call, "quality", kind, detect_smells).await
             }
-
-            result.summary.files_analyzed = 1;
-            result.summary.symbols_analyzed = Some(complexity_report.total_functions);
-            result.finalize(start_time.elapsed().as_millis() as u64);
-            result
-        } else if kind == "maintainability" {
-            // Maintainability aggregation
-            let mut result = AnalysisResult::new("quality", "maintainability", scope);
-
-            let findings = analyze_maintainability(&complexity_report, &file_path);
-
-            for finding in findings {
-                result.add_finding(finding);
+            "maintainability" => {
+                super::engine::run_analysis(context, tool_call, "quality", kind, analyze_maintainability).await
             }
-
-            result.summary.files_analyzed = 1;
-            result.summary.symbols_analyzed = Some(complexity_report.total_functions);
-            result.finalize(start_time.elapsed().as_millis() as u64);
-            result
-        } else if kind == "readability" {
-            // Readability analysis
-            let mut result = AnalysisResult::new("quality", "readability", scope);
-
-            let findings = analyze_readability(&complexity_report, &file_path);
-
-            for finding in findings {
-                result.add_finding(finding);
+            "readability" => {
+                super::engine::run_analysis(context, tool_call, "quality", kind, analyze_readability).await
             }
-
-            result.summary.files_analyzed = 1;
-            result.summary.symbols_analyzed = Some(complexity_report.total_functions);
-            result.finalize(start_time.elapsed().as_millis() as u64);
-            result
-        } else {
-            unreachable!("Unsupported kind validated earlier");
-        };
-
-        // Set language in metadata
-        result.metadata.language = Some(language.to_string());
-
-        info!(
-            file_path = %file_path,
-            findings_count = result.summary.total_findings,
-            analysis_time_ms = result.summary.analysis_time_ms,
-            "Quality analysis complete"
-        );
-
-        // Serialize to JSON
-        serde_json::to_value(result)
-            .map_err(|e| ServerError::Internal(format!("Failed to serialize result: {}", e)))
+            _ => unreachable!("Kind validated earlier"),
+        }
     }
 }
