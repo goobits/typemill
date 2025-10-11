@@ -175,7 +175,7 @@ impl PluginDispatcher {
                     InternalWorkspaceHandler, LifecycleHandler, NavigationHandler,
                     SystemToolsHandler, WorkspaceToolsHandler,
                 };
-                use super::tools::analysis::{DeadCodeHandler, QualityHandler};
+                use super::tools::analysis::{DeadCodeHandler, DependenciesHandler, QualityHandler};
                 use super::{
                     DeleteHandler, ExtractHandler, FileOperationHandler, InlineHandler, MoveHandler,
                     RenameHandler, ReorderHandler, TransformHandler, WorkspaceApplyHandler,
@@ -190,6 +190,7 @@ impl PluginDispatcher {
                     AnalysisHandler => "AnalysisHandler with 4 INTERNAL tools (find_unused_imports, analyze_code, analyze_project, analyze_imports)",
                     QualityHandler => "QualityHandler with 1 tool (analyze.quality)",
                     DeadCodeHandler => "DeadCodeHandler with 1 tool (analyze.dead_code)",
+                    DependenciesHandler => "DependenciesHandler with 1 tool (analyze.dependencies)",
                     InternalNavigationHandler => "InternalNavigationHandler with 1 INTERNAL tool (get_document_symbols)",
                     LifecycleHandler => "LifecycleHandler with 3 INTERNAL tools (notify_file_opened, notify_file_saved, notify_file_closed)",
                     InternalEditingToolsHandler => "InternalEditingToolsHandler with 1 INTERNAL tool (rename_symbol_with_imports)",
