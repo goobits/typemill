@@ -40,37 +40,26 @@ Pure Rust MCP server bridging Language Server Protocol (LSP) functionality to AI
 
 Codebuddy provides comprehensive MCP tools for code intelligence and refactoring. See **[API_REFERENCE.md](API_REFERENCE.md)** for complete API reference with detailed parameters, return types, and examples.
 
-**Note:** Additional internal tools exist for backend use only (lifecycle hooks, workflow plumbing). These are hidden from MCP `tools/list` to simplify the API surface. See [API_REFERENCE.md Internal Tools](API_REFERENCE.md#internal-tools) section.
+**Current Architecture**: 17 public tools visible to AI agents via MCP `tools/list`, plus 25 internal tools for backend workflows.
 
-### Quick Reference
+**Note:** Internal tools exist for backend use only (lifecycle hooks, workflow plumbing, legacy operations). These are hidden from MCP `tools/list` to simplify the API surface for AI agents. See [API_REFERENCE.md Internal Tools](API_REFERENCE.md#internal-tools) section.
 
-**Navigation & Intelligence**
+### Quick Reference (17 Public Tools)
+
+**Navigation & Intelligence (8 tools)**
 - `find_definition`, `find_references`, `search_workspace_symbols`
-- `get_document_symbols`, `get_hover`, `get_completions`
-- `get_signature_help`, `get_diagnostics`
-- `prepare_call_hierarchy`, `get_call_hierarchy_incoming_calls`, `get_call_hierarchy_outgoing_calls`
-- `find_implementations`, `find_type_definition`, `web_fetch`
+- `find_implementations`, `find_type_definition`, `get_symbol_info`
+- `get_diagnostics`, `get_call_hierarchy`
 
-**Editing & Refactoring**
-- `*.plan` / `workspace.apply_edit` (Unified Refactoring API)
+**Editing & Refactoring (7 tools - Unified API)**
+- `rename.plan`, `extract.plan`, `inline.plan`, `move.plan`
+- `reorder.plan`, `transform.plan`, `delete.plan`
+- `workspace.apply_edit` (executes any plan)
 
-**File Operations**
-- `create_file`, `read_file`, `write_file`, `delete_file`
-- `rename_file` (auto-updates imports)
-- `list_files`
+**System & Health (2 tools)**
+- `health_check`, `system_status`
 
-**Workspace Operations**
-- `rename_directory` (auto-updates imports, supports Rust crate consolidation)
-- `analyze_imports`, `find_dead_code`, `update_dependencies`
-- `extract_module_to_package`, `update_dependency`
-
-**Advanced Operations**
-- `apply_edits` (atomic multi-file edits)
-- `batch_execute` (batch file operations)
-- See [docs/features/WORKFLOWS.md](docs/features/WORKFLOWS.md) for intent-based workflow automation
-
-**System & Health**
-- `health_check`, `web_fetch`, `system_status`
+**Note**: File operations, workspace tools, and legacy analysis tools are now internal-only. AI agents should use the public API above. See [API_REFERENCE.md](API_REFERENCE.md) for complete details.
 
 ### MCP Usage Pattern
 
@@ -112,8 +101,10 @@ File and workspace operations also support `dry_run: true`:
 ```
 
 **Supported operations:**
-- File operations: `create_file`, `write_file`, `delete_file`, `rename_file`
-- Directory operations: `rename_directory` (including consolidation mode)
+- Refactoring plans: All `*.plan` commands (always dry-run)
+- Workspace execution: `workspace.apply_edit` (supports `dry_run: true`)
+
+**Note**: File and directory operations (`create_file`, `write_file`, `delete_file`, `rename_file`, `rename_directory`) are now internal tools used by backend workflows.
 
 **Benefits:**
 - Preview changes before applying them
@@ -123,7 +114,9 @@ File and workspace operations also support `dry_run: true`:
 
 ### Rust Crate Consolidation
 
-The `rename_directory` tool supports a special **consolidation mode** for merging Rust crates:
+**Note**: `rename_directory` is now an internal tool. Consolidation functionality is available to backend workflows but not directly exposed to AI agents.
+
+The `rename_directory` internal tool supports a special **consolidation mode** for merging Rust crates:
 
 ```json
 {

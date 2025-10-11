@@ -64,7 +64,6 @@ Requests to endpoints like `/workspaces` or `/workspaces/{id}/execute` without a
 | `find_implementations` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | For interfaces/abstract classes |
 | `find_type_definition` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Find underlying type definitions |
 | `search_workspace_symbols` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Queries ALL active LSP servers |
-| `get_document_symbols` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Hierarchical symbol structure |
 | `prepare_call_hierarchy` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Returns call hierarchy item |
 | `get_call_hierarchy_incoming_calls` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Requires item from prepare step |
 | `get_call_hierarchy_outgoing_calls` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Requires item from prepare step |
@@ -72,6 +71,9 @@ Requests to endpoints like `/workspaces` or `/workspaces/{id}/execute` without a
 | `get_completions` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Project-aware suggestions |
 | `get_signature_help` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Parameter information |
 | `get_diagnostics` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Errors, warnings, hints |
+
+**Internal tools (not in public API):**
+- `get_document_symbols` - Hierarchical symbol structure (replaced by future `analyze.structure`)
 
 ### Editing & Refactoring (Unified API)
 
@@ -83,11 +85,13 @@ Requests to endpoints like `/workspaces` or `/workspaces/{id}/execute` without a
 
 | Tool | TypeScript/JS | Python | Go | Rust | Java | Swift | C# | Notes |
 |------|---------------|--------|-----|------|------|-------|-----|-------|
-| `find_unused_imports` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Pattern-based import usage detection |
-| `analyze_complexity` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Cyclomatic complexity metrics |
 | `suggest_refactoring` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Pattern-based refactoring suggestions |
-| `analyze_project_complexity` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Project-wide complexity analysis with class aggregation |
 | `find_complexity_hotspots` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Top N most complex functions/classes |
+
+**Internal tools (not in public API):**
+- `find_unused_imports` - Pattern-based import usage detection (replaced by future `analyze.dead_code`)
+- `analyze_complexity` - Cyclomatic complexity metrics (replaced by future `analyze.quality`)
+- `analyze_project_complexity` - Project-wide complexity analysis (replaced by future `analyze.quality`)
 
 ### File Operations
 
@@ -104,22 +108,26 @@ Requests to endpoints like `/workspaces` or `/workspaces/{id}/execute` without a
 
 | Tool | TypeScript/JS | Python | Go | Rust | Java | Swift | C# | Notes |
 |------|---------------|--------|-----|------|------|-------|-----|-------|
-| `rename_directory` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | **Auto-updates imports**, Rust crate consolidation |
-| `analyze_imports` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | All languages use AST parsing |
 | `find_dead_code` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | LSP-based |
 | `update_dependencies` | ✅ npm/yarn | ✅ pip | ✅ go mod | ✅ cargo | ✅ mvn | ✅ swift | ✅ nuget | Executes package manager |
 | `update_dependency` | ✅ npm/yarn | ✅ pip | ✅ go mod | ✅ cargo | ✅ mvn | ✅ swift | ✅ nuget | Executes package manager |
 | `extract_module_to_package` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Multi-language support |
 
+**Internal tools (not in public API):**
+- `rename_directory` - Auto-updates imports, Rust crate consolidation
+- `analyze_imports` - AST-based import analysis (replaced by future `analyze.dependencies`)
+
 ### Advanced & System
 
 | Tool | TypeScript/JS | Python | Go | Rust | Java | Swift | C# | Notes |
 |------|---------------|--------|-----|------|------|-------|-----|-------|
-| `apply_edits` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Atomic multi-file edits |
-| `batch_execute` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Batch operations |
 | `health_check` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Server status |
 | `web_fetch` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | URL content fetching |
 | `system_status` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Lightweight server status |
+
+**Internal tools (not in public API):**
+- `apply_edits` - Atomic multi-file edits (replaced by `workspace.apply_edit`)
+- `batch_execute` - Batch operations (replaced by future `analyze.batch`)
 
 **Note:** Language support depends on configured LSP servers in `.codebuddy/config.json`. LSP-first tools attempt LSP code actions, falling back to AST parsing if unsupported.
 
@@ -310,6 +318,8 @@ Search for symbols across the entire workspace.
 ---
 
 ### `get_document_symbols`
+
+**Internal Tool** - Not visible in MCP tools/list. Replaced by Unified Analysis API (future `analyze.structure("symbols")`).
 
 Get hierarchical symbol structure for a file.
 
@@ -948,6 +958,8 @@ AST-based code analysis tools for detecting code smells and optimization opportu
 
 ### `find_unused_imports`
 
+**Internal Tool** - Not visible in MCP tools/list. Replaced by Unified Analysis API (future `analyze.dead_code("unused_imports")`).
+
 Detect unused imports in a file.
 
 **Parameters:**
@@ -990,6 +1002,8 @@ Detect unused imports in a file.
 ---
 
 ### `analyze_complexity`
+
+**Internal Tool** - Not visible in MCP tools/list. Replaced by Unified Analysis API (future `analyze.quality("complexity")`). Previously named `analyze_code`.
 
 Calculate comprehensive complexity and code quality metrics for functions in a file.
 
@@ -1247,6 +1261,8 @@ Each suggestion includes specific, actionable advice:
 ---
 
 ### `analyze_project_complexity`
+
+**Internal Tool** - Not visible in MCP tools/list. Replaced by Unified Analysis API (future `analyze.quality("maintainability")`). Previously named `analyze_project`.
 
 Scan an entire directory or project for complexity metrics across all supported files. Provides project-wide statistics, file-level summaries, and class/module-level aggregations.
 
@@ -1825,6 +1841,8 @@ codebuddy tool rename_directory '{"old_path":"crates","new_path":"lib"}'
 
 ### `analyze_imports`
 
+**Internal Tool** - Not visible in MCP tools/list. Replaced by Unified Analysis API (future `analyze.dependencies("imports")`).
+
 Analyze import statements in a file.
 
 **Implementation:** AST-based parsing (all languages)
@@ -2052,6 +2070,8 @@ High-level operations combining multiple tools.
 
 ### `apply_edits`
 
+**Internal Tool** - Not visible in MCP tools/list. Replaced by `workspace.apply_edit` in the Unified Refactoring API. Also known as `execute_edits`.
+
 Apply atomic multi-file edits with rollback on failure.
 
 **Parameters:**
@@ -2124,6 +2144,8 @@ Apply atomic multi-file edits with rollback on failure.
 ---
 
 ### `batch_execute`
+
+**Internal Tool** - Not visible in MCP tools/list. Will be replaced by Unified Analysis API (future `analyze.batch`). Also known as `execute_batch`.
 
 Execute multiple file operations in a single batch with atomic guarantees.
 
@@ -2355,12 +2377,25 @@ Get basic system operational status.
 
 **Backend-only tools - Not exposed via MCP `tools/list`**
 
-These tools are used internally by the Codebuddy workflow system and LSP protocol interop. They are **not visible** to AI agents via MCP tool listings, but remain callable by the backend for orchestration and plugin lifecycle management.
+These 25 internal tools are used by the Codebuddy workflow system and LSP protocol interop. They are **not visible** to AI agents via MCP tool listings, but remain callable by the backend for orchestration and plugin lifecycle management.
 
 **Why hidden:**
 - AI agents use the unified refactoring API (e.g., `rename.plan` + `workspace.apply_edit` instead of `rename_symbol_with_imports`)
+- Legacy analysis tools replaced by Unified Analysis API (future `analyze.*` commands)
 - These tools are implementation details / workflow plumbing
 - Simplifies the API surface for AI agent developers
+
+**Internal Tool Categories:**
+- **Lifecycle hooks (3)**: notify_file_opened, notify_file_saved, notify_file_closed
+- **Legacy editing (1)**: rename_symbol_with_imports
+- **Legacy workspace (1)**: apply_workspace_edit
+- **Intelligence (2)**: get_completions, get_signature_help
+- **Workspace tools (4)**: move_directory, find_dead_code, update_dependencies, update_dependency
+- **File operations (4)**: create_file, delete_file, rename_file, rename_directory
+- **File utilities (3)**: read_file, write_file, list_files
+- **Legacy analysis (4)**: find_unused_imports, analyze_code (analyze_complexity), analyze_project (analyze_project_complexity), analyze_imports
+- **Structure analysis (1)**: get_document_symbols
+- **Advanced plumbing (2)**: execute_edits (apply_edits), execute_batch (batch_execute)
 
 ### `notify_file_opened`
 
