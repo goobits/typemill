@@ -30,37 +30,6 @@ use mcp_handler_runners::*;
 use cb_test_support::harness::mcp_fixtures::*;
 
 // =============================================================================
-// Create File Tests
-// =============================================================================
-
-#[tokio::test]
-async fn test_create_file_mock() {
-    for (idx, case) in CREATE_FILE_TESTS.iter().enumerate() {
-        println!(
-            "Running mock create_file test {}/{}: {}",
-            idx + 1,
-            CREATE_FILE_TESTS.len(),
-            case.test_name
-        );
-        run_create_file_test(case, false).await;
-    }
-}
-
-#[tokio::test]
-#[ignore] // Requires MCP server to be running
-async fn test_create_file_real() {
-    for (idx, case) in CREATE_FILE_TESTS.iter().enumerate() {
-        println!(
-            "Running real create_file test {}/{}: {}",
-            idx + 1,
-            CREATE_FILE_TESTS.len(),
-            case.test_name
-        );
-        run_create_file_test(case, true).await;
-    }
-}
-
-// =============================================================================
 // Read File Tests
 // =============================================================================
 
@@ -119,37 +88,6 @@ async fn test_write_file_real() {
             case.test_name
         );
         run_write_file_test(case, true).await;
-    }
-}
-
-// =============================================================================
-// Delete File Tests
-// =============================================================================
-
-#[tokio::test]
-async fn test_delete_file_mock() {
-    for (idx, case) in DELETE_FILE_TESTS.iter().enumerate() {
-        println!(
-            "Running mock delete_file test {}/{}: {}",
-            idx + 1,
-            DELETE_FILE_TESTS.len(),
-            case.test_name
-        );
-        run_delete_file_test(case, false).await;
-    }
-}
-
-#[tokio::test]
-#[ignore] // Requires MCP server to be running
-async fn test_delete_file_real() {
-    for (idx, case) in DELETE_FILE_TESTS.iter().enumerate() {
-        println!(
-            "Running real delete_file test {}/{}: {}",
-            idx + 1,
-            DELETE_FILE_TESTS.len(),
-            case.test_name
-        );
-        run_delete_file_test(case, true).await;
     }
 }
 

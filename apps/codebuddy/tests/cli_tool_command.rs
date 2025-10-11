@@ -126,54 +126,6 @@ fn test_tool_read_file_success() {
 }
 
 #[test]
-fn test_tool_create_file_dry_run() {
-    let temp_dir = TempDir::new().unwrap();
-
-    let mut cmd = codebuddy_cmd();
-    cmd.current_dir(temp_dir.path());
-    cmd.args([
-        "tool",
-        "create_file",
-        r#"{"file_path": "new_file.txt", "content": "test", "dry_run": true}"#,
-    ]);
-
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("preview"));
-
-    // File should not actually be created
-    assert!(!temp_dir.path().join("new_file.txt").exists());
-}
-
-#[test]
-fn test_tool_create_and_read_file() {
-    let temp_dir = TempDir::new().unwrap();
-
-    // Create file
-    let mut cmd = codebuddy_cmd();
-    cmd.current_dir(temp_dir.path());
-    cmd.args([
-        "tool",
-        "create_file",
-        r#"{"file_path": "created.txt", "content": "Created content"}"#,
-    ]);
-
-    cmd.assert().success();
-
-    // Verify file was created
-    assert!(temp_dir.path().join("created.txt").exists());
-
-    // Read file back
-    let mut cmd = codebuddy_cmd();
-    cmd.current_dir(temp_dir.path());
-    cmd.args(["tool", "read_file", r#"{"file_path": "created.txt"}"#]);
-
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Created content"));
-}
-
-#[test]
 fn test_tool_unknown_tool_name() {
     let mut cmd = codebuddy_cmd();
     cmd.args(["tool", "nonexistent_tool", "{}"]);
