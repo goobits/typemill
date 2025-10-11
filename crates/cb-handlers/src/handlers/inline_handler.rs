@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
 use cb_protocol::{
     ApiError as ServerError, ApiResult as ServerResult, EditPlan, InlinePlan, PlanMetadata,
-    PlanSummary,
+    PlanSummary, RefactorPlan,
 };
 use lsp_types::{Position, Range, WorkspaceEdit};
 use serde::{Deserialize, Serialize};
@@ -73,8 +73,9 @@ impl InlineHandler {
             _ => unreachable!("Already validated kind"),
         };
 
-        // Serialize plan and wrap in content field for MCP protocol
-        let plan_json = serde_json::to_value(&plan)
+        // Wrap in RefactorPlan enum for discriminant, then serialize for MCP protocol
+        let refactor_plan = RefactorPlan::InlinePlan(plan);
+        let plan_json = serde_json::to_value(&refactor_plan)
             .map_err(|e| ServerError::Internal(format!("Failed to serialize plan: {}", e)))?;
 
         Ok(json!({

@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
 use cb_protocol::{
     refactor_plan::{PlanMetadata, PlanSummary, ReorderPlan},
-    ApiError as ServerError, ApiResult as ServerResult,
+    ApiError as ServerError, ApiResult as ServerResult, RefactorPlan,
 };
 use lsp_types::{Position, WorkspaceEdit};
 use serde::Deserialize;
@@ -113,8 +113,9 @@ impl ToolHandler for ReorderHandler {
             }
         };
 
-        // Serialize plan to JSON and wrap in content field for MCP protocol
-        let plan_json = serde_json::to_value(&plan).map_err(|e| {
+        // Wrap in RefactorPlan enum for discriminant, then serialize for MCP protocol
+        let refactor_plan = RefactorPlan::ReorderPlan(plan);
+        let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
             ServerError::Internal(format!("Failed to serialize reorder plan: {}", e))
         })?;
 
