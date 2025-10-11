@@ -13,6 +13,7 @@ Your complete guide to all MCP tools available in Codebuddy. Use this reference 
 - [Language Plugin Architecture](#language-plugin-architecture) - Capability-based plugin system
 - [Navigation & Intelligence](#navigation--intelligence)
 - [Editing & Refactoring](#editing--refactoring)
+- [Unified Analysis API](#unified-analysis-api) - NEW: Consistent analyze commands
 - [Code Analysis](#code-analysis)
 - [File Operations](#file-operations)
 - [Workspace Operations](#workspace-operations)
@@ -952,6 +953,166 @@ println!("{}", description);
 
 ---
 
+## Unified Analysis API
+
+**NEW:** Unified commands for code quality and analysis. These commands follow a consistent `analyze.<category>(kind, scope, options)` pattern and return standardized `AnalysisResult` structures.
+
+**Benefits:**
+- Consistent result format across all analysis types
+- Actionable suggestions with safety metadata
+- Configurable thresholds and filtering
+- Integration with refactoring API
+
+**Available Commands:**
+- `analyze.quality` - Code quality analysis (complexity, smells, maintainability, readability) ✅ **MVP: kind="complexity" only**
+- `analyze.dead_code` - Coming soon
+- `analyze.dependencies` - Coming soon
+- `analyze.structure` - Coming soon
+- `analyze.documentation` - Coming soon
+- `analyze.tests` - Coming soon
+
+---
+
+### `analyze.quality`
+
+Analyze code quality metrics including complexity, code smells, maintainability, and readability.
+
+**MVP Status**: Currently supports `kind="complexity"` only. Additional kinds coming soon.
+
+**Parameters:**
+```json
+{
+  "kind": "complexity",  // Required: Analysis type (only "complexity" supported in MVP)
+  "scope": {             // Optional: Defaults to file scope
+    "type": "file",      // "workspace" | "directory" | "file" | "symbol"
+    "path": "src/app.rs" // Required: File/directory path
+  },
+  "options": {           // Optional: Analysis configuration
+    "thresholds": {
+      "cyclomatic_complexity": 15,  // Default: 15
+      "cognitive_complexity": 10,   // Default: 10
+      "nesting_depth": 4,           // Default: 4
+      "parameter_count": 5,         // Default: 5
+      "function_length": 50         // Default: 50
+    },
+    "severity_filter": null,        // null (all) | "high" | "medium" | "low"
+    "limit": 1000,                  // Max findings to return (default: 1000)
+    "include_suggestions": true     // Include refactoring suggestions (default: true)
+  }
+}
+```
+
+**Returns:**
+```json
+{
+  "findings": [
+    {
+      "id": "complexity-1",
+      "kind": "complexity_hotspot",
+      "severity": "high",
+      "location": {
+        "file_path": "src/app.rs",
+        "range": {
+          "start": {"line": 10, "character": 0},
+          "end": {"line": 45, "character": 1}
+        },
+        "symbol": "process_order",
+        "symbol_kind": "function"
+      },
+      "metrics": {
+        "cyclomatic_complexity": 25,
+        "cognitive_complexity": 18,
+        "nesting_depth": 5,
+        "parameter_count": 8,
+        "line_count": 35
+      },
+      "message": "Function 'process_order' has high cyclomatic complexity (25)",
+      "suggestions": [
+        {
+          "action": "extract_function",
+          "description": "Extract nested conditional block to separate function",
+          "estimated_impact": "reduces complexity by ~8 points",
+          "safety": "requires_review",
+          "confidence": 0.85,
+          "reversible": true,
+          "refactor_call": {
+            "command": "extract.plan",
+            "arguments": {
+              "kind": "function",
+              "source": {
+                "file_path": "src/app.rs",
+                "range": {
+                  "start": {"line": 15, "character": 4},
+                  "end": {"line": 23, "character": 5}
+                },
+                "name": "validate_order"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_findings": 5,
+    "returned_findings": 5,
+    "has_more": false,
+    "by_severity": {"high": 2, "medium": 2, "low": 1},
+    "files_analyzed": 1,
+    "symbols_analyzed": 12,
+    "analysis_time_ms": 234
+  },
+  "metadata": {
+    "category": "quality",
+    "kind": "complexity",
+    "scope": {"type": "file", "path": "src/app.rs"},
+    "language": "rust",
+    "timestamp": "2025-10-11T12:00:00Z",
+    "thresholds": {
+      "cyclomatic_complexity": 15,
+      "cognitive_complexity": 10
+    }
+  }
+}
+```
+
+**Example:**
+```bash
+# Analyze complexity in a file
+codebuddy tool analyze.quality '{
+  "kind": "complexity",
+  "scope": {"type": "file", "path": "src/app.rs"}
+}'
+
+# With custom thresholds
+codebuddy tool analyze.quality '{
+  "kind": "complexity",
+  "scope": {"type": "file", "path": "src/handlers.rs"},
+  "options": {
+    "thresholds": {"cyclomatic_complexity": 20},
+    "severity_filter": "high"
+  }
+}'
+```
+
+**Supported Kinds (MVP):**
+- `"complexity"` ✅ - Cyclomatic and cognitive complexity analysis
+
+**Coming Soon:**
+- `"smells"` - Code smell detection (long methods, god classes, magic numbers)
+- `"maintainability"` - Overall maintainability metrics
+- `"readability"` - Readability issues (nesting, parameter count, length)
+
+**Notes:**
+- Reuses proven complexity analysis from `cb_ast::complexity`
+- Suggestions include safety metadata for automated refactoring
+- All findings link to refactoring commands for closed-loop workflow
+- Future kinds will use the same result structure
+
+**Language Support:** All languages with AST support (Rust, TypeScript, Go, Python, Java, Swift, C#)
+
+---
+
 ## Code Analysis
 
 AST-based code analysis tools for detecting code smells and optimization opportunities.
@@ -1003,7 +1164,7 @@ Detect unused imports in a file.
 
 ### `analyze_complexity`
 
-**Internal Tool** - Not visible in MCP tools/list. Replaced by Unified Analysis API (future `analyze.quality("complexity")`). Previously named `analyze_code`.
+**Internal Tool** - Not visible in MCP tools/list. **Replaced by `analyze.quality("complexity")` ✅ (MVP available now)**. Previously named `analyze_code`.
 
 Calculate comprehensive complexity and code quality metrics for functions in a file.
 
@@ -1262,7 +1423,7 @@ Each suggestion includes specific, actionable advice:
 
 ### `analyze_project_complexity`
 
-**Internal Tool** - Not visible in MCP tools/list. Replaced by Unified Analysis API (future `analyze.quality("maintainability")`). Previously named `analyze_project`.
+**Internal Tool** - Not visible in MCP tools/list. **Being replaced by `analyze.quality("maintainability")` (coming soon)**. Previously named `analyze_project`.
 
 Scan an entire directory or project for complexity metrics across all supported files. Provides project-wide statistics, file-level summaries, and class/module-level aggregations.
 
