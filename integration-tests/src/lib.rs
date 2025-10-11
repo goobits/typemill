@@ -17,6 +17,31 @@ pub mod resilience_tests;
 #[cfg(test)]
 pub mod test_unified_refactoring_api;
 
+// Unified Refactoring API integration tests (Proposal 30)
+#[cfg(test)]
+pub mod test_rename_integration;
+
+#[cfg(test)]
+pub mod test_extract_integration;
+
+#[cfg(test)]
+pub mod test_inline_integration;
+
+#[cfg(test)]
+pub mod test_move_integration;
+
+#[cfg(test)]
+pub mod test_reorder_integration;
+
+#[cfg(test)]
+pub mod test_transform_integration;
+
+#[cfg(test)]
+pub mod test_delete_integration;
+
+#[cfg(test)]
+pub mod test_workspace_apply_integration;
+
 pub use harness::{TestClient, TestWorkspace};
 pub use helpers::*;
 pub use mocks::{MockAstService, MockLspService};

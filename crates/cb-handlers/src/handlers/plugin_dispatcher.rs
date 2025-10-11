@@ -169,8 +169,16 @@ impl PluginDispatcher {
             );
 
             {
-                use super::tools::*;
-                use super::*;
+                use super::tools::{
+                    AdvancedToolsHandler, AnalysisHandler,
+                    InternalEditingToolsHandler, InternalIntelligenceHandler,
+                    InternalWorkspaceHandler, LifecycleHandler, NavigationHandler,
+                    SystemToolsHandler,
+                };
+                use super::{
+                    DeleteHandler, ExtractHandler, InlineHandler, MoveHandler,
+                    RenameHandler, ReorderHandler, TransformHandler, WorkspaceApplyHandler,
+                };
                 let mut registry = self.tool_registry.lock().await;
                 register_handlers_with_logging!(registry, {
                     SystemToolsHandler => "SystemToolsHandler with 1 tool (health_check)",

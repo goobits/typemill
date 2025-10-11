@@ -10,6 +10,7 @@ pub mod lsp_adapter;
 pub mod macros;
 pub mod move_handler;
 pub mod plugin_dispatcher;
+pub mod refactoring_handler;
 pub mod rename_handler;
 pub mod reorder_handler;
 pub mod system_handler;
@@ -29,6 +30,7 @@ pub use inline_handler::InlineHandler;
 pub use lsp_adapter::DirectLspAdapter;
 pub use move_handler::MoveHandler;
 pub use plugin_dispatcher::{create_test_dispatcher, AppState, PluginDispatcher};
+pub use refactoring_handler::RefactoringHandler;
 pub use rename_handler::RenameHandler;
 pub use reorder_handler::ReorderHandler;
 pub use system_handler::SystemHandler;
@@ -36,7 +38,7 @@ pub use transform_handler::TransformHandler;
 pub use workspace_apply_handler::WorkspaceApplyHandler;
 pub use tool_registry::ToolRegistry;
 pub use tools::{
-    AdvancedToolsHandler, EditingToolsHandler, FileToolsHandler, LifecycleHandler,
+    AdvancedToolsHandler, FileToolsHandler, LifecycleHandler,
     NavigationHandler, SystemToolsHandler, ToolHandler, ToolHandlerContext, WorkspaceToolsHandler,
 };
 pub use workflow_handler::WorkflowHandler;
