@@ -1,7 +1,9 @@
 //! CLI command handling for the codebuddy server
 
+use cb_client::format_plan;
 use cb_core::config::AppConfig;
 use cb_core::utils::system::command_exists;
+use cb_protocol::refactor_plan::RefactorPlan;
 use cb_transport::SessionInfo;
 use clap::{Parser, Subcommand};
 use fs2::FileExt;
@@ -722,6 +724,22 @@ async fn handle_tool_command(tool_name: &str, args_json: &str, format: &str) {
 
 /// Output result to stdout based on format
 fn output_result(result: &serde_json::Value, format: &str) {
+    // Check if this is a refactor plan by looking for plan_type field
+    let is_plan = result.get("plan_type").is_some();
+
+    // For pretty format, show human-readable summary for plans
+    if format != "compact" && is_plan {
+        // Try to deserialize as RefactorPlan
+        if let Ok(plan) = serde_json::from_value::<RefactorPlan>(result.clone()) {
+            let description = format_plan(&plan);
+
+            // Print human-readable summary with visual separator
+            println!("📋 {}", description);
+            println!();
+        }
+    }
+
+    // Always output full JSON (for programmatic use and non-plans)
     let output = match format {
         "compact" => serde_json::to_string(result).unwrap_or_else(|_| "{}".to_string()),
         _ => serde_json::to_string_pretty(result).unwrap_or_else(|_| "{}".to_string()),
