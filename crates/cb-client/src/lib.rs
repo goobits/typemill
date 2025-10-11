@@ -21,6 +21,7 @@ pub mod websocket;
 
 pub use client_config::{ClientConfig, ConfigBuilder};
 pub use error::{ClientError, ClientResult};
+pub use formatting::format_plan;
 
 use serde::{Deserialize, Serialize};
 

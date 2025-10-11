@@ -1,5 +1,6 @@
 use crate::error::ClientError;
 use crate::websocket::MCPResponse;
+use cb_protocol::refactor_plan::RefactorPlan;
 use console::{style, Emoji};
 use indicatif::{ProgressBar, ProgressStyle};
 use serde_json::Value;
@@ -544,6 +545,71 @@ impl Formatter {
     }
 }
 
+/// Format a refactor plan into a human-readable sentence
+///
+/// Produces sentences like:
+/// - "Renames function 'old' to 'new' across 3 files"
+/// - "Extracts function 'helper' into a new declaration in 2 files"
+/// - "Moves code to 'target.rs' affecting 1 file"
+pub fn format_plan(plan: &RefactorPlan) -> String {
+    use cb_protocol::refactor_plan::*;
+
+    match plan {
+        RefactorPlan::RenamePlan(p) => {
+            let kind = &p.metadata.kind;
+            let files = p.summary.affected_files;
+            let file_text = if files == 1 { "file" } else { "files" };
+            format!("Renames {} across {} {}", kind, files, file_text)
+        }
+        RefactorPlan::ExtractPlan(p) => {
+            let kind = &p.metadata.kind;
+            let files = p.summary.affected_files;
+            let created = p.summary.created_files;
+            let file_text = if files == 1 { "file" } else { "files" };
+            if created > 0 {
+                format!("Extracts {} into a new declaration in {} {}", kind, files, file_text)
+            } else {
+                format!("Extracts {} in {} {}", kind, files, file_text)
+            }
+        }
+        RefactorPlan::InlinePlan(p) => {
+            let kind = &p.metadata.kind;
+            let files = p.summary.affected_files;
+            let file_text = if files == 1 { "file" } else { "files" };
+            format!("Inlines {} in {} {}", kind, files, file_text)
+        }
+        RefactorPlan::MovePlan(p) => {
+            let kind = &p.metadata.kind;
+            let files = p.summary.affected_files;
+            let file_text = if files == 1 { "file" } else { "files" };
+            format!("Moves {} affecting {} {}", kind, files, file_text)
+        }
+        RefactorPlan::ReorderPlan(p) => {
+            let kind = &p.metadata.kind;
+            let files = p.summary.affected_files;
+            let file_text = if files == 1 { "file" } else { "files" };
+            format!("Reorders {} in {} {}", kind, files, file_text)
+        }
+        RefactorPlan::TransformPlan(p) => {
+            let kind = &p.metadata.kind;
+            let files = p.summary.affected_files;
+            let file_text = if files == 1 { "file" } else { "files" };
+            format!("Transforms code ({}) in {} {}", kind, files, file_text)
+        }
+        RefactorPlan::DeletePlan(p) => {
+            let kind = &p.metadata.kind;
+            let files = p.summary.affected_files;
+            let deleted = p.summary.deleted_files;
+            let file_text = if files == 1 { "file" } else { "files" };
+            if deleted > 0 {
+                format!("Deletes {} from {} {} ({} files removed)", kind, files, file_text, deleted)
+            } else {
+                format!("Deletes {} from {} {}", kind, files, file_text)
+            }
+        }
+    }
+}
+
 /// Convenience functions for common formatting
 pub fn format_success(message: &str) -> String {
     Formatter::default().success(message)
@@ -576,7 +642,10 @@ pub fn format_client_error(error: &ClientError) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cb_protocol::refactor_plan::*;
+    use lsp_types::WorkspaceEdit;
     use serde_json::json;
+    use std::collections::HashMap;
 
     #[test]
     fn test_formatter_basic_messages() {
@@ -627,5 +696,165 @@ mod tests {
         assert!(result.contains("Value"));
         assert!(result.contains("Item 1"));
         assert!(result.contains("Item 2"));
+    }
+
+    // Helper to create test plan metadata
+    fn create_test_metadata(kind: &str) -> PlanMetadata {
+        PlanMetadata {
+            plan_version: "1.0".to_string(),
+            kind: kind.to_string(),
+            language: "rust".to_string(),
+            estimated_impact: "low".to_string(),
+            created_at: "2025-10-11T12:00:00Z".to_string(),
+        }
+    }
+
+    // Helper to create test summary
+    fn create_test_summary(affected: usize, created: usize, deleted: usize) -> PlanSummary {
+        PlanSummary {
+            affected_files: affected,
+            created_files: created,
+            deleted_files: deleted,
+        }
+    }
+
+    #[test]
+    fn test_format_plan_rename_single_file() {
+        let plan = RefactorPlan::RenamePlan(RenamePlan {
+            edits: WorkspaceEdit::default(),
+            summary: create_test_summary(1, 0, 0),
+            warnings: vec![],
+            metadata: create_test_metadata("function"),
+            file_checksums: HashMap::new(),
+        });
+
+        let result = format_plan(&plan);
+        assert_eq!(result, "Renames function across 1 file");
+    }
+
+    #[test]
+    fn test_format_plan_rename_multiple_files() {
+        let plan = RefactorPlan::RenamePlan(RenamePlan {
+            edits: WorkspaceEdit::default(),
+            summary: create_test_summary(3, 0, 0),
+            warnings: vec![],
+            metadata: create_test_metadata("variable"),
+            file_checksums: HashMap::new(),
+        });
+
+        let result = format_plan(&plan);
+        assert_eq!(result, "Renames variable across 3 files");
+    }
+
+    #[test]
+    fn test_format_plan_extract_with_creation() {
+        let plan = RefactorPlan::ExtractPlan(ExtractPlan {
+            edits: WorkspaceEdit::default(),
+            summary: create_test_summary(2, 1, 0),
+            warnings: vec![],
+            metadata: create_test_metadata("function"),
+            file_checksums: HashMap::new(),
+        });
+
+        let result = format_plan(&plan);
+        assert_eq!(result, "Extracts function into a new declaration in 2 files");
+    }
+
+    #[test]
+    fn test_format_plan_extract_without_creation() {
+        let plan = RefactorPlan::ExtractPlan(ExtractPlan {
+            edits: WorkspaceEdit::default(),
+            summary: create_test_summary(1, 0, 0),
+            warnings: vec![],
+            metadata: create_test_metadata("variable"),
+            file_checksums: HashMap::new(),
+        });
+
+        let result = format_plan(&plan);
+        assert_eq!(result, "Extracts variable in 1 file");
+    }
+
+    #[test]
+    fn test_format_plan_inline() {
+        let plan = RefactorPlan::InlinePlan(InlinePlan {
+            edits: WorkspaceEdit::default(),
+            summary: create_test_summary(2, 0, 0),
+            warnings: vec![],
+            metadata: create_test_metadata("constant"),
+            file_checksums: HashMap::new(),
+        });
+
+        let result = format_plan(&plan);
+        assert_eq!(result, "Inlines constant in 2 files");
+    }
+
+    #[test]
+    fn test_format_plan_move() {
+        let plan = RefactorPlan::MovePlan(MovePlan {
+            edits: WorkspaceEdit::default(),
+            summary: create_test_summary(3, 0, 0),
+            warnings: vec![],
+            metadata: create_test_metadata("symbol"),
+            file_checksums: HashMap::new(),
+        });
+
+        let result = format_plan(&plan);
+        assert_eq!(result, "Moves symbol affecting 3 files");
+    }
+
+    #[test]
+    fn test_format_plan_reorder() {
+        let plan = RefactorPlan::ReorderPlan(ReorderPlan {
+            edits: WorkspaceEdit::default(),
+            summary: create_test_summary(1, 0, 0),
+            warnings: vec![],
+            metadata: create_test_metadata("parameters"),
+            file_checksums: HashMap::new(),
+        });
+
+        let result = format_plan(&plan);
+        assert_eq!(result, "Reorders parameters in 1 file");
+    }
+
+    #[test]
+    fn test_format_plan_transform() {
+        let plan = RefactorPlan::TransformPlan(TransformPlan {
+            edits: WorkspaceEdit::default(),
+            summary: create_test_summary(2, 0, 0),
+            warnings: vec![],
+            metadata: create_test_metadata("to_async"),
+            file_checksums: HashMap::new(),
+        });
+
+        let result = format_plan(&plan);
+        assert_eq!(result, "Transforms code (to_async) in 2 files");
+    }
+
+    #[test]
+    fn test_format_plan_delete_with_file_removal() {
+        let plan = RefactorPlan::DeletePlan(DeletePlan {
+            edits: WorkspaceEdit::default(),
+            summary: create_test_summary(3, 0, 2),
+            warnings: vec![],
+            metadata: create_test_metadata("dead_code"),
+            file_checksums: HashMap::new(),
+        });
+
+        let result = format_plan(&plan);
+        assert_eq!(result, "Deletes dead_code from 3 files (2 files removed)");
+    }
+
+    #[test]
+    fn test_format_plan_delete_without_file_removal() {
+        let plan = RefactorPlan::DeletePlan(DeletePlan {
+            edits: WorkspaceEdit::default(),
+            summary: create_test_summary(1, 0, 0),
+            warnings: vec![],
+            metadata: create_test_metadata("unused_imports"),
+            file_checksums: HashMap::new(),
+        });
+
+        let result = format_plan(&plan);
+        assert_eq!(result, "Deletes unused_imports from 1 file");
     }
 }
