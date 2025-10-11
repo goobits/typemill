@@ -4,11 +4,13 @@ use cb_core::model::mcp::ToolCall;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 
 pub mod code;
+pub mod dead_code;
 pub mod engine;
 pub mod project;
 pub mod quality;
 pub mod unused_imports;
 
+pub use dead_code::DeadCodeHandler;
 pub use quality::QualityHandler;
 
 #[cfg(test)]
