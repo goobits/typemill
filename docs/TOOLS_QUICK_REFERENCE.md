@@ -22,7 +22,7 @@
 
 ---
 
-**Tools:** 48 public MCP tools
+**Tools:** 46 public MCP tools
 **Internal tools:** 5 backend-only tools (see [API_REFERENCE.md Internal Tools](../API_REFERENCE.md#internal-tools))
 
 ---
@@ -47,12 +47,10 @@
 
 ---
 
-## Editing & Refactoring (13 tools)
+## Editing & Refactoring (11 tools)
 
 | Tool | Description | Required Parameters | Returns |
 |------|-------------|---------------------|---------|
-| `rename_symbol` | Rename a symbol across the project by name | `file_path`, `symbol_name`, `new_name` | Workspace edits with file changes |
-| `rename_symbol_strict` | Rename a symbol at a specific position | `file_path`, `line`, `character`, `new_name` | Workspace edits with file changes |
 | `rename.plan` | **Plan** rename refactoring (dry-run, part of unified API) | `file_path`, `symbol_name`, `new_name` | Refactoring plan (not applied) |
 | `extract.plan` | **Plan** extract function/variable (dry-run, part of unified API) | `file_path`, `start_line`, `end_line`, `name`, `kind` | Refactoring plan (not applied) |
 | `inline.plan` | **Plan** inline variable refactoring (dry-run, part of unified API) | `file_path`, `symbol_name`, `line` | Refactoring plan (not applied) |
@@ -157,7 +155,7 @@ LSP-based tools depend on configured language servers. Native tools (file ops, A
 
 **AST Refactoring Support:**
 - ✅ Full: TypeScript/JavaScript, Python, Rust, Go, Java, Swift
-- ⚠️ Partial: C# (extract_function works, extract/inline_variable have bugs)
+- ⚠️ Partial: C# (extract.plan works, inline.plan has known issues)
 
 ---
 

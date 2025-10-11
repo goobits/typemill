@@ -431,11 +431,11 @@ codebuddy tool workspace.apply_edit "{
 
 ### Benefits Over Legacy Tools
 
-**Before (Legacy)**:
-- Direct execution: `rename_symbol`, `extract_function`, `inline_variable`
-- No preview capability
+**Before (Legacy tools, now removed)**:
+- Direct execution with no preview capability
 - Limited rollback support
 - Inconsistent safety features across tools
+- Difficult to inspect changes before applying
 
 **After (Unified API)**:
 - Consistent `plan -> apply` pattern
