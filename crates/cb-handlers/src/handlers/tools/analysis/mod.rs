@@ -95,16 +95,16 @@ impl AnalysisHandler {
 impl ToolHandler for AnalysisHandler {
     fn tool_names(&self) -> &[&str] {
         &[
-            "analyze_imports",
+            "analyze_project",  // Thin shim → analyze.quality("maintainability") workspace scope
+            "analyze_imports",  // Thin shim → analyze.dependencies("imports") plugin-native
         ]
     }
 
     fn is_internal(&self) -> bool {
-        // Legacy analysis tool is internal - replaced by Unified Analysis API
+        // Legacy analysis tools are internal - replaced by Unified Analysis API
+        // Both are thin shims for backward compatibility:
+        // - analyze_project → analyze.quality("maintainability") (workspace aggregator)
         // - analyze_imports → analyze.dependencies("imports") (plugin-native graphs)
-        //
-        // Note: analyze_project was removed as it's fully replaced by
-        //       analyze.quality("maintainability") with workspace scope
         true
     }
 
@@ -114,6 +114,29 @@ impl ToolHandler for AnalysisHandler {
         tool_call: &ToolCall,
     ) -> ServerResult<serde_json::Value> {
         match tool_call.name.as_str() {
+            "analyze_project" => {
+                // Thin shim: route to analyze.quality("maintainability") with workspace scope
+                use serde_json::json;
+                let args = tool_call.arguments.clone().unwrap_or(json!({}));
+                let directory_path = args.get("directory_path")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| ServerError::InvalidRequest("Missing directory_path".to_string()))?;
+
+                // Create unified API call
+                let quality_handler = QualityHandler::new();
+                let unified_call = ToolCall {
+                    name: "analyze.quality".to_string(),
+                    arguments: Some(json!({
+                        "kind": "maintainability",
+                        "scope": {
+                            "type": "workspace",
+                            "path": directory_path
+                        }
+                    })),
+                };
+
+                quality_handler.handle_tool_call(context, &unified_call).await
+            }
             "analyze_imports" => {
                 // Delegate to the plugin system (SystemToolsPlugin handles this)
                 self.delegate_to_plugin_system(context, tool_call).await
