@@ -5,7 +5,7 @@
 //!
 //! ## Handler Registry
 //!
-//! The dispatcher registers 20 internal tools across multiple handlers:
+//! The dispatcher registers 19 internal tools across multiple handlers:
 //! - FileOperationHandler: 4 internal tools (create_file, delete_file, rename_file, rename_directory)
 //! - FileToolsHandler: 3 internal tools (read_file, write_file, list_files)
 //! - AdvancedToolsHandler: 2 internal tools (execute_edits, execute_batch)
@@ -14,7 +14,7 @@
 //! - InternalEditingToolsHandler: 1 internal tool (rename_symbol_with_imports)
 //! - InternalWorkspaceHandler: 1 internal tool (apply_workspace_edit)
 //! - InternalIntelligenceHandler: 2 internal tools (get_completions, get_signature_help)
-//! - WorkspaceToolsHandler: 3 internal tools (move_directory, update_dependencies, update_dependency)
+//! - WorkspaceToolsHandler: 2 internal tools (move_directory, update_dependencies)
 
 use crate::register_handlers_with_logging;
 use async_trait::async_trait;
@@ -211,7 +211,7 @@ impl PluginDispatcher {
                     InternalEditingToolsHandler => "InternalEditingToolsHandler with 1 INTERNAL tool (rename_symbol_with_imports)",
                     InternalWorkspaceHandler => "InternalWorkspaceHandler with 1 INTERNAL tool (apply_workspace_edit)",
                     InternalIntelligenceHandler => "InternalIntelligenceHandler with 2 INTERNAL tools (get_completions, get_signature_help)",
-                    WorkspaceToolsHandler => "WorkspaceToolsHandler with 3 INTERNAL tools (move_directory, update_dependencies, update_dependency)",
+                    WorkspaceToolsHandler => "WorkspaceToolsHandler with 2 INTERNAL tools (move_directory, update_dependencies)",
 
                     // New unified refactoring handlers
                     RenameHandler => "Unified rename handler",

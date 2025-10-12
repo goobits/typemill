@@ -316,20 +316,18 @@ async fn test_find_dead_code_workflow() {
         project_path
     );
 
-    // Run find_dead_code on our test project with an extended timeout,
+    // Run analyze.dead_code on our test project with an extended timeout,
     // as the analysis can be slow on cold runs.
     let arguments = json!({
-        "files": [
-            format!("{}/src/main.ts", project_path),
-            format!("{}/src/utils.ts", project_path),
-            format!("{}/src/processor.ts", project_path)
-        ],
-        "exclude_tests": true,
-        "min_references": 1
+        "kind": "unused_symbols",
+        "scope": {
+            "type": "workspace",
+            "path": project_path.to_string()
+        }
     });
 
     let response_result = client
-        .call_tool_with_timeout("find_dead_code", arguments, Duration::from_secs(60))
+        .call_tool_with_timeout("analyze.dead_code", arguments, Duration::from_secs(60))
         .await;
 
     let response = match response_result {
@@ -354,37 +352,42 @@ async fn test_find_dead_code_workflow() {
         // System tools return results directly, not wrapped in "content"
         let result = &response["result"];
 
-        // Validate response structure
+        // Validate unified API response structure
         assert!(
-            result["deadSymbols"].is_array(),
-            "Should have deadSymbols array"
+            result["findings"].is_array(),
+            "Should have findings array"
         );
         assert!(
-            result["analysisStats"].is_object(),
-            "Should have analysisStats object"
+            result["summary"].is_object(),
+            "Should have summary object"
+        );
+        assert!(
+            result["metadata"].is_object(),
+            "Should have metadata object"
         );
 
-        let dead_symbols = result["deadSymbols"].as_array().unwrap();
-        let stats = &result["analysisStats"];
+        let findings = result["findings"].as_array().unwrap();
+        let summary = &result["summary"];
 
-        println!("Found {} dead symbols", dead_symbols.len());
+        println!("Found {} dead symbols", findings.len());
 
         // We expect to find the unused function and class
-        let found_unused_function = dead_symbols.iter().any(|item| {
-            item["name"].as_str() == Some("unusedFunction")
-                && item["file"].as_str().unwrap_or("").contains("processor.ts")
+        let found_unused_function = findings.iter().any(|item| {
+            let title = item["title"].as_str().or_else(|| item["message"].as_str());
+            let file_path = item["location"]["file_path"].as_str().unwrap_or("");
+            title == Some("unusedFunction") && file_path.contains("processor.ts")
         });
 
-        let found_unused_class = dead_symbols.iter().any(|item| {
-            item["name"].as_str() == Some("UnusedClass")
-                && item["file"].as_str().unwrap_or("").contains("processor.ts")
+        let found_unused_class = findings.iter().any(|item| {
+            let title = item["title"].as_str().or_else(|| item["message"].as_str());
+            let file_path = item["location"]["file_path"].as_str().unwrap_or("");
+            title == Some("UnusedClass") && file_path.contains("processor.ts")
         });
 
         // Check that used functions are NOT marked as dead
-        let found_used_function = dead_symbols.iter().any(|item| {
-            item["name"].as_str() == Some("format")
-                || item["name"].as_str() == Some("transform")
-                || item["name"].as_str() == Some("TestMain")
+        let found_used_function = findings.iter().any(|item| {
+            let title = item["title"].as_str().or_else(|| item["message"].as_str());
+            title == Some("format") || title == Some("transform") || title == Some("TestMain")
         });
 
         println!("Dead code analysis results:");
@@ -392,25 +395,25 @@ async fn test_find_dead_code_workflow() {
         println!("  - Found unused class: {}", found_unused_class);
         println!("  - Incorrectly flagged used code: {}", found_used_function);
 
-        // Validate analysis statistics
+        // Validate analysis statistics in summary
         assert!(
-            stats["filesAnalyzed"].is_number(),
-            "Should have files analyzed count"
+            summary["files_analyzed"].is_number(),
+            "Should have files_analyzed count"
         );
         assert!(
-            stats["deadSymbolsFound"].is_number(),
-            "Should have dead symbols count"
+            summary["analysis_time_ms"].is_number(),
+            "Should have analysis_time_ms"
         );
 
         // If we found dead code, it should include our unused items
-        if dead_symbols.len() > 0 {
+        if findings.len() > 0 {
             println!(
-                "✅ find_dead_code workflow test passed - detected {} dead symbols",
-                dead_symbols.len()
+                "✅ analyze.dead_code workflow test passed - detected {} dead symbols",
+                findings.len()
             );
         } else {
             println!(
-                "⚠️ find_dead_code workflow test passed but found no dead code (may need LSP)"
+                "⚠️ analyze.dead_code workflow test passed but found no dead code (may need LSP)"
             );
         }
     } else {
@@ -420,7 +423,7 @@ async fn test_find_dead_code_workflow() {
             "Error should have message"
         );
         println!(
-            "⚠️ find_dead_code workflow test passed - handled error gracefully: {}",
+            "⚠️ analyze.dead_code workflow test passed - handled error gracefully: {}",
             response["error"]["message"]
         );
     }

@@ -211,8 +211,11 @@ console.log(_.partition([1, 2, 3, 4], n => n % 2));
     // Test analyzing imports (workflow operation)
     let response = client
         .call_tool(
-            "analyze_imports",
-            json!({ "file_path": main_ts.to_string_lossy() }),
+            "analyze.dependencies",
+            json!({
+                "kind": "imports",
+                "file_path": main_ts.to_string_lossy()
+            }),
         )
         .await;
 
@@ -226,33 +229,33 @@ console.log(_.partition([1, 2, 3, 4], n => n % 2));
             .get("result")
             .expect("Workflow should return a result");
 
-        // The result contains the import graph directly
-        let import_graph = result
-            .get("importGraph")
-            .or_else(|| result.get("import_graph"))
-            .expect("Result should have importGraph field");
-
-        let imports = import_graph
-            .get("imports")
+        // The result uses unified API format with "findings" array
+        let findings = result
+            .get("findings")
             .and_then(|v| v.as_array())
-            .expect("Import graph should have imports array");
+            .expect("Result should have findings array");
 
-        assert_eq!(imports.len(), 1, "Should find one import");
+        assert_eq!(findings.len(), 1, "Should find one import");
 
-        let lodash_import = imports
+        let lodash_import = findings
             .iter()
-            .find(|i| {
-                i["modulePath"].as_str() == Some("lodash")
-                    || i["specifier"].as_str() == Some("lodash")
+            .find(|f| {
+                // In the unified API, import source is in metrics.source_module
+                f.get("metrics")
+                    .and_then(|m| m.get("source_module"))
+                    .and_then(|s| s.as_str())
+                    .map(|s| s == "lodash")
+                    .unwrap_or(false)
             })
             .expect("Should find lodash import");
 
-        // Check for either modulePath or specifier field
-        let module_path = lodash_import
-            .get("modulePath")
-            .or_else(|| lodash_import.get("specifier"))
-            .expect("Import should have modulePath or specifier");
-        assert_eq!(module_path, "lodash");
+        // Check source_module field in metrics
+        let source_module = lodash_import
+            .get("metrics")
+            .and_then(|m| m.get("source_module"))
+            .and_then(|s| s.as_str())
+            .expect("Import should have source_module in metrics");
+        assert_eq!(source_module, "lodash");
     } else {
         panic!("Tool call failed: {:?}", response.err());
     }
@@ -359,9 +362,12 @@ export function func{}() {{
     // Execute a potentially long-running workflow
     let response = client
         .call_tool(
-            "find_dead_code",
+            "analyze.dead_code",
             json!({
-                "file_types": [".ts"]
+                "kind": "unused_symbols",
+                "scope": {
+                    "type": "workspace"
+                }
             }),
         )
         .await;

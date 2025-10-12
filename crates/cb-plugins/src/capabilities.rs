@@ -235,9 +235,6 @@ impl Capabilities {
             // File-scoped diagnostic tools
             "get_diagnostics" => Some(ToolScope::File),
 
-            // File-scoped analysis tools
-            "analyze_imports" => Some(ToolScope::File),
-
             // Workspace-scoped tools
             "search_workspace_symbols"
             | "list_files"
