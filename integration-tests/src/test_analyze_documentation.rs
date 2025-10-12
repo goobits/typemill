@@ -62,10 +62,16 @@ export function undocumented2() {
     assert_eq!(result.metadata.category, "documentation");
     assert_eq!(result.metadata.kind, "coverage");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect documentation coverage
@@ -160,10 +166,16 @@ export function trivial() {
 
     assert_eq!(result.metadata.kind, "quality");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have quality finding
@@ -253,10 +265,16 @@ export function fn4() {
 
     assert_eq!(result.metadata.kind, "style");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have style finding
@@ -341,10 +359,16 @@ export function anotherComplex(x: string, y: number[]): boolean {
 
     assert_eq!(result.metadata.kind, "examples");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have examples finding
@@ -424,10 +448,16 @@ export function noteFunction(): string {
 
     assert_eq!(result.metadata.kind, "todos");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have todos finding

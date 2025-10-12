@@ -49,10 +49,16 @@ export function MyComponent() {
     assert_eq!(result.metadata.category, "dependencies");
     assert_eq!(result.metadata.kind, "imports");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect imports
@@ -136,10 +142,16 @@ export function DataProcessor() {
 
     assert_eq!(result.metadata.kind, "graph");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have dependency graph finding
@@ -210,10 +222,16 @@ pub fn example() {
 
     assert_eq!(result.metadata.kind, "circular");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect circular dependency
@@ -287,10 +305,16 @@ export function process() {
 
     assert_eq!(result.metadata.kind, "coupling");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have coupling metric finding
@@ -380,10 +404,16 @@ export function fn21() { return 21; }
 
     assert_eq!(result.metadata.kind, "cohesion");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have cohesion metric finding
@@ -462,10 +492,16 @@ export function deepDependency() {
 
     assert_eq!(result.metadata.kind, "depth");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have dependency depth finding

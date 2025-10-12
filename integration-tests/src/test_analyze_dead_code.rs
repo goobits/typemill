@@ -47,10 +47,16 @@ export function MyComponent() {
     assert_eq!(result.metadata.category, "dead_code");
     assert_eq!(result.metadata.kind, "unused_imports");
 
-    // Gracefully handle case where TypeScript parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect useEffect and Button as unused
@@ -109,10 +115,16 @@ export function publicFunction() {
     )
     .expect("Should parse as AnalysisResult");
 
-    // Gracefully handle case where TypeScript parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Verify helperFunction is detected as unused
@@ -170,10 +182,16 @@ export function processData(x: number): number {
 
     assert_eq!(result.metadata.kind, "unreachable_code");
 
-    // Gracefully handle case where TypeScript parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect unreachable code after return
@@ -237,10 +255,16 @@ fn main() {
 
     assert_eq!(result.metadata.kind, "unused_parameters");
 
-    // Gracefully handle case where Rust parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - Rust parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect y and z as unused
@@ -307,10 +331,16 @@ export function getData(): UsedInterface {
 
     assert_eq!(result.metadata.kind, "unused_types");
 
-    // Gracefully handle case where TypeScript parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect UnusedInterface but not UsedInterface
@@ -369,10 +399,16 @@ export function calculateTotal(price: number, tax: number): number {
 
     assert_eq!(result.metadata.kind, "unused_variables");
 
-    // Gracefully handle case where TypeScript parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect unusedVar and anotherUnused

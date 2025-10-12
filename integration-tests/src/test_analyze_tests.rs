@@ -68,10 +68,16 @@ it('should subtract numbers', () => {
     assert_eq!(result.metadata.category, "tests");
     assert_eq!(result.metadata.kind, "coverage");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect test coverage
@@ -174,10 +180,16 @@ function getData() {
 
     assert_eq!(result.metadata.kind, "quality");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have quality finding
@@ -267,10 +279,16 @@ function calculate() {
         "Kind should be assertions or assertion_analysis"
     );
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have assertions finding
@@ -377,10 +395,16 @@ describe('ArrayOperations', () => {
 
     assert_eq!(result.metadata.kind, "organization");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have organization finding

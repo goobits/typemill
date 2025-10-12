@@ -85,11 +85,16 @@ export function processOrder(
     assert_eq!(result.metadata.kind, "complexity");
     assert_eq!(result.metadata.scope.scope_type, "file");
 
-    // Verify findings (gracefully handle case where TypeScript parsing isn't available)
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        // TypeScript parsing not available - skip specific assertions
-        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     assert!(
@@ -315,10 +320,16 @@ export class DataProcessor {
     assert_eq!(result.metadata.category, "quality");
     assert_eq!(result.metadata.kind, "smells");
 
-    // Gracefully handle case where TypeScript parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect at least magic numbers and possibly god class
@@ -426,10 +437,16 @@ export function veryComplex(x: number, y: number, z: number) {
     assert_eq!(result.metadata.category, "quality");
     assert_eq!(result.metadata.kind, "maintainability");
 
-    // Gracefully handle case where TypeScript parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have exactly 1 finding (summary)
@@ -549,10 +566,16 @@ export function wellDocumented() {
     assert_eq!(result.metadata.category, "quality");
     assert_eq!(result.metadata.kind, "readability");
 
-    // Gracefully handle case where TypeScript parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect multiple readability issues

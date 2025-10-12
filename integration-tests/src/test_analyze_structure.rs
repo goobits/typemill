@@ -64,10 +64,16 @@ export type UserData = {
     assert_eq!(result.metadata.category, "structure");
     assert_eq!(result.metadata.kind, "symbols");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should detect symbols
@@ -154,10 +160,16 @@ export class LeafClass extends MiddleClass {
 
     assert_eq!(result.metadata.kind, "hierarchy");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have hierarchy finding
@@ -256,10 +268,16 @@ export interface SimpleInterface {
 
     assert_eq!(result.metadata.kind, "interfaces");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have interface finding
@@ -366,10 +384,16 @@ export class Level5 extends Level4 {
 
     assert_eq!(result.metadata.kind, "inheritance");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have inheritance finding
@@ -467,10 +491,16 @@ export function helper3() { return "helper3"; }
 
     assert_eq!(result.metadata.kind, "modules");
 
-    // Gracefully handle case where parsing isn't available
+    // Verify symbols_analyzed is present (even if 0 for unsupported files)
+    assert!(
+        result.summary.symbols_analyzed.is_some(),
+        "symbols_analyzed should be present in summary"
+    );
+
+    // If no symbols analyzed (e.g., parsing not available), skip detailed assertions
+    // Note: Some analyses may return summary findings even with 0 symbols
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
-        return;
+        return; // Valid early exit for unparseable files
     }
 
     // Should have module finding
