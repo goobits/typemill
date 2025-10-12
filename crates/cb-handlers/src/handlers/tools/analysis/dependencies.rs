@@ -714,7 +714,7 @@ fn generate_cycle_break_suggestions(cycle: &Cycle) -> Vec<Suggestion> {
                 cycle.modules.get(0).map(|s| s.as_str()).unwrap_or("module A"),
                 cycle.modules.get(1).map(|s| s.as_str()).unwrap_or("module B")
             ),
-            target: cycle.modules.get(0).cloned(),
+            target: None,
             estimated_impact: "Eliminates circular dependency, improves testability and modularity".to_string(),
             safety: SafetyLevel::Safe,
             confidence: 0.85,
