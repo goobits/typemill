@@ -1,8 +1,8 @@
 //! End-to-end analysis features tests
 //!
 //! This module tests analysis tools like find_dead_code with real LSP integration.
-//! Unlike the data-driven tests in mcp_file_operations.rs, these tests focus on
-//! end-to-end workflows and LSP fallback scenarios.
+//! These tests focus on end-to-end workflows and LSP fallback scenarios.
+//! MCP protocol layer is tested separately in mcp_protocol_smoke_test.rs.
 
 use cb_test_support::harness::{
     discover_plugins_with_fixtures, plugin_language_name, TestClient, TestWorkspace,
