@@ -198,6 +198,84 @@ codebuddy tool workspace.apply_edit "{\"plan\": $PLAN}"
 - These are used by the workflow system but not exposed to AI agents
 - See [docs/architecture/INTERNAL_TOOLS.md](../docs/architecture/INTERNAL_TOOLS.md) for details
 
+### Understanding the Unified Analysis API
+
+Codebuddy uses a **unified analysis API** with a consistent `analyze.<category>(kind, scope, options) → AnalysisResult` pattern for all code analysis. This architecture provides:
+
+1. **Consistency**: All analysis operations follow the same pattern and return the same result structure
+2. **Composability**: Batch analysis with shared AST parsing for performance
+3. **Read-only**: Analysis operations never modify files
+4. **Actionable**: Results include suggestions linking directly to refactoring operations
+
+**Current Analysis Tools:**
+
+| Tool | Categories (kinds) | Returns |
+|------|-------------------|---------|
+| `analyze.quality` | complexity, smells, maintainability, readability | `AnalysisResult` |
+| `analyze.dead_code` | unused_imports, unused_symbols, unreachable_code, unused_parameters, unused_types, unused_variables | `AnalysisResult` |
+| `analyze.dependencies` | imports, graph, circular, coupling, cohesion, depth | `AnalysisResult` |
+| `analyze.structure` | symbols, hierarchy, interfaces, inheritance, modules | `AnalysisResult` |
+| `analyze.documentation` | coverage, quality, style, examples, todos | `AnalysisResult` |
+| `analyze.tests` | coverage, quality, assertions, organization | `AnalysisResult` |
+| `analyze.batch` | Multi-file analysis with optimized AST caching | `BatchAnalysisResult` |
+
+**Example Flow:**
+```bash
+# Analyze code quality
+codebuddy tool analyze.quality '{
+  "kind": "complexity",
+  "scope": {"type": "file", "path": "src/app.ts"}
+}'
+
+# Returns:
+{
+  "findings": [
+    {
+      "id": "complexity-1",
+      "kind": "complexity_hotspot",
+      "severity": "high",
+      "location": {...},
+      "metrics": {"cyclomatic_complexity": 25, ...},
+      "message": "Function has high complexity",
+      "suggestions": [
+        {
+          "action": "extract_function",
+          "description": "Extract nested block",
+          "refactor_call": {
+            "command": "extract.plan",
+            "arguments": {...}
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {...},
+  "metadata": {...}
+}
+```
+
+**Analysis Handler Architecture:**
+
+Analysis handlers are organized by category in `crates/cb-handlers/src/handlers/tools/analysis/`:
+
+- `quality.rs` - Code quality analysis (4 kinds)
+- `dead_code.rs` - Unused code detection (6 kinds)
+- `dependencies.rs` - Dependency analysis (6 kinds)
+- `structure.rs` - Code structure (5 kinds)
+- `documentation.rs` - Documentation quality (5 kinds)
+- `tests_handler.rs` - Test analysis (4 kinds)
+- `batch.rs` - Batch analysis infrastructure with AST caching
+- `config.rs` - Configuration loading (.codebuddy/analysis.toml)
+
+**Adding a new detection kind:**
+
+1. Add the kind to the appropriate category handler (e.g., `quality.rs`)
+2. Implement a detection function with signature: `(complexity_report, content, symbols, language, file_path) -> Vec<Finding>`
+3. Register the function in `batch.rs` helpers
+4. Add test cases in `integration-tests/src/test_analyze_<category>.rs`
+
+See [40_PROPOSAL_UNIFIED_ANALYSIS_API.md](../40_PROPOSAL_UNIFIED_ANALYSIS_API.md) for complete architecture details.
+
 ### Adding a Tool to an Existing Handler
 
 Adding a new tool to an existing handler requires modifying just one file.
@@ -208,7 +286,7 @@ Handlers are organized by functionality:
 
 | Handler | Location | Purpose | Example Tools |
 |---------|----------|---------|---------------|
-| **AnalysisHandler** | `crates/cb-handlers/src/handlers/tools/analysis.rs` | Code analysis | `find_unused_imports`, `analyze_complexity` |
+| **AnalysisHandler** | `crates/cb-handlers/src/handlers/tools/analysis/*.rs` | Unified Analysis API (7 categories) | `analyze.quality`, `analyze.dead_code`, `analyze.dependencies`, `analyze.structure`, `analyze.documentation`, `analyze.tests`, `analyze.batch` |
 | **AdvancedHandler** | `crates/cb-handlers/src/handlers/tools/advanced.rs` | Advanced operations | `apply_edits`, `batch_execute` |
 | **FileOpsHandler** | `crates/cb-handlers/src/handlers/tools/file_ops.rs` | File operations | `create_file`, `read_file`, `write_file`, `delete_file`, `rename_file`, `list_files` |
 | **InternalEditingHandler** | `crates/cb-handlers/src/handlers/tools/internal_editing.rs` | Internal editing tools (hidden from MCP) | `format_document`, `optimize_imports` |

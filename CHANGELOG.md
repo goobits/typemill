@@ -22,17 +22,18 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Plan commands generate detailed previews without filesystem modifications
   - Apply command executes plans with atomic multi-file updates and automatic rollback
 
-- **Unified Analysis API** - Complete implementation of 6 analysis categories (23 public tools total)
+- **Unified Analysis API** - Complete implementation of 7 analysis tools (24 public tools total)
   - `analyze.quality` - Code quality analysis (complexity, smells, maintainability, readability)
   - `analyze.dead_code` - Unused code detection (imports, symbols, parameters, variables, types, unreachable)
   - `analyze.dependencies` - Dependency analysis (imports, graph, circular, coupling, cohesion, depth)
   - `analyze.structure` - Code structure analysis (symbols, hierarchy, interfaces, inheritance, modules)
   - `analyze.documentation` - Documentation quality (coverage, quality, style, examples, todos)
   - `analyze.tests` - Test analysis (coverage, quality, assertions, organization)
-  - 30 detection kinds across all categories with actionable suggestions
+  - `analyze.batch` - Multi-file batch analysis with optimized AST caching for maximum performance
+  - 26 detection kinds across 6 categories with actionable suggestions
   - Shared analysis engine eliminating ~100 LOC boilerplate per detection kind
-  - Configuration system with 3 presets (strict, default, relaxed)
-  - Batch analysis infrastructure with AST caching optimization
+  - Configuration system with 3 presets (strict, default, relaxed) via .codebuddy/analysis.toml
+  - Batch analysis infrastructure parsing files once and analyzing multiple times
 
 #### Changed
 
@@ -54,9 +55,11 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 - **Documentation Consistency** - Corrected documentation discrepancies across all reference docs
   - Updated UNIFIED_ANALYSIS_API_SUMMARY.md to reflect correct language support (Rust + TypeScript/JavaScript only)
-  - Fixed TOOLS_VISIBILITY_SPEC.md tool count (23 public tools, 25 internal tools)
-  - Updated API_REFERENCE.md to remove "coming soon" status for all 6 analyze.* commands
-  - Fixed QUICK_REFERENCE.md to include all 6 analysis tools with examples
+  - Fixed TOOLS_VISIBILITY_SPEC.md tool count (24 public tools, 25 internal tools)
+  - Updated API_REFERENCE.md to include all 7 analyze.* commands with complete examples
+  - Fixed QUICK_REFERENCE.md to include all 7 analysis tools (including analyze.batch)
+  - Updated CLAUDE.md and AGENTS.md with Unified Analysis API section
+  - Updated CONTRIBUTING.md with analysis handler architecture patterns
   - Corrected language support claims across all documentation (multi-language support in `pre-language-reduction` git tag)
 
 #### Removed
