@@ -13,7 +13,7 @@
 - ✅ Configuration system (.codebuddy/analysis.toml with presets)
 - ✅ 6 integration test files passing
 - ✅ API documentation complete
-- ✅ analyze.batch MCP tool - **COMPLETED** (commit aa38c0b0, exposed as tool #24)
+- ⚠️ analyze.batch infrastructure - **PARTIAL** (batch.rs exists, NOT exposed as MCP tool)
 - ✅ Documentation sync - **COMPLETED** (commits aa38c0b0, 5b7d0a3e)
 
 **NOT YET IMPLEMENTED - Actionable Suggestions (Phase 2C):**
@@ -999,7 +999,7 @@ analyze.quality("complexity", { preset: "strict", thresholds: { cyclomatic_compl
 - [✅] Project-level configuration (`.codebuddy/analysis.toml`) with preset support (strict, default, relaxed)
 - [✅] Configuration loading with graceful fallback to defaults
 - [✅] Batch analysis infrastructure complete (all 26 detection kinds wired)
-- [✅] `analyze.batch` MCP tool exposed as tool #24
+- [❌] `analyze.batch` MCP tool - **NOT YET EXPOSED** (infrastructure exists in batch.rs, needs ToolHandler)
 - [❌] **Actionable Suggestions with Safety Metadata** - NOT IMPLEMENTED
   - Safety classification (safe/requires_review/experimental)
   - Confidence scoring (0.0 to 1.0)
@@ -1106,7 +1106,7 @@ This section provides a comprehensive checklist of all files that need to be cre
 
 ### Remaining Work
 
-- ✅ analyze.batch MCP tool - **COMPLETED** (commit aa38c0b0)
+- ❌ analyze.batch MCP tool - **NOT YET IMPLEMENTED** (infrastructure exists, needs ToolHandler exposure)
 - ✅ Update all documentation - **COMPLETED** (commits aa38c0b0, 5b7d0a3e)
 - ⚠️ Legacy analysis command migration - **FROZEN** (see Legacy Tool Retention section below)
 - ⚠️ CI validation of suggestion metadata - Future work
@@ -1266,11 +1266,21 @@ The implementation uses a **monolithic approach** instead of separate analysis c
 - [ ] `CONTRIBUTING.md` - Document new analysis handler patterns
 - [ ] `CHANGELOG.md` - Document unified analysis API release
 
-#### analyze.batch MCP Tool (1 file) - ⚠️ Not Yet Implemented
+#### analyze.batch MCP Tool (1 file) - ❌ NOT YET IMPLEMENTED
 - [ ] Add `analyze.batch` MCP tool to SystemToolsPlugin
-  - Infrastructure exists in batch.rs
-  - Need to expose as MCP tool for multi-analysis workflows
-  - Would make it tool #24
+  - Infrastructure exists in batch.rs (`run_batch_analysis` function)
+  - Need to create ToolHandler that exposes batch analysis as public MCP tool
+  - Accept array of analysis queries, return aggregated results
+  - Optimize with shared AST parsing (sequential execution for cache hits)
+  - Would make it public tool #24
+
+**Implementation steps:**
+1. Create `AnalysisBatchHandler` struct implementing `ToolHandler` trait
+2. Define input schema accepting array of `{ command, kind, scope, options }` queries
+3. Wire up to `run_batch_analysis` from batch.rs
+4. Register in SystemToolsPlugin with `is_internal() = false`
+5. Add integration test for multi-category batch queries
+6. Document in API_REFERENCE.md with batch optimization details
 
 ---
 
@@ -1376,7 +1386,7 @@ For each of 6 analysis categories, verify:
 #### Overall Completion
 - [✅] All 6 `analyze.*` commands working end-to-end (23 public tools total)
 - [✅] Batch analysis infrastructure complete (all helpers wired)
-- [ ] `analyze.batch` MCP tool exposed (infrastructure exists, not yet exposed)
+- [❌] `analyze.batch` MCP tool exposed - **NOT YET IMPLEMENTED** (infrastructure exists in batch.rs, needs ToolHandler)
 - [✅] `.codebuddy/analysis.toml` configuration loading works
 - [✅] Preset system functional (strict, default, relaxed)
 - [ ] All 37 legacy analysis commands removed (future work)
