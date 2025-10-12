@@ -1,13 +1,39 @@
 use super::FileService;
 use crate::services::git_service::GitService;
 use cb_core::dry_run::DryRunnable;
-use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult, EditPlan};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use tracing::{debug, info, warn};
 
 impl FileService {
+    /// Generates an EditPlan for a file rename operation, including import updates.
+    /// This is a dry-run only operation.
+    pub async fn plan_rename_file_with_imports(
+        &self,
+        old_path: &Path,
+        new_path: &Path,
+        scan_scope: Option<cb_plugin_api::ScanScope>,
+    ) -> ServerResult<EditPlan> {
+        info!(old_path = ?old_path, new_path = ?new_path, "Planning file rename with imports");
+
+        let old_abs = self.to_absolute_path(old_path);
+        let new_abs = self.to_absolute_path(new_path);
+
+        if !old_abs.exists() {
+            return Err(ServerError::NotFound(format!(
+                "Source file does not exist: {:?}",
+                old_abs
+            )));
+        }
+
+        // The `true` flag indicates a dry run.
+        self.import_service
+            .update_imports_for_rename(&old_abs, &new_abs, None, true, scan_scope)
+            .await
+    }
+
     /// Perform a git-aware file rename
     ///
     /// Uses `git mv` if the file is tracked and git is available, otherwise falls back to filesystem rename.
