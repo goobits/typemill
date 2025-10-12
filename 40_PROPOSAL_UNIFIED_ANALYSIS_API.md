@@ -15,9 +15,9 @@
 - ✅ API documentation complete
 
 **REMAINING:**
-- ⚠️ analyze.batch MCP tool (infrastructure ready, needs tool registration)
-- ⚠️ Legacy command removal (37 commands to deprecate)
-- ⚠️ Documentation sync (QUICK_REFERENCE, CLAUDE.md, etc.)
+- ✅ analyze.batch MCP tool - **COMPLETED** (commit aa38c0b0, exposed as tool #24)
+- ✅ Documentation sync - **COMPLETED** (commits aa38c0b0, 5b7d0a3e)
+- ⚠️ Legacy tool migration - **FROZEN** (4 tools kept as internal with migration plan, see details below)
 
 **See [Implementation Status](#implementation-status-as-of-2025-10-12) section below for complete details.**
 
@@ -1081,10 +1081,90 @@ This section provides a comprehensive checklist of all files that need to be cre
 
 ### Remaining Work
 
-- ⚠️ analyze.batch (shared AST parsing across multiple analyses) - Not yet implemented
-- ⚠️ Remove legacy analysis commands - Pending
-- ⚠️ Update all documentation to reflect new API - Partially done (API_REFERENCE.md updated)
+- ✅ analyze.batch MCP tool - **COMPLETED** (commit aa38c0b0)
+- ✅ Update all documentation - **COMPLETED** (commits aa38c0b0, 5b7d0a3e)
+- ⚠️ Legacy analysis command migration - **FROZEN** (see Legacy Tool Retention section below)
 - ⚠️ CI validation of suggestion metadata - Future work
+
+### Legacy Tool Retention Rationale
+
+**Status**: 4 legacy tools retained as internal-only, with active dependencies
+
+After investigation, the following legacy tools **cannot be removed yet** because they serve distinct architectural purposes not yet covered by the Unified Analysis API:
+
+#### 1. `analyze_project` - Workspace Aggregator (KEEP)
+- **Location**: `crates/cb-handlers/src/handlers/tools/analysis/project.rs:16,51`
+- **Why keep**: Only workspace-wide complexity aggregator; unified engine is still file-scoped (`crates/cb-handlers/src/handlers/tools/analysis/engine.rs:103`)
+- **Active usage**: E2E tests (`apps/codebuddy/tests/e2e_analysis_features.rs:438`)
+- **Migration path**: Extend unified engine to handle directory/workspace scopes, port `analyze.quality(kind="maintainability")` to return same aggregates
+- **Effort**: 1-2 weeks (workspace streaming + report merging)
+
+#### 2. `find_dead_code` - LSP-Backed Cross-File Analysis (KEEP)
+- **Location**: `crates/cb-handlers/src/handlers/analysis_handler.rs:140`
+- **Why keep**: Drives LSP-backed dead-symbol sweep via `cb_analysis_dead_code`; new `analyze.dead_code` is heuristic/file-local (`crates/cb-handlers/src/handlers/tools/analysis/dead_code.rs:241`)
+- **Active usage**: E2E tests (`apps/codebuddy/tests/e2e_analysis_features.rs:52`)
+- **Migration path**: Fold LSP engine behind `analyze.dead_code` for workspace runs, keep heuristic for file fallbacks
+- **Effort**: 2-3 weeks (LSP integration + cross-file accuracy)
+
+#### 3. `analyze_imports` - Plugin-Native Import Graphs (KEEP)
+- **Location**: `crates/cb-plugins/src/system_tools_plugin.rs:193`
+- **Why keep**: Only path that builds plugin-native ImportGraph structures; new `analyze.dependencies(kind="imports")` is regex-based per-file (`crates/cb-handlers/src/handlers/tools/analysis/dependencies.rs:964`)
+- **Active usage**: Workflow tests (`apps/codebuddy/tests/e2e_workflow_execution.rs:214`)
+- **Migration path**: Move import-graph construction into `analyze.dependencies` by delegating to plugin registry
+- **Effort**: 1-2 weeks (plugin delegation + parity testing)
+
+#### 4. `find_unused_imports` - Duplicated Heuristics (CONSOLIDATE)
+- **Location**: `crates/cb-handlers/src/handlers/tools/analysis/unused_imports.rs:148`
+- **Issue**: Regex helpers duplicated with `analyze.dead_code` (`unused_imports.rs:207` vs `dead_code.rs:1340`)
+- **Risk**: Maintenance burden (two copies of same regex logic)
+- **Migration path**: Extract shared regex helpers to common module, then make legacy tool a thin shim
+- **Effort**: 2-3 days (quick win, low risk)
+
+#### Migration Strategy
+
+1. **Phase 1 (Quick Win)**: Deduplicate regex helpers
+   - Extract to `crates/cb-handlers/src/handlers/tools/analysis/regex_helpers.rs`
+   - Both legacy and new handlers call same functions
+   - Estimated: 2-3 days
+
+2. **Phase 2 (Workspace Support)**: Extend unified engine
+   - Add directory/workspace scope streaming
+   - Port `analyze.quality(kind="maintainability")` to match legacy aggregates
+   - Redirect e2e tests to new API
+   - Retire `analyze_project`
+   - Estimated: 1-2 weeks
+
+3. **Phase 3 (LSP Integration)**: Cross-file dead code
+   - Fold LSP engine into `analyze.dead_code` workspace mode
+   - Keep heuristic detector for file-only fallbacks
+   - Make `find_dead_code` thin shim
+   - Estimated: 2-3 weeks
+
+4. **Phase 4 (Plugin Delegation)**: Import graphs
+   - Move graph construction into `analyze.dependencies`
+   - Delegate to plugin registry for supported languages
+   - Update workflow tests
+   - Delete `analyze_imports`
+   - Estimated: 1-2 weeks
+
+#### Tracking Metrics
+
+Added runtime tracking (future work):
+- Instrument all 4 legacy tools with call counters
+- Emit metrics showing internal vs external usage
+- Monitor before/after migration to detect unexpected callsites
+
+#### Files Affected
+
+**Keep as internal (4 tools)**:
+- `crates/cb-handlers/src/handlers/tools/analysis/project.rs`
+- `crates/cb-handlers/src/handlers/analysis_handler.rs` (find_dead_code)
+- `crates/cb-plugins/src/system_tools_plugin.rs` (analyze_imports delegation)
+- `crates/cb-handlers/src/handlers/tools/analysis/unused_imports.rs`
+
+**Tests with active dependencies**:
+- `apps/codebuddy/tests/e2e_analysis_features.rs` (uses analyze_project, find_dead_code)
+- `apps/codebuddy/tests/e2e_workflow_execution.rs` (uses analyze_imports)
 
 ### Files CREATED (13 files) ✅
 
