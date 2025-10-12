@@ -65,11 +65,8 @@ export type UserData = {
     assert_eq!(result.metadata.kind, "symbols");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -158,11 +155,8 @@ export class LeafClass extends MiddleClass {
     assert_eq!(result.metadata.kind, "hierarchy");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -263,11 +257,8 @@ export interface SimpleInterface {
     assert_eq!(result.metadata.kind, "interfaces");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -376,11 +367,8 @@ export class Level5 extends Level4 {
     assert_eq!(result.metadata.kind, "inheritance");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -480,11 +468,8 @@ export function helper3() { return "helper3"; }
     assert_eq!(result.metadata.kind, "modules");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 

@@ -69,11 +69,8 @@ it('should subtract numbers', () => {
     assert_eq!(result.metadata.kind, "coverage");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -178,11 +175,8 @@ function getData() {
     assert_eq!(result.metadata.kind, "quality");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -274,11 +268,8 @@ function calculate() {
     );
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -387,11 +378,8 @@ describe('ArrayOperations', () => {
     assert_eq!(result.metadata.kind, "organization");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 

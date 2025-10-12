@@ -50,11 +50,8 @@ export function MyComponent() {
     assert_eq!(result.metadata.kind, "imports");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -140,11 +137,8 @@ export function DataProcessor() {
     assert_eq!(result.metadata.kind, "graph");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -217,11 +211,8 @@ pub fn example() {
     assert_eq!(result.metadata.kind, "circular");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -297,11 +288,8 @@ export function process() {
     assert_eq!(result.metadata.kind, "coupling");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -393,11 +381,8 @@ export function fn21() { return 21; }
     assert_eq!(result.metadata.kind, "cohesion");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 
@@ -478,11 +463,8 @@ export function deepDependency() {
     assert_eq!(result.metadata.kind, "depth");
 
     // Gracefully handle case where parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - parsing may not be fully available");
         return;
     }
 

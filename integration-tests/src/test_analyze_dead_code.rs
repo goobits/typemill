@@ -48,11 +48,8 @@ export function MyComponent() {
     assert_eq!(result.metadata.kind, "unused_imports");
 
     // Gracefully handle case where TypeScript parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - TypeScript parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
         return;
     }
 
@@ -113,11 +110,8 @@ export function publicFunction() {
     .expect("Should parse as AnalysisResult");
 
     // Gracefully handle case where TypeScript parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - TypeScript parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
         return;
     }
 
@@ -177,11 +171,8 @@ export function processData(x: number): number {
     assert_eq!(result.metadata.kind, "unreachable_code");
 
     // Gracefully handle case where TypeScript parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - TypeScript parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
         return;
     }
 
@@ -247,18 +238,22 @@ fn main() {
     assert_eq!(result.metadata.kind, "unused_parameters");
 
     // Gracefully handle case where Rust parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - Rust parsing may not be fully available");
+    eprintln!(
+        "DEBUG: symbols_analyzed={:?}, files_analyzed={}, findings={}",
+        result.summary.symbols_analyzed,
+        result.summary.files_analyzed,
+        result.findings.len()
+    );
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - Rust parsing may not be fully available");
         return;
     }
 
     // Should detect y and z as unused
     assert!(
         !result.findings.is_empty(),
-        "Expected unused parameter findings"
+        "Expected unused parameter findings. Symbols analyzed: {:?}",
+        result.summary.symbols_analyzed
     );
 
     for finding in &result.findings {
@@ -320,11 +315,8 @@ export function getData(): UsedInterface {
     assert_eq!(result.metadata.kind, "unused_types");
 
     // Gracefully handle case where TypeScript parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - TypeScript parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
         return;
     }
 
@@ -385,11 +377,8 @@ export function calculateTotal(price: number, tax: number): number {
     assert_eq!(result.metadata.kind, "unused_variables");
 
     // Gracefully handle case where TypeScript parsing isn't available
-    if result.summary.symbols_analyzed.unwrap_or(0) == 0
-        && result.summary.files_analyzed == 0
-        && result.findings.is_empty()
-    {
-        eprintln!("INFO: No analysis performed - TypeScript parsing may not be fully available");
+    if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+        eprintln!("INFO: No symbols analyzed - TypeScript parsing may not be fully available");
         return;
     }
 
