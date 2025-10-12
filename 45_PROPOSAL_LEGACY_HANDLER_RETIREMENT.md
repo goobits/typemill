@@ -1,8 +1,18 @@
 # Proposal 45: Legacy Handler Retirement
 
-**Status**: ✅ COMPLETE
+**Status**: ⚠️ PARTIALLY COMPLETE (thin shims strategy)
 **Created**: 2025-10-12
-**Completed**: 2025-10-12
+**Last Updated**: 2025-10-12
+
+> **Note**: See [docs/implementation/PROPOSAL_45_HONEST_STATUS.md](docs/implementation/PROPOSAL_45_HONEST_STATUS.md) for detailed status.
+
+## Current Implementation Strategy
+
+**Backward-Compatible Thin Shims** (adopted 2025-10-12):
+- Legacy tool names preserved as internal thin shims
+- Route to unified API behind the scenes
+- E2E tests continue to work without changes
+- Allows gradual migration instead of forced cutover
 
 ## Overview
 
@@ -119,11 +129,20 @@ Migrate unique functionality to unified API, then retire legacy handlers.
 
 ## Success Criteria
 
-- [ ] All legacy handler functionality preserved in unified API
-- [ ] Existing e2e/workflow tests pass with unified API
-- [ ] Legacy handlers retired (removed from codebase)
-- [ ] Documentation updated
-- [ ] No performance regressions
+**Phase 1: Backward-Compatible Migration (Current)**
+- [x] All legacy handler functionality preserved in unified API
+- [x] Thin shims created for `analyze_project` → `analyze.quality`
+- [x] Plugin integration for `analyze.dependencies("imports")`
+- [x] LSP workspace mode for `analyze.dead_code`
+- [x] Existing e2e/workflow tests pass (via shims)
+- [ ] Thin shim for `find_dead_code` → `analyze.dead_code`
+
+**Phase 2: Full Migration (Future)**
+- [ ] E2E tests migrated to unified API names
+- [ ] Legacy shims documented as DEPRECATED
+- [ ] Tool registration updated with accurate counts
+- [ ] ProjectReportFormat type removed
+- [ ] Documentation fully updated
 
 ## Non-Goals
 
