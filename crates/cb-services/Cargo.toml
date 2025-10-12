@@ -28,6 +28,7 @@ pathdiff = "0.2"
 cb-plugins = { path = "../cb-plugins" }
 cb-lang-rust = { workspace = true }
 cb-lang-typescript = { workspace = true }
+cb-lang-markdown = { workspace = true }
 chrono = "0.4"
 
 [features]

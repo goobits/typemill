@@ -10,6 +10,7 @@ impl ImportPathResolver {
         &self,
         renamed_file: &Path,
         project_files: &[PathBuf],
+        plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
     ) -> AstResult<Vec<PathBuf>> {
         let mut affected = Vec::new();
         let renamed_stem = renamed_file
@@ -66,7 +67,7 @@ impl ImportPathResolver {
             if should_scan {
                 // Read file and check for imports
                 if let Ok(content) = tokio::fs::read_to_string(file).await {
-                    if self.file_imports_target(&content, renamed_file) {
+                    if self.file_imports_target(&content, renamed_file, file, plugins) {
                         affected.push(file.clone());
 
                         // Update cache with this file's imports
@@ -113,15 +114,54 @@ impl ImportPathResolver {
     }
 
     /// Check if a file's content imports a target file
-    fn file_imports_target(&self, content: &str, target: &Path) -> bool {
+    fn file_imports_target(
+        &self,
+        content: &str,
+        target: &Path,
+        current_file: &Path,
+        plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
+    ) -> bool {
         let target_stem = target.file_stem().and_then(|s| s.to_str()).unwrap_or("");
 
-        // Check for various import patterns that might reference this file
-        // For simplicity, just check if the file stem appears in import statements
+        // Quick check: if the file doesn't even contain the target name, it can't import it
         if !content.contains(target_stem) {
             return false;
         }
 
+        // Try to use plugin-specific import detection
+        if let Some(ext) = current_file.extension().and_then(|e| e.to_str()) {
+            // Find plugin that handles this file extension
+            for plugin in plugins {
+                if plugin.handles_extension(ext) {
+                    if let Some(import_support) = plugin.import_support() {
+                        // Parse imports using the plugin
+                        let imports = import_support.parse_imports(content);
+
+                        // Check if any import references the target file
+                        let target_str = target.to_string_lossy();
+                        for import in imports {
+                            // Match against various forms: full path, relative path, or just filename
+                            if import.contains(target_stem)
+                                || target_str.contains(&import)
+                                || import.ends_with(target_stem)
+                            {
+                                debug!(
+                                    file = ?current_file,
+                                    target = ?target,
+                                    import = %import,
+                                    "Plugin detected import reference"
+                                );
+                                return true;
+                            }
+                        }
+                        // Plugin checked, no import found
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // Fallback to generic JavaScript/TypeScript detection if no plugin found
         // Check for ES6 imports: import ... from './target'
         if content.contains("import") && content.contains("from") {
             for line in content.lines() {

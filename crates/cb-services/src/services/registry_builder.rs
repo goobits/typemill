@@ -36,6 +36,8 @@ pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
     let mut extension_to_plugin: HashMap<&str, &str> = HashMap::new();
 
     for descriptor in iter_plugins() {
+        tracing::debug!(plugin_name = descriptor.name, "Discovered plugin for registration");
+
         // Validate unique plugin name
         if !seen_names.insert(descriptor.name) {
             warn!(

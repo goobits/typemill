@@ -16,6 +16,7 @@ members = [
     "crates/cb-lang-common",
     "crates/cb-lang-rust",
     "crates/cb-lang-typescript",
+    "crates/cb-lang-markdown",
     "apps/codebuddy",
     "integration-tests",
     "crates/cb-bench",
@@ -93,6 +94,7 @@ cb-analysis-graph = { path = "analysis/cb-analysis-graph" }
 # Language plugins (temporarily reduced to TS + Rust during unified API refactoring)
 cb-lang-rust = { path = "crates/cb-lang-rust" }
 cb-lang-typescript = { path = "crates/cb-lang-typescript" }
+cb-lang-markdown = { path = "crates/cb-lang-markdown" }
 
 # Optimize build times for dev dependencies
 [profile.dev.build-override]

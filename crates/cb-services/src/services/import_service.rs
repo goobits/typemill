@@ -106,9 +106,9 @@ impl ImportService {
             .await
             .map_err(|e| ServerError::Internal(format!("Failed to find project files: {}", e)))?;
 
-        // Find files importing the target
+        // Find files importing the target (pass plugins for plugin-aware detection)
         let affected = resolver
-            .find_affected_files(file_path, &project_files)
+            .find_affected_files(file_path, &project_files, self.plugin_registry.all())
             .await
             .map_err(|e| ServerError::Internal(format!("Failed to find affected files: {}", e)))?;
 

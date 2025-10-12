@@ -37,7 +37,7 @@ pub(crate) async fn build_import_update_plan(
 
     // Find files that import the renamed file
     let mut affected_files = resolver
-        .find_affected_files(old_path, &project_files)
+        .find_affected_files(old_path, &project_files, plugins)
         .await?;
 
     debug!(
