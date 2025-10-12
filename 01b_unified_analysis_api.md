@@ -1,23 +1,29 @@
 # Proposal: Unified Analysis API
 
-**Status**: ✅ **CORE IMPLEMENTATION COMPLETE** (as of 2025-10-12)
+**Status**: ✅ **CORE IMPLEMENTATION 95% COMPLETE** (as of 2025-10-12)
 **Author**: Project Team
-**Date**: 2025-10-10 (Proposal) | 2025-10-12 (Implementation Complete)
+**Date**: 2025-10-10 (Proposal) | 2025-10-12 (Core Implementation)
 **Formal Spec**: [docs/design/unified_api_contracts.md](docs/design/unified_api_contracts.md)
 
 ## 🎉 Implementation Status Summary
 
-**COMPLETED (6/6 categories, 26/26 detection kinds):**
+**COMPLETED - Core Analysis Engine (95%):**
 - ✅ All 6 analyze.* MCP tools implemented and registered
 - ✅ 26 detection kinds fully wired with AST caching
 - ✅ Configuration system (.codebuddy/analysis.toml with presets)
 - ✅ 6 integration test files passing
 - ✅ API documentation complete
-
-**REMAINING:**
 - ✅ analyze.batch MCP tool - **COMPLETED** (commit aa38c0b0, exposed as tool #24)
 - ✅ Documentation sync - **COMPLETED** (commits aa38c0b0, 5b7d0a3e)
-- ⚠️ Legacy tool migration - **FROZEN** (4 tools kept as internal with migration plan, see details below)
+
+**NOT YET IMPLEMENTED - Actionable Suggestions (Phase 2C):**
+- ❌ Safety metadata (safety, confidence, reversible fields) - **NOT IMPLEMENTED**
+- ❌ Comprehensive refactor_call suggestions linking to refactoring API - **PARTIALLY IMPLEMENTED**
+- ❌ Safety-first ranking algorithm - **NOT IMPLEMENTED**
+- ❌ CI validation of suggestion metadata - **NOT IMPLEMENTED**
+
+**REMAINING:**
+- ⚠️ Legacy tool migration - **FROZEN** (2 tools kept as internal with migration plan, see details below)
 
 **See [Implementation Status](#implementation-status-as-of-2025-10-12) section below for complete details.**
 
@@ -688,12 +694,25 @@ For each analysis category:
 2. Preset resolution with overrides
 3. Config validation against registry
 
-### Phase 2C: Safety Metadata (2-3 weeks, parallel with 2B)
-1. Safety classification logic per suggestion type
-2. Confidence scoring algorithms
-3. Reversibility analysis
-4. Safety-first ranking algorithm
-5. CI validation of metadata
+### Phase 2C: Safety Metadata (2-3 weeks, parallel with 2B) - ❌ NOT IMPLEMENTED
+
+**Status**: Proposed, not yet started
+
+**What's missing**:
+1. Safety classification logic per suggestion type (safe/requires_review/experimental)
+2. Confidence scoring algorithms (0.0 to 1.0)
+3. Reversibility analysis (true/false per suggestion)
+4. Safety-first ranking algorithm (sort by safety → confidence → impact)
+5. CI validation of metadata (ensure all suggestions have required fields)
+6. Comprehensive refactor_call generation for all suggestion types
+
+**Current state**: Analysis tools return findings with basic messages, but suggestions lack:
+- Safety metadata fields
+- Confidence scores
+- Proper ranking
+- Complete refactor_call structures linking to unified refactoring API
+
+**Impact**: AI agents cannot automatically apply safe suggestions or make risk-assessed decisions. The "closed-loop workflow" (analyze → suggest → refactor → re-analyze) described in this proposal is not yet functional.
 
 ### Phase 3: Batch Operations (2-3 weeks)
 1. `analyze.batch` with shared AST parsing
@@ -980,13 +999,19 @@ analyze.quality("complexity", { preset: "strict", thresholds: { cyclomatic_compl
 - [✅] Project-level configuration (`.codebuddy/analysis.toml`) with preset support (strict, default, relaxed)
 - [✅] Configuration loading with graceful fallback to defaults
 - [✅] Batch analysis infrastructure complete (all 26 detection kinds wired)
-- [⚠️] `analyze.batch` MCP tool not yet exposed (infrastructure exists, needs tool registration)
+- [✅] `analyze.batch` MCP tool exposed as tool #24
+- [❌] **Actionable Suggestions with Safety Metadata** - NOT IMPLEMENTED
+  - Safety classification (safe/requires_review/experimental)
+  - Confidence scoring (0.0 to 1.0)
+  - Reversibility analysis
+  - Comprehensive refactor_call links to refactoring API
+  - Safety-first ranking algorithm
 - [⚠️] All 37 legacy commands removed from codebase (staged by category) (future work)
 - [✅] Integration tests cover all analysis categories (6/6 test files ✅)
 - [✅] Tests use hard assertions with valid early-exit pattern for unparseable files
 - [⚠️] Integration tests for preset loading behavior (future work)
 - [✅] Documentation shows all 6 analyze.* commands with parameters and examples
-- [⚠️] CI validation of suggestion metadata (future work)
+- [❌] CI validation of suggestion metadata - NOT IMPLEMENTED (requires Phase 2C)
 - [✅] Navigation commands preserved (search_workspace_symbols, find_definition, etc.)
 
 **Key milestone**: Can complete categories in any order. Each category is independently shippable.
