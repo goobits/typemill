@@ -825,6 +825,151 @@ impl LanguagePlugin for SystemToolsPlugin {
                     "properties": {}
                 }
             }),
+            json!({
+                "name": "analyze.quality",
+                "description": "Analyze code quality metrics including complexity, code smells, maintainability, and readability.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "enum": ["complexity", "smells", "maintainability", "readability"],
+                            "description": "Type of quality analysis to perform"
+                        },
+                        "scope": {
+                            "type": "object",
+                            "properties": {
+                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
+                                "path": { "type": "string" }
+                            },
+                            "required": ["path"]
+                        },
+                        "options": {
+                            "type": "object",
+                            "properties": {
+                                "thresholds": { "type": "object" },
+                                "include_suggestions": { "type": "boolean" }
+                            }
+                        }
+                    },
+                    "required": ["kind", "scope"]
+                }
+            }),
+            json!({
+                "name": "analyze.dead_code",
+                "description": "Detect unused code including imports, symbols, parameters, variables, types, and unreachable code.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "enum": ["unused_imports", "unused_symbols", "unused_parameters", "unused_variables", "unused_types", "unreachable_code"],
+                            "description": "Type of dead code detection to perform"
+                        },
+                        "scope": {
+                            "type": "object",
+                            "properties": {
+                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
+                                "path": { "type": "string" }
+                            },
+                            "required": ["path"]
+                        }
+                    },
+                    "required": ["kind", "scope"]
+                }
+            }),
+            json!({
+                "name": "analyze.dependencies",
+                "description": "Analyze dependency relationships including imports, dependency graph, circular dependencies, coupling, and cohesion.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "enum": ["imports", "graph", "circular", "coupling", "cohesion", "depth"],
+                            "description": "Type of dependency analysis to perform"
+                        },
+                        "scope": {
+                            "type": "object",
+                            "properties": {
+                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
+                                "path": { "type": "string" }
+                            },
+                            "required": ["path"]
+                        }
+                    },
+                    "required": ["kind", "scope"]
+                }
+            }),
+            json!({
+                "name": "analyze.structure",
+                "description": "Analyze code structure including symbols, hierarchy, interfaces, inheritance, and module organization.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "enum": ["symbols", "hierarchy", "interfaces", "inheritance", "modules"],
+                            "description": "Type of structure analysis to perform"
+                        },
+                        "scope": {
+                            "type": "object",
+                            "properties": {
+                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
+                                "path": { "type": "string" }
+                            },
+                            "required": ["path"]
+                        }
+                    },
+                    "required": ["kind", "scope"]
+                }
+            }),
+            json!({
+                "name": "analyze.documentation",
+                "description": "Analyze documentation quality including coverage, quality, style consistency, examples, and TODO items.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "enum": ["coverage", "quality", "style", "examples", "todos"],
+                            "description": "Type of documentation analysis to perform"
+                        },
+                        "scope": {
+                            "type": "object",
+                            "properties": {
+                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
+                                "path": { "type": "string" }
+                            },
+                            "required": ["path"]
+                        }
+                    },
+                    "required": ["kind", "scope"]
+                }
+            }),
+            json!({
+                "name": "analyze.tests",
+                "description": "Analyze test quality including coverage, test quality, assertions, and test organization.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "enum": ["coverage", "quality", "assertions", "organization"],
+                            "description": "Type of test analysis to perform"
+                        },
+                        "scope": {
+                            "type": "object",
+                            "properties": {
+                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
+                                "path": { "type": "string" }
+                            },
+                            "required": ["path"]
+                        }
+                    },
+                    "required": ["kind", "scope"]
+                }
+            }),
             // Note: rename_file and rename_directory are handled by FileOperationHandler
             // and WorkspaceHandler respectively, not by this plugin
         ]
