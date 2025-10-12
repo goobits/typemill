@@ -1119,11 +1119,26 @@ fn extract_parameter_names(params_str: &str, language: &str) -> Vec<String> {
 /// # Returns
 /// `true` if the parameter is used, `false` otherwise
 fn is_parameter_used_in_body(body: &str, param_name: &str) -> bool {
+    // Remove comments before checking usage to avoid false positives
+    let mut body_without_comments = String::new();
+    for line in body.lines() {
+        // Remove line comments (// and #)
+        let code_part = if let Some(pos) = line.find("//") {
+            &line[..pos]
+        } else if let Some(pos) = line.find('#') {
+            &line[..pos]
+        } else {
+            line
+        };
+        body_without_comments.push_str(code_part);
+        body_without_comments.push('\n');
+    }
+
     // Use word boundary matching to avoid partial matches
     let pattern_str = format!(r"\b{}\b", regex::escape(param_name));
 
     if let Ok(pattern) = Regex::new(&pattern_str) {
-        pattern.is_match(body)
+        pattern.is_match(&body_without_comments)
     } else {
         // If regex fails, assume it's used (conservative approach)
         true
@@ -1527,3 +1542,4 @@ impl ToolHandler for DeadCodeHandler {
         }
     }
 }
+

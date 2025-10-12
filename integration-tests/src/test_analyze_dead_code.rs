@@ -238,12 +238,6 @@ fn main() {
     assert_eq!(result.metadata.kind, "unused_parameters");
 
     // Gracefully handle case where Rust parsing isn't available
-    eprintln!(
-        "DEBUG: symbols_analyzed={:?}, files_analyzed={}, findings={}",
-        result.summary.symbols_analyzed,
-        result.summary.files_analyzed,
-        result.findings.len()
-    );
     if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
         eprintln!("INFO: No symbols analyzed - Rust parsing may not be fully available");
         return;
@@ -252,8 +246,7 @@ fn main() {
     // Should detect y and z as unused
     assert!(
         !result.findings.is_empty(),
-        "Expected unused parameter findings. Symbols analyzed: {:?}",
-        result.summary.symbols_analyzed
+        "Expected unused parameter findings"
     );
 
     for finding in &result.findings {
