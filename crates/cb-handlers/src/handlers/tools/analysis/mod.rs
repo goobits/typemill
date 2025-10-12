@@ -6,19 +6,20 @@ use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 pub mod code;
 pub mod dead_code;
 pub mod dependencies;
+pub mod documentation;
 pub mod engine;
 pub mod project;
 pub mod quality;
 pub mod structure;
+pub mod tests_handler;
 pub mod unused_imports;
 
 pub use dead_code::DeadCodeHandler;
 pub use dependencies::DependenciesHandler;
+pub use documentation::DocumentationHandler;
 pub use quality::QualityHandler;
 pub use structure::StructureHandler;
-
-#[cfg(test)]
-mod tests;
+pub use tests_handler::TestsHandler;
 
 pub struct AnalysisHandler;
 

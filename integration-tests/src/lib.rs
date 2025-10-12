@@ -55,6 +55,12 @@ pub mod test_analyze_dependencies;
 #[cfg(test)]
 pub mod test_analyze_structure;
 
+#[cfg(test)]
+pub mod test_analyze_documentation;
+
+#[cfg(test)]
+pub mod test_analyze_tests;
+
 pub use harness::{TestClient, TestWorkspace};
 pub use helpers::*;
 pub use mocks::{MockAstService, MockLspService};
