@@ -90,9 +90,8 @@ Requests to endpoints like `/workspaces` or `/workspaces/{id}/execute` without a
 | `find_complexity_hotspots` | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | ✅ AST | Top N most complex functions/classes |
 
 **Internal tools (not in public API):**
-- `find_unused_imports` - Pattern-based import usage detection (replaced by future `analyze.dead_code`)
-- `analyze_complexity` - Cyclomatic complexity metrics (replaced by future `analyze.quality`)
-- `analyze_project_complexity` - Project-wide complexity analysis (replaced by future `analyze.quality`)
+- `analyze_complexity` - Cyclomatic complexity metrics (replaced by `analyze.quality`)
+- `analyze_project_complexity` - Project-wide complexity analysis (replaced by `analyze.quality`)
 
 ### File Operations
 
@@ -1116,51 +1115,6 @@ codebuddy tool analyze.quality '{
 ## Code Analysis
 
 AST-based code analysis tools for detecting code smells and optimization opportunities.
-
-### `find_unused_imports`
-
-**Internal Tool** - Not visible in MCP tools/list. Replaced by Unified Analysis API (future `analyze.dead_code("unused_imports")`).
-
-Detect unused imports in a file.
-
-**Parameters:**
-```json
-{
-  "file_path": "src/utils.ts"    // Required: File path
-}
-```
-
-**Returns:**
-```json
-{
-  "file_path": "src/utils.ts",
-  "unused_imports": [
-    {
-      "line": 2,                      // Line number of the import statement (1-indexed).
-      "source": "react",                // The module from which symbols are imported (e.g., 'react', './utils').
-      "imported": ["useEffect"],        // List of specific symbols from the import that are unused. Empty if the entire import is unused.
-      "suggestion": "A human-readable suggestion for how to fix the unused import."
-    },
-    {
-      "line": 5,
-      "source": "./unused-module",
-      "imported": [],
-      "suggestion": "Remove entire import from ./unused-module"
-    }
-  ],
-  "total_unused": 2,                  // Total number of unused import statements or symbols found.
-  "total_imports": 8,                 // Total number of import statements in the file.
-  "analysis_complete": true           // Indicates if the analysis completed successfully.
-}
-```
-
-**Notes:**
-- Uses pattern-based symbol usage detection
-- Supports all languages with ImportSupport trait
-- Detects both fully unused imports and partially unused symbols
-- Side-effect imports (no symbols) are checked separately
-
----
 
 ### `analyze_complexity`
 
@@ -2554,7 +2508,7 @@ These 25 internal tools are used by the Codebuddy workflow system and LSP protoc
 - **Workspace tools (4)**: move_directory, find_dead_code, update_dependencies, update_dependency
 - **File operations (4)**: create_file, delete_file, rename_file, rename_directory
 - **File utilities (3)**: read_file, write_file, list_files
-- **Legacy analysis (4)**: find_unused_imports, analyze_code (analyze_complexity), analyze_project (analyze_project_complexity), analyze_imports
+- **Legacy analysis (2)**: analyze_project (analyze_project_complexity), analyze_imports
 - **Structure analysis (1)**: get_document_symbols
 - **Advanced plumbing (2)**: execute_edits (apply_edits), execute_batch (batch_execute)
 

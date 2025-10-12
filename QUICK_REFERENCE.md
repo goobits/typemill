@@ -114,7 +114,7 @@ These are the public-facing tools for AI agents and MCP clients. See `API_REFERE
 
 ---
 
-## 5. Internal Tools (Backend Only - 25 tools)
+## 5. Internal Tools (Backend Only - 23 tools)
 
 These tools are **not visible** in MCP `tools/list` but are used internally by workflows and the backend. AI agents should use the public API instead.
 
@@ -123,12 +123,14 @@ These tools are **not visible** in MCP `tools/list` but are used internally by w
 - **File Operations (4)**: create_file, delete_file, rename_file, rename_directory
 - **File Utilities (3)**: read_file, write_file, list_files
 - **Workspace Tools (4)**: move_directory, find_dead_code, update_dependencies, update_dependency
-- **Legacy Analysis (4)**: find_unused_imports → replaced by `analyze.dead_code`, analyze_code → replaced by `analyze.quality`, analyze_project → replaced by `analyze.quality`, analyze_imports → replaced by `analyze.dependencies`
+- **Legacy Analysis (2)**: analyze_project (retained for migration), analyze_imports (retained for migration)
 - **Structure Analysis (1)**: get_document_symbols → replaced by `analyze.structure`
 - **Advanced Plumbing (2)**: execute_edits → replaced by `workspace.apply_edit`, execute_batch
 - **Legacy Editing (1)**: rename_symbol_with_imports
 - **Legacy Workspace (1)**: apply_workspace_edit
 - **Intelligence (2)**: get_completions, get_signature_help
+
+**Note**: `find_unused_imports` and `analyze_code` removed (dead weight, no unique functionality)
 
 ---
 

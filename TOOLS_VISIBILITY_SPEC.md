@@ -4,7 +4,7 @@
 
 ---
 
-## Public Tools (23 total)
+## Public Tools (24 total)
 
 ### Navigation (8) - Point Queries for IDE Workflows
 - `find_definition`
@@ -31,17 +31,18 @@
 ### System (1) - Health Monitoring
 - `health_check`
 
-### Analysis (6) - Unified Analysis API ✅ **IMPLEMENTED**
+### Analysis (7) - Unified Analysis API ✅ **IMPLEMENTED**
 - `analyze.quality` - Code quality analysis (complexity, smells, maintainability, readability)
 - `analyze.dead_code` - Unused code detection (imports, symbols, parameters, variables, types, unreachable)
 - `analyze.dependencies` - Dependency analysis (imports, graph, circular, coupling, cohesion, depth)
 - `analyze.structure` - Code structure analysis (symbols, hierarchy, interfaces, inheritance, modules)
 - `analyze.documentation` - Documentation quality (coverage, quality, style, examples, todos)
 - `analyze.tests` - Test analysis (coverage, quality, assertions, organization)
+- `analyze.batch` - Multi-file batch analysis with optimized AST caching
 
 ---
 
-## Internal Tools (25 total)
+## Internal Tools (23 total)
 
 ### Lifecycle (3) - Event Notifications
 - `notify_file_opened`
@@ -75,12 +76,11 @@
 - `write_file`
 - `list_files`
 
-### Legacy Analysis (5) - **MOVE TO INTERNAL** - Replaced by Unified Analysis API
-- `find_unused_imports` → `analyze.dead_code("unused_imports")`
-- `analyze_code` → `analyze.quality("complexity"|"smells")`
-- `analyze_project` → `analyze.quality("maintainability")`
-- `analyze_imports` → `analyze.dependencies("imports")`
-- `get_document_symbols` → `analyze.structure("symbols")`
+### Legacy Analysis (2) - **INTERNAL** - Replaced by Unified Analysis API
+- `analyze_project` → `analyze.quality("maintainability")` (workspace aggregator, retained for migration)
+- `analyze_imports` → `analyze.dependencies("imports")` (plugin-native graphs, retained for migration)
+
+**Note**: `find_unused_imports` and `analyze_code` removed as dead weight (no unique functionality, fully covered by unified API)
 
 ### Legacy Advanced (2) - **MOVE TO INTERNAL** - Low-Level Plumbing
 - `execute_edits` → replaced by `workspace.apply_edit`
@@ -105,8 +105,9 @@
 
 ### Migration Path
 1. **Previous state**: 17 public, 25 internal (before Unified Analysis API)
-2. **Current state**: 23 public, 25 internal (Unified Analysis API implemented)
-3. **Note**: Analysis tools now public (analyze.quality, analyze.dead_code, analyze.dependencies, analyze.structure, analyze.documentation, analyze.tests)
+2. **After Unified API**: 23 public, 25 internal (6 analysis tools moved to public)
+3. **Current state**: 24 public, 23 internal (analyze.batch added, 2 dead-weight tools removed)
+4. **Note**: Analysis tools now public (analyze.quality, analyze.dead_code, analyze.dependencies, analyze.structure, analyze.documentation, analyze.tests, analyze.batch)
 
 ---
 

@@ -97,11 +97,11 @@ Complete implementation of Proposal 40: Unified Analysis API
 Total PUBLIC tools: **23 tools** (17 existing + 6 new analysis tools)
 
 ### INTERNAL Tools (not in MCP tools/list, backward compatibility)
-Legacy AnalysisHandler tools:
-- find_unused_imports → replaced by analyze.dead_code("unused_imports")
-- analyze_code → replaced by analyze.quality("complexity"|"smells")
-- analyze_project → replaced by analyze.quality("maintainability")
-- analyze_imports → replaced by analyze.dependencies("imports")
+Legacy AnalysisHandler tools (2 retained for migration):
+- analyze_project → replaced by analyze.quality("maintainability") (workspace aggregator)
+- analyze_imports → replaced by analyze.dependencies("imports") (plugin-native graphs)
+
+**Dead-weight tools removed**: find_unused_imports, analyze_code (no unique functionality)
 
 ## Multi-Language Support
 

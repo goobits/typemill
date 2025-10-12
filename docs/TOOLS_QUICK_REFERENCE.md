@@ -22,8 +22,8 @@
 
 ---
 
-**Tools:** 46 public MCP tools
-**Internal tools:** 5 backend-only tools (see [API_REFERENCE.md Internal Tools](../API_REFERENCE.md#internal-tools))
+**Tools:** 24 public MCP tools (17 navigation/refactoring + 7 unified analysis)
+**Internal tools:** 23 backend-only tools (see [API_REFERENCE.md Internal Tools](../API_REFERENCE.md#internal-tools))
 
 ---
 
@@ -77,28 +77,25 @@
 
 ---
 
-## Code Analysis (5 tools)
+## Unified Analysis API (7 tools)
 
 | Tool | Description | Required Parameters | Returns |
 |------|-------------|---------------------|---------|
-| `find_unused_imports` | Detect unused imports in a file | `file_path` | Array of unused import details |
-| `analyze_complexity` | Calculate complexity metrics for functions | `file_path` | Complexity report with metrics |
-| `suggest_refactoring` | Suggest refactoring opportunities | `file_path` | Array of refactoring suggestions |
-| `analyze_project_complexity` | Scan directory for complexity metrics | `directory_path` | Project-wide complexity statistics |
-| `find_complexity_hotspots` | Find most complex functions/classes | `directory_path` | Top N complexity hotspots |
+| `analyze.quality` | Code quality analysis (complexity, smells, maintainability, readability) | `kind`, `scope`, `options` | AnalysisResult with findings |
+| `analyze.dead_code` | Unused code detection (imports, symbols, parameters, variables, types, unreachable) | `kind`, `scope`, `options` | AnalysisResult with findings |
+| `analyze.dependencies` | Dependency analysis (imports, graph, circular, coupling, cohesion, depth) | `kind`, `scope`, `options` | AnalysisResult with findings |
+| `analyze.structure` | Code structure (symbols, hierarchy, interfaces, inheritance, modules) | `kind`, `scope`, `options` | AnalysisResult with findings |
+| `analyze.documentation` | Documentation quality (coverage, quality, style, examples, todos) | `kind`, `scope`, `options` | AnalysisResult with findings |
+| `analyze.tests` | Test analysis (coverage, quality, assertions, organization) | `kind`, `scope`, `options` | AnalysisResult with findings |
+| `analyze.batch` | Multi-file batch analysis with optimized AST caching | `files`, `category`, `kinds`, `options` | BatchAnalysisResult |
 
 ---
 
-## Workspace Operations (6 tools)
+## Workspace Operations (0 public tools)
 
-| Tool | Description | Required Parameters | Returns |
-|------|-------------|---------------------|---------|
-| `rename_directory` | Rename directory and auto-update all imports | `old_path`, `new_path` | Files moved, imports updated |
-| `analyze_imports` | Analyze import statements in a file | `file_path` | Import breakdown by type |
-| `find_dead_code` | Find potentially unused code in workspace | None | Array of unused symbols |
-| `update_dependencies` | Update project dependencies via package manager | None (auto-detects) | Updated packages list |
-| `update_dependency` | Update a single dependency to specific version | `dependency_name`, `version` | Old/new version, success status |
-| `extract_module_to_package` | Extract code to new package (Rust-specific) | `source_module`, `target_package`, `symbols` | Package created, symbols moved |
+**Note:** All workspace operation tools are now internal-only, used by backend workflows.
+
+For workspace-level analysis, use the **Unified Analysis API** tools above with `scope: { type: "workspace" }`.
 
 ---
 
