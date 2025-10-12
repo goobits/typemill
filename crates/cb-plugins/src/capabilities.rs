@@ -238,11 +238,19 @@ impl Capabilities {
             // Workspace-scoped tools
             "search_workspace_symbols"
             | "list_files"
-            | "find_dead_code"
             | "bulk_update_dependencies"
             | "rename_file"
             | "rename_directory"
             | "extract_module_to_package" => Some(ToolScope::Workspace),
+
+            // Unified Analysis API - supports both file and workspace scopes
+            "analyze.quality"
+            | "analyze.dead_code"
+            | "analyze.dependencies"
+            | "analyze.structure"
+            | "analyze.documentation"
+            | "analyze.tests"
+            | "analyze.batch" => Some(ToolScope::Workspace),
 
             // Custom capabilities - default to workspace scope
             _ if self.custom.contains_key(method) => Some(ToolScope::Workspace),
