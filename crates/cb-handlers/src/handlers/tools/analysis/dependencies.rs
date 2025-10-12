@@ -25,8 +25,10 @@ use tracing::debug;
 
 #[cfg(feature = "analysis-circular-deps")]
 use cb_analysis_circular_deps::{
-    builder::DependencyGraphBuilder, find_circular_dependencies,
+    builder::DependencyGraphBuilder, find_circular_dependencies, Cycle,
 };
+
+#[cfg(feature = "analysis-circular-deps")]
 use cb_protocol::analysis_result::AnalysisResult;
 
 /// Detect and analyze import/export statements using plugin-based AST parsing
@@ -698,6 +700,79 @@ pub fn detect_depth(
 // Helper Functions
 // ============================================================================
 
+#[cfg(feature = "analysis-circular-deps")]
+/// Generate actionable suggestions for breaking circular dependencies
+fn generate_cycle_break_suggestions(cycle: &Cycle) -> Vec<Suggestion> {
+    let mut suggestions = Vec::new();
+
+    // Suggestion 1: Extract interface/trait
+    if cycle.modules.len() == 2 {
+        suggestions.push(Suggestion {
+            action: "extract_interface".to_string(),
+            description: format!(
+                "Extract a shared interface or trait between '{}' and '{}'. Move common dependencies to the interface to break the cycle.",
+                cycle.modules.get(0).map(|s| s.as_str()).unwrap_or("module A"),
+                cycle.modules.get(1).map(|s| s.as_str()).unwrap_or("module B")
+            ),
+            target: cycle.modules.get(0).cloned(),
+            estimated_impact: "Eliminates circular dependency, improves testability and modularity".to_string(),
+            safety: SafetyLevel::Safe,
+            confidence: 0.85,
+            reversible: true,
+            refactor_call: None,
+        });
+    }
+
+    // Suggestion 2: Dependency injection
+    suggestions.push(Suggestion {
+        action: "dependency_injection".to_string(),
+        description: "Use dependency injection to invert the dependency direction. Pass dependencies as parameters instead of importing directly.".to_string(),
+        target: None,
+        estimated_impact: "Breaks cycle by inverting control, improves testability".to_string(),
+        safety: SafetyLevel::RequiresReview,
+        confidence: 0.80,
+        reversible: true,
+        refactor_call: None,
+    });
+
+    // Suggestion 3: Extract shared module
+    if cycle.modules.len() > 2 {
+        suggestions.push(Suggestion {
+            action: "extract_shared_module".to_string(),
+            description: format!(
+                "Extract shared code from the {} modules into a new common module. This breaks the cycle by creating a dependency tree instead of a cycle.",
+                cycle.modules.len()
+            ),
+            target: None,
+            estimated_impact: "Eliminates circular dependency, reduces coupling".to_string(),
+            safety: SafetyLevel::RequiresReview,
+            confidence: 0.75,
+            reversible: true,
+            refactor_call: None,
+        });
+    }
+
+    // Suggestion 4: Merge modules (for small cycles)
+    if cycle.modules.len() == 2 {
+        suggestions.push(Suggestion {
+            action: "merge_modules".to_string(),
+            description: "If the modules are tightly coupled and small, consider merging them into a single module.".to_string(),
+            target: None,
+            estimated_impact: "Simplifies architecture by removing artificial separation".to_string(),
+            safety: SafetyLevel::RequiresReview,
+            confidence: 0.70,
+            reversible: true,
+            refactor_call: None,
+        });
+    }
+
+    suggestions
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
 /// Get language-specific import patterns
 ///
 /// Returns regex patterns for detecting imports/exports in different languages.
@@ -1049,6 +1124,19 @@ impl ToolHandler for DependenciesHandler {
                     metrics.insert("cycle_length".to_string(), json!(cycle.modules.len()));
                     metrics.insert("cycle_path".to_string(), json!(cycle.modules));
 
+                    // Add import chain to metrics for detailed analysis
+                    let import_chain_json: Vec<_> = cycle.import_chain.iter().map(|link| {
+                        json!({
+                            "from": link.from,
+                            "to": link.to,
+                            "symbols": link.symbols
+                        })
+                    }).collect();
+                    metrics.insert("import_chain".to_string(), json!(import_chain_json));
+
+                    // Generate actionable suggestions based on cycle characteristics
+                    let suggestions = generate_cycle_break_suggestions(&cycle);
+
                     Finding {
                         id: format!("circular-dependency-{}", cycle.id),
                         kind: "circular_dependency".to_string(),
@@ -1060,8 +1148,12 @@ impl ToolHandler for DependenciesHandler {
                             symbol_kind: Some("module".to_string()),
                         },
                         metrics: Some(metrics),
-                        message: format!("Circular dependency detected with {} modules", cycle.modules.len()),
-                        suggestions: vec![],
+                        message: format!(
+                            "Circular dependency detected: {} modules form a cycle ({})",
+                            cycle.modules.len(),
+                            cycle.modules.join(" → ")
+                        ),
+                        suggestions,
                     }
                 }).collect();
 
@@ -1076,9 +1168,9 @@ impl ToolHandler for DependenciesHandler {
                             medium: 0,
                             low: 0,
                         },
-                        files_analyzed: 0,
-                        symbols_analyzed: Some(0),
-                        analysis_time_ms: 0,
+                        files_analyzed: result.summary.files_analyzed,
+                        symbols_analyzed: Some(result.summary.total_modules_in_cycles),
+                        analysis_time_ms: result.summary.analysis_time_ms,
                     },
                     metadata: cb_protocol::analysis_result::AnalysisMetadata {
                         category: "dependencies".to_string(),

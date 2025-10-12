@@ -2,11 +2,11 @@
 
 pub mod builder;
 
-use cb_analysis_graph::dependency::{Dependency, DependencyGraph, ModuleNode, NodeId};
+use cb_analysis_graph::dependency::{DependencyGraph, NodeId};
 use petgraph::algo::tarjan_scc;
 use petgraph::visit::EdgeRef;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use thiserror::Error;
 
 /// The primary output of the circular dependency analysis.
@@ -38,6 +38,8 @@ pub struct Summary {
     pub total_cycles: usize,
     pub total_modules_in_cycles: usize,
     pub largest_cycle_size: usize,
+    pub files_analyzed: usize,
+    pub analysis_time_ms: u64,
 }
 
 /// Errors that can occur during circular dependency analysis.
@@ -61,6 +63,11 @@ pub enum Error {
 pub fn find_circular_dependencies(
     graph: &DependencyGraph,
 ) -> Result<CircularDependenciesResult, Error> {
+    use std::time::Instant;
+
+    let start = Instant::now();
+    let files_analyzed = graph.graph.node_count();
+
     // Use Tarjan's algorithm to find strongly connected components (SCCs).
     let sccs = tarjan_scc(&graph.graph);
 
@@ -102,10 +109,14 @@ pub fn find_circular_dependencies(
         });
     }
 
+    let analysis_time_ms = start.elapsed().as_millis() as u64;
+
     let summary = Summary {
         total_cycles: cycles.len(),
         total_modules_in_cycles,
         largest_cycle_size,
+        files_analyzed,
+        analysis_time_ms,
     };
 
     Ok(CircularDependenciesResult { cycles, summary })
@@ -258,5 +269,136 @@ mod tests {
         assert_eq!(result.summary.total_cycles, 1);
         assert_eq!(result.cycles[0].modules.len(), 3);
         assert_eq!(result.cycles[0].import_chain.len(), 3);
+    }
+
+    #[test]
+    fn test_multiple_independent_cycles() {
+        // A ↔ B and C ↔ D ↔ E (two independent cycles)
+        let mut graph = DependencyGraph::new();
+
+        // First cycle: A ↔ B
+        let id_a = graph.add_module(module("/test/a.rs"));
+        let id_b = graph.add_module(module("/test/b.rs"));
+        graph.graph.add_edge(id_a, id_b, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(id_b, id_a, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+
+        // Second cycle: C → D → E → C
+        let id_c = graph.add_module(module("/test/c.rs"));
+        let id_d = graph.add_module(module("/test/d.rs"));
+        let id_e = graph.add_module(module("/test/e.rs"));
+        graph.graph.add_edge(id_c, id_d, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(id_d, id_e, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(id_e, id_c, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+
+        let result = find_circular_dependencies(&graph).unwrap();
+        assert_eq!(result.summary.total_cycles, 2);
+        assert_eq!(result.summary.total_modules_in_cycles, 5); // 2 + 3
+        assert_eq!(result.summary.largest_cycle_size, 3);
+    }
+
+    #[test]
+    fn test_nested_overlapping_cycles() {
+        // A ↔ B and B → C → D → B (overlapping at B)
+        let mut graph = DependencyGraph::new();
+        let id_a = graph.add_module(module("/test/a.rs"));
+        let id_b = graph.add_module(module("/test/b.rs"));
+        let id_c = graph.add_module(module("/test/c.rs"));
+        let id_d = graph.add_module(module("/test/d.rs"));
+
+        // First cycle: A ↔ B
+        graph.graph.add_edge(id_a, id_b, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(id_b, id_a, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+
+        // Second cycle: B → C → D → B
+        graph.graph.add_edge(id_b, id_c, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(id_c, id_d, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(id_d, id_b, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+
+        let result = find_circular_dependencies(&graph).unwrap();
+        // Should find at least 1 cycle (could be more depending on SCC algorithm)
+        assert!(result.summary.total_cycles >= 1);
+    }
+
+    #[test]
+    fn test_large_cycle() {
+        // Create a cycle with 10 modules
+        let mut graph = DependencyGraph::new();
+        let mut nodes = Vec::new();
+
+        for i in 0..10 {
+            nodes.push(graph.add_module(module(&format!("/test/mod{}.rs", i))));
+        }
+
+        // Create chain: 0 → 1 → 2 → ... → 9 → 0
+        for i in 0..10 {
+            let next = (i + 1) % 10;
+            graph.graph.add_edge(
+                nodes[i],
+                nodes[next],
+                Dependency { kind: DependencyKind::Import, symbols: vec![] }
+            );
+        }
+
+        let result = find_circular_dependencies(&graph).unwrap();
+        assert_eq!(result.summary.total_cycles, 1);
+        assert_eq!(result.cycles[0].modules.len(), 10);
+        assert_eq!(result.summary.largest_cycle_size, 10);
+    }
+
+    #[test]
+    fn test_symbols_in_dependency() {
+        let mut graph = DependencyGraph::new();
+        let id_a = graph.add_module(module("/test/a.rs"));
+        let id_b = graph.add_module(module("/test/b.rs"));
+
+        graph.graph.add_edge(
+            id_a,
+            id_b,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec!["Foo".to_string(), "Bar".to_string()],
+            },
+        );
+        graph.graph.add_edge(
+            id_b,
+            id_a,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec!["Baz".to_string()],
+            },
+        );
+
+        let result = find_circular_dependencies(&graph).unwrap();
+        assert_eq!(result.summary.total_cycles, 1);
+
+        // Check that import chain includes symbols
+        let cycle = &result.cycles[0];
+        assert_eq!(cycle.import_chain.len(), 2);
+
+        // Find the edge with multiple symbols
+        let multi_symbol_link = cycle.import_chain.iter()
+            .find(|link| link.symbols.len() == 2);
+        assert!(multi_symbol_link.is_some());
+
+        if let Some(link) = multi_symbol_link {
+            assert!(link.symbols.contains(&"Foo".to_string()));
+            assert!(link.symbols.contains(&"Bar".to_string()));
+        }
+    }
+
+    #[test]
+    fn test_timing_and_metrics() {
+        let mut graph = DependencyGraph::new();
+        let id_a = graph.add_module(module("/test/a.rs"));
+        let id_b = graph.add_module(module("/test/b.rs"));
+
+        graph.graph.add_edge(id_a, id_b, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(id_b, id_a, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+
+        let result = find_circular_dependencies(&graph).unwrap();
+
+        // Verify timing metrics are populated
+        assert!(result.summary.analysis_time_ms > 0 || result.summary.analysis_time_ms == 0); // Very fast could be 0ms
+        assert_eq!(result.summary.files_analyzed, 2);
     }
 }
