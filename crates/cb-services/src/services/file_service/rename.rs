@@ -100,11 +100,34 @@ impl FileService {
                 )));
             }
 
+            // Allow case-only renames on case-insensitive filesystems
+            // Only error if new path exists AND points to a different file
             if new_abs.exists() {
-                return Err(ServerError::AlreadyExists(format!(
-                    "Destination file already exists: {:?}",
-                    new_abs
-                )));
+                // Compare metadata (inode on Unix) to check if same file
+                let same_file = match (fs::metadata(&old_abs).await, fs::metadata(&new_abs).await) {
+                    (Ok(old_meta), Ok(new_meta)) => {
+                        // On Unix, compare inodes; on other platforms, compare file paths
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::fs::MetadataExt;
+                            old_meta.ino() == new_meta.ino()
+                        }
+                        #[cfg(not(unix))]
+                        {
+                            // On non-Unix, compare canonicalized paths
+                            old_abs.canonicalize().ok() == new_abs.canonicalize().ok()
+                        }
+                    }
+                    _ => false,
+                };
+
+                // If they don't point to the same file, it's a conflict
+                if !same_file {
+                    return Err(ServerError::AlreadyExists(format!(
+                        "Destination file already exists: {:?}",
+                        new_abs
+                    )));
+                }
             }
 
             let affected_files = self.import_service.find_affected_files(&old_abs).await?;
@@ -139,11 +162,34 @@ impl FileService {
                 )));
             }
 
+            // Allow case-only renames on case-insensitive filesystems
+            // Only error if new path exists AND points to a different file
             if new_abs.exists() {
-                return Err(ServerError::AlreadyExists(format!(
-                    "Destination file already exists: {:?}",
-                    new_abs
-                )));
+                // Compare metadata (inode on Unix) to check if same file
+                let same_file = match (fs::metadata(&old_abs).await, fs::metadata(&new_abs).await) {
+                    (Ok(old_meta), Ok(new_meta)) => {
+                        // On Unix, compare inodes; on other platforms, compare file paths
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::fs::MetadataExt;
+                            old_meta.ino() == new_meta.ino()
+                        }
+                        #[cfg(not(unix))]
+                        {
+                            // On non-Unix, compare canonicalized paths
+                            old_abs.canonicalize().ok() == new_abs.canonicalize().ok()
+                        }
+                    }
+                    _ => false,
+                };
+
+                // If they don't point to the same file, it's a conflict
+                if !same_file {
+                    return Err(ServerError::AlreadyExists(format!(
+                        "Destination file already exists: {:?}",
+                        new_abs
+                    )));
+                }
             }
 
             self.perform_rename(&old_abs, &new_abs).await?;
