@@ -1,6 +1,6 @@
 # Advanced Dead Code Analysis
 
-**Status:** Phase 1 Implemented ✅
+**Status:** Phase 2A Implemented ✅ (Rust AST parsing complete)
 **Goal:** Detect unused types, interfaces, constants, and other symbols beyond function-level dead code detection
 
 ---
@@ -18,25 +18,37 @@
 - **Cross-file analysis**: Leverages LSP for tracking symbol usage across the workspace
 - **Integration tests**: Basic test coverage for default and aggressive modes
 
-**Architecture:**
-- `analysis/cb-analysis-deep-dead-code/` - Core analysis engine
-- `analysis/cb-analysis-common/src/graph.rs` - Shared dependency graph infrastructure
-- `crates/cb-handlers/src/handlers/tools/analysis/dead_code.rs` - MCP handler integration with both regex-based (file scope) and LSP-based (workspace scope) implementations
-- `apps/codebuddy/src/cli.rs` - CLI command implementation
+### ✅ Phase 2A Complete (Merged: commit c2d45b79)
 
-**Current Capabilities:**
-- Detects unused functions, classes, and other symbols via LSP
-- Works across files within a workspace
-- Respects public/private visibility (with configuration)
-- Returns structured findings compatible with unified analysis API
-- File-level analysis uses regex heuristics for: unused imports, unused symbols, unreachable code, unused parameters, unused types, unused variables
+**AST-Based Symbol Extraction for Rust** - Replaces LSP workspace/symbol with direct AST parsing:
 
-### 🚧 Phase 2 Planned (Future Work)
+**What was implemented:**
+- **`SymbolExtractor`**: New AST parser using `syn` crate for Rust files
+- **Enhanced `SymbolKind` enum**: Supports both AST-based (Struct, Enum, Trait, Constant, Module, TypeAlias, Function) and LSP symbol types
+- **Direct file parsing**: Uses `walkdir` to traverse `.rs` files and extract symbols via AST
+- **Accurate visibility detection**: Parses Rust `pub` keywords from AST instead of LSP heuristics
+- **Improved entry point detection**: Better `main` function detection (name + file path)
+- **Comprehensive testing**: 5 passing tests (2 unit, 3 integration) with temp workspace fixtures
+
+**Architecture additions:**
+- `analysis/cb-analysis-deep-dead-code/src/ast_parser/mod.rs` - AST-based symbol extractor
+- `analysis/cb-analysis-deep-dead-code/src/ast_parser/tests.rs` - Unit tests
+- Enhanced `analysis/cb-analysis-common/src/graph.rs` - Richer SymbolKind enum
+- Refactored `analysis/cb-analysis-deep-dead-code/src/graph_builder.rs` - Uses AST parser instead of LSP for symbol discovery
+- Rewritten integration tests with temporary workspace pattern
+
+**Current Capabilities (Rust):**
+- Extracts: structs, enums, functions, traits, type aliases, constants, modules
+- Accurate visibility tracking (`pub` vs private)
+- Cross-file dependency tracking (still uses LSP `find_references` for usage analysis)
+- Conservative mode (public symbols excluded) and aggressive mode (all symbols checked)
+- Handles parse errors gracefully (warns and continues)
+
+### 🚧 Phase 2B Remaining (Future Work)
 
 **Remaining from original proposal:**
-- **AST-based type extraction**: Direct parsing of types, interfaces, constants, enums using language-specific AST parsers (`syn` for Rust, TypeScript compiler API) for more comprehensive detection
+- **TypeScript AST extraction**: Implement similar AST parser using TypeScript compiler API
 - **Generic/template handling**: Track both generic parameters and concrete instantiations
-- **Enhanced symbol categorization**: Explicit detection of Type, Interface, Trait, Constant, Enum (currently relies on LSP's SymbolKind mapping)
 - **Unused type parameters**: Detect generic parameters that are declared but never used
 - **Exported symbol strategy**: More sophisticated heuristics beyond simple public/private (e.g., check if exported in package.json, Cargo.toml `pub use`, documented as public API)
 - **Performance optimizations**: Symbol caching, incremental analysis, parallel file parsing (see "Performance" section)
@@ -44,13 +56,14 @@
 
 **Gap Analysis:**
 
-The current implementation provides a **solid foundation** for dead code detection using LSP as the source of truth for workspace-wide analysis. However, the original proposal envisioned more granular detection using direct AST parsing:
+Phase 2A closes the Rust portion of the AST parsing gap:
 
-- **LSP approach (current)**: Relies on language server's symbol reporting - comprehensive for functions, classes, but may miss some categories like unused constants or type parameters. Excellent for cross-file analysis.
-- **Regex heuristics (current)**: File-level analysis uses pattern matching for quick detection - good for common cases, may have false positives/negatives.
-- **AST approach (future)**: Direct parsing gives complete control over symbol extraction and categorization - will enable detection of all symbol types mentioned in original proposal.
+- **✅ AST approach (Rust)**: Complete control over Rust symbol extraction and categorization using `syn`
+- **🚧 AST approach (TypeScript)**: Still needs implementation using TypeScript compiler API
+- **✅ Enhanced symbol categorization**: Now supports Struct, Enum, Trait, Constant, Module, TypeAlias, Function
+- **🔄 Usage tracking (hybrid)**: Still uses LSP `find_references` for cross-file usage analysis (accurate and fast)
 
-**See "Future Enhancements" section below for details.**
+**See "Future Enhancements" section below for Phase 2B+ details.**
 
 ---
 
