@@ -164,137 +164,65 @@ cargo run --bin mill
 - Formula/package names
 - Installation paths
 
-## Implementation Plan
+## Implementation Checklist
 
-### Phase 1: Preparation (Week 1)
+### Preparation
+- [ ] Backup and branch: `git checkout -b rename-to-typemill && git tag pre-typemill-rename`
+- [ ] Run global search for all instances of `codebuddy`, `cb-*`, `.codebuddy`
+- [ ] Document external dependencies (CI, deployment scripts, user guides)
+- [ ] Identify breaking changes for users
+- [ ] Inventory all `CODEBUDDY_*` and `CODEBUDDY__*` environment variables
+- [ ] Draft migration guide for existing users
+- [ ] Prepare changelog entry
 
-1. **Backup and Branch**
-   ```bash
-   git checkout -b rename-to-typemill
-   git tag pre-typemill-rename
-   ```
+### Cargo Workspace
+- [ ] Rename all `crates/cb-*` directories to `crates/mill-*`
+- [ ] Update `Cargo.toml` in each crate (name field)
+- [ ] Update workspace root `Cargo.toml`
+- [ ] Update all internal imports across crates
 
-2. **Impact Analysis**
-   - Run global search for all instances of `codebuddy`, `cb-*`, `.codebuddy`
-   - Document external dependencies (CI, deployment scripts, user guides)
-   - Identify breaking changes for users
-   - Inventory all `CODEBUDDY_*` and `CODEBUDDY__*` environment variables in code and docs
+### Binary and CLI
+- [ ] Rename binary target in root `Cargo.toml` to `mill`
+- [ ] Update CLI help text and error messages
+- [ ] Update clap command definitions
 
-3. **Communication Plan**
-   - Draft migration guide for existing users
-   - Prepare changelog entry
-   - Update README with migration notice
+### Configuration
+- [ ] Update config path logic to use `.typemill/`
+- [ ] Add migration code to auto-detect and migrate `.codebuddy/` → `.typemill/`
+- [ ] Update all config examples and schemas
 
-### Phase 2: Core Rename (Week 2)
+### Environment Variables
+- [ ] Extend config loaders to read both `CODEBUDDY*` and `TYPEMILL*`
+- [ ] Emit structured warnings when legacy prefixes are used
+- [ ] Implement `mill env migrate` helper
+- [ ] Update acceptance tests for dual-prefix support
 
-**Priority 1: Cargo Workspace**
-1. Rename all `crates/cb-*` directories to `crates/mill-*`
-2. Update `Cargo.toml` in each crate:
-   ```toml
-   [package]
-   name = "mill-server"  # was cb-server
-   ```
-3. Update workspace root `Cargo.toml`
-4. Update all internal imports across crates
+### Documentation
+- [ ] Update `README.md`, `CLAUDE.md`, `AGENTS.md`
+- [ ] Update `API_REFERENCE.md`, `CONTRIBUTING.md`
+- [ ] Update all `docs/**/*.md` files
+- [ ] Update architecture diagrams
+- [ ] Update all code snippets in documentation
+- [ ] Update integration test examples
 
-**Priority 2: Binary and CLI**
-1. Rename binary target in root `Cargo.toml`:
-   ```toml
-   [[bin]]
-   name = "mill"  # was codebuddy
-   ```
-2. Update CLI help text and error messages
-3. Update clap command definitions
+### Infrastructure
+- [ ] Update Dockerfiles and docker-compose.yml
+- [ ] Update GitHub Actions workflows
+- [ ] Update release scripts and artifact names
+- [ ] Update package metadata (Homebrew if exists)
 
-**Priority 3: Configuration**
-1. Update config path logic to use `.typemill/`
-2. Add migration code to auto-detect and migrate `.codebuddy/` → `.typemill/`
-3. Update all config examples and schemas
+### Testing
+- [ ] Build and test all CLI commands: `cargo build --release && ./target/release/mill setup`
+- [ ] Run full integration tests: `cargo nextest run --workspace --all-features`
+- [ ] Verify all links work
+- [ ] Test upgrade path from `.codebuddy/` to `.typemill/`
 
-**Priority 4: Environment Variables**
-1. Extend config loaders (`cb-core`) and CLI parsing (`cb-client`) to read both `CODEBUDDY*` and `TYPEMILL*`
-2. Emit structured warnings when legacy prefixes are used to encourage migration
-3. Implement the `mill env migrate` helper to rewrite `.env`/shell export files
-4. Update acceptance tests to cover dual-prefix support and warning output
-
-### Phase 3: Documentation (Week 2-3)
-
-1. **Core Documentation**
-   - Update `README.md`
-   - Update `CLAUDE.md` / `AGENTS.md`
-   - Update `API_REFERENCE.md`
-   - Update `CONTRIBUTING.md`
-
-2. **Technical Documentation**
-   - Update all `docs/**/*.md` files
-   - Update architecture diagrams
-   - Update workflow examples
-
-3. **Code Examples**
-   - Update all code snippets in documentation
-   - Update integration test examples
-   - Update plugin development guides
-   - Document new `TYPEMILL__*` / `TYPEMILL_*` environment variables and migration guidance
-
-### Phase 4: Infrastructure (Week 3)
-
-1. **Docker**
-   - Update Dockerfiles
-   - Update docker-compose.yml
-   - Update image tags and names
-
-2. **CI/CD**
-   - Update GitHub Actions workflows
-   - Update release scripts
-   - Update artifact names
-
-3. **Package Management**
-   - Update Homebrew formula (if exists)
-   - Update installation scripts
-   - Update package metadata
-
-### Phase 5: Testing and Validation (Week 4)
-
-1. **Functionality Testing**
-   ```bash
-   cargo build --release
-   ./target/release/mill setup
-   ./target/release/mill status
-   # Test all CLI commands
-   ```
-
-2. **Integration Testing**
-   ```bash
-   cargo nextest run --workspace --all-features
-   ```
-
-3. **Documentation Review**
-   - Verify all links work
-   - Check all code examples compile
-   - Validate configuration examples
-
-4. **Migration Testing**
-   - Test upgrade path from `.codebuddy/` to `.typemill/`
-   - Verify backward compatibility where needed
-   - Document breaking changes
-
-### Phase 6: Release (Week 5)
-
-1. **Pre-Release**
-   - Create detailed CHANGELOG entry
-   - Write migration guide
-   - Update version number (consider major version bump: 1.0.0 → 2.0.0)
-
-2. **Release**
-   - Merge rename branch to main
-   - Tag release: `v2.0.0-typemill`
-   - Publish to crates.io (if applicable)
-   - Update package registries
-
-3. **Post-Release**
-   - Announce rename on relevant channels
-   - Monitor for issues
-   - Support users with migration questions
+### Release
+- [ ] Create detailed CHANGELOG entry
+- [ ] Write migration guide
+- [ ] Update version number (major bump to 2.0.0)
+- [ ] Merge to main and tag release
+- [ ] Publish to crates.io (if applicable)
 
 ## Migration Path for Users
 
@@ -394,27 +322,14 @@ sed -i 's/codebuddy/mill/g' scripts/*.sh
 
 ## Success Criteria
 
-1. ✅ All tests pass with new names
-2. ✅ All documentation updated and accurate
-3. ✅ CLI commands work with `mill` prefix
-4. ✅ Migration path tested and documented
-5. ✅ No regression in functionality
-6. ✅ Docker builds succeed with new names
-7. ✅ Package registries updated (if applicable)
-8. ✅ Users can successfully migrate from old version
-
-## Timeline Summary
-
-| Phase | Duration | Key Deliverables |
-|-------|----------|------------------|
-| Preparation | Week 1 | Impact analysis, backup, communication plan |
-| Core Rename | Week 2 | Cargo workspace, binary, config updated |
-| Documentation | Week 2-3 | All docs updated, examples verified |
-| Infrastructure | Week 3 | Docker, CI/CD, packages updated |
-| Testing | Week 4 | Full test suite, migration testing |
-| Release | Week 5 | Release, announce, support users |
-
-**Total Duration**: 5 weeks
+- [ ] All tests pass with new names
+- [ ] All documentation updated and accurate
+- [ ] CLI commands work with `mill` prefix
+- [ ] Migration path tested and documented
+- [ ] No regression in functionality
+- [ ] Docker builds succeed with new names
+- [ ] Package registries updated (if applicable)
+- [ ] Users can successfully migrate from old version
 
 ## Open Questions
 
