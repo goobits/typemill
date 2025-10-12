@@ -249,25 +249,29 @@ impl RenameHandler {
             .rename_file_with_imports(old_path, new_path, true, None)
             .await?;
 
-        // Extract impact metrics from dry-run result
-        let affected_files = dry_run_result
+        // Extract impact metrics from dry-run result (single source of truth)
+        // Keep as u64 to avoid silent overflow during arithmetic
+        let affected_files_u64 = dry_run_result
             .result
             .get("affected_files")
             .and_then(|v| v.as_u64())
-            .unwrap_or(0) as usize;
+            .unwrap_or(0);
 
-        let files_to_modify = dry_run_result
+        let files_to_modify_u64 = dry_run_result
             .result
             .get("import_updates")
             .and_then(|u| u.get("files_to_modify"))
             .and_then(|v| v.as_u64())
-            .unwrap_or(0) as usize;
+            .unwrap_or(0);
 
-        debug!(
-            affected_files,
-            files_to_modify,
-            "Dry-run metrics extracted from FileService"
-        );
+        // Log when we find importers (helps debugging)
+        if affected_files_u64 > 0 || files_to_modify_u64 > 0 {
+            debug!(
+                affected_files = affected_files_u64,
+                files_to_modify = files_to_modify_u64,
+                "Import scan found references to target file"
+            );
+        }
 
         let abs_old = std::fs::canonicalize(old_path).unwrap_or_else(|_| old_path.to_path_buf());
         let _abs_new = new_path.to_path_buf();
@@ -330,10 +334,13 @@ impl RenameHandler {
         };
 
         // Build summary from dry-run metrics
-        // Total affected = target file + files that import it
-        let total_affected = 1 + affected_files + files_to_modify;
+        // Dry-run already counted the importers; we add the target file itself
+        // Do arithmetic in u64, then convert to u32 at the end
+        let total_affected_u64 = 1 + files_to_modify_u64;
+        let total_affected = total_affected_u64.min(u32::MAX as u64) as u32;
+
         let summary = PlanSummary {
-            affected_files: total_affected,
+            affected_files: total_affected as usize,
             created_files: 1,
             deleted_files: 1,
         };
@@ -353,7 +360,7 @@ impl RenameHandler {
             plan_version: "1.0".to_string(),
             kind: "rename".to_string(),
             language,
-            estimated_impact: self.estimate_impact(total_affected),
+            estimated_impact: self.estimate_impact(total_affected as usize),
             created_at: chrono::Utc::now().to_rfc3339(),
         };
 
