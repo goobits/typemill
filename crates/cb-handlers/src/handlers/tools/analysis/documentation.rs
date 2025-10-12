@@ -60,7 +60,7 @@ use tracing::debug;
 /// - Metrics including total_symbols, documented_symbols, coverage_percentage, undocumented_public
 /// - Severity: High if coverage < 50%, Medium if < 70%, Low otherwise
 /// - Suggestions to add documentation to undocumented public symbols
-fn detect_coverage(
+pub fn detect_coverage(
     _complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
@@ -233,7 +233,7 @@ fn detect_coverage(
 /// - Metrics including symbols_with_quality_docs, missing_param_docs, missing_return_docs, missing_examples
 /// - Severity: Medium if quality issues found
 /// - Suggestions to add parameter docs, return docs, examples
-fn detect_quality(
+pub fn detect_quality(
     complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
@@ -442,7 +442,7 @@ fn detect_quality(
 /// - Metrics including style_violations, mixed_styles, capitalization_issues, punctuation_issues
 /// - Severity: Low (style is informational)
 /// - Suggestions to use consistent doc comment style
-fn detect_style(
+pub fn detect_style(
     _complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
@@ -595,7 +595,7 @@ fn detect_style(
 /// - Metrics including functions_with_examples, example_coverage_percentage, complex_without_examples
 /// - Severity: Medium if complex functions lack examples
 /// - Suggestions to add examples to complex functions
-fn detect_examples(
+pub fn detect_examples(
     complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
@@ -771,7 +771,7 @@ fn detect_examples(
 /// - Metrics including total_todos, todos_by_category, oldest_todo (if dated)
 /// - Severity: High if FIXMEs found, Medium if many TODOs (> 10), Low otherwise
 /// - Suggestions to address FIXMEs, create issues for TODOs
-fn detect_todos(
+pub fn detect_todos(
     _complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[Symbol],

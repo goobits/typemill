@@ -708,11 +708,48 @@ async fn analyze_dead_code_with_cached_ast(
 
     // Call appropriate detection function from dead_code module
     let findings: Vec<Finding> = match kind {
-        "unused_imports" | "unused_symbols" | "unused_parameters" | "unused_variables" | "unused_types" | "unreachable_code" => {
-            // TODO: Wire up to dead_code detection functions
-            // For MVP, return empty findings
-            vec![]
-        }
+        "unused_imports" => super::dead_code::detect_unused_imports(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "unused_symbols" => super::dead_code::detect_unused_symbols(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "unreachable_code" => super::dead_code::detect_unreachable_code(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "unused_parameters" => super::dead_code::detect_unused_parameters(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "unused_types" => super::dead_code::detect_unused_types(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "unused_variables" => super::dead_code::detect_unused_variables(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
         _ => return Err(BatchError::AnalysisFailed(format!("Unsupported dead_code kind: {}", kind))),
     };
 
@@ -749,10 +786,48 @@ async fn analyze_dependencies_with_cached_ast(
     };
 
     let findings: Vec<Finding> = match kind {
-        "imports" | "graph" | "circular" | "coupling" | "cohesion" | "depth" => {
-            // TODO: Wire up to dependencies detection functions
-            vec![]
-        }
+        "imports" => super::dependencies::detect_imports(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "graph" => super::dependencies::detect_graph(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "circular" => super::dependencies::detect_circular(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "coupling" => super::dependencies::detect_coupling(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "cohesion" => super::dependencies::detect_cohesion(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "depth" => super::dependencies::detect_depth(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
         _ => return Err(BatchError::AnalysisFailed(format!("Unsupported dependencies kind: {}", kind))),
     };
 
@@ -788,10 +863,41 @@ async fn analyze_structure_with_cached_ast(
     };
 
     let findings: Vec<Finding> = match kind {
-        "symbols" | "hierarchy" | "interfaces" | "inheritance" | "modules" => {
-            // TODO: Wire up to structure detection functions
-            vec![]
-        }
+        "symbols" => super::structure::detect_symbols(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "hierarchy" => super::structure::detect_hierarchy(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "interfaces" => super::structure::detect_interfaces(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "inheritance" => super::structure::detect_inheritance(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "modules" => super::structure::detect_modules(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
         _ => return Err(BatchError::AnalysisFailed(format!("Unsupported structure kind: {}", kind))),
     };
 
@@ -828,10 +934,41 @@ async fn analyze_documentation_with_cached_ast(
     };
 
     let findings: Vec<Finding> = match kind {
-        "coverage" | "quality" | "style" | "examples" | "todos" => {
-            // TODO: Wire up to documentation detection functions
-            vec![]
-        }
+        "coverage" => super::documentation::detect_coverage(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "quality" => super::documentation::detect_quality(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "style" => super::documentation::detect_style(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "examples" => super::documentation::detect_examples(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "todos" => super::documentation::detect_todos(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
         _ => return Err(BatchError::AnalysisFailed(format!("Unsupported documentation kind: {}", kind))),
     };
 
@@ -868,10 +1005,34 @@ async fn analyze_tests_with_cached_ast(
     };
 
     let findings: Vec<Finding> = match kind {
-        "coverage" | "quality" | "assertions" | "organization" => {
-            // TODO: Wire up to tests detection functions
-            vec![]
-        }
+        "coverage" => super::tests_handler::detect_coverage(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "quality" => super::tests_handler::detect_quality(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "assertions" => super::tests_handler::detect_assertions(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
+        "organization" => super::tests_handler::detect_organization(
+            &cached_ast.complexity_report,
+            &cached_ast.content,
+            &cached_ast.symbols,
+            &cached_ast.language,
+            &file_path_str,
+        ),
         _ => return Err(BatchError::AnalysisFailed(format!("Unsupported tests kind: {}", kind))),
     };
 

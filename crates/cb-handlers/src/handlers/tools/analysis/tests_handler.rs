@@ -61,7 +61,7 @@ use tracing::debug;
 /// - Metrics including total_tests, total_functions, coverage_ratio, untested_functions
 /// - Severity: High if ratio < 0.5, Medium if < 0.8, Low otherwise
 /// - Suggestions to add tests for untested functions
-fn detect_coverage(
+pub fn detect_coverage(
     complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
@@ -212,7 +212,7 @@ fn detect_coverage(
 /// - Metrics including test_smells_count, naming_violations, slow_tests_estimated
 /// - Severity: Medium if test smells found
 /// - Suggestions to refactor test smells, improve test naming
-fn detect_quality(
+pub fn detect_quality(
     complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
@@ -393,7 +393,7 @@ fn detect_quality(
 /// - Metrics including avg_assertions_per_test, tests_without_assertions, assertion_types
 /// - Severity: Medium if tests lack assertions or have too many
 /// - Suggestions to add assertions, split complex tests
-fn detect_assertions(
+pub fn detect_assertions(
     _complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
@@ -590,7 +590,7 @@ fn detect_assertions(
 /// - Metrics including test_files_count, orphaned_tests, missing_test_files, organization_score
 /// - Severity: Medium if poor organization
 /// - Suggestions to organize tests, add missing test files
-fn detect_organization(
+pub fn detect_organization(
     complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],

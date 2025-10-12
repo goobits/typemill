@@ -48,7 +48,7 @@ use tracing::debug;
 /// - Location with line number
 /// - Metrics including imported symbols
 /// - Suggestion to remove the import
-fn detect_unused_imports(
+pub fn detect_unused_imports(
     _complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
@@ -271,7 +271,7 @@ fn detect_unused_imports(
 /// - Location with function name and range
 /// - Metrics including symbol type
 /// - Suggestions to remove or make private
-fn detect_unused_symbols(
+pub fn detect_unused_symbols(
     complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
@@ -408,7 +408,7 @@ fn detect_unused_symbols(
 /// - Location with line number and range
 /// - Metrics including lines unreachable and terminator statement
 /// - Suggestion to remove the unreachable code
-fn detect_unreachable_code(
+pub fn detect_unreachable_code(
     _complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
@@ -589,7 +589,7 @@ fn detect_unreachable_code(
 /// - Location with function line and range
 /// - Metrics including parameter name and function name
 /// - Suggestion to remove the parameter (requires review)
-fn detect_unused_parameters(
+pub fn detect_unused_parameters(
     complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
@@ -767,7 +767,7 @@ fn detect_unused_parameters(
 /// - Location with type line
 /// - Metrics including type name and kind
 /// - Suggestion to remove the type (requires review)
-fn detect_unused_types(
+pub fn detect_unused_types(
     _complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[cb_plugin_api::Symbol],
@@ -891,7 +891,7 @@ fn detect_unused_types(
 /// - Location with variable declaration line
 /// - Metrics including variable name and scope
 /// - Suggestion to remove the variable
-fn detect_unused_variables(
+pub fn detect_unused_variables(
     complexity_report: &cb_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
