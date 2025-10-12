@@ -10,7 +10,6 @@ pub mod dependencies;
 pub mod documentation;
 pub mod engine;
 pub mod helpers;
-pub mod project;
 pub mod quality;
 pub mod structure;
 pub mod tests_handler;
@@ -96,15 +95,16 @@ impl AnalysisHandler {
 impl ToolHandler for AnalysisHandler {
     fn tool_names(&self) -> &[&str] {
         &[
-            "analyze_project",
             "analyze_imports",
         ]
     }
 
     fn is_internal(&self) -> bool {
-        // Legacy analysis tools are internal - replaced by Unified Analysis API
-        // - analyze_project → analyze.quality("maintainability") (workspace aggregator)
+        // Legacy analysis tool is internal - replaced by Unified Analysis API
         // - analyze_imports → analyze.dependencies("imports") (plugin-native graphs)
+        //
+        // Note: analyze_project was removed as it's fully replaced by
+        //       analyze.quality("maintainability") with workspace scope
         true
     }
 
@@ -114,7 +114,6 @@ impl ToolHandler for AnalysisHandler {
         tool_call: &ToolCall,
     ) -> ServerResult<serde_json::Value> {
         match tool_call.name.as_str() {
-            "analyze_project" => project::handle_analyze_project(context, tool_call).await,
             "analyze_imports" => {
                 // Delegate to the plugin system (SystemToolsPlugin handles this)
                 self.delegate_to_plugin_system(context, tool_call).await

@@ -23,41 +23,41 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use tracing::debug;
 
-/// Detect and analyze import/export statements
+/// Detect and analyze import/export statements using plugin-based AST parsing
 ///
-/// This function identifies all import and export statements in a file and
-/// categorizes them as external (node_modules, crates.io), internal (project),
-/// or relative imports.
+/// This function uses language plugins to accurately parse import statements
+/// from the file's AST, then categorizes them as external (node_modules, crates.io),
+/// internal (project), or relative imports.
 ///
 /// # Algorithm
-/// 1. Parse import/export statements using language-specific patterns
-/// 2. Extract source module path and imported symbols
+/// 1. Parse file with appropriate language plugin to get ImportInfo structures
+/// 2. Extract module path and imported symbols from AST
 /// 3. Categorize import as external, internal, or relative
 /// 4. Calculate metrics (import count, symbol count, categorization)
 /// 5. Generate findings with Low severity (informational)
 ///
-/// # Heuristics
+/// # Plugin-First Approach
+/// - TypeScript/JavaScript: Uses cb_lang_typescript::parser::analyze_imports
+/// - Rust: Uses cb_lang_rust::parser::parse_imports
+/// - Unsupported languages: Returns empty findings (no regex fallback)
+///
+/// # Heuristics (Categorization)
 /// - External: module paths starting with package names (no ./ or ../)
 /// - Internal: module paths starting with project root indicators
 /// - Relative: module paths starting with ./ or ../
 /// - Categorization is based on string patterns, not file system checks
 ///
-/// # Future Enhancements
-/// TODO: Add AST-based import analysis for accurate symbol extraction
-/// TODO: Cross-reference with package.json/Cargo.toml for external validation
-/// TODO: Detect unused re-exports
-///
 /// # Parameters
 /// - `complexity_report`: Not used for import detection
-/// - `content`: The raw file content to search for imports
-/// - `symbols`: Not used for import detection
+/// - `content`: The raw file content to parse
+/// - `symbols`: Not used for import detection (uses plugin-parsed imports instead)
 /// - `language`: The language name (e.g., "rust", "typescript")
 /// - `file_path`: The path to the file being analyzed
 ///
 /// # Returns
 /// A vector of findings for import statements, each with:
-/// - Location with line number
-/// - Metrics including source_module, imported_symbols, import_category
+/// - Location with line number from AST
+/// - Metrics including source_module, imported_symbols, import_category, import_type
 /// - Low severity (informational only)
 pub fn detect_imports(
     _complexity_report: &cb_ast::complexity::ComplexityReport,
@@ -66,76 +66,69 @@ pub fn detect_imports(
     language: &str,
     file_path: &str,
 ) -> Vec<Finding> {
-    let mut findings = Vec::new();
-
-    // Language-specific import/export patterns
-    let import_patterns = get_import_patterns(language);
-
-    if import_patterns.is_empty() {
-        return findings; // Language not supported
-    }
-
-    let mut line_num = 1;
-    let lines: Vec<&str> = content.lines().collect();
-
-    for line in &lines {
-        // Check if this line contains an import or export
-        for pattern_str in &import_patterns {
-            if let Ok(pattern) = Regex::new(pattern_str) {
-                if let Some(captures) = pattern.captures(line) {
-                    // Get the module path from the first capture group
-                    if let Some(module_path) = captures.get(1) {
-                        let module_path_str = module_path.as_str();
-
-                        // Extract symbols from this import
-                        let symbols = extract_imported_symbols(line, language);
-
-                        // Categorize import
-                        let category = categorize_import(module_path_str, language);
-
-                        let mut metrics = HashMap::new();
-                        metrics.insert("source_module".to_string(), json!(module_path_str));
-                        metrics.insert("imported_symbols".to_string(), json!(symbols));
-                        metrics.insert("import_count".to_string(), json!(symbols.len()));
-                        metrics.insert("import_category".to_string(), json!(category));
-
-                        findings.push(Finding {
-                            id: format!("import-{}-{}", file_path, line_num),
-                            kind: "import".to_string(),
-                            severity: Severity::Low, // Informational
-                            location: FindingLocation {
-                                file_path: file_path.to_string(),
-                                range: Some(Range {
-                                    start: Position {
-                                        line: line_num as u32,
-                                        character: 0,
-                                    },
-                                    end: Position {
-                                        line: line_num as u32,
-                                        character: line.len() as u32,
-                                    },
-                                }),
-                                symbol: None,
-                                symbol_kind: Some("import".to_string()),
-                            },
-                            metrics: Some(metrics),
-                            message: format!(
-                                "{} import from '{}': {} symbol(s)",
-                                category,
-                                module_path_str,
-                                symbols.len()
-                            ),
-                            suggestions: vec![],
-                        });
-                    }
-                }
-            }
+    // Parse imports using language plugin
+    let import_infos = match parse_imports_with_plugin(content, language, file_path) {
+        Ok(imports) => imports,
+        Err(_) => {
+            // If plugin parsing fails or language unsupported, return empty findings
+            // This is the plugin-first philosophy: no regex fallback
+            return Vec::new();
         }
+    };
 
-        line_num += 1;
-    }
+    // Convert ImportInfo structures to Finding structures
+    import_infos
+        .into_iter()
+        .enumerate()
+        .map(|(idx, import_info)| {
+            // Extract imported symbols from ImportInfo
+            let symbols = extract_symbols_from_import_info(&import_info);
 
-    findings
+            // Categorize import
+            let category = categorize_import(&import_info.module_path, language);
+
+            // Build metrics
+            let mut metrics = HashMap::new();
+            metrics.insert("source_module".to_string(), json!(import_info.module_path));
+            metrics.insert("imported_symbols".to_string(), json!(symbols));
+            metrics.insert("import_count".to_string(), json!(symbols.len()));
+            metrics.insert("import_category".to_string(), json!(category));
+            metrics.insert("import_type".to_string(), json!(format!("{:?}", import_info.import_type)));
+            metrics.insert("type_only".to_string(), json!(import_info.type_only));
+
+            // Build location from AST source location
+            let range = Some(Range {
+                start: Position {
+                    line: import_info.location.start_line,
+                    character: import_info.location.start_column,
+                },
+                end: Position {
+                    line: import_info.location.end_line,
+                    character: import_info.location.end_column,
+                },
+            });
+
+            Finding {
+                id: format!("import-{}-{}", file_path, idx),
+                kind: "import".to_string(),
+                severity: Severity::Low, // Informational
+                location: FindingLocation {
+                    file_path: file_path.to_string(),
+                    range,
+                    symbol: None,
+                    symbol_kind: Some("import".to_string()),
+                },
+                metrics: Some(metrics),
+                message: format!(
+                    "{} import from '{}': {} symbol(s)",
+                    category,
+                    import_info.module_path,
+                    symbols.len()
+                ),
+                suggestions: vec![],
+            }
+        })
+        .collect()
 }
 
 /// Build full dependency graph for the file
@@ -909,6 +902,80 @@ fn extract_module_name(file_path: &str) -> String {
         }
     }
     file_path.to_string()
+}
+
+/// Parse imports using language plugin
+///
+/// This function calls the appropriate language plugin parser to extract
+/// import information from the file content.
+///
+/// # Parameters
+/// - `content`: The raw file content to parse
+/// - `language`: The language name (e.g., "rust", "typescript")
+/// - `file_path`: The path to the file being analyzed (for TypeScript path context)
+///
+/// # Returns
+/// A Result containing Vec<ImportInfo> from the plugin parser, or an error
+fn parse_imports_with_plugin(
+    content: &str,
+    language: &str,
+    file_path: &str,
+) -> Result<Vec<cb_protocol::ImportInfo>, String> {
+    use std::path::Path;
+
+    match language.to_lowercase().as_str() {
+        "typescript" | "javascript" => {
+            // Use TypeScript plugin's parser
+            let path = Path::new(file_path);
+            let graph = cb_lang_typescript::parser::analyze_imports(content, Some(path))
+                .map_err(|e| format!("TypeScript parser failed: {}", e))?;
+            Ok(graph.imports)
+        }
+        "rust" => {
+            // Use Rust plugin's parser
+            cb_lang_rust::parser::parse_imports(content)
+                .map_err(|e| format!("Rust parser failed: {}", e))
+        }
+        _ => {
+            // Unsupported language - return error to signal no plugin available
+            Err(format!("No plugin support for language: {}", language))
+        }
+    }
+}
+
+/// Extract imported symbols from ImportInfo structure
+///
+/// Converts the structured import data from the plugin into a flat list
+/// of symbol names for backwards compatibility with existing metrics.
+///
+/// # Parameters
+/// - `import_info`: The parsed import information from the plugin
+///
+/// # Returns
+/// A vector of symbol names (including default, namespace, and named imports)
+fn extract_symbols_from_import_info(import_info: &cb_protocol::ImportInfo) -> Vec<String> {
+    let mut symbols = Vec::new();
+
+    // Add default import if present
+    if let Some(ref default) = import_info.default_import {
+        symbols.push(default.clone());
+    }
+
+    // Add namespace import if present
+    if let Some(ref namespace) = import_info.namespace_import {
+        symbols.push(format!("* as {}", namespace));
+    }
+
+    // Add all named imports
+    for named in &import_info.named_imports {
+        if let Some(ref alias) = named.alias {
+            symbols.push(format!("{} as {}", named.name, alias));
+        } else {
+            symbols.push(named.name.clone());
+        }
+    }
+
+    symbols
 }
 
 // ============================================================================
