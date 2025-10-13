@@ -95,6 +95,7 @@ cb-analysis-graph = { path = "analysis/cb-analysis-graph" }
 # These cannot be consolidated without upstream updates
 
 # Language plugins (temporarily reduced to TS + Rust during unified API refactoring)
+cb-lang-common = { path = "crates/cb-lang-common" }
 cb-lang-rust = { path = "crates/cb-lang-rust" }
 cb-lang-typescript = { path = "crates/cb-lang-typescript" }
 cb-lang-markdown = { path = "crates/cb-lang-markdown" }
