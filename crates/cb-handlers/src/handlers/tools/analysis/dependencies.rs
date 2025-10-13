@@ -12,6 +12,9 @@
 //! detection logic.
 
 use super::super::{ToolHandler, ToolHandlerContext};
+use crate::handlers::tools::analysis::suggestions::{
+    self, AnalysisContext, RefactoringCandidate, SuggestionGenerator,
+};
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
 use cb_protocol::analysis_result::{
@@ -351,16 +354,7 @@ pub fn detect_circular(
                 },
                 metrics: Some(metrics),
                 message: format!("Circular dependency detected: module imports itself via '{}'", import),
-                suggestions: vec![Suggestion {
-                    action: "break_circular_dependency".to_string(),
-                    description: "Refactor to break circular import (e.g., extract shared interface, use dependency injection)".to_string(),
-                    target: None,
-                    estimated_impact: "Improves architecture, reduces coupling, enables better testing".to_string(),
-                    safety: SafetyLevel::RequiresReview,
-                    confidence: 0.80,
-                    reversible: false,
-                    refactor_call: None,
-                }],
+                suggestions: vec![],
             });
         }
     }
@@ -471,20 +465,7 @@ pub fn detect_coupling(
         },
         metrics: Some(metrics),
         message,
-        suggestions: if high_coupling {
-            vec![Suggestion {
-                action: "reduce_coupling".to_string(),
-                description: "Consider reducing dependencies via interfaces, dependency injection, or extracting shared abstractions".to_string(),
-                target: None,
-                estimated_impact: "Improves testability and maintainability, reduces change ripple effects".to_string(),
-                safety: SafetyLevel::RequiresReview,
-                confidence: 0.70,
-                reversible: false,
-                refactor_call: None,
-            }]
-        } else {
-            vec![]
-        },
+        suggestions: vec![],
     });
 
     findings
@@ -592,20 +573,7 @@ pub fn detect_cohesion(
         },
         metrics: Some(metrics),
         message,
-        suggestions: if low_cohesion {
-            vec![Suggestion {
-                action: "improve_cohesion".to_string(),
-                description: "Consider splitting module into smaller, more focused modules with related responsibilities".to_string(),
-                target: None,
-                estimated_impact: "Improves maintainability, makes code easier to understand and test".to_string(),
-                safety: SafetyLevel::RequiresReview,
-                confidence: 0.65,
-                reversible: false,
-                refactor_call: None,
-            }]
-        } else {
-            vec![]
-        },
+        suggestions: vec![],
     });
 
     findings
@@ -711,96 +679,10 @@ pub fn detect_depth(
         },
         metrics: Some(metrics),
         message,
-        suggestions: if excessive_depth {
-            vec![Suggestion {
-                action: "reduce_dependency_depth".to_string(),
-                description: "Consider flattening dependency tree, using dependency injection, or introducing abstraction layers".to_string(),
-                target: None,
-                estimated_impact: "Reduces coupling, improves testability, simplifies dependency management".to_string(),
-                safety: SafetyLevel::RequiresReview,
-                confidence: 0.70,
-                reversible: false,
-                refactor_call: None,
-            }]
-        } else {
-            vec![]
-        },
+        suggestions: vec![],
     });
 
     findings
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-#[cfg(feature = "analysis-circular-deps")]
-/// Generate actionable suggestions for breaking circular dependencies
-fn generate_cycle_break_suggestions(cycle: &Cycle) -> Vec<Suggestion> {
-    let mut suggestions = Vec::new();
-
-    // Suggestion 1: Extract interface/trait
-    if cycle.modules.len() == 2 {
-        suggestions.push(Suggestion {
-            action: "extract_interface".to_string(),
-            description: format!(
-                "Extract a shared interface or trait between '{}' and '{}'. Move common dependencies to the interface to break the cycle.",
-                cycle.modules.get(0).map(|s| s.as_str()).unwrap_or("module A"),
-                cycle.modules.get(1).map(|s| s.as_str()).unwrap_or("module B")
-            ),
-            target: None,
-            estimated_impact: "Eliminates circular dependency, improves testability and modularity".to_string(),
-            safety: SafetyLevel::Safe,
-            confidence: 0.85,
-            reversible: true,
-            refactor_call: None,
-        });
-    }
-
-    // Suggestion 2: Dependency injection
-    suggestions.push(Suggestion {
-        action: "dependency_injection".to_string(),
-        description: "Use dependency injection to invert the dependency direction. Pass dependencies as parameters instead of importing directly.".to_string(),
-        target: None,
-        estimated_impact: "Breaks cycle by inverting control, improves testability".to_string(),
-        safety: SafetyLevel::RequiresReview,
-        confidence: 0.80,
-        reversible: true,
-        refactor_call: None,
-    });
-
-    // Suggestion 3: Extract shared module
-    if cycle.modules.len() > 2 {
-        suggestions.push(Suggestion {
-            action: "extract_shared_module".to_string(),
-            description: format!(
-                "Extract shared code from the {} modules into a new common module. This breaks the cycle by creating a dependency tree instead of a cycle.",
-                cycle.modules.len()
-            ),
-            target: None,
-            estimated_impact: "Eliminates circular dependency, reduces coupling".to_string(),
-            safety: SafetyLevel::RequiresReview,
-            confidence: 0.75,
-            reversible: true,
-            refactor_call: None,
-        });
-    }
-
-    // Suggestion 4: Merge modules (for small cycles)
-    if cycle.modules.len() == 2 {
-        suggestions.push(Suggestion {
-            action: "merge_modules".to_string(),
-            description: "If the modules are tightly coupled and small, consider merging them into a single module.".to_string(),
-            target: None,
-            estimated_impact: "Simplifies architecture by removing artificial separation".to_string(),
-            safety: SafetyLevel::RequiresReview,
-            confidence: 0.70,
-            reversible: true,
-            refactor_call: None,
-        });
-    }
-
-    suggestions
 }
 
 // ============================================================================
@@ -1097,6 +979,28 @@ fn extract_symbols_from_import_info(import_info: &cb_protocol::ImportInfo) -> Ve
 // Handler Implementation
 // ============================================================================
 
+fn generate_dependencies_refactoring_candidates(
+    finding: &Finding,
+) -> anyhow::Result<Vec<RefactoringCandidate>> {
+    let mut candidates = Vec::new();
+    match finding.kind.as_str() {
+        "circular_dependency" => {
+            // No direct refactoring call, but can suggest patterns
+        }
+        "coupling_metric" => {
+            if let Some(metrics) = &finding.metrics {
+                if let Some(instability) = metrics.get("instability").and_then(|v| v.as_f64()) {
+                    if instability > 0.7 {
+                        // Suggest reducing coupling, but no direct refactor call
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+    Ok(candidates)
+}
+
 pub struct DependenciesHandler;
 
 impl DependenciesHandler {
@@ -1169,7 +1073,7 @@ impl ToolHandler for DependenciesHandler {
                     metrics.insert("import_chain".to_string(), json!(import_chain_json));
 
                     // Generate actionable suggestions based on cycle characteristics
-                    let suggestions = generate_cycle_break_suggestions(&cycle);
+                    let suggestions = vec![];
 
                     Finding {
                         id: format!("circular-dependency-{}", cycle.id),
@@ -1191,7 +1095,7 @@ impl ToolHandler for DependenciesHandler {
                     }
                 }).collect();
 
-                let analysis_result = AnalysisResult {
+                let mut analysis_result = AnalysisResult {
                     findings,
                     summary: cb_protocol::analysis_result::AnalysisSummary {
                         total_findings: result.summary.total_cycles,
@@ -1221,6 +1125,27 @@ impl ToolHandler for DependenciesHandler {
                     },
                 };
 
+                // NEW: Enhance findings
+                let suggestion_generator = SuggestionGenerator::new();
+                let context = AnalysisContext {
+                    file_path: project_root.to_string_lossy().to_string(),
+                    has_full_type_info: true,
+                    has_partial_type_info: true,
+                    ast_parse_errors: 0,
+                };
+
+                for finding in &mut analysis_result.findings {
+                    if let Ok(candidates) = generate_dependencies_refactoring_candidates(finding) {
+                        for candidate in candidates {
+                            if let Ok(suggestion) =
+                                suggestion_generator.generate_from_candidate(candidate, &context)
+                            {
+                                finding.suggestions.push(suggestion);
+                            }
+                        }
+                    }
+                }
+
                 return Ok(serde_json::to_value(analysis_result)?);
             }
             #[cfg(not(feature = "analysis-circular-deps"))]
@@ -1236,46 +1161,59 @@ impl ToolHandler for DependenciesHandler {
             }
         }
 
-        match kind {
-            "imports" => {
-                super::engine::run_analysis(
-                    context,
-                    tool_call,
-                    "dependencies",
-                    kind,
-                    detect_imports,
-                )
-                .await
+        let start_time = std::time::Instant::now();
+        let scope_param = super::engine::parse_scope_param(&args)?;
+        let file_path = super::engine::extract_file_path(&args, &scope_param)?;
+        let file_path_obj = std::path::Path::new(&file_path);
+        let extension = file_path_obj.extension().and_then(|s| s.to_str()).unwrap_or("");
+        let content = context.app_state.file_service.read_file(file_path_obj).await?;
+        let plugin = context.app_state.language_plugins.get_plugin(extension).ok_or_else(|| ServerError::Unsupported(format!("No plugin for extension '{}'", extension)))?;
+        let parsed = plugin.parse(&content).await.map_err(|e| ServerError::Internal(e.to_string()))?;
+        let language = plugin.metadata().name;
+        let complexity_report = cb_ast::complexity::analyze_file_complexity(&file_path, &content, &parsed.symbols, &language);
+
+        let analysis_fn = match kind {
+            "imports" => detect_imports,
+            "graph" => detect_graph,
+            "coupling" => detect_coupling,
+            "cohesion" => detect_cohesion,
+            "depth" => detect_depth,
+            _ => unreachable!(),
+        };
+
+        let findings = analysis_fn(&complexity_report, &content, &parsed.symbols, &language, &file_path);
+
+        let scope = cb_protocol::analysis_result::AnalysisScope {
+            scope_type: "file".to_string(),
+            path: file_path.clone(),
+            include: scope_param.include,
+            exclude: scope_param.exclude,
+        };
+
+        let mut result = cb_protocol::analysis_result::AnalysisResult::new("dependencies", kind, scope);
+        result.findings = findings;
+
+        // NEW: Enhance findings
+        let suggestion_generator = SuggestionGenerator::new();
+        let context = AnalysisContext {
+            file_path: file_path.clone(),
+            has_full_type_info: false,
+            has_partial_type_info: !parsed.symbols.is_empty(),
+            ast_parse_errors: if parsed.symbols.is_empty() { 1 } else { 0 },
+        };
+
+        for finding in &mut result.findings {
+            if let Ok(candidates) = generate_dependencies_refactoring_candidates(finding) {
+                for candidate in candidates {
+                    if let Ok(suggestion) = suggestion_generator.generate_from_candidate(candidate, &context) {
+                        finding.suggestions.push(suggestion);
+                    }
+                }
             }
-            "graph" => {
-                super::engine::run_analysis(context, tool_call, "dependencies", kind, detect_graph)
-                    .await
-            }
-            "coupling" => {
-                super::engine::run_analysis(
-                    context,
-                    tool_call,
-                    "dependencies",
-                    kind,
-                    detect_coupling,
-                )
-                .await
-            }
-            "cohesion" => {
-                super::engine::run_analysis(
-                    context,
-                    tool_call,
-                    "dependencies",
-                    kind,
-                    detect_cohesion,
-                )
-                .await
-            }
-            "depth" => {
-                super::engine::run_analysis(context, tool_call, "dependencies", kind, detect_depth)
-                    .await
-            }
-            _ => unreachable!("Kind validated earlier"),
         }
+
+        result.summary.symbols_analyzed = Some(complexity_report.total_functions);
+        result.finalize(start_time.elapsed().as_millis() as u64);
+        serde_json::to_value(result).map_err(|e| ServerError::Internal(e.to_string()))
     }
 }

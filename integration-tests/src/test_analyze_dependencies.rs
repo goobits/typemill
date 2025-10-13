@@ -635,3 +635,43 @@ async fn test_analyze_dependencies_circular_typescript_workspace() {
     assert!(cycle_path_strings.contains(&path1));
     assert!(cycle_path_strings.contains(&path2));
 }
+
+#[tokio::test]
+async fn test_analyze_dependencies_circular_with_suggestions() {
+    let workspace = TestWorkspace::new();
+    workspace.setup_typescript_project("circular-dep-test");
+
+    let fixture_dir = std::path::Path::new("fixtures/circular_dependency");
+    for entry in std::fs::read_dir(fixture_dir).unwrap() {
+        let entry = entry.unwrap();
+        let content = std::fs::read_to_string(entry.path()).unwrap();
+        workspace.create_file(&format!("src/{}", entry.file_name().to_str().unwrap()), &content);
+    }
+
+    let mut client = TestClient::new(workspace.path());
+
+    let response = client
+        .call_tool(
+            "analyze.dependencies",
+            json!({
+                "kind": "circular",
+                "scope": {
+                    "type": "workspace"
+                }
+            }),
+        )
+        .await
+        .expect("analyze.dependencies call should succeed");
+
+    let result: AnalysisResult = serde_json::from_value(
+        response
+            .get("result")
+            .expect("Response should have result field")
+            .clone(),
+    )
+    .expect("Should parse as AnalysisResult");
+
+    assert!(!result.findings.is_empty(), "Expected findings for circular dependency");
+    let finding = &result.findings[0];
+    assert!(finding.suggestions.is_empty(), "Expected no suggestions for circular dependency");
+}

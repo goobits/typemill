@@ -466,3 +466,60 @@ async fn test_analyze_dead_code_unsupported_kind() {
         }
     }
 }
+
+#[tokio::test]
+async fn test_analyze_dead_code_unused_symbols_with_suggestions() {
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
+
+    // Create a TypeScript file with an unused private function
+    let code = r#"
+function unusedFunction() {
+    return "I am never called";
+}
+
+export function usedFunction() {
+    return "I am called";
+}
+"#;
+
+    workspace.create_file("unused.ts", code);
+    let test_file = workspace.absolute_path("unused.ts");
+
+    let response = client
+        .call_tool(
+            "analyze.dead_code",
+            json!({
+                "kind": "unused_symbols",
+                "scope": {
+                    "type": "file",
+                    "path": test_file.to_string_lossy()
+                }
+            }),
+        )
+        .await
+        .expect("analyze.dead_code call should succeed");
+
+    let result: AnalysisResult = serde_json::from_value(
+        response
+            .get("result")
+            .expect("Response should have result field")
+            .clone(),
+    )
+    .expect("Should parse as AnalysisResult");
+
+    assert!(!result.findings.is_empty(), "Expected findings for unused function");
+    let finding = &result.findings[0];
+    assert!(!finding.suggestions.is_empty(), "Expected suggestions");
+
+    // Verify the suggestion has a refactor_call
+    let suggestion = &finding.suggestions[0];
+    assert!(suggestion.refactor_call.is_some(), "Suggestion should have a refactor_call");
+
+    let refactor_call = suggestion.refactor_call.as_ref().unwrap();
+    assert_eq!(refactor_call.command, "delete.plan");
+    let args = &refactor_call.arguments;
+    assert_eq!(args["kind"], "function");
+    assert!(args["target"]["file_path"].is_string());
+    assert!(args["target"]["range"].is_object());
+}

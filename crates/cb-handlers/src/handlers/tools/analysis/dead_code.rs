@@ -8,6 +8,9 @@
 //! detection logic.
 
 use super::super::{ToolHandler, ToolHandlerContext};
+use crate::handlers::tools::analysis::suggestions::{
+    self, AnalysisContext, RefactoringCandidate, SuggestionGenerator,
+};
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
 use cb_protocol::analysis_result::{
@@ -111,21 +114,7 @@ pub fn detect_unused_imports(
                                         "Unused side-effect import: {}",
                                         module_path_str
                                     ),
-                                    suggestions: vec![Suggestion {
-                                        action: "remove_import".to_string(),
-                                        description: format!(
-                                            "Remove unused import '{}'",
-                                            module_path_str
-                                        ),
-                                        target: None,
-                                        estimated_impact:
-                                            "Reduces unnecessary dependencies and improves build time"
-                                                .to_string(),
-                                        safety: SafetyLevel::Safe,
-                                        confidence: 0.85,
-                                        reversible: true,
-                                        refactor_call: None,
-                                    }],
+                                    suggestions: vec![],
                                 });
                             }
                         } else {
@@ -172,36 +161,6 @@ pub fn detect_unused_imports(
                                     )
                                 };
 
-                                let suggestion = if all_unused {
-                                    Suggestion {
-                                        action: "remove_import".to_string(),
-                                        description: format!(
-                                            "Remove entire import from '{}'",
-                                            module_path_str
-                                        ),
-                                        target: None,
-                                        estimated_impact: "Reduces unused dependencies".to_string(),
-                                        safety: SafetyLevel::Safe,
-                                        confidence: 0.90,
-                                        reversible: true,
-                                        refactor_call: None,
-                                    }
-                                } else {
-                                    Suggestion {
-                                        action: "remove_unused_symbols".to_string(),
-                                        description: format!(
-                                            "Remove unused symbols: {}",
-                                            unused_symbols.join(", ")
-                                        ),
-                                        target: None,
-                                        estimated_impact: "Cleans up import statement".to_string(),
-                                        safety: SafetyLevel::Safe,
-                                        confidence: 0.85,
-                                        reversible: true,
-                                        refactor_call: None,
-                                    }
-                                };
-
                                 findings.push(Finding {
                                     id: format!("unused-import-{}-{}", file_path, line_num),
                                     kind: "unused_import".to_string(),
@@ -223,7 +182,7 @@ pub fn detect_unused_imports(
                                     },
                                     metrics: Some(metrics),
                                     message,
-                                    suggestions: vec![suggestion],
+                                    suggestions: vec![],
                                 });
                             }
                         }
@@ -317,46 +276,7 @@ pub fn detect_unused_symbols(
                 },
                 metrics: Some(metrics),
                 message: format!("Function '{}' is defined but never called", func.name),
-                suggestions: vec![
-                    Suggestion {
-                        action: "remove_function".to_string(),
-                        description: format!("Remove unused function '{}'", func.name),
-                        target: None,
-                        estimated_impact: format!(
-                            "Reduces code by {} lines",
-                            func.metrics.sloc
-                        ),
-                        safety: SafetyLevel::RequiresReview,
-                        confidence: 0.75,
-                        reversible: true,
-                        refactor_call: Some(cb_protocol::analysis_result::RefactorCall {
-                            command: "delete.plan".to_string(),
-                            arguments: json!({
-                                "kind": "function",
-                                "target": {
-                                    "file_path": file_path,
-                                    "range": {
-                                        "start": { "line": func.line, "character": 0 },
-                                        "end": { "line": func.line + func.metrics.sloc as usize, "character": 0 }
-                                    }
-                                }
-                            }),
-                        }),
-                    },
-                    Suggestion {
-                        action: "make_private".to_string(),
-                        description: format!(
-                            "If needed for testing, make '{}' explicitly private/internal",
-                            func.name
-                        ),
-                        target: None,
-                        estimated_impact: "Documents intent for future maintainers".to_string(),
-                        safety: SafetyLevel::Safe,
-                        confidence: 0.90,
-                        reversible: true,
-                        refactor_call: None,
-                    },
-                ],
+                suggestions: vec![],
             });
         }
     }
@@ -536,16 +456,7 @@ pub fn detect_unreachable_code(
                         terminator,
                         i + 1
                     ),
-                    suggestions: vec![Suggestion {
-                        action: "remove_unreachable_code".to_string(),
-                        description: format!("Remove {} unreachable line(s)", unreachable_count),
-                        target: None,
-                        estimated_impact: format!("Reduces code by {} lines", unreachable_count),
-                        safety: SafetyLevel::Safe,
-                        confidence: 0.85,
-                        reversible: true,
-                        refactor_call: None,
-                    }],
+                    suggestions: vec![],
                 });
             }
         }
@@ -707,20 +618,7 @@ pub fn detect_unused_parameters(
                                         "Parameter '{}' in function '{}' is never used",
                                         param_name, func.name
                                     ),
-                                    suggestions: vec![Suggestion {
-                                        action: "remove_parameter".to_string(),
-                                        description: format!(
-                                            "Remove unused parameter '{}'",
-                                            param_name
-                                        ),
-                                        target: None,
-                                        estimated_impact: "Simplifies function signature"
-                                            .to_string(),
-                                        safety: SafetyLevel::RequiresReview,
-                                        confidence: 0.75,
-                                        reversible: true,
-                                        refactor_call: None,
-                                    }],
+                                    suggestions: vec![],
                                 });
                             }
                         }
@@ -841,16 +739,7 @@ pub fn detect_unused_types(
                     "Type '{}' ({}) is defined but never used",
                     type_symbol.name, type_kind
                 ),
-                suggestions: vec![Suggestion {
-                    action: "remove_type".to_string(),
-                    description: format!("Remove unused {} '{}'", type_kind, type_symbol.name),
-                    target: None,
-                    estimated_impact: "Reduces code complexity".to_string(),
-                    safety: SafetyLevel::RequiresReview,
-                    confidence: 0.70,
-                    reversible: true,
-                    refactor_call: None,
-                }],
+                suggestions: vec![],
             });
         }
     }
@@ -1003,19 +892,7 @@ pub fn detect_unused_variables(
                                         "Variable '{}' in function '{}' is declared but never used",
                                         var_name, func.name
                                     ),
-                                    suggestions: vec![Suggestion {
-                                        action: "remove_variable".to_string(),
-                                        description: format!(
-                                            "Remove unused variable '{}'",
-                                            var_name
-                                        ),
-                                        target: None,
-                                        estimated_impact: "Reduces code clutter".to_string(),
-                                        safety: SafetyLevel::Safe,
-                                        confidence: 0.80,
-                                        reversible: true,
-                                        refactor_call: None,
-                                    }],
+                                    suggestions: vec![],
                                 });
                             }
                         }
@@ -1427,6 +1304,100 @@ fn is_function_exported(func_name: &str, content: &str, language: &str) -> bool 
     true
 }
 
+fn generate_dead_code_refactoring_candidates(
+    finding: &Finding,
+) -> anyhow::Result<Vec<RefactoringCandidate>> {
+    let mut candidates = Vec::new();
+    match finding.kind.as_str() {
+        "unused_import" => {
+            candidates.extend(generate_unused_import_candidates(finding)?);
+        }
+        "unused_function" | "unused_symbol" => {
+            candidates.extend(generate_unused_function_candidates(finding)?);
+        }
+        "unreachable_code" => {
+            candidates.extend(generate_unreachable_code_candidates(finding)?);
+        }
+        _ => {}
+    }
+    Ok(candidates)
+}
+
+fn generate_unused_import_candidates(
+    finding: &Finding,
+) -> anyhow::Result<Vec<RefactoringCandidate>> {
+    let mut candidates = Vec::new();
+    candidates.push(RefactoringCandidate {
+        refactor_type: suggestions::RefactorType::Delete,
+        message: "Remove unused import.".to_string(),
+        scope: suggestions::Scope::Module,
+        has_side_effects: false,
+        reference_count: Some(0),
+        is_unreachable: false,
+        is_recursive: false,
+        involves_generics: false,
+        involves_macros: false,
+        evidence_strength: suggestions::EvidenceStrength::Strong,
+        location: finding.location.clone(),
+        refactor_call_args: json!({
+            "file_path": finding.location.file_path,
+            "range": finding.location.range,
+        }),
+    });
+    Ok(candidates)
+}
+
+fn generate_unused_function_candidates(
+    finding: &Finding,
+) -> anyhow::Result<Vec<RefactoringCandidate>> {
+    let mut candidates = Vec::new();
+    candidates.push(RefactoringCandidate {
+        refactor_type: suggestions::RefactorType::Delete,
+        message: "Remove unused function.".to_string(),
+        scope: suggestions::Scope::Function,
+        has_side_effects: false,
+        reference_count: Some(0),
+        is_unreachable: false,
+        is_recursive: false,
+        involves_generics: false,
+        involves_macros: false,
+        evidence_strength: suggestions::EvidenceStrength::Strong,
+        location: finding.location.clone(),
+        refactor_call_args: json!({
+            "kind": "function",
+            "target": {
+                "file_path": finding.location.file_path,
+                "range": finding.location.range,
+            }
+        }),
+    });
+    Ok(candidates)
+}
+
+fn generate_unreachable_code_candidates(
+    finding: &Finding,
+) -> anyhow::Result<Vec<RefactoringCandidate>> {
+    let mut candidates = Vec::new();
+    candidates.push(RefactoringCandidate {
+        refactor_type: suggestions::RefactorType::Delete,
+        message: "Remove unreachable code.".to_string(),
+        scope: suggestions::Scope::Local,
+        has_side_effects: false,
+        reference_count: Some(0),
+        is_unreachable: true,
+        is_recursive: false,
+        involves_generics: false,
+        involves_macros: false,
+        evidence_strength: suggestions::EvidenceStrength::Strong,
+        location: finding.location.clone(),
+        refactor_call_args: json!({
+            "file_path": finding.location.file_path,
+            "range": finding.location.range,
+        }),
+    });
+    Ok(candidates)
+}
+
 pub struct DeadCodeHandler;
 
 impl DeadCodeHandler {
@@ -1641,17 +1612,7 @@ impl DeadCodeHandler {
                     "Symbol '{}' is defined but never used in the workspace",
                     dead_symbol.name
                 ),
-                suggestions: vec![Suggestion {
-                    action: "remove_symbol".to_string(),
-                    description: format!("Remove unused symbol '{}'", dead_symbol.name),
-                    target: None,
-                    estimated_impact: "Reduces code complexity and improves maintainability"
-                        .to_string(),
-                    safety: SafetyLevel::RequiresReview,
-                    confidence: 0.85,
-                    reversible: true,
-                    refactor_call: None,
-                }],
+                suggestions: vec![],
             };
 
             result.add_finding(finding);
@@ -1830,17 +1791,7 @@ impl DeadCodeHandler {
                     "Symbol '{}' is defined but never used in the workspace",
                     dead_symbol.name
                 ),
-                suggestions: vec![Suggestion {
-                    action: "remove_symbol".to_string(),
-                    description: format!("Remove unused symbol '{}'", dead_symbol.name),
-                    target: None,
-                    estimated_impact: "Reduces code complexity and improves maintainability"
-                        .to_string(),
-                    safety: SafetyLevel::RequiresReview,
-                    confidence: 0.85,
-                    reversible: true,
-                    refactor_call: None,
-                }],
+                suggestions: vec![],
             };
 
             result.add_finding(finding);
@@ -1920,71 +1871,62 @@ impl ToolHandler for DeadCodeHandler {
             self.handle_workspace_dead_code(context, &args, &scope_param, kind)
                 .await
         } else {
-            // Use standard file analysis with regex heuristics
-            // Dispatch to appropriate analysis function
-            match kind {
-                "unused_imports" => {
-                    super::engine::run_analysis(
-                        context,
-                        tool_call,
-                        "dead_code",
-                        kind,
-                        detect_unused_imports,
-                    )
-                    .await
+            // Replicate engine::run_analysis to get access to `parsed` object for context
+            let start_time = std::time::Instant::now();
+            let file_path = super::engine::extract_file_path(&args, &scope_param)?;
+
+            let file_path_obj = std::path::Path::new(&file_path);
+            let extension = file_path_obj.extension().and_then(|s| s.to_str()).unwrap_or("");
+            let content = context.app_state.file_service.read_file(file_path_obj).await?;
+            let plugin = context.app_state.language_plugins.get_plugin(extension).ok_or_else(|| ServerError::Unsupported(format!("No plugin for extension '{}'", extension)))?;
+        let parsed = plugin.parse(&content).await.map_err(|e| ServerError::Internal(e.to_string()))?;
+            let language = plugin.metadata().name;
+            let complexity_report = cb_ast::complexity::analyze_file_complexity(&file_path, &content, &parsed.symbols, &language);
+
+            let analysis_fn = match kind {
+                "unused_imports" => detect_unused_imports,
+                "unused_symbols" => detect_unused_symbols,
+                "unreachable_code" => detect_unreachable_code,
+                "unused_parameters" => detect_unused_parameters,
+                "unused_types" => detect_unused_types,
+                "unused_variables" => detect_unused_variables,
+                _ => unreachable!(),
+            };
+
+            let findings = analysis_fn(&complexity_report, &content, &parsed.symbols, &language, &file_path);
+
+            let scope = cb_protocol::analysis_result::AnalysisScope {
+                scope_type: "file".to_string(),
+                path: file_path.clone(),
+                include: scope_param.include,
+                exclude: scope_param.exclude,
+            };
+
+            let mut result = cb_protocol::analysis_result::AnalysisResult::new("dead_code", kind, scope);
+            result.findings = findings;
+
+            // NEW: Enhance findings
+            let suggestion_generator = SuggestionGenerator::new();
+            let context = AnalysisContext {
+                file_path: file_path.clone(),
+                has_full_type_info: false,
+                has_partial_type_info: !parsed.symbols.is_empty(),
+                ast_parse_errors: if parsed.symbols.is_empty() { 1 } else { 0 },
+            };
+
+            for finding in &mut result.findings {
+                if let Ok(candidates) = generate_dead_code_refactoring_candidates(finding) {
+                    for candidate in candidates {
+                        if let Ok(suggestion) = suggestion_generator.generate_from_candidate(candidate, &context) {
+                            finding.suggestions.push(suggestion);
+                        }
+                    }
                 }
-                "unused_symbols" => {
-                    super::engine::run_analysis(
-                        context,
-                        tool_call,
-                        "dead_code",
-                        kind,
-                        detect_unused_symbols,
-                    )
-                    .await
-                }
-                "unreachable_code" => {
-                    super::engine::run_analysis(
-                        context,
-                        tool_call,
-                        "dead_code",
-                        kind,
-                        detect_unreachable_code,
-                    )
-                    .await
-                }
-                "unused_parameters" => {
-                    super::engine::run_analysis(
-                        context,
-                        tool_call,
-                        "dead_code",
-                        kind,
-                        detect_unused_parameters,
-                    )
-                    .await
-                }
-                "unused_types" => {
-                    super::engine::run_analysis(
-                        context,
-                        tool_call,
-                        "dead_code",
-                        kind,
-                        detect_unused_types,
-                    )
-                    .await
-                }
-                "unused_variables" => {
-                    super::engine::run_analysis(
-                        context,
-                        tool_call,
-                        "dead_code",
-                        kind,
-                        detect_unused_variables,
-                    )
-                    .await
-                }
-                _ => unreachable!("Kind validated earlier"),
             }
+
+            result.summary.symbols_analyzed = Some(complexity_report.total_functions);
+            result.finalize(start_time.elapsed().as_millis() as u64);
+            serde_json::to_value(result).map_err(|e| ServerError::Internal(e.to_string()))
         }
     }
 }

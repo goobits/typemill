@@ -1,3 +1,4 @@
+pub mod suggestions;
 pub mod batch;
 pub mod batch_handler;
 pub mod config;
