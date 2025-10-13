@@ -12,7 +12,7 @@ cb-plugins = { path = "../cb-plugins" }
 cb-transport = { path = "../cb-transport" }
 cb-lsp = { path = "../cb-lsp" }
 cb-services = { path = "../cb-services" }
-cb-handlers = { path = "../cb-handlers" }
+cb-handlers = { path = "../cb-handlers", features = ["analysis-deep-dead-code"] }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 futures-util = "0.3"

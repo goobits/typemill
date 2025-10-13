@@ -1,7 +1,8 @@
 use crate::harness::{TestClient, TestWorkspace};
-use cb_protocol::analysis_result::{AnalysisResult, Severity};
+use cb_protocol::analysis_result::AnalysisResult;
 use serde_json::json;
 
+#[cfg(feature = "e2e-tests")]
 #[tokio::test]
 async fn test_analyze_deep_dead_code_default_mode() {
     let workspace = TestWorkspace::new();
@@ -76,6 +77,7 @@ pub fn unused_public_function() {
     );
 }
 
+#[cfg(feature = "e2e-tests")]
 #[tokio::test]
 async fn test_analyze_deep_dead_code_aggressive_mode() {
     let workspace = TestWorkspace::new();
