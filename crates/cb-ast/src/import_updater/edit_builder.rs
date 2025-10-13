@@ -97,7 +97,15 @@ pub(crate) async fn build_import_update_plan(
         use std::collections::HashSet;
 
         // Get module name from old path for searching
-        let module_name = old_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        // For Cargo packages, use the crate name from rename_info (with underscores)
+        // instead of the directory name (which has hyphens)
+        let module_name = if let Some(info) = rename_info {
+            info.get("old_crate_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or_else(|| old_path.file_stem().and_then(|s| s.to_str()).unwrap_or(""))
+        } else {
+            old_path.file_stem().and_then(|s| s.to_str()).unwrap_or("")
+        };
 
         // Use HashSet to avoid duplicates
         let mut all_affected: HashSet<PathBuf> = affected_files.iter().cloned().collect();
@@ -234,9 +242,75 @@ pub(crate) async fn build_import_update_plan(
             }
         };
 
-        // Special handling for directory renames vs file renames
-        if is_directory_rename {
-            // For directory renames, process each file inside the directory individually
+        // Special handling for different rename scenarios
+        // PRIORITY 1: scan_scope (for Rust crate renames and TypeScript module renames)
+        // PRIORITY 2: directory renames (for path-based imports)
+        // PRIORITY 3: file renames (for path-based imports)
+        if let Some(scope) = scan_scope {
+            // Use find_module_references for precise edits (works for both file and directory renames)
+            // Downcast to concrete plugin types to access find_module_references
+            // Note: Only Rust and TypeScript supported after language reduction
+            use cb_lang_rust::RustPlugin;
+            use cb_lang_typescript::TypeScriptPlugin;
+
+            let refs_opt = if let Some(rust_plugin) = plugin.as_any().downcast_ref::<RustPlugin>() {
+                rust_plugin
+                    .find_module_references(&content, old_module_name, scope)
+                    .ok()
+            } else if let Some(ts_plugin) = plugin.as_any().downcast_ref::<TypeScriptPlugin>() {
+                Some(ts_plugin.find_module_references(&content, old_module_name, scope))
+            } else {
+                None
+            };
+
+            if let Some(refs) = refs_opt {
+                if !refs.is_empty() {
+                    let edits = create_text_edits_from_references(
+                        &refs,
+                        &file_path,
+                        old_module_name,
+                        new_module_name,
+                    );
+                    debug!(
+                        file = ?file_path,
+                        edits = edits.len(),
+                        "Created precise TextEdits from module references"
+                    );
+                    all_edits.extend(edits);
+                    edited_file_count += 1;
+                }
+            }
+
+            // ADDITIONAL SCAN: Find inline fully-qualified paths
+            // This catches references like `old_crate::module::function()`
+            // that are NOT in import statements
+            if old_crate_name != new_crate_name {
+                let inline_refs =
+                    find_inline_crate_references(&content, &file_path, &old_crate_name);
+
+                if !inline_refs.is_empty() {
+                    debug!(
+                        file = ?file_path,
+                        inline_references = inline_refs.len(),
+                        old_crate = %old_crate_name,
+                        "Found inline fully-qualified path references"
+                    );
+
+                    // Create text edits for inline references
+                    let inline_edits = create_text_edits_from_references(
+                        &inline_refs,
+                        &file_path,
+                        &old_crate_name,
+                        &new_crate_name,
+                    );
+
+                    if !inline_edits.is_empty() {
+                        all_edits.extend(inline_edits);
+                    }
+                }
+            }
+        } else if is_directory_rename {
+            // For directory renames without scan_scope, process path-based imports
             // This allows the plugin to match exact import paths like './core/api' → './legacy/api'
 
             // Get all files inside the renamed directory
@@ -334,69 +408,6 @@ pub(crate) async fn build_import_update_plan(
                     total_imports_updated = total_changes,
                     "Created TextEdit for directory rename import updates"
                 );
-            }
-        } else if let Some(scope) = scan_scope {
-            // For file renames with scan_scope, use find_module_references for precise edits
-            // Downcast to concrete plugin types to access find_module_references
-            // Note: Only Rust and TypeScript supported after language reduction
-            use cb_lang_rust::RustPlugin;
-            use cb_lang_typescript::TypeScriptPlugin;
-
-            let refs_opt = if let Some(rust_plugin) = plugin.as_any().downcast_ref::<RustPlugin>() {
-                rust_plugin
-                    .find_module_references(&content, old_module_name, scope)
-                    .ok()
-            } else if let Some(ts_plugin) = plugin.as_any().downcast_ref::<TypeScriptPlugin>() {
-                Some(ts_plugin.find_module_references(&content, old_module_name, scope))
-            } else {
-                None
-            };
-
-            if let Some(refs) = refs_opt {
-                if !refs.is_empty() {
-                    let edits = create_text_edits_from_references(
-                        &refs,
-                        &file_path,
-                        old_module_name,
-                        new_module_name,
-                    );
-                    debug!(
-                        file = ?file_path,
-                        edits = edits.len(),
-                        "Created precise TextEdits from module references"
-                    );
-                    all_edits.extend(edits);
-                    edited_file_count += 1;
-                }
-            }
-
-            // ADDITIONAL SCAN: Find inline fully-qualified paths
-            // This catches references like `old_crate::module::function()`
-            // that are NOT in import statements
-            if old_crate_name != new_crate_name {
-                let inline_refs =
-                    find_inline_crate_references(&content, &file_path, &old_crate_name);
-
-                if !inline_refs.is_empty() {
-                    debug!(
-                        file = ?file_path,
-                        inline_references = inline_refs.len(),
-                        old_crate = %old_crate_name,
-                        "Found inline fully-qualified path references"
-                    );
-
-                    // Create text edits for inline references
-                    let inline_edits = create_text_edits_from_references(
-                        &inline_refs,
-                        &file_path,
-                        &old_crate_name,
-                        &new_crate_name,
-                    );
-
-                    if !inline_edits.is_empty() {
-                        all_edits.extend(inline_edits);
-                    }
-                }
             }
         } else {
             // For file renames without scan_scope, use the generic trait method
