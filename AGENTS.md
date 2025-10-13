@@ -476,7 +476,17 @@ cargo build --release
 ```
 
 ### Environment Variables
+
+**Logging:**
 - `RUST_LOG` - Logging level (debug/info/warn/error)
+
+**Cache Control:**
+- `CODEBUDDY_DISABLE_CACHE=1` - Disable all caches (master switch)
+- `CODEBUDDY_DISABLE_AST_CACHE=1` - Disable only AST cache
+- `CODEBUDDY_DISABLE_IMPORT_CACHE=1` - Disable only import cache
+- `CODEBUDDY_DISABLE_LSP_METHOD_CACHE=1` - Disable only LSP method translation cache
+
+See **[docs/configuration/CACHE_CONFIGURATION.md](docs/configuration/CACHE_CONFIGURATION.md)** for complete cache configuration guide.
 
 ## Performance Features
 
@@ -539,6 +549,7 @@ All debug scripts, test analysis, and experimental code goes in `.debug/` (gitig
 
 ### For Operators
 - **[docs/deployment/DOCKER_DEPLOYMENT.md](docker_deployment.md)** - Docker deployment (development and production)
+- **[docs/configuration/CACHE_CONFIGURATION.md](docs/configuration/CACHE_CONFIGURATION.md)** - Cache configuration and environment variables
 
 ### For Understanding the System
 - **[docs/architecture/ARCHITECTURE.md](overview.md)** - Complete system architecture

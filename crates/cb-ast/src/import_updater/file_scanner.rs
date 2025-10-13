@@ -3,6 +3,26 @@ use crate::import_updater::path_resolver::{FileImportInfo, ImportPathResolver};
 use std::path::{Path, PathBuf};
 use tracing::debug;
 
+/// Check if import cache is enabled via environment variables
+/// Returns true if cache should be used, false if disabled
+fn is_import_cache_enabled() -> bool {
+    // Check master switch first
+    if let Ok(val) = std::env::var("CODEBUDDY_DISABLE_CACHE") {
+        if val == "1" || val.to_lowercase() == "true" {
+            return false;
+        }
+    }
+
+    // Check import-specific switch
+    if let Ok(val) = std::env::var("CODEBUDDY_DISABLE_IMPORT_CACHE") {
+        if val == "1" || val.to_lowercase() == "true" {
+            return false;
+        }
+    }
+
+    true
+}
+
 impl ImportPathResolver {
     /// Find all files that need import updates after a rename
     /// Uses caching to avoid re-scanning files that haven't changed
@@ -20,10 +40,10 @@ impl ImportPathResolver {
             }
 
             // Check cache first (release lock immediately)
-            // Can be disabled via CODEBUDDY_DISABLE_IMPORT_CACHE=1 for testing
-            let cache_enabled = std::env::var("CODEBUDDY_DISABLE_IMPORT_CACHE")
-                .map(|v| v != "1" && v != "true")
-                .unwrap_or(true);
+            // Can be disabled via environment variables:
+            // - CODEBUDDY_DISABLE_CACHE=1 (disables all caches)
+            // - CODEBUDDY_DISABLE_IMPORT_CACHE=1 (disables only import cache)
+            let cache_enabled = is_import_cache_enabled();
 
             let cache_result = if cache_enabled {
                 if let Ok(cache) = self.import_cache.lock() {

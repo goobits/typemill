@@ -39,18 +39,27 @@ pub struct CacheSettings {
     pub max_size_bytes: u64,
 }
 
-impl Default for CacheSettings {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            max_entries: 10000,
-            ttl_seconds: 3600,                 // 1 hour
-            max_size_bytes: 256 * 1024 * 1024, // 256 MB
-        }
-    }
-}
-
 impl CacheSettings {
+    /// Check if cache is disabled via environment variables
+    /// Returns true if cache should be disabled
+    fn is_cache_disabled_by_env() -> bool {
+        // Check master switch first
+        if let Ok(val) = std::env::var("CODEBUDDY_DISABLE_CACHE") {
+            if val == "1" || val.to_lowercase() == "true" {
+                return true;
+            }
+        }
+
+        // Check AST-specific switch
+        if let Ok(val) = std::env::var("CODEBUDDY_DISABLE_AST_CACHE") {
+            if val == "1" || val.to_lowercase() == "true" {
+                return true;
+            }
+        }
+
+        false
+    }
+
     /// Create cache settings from core config
     /// This allows creating cache settings from cb_core::config::CacheConfig
     pub fn from_config(enabled: bool, ttl_seconds: u64, max_size_bytes: u64) -> Self {
@@ -59,11 +68,30 @@ impl CacheSettings {
         let avg_entry_size = 10 * 1024; // 10KB
         let max_entries = (max_size_bytes / avg_entry_size as u64).max(100) as usize;
 
+        // Check environment variables for cache control
+        // Priority: CODEBUDDY_DISABLE_CACHE > CODEBUDDY_DISABLE_AST_CACHE > config
+        let env_disabled = Self::is_cache_disabled_by_env();
+        let final_enabled = if env_disabled { false } else { enabled };
+
         Self {
-            enabled,
+            enabled: final_enabled,
             max_entries,
             ttl_seconds,
             max_size_bytes,
+        }
+    }
+}
+
+impl Default for CacheSettings {
+    fn default() -> Self {
+        // Check environment variables for cache control
+        let env_disabled = CacheSettings::is_cache_disabled_by_env();
+
+        Self {
+            enabled: !env_disabled,
+            max_entries: 10000,
+            ttl_seconds: 3600,                 // 1 hour
+            max_size_bytes: 256 * 1024 * 1024, // 256 MB
         }
     }
 }

@@ -2,14 +2,34 @@ use super::{LspAdapterPlugin, PluginError, PluginRequest, PluginResult};
 use serde_json::{json, Value};
 use url::Url;
 
+/// Check if LSP method cache is enabled via environment variables
+/// Returns true if cache should be used, false if disabled
+fn is_lsp_method_cache_enabled() -> bool {
+    // Check master switch first
+    if let Ok(val) = std::env::var("CODEBUDDY_DISABLE_CACHE") {
+        if val == "1" || val.to_lowercase() == "true" {
+            return false;
+        }
+    }
+
+    // Check LSP-specific switch
+    if let Ok(val) = std::env::var("CODEBUDDY_DISABLE_LSP_METHOD_CACHE") {
+        if val == "1" || val.to_lowercase() == "true" {
+            return false;
+        }
+    }
+
+    true
+}
+
 impl LspAdapterPlugin {
     /// Convert plugin request to LSP method and params
     pub(crate) async fn translate_request(
         &self,
         request: &PluginRequest,
     ) -> PluginResult<(String, Value)> {
-        // Check cache first
-        {
+        // Check cache first (if enabled)
+        if is_lsp_method_cache_enabled() {
             let cache = self.method_cache.lock().await;
             if let Some(lsp_method) = cache.get(&request.method) {
                 return Ok((
@@ -57,8 +77,8 @@ impl LspAdapterPlugin {
             }
         };
 
-        // Cache the translation
-        {
+        // Cache the translation (if enabled)
+        if is_lsp_method_cache_enabled() {
             let mut cache = self.method_cache.lock().await;
             cache.insert(request.method.clone(), lsp_method.to_string());
         }
