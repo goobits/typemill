@@ -217,4 +217,4 @@ All language plugins implement the `LanguagePlugin` trait with capability-based 
 2. **Then C** - Shares `clangd` LSP with C++, simpler grammar
 3. **Finally PHP** - Web legacy support, separate LSP server
 
-**Estimated Timeline:** 2-3 weeks per language (LSP + Plugin + Testing + Docs)
+**Implementation Scope:** Each language requires LSP integration, plugin development, testing, and documentation

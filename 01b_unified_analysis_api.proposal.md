@@ -1,15 +1,13 @@
 # Proposal: Unified Analysis API
 
-**Status**: ✅ **CORE COMPLETE** | ⚠️ **PHASE 2C PENDING** (as of 2025-10-13)
+**Status**: ✅ **COMPLETE** (as of 2025-10-13)
 **Author**: Project Team
 **Date**: 2025-10-10 (Proposal) | 2025-10-12 (Core Implementation) | 2025-10-13 (analyze.batch complete)
 **Formal Spec**: [docs/design/unified_api_contracts.md](docs/design/unified_api_contracts.md)
 
-## 🎉 Implementation Status Summary
+## 🎉 Implementation Status: COMPLETE
 
-### ✅ COMPLETED: Core Analysis Engine (100%)
-
-**What's Done:**
+**What's Delivered:**
 - ✅ All 6 analyze.* MCP tools (quality, dead_code, dependencies, structure, documentation, tests)
 - ✅ 26 detection kinds fully wired with AST caching
 - ✅ Configuration system (.codebuddy/analysis.toml with presets: strict, default, relaxed)
@@ -18,38 +16,9 @@
 - ✅ API documentation complete (API_REFERENCE.md)
 - ✅ Unified AnalysisResult structure across all categories
 
-**Impact:** You can now analyze code quality, find dead code, detect circular dependencies, and run batch analyses. The core detection engine is production-ready.
+**Impact:** The core unified analysis API is production-ready. You can analyze code quality, find dead code, detect circular dependencies, and run batch analyses.
 
----
-
-### ⚠️ REMAINING: Phase 2C - Actionable Suggestions (NOT STARTED)
-
-**What's Missing:**
-1. ❌ **Safety Classification** - Classify suggestions as safe/requires_review/experimental
-2. ❌ **Confidence Scoring** - Algorithm confidence (0.0-1.0) for each suggestion
-3. ❌ **Reversibility Analysis** - Track if changes can be undone without loss
-4. ❌ **Safety-First Ranking** - Sort suggestions by safety → confidence → impact
-5. ❌ **Comprehensive refactor_call Generation** - Link all 26 detection kinds to refactoring API
-6. ❌ **CI Validation** - Automated checks for suggestion metadata completeness
-
-**Estimated Effort:** 2-3 weeks (see [Phase 2C Details](#phase-2c-safety-metadata-2-3-weeks-parallel-with-2b---not-implemented) below)
-
-**Impact:** Without Phase 2C, analysis tools report findings but AI agents cannot autonomously apply fixes. The "closed-loop workflow" (analyze → suggest → refactor → re-analyze) is not functional.
-
-**Current State:** Findings have basic messages like "Function has high complexity", but lack:
-- Safety metadata fields
-- Confidence scores
-- Proper ranking
-- Complete refactor_call structures
-
----
-
-### 📋 Other Remaining Work
-
-- ⚠️ **Legacy Tool Migration** - FROZEN (2 tools kept as internal, see [Legacy Tool Retention](#legacy-tool-retention-rationale) below)
-- ⚠️ **Documentation Sync** - QUICK_REFERENCE.md, CLAUDE.md updates pending
-
-**See [Implementation Status](#implementation-status-as-of-2025-10-12) section below for complete details.**
+**Next Steps:** See [01c_actionable_suggestions.proposal.md](01c_actionable_suggestions.proposal.md) for enhancement with safety metadata and autonomous refactoring capabilities.
 
 ---
 
@@ -718,78 +687,11 @@ For each analysis category:
 2. Preset resolution with overrides
 3. Config validation against registry
 
-### Phase 2C: Safety Metadata (2-3 weeks, parallel with 2B) - ❌ NOT IMPLEMENTED
+### Phase 2C: Safety Metadata - ✅ Moved to Separate Proposal
 
-**Status**: Proposed, not yet started
+**Status**: This work has been extracted into [01c_actionable_suggestions.proposal.md](01c_actionable_suggestions.proposal.md)
 
-**Estimated Effort:** 2-3 weeks (80-120 hours)
-
-**What's missing**:
-1. **Safety classification logic** per suggestion type (safe/requires_review/experimental)
-2. **Confidence scoring algorithms** (0.0 to 1.0)
-3. **Reversibility analysis** (true/false per suggestion)
-4. **Safety-first ranking algorithm** (sort by safety → confidence → impact)
-5. **CI validation** of metadata (ensure all suggestions have required fields)
-6. **Comprehensive refactor_call generation** for all suggestion types
-
-**Current state**: Analysis tools return findings with basic messages, but suggestions lack:
-- Safety metadata fields
-- Confidence scores
-- Proper ranking
-- Complete refactor_call structures linking to unified refactoring API
-
-**Impact**: AI agents cannot automatically apply safe suggestions or make risk-assessed decisions. The "closed-loop workflow" (analyze → suggest → refactor → re-analyze) described in this proposal is not yet functional.
-
----
-
-#### Phase 2C Implementation Plan
-
-**Week 1: Safety Infrastructure (5-7 days, ~40 hours)**
-1. Define safety classification rules per suggestion type
-   - Map each of 26 detection kinds to safety level
-   - Create `SafetyClassifier` trait/module
-2. Implement confidence scoring algorithms
-   - Static-only checks → 0.6-0.7
-   - Static + verification → 0.75-0.85
-   - Multiple verifications → 0.9+
-3. Build reversibility analyzer
-4. Add safety/confidence/reversible fields to `Suggestion` struct
-5. Update `crates/cb-protocol/src/analysis_result.rs`
-6. Create new `crates/cb-handlers/src/handlers/tools/analysis/safety.rs` module
-
-**Week 2: Refactor Call Generation (5-7 days, ~40 hours)**
-1. Map each finding kind to refactoring commands
-   - unused_imports → delete.plan
-   - complexity_hotspot → extract.plan
-   - circular_dependency → move.plan (break cycle)
-2. Generate `refactor_call` structures for all 26 detection kinds
-3. Handle edge cases (missing range info, symbol not found, etc.)
-4. Implement ranking algorithm (safety → confidence → impact)
-5. Update all 6 analysis handlers with suggestion generation
-
-**Week 3: Validation & Testing (3-5 days, ~30 hours)**
-1. Build CI validation checks
-   - Schema validation for `refactor_call`
-   - Safety/confidence/reversible presence checks
-2. Add tests for safety classification
-3. Add tests for confidence scoring
-4. Integration tests for end-to-end workflow (analyze → suggest → refactor)
-5. Document suggestion generation patterns
-6. Update API_REFERENCE.md with examples
-
-**Alternative: Minimal Phase 2C (1 week)**
-- Week 1 only: Safety classification + basic confidence (fixed values per type)
-- Skip sophisticated confidence algorithms initially
-- Gets 70% of value in 1 week instead of 3
-- Iterate with better scoring based on real usage
-
-**Files to Create/Modify:**
-- `crates/cb-handlers/src/handlers/tools/analysis/safety.rs` (NEW)
-- `crates/cb-protocol/src/analysis_result.rs` (EDIT - add safety fields)
-- All 6 analysis handlers (EDIT - generate suggestions)
-- CI validation config (NEW)
-- Integration tests (NEW - end-to-end workflow tests)
-- API_REFERENCE.md (EDIT - add suggestion examples)
+The Unified Analysis API is complete. Enhancement with safety metadata, confidence scoring, and autonomous refactoring capabilities is tracked separately in proposal 01c.
 
 ### Phase 3: Batch Operations - ✅ COMPLETED (commit aac9bab7)
 1. ✅ `analyze.batch` with shared AST parsing
@@ -1071,25 +973,21 @@ analyze.quality("complexity", { preset: "strict", thresholds: { cyclomatic_compl
 - [✅] Documentation updated (API_REFERENCE.md has all 6 commands documented)
 
 **Overall completion**:
-- [✅] All 6 `analyze.*` commands implemented and tested (6/6 complete ✅)
+- [✅] All 6 `analyze.*` commands implemented and tested (6/6 complete)
 - [✅] Unified `AnalysisResult` structure used consistently across all categories
 - [✅] Project-level configuration (`.codebuddy/analysis.toml`) with preset support (strict, default, relaxed)
 - [✅] Configuration loading with graceful fallback to defaults
 - [✅] Batch analysis infrastructure complete (all 26 detection kinds wired)
-- [✅] `analyze.batch` MCP tool - **COMPLETED** (commit aac9bab7 - BatchAnalysisHandler exposing public tool #24)
-- [❌] **Actionable Suggestions with Safety Metadata** - NOT IMPLEMENTED
-  - Safety classification (safe/requires_review/experimental)
-  - Confidence scoring (0.0 to 1.0)
-  - Reversibility analysis
-  - Comprehensive refactor_call links to refactoring API
-  - Safety-first ranking algorithm
-- [⚠️] All 37 legacy commands removed from codebase (staged by category) (future work)
-- [✅] Integration tests cover all analysis categories (6/6 test files ✅)
+- [✅] `analyze.batch` MCP tool (commit aac9bab7 - BatchAnalysisHandler exposing public tool #24)
+- [✅] Integration tests cover all analysis categories (6/6 test files)
 - [✅] Tests use hard assertions with valid early-exit pattern for unparseable files
-- [⚠️] Integration tests for preset loading behavior (future work)
 - [✅] Documentation shows all 6 analyze.* commands with parameters and examples
-- [❌] CI validation of suggestion metadata - NOT IMPLEMENTED (requires Phase 2C)
 - [✅] Navigation commands preserved (search_workspace_symbols, find_definition, etc.)
+
+**Future Enhancements** (tracked separately):
+- [➡️] Actionable suggestions with safety metadata - See [01c_actionable_suggestions.proposal.md](01c_actionable_suggestions.proposal.md)
+- [⚠️] Legacy command retirement - See [02_legacy_retirement.proposal.md](02_legacy_retirement.proposal.md)
+- [⚠️] Integration tests for preset loading behavior
 
 **Key milestone**: Can complete categories in any order. Each category is independently shippable.
 

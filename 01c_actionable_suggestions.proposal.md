@@ -1,10 +1,10 @@
 # Proposal: Actionable Suggestions with Safety Metadata
 
-**Status**: 📋 **PROPOSED**
+**Status**: ❌ **NOT STARTED**
 **Author**: Project Team
-**Date**: 2025-10-12
+**Date**: 2025-10-12 (Proposed)
 **Parent Proposal**: [01b_unified_analysis_api.md](01b_unified_analysis_api.md)
-**Dependencies**: 01a (Refactoring API ✅), 01b (Analysis Core ✅)
+**Dependencies**: ✅ 01a (Refactoring API COMPLETE), ✅ 01b (Analysis Core COMPLETE)
 
 ---
 
@@ -15,6 +15,21 @@
 **Why**: Complete the "closed-loop workflow" (analyze → suggest → refactor → re-analyze) by bridging analysis findings to refactoring commands with risk assessment.
 
 **Impact**: Transform analysis from static reports into an autonomous coding agent that fixes safe issues automatically and flags risky ones for human review.
+
+---
+
+## ⚠️ Implementation Status: NOT STARTED
+
+**All dependencies are complete:**
+- ✅ 01a Unified Refactoring API - COMPLETE (refactor commands available)
+- ✅ 01b Unified Analysis API - COMPLETE (26 detection kinds working)
+
+**This proposal is ready to implement** but has NOT been started yet. Current analysis tools return findings with basic messages but lack:
+- ❌ Safety classification (safe/requires_review/experimental)
+- ❌ Confidence scoring (0.0-1.0)
+- ❌ Reversibility analysis
+- ❌ Actionable refactor_call links
+- ❌ Safety-first ranking algorithm
 
 ---
 
@@ -1260,7 +1275,7 @@ mod tests {
 ## Success Criteria
 
 ### Core Infrastructure
-- [x] `ActionableSuggestion` data structure defined
+- [ ] `ActionableSuggestion` data structure defined
 - [ ] `SuggestionGenerator` framework implemented
 - [ ] `SafetyClassifier` with rule-based classification
 - [ ] `ConfidenceScorer` with multi-factor scoring
