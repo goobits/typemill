@@ -160,6 +160,23 @@ pub mod module;  // Exposes the consolidated code
 
 For detailed parameters, return types, and examples, see **[API_REFERENCE.md](API_REFERENCE.md)**.
 
+### Actionable Suggestions Configuration
+
+Configure suggestion generation in `.codebuddy/analysis.toml`:
+
+```toml
+[suggestions]
+min_confidence = 0.7  # Minimum confidence threshold
+include_safety_levels = ["safe", "requires_review"]
+max_per_finding = 3
+generate_refactor_calls = true
+```
+
+**Presets**:
+- `strict` - Only safe suggestions, high confidence
+- `default` - Safe + requires_review, medium confidence
+- `relaxed` - All levels, low confidence
+
 ## Development Commands
 
 ```bash

@@ -6,14 +6,20 @@ pub struct SuggestionGenerator {
     classifier: SafetyClassifier,
     scorer: ConfidenceScorer,
     ranker: SuggestionRanker,
+    config: SuggestionConfig,
 }
 
 impl SuggestionGenerator {
     pub fn new() -> Self {
+        Self::with_config(SuggestionConfig::default())
+    }
+
+    pub fn with_config(config: SuggestionConfig) -> Self {
         Self {
             classifier: SafetyClassifier::new(),
             scorer: ConfidenceScorer::new(),
             ranker: SuggestionRanker::new(),
+            config,
         }
     }
 
@@ -114,5 +120,35 @@ impl SuggestionGenerator {
         }
 
         metadata
+    }
+
+    /// Generate multiple suggestions and apply config filters
+    pub fn generate_multiple(
+        &self,
+        candidates: Vec<RefactoringCandidate>,
+        context: &AnalysisContext,
+    ) -> Vec<ActionableSuggestion> {
+        let mut suggestions = Vec::new();
+
+        for candidate in candidates {
+            match self.generate_from_candidate(candidate, context) {
+                Ok(suggestion) => suggestions.push(suggestion),
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to generate suggestion");
+                }
+            }
+        }
+
+        // Apply config filters
+        suggestions
+            .into_iter()
+            .filter(|s| s.confidence >= self.config.min_confidence)
+            .filter(|s| self.config.include_safety_levels.contains(&s.safety))
+            .filter(|s| {
+                self.config.filters.allowed_impact_levels.is_empty()
+                    || self.config.filters.allowed_impact_levels.contains(&s.estimated_impact)
+            })
+            .take(self.config.max_per_finding)
+            .collect()
     }
 }

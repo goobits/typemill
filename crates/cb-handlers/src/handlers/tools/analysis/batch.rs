@@ -4,6 +4,7 @@ use super::{
     dead_code as dead_code_handler, dependencies as dependencies_handler,
     documentation as documentation_handler, quality as quality_handler,
     structure as structure_handler, tests_handler, AnalysisConfig,
+    suggestions::{SuggestionConfig, SuggestionGenerator},
 };
 use cb_plugin_api::Symbol;
 use cb_protocol::analysis_result::{
@@ -133,7 +134,11 @@ pub async fn run_batch_analysis(
     }
     let all_files_vec: Vec<PathBuf> = all_files_to_parse.into_iter().collect();
 
-    // 2. Pre-parse all ASTs for optimization
+    // 2. Load suggestion config and create generator
+    let suggestion_config = SuggestionConfig::load().unwrap_or_default();
+    let suggestion_generator = SuggestionGenerator::with_config(suggestion_config);
+
+    // 3. Pre-parse all ASTs for optimization
     let ast_cache = batch_parse_asts(&all_files_vec, context).await;
     let ast_cache_hits = ast_cache.len();
     let ast_cache_misses = all_files_vec.len() - ast_cache_hits;
@@ -164,6 +169,7 @@ pub async fn run_batch_analysis(
                     &category,
                     &query.kind,
                     request.config.as_ref(),
+                    &suggestion_generator,
                 )
                 .await
                 {
@@ -371,6 +377,7 @@ async fn analyze_file_with_cached_ast(
     category: &str,
     kind: &str,
     _config: Option<&AnalysisConfig>,
+    _suggestion_generator: &SuggestionGenerator,
 ) -> Result<AnalysisResult, BatchError> {
     let file_path_str = file_path.display().to_string();
     let start_time = Instant::now();

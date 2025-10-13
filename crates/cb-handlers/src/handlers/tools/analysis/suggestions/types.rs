@@ -29,7 +29,7 @@ pub struct ActionableSuggestion {
 }
 
 /// Safety level classification
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SafetyLevel {
     /// Safe to auto-apply without human review
@@ -41,7 +41,7 @@ pub enum SafetyLevel {
 }
 
 /// Impact level of suggested change
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum ImpactLevel {
     Low,      // Single line, local scope

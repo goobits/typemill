@@ -113,7 +113,7 @@ These are the public-facing tools for AI agents and MCP clients. See `API_REFERE
 
 ---
 
-## 5. Internal Tools (Backend Only - 20 tools)
+## 6. Internal Tools (Backend Only - 20 tools)
 
 These tools are **not visible** in MCP `tools/list` but are used internally by workflows and the backend. AI agents should use the public API instead.
 
@@ -132,7 +132,39 @@ These tools are **not visible** in MCP `tools/list` but are used internally by w
 
 ---
 
-## 6. Key Links
+## 5. Actionable Suggestion Examples
+
+All `analyze.*` tools can return `suggestions`. Here's a quick look at the structure and how to use them.
+
+**Example Suggestion:**
+```json
+{
+  "message": "Extract complex logic into a helper function",
+  "safety": "requires_review",
+  "confidence": 0.85,
+  "refactor_call": {
+    "tool": "extract.plan",
+    "arguments": {
+      "kind": "function",
+      "source": { "file_path": "src/app.ts", "range": { ... } },
+      "name": "newHelper"
+    }
+  }
+}
+```
+- **`safety`**: `"safe"`, `"requires_review"`, or `"experimental"`.
+- **`refactor_call`**: A ready-to-use command to fix the issue.
+
+**Tune suggestions in `.codebuddy/analysis.toml`:**
+```toml
+[suggestions]
+min_confidence = 0.7
+include_safety_levels = ["safe", "requires_review"]
+```
+
+---
+
+## 7. Key Links
 
 - **[API_REFERENCE.md](API_REFERENCE.md)**: The complete, detailed reference for all tools.
 - **[CONTRIBUTING.md](CONTRIBUTING.md)**: For developers who want to build from source or contribute.
