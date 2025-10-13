@@ -402,17 +402,20 @@ pub trait LanguagePlugin: Send + Sync {
         old_path: &Path,
         new_path: &Path,
         _current_file: &Path,
-        _project_root: &Path,
+        project_root: &Path,
         _rename_info: Option<&serde_json::Value>,
     ) -> Option<(String, usize)> {
         self.import_support().map(|support| {
-            let old_name = old_path.to_string_lossy();
-            // Per Codex's feedback, fall back to the full path if file_name is None.
+            // Use project-relative paths for consistent matching with markdown links
+            let old_name = old_path
+                .strip_prefix(project_root)
+                .unwrap_or(old_path)
+                .to_string_lossy();
             let new_name = new_path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or_else(|| new_path.to_str().unwrap_or(""));
-            support.rewrite_imports_for_rename(content, &old_name, new_name)
+                .strip_prefix(project_root)
+                .unwrap_or(new_path)
+                .to_string_lossy();
+            support.rewrite_imports_for_rename(content, &old_name, &new_name)
         })
     }
 }

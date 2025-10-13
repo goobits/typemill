@@ -59,12 +59,14 @@ impl ReferenceUpdater {
                 .filter(|f| f.starts_with(old_path) && f.is_file())
                 .collect();
             for file_in_dir in files_in_directory {
-                let importers = self.find_affected_files(file_in_dir, &project_files, plugins).await?;
+                let relative_path = file_in_dir.strip_prefix(old_path).unwrap_or(file_in_dir);
+                let new_file_path = new_path.join(relative_path);
+                let importers = self.find_affected_files_for_rename(file_in_dir, &new_file_path, &project_files, plugins).await?;
                 all_affected.extend(importers);
             }
             all_affected.into_iter().collect()
         } else {
-            self.find_affected_files(old_path, &project_files, plugins).await?
+            self.find_affected_files_for_rename(old_path, new_path, &project_files, plugins).await?
         };
 
         if is_directory_rename {
@@ -208,13 +210,43 @@ impl ReferenceUpdater {
         plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
     ) -> ServerResult<Vec<PathBuf>> {
         let mut affected = Vec::new();
+
         for file in project_files {
             if file == renamed_file {
                 continue;
             }
             if let Ok(content) = tokio::fs::read_to_string(file).await {
                 let all_imports = self.get_all_imported_files(&content, file, plugins, project_files);
+
+                // Check if any import resolves to the renamed file
                 if all_imports.contains(&renamed_file.to_path_buf()) {
+                    affected.push(file.clone());
+                }
+            }
+        }
+        Ok(affected)
+    }
+
+    /// Find affected files for a rename operation, checking both old and new paths.
+    /// This handles the case where the file has already been moved during execution.
+    pub async fn find_affected_files_for_rename(
+        &self,
+        old_path: &Path,
+        new_path: &Path,
+        project_files: &[PathBuf],
+        plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
+    ) -> ServerResult<Vec<PathBuf>> {
+        let mut affected = Vec::new();
+
+        for file in project_files {
+            if file == old_path || file == new_path {
+                continue;
+            }
+            if let Ok(content) = tokio::fs::read_to_string(file).await {
+                let all_imports = self.get_all_imported_files(&content, file, plugins, project_files);
+
+                // Check if imports reference either the old path (pre-move) or new path (post-move)
+                if all_imports.contains(&old_path.to_path_buf()) || all_imports.contains(&new_path.to_path_buf()) {
                     affected.push(file.clone());
                 }
             }
@@ -261,24 +293,59 @@ impl ReferenceUpdater {
         importing_file: &Path,
         project_files: &[PathBuf],
     ) -> Option<PathBuf> {
-        if !specifier.starts_with("./") && !specifier.starts_with("../") && !specifier.starts_with('/') {
-            return None;
-        }
-        let importing_dir = importing_file.parent()?;
-        let candidate = importing_dir.join(specifier);
-        let extensions = ["", ".ts", ".tsx", ".js", ".jsx", ".rs"];
-        for ext in extensions {
-            let candidate_with_ext = if ext.is_empty() {
-                candidate.clone()
-            } else {
-                candidate.with_extension(&ext[1..])
-            };
-            if let Ok(abs_candidate) = candidate_with_ext.canonicalize() {
-                if project_files.contains(&abs_candidate) {
-                    return Some(abs_candidate);
+        // Try explicit relative/absolute paths first (./foo, ../foo, /foo)
+        if specifier.starts_with("./") || specifier.starts_with("../") || specifier.starts_with('/') {
+            let importing_dir = importing_file.parent()?;
+            let candidate = importing_dir.join(specifier);
+            let extensions = ["", ".ts", ".tsx", ".js", ".jsx", ".rs"];
+            for ext in extensions {
+                let candidate_with_ext = if ext.is_empty() {
+                    candidate.clone()
+                } else {
+                    candidate.with_extension(&ext[1..])
+                };
+                if let Ok(abs_candidate) = candidate_with_ext.canonicalize() {
+                    if project_files.contains(&abs_candidate) {
+                        return Some(abs_candidate);
+                    }
                 }
             }
         }
+
+        // For bare specifiers (e.g., "API_REFERENCE.md"), try project-relative paths
+        // This supports markdown links like [text](API_REFERENCE.md) or [text](docs/file.md)
+        let project_relative_candidate = self.project_root.join(specifier);
+
+        // First try canonical path if file exists (works for dry-run before file is moved)
+        if let Ok(abs_candidate) = project_relative_candidate.canonicalize() {
+            if project_files.contains(&abs_candidate) {
+                return Some(abs_candidate);
+            }
+        }
+
+        // If canonicalization fails (file has been moved/deleted), try matching by basename
+        // against project_files. This handles the execution path where the file has been moved.
+        // We need to check if any file in project_files matches the specifier basename OR
+        // the expected path structure.
+        if let Some(candidate_filename) = Path::new(specifier).file_name() {
+            // Try exact path match first (e.g., "docs/API_REFERENCE.md")
+            for project_file in project_files {
+                // Check if project file ends with the specifier path
+                if let Ok(relative) = project_file.strip_prefix(&self.project_root) {
+                    if relative.to_string_lossy() == specifier {
+                        return Some(project_file.clone());
+                    }
+                }
+            }
+
+            // Fall back to basename matching (e.g., "API_REFERENCE.md" matches any file with that name)
+            for project_file in project_files {
+                if project_file.file_name() == Some(candidate_filename) {
+                    return Some(project_file.clone());
+                }
+            }
+        }
+
         None
     }
 
