@@ -1140,6 +1140,39 @@ Executes multiple analysis queries in a single batch for optimized performance. 
 
 **Returns**: A `BatchAnalysisResult` with an array of results for each query, along with a summary and metadata for the entire batch operation.
 
+### Actionable Suggestions
+
+All analysis tools now return suggestions with safety metadata:
+
+**Suggestion Structure**:
+```json
+{
+  "message": "Extract helper methods to reduce complexity",
+  "safety": "safe" | "requires_review" | "experimental",
+  "confidence": 0.85,
+  "reversible": true,
+  "estimated_impact": "low" | "medium" | "high" | "critical",
+  "refactor_call": {
+    "tool": "extract.plan",
+    "arguments": { ... }
+  },
+  "metadata": {
+    "rationale": "...",
+    "benefits": [...],
+    "risks": [...]
+  }
+}
+```
+
+**Safety Levels**:
+- `"safe"` - Auto-apply without review (e.g., remove unused import)
+- `"requires_review"` - Human review recommended (e.g., extract method)
+- `"experimental"` - High-risk, test thoroughly (e.g., cross-crate moves)
+
+**Confidence Score**: 0.0 to 1.0 (higher = more confident)
+
+**Configuration**: See `.codebuddy/analysis.toml` for tuning suggestion generation.
+
 ---
 
 ## Code Analysis

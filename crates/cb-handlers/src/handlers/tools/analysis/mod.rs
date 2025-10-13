@@ -1,5 +1,6 @@
 pub mod batch;
 pub mod batch_handler;
+pub mod suggestions;
 pub mod config;
 pub mod circular_dependencies;
 pub mod dead_code;
