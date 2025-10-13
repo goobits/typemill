@@ -353,14 +353,8 @@ async fn test_find_dead_code_workflow() {
         let result = &response["result"];
 
         // Validate unified API response structure
-        assert!(
-            result["findings"].is_array(),
-            "Should have findings array"
-        );
-        assert!(
-            result["summary"].is_object(),
-            "Should have summary object"
-        );
+        assert!(result["findings"].is_array(), "Should have findings array");
+        assert!(result["summary"].is_object(), "Should have summary object");
         assert!(
             result["metadata"].is_object(),
             "Should have metadata object"

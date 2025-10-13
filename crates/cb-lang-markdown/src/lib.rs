@@ -6,7 +6,7 @@
 use async_trait::async_trait;
 use cb_plugin_api::{
     ImportSupport, LanguageMetadata, LanguagePlugin, ManifestData, ParsedSource,
-    PluginCapabilities, PluginError, PluginResult, Symbol, SymbolKind, SourceLocation,
+    PluginCapabilities, PluginError, PluginResult, SourceLocation, Symbol, SymbolKind,
 };
 use cb_plugin_registry::codebuddy_plugin;
 use regex::Regex;
@@ -46,7 +46,7 @@ pub struct MarkdownPlugin {
 impl MarkdownPlugin {
     /// The capabilities of this plugin.
     pub const CAPABILITIES: PluginCapabilities = PluginCapabilities {
-        imports: true,  // We support "imports" (file references)
+        imports: true, // We support "imports" (file references)
         workspace: false,
     };
 
@@ -127,10 +127,10 @@ fn extract_headers(content: &str) -> Vec<Symbol> {
 
             // Map header level to symbol kind
             let kind = match level {
-                1 => SymbolKind::Module,    // # Top level
-                2 => SymbolKind::Class,     // ## Section
-                3 => SymbolKind::Function,  // ### Subsection
-                _ => SymbolKind::Other,     // #### and below
+                1 => SymbolKind::Module,   // # Top level
+                2 => SymbolKind::Class,    // ## Section
+                3 => SymbolKind::Function, // ### Subsection
+                _ => SymbolKind::Other,    // #### and below
             };
 
             symbols.push(Symbol {

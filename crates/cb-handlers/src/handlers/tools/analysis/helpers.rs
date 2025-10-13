@@ -139,11 +139,8 @@ impl WorkspaceAnalysisContext {
     }
 
     pub fn add_files(&mut self, raw_files: &[String]) {
-        let filtered = filter_analyzable_files(
-            raw_files,
-            &self.base_path,
-            &self.supported_extensions,
-        );
+        let filtered =
+            filter_analyzable_files(raw_files, &self.base_path, &self.supported_extensions);
         self.files.extend(filtered);
     }
 

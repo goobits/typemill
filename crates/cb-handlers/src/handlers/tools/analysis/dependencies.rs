@@ -135,7 +135,10 @@ pub fn detect_imports(
             metrics.insert("imported_symbols".to_string(), json!(symbols));
             metrics.insert("import_count".to_string(), json!(symbols.len()));
             metrics.insert("import_category".to_string(), json!(category));
-            metrics.insert("import_type".to_string(), json!(format!("{:?}", import_info.import_type)));
+            metrics.insert(
+                "import_type".to_string(),
+                json!(format!("{:?}", import_info.import_type)),
+            );
             metrics.insert("type_only".to_string(), json!(import_info.type_only));
 
             // Build location from AST source location
@@ -1146,50 +1149,59 @@ impl ToolHandler for DependenciesHandler {
             #[cfg(feature = "analysis-circular-deps")]
             {
                 let project_root = &context.app_state.project_root;
-                let builder = DependencyGraphBuilder::new(&context.app_state.language_plugins.inner);
+                let builder =
+                    DependencyGraphBuilder::new(&context.app_state.language_plugins.inner);
                 let graph = builder
                     .build(project_root)
                     .map_err(|e| ServerError::Internal(e))?;
                 let result = find_circular_dependencies(&graph, None)
                     .map_err(|e| ServerError::Internal(e.to_string()))?;
 
-                let findings = result.cycles.into_iter().map(|cycle| {
-                    let mut metrics = HashMap::new();
-                    metrics.insert("cycle_length".to_string(), json!(cycle.modules.len()));
-                    metrics.insert("cycle_path".to_string(), json!(cycle.modules));
+                let findings = result
+                    .cycles
+                    .into_iter()
+                    .map(|cycle| {
+                        let mut metrics = HashMap::new();
+                        metrics.insert("cycle_length".to_string(), json!(cycle.modules.len()));
+                        metrics.insert("cycle_path".to_string(), json!(cycle.modules));
 
-                    // Add import chain to metrics for detailed analysis
-                    let import_chain_json: Vec<_> = cycle.import_chain.iter().map(|link| {
-                        json!({
-                            "from": link.from,
-                            "to": link.to,
-                            "symbols": link.symbols
-                        })
-                    }).collect();
-                    metrics.insert("import_chain".to_string(), json!(import_chain_json));
+                        // Add import chain to metrics for detailed analysis
+                        let import_chain_json: Vec<_> = cycle
+                            .import_chain
+                            .iter()
+                            .map(|link| {
+                                json!({
+                                    "from": link.from,
+                                    "to": link.to,
+                                    "symbols": link.symbols
+                                })
+                            })
+                            .collect();
+                        metrics.insert("import_chain".to_string(), json!(import_chain_json));
 
-                    // Generate actionable suggestions based on cycle characteristics
-                    let suggestions = generate_cycle_break_suggestions(&cycle);
+                        // Generate actionable suggestions based on cycle characteristics
+                        let suggestions = generate_cycle_break_suggestions(&cycle);
 
-                    Finding {
-                        id: format!("circular-dependency-{}", cycle.id),
-                        kind: "circular_dependency".to_string(),
-                        severity: Severity::High,
-                        location: FindingLocation {
-                            file_path: cycle.modules.get(0).cloned().unwrap_or_default(),
-                            range: None,
-                            symbol: None,
-                            symbol_kind: Some("module".to_string()),
-                        },
-                        metrics: Some(metrics),
-                        message: format!(
-                            "Circular dependency detected: {} modules form a cycle ({})",
-                            cycle.modules.len(),
-                            cycle.modules.join(" → ")
-                        ),
-                        suggestions,
-                    }
-                }).collect();
+                        Finding {
+                            id: format!("circular-dependency-{}", cycle.id),
+                            kind: "circular_dependency".to_string(),
+                            severity: Severity::High,
+                            location: FindingLocation {
+                                file_path: cycle.modules.get(0).cloned().unwrap_or_default(),
+                                range: None,
+                                symbol: None,
+                                symbol_kind: Some("module".to_string()),
+                            },
+                            metrics: Some(metrics),
+                            message: format!(
+                                "Circular dependency detected: {} modules form a cycle ({})",
+                                cycle.modules.len(),
+                                cycle.modules.join(" → ")
+                            ),
+                            suggestions,
+                        }
+                    })
+                    .collect();
 
                 let analysis_result = AnalysisResult {
                     findings,

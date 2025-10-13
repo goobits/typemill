@@ -104,14 +104,11 @@ impl QualityHandler {
         let start_time = Instant::now();
 
         // Extract directory path from scope.path or default to current dir
-        let directory_path = scope_param
-            .path
-            .as_ref()
-            .ok_or_else(|| {
-                ServerError::InvalidRequest(
-                    "Missing path for workspace scope. Specify scope.path with directory".into(),
-                )
-            })?;
+        let directory_path = scope_param.path.as_ref().ok_or_else(|| {
+            ServerError::InvalidRequest(
+                "Missing path for workspace scope. Specify scope.path with directory".into(),
+            )
+        })?;
 
         let dir_path = std::path::Path::new(directory_path);
 
@@ -131,8 +128,7 @@ impl QualityHandler {
             context.app_state.language_plugins.supported_extensions();
 
         // Filter to analyzable files
-        let analyzable_files =
-            filter_analyzable_files(&files, dir_path, &supported_extensions);
+        let analyzable_files = filter_analyzable_files(&files, dir_path, &supported_extensions);
 
         info!(
             analyzable_count = analyzable_files.len(),
@@ -1290,10 +1286,7 @@ impl ToolHandler for QualityHandler {
             "maintainability" => {
                 // Check if workspace scope is requested
                 let scope_param = super::engine::parse_scope_param(&args)?;
-                let scope_type = scope_param
-                    .scope_type
-                    .as_deref()
-                    .unwrap_or("file");
+                let scope_type = scope_param.scope_type.as_deref().unwrap_or("file");
 
                 if scope_type == "workspace" {
                     // Use workspace aggregation

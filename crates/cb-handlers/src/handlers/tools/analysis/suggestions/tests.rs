@@ -61,7 +61,11 @@ fn test_confidence_scorer_high_confidence() {
     };
 
     let confidence = scorer.score(&refactoring, &context).unwrap();
-    assert!(confidence > 0.8, "Expected high confidence, got {}", confidence);
+    assert!(
+        confidence > 0.8,
+        "Expected high confidence, got {}",
+        confidence
+    );
 }
 
 #[test]

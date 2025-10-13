@@ -35,11 +35,15 @@ impl<'a> DependencyGraphBuilder<'a> {
                 if let Some(import_support) = plugin.import_support() {
                     let imports = import_support.parse_imports(&content);
                     for import_path in imports {
-                        if let Some(resolved_path) =
-                            self.resolve_path(&file_path, &import_path, project_root, import_support)
-                        {
+                        if let Some(resolved_path) = self.resolve_path(
+                            &file_path,
+                            &import_path,
+                            project_root,
+                            import_support,
+                        ) {
                             // Try to extract symbols from the import
-                            let symbols = self.extract_symbols(&content, &import_path, import_support);
+                            let symbols =
+                                self.extract_symbols(&content, &import_path, import_support);
 
                             let dependency = Dependency {
                                 kind: DependencyKind::Import,

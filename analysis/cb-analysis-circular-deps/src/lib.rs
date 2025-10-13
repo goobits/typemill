@@ -186,7 +186,6 @@ fn build_import_chain(
     chain
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -264,9 +263,30 @@ mod tests {
         let id_b = graph.add_module(module("/test/b.rs"));
         let id_c = graph.add_module(module("/test/c.rs"));
 
-        graph.graph.add_edge(id_a, id_b, Dependency { kind: DependencyKind::Import, symbols: vec![] });
-        graph.graph.add_edge(id_b, id_c, Dependency { kind: DependencyKind::Import, symbols: vec![] });
-        graph.graph.add_edge(id_c, id_a, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(
+            id_a,
+            id_b,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
+        graph.graph.add_edge(
+            id_b,
+            id_c,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
+        graph.graph.add_edge(
+            id_c,
+            id_a,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
 
         let result = find_circular_dependencies(&graph, None).unwrap();
         assert_eq!(result.summary.total_cycles, 1);
@@ -282,16 +302,51 @@ mod tests {
         // First cycle: A ↔ B
         let id_a = graph.add_module(module("/test/a.rs"));
         let id_b = graph.add_module(module("/test/b.rs"));
-        graph.graph.add_edge(id_a, id_b, Dependency { kind: DependencyKind::Import, symbols: vec![] });
-        graph.graph.add_edge(id_b, id_a, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(
+            id_a,
+            id_b,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
+        graph.graph.add_edge(
+            id_b,
+            id_a,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
 
         // Second cycle: C → D → E → C
         let id_c = graph.add_module(module("/test/c.rs"));
         let id_d = graph.add_module(module("/test/d.rs"));
         let id_e = graph.add_module(module("/test/e.rs"));
-        graph.graph.add_edge(id_c, id_d, Dependency { kind: DependencyKind::Import, symbols: vec![] });
-        graph.graph.add_edge(id_d, id_e, Dependency { kind: DependencyKind::Import, symbols: vec![] });
-        graph.graph.add_edge(id_e, id_c, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(
+            id_c,
+            id_d,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
+        graph.graph.add_edge(
+            id_d,
+            id_e,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
+        graph.graph.add_edge(
+            id_e,
+            id_c,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
 
         let result = find_circular_dependencies(&graph, None).unwrap();
         assert_eq!(result.summary.total_cycles, 2);
@@ -309,13 +364,48 @@ mod tests {
         let id_d = graph.add_module(module("/test/d.rs"));
 
         // First cycle: A ↔ B
-        graph.graph.add_edge(id_a, id_b, Dependency { kind: DependencyKind::Import, symbols: vec![] });
-        graph.graph.add_edge(id_b, id_a, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(
+            id_a,
+            id_b,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
+        graph.graph.add_edge(
+            id_b,
+            id_a,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
 
         // Second cycle: B → C → D → B
-        graph.graph.add_edge(id_b, id_c, Dependency { kind: DependencyKind::Import, symbols: vec![] });
-        graph.graph.add_edge(id_c, id_d, Dependency { kind: DependencyKind::Import, symbols: vec![] });
-        graph.graph.add_edge(id_d, id_b, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(
+            id_b,
+            id_c,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
+        graph.graph.add_edge(
+            id_c,
+            id_d,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
+        graph.graph.add_edge(
+            id_d,
+            id_b,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
 
         let result = find_circular_dependencies(&graph, None).unwrap();
         // Should find at least 1 cycle (could be more depending on SCC algorithm)
@@ -338,7 +428,10 @@ mod tests {
             graph.graph.add_edge(
                 nodes[i],
                 nodes[next],
-                Dependency { kind: DependencyKind::Import, symbols: vec![] }
+                Dependency {
+                    kind: DependencyKind::Import,
+                    symbols: vec![],
+                },
             );
         }
 
@@ -379,7 +472,9 @@ mod tests {
         assert_eq!(cycle.import_chain.len(), 2);
 
         // Find the edge with multiple symbols
-        let multi_symbol_link = cycle.import_chain.iter()
+        let multi_symbol_link = cycle
+            .import_chain
+            .iter()
             .find(|link| link.symbols.len() == 2);
         assert!(multi_symbol_link.is_some());
 
@@ -395,8 +490,22 @@ mod tests {
         let id_a = graph.add_module(module("/test/a.rs"));
         let id_b = graph.add_module(module("/test/b.rs"));
 
-        graph.graph.add_edge(id_a, id_b, Dependency { kind: DependencyKind::Import, symbols: vec![] });
-        graph.graph.add_edge(id_b, id_a, Dependency { kind: DependencyKind::Import, symbols: vec![] });
+        graph.graph.add_edge(
+            id_a,
+            id_b,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
+        graph.graph.add_edge(
+            id_b,
+            id_a,
+            Dependency {
+                kind: DependencyKind::Import,
+                symbols: vec![],
+            },
+        );
 
         let result = find_circular_dependencies(&graph, None).unwrap();
 

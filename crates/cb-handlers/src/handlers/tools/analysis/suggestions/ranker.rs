@@ -11,7 +11,9 @@ impl SuggestionRanker {
     pub fn rank(&self, suggestions: &mut Vec<ActionableSuggestion>) {
         suggestions.sort_by(|a, b| {
             // 1. Safety first (safe > requires_review > experimental)
-            let safety_order = self.safety_order(a.safety).cmp(&self.safety_order(b.safety));
+            let safety_order = self
+                .safety_order(a.safety)
+                .cmp(&self.safety_order(b.safety));
             if safety_order != std::cmp::Ordering::Equal {
                 return safety_order;
             }

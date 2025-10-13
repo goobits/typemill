@@ -1619,7 +1619,7 @@ impl DeadCodeHandler {
                     "dead-symbol-{}-{}-{}",
                     dead_symbol.file_path, dead_symbol.line, dead_symbol.name
                 ),
-                    kind: "unused_symbol".to_string(),
+                kind: "unused_symbol".to_string(),
                 severity: Severity::Medium,
                 location: FindingLocation {
                     file_path: dead_symbol.file_path.clone(),
@@ -1878,12 +1878,8 @@ impl ToolHandler for DeadCodeHandler {
 
         // Validate kind
         let is_valid = match kind {
-            "unused_imports"
-            | "unused_symbols"
-            | "unreachable_code"
-            | "unused_parameters"
-            | "unused_types"
-            | "unused_variables" => true,
+            "unused_imports" | "unused_symbols" | "unreachable_code" | "unused_parameters"
+            | "unused_types" | "unused_variables" => true,
             #[cfg(feature = "analysis-deep-dead-code")]
             "deep" => true,
             _ => false,
@@ -1903,10 +1899,7 @@ impl ToolHandler for DeadCodeHandler {
 
         // Check if workspace scope is requested
         let scope_param = super::engine::parse_scope_param(&args)?;
-        let scope_type = scope_param
-            .scope_type
-            .as_deref()
-            .unwrap_or("file");
+        let scope_type = scope_param.scope_type.as_deref().unwrap_or("file");
 
         if scope_type == "workspace" {
             // Use LSP-based workspace analysis
@@ -1988,4 +1981,3 @@ impl ToolHandler for DeadCodeHandler {
         }
     }
 }
-

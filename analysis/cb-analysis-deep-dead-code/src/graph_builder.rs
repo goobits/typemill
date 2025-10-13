@@ -116,7 +116,8 @@ impl GraphBuilder {
 
             for loc in locations {
                 if let Some(target_symbols) = file_symbol_map.get(loc.uri.as_str()) {
-                    if let Some(target_symbol) = self.find_containing_symbol(target_symbols, loc.range)
+                    if let Some(target_symbol) =
+                        self.find_containing_symbol(target_symbols, loc.range)
                     {
                         debug!(
                             "Adding dependency from {} to {}",
@@ -128,7 +129,10 @@ impl GraphBuilder {
                             UsageContext::Unknown,
                         );
                     } else {
-                        debug!("No containing symbol found for reference at {:?}", loc.range);
+                        debug!(
+                            "No containing symbol found for reference at {:?}",
+                            loc.range
+                        );
                     }
                 }
             }

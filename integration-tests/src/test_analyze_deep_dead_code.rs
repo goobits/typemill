@@ -70,7 +70,10 @@ pub fn unused_public_function() {
 
     assert_eq!(result.metadata.kind, "deep");
     assert_eq!(result.findings.len(), 1);
-    assert_eq!(result.findings[0].location.symbol, Some("unused_private_function".to_string()));
+    assert_eq!(
+        result.findings[0].location.symbol,
+        Some("unused_private_function".to_string())
+    );
 }
 
 #[tokio::test]
@@ -142,7 +145,11 @@ pub fn unused_public_function() {
 
     assert_eq!(result.metadata.kind, "deep");
     assert_eq!(result.findings.len(), 2);
-    let symbols: Vec<String> = result.findings.iter().map(|f| f.location.symbol.clone().unwrap()).collect();
+    let symbols: Vec<String> = result
+        .findings
+        .iter()
+        .map(|f| f.location.symbol.clone().unwrap())
+        .collect();
     assert!(symbols.contains(&"unused_private_function".to_string()));
     assert!(symbols.contains(&"unused_public_function".to_string()));
 }

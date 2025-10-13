@@ -293,7 +293,10 @@ impl RenameHandler {
         }
 
         // Convert EditPlan to LSP WorkspaceEdit
-        use lsp_types::{DocumentChangeOperation, DocumentChanges, OptionalVersionedTextDocumentIdentifier, RenameFile, ResourceOp, TextDocumentEdit, TextEdit, Uri};
+        use lsp_types::{
+            DocumentChangeOperation, DocumentChanges, OptionalVersionedTextDocumentIdentifier,
+            RenameFile, ResourceOp, TextDocumentEdit, TextEdit, Uri,
+        };
 
         let old_url = url::Url::from_file_path(&abs_old).map_err(|_| {
             ServerError::Internal(format!("Invalid old path: {}", abs_old.display()))
@@ -321,7 +324,7 @@ impl RenameHandler {
                 new_uri,
                 options: None,
                 annotation_id: None,
-            }))
+            })),
         ];
 
         // Then, add text edits for updating references in other files
@@ -487,7 +490,10 @@ impl RenameHandler {
         }
 
         // Create WorkspaceEdit with both rename operation AND import updates
-        use lsp_types::{DocumentChangeOperation, DocumentChanges, OptionalVersionedTextDocumentIdentifier, RenameFile, ResourceOp, TextDocumentEdit, TextEdit, Uri};
+        use lsp_types::{
+            DocumentChangeOperation, DocumentChanges, OptionalVersionedTextDocumentIdentifier,
+            RenameFile, ResourceOp, TextDocumentEdit, TextEdit, Uri,
+        };
 
         let old_url = url::Url::from_file_path(&abs_old).map_err(|_| {
             ServerError::Internal(format!("Invalid old path: {}", abs_old.display()))
@@ -519,7 +525,7 @@ impl RenameHandler {
                 new_uri,
                 options: None,
                 annotation_id: None,
-            }))
+            })),
         ];
 
         // Then, add text edits for updating imports in external files

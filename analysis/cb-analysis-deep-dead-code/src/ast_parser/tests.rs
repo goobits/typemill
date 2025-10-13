@@ -33,7 +33,9 @@ fn test_extract_symbols_from_rust_file() {
     fs::write(&file_path, source_code).unwrap();
 
     let extractor = RustSymbolExtractor::new();
-    let symbols = extractor.extract_symbols(&file_path, workspace_root).unwrap();
+    let symbols = extractor
+        .extract_symbols(&file_path, workspace_root)
+        .unwrap();
 
     assert_eq!(symbols.len(), 5);
 
@@ -78,7 +80,9 @@ fn test_handle_parse_error_gracefully() {
     fs::write(&file_path, source_code).unwrap();
 
     let extractor = RustSymbolExtractor::new();
-    let symbols = extractor.extract_symbols(&file_path, workspace_root).unwrap();
+    let symbols = extractor
+        .extract_symbols(&file_path, workspace_root)
+        .unwrap();
 
     // Should return an empty Vec, not an error
     assert!(symbols.is_empty());

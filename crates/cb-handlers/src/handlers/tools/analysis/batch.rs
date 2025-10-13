@@ -1,16 +1,14 @@
 //! Batch analysis infrastructure for workspace-wide analysis
 use super::super::ToolHandlerContext;
 use super::{
-    AnalysisConfig,
-    dead_code as dead_code_handler,
-    dependencies as dependencies_handler,
-    documentation as documentation_handler,
-    quality as quality_handler,
-    structure as structure_handler,
-    tests_handler,
+    dead_code as dead_code_handler, dependencies as dependencies_handler,
+    documentation as documentation_handler, quality as quality_handler,
+    structure as structure_handler, tests_handler, AnalysisConfig,
 };
 use cb_plugin_api::Symbol;
-use cb_protocol::analysis_result::{AnalysisResult, AnalysisScope, Finding, FindingLocation, Severity, Range, Position};
+use cb_protocol::analysis_result::{
+    AnalysisResult, AnalysisScope, Finding, FindingLocation, Position, Range, Severity,
+};
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -182,10 +180,10 @@ pub async fn run_batch_analysis(
                 }
                 files_analyzed_in_query += 1;
             } else {
-                 let file_path_str = file_path.display().to_string();
-                 if !failed_files_map.contains_key(&file_path_str) {
+                let file_path_str = file_path.display().to_string();
+                if !failed_files_map.contains_key(&file_path_str) {
                     failed_files_map.insert(file_path_str, "File failed to parse".to_string());
-                 }
+                }
             }
         }
 
@@ -219,7 +217,9 @@ pub async fn run_batch_analysis(
     for res in &query_results {
         total_findings += res.result.summary.total_findings;
         findings_by_severity.entry("high".to_string()).or_insert(0);
-        findings_by_severity.entry("medium".to_string()).or_insert(0);
+        findings_by_severity
+            .entry("medium".to_string())
+            .or_insert(0);
         findings_by_severity.entry("low".to_string()).or_insert(0);
     }
 
@@ -249,10 +249,7 @@ use globset::{Glob, GlobSetBuilder};
 
 async fn resolve_scope_to_files(scope: &QueryScope) -> Result<Vec<PathBuf>, BatchError> {
     let root_path = scope.path.as_ref().ok_or_else(|| {
-        BatchError::InvalidScope(format!(
-            "'{}' scope requires a 'path'",
-            scope.scope_type
-        ))
+        BatchError::InvalidScope(format!("'{}' scope requires a 'path'", scope.scope_type))
     })?;
 
     match scope.scope_type.as_str() {
@@ -263,21 +260,29 @@ async fn resolve_scope_to_files(scope: &QueryScope) -> Result<Vec<PathBuf>, Batc
 
             let mut include_builder = GlobSetBuilder::new();
             for pattern in &scope.include {
-                include_builder.add(Glob::new(pattern).map_err(|e| BatchError::InvalidScope(e.to_string()))?);
+                include_builder
+                    .add(Glob::new(pattern).map_err(|e| BatchError::InvalidScope(e.to_string()))?);
             }
-            let include_set = include_builder.build().map_err(|e| BatchError::InvalidScope(e.to_string()))?;
+            let include_set = include_builder
+                .build()
+                .map_err(|e| BatchError::InvalidScope(e.to_string()))?;
 
             let mut exclude_builder = GlobSetBuilder::new();
             for pattern in &scope.exclude {
-                exclude_builder.add(Glob::new(pattern).map_err(|e| BatchError::InvalidScope(e.to_string()))?);
+                exclude_builder
+                    .add(Glob::new(pattern).map_err(|e| BatchError::InvalidScope(e.to_string()))?);
             }
-            let exclude_set = exclude_builder.build().map_err(|e| BatchError::InvalidScope(e.to_string()))?;
+            let exclude_set = exclude_builder
+                .build()
+                .map_err(|e| BatchError::InvalidScope(e.to_string()))?;
 
             for result in walker {
                 if let Ok(entry) = result {
                     if entry.file_type().map_or(false, |ft| ft.is_file()) {
                         let path = entry.path();
-                        if !exclude_set.is_match(path) && (include_set.is_empty() || include_set.is_match(path)) {
+                        if !exclude_set.is_match(path)
+                            && (include_set.is_empty() || include_set.is_match(path))
+                        {
                             files.push(path.to_path_buf());
                         }
                     }
@@ -406,8 +411,14 @@ async fn analyze_file_with_cached_ast(
                             location: FindingLocation {
                                 file_path: file_path_str.clone(),
                                 range: Some(Range {
-                                    start: Position { line: func.line as u32, character: 0 },
-                                    end: Position { line: (func.line + func.metrics.sloc as usize) as u32, character: 0 },
+                                    start: Position {
+                                        line: func.line as u32,
+                                        character: 0,
+                                    },
+                                    end: Position {
+                                        line: (func.line + func.metrics.sloc as usize) as u32,
+                                        character: 0,
+                                    },
                                 }),
                                 symbol: Some(func.name.clone()),
                                 symbol_kind: Some("function".to_string()),
@@ -441,7 +452,12 @@ async fn analyze_file_with_cached_ast(
                 &cached_ast.language,
                 &file_path_str,
             ),
-            _ => return Err(BatchError::AnalysisFailed(format!("Unsupported quality kind: {}", kind))),
+            _ => {
+                return Err(BatchError::AnalysisFailed(format!(
+                    "Unsupported quality kind: {}",
+                    kind
+                )))
+            }
         },
         "dead_code" => match kind {
             "unused_imports" => dead_code_handler::detect_unused_imports(
@@ -486,7 +502,12 @@ async fn analyze_file_with_cached_ast(
                 &cached_ast.language,
                 &file_path_str,
             ),
-            _ => return Err(BatchError::AnalysisFailed(format!("Unsupported dead_code kind: {}", kind))),
+            _ => {
+                return Err(BatchError::AnalysisFailed(format!(
+                    "Unsupported dead_code kind: {}",
+                    kind
+                )))
+            }
         },
         "dependencies" => match kind {
             "imports" => dependencies_handler::detect_imports(
@@ -531,7 +552,12 @@ async fn analyze_file_with_cached_ast(
                 &cached_ast.language,
                 &file_path_str,
             ),
-            _ => return Err(BatchError::AnalysisFailed(format!("Unsupported dependencies kind: {}", kind))),
+            _ => {
+                return Err(BatchError::AnalysisFailed(format!(
+                    "Unsupported dependencies kind: {}",
+                    kind
+                )))
+            }
         },
         "structure" => match kind {
             "symbols" => structure_handler::detect_symbols(
@@ -569,7 +595,12 @@ async fn analyze_file_with_cached_ast(
                 &cached_ast.language,
                 &file_path_str,
             ),
-            _ => return Err(BatchError::AnalysisFailed(format!("Unsupported structure kind: {}", kind))),
+            _ => {
+                return Err(BatchError::AnalysisFailed(format!(
+                    "Unsupported structure kind: {}",
+                    kind
+                )))
+            }
         },
         "documentation" => match kind {
             "coverage" => documentation_handler::detect_coverage(
@@ -607,7 +638,12 @@ async fn analyze_file_with_cached_ast(
                 &cached_ast.language,
                 &file_path_str,
             ),
-            _ => return Err(BatchError::AnalysisFailed(format!("Unsupported documentation kind: {}", kind))),
+            _ => {
+                return Err(BatchError::AnalysisFailed(format!(
+                    "Unsupported documentation kind: {}",
+                    kind
+                )))
+            }
         },
         "tests" => match kind {
             "coverage" => tests_handler::detect_coverage(
@@ -638,7 +674,12 @@ async fn analyze_file_with_cached_ast(
                 &cached_ast.language,
                 &file_path_str,
             ),
-            _ => return Err(BatchError::AnalysisFailed(format!("Unsupported tests kind: {}", kind))),
+            _ => {
+                return Err(BatchError::AnalysisFailed(format!(
+                    "Unsupported tests kind: {}",
+                    kind
+                )))
+            }
         },
         _ => {
             return Err(BatchError::AnalysisFailed(format!(

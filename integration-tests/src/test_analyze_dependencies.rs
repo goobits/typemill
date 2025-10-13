@@ -587,7 +587,10 @@ async fn test_analyze_dependencies_circular_typescript_workspace() {
     for entry in std::fs::read_dir(fixture_dir).unwrap() {
         let entry = entry.unwrap();
         let content = std::fs::read_to_string(entry.path()).unwrap();
-        workspace.create_file(&format!("src/{}", entry.file_name().to_str().unwrap()), &content);
+        workspace.create_file(
+            &format!("src/{}", entry.file_name().to_str().unwrap()),
+            &content,
+        );
     }
 
     let mut client = TestClient::new(workspace.path());
@@ -629,9 +632,18 @@ async fn test_analyze_dependencies_circular_typescript_workspace() {
 
     assert_eq!(cycle_path.len(), 2);
     // The order is not guaranteed, so check for both files.
-    let path1 = workspace.absolute_path("src/a.ts").to_string_lossy().to_string();
-    let path2 = workspace.absolute_path("src/b.ts").to_string_lossy().to_string();
-    let cycle_path_strings: Vec<String> = cycle_path.iter().map(|v| v.as_str().unwrap().to_string()).collect();
+    let path1 = workspace
+        .absolute_path("src/a.ts")
+        .to_string_lossy()
+        .to_string();
+    let path2 = workspace
+        .absolute_path("src/b.ts")
+        .to_string_lossy()
+        .to_string();
+    let cycle_path_strings: Vec<String> = cycle_path
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
     assert!(cycle_path_strings.contains(&path1));
     assert!(cycle_path_strings.contains(&path2));
 }

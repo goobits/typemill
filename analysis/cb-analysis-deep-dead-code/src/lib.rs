@@ -4,12 +4,12 @@ mod ast_parser;
 mod dead_code_finder;
 mod graph_builder;
 
+use crate::dead_code_finder::DeadCodeFinder;
+use crate::graph_builder::GraphBuilder;
 use async_trait::async_trait;
 use cb_analysis_common::{
     AnalysisEngine, AnalysisError, AnalysisMetadata, LspProvider, SymbolNode,
 };
-use crate::dead_code_finder::DeadCodeFinder;
-use crate::graph_builder::GraphBuilder;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;

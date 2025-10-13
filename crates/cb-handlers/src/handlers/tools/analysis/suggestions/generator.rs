@@ -97,12 +97,18 @@ impl SuggestionGenerator {
         match candidate.refactor_type {
             RefactorType::RemoveUnusedImport | RefactorType::RemoveUnusedVariable => {
                 metadata.benefits.push("Reduces code clutter".to_string());
-                metadata.benefits.push("Improves maintainability".to_string());
+                metadata
+                    .benefits
+                    .push("Improves maintainability".to_string());
             }
             RefactorType::ExtractMethod => {
-                metadata.benefits.push("Improves code organization".to_string());
+                metadata
+                    .benefits
+                    .push("Improves code organization".to_string());
                 metadata.benefits.push("Enables code reuse".to_string());
-                metadata.risks.push("May need to pass additional context".to_string());
+                metadata
+                    .risks
+                    .push("May need to pass additional context".to_string());
             }
             _ => {}
         }

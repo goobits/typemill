@@ -79,7 +79,10 @@ impl TestWorkspace {
 async fn test_deep_dead_code_analysis() {
     let mut workspace = TestWorkspace::new();
     workspace.add_file("main.rs", "mod lib; fn main() { lib::used_function(); }");
-    workspace.add_file("lib.rs", "pub fn used_function() {}\npub fn unused_function() {}");
+    workspace.add_file(
+        "lib.rs",
+        "pub fn used_function() {}\npub fn unused_function() {}",
+    );
 
     let mut references = HashMap::new();
     references.insert(
@@ -134,7 +137,10 @@ async fn test_deep_dead_code_analysis_with_aggressive_mode() {
 async fn test_deep_dead_code_with_ast_extractor() {
     let mut workspace = TestWorkspace::new();
     workspace.add_file("main.rs", "mod lib; fn main() { lib::used_function(); }");
-    workspace.add_file("lib.rs", "pub fn used_function() {}\npub fn unused_function() {}");
+    workspace.add_file(
+        "lib.rs",
+        "pub fn used_function() {}\npub fn unused_function() {}",
+    );
 
     let mut references = HashMap::new();
     references.insert(

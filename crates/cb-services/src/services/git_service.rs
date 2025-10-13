@@ -138,10 +138,8 @@ impl GitService {
         }
 
         // Check if they differ only in case
-        let same_case_insensitive = old
-            .to_string_lossy()
-            .to_lowercase()
-            == new.to_string_lossy().to_lowercase();
+        let same_case_insensitive =
+            old.to_string_lossy().to_lowercase() == new.to_string_lossy().to_lowercase();
 
         if !same_case_insensitive {
             // Paths differ in more than just case

@@ -62,7 +62,10 @@ impl Hash for SymbolKind {
 impl From<LspSymbolKind> for SymbolKind {
     fn from(lsp_kind: LspSymbolKind) -> Self {
         match lsp_kind {
-            LspSymbolKind::CLASS | LspSymbolKind::STRUCT | LspSymbolKind::ENUM | LspSymbolKind::TYPE_PARAMETER => Self::Type,
+            LspSymbolKind::CLASS
+            | LspSymbolKind::STRUCT
+            | LspSymbolKind::ENUM
+            | LspSymbolKind::TYPE_PARAMETER => Self::Type,
             LspSymbolKind::INTERFACE => Self::Interface,
             LspSymbolKind::CONSTANT => Self::Constant,
             other => Self::Lsp(other),
@@ -73,8 +76,8 @@ impl From<LspSymbolKind> for SymbolKind {
 /// Represents a node in the symbol dependency graph.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SymbolNode {
-    pub id: String,   // A unique identifier, e.g., "file.rs::MyStruct::my_function"
-    pub name: String, // The symbol name, e.g., "my_function"
+    pub id: String,       // A unique identifier, e.g., "file.rs::MyStruct::my_function"
+    pub name: String,     // The symbol name, e.g., "my_function"
     pub kind: SymbolKind, // The detailed kind of the symbol
     pub file_path: String,
     pub is_public: bool, // Is the symbol exported or part of a public API?

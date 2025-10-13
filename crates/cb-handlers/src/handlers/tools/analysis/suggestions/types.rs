@@ -44,9 +44,9 @@ pub enum SafetyLevel {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum ImpactLevel {
-    Low,    // Single line, local scope
-    Medium, // Multiple lines, function scope
-    High,   // Cross-function, file scope
+    Low,      // Single line, local scope
+    Medium,   // Multiple lines, function scope
+    High,     // Cross-function, file scope
     Critical, // Cross-file, module scope
 }
 

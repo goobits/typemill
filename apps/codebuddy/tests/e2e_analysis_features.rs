@@ -265,11 +265,7 @@ async fn test_find_dead_code_empty_workspace() {
 
             let findings = result["findings"].as_array().unwrap();
             // Empty workspace should have no findings
-            assert_eq!(
-                findings.len(),
-                0,
-                "Empty workspace should have no findings"
-            );
+            assert_eq!(findings.len(), 0, "Empty workspace should have no findings");
         }
     }
 }
@@ -631,7 +627,10 @@ async fn test_find_complexity_hotspots_cross_language() {
             .await;
 
         if let Err(ref e) = response {
-            eprintln!("[{}] analyze.quality (complexity) error: {:?}", lang_name, e);
+            eprintln!(
+                "[{}] analyze.quality (complexity) error: {:?}",
+                lang_name, e
+            );
         }
         assert!(
             response.is_ok(),

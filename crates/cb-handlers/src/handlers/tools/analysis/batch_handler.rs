@@ -1,6 +1,8 @@
 //! Tool handler for the `analyze.batch` command
 use super::super::{ToolHandler, ToolHandlerContext};
-use crate::handlers::tools::analysis::batch::{run_batch_analysis, AnalysisQuery, BatchAnalysisRequest};
+use crate::handlers::tools::analysis::batch::{
+    run_batch_analysis, AnalysisQuery, BatchAnalysisRequest,
+};
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
@@ -39,7 +41,9 @@ impl ToolHandler for BatchAnalysisHandler {
         let args: BatchAnalysisArgs = serde_json::from_value(
             tool_call.arguments.clone().unwrap_or(json!({})),
         )
-        .map_err(|e| ServerError::InvalidRequest(format!("Invalid arguments for analyze.batch: {}", e)))?;
+        .map_err(|e| {
+            ServerError::InvalidRequest(format!("Invalid arguments for analyze.batch: {}", e))
+        })?;
 
         let request = BatchAnalysisRequest {
             queries: args.queries,

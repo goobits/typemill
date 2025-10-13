@@ -8,12 +8,18 @@ fn test_plugin_basics() {
 
     // Test 1: Does it handle .md extension?
     println!("Test 1: Checking if plugin handles .md extension");
-    assert!(plugin.handles_extension("md"), "Plugin should handle .md extension");
+    assert!(
+        plugin.handles_extension("md"),
+        "Plugin should handle .md extension"
+    );
     println!("✓ Plugin handles .md extension");
 
     // Test 2: Does it have import support?
     println!("\nTest 2: Checking if plugin has import support");
-    assert!(plugin.import_support().is_some(), "Plugin should have import support");
+    assert!(
+        plugin.import_support().is_some(),
+        "Plugin should have import support"
+    );
     println!("✓ Plugin has import support");
 }
 
@@ -43,7 +49,11 @@ Autolink: <ARCHITECTURE.md>
 
     // Should find ARCHITECTURE.md (possibly multiple times with different paths)
     let has_architecture = imports.iter().any(|imp| imp.contains("ARCHITECTURE"));
-    assert!(has_architecture, "Should find ARCHITECTURE.md reference. Found: {:?}", imports);
+    assert!(
+        has_architecture,
+        "Should find ARCHITECTURE.md reference. Found: {:?}",
+        imports
+    );
 
     println!("✓ Successfully parsed markdown imports");
     println!("  Imports found: {}", imports.len());
@@ -65,7 +75,10 @@ fn test_inline_link_parsing() {
     println!("Imports: {:?}", imports);
 
     assert_eq!(imports.len(), 1, "Should find exactly 1 import");
-    assert!(imports[0].contains("ARCHITECTURE"), "Should contain ARCHITECTURE");
+    assert!(
+        imports[0].contains("ARCHITECTURE"),
+        "Should contain ARCHITECTURE"
+    );
 }
 
 #[test]
@@ -81,7 +94,10 @@ fn test_reference_style_link_parsing() {
     println!("Imports: {:?}", imports);
 
     assert_eq!(imports.len(), 1, "Should find exactly 1 import");
-    assert!(imports[0].contains("ARCHITECTURE"), "Should contain ARCHITECTURE");
+    assert!(
+        imports[0].contains("ARCHITECTURE"),
+        "Should contain ARCHITECTURE"
+    );
 }
 
 #[test]
@@ -97,5 +113,8 @@ fn test_autolink_parsing() {
     println!("Imports: {:?}", imports);
 
     assert_eq!(imports.len(), 1, "Should find exactly 1 import");
-    assert!(imports[0].contains("ARCHITECTURE"), "Should contain ARCHITECTURE");
+    assert!(
+        imports[0].contains("ARCHITECTURE"),
+        "Should contain ARCHITECTURE"
+    );
 }

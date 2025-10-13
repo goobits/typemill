@@ -1,8 +1,9 @@
-
 use super::super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 #[cfg(feature = "analysis-circular-deps")]
-use cb_analysis_circular_deps::{builder::DependencyGraphBuilder, find_circular_dependencies, Cycle};
+use cb_analysis_circular_deps::{
+    builder::DependencyGraphBuilder, find_circular_dependencies, Cycle,
+};
 use cb_core::model::mcp::ToolCall;
 use cb_protocol::analysis_result::{
     AnalysisResult, Finding, FindingLocation, SafetyLevel, Severity, Suggestion,
@@ -41,39 +42,44 @@ impl ToolHandler for CircularDependenciesHandler {
         debug!("Handling analyze.circular_dependencies request");
 
         #[cfg(feature = "analysis-circular-deps")]
-            {
-                let project_root = &context.app_state.project_root;
-                let path = args
-                    .get("scope")
-                    .and_then(|s| s.get("path"))
-                    .and_then(|p| p.as_str())
-                    .map(|p| project_root.join(p))
-                    .unwrap_or_else(|| project_root.clone());
+        {
+            let project_root = &context.app_state.project_root;
+            let path = args
+                .get("scope")
+                .and_then(|s| s.get("path"))
+                .and_then(|p| p.as_str())
+                .map(|p| project_root.join(p))
+                .unwrap_or_else(|| project_root.clone());
 
-                let builder = DependencyGraphBuilder::new(&context.app_state.language_plugins.inner);
-                let graph = builder
-                    .build(&path)
-                    .map_err(|e| ServerError::Internal(e))?;
-                let min_size = args
-                    .get("min_size")
-                    .and_then(|v| v.as_u64())
-                    .map(|v| v as usize);
-                let result = find_circular_dependencies(&graph, min_size)
-                    .map_err(|e| ServerError::Internal(e.to_string()))?;
+            let builder = DependencyGraphBuilder::new(&context.app_state.language_plugins.inner);
+            let graph = builder.build(&path).map_err(|e| ServerError::Internal(e))?;
+            let min_size = args
+                .get("min_size")
+                .and_then(|v| v.as_u64())
+                .map(|v| v as usize);
+            let result = find_circular_dependencies(&graph, min_size)
+                .map_err(|e| ServerError::Internal(e.to_string()))?;
 
-                let findings = result.cycles.into_iter().map(|cycle| {
+            let findings = result
+                .cycles
+                .into_iter()
+                .map(|cycle| {
                     let mut metrics = HashMap::new();
                     metrics.insert("cycle_length".to_string(), json!(cycle.modules.len()));
                     metrics.insert("cycle_path".to_string(), json!(cycle.modules));
 
                     // Add import chain to metrics for detailed analysis
-                    let import_chain_json: Vec<_> = cycle.import_chain.iter().map(|link| {
-                        json!({
-                            "from": link.from,
-                            "to": link.to,
-                            "symbols": link.symbols
+                    let import_chain_json: Vec<_> = cycle
+                        .import_chain
+                        .iter()
+                        .map(|link| {
+                            json!({
+                                "from": link.from,
+                                "to": link.to,
+                                "symbols": link.symbols
+                            })
                         })
-                    }).collect();
+                        .collect();
                     metrics.insert("import_chain".to_string(), json!(import_chain_json));
 
                     // Generate actionable suggestions based on cycle characteristics
@@ -98,40 +104,41 @@ impl ToolHandler for CircularDependenciesHandler {
 
                         suggestions,
                     }
-                }).collect();
+                })
+                .collect();
 
-                let analysis_result = AnalysisResult {
-                    findings,
-                    summary: cb_protocol::analysis_result::AnalysisSummary {
-                        total_findings: result.summary.total_cycles,
-                        returned_findings: result.summary.total_cycles,
-                        has_more: false,
-                        by_severity: cb_protocol::analysis_result::SeverityBreakdown {
-                            high: result.summary.total_cycles,
-                            medium: 0,
-                            low: 0,
-                        },
-                        files_analyzed: result.summary.files_analyzed,
-                        symbols_analyzed: Some(result.summary.total_modules_in_cycles),
-                        analysis_time_ms: result.summary.analysis_time_ms,
+            let analysis_result = AnalysisResult {
+                findings,
+                summary: cb_protocol::analysis_result::AnalysisSummary {
+                    total_findings: result.summary.total_cycles,
+                    returned_findings: result.summary.total_cycles,
+                    has_more: false,
+                    by_severity: cb_protocol::analysis_result::SeverityBreakdown {
+                        high: result.summary.total_cycles,
+                        medium: 0,
+                        low: 0,
                     },
-                    metadata: cb_protocol::analysis_result::AnalysisMetadata {
-                        category: "dependencies".to_string(),
-                        kind: "circular".to_string(),
-                        scope: cb_protocol::analysis_result::AnalysisScope {
-                            scope_type: "workspace".to_string(),
-                            path: project_root.to_string_lossy().to_string(),
-                            include: vec![],
-                            exclude: vec![],
-                        },
-                        language: None,
-                        timestamp: chrono::Utc::now().to_rfc3339(),
-                        thresholds: None,
+                    files_analyzed: result.summary.files_analyzed,
+                    symbols_analyzed: Some(result.summary.total_modules_in_cycles),
+                    analysis_time_ms: result.summary.analysis_time_ms,
+                },
+                metadata: cb_protocol::analysis_result::AnalysisMetadata {
+                    category: "dependencies".to_string(),
+                    kind: "circular".to_string(),
+                    scope: cb_protocol::analysis_result::AnalysisScope {
+                        scope_type: "workspace".to_string(),
+                        path: project_root.to_string_lossy().to_string(),
+                        include: vec![],
+                        exclude: vec![],
                     },
-                };
+                    language: None,
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                    thresholds: None,
+                },
+            };
 
-                return Ok(serde_json::to_value(analysis_result)?);
-            }
+            return Ok(serde_json::to_value(analysis_result)?);
+        }
         #[cfg(not(feature = "analysis-circular-deps"))]
         {
             let _ = (context, args);

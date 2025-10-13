@@ -116,12 +116,25 @@ fn untested_function() {
         .and_then(|r| r.as_object())
         .expect("Response should have a result object");
 
-    let results_array = result.get("results").and_then(|r| r.as_array()).expect("Should have results array");
-    assert_eq!(results_array.len(), 6, "Should have a result for each of the 6 queries");
+    let results_array = result
+        .get("results")
+        .and_then(|r| r.as_array())
+        .expect("Should have results array");
+    assert_eq!(
+        results_array.len(),
+        6,
+        "Should have a result for each of the 6 queries"
+    );
 
-    let quality_result = results_array.iter().find(|r| r["command"] == "analyze.quality").expect("Should have quality result");
+    let quality_result = results_array
+        .iter()
+        .find(|r| r["command"] == "analyze.quality")
+        .expect("Should have quality result");
     let quality_findings = quality_result["result"]["findings"].as_array().unwrap();
-    assert!(!quality_findings.is_empty(), "Should have findings for category 'quality'");
+    assert!(
+        !quality_findings.is_empty(),
+        "Should have findings for category 'quality'"
+    );
     let first_finding = &quality_findings[0];
     assert_eq!(first_finding["kind"], "long_method");
     assert!(first_finding["metrics"]["sloc"].as_u64().unwrap() > 50);

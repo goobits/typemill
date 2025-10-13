@@ -41,16 +41,18 @@ impl<'a> DeadCodeFinder<'a> {
         if !config.check_public_exports {
             info!("Default mode: Using 'main' and all other public symbols as entry points.");
             entry_points.extend(
-                self.graph
-                    .graph
-                    .node_indices()
-                    .filter(|&i| self.graph.graph[i].is_public && self.graph.graph[i].name != "main"),
+                self.graph.graph.node_indices().filter(|&i| {
+                    self.graph.graph[i].is_public && self.graph.graph[i].name != "main"
+                }),
             );
         } else {
             info!("Aggressive mode enabled: public exports will not be considered entry points unless they are 'main'.");
         }
 
-        info!("Found {} entry points for graph traversal.", entry_points.len());
+        info!(
+            "Found {} entry points for graph traversal.",
+            entry_points.len()
+        );
 
         let mut worklist = entry_points;
         while let Some(node_index) = worklist.pop() {
@@ -63,7 +65,10 @@ impl<'a> DeadCodeFinder<'a> {
             }
         }
 
-        info!("Found {} live symbols through graph traversal.", live_symbols.len());
+        info!(
+            "Found {} live symbols through graph traversal.",
+            live_symbols.len()
+        );
 
         let mut dead_symbols = Vec::new();
         for (_id, &node_index) in &self.graph.node_map {
