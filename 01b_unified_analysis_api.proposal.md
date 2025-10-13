@@ -1,29 +1,53 @@
 # Proposal: Unified Analysis API
 
-**Status**: ✅ **CORE IMPLEMENTATION 100% COMPLETE** (as of 2025-10-13)
+**Status**: ✅ **CORE COMPLETE** | ⚠️ **PHASE 2C PENDING** (as of 2025-10-13)
 **Author**: Project Team
-**Date**: 2025-10-10 (Proposal) | 2025-10-12 (Core Implementation)
+**Date**: 2025-10-10 (Proposal) | 2025-10-12 (Core Implementation) | 2025-10-13 (analyze.batch complete)
 **Formal Spec**: [docs/design/unified_api_contracts.md](docs/design/unified_api_contracts.md)
 
 ## 🎉 Implementation Status Summary
 
-**COMPLETED - Core Analysis Engine (100%):**
-- ✅ All 6 analyze.* MCP tools implemented and registered
+### ✅ COMPLETED: Core Analysis Engine (100%)
+
+**What's Done:**
+- ✅ All 6 analyze.* MCP tools (quality, dead_code, dependencies, structure, documentation, tests)
 - ✅ 26 detection kinds fully wired with AST caching
-- ✅ Configuration system (.codebuddy/analysis.toml with presets)
+- ✅ Configuration system (.codebuddy/analysis.toml with presets: strict, default, relaxed)
+- ✅ analyze.batch MCP tool (commit aac9bab7 - public tool #24)
 - ✅ 6 integration test files passing
-- ✅ API documentation complete
-- ✅ analyze.batch MCP tool - **COMPLETED** (commit aac9bab7 - BatchAnalysisHandler registered as public tool #24)
-- ✅ Documentation sync - **COMPLETED** (commits aa38c0b0, 5b7d0a3e)
+- ✅ API documentation complete (API_REFERENCE.md)
+- ✅ Unified AnalysisResult structure across all categories
 
-**NOT YET IMPLEMENTED - Actionable Suggestions (Phase 2C):**
-- ❌ Safety metadata (safety, confidence, reversible fields) - **NOT IMPLEMENTED**
-- ❌ Comprehensive refactor_call suggestions linking to refactoring API - **PARTIALLY IMPLEMENTED**
-- ❌ Safety-first ranking algorithm - **NOT IMPLEMENTED**
-- ❌ CI validation of suggestion metadata - **NOT IMPLEMENTED**
+**Impact:** You can now analyze code quality, find dead code, detect circular dependencies, and run batch analyses. The core detection engine is production-ready.
 
-**REMAINING:**
-- ⚠️ Legacy tool migration - **FROZEN** (2 tools kept as internal with migration plan, see details below)
+---
+
+### ⚠️ REMAINING: Phase 2C - Actionable Suggestions (NOT STARTED)
+
+**What's Missing:**
+1. ❌ **Safety Classification** - Classify suggestions as safe/requires_review/experimental
+2. ❌ **Confidence Scoring** - Algorithm confidence (0.0-1.0) for each suggestion
+3. ❌ **Reversibility Analysis** - Track if changes can be undone without loss
+4. ❌ **Safety-First Ranking** - Sort suggestions by safety → confidence → impact
+5. ❌ **Comprehensive refactor_call Generation** - Link all 26 detection kinds to refactoring API
+6. ❌ **CI Validation** - Automated checks for suggestion metadata completeness
+
+**Estimated Effort:** 2-3 weeks (see [Phase 2C Details](#phase-2c-safety-metadata-2-3-weeks-parallel-with-2b---not-implemented) below)
+
+**Impact:** Without Phase 2C, analysis tools report findings but AI agents cannot autonomously apply fixes. The "closed-loop workflow" (analyze → suggest → refactor → re-analyze) is not functional.
+
+**Current State:** Findings have basic messages like "Function has high complexity", but lack:
+- Safety metadata fields
+- Confidence scores
+- Proper ranking
+- Complete refactor_call structures
+
+---
+
+### 📋 Other Remaining Work
+
+- ⚠️ **Legacy Tool Migration** - FROZEN (2 tools kept as internal, see [Legacy Tool Retention](#legacy-tool-retention-rationale) below)
+- ⚠️ **Documentation Sync** - QUICK_REFERENCE.md, CLAUDE.md updates pending
 
 **See [Implementation Status](#implementation-status-as-of-2025-10-12) section below for complete details.**
 
@@ -698,13 +722,15 @@ For each analysis category:
 
 **Status**: Proposed, not yet started
 
+**Estimated Effort:** 2-3 weeks (80-120 hours)
+
 **What's missing**:
-1. Safety classification logic per suggestion type (safe/requires_review/experimental)
-2. Confidence scoring algorithms (0.0 to 1.0)
-3. Reversibility analysis (true/false per suggestion)
-4. Safety-first ranking algorithm (sort by safety → confidence → impact)
-5. CI validation of metadata (ensure all suggestions have required fields)
-6. Comprehensive refactor_call generation for all suggestion types
+1. **Safety classification logic** per suggestion type (safe/requires_review/experimental)
+2. **Confidence scoring algorithms** (0.0 to 1.0)
+3. **Reversibility analysis** (true/false per suggestion)
+4. **Safety-first ranking algorithm** (sort by safety → confidence → impact)
+5. **CI validation** of metadata (ensure all suggestions have required fields)
+6. **Comprehensive refactor_call generation** for all suggestion types
 
 **Current state**: Analysis tools return findings with basic messages, but suggestions lack:
 - Safety metadata fields
@@ -714,10 +740,61 @@ For each analysis category:
 
 **Impact**: AI agents cannot automatically apply safe suggestions or make risk-assessed decisions. The "closed-loop workflow" (analyze → suggest → refactor → re-analyze) described in this proposal is not yet functional.
 
-### Phase 3: Batch Operations (2-3 weeks)
-1. `analyze.batch` with shared AST parsing
-2. Cache optimization
-3. Performance benchmarks
+---
+
+#### Phase 2C Implementation Plan
+
+**Week 1: Safety Infrastructure (5-7 days, ~40 hours)**
+1. Define safety classification rules per suggestion type
+   - Map each of 26 detection kinds to safety level
+   - Create `SafetyClassifier` trait/module
+2. Implement confidence scoring algorithms
+   - Static-only checks → 0.6-0.7
+   - Static + verification → 0.75-0.85
+   - Multiple verifications → 0.9+
+3. Build reversibility analyzer
+4. Add safety/confidence/reversible fields to `Suggestion` struct
+5. Update `crates/cb-protocol/src/analysis_result.rs`
+6. Create new `crates/cb-handlers/src/handlers/tools/analysis/safety.rs` module
+
+**Week 2: Refactor Call Generation (5-7 days, ~40 hours)**
+1. Map each finding kind to refactoring commands
+   - unused_imports → delete.plan
+   - complexity_hotspot → extract.plan
+   - circular_dependency → move.plan (break cycle)
+2. Generate `refactor_call` structures for all 26 detection kinds
+3. Handle edge cases (missing range info, symbol not found, etc.)
+4. Implement ranking algorithm (safety → confidence → impact)
+5. Update all 6 analysis handlers with suggestion generation
+
+**Week 3: Validation & Testing (3-5 days, ~30 hours)**
+1. Build CI validation checks
+   - Schema validation for `refactor_call`
+   - Safety/confidence/reversible presence checks
+2. Add tests for safety classification
+3. Add tests for confidence scoring
+4. Integration tests for end-to-end workflow (analyze → suggest → refactor)
+5. Document suggestion generation patterns
+6. Update API_REFERENCE.md with examples
+
+**Alternative: Minimal Phase 2C (1 week)**
+- Week 1 only: Safety classification + basic confidence (fixed values per type)
+- Skip sophisticated confidence algorithms initially
+- Gets 70% of value in 1 week instead of 3
+- Iterate with better scoring based on real usage
+
+**Files to Create/Modify:**
+- `crates/cb-handlers/src/handlers/tools/analysis/safety.rs` (NEW)
+- `crates/cb-protocol/src/analysis_result.rs` (EDIT - add safety fields)
+- All 6 analysis handlers (EDIT - generate suggestions)
+- CI validation config (NEW)
+- Integration tests (NEW - end-to-end workflow tests)
+- API_REFERENCE.md (EDIT - add suggestion examples)
+
+### Phase 3: Batch Operations - ✅ COMPLETED (commit aac9bab7)
+1. ✅ `analyze.batch` with shared AST parsing
+2. ✅ Cache optimization (sequential execution for cache hits)
+3. ⚠️ Performance benchmarks (future work)
 
 ### Legacy Removal (Per Category)
 Only after Phase 2A completes for a category:
