@@ -32,14 +32,14 @@
 - [ ] Test absolute path moves
 - [ ] Test relative path moves with `../` upward traversal
 - [ ] Test moves across crate/workspace boundaries
-- [ ] Test case-only rename behavior
+- [x] Test case-only rename behavior
 
 **Folder Move Scenarios**
-- [ ] Test folder moves with nested contents
+- [x] Test folder moves with nested contents
 - [ ] Test manifest updates after folder moves
 - [ ] Test documentation/link rewrites
-- [ ] Test moves requiring parent directory creation
-- [ ] Test collision detection
+- [x] Test moves requiring parent directory creation (via file move test)
+- [x] Test collision detection
 
 **Import Rewrite Verification**
 - [x] Test JS/TS default imports (basic coverage)
@@ -51,11 +51,11 @@
 - [ ] Test Rust `mod` declarations
 
 **FileService Tests**
-- [ ] Add tests to `crates/cb-services/src/services/file_service/tests.rs`
-- [ ] Test dry-run vs execution modes
-- [ ] Test collision detection logic
-- [ ] Test parent directory creation
-- [ ] Test case-only renames
+- [x] Add tests to `crates/cb-services/src/services/file_service/tests.rs`
+- [x] Test dry-run vs execution modes
+- [x] Test collision detection logic
+- [x] Test parent directory creation
+- [x] Test case-only renames
 
 **Language Plugin Tests**
 - [ ] Add property tests for TS path normalization
