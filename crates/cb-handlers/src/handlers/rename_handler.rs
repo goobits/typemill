@@ -427,7 +427,19 @@ impl RenameHandler {
         let old_path = Path::new(&params.target.path);
         let new_path = Path::new(&params.new_name);
 
-        // Use FileService to generate dry-run plan for directory rename
+        // Get the EditPlan with import updates
+        let edit_plan = context
+            .app_state
+            .file_service
+            .plan_rename_directory_with_imports(old_path, new_path, None)
+            .await?;
+
+        debug!(
+            edits_count = edit_plan.edits.len(),
+            "Got EditPlan with text edits for import updates"
+        );
+
+        // Also get basic metadata from the old dry-run method
         let dry_run_result = context
             .app_state
             .file_service
@@ -459,8 +471,23 @@ impl RenameHandler {
             }
         }
 
-        // Create WorkspaceEdit representing directory rename using LSP ResourceOp
-        use lsp_types::{DocumentChangeOperation, DocumentChanges, RenameFile, ResourceOp, Uri};
+        // Add checksums for files being updated (import updates)
+        for edit in &edit_plan.edits {
+            if let Some(ref file_path) = edit.file_path {
+                let path = Path::new(file_path);
+                if path.exists() && !path.starts_with(&abs_old) {
+                    if let Ok(content) = context.app_state.file_service.read_file(path).await {
+                        file_checksums.insert(
+                            path.to_string_lossy().to_string(),
+                            calculate_checksum(&content),
+                        );
+                    }
+                }
+            }
+        }
+
+        // Create WorkspaceEdit with both rename operation AND import updates
+        use lsp_types::{DocumentChangeOperation, DocumentChanges, OptionalVersionedTextDocumentIdentifier, RenameFile, ResourceOp, TextDocumentEdit, TextEdit, Uri};
 
         let old_url = url::Url::from_file_path(&abs_old).map_err(|_| {
             ServerError::Internal(format!("Invalid old path: {}", abs_old.display()))
@@ -484,18 +511,65 @@ impl RenameHandler {
             .parse()
             .map_err(|e| ServerError::Internal(format!("Failed to parse URI: {}", e)))?;
 
-        let rename_op = ResourceOp::Rename(RenameFile {
-            old_uri,
-            new_uri,
-            options: None,
-            annotation_id: None,
-        });
+        // Create document changes list with both rename operation AND text edits
+        let mut document_changes = vec![
+            // First, the rename operation
+            DocumentChangeOperation::Op(ResourceOp::Rename(RenameFile {
+                old_uri,
+                new_uri,
+                options: None,
+                annotation_id: None,
+            }))
+        ];
+
+        // Then, add text edits for updating imports in external files
+        let mut files_with_edits = HashMap::new();
+        for edit in &edit_plan.edits {
+            if let Some(ref file_path) = edit.file_path {
+                let path = Path::new(file_path);
+                let file_url = url::Url::from_file_path(path).map_err(|_| {
+                    ServerError::Internal(format!("Invalid file path for edit: {}", file_path))
+                })?;
+                let file_uri: Uri = file_url
+                    .as_str()
+                    .parse()
+                    .map_err(|e| ServerError::Internal(format!("Failed to parse URI: {}", e)))?;
+
+                let lsp_edit = TextEdit {
+                    range: lsp_types::Range {
+                        start: lsp_types::Position {
+                            line: edit.location.start_line as u32,
+                            character: edit.location.start_column as u32,
+                        },
+                        end: lsp_types::Position {
+                            line: edit.location.end_line as u32,
+                            character: edit.location.end_column as u32,
+                        },
+                    },
+                    new_text: edit.new_text.clone(),
+                };
+
+                files_with_edits
+                    .entry(file_uri)
+                    .or_insert_with(Vec::new)
+                    .push(lsp_edit);
+            }
+        }
+
+        // Add all text document edits
+        for (uri, edits) in files_with_edits {
+            document_changes.push(DocumentChangeOperation::Edit(TextDocumentEdit {
+                text_document: OptionalVersionedTextDocumentIdentifier {
+                    uri,
+                    version: Some(0),
+                },
+                edits: edits.into_iter().map(lsp_types::OneOf::Left).collect(),
+            }));
+        }
 
         let workspace_edit = WorkspaceEdit {
             changes: None,
-            document_changes: Some(DocumentChanges::Operations(vec![
-                DocumentChangeOperation::Op(rename_op),
-            ])),
+            document_changes: Some(DocumentChanges::Operations(document_changes)),
             change_annotations: None,
         };
 

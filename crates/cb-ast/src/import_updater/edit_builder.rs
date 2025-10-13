@@ -35,14 +35,61 @@ pub(crate) async fn build_import_update_plan(
         "Found project files"
     );
 
-    // Find files that import the renamed file
-    let mut affected_files = resolver
-        .find_affected_files(old_path, &project_files, plugins)
-        .await?;
+    // Check if this is a directory rename
+    let is_directory_rename = old_path.is_dir();
+
+    info!(
+        old_path = ?old_path,
+        is_dir = is_directory_rename,
+        exists = old_path.exists(),
+        "Checking if this is a directory rename"
+    );
+
+    // Find files that import the renamed file/directory
+    let mut affected_files = if is_directory_rename {
+        // For directory renames, find all files inside the directory
+        // and then find all files that import ANY of those files
+        let mut all_affected = std::collections::HashSet::new();
+
+        info!(old_path = ?old_path, "Directory rename detected, scanning for files inside");
+
+        // Find all files in the directory by filtering project_files
+        let files_in_directory: Vec<&PathBuf> = project_files
+            .iter()
+            .filter(|f| f.starts_with(old_path) && f.is_file())
+            .collect();
+
+        debug!(
+            files_in_directory_count = files_in_directory.len(),
+            "Found files inside directory being renamed"
+        );
+
+        for file_in_dir in files_in_directory {
+            // Find files that import this specific file
+            let importers = resolver
+                .find_affected_files(file_in_dir, &project_files, plugins)
+                .await?;
+
+            debug!(
+                file_in_directory = ?file_in_dir,
+                importers_count = importers.len(),
+                "Found importers for file in renamed directory"
+            );
+
+            all_affected.extend(importers);
+        }
+
+        all_affected.into_iter().collect()
+    } else {
+        // For file renames, use the standard method
+        resolver
+            .find_affected_files(old_path, &project_files, plugins)
+            .await?
+    };
 
     debug!(
         affected_files_count = affected_files.len(),
-        "Found affected files that import the renamed file"
+        "Found affected files that import the renamed file/directory"
     );
 
     // If scan_scope is provided, use enhanced scanning to find additional references
@@ -116,20 +163,9 @@ pub(crate) async fn build_import_update_plan(
 
     if is_directory {
         // Only filter when renaming directories
-        if let (Some(old_parent), Some(new_parent)) = (old_path.parent(), new_path.parent()) {
-            if old_parent == new_parent {
-                // Case 1: Renaming directory within same parent
-                // Files in the parent use relative imports and don't need updating
-                affected_files.retain(|file| !file.starts_with(old_parent));
-            } else {
-                // Case 2: Moving directory to a different parent
-                // Exclude files inside the moved directory (they use relative imports)
-                affected_files.retain(|file| !file.starts_with(new_path));
-            }
-        } else {
-            // Fallback: exclude files inside new_path if we can't determine parents
-            affected_files.retain(|file| !file.starts_with(new_path));
-        }
+        // We need to exclude files INSIDE the renamed directory (they use relative imports)
+        // but keep files OUTSIDE that reference the directory
+        affected_files.retain(|file| !file.starts_with(old_path));
     }
     // For file renames, do NOT filter affected_files - all importers need updates
 
@@ -198,8 +234,58 @@ pub(crate) async fn build_import_update_plan(
             }
         };
 
-        // If scan_scope is provided, use find_module_references for precise edits
-        if let Some(scope) = scan_scope {
+        // Special handling for directory renames vs file renames
+        if is_directory_rename {
+            // For directory renames, we need to replace path segments in import statements
+            // Use the plugin's rewrite method, passing the DIRECTORY paths
+            let rewrite_result = plugin.rewrite_file_references(
+                &content,
+                old_path,
+                new_path,
+                &file_path,
+                project_root,
+                rename_info,
+            );
+
+            match rewrite_result {
+                Some((updated_content, count)) => {
+                    if count > 0 && updated_content != content {
+                        // Create a single TextEdit for the entire file content replacement
+                        use cb_protocol::{EditLocation, EditType, TextEdit};
+                        let line_count = content.lines().count();
+                        let last_line_len = content.lines().last().map(|l| l.len()).unwrap_or(0);
+
+                        all_edits.push(TextEdit {
+                            file_path: Some(file_path.to_string_lossy().to_string()),
+                            edit_type: EditType::UpdateImport,
+                            location: EditLocation {
+                                start_line: 0,
+                                start_column: 0,
+                                end_line: line_count.saturating_sub(1) as u32,
+                                end_column: last_line_len as u32,
+                            },
+                            original_text: content.clone(),
+                            new_text: updated_content,
+                            priority: 1,
+                            description: format!(
+                                "Update imports in {} for directory rename",
+                                file_path.display()
+                            ),
+                        });
+                        edited_file_count += 1;
+                        info!(
+                            file = ?file_path,
+                            imports_updated = count,
+                            "Created TextEdit for directory rename import updates"
+                        );
+                    }
+                }
+                None => {
+                    warn!(file = ?file_path, "Plugin does not support directory rename import updates");
+                }
+            }
+        } else if let Some(scope) = scan_scope {
+            // For file renames with scan_scope, use find_module_references for precise edits
             // Downcast to concrete plugin types to access find_module_references
             // Note: Only Rust and TypeScript supported after language reduction
             use cb_lang_rust::RustPlugin;
@@ -262,7 +348,7 @@ pub(crate) async fn build_import_update_plan(
                 }
             }
         } else {
-            // Use the generic trait method - no downcasting needed!
+            // For file renames without scan_scope, use the generic trait method
             let rewrite_result = plugin.rewrite_file_references(
                 &content,
                 old_path,
@@ -293,7 +379,7 @@ pub(crate) async fn build_import_update_plan(
                             new_text: updated_content,
                             priority: 1,
                             description: format!(
-                                "Update imports in {} (legacy rewrite)",
+                                "Update imports in {} for file rename",
                                 file_path.display()
                             ),
                         });
@@ -301,12 +387,12 @@ pub(crate) async fn build_import_update_plan(
                         debug!(
                             file = ?file_path,
                             imports_updated = count,
-                            "Created full-file TextEdit from legacy rewrite"
+                            "Created TextEdit for file rename import updates"
                         );
                     }
                 }
                 None => {
-                    warn!(file = ?file_path, "Plugin does not support rewrite_imports_for_rename");
+                    warn!(file = ?file_path, "Plugin does not support rewrite_file_references");
                 }
             }
         }

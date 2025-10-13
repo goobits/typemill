@@ -22,6 +22,9 @@ pub mod test_unified_refactoring_api;
 pub mod test_rename_integration;
 
 #[cfg(test)]
+pub mod test_rename_with_imports;
+
+#[cfg(test)]
 pub mod test_extract_integration;
 
 #[cfg(test)]

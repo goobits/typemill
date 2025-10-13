@@ -34,6 +34,33 @@ impl FileService {
             .await
     }
 
+    /// Generates an EditPlan for a directory rename operation, including import updates.
+    /// This is a dry-run only operation.
+    pub async fn plan_rename_directory_with_imports(
+        &self,
+        old_dir_path: &Path,
+        new_dir_path: &Path,
+        scan_scope: Option<cb_plugin_api::ScanScope>,
+    ) -> ServerResult<EditPlan> {
+        info!(old_dir_path = ?old_dir_path, new_dir_path = ?new_dir_path, "Planning directory rename with imports");
+
+        let old_abs = self.to_absolute_path(old_dir_path);
+        let new_abs = self.to_absolute_path(new_dir_path);
+
+        if !old_abs.exists() {
+            return Err(ServerError::NotFound(format!(
+                "Source directory does not exist: {:?}",
+                old_abs
+            )));
+        }
+
+        // For directory renames, we need to update imports that reference files inside the directory
+        // The `true` flag indicates a dry run.
+        self.import_service
+            .update_imports_for_rename(&old_abs, &new_abs, None, true, scan_scope)
+            .await
+    }
+
     /// Perform a git-aware file rename
     ///
     /// Uses `git mv` if the file is tracked and git is available, otherwise falls back to filesystem rename.
