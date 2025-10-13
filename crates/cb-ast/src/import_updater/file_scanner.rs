@@ -13,10 +13,6 @@ impl ImportPathResolver {
         plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
     ) -> AstResult<Vec<PathBuf>> {
         let mut affected = Vec::new();
-        let renamed_stem = renamed_file
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
 
         for file in project_files {
             if file == renamed_file {
@@ -67,36 +63,26 @@ impl ImportPathResolver {
             if should_scan {
                 // Read file and check for imports
                 if let Ok(content) = tokio::fs::read_to_string(file).await {
-                    if self.file_imports_target(&content, renamed_file, file, plugins) {
-                        affected.push(file.clone());
+                    // Parse ALL imports from this file for proper caching
+                    let all_imports = self.get_all_imported_files(&content, file, plugins, project_files);
 
-                        // Update cache with this file's imports
-                        if let Ok(metadata) = tokio::fs::metadata(file).await {
-                            if let Ok(modified) = metadata.modified() {
-                                if let Ok(mut cache) = self.import_cache.lock() {
-                                    cache.insert(
-                                        file.clone(),
-                                        FileImportInfo {
-                                            imports: vec![renamed_file.to_path_buf()],
-                                            last_modified: modified,
-                                        },
-                                    );
-                                }
-                            }
-                        }
-                    } else if !renamed_stem.is_empty() && !content.contains(renamed_stem) {
-                        // File definitely doesn't import the target - cache this negative result
-                        if let Ok(metadata) = tokio::fs::metadata(file).await {
-                            if let Ok(modified) = metadata.modified() {
-                                if let Ok(mut cache) = self.import_cache.lock() {
-                                    cache.insert(
-                                        file.clone(),
-                                        FileImportInfo {
-                                            imports: vec![],
-                                            last_modified: modified,
-                                        },
-                                    );
-                                }
+                    let is_affected = all_imports.contains(&renamed_file.to_path_buf());
+
+                    if is_affected {
+                        affected.push(file.clone());
+                    }
+
+                    // Update cache with this file's COMPLETE import list
+                    if let Ok(metadata) = tokio::fs::metadata(file).await {
+                        if let Ok(modified) = metadata.modified() {
+                            if let Ok(mut cache) = self.import_cache.lock() {
+                                cache.insert(
+                                    file.clone(),
+                                    FileImportInfo {
+                                        imports: all_imports,
+                                        last_modified: modified,
+                                    },
+                                );
                             }
                         }
                     }
@@ -113,75 +99,85 @@ impl ImportPathResolver {
         Ok(affected)
     }
 
-    /// Check if a file's content imports a target file
-    fn file_imports_target(
+    /// Get all files imported by a file, resolved to absolute paths
+    pub(crate) fn get_all_imported_files(
         &self,
         content: &str,
-        target: &Path,
         current_file: &Path,
         plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
-    ) -> bool {
-        let target_stem = target.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        project_files: &[PathBuf],
+    ) -> Vec<PathBuf> {
+        let mut imported_files = Vec::new();
 
-        // Quick check: if the file doesn't even contain the target name, it can't import it
-        if !content.contains(target_stem) {
-            return false;
-        }
-
-        // Try to use plugin-specific import detection
+        // Try to use plugin-specific import parsing
         if let Some(ext) = current_file.extension().and_then(|e| e.to_str()) {
-            // Find plugin that handles this file extension
             for plugin in plugins {
                 if plugin.handles_extension(ext) {
                     if let Some(import_support) = plugin.import_support() {
-                        // Parse imports using the plugin
-                        let imports = import_support.parse_imports(content);
+                        // Parse all imports using the plugin
+                        let import_specifiers = import_support.parse_imports(content);
 
-                        // Check if any import references the target file
-                        let target_str = target.to_string_lossy();
-                        for import in imports {
-                            // Match against various forms: full path, relative path, or just filename
-                            if import.contains(target_stem)
-                                || target_str.contains(&import)
-                                || import.ends_with(target_stem)
-                            {
-                                debug!(
-                                    file = ?current_file,
-                                    target = ?target,
-                                    import = %import,
-                                    "Plugin detected import reference"
-                                );
-                                return true;
+                        // Resolve each import specifier to an absolute file path
+                        for specifier in import_specifiers {
+                            if let Some(resolved) = self.resolve_import_to_file(&specifier, current_file, project_files) {
+                                imported_files.push(resolved);
                             }
                         }
-                        // Plugin checked, no import found
-                        return false;
+                        return imported_files;
                     }
                 }
             }
         }
 
-        // Fallback to generic JavaScript/TypeScript detection if no plugin found
-        // Check for ES6 imports: import ... from './target'
-        if content.contains("import") && content.contains("from") {
-            for line in content.lines() {
-                if line.contains("import") && line.contains("from") && line.contains(target_stem) {
-                    return true;
+        // Fallback: parse imports manually if no plugin found
+        for line in content.lines() {
+            if let Some(specifier) = extract_import_path(line) {
+                if let Some(resolved) = self.resolve_import_to_file(&specifier, current_file, project_files) {
+                    imported_files.push(resolved);
                 }
             }
         }
 
-        // Check for CommonJS: require('./target')
-        if content.contains("require") {
-            for line in content.lines() {
-                if line.contains("require") && line.contains(target_stem) {
-                    return true;
-                }
-            }
-        }
-
-        false
+        imported_files
     }
+
+    /// Resolve an import specifier (like './utils' or '../api') to an absolute file path
+    pub(crate) fn resolve_import_to_file(
+        &self,
+        specifier: &str,
+        importing_file: &Path,
+        project_files: &[PathBuf],
+    ) -> Option<PathBuf> {
+        // Skip node_modules and other external imports
+        if !specifier.starts_with("./") && !specifier.starts_with("../") && !specifier.starts_with('/') {
+            return None;
+        }
+
+        let importing_dir = importing_file.parent()?;
+
+        // Build the path relative to the importing file
+        let candidate = importing_dir.join(specifier);
+
+        // Try common extensions if no extension provided
+        let extensions = ["", ".ts", ".tsx", ".js", ".jsx", ".rs"];
+        for ext in extensions {
+            let candidate_with_ext = if ext.is_empty() {
+                candidate.clone()
+            } else {
+                candidate.with_extension(&ext[1..])
+            };
+
+            // Check if this file exists in project_files
+            if let Ok(abs_candidate) = candidate_with_ext.canonicalize() {
+                if project_files.contains(&abs_candidate) {
+                    return Some(abs_candidate);
+                }
+            }
+        }
+
+        None
+    }
+
 }
 
 /// Extract import path from an import/require statement
