@@ -52,7 +52,14 @@ impl FileService {
 
         // The `true` flag indicates a dry run.
         self.reference_updater
-            .update_references(&old_abs, &new_abs, &self.plugin_registry.all(), None, true, scan_scope)
+            .update_references(
+                &old_abs,
+                &new_abs,
+                &self.plugin_registry.all(),
+                None,
+                true,
+                scan_scope,
+            )
             .await
     }
 
@@ -79,7 +86,9 @@ impl FileService {
         // Extract rename_info if this is a Cargo package (needed for Rust use statement updates)
         let is_cargo_pkg = self.is_cargo_package(&old_abs).await?;
         let rename_info = if is_cargo_pkg {
-            self.extract_cargo_rename_info(&old_abs, &new_abs).await.ok()
+            self.extract_cargo_rename_info(&old_abs, &new_abs)
+                .await
+                .ok()
         } else {
             None
         };
@@ -95,7 +104,14 @@ impl FileService {
         // For directory renames, we need to update imports that reference files inside the directory
         // The `true` flag indicates a dry run.
         self.reference_updater
-            .update_references(&old_abs, &new_abs, &self.plugin_registry.all(), rename_info.as_ref(), true, effective_scan_scope)
+            .update_references(
+                &old_abs,
+                &new_abs,
+                &self.plugin_registry.all(),
+                rename_info.as_ref(),
+                true,
+                effective_scan_scope,
+            )
             .await
     }
 
@@ -176,7 +192,14 @@ impl FileService {
 
             let edit_plan = self
                 .reference_updater
-                .update_references(&old_abs, &new_abs, &self.plugin_registry.all(), None, true, scan_scope.clone())
+                .update_references(
+                    &old_abs,
+                    &new_abs,
+                    &self.plugin_registry.all(),
+                    None,
+                    true,
+                    scan_scope.clone(),
+                )
                 .await?;
 
             Ok(DryRunnable::new(
@@ -218,7 +241,14 @@ impl FileService {
 
             let mut edit_plan = self
                 .reference_updater
-                .update_references(&old_abs, &new_abs, &self.plugin_registry.all(), None, false, scan_scope)
+                .update_references(
+                    &old_abs,
+                    &new_abs,
+                    &self.plugin_registry.all(),
+                    None,
+                    false,
+                    scan_scope,
+                )
                 .await
                 .map_err(|e| {
                     warn!(error = %e, "File renamed but import updates failed");
@@ -337,14 +367,14 @@ impl FileService {
 
             // Include detailed file list if requested
             if details {
-                response["files"] = json!(
-                    files_to_move.iter()
-                        .map(|p| p.strip_prefix(&old_abs_dir)
-                            .unwrap_or(p)
-                            .to_string_lossy()
-                            .to_string())
-                        .collect::<Vec<_>>()
-                );
+                response["files"] = json!(files_to_move
+                    .iter()
+                    .map(|p| p
+                        .strip_prefix(&old_abs_dir)
+                        .unwrap_or(p)
+                        .to_string_lossy()
+                        .to_string())
+                    .collect::<Vec<_>>());
             }
 
             Ok(DryRunnable::new(true, response))

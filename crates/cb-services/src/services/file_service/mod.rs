@@ -15,9 +15,9 @@ pub use self::edit_plan::EditPlanResult;
 pub use self::utils::DocumentationUpdateReport;
 
 use crate::services::git_service::GitService;
-use crate::services::reference_updater::ReferenceUpdater;
 use crate::services::lock_manager::LockManager;
 use crate::services::operation_queue::OperationQueue;
+use crate::services::reference_updater::ReferenceUpdater;
 use cb_ast::AstCache;
 use cb_core::config::AppConfig;
 use std::path::{Path, PathBuf};

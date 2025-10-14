@@ -4,11 +4,14 @@
 //！ and updating them to a new path or name. It is language-agnostic and delegates
 //！ language-specific logic to plugins.
 
-use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult, EditPlan, EditPlanMetadata, TextEdit, EditLocation, EditType, DependencyUpdate};
-use std::path::{Path, PathBuf};
+use cb_plugin_api::LanguagePlugin;
+use cb_protocol::{
+    ApiError as ServerError, ApiResult as ServerResult, DependencyUpdate, EditLocation, EditPlan,
+    EditPlanMetadata, EditType, TextEdit,
+};
 use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use cb_plugin_api::{LanguagePlugin};
 
 // From path_resolver.rs
 /// Cached information about a file's imports
@@ -61,12 +64,20 @@ impl ReferenceUpdater {
             for file_in_dir in files_in_directory {
                 let relative_path = file_in_dir.strip_prefix(old_path).unwrap_or(file_in_dir);
                 let new_file_path = new_path.join(relative_path);
-                let importers = self.find_affected_files_for_rename(file_in_dir, &new_file_path, &project_files, plugins).await?;
+                let importers = self
+                    .find_affected_files_for_rename(
+                        file_in_dir,
+                        &new_file_path,
+                        &project_files,
+                        plugins,
+                    )
+                    .await?;
                 all_affected.extend(importers);
             }
             all_affected.into_iter().collect()
         } else {
-            self.find_affected_files_for_rename(old_path, new_path, &project_files, plugins).await?
+            self.find_affected_files_for_rename(old_path, new_path, &project_files, plugins)
+                .await?
         };
 
         if is_directory_rename {
@@ -105,7 +116,9 @@ impl ReferenceUpdater {
                 let mut total_changes = 0;
 
                 for old_file_in_dir in &files_in_directory {
-                    let relative_path = old_file_in_dir.strip_prefix(old_path).unwrap_or(old_file_in_dir);
+                    let relative_path = old_file_in_dir
+                        .strip_prefix(old_path)
+                        .unwrap_or(old_file_in_dir);
                     let new_file_path = new_path.join(relative_path);
 
                     let rewrite_result = plugin.rewrite_file_references(
@@ -125,7 +138,8 @@ impl ReferenceUpdater {
                 }
                 if total_changes > 0 && current_content != content {
                     let line_count = current_content.lines().count();
-                    let last_line_len = current_content.lines().last().map(|l| l.len()).unwrap_or(0);
+                    let last_line_len =
+                        current_content.lines().last().map(|l| l.len()).unwrap_or(0);
 
                     all_edits.push(TextEdit {
                         file_path: Some(file_path.to_string_lossy().to_string()),
@@ -146,7 +160,6 @@ impl ReferenceUpdater {
                         ),
                     });
                 }
-
             } else {
                 // File rename logic
                 let rewrite_result = plugin.rewrite_file_references(
@@ -216,7 +229,8 @@ impl ReferenceUpdater {
                 continue;
             }
             if let Ok(content) = tokio::fs::read_to_string(file).await {
-                let all_imports = self.get_all_imported_files(&content, file, plugins, project_files);
+                let all_imports =
+                    self.get_all_imported_files(&content, file, plugins, project_files);
 
                 // Check if any import resolves to the renamed file
                 if all_imports.contains(&renamed_file.to_path_buf()) {
@@ -238,15 +252,110 @@ impl ReferenceUpdater {
     ) -> ServerResult<Vec<PathBuf>> {
         let mut affected = Vec::new();
 
+        // Rust-specific cross-crate move detection
+        // Rust uses crate-qualified imports (e.g., "use common::utils::foo") which the generic
+        // ImportPathResolver cannot resolve. We need special handling for cross-crate moves.
+        if let Some(old_ext) = old_path.extension().and_then(|e| e.to_str()) {
+            if old_ext == "rs" {
+                // Canonicalize paths to handle symlinks (e.g., /var vs /private/var on macOS)
+                let canonical_project = self
+                    .project_root
+                    .canonicalize()
+                    .unwrap_or_else(|_| self.project_root.clone());
+
+                let canonical_old = old_path
+                    .canonicalize()
+                    .unwrap_or_else(|_| old_path.to_path_buf());
+
+                let canonical_new = new_path
+                    .canonicalize()
+                    .unwrap_or_else(|_| new_path.to_path_buf());
+
+                // Extract crate names from relative paths
+                let old_crate_name = canonical_old
+                    .strip_prefix(&canonical_project)
+                    .ok()
+                    .and_then(|rel| rel.components().next())
+                    .and_then(|c| c.as_os_str().to_str())
+                    .map(String::from);
+
+                let new_crate_name = canonical_new
+                    .strip_prefix(&canonical_project)
+                    .ok()
+                    .and_then(|rel| rel.components().next())
+                    .and_then(|c| c.as_os_str().to_str())
+                    .map(String::from);
+
+                tracing::debug!(
+                    old_crate = ?old_crate_name,
+                    new_crate = ?new_crate_name,
+                    "Checking for Rust cross-crate move"
+                );
+
+                // If this is a cross-crate move, scan for files importing from the old crate
+                if let (Some(old_crate), Some(new_crate)) = (old_crate_name, new_crate_name) {
+                    if old_crate != new_crate {
+                        tracing::info!(
+                            old_crate = %old_crate,
+                            new_crate = %new_crate,
+                            "Detected Rust cross-crate move, scanning for affected files"
+                        );
+
+                        // Scan all Rust files for imports from the old crate
+                        let crate_pattern = format!("{}::", old_crate);
+                        for file in project_files {
+                            if file == old_path || file == new_path {
+                                continue;
+                            }
+
+                            // Only check Rust files
+                            if file.extension().and_then(|e| e.to_str()) != Some("rs") {
+                                continue;
+                            }
+
+                            if let Ok(content) = tokio::fs::read_to_string(file).await {
+                                // Check if this file has imports from the old crate
+                                let has_crate_import = content.lines().any(|line| {
+                                    let trimmed = line.trim();
+                                    trimmed.starts_with("use ") && trimmed.contains(&crate_pattern)
+                                });
+
+                                if has_crate_import {
+                                    tracing::debug!(
+                                        file = %file.display(),
+                                        old_crate = %old_crate,
+                                        "Found Rust file importing from old crate"
+                                    );
+                                    affected.push(file.clone());
+                                }
+                            }
+                        }
+
+                        tracing::info!(
+                            affected_count = affected.len(),
+                            "Found Rust files affected by cross-crate move"
+                        );
+
+                        // Return early - we've found all affected Rust files
+                        return Ok(affected);
+                    }
+                }
+            }
+        }
+
+        // Fallback to generic import-based detection for non-Rust or same-crate moves
         for file in project_files {
             if file == old_path || file == new_path {
                 continue;
             }
             if let Ok(content) = tokio::fs::read_to_string(file).await {
-                let all_imports = self.get_all_imported_files(&content, file, plugins, project_files);
+                let all_imports =
+                    self.get_all_imported_files(&content, file, plugins, project_files);
 
                 // Check if imports reference either the old path (pre-move) or new path (post-move)
-                if all_imports.contains(&old_path.to_path_buf()) || all_imports.contains(&new_path.to_path_buf()) {
+                if all_imports.contains(&old_path.to_path_buf())
+                    || all_imports.contains(&new_path.to_path_buf())
+                {
                     affected.push(file.clone());
                 }
             }
@@ -268,7 +377,9 @@ impl ReferenceUpdater {
                     if let Some(import_support) = plugin.import_support() {
                         let import_specifiers = import_support.parse_imports(content);
                         for specifier in import_specifiers {
-                            if let Some(resolved) = self.resolve_import_to_file(&specifier, current_file, project_files) {
+                            if let Some(resolved) =
+                                self.resolve_import_to_file(&specifier, current_file, project_files)
+                            {
                                 imported_files.push(resolved);
                             }
                         }
@@ -279,7 +390,9 @@ impl ReferenceUpdater {
         }
         for line in content.lines() {
             if let Some(specifier) = extract_import_path(line) {
-                if let Some(resolved) = self.resolve_import_to_file(&specifier, current_file, project_files) {
+                if let Some(resolved) =
+                    self.resolve_import_to_file(&specifier, current_file, project_files)
+                {
                     imported_files.push(resolved);
                 }
             }
@@ -341,18 +454,19 @@ impl ReferenceUpdater {
             return Ok(false);
         }
 
-        tokio::fs::write(file_path, updated_content).await.map_err(|e| {
-            ServerError::Internal(format!(
-                "Failed to write updated content to {}: {}",
-                file_path.display(),
-                e
-            ))
-        })?;
+        tokio::fs::write(file_path, updated_content)
+            .await
+            .map_err(|e| {
+                ServerError::Internal(format!(
+                    "Failed to write updated content to {}: {}",
+                    file_path.display(),
+                    e
+                ))
+            })?;
 
         Ok(true)
     }
 }
-
 
 /// Find all project files that match the language adapters
 pub async fn find_project_files(
@@ -370,8 +484,18 @@ pub async fn find_project_files(
             if dir.is_dir() {
                 if let Some(dir_name) = dir.file_name() {
                     const IGNORED_DIRS: &[&str] = &[
-                        ".build", ".git", ".next", ".pytest_cache", ".tox", ".venv",
-                        "__pycache__", "build", "dist", "node_modules", "target", "venv",
+                        ".build",
+                        ".git",
+                        ".next",
+                        ".pytest_cache",
+                        ".tox",
+                        ".venv",
+                        "__pycache__",
+                        "build",
+                        "dist",
+                        "node_modules",
+                        "target",
+                        "venv",
                     ];
                     let name = dir_name.to_string_lossy();
                     if IGNORED_DIRS.contains(&name.as_ref()) {
@@ -379,14 +503,23 @@ pub async fn find_project_files(
                     }
                 }
 
-                let mut read_dir = tokio::fs::read_dir(dir).await.map_err(|e| ServerError::Internal(format!("Failed to read directory: {}", e)))?;
-                while let Some(entry) = read_dir.next_entry().await.map_err(|e| ServerError::Internal(format!("Failed to read entry: {}", e)))? {
+                let mut read_dir = tokio::fs::read_dir(dir).await.map_err(|e| {
+                    ServerError::Internal(format!("Failed to read directory: {}", e))
+                })?;
+                while let Some(entry) = read_dir
+                    .next_entry()
+                    .await
+                    .map_err(|e| ServerError::Internal(format!("Failed to read entry: {}", e)))?
+                {
                     let path = entry.path();
                     if path.is_dir() {
                         collect_files(&path, files, plugins).await?;
                     } else if let Some(ext) = path.extension() {
                         let ext_str = ext.to_str().unwrap_or("");
-                        if plugins.iter().any(|plugin| plugin.handles_extension(ext_str)) {
+                        if plugins
+                            .iter()
+                            .any(|plugin| plugin.handles_extension(ext_str))
+                        {
                             files.push(path);
                         }
                     }
@@ -447,10 +580,7 @@ mod tests {
             Some("./bar".to_string())
         );
         assert_eq!(extract_import_path("let x = 1;"), None);
-        assert_eq!(
-            extract_import_path("this is from a file"),
-            None
-        );
+        assert_eq!(extract_import_path("this is from a file"), None);
     }
 
     // Helper to create a test harness
@@ -460,15 +590,21 @@ mod tests {
         let updater = ReferenceUpdater::new(root);
 
         // Create some mock files
-        fs::create_dir_all(root.join("src/components")).await.unwrap();
+        fs::create_dir_all(root.join("src/components"))
+            .await
+            .unwrap();
         fs::write(root.join("src/main.ts"), "").await.unwrap();
-        fs::write(root.join("src/components/button.ts"), "").await.unwrap();
+        fs::write(root.join("src/components/button.ts"), "")
+            .await
+            .unwrap();
         fs::write(root.join("src/utils.ts"), "").await.unwrap();
         fs::write(root.join("README.md"), "").await.unwrap();
 
         let project_files = vec![
             root.join("src/main.ts").canonicalize().unwrap(),
-            root.join("src/components/button.ts").canonicalize().unwrap(),
+            root.join("src/components/button.ts")
+                .canonicalize()
+                .unwrap(),
             root.join("src/utils.ts").canonicalize().unwrap(),
             root.join("README.md").canonicalize().unwrap(),
         ];
@@ -482,12 +618,14 @@ mod tests {
         let importing_file = project_files[0].clone(); // src/main.ts
 
         // ./components/button
-        let resolved = updater.resolve_import_to_file("./components/button", &importing_file, &project_files);
+        let resolved =
+            updater.resolve_import_to_file("./components/button", &importing_file, &project_files);
         assert_eq!(resolved, Some(project_files[1].clone()));
 
         // ../utils.ts from components/button.ts
         let importing_file = project_files[1].clone();
-        let resolved = updater.resolve_import_to_file("../utils.ts", &importing_file, &project_files);
+        let resolved =
+            updater.resolve_import_to_file("../utils.ts", &importing_file, &project_files);
         assert_eq!(resolved, Some(project_files[2].clone()));
     }
 
@@ -505,7 +643,91 @@ mod tests {
         let (_temp_dir, updater, project_files) = setup_test_harness().await;
         let importing_file = project_files[0].clone(); // src/main.ts
 
-        let resolved = updater.resolve_import_to_file("./non-existent", &importing_file, &project_files);
+        let resolved =
+            updater.resolve_import_to_file("./non-existent", &importing_file, &project_files);
         assert_eq!(resolved, None);
+    }
+
+    /// Test Rust cross-crate move detection (Issue fix verification)
+    #[tokio::test]
+    async fn test_rust_cross_crate_move_detection() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+        let updater = ReferenceUpdater::new(root);
+
+        // Create Rust workspace structure matching test fixture
+        fs::create_dir_all(root.join("common/src")).await.unwrap();
+        fs::create_dir_all(root.join("my_crate/src")).await.unwrap();
+        fs::create_dir_all(root.join("new_utils/src"))
+            .await
+            .unwrap();
+
+        // Write fixture files
+        fs::write(root.join("common/src/lib.rs"), "pub mod utils;")
+            .await
+            .unwrap();
+
+        fs::write(root.join("common/src/utils.rs"), "pub fn do_stuff() {}")
+            .await
+            .unwrap();
+
+        fs::write(
+            root.join("my_crate/src/main.rs"),
+            "use common::utils::do_stuff;\nfn main() { do_stuff(); }",
+        )
+        .await
+        .unwrap();
+
+        fs::write(
+            root.join("common/Cargo.toml"),
+            "[package]\nname = \"common\"\nversion = \"0.1.0\"\n",
+        )
+        .await
+        .unwrap();
+
+        fs::write(
+            root.join("new_utils/Cargo.toml"),
+            "[package]\nname = \"new_utils\"\nversion = \"0.1.0\"\n",
+        )
+        .await
+        .unwrap();
+
+        // Simulate move: common/src/utils.rs → new_utils/src/lib.rs
+        let old_path = root.join("common/src/utils.rs");
+        let new_path = root.join("new_utils/src/lib.rs");
+
+        // Get all Rust files
+        let project_files = vec![
+            root.join("common/src/lib.rs"),
+            root.join("common/src/utils.rs"),
+            root.join("my_crate/src/main.rs"),
+        ];
+
+        // Create Rust plugin (needed for file detection)
+        let rust_plugin = cb_lang_rust::RustPlugin::new();
+        let plugins: Vec<std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>> =
+            vec![std::sync::Arc::from(rust_plugin)];
+
+        // Test: find_affected_files_for_rename should detect my_crate/src/main.rs
+        let affected = updater
+            .find_affected_files_for_rename(&old_path, &new_path, &project_files, &plugins)
+            .await
+            .unwrap();
+
+        // Verify that my_crate/src/main.rs was detected
+        assert!(
+            affected.contains(&root.join("my_crate/src/main.rs")),
+            "Expected my_crate/src/main.rs to be detected as affected file. Found: {:?}",
+            affected
+        );
+
+        // Should find exactly 1 affected file
+        assert_eq!(
+            affected.len(),
+            1,
+            "Expected 1 affected file, found {}: {:?}",
+            affected.len(),
+            affected
+        );
     }
 }

@@ -445,15 +445,69 @@ impl RustPlugin {
                 Ok(import_support.rewrite_imports_for_rename(content, old_name, new_name))
             } else {
                 // This is a file move, not a crate rename. Infer crate from path.
-                // This is a simplified approach for the common case.
-                let old_crate_name = _old_path.components().next().and_then(|c| c.as_os_str().to_str());
-                let new_crate_name = _new_path.components().next().and_then(|c| c.as_os_str().to_str());
+                // Strip project_root to get relative path, then extract crate name (first component)
+
+                // Canonicalize project_root to handle symlinks (e.g., /var vs /private/var on macOS)
+                let canonical_project = _project_root
+                    .canonicalize()
+                    .unwrap_or_else(|_| _project_root.to_path_buf());
+
+                // Try to canonicalize paths, fallback to original if they don't exist yet
+                let canonical_old = _old_path
+                    .canonicalize()
+                    .unwrap_or_else(|_| _old_path.to_path_buf());
+                let canonical_new = _new_path
+                    .canonicalize()
+                    .unwrap_or_else(|_| _new_path.to_path_buf());
+
+                // Extract crate name from relative path (first component after project root)
+                let old_crate_name = canonical_old
+                    .strip_prefix(&canonical_project)
+                    .ok()
+                    .and_then(|rel| {
+                        tracing::debug!(
+                            relative_old = %rel.display(),
+                            "Stripped old path to get relative"
+                        );
+                        rel.components().next()
+                    })
+                    .and_then(|c| c.as_os_str().to_str())
+                    .map(String::from);
+
+                let new_crate_name = canonical_new
+                    .strip_prefix(&canonical_project)
+                    .ok()
+                    .and_then(|rel| {
+                        tracing::debug!(
+                            relative_new = %rel.display(),
+                            "Stripped new path to get relative"
+                        );
+                        rel.components().next()
+                    })
+                    .and_then(|c| c.as_os_str().to_str())
+                    .map(String::from);
+
+                tracing::debug!(
+                    old_crate = ?old_crate_name,
+                    new_crate = ?new_crate_name,
+                    "Extracted crate names from paths"
+                );
 
                 if let (Some(old_name), Some(new_name)) = (old_crate_name, new_crate_name) {
                     if old_name != new_name {
-                        return Ok(import_support.rewrite_imports_for_rename(content, old_name, new_name));
+                        tracing::debug!(
+                            old_name = %old_name,
+                            new_name = %new_name,
+                            "Crates differ - rewriting imports"
+                        );
+                        return Ok(import_support
+                            .rewrite_imports_for_rename(content, &old_name, &new_name));
+                    } else {
+                        tracing::debug!("Crates are the same - no rewrite needed");
                     }
                 }
+
+                tracing::debug!("No crate rename needed or couldn't extract crate names");
                 Ok((content.to_string(), 0))
             }
         } else {
