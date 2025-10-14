@@ -89,6 +89,35 @@ match language {
 
 Those branches expect both plugins to exist.
 
+**Why this doesn't scale:**
+
+Every new language requires updating shared code in cb-ast, cb-services, and cb-handlers. Here's the pattern that causes pain:
+
+**Current downcasting pattern:**
+```rust
+// Every new language requires updating this code in cb-ast
+if let Some(rust_plugin) = plugin.downcast_ref::<RustPlugin>() {
+    // Rust-specific logic
+} else if let Some(ts_plugin) = plugin.downcast_ref::<TypeScriptPlugin>() {
+    // TypeScript-specific logic
+} else if let Some(go_plugin) = plugin.downcast_ref::<GoPlugin>() {
+    // Go-specific logic
+} else if let Some(python_plugin) = plugin.downcast_ref::<PythonPlugin>() {
+    // Python-specific logic
+}
+// ... ad infinitum
+```
+
+**Better approach with capability traits:**
+```rust
+// No changes needed when adding new languages!
+if let Some(scanner) = plugin.as_capability::<dyn ModuleReferenceScanner>() {
+    scanner.scan_references(file_path, content)?
+}
+```
+
+This is the key architectural unlock—capability traits push language-specific logic behind the trait boundary.
+
 ### 4. Tests and Default Constructors
 
 Tests and default constructors pull languages automatically:
@@ -147,6 +176,8 @@ Tie crate features together so enabling `lang-typescript` in the binary flips on
 **Problem:** Current downcasting pattern doesn't scale and creates tight coupling.
 
 **Solution:** Replace downcasts with capability traits.
+
+**Start with:** Module reference scanning (simplest capability, used in `import_updater/edit_builder.rs:135`). Once proven, extend to refactoring and import analysis.
 
 #### 2.1: Define Capability Traits in cb-plugin-api
 
@@ -377,32 +408,9 @@ make test-ts-only
 
 ## Scaling to 8+ Languages
 
-The capability trait approach prevents duplication as we add more languages:
+The capability trait approach prevents duplication as we add more languages. As shown in the blockers section, the current downcasting pattern requires updating shared code in cb-ast/cb-services/cb-handlers for every new language.
 
-**Before (current downcasting pattern):**
-```rust
-// Every new language requires updating this code in cb-ast
-if let Some(rust_plugin) = plugin.downcast_ref::<RustPlugin>() {
-    // Rust-specific logic
-} else if let Some(ts_plugin) = plugin.downcast_ref::<TypeScriptPlugin>() {
-    // TypeScript-specific logic
-} else if let Some(go_plugin) = plugin.downcast_ref::<GoPlugin>() {
-    // Go-specific logic
-} else if let Some(python_plugin) = plugin.downcast_ref::<PythonPlugin>() {
-    // Python-specific logic
-}
-// ... ad infinitum
-```
-
-**After (capability trait pattern):**
-```rust
-// No changes needed when adding new languages!
-if let Some(scanner) = plugin.as_capability::<dyn ModuleReferenceScanner>() {
-    scanner.scan_references(file_path, content)?
-}
-```
-
-**Key insight:** Capability traits push language-specific logic behind the trait boundary, so adding a new language just means implementing the trait in its crate. No changes needed in shared code.
+**With capability traits:** Adding a new language just means implementing the trait in its crate. No changes needed in shared code.
 
 ### Additional Scaling Benefits
 
@@ -434,6 +442,8 @@ if let Some(scanner) = plugin.as_capability::<dyn ModuleReferenceScanner>() {
 
 - [ ] `cargo check --no-default-features --features lang-rust` compiles successfully
 - [ ] `cargo check --no-default-features --features lang-typescript` compiles successfully
+- [ ] `cargo nextest run --no-default-features --features lang-rust` passes with Rust tests only
+- [ ] `cargo nextest run --no-default-features --features lang-typescript` passes with TypeScript tests only
 - [ ] Rust-only build is 30-40% faster than full build
 - [ ] Binary size reduced by 40-50% for single-language builds
 - [ ] No downcasts to concrete language plugin types in shared code
