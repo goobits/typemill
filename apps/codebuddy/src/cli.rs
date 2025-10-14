@@ -19,15 +19,18 @@ fn parse_json(s: &str) -> Result<serde_json::Value, String> {
     serde_json::from_str(s).map_err(|e| format!("Invalid JSON: {}", e))
 }
 
+/// The main CLI struct.
 #[derive(Parser)]
 #[command(name = "codebuddy")]
 #[command(about = "Pure Rust MCP server bridging Language Server Protocol functionality")]
 #[command(version)]
 pub struct Cli {
+    /// The command to run.
     #[command(subcommand)]
     pub command: Commands,
 }
 
+/// The available commands.
 #[derive(Subcommand)]
 pub enum Commands {
     /// Start the MCP server in stdio mode for Claude Code
@@ -81,12 +84,15 @@ pub enum Commands {
     Analyze(Analyze),
 }
 
+/// The analyze command.
 #[derive(Parser)]
 pub struct Analyze {
+    /// The analyze subcommand to run.
     #[command(subcommand)]
     pub command: AnalyzeCommands,
 }
 
+/// The available analyze subcommands.
 #[derive(Subcommand)]
 pub enum AnalyzeCommands {
     /// Find dead code
@@ -95,6 +101,7 @@ pub enum AnalyzeCommands {
     Cycles(Cycles),
 }
 
+/// The dead code command.
 #[derive(Parser)]
 pub struct DeadCode {
     /// Types of symbols to check
@@ -108,6 +115,7 @@ pub struct DeadCode {
     pub path: String,
 }
 
+/// The cycles command.
 #[derive(Parser)]
 pub struct Cycles {
     /// The path to analyze
