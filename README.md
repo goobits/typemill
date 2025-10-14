@@ -126,5 +126,27 @@ make test
 ```
 See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full development guide, including how to add new tools.
 
+## About
+
+Codebuddy is a tool that allows you to use your AI assistant to its full potential. It provides a bridge between your AI assistant and your codebase, allowing it to understand your code in the same way that your IDE does. This allows you to use your AI assistant to perform tasks such as code navigation, refactoring, and more.
+
+## Getting Started
+
+To get started with Codebuddy, you will need to have a compatible AI assistant installed. Once you have done so, you can install Codebuddy by following the instructions in the [Installation](#-installation) section.
+
+Once you have installed Codebuddy, you can start the server by running the following command:
+
+```bash
+codebuddy start
+```
+
+You can then connect your AI assistant to the server by following the instructions provided by your AI assistant.
+
+## Usage
+
+Once you have connected your AI assistant to the Codebuddy server, you can use it to perform a variety of tasks. For example, you can use it to find the definition of a symbol, find all references to a symbol, or rename a symbol.
+
+For a full list of available commands, see the [🚀 Quick Reference Guide](docs/QUICK_REFERENCE.md).
+
 ## 📝 License
 MIT - see [LICENSE](LICENSE)

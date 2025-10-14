@@ -33,6 +33,10 @@ async fn main() {
     cli::run().await;
 }
 
+/// Runs the application in stdio mode.
+///
+/// This mode is used when the application is run from the command line. It
+/// reads messages from stdin and writes responses to stdout.
 pub async fn run_stdio_mode() {
     debug!("Initializing stdio mode MCP server");
     debug!(
@@ -110,10 +114,23 @@ pub async fn run_stdio_mode() {
     debug!("Stdio mode exiting");
 }
 
+/// Runs the application in websocket mode.
+///
+/// This mode is used when the application is run as a server. It listens for
+/// websocket connections on port 3000 and handles messages from clients.
 pub async fn run_websocket_server() {
     run_websocket_server_with_port(3000).await;
 }
 
+/// Runs the application in websocket mode on a specific port.
+///
+/// This mode is used when the application is run as a server. It listens for
+/// websocket connections on the specified port and handles messages from
+/// clients.
+///
+/// # Arguments
+///
+/// * `port` - The port to listen on.
 pub async fn run_websocket_server_with_port(port: u16) {
     // Load configuration
     let config = match cb_core::config::AppConfig::load() {
