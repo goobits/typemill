@@ -158,6 +158,7 @@ impl FileOperationHandler {
                 params.dry_run,
                 params.consolidate,
                 Some(update_mode.to_scan_scope()),
+                params.details,
             )
             .await?;
 

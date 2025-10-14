@@ -448,7 +448,7 @@ impl RenameHandler {
         let dry_run_result = context
             .app_state
             .file_service
-            .rename_directory_with_imports(old_path, new_path, true, false, None)
+            .rename_directory_with_imports(old_path, new_path, true, false, None, false)
             .await?;
 
         // Extract metadata from dry-run result

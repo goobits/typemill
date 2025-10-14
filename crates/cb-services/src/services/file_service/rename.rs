@@ -286,6 +286,7 @@ impl FileService {
         dry_run: bool,
         consolidate: bool,
         scan_scope: Option<cb_plugin_api::ScanScope>,
+        details: bool,
     ) -> ServerResult<DryRunnable<Value>> {
         info!(old_path = ?old_dir_path, new_path = ?new_dir_path, dry_run, consolidate, "Renaming directory");
 
@@ -325,16 +326,28 @@ impl FileService {
 
             let is_cargo_pkg = self.is_cargo_package(&old_abs_dir).await?;
 
-            Ok(DryRunnable::new(
-                true,
-                json!({
-                    "operation": "move_directory",
-                    "old_path": old_abs_dir.to_string_lossy(),
-                    "new_path": new_abs_dir.to_string_lossy(),
-                    "files_to_move": files_to_move.len(),
-                    "is_cargo_package": is_cargo_pkg,
-                }),
-            ))
+            // Build response with optional details
+            let mut response = json!({
+                "operation": "move_directory",
+                "old_path": old_abs_dir.to_string_lossy(),
+                "new_path": new_abs_dir.to_string_lossy(),
+                "files_to_move": files_to_move.len(),
+                "is_cargo_package": is_cargo_pkg,
+            });
+
+            // Include detailed file list if requested
+            if details {
+                response["files"] = json!(
+                    files_to_move.iter()
+                        .map(|p| p.strip_prefix(&old_abs_dir)
+                            .unwrap_or(p)
+                            .to_string_lossy()
+                            .to_string())
+                        .collect::<Vec<_>>()
+                );
+            }
+
+            Ok(DryRunnable::new(true, response))
         } else {
             // Execution mode - perform directory rename and update imports
             if !old_abs_dir.exists() {

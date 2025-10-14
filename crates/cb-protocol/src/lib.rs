@@ -489,4 +489,7 @@ pub struct RenameDirectoryParams {
     /// Update mode for import statements
     #[serde(default)]
     pub update_mode: Option<String>,
+    /// Include detailed file list in dry-run output (defaults to false for cleaner output)
+    #[serde(default)]
+    pub details: bool,
 }
