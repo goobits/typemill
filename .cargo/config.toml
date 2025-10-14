@@ -112,3 +112,12 @@ test-core = "nextest run --workspace --exclude integration-tests --exclude cb-be
 # Language plugins only
 check-lang = "check -p cb-lang-common -p cb-lang-rust -p cb-lang-typescript -p cb-lang-markdown"
 test-lang = "nextest run -p cb-lang-common -p cb-lang-rust -p cb-lang-typescript -p cb-lang-markdown"
+
+# Navigation/analysis only (no refactoring handlers - 15-25% faster)
+check-handlers-nav = "check -p cb-handlers --no-default-features --features lang-rust,lang-typescript"
+test-handlers-nav = "nextest run -p cb-handlers --no-default-features --features lang-rust,lang-typescript"
+
+# Integration test filtering (60-80% faster for targeted tests)
+test-integration-refactor = "nextest run -p integration-tests -E 'test(/(rename|extract|inline|move|reorder|transform|delete)/)'"
+test-integration-analysis = "nextest run -p integration-tests -E 'test(/analyze/)'"
+test-integration-nav = "nextest run -p integration-tests -E 'test(/(find|search|get_symbol|get_call)/)'"

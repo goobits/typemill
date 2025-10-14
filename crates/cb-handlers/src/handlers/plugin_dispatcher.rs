@@ -190,9 +190,9 @@ impl PluginDispatcher {
                 };
                 use super::tools::analysis::{BatchAnalysisHandler, DeadCodeHandler, DependenciesHandler, DocumentationHandler, QualityHandler, StructureHandler, TestsHandler};
                 use super::{
-                    DeleteHandler, ExtractHandler, FileOperationHandler, InlineHandler, MoveHandler,
-                    RenameHandler, ReorderHandler, TransformHandler, WorkspaceApplyHandler,
+                    FileOperationHandler, WorkspaceApplyHandler,
                 };
+
                 let mut registry = self.tool_registry.lock().await;
                 register_handlers_with_logging!(registry, {
                     SystemToolsHandler => "SystemToolsHandler with 1 tool (health_check)",
@@ -213,17 +213,59 @@ impl PluginDispatcher {
                     InternalWorkspaceHandler => "InternalWorkspaceHandler with 1 INTERNAL tool (apply_workspace_edit)",
                     InternalIntelligenceHandler => "InternalIntelligenceHandler with 2 INTERNAL tools (get_completions, get_signature_help)",
                     WorkspaceToolsHandler => "WorkspaceToolsHandler with 2 INTERNAL tools (move_directory, update_dependencies)",
-
-                    // New unified refactoring handlers
-                    RenameHandler => "Unified rename handler",
-                    ExtractHandler => "Unified extract handler",
-                    InlineHandler => "Unified inline handler",
-                    MoveHandler => "Unified move handler",
-                    ReorderHandler => "Unified reorder handler",
-                    TransformHandler => "Unified transform handler",
-                    DeleteHandler => "Unified delete handler",
                     WorkspaceApplyHandler => "Unified workspace apply handler"
                 });
+
+                // Register refactoring handlers (feature-gated)
+                #[cfg(feature = "refactor-rename")]
+                {
+                    use super::RenameHandler;
+                    register_handlers_with_logging!(registry, {
+                        RenameHandler => "Unified rename handler"
+                    });
+                }
+                #[cfg(feature = "refactor-extract")]
+                {
+                    use super::ExtractHandler;
+                    register_handlers_with_logging!(registry, {
+                        ExtractHandler => "Unified extract handler"
+                    });
+                }
+                #[cfg(feature = "refactor-inline")]
+                {
+                    use super::InlineHandler;
+                    register_handlers_with_logging!(registry, {
+                        InlineHandler => "Unified inline handler"
+                    });
+                }
+                #[cfg(feature = "refactor-move")]
+                {
+                    use super::MoveHandler;
+                    register_handlers_with_logging!(registry, {
+                        MoveHandler => "Unified move handler"
+                    });
+                }
+                #[cfg(feature = "refactor-reorder")]
+                {
+                    use super::ReorderHandler;
+                    register_handlers_with_logging!(registry, {
+                        ReorderHandler => "Unified reorder handler"
+                    });
+                }
+                #[cfg(feature = "refactor-transform")]
+                {
+                    use super::TransformHandler;
+                    register_handlers_with_logging!(registry, {
+                        TransformHandler => "Unified transform handler"
+                    });
+                }
+                #[cfg(feature = "refactor-delete")]
+                {
+                    use super::DeleteHandler;
+                    register_handlers_with_logging!(registry, {
+                        DeleteHandler => "Unified delete handler"
+                    });
+                }
             }
 
             Ok::<(), ServerError>(())

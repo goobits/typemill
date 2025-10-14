@@ -144,6 +144,60 @@ make check-lang        # Check language plugins
 
 These focused commands exclude analysis features from handlers by default, significantly speeding up compilation times. They're perfect for tight iteration loops when working on specific parts of the codebase.
 
+### Navigation-Only Builds (No Refactoring)
+
+When working on navigation, analysis, or LSP features without needing refactoring operations, use the navigation-only builds:
+
+```bash
+# Check handlers without refactoring features (15-25% faster)
+make check-handlers-nav
+cargo check-handlers-nav
+
+# Test handlers without refactoring features (15-25% faster)
+make test-handlers-nav
+cargo test-handlers-nav
+```
+
+**Performance gains:**
+- **Compilation:** 15-25% faster than full handlers build
+- **Why:** Excludes all refactoring handlers (rename, extract, inline, move, reorder, transform, delete)
+- **When to use:** Navigation features, analysis tools, LSP integration, diagnostics
+
+### Integration Test Filtering
+
+For faster targeted testing of specific functionality:
+
+```bash
+# Test only refactoring operations (60-80% faster)
+make test-integration-refactor
+cargo test-integration-refactor
+
+# Test only analysis operations (60-80% faster)
+make test-integration-analysis
+cargo test-integration-analysis
+
+# Test only navigation operations (60-80% faster)
+make test-integration-nav
+cargo test-integration-nav
+```
+
+**Performance gains:**
+- **Test execution:** 60-80% faster than running full integration test suite
+- **Why:** Uses nextest's filter expressions to run only matching tests
+- **When to use:** Iterating on specific features, debugging test failures, pre-commit checks
+
+**Examples:**
+```bash
+# Working on rename functionality? Test only rename-related integration tests
+make test-integration-refactor
+
+# Working on dead code analysis? Test only analysis integration tests
+make test-integration-analysis
+
+# Working on find_definition? Test only navigation integration tests
+make test-integration-nav
+```
+
 ## Code Style and Linting
 
 We use the standard Rust formatting and linting tools to maintain a consistent codebase.

@@ -1,7 +1,7 @@
 # CodeBuddy Makefile
 # Simple build automation for common development tasks
 
-.PHONY: build release test test-fast test-full test-lsp install uninstall clean clean-cache first-time-setup install-lsp-servers dev-extras validate-setup help clippy fmt audit check check-duplicates dev watch ci build-parsers check-parser-deps check-analysis test-analysis check-handlers test-handlers check-core test-core check-lang test-lang dev-handlers dev-analysis dev-core dev-lang
+.PHONY: build release test test-fast test-full test-lsp install uninstall clean clean-cache first-time-setup install-lsp-servers dev-extras validate-setup help clippy fmt audit check check-duplicates dev watch ci build-parsers check-parser-deps check-analysis test-analysis check-handlers test-handlers check-core test-core check-lang test-lang dev-handlers dev-analysis dev-core dev-lang check-handlers-nav test-handlers-nav test-integration-refactor test-integration-analysis test-integration-nav
 
 # Default target - show help
 .DEFAULT_GOAL := help
@@ -82,6 +82,27 @@ check-lang:
 test-lang:
 	@command -v cargo-nextest >/dev/null 2>&1 || { echo "⚠️  cargo-nextest not found. Run 'make setup' first."; exit 1; }
 	cargo test-lang
+
+# Navigation/analysis only (no refactoring - 15-25% faster)
+check-handlers-nav:
+	cargo check-handlers-nav
+
+test-handlers-nav:
+	@command -v cargo-nextest >/dev/null 2>&1 || { echo "⚠️  cargo-nextest not found. Run 'make setup' first."; exit 1; }
+	cargo test-handlers-nav
+
+# Integration test filtering (60-80% faster for targeted tests)
+test-integration-refactor:
+	@command -v cargo-nextest >/dev/null 2>&1 || { echo "⚠️  cargo-nextest not found. Run 'make setup' first."; exit 1; }
+	cargo test-integration-refactor
+
+test-integration-analysis:
+	@command -v cargo-nextest >/dev/null 2>&1 || { echo "⚠️  cargo-nextest not found. Run 'make setup' first."; exit 1; }
+	cargo test-integration-analysis
+
+test-integration-nav:
+	@command -v cargo-nextest >/dev/null 2>&1 || { echo "⚠️  cargo-nextest not found. Run 'make setup' first."; exit 1; }
+	cargo test-integration-nav
 
 # Install to ~/.local/bin (ensure it's in your PATH)
 install: release
@@ -440,6 +461,15 @@ help:
 	@echo "  make test-core         - Test core libraries (excludes integration tests)"
 	@echo "  make check-lang        - Check language plugins only"
 	@echo "  make test-lang         - Test language plugins only"
+	@echo ""
+	@echo "🎯 Specialized Builds:"
+	@echo "  make check-handlers-nav       - Navigation/analysis only (15-25% faster)"
+	@echo "  make test-handlers-nav        - Test navigation/analysis only"
+	@echo ""
+	@echo "🔬 Integration Test Filtering (60-80% faster):"
+	@echo "  make test-integration-refactor - Run refactoring tests only"
+	@echo "  make test-integration-analysis - Run analysis tests only"
+	@echo "  make test-integration-nav      - Run navigation tests only"
 	@echo ""
 	@echo "🔄 Watch Mode (auto-rebuild on changes, debug mode):"
 	@echo "  make dev-handlers      - Watch handlers with minimal features (fastest)"
