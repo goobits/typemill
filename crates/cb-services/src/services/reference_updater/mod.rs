@@ -4,6 +4,11 @@
 //！ and updating them to a new path or name. It is language-agnostic and delegates
 //！ language-specific logic to plugins.
 
+mod cache;
+mod detectors;
+
+pub use cache::FileImportInfo;
+
 use cb_protocol::{
     ApiError as ServerError, ApiResult as ServerResult, DependencyUpdate, EditLocation, EditPlan,
     EditPlanMetadata, EditType, TextEdit,
@@ -11,16 +16,6 @@ use cb_protocol::{
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-
-// From path_resolver.rs
-/// Cached information about a file's imports
-#[derive(Debug, Clone)]
-pub struct FileImportInfo {
-    /// The files that this file imports
-    pub imports: Vec<PathBuf>,
-    /// Last modified time when this cache entry was created
-    pub last_modified: std::time::SystemTime,
-}
 
 /// A service for updating references in a workspace.
 pub struct ReferenceUpdater {
@@ -283,229 +278,36 @@ impl ReferenceUpdater {
         project_files: &[PathBuf],
         plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
     ) -> ServerResult<Vec<PathBuf>> {
-        let mut affected = Vec::new();
-
         // Rust-specific cross-crate move detection
         // Rust uses crate-qualified imports (e.g., "use common::utils::foo") which the generic
         // ImportPathResolver cannot resolve. We need special handling for cross-crate moves.
         if let Some(old_ext) = old_path.extension().and_then(|e| e.to_str()) {
             if old_ext == "rs" {
-                tracing::info!(
-                    project_root = %self.project_root.display(),
-                    old_path = %old_path.display(),
-                    new_path = %new_path.display(),
-                    "Starting Rust cross-crate detection"
-                );
+                let rust_affected = detectors::find_rust_affected_files(
+                    old_path,
+                    new_path,
+                    &self.project_root,
+                    project_files,
+                )
+                .await;
 
-                // Canonicalize paths to handle symlinks (e.g., /var vs /private/var on macOS)
-                let canonical_project = self.project_root.canonicalize().unwrap_or_else(|e| {
-                    tracing::warn!(
-                        error = %e,
-                        project_root = %self.project_root.display(),
-                        "Failed to canonicalize project_root"
-                    );
-                    self.project_root.clone()
-                });
-
-                let canonical_old = old_path.canonicalize().unwrap_or_else(|e| {
-                    tracing::warn!(
-                        error = %e,
-                        old_path = %old_path.display(),
-                        "Failed to canonicalize old_path"
-                    );
-                    old_path.to_path_buf()
-                });
-
-                let canonical_new = new_path.canonicalize().unwrap_or_else(|e| {
-                    tracing::warn!(
-                        error = %e,
-                        new_path = %new_path.display(),
-                        "Failed to canonicalize new_path"
-                    );
-                    new_path.to_path_buf()
-                });
-
-                tracing::debug!(
-                    canonical_project = %canonical_project.display(),
-                    canonical_old = %canonical_old.display(),
-                    canonical_new = %canonical_new.display(),
-                    "Canonicalized paths"
-                );
-
-                // Extract crate names from relative paths
-                let old_crate_name = canonical_old
-                    .strip_prefix(&canonical_project)
-                    .ok()
-                    .and_then(|rel| {
-                        tracing::debug!(
-                            relative_old = %rel.display(),
-                            "Stripped old_path to relative"
-                        );
-                        rel.components().next()
-                    })
-                    .and_then(|c| {
-                        tracing::debug!(
-                            first_component = ?c,
-                            "Extracted first component from old_path"
-                        );
-                        c.as_os_str().to_str()
-                    })
-                    .map(String::from);
-
-                let new_crate_name = canonical_new
-                    .strip_prefix(&canonical_project)
-                    .ok()
-                    .and_then(|rel| {
-                        tracing::debug!(
-                            relative_new = %rel.display(),
-                            "Stripped new_path to relative"
-                        );
-                        rel.components().next()
-                    })
-                    .and_then(|c| {
-                        tracing::debug!(
-                            first_component = ?c,
-                            "Extracted first component from new_path"
-                        );
-                        c.as_os_str().to_str()
-                    })
-                    .map(String::from);
-
-                tracing::info!(
-                    old_crate = ?old_crate_name,
-                    new_crate = ?new_crate_name,
-                    "Extracted crate names from paths"
-                );
-
-                // Fallback to finding crate name from Cargo.toml if path extraction failed
-                let old_crate_name = old_crate_name.or_else(|| {
-                    tracing::info!(
-                        old_path = %old_path.display(),
-                        "Path extraction failed for old_path, trying Cargo.toml fallback"
-                    );
-                    find_crate_name_from_cargo_toml(old_path)
-                });
-
-                let new_crate_name = new_crate_name.or_else(|| {
-                    tracing::info!(
-                        new_path = %new_path.display(),
-                        "Path extraction failed for new_path, trying Cargo.toml fallback"
-                    );
-                    find_crate_name_from_cargo_toml(new_path)
-                });
-
-                // If this is a file move (cross-crate or same-crate), compute full module paths
-                if let (Some(old_crate), Some(new_crate)) = (old_crate_name, new_crate_name) {
-                    tracing::info!(
-                        old_crate = %old_crate,
-                        new_crate = %new_crate,
-                        "Both crate names extracted successfully"
-                    );
-
-                    // Always compute full module paths including file structure
-                    // This allows us to detect moves within the same crate
-                    let old_module_path =
-                        compute_module_path_from_file(old_path, &old_crate, &canonical_project);
-                    let new_module_path =
-                        compute_module_path_from_file(new_path, &new_crate, &canonical_project);
-
-                    tracing::info!(
-                        old_module_path = %old_module_path,
-                        new_module_path = %new_module_path,
-                        "Computed full module paths for comparison"
-                    );
-
-                    // Scan if module paths differ (handles both cross-crate and same-crate moves)
-                    if old_module_path != new_module_path {
-                        tracing::info!(
-                            old_module_path = %old_module_path,
-                            new_module_path = %new_module_path,
-                            "Detected Rust module path change, scanning for affected files"
-                        );
-
-                        // Scan all Rust files for imports from the old module path
-                        let module_pattern = format!("{}::", old_module_path);
-                        for file in project_files {
-                            if file == old_path || file == new_path {
-                                continue;
-                            }
-
-                            // Only check Rust files
-                            if file.extension().and_then(|e| e.to_str()) != Some("rs") {
-                                continue;
-                            }
-
-                            if let Ok(content) = tokio::fs::read_to_string(file).await {
-                                // Check if this file has imports from the old module path
-                                // Need to check both absolute paths (e.g., "mylib::core::types")
-                                // and crate:: paths (e.g., "crate::core::types")
-                                let has_module_import = content.lines().any(|line| {
-                                    let trimmed = line.trim();
-                                    if !trimmed.starts_with("use ") {
-                                        return false;
-                                    }
-
-                                    // Check for absolute module path
-                                    if trimmed.contains(&module_pattern) {
-                                        return true;
-                                    }
-
-                                    // Check for crate:: prefixed imports
-                                    // Extract the suffix after the crate name from old_module_path
-                                    // e.g., "mylib::core::types" → "core::types"
-                                    if let Some((_crate_name, suffix)) = old_module_path.split_once("::") {
-                                        let crate_pattern = format!("crate::{}::", suffix);
-                                        if trimmed.contains(&crate_pattern) {
-                                            return true;
-                                        }
-                                    }
-
-                                    false
-                                });
-
-                                if has_module_import {
-                                    tracing::debug!(
-                                        file = %file.display(),
-                                        old_module_path = %old_module_path,
-                                        "Found Rust file importing from old module path"
-                                    );
-                                    affected.push(file.clone());
-                                }
-                            }
-                        }
-
-                        tracing::info!(
-                            affected_count = affected.len(),
-                            "Found Rust files affected by module path change"
-                        );
-
-                        // Return early - we've found all affected Rust files
-                        return Ok(affected);
-                    } else {
-                        tracing::info!("Module paths are identical - no affected files");
-                    }
+                if !rust_affected.is_empty() {
+                    // Return early - we've found all affected Rust files
+                    return Ok(rust_affected);
                 }
             }
         }
 
-        // Fallback to generic import-based detection for non-Rust or same-crate moves
-        for file in project_files {
-            if file == old_path || file == new_path {
-                continue;
-            }
-            if let Ok(content) = tokio::fs::read_to_string(file).await {
-                let all_imports =
-                    self.get_all_imported_files(&content, file, plugins, project_files);
+        // Fallback to generic import-based detection for non-Rust or when no Rust files affected
+        let generic_affected = detectors::find_generic_affected_files(
+            old_path,
+            new_path,
+            &self.project_root,
+            project_files,
+            plugins,
+        );
 
-                // Check if imports reference either the old path (pre-move) or new path (post-move)
-                if all_imports.contains(&old_path.to_path_buf())
-                    || all_imports.contains(&new_path.to_path_buf())
-                {
-                    affected.push(file.clone());
-                }
-            }
-        }
-        Ok(affected)
+        Ok(generic_affected)
     }
 
     pub(crate) fn get_all_imported_files(
@@ -515,47 +317,13 @@ impl ReferenceUpdater {
         plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
         project_files: &[PathBuf],
     ) -> Vec<PathBuf> {
-        let mut imported_files = Vec::new();
-        if let Some(ext) = current_file.extension().and_then(|e| e.to_str()) {
-            for plugin in plugins {
-                if plugin.handles_extension(ext) {
-                    if let Some(import_support) = plugin.import_support() {
-                        let import_specifiers = import_support.parse_imports(content);
-                        for specifier in import_specifiers {
-                            if let Some(resolved) =
-                                self.resolve_import_to_file(&specifier, current_file, project_files)
-                            {
-                                imported_files.push(resolved);
-                            }
-                        }
-                        return imported_files;
-                    }
-                }
-            }
-        }
-        for line in content.lines() {
-            if let Some(specifier) = extract_import_path(line) {
-                if let Some(resolved) =
-                    self.resolve_import_to_file(&specifier, current_file, project_files)
-                {
-                    imported_files.push(resolved);
-                }
-            }
-        }
-        imported_files
-    }
-
-    /// Resolve an import specifier to a file path
-    ///
-    /// Delegates to ImportPathResolver for consistent resolution logic.
-    pub(crate) fn resolve_import_to_file(
-        &self,
-        specifier: &str,
-        importing_file: &Path,
-        project_files: &[PathBuf],
-    ) -> Option<PathBuf> {
-        let resolver = cb_ast::ImportPathResolver::new(&self.project_root);
-        resolver.resolve_import_to_file(specifier, importing_file, project_files)
+        detectors::get_all_imported_files(
+            content,
+            current_file,
+            plugins,
+            project_files,
+            &self.project_root,
+        )
     }
 
     pub async fn update_import_reference(
@@ -678,221 +446,11 @@ pub async fn find_project_files(
     Ok(files)
 }
 
-pub fn extract_import_path(line: &str) -> Option<String> {
-    if line.contains("from") {
-        if let Some(start) = line.find(['\'', '"']) {
-            let quote_char = &line[start..=start];
-            let path_start = start + 1;
-            if let Some(end) = line[path_start..].find(quote_char) {
-                return Some(line[path_start..path_start + end].to_string());
-            }
-        }
-    }
-    if line.contains("require") {
-        if let Some(start) = line.find(['\'', '"']) {
-            let quote_char = &line[start..=start];
-            let path_start = start + 1;
-            if let Some(end) = line[path_start..].find(quote_char) {
-                return Some(line[path_start..path_start + end].to_string());
-            }
-        }
-    }
-    None
-}
-
-/// Compute the full module path from a file path
-///
-/// # Examples
-/// - `common/src/utils.rs` → `common::utils`
-/// - `common/src/utils/mod.rs` → `common::utils` (mod.rs represents the parent directory)
-/// - `common/src/foo/bar/mod.rs` → `common::foo::bar`
-/// - `new_utils/src/lib.rs` → `new_utils` (lib.rs is the crate root)
-/// - `common/src/main.rs` → `common` (main.rs is the crate root)
-/// - `common/src/foo/bar.rs` → `common::foo::bar`
-fn compute_module_path_from_file(
-    file_path: &Path,
-    crate_name: &str,
-    project_root: &Path,
-) -> String {
-    // Get the file path relative to project root
-    let rel_path = file_path.strip_prefix(project_root).unwrap_or(file_path);
-
-    // Get components after the crate name
-    let mut components: Vec<&str> = rel_path
-        .components()
-        .filter_map(|c| c.as_os_str().to_str())
-        .collect();
-
-    // Remove the crate name (first component)
-    if !components.is_empty() {
-        components.remove(0);
-    }
-
-    // Remove "src" if present
-    if components.first().map(|s| *s) == Some("src") {
-        components.remove(0);
-    }
-
-    // Special handling for mod.rs files
-    // mod.rs represents the parent directory's module, not a module named "mod"
-    // Example: common/src/utils/mod.rs → common::utils (not common::utils::mod)
-    if components.last().map(|s| *s) == Some("mod.rs") {
-        components.pop(); // Remove "mod.rs"
-        // The parent directory name is now the last component (the module name)
-    }
-
-    // If the file is lib.rs or main.rs, it's the crate root
-    if components.last().map(|s| *s) == Some("lib.rs")
-        || components.last().map(|s| *s) == Some("main.rs")
-    {
-        return crate_name.to_string();
-    }
-
-    // Remove the .rs extension from the last component
-    if let Some(last) = components.last_mut() {
-        if let Some(stripped) = last.strip_suffix(".rs") {
-            *last = stripped;
-        }
-    }
-
-    // Build the module path: crate_name::module1::module2...
-    let mut module_path = crate_name.to_string();
-    for component in components {
-        if !component.is_empty() {
-            module_path.push_str("::");
-            module_path.push_str(component);
-        }
-    }
-
-    module_path
-}
-
-/// Helper function to extract crate name from Cargo.toml
-/// Used as fallback when path-based extraction fails (e.g., file doesn't exist yet)
-fn find_crate_name_from_cargo_toml(file_path: &Path) -> Option<String> {
-    let mut current = file_path.parent()?;
-    while current.components().count() > 0 {
-        let cargo_toml = current.join("Cargo.toml");
-        if cargo_toml.exists() {
-            if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
-                for line in content.lines() {
-                    let trimmed = line.trim();
-                    if trimmed.starts_with("name") && trimmed.contains('=') {
-                        if let Some(name_part) = trimmed.split('=').nth(1) {
-                            let name = name_part.trim().trim_matches('"').trim_matches('\'');
-                            tracing::info!(
-                                crate_name = %name,
-                                cargo_toml = %cargo_toml.display(),
-                                "Found crate name in Cargo.toml"
-                            );
-                            return Some(name.to_string());
-                        }
-                    }
-                }
-            }
-            break;
-        }
-        current = current.parent()?;
-    }
-    tracing::warn!(
-        file_path = %file_path.display(),
-        "Could not find Cargo.toml walking up from file path"
-    );
-    None
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::TempDir;
     use tokio::fs;
-
-    #[test]
-    fn test_extract_import_path() {
-        assert_eq!(
-            extract_import_path("import { foo } from './bar';"),
-            Some("./bar".to_string())
-        );
-        assert_eq!(
-            extract_import_path("import { foo } from \"./bar\";"),
-            Some("./bar".to_string())
-        );
-        assert_eq!(
-            extract_import_path("const bar = require('./bar');"),
-            Some("./bar".to_string())
-        );
-        assert_eq!(
-            extract_import_path("const bar = require(\"./bar\");"),
-            Some("./bar".to_string())
-        );
-        assert_eq!(extract_import_path("let x = 1;"), None);
-        assert_eq!(extract_import_path("this is from a file"), None);
-    }
-
-    // Helper to create a test harness
-    async fn setup_test_harness() -> (TempDir, ReferenceUpdater, Vec<PathBuf>) {
-        let temp_dir = TempDir::new().unwrap();
-        let root = temp_dir.path();
-        let updater = ReferenceUpdater::new(root);
-
-        // Create some mock files
-        fs::create_dir_all(root.join("src/components"))
-            .await
-            .unwrap();
-        fs::write(root.join("src/main.ts"), "").await.unwrap();
-        fs::write(root.join("src/components/button.ts"), "")
-            .await
-            .unwrap();
-        fs::write(root.join("src/utils.ts"), "").await.unwrap();
-        fs::write(root.join("README.md"), "").await.unwrap();
-
-        let project_files = vec![
-            root.join("src/main.ts").canonicalize().unwrap(),
-            root.join("src/components/button.ts")
-                .canonicalize()
-                .unwrap(),
-            root.join("src/utils.ts").canonicalize().unwrap(),
-            root.join("README.md").canonicalize().unwrap(),
-        ];
-
-        (temp_dir, updater, project_files)
-    }
-
-    #[tokio::test]
-    async fn test_resolve_import_to_file_relative() {
-        let (_temp_dir, updater, project_files) = setup_test_harness().await;
-        let importing_file = project_files[0].clone(); // src/main.ts
-
-        // ./components/button
-        let resolved =
-            updater.resolve_import_to_file("./components/button", &importing_file, &project_files);
-        assert_eq!(resolved, Some(project_files[1].clone()));
-
-        // ../utils.ts from components/button.ts
-        let importing_file = project_files[1].clone();
-        let resolved =
-            updater.resolve_import_to_file("../utils.ts", &importing_file, &project_files);
-        assert_eq!(resolved, Some(project_files[2].clone()));
-    }
-
-    #[tokio::test]
-    async fn test_resolve_import_to_file_bare_specifier() {
-        let (_temp_dir, updater, project_files) = setup_test_harness().await;
-        let importing_file = project_files[0].clone(); // src/main.ts
-
-        let resolved = updater.resolve_import_to_file("README.md", &importing_file, &project_files);
-        assert_eq!(resolved, Some(project_files[3].clone()));
-    }
-
-    #[tokio::test]
-    async fn test_resolve_import_to_file_not_found() {
-        let (_temp_dir, updater, project_files) = setup_test_harness().await;
-        let importing_file = project_files[0].clone(); // src/main.ts
-
-        let resolved =
-            updater.resolve_import_to_file("./non-existent", &importing_file, &project_files);
-        assert_eq!(resolved, None);
-    }
 
     /// Test Rust cross-crate move detection (Issue fix verification)
     #[tokio::test]
