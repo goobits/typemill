@@ -13,6 +13,9 @@ mod workspace;
 pub mod import_support;
 pub mod workspace_support;
 
+// Import-related utilities
+pub mod imports;
+
 use async_trait::async_trait;
 use cb_lang_common::{
     manifest_templates::{ManifestTemplate, TomlManifestTemplate},
@@ -24,6 +27,9 @@ use cb_plugin_api::{
 };
 use cb_plugin_registry::codebuddy_plugin;
 use std::path::Path;
+
+// Import helpers from the imports module
+use imports::{compute_module_path_from_file, find_crate_name_from_cargo_toml};
 
 // Self-register the plugin with the Codebuddy system.
 codebuddy_plugin! {
@@ -601,107 +607,6 @@ impl RustPlugin {
             Ok((content.to_string(), 0))
         }
     }
-}
-
-/// Compute the full module path from a file path
-///
-/// # Examples
-/// - `common/src/utils.rs` → `common::utils`
-/// - `common/src/utils/mod.rs` → `common::utils` (mod.rs represents the parent directory)
-/// - `common/src/foo/bar/mod.rs` → `common::foo::bar`
-/// - `new_utils/src/lib.rs` → `new_utils` (lib.rs is the crate root)
-/// - `common/src/main.rs` → `common` (main.rs is the crate root)
-/// - `common/src/foo/bar.rs` → `common::foo::bar`
-fn compute_module_path_from_file(
-    file_path: &Path,
-    crate_name: &str,
-    project_root: &Path,
-) -> String {
-    // Get the file path relative to project root
-    let rel_path = file_path.strip_prefix(project_root).unwrap_or(file_path);
-
-    // Get components after the crate name
-    let mut components: Vec<&str> = rel_path
-        .components()
-        .filter_map(|c| c.as_os_str().to_str())
-        .collect();
-
-    // Remove the crate name (first component)
-    if !components.is_empty() {
-        components.remove(0);
-    }
-
-    // Remove "src" if present
-    if components.first().map(|s| *s) == Some("src") {
-        components.remove(0);
-    }
-
-    // Special handling for mod.rs files
-    // mod.rs represents the parent directory's module, not a module named "mod"
-    // Example: common/src/utils/mod.rs → common::utils (not common::utils::mod)
-    if components.last().map(|s| *s) == Some("mod.rs") {
-        components.pop(); // Remove "mod.rs"
-        // The parent directory name is now the last component (the module name)
-    }
-
-    // If the file is lib.rs or main.rs, it's the crate root
-    if components.last().map(|s| *s) == Some("lib.rs")
-        || components.last().map(|s| *s) == Some("main.rs")
-    {
-        return crate_name.to_string();
-    }
-
-    // Remove the .rs extension from the last component
-    if let Some(last) = components.last_mut() {
-        if let Some(stripped) = last.strip_suffix(".rs") {
-            *last = stripped;
-        }
-    }
-
-    // Build the module path: crate_name::module1::module2...
-    let mut module_path = crate_name.to_string();
-    for component in components {
-        if !component.is_empty() {
-            module_path.push_str("::");
-            module_path.push_str(component);
-        }
-    }
-
-    module_path
-}
-
-/// Helper function to extract crate name from Cargo.toml
-/// Used as fallback when path-based extraction fails (e.g., file doesn't exist yet)
-fn find_crate_name_from_cargo_toml(file_path: &Path) -> Option<String> {
-    let mut current = file_path.parent()?;
-    while current.components().count() > 0 {
-        let cargo_toml = current.join("Cargo.toml");
-        if cargo_toml.exists() {
-            if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
-                for line in content.lines() {
-                    let trimmed = line.trim();
-                    if trimmed.starts_with("name") && trimmed.contains('=') {
-                        if let Some(name_part) = trimmed.split('=').nth(1) {
-                            let name = name_part.trim().trim_matches('"').trim_matches('\'');
-                            tracing::info!(
-                                crate_name = %name,
-                                cargo_toml = %cargo_toml.display(),
-                                "Found crate name in Cargo.toml"
-                            );
-                            return Some(name.to_string());
-                        }
-                    }
-                }
-            }
-            break;
-        }
-        current = current.parent()?;
-    }
-    tracing::warn!(
-        file_path = %file_path.display(),
-        "Could not find Cargo.toml walking up from file path"
-    );
-    None
 }
 
 // Re-export public API items
