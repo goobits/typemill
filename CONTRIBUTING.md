@@ -198,6 +198,22 @@ make test-integration-analysis
 make test-integration-nav
 ```
 
+### Single-Language Builds (Not Currently Supported)
+
+**Note:** Single-language builds (Rust-only or TypeScript-only) are **not currently feasible** without significant architectural changes. This limitation is documented here for future reference.
+
+**Why not supported:**
+- Language plugins are hard-wired as unconditional dependencies across multiple crates (`cb-ast`, `cb-services`, `cb-plugins`, `apps/codebuddy`)
+- Code contains direct downcasts to concrete plugin types (e.g., `plugin.downcast_ref::<TypeScriptPlugin>()`)
+- Services eagerly link all language crates and call directly into them
+- Would require extensive refactoring to feature-gate all cross-language references
+
+**Estimated effort to enable:** 2-3 weeks
+
+**For details on blockers and a complete solution design**, see [docs/proposals/SINGLE_LANGUAGE_BUILDS.md](../docs/proposals/SINGLE_LANGUAGE_BUILDS.md).
+
+**Key insight:** The solution involves replacing downcasting with capability traits (similar to LSP's capabilities model), which would also improve scalability as we add more languages.
+
 ## Code Style and Linting
 
 We use the standard Rust formatting and linting tools to maintain a consistent codebase.
