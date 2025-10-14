@@ -378,6 +378,42 @@ impl RustPlugin {
         Ok((updated_content, changes))
     }
 
+    /// Update qualified paths in source (e.g., `utils::helper()` -> `helpers::helper()`)
+    ///
+    /// Updates inline qualified paths that reference a renamed module.
+    /// Also handles nested paths like `parent::old_module::` -> `parent::new_module::`
+    pub fn update_qualified_paths(
+        &self,
+        source: &str,
+        old_module_name: &str,
+        new_module_name: &str,
+    ) -> PluginResult<(String, usize)> {
+        let mut updated_content = source.to_string();
+        let mut changes = 0;
+
+        // Pattern 1: Direct qualified paths - "old_module::"
+        let old_pattern = format!("{}::", old_module_name);
+        let new_pattern = format!("{}::", new_module_name);
+
+        let count = updated_content.matches(&old_pattern).count();
+        if count > 0 {
+            updated_content = updated_content.replace(&old_pattern, &new_pattern);
+            changes += count;
+        }
+
+        // Pattern 2: Nested paths - "::old_module::" (after parent module)
+        let old_nested_pattern = format!("::{}::", old_module_name);
+        let new_nested_pattern = format!("::{}::", new_module_name);
+
+        let nested_count = updated_content.matches(&old_nested_pattern).count();
+        if nested_count > 0 {
+            updated_content = updated_content.replace(&old_nested_pattern, &new_nested_pattern);
+            changes += nested_count;
+        }
+
+        Ok((updated_content, changes))
+    }
+
     /// Add path dependency to manifest
     pub async fn add_manifest_path_dependency(
         &self,
@@ -560,8 +596,9 @@ impl RustPlugin {
             }
         }
 
-        // For simple file renames in same directory, also update use statements
+        // For simple file renames in same directory, also update use statements and qualified paths
         // Example: "use utils::helper;" -> "use helpers::helper;" when renaming utils.rs -> helpers.rs
+        // Example: "utils::helper()" -> "helpers::helper()" in code
         if let (Some(ref old_mod), Some(ref new_mod)) = (&old_module_name, &new_module_name) {
             if _old_path.parent() == _new_path.parent() {
                 // Simple rename in same directory - update use statements
@@ -579,6 +616,28 @@ impl RustPlugin {
                             new_module = %new_mod,
                             changes = changes,
                             "Updated simple use statements for file rename"
+                        );
+                    }
+                }
+
+                // Also update qualified paths in code (e.g., utils::helper() calls)
+                match self.update_qualified_paths(&updated_content, old_mod, new_mod) {
+                    Ok((new_content, changes)) => {
+                        if changes > 0 {
+                            updated_content = new_content;
+                            total_changes += changes;
+                            tracing::info!(
+                                old_module = %old_mod,
+                                new_module = %new_mod,
+                                changes = changes,
+                                "Updated qualified paths for file rename"
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            "Failed to update qualified paths, continuing"
                         );
                     }
                 }
@@ -972,6 +1031,20 @@ pub fn process(x: i32) -> i32 {
         assert_eq!(result.1, 1, "Should have 1 change");
         assert!(result.0.contains("pub mod helpers;"), "Should contain 'pub mod helpers;'\nActual: {}", result.0);
         assert!(!result.0.contains("pub mod utils;"), "Should not contain 'pub mod utils;'\nActual: {}", result.0);
+    }
+
+    #[test]
+    fn test_update_qualified_paths() {
+        let plugin = RustPlugin::default();
+
+        let source = "pub fn lib_fn() {\n    utils::helper();\n    utils::another();\n}\n";
+
+        let result = plugin.update_qualified_paths(source, "utils", "helpers").unwrap();
+
+        assert_eq!(result.1, 2, "Should have 2 changes");
+        assert!(result.0.contains("helpers::helper()"), "Should contain 'helpers::helper()'\nActual: {}", result.0);
+        assert!(result.0.contains("helpers::another()"), "Should contain 'helpers::another()'\nActual: {}", result.0);
+        assert!(!result.0.contains("utils::"), "Should not contain 'utils::'\nActual: {}", result.0);
     }
 
     #[test]
