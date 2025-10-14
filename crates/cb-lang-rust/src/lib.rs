@@ -135,15 +135,39 @@ impl LanguagePlugin for RustPlugin {
         project_root: &Path,
         rename_info: Option<&serde_json::Value>,
     ) -> Option<(String, usize)> {
-        self.rewrite_imports_for_rename(
+        tracing::info!(
+            old_path = %old_path.display(),
+            new_path = %new_path.display(),
+            current_file = %current_file.display(),
+            "RustPlugin::rewrite_file_references ENTRY"
+        );
+
+        let result = self.rewrite_imports_for_rename(
             content,
             old_path,
             new_path,
             current_file,
             project_root,
             rename_info,
-        )
-        .ok()
+        );
+
+        match &result {
+            Ok((content, count)) => {
+                tracing::info!(
+                    content_len = content.len(),
+                    changes_count = count,
+                    "RustPlugin::rewrite_file_references OK"
+                );
+            }
+            Err(e) => {
+                tracing::error!(
+                    error = ?e,
+                    "RustPlugin::rewrite_file_references ERR"
+                );
+            }
+        }
+
+        result.ok()
     }
 }
 
@@ -437,6 +461,12 @@ impl RustPlugin {
         _project_root: &Path,
         rename_info: Option<&serde_json::Value>,
     ) -> PluginResult<(String, usize)> {
+        tracing::info!(
+            old_path = %_old_path.display(),
+            new_path = %_new_path.display(),
+            "RustPlugin::rewrite_imports_for_rename ENTRY"
+        );
+
         // Delegate to import capability with simpler signature
         if let Some(import_support) = self.import_support() {
             if let Some(info) = rename_info {
@@ -493,27 +523,170 @@ impl RustPlugin {
                     "Extracted crate names from paths"
                 );
 
-                if let (Some(old_name), Some(new_name)) = (old_crate_name, new_crate_name) {
+                // Fallback: If crate name extraction failed, try finding Cargo.toml
+                let old_crate_name = old_crate_name.or_else(|| {
+                    tracing::info!(
+                        old_path = %_old_path.display(),
+                        "Path extraction failed for old_path, trying Cargo.toml fallback"
+                    );
+                    find_crate_name_from_cargo_toml(_old_path)
+                });
+
+                let new_crate_name = new_crate_name.or_else(|| {
+                    tracing::info!(
+                        new_path = %_new_path.display(),
+                        "Path extraction failed for new_path, trying Cargo.toml fallback"
+                    );
+                    find_crate_name_from_cargo_toml(_new_path)
+                });
+
+                tracing::info!(
+                    old_crate = ?old_crate_name,
+                    new_crate = ?new_crate_name,
+                    old_path = %_old_path.display(),
+                    new_path = %_new_path.display(),
+                    project_root = %_project_root.display(),
+                    "After fallback crate name extraction"
+                );
+
+                if let (Some(ref old_name), Some(ref new_name)) = (&old_crate_name, &new_crate_name)
+                {
+                    tracing::info!(
+                        old_name = %old_name,
+                        new_name = %new_name,
+                        "Both crate names extracted successfully"
+                    );
                     if old_name != new_name {
-                        tracing::debug!(
-                            old_name = %old_name,
-                            new_name = %new_name,
-                            "Crates differ - rewriting imports"
+                        // Compute full module paths including file structure
+                        let old_module_path =
+                            compute_module_path_from_file(_old_path, old_name, &canonical_project);
+                        let new_module_path =
+                            compute_module_path_from_file(_new_path, new_name, &canonical_project);
+
+                        tracing::info!(
+                            old_module_path = %old_module_path,
+                            new_module_path = %new_module_path,
+                            "Computed full module paths for replacement"
                         );
-                        return Ok(import_support
-                            .rewrite_imports_for_rename(content, &old_name, &new_name));
+
+                        let result = import_support.rewrite_imports_for_rename(
+                            content,
+                            &old_module_path,
+                            &new_module_path,
+                        );
+                        tracing::info!(
+                            result_len = result.0.len(),
+                            changes_count = result.1,
+                            "Rewrite completed"
+                        );
+                        return Ok(result);
                     } else {
-                        tracing::debug!("Crates are the same - no rewrite needed");
+                        tracing::info!("Crates are the same - no rewrite needed");
                     }
+                } else {
+                    tracing::error!(
+                        old_crate = ?old_crate_name,
+                        new_crate = ?new_crate_name,
+                        "Failed to extract crate names - no rewrite possible"
+                    );
                 }
 
-                tracing::debug!("No crate rename needed or couldn't extract crate names");
+                tracing::info!("Returning no changes: (content, 0)");
                 Ok((content.to_string(), 0))
             }
         } else {
             Ok((content.to_string(), 0))
         }
     }
+}
+
+/// Compute the full module path from a file path
+/// Examples:
+/// - `common/src/utils.rs` → `common::utils`
+/// - `new_utils/src/lib.rs` → `new_utils` (lib.rs is the crate root)
+/// - `common/src/foo/bar.rs` → `common::foo::bar`
+fn compute_module_path_from_file(
+    file_path: &Path,
+    crate_name: &str,
+    project_root: &Path,
+) -> String {
+    // Get the file path relative to project root
+    let rel_path = file_path.strip_prefix(project_root).unwrap_or(file_path);
+
+    // Get components after the crate name
+    let mut components: Vec<&str> = rel_path
+        .components()
+        .filter_map(|c| c.as_os_str().to_str())
+        .collect();
+
+    // Remove the crate name (first component)
+    if !components.is_empty() {
+        components.remove(0);
+    }
+
+    // Remove "src" if present
+    if components.first().map(|s| *s) == Some("src") {
+        components.remove(0);
+    }
+
+    // If the file is lib.rs or main.rs, it's the crate root
+    if components.last().map(|s| *s) == Some("lib.rs")
+        || components.last().map(|s| *s) == Some("main.rs")
+    {
+        return crate_name.to_string();
+    }
+
+    // Remove the .rs extension from the last component
+    if let Some(last) = components.last_mut() {
+        if let Some(stripped) = last.strip_suffix(".rs") {
+            *last = stripped;
+        }
+    }
+
+    // Build the module path: crate_name::module1::module2...
+    let mut module_path = crate_name.to_string();
+    for component in components {
+        if !component.is_empty() {
+            module_path.push_str("::");
+            module_path.push_str(component);
+        }
+    }
+
+    module_path
+}
+
+/// Helper function to extract crate name from Cargo.toml
+/// Used as fallback when path-based extraction fails (e.g., file doesn't exist yet)
+fn find_crate_name_from_cargo_toml(file_path: &Path) -> Option<String> {
+    let mut current = file_path.parent()?;
+    while current.components().count() > 0 {
+        let cargo_toml = current.join("Cargo.toml");
+        if cargo_toml.exists() {
+            if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("name") && trimmed.contains('=') {
+                        if let Some(name_part) = trimmed.split('=').nth(1) {
+                            let name = name_part.trim().trim_matches('"').trim_matches('\'');
+                            tracing::info!(
+                                crate_name = %name,
+                                cargo_toml = %cargo_toml.display(),
+                                "Found crate name in Cargo.toml"
+                            );
+                            return Some(name.to_string());
+                        }
+                    }
+                }
+            }
+            break;
+        }
+        current = current.parent()?;
+    }
+    tracing::warn!(
+        file_path = %file_path.display(),
+        "Could not find Cargo.toml walking up from file path"
+    );
+    None
 }
 
 // Re-export public API items

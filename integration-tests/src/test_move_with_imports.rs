@@ -248,6 +248,17 @@ async fn test_rust_move_file_updates_imports_from_fixtures() {
             // 5. CRITICAL: Verify imports were updated in dependent files
             for (importer_path, expected_substring) in case.expected_import_updates {
                 let content = workspace.read_file(importer_path);
+
+                // Capture stderr logs for debugging
+                let stderr_logs = client.get_stderr_logs();
+                if !stderr_logs.is_empty() {
+                    eprintln!("\n=== SERVER STDERR LOGS ===");
+                    for log in &stderr_logs {
+                        eprintln!("{}", log);
+                    }
+                    eprintln!("=== END STDERR LOGS ===\n");
+                }
+
                 assert!(
                     content.contains(expected_substring),
                     "❌ Import in '{}' was not updated correctly in test case: '{}'.\n\

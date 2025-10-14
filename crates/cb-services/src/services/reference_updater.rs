@@ -51,8 +51,20 @@ impl ReferenceUpdater {
         _dry_run: bool,
         _scan_scope: Option<cb_plugin_api::ScanScope>,
     ) -> ServerResult<EditPlan> {
+        tracing::info!(
+            old_path = %old_path.display(),
+            new_path = %new_path.display(),
+            project_root = %self.project_root.display(),
+            plugins_count = plugins.len(),
+            "update_references called"
+        );
+
         // From edit_builder.rs
         let project_files = find_project_files(&self.project_root, plugins).await?;
+        tracing::info!(
+            project_files_count = project_files.len(),
+            "Found project files"
+        );
         let is_directory_rename = old_path.is_dir();
 
         let mut affected_files = if is_directory_rename {
@@ -86,7 +98,16 @@ impl ReferenceUpdater {
 
         let mut all_edits = Vec::new();
 
+        tracing::info!(
+            affected_files_count = affected_files.len(),
+            "Processing affected files for reference updates"
+        );
+
         for file_path in affected_files {
+            tracing::debug!(
+                file_path = %file_path.display(),
+                "Processing affected file"
+            );
             let plugin = if let Some(ext) = file_path.extension() {
                 let ext_str = ext.to_str().unwrap_or("");
                 plugins.iter().find(|p| p.handles_extension(ext_str))
@@ -162,6 +183,14 @@ impl ReferenceUpdater {
                 }
             } else {
                 // File rename logic
+                tracing::info!(
+                    file_path = %file_path.display(),
+                    old_path = %old_path.display(),
+                    new_path = %new_path.display(),
+                    content_length = content.len(),
+                    "Calling plugin rewrite_file_references"
+                );
+
                 let rewrite_result = plugin.rewrite_file_references(
                     &content,
                     old_path,
@@ -169,6 +198,11 @@ impl ReferenceUpdater {
                     &file_path,
                     &self.project_root,
                     rename_info,
+                );
+
+                tracing::info!(
+                    result = ?rewrite_result,
+                    "Plugin rewrite_file_references returned"
                 );
 
                 if let Some((updated_content, count)) = rewrite_result {
@@ -257,39 +291,91 @@ impl ReferenceUpdater {
         // ImportPathResolver cannot resolve. We need special handling for cross-crate moves.
         if let Some(old_ext) = old_path.extension().and_then(|e| e.to_str()) {
             if old_ext == "rs" {
+                tracing::info!(
+                    project_root = %self.project_root.display(),
+                    old_path = %old_path.display(),
+                    new_path = %new_path.display(),
+                    "Starting Rust cross-crate detection"
+                );
+
                 // Canonicalize paths to handle symlinks (e.g., /var vs /private/var on macOS)
-                let canonical_project = self
-                    .project_root
-                    .canonicalize()
-                    .unwrap_or_else(|_| self.project_root.clone());
+                let canonical_project = self.project_root.canonicalize().unwrap_or_else(|e| {
+                    tracing::warn!(
+                        error = %e,
+                        project_root = %self.project_root.display(),
+                        "Failed to canonicalize project_root"
+                    );
+                    self.project_root.clone()
+                });
 
-                let canonical_old = old_path
-                    .canonicalize()
-                    .unwrap_or_else(|_| old_path.to_path_buf());
+                let canonical_old = old_path.canonicalize().unwrap_or_else(|e| {
+                    tracing::warn!(
+                        error = %e,
+                        old_path = %old_path.display(),
+                        "Failed to canonicalize old_path"
+                    );
+                    old_path.to_path_buf()
+                });
 
-                let canonical_new = new_path
-                    .canonicalize()
-                    .unwrap_or_else(|_| new_path.to_path_buf());
+                let canonical_new = new_path.canonicalize().unwrap_or_else(|e| {
+                    tracing::warn!(
+                        error = %e,
+                        new_path = %new_path.display(),
+                        "Failed to canonicalize new_path"
+                    );
+                    new_path.to_path_buf()
+                });
+
+                tracing::debug!(
+                    canonical_project = %canonical_project.display(),
+                    canonical_old = %canonical_old.display(),
+                    canonical_new = %canonical_new.display(),
+                    "Canonicalized paths"
+                );
 
                 // Extract crate names from relative paths
                 let old_crate_name = canonical_old
                     .strip_prefix(&canonical_project)
                     .ok()
-                    .and_then(|rel| rel.components().next())
-                    .and_then(|c| c.as_os_str().to_str())
+                    .and_then(|rel| {
+                        tracing::debug!(
+                            relative_old = %rel.display(),
+                            "Stripped old_path to relative"
+                        );
+                        rel.components().next()
+                    })
+                    .and_then(|c| {
+                        tracing::debug!(
+                            first_component = ?c,
+                            "Extracted first component from old_path"
+                        );
+                        c.as_os_str().to_str()
+                    })
                     .map(String::from);
 
                 let new_crate_name = canonical_new
                     .strip_prefix(&canonical_project)
                     .ok()
-                    .and_then(|rel| rel.components().next())
-                    .and_then(|c| c.as_os_str().to_str())
+                    .and_then(|rel| {
+                        tracing::debug!(
+                            relative_new = %rel.display(),
+                            "Stripped new_path to relative"
+                        );
+                        rel.components().next()
+                    })
+                    .and_then(|c| {
+                        tracing::debug!(
+                            first_component = ?c,
+                            "Extracted first component from new_path"
+                        );
+                        c.as_os_str().to_str()
+                    })
                     .map(String::from);
 
-                tracing::debug!(
+                tracing::info!(
                     old_crate = ?old_crate_name,
                     new_crate = ?new_crate_name,
-                    "Checking for Rust cross-crate move"
+                    "Extracted crate names from paths"
                 );
 
                 // If this is a cross-crate move, scan for files importing from the old crate

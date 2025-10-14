@@ -31,11 +31,18 @@ pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
     let mut registry = PluginRegistry::new();
     let mut plugin_count = 0;
 
+    eprintln!("=== PLUGIN DISCOVERY START ===");
+
     // Validation sets
     let mut seen_names = HashSet::new();
     let mut extension_to_plugin: HashMap<&str, &str> = HashMap::new();
 
     for descriptor in iter_plugins() {
+        eprintln!(
+            "  Discovered plugin: name='{}', extensions={:?}",
+            descriptor.name, descriptor.extensions
+        );
+
         tracing::debug!(
             plugin_name = descriptor.name,
             "Discovered plugin for registration"
@@ -77,6 +84,28 @@ pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
         let plugin = (descriptor.factory)();
         registry.register(plugin.into());
         plugin_count += 1;
+    }
+
+    eprintln!(
+        "=== PLUGIN DISCOVERY COMPLETE: {} plugins registered ===",
+        plugin_count
+    );
+
+    if plugin_count == 0 {
+        eprintln!("WARNING: No plugins discovered! Plugin system may be broken.");
+    }
+
+    // Validate required plugins
+    if registry.find_by_extension("rs").is_none() {
+        eprintln!("ERROR: RustPlugin not found in registry!");
+    } else {
+        eprintln!("✓ RustPlugin found in registry");
+    }
+
+    if registry.find_by_extension("ts").is_none() {
+        eprintln!("ERROR: TypeScriptPlugin not found in registry!");
+    } else {
+        eprintln!("✓ TypeScriptPlugin found in registry");
     }
 
     debug!(

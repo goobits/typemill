@@ -40,36 +40,83 @@ impl ImportSupport for RustImportSupport {
         old_name: &str,
         new_name: &str,
     ) -> (String, usize) {
-        debug!(
+        tracing::info!(
             old_name = %old_name,
             new_name = %new_name,
-            "Rewriting Rust imports for rename"
+            content = %content,
+            "RustImportSupport::rewrite_imports_for_rename ENTRY"
         );
 
         let mut result = String::new();
         let mut changes_count = 0;
         let lines: Vec<&str> = content.lines().collect();
 
+        tracing::info!(lines_count = lines.len(), "Split content into lines");
+
         // Process line by line, using AST-based rewriting for use statements only
         for (idx, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
 
+            tracing::info!(
+                idx = idx,
+                line = %line,
+                trimmed = %trimmed,
+                starts_with_use = trimmed.starts_with("use "),
+                contains_old_name = trimmed.contains(old_name),
+                "Processing line"
+            );
+
             // Check if this line is a use statement containing our crate name
             if trimmed.starts_with("use ") && trimmed.contains(old_name) {
-                // Try to parse this line as a use statement
-                match syn::parse_str::<syn::ItemUse>(trimmed) {
+                tracing::info!(
+                    line = %trimmed,
+                    old_name = %old_name,
+                    "Found use statement containing old crate name"
+                );
+
+                // Extract just the use statement (up to and including the semicolon)
+                // This handles cases like: "use foo::bar; fn main() {}"
+                let use_stmt = if let Some(semi_idx) = trimmed.find(';') {
+                    &trimmed[..=semi_idx]
+                } else {
+                    trimmed
+                };
+
+                // Try to parse just the use statement
+                match syn::parse_str::<syn::ItemUse>(use_stmt) {
                     Ok(item_use) => {
+                        tracing::info!(
+                            "Successfully parsed use statement, calling rewrite_use_tree"
+                        );
                         // Try to rewrite using AST-based transformation
-                        if let Some(new_tree) =
-                            crate::parser::rewrite_use_tree(&item_use.tree, old_name, new_name)
-                        {
+                        let rewrite_result =
+                            crate::parser::rewrite_use_tree(&item_use.tree, old_name, new_name);
+                        tracing::info!(
+                            rewrite_result = ?rewrite_result,
+                            "rewrite_use_tree returned"
+                        );
+                        if let Some(new_tree) = rewrite_result {
                             // Preserve original indentation
                             let indent = line.len() - trimmed.len();
                             let indent_str = &line[..indent];
 
                             // Write rewritten use statement with original indentation
                             result.push_str(indent_str);
-                            result.push_str(&format!("use {};", quote::quote!(#new_tree)));
+                            // quote! adds spaces around ::, so we need to remove them
+                            let formatted = format!("use {};", quote::quote!(#new_tree));
+                            let normalized = formatted.replace(" :: ", "::");
+                            result.push_str(&normalized);
+
+                            // If there was code after the semicolon, preserve it
+                            if let Some(semi_idx) = trimmed.find(';') {
+                                if semi_idx + 1 < trimmed.len() {
+                                    let remainder = &trimmed[semi_idx + 1..];
+                                    if !remainder.trim().is_empty() {
+                                        result.push(' ');
+                                        result.push_str(remainder.trim());
+                                    }
+                                }
+                            }
 
                             // Add newline if not last line
                             if idx < lines.len() - 1 {

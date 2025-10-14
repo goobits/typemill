@@ -266,23 +266,61 @@ pub fn parse_imports(source: &str) -> PluginResult<Vec<ImportInfo>> {
     visitor.visit_file(&syntax_tree);
     Ok(visitor.imports)
 }
-/// Rewrite a use tree to replace an old crate name with a new one
-pub fn rewrite_use_tree(tree: &UseTree, old_crate: &str, new_crate: &str) -> Option<UseTree> {
+/// Rewrite a use tree to replace an old module path with a new one.
+/// Supports multi-segment replacements (e.g., "common::utils" → "new_utils").
+pub fn rewrite_use_tree(tree: &UseTree, old_module: &str, new_module: &str) -> Option<UseTree> {
+    // Split module paths into segments
+    let old_segments: Vec<&str> = old_module.split("::").collect();
+    let new_segments: Vec<&str> = new_module.split("::").collect();
+
+    rewrite_use_tree_with_segments(tree, &old_segments, &new_segments, 0)
+}
+
+/// Helper function that performs segment-aware matching and replacement.
+fn rewrite_use_tree_with_segments(
+    tree: &UseTree,
+    old_segments: &[&str],
+    new_segments: &[&str],
+    depth: usize,
+) -> Option<UseTree> {
     match tree {
         UseTree::Path(path) => {
-            if path.ident == old_crate {
-                let mut new_path = path.clone();
-                new_path.ident = syn::Ident::new(new_crate, path.ident.span());
-                if let Some(new_subtree) = rewrite_use_tree(&path.tree, old_crate, new_crate) {
-                    new_path.tree = Box::new(new_subtree);
+            // Check if current segment matches
+            if depth < old_segments.len() && path.ident == old_segments[depth] {
+                // Matched current segment
+                if depth + 1 == old_segments.len() {
+                    // Matched all old segments! Replace with new segments.
+                    tracing::info!(
+                        old_segments = ?old_segments,
+                        new_segments = ?new_segments,
+                        "Matched full module path, replacing"
+                    );
+
+                    // Build new path tree from new_segments + remaining original tree
+                    build_new_use_tree(new_segments, &path.tree)
+                } else {
+                    // Partial match, continue matching next level
+                    // When the recursion returns a replacement, it means we matched
+                    // all old segments somewhere deeper. In that case, the returned
+                    // tree already has the new segments built in, so we return it directly.
+                    rewrite_use_tree_with_segments(
+                        &path.tree,
+                        old_segments,
+                        new_segments,
+                        depth + 1,
+                    )
                 }
-                Some(UseTree::Path(new_path))
-            } else if let Some(new_subtree) = rewrite_use_tree(&path.tree, old_crate, new_crate) {
-                let mut new_path = path.clone();
-                new_path.tree = Box::new(new_subtree);
-                Some(UseTree::Path(new_path))
             } else {
-                None
+                // No match at this depth, check subtree recursively (reset depth to 0)
+                if let Some(new_subtree) =
+                    rewrite_use_tree_with_segments(&path.tree, old_segments, new_segments, 0)
+                {
+                    let mut new_path = path.clone();
+                    new_path.tree = Box::new(new_subtree);
+                    Some(UseTree::Path(new_path))
+                } else {
+                    None
+                }
             }
         }
         UseTree::Name(_) => None,
@@ -294,7 +332,9 @@ pub fn rewrite_use_tree(tree: &UseTree, old_crate: &str, new_crate: &str) -> Opt
                 .items
                 .iter()
                 .map(|item| {
-                    if let Some(new_item) = rewrite_use_tree(item, old_crate, new_crate) {
+                    if let Some(new_item) =
+                        rewrite_use_tree_with_segments(item, old_segments, new_segments, 0)
+                    {
                         modified = true;
                         new_item
                     } else {
@@ -311,6 +351,38 @@ pub fn rewrite_use_tree(tree: &UseTree, old_crate: &str, new_crate: &str) -> Opt
             }
         }
     }
+}
+
+/// Build a new UseTree from segments and attach the remainder
+fn build_new_use_tree(segments: &[&str], remainder: &UseTree) -> Option<UseTree> {
+    if segments.is_empty() {
+        // No segments to add, return the remainder
+        return Some(remainder.clone());
+    }
+
+    // Build nested Path nodes for all segments
+    // Parse a simple template to get proper span/token types
+    let template = "use a::b;";
+    let parsed: syn::ItemUse = syn::parse_str(template).ok()?;
+
+    // Extract span and token from the template
+    let (span, colon2) = if let UseTree::Path(p) = &parsed.tree {
+        (p.ident.span(), p.colon2_token)
+    } else {
+        return None;
+    };
+
+    // Build nested Path nodes for all segments
+    let mut current = remainder.clone();
+    for segment in segments.iter().rev() {
+        current = UseTree::Path(syn::UsePath {
+            ident: syn::Ident::new(segment, span),
+            colon2_token: colon2,
+            tree: Box::new(current),
+        });
+    }
+
+    Some(current)
 }
 /// Analyzes Rust source code to produce an import graph.
 /// Uses native syn AST parsing (no subprocess required).
