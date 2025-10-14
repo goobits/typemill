@@ -826,7 +826,7 @@ mod move_tests {
 
         // Perform a dry-run move
         service
-            rename_directory_with_imports(source_dir, dest_dir, true, false, None, false)
+            .rename_directory_with_imports(source_dir, dest_dir, true, false, None, false)
             .await
             .unwrap();
 
@@ -856,7 +856,7 @@ mod move_tests {
 
         // Perform a real move
         service
-            rename_directory_with_imports(source_dir, dest_dir, false, false, None, false)
+            .rename_directory_with_imports(source_dir, dest_dir, false, false, None, false)
             .await
             .unwrap();
         queue.wait_until_idle().await;
@@ -889,7 +889,7 @@ mod move_tests {
 
         // Attempt to move, expecting a collision error.
         let result = service
-            rename_directory_with_imports(source_dir, dest_dir, false, false, None, false)
+            .rename_directory_with_imports(source_dir, dest_dir, false, false, None, false)
             .await;
 
         assert!(result.is_err());
@@ -930,7 +930,7 @@ mod move_tests {
 
         // Perform a real move
         service
-            .rename_directory_with_imports(source_dir, dest_dir, false, false, None)
+            .rename_directory_with_imports(source_dir, dest_dir, false, false, None, false)
             .await
             .unwrap();
         queue.wait_until_idle().await;
