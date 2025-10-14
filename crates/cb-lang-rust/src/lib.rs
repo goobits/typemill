@@ -601,9 +601,13 @@ impl RustPlugin {
 }
 
 /// Compute the full module path from a file path
-/// Examples:
+///
+/// # Examples
 /// - `common/src/utils.rs` → `common::utils`
+/// - `common/src/utils/mod.rs` → `common::utils` (mod.rs represents the parent directory)
+/// - `common/src/foo/bar/mod.rs` → `common::foo::bar`
 /// - `new_utils/src/lib.rs` → `new_utils` (lib.rs is the crate root)
+/// - `common/src/main.rs` → `common` (main.rs is the crate root)
 /// - `common/src/foo/bar.rs` → `common::foo::bar`
 fn compute_module_path_from_file(
     file_path: &Path,
@@ -627,6 +631,14 @@ fn compute_module_path_from_file(
     // Remove "src" if present
     if components.first().map(|s| *s) == Some("src") {
         components.remove(0);
+    }
+
+    // Special handling for mod.rs files
+    // mod.rs represents the parent directory's module, not a module named "mod"
+    // Example: common/src/utils/mod.rs → common::utils (not common::utils::mod)
+    if components.last().map(|s| *s) == Some("mod.rs") {
+        components.pop(); // Remove "mod.rs"
+        // The parent directory name is now the last component (the module name)
     }
 
     // If the file is lib.rs or main.rs, it's the crate root
@@ -821,5 +833,65 @@ impl Wrapper {
 
         // Verify old use statements with old_crate are gone
         assert!(!result.contains("use old_crate"));
+    }
+
+    #[test]
+    fn test_compute_module_path_from_file_simple() {
+        let project_root = Path::new("/workspace");
+
+        // Test simple file: common/src/utils.rs → common::utils
+        let file_path = Path::new("/workspace/common/src/utils.rs");
+        let result = compute_module_path_from_file(file_path, "common", project_root);
+        assert_eq!(result, "common::utils");
+    }
+
+    #[test]
+    fn test_compute_module_path_from_file_mod_rs() {
+        let project_root = Path::new("/workspace");
+
+        // Test mod.rs: common/src/utils/mod.rs → common::utils (NOT common::utils::mod)
+        let file_path = Path::new("/workspace/common/src/utils/mod.rs");
+        let result = compute_module_path_from_file(file_path, "common", project_root);
+        assert_eq!(result, "common::utils");
+    }
+
+    #[test]
+    fn test_compute_module_path_from_file_nested_mod_rs() {
+        let project_root = Path::new("/workspace");
+
+        // Test nested mod.rs: common/src/foo/bar/mod.rs → common::foo::bar
+        let file_path = Path::new("/workspace/common/src/foo/bar/mod.rs");
+        let result = compute_module_path_from_file(file_path, "common", project_root);
+        assert_eq!(result, "common::foo::bar");
+    }
+
+    #[test]
+    fn test_compute_module_path_from_file_lib_rs() {
+        let project_root = Path::new("/workspace");
+
+        // Test lib.rs (crate root): common/src/lib.rs → common
+        let file_path = Path::new("/workspace/common/src/lib.rs");
+        let result = compute_module_path_from_file(file_path, "common", project_root);
+        assert_eq!(result, "common");
+    }
+
+    #[test]
+    fn test_compute_module_path_from_file_main_rs() {
+        let project_root = Path::new("/workspace");
+
+        // Test main.rs (crate root): common/src/main.rs → common
+        let file_path = Path::new("/workspace/common/src/main.rs");
+        let result = compute_module_path_from_file(file_path, "common", project_root);
+        assert_eq!(result, "common");
+    }
+
+    #[test]
+    fn test_compute_module_path_from_file_nested() {
+        let project_root = Path::new("/workspace");
+
+        // Test nested file: common/src/foo/bar.rs → common::foo::bar
+        let file_path = Path::new("/workspace/common/src/foo/bar.rs");
+        let result = compute_module_path_from_file(file_path, "common", project_root);
+        assert_eq!(result, "common::foo::bar");
     }
 }
