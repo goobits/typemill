@@ -257,6 +257,10 @@ async fn test_rust_rename_nested_mod_tree() {
     println!("\n🧪 Test: Rename updates nested module tree with multiple levels");
 
     let workspace = TestWorkspace::new();
+
+    // IMPORTANT: Create Cargo.toml FIRST so crate name can be inferred during detection
+    workspace.create_cargo_toml("test_project");
+
     let mut client = TestClient::new(workspace.path());
 
     // Setup: Multi-level module structure

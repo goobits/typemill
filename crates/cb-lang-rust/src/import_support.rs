@@ -68,6 +68,7 @@ impl ImportSupport for RustImportSupport {
 
             // Check if this line is a use statement containing our module path
             // Also handle crate:: prefix (e.g., "use crate::core::types" should match "mylib::core::types")
+            // Also handle crate-relative imports (e.g., "use utils::helpers" should match "mylib::utils::helpers")
             let is_use_statement = trimmed.starts_with("use ");
             let contains_old_module = trimmed.contains(old_name);
 
@@ -85,7 +86,25 @@ impl ImportSupport for RustImportSupport {
                 false
             };
 
-            if is_use_statement && (contains_old_module || crate_import_matches) {
+            // Check if this is a crate-relative import (e.g., "use utils::helpers::process" matches "mylib::utils::helpers")
+            // This handles imports from lib.rs or other crate root files
+            let relative_import_matches = if old_name.contains("::") {
+                old_name
+                    .split_once("::")
+                    .map(|(_, suffix)| {
+                        let relative_pattern = format!("use {}::", suffix);
+                        trimmed.starts_with(&relative_pattern) || {
+                            // Also check for "use {suffix};" (no :: after, for leaf imports)
+                            let leaf_pattern = format!("use {};", suffix);
+                            trimmed.starts_with(&leaf_pattern)
+                        }
+                    })
+                    .unwrap_or(false)
+            } else {
+                false
+            };
+
+            if is_use_statement && (contains_old_module || crate_import_matches || relative_import_matches) {
                 tracing::info!(
                     line = %trimmed,
                     old_name = %old_name,
@@ -107,8 +126,7 @@ impl ImportSupport for RustImportSupport {
                             "Successfully parsed use statement, calling rewrite_use_tree"
                         );
 
-                        // If this is a crate:: import, we need to rewrite using crate:: prefix
-                        // Extract the suffix parts and rewrite them
+                        // Compute effective old and new module paths based on the import style
                         let (effective_old, effective_new) = if crate_import_matches {
                             // For crate:: imports, strip the crate name from both old and new
                             // e.g., old_name="mylib::core::types", new_name="mylib::core::models"
@@ -119,6 +137,13 @@ impl ImportSupport for RustImportSupport {
                                 format!("crate::{}", old_suffix),
                                 format!("crate::{}", new_suffix),
                             )
+                        } else if relative_import_matches {
+                            // For crate-relative imports (from lib.rs), use just the suffix
+                            // e.g., old_name="mylib::utils::helpers", new_name="mylib::utils::support"
+                            //   → effective_old="utils::helpers", effective_new="utils::support"
+                            let old_suffix = old_name.split_once("::").map(|(_, s)| s).unwrap_or(old_name);
+                            let new_suffix = new_name.split_once("::").map(|(_, s)| s).unwrap_or(new_name);
+                            (old_suffix.to_string(), new_suffix.to_string())
                         } else {
                             (old_name.to_string(), new_name.to_string())
                         };
@@ -127,6 +152,7 @@ impl ImportSupport for RustImportSupport {
                             effective_old = %effective_old,
                             effective_new = %effective_new,
                             crate_import_matches = crate_import_matches,
+                            relative_import_matches = relative_import_matches,
                             "Computed effective module paths for rewrite"
                         );
 
@@ -371,6 +397,43 @@ pub fn lib_fn() -> Entity {
         assert!(
             !result.contains("use crate::core::types::Entity;"),
             "Should NOT contain old crate:: import. Actual:\n{}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_rewrite_crate_relative_imports() {
+        let support = RustImportSupport;
+
+        // Test rewriting crate-relative imports (from lib.rs)
+        // Scenario: Renaming src/utils/helpers.rs → src/utils/support.rs
+        // Import in lib.rs: use utils::helpers::process;
+        // Expected: use utils::support::process;
+        let content = r#"pub mod utils;
+
+use utils::helpers::process;
+
+pub fn lib_fn() {
+    process();
+}
+"#;
+
+        // The old_name and new_name will be full module paths like "test_project::utils::helpers"
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "test_project::utils::helpers",
+            "test_project::utils::support",
+        );
+
+        assert_eq!(changes, 1, "Should have changed 1 import. Actual:\n{}", result);
+        assert!(
+            result.contains("use utils::support::process;"),
+            "Should contain updated crate-relative import. Actual:\n{}",
+            result
+        );
+        assert!(
+            !result.contains("use utils::helpers::process;"),
+            "Should NOT contain old crate-relative import. Actual:\n{}",
             result
         );
     }

@@ -230,23 +230,32 @@ pub async fn find_rust_affected_files(
                     // Check if this file has imports from the old module path
                     // Need to check both absolute paths (e.g., "mylib::core::types")
                     // and crate:: paths (e.g., "crate::core::types")
+                    // and crate-relative paths (e.g., "utils::helpers" from lib.rs when helpers is at "mylib::utils::helpers")
                     let has_module_import = content.lines().any(|line| {
                         let trimmed = line.trim();
                         if !trimmed.starts_with("use ") {
                             return false;
                         }
 
-                        // Check for absolute module path
+                        // Check for absolute module path (e.g., "use mylib::utils::helpers::process")
                         if trimmed.contains(&module_pattern) {
                             return true;
                         }
 
-                        // Check for crate:: prefixed imports
+                        // Check for crate:: prefixed imports (e.g., "use crate::utils::helpers::process")
                         // Extract the suffix after the crate name from old_module_path
                         // e.g., "mylib::core::types" → "core::types"
                         if let Some((_crate_name, suffix)) = old_module_path.split_once("::") {
                             let crate_pattern = format!("crate::{}::", suffix);
                             if trimmed.contains(&crate_pattern) {
+                                return true;
+                            }
+
+                            // Check for crate-relative imports (e.g., "use utils::helpers::process" from lib.rs)
+                            // This matches when the use statement starts with the suffix
+                            // e.g., suffix="utils::helpers" matches "use utils::helpers::process"
+                            let relative_pattern = format!("use {}::", suffix);
+                            if trimmed.starts_with(&relative_pattern) {
                                 return true;
                             }
                         }
@@ -277,4 +286,83 @@ pub async fn find_rust_affected_files(
     }
 
     affected
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn test_crate_relative_import_detection() {
+        // Setup: Create a temporary directory with a Rust project structure
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        // Create Cargo.toml
+        tokio::fs::write(
+            project_root.join("Cargo.toml"),
+            "[package]\nname = \"test_project\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .await
+        .unwrap();
+
+        // Create src directory
+        tokio::fs::create_dir_all(project_root.join("src/utils"))
+            .await
+            .unwrap();
+
+        // Create lib.rs with crate-relative import
+        tokio::fs::write(
+            project_root.join("src/lib.rs"),
+            "pub mod utils;\n\nuse utils::helpers::process;\n\npub fn lib_fn() {\n    process();\n}\n",
+        )
+        .await
+        .unwrap();
+
+        // Create utils/mod.rs
+        tokio::fs::write(
+            project_root.join("src/utils/mod.rs"),
+            "pub mod helpers;\n\npub fn utils_fn() {\n    helpers::process();\n}\n",
+        )
+        .await
+        .unwrap();
+
+        // Create utils/helpers.rs (the file we're renaming)
+        tokio::fs::write(
+            project_root.join("src/utils/helpers.rs"),
+            "pub fn process() {}\n",
+        )
+        .await
+        .unwrap();
+
+        // Define paths
+        let old_path = project_root.join("src/utils/helpers.rs");
+        let new_path = project_root.join("src/utils/support.rs");
+
+        // Project files list
+        let project_files = vec![
+            project_root.join("src/lib.rs"),
+            project_root.join("src/utils/mod.rs"),
+            project_root.join("src/utils/helpers.rs"),
+        ];
+
+        // Test: Run the detector
+        let affected = find_rust_affected_files(&old_path, &new_path, project_root, &project_files).await;
+
+        // Verify: lib.rs should be in the affected files
+        assert!(
+            affected.contains(&project_root.join("src/lib.rs")),
+            "lib.rs should be detected as affected (has crate-relative import). Affected files: {:?}",
+            affected
+        );
+
+        // Verify: utils/mod.rs should also be affected (parent file)
+        assert!(
+            affected.contains(&project_root.join("src/utils/mod.rs")),
+            "utils/mod.rs should be detected as affected (parent file). Affected files: {:?}",
+            affected
+        );
+    }
 }
