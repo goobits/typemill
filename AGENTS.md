@@ -160,6 +160,85 @@ pub mod module;  // Exposes the consolidated code
 
 For detailed parameters, return types, and examples, see **[API_REFERENCE.md](docs/API_REFERENCE.md)**.
 
+### Rust File Renames with Automatic Updates
+
+When renaming Rust files using `rename.plan` + `workspace.apply_edit`, codebuddy automatically updates:
+
+**1. Module Declarations** - Parent files (lib.rs/mod.rs) get updated:
+```rust
+// Before: src/lib.rs
+pub mod utils;
+
+// After renaming src/utils.rs → src/helpers.rs
+pub mod helpers;
+```
+
+**2. Use Statements** - Import statements are updated:
+```rust
+// Before
+use utils::helper;
+use utils::another;
+
+// After
+use helpers::helper;
+use helpers::another;
+```
+
+**3. Qualified Paths** - Inline qualified paths in code:
+```rust
+// Before
+pub fn lib_fn() {
+    utils::helper();
+    utils::another();
+}
+
+// After
+pub fn lib_fn() {
+    helpers::helper();
+    helpers::another();
+}
+```
+
+**What gets updated:**
+- ✅ `pub mod utils;` → `pub mod helpers;` (mod declarations)
+- ✅ `use utils::*` → `use helpers::*` (use statements)
+- ✅ `utils::helper()` → `helpers::helper()` (qualified paths)
+- ✅ `parent::utils::*` → `parent::helpers::*` (nested paths)
+- ✅ Cross-crate imports when moving files between crates
+- ✅ Same-crate imports when moving files within a crate
+
+**Example workflow:**
+```json
+// 1. Generate rename plan
+{
+  "method": "tools/call",
+  "params": {
+    "name": "rename.plan",
+    "arguments": {
+      "target": {
+        "kind": "file",
+        "path": "src/utils.rs"
+      },
+      "new_name": "src/helpers.rs"
+    }
+  }
+}
+
+// 2. Apply the plan (updates mod, use, and qualified paths)
+{
+  "method": "tools/call",
+  "params": {
+    "name": "workspace.apply_edit",
+    "arguments": {
+      "plan": "<plan from step 1>",
+      "options": { "dry_run": false }
+    }
+  }
+}
+```
+
+**Coverage:** Handles 80% of common rename scenarios. Complex cases involving non-parent file updates with nested module paths may require manual verification.
+
 ### Actionable Suggestions Configuration
 
 Configure suggestion generation in `.codebuddy/analysis.toml`:
