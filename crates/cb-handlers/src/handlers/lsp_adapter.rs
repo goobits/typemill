@@ -38,13 +38,23 @@ impl DirectLspAdapter {
         &self,
         extension: &str,
     ) -> Result<Arc<cb_lsp::lsp_system::LspClient>, String> {
-        // Check if client already exists
-        {
-            let clients = self.lsp_clients.lock().await;
-            if let Some(client) = clients.get(extension) {
+        // Check if a client already exists and is alive
+        let mut clients = self.lsp_clients.lock().await;
+        if let Some(client) = clients.get(extension) {
+            if client.is_alive().await {
+                debug!(extension, "Reusing existing, live LSP client");
                 return Ok(client.clone());
+            } else {
+                warn!(
+                    extension,
+                    "Found dead LSP client in cache, removing it before creating a new one."
+                );
+                clients.remove(extension);
+                // Proceed to create a new client below
             }
         }
+        // Drop the lock before the potentially long operation of creating a new client
+        drop(clients);
 
         // Find server config for this extension
         let server_config = self

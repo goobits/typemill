@@ -26,7 +26,7 @@ impl LspSetupHelper {
     }
 
     /// Check if a command is available on the system
-    fn is_command_available(command: &str) -> bool {
+    pub fn is_command_available(command: &str) -> bool {
         // Use the PATH environment variable to find the command
         if let Ok(path_env) = std::env::var("PATH") {
             // Use shellexpand with context to handle missing variables gracefully

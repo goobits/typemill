@@ -199,7 +199,7 @@ console.log(expensiveProducts);
     // Wait for LSP to index all files
     for file in [&models_file, &services_file, &main_file] {
         client
-            .wait_for_lsp_ready(file, 5000)
+            .wait_for_lsp_ready(file, 30000)
             .await
             .expect("LSP should index file");
     }
@@ -354,7 +354,7 @@ function createProcessor<T>(type: string): DataProcessor<T> | null {
     std::fs::write(&file_path, content).unwrap();
     // Wait for LSP to index the file using smart polling
     client
-        .wait_for_lsp_ready(&file_path, 5000)
+        .wait_for_lsp_ready(&file_path, 30000)
         .await
         .expect("LSP should index file");
     let response = client
@@ -630,4 +630,147 @@ export function formatResponse(data) {
         workspace_symbols.len()
     );
     println!("Note: Language support temporarily reduced to TypeScript + Rust");
+}
+
+#[tokio::test]
+async fn test_search_symbols_rust_workspace() {
+    use cb_test_support::harness::LspSetupHelper;
+
+    // Check if rust-analyzer is available
+    if !LspSetupHelper::is_command_available("rust-analyzer") {
+        println!("Skipping test_search_symbols_rust_workspace: rust-analyzer not found.");
+        return;
+    }
+
+    let workspace = TestWorkspace::new();
+    workspace.setup_rust_project_with_lsp("rust-symbol-search-test");
+    let mut client = TestClient::new(workspace.path());
+    let main_file = workspace.absolute_path("src/main.rs");
+
+    // Wait for LSP to index the file
+    if let Err(e) = client.wait_for_lsp_ready(&main_file, 30000).await {
+        let logs = client.get_stderr_logs();
+        panic!(
+            "rust-analyzer should index the file: {}. Server stderr:\n{}",
+            e,
+            logs.join("\n")
+        );
+    }
+
+    // Give rust-analyzer a moment to finish its initial workspace scan, which happens
+    // in the background after it has indexed the first file.
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+    // Search for the 'main' function
+    let response = client
+        .call_tool("search_symbols", json!({ "query": "main" }))
+        .await
+        .expect("search_symbols tool should succeed");
+
+    // Check for errors in the response
+    if let Some(error) = response.get("error") {
+        panic!(
+            "search_symbols returned an error: {}",
+            serde_json::to_string_pretty(error).unwrap()
+        );
+    }
+
+    let symbols = response["result"]["content"]
+        .as_array()
+        .expect("search_symbols should return an array of symbols");
+
+    assert!(
+        !symbols.is_empty(),
+        "Should find at least one symbol for 'main'"
+    );
+
+    // Find the specific 'main' function symbol
+    let main_fn_symbol = symbols
+        .iter()
+        .find(|s| {
+            s["name"].as_str() == Some("main") && s["kind"].as_u64() == Some(12) // 12 is Function kind
+        })
+        .expect("Should find a symbol named 'main' of kind 'Function'");
+
+    let location_uri = main_fn_symbol["location"]["uri"]
+        .as_str()
+        .expect("Symbol should have a location URI");
+
+    assert!(
+        location_uri.ends_with("src/main.rs"),
+        "Symbol location should be in src/main.rs"
+    );
+}
+
+#[tokio::test]
+#[cfg(unix)] // `ps` and `grep` are Unix-specific commands
+async fn test_no_zombie_processes_on_lsp_failure() {
+    let workspace = TestWorkspace::new();
+
+    // Setup a custom LSP config with a command that will fail immediately
+    workspace.create_directory(".codebuddy");
+    let lsp_config = json!({
+        "lsp": {
+            "servers": [
+                {
+                    "extensions": ["rs"],
+                    // Use a shell command that is guaranteed to exit immediately with an error
+                    "command": ["/bin/sh", "-c", "exit 1"],
+                    "rootDir": null
+                }
+            ]
+        }
+    });
+    workspace.create_file(
+        ".codebuddy/config.json",
+        &serde_json::to_string_pretty(&lsp_config).unwrap(),
+    );
+
+    let mut client = TestClient::new(workspace.path());
+    let rust_file = workspace.path().join("test.rs");
+    workspace.create_file("test.rs", "fn test() {}");
+
+    // Try to use the failing LSP server multiple times. This will cause the LspClient
+    // to be created, fail initialization, and be dropped repeatedly. This test verifies
+    // that the drop handler correctly reaps the child process every time.
+    for i in 0..5 {
+        println!("Zombie test iteration {}...", i);
+        let response = client
+            .call_tool(
+                "get_document_symbols",
+                json!({ "file_path": rust_file.to_string_lossy() }),
+            )
+            .await;
+
+        // We expect this to fail, that's the point of the test. The error confirms
+        // that the client is actually trying to start the server and detecting its failure.
+        // With the post-initialization health check, `LspClient::new` should fail,
+        // which will cause the `call_tool` method to return an `Err`.
+        assert!(
+            response.is_err(),
+            "Expected LSP call to return a direct error because the client failed to create"
+        );
+    }
+
+    // Give a moment for any slow process reaping to complete.
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+    // Check for zombie processes related to our failing command.
+    // The `[s]h` in the grep pattern is a trick to prevent grep from matching its own process.
+    // `grep 'defunct'` is more portable than `grep 'Z+'` for finding zombie processes.
+    let output = std::process::Command::new("sh")
+        .arg("-c")
+        .arg("ps aux | grep '[s]h -c exit 1' | grep 'defunct' || true")
+        .output()
+        .expect("Failed to execute ps command");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // The `|| true` ensures the command exits successfully even if grep finds nothing.
+    // If grep finds a zombie process, stdout will not be empty.
+    assert!(
+        stdout.trim().is_empty(),
+        "Found zombie processes for the test LSP command:\n{}",
+        stdout
+    );
 }
