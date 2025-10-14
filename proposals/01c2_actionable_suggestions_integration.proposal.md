@@ -1,12 +1,13 @@
 # Proposal 01c2: Actionable Suggestions - Analysis Integration
 
-**Status**: ❌ **NOT STARTED**
+**Status**: ⚠️ **PARTIALLY COMPLETE** (Dead Code Integration Only)
 **Author**: Project Team
 **Date**: 2025-10-13 (Split from 01c)
 **Parent Proposal**: [01b_unified_analysis_api.md](01b_unified_analysis_api.md)
-**Dependencies**: ✅ 01a, ✅ 01b, ⚠️ **BLOCKS ON 01c1** (Core Infrastructure)
-**Branch**: `feature/01c2-suggestions-integration`
+**Dependencies**: ✅ 01a, ✅ 01b, ✅ 01c1 (Core Infrastructure - MERGED)
+**Branch**: ✅ `feature/01c2-suggestions-integration` (MERGED - Partial)
 **Estimated Effort**: 1 week (5-7 days, ~40 hours) - Can be done by 2 agents in parallel
+**Actual Delivery**: ~1 day (partial - dead code only, 2 of 6 kinds)
 
 ---
 
@@ -18,33 +19,57 @@
 
 **Impact**: AI agents can now receive actionable suggestions with every analysis result.
 
-**Depends On**: 01c1 (Core Infrastructure) must be merged first.
+**Depends On**: ✅ 01c1 (Core Infrastructure) - MERGED
+
+**Current Status**: ⚠️ PARTIAL IMPLEMENTATION MERGED
+- ✅ Dead code integration (2 of 6 kinds: unused_imports, unused_symbols)
+- ❌ Remaining 4 dead code kinds (unreachable_code, unused_parameters, unused_types, unused_variables)
+- ❌ Quality, dependencies, structure, documentation, tests categories
+- ❌ Closed-loop workflow test
+
+**Known Issues**: 5 of 6 integration tests fail because suggestion generation only works for 2 dead code kinds.
 
 ---
 
 ## Scope - What This Branch Delivers
 
-### Category Integration ✅
-Integrate `SuggestionGenerator` into all 6 analysis handlers:
-- `analyze.quality` (complexity, code smells, maintainability, readability)
-- `analyze.dead_code` (unused imports, symbols, parameters, unreachable code)
-- `analyze.dependencies` (circular deps, coupling, cohesion)
-- `analyze.structure` (hierarchy, interfaces, inheritance)
-- `analyze.documentation` (coverage, quality, style)
-- `analyze.tests` (coverage, quality, assertions)
+### Category Integration ⚠️ PARTIAL
+Integrate `SuggestionGenerator` into analysis handlers:
+- ❌ `analyze.quality` (complexity, code smells, maintainability, readability) - NOT STARTED
+- ⚠️ `analyze.dead_code` (unused imports, symbols) - **PARTIAL: 2 of 6 kinds**
+  - ✅ unused_imports - suggestion generation working
+  - ✅ unused_symbols - suggestion generation working
+  - ❌ unreachable_code - NO suggestions (still uses old path)
+  - ❌ unused_parameters - NO suggestions (still uses old path)
+  - ❌ unused_types - NO suggestions (still uses old path)
+  - ❌ unused_variables - NO suggestions (still uses old path)
+- ❌ `analyze.dependencies` (circular deps, coupling, cohesion) - NOT STARTED
+- ❌ `analyze.structure` (hierarchy, interfaces, inheritance) - NOT STARTED
+- ❌ `analyze.documentation` (coverage, quality, style) - NOT STARTED
+- ❌ `analyze.tests` (coverage, quality, assertions) - NOT STARTED
 
-### Refactoring Generators ✅
+### Refactoring Generators ⚠️ PARTIAL
 Implement finding-specific refactoring candidate generators:
-- **Quality**: Complexity → extract method, simplify boolean
-- **Dead Code**: Unused → delete, unreachable → remove
-- **Dependencies**: Circular deps → move/restructure
-- **Structure**: Poor hierarchy → reorganize
-- **Documentation**: Missing docs → add documentation
-- **Tests**: Low coverage → suggest test additions
+- ❌ **Quality**: Complexity → extract method, simplify boolean - NOT STARTED
+- ⚠️ **Dead Code**: Unused → delete (PARTIAL - only 2 kinds generate candidates)
+  - ✅ `generate_dead_code_refactoring_candidates()` function exists
+  - ✅ Maps dead code findings to `delete.plan` refactor_call
+  - ❌ Only integrated for unused_imports and unused_symbols
+- ❌ **Dependencies**: Circular deps → move/restructure - NOT STARTED
+- ❌ **Structure**: Poor hierarchy → reorganize - NOT STARTED
+- ❌ **Documentation**: Missing docs → add documentation - NOT STARTED
+- ❌ **Tests**: Low coverage → suggest test additions - NOT STARTED
 
-### Testing ✅
-- Integration tests for each category
-- End-to-end closed-loop workflow test (analyze → suggest → refactor → re-analyze)
+### Testing ⚠️ PARTIAL
+- ⚠️ Integration tests for dead code category (6 tests, 5 FAILING)
+  - ✅ test_dead_code_analysis_generates_suggestions_for_unused_import - PASSING
+  - ❌ test_dead_code_analysis_generates_suggestions_for_unused_function - FAILING
+  - ❌ test_dead_code_analysis_generates_suggestions_for_unreachable_code - FAILING
+  - ❌ test_dead_code_analysis_generates_suggestions_for_unused_parameter - FAILING
+  - ❌ test_dead_code_analysis_generates_suggestions_for_unused_type - FAILING
+  - ❌ test_dead_code_analysis_generates_suggestions_for_unused_variable - FAILING
+- ❌ Integration tests for other 5 categories - NOT STARTED
+- ❌ End-to-end closed-loop workflow test - NOT STARTED
 
 ---
 
@@ -439,20 +464,38 @@ async fn test_closed_loop_workflow_dead_code_removal() {
 ## Success Criteria
 
 ### Integration
-- [ ] All 6 analysis handlers call `SuggestionGenerator`
-- [ ] Suggestions generated for every finding where applicable
-- [ ] Errors in suggestion generation logged but don't fail analysis
-- [ ] All `refactor_call` fields populated with valid tool names and arguments
+- [ ] All 6 analysis handlers call `SuggestionGenerator` - **0/6 COMPLETE**
+  - [ ] analyze.quality - NOT STARTED
+  - [x] analyze.dead_code - **PARTIAL (2/6 kinds)**
+    - [x] unused_imports - DONE
+    - [x] unused_symbols - DONE
+    - [ ] unreachable_code - TODO
+    - [ ] unused_parameters - TODO
+    - [ ] unused_types - TODO
+    - [ ] unused_variables - TODO
+  - [ ] analyze.dependencies - NOT STARTED
+  - [ ] analyze.structure - NOT STARTED
+  - [ ] analyze.documentation - NOT STARTED
+  - [ ] analyze.tests - NOT STARTED
+- [x] Suggestions generated for every finding where applicable (for completed kinds)
+- [x] Errors in suggestion generation logged but don't fail analysis
+- [x] All `refactor_call` fields populated with valid tool names and arguments (for completed kinds)
 
 ### Testing
-- [ ] 6 integration tests (one per category) passing
-- [ ] 1 closed-loop workflow test passing
-- [ ] No regressions in existing analysis tests
+- [ ] 6 integration tests (one per category) passing - **1/6 COMPLETE**
+  - [x] Dead code tests exist - **1/6 passing, 5/6 failing**
+  - [ ] Quality tests - NOT STARTED
+  - [ ] Dependencies tests - NOT STARTED
+  - [ ] Structure tests - NOT STARTED
+  - [ ] Documentation tests - NOT STARTED
+  - [ ] Tests tests - NOT STARTED
+- [ ] 1 closed-loop workflow test passing - NOT STARTED
+- [x] No regressions in existing analysis tests
 
 ### Code Quality
-- [ ] Zero clippy warnings
-- [ ] Proper error handling (no unwrap/expect in production code)
-- [ ] Structured logging for suggestion generation
+- [x] Zero clippy warnings
+- [x] Proper error handling (no unwrap/expect in production code)
+- [x] Structured logging for suggestion generation
 
 ---
 
