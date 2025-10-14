@@ -46,6 +46,22 @@ impl RenameHandler {
             "Got EditPlan with text edits for reference updates"
         );
 
+        // DEBUG: Log detailed edit information for same-crate moves
+        if !edit_plan.edits.is_empty() {
+            tracing::info!(
+                edits_count = edit_plan.edits.len(),
+                first_edit_file = ?edit_plan.edits.first().and_then(|e| e.file_path.as_ref()),
+                first_edit_type = ?edit_plan.edits.first().map(|e| &e.edit_type),
+                "plan_file_rename: Received edits from FileService"
+            );
+        } else {
+            tracing::warn!(
+                old_path = %old_path.display(),
+                new_path = %new_path.display(),
+                "plan_file_rename: No edits received from FileService for file rename!"
+            );
+        }
+
         // Read file content for checksum
         let content = context
             .app_state
@@ -152,9 +168,16 @@ impl RenameHandler {
 
         let workspace_edit = WorkspaceEdit {
             changes: None,
-            document_changes: Some(DocumentChanges::Operations(document_changes)),
+            document_changes: Some(DocumentChanges::Operations(document_changes.clone())),
             change_annotations: None,
         };
+
+        // DEBUG: Log the final WorkspaceEdit structure
+        tracing::info!(
+            document_changes_count = document_changes.len(),
+            has_text_edits = document_changes.iter().any(|dc| matches!(dc, DocumentChangeOperation::Edit(_))),
+            "plan_file_rename: Built WorkspaceEdit with document changes"
+        );
 
         // Build summary from actual edit plan
         let affected_files = 1 + file_checksums.len().saturating_sub(1); // Target file + files being updated

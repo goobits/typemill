@@ -456,6 +456,21 @@ impl MoveHandler {
             .update_references(old_path, new_path, &context.app_state.language_plugins.inner.all(), None, true, None)
             .await?;
 
+        // DEBUG: Log edits returned from update_references
+        info!(
+            edits_count = edit_plan.edits.len(),
+            old_path = %old_path.display(),
+            new_path = %new_path.display(),
+            "update_references returned edit plan for file move"
+        );
+        if !edit_plan.edits.is_empty() {
+            info!(
+                first_edit_file = ?edit_plan.edits.first().and_then(|e| e.file_path.as_ref()),
+                first_edit_type = ?edit_plan.edits.first().map(|e| &e.edit_type),
+                "First edit in plan"
+            );
+        }
+
         let abs_old = std::fs::canonicalize(old_path).unwrap_or_else(|_| old_path.to_path_buf());
         let abs_new = std::fs::canonicalize(new_path.parent().unwrap_or(Path::new(".")))
             .unwrap_or_else(|_| new_path.parent().unwrap_or(Path::new(".")).to_path_buf())

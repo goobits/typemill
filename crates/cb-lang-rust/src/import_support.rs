@@ -66,8 +66,26 @@ impl ImportSupport for RustImportSupport {
                 "Processing line"
             );
 
-            // Check if this line is a use statement containing our crate name
-            if trimmed.starts_with("use ") && trimmed.contains(old_name) {
+            // Check if this line is a use statement containing our module path
+            // Also handle crate:: prefix (e.g., "use crate::core::types" should match "mylib::core::types")
+            let is_use_statement = trimmed.starts_with("use ");
+            let contains_old_module = trimmed.contains(old_name);
+
+            // Check if this is a crate:: import that matches our module path
+            // Extract suffix from old_name (e.g., "mylib::core::types" → "core::types")
+            let crate_import_matches = if old_name.contains("::") {
+                old_name
+                    .split_once("::")
+                    .map(|(_, suffix)| {
+                        let crate_pattern = format!("crate::{}", suffix);
+                        trimmed.contains(&crate_pattern)
+                    })
+                    .unwrap_or(false)
+            } else {
+                false
+            };
+
+            if is_use_statement && (contains_old_module || crate_import_matches) {
                 tracing::info!(
                     line = %trimmed,
                     old_name = %old_name,
@@ -88,9 +106,33 @@ impl ImportSupport for RustImportSupport {
                         tracing::info!(
                             "Successfully parsed use statement, calling rewrite_use_tree"
                         );
+
+                        // If this is a crate:: import, we need to rewrite using crate:: prefix
+                        // Extract the suffix parts and rewrite them
+                        let (effective_old, effective_new) = if crate_import_matches {
+                            // For crate:: imports, strip the crate name from both old and new
+                            // e.g., old_name="mylib::core::types", new_name="mylib::core::models"
+                            //   → effective_old="crate::core::types", effective_new="crate::core::models"
+                            let old_suffix = old_name.split_once("::").map(|(_, s)| s).unwrap_or("");
+                            let new_suffix = new_name.split_once("::").map(|(_, s)| s).unwrap_or("");
+                            (
+                                format!("crate::{}", old_suffix),
+                                format!("crate::{}", new_suffix),
+                            )
+                        } else {
+                            (old_name.to_string(), new_name.to_string())
+                        };
+
+                        tracing::info!(
+                            effective_old = %effective_old,
+                            effective_new = %effective_new,
+                            crate_import_matches = crate_import_matches,
+                            "Computed effective module paths for rewrite"
+                        );
+
                         // Try to rewrite using AST-based transformation
                         let rewrite_result =
-                            crate::parser::rewrite_use_tree(&item_use.tree, old_name, new_name);
+                            crate::parser::rewrite_use_tree(&item_use.tree, &effective_old, &effective_new);
                         tracing::info!(
                             rewrite_result = ?rewrite_result,
                             "rewrite_use_tree returned"
@@ -297,5 +339,39 @@ fn main() {}"#;
         assert!(!result.contains("use serde::Serialize"));
         assert!(result.contains("use std::collections::HashMap"));
         assert!(result.contains("use tokio::runtime::Runtime"));
+    }
+
+    #[test]
+    fn test_rewrite_crate_prefix_imports() {
+        let support = RustImportSupport;
+
+        // Test rewriting crate:: prefixed imports
+        // Scenario: Moving mylib/src/core/types.rs → mylib/src/core/models.rs
+        // Import: use crate::core::types::Entity;
+        // Expected: use crate::core::models::Entity;
+        let content = r#"use crate::core::types::Entity;
+
+pub fn lib_fn() -> Entity {
+    Entity::new()
+}"#;
+
+        // The old_name and new_name will be full module paths like "mylib::core::types"
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "mylib::core::types",
+            "mylib::core::models",
+        );
+
+        assert_eq!(changes, 1, "Should have changed 1 import");
+        assert!(
+            result.contains("use crate::core::models::Entity;"),
+            "Should contain updated crate:: import. Actual:\n{}",
+            result
+        );
+        assert!(
+            !result.contains("use crate::core::types::Entity;"),
+            "Should NOT contain old crate:: import. Actual:\n{}",
+            result
+        );
     }
 }

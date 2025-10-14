@@ -61,14 +61,16 @@ if old_module_path != new_module_path {
 
 ### Testing
 - [x] Add unit test: same-crate file move with different module paths
-- [ ] Add integration test: move `common/src/utils.rs` → `common/src/helpers.rs`
+- [x] Add integration test: move `common/src/utils.rs` → `common/src/helpers.rs`
 - [x] Verify imports like `use common::utils::foo` are updated to `use common::helpers::foo`
-- [ ] Add test: same-crate directory move (`common/src/old_dir/` → `common/src/new_dir/`)
+- [x] Add test: same-crate directory move (`common/src/old_dir/` → `common/src/new_dir/`)
 - [x] Verify existing cross-crate move tests still pass
+- [x] Add test: nested file move with `crate::` prefixed imports
 
 ### Reference Updater Integration
-- [ ] Update `find_affected_files_for_rename` in `reference_updater.rs` to detect same-crate moves
-- [ ] Ensure same-crate moves trigger the Rust plugin rewrite path (not just generic resolver)
+- [x] Update `find_affected_files_for_rename` in `reference_updater.rs` to detect same-crate moves
+- [x] Ensure same-crate moves trigger the Rust plugin rewrite path (not just generic resolver)
+- [x] Add support for detecting files with `crate::` prefixed imports
 
 ## Success Criteria
 

@@ -51,7 +51,8 @@ impl FileService {
         }
 
         // The `true` flag indicates a dry run.
-        self.reference_updater
+        let edit_plan = self
+            .reference_updater
             .update_references(
                 &old_abs,
                 &new_abs,
@@ -60,7 +61,31 @@ impl FileService {
                 true,
                 scan_scope,
             )
-            .await
+            .await?;
+
+        // DEBUG: Log what update_references returned for same-crate moves
+        info!(
+            edits_count = edit_plan.edits.len(),
+            old_path = %old_abs.display(),
+            new_path = %new_abs.display(),
+            "plan_rename_file_with_imports: update_references returned edit plan"
+        );
+        if !edit_plan.edits.is_empty() {
+            info!(
+                first_edit_file = ?edit_plan.edits.first().and_then(|e| e.file_path.as_ref()),
+                first_edit_type = ?edit_plan.edits.first().map(|e| &e.edit_type),
+                total_edits = edit_plan.edits.len(),
+                "plan_rename_file_with_imports: First edit in plan"
+            );
+        } else {
+            warn!(
+                old_path = %old_abs.display(),
+                new_path = %new_abs.display(),
+                "plan_rename_file_with_imports: No edits returned from update_references!"
+            );
+        }
+
+        Ok(edit_plan)
     }
 
     /// Generates an EditPlan for a directory rename operation, including import updates.
