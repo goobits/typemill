@@ -196,6 +196,13 @@ flake8>=5.0.0
         self.create_file("README.md", &format!("# {}\n\nA Rust test project.", name));
     }
 
+    /// Create a Rust project with LSP configuration.
+    pub fn setup_rust_project_with_lsp(&self, name: &str) {
+        self.setup_rust_project(name);
+        self.create_file("src/main.rs", "fn main() { println!(\"hello\"); }");
+        self.setup_lsp_config();
+    }
+
     /// Create a Cargo.toml file for a Rust project.
     pub fn create_cargo_toml(&self, name: &str) {
         let content = format!(

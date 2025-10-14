@@ -51,6 +51,14 @@ enum LspMessage {
         method: String,
         params: Value,
     },
+    Response {
+        id: Value,
+        result: Value,
+    },
+    ErrorResponse {
+        id: Value,
+        error: Value,
+    },
 }
 
 impl LspClient {
@@ -216,6 +224,20 @@ impl LspClient {
                             "params": params
                         })
                     }
+                    LspMessage::Response { id, result } => {
+                        json!({
+                            "jsonrpc": "2.0",
+                            "id": id,
+                            "result": result
+                        })
+                    }
+                    LspMessage::ErrorResponse { id, error } => {
+                        json!({
+                            "jsonrpc": "2.0",
+                            "id": id,
+                            "error": error
+                        })
+                    }
                 };
 
                 let content = serde_json::to_string(&lsp_message)
@@ -261,6 +283,12 @@ impl LspClient {
                             debug!(method = %method, "Sent LSP notification");
                         }
                     }
+                    LspMessage::Response { id, .. } => {
+                        debug!(id = ?id, "Sent LSP response to server request");
+                    }
+                    LspMessage::ErrorResponse { id, .. } => {
+                        debug!(id = ?id, "Sent LSP error response to server request");
+                    }
                 }
             }
         });
@@ -304,6 +332,7 @@ impl LspClient {
         // Spawn task to handle reading from LSP server
         let pending_requests_clone = pending_requests.clone();
         let server_command_stdout = command.to_string();
+        let message_tx_clone = message_tx.clone();
         tokio::spawn(async move {
             eprintln!(
                 "🔍 LSP stdout reader task started for: {}",
@@ -359,7 +388,12 @@ impl LspClient {
                                     "📨 LSP received message #{}: {:?}",
                                     message_count, message
                                 );
-                                Self::handle_message(message, &pending_requests_clone).await;
+                                Self::handle_message(
+                                    message,
+                                    &pending_requests_clone,
+                                    &message_tx_clone,
+                                )
+                                .await;
                             }
                         }
                         // Otherwise, skip non-Content-Length headers and continue
@@ -387,6 +421,17 @@ impl LspClient {
 
         // Initialize the LSP server
         client.initialize().await?;
+
+        // Final health check after initialization attempt. If the server crashed during
+        // initialization, we should fail here. This is crucial for tests like the zombie test,
+        // which expect `LspClient::new` to fail if the server command is invalid.
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        if !client.is_alive().await {
+            return Err(ServerError::runtime(format!(
+                "LSP server process for '{}' exited immediately after startup.",
+                client.config().command.join(" ")
+            )));
+        }
 
         Ok(client)
     }
@@ -651,6 +696,22 @@ impl LspClient {
         &self.config
     }
 
+    /// Check if the underlying LSP server process is still running.
+    pub async fn is_alive(&self) -> bool {
+        let mut process = self.process.lock().await;
+        match process.try_wait() {
+            Ok(Some(_status)) => {
+                warn!("LSP process found to be exited with status: {}", _status);
+                false
+            }
+            Ok(None) => true, // Process is still running
+            Err(e) => {
+                warn!("Error while checking LSP process status: {}", e);
+                false // Error checking status, assume it's dead
+            }
+        }
+    }
+
     /// Notify the LSP server that a file has been opened
     pub async fn notify_file_opened(&self, file_path: &std::path::Path) -> ServerResult<()> {
         if !self.is_initialized().await {
@@ -735,10 +796,23 @@ impl LspClient {
     }
 
     /// Handle incoming message from LSP server
-    async fn handle_message(message: Value, pending_requests: &PendingRequests) {
+    async fn handle_message(
+        message: Value,
+        pending_requests: &PendingRequests,
+        message_tx: &mpsc::Sender<LspMessage>,
+    ) {
         tracing::warn!(message = ?message, "Received message from LSP server");
 
-        if let Some(id) = message.get("id") {
+        if message.get("method").is_some() {
+            if message.get("id").is_some() {
+                // This is a server-initiated request that requires a response.
+                Self::handle_server_request(&message, message_tx).await;
+            } else {
+                // This is a notification from the server
+                debug!("Received notification from LSP server: {:?}", message);
+            }
+        } else if let Some(id) = message.get("id") {
+            // This is a response to a client-initiated request
             if let Some(id_num) = id.as_i64() {
                 let sender = {
                     let mut pending = pending_requests.lock().await;
@@ -767,9 +841,62 @@ impl LspClient {
                     );
                 }
             }
-        } else if message.get("method").is_some() {
-            // Handle notifications from server
-            debug!("Received notification from LSP server: {:?}", message);
+        } else {
+            warn!(message = ?message, "Received unhandled message from LSP server");
+        }
+    }
+
+    /// Handle server-initiated requests
+    async fn handle_server_request(request: &Value, message_tx: &mpsc::Sender<LspMessage>) {
+        debug!(?request, "Handling server request");
+        let id = request.get("id").cloned().unwrap_or(Value::Null);
+        let method = request.get("method").and_then(|m| m.as_str());
+
+        let response = match method {
+            Some("workspace/configuration") => {
+                // The server requests configuration for a number of items. We must respond with
+                // an array of the same length. Returning `null` for each is a valid way to say
+                // "use your default".
+                let items_len = request
+                    .get("params")
+                    .and_then(|p| p.get("items"))
+                    .and_then(|i| i.as_array())
+                    .map(|a| a.len())
+                    .unwrap_or(0);
+                LspMessage::Response {
+                    id,
+                    result: json!(vec![Value::Null; items_len]),
+                }
+            }
+            Some("client/registerCapability") | Some("window/workDoneProgress/create") => {
+                // Acknowledge these requests but we don't need to do anything.
+                LspMessage::Response {
+                    id,
+                    result: Value::Null,
+                }
+            }
+            Some("workspace/workspaceFolders") => {
+                // Respond with an empty array as we manage the workspace.
+                LspMessage::Response {
+                    id,
+                    result: json!([]),
+                }
+            }
+            _ => {
+                // For any other request, respond that we don't support it.
+                warn!(method = ?method, "Received unsupported server request");
+                LspMessage::ErrorResponse {
+                    id,
+                    error: json!({
+                        "code": -32601,
+                        "message": "Method not found"
+                    }),
+                }
+            }
+        };
+
+        if let Err(e) = message_tx.send(response).await {
+            tracing::error!(error = %e, "Failed to send response for server request");
         }
     }
 }
