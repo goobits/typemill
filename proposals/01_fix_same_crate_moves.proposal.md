@@ -54,17 +54,17 @@ if old_module_path != new_module_path {
 ## Checklists
 
 ### Implementation
-- [ ] Refactor `rewrite_imports_for_rename` in `crates/cb-lang-rust/src/lib.rs` (lines 552-595)
-- [ ] Move module path computation outside the crate name check
-- [ ] Change condition from `old_name != new_name` to `old_module_path != new_module_path`
-- [ ] Remove redundant "Crates are the same - no rewrite needed" log message
+- [x] Refactor `rewrite_imports_for_rename` in `crates/cb-lang-rust/src/lib.rs` (lines 552-595)
+- [x] Move module path computation outside the crate name check
+- [x] Change condition from `old_name != new_name` to `old_module_path != new_module_path`
+- [x] Remove redundant "Crates are the same - no rewrite needed" log message
 
 ### Testing
-- [ ] Add unit test: same-crate file move with different module paths
+- [x] Add unit test: same-crate file move with different module paths
 - [ ] Add integration test: move `common/src/utils.rs` → `common/src/helpers.rs`
-- [ ] Verify imports like `use common::utils::foo` are updated to `use common::helpers::foo`
+- [x] Verify imports like `use common::utils::foo` are updated to `use common::helpers::foo`
 - [ ] Add test: same-crate directory move (`common/src/old_dir/` → `common/src/new_dir/`)
-- [ ] Verify existing cross-crate move tests still pass
+- [x] Verify existing cross-crate move tests still pass
 
 ### Reference Updater Integration
 - [ ] Update `find_affected_files_for_rename` in `reference_updater.rs` to detect same-crate moves
