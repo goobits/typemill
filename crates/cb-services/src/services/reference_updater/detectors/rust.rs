@@ -24,6 +24,7 @@ pub async fn find_rust_affected_files(
         project_root = %project_root.display(),
         old_path = %old_path.display(),
         new_path = %new_path.display(),
+        old_is_dir = old_path.is_dir(),
         "Starting Rust cross-crate detection"
     );
 
@@ -64,8 +65,70 @@ pub async fn find_rust_affected_files(
 
     // ALWAYS use Cargo.toml to find crate names (more reliable than path inspection)
     // This correctly handles workspace projects where files are in subdirectories
-    let old_crate_name = find_crate_name_from_cargo_toml(old_path);
-    let new_crate_name = find_crate_name_from_cargo_toml(new_path);
+    // For directories, check for Cargo.toml directly in the directory
+    let old_crate_name = if old_path.is_dir() {
+        let cargo_toml = old_path.join("Cargo.toml");
+        if cargo_toml.exists() {
+            if let Ok(content) = tokio::fs::read_to_string(&cargo_toml).await {
+                content.lines()
+                    .find(|line| {
+                        let trimmed = line.trim();
+                        trimmed.starts_with("name") && trimmed.contains('=')
+                    })
+                    .and_then(|line| line.split('=').nth(1))
+                    .map(|name_part| {
+                        let name = name_part.trim().trim_matches('"').trim_matches('\'');
+                        // Normalize: Cargo.toml uses hyphens, but imports use underscores
+                        name.replace('-', "_")
+                    })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        find_crate_name_from_cargo_toml(old_path)
+            .map(|name| name.replace('-', "_"))
+    };
+
+    // For new_path, it might not exist yet (during rename), so derive from directory name
+    let new_crate_name = if new_path.exists() && new_path.is_dir() {
+        let cargo_toml = new_path.join("Cargo.toml");
+        if cargo_toml.exists() {
+            if let Ok(content) = tokio::fs::read_to_string(&cargo_toml).await {
+                content.lines()
+                    .find(|line| {
+                        let trimmed = line.trim();
+                        trimmed.starts_with("name") && trimmed.contains('=')
+                    })
+                    .and_then(|line| line.split('=').nth(1))
+                    .map(|name_part| {
+                        let name = name_part.trim().trim_matches('"').trim_matches('\'');
+                        name.replace('-', "_")
+                    })
+            } else {
+                // Fallback to directory name
+                new_path.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|s| s.replace('-', "_"))
+            }
+        } else {
+            // No Cargo.toml, use directory name
+            new_path.file_name()
+                .and_then(|n| n.to_str())
+                .map(|s| s.replace('-', "_"))
+        }
+    } else if new_path.exists() {
+        // It's a file path
+        find_crate_name_from_cargo_toml(new_path)
+            .map(|name| name.replace('-', "_"))
+    } else {
+        // Path doesn't exist yet - derive from directory name
+        new_path.file_name()
+            .and_then(|n| n.to_str())
+            .map(|s| s.replace('-', "_"))
+    };
 
     tracing::info!(
         old_crate = ?old_crate_name,
@@ -74,6 +137,54 @@ pub async fn find_rust_affected_files(
         new_path = %new_path.display(),
         "Found crate names from Cargo.toml"
     );
+
+    // Special case: If old_path is a directory (crate rename), scan for any use of the crate name
+    if old_path.is_dir() {
+        if let (Some(ref old_crate), Some(ref new_crate)) = (&old_crate_name, &new_crate_name) {
+            if old_crate != new_crate {
+                tracing::info!(
+                    old_crate = %old_crate,
+                    new_crate = %new_crate,
+                    "Detected crate rename (directory rename), scanning for crate-level imports"
+                );
+
+                // For crate renames, scan ALL Rust files for imports from the old crate
+                let crate_import_pattern = format!("use {}::", old_crate);
+                for file in project_files {
+                    // Skip files inside the renamed crate itself
+                    if file.starts_with(old_path) {
+                        continue;
+                    }
+
+                    // Only check Rust files
+                    if file.extension().and_then(|e| e.to_str()) != Some("rs") {
+                        continue;
+                    }
+
+                    if let Ok(content) = tokio::fs::read_to_string(file).await {
+                        if content.contains(&crate_import_pattern) {
+                            tracing::debug!(
+                                file = %file.display(),
+                                old_crate = %old_crate,
+                                "Found file importing from old crate"
+                            );
+                            if !affected.contains(file) {
+                                affected.push(file.clone());
+                            }
+                        }
+                    }
+                }
+
+                tracing::info!(
+                    affected_count = affected.len(),
+                    affected_files = ?affected.iter().map(|p| p.display().to_string()).collect::<Vec<_>>(),
+                    "Found Rust files affected by crate rename"
+                );
+
+                return affected;
+            }
+        }
+    }
 
     // ALWAYS check for parent files with mod declarations
     // This is independent of crate name detection and handles simple file renames
@@ -265,6 +376,67 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
     use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn test_crate_directory_rename_detection() {
+        // Setup: Create a workspace with two crates
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        // Create old_crate with Cargo.toml
+        tokio::fs::create_dir_all(project_root.join("old_crate/src"))
+            .await
+            .unwrap();
+        tokio::fs::write(
+            project_root.join("old_crate/Cargo.toml"),
+            "[package]\nname = \"old_crate\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .await
+        .unwrap();
+        tokio::fs::write(
+            project_root.join("old_crate/src/lib.rs"),
+            "pub fn utility() {}\n",
+        )
+        .await
+        .unwrap();
+
+        // Create app crate that imports from old_crate
+        tokio::fs::create_dir_all(project_root.join("app/src"))
+            .await
+            .unwrap();
+        tokio::fs::write(
+            project_root.join("app/Cargo.toml"),
+            "[package]\nname = \"app\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .await
+        .unwrap();
+        tokio::fs::write(
+            project_root.join("app/src/main.rs"),
+            "use old_crate::utility;\n\nfn main() {\n    utility();\n}\n",
+        )
+        .await
+        .unwrap();
+
+        // Define paths
+        let old_path = project_root.join("old_crate");
+        let new_path = project_root.join("new_crate");
+
+        // Project files list
+        let project_files = vec![
+            project_root.join("old_crate/src/lib.rs"),
+            project_root.join("app/src/main.rs"),
+        ];
+
+        // Test: Run the detector
+        let affected = find_rust_affected_files(&old_path, &new_path, project_root, &project_files).await;
+
+        // Verify: app/src/main.rs should be in the affected files
+        assert!(
+            affected.contains(&project_root.join("app/src/main.rs")),
+            "app/src/main.rs should be detected as affected (imports from old_crate). Affected files: {:?}",
+            affected
+        );
+    }
 
     #[tokio::test]
     async fn test_crate_relative_import_detection() {

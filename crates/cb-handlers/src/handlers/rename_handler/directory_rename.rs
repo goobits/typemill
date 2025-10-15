@@ -96,9 +96,22 @@ impl RenameHandler {
             .parse()
             .map_err(|e| ServerError::Internal(format!("Failed to parse URI: {}", e)))?;
 
-        let abs_new = std::fs::canonicalize(new_path.parent().unwrap_or(Path::new(".")))
-            .unwrap_or_else(|_| new_path.parent().unwrap_or(Path::new(".")).to_path_buf())
-            .join(new_path.file_name().unwrap_or(new_path.as_os_str()));
+        // Handle both absolute and relative new_path
+        let abs_new = if new_path.is_absolute() {
+            std::fs::canonicalize(new_path.parent().unwrap_or(Path::new(".")))
+                .unwrap_or_else(|_| new_path.parent().unwrap_or(Path::new(".")).to_path_buf())
+                .join(new_path.file_name().unwrap_or(new_path.as_os_str()))
+        } else {
+            // For relative paths, resolve against current working directory
+            let cwd = std::env::current_dir().unwrap_or_else(|_| Path::new(".").to_path_buf());
+            let parent = new_path.parent().unwrap_or(Path::new("."));
+            let parent_abs = if parent == Path::new(".") {
+                cwd.clone()
+            } else {
+                cwd.join(parent)
+            };
+            parent_abs.join(new_path.file_name().unwrap_or(new_path.as_os_str()))
+        };
 
         let new_url = url::Url::from_file_path(&abs_new)
             .map_err(|_| ServerError::Internal(format!("Invalid new path: {}", abs_new.display())))?;

@@ -61,7 +61,21 @@ impl ReferenceUpdater {
         );
         let is_directory_rename = old_path.is_dir();
 
-        let mut affected_files = if is_directory_rename {
+        // Check if this is a Rust crate rename (directory with Cargo.toml)
+        let is_rust_crate_rename = is_directory_rename && old_path.join("Cargo.toml").exists();
+
+        let mut affected_files = if is_rust_crate_rename {
+            // For Rust crate renames, call the detector ONCE with the directory paths
+            // This allows the detector to scan for crate-level imports
+            tracing::info!(
+                old_path = %old_path.display(),
+                new_path = %new_path.display(),
+                "Detected Rust crate rename, using crate-level detection"
+            );
+            self.find_affected_files_for_rename(old_path, new_path, &project_files, plugins)
+                .await?
+        } else if is_directory_rename {
+            // For non-Rust directory renames, use per-file detection
             let mut all_affected = HashSet::new();
             let files_in_directory: Vec<&PathBuf> = project_files
                 .iter()
@@ -119,8 +133,51 @@ impl ReferenceUpdater {
                 Err(_) => continue,
             };
 
-            if is_directory_rename {
-                // Directory rename logic
+            if is_rust_crate_rename {
+                // For Rust crate renames, use simple file rename logic with rename_info
+                // The rename_info contains old_crate_name and new_crate_name which the plugin uses
+                tracing::debug!(
+                    file_path = %file_path.display(),
+                    old_path = %old_path.display(),
+                    new_path = %new_path.display(),
+                    "Rewriting imports for Rust crate rename"
+                );
+
+                let rewrite_result = plugin.rewrite_file_references(
+                    &content,
+                    old_path,  // Pass the directory path (crate root)
+                    new_path,  // Pass the new directory path
+                    &file_path,
+                    &self.project_root,
+                    rename_info,  // This contains old_crate_name and new_crate_name
+                );
+
+                if let Some((updated_content, count)) = rewrite_result {
+                    if count > 0 && updated_content != content {
+                        let line_count = content.lines().count();
+                        let last_line_len = content.lines().last().map(|l| l.len()).unwrap_or(0);
+
+                        all_edits.push(TextEdit {
+                            file_path: Some(file_path.to_string_lossy().to_string()),
+                            edit_type: EditType::UpdateImport,
+                            location: EditLocation {
+                                start_line: 0,
+                                start_column: 0,
+                                end_line: line_count.saturating_sub(1) as u32,
+                                end_column: last_line_len as u32,
+                            },
+                            original_text: content.clone(),
+                            new_text: updated_content,
+                            priority: 1,
+                            description: format!(
+                                "Update imports in {} for crate rename",
+                                file_path.display()
+                            ),
+                        });
+                    }
+                }
+            } else if is_directory_rename {
+                // Directory rename logic (for non-Rust directories)
                 let files_in_directory: Vec<PathBuf> = project_files
                     .iter()
                     .filter(|f| f.starts_with(old_path) && f.is_file())
@@ -226,6 +283,11 @@ impl ReferenceUpdater {
             }
         }
 
+        tracing::info!(
+            all_edits_count = all_edits.len(),
+            "Returning EditPlan with edits"
+        );
+
         Ok(EditPlan {
             source_file: old_path.to_string_lossy().to_string(),
             edits: all_edits,
@@ -281,20 +343,23 @@ impl ReferenceUpdater {
         // Rust-specific cross-crate move detection
         // Rust uses crate-qualified imports (e.g., "use common::utils::foo") which the generic
         // ImportPathResolver cannot resolve. We need special handling for cross-crate moves.
-        if let Some(old_ext) = old_path.extension().and_then(|e| e.to_str()) {
-            if old_ext == "rs" {
-                let rust_affected = detectors::find_rust_affected_files(
-                    old_path,
-                    new_path,
-                    &self.project_root,
-                    project_files,
-                )
-                .await;
 
-                if !rust_affected.is_empty() {
-                    // Return early - we've found all affected Rust files
-                    return Ok(rust_affected);
-                }
+        // Check if this is a Rust file OR a Rust crate directory (contains Cargo.toml)
+        let is_rust_file = old_path.extension().and_then(|e| e.to_str()) == Some("rs");
+        let is_rust_crate = old_path.is_dir() && old_path.join("Cargo.toml").exists();
+
+        if is_rust_file || is_rust_crate {
+            let rust_affected = detectors::find_rust_affected_files(
+                old_path,
+                new_path,
+                &self.project_root,
+                project_files,
+            )
+            .await;
+
+            if !rust_affected.is_empty() {
+                // Return early - we've found all affected Rust files
+                return Ok(rust_affected);
             }
         }
 
