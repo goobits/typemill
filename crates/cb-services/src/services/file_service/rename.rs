@@ -128,7 +128,7 @@ impl FileService {
 
         // For directory renames, we need to update imports that reference files inside the directory
         // The `true` flag indicates a dry run.
-        self.reference_updater
+        let mut edit_plan = self.reference_updater
             .update_references(
                 &old_abs,
                 &new_abs,
@@ -137,7 +137,135 @@ impl FileService {
                 true,
                 effective_scan_scope,
             )
-            .await
+            .await?;
+
+        // If this is a Cargo package, also add Cargo.toml manifest edits to the plan
+        if is_cargo_pkg {
+            info!("Adding Cargo.toml manifest edits to the plan");
+
+            // Plan workspace manifest updates (workspace members + package name)
+            match self.plan_workspace_manifest_updates(&old_abs, &new_abs).await {
+                Ok(manifest_updates) => {
+                    info!(updates_count = manifest_updates.len(), "Got manifest updates from planning");
+                    for (i, (path, _, _)) in manifest_updates.iter().enumerate() {
+                        info!(index = i, path = %path.display(), "Manifest update path");
+                    }
+                    let manifest_edits = Self::convert_manifest_updates_to_edits(manifest_updates, &old_abs, &new_abs);
+                    let edits_count = manifest_edits.len();
+                    for (i, edit) in manifest_edits.iter().enumerate() {
+                        info!(
+                            index = i,
+                            file_path = ?edit.file_path,
+                            edit_type = ?edit.edit_type,
+                            "Manifest edit"
+                        );
+                    }
+                    edit_plan.edits.extend(manifest_edits);
+                    info!(
+                        edits_added = edits_count,
+                        "Added workspace manifest edits to plan"
+                    );
+                }
+                Err(e) => {
+                    warn!(error = %e, "Failed to plan workspace manifest updates");
+                }
+            }
+
+            // Plan dependent crate path updates
+            if let Some(ref info) = rename_info {
+                if let (Some(old_package_name), Some(new_package_name)) = (
+                    info.get("old_package_name").and_then(|v| v.as_str()),
+                    info.get("new_package_name").and_then(|v| v.as_str()),
+                ) {
+                    match self.plan_dependent_crate_path_updates(
+                        old_package_name,
+                        new_package_name,
+                        &new_abs,
+                    ).await {
+                        Ok(dependency_updates) => {
+                            let dependency_edits = Self::convert_manifest_updates_to_edits(dependency_updates, &old_abs, &new_abs);
+                            let edits_count = dependency_edits.len();
+                            edit_plan.edits.extend(dependency_edits);
+                            info!(
+                                edits_added = edits_count,
+                                "Added dependent crate path edits to plan"
+                            );
+                        }
+                        Err(e) => {
+                            warn!(error = %e, "Failed to plan dependent crate path updates");
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(edit_plan)
+    }
+
+    /// Convert manifest update tuples into TextEdit entries
+    ///
+    /// Adjusts file paths for files that will be moved by the directory rename:
+    /// - Files inside old_dir_path are adjusted to point to new_dir_path
+    /// - Files outside old_dir_path remain unchanged
+    fn convert_manifest_updates_to_edits(
+        updates: Vec<(PathBuf, String, String)>,
+        old_dir_path: &Path,
+        new_dir_path: &Path,
+    ) -> Vec<cb_protocol::TextEdit> {
+        use cb_protocol::{EditLocation, EditType, TextEdit};
+
+        updates
+            .into_iter()
+            .map(|(file_path, old_content, new_content)| {
+                // Adjust file path if it's inside the directory being renamed
+                let adjusted_path = if file_path.starts_with(old_dir_path) {
+                    // File is inside renamed directory, adjust path to new location
+                    if let Ok(rel_path) = file_path.strip_prefix(old_dir_path) {
+                        new_dir_path.join(rel_path)
+                    } else {
+                        file_path.clone()
+                    }
+                } else {
+                    // File is outside renamed directory, path unchanged
+                    file_path.clone()
+                };
+
+                // Calculate LSP range covering the entire file.
+                // LSP positions are UTF-16 based, but our edits operate on UTF-8 byte indices.
+                // We approximate using character counts, which is sufficient for ASCII manifests.
+                let total_lines = old_content.lines().count() as u32;
+                let (end_line, end_column) = if old_content.ends_with('\n') {
+                    // File ends with a newline; full replacement ends at the beginning of the line after the last content.
+                    (total_lines, 0)
+                } else {
+                    // No trailing newline; end at the last line/column.
+                    let last_line_len = old_content
+                        .lines()
+                        .last()
+                        .map(|l| l.chars().count() as u32)
+                        .unwrap_or(0);
+                    (total_lines.saturating_sub(1), last_line_len)
+                };
+
+                TextEdit {
+                    file_path: Some(adjusted_path.to_string_lossy().to_string()),
+                    edit_type: EditType::Replace,
+                    location: EditLocation {
+                        start_line: 0,
+                        start_column: 0,
+                        end_line,
+                        end_column,
+                    },
+                    original_text: old_content,
+                    new_text: new_content,
+                    priority: 10, // Give manifest updates high priority
+                    description: format!(
+                        "Update Cargo.toml manifest: {}",
+                        adjusted_path.to_string_lossy()
+                    ),
+                }
+            })
+            .collect()
     }
 
     /// Perform a git-aware file rename

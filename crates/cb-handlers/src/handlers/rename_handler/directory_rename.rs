@@ -9,7 +9,7 @@ use lsp_types::{
     ResourceOp, TextDocumentEdit, TextEdit, Uri, WorkspaceEdit,
 };
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tracing::debug;
 
 impl RenameHandler {
@@ -57,6 +57,24 @@ impl RenameHandler {
 
         // For directory rename, we need to calculate checksums for all files being moved
         let abs_old = std::fs::canonicalize(old_path).unwrap_or_else(|_| old_path.to_path_buf());
+
+        // Calculate abs_new early so we can use it for checksum fallback logic
+        let abs_new = if new_path.is_absolute() {
+            std::fs::canonicalize(new_path.parent().unwrap_or(Path::new(".")))
+                .unwrap_or_else(|_| new_path.parent().unwrap_or(Path::new(".")).to_path_buf())
+                .join(new_path.file_name().unwrap_or(new_path.as_os_str()))
+        } else {
+            // For relative paths, resolve against current working directory
+            let cwd = std::env::current_dir().unwrap_or_else(|_| Path::new(".").to_path_buf());
+            let parent = new_path.parent().unwrap_or(Path::new("."));
+            let parent_abs = if parent == Path::new(".") {
+                cwd.clone()
+            } else {
+                cwd.join(parent)
+            };
+            parent_abs.join(new_path.file_name().unwrap_or(new_path.as_os_str()))
+        };
+
         let mut file_checksums = HashMap::new();
 
         // Walk directory to collect files and calculate checksums
@@ -75,9 +93,27 @@ impl RenameHandler {
         // Add checksums for files being updated (import updates)
         for edit in &edit_plan.edits {
             if let Some(ref file_path) = edit.file_path {
-                let path = Path::new(file_path);
+                let mut path = Path::new(file_path).to_path_buf();
+
+                // For files inside the renamed directory: edit paths point to NEW location (for apply phase),
+                // but files haven't moved yet during planning, so we need to check OLD location for checksums.
+                if !path.exists() && path.starts_with(&abs_new) {
+                    if let Ok(rel) = path.strip_prefix(&abs_new) {
+                        let candidate = abs_old.join(rel);
+                        if candidate.exists() {
+                            debug!(
+                                edit_path = %path.display(),
+                                actual_path = %candidate.display(),
+                                "File not at new location yet, using old location for checksum"
+                            );
+                            path = candidate;
+                        }
+                    }
+                }
+
+                // Skip files inside the directory being moved (they're covered by directory walk above)
                 if path.exists() && !path.starts_with(&abs_old) {
-                    if let Ok(content) = context.app_state.file_service.read_file(path).await {
+                    if let Ok(content) = context.app_state.file_service.read_file(&path).await {
                         file_checksums.insert(
                             path.to_string_lossy().to_string(),
                             super::utils::calculate_checksum(&content),
@@ -96,22 +132,7 @@ impl RenameHandler {
             .parse()
             .map_err(|e| ServerError::Internal(format!("Failed to parse URI: {}", e)))?;
 
-        // Handle both absolute and relative new_path
-        let abs_new = if new_path.is_absolute() {
-            std::fs::canonicalize(new_path.parent().unwrap_or(Path::new(".")))
-                .unwrap_or_else(|_| new_path.parent().unwrap_or(Path::new(".")).to_path_buf())
-                .join(new_path.file_name().unwrap_or(new_path.as_os_str()))
-        } else {
-            // For relative paths, resolve against current working directory
-            let cwd = std::env::current_dir().unwrap_or_else(|_| Path::new(".").to_path_buf());
-            let parent = new_path.parent().unwrap_or(Path::new("."));
-            let parent_abs = if parent == Path::new(".") {
-                cwd.clone()
-            } else {
-                cwd.join(parent)
-            };
-            parent_abs.join(new_path.file_name().unwrap_or(new_path.as_os_str()))
-        };
+        // abs_new was calculated earlier for checksum fallback logic
 
         let new_url = url::Url::from_file_path(&abs_new)
             .map_err(|_| ServerError::Internal(format!("Invalid new path: {}", abs_new.display())))?;
