@@ -447,10 +447,8 @@ impl FileService {
                 None
             };
 
-            self.perform_rename(&old_abs_dir, &new_abs_dir).await?;
-
-            info!("Directory renamed successfully");
-
+            // IMPORTANT: Find affected files BEFORE renaming the directory!
+            // The old directory must still exist on disk for the import resolver to work correctly.
             let mut total_edits_applied = 0;
             let mut total_files_updated = std::collections::HashSet::new();
             let mut all_errors = Vec::new();
@@ -464,9 +462,11 @@ impl FileService {
                 scan_scope
             };
 
+            info!("Finding affected files before directory rename");
+
             // Call update_imports_for_rename ONCE for the entire directory rename
             // This prevents creating duplicate edits for the same affected files
-            match self
+            let edit_plan_result = self
                 .reference_updater
                 .update_references(
                     &old_abs_dir, // Use directory paths instead of individual files
@@ -476,8 +476,18 @@ impl FileService {
                     false,
                     effective_scan_scope,
                 )
-                .await
-            {
+                .await;
+
+            // Now perform the actual directory rename
+            info!(
+                edits_planned = edit_plan_result.as_ref().map(|p| p.edits.len()).unwrap_or(0),
+                "Found affected files, now performing directory rename"
+            );
+            self.perform_rename(&old_abs_dir, &new_abs_dir).await?;
+            info!("Directory renamed successfully");
+
+            // Apply the edit plan to update imports
+            match edit_plan_result {
                 Ok(edit_plan) => match self.apply_edit_plan(&edit_plan).await {
                     Ok(result) => {
                         total_edits_applied += edit_plan.edits.len();
