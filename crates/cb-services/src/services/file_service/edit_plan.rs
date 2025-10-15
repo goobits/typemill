@@ -8,6 +8,9 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tracing::{debug, error, info, warn};
 
+// Import the transformer for delegating text edit application
+use cb_ast::transformer;
+
 /// Result of applying an edit plan
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct EditPlanResult {
@@ -493,8 +496,12 @@ impl FileService {
         Ok(())
     }
 
-    /// Apply text edits to a single file
-    /// Apply edits to file content and return the modified content (synchronous, no I/O)
+    /// Apply text edits to file content and return the modified content (synchronous, no I/O)
+    ///
+    /// Delegates to cb-ast transformer for the actual text manipulation,
+    /// maintaining clean separation of concerns:
+    /// - FileService: Orchestrates filesystem operations
+    /// - Transformer: Single source of truth for text edit logic
     fn apply_edits_to_content(
         &self,
         original_content: &str,
@@ -513,33 +520,72 @@ impl FileService {
             );
         }
 
-        // Sort edits by position (highest line/column first) to avoid offset issues
-        // For multi-line edits, we need to consider end_line to ensure proper ordering
-        let mut sorted_edits = edits.to_vec();
-        sorted_edits.sort_by(|a, b| {
-            // Primary sort: by end_line (descending) - apply edits that end later first
-            let end_line_cmp = b.location.end_line.cmp(&a.location.end_line);
-            if end_line_cmp != std::cmp::Ordering::Equal {
-                return end_line_cmp;
+        // Create an EditPlan for the transformer
+        // Note: source_file is not used by the transformer (it only needs the edits)
+        let temp_plan = EditPlan {
+            source_file: String::new(), // Not used by transformer
+            edits: edits.to_vec(),
+            dependency_updates: Vec::new(), // Not used by transformer
+            validations: Vec::new(),        // Not used by transformer
+            metadata: EditPlanMetadata {
+                intent_name: "apply_edits".to_string(),
+                intent_arguments: serde_json::json!({}),
+                created_at: chrono::Utc::now(),
+                complexity: 0,
+                impact_areas: Vec::new(),
+            },
+        };
+
+        // Delegate to cb-ast transformer - the single source of truth for text edits
+        let transform_result = transformer::apply_edit_plan(original_content, &temp_plan)
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    edits_count = edits.len(),
+                    "Transformer failed to apply edits"
+                );
+                ServerError::Internal(format!("Failed to apply edits: {}", e))
+            })?;
+
+        // Check if any edits were skipped - this indicates an error condition
+        // For atomic operations, we must fail if ANY edit cannot be applied
+        if !transform_result.skipped_edits.is_empty() {
+            error!(
+                skipped_count = transform_result.skipped_edits.len(),
+                applied_count = transform_result.applied_edits.len(),
+                "Failed to apply all edits - some were skipped"
+            );
+
+            // Log details of each skipped edit
+            for skipped in &transform_result.skipped_edits {
+                error!(
+                    reason = %skipped.reason,
+                    edit_description = %skipped.edit.description,
+                    "Skipped edit details"
+                );
             }
 
-            // Secondary sort: by start_line (descending)
-            let start_line_cmp = b.location.start_line.cmp(&a.location.start_line);
-            if start_line_cmp != std::cmp::Ordering::Equal {
-                return start_line_cmp;
-            }
-
-            // Tertiary sort: by start_column (descending)
-            b.location.start_column.cmp(&a.location.start_column)
-        });
-
-        // Apply edits from end to beginning to preserve positions
-        let mut modified_content = original_content.to_string();
-        for edit in sorted_edits.iter() {
-            modified_content = self.apply_single_edit(&modified_content, edit)?;
+            // Return error to trigger rollback for atomic guarantees
+            return Err(ServerError::Internal(format!(
+                "Failed to apply {} of {} edits: {}",
+                transform_result.skipped_edits.len(),
+                transform_result.statistics.total_edits,
+                transform_result.skipped_edits
+                    .iter()
+                    .map(|s| s.reason.as_str())
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            )));
         }
 
-        Ok(modified_content)
+        debug!(
+            applied_count = transform_result.statistics.applied_count,
+            lines_added = transform_result.statistics.lines_added,
+            lines_removed = transform_result.statistics.lines_removed,
+            "Applied all edits successfully via transformer"
+        );
+
+        Ok(transform_result.transformed_source)
     }
 
     /// Legacy wrapper for apply_edits_to_content that reads from file and writes back
@@ -575,172 +621,6 @@ impl FileService {
         })?;
 
         Ok(())
-    }
-
-    /// Apply a single text edit to content
-    ///
-    /// This function correctly handles both single-line and multi-line edits by:
-    /// 1. Preserving all lines before the edit region
-    /// 2. Constructing the edited line(s) correctly
-    /// 3. Preserving all lines after the edit region
-    /// 4. Maintaining original file's trailing newline behavior
-    fn apply_single_edit(&self, content: &str, edit: &TextEdit) -> ServerResult<String> {
-        let original_had_newline = content.ends_with('\n');
-        let lines: Vec<&str> = content.lines().collect();
-
-        debug!(
-            start_line = edit.location.start_line,
-            start_col = edit.location.start_column,
-            end_line = edit.location.end_line,
-            end_col = edit.location.end_column,
-            total_lines = lines.len(),
-            new_text_len = edit.new_text.len(),
-            new_text_has_newlines = edit.new_text.contains('\n'),
-            "Applying single text edit"
-        );
-
-        // Validate edit location
-        if edit.location.start_line as usize >= lines.len() {
-            return Err(ServerError::InvalidRequest(format!(
-                "Edit location line {} is beyond file length {}",
-                edit.location.start_line,
-                lines.len()
-            )));
-        }
-
-        // Special case: Full-file replacement
-        // When an edit replaces the entire file (start=0,0 and end=last_line,last_col),
-        // and new_text contains the complete file content with embedded newlines,
-        // we should use new_text directly instead of trying to splice it line-by-line.
-        if edit.location.start_line == 0
-            && edit.location.start_column == 0
-            && edit.location.end_line as usize == lines.len().saturating_sub(1)
-        {
-            let last_line_len = lines.last().map(|l| l.chars().count()).unwrap_or(0);
-            if edit.location.end_column as usize >= last_line_len {
-                debug!(
-                    original_lines = lines.len(),
-                    new_text_lines = edit.new_text.lines().count(),
-                    "Detected full-file replacement, using new_text directly"
-                );
-
-                let mut final_content = edit.new_text.clone();
-
-                // Preserve original file's trailing newline behavior
-                if original_had_newline && !final_content.ends_with('\n') {
-                    final_content.push('\n');
-                } else if !original_had_newline && final_content.ends_with('\n') {
-                    // Remove trailing newline if original didn't have one
-                    final_content = final_content.trim_end_matches('\n').to_string();
-                }
-
-                debug!(
-                    final_lines = final_content.lines().count(),
-                    has_trailing_newline = final_content.ends_with('\n'),
-                    "Full-file replacement applied successfully"
-                );
-
-                return Ok(final_content);
-            }
-        }
-
-        if edit.location.end_line as usize >= lines.len() {
-            return Err(ServerError::InvalidRequest(format!(
-                "Edit end line {} is beyond file length {}",
-                edit.location.end_line,
-                lines.len()
-            )));
-        }
-
-        let mut result = Vec::new();
-
-        // Step 1: Copy all lines BEFORE the edit region (unchanged)
-        for i in 0..(edit.location.start_line as usize) {
-            result.push(lines[i].to_string());
-        }
-
-        // Step 2: Construct the edited line(s)
-        let start_line_idx = edit.location.start_line as usize;
-        let end_line_idx = edit.location.end_line as usize;
-        let start_line = lines[start_line_idx];
-        let start_line_chars: Vec<char> = start_line.chars().collect();
-        let start_col = edit.location.start_column as usize;
-
-        // Validate start column
-        if start_col > start_line_chars.len() {
-            return Err(ServerError::InvalidRequest(format!(
-                "Edit start column {} is beyond line length {}",
-                start_col,
-                start_line_chars.len()
-            )));
-        }
-
-        if edit.location.start_line == edit.location.end_line {
-            // CASE A: Single-line edit
-            let end_col = edit.location.end_column as usize;
-
-            // Validate end column
-            if end_col > start_line_chars.len() {
-                return Err(ServerError::InvalidRequest(format!(
-                    "Edit end column {} is beyond line length {}",
-                    end_col,
-                    start_line_chars.len()
-                )));
-            }
-
-            // Build: [before edit] + [new text] + [after edit]
-            let mut edited_line = String::new();
-            edited_line.push_str(&start_line_chars[..start_col].iter().collect::<String>());
-            edited_line.push_str(&edit.new_text);
-            if end_col <= start_line_chars.len() {
-                edited_line.push_str(&start_line_chars[end_col..].iter().collect::<String>());
-            }
-            result.push(edited_line);
-        } else {
-            // CASE B: Multi-line edit (spans multiple lines)
-            let end_line = lines[end_line_idx];
-            let end_line_chars: Vec<char> = end_line.chars().collect();
-            let end_col = edit.location.end_column as usize;
-
-            // Validate end column
-            if end_col > end_line_chars.len() {
-                return Err(ServerError::InvalidRequest(format!(
-                    "Edit end column {} is beyond end line length {}",
-                    end_col,
-                    end_line_chars.len()
-                )));
-            }
-
-            // Build: [prefix from start line] + [new text] + [suffix from end line]
-            let mut edited_line = String::new();
-            edited_line.push_str(&start_line_chars[..start_col].iter().collect::<String>());
-            edited_line.push_str(&edit.new_text);
-            if end_col <= end_line_chars.len() {
-                edited_line.push_str(&end_line_chars[end_col..].iter().collect::<String>());
-            }
-            result.push(edited_line);
-        }
-
-        // Step 3: Copy all lines AFTER the edit region (unchanged)
-        for i in (end_line_idx + 1)..lines.len() {
-            result.push(lines[i].to_string());
-        }
-
-        // Step 4: Reconstruct final content with proper newline handling
-        let mut final_content = result.join("\n");
-
-        // Preserve original file's trailing newline behavior
-        if original_had_newline && !final_content.is_empty() && !final_content.ends_with('\n') {
-            final_content.push('\n');
-        }
-
-        debug!(
-            result_lines = result.len(),
-            has_trailing_newline = final_content.ends_with('\n'),
-            "Text edit applied successfully"
-        );
-
-        Ok(final_content)
     }
 
     /// Apply a dependency update (import/export change) to a file
