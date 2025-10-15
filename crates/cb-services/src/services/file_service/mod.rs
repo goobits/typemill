@@ -16,6 +16,7 @@ pub use self::utils::DocumentationUpdateReport;
 
 use crate::services::git_service::GitService;
 use crate::services::lock_manager::LockManager;
+use crate::services::move_service::MoveService;
 use crate::services::operation_queue::OperationQueue;
 use crate::services::reference_updater::ReferenceUpdater;
 use cb_ast::AstCache;
@@ -84,5 +85,16 @@ impl FileService {
             use_git,
             validation_config: config.validation.clone(),
         }
+    }
+
+    /// Create a MoveService for unified move/rename planning
+    ///
+    /// The MoveService provides the single source of truth for all move and rename operations.
+    pub fn move_service(&self) -> MoveService<'_> {
+        MoveService::new(
+            &self.reference_updater,
+            &self.plugin_registry,
+            &self.project_root,
+        )
     }
 }

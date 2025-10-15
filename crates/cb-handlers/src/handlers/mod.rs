@@ -8,7 +8,8 @@ pub mod file_operation_handler;
 pub mod inline_handler;
 pub mod lsp_adapter;
 pub mod macros;
-pub mod move_handler;
+#[path = "move/mod.rs"]
+pub mod r#move;
 pub mod plugin_dispatcher;
 pub mod refactoring_handler;
 pub mod rename_handler;
@@ -28,7 +29,7 @@ pub use extract_handler::ExtractHandler;
 pub use file_operation_handler::FileOperationHandler;
 pub use inline_handler::InlineHandler;
 pub use lsp_adapter::DirectLspAdapter;
-pub use move_handler::MoveHandler;
+pub use r#move::MoveHandler;
 pub use plugin_dispatcher::{create_test_dispatcher, AppState, PluginDispatcher};
 pub use refactoring_handler::RefactoringHandler;
 pub use rename_handler::RenameHandler;

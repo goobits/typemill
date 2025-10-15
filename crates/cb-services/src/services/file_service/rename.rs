@@ -40,52 +40,8 @@ impl FileService {
     ) -> ServerResult<EditPlan> {
         info!(old_path = ?old_path, new_path = ?new_path, "Planning file rename with imports");
 
-        let old_abs = self.to_absolute_path(old_path);
-        let new_abs = self.to_absolute_path(new_path);
-
-        if !old_abs.exists() {
-            return Err(ServerError::NotFound(format!(
-                "Source file does not exist: {:?}",
-                old_abs
-            )));
-        }
-
-        // The `true` flag indicates a dry run.
-        let edit_plan = self
-            .reference_updater
-            .update_references(
-                &old_abs,
-                &new_abs,
-                &self.plugin_registry.all(),
-                None,
-                true,
-                scan_scope,
-            )
-            .await?;
-
-        // DEBUG: Log what update_references returned for same-crate moves
-        info!(
-            edits_count = edit_plan.edits.len(),
-            old_path = %old_abs.display(),
-            new_path = %new_abs.display(),
-            "plan_rename_file_with_imports: update_references returned edit plan"
-        );
-        if !edit_plan.edits.is_empty() {
-            info!(
-                first_edit_file = ?edit_plan.edits.first().and_then(|e| e.file_path.as_ref()),
-                first_edit_type = ?edit_plan.edits.first().map(|e| &e.edit_type),
-                total_edits = edit_plan.edits.len(),
-                "plan_rename_file_with_imports: First edit in plan"
-            );
-        } else {
-            warn!(
-                old_path = %old_abs.display(),
-                new_path = %new_abs.display(),
-                "plan_rename_file_with_imports: No edits returned from update_references!"
-            );
-        }
-
-        Ok(edit_plan)
+        // Delegate to MoveService which contains all the planning logic
+        self.move_service().plan_file_move(old_path, new_path, scan_scope).await
     }
 
     /// Generates an EditPlan for a directory rename operation, including import updates.
@@ -98,174 +54,8 @@ impl FileService {
     ) -> ServerResult<EditPlan> {
         info!(old_dir_path = ?old_dir_path, new_dir_path = ?new_dir_path, "Planning directory rename with imports");
 
-        let old_abs = self.to_absolute_path(old_dir_path);
-        let new_abs = self.to_absolute_path(new_dir_path);
-
-        if !old_abs.exists() {
-            return Err(ServerError::NotFound(format!(
-                "Source directory does not exist: {:?}",
-                old_abs
-            )));
-        }
-
-        // Extract rename_info if this is a Cargo package (needed for Rust use statement updates)
-        let is_cargo_pkg = self.is_cargo_package(&old_abs).await?;
-        let rename_info = if is_cargo_pkg {
-            self.extract_cargo_rename_info(&old_abs, &new_abs)
-                .await
-                .ok()
-        } else {
-            None
-        };
-
-        // If this is a cargo package, force workspace-wide import scan
-        let effective_scan_scope = if is_cargo_pkg {
-            info!("Cargo package rename detected in planning phase, forcing workspace-wide import scan");
-            Some(cb_plugin_api::ScanScope::AllUseStatements)
-        } else {
-            scan_scope
-        };
-
-        // For directory renames, we need to update imports that reference files inside the directory
-        // The `true` flag indicates a dry run.
-        let mut edit_plan = self.reference_updater
-            .update_references(
-                &old_abs,
-                &new_abs,
-                &self.plugin_registry.all(),
-                rename_info.as_ref(),
-                true,
-                effective_scan_scope,
-            )
-            .await?;
-
-        // If this is a Cargo package, also add Cargo.toml manifest edits to the plan
-        if is_cargo_pkg {
-            info!("Adding Cargo.toml manifest edits to the plan");
-
-            // Plan workspace manifest updates (workspace members + package name)
-            match self.plan_workspace_manifest_updates(&old_abs, &new_abs).await {
-                Ok(manifest_updates) => {
-                    info!(updates_count = manifest_updates.len(), "Got manifest updates from planning");
-                    for (i, (path, _, _)) in manifest_updates.iter().enumerate() {
-                        info!(index = i, path = %path.display(), "Manifest update path");
-                    }
-                    let manifest_edits = Self::convert_manifest_updates_to_edits(manifest_updates, &old_abs, &new_abs);
-                    let edits_count = manifest_edits.len();
-                    for (i, edit) in manifest_edits.iter().enumerate() {
-                        info!(
-                            index = i,
-                            file_path = ?edit.file_path,
-                            edit_type = ?edit.edit_type,
-                            "Manifest edit"
-                        );
-                    }
-                    edit_plan.edits.extend(manifest_edits);
-                    info!(
-                        edits_added = edits_count,
-                        "Added workspace manifest edits to plan"
-                    );
-                }
-                Err(e) => {
-                    warn!(error = %e, "Failed to plan workspace manifest updates");
-                }
-            }
-
-            // Plan dependent crate path updates
-            if let Some(ref info) = rename_info {
-                if let (Some(old_package_name), Some(new_package_name)) = (
-                    info.get("old_package_name").and_then(|v| v.as_str()),
-                    info.get("new_package_name").and_then(|v| v.as_str()),
-                ) {
-                    match self.plan_dependent_crate_path_updates(
-                        old_package_name,
-                        new_package_name,
-                        &new_abs,
-                    ).await {
-                        Ok(dependency_updates) => {
-                            let dependency_edits = Self::convert_manifest_updates_to_edits(dependency_updates, &old_abs, &new_abs);
-                            let edits_count = dependency_edits.len();
-                            edit_plan.edits.extend(dependency_edits);
-                            info!(
-                                edits_added = edits_count,
-                                "Added dependent crate path edits to plan"
-                            );
-                        }
-                        Err(e) => {
-                            warn!(error = %e, "Failed to plan dependent crate path updates");
-                        }
-                    }
-                }
-            }
-        }
-
-        Ok(edit_plan)
-    }
-
-    /// Convert manifest update tuples into TextEdit entries
-    ///
-    /// Adjusts file paths for files that will be moved by the directory rename:
-    /// - Files inside old_dir_path are adjusted to point to new_dir_path
-    /// - Files outside old_dir_path remain unchanged
-    fn convert_manifest_updates_to_edits(
-        updates: Vec<(PathBuf, String, String)>,
-        old_dir_path: &Path,
-        new_dir_path: &Path,
-    ) -> Vec<cb_protocol::TextEdit> {
-        use cb_protocol::{EditLocation, EditType, TextEdit};
-
-        updates
-            .into_iter()
-            .map(|(file_path, old_content, new_content)| {
-                // Adjust file path if it's inside the directory being renamed
-                let adjusted_path = if file_path.starts_with(old_dir_path) {
-                    // File is inside renamed directory, adjust path to new location
-                    if let Ok(rel_path) = file_path.strip_prefix(old_dir_path) {
-                        new_dir_path.join(rel_path)
-                    } else {
-                        file_path.clone()
-                    }
-                } else {
-                    // File is outside renamed directory, path unchanged
-                    file_path.clone()
-                };
-
-                // Calculate LSP range covering the entire file.
-                // LSP positions are UTF-16 based, but our edits operate on UTF-8 byte indices.
-                // We approximate using character counts, which is sufficient for ASCII manifests.
-                let total_lines = old_content.lines().count() as u32;
-                let (end_line, end_column) = if old_content.ends_with('\n') {
-                    // File ends with a newline; full replacement ends at the beginning of the line after the last content.
-                    (total_lines, 0)
-                } else {
-                    // No trailing newline; end at the last line/column.
-                    let last_line_len = old_content
-                        .lines()
-                        .last()
-                        .map(|l| l.chars().count() as u32)
-                        .unwrap_or(0);
-                    (total_lines.saturating_sub(1), last_line_len)
-                };
-
-                TextEdit {
-                    file_path: Some(adjusted_path.to_string_lossy().to_string()),
-                    edit_type: EditType::Replace,
-                    location: EditLocation {
-                        start_line: 0,
-                        start_column: 0,
-                        end_line,
-                        end_column,
-                    },
-                    original_text: old_content,
-                    new_text: new_content,
-                    priority: 10, // Give manifest updates high priority
-                    description: format!(
-                        "Update Cargo.toml manifest: {}",
-                        adjusted_path.to_string_lossy()
-                    ),
-                }
-            })
-            .collect()
+        // Delegate to MoveService which contains all the Cargo package handling logic
+        self.move_service().plan_directory_move(old_dir_path, new_dir_path, scan_scope).await
     }
 
     /// Perform a git-aware file rename
@@ -343,16 +133,9 @@ impl FileService {
                 )));
             }
 
-            let edit_plan = self
-                .reference_updater
-                .update_references(
-                    &old_abs,
-                    &new_abs,
-                    &self.plugin_registry.all(),
-                    None,
-                    true,
-                    scan_scope.clone(),
-                )
+            // Use MoveService for planning (includes all import update logic)
+            let edit_plan = self.move_service()
+                .plan_file_move(&old_abs, &new_abs, scan_scope.clone())
                 .await?;
 
             Ok(DryRunnable::new(
@@ -391,16 +174,8 @@ impl FileService {
             // IMPORTANT: Find affected files BEFORE renaming!
             // The old file must still exist on disk for the import resolver to work correctly.
             info!("Finding affected files before rename");
-            let mut edit_plan = self
-                .reference_updater
-                .update_references(
-                    &old_abs,
-                    &new_abs,
-                    &self.plugin_registry.all(),
-                    None,
-                    false,
-                    scan_scope,
-                )
+            let mut edit_plan = self.move_service()
+                .plan_file_move(&old_abs, &new_abs, scan_scope)
                 .await
                 .map_err(|e| {
                     warn!(error = %e, "Failed to find affected files");
@@ -566,44 +341,17 @@ impl FileService {
 
             let is_cargo_pkg = self.is_cargo_package(&old_abs_dir).await?;
 
-            // Build rename_info for Cargo packages
-            let rename_info = if is_cargo_pkg {
-                self.extract_cargo_rename_info(&old_abs_dir, &new_abs_dir)
-                    .await
-                    .ok()
-            } else {
-                None
-            };
-
             // IMPORTANT: Find affected files BEFORE renaming the directory!
             // The old directory must still exist on disk for the import resolver to work correctly.
             let mut total_edits_applied = 0;
             let mut total_files_updated = std::collections::HashSet::new();
             let mut all_errors = Vec::new();
 
-            // If this is a cargo package, we need to scan the entire workspace for
-            // `use` statements and fully-qualified paths. Otherwise, respect the provided scope.
-            let effective_scan_scope = if is_cargo_pkg {
-                info!("Cargo package rename detected, forcing workspace-wide import scan.");
-                Some(cb_plugin_api::ScanScope::AllUseStatements)
-            } else {
-                scan_scope
-            };
-
             info!("Finding affected files before directory rename");
 
-            // Call update_imports_for_rename ONCE for the entire directory rename
-            // This prevents creating duplicate edits for the same affected files
-            let edit_plan_result = self
-                .reference_updater
-                .update_references(
-                    &old_abs_dir, // Use directory paths instead of individual files
-                    &new_abs_dir,
-                    &self.plugin_registry.all(),
-                    rename_info.as_ref(),
-                    false,
-                    effective_scan_scope,
-                )
+            // Use MoveService for planning - it handles all Cargo package logic internally
+            let edit_plan_result = self.move_service()
+                .plan_directory_move(&old_abs_dir, &new_abs_dir, scan_scope)
                 .await;
 
             // Now perform the actual directory rename
@@ -645,62 +393,9 @@ impl FileService {
                 }
             }
 
-            // Track manifest updates (Cargo.toml files)
-            let mut manifest_updated_files: Vec<PathBuf> = Vec::new();
-            let mut manifest_errors: Vec<String> = Vec::new();
-
-            if is_cargo_pkg {
-                // Update workspace members array
-                match self
-                    .update_workspace_manifests(&old_abs_dir, &new_abs_dir)
-                    .await
-                {
-                    Ok(updated_files) => {
-                        manifest_updated_files.extend(updated_files);
-                    }
-                    Err(e) => {
-                        warn!(error = %e, "Failed to update workspace manifest");
-                        let error_msg = format!("Failed to update workspace manifest: {}", e);
-                        all_errors.push(error_msg.clone());
-                        manifest_errors.push(error_msg);
-                    }
-                }
-
-                // Update path dependencies in other crates that depend on this one
-                if let Some(ref info) = rename_info {
-                    // Use old_package_name (with hyphens) for Cargo.toml dependency lookups
-                    if let (Some(old_package_name), Some(new_package_name)) = (
-                        info.get("old_package_name").and_then(|v| v.as_str()),
-                        info.get("new_package_name").and_then(|v| v.as_str()),
-                    ) {
-                        match self
-                            .update_dependent_crate_paths(
-                                old_package_name,
-                                new_package_name,
-                                &new_abs_dir,
-                            )
-                            .await
-                        {
-                            Ok(updated_files) => {
-                                if !updated_files.is_empty() {
-                                    info!(
-                                        files_updated = updated_files.len(),
-                                        "Updated Cargo.toml path dependencies in dependent crates"
-                                    );
-                                    manifest_updated_files.extend(updated_files);
-                                }
-                            }
-                            Err(e) => {
-                                warn!(error = %e, "Failed to update dependent crate paths");
-                                let error_msg =
-                                    format!("Failed to update dependent crate paths: {}", e);
-                                all_errors.push(error_msg.clone());
-                                manifest_errors.push(error_msg);
-                            }
-                        }
-                    }
-                }
-            }
+            // NOTE: Cargo manifest updates (workspace members, package name, dependent crates)
+            // are now handled automatically by MoveService within the EditPlan.
+            // The edits are included in edit_plan.edits and have already been applied above.
 
             let doc_updates = self
                 .update_documentation_references(&old_abs_dir, &new_abs_dir, false)
@@ -717,21 +412,30 @@ impl FileService {
             // Run post-operation validation if configured
             let validation_result = self.run_validation().await;
 
-            // Build manifest updates report (consistent format with other reports)
-            // Deduplicate manifest files (same manifest can be touched in multiple phases)
-            // Sort for deterministic output (important for snapshot testing and stable API)
+            // Extract manifest file updates from the edit plan
+            // (MoveService includes Cargo.toml edits in the EditPlan for Cargo packages)
             let manifest_updates = if is_cargo_pkg {
-                let unique_manifests: std::collections::HashSet<_> =
-                    manifest_updated_files.into_iter().collect();
-                let mut sorted_manifests: Vec<_> = unique_manifests.into_iter().collect();
-                sorted_manifests.sort();
-                Some(json!({
-                    "files_updated": sorted_manifests.len(),
-                    "updated_files": sorted_manifests.iter()
-                        .map(|p| p.to_string_lossy().to_string())
-                        .collect::<Vec<_>>(),
-                    "errors": manifest_errors,
-                }))
+                // Count Cargo.toml files that were updated (from the applied edits)
+                let manifest_files: std::collections::HashSet<_> = total_files_updated
+                    .iter()
+                    .filter(|f| f.ends_with("Cargo.toml"))
+                    .cloned()
+                    .collect();
+
+                if !manifest_files.is_empty() {
+                    let mut sorted_manifests: Vec<_> = manifest_files.into_iter().collect();
+                    sorted_manifests.sort();
+                    Some(json!({
+                        "files_updated": sorted_manifests.len(),
+                        "updated_files": sorted_manifests,
+                        "note": "Manifest updates handled by MoveService"
+                    }))
+                } else {
+                    Some(json!({
+                        "files_updated": 0,
+                        "note": "No manifest updates required"
+                    }))
+                }
             } else {
                 None
             };
