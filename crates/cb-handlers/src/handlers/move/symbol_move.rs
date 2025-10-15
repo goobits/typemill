@@ -81,7 +81,7 @@ pub async fn plan_symbol_move(
 /// Try to move symbol using LSP
 async fn try_lsp_symbol_move(
     target_path: &str,
-    _destination: &str,
+    destination: &str,
     extension: &str,
     position: Position,
     context: &ToolHandlerContext,
@@ -126,7 +126,7 @@ async fn try_lsp_symbol_move(
         ))
     })?;
 
-    // Convert path to absolute and create file URI
+    // Convert source path to absolute and create file URI
     let path = Path::new(target_path);
     let abs_path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
     let file_uri = url::Url::from_file_path(&abs_path)
@@ -144,10 +144,32 @@ async fn try_lsp_symbol_move(
     debug!(
         operation_id = %operation_id,
         file_uri = %file_uri,
-        "Converted path to URI for LSP request"
+        "Converted source path to URI for LSP request"
+    );
+
+    // Convert destination path to absolute and create destination URI
+    let dest_path = Path::new(destination);
+    let abs_dest_path = std::fs::canonicalize(dest_path).unwrap_or_else(|_| dest_path.to_path_buf());
+    let destination_uri = url::Url::from_file_path(&abs_dest_path)
+        .map_err(|_| {
+            error!(
+                operation_id = %operation_id,
+                destination = %abs_dest_path.display(),
+                function = "try_lsp_symbol_move",
+                "Invalid destination path for URI conversion"
+            );
+            ServerError::Internal(format!("Invalid destination path: {}", abs_dest_path.display()))
+        })?
+        .to_string();
+
+    debug!(
+        operation_id = %operation_id,
+        destination_uri = %destination_uri,
+        "Converted destination path to URI for LSP request"
     );
 
     // Build LSP code action request for move refactoring
+    // Include destination URI in context.data to inform the LSP where to move the symbol
     let lsp_params = json!({
         "textDocument": {
             "uri": file_uri
@@ -158,7 +180,10 @@ async fn try_lsp_symbol_move(
         },
         "context": {
             "diagnostics": [],
-            "only": ["refactor.move"]
+            "only": ["refactor.move"],
+            "data": {
+                "destinationUri": destination_uri
+            }
         }
     });
 
@@ -233,28 +258,105 @@ async fn try_lsp_symbol_move(
     );
 
     // Extract WorkspaceEdit from code action
-    let workspace_edit: WorkspaceEdit = serde_json::from_value(
-        move_action
-            .get("edit")
-            .cloned()
-            .ok_or_else(|| {
+    // Handle two cases: direct edit or command execution
+    let workspace_edit = if move_action.get("edit").is_some() && !move_action["edit"].is_null() {
+        // Case A: Edit is directly available
+        info!(
+            operation_id = %operation_id,
+            "Found direct WorkspaceEdit in CodeAction"
+        );
+        serde_json::from_value(move_action["edit"].clone()).map_err(|e| {
+            error!(
+                operation_id = %operation_id,
+                error = %e,
+                function = "try_lsp_symbol_move",
+                "Failed to parse WorkspaceEdit from code action"
+            );
+            ServerError::Internal(format!("Failed to parse WorkspaceEdit: {}", e))
+        })?
+    } else if move_action.get("command").is_some() && !move_action["command"].is_null() {
+        // Case B: A command needs to be executed
+        info!(
+            operation_id = %operation_id,
+            "Found Command in CodeAction, sending workspace/executeCommand"
+        );
+
+        let command: lsp_types::Command = serde_json::from_value(move_action["command"].clone())
+            .map_err(|e| {
                 error!(
                     operation_id = %operation_id,
+                    error = %e,
                     function = "try_lsp_symbol_move",
-                    "Code action missing edit field"
+                    "Failed to parse Command from code action"
                 );
-                ServerError::Internal("Code action missing edit field".into())
-            })?,
-    )
-    .map_err(|e| {
+                ServerError::Internal(format!("Failed to parse Command: {}", e))
+            })?;
+
+        debug!(
+            operation_id = %operation_id,
+            command = %command.command,
+            arguments_count = command.arguments.as_ref().map(|a| a.len()).unwrap_or(0),
+            "Parsed Command, preparing workspace/executeCommand request"
+        );
+
+        let params = lsp_types::ExecuteCommandParams {
+            command: command.command,
+            arguments: command.arguments.unwrap_or_default(),
+            work_done_progress_params: Default::default(),
+        };
+
+        // Serialize params to JSON Value for send_request
+        let params_value = serde_json::to_value(&params).map_err(|e| {
+            error!(
+                operation_id = %operation_id,
+                error = %e,
+                function = "try_lsp_symbol_move",
+                "Failed to serialize ExecuteCommandParams"
+            );
+            ServerError::Internal(format!("Failed to serialize ExecuteCommandParams: {}", e))
+        })?;
+
+        // Send the command and try to interpret the result as a WorkspaceEdit
+        let result_value = client
+            .send_request("workspace/executeCommand", params_value)
+            .await
+            .map_err(|e| {
+                error!(
+                    operation_id = %operation_id,
+                    error = %e,
+                    method = "workspace/executeCommand",
+                    function = "try_lsp_symbol_move",
+                    "LSP workspace/executeCommand request failed"
+                );
+                ServerError::Internal(format!("executeCommand failed: {}", e))
+            })?;
+
+        debug!(
+            operation_id = %operation_id,
+            response = ?result_value,
+            "Received response from workspace/executeCommand"
+        );
+
+        serde_json::from_value(result_value).map_err(|e| {
+            error!(
+                operation_id = %operation_id,
+                error = %e,
+                function = "try_lsp_symbol_move",
+                "Failed to parse WorkspaceEdit from executeCommand result"
+            );
+            ServerError::Internal(format!("Failed to parse WorkspaceEdit: {}", e))
+        })?
+    } else {
+        // No actionable information found
         error!(
             operation_id = %operation_id,
-            error = %e,
             function = "try_lsp_symbol_move",
-            "Failed to parse WorkspaceEdit from code action"
+            "CodeAction contained neither an edit nor a command"
         );
-        ServerError::Internal(format!("Failed to parse WorkspaceEdit: {}", e))
-    })?;
+        return Err(ServerError::Unsupported(
+            "CodeAction contained neither an edit nor a command.".into()
+        ));
+    };
 
     // Calculate file checksums and summary
     debug!(
