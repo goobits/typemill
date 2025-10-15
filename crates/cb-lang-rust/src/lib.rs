@@ -551,9 +551,23 @@ impl RustPlugin {
         let mut updated_content = content.to_string();
         let mut total_changes = 0;
 
-        // Step 1: Check if this is a parent file that might contain mod declarations
-        // Parent files are lib.rs or mod.rs in the same directory as the renamed file
-        let is_parent_file = {
+        // Step 1: Detect if this is a directory rename or file rename
+        // For directory renames, we need to use the directory name as the module name
+        let is_directory_rename = _old_path.is_dir() && _new_path.parent().is_some();
+
+        // Step 2: Check if this is a parent file that might contain mod declarations
+        // For file renames: Parent files are lib.rs or mod.rs in the same directory
+        // For directory renames: Parent files are lib.rs, mod.rs, or main.rs in the parent directory
+        let is_parent_file = if is_directory_rename {
+            let old_parent = _old_path.parent();
+            let importing_filename = _importing_file.file_name().and_then(|n| n.to_str());
+
+            old_parent.is_some()
+                && _importing_file.parent() == old_parent
+                && (importing_filename == Some("lib.rs")
+                    || importing_filename == Some("mod.rs")
+                    || importing_filename == Some("main.rs"))
+        } else {
             let old_parent = _old_path.parent();
             let importing_filename = _importing_file.file_name().and_then(|n| n.to_str());
 
@@ -562,9 +576,18 @@ impl RustPlugin {
                 && (importing_filename == Some("lib.rs") || importing_filename == Some("mod.rs"))
         };
 
-        // Extract module names for simple file renames
-        let old_module_name = _old_path.file_stem().and_then(|s| s.to_str()).map(String::from);
-        let new_module_name = _new_path.file_stem().and_then(|s| s.to_str()).map(String::from);
+        // Extract module names
+        // For directory renames: use directory name (e.g., "src/utils" -> "utils")
+        // For file renames: use file stem (e.g., "src/utils.rs" -> "utils")
+        let (old_module_name, new_module_name) = if is_directory_rename {
+            let old_mod = _old_path.file_name().and_then(|s| s.to_str()).map(String::from);
+            let new_mod = _new_path.file_name().and_then(|s| s.to_str()).map(String::from);
+            (old_mod, new_mod)
+        } else {
+            let old_mod = _old_path.file_stem().and_then(|s| s.to_str()).map(String::from);
+            let new_mod = _new_path.file_stem().and_then(|s| s.to_str()).map(String::from);
+            (old_mod, new_mod)
+        };
 
         if is_parent_file {
             if let (Some(ref old_mod), Some(ref new_mod)) = (&old_module_name, &new_module_name) {

@@ -131,13 +131,38 @@ impl ToolHandler for WorkspaceApplyHandler {
         context: &ToolHandlerContext,
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
+        // Write debug info to file - ENTRY POINT
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/directory_rename_debug.log")
+        {
+            use std::io::Write;
+            let _ = writeln!(file, "\n=== WORKSPACE APPLY HANDLER: ENTRY POINT ===");
+            let _ = writeln!(file, "Tool: {}", tool_call.name);
+            let _ = writeln!(file, "=============================================\n");
+            let _ = file.flush(); // Ensure data is written to disk
+        }
+
         let args = tool_call
             .arguments
             .as_ref()
             .ok_or_else(|| ApiError::InvalidRequest("Missing arguments".to_string()))?;
 
+        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
+            use std::io::Write;
+            let _ = writeln!(file, "After parsing args");
+            let _ = file.flush();
+        }
+
         let params: ApplyEditParams = serde_json::from_value(args.clone())
             .map_err(|e| ApiError::InvalidRequest(format!("Invalid parameters: {}", e)))?;
+
+        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
+            use std::io::Write;
+            let _ = writeln!(file, "After parsing params");
+            let _ = file.flush();
+        }
 
         info!(
             plan_type = ?params.plan,
@@ -146,17 +171,65 @@ impl ToolHandler for WorkspaceApplyHandler {
             "Applying refactoring plan"
         );
 
+        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
+            use std::io::Write;
+            let _ = writeln!(file, "After info log, validate_checksums={}", params.options.validate_checksums);
+            let _ = file.flush();
+        }
+
         // Step 1: Validate checksums if enabled
         if params.options.validate_checksums {
             debug!("Validating file checksums");
+
+            if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
+                use std::io::Write;
+                let _ = writeln!(file, "Before validate_checksums");
+                let _ = file.flush();
+            }
+
             validate_checksums(&params.plan, &context.app_state.file_service).await?;
+
+            if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
+                use std::io::Write;
+                let _ = writeln!(file, "After validate_checksums");
+                let _ = file.flush();
+            }
         }
 
         // Step 2: Extract WorkspaceEdit from the discriminated union
+        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
+            use std::io::Write;
+            let _ = writeln!(file, "Before extract_workspace_edit");
+            let _ = file.flush();
+        }
+
         let workspace_edit = extract_workspace_edit(&params.plan);
+
+        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
+            use std::io::Write;
+            let _ = writeln!(file, "After extract_workspace_edit");
+            let _ = file.flush();
+        }
 
         // Step 3: Convert LSP WorkspaceEdit to internal EditPlan format
         let mut edit_plan = convert_to_edit_plan(workspace_edit, &params.plan)?;
+
+        // Write debug info to file - AFTER CONVERSION
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/directory_rename_debug.log")
+        {
+            use std::io::Write;
+            let _ = writeln!(file, "\n=== WORKSPACE APPLY: AFTER CONVERSION ===");
+            let _ = writeln!(file, "Total edits in converted EditPlan: {}", edit_plan.edits.len());
+            for (i, edit) in edit_plan.edits.iter().enumerate() {
+                let _ = writeln!(file, "  [{}] edit_type={:?}, file_path={:?}",
+                    i, edit.edit_type, edit.file_path);
+            }
+            let _ = writeln!(file, "==========================================\n");
+            let _ = file.flush(); // Ensure data is written to disk
+        }
 
         // Handle DeletePlan explicitly by reading from the deletions field
         if let RefactorPlan::DeletePlan(delete_plan) = &params.plan {
@@ -320,16 +393,43 @@ async fn validate_checksums(
 
     debug!(checksum_count = checksums.len(), "Validating checksums");
 
+    // Write debug info
+    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
+        use std::io::Write;
+        let _ = writeln!(file, "validate_checksums: {} files to validate", checksums.len());
+        for (path, _) in &checksums {
+            let _ = writeln!(file, "  - {}", path);
+        }
+        let _ = file.flush();
+    }
+
     for (file_path, expected_checksum) in &checksums {
+        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
+            use std::io::Write;
+            let _ = writeln!(file, "Validating: {}", file_path);
+            let _ = file.flush();
+        }
+
         let content = file_service
             .read_file(Path::new(&file_path))
             .await
             .map_err(|e| {
+                if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
+                    use std::io::Write;
+                    let _ = writeln!(file, "ERROR reading {}: {}", file_path, e);
+                    let _ = file.flush();
+                }
                 ApiError::InvalidRequest(format!(
                     "Cannot validate checksum for {}: {}",
                     file_path, e
                 ))
             })?;
+
+        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
+            use std::io::Write;
+            let _ = writeln!(file, "Successfully read: {}", file_path);
+            let _ = file.flush();
+        }
 
         let actual_checksum = calculate_checksum(&content);
 
@@ -529,14 +629,34 @@ fn convert_to_edit_plan(
                                     });
                                 }
                                 lsp_types::ResourceOp::Rename(rename_file) => {
+                                    let old_path = rename_file.old_uri.path().to_string();
+                                    let new_path = rename_file.new_uri.path().to_string();
+
                                     debug!(
                                         old_uri = ?rename_file.old_uri,
                                         new_uri = ?rename_file.new_uri,
-                                        "File rename operation detected"
+                                        old_path = %old_path,
+                                        new_path = %new_path,
+                                        "File rename operation detected - converting to EditType::Move"
                                     );
+
+                                    // Write debug info to file
+                                    if let Ok(mut file) = std::fs::OpenOptions::new()
+                                        .create(true)
+                                        .append(true)
+                                        .open("/tmp/directory_rename_debug.log")
+                                    {
+                                        use std::io::Write;
+                                        let _ = writeln!(file, "\n=== WORKSPACE APPLY: RENAME OPERATION ===");
+                                        let _ = writeln!(file, "Converting RenameFile to EditType::Move:");
+                                        let _ = writeln!(file, "  old_path: {}", old_path);
+                                        let _ = writeln!(file, "  new_path: {}", new_path);
+                                        let _ = writeln!(file, "=========================================\n");
+                                    }
+
                                     // Rename operation - add to metadata for tracking
                                     edits.push(TextEdit {
-                                        file_path: Some(rename_file.old_uri.path().to_string()),
+                                        file_path: Some(old_path.clone()),
                                         edit_type: cb_protocol::EditType::Move,
                                         location: cb_protocol::EditLocation {
                                             start_line: 0,
@@ -545,12 +665,12 @@ fn convert_to_edit_plan(
                                             end_column: 0,
                                         },
                                         original_text: String::new(),
-                                        new_text: rename_file.new_uri.path().to_string(),
+                                        new_text: new_path.clone(),
                                         priority: 0,
                                         description: format!(
                                             "Rename {} to {}",
-                                            rename_file.old_uri.path(),
-                                            rename_file.new_uri.path()
+                                            old_path,
+                                            new_path
                                         ),
                                     });
                                 }

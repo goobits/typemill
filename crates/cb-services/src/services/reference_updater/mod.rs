@@ -177,60 +177,47 @@ impl ReferenceUpdater {
                     }
                 }
             } else if is_directory_rename {
-                // Directory rename logic (for non-Rust directories)
-                let files_in_directory: Vec<PathBuf> = project_files
-                    .iter()
-                    .filter(|f| f.starts_with(old_path) && f.is_file())
-                    .cloned()
-                    .collect();
+                // Directory rename logic (for non-Rust crate directories)
+                // Pass directory paths to allow language plugins to detect mod declarations
+                tracing::debug!(
+                    file_path = %file_path.display(),
+                    old_path = %old_path.display(),
+                    new_path = %new_path.display(),
+                    "Rewriting references for directory rename"
+                );
 
-                let mut current_content = content.clone();
-                let mut total_changes = 0;
+                let rewrite_result = plugin.rewrite_file_references(
+                    &content,
+                    old_path,  // Pass the directory path
+                    new_path,  // Pass the new directory path
+                    &file_path,
+                    &self.project_root,
+                    rename_info,
+                );
 
-                for old_file_in_dir in &files_in_directory {
-                    let relative_path = old_file_in_dir
-                        .strip_prefix(old_path)
-                        .unwrap_or(old_file_in_dir);
-                    let new_file_path = new_path.join(relative_path);
+                if let Some((updated_content, count)) = rewrite_result {
+                    if count > 0 && updated_content != content {
+                        let line_count = content.lines().count();
+                        let last_line_len = content.lines().last().map(|l| l.len()).unwrap_or(0);
 
-                    let rewrite_result = plugin.rewrite_file_references(
-                        &current_content,
-                        old_file_in_dir,
-                        &new_file_path,
-                        &file_path,
-                        &self.project_root,
-                        rename_info,
-                    );
-                    if let Some((updated_content, count)) = rewrite_result {
-                        if count > 0 && updated_content != current_content {
-                            total_changes += count;
-                            current_content = updated_content;
-                        }
+                        all_edits.push(TextEdit {
+                            file_path: Some(file_path.to_string_lossy().to_string()),
+                            edit_type: EditType::UpdateImport,
+                            location: EditLocation {
+                                start_line: 0,
+                                start_column: 0,
+                                end_line: line_count.saturating_sub(1) as u32,
+                                end_column: last_line_len as u32,
+                            },
+                            original_text: content.clone(),
+                            new_text: updated_content,
+                            priority: 1,
+                            description: format!(
+                                "Update imports in {} for directory rename",
+                                file_path.display()
+                            ),
+                        });
                     }
-                }
-                if total_changes > 0 && current_content != content {
-                    let line_count = current_content.lines().count();
-                    let last_line_len =
-                        current_content.lines().last().map(|l| l.len()).unwrap_or(0);
-
-                    all_edits.push(TextEdit {
-                        file_path: Some(file_path.to_string_lossy().to_string()),
-                        edit_type: EditType::UpdateImport,
-                        location: EditLocation {
-                            start_line: 0,
-                            start_column: 0,
-                            end_line: line_count.saturating_sub(1) as u32,
-                            end_column: last_line_len as u32,
-                        },
-                        original_text: content,
-                        new_text: current_content,
-                        priority: 1,
-                        description: format!(
-                            "Update imports in {} for directory rename ({} files)",
-                            file_path.display(),
-                            files_in_directory.len()
-                        ),
-                    });
                 }
             } else {
                 // File rename logic

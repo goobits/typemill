@@ -100,19 +100,15 @@ pub fn convert_manifest_updates_to_edits(
             };
 
             // Calculate range covering the entire file
+            // Always use the end of the last line of content, regardless of trailing newline
             let total_lines = old_content.lines().count() as u32;
-            let (end_line, end_column) = if old_content.ends_with('\n') {
-                // File ends with a newline
-                (total_lines, 0)
-            } else {
-                // No trailing newline
-                let last_line_len = old_content
-                    .lines()
-                    .last()
-                    .map(|l| l.chars().count() as u32)
-                    .unwrap_or(0);
-                (total_lines.saturating_sub(1), last_line_len)
-            };
+            let last_line_len = old_content
+                .lines()
+                .last()
+                .map(|l| l.chars().count() as u32)
+                .unwrap_or(0);
+            let end_line = total_lines.saturating_sub(1);
+            let end_column = last_line_len;
 
             TextEdit {
                 file_path: Some(adjusted_path.to_string_lossy().to_string()),

@@ -34,6 +34,22 @@ impl FileService {
             "Edit plan contents"
         );
 
+        // Write debug info to file
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/directory_rename_debug.log")
+        {
+            use std::io::Write;
+            let _ = writeln!(file, "\n=== FILE SERVICE: APPLY EDIT PLAN ===");
+            let _ = writeln!(file, "Total edits in plan: {}", plan.edits.len());
+            for (i, edit) in plan.edits.iter().enumerate() {
+                let _ = writeln!(file, "  [{}] edit_type={:?}, file_path={:?}, description={}",
+                    i, edit.edit_type, edit.file_path, edit.description);
+            }
+            let _ = writeln!(file, "======================================\n");
+        }
+
         // For simplicity, we'll apply edits sequentially with individual locks
         // In a production system, you might want more sophisticated coordination
         self.apply_edits_with_coordination(plan).await
@@ -46,6 +62,60 @@ impl FileService {
         self.operation_queue.wait_until_idle().await;
         debug!("Operation queue idle before creating snapshots");
 
+        // Step 0: Track all Move operations to handle renamed files correctly
+        // When a directory is renamed, snapshots must be created at OLD paths, but text edits
+        // reference NEW paths. We need:
+        // 1. A map of new_path -> old_path for snapshot lookup during Step 4
+        // 2. A map of old_dir -> new_dir to translate NEW file paths to OLD for snapshot creation
+        let mut path_renames: HashMap<PathBuf, PathBuf> = HashMap::new();
+        let mut directory_renames: Vec<(PathBuf, PathBuf)> = Vec::new();
+
+        for edit in &plan.edits {
+            if edit.edit_type == EditType::Move {
+                if let Some(old_path_str) = &edit.file_path {
+                    let old_path = self.to_absolute_path(Path::new(old_path_str));
+                    let new_path = self.to_absolute_path(Path::new(&edit.new_text));
+
+                    debug!(
+                        old_path = %old_path.display(),
+                        new_path = %new_path.display(),
+                        is_directory = old_path.is_dir(),
+                        "Tracked rename for snapshot lookup"
+                    );
+
+                    // Track both single file renames and directory renames
+                    path_renames.insert(new_path.clone(), old_path.clone());
+
+                    // If it's a directory, we need to be able to map paths INSIDE it
+                    // Directory rename before execution, so check at OLD path
+                    if old_path.is_dir() {
+                        directory_renames.push((old_path, new_path));
+                    }
+                }
+            }
+        }
+
+        // Helper closure to map NEW paths (inside renamed directories) back to OLD paths
+        // This is needed because text edits reference NEW paths, but files exist at OLD paths
+        let map_new_to_old = |new_path: &PathBuf| -> PathBuf {
+            // Check if this NEW path is inside any renamed directory
+            for (old_dir, new_dir) in &directory_renames {
+                if new_path.starts_with(new_dir) {
+                    // File is inside renamed directory - map it back to OLD path
+                    let relative = new_path.strip_prefix(new_dir).unwrap();
+                    let old_path = old_dir.join(relative);
+                    debug!(
+                        new_path = %new_path.display(),
+                        old_path = %old_path.display(),
+                        "Mapped NEW path to OLD path for snapshot creation"
+                    );
+                    return old_path;
+                }
+            }
+            // Not inside a renamed directory - use path as-is
+            new_path.clone()
+        };
+
         // Step 1: Identify all files that will be affected
         let mut affected_files = std::collections::HashSet::new();
 
@@ -53,7 +123,8 @@ impl FileService {
         // Skip empty source_file (used in multi-file workspace edits)
         if !plan.source_file.is_empty() {
             let main_file = self.to_absolute_path(Path::new(&plan.source_file));
-            affected_files.insert(main_file.clone());
+            let snapshot_path = map_new_to_old(&main_file);
+            affected_files.insert(snapshot_path);
         }
 
         // Files affected by text edits (group by file_path)
@@ -73,7 +144,9 @@ impl FileService {
 
             if let Some(file_path) = &edit.file_path {
                 let abs_path = self.to_absolute_path(Path::new(file_path));
-                affected_files.insert(abs_path);
+                // Map NEW path to OLD path for snapshot creation
+                let snapshot_path = map_new_to_old(&abs_path);
+                affected_files.insert(snapshot_path);
                 edits_by_file
                     .entry(file_path.clone())
                     .or_default()
@@ -90,7 +163,28 @@ impl FileService {
         // Files affected by dependency updates
         for dep_update in &plan.dependency_updates {
             let target_file = self.to_absolute_path(Path::new(&dep_update.target_file));
-            affected_files.insert(target_file);
+            let snapshot_path = map_new_to_old(&target_file);
+            affected_files.insert(snapshot_path);
+        }
+
+        // DEBUG: Log affected_files and edits_by_file before snapshot creation
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/directory_rename_debug.log")
+        {
+            use std::io::Write;
+            let _ = writeln!(file, "\n=== STEP 1 RESULTS ===");
+            let _ = writeln!(file, "affected_files count: {}", affected_files.len());
+            for path in &affected_files {
+                let exists = path.exists();
+                let _ = writeln!(file, "  - {} (exists={})", path.display(), exists);
+            }
+            let _ = writeln!(file, "edits_by_file count: {}", edits_by_file.len());
+            for (path, edits) in &edits_by_file {
+                let _ = writeln!(file, "  - {} ({} edits)", path, edits.len());
+            }
+            let _ = writeln!(file, "======================\n");
         }
 
         // Step 2: Create snapshots of all affected files before any modifications
@@ -100,6 +194,21 @@ impl FileService {
             files_with_edits = edits_by_file.len(),
             "Created file snapshots for atomic operation"
         );
+
+        // DEBUG: Log snapshot contents after creation
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/directory_rename_debug.log")
+        {
+            use std::io::Write;
+            let _ = writeln!(file, "\n=== STEP 2 RESULTS (SNAPSHOTS) ===");
+            let _ = writeln!(file, "snapshots count: {}", snapshots.len());
+            for (path, content) in &snapshots {
+                let _ = writeln!(file, "  - {} (content_len={})", path.display(), content.len());
+            }
+            let _ = writeln!(file, "===================================\n");
+        }
 
         let mut modified_files = Vec::new();
         let mut created_files = Vec::new();
@@ -121,6 +230,20 @@ impl FileService {
                             "Executing file rename operation"
                         );
 
+                        // Write debug info to file
+                        if let Ok(mut file) = std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open("/tmp/directory_rename_debug.log")
+                        {
+                            use std::io::Write;
+                            let _ = writeln!(file, "\n=== FILE SERVICE: EXECUTING MOVE ===");
+                            let _ = writeln!(file, "EditType::Move found in EditPlan:");
+                            let _ = writeln!(file, "  old_path: {}", old_path_str);
+                            let _ = writeln!(file, "  new_path: {}", new_path_str);
+                            let _ = writeln!(file, "  description: {}", edit.description);
+                        }
+
                         // Perform low-level file rename without import updates
                         // (import updates should be handled separately via dependency_updates in the plan)
                         let abs_old_path = self.to_absolute_path(old_path);
@@ -137,15 +260,37 @@ impl FileService {
                         }
 
                         // Perform the actual file system rename
-                        fs::rename(&abs_old_path, &abs_new_path)
-                            .await
-                            .map_err(|e| {
-                                error!(error = %e, "File rename failed");
-                                ServerError::Internal(format!(
-                                    "Failed to rename {} to {}: {}",
-                                    old_path_str, new_path_str, e
-                                ))
-                            })?;
+                        let rename_result = fs::rename(&abs_old_path, &abs_new_path).await;
+
+                        // Write debug info to file
+                        if let Ok(mut file) = std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open("/tmp/directory_rename_debug.log")
+                        {
+                            use std::io::Write;
+                            match &rename_result {
+                                Ok(_) => {
+                                    let _ = writeln!(file, "  fs::rename succeeded!");
+                                    let _ = writeln!(file, "  abs_old_path: {}", abs_old_path.display());
+                                    let _ = writeln!(file, "  abs_new_path: {}", abs_new_path.display());
+                                }
+                                Err(e) => {
+                                    let _ = writeln!(file, "  fs::rename FAILED: {}", e);
+                                    let _ = writeln!(file, "  abs_old_path: {}", abs_old_path.display());
+                                    let _ = writeln!(file, "  abs_new_path: {}", abs_new_path.display());
+                                }
+                            }
+                            let _ = writeln!(file, "=====================================\n");
+                        }
+
+                        rename_result.map_err(|e| {
+                            error!(error = %e, "File rename failed");
+                            ServerError::Internal(format!(
+                                "Failed to rename {} to {}: {}",
+                                old_path_str, new_path_str, e
+                            ))
+                        })?;
 
                         modified_files.push(new_path_str.clone());
                         deleted_files.push(old_path_str.clone());
@@ -217,7 +362,30 @@ impl FileService {
 
         // Step 4: Apply text edits grouped by file with locking
         // Use snapshot content to avoid race conditions with file system
+        // DEBUG: Log Step 4 entry
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/directory_rename_debug.log")
+        {
+            use std::io::Write;
+            let _ = writeln!(file, "\n=== STEP 4: APPLYING TEXT EDITS ===");
+            let _ = writeln!(file, "edits_by_file count: {}", edits_by_file.len());
+            let _ = writeln!(file, "path_renames count: {}", path_renames.len());
+            let _ = writeln!(file, "====================================\n");
+        }
+
         for (file_path, edits) in edits_by_file {
+            // DEBUG: Log each file being processed
+            if let Ok(mut file) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("/tmp/directory_rename_debug.log")
+            {
+                use std::io::Write;
+                let _ = writeln!(file, "Processing file in Step 4: {} ({} edits)", file_path, edits.len());
+            }
+
             let abs_file_path = self.to_absolute_path(Path::new(&file_path));
             let file_lock = self.lock_manager.get_lock(&abs_file_path).await;
             let _guard = file_lock.write().await;
@@ -227,11 +395,46 @@ impl FileService {
                 edits.iter().map(|e| (*e).clone()).collect();
 
             // Get the original content from snapshot (guarantees atomicity)
-            let original_content = snapshots.get(&abs_file_path).ok_or_else(|| {
-                ServerError::Internal(format!("File {} not found in snapshots", file_path))
-            })?;
+            // For renamed files, look up the snapshot using the OLD path
+            let original_content = snapshots
+                .get(&abs_file_path)
+                .or_else(|| {
+                    // If snapshot not found at new path, check if this file was renamed
+                    // First check direct file renames
+                    if let Some(old_path) = path_renames.get(&abs_file_path) {
+                        return snapshots.get(old_path);
+                    }
+
+                    // Then check if file is inside a renamed directory
+                    for (old_dir, new_dir) in &directory_renames {
+                        if abs_file_path.starts_with(new_dir) {
+                            let relative = abs_file_path.strip_prefix(new_dir).unwrap();
+                            let old_path = old_dir.join(relative);
+                            debug!(
+                                abs_file_path = %abs_file_path.display(),
+                                old_path = %old_path.display(),
+                                "Mapped NEW path to OLD path for snapshot lookup"
+                            );
+                            return snapshots.get(&old_path);
+                        }
+                    }
+
+                    None
+                })
+                .ok_or_else(|| {
+                    ServerError::Internal(format!("File {} not found in snapshots", abs_file_path.display()))
+                })?;
 
             // DEBUG: Log snapshot content length
+            if let Ok(mut file) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("/tmp/directory_rename_debug.log")
+            {
+                use std::io::Write;
+                let _ = writeln!(file, "  Found snapshot: content_len={}", original_content.len());
+            }
+
             if original_content.is_empty() {
                 error!(
                     file_path = %file_path,
@@ -242,6 +445,16 @@ impl FileService {
             // Apply edits to the snapshot content (no I/O, fully synchronous)
             match self.apply_edits_to_content(original_content, &owned_edits) {
                 Ok(modified_content) => {
+                    // DEBUG: Log successful edit application
+                    if let Ok(mut file) = std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("/tmp/directory_rename_debug.log")
+                    {
+                        use std::io::Write;
+                        let _ = writeln!(file, "  Applied edits successfully, writing to: {}", abs_file_path.display());
+                    }
+
                     // Write the final modified content to disk
                     if let Err(e) = fs::write(&abs_file_path, modified_content).await {
                         error!(
@@ -256,6 +469,16 @@ impl FileService {
                         )));
                     }
 
+                    // DEBUG: Log successful write
+                    if let Ok(mut file) = std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("/tmp/directory_rename_debug.log")
+                    {
+                        use std::io::Write;
+                        let _ = writeln!(file, "  Write succeeded for: {}", abs_file_path.display());
+                    }
+
                     if !modified_files.contains(&file_path) {
                         modified_files.push(file_path.clone());
                     }
@@ -266,6 +489,16 @@ impl FileService {
                     );
                 }
                 Err(e) => {
+                    // DEBUG: Log error in applying edits
+                    if let Ok(mut file) = std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("/tmp/directory_rename_debug.log")
+                    {
+                        use std::io::Write;
+                        let _ = writeln!(file, "  ERROR applying edits: {}", e);
+                    }
+
                     error!(
                         file_path = %file_path,
                         error = %e,
