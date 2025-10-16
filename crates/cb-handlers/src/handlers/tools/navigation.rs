@@ -146,11 +146,30 @@ impl NavigationHandler {
         let mut request = PluginRequest::new(tool_call.name.clone(), file_path);
 
         // Extract position if available
-        if let (Some(line), Some(character)) = (
-            args.get("line").and_then(|v| v.as_u64()),
-            args.get("character").and_then(|v| v.as_u64()),
-        ) {
+        // Validate that if position parameters are present, they must be valid numbers
+        if let Some(line_value) = args.get("line") {
+            let line = line_value.as_u64().ok_or_else(|| {
+                cb_protocol::ApiError::InvalidRequest(format!(
+                    "Invalid type for 'line' parameter: expected number, got {:?}",
+                    line_value
+                ))
+            })?;
+            let character_value = args.get("character").ok_or_else(|| {
+                cb_protocol::ApiError::InvalidRequest(
+                    "Missing 'character' parameter (required when 'line' is present)".into(),
+                )
+            })?;
+            let character = character_value.as_u64().ok_or_else(|| {
+                cb_protocol::ApiError::InvalidRequest(format!(
+                    "Invalid type for 'character' parameter: expected number, got {:?}",
+                    character_value
+                ))
+            })?;
             request = request.with_position(line.saturating_sub(1) as u32, character as u32);
+        } else if args.get("character").is_some() {
+            return Err(cb_protocol::ApiError::InvalidRequest(
+                "Missing 'line' parameter (required when 'character' is present)".into(),
+            ));
         }
 
         // Extract range if available
