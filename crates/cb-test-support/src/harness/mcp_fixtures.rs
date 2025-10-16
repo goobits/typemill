@@ -601,6 +601,172 @@ console.log(API_URL);
 ];
 
 // =============================================================================
+// MARKDOWN RENAME FILE TEST CASES
+// =============================================================================
+
+pub const MARKDOWN_RENAME_FILE_TESTS: &[RenameFileTestCase] = &[
+    RenameFileTestCase {
+        test_name: "markdown_basic_inline_link_update",
+        initial_files: &[
+            (
+                "docs/guide.md",
+                r#"# User Guide
+
+This is the documentation guide.
+"#,
+            ),
+            (
+                "README.md",
+                r#"# Project
+
+See [User Guide](docs/guide.md) for details.
+Also check [the guide](docs/guide.md#installation).
+"#,
+            ),
+        ],
+        old_file_path: "docs/guide.md",
+        new_file_path: "docs/user-guide.md",
+        expect_success: true,
+        expected_import_updates: &[
+            ("README.md", "[User Guide](docs/user-guide.md)"),
+            ("README.md", "[the guide](docs/user-guide.md#installation)"),
+        ],
+    },
+    RenameFileTestCase {
+        test_name: "markdown_multiple_files_referencing_same_file",
+        initial_files: &[
+            (
+                "docs/api.md",
+                r#"# API Reference
+"#,
+            ),
+            (
+                "README.md",
+                r#"See [API docs](docs/api.md).
+"#,
+            ),
+            (
+                "CONTRIBUTING.md",
+                r#"Read the [API Reference](docs/api.md) first.
+"#,
+            ),
+            (
+                "docs/examples.md",
+                r#"Check [API](docs/api.md) for details.
+"#,
+            ),
+        ],
+        old_file_path: "docs/api.md",
+        new_file_path: "docs/api-reference.md",
+        expect_success: true,
+        expected_import_updates: &[
+            ("README.md", "(docs/api-reference.md)"),
+            ("CONTRIBUTING.md", "(docs/api-reference.md)"),
+            ("docs/examples.md", "(docs/api-reference.md)"),
+        ],
+    },
+    RenameFileTestCase {
+        test_name: "markdown_links_with_anchors_preserved",
+        initial_files: &[
+            (
+                "docs/architecture.md",
+                r#"# Architecture
+
+## Overview
+## Components
+"#,
+            ),
+            (
+                "README.md",
+                r#"See [Architecture Overview](docs/architecture.md#overview).
+Also [Components](docs/architecture.md#components).
+"#,
+            ),
+        ],
+        old_file_path: "docs/architecture.md",
+        new_file_path: "docs/system-architecture.md",
+        expect_success: true,
+        expected_import_updates: &[
+            ("README.md", "(docs/system-architecture.md#overview)"),
+            ("README.md", "(docs/system-architecture.md#components)"),
+        ],
+    },
+    RenameFileTestCase {
+        test_name: "markdown_reference_style_links",
+        initial_files: &[
+            (
+                "docs/changelog.md",
+                r#"# Changelog
+"#,
+            ),
+            (
+                "README.md",
+                r#"# Project
+
+See [the changelog][changes] for version history.
+
+[changes]: docs/changelog.md
+"#,
+            ),
+        ],
+        old_file_path: "docs/changelog.md",
+        new_file_path: "CHANGELOG.md",
+        expect_success: true,
+        expected_import_updates: &[
+            ("README.md", "[changes]: CHANGELOG.md"),
+        ],
+    },
+    RenameFileTestCase {
+        test_name: "markdown_move_to_different_directory",
+        initial_files: &[
+            (
+                "docs/setup.md",
+                r#"# Setup Guide
+"#,
+            ),
+            (
+                "README.md",
+                r#"See [Setup](docs/setup.md) for installation.
+"#,
+            ),
+        ],
+        old_file_path: "docs/setup.md",
+        new_file_path: "SETUP.md",
+        expect_success: true,
+        expected_import_updates: &[
+            ("README.md", "[Setup](SETUP.md)"),
+        ],
+    },
+    RenameFileTestCase {
+        test_name: "markdown_nested_directory_paths",
+        initial_files: &[
+            (
+                "docs/development/contributing.md",
+                r#"# Contributing Guide
+"#,
+            ),
+            (
+                "README.md",
+                r#"See [Contributing](docs/development/contributing.md).
+"#,
+            ),
+            (
+                "docs/index.md",
+                r#"Check [contributing guide](docs/development/contributing.md).
+"#,
+            ),
+        ],
+        old_file_path: "docs/development/contributing.md",
+        new_file_path: "CONTRIBUTING.md",
+        expect_success: true,
+        expected_import_updates: &[
+            ("README.md", "(CONTRIBUTING.md)"),
+            ("docs/index.md", "(CONTRIBUTING.md)"),
+        ],
+    },
+];
+
+// =============================================================================
 // RUST MOVE FILE TEST CASES
 // =============================================================================
 

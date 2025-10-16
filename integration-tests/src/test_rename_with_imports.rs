@@ -12,7 +12,7 @@
 //! - Complex nested directory structures
 
 use crate::harness::{TestClient, TestWorkspace};
-use cb_test_support::harness::mcp_fixtures::RENAME_FILE_TESTS;
+use cb_test_support::harness::mcp_fixtures::{MARKDOWN_RENAME_FILE_TESTS, RENAME_FILE_TESTS};
 use serde_json::json;
 
 // =============================================================================
@@ -371,5 +371,202 @@ async fn test_directory_rename_updates_all_imports() {
         !app_content.contains("from './core/api'"),
         "Old directory path should be removed from imports. Actual content:\n{}",
         app_content
+    );
+}
+
+// =============================================================================
+// Phase 3: Markdown Link Update Tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_markdown_file_rename_updates_links() {
+    for case in MARKDOWN_RENAME_FILE_TESTS {
+        println!("\n🧪 Running markdown test case: {}", case.test_name);
+
+        // 1. Setup workspace from fixture
+        let workspace = TestWorkspace::new();
+        let mut client = TestClient::new(workspace.path());
+
+        // Create all initial files (with parent directories)
+        for (file_path, content) in case.initial_files {
+            // Ensure parent directories exist
+            if let Some(parent) = std::path::Path::new(file_path).parent() {
+                if parent != std::path::Path::new("") {
+                    workspace.create_directory(parent.to_str().unwrap());
+                }
+            }
+            workspace.create_file(file_path, content);
+        }
+
+        let old_path = workspace.absolute_path(case.old_file_path);
+        let new_path = workspace.absolute_path(case.new_file_path);
+
+        // 2. Generate rename plan
+        let plan_result = client
+            .call_tool(
+                "rename.plan",
+                json!({
+                    "target": {
+                        "kind": "file",
+                        "path": old_path.to_string_lossy()
+                    },
+                    "new_name": new_path.to_string_lossy()
+                }),
+            )
+            .await
+            .expect("rename.plan should succeed");
+
+        let plan = plan_result
+            .get("result")
+            .and_then(|r| r.get("content"))
+            .expect("Plan should have result.content");
+
+        // 3. Apply plan via workspace.apply_edit
+        let apply_result = client
+            .call_tool(
+                "workspace.apply_edit",
+                json!({
+                    "plan": plan,
+                    "options": {
+                        "dry_run": false,
+                        "validate_checksums": true
+                    }
+                }),
+            )
+            .await;
+
+        if case.expect_success {
+            let apply_response = apply_result.expect("workspace.apply_edit should succeed");
+            let result = apply_response
+                .get("result")
+                .and_then(|r| r.get("content"))
+                .expect("Apply should have result.content");
+
+            assert_eq!(
+                result.get("success").and_then(|v| v.as_bool()),
+                Some(true),
+                "Apply should succeed for test case: {}",
+                case.test_name
+            );
+
+            // 4. Verify the rename occurred
+            assert!(
+                !workspace.file_exists(case.old_file_path),
+                "Old file '{}' should be deleted in test case: {}",
+                case.old_file_path,
+                case.test_name
+            );
+            assert!(
+                workspace.file_exists(case.new_file_path),
+                "New file '{}' should exist in test case: {}",
+                case.new_file_path,
+                case.test_name
+            );
+
+            // 5. CRITICAL: Verify markdown links were updated in dependent files
+            for (importer_path, expected_substring) in case.expected_import_updates {
+                let content = workspace.read_file(importer_path);
+                assert!(
+                    content.contains(expected_substring),
+                    "❌ Markdown link in '{}' was not updated correctly in test case: '{}'.\n\
+                     Expected to find: '{}'\n\
+                     Actual file content:\n{}",
+                    importer_path,
+                    case.test_name,
+                    expected_substring,
+                    content
+                );
+
+                println!(
+                    "  ✅ Verified markdown link updated in '{}': contains '{}'",
+                    importer_path, expected_substring
+                );
+            }
+        } else {
+            assert!(
+                apply_result.is_err() || apply_result.unwrap().get("error").is_some(),
+                "Operation should fail for test case: {}",
+                case.test_name
+            );
+        }
+
+        println!("✅ Markdown test case '{}' passed", case.test_name);
+    }
+}
+
+#[tokio::test]
+async fn test_markdown_links_skip_external_urls() {
+    let workspace = TestWorkspace::new();
+    let mut client = TestClient::new(workspace.path());
+
+    workspace.create_directory("docs");
+    workspace.create_file(
+        "docs/guide.md",
+        "# Guide\nContent here.",
+    );
+    workspace.create_file(
+        "README.md",
+        r#"# Project
+
+See [Guide](docs/guide.md) for details.
+Visit [our website](https://example.com) for more info.
+Check [GitHub](https://github.com/user/repo) repo.
+"#,
+    );
+
+    let old_path = workspace.absolute_path("docs/guide.md");
+    let new_path = workspace.absolute_path("docs/user-guide.md");
+
+    let plan_result = client
+        .call_tool(
+            "rename.plan",
+            json!({
+                "target": {
+                    "kind": "file",
+                    "path": old_path.to_string_lossy()
+                },
+                "new_name": new_path.to_string_lossy()
+            }),
+        )
+        .await
+        .expect("rename.plan should succeed");
+
+    let plan = plan_result
+        .get("result")
+        .and_then(|r| r.get("content"))
+        .expect("Plan should exist");
+
+    client
+        .call_tool(
+            "workspace.apply_edit",
+            json!({
+                "plan": plan,
+                "options": {
+                    "dry_run": false
+                }
+            }),
+        )
+        .await
+        .expect("workspace.apply_edit should succeed");
+
+    let content = workspace.read_file("README.md");
+
+    // Verify internal link was updated
+    assert!(
+        content.contains("(docs/user-guide.md)"),
+        "Internal link should be updated. Actual:\n{}",
+        content
+    );
+
+    // Verify external URLs were NOT modified
+    assert!(
+        content.contains("https://example.com"),
+        "External URL should not be modified. Actual:\n{}",
+        content
+    );
+    assert!(
+        content.contains("https://github.com/user/repo"),
+        "GitHub URL should not be modified. Actual:\n{}",
+        content
     );
 }
