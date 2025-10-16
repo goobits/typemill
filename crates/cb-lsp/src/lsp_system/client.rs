@@ -1,5 +1,6 @@
 //! LSP client implementation for communicating with a single LSP server
 
+use crate::progress::{ProgressError, ProgressManager, ProgressParams, ProgressToken};
 use cb_core::config::LspServerConfig;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use serde_json::{json, Value};
@@ -36,6 +37,8 @@ pub struct LspClient {
     initialized: Arc<Mutex<bool>>,
     /// Server configuration
     config: LspServerConfig,
+    /// Progress notification manager
+    progress_manager: ProgressManager,
 }
 
 /// Internal message types for LSP communication
@@ -206,6 +209,7 @@ impl LspClient {
         let pending_requests = Arc::new(Mutex::new(HashMap::new()));
         let next_id = Arc::new(Mutex::new(1));
         let initialized = Arc::new(Mutex::new(false));
+        let progress_manager = ProgressManager::new();
 
         // Create message channel for both requests and notifications
         let (message_tx, mut message_rx) = mpsc::channel::<LspMessage>(CHANNEL_BUFFER_SIZE);
@@ -343,6 +347,7 @@ impl LspClient {
         let pending_requests_clone = pending_requests.clone();
         let server_command_stdout = command.to_string();
         let message_tx_clone = message_tx.clone();
+        let progress_manager_clone = progress_manager.clone();
         tokio::spawn(async move {
             eprintln!(
                 "🔍 LSP stdout reader task started for: {}",
@@ -402,6 +407,7 @@ impl LspClient {
                                     message,
                                     &pending_requests_clone,
                                     &message_tx_clone,
+                                    &progress_manager_clone,
                                 )
                                 .await;
                             }
@@ -427,6 +433,7 @@ impl LspClient {
             next_id,
             initialized,
             config,
+            progress_manager,
         };
 
         // Initialize the LSP server
@@ -722,6 +729,67 @@ impl LspClient {
         }
     }
 
+    /// Wait for a specific progress task to complete
+    ///
+    /// This method waits for a progress notification with the given token to complete.
+    /// Returns `Ok(())` when the task completes successfully, or an error if the task
+    /// fails or times out.
+    ///
+    /// ## Example
+    ///
+    /// ```rust,no_run
+    /// # use cb_lsp::lsp_system::LspClient;
+    /// # use cb_lsp::progress::ProgressToken;
+    /// # use std::time::Duration;
+    /// # async fn example(client: &LspClient) -> Result<(), Box<dyn std::error::Error>> {
+    /// let token = ProgressToken::String("rustAnalyzer/Indexing".to_string());
+    /// client.wait_for_progress(&token, Duration::from_secs(30)).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn wait_for_progress(
+        &self,
+        token: &ProgressToken,
+        timeout: Duration,
+    ) -> Result<(), ProgressError> {
+        self.progress_manager.wait_for_completion(token, timeout).await
+    }
+
+    /// Wait for rust-analyzer workspace indexing to complete
+    ///
+    /// This is a convenience method that waits for the `rustAnalyzer/Indexing` progress
+    /// task to complete. This is particularly useful in tests or when you need to ensure
+    /// rust-analyzer has finished indexing before performing workspace-level operations
+    /// like `workspace/symbol`.
+    ///
+    /// ## Example
+    ///
+    /// ```rust,no_run
+    /// # use cb_lsp::lsp_system::LspClient;
+    /// # use std::time::Duration;
+    /// # async fn example(client: &LspClient) -> Result<(), Box<dyn std::error::Error>> {
+    /// // Wait up to 30 seconds for indexing to complete
+    /// client.wait_for_indexing(Duration::from_secs(30)).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn wait_for_indexing(&self, timeout: Duration) -> Result<(), ProgressError> {
+        let token = ProgressToken::String("rustAnalyzer/Indexing".to_string());
+        self.wait_for_progress(&token, timeout).await
+    }
+
+    /// Get the current state of a progress task
+    ///
+    /// Returns `None` if the task doesn't exist or has been cleaned up.
+    pub fn get_progress_state(&self, token: &ProgressToken) -> Option<crate::progress::ProgressState> {
+        self.progress_manager.get_state(token)
+    }
+
+    /// Check if a progress task has completed
+    pub fn is_progress_completed(&self, token: &ProgressToken) -> bool {
+        self.progress_manager.is_completed(token)
+    }
+
     /// Notify the LSP server that a file has been opened
     pub async fn notify_file_opened(&self, file_path: &std::path::Path) -> ServerResult<()> {
         if !self.is_initialized().await {
@@ -890,6 +958,7 @@ impl LspClient {
         message: Value,
         pending_requests: &PendingRequests,
         message_tx: &mpsc::Sender<LspMessage>,
+        progress_manager: &ProgressManager,
     ) {
         tracing::warn!(message = ?message, "Received message from LSP server");
 
@@ -899,7 +968,31 @@ impl LspClient {
                 Self::handle_server_request(&message, message_tx).await;
             } else {
                 // This is a notification from the server
-                debug!("Received notification from LSP server: {:?}", message);
+                let method = message.get("method").and_then(|m| m.as_str());
+
+                // Handle $/progress notifications
+                if method == Some("$/progress") {
+                    if let Some(params) = message.get("params") {
+                        // Parse progress notification
+                        match serde_json::from_value::<ProgressParams>(params.clone()) {
+                            Ok(progress_params) => {
+                                progress_manager.handle_notification(progress_params);
+                            }
+                            Err(e) => {
+                                debug!(
+                                    error = %e,
+                                    params = ?params,
+                                    "Failed to parse $/progress notification"
+                                );
+                            }
+                        }
+                    }
+                } else {
+                    debug!(
+                        method = ?method,
+                        "Received notification from LSP server"
+                    );
+                }
             }
         } else if let Some(id) = message.get("id") {
             // This is a response to a client-initiated request

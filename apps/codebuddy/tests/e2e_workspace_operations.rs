@@ -657,15 +657,9 @@ async fn test_search_symbols_rust_workspace() {
         );
     }
 
-    // Give rust-analyzer time to finish its initial workspace scan, which happens
-    // in the background after it has indexed the first file. This can take several
-    // seconds as rust-analyzer needs to:
-    // 1. Parse all source files
-    // 2. Build the crate graph
-    // 3. Index symbols for workspace/symbol queries
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-
     // Search for the 'main' function
+    // Note: The DirectLspAdapter will automatically wait for rust-analyzer's workspace
+    // indexing to complete before querying for workspace symbols
     let response = client
         .call_tool("search_symbols", json!({ "query": "main" }))
         .await
@@ -679,27 +673,9 @@ async fn test_search_symbols_rust_workspace() {
         );
     }
 
-    // Debug: Print full response
-    println!("DEBUG: Full search_symbols response:");
-    println!("{}", serde_json::to_string_pretty(&response).unwrap());
-
     let symbols = response["result"]["content"]
         .as_array()
         .expect("search_symbols should return an array of symbols");
-
-    println!("DEBUG: Found {} symbols", symbols.len());
-    for (i, symbol) in symbols.iter().enumerate() {
-        println!("DEBUG: Symbol {}: {:?}", i, symbol);
-    }
-
-    // rust-analyzer's workspace symbol indexing can be slow, especially in test environments
-    // If no symbols are found, skip the test rather than fail
-    if symbols.is_empty() {
-        println!("SKIP: rust-analyzer workspace indexing not complete after 5s wait");
-        println!("      This is expected in test environments - workspace/symbol works for TypeScript");
-        println!("      (see test_cross_language_project for proof)");
-        return;
-    }
 
     // Find the specific 'main' function symbol
     let main_fn_symbol = symbols

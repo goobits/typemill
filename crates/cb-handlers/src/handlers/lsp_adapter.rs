@@ -95,6 +95,51 @@ impl DirectLspAdapter {
             // Get or create client for this extension
             match self.get_or_create_client(extension).await {
                 Ok(client) => {
+                    // For rust-analyzer, wait briefly for workspace indexing to complete
+                    // This ensures workspace/symbol queries return complete results.
+                    // Use a short timeout since the progress notification might not be sent
+                    // if indexing is already done or if the server doesn't support it.
+                    if extension == "rs" {
+                        debug!(
+                            extension = %extension,
+                            "Waiting for rust-analyzer workspace indexing before workspace/symbol query"
+                        );
+                        // Check if indexing is already completed
+                        let token = cb_lsp::progress::ProgressToken::String(
+                            "rustAnalyzer/Indexing".to_string(),
+                        );
+                        if client.is_progress_completed(&token) {
+                            debug!(
+                                extension = %extension,
+                                "rust-analyzer indexing already complete"
+                            );
+                        } else {
+                            // Wait up to 5 seconds for indexing notification
+                            // This is a short timeout since most projects index quickly
+                            match client
+                                .wait_for_indexing(std::time::Duration::from_secs(5))
+                                .await
+                            {
+                                Ok(()) => {
+                                    debug!(
+                                        extension = %extension,
+                                        "rust-analyzer indexing complete, proceeding with workspace/symbol query"
+                                    );
+                                }
+                                Err(e) => {
+                                    // Timeout or error - proceed anyway
+                                    // The server might not send progress notifications,
+                                    // or indexing might already be done
+                                    debug!(
+                                        extension = %extension,
+                                        error = %e,
+                                        "rust-analyzer indexing wait timed out (5s), proceeding anyway - indexing may already be complete"
+                                    );
+                                }
+                            }
+                        }
+                    }
+
                     // Send workspace/symbol request to this server
                     match client
                         .send_request("workspace/symbol", params.clone())
