@@ -116,20 +116,50 @@ impl LspClient {
         }
 
         // Add NVM node bin directory (critical for typescript-language-server)
+        // Instead of picking the first directory, check for the default/current version
         if let Ok(nvm_dir) = std::env::var("NVM_DIR") {
-            // Try to find the current node version
-            if let Ok(entries) = std::fs::read_dir(format!("{}/versions/node", nvm_dir)) {
-                // Get all node versions and use the first one (or could use 'default' symlink)
-                if let Some(Ok(entry)) = entries.into_iter().next() {
-                    path_additions.push(format!("{}/bin", entry.path().display()));
+            // First try to read the default alias file to get the current version
+            let default_version_path = format!("{}/alias/default", nvm_dir);
+            let default_version = std::fs::read_to_string(&default_version_path)
+                .ok()
+                .map(|s| s.trim().to_string());
+
+            if let Some(version_alias) = default_version {
+                // Resolve the version (could be "22", "v22.20.0", etc.)
+                let version_path = if version_alias.starts_with('v') {
+                    format!("{}/versions/node/{}/bin", nvm_dir, version_alias)
+                } else {
+                    // If it's just "22", find the highest v22.x.x version
+                    if let Ok(entries) = std::fs::read_dir(format!("{}/versions/node", nvm_dir)) {
+                        entries
+                            .filter_map(Result::ok)
+                            .filter(|e| {
+                                e.file_name()
+                                    .to_string_lossy()
+                                    .starts_with(&format!("v{}", version_alias))
+                            })
+                            .max_by_key(|e| e.file_name())
+                            .map(|e| format!("{}/bin", e.path().display()))
+                            .unwrap_or_default()
+                    } else {
+                        String::new()
+                    }
+                };
+
+                if !version_path.is_empty() && std::path::Path::new(&version_path).exists() {
+                    path_additions.push(version_path);
                 }
             }
         } else if let Ok(home) = std::env::var("HOME") {
-            // Fallback: try common NVM location
-            let nvm_default = format!("{}/.nvm/versions/node", home);
-            if let Ok(entries) = std::fs::read_dir(&nvm_default) {
-                if let Some(Ok(entry)) = entries.into_iter().next() {
-                    path_additions.push(format!("{}/bin", entry.path().display()));
+            // Fallback: try common NVM location with default version
+            let nvm_default_path = format!("{}/.nvm/alias/default", home);
+            if let Ok(default_version) = std::fs::read_to_string(&nvm_default_path) {
+                let version = default_version.trim();
+                if version.starts_with('v') {
+                    let bin_path = format!("{}/.nvm/versions/node/{}/bin", home, version);
+                    if std::path::Path::new(&bin_path).exists() {
+                        path_additions.push(bin_path);
+                    }
                 }
             }
         }

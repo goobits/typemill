@@ -77,6 +77,11 @@ impl TestClient {
             command.env("RUST_LOG", rust_log);
         }
 
+        // Propagate NVM_DIR so LSP client can find the correct Node version
+        if let Ok(nvm_dir) = std::env::var("NVM_DIR") {
+            command.env("NVM_DIR", nvm_dir);
+        }
+
         let mut process = command.spawn().unwrap_or_else(|e| {
             panic!(
                 "Failed to start cb-server binary at {:?}: {}. \n\

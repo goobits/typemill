@@ -66,10 +66,9 @@ strip = true        # Strip symbols to reduce binary size
 # =============================================================================
 
 [env]
-# Ensure ~/.local/bin is in PATH for language servers (typescript-language-server, rust-analyzer, etc.)
-# This is needed for tests that require LSP servers installed via pipx/go install
-# Also ensure ~/.cargo/bin and other standard paths are included
-PATH = { value = "$HOME/.local/bin:$HOME/.cargo/bin:/usr/bin:$PATH", force = true, relative = false }
+# Note: PATH configuration removed - cargo does not expand shell variables like $HOME and $PATH
+# This was causing issues where test processes received literal "$HOME" strings in PATH
+# Instead, rely on the shell's PATH which is already correctly configured
 # Set CC for dependencies that need a C compiler
 CC = "/usr/bin/gcc"
 
