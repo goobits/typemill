@@ -205,8 +205,8 @@ impl ReferenceUpdater {
                 }
             } else if is_directory_rename {
                 // Directory rename logic (for non-Rust crate directories)
-                // For each file in the directory, call plugin.rewrite_file_references
-                // This allows plugins to update imports for all files being moved
+                // Step 1: Call with directory paths to update mod declarations
+                // Step 2: Call with individual file paths to update imports
                 tracing::debug!(
                     file_path = %file_path.display(),
                     old_path = %old_path.display(),
@@ -214,14 +214,40 @@ impl ReferenceUpdater {
                     "Rewriting references for directory rename"
                 );
 
+                let mut combined_content = content.clone();
+                let mut total_changes = 0;
+
+                // Step 1: Update mod declarations by calling with directory paths
+                // This allows language plugins (especially Rust) to detect and update
+                // mod declarations like "mod utils;" -> "mod helpers;"
+                let mod_decl_result = plugin.rewrite_file_references(
+                    &combined_content,
+                    old_path,  // Directory path
+                    new_path,  // Directory path
+                    &file_path,
+                    &self.project_root,
+                    rename_info,
+                );
+
+                if let Some((updated_content, count)) = mod_decl_result {
+                    if count > 0 && updated_content != combined_content {
+                        tracing::debug!(
+                            changes = count,
+                            importer = %file_path.display(),
+                            "Applied {} mod declaration updates for directory rename",
+                            count
+                        );
+                        combined_content = updated_content;
+                        total_changes += count;
+                    }
+                }
+
+                // Step 2: Update imports by calling with individual file paths
                 // Get all files within the moved directory
                 let files_in_directory: Vec<&PathBuf> = project_files
                     .iter()
                     .filter(|f| f.starts_with(old_path) && f.is_file())
                     .collect();
-
-                let mut combined_content = content.clone();
-                let mut total_changes = 0;
 
                 // Process each file in the directory that might be referenced
                 for file_in_dir in &files_in_directory {
