@@ -988,9 +988,11 @@ impl LspClient {
                         }
                     }
                 } else {
-                    debug!(
+                    // Temporarily use warn! to make notifications visible in test output
+                    warn!(
                         method = ?method,
-                        "Received notification from LSP server"
+                        notification = ?message,
+                        "Received notification from LSP server (debugging rust-analyzer progress)"
                     );
                 }
             }

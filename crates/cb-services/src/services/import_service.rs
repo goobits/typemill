@@ -154,10 +154,10 @@ impl ImportService {
             }
         };
 
-        let import_support = match plugin.import_support() {
+        let import_advanced = match plugin.import_advanced_support() {
             Some(is) => is,
             None => {
-                debug!("Plugin for {} does not support imports", extension);
+                debug!("Plugin for {} does not support advanced import operations", extension);
                 return Ok(false);
             }
         };
@@ -168,11 +168,15 @@ impl ImportService {
         };
 
         let original_content = content.clone();
-        let updated_content = import_support
-            .update_import_reference(file_path, &content, update)
-            .map_err(|e| {
-                ServerError::Internal(format!("Failed to update import reference: {}", e))
-            })?;
+        let updated_content = cb_plugin_api::ImportAdvancedSupport::update_import_reference(
+            import_advanced,
+            file_path,
+            &content,
+            update
+        )
+        .map_err(|e| {
+            ServerError::Internal(format!("Failed to update import reference: {}", e))
+        })?;
 
         if original_content == updated_content {
             return Ok(false); // No changes were made

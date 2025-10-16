@@ -250,7 +250,7 @@ fn plan_remove_import(
         .unwrap_or("");
 
     let plugin = plugin_registry.find_by_extension(extension);
-    let import_support = plugin.and_then(|p| p.import_support());
+    let import_mutation = plugin.and_then(|p| p.import_mutation_support());
 
     // Find import statements to remove
     for (line_num, line) in source.lines().enumerate() {
@@ -266,10 +266,13 @@ fn plan_remove_import(
                     || line_trimmed.contains(&format!("{} }}", import_name))
                     || line_trimmed.contains(&format!(" {} ", import_name))
                 {
-                    if let Some(support) = import_support {
-                        let new_line = support
-                            .remove_named_import(line, import_name)
-                            .unwrap_or_else(|_| line.to_string()); // Fallback on error
+                    if let Some(mutation_support) = import_mutation {
+                        let new_line = cb_plugin_api::ImportMutationSupport::remove_named_import(
+                            mutation_support,
+                            line,
+                            import_name
+                        )
+                        .unwrap_or_else(|_| line.to_string()); // Fallback on error
 
                         if new_line != line {
                             edits.push(TextEdit {

@@ -473,7 +473,10 @@ impl ImportSupport for MarkdownImportSupport {
 // ============================================================================
 // Segregated Trait Implementations
 // ============================================================================
+// These implementations delegate to the deprecated ImportSupport trait methods
+// for DRY (Don't Repeat Yourself) until the deprecated trait is removed.
 
+#[allow(deprecated)]
 impl ImportParser for MarkdownImportSupport {
     fn parse_imports(&self, content: &str) -> Vec<String> {
         ImportSupport::parse_imports(self, content)
@@ -484,6 +487,7 @@ impl ImportParser for MarkdownImportSupport {
     }
 }
 
+#[allow(deprecated)]
 impl ImportRenameSupport for MarkdownImportSupport {
     fn rewrite_imports_for_rename(
         &self,
@@ -495,6 +499,7 @@ impl ImportRenameSupport for MarkdownImportSupport {
     }
 }
 
+#[allow(deprecated)]
 impl ImportMoveSupport for MarkdownImportSupport {
     fn rewrite_imports_for_move(
         &self,
@@ -506,6 +511,7 @@ impl ImportMoveSupport for MarkdownImportSupport {
     }
 }
 
+#[allow(deprecated)]
 impl ImportMutationSupport for MarkdownImportSupport {
     fn add_import(&self, content: &str, module: &str) -> String {
         ImportSupport::add_import(self, content, module)
@@ -523,6 +529,7 @@ impl ImportMutationSupport for MarkdownImportSupport {
     }
 }
 
+#[allow(deprecated)]
 impl ImportAdvancedSupport for MarkdownImportSupport {
     fn update_import_reference(
         &self,

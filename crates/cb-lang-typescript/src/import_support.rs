@@ -196,7 +196,10 @@ impl ImportSupport for TypeScriptImportSupport {
 // ============================================================================
 // Segregated Trait Implementations
 // ============================================================================
+// These implementations delegate to the deprecated ImportSupport trait methods
+// for DRY (Don't Repeat Yourself) until the deprecated trait is removed.
 
+#[allow(deprecated)]
 impl ImportParser for TypeScriptImportSupport {
     fn parse_imports(&self, content: &str) -> Vec<String> {
         ImportSupport::parse_imports(self, content)
@@ -207,6 +210,7 @@ impl ImportParser for TypeScriptImportSupport {
     }
 }
 
+#[allow(deprecated)]
 impl ImportRenameSupport for TypeScriptImportSupport {
     fn rewrite_imports_for_rename(
         &self,
@@ -218,6 +222,7 @@ impl ImportRenameSupport for TypeScriptImportSupport {
     }
 }
 
+#[allow(deprecated)]
 impl ImportMoveSupport for TypeScriptImportSupport {
     fn rewrite_imports_for_move(
         &self,
@@ -229,6 +234,7 @@ impl ImportMoveSupport for TypeScriptImportSupport {
     }
 }
 
+#[allow(deprecated)]
 impl ImportMutationSupport for TypeScriptImportSupport {
     fn add_import(&self, content: &str, module: &str) -> String {
         ImportSupport::add_import(self, content, module)
@@ -243,6 +249,7 @@ impl ImportMutationSupport for TypeScriptImportSupport {
     }
 }
 
+#[allow(deprecated)]
 impl ImportAdvancedSupport for TypeScriptImportSupport {
     fn update_import_reference(
         &self,

@@ -141,9 +141,9 @@ impl ImportPathResolver {
         if let Some(ext) = current_file.extension().and_then(|e| e.to_str()) {
             for plugin in plugins {
                 if plugin.handles_extension(ext) {
-                    if let Some(import_support) = plugin.import_support() {
+                    if let Some(import_parser) = plugin.import_parser() {
                         // Parse all imports using the plugin
-                        let import_specifiers = import_support.parse_imports(content);
+                        let import_specifiers = cb_plugin_api::ImportParser::parse_imports(import_parser, content);
 
                         // Resolve each import specifier to an absolute file path
                         for specifier in import_specifiers {
