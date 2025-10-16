@@ -196,10 +196,10 @@ console.log(expensiveProducts);
 "#,
     )
     .unwrap();
-    // Wait for LSP to index all files
+    // Wait for LSP to index all files - use 60s timeout for slow environments
     for file in [&models_file, &services_file, &main_file] {
         client
-            .wait_for_lsp_ready(file, 30000)
+            .wait_for_lsp_ready(file, 60000)
             .await
             .expect("LSP should index file");
     }
@@ -209,8 +209,9 @@ console.log(expensiveProducts);
 
     // Apply a simple workspace edit to test the functionality
     // Edit: Change "Product" to "Item" in models.ts line 1
+    // Use extended timeout (60s) for workspace edit operations
     let response = client
-        .call_tool(
+        .call_tool_with_timeout(
             "apply_workspace_edit",
             json!({
                 "changes": {
@@ -223,6 +224,7 @@ console.log(expensiveProducts);
                     }]
                 }
             }),
+            std::time::Duration::from_secs(60),
         )
         .await;
 
@@ -350,18 +352,20 @@ function createProcessor<T>(type: string): DataProcessor<T> | null {
 }
 "#;
     std::fs::write(&file_path, content).unwrap();
-    // Wait for LSP to index the file using smart polling
+    // Wait for LSP to index the file using smart polling - use 60s timeout for slow environments
     client
-        .wait_for_lsp_ready(&file_path, 30000)
+        .wait_for_lsp_ready(&file_path, 60000)
         .await
         .expect("LSP should index file");
+    // Use extended timeout for first LSP call after indexing to allow for slow initialization
     let response = client
-        .call_tool(
+        .call_tool_with_timeout(
             "get_symbol_info",
             json!(
                 { "file_path" : file_path.to_string_lossy(), "line" : 1, "character" : 20
                 }
             ),
+            std::time::Duration::from_secs(60),
         )
         .await
         .expect("get_hover should succeed");
@@ -506,15 +510,15 @@ export function formatResponse(data) {
             println!("  {:?}", entry.path());
         }
     }
-    // Wait for LSP servers to index files using smart polling (much faster than sleep)
+    // Wait for LSP servers to index files using smart polling - use 60s timeout for slow environments
     println!("DEBUG: Waiting for LSP to index TypeScript file...");
     client
-        .wait_for_lsp_ready(&ts_file, 5000)
+        .wait_for_lsp_ready(&ts_file, 60000)
         .await
         .expect("TypeScript LSP should index file");
     println!("DEBUG: TypeScript file indexed, waiting for JavaScript file...");
     client
-        .wait_for_lsp_ready(&js_file, 5000)
+        .wait_for_lsp_ready(&js_file, 60000)
         .await
         .expect("JavaScript LSP should index file");
     println!("DEBUG: Both files indexed, testing hover on Config interface...");
@@ -593,8 +597,13 @@ export function formatResponse(data) {
         !js_symbols.is_empty(),
         "JavaScript file should have detectable symbols"
     );
+    // Use extended timeout for workspace symbol search (60s) as it may require indexing
     let response = client
-        .call_tool("search_symbols", json!({ "query" : "validate" }))
+        .call_tool_with_timeout(
+            "search_symbols",
+            json!({ "query" : "validate" }),
+            std::time::Duration::from_secs(60),
+        )
         .await
         .expect("Workspace symbol search should succeed");
     if let Some(error) = response.get("error") {

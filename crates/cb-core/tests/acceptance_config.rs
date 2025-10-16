@@ -58,7 +58,7 @@ fn test_config_load_default() {
 
 #[test]
 #[serial]
-fn test_config_load_from_json() {
+fn test_config_load_from_toml() {
     clean_env();
 
     let temp_dir = TempDir::new().unwrap();
@@ -68,39 +68,34 @@ fn test_config_load_from_json() {
     // Create .codebuddy directory and config file
     std::fs::create_dir_all(".codebuddy").unwrap();
     let config_content = r#"
-{
-  "server": {
-    "host": "0.0.0.0",
-    "port": 3041,
-    "maxClients": 50,
-    "timeoutMs": 60000
-  },
-  "lsp": {
-    "servers": [
-      {
-        "extensions": ["rs"],
-        "command": ["rust-analyzer"],
-        "restartInterval": 15
-      }
-    ],
-    "defaultTimeoutMs": 10000,
-    "enablePreload": false
-  },
-  "logging": {
-    "level": "debug",
-    "format": "json"
-  },
-  "cache": {
-    "enabled": false,
-    "maxSizeBytes": 1024,
-    "ttlSeconds": 300,
-    "persistent": true,
-    "cacheDir": "/tmp/cache"
-  }
-}
+[server]
+host = "0.0.0.0"
+port = 3041
+maxClients = 50
+timeoutMs = 60000
+
+[[lsp.servers]]
+extensions = ["rs"]
+command = ["rust-analyzer"]
+restartInterval = 15
+
+[lsp]
+defaultTimeoutMs = 10000
+enablePreload = false
+
+[logging]
+level = "debug"
+format = "json"
+
+[cache]
+enabled = false
+maxSizeBytes = 1024
+ttlSeconds = 300
+persistent = true
+cacheDir = "/tmp/cache"
 "#;
 
-    std::fs::write(".codebuddy/config.json", config_content).unwrap();
+    std::fs::write(".codebuddy/config.toml", config_content).unwrap();
 
     let config = AppConfig::load().unwrap();
 
@@ -172,38 +167,33 @@ fn test_config_validation_invalid_port() {
 
     std::fs::create_dir_all(".codebuddy").unwrap();
     let config_content = r#"
-{
-  "server": {
-    "host": "127.0.0.1",
-    "port": 0,
-    "maxClients": 10,
-    "timeoutMs": 30000
-  },
-  "lsp": {
-    "servers": [
-      {
-        "extensions": ["ts"],
-        "command": ["typescript-language-server", "--stdio"],
-        "restartInterval": 10
-      }
-    ],
-    "defaultTimeoutMs": 5000,
-    "enablePreload": true
-  },
-  "logging": {
-    "level": "info",
-    "format": "pretty"
-  },
-  "cache": {
-    "enabled": true,
-    "maxSizeBytes": 268435456,
-    "ttlSeconds": 3600,
-    "persistent": false
-  }
-}
+[server]
+host = "127.0.0.1"
+port = 0
+maxClients = 10
+timeoutMs = 30000
+
+[[lsp.servers]]
+extensions = ["ts"]
+command = ["typescript-language-server", "--stdio"]
+restartInterval = 10
+
+[lsp]
+defaultTimeoutMs = 5000
+enablePreload = true
+
+[logging]
+level = "info"
+format = "pretty"
+
+[cache]
+enabled = true
+maxSizeBytes = 268435456
+ttlSeconds = 3600
+persistent = false
 "#;
 
-    std::fs::write(".codebuddy/config.json", config_content).unwrap();
+    std::fs::write(".codebuddy/config.toml", config_content).unwrap();
 
     let result = AppConfig::load();
     assert!(result.is_err());
@@ -230,38 +220,33 @@ fn test_config_validation_invalid_log_level() {
 
     std::fs::create_dir_all(".codebuddy").unwrap();
     let config_content = r#"
-{
-  "server": {
-    "host": "127.0.0.1",
-    "port": 3042,
-    "maxClients": 10,
-    "timeoutMs": 30000
-  },
-  "lsp": {
-    "servers": [
-      {
-        "extensions": ["ts"],
-        "command": ["typescript-language-server", "--stdio"],
-        "restartInterval": 10
-      }
-    ],
-    "defaultTimeoutMs": 5000,
-    "enablePreload": true
-  },
-  "logging": {
-    "level": "invalid",
-    "format": "pretty"
-  },
-  "cache": {
-    "enabled": true,
-    "maxSizeBytes": 268435456,
-    "ttlSeconds": 3600,
-    "persistent": false
-  }
-}
+[server]
+host = "127.0.0.1"
+port = 3042
+maxClients = 10
+timeoutMs = 30000
+
+[[lsp.servers]]
+extensions = ["ts"]
+command = ["typescript-language-server", "--stdio"]
+restartInterval = 10
+
+[lsp]
+defaultTimeoutMs = 5000
+enablePreload = true
+
+[logging]
+level = "invalid"
+format = "pretty"
+
+[cache]
+enabled = true
+maxSizeBytes = 268435456
+ttlSeconds = 3600
+persistent = false
 "#;
 
-    std::fs::write(".codebuddy/config.json", config_content).unwrap();
+    std::fs::write(".codebuddy/config.toml", config_content).unwrap();
 
     let result = AppConfig::load();
     assert!(result.is_err());
@@ -288,32 +273,29 @@ fn test_config_validation_empty_lsp_servers() {
 
     std::fs::create_dir_all(".codebuddy").unwrap();
     let config_content = r#"
-{
-  "server": {
-    "host": "127.0.0.1",
-    "port": 3042,
-    "maxClients": 10,
-    "timeoutMs": 30000
-  },
-  "lsp": {
-    "servers": [],
-    "defaultTimeoutMs": 5000,
-    "enablePreload": true
-  },
-  "logging": {
-    "level": "info",
-    "format": "pretty"
-  },
-  "cache": {
-    "enabled": true,
-    "maxSizeBytes": 268435456,
-    "ttlSeconds": 3600,
-    "persistent": false
-  }
-}
+[server]
+host = "127.0.0.1"
+port = 3042
+maxClients = 10
+timeoutMs = 30000
+
+[lsp]
+servers = []
+defaultTimeoutMs = 5000
+enablePreload = true
+
+[logging]
+level = "info"
+format = "pretty"
+
+[cache]
+enabled = true
+maxSizeBytes = 268435456
+ttlSeconds = 3600
+persistent = false
 "#;
 
-    std::fs::write(".codebuddy/config.json", config_content).unwrap();
+    std::fs::write(".codebuddy/config.toml", config_content).unwrap();
 
     let result = AppConfig::load();
     assert!(result.is_err());
