@@ -113,6 +113,55 @@ impl LanguagePlugin for MarkdownPlugin {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn rewrite_file_references(
+        &self,
+        content: &str,
+        old_path: &std::path::Path,
+        new_path: &std::path::Path,
+        current_file: &std::path::Path,
+        _project_root: &std::path::Path,
+        _rename_info: Option<&serde_json::Value>,
+    ) -> Option<(String, usize)> {
+        tracing::info!(
+            "MarkdownPlugin::rewrite_file_references CALLED - old_path={}, new_path={}, current_file={}",
+            old_path.display(),
+            new_path.display(),
+            current_file.display()
+        );
+
+        // For markdown, we need to compute relative paths from the current file
+        // to the target file, not use project-relative paths
+
+        // Get the directory containing the current markdown file
+        let current_dir = current_file.parent()?;
+
+        // Compute relative path from current file's directory to the old path
+        let old_relative = pathdiff::diff_paths(old_path, current_dir)?;
+
+        // Compute relative path from current file's directory to the new path
+        let new_relative = pathdiff::diff_paths(new_path, current_dir)?;
+
+        debug!(
+            current_file = ?current_file,
+            old_path = ?old_path,
+            new_path = ?new_path,
+            old_relative = ?old_relative,
+            new_relative = ?new_relative,
+            "Computing relative markdown paths"
+        );
+
+        // Convert to string, using forward slashes for markdown links
+        let old_relative_str = old_relative.to_string_lossy().replace('\\', "/");
+        let new_relative_str = new_relative.to_string_lossy().replace('\\', "/");
+
+        // Use the import support to rewrite with relative paths
+        Some(self.import_support.rewrite_imports_for_rename(
+            content,
+            &old_relative_str,
+            &new_relative_str,
+        ))
+    }
 }
 
 /// Extract markdown headers as symbols

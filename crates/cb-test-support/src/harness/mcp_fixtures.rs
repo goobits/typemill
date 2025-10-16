@@ -761,7 +761,7 @@ See [the changelog][changes] for version history.
         expect_success: true,
         expected_import_updates: &[
             ("README.md", "(CONTRIBUTING.md)"),
-            ("docs/index.md", "(CONTRIBUTING.md)"),
+            ("docs/index.md", "(../CONTRIBUTING.md)"),
         ],
     },
 ];
