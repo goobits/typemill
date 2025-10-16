@@ -216,6 +216,6 @@ See `examples/tests/` for code examples:
 ## Key References
 
 - [Test Pyramid Pattern](https://martinfowler.com/articles/practical-test-pyramid.html)
-- [CONTRIBUTING.md](../CONTRIBUTING.md) - Development setup
+- [contributing.md](../contributing.md) - Development setup
 - [examples/tests/](../examples/tests/) - Test code examples
 - [docs/archive/testing_guide-verbose.md](archive/testing_guide-verbose.md) - Full guide with explanations

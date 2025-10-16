@@ -5,7 +5,7 @@
 
 Your complete guide to all MCP tools available in Codebuddy. Use this reference to understand parameters, return types, and see practical examples for each tool.
 
-> **Note:** For detailed implementation contracts (JSON schemas, validation rules, error codes), see [design/api_contracts.md](design/api_contracts.md).
+> **Note:** For detailed implementation contracts (JSON schemas, validation rules, error codes), see [architecture/api_contracts.md](architecture/api_contracts.md).
 
 ---
 
@@ -2069,7 +2069,7 @@ Extract code from a module into a new package (Rust-specific).
 
 High-level operations combining multiple tools.
 
-> **See also:** [WORKFLOWS.md](WORKFLOWS.md) - Complete guide to the Intent-Based Workflow Engine, including workflow execution, parameter templating, and built-in workflow recipes.
+> **See also:** [workflows.md](workflows.md) - Complete guide to the Intent-Based Workflow Engine, including workflow execution, parameter templating, and built-in workflow recipes.
 
 ### `apply_edits`
 
@@ -2762,5 +2762,5 @@ async function callMcpTool(toolName: string, args: any) {
 
 - [Language Support Matrix](#language-support-matrix) - See above for language support table
 - [docs/architecture/overview.md](./docs/architecture/overview.md) - Implementation architecture
-- [docs/deployment/docker_deployment.md](./docs/deployment/docker_deployment.md) - Docker deployment guide
+- [docs/operations/docker_deployment.md](./docs/operations/docker_deployment.md) - Docker deployment guide
 - [.codebuddy/workflows.json](./.codebuddy/workflows.json) - Workflow definitions

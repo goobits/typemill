@@ -67,9 +67,9 @@ Ask your AI assistant:
 
 ## Next Steps
 
-- **[TOOLS_CATALOG.md](TOOLS_CATALOG.md)** - Complete list of 23 MCP tools
-- **[API_REFERENCE.md](API_REFERENCE.md)** - Detailed API with parameters and returns
-- **[OPERATIONS.md](OPERATIONS.md)** - Advanced configuration and analysis options
+- **[tools_catalog.md](tools_catalog.md)** - Complete list of 23 MCP tools
+- **[api_reference.md](api_reference.md)** - Detailed API with parameters and returns
+- **[operations.md](operations.md)** - Advanced configuration and analysis options
 
 ## Troubleshooting
 

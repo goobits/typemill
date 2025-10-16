@@ -533,10 +533,10 @@ As Codebuddy evolves, additional primitives may be added:
 
 ## Related Documentation
 
-- **[API_REFERENCE.md](../../API_REFERENCE.md)** - Complete MCP tool API reference
+- **[api_reference.md](../../api_reference.md)** - Complete MCP tool API reference
 - **[ARCHITECTURE.md](overview.md)** - System architecture and design
-- **[WORKFLOWS.md](../WORKFLOWS.md)** - Intent-based workflow automation
-- **[CONTRIBUTING.md](../../CONTRIBUTING.md)** - Adding new tools and primitives
+- **[workflows.md](../workflows.md)** - Intent-based workflow automation
+- **[contributing.md](../../contributing.md)** - Adding new tools and primitives
 
 ---
 

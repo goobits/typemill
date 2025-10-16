@@ -262,7 +262,7 @@ See `examples/plugins/` for complete examples:
 
 ## Key References
 
-- [CB_LANG_COMMON.md](cb_lang_common.md) - Shared utility functions
-- [README.md](readme.md) - Overview of existing plugins
+- [cb_lang_common.md](cb_lang_common.md) - Shared utility functions
+- [readme.md](readme.md) - Overview of existing plugins
 - [examples/plugins/](../../examples/plugins/) - Complete code examples
 - [docs/archive/plugin_development_guide-verbose.md](../archive/plugin_development_guide-verbose.md) - Full guide with explanations

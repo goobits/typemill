@@ -3,7 +3,7 @@
 Fast lookup table for all Codebuddy MCP tools.
 
 **Format:** Tool name → Parameters → Returns (no examples)
-**Detailed docs:** [API_REFERENCE.md](API_REFERENCE.md)
+**Detailed docs:** [api_reference.md](api_reference.md)
 
 ---
 
@@ -163,4 +163,4 @@ Not visible in MCP `tools/list`. Used by backend workflows. AI agents should use
 
 ---
 
-**Detailed docs:** [API_REFERENCE.md](API_REFERENCE.md)
+**Detailed docs:** [api_reference.md](api_reference.md)

@@ -8,14 +8,14 @@ Codebuddy bridges the gap between AI assistants and your codebase by exposing La
 
 ## 🚀 Get Started
 
-**New users:** See **[QUICKSTART.md](docs/QUICKSTART.md)** for complete 2-minute setup.
+**New users:** See **[quickstart.md](docs/quickstart.md)** for complete 2-minute setup.
 
 **Quick summary:**
 1. Install: `curl -fsSL https://raw.githubusercontent.com/goobits/codebuddy/main/install.sh | bash`
 2. Configure: `codebuddy setup`
 3. Start: `codebuddy start`
 
-**References:** [QUICKSTART](docs/QUICKSTART.md) · [Tools Catalog](docs/TOOLS_CATALOG.md) · [API Reference](docs/API_REFERENCE.md)
+**References:** [QUICKSTART](docs/quickstart.md) · [Tools Catalog](docs/tools_catalog.md) · [API Reference](docs/api_reference.md)
 
 ---
 
@@ -37,11 +37,11 @@ Currently supports **TypeScript and Rust** with full AST analysis and refactorin
 
 ## 📖 Documentation
 
-- **[QUICKSTART.md](docs/QUICKSTART.md)** - Get running in 2 minutes
-- **[TOOLS_CATALOG.md](docs/TOOLS_CATALOG.md)** - Complete list of 23 MCP tools
-- **[API_REFERENCE.md](docs/API_REFERENCE.md)** - Detailed API with parameters and returns
-- **[OPERATIONS.md](docs/OPERATIONS.md)** - Advanced configuration and analysis
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Developer guide for contributors
+- **[quickstart.md](docs/quickstart.md)** - Get running in 2 minutes
+- **[tools_catalog.md](docs/tools_catalog.md)** - Complete list of 23 MCP tools
+- **[api_reference.md](docs/api_reference.md)** - Detailed API with parameters and returns
+- **[operations.md](docs/operations.md)** - Advanced configuration and analysis
+- **[contributing.md](contributing.md)** - Developer guide for contributors
 - **[docs/architecture/overview.md](docs/architecture/overview.md)** - System architecture deep-dive
 
 ## 💻 Development
@@ -55,7 +55,7 @@ make check
 # Run tests
 make test
 ```
-See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full development guide, including how to add new tools.
+See **[contributing.md](contributing.md)** for the full development guide, including how to add new tools.
 
 ## 📝 License
 MIT - see [LICENSE](LICENSE)

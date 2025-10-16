@@ -153,7 +153,7 @@ pub mod module;  // Exposes consolidated code
 | `CODEBUDDY_DISABLE_IMPORT_CACHE=1` | Disable import cache only | Import resolution issues |
 | `CODEBUDDY_DISABLE_LSP_METHOD_CACHE=1` | Disable LSP method cache only | LSP protocol debugging |
 
-See [CACHE_CONFIGURATION.md](configuration/CACHE_CONFIGURATION.md) for complete cache guide.
+See [cache_configuration.md](operations/cache_configuration.md) for complete cache guide.
 
 ## Server Health Monitoring
 
@@ -194,8 +194,8 @@ Shows:
 
 ## Key Links
 
-- [QUICKSTART.md](QUICKSTART.md) - Get running in 2 minutes
-- [TOOLS_CATALOG.md](TOOLS_CATALOG.md) - Complete tool list
-- [API_REFERENCE.md](API_REFERENCE.md) - Detailed API reference
-- [CONTRIBUTING.md](../CONTRIBUTING.md) - Developer guide
+- [quickstart.md](quickstart.md) - Get running in 2 minutes
+- [tools_catalog.md](tools_catalog.md) - Complete tool list
+- [../api_reference.md](../api_reference.md) - Detailed API reference
+- [contributing.md](../contributing.md) - Developer guide
 - [docs/architecture/overview.md](architecture/overview.md) - System architecture

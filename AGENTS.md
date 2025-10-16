@@ -7,19 +7,19 @@ This file provides guidance to AI assistants when working with code in this repo
 
 **Before working with this codebase, please read:**
 
-1. **[API_REFERENCE.md](docs/API_REFERENCE.md)** - **READ THIS FIRST** - Complete MCP tools API reference
-2. **[TOOLS_CATALOG.md](docs/TOOLS_CATALOG.md)** - Fast lookup table for all 23 public tools
-3. **[OPERATIONS.md](docs/OPERATIONS.md)** - Advanced configuration and analysis options
+1. **[api_reference.md](docs/api_reference.md)** - **READ THIS FIRST** - Complete MCP tools API reference
+2. **[tools_catalog.md](docs/tools_catalog.md)** - Fast lookup table for all 23 public tools
+3. **[operations.md](docs/operations.md)** - Advanced configuration and analysis options
 
 ---
 
 **Architecture & Development:**
 - **[docs/architecture/overview.md](docs/architecture/overview.md)** - System architecture (components, data flow, LSP integration)
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contributor guide (add tools, handler architecture, best practices)
+- **[contributing.md](contributing.md)** - Contributor guide (add tools, handler architecture, best practices)
 - **[docs/development/logging_guidelines.md](docs/development/logging_guidelines.md)** - Structured logging standards
 
 **Deployment:**
-- **[docs/deployment/docker_deployment.md](docs/deployment/docker_deployment.md)** - Docker deployment (dev and production)
+- **[docs/operations/docker_deployment.md](docs/operations/docker_deployment.md)** - Docker deployment (dev and production)
 
 ## Project Information
 
@@ -29,11 +29,11 @@ Pure Rust MCP server bridging Language Server Protocol (LSP) functionality to AI
 
 ## MCP Tools
 
-Codebuddy provides comprehensive MCP tools for code intelligence and refactoring. See **[API_REFERENCE.md](docs/API_REFERENCE.md)** for complete API reference with detailed parameters, return types, and examples.
+Codebuddy provides comprehensive MCP tools for code intelligence and refactoring. See **[api_reference.md](docs/api_reference.md)** for complete API reference with detailed parameters, return types, and examples.
 
 **Current Architecture**: 23 public tools visible to AI agents via MCP `tools/list`, plus 20 internal tools for backend workflows.
 
-**Note:** Internal tools exist for backend use only (lifecycle hooks, workflow plumbing, legacy operations). These are hidden from MCP `tools/list` to simplify the API surface for AI agents. See [API_REFERENCE.md Internal Tools](docs/API_REFERENCE.md#internal-tools) section.
+**Note:** Internal tools exist for backend use only (lifecycle hooks, workflow plumbing, legacy operations). These are hidden from MCP `tools/list` to simplify the API surface for AI agents. See [api_reference.md Internal Tools](docs/api_reference.md#internal-tools) section.
 
 ### Quick Reference (23 Public Tools)
 
@@ -58,7 +58,7 @@ Codebuddy provides comprehensive MCP tools for code intelligence and refactoring
 **System & Health (1 tool)**
 - `health_check`
 
-**Note**: File operations, workspace tools, and legacy analysis tools are now internal-only. AI agents should use the public API above. See [API_REFERENCE.md](docs/API_REFERENCE.md) for complete details.
+**Note**: File operations, workspace tools, and legacy analysis tools are now internal-only. AI agents should use the public API above. See [api_reference.md](docs/api_reference.md) for complete details.
 
 ### MCP Usage Pattern
 
@@ -149,7 +149,7 @@ pub mod module;  // Exposes the consolidated code
 - Merging experimental features back into main crate
 - Consolidating related functionality into a single package
 
-For detailed parameters, return types, and examples, see **[API_REFERENCE.md](docs/API_REFERENCE.md)**.
+For detailed parameters, return types, and examples, see **[api_reference.md](docs/api_reference.md)**.
 
 ### Rust File Renames with Automatic Updates
 
@@ -316,7 +316,7 @@ cargo nextest run --workspace --features heavy-tests
 
 For detailed system architecture, see **[docs/architecture/overview.md](docs/architecture/overview.md)**.
 
-For Docker deployment details, see **[docs/deployment/docker_deployment.md](docs/deployment/docker_deployment.md)**. For CLI usage, see the CLI Commands section above.
+For Docker deployment details, see **[docs/operations/docker_deployment.md](docs/operations/docker_deployment.md)**. For CLI usage, see the CLI Commands section above.
 
 ### Quick Configuration Example
 
@@ -556,7 +556,7 @@ cargo build --release
 - `CODEBUDDY_DISABLE_IMPORT_CACHE=1` - Disable only import cache
 - `CODEBUDDY_DISABLE_LSP_METHOD_CACHE=1` - Disable only LSP method translation cache
 
-See **[docs/configuration/CACHE_CONFIGURATION.md](docs/configuration/CACHE_CONFIGURATION.md)** for complete cache configuration guide.
+See **[docs/operations/cache_configuration.md](docs/operations/cache_configuration.md)** for complete cache configuration guide.
 
 ## Performance Features
 
@@ -585,7 +585,7 @@ See **[docs/configuration/CACHE_CONFIGURATION.md](docs/configuration/CACHE_CONFI
 
 ### Adding New MCP Tools
 
-**See [CONTRIBUTING.md](CONTRIBUTING.md)** for complete step-by-step guide on adding new tools with handler architecture, registration, and best practices.
+**See [contributing.md](contributing.md)** for complete step-by-step guide on adding new tools with handler architecture, registration, and best practices.
 
 ---
 
@@ -613,20 +613,20 @@ All debug scripts, test analysis, and experimental code goes in `.debug/` (gitig
 ## 📖 Additional Documentation
 
 ### For Contributors
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Setup, PR process, adding tools, best practices
+- **[contributing.md](contributing.md)** - Setup, PR process, adding tools, best practices
 - **[docs/development/logging_guidelines.md](docs/development/logging_guidelines.md)** - Structured logging standards
 - **[integration-tests/TESTING_GUIDE.md](integration-tests/TESTING_GUIDE.md)** - Testing architecture
 
 ### For Operators
-- **[docs/deployment/docker_deployment.md](docs/deployment/docker_deployment.md)** - Docker deployment (development and production)
-- **[docs/configuration/CACHE_CONFIGURATION.md](docs/configuration/CACHE_CONFIGURATION.md)** - Cache configuration and environment variables
+- **[docs/operations/docker_deployment.md](docs/operations/docker_deployment.md)** - Docker deployment (development and production)
+- **[docs/operations/cache_configuration.md](docs/operations/cache_configuration.md)** - Cache configuration and environment variables
 
 ### For Understanding the System
 - **[docs/architecture/overview.md](docs/architecture/overview.md)** - Complete system architecture
 - **[docs/architecture/internal_tools.md](docs/architecture/internal_tools.md)** - Internal vs public tools policy
-- **[docs/WORKFLOWS.md](docs/WORKFLOWS.md)** - Workflow automation engine
+- **[docs/workflows.md](docs/workflows.md)** - Workflow automation engine
 
 ### For Tool Reference
-- **[docs/API_REFERENCE.md](docs/API_REFERENCE.md)** - Complete MCP tools API with examples
-- **[docs/TOOLS_CATALOG.md](docs/TOOLS_CATALOG.md)** - Fast lookup table for all tools
-- **[docs/OPERATIONS.md](docs/OPERATIONS.md)** - Advanced configuration and analysis
+- **[docs/api_reference.md](docs/api_reference.md)** - Complete MCP tools API with examples
+- **[docs/tools_catalog.md](docs/tools_catalog.md)** - Fast lookup table for all tools
+- **[docs/operations.md](docs/operations.md)** - Advanced configuration and analysis

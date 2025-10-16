@@ -73,7 +73,7 @@ When marking a tool as internal, you **must**:
 1. **Add an entry to this file** under "Current Internal Tools"
 2. **Document the rationale** - why is it internal?
 3. **Add inline code comments** explaining the decision
-4. **Update CLAUDE.md** tool count if necessary
+4. **Update claude.md** tool count if necessary
 
 ## When to Make a Tool Internal
 
@@ -183,7 +183,7 @@ assert!(result.is_ok());
 1. **Add `is_internal()` override** to the handler
 2. **Update this documentation** with rationale
 3. **Update test expectations** (tool count, listings)
-4. **Update CLAUDE.md** if tool count changed
+4. **Update claude.md** if tool count changed
 5. **Announce in changelog** if user-facing
 
 ### Making an Internal Tool Public
