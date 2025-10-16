@@ -5,8 +5,12 @@
 
 use async_trait::async_trait;
 use cb_plugin_api::{
-    ImportSupport, LanguageMetadata, LanguagePlugin, ManifestData, ParsedSource,
-    PluginCapabilities, PluginError, PluginResult, SourceLocation, Symbol, SymbolKind,
+    import_support::{
+        ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportParser,
+        ImportRenameSupport, ImportSupport,
+    },
+    LanguageMetadata, LanguagePlugin, ManifestData, ParsedSource, PluginCapabilities,
+    PluginError, PluginResult, SourceLocation, Symbol, SymbolKind,
 };
 use cb_plugin_registry::codebuddy_plugin;
 use regex::Regex;
@@ -110,6 +114,26 @@ impl LanguagePlugin for MarkdownPlugin {
         Some(&self.import_support)
     }
 
+    fn import_parser(&self) -> Option<&dyn ImportParser> {
+        Some(&self.import_support)
+    }
+
+    fn import_rename_support(&self) -> Option<&dyn ImportRenameSupport> {
+        Some(&self.import_support)
+    }
+
+    fn import_move_support(&self) -> Option<&dyn ImportMoveSupport> {
+        Some(&self.import_support)
+    }
+
+    fn import_mutation_support(&self) -> Option<&dyn ImportMutationSupport> {
+        Some(&self.import_support)
+    }
+
+    fn import_advanced_support(&self) -> Option<&dyn ImportAdvancedSupport> {
+        Some(&self.import_support)
+    }
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -161,14 +185,16 @@ impl LanguagePlugin for MarkdownPlugin {
         );
 
         // First pass: rewrite project-relative paths to file-relative paths
-        let (mut result, mut count) = self.import_support.rewrite_imports_for_rename(
+        let (mut result, mut count) = ImportRenameSupport::rewrite_imports_for_rename(
+            &self.import_support,
             content,
             &old_project_relative,
             &new_relative_str,
         );
 
         // Second pass: rewrite any existing file-relative paths
-        let (result2, count2) = self.import_support.rewrite_imports_for_rename(
+        let (result2, count2) = ImportRenameSupport::rewrite_imports_for_rename(
+            &self.import_support,
             &result,
             &old_relative_str,
             &new_relative_str,

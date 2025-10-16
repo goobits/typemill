@@ -2,7 +2,13 @@
 //!
 //! Treats markdown file links as "imports" for the purpose of file rename tracking.
 
-use cb_plugin_api::{ImportSupport, PluginResult};
+use cb_plugin_api::{
+    import_support::{
+        ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportParser,
+        ImportRenameSupport, ImportSupport,
+    },
+    PluginResult,
+};
 use cb_protocol::DependencyUpdate;
 use regex::{Captures, Regex};
 use std::path::Path;
@@ -363,7 +369,7 @@ impl ImportSupport for MarkdownImportSupport {
     }
 
     fn contains_import(&self, content: &str, module: &str) -> bool {
-        let imports = self.parse_imports(content);
+        let imports = ImportSupport::parse_imports(self, content);
         imports
             .iter()
             .any(|imp| imp == module || imp.ends_with(module))
@@ -454,13 +460,77 @@ impl ImportSupport for MarkdownImportSupport {
 
         // Use rewrite_imports_for_rename which handles the link syntax
         let (updated_content, changes) =
-            self.rewrite_imports_for_rename(content, &update.old_reference, &update.new_reference);
+            ImportSupport::rewrite_imports_for_rename(self, content, &update.old_reference, &update.new_reference);
 
         if changes > 0 {
             debug!(changes, "Updated markdown file references");
         }
 
         Ok(updated_content)
+    }
+}
+
+// ============================================================================
+// Segregated Trait Implementations
+// ============================================================================
+
+impl ImportParser for MarkdownImportSupport {
+    fn parse_imports(&self, content: &str) -> Vec<String> {
+        ImportSupport::parse_imports(self, content)
+    }
+
+    fn contains_import(&self, content: &str, module: &str) -> bool {
+        ImportSupport::contains_import(self, content, module)
+    }
+}
+
+impl ImportRenameSupport for MarkdownImportSupport {
+    fn rewrite_imports_for_rename(
+        &self,
+        content: &str,
+        old_name: &str,
+        new_name: &str,
+    ) -> (String, usize) {
+        ImportSupport::rewrite_imports_for_rename(self, content, old_name, new_name)
+    }
+}
+
+impl ImportMoveSupport for MarkdownImportSupport {
+    fn rewrite_imports_for_move(
+        &self,
+        content: &str,
+        old_path: &Path,
+        new_path: &Path,
+    ) -> (String, usize) {
+        ImportSupport::rewrite_imports_for_move(self, content, old_path, new_path)
+    }
+}
+
+impl ImportMutationSupport for MarkdownImportSupport {
+    fn add_import(&self, content: &str, module: &str) -> String {
+        ImportSupport::add_import(self, content, module)
+    }
+
+    fn remove_import(&self, content: &str, module: &str) -> String {
+        ImportSupport::remove_import(self, content, module)
+    }
+
+    fn remove_named_import(&self, _line: &str, _import_name: &str) -> PluginResult<String> {
+        // Markdown doesn't have the concept of "named imports"
+        Err(cb_plugin_api::PluginError::not_supported(
+            "Markdown does not support named imports",
+        ))
+    }
+}
+
+impl ImportAdvancedSupport for MarkdownImportSupport {
+    fn update_import_reference(
+        &self,
+        file_path: &Path,
+        content: &str,
+        update: &DependencyUpdate,
+    ) -> PluginResult<String> {
+        ImportSupport::update_import_reference(self, file_path, content, update)
     }
 }
 
@@ -479,7 +549,7 @@ Also check [API Reference](docs/api/API_REFERENCE.md#overview).
 Visit [our website](https://example.com) for more info.
         "#;
 
-        let imports = support.parse_imports(content);
+        let imports = ImportParser::parse_imports(&support, content);
         assert_eq!(imports.len(), 2);
         assert!(imports.contains(&"docs/architecture/ARCHITECTURE.md".to_string()));
         assert!(imports.contains(&"docs/api/API_REFERENCE.md".to_string()));
@@ -495,7 +565,8 @@ See [Architecture](docs/architecture/ARCHITECTURE.md) for details.
 Also [here](docs/architecture/ARCHITECTURE.md#overview).
         "#;
 
-        let (updated, count) = support.rewrite_imports_for_rename(
+        let (updated, count) = ImportRenameSupport::rewrite_imports_for_rename(
+            &support,
             content,
             "docs/architecture/ARCHITECTURE.md",
             "docs/architecture/overview.md",
@@ -513,7 +584,7 @@ Also [here](docs/architecture/ARCHITECTURE.md#overview).
         let content = "![Diagram](docs/img/old.png)";
 
         let (updated, count) =
-            support.rewrite_imports_for_rename(content, "docs/img/old.png", "docs/img/new.png");
+            ImportRenameSupport::rewrite_imports_for_rename(&support, content, "docs/img/old.png", "docs/img/new.png");
 
         assert_eq!(count, 1);
         assert!(updated.contains("![Diagram](docs/img/new.png)"));
@@ -524,8 +595,8 @@ Also [here](docs/architecture/ARCHITECTURE.md#overview).
         let support = MarkdownImportSupport::new();
         let content = "See [Architecture](docs/ARCHITECTURE.md)";
 
-        assert!(support.contains_import(content, "docs/ARCHITECTURE.md"));
-        assert!(!support.contains_import(content, "OTHER.md"));
+        assert!(ImportParser::contains_import(&support, content, "docs/ARCHITECTURE.md"));
+        assert!(!ImportParser::contains_import(&support, content, "OTHER.md"));
     }
 
     #[test]
@@ -533,7 +604,7 @@ Also [here](docs/architecture/ARCHITECTURE.md#overview).
         let support = MarkdownImportSupport::new();
         let content = "See [Architecture](docs/ARCHITECTURE.md) and [API](docs/API.md)";
 
-        let updated = support.remove_import(content, "docs/ARCHITECTURE.md");
+        let updated = ImportMutationSupport::remove_import(&support, content, "docs/ARCHITECTURE.md");
 
         assert!(!updated.contains("ARCHITECTURE.md"));
         assert!(updated.contains("API.md"));

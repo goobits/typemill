@@ -9,7 +9,11 @@ pub mod workspace_support;
 use async_trait::async_trait;
 use cb_lang_common::read_manifest;
 use cb_plugin_api::{
-    ImportSupport, LanguageMetadata, LanguagePlugin, LspConfig, ManifestData, ParsedSource,
+    import_support::{
+        ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportParser,
+        ImportRenameSupport, ImportSupport,
+    },
+    LanguageMetadata, LanguagePlugin, LspConfig, ManifestData, ParsedSource,
     PluginCapabilities, PluginError, PluginResult, WorkspaceSupport,
 };
 use cb_plugin_registry::codebuddy_plugin;
@@ -84,6 +88,26 @@ impl LanguagePlugin for TypeScriptPlugin {
     }
 
     fn import_support(&self) -> Option<&dyn ImportSupport> {
+        Some(&self.import_support)
+    }
+
+    fn import_parser(&self) -> Option<&dyn ImportParser> {
+        Some(&self.import_support)
+    }
+
+    fn import_rename_support(&self) -> Option<&dyn ImportRenameSupport> {
+        Some(&self.import_support)
+    }
+
+    fn import_move_support(&self) -> Option<&dyn ImportMoveSupport> {
+        Some(&self.import_support)
+    }
+
+    fn import_mutation_support(&self) -> Option<&dyn ImportMutationSupport> {
+        Some(&self.import_support)
+    }
+
+    fn import_advanced_support(&self) -> Option<&dyn ImportAdvancedSupport> {
         Some(&self.import_support)
     }
 

@@ -7,7 +7,13 @@ use crate::imports::{remove_named_import_from_line, update_import_reference_ast}
 use cb_lang_common::import_helpers::{
     find_last_matching_line, insert_line_at, remove_lines_matching,
 };
-use cb_plugin_api::{import_support::ImportSupport, PluginResult};
+use cb_plugin_api::{
+    import_support::{
+        ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportParser,
+        ImportRenameSupport, ImportSupport,
+    },
+    PluginResult,
+};
 use cb_protocol::DependencyUpdate;
 use std::path::Path;
 use tracing::{debug, warn};
@@ -126,7 +132,7 @@ impl ImportSupport for TypeScriptImportSupport {
 
     fn add_import(&self, content: &str, module: &str) -> String {
         // Don't add if already exists
-        if self.contains_import(content, module) {
+        if ImportSupport::contains_import(self, content, module) {
             debug!(module = %module, "Import already exists, skipping");
             return content.to_string();
         }
@@ -184,6 +190,67 @@ impl ImportSupport for TypeScriptImportSupport {
 
     fn remove_named_import(&self, line: &str, import_name: &str) -> PluginResult<String> {
         remove_named_import_from_line(line, import_name)
+    }
+}
+
+// ============================================================================
+// Segregated Trait Implementations
+// ============================================================================
+
+impl ImportParser for TypeScriptImportSupport {
+    fn parse_imports(&self, content: &str) -> Vec<String> {
+        ImportSupport::parse_imports(self, content)
+    }
+
+    fn contains_import(&self, content: &str, module: &str) -> bool {
+        ImportSupport::contains_import(self, content, module)
+    }
+}
+
+impl ImportRenameSupport for TypeScriptImportSupport {
+    fn rewrite_imports_for_rename(
+        &self,
+        content: &str,
+        old_name: &str,
+        new_name: &str,
+    ) -> (String, usize) {
+        ImportSupport::rewrite_imports_for_rename(self, content, old_name, new_name)
+    }
+}
+
+impl ImportMoveSupport for TypeScriptImportSupport {
+    fn rewrite_imports_for_move(
+        &self,
+        content: &str,
+        old_path: &Path,
+        new_path: &Path,
+    ) -> (String, usize) {
+        ImportSupport::rewrite_imports_for_move(self, content, old_path, new_path)
+    }
+}
+
+impl ImportMutationSupport for TypeScriptImportSupport {
+    fn add_import(&self, content: &str, module: &str) -> String {
+        ImportSupport::add_import(self, content, module)
+    }
+
+    fn remove_import(&self, content: &str, module: &str) -> String {
+        ImportSupport::remove_import(self, content, module)
+    }
+
+    fn remove_named_import(&self, line: &str, import_name: &str) -> PluginResult<String> {
+        ImportSupport::remove_named_import(self, line, import_name)
+    }
+}
+
+impl ImportAdvancedSupport for TypeScriptImportSupport {
+    fn update_import_reference(
+        &self,
+        file_path: &Path,
+        content: &str,
+        update: &DependencyUpdate,
+    ) -> PluginResult<String> {
+        ImportSupport::update_import_reference(self, file_path, content, update)
     }
 }
 
@@ -388,7 +455,7 @@ const fs = require('fs');
 const path = require('path');
 "#;
 
-        let imports = support.parse_imports(source);
+        let imports = ImportParser::parse_imports(&support, source);
         assert!(imports.contains(&"react".to_string()));
         assert!(imports.contains(&"./utils".to_string()));
         assert!(imports.contains(&"fs".to_string()));
@@ -403,9 +470,9 @@ import React from 'react';
 const fs = require('fs');
 "#;
 
-        assert!(support.contains_import(source, "react"));
-        assert!(support.contains_import(source, "fs"));
-        assert!(!support.contains_import(source, "lodash"));
+        assert!(ImportParser::contains_import(&support, source, "react"));
+        assert!(ImportParser::contains_import(&support, source, "fs"));
+        assert!(!ImportParser::contains_import(&support, source, "lodash"));
     }
 
     #[test]
@@ -418,7 +485,7 @@ function App() {
 }
 "#;
 
-        let updated = support.add_import(source, "lodash");
+        let updated = ImportMutationSupport::add_import(&support, source, "lodash");
         assert!(updated.contains("import { } from 'lodash';"));
         assert!(updated.contains("import React from 'react';"));
     }
@@ -435,7 +502,7 @@ function App() {
 }
 "#;
 
-        let updated = support.remove_import(source, "react");
+        let updated = ImportMutationSupport::remove_import(&support, source, "react");
         assert!(!updated.contains("import React from 'react';"));
         assert!(!updated.contains("import { useState } from 'react';"));
         assert!(updated.contains("const fs = require('fs');"));
@@ -450,7 +517,7 @@ import { oldFunction as alias } from './utils';
 "#;
 
         let (updated, changes) =
-            support.rewrite_imports_for_rename(source, "oldFunction", "newFunction");
+            ImportRenameSupport::rewrite_imports_for_rename(&support, source, "oldFunction", "newFunction");
         assert!(updated.contains("{ newFunction }"));
         assert!(updated.contains("import newFunction from"));
         assert!(updated.contains("newFunction as alias"));
