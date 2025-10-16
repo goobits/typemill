@@ -732,7 +732,7 @@ async fn test_no_zombie_processes_on_lsp_failure() {
 
     // Try to use the failing LSP server multiple times. This will cause the LspClient
     // to be created, fail initialization, and be dropped repeatedly. This test verifies
-    // that the drop handler correctly reaps the child process every time.
+    // that the zombie reaper correctly cleans up the child process every time.
     for i in 0..5 {
         println!("Zombie test iteration {}...", i);
         let response = client
@@ -745,11 +745,31 @@ async fn test_no_zombie_processes_on_lsp_failure() {
         // We expect this to fail, that's the point of the test. The error confirms
         // that the client is actually trying to start the server and detecting its failure.
         // With the post-initialization health check, `LspClient::new` should fail,
-        // which will cause the `call_tool` method to return an `Err`.
-        assert!(
-            response.is_err(),
-            "Expected LSP call to return a direct error because the client failed to create"
-        );
+        // which results in an MCP error response (not a transport error).
+        // MCP error responses are Ok(Value) with an "error" field set.
+        match response {
+            Ok(resp) if resp.get("error").is_some() => {
+                // Expected: MCP error response due to LSP client creation failure
+                println!(
+                    "Iteration {}: Got expected error: {}",
+                    i,
+                    resp["error"]
+                        .get("message")
+                        .and_then(|m| m.as_str())
+                        .unwrap_or("unknown")
+                );
+            }
+            Ok(resp) => {
+                panic!(
+                    "Iteration {}: Expected MCP error response but got success: {:?}",
+                    i, resp
+                );
+            }
+            Err(e) => {
+                // Also acceptable - transport-level error
+                println!("Iteration {}: Got transport error: {:?}", i, e);
+            }
+        }
     }
 
     // Give a moment for any slow process reaping to complete.
