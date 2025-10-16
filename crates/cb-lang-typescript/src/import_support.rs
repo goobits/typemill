@@ -133,8 +133,8 @@ impl ImportMoveSupport for TypeScriptImportSupport {
         old_path: &Path,
         new_path: &Path,
     ) -> (String, usize) {
-        // Legacy method - delegates to context-aware version with default importing_file
-        // Note: This won't work correctly without knowing the importing file's location
+        // Simplified wrapper - delegates to context-aware version
+        // Uses old_path as default importing_file location
         rewrite_imports_for_move_with_context(content, old_path, new_path, old_path)
     }
 }

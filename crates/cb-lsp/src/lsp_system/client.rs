@@ -990,6 +990,7 @@ impl LspClient {
                 } else {
                     debug!(
                         method = ?method,
+                        notification = ?message,
                         "Received notification from LSP server"
                     );
                 }

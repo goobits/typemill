@@ -335,9 +335,8 @@ mod tests {
         })
     }
 
-    // LEGACY HARD-CODED IMPLEMENTATION REMOVED
-    // All recipes now loaded from workflows.json configuration
-    // See .codebuddy/workflows.json for current recipe definitions
+    // All recipes are loaded from workflows.json configuration
+    // See .codebuddy/workflows.json for recipe definitions
 
     #[test]
     fn test_plan_rename_symbol() {

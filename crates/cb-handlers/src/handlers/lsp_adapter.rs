@@ -95,14 +95,14 @@ impl DirectLspAdapter {
             // Get or create client for this extension
             match self.get_or_create_client(extension).await {
                 Ok(client) => {
-                    // For rust-analyzer, use hybrid approach for workspace indexing:
-                    // 1. Try event-driven wait for progress notifications (2s timeout)
-                    // 2. If no progress notification, fall back to brief sleep (2s)
-                    // This handles both cases: servers that send $/progress and those that don't
+                    // For rust-analyzer, check if workspace indexing notifications are sent:
+                    // 1. Try event-driven wait for progress notifications (500ms timeout)
+                    // 2. If no progress notification arrives, assume indexing is instant or not needed
+                    // This handles both cases: servers that send $/progress and those that complete instantly
                     if extension == "rs" {
                         debug!(
                             extension = %extension,
-                            "Waiting for rust-analyzer workspace indexing before workspace/symbol query"
+                            "Checking for rust-analyzer workspace indexing progress"
                         );
 
                         let token = cb_lsp::progress::ProgressToken::String(
@@ -116,10 +116,10 @@ impl DirectLspAdapter {
                                 "rust-analyzer indexing already complete"
                             );
                         } else {
-                            // Try event-driven wait first (2s timeout)
-                            // rust-analyzer may not send progress notifications for small projects
+                            // Wait briefly (500ms) to see if indexing progress notification arrives
+                            // rust-analyzer doesn't send progress for small projects that index instantly
                             match client
-                                .wait_for_indexing(std::time::Duration::from_secs(2))
+                                .wait_for_indexing(std::time::Duration::from_millis(500))
                                 .await
                             {
                                 Ok(()) => {
@@ -129,16 +129,10 @@ impl DirectLspAdapter {
                                     );
                                 }
                                 Err(_) => {
-                                    // Timeout - rust-analyzer likely doesn't send progress for small projects
-                                    // Fall back to brief sleep to allow background indexing
+                                    // No progress notification - indexing either instant or not happening
                                     debug!(
                                         extension = %extension,
-                                        "No progress notification received, using fallback sleep (2s)"
-                                    );
-                                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                                    debug!(
-                                        extension = %extension,
-                                        "Fallback sleep complete, proceeding with workspace/symbol query"
+                                        "No progress notification in 500ms - indexing complete or not needed"
                                     );
                                 }
                             }

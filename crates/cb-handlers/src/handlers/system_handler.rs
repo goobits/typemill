@@ -3,8 +3,8 @@
 //! Handles: health_check, notify_file_opened, notify_file_saved,
 //!          notify_file_closed
 //!
-//! Note: Legacy find_dead_code removed in favor of analyze.dead_code (unified API)
-//! Note: fix_imports replaced by optimize_imports in editing.rs
+//! Note: Dead code detection available via analyze.dead_code (unified API)
+//! Note: Import optimization available via optimize_imports
 
 use super::lsp_adapter::DirectLspAdapter;
 use super::tools::{ToolHandler, ToolHandlerContext};

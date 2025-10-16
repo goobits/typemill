@@ -141,7 +141,7 @@ pub struct ToolHandlerContext {
     pub lsp_adapter: Arc<Mutex<Option<Arc<DirectLspAdapter>>>>,
 }
 
-// Compatibility alias for legacy handlers that still reference the old name
+// Type alias for convenience
 pub type ToolContext = ToolHandlerContext;
 
 /// Unified trait for all tool handlers

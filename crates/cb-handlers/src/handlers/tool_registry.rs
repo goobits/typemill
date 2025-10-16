@@ -81,18 +81,6 @@ impl ToolRegistry {
         }
     }
 
-    /// Register a tool handler (legacy method for backward compatibility)
-    ///
-    /// All tools returned by `handler.tool_names()` will be registered.
-    /// If a tool name is already registered, it will be replaced and a warning logged.
-    ///
-    /// # Arguments
-    ///
-    /// * `handler` - The handler to register
-    pub fn register(&mut self, handler: Arc<dyn ToolHandler>) {
-        self.register_with_name(handler, "UnknownHandler")
-    }
-
     /// Route a tool call to the appropriate handler
     ///
     /// # Arguments
@@ -245,7 +233,7 @@ mod tests {
             tools: vec!["tool1", "tool2"],
         });
 
-        registry.register(handler);
+        registry.register_with_name(handler, "TestHandler");
 
         assert!(registry.has_tool("tool1"));
         assert!(registry.has_tool("tool2"));
@@ -262,8 +250,8 @@ mod tests {
             tools: vec!["c_tool"],
         });
 
-        registry.register(handler1);
-        registry.register(handler2);
+        registry.register_with_name(handler1, "TestHandler1");
+        registry.register_with_name(handler2, "TestHandler2");
 
         let tools = registry.list_tools();
         assert_eq!(tools, vec!["a_tool", "b_tool", "c_tool"]);

@@ -33,8 +33,8 @@ impl ToolHandler for SystemToolsHandler {
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
         if tool_call.name == "health_check" {
-            // The new health_check combines the legacy health_check (plugins, etc.)
-            // with the system status information.
+            // Health check combines plugin status
+            // with system information.
             let mut health_report = self
                 .system_handler
                 .handle_tool_call(context, tool_call)

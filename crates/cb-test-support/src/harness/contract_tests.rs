@@ -49,13 +49,27 @@ fn test_capabilities_contract(plugin: &dyn LanguagePlugin) {
     let caps = plugin.capabilities();
 
     if caps.imports {
+        // Check if any import support trait is implemented
+        let has_import_support = plugin.import_parser().is_some()
+            || plugin.import_rename_support().is_some()
+            || plugin.import_move_support().is_some()
+            || plugin.import_mutation_support().is_some()
+            || plugin.import_advanced_support().is_some();
+
         assert!(
-            plugin.import_support().is_some(),
+            has_import_support,
             "Plugin claims import support but provides no implementation."
         );
     } else {
+        // Check that no import support traits are implemented
+        let has_import_support = plugin.import_parser().is_some()
+            || plugin.import_rename_support().is_some()
+            || plugin.import_move_support().is_some()
+            || plugin.import_mutation_support().is_some()
+            || plugin.import_advanced_support().is_some();
+
         assert!(
-            plugin.import_support().is_none(),
+            !has_import_support,
             "Plugin does not claim import support but provides an implementation."
         );
     }

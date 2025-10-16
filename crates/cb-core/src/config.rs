@@ -403,8 +403,7 @@ impl AppConfig {
     /// 1. Environment variables (CODEBUDDY__*)
     /// 2. Environment-specific profile from codebuddy.toml (based on CODEBUDDY_ENV)
     /// 3. Base configuration from codebuddy.toml
-    /// 4. Legacy JSON files (.codebuddy/config.json, etc.) for backward compatibility
-    /// 5. Default values
+    /// 4. Default values
     pub fn load() -> CoreResult<Self> {
         use figment::{
             providers::{Env, Format, Toml},
@@ -419,7 +418,7 @@ impl AppConfig {
             "Loading configuration with profile"
         );
 
-        // Priority order: Env vars > Profile > Base config > Legacy JSON > Defaults
+        // Priority order: Env vars > Profile > Base config > Defaults
         // Start with full defaults by serializing the Default implementation
         let default_config = AppConfig::default();
         let default_value =
@@ -427,55 +426,34 @@ impl AppConfig {
 
         let figment = Figment::from(figment::providers::Serialized::defaults(default_value));
 
-        // 2. Try to load legacy JSON files for backward compatibility
-        let legacy_json_paths = [".codebuddy/config.json", "codebuddy.json"];
-
-        let mut figment_with_legacy = figment;
-        for json_path in &legacy_json_paths {
-            let path = std::path::Path::new(json_path);
-            if path.exists() {
-                tracing::debug!(path = %json_path, "Loading legacy JSON config");
-                // For JSON files, directly deserialize to preserve camelCase
-                if let Ok(content) = std::fs::read_to_string(path) {
-                    if let Ok(json_config) = serde_json::from_str::<AppConfig>(&content) {
-                        // Merge the JSON config
-                        if let Ok(json_value) = serde_json::to_value(&json_config) {
-                            figment_with_legacy = figment_with_legacy
-                                .merge(figment::providers::Serialized::defaults(json_value));
-                        }
-                        break; // Use first found JSON file
-                    }
-                }
-            }
-        }
-
-        // 3. Load codebuddy.toml if it exists (base configuration)
+        // 2. Load codebuddy.toml if it exists (base configuration)
         let toml_paths = ["codebuddy.toml", ".codebuddy/config.toml"];
 
+        let mut figment_with_toml = figment;
         let mut toml_found = false;
         for toml_path in &toml_paths {
             let path = std::path::Path::new(toml_path);
             if path.exists() {
                 tracing::info!(path = %toml_path, "Loading TOML configuration");
-                figment_with_legacy = figment_with_legacy.merge(Toml::file(path));
+                figment_with_toml = figment_with_toml.merge(Toml::file(path));
                 toml_found = true;
                 break; // Use first found TOML file
             }
         }
 
-        // 4. If TOML was found and environment profile is not "default", merge environment profile
+        // 3. If TOML was found and environment profile is not "default", merge environment profile
         if toml_found && env_profile != "default" {
             tracing::info!(
                 profile = %env_profile,
                 "Applying environment-specific profile"
             );
             // Merge environment-specific overrides from [environments.{profile}]
-            figment_with_legacy =
-                figment_with_legacy.select(format!("environments.{}", env_profile));
+            figment_with_toml =
+                figment_with_toml.select(format!("environments.{}", env_profile));
         }
 
-        // 5. Apply environment variable overrides
-        let figment_final = figment_with_legacy.merge(
+        // 4. Apply environment variable overrides
+        let figment_final = figment_with_toml.merge(
             Env::prefixed("CODEBUDDY__")
                 .split("__")
                 .map(|k| k.as_str().replace("__", ".").to_lowercase().into()),

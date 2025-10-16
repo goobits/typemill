@@ -1,165 +1,34 @@
-# CodeBuddy Configuration File
-# Single source of truth for all CodeBuddy settings across all environments
-
-# =============================================================================
-# Server Configuration
-# =============================================================================
 [server]
 host = "127.0.0.1"
-port = 3040
-max_clients = 10
-timeout_ms = 30000
+port = 3000
+timeoutMs = 30000
 
-# =============================================================================
-# LSP (Language Server Protocol) Configuration
-# =============================================================================
 [lsp]
-default_timeout_ms = 5000
-enable_preload = true
+defaultTimeoutMs = 30000
+enablePreload = true
 
-# TypeScript/JavaScript
 [[lsp.servers]]
 extensions = ["ts", "tsx", "js", "jsx"]
 command = ["typescript-language-server", "--stdio"]
-restart_interval = 10
 
-# Rust
+[[lsp.servers]]
+extensions = ["py", "pyi"]
+command = ["pylsp"]
+
 [[lsp.servers]]
 extensions = ["rs"]
 command = ["rust-analyzer"]
-restart_interval = 15
 
-# Note: Language support temporarily reduced to TypeScript + Rust during unified API refactoring
-# Additional LSP servers (Python/pylsp, Go/gopls) available in git tag 'pre-language-reduction'
+[[lsp.servers]]
+extensions = ["go"]
+command = ["gopls"]
 
-# =============================================================================
-# Logging Configuration
-# =============================================================================
 [logging]
-level = "info"
-format = "pretty"
-
-# =============================================================================
-# Cache Configuration
-# =============================================================================
-[cache]
-enabled = true
-max_size_bytes = 268435456  # 256 MB
-ttl_seconds = 3600          # 1 hour
-persistent = false
-
-# =============================================================================
-# Git Integration Configuration
-# =============================================================================
-[git]
-enabled = true                # Auto-detect and use git if available
-require = false               # Fail if git expected but unavailable
-operations = ["mv", "rm"]     # Which git commands to use for file operations
-
-# =============================================================================
-# Validation Configuration
-# =============================================================================
-[validation]
-enabled = false               # Enable post-operation validation
-command = "cargo check"       # Command to run for validation
-on_failure = "Report"         # Action on failure: Report, Rollback, or Interactive
-
-# =============================================================================
-# External MCP Servers
-# =============================================================================
-[[external_mcp.servers]]
-name = "context7"
-command = ["npx", "-y", "@upstash/context7-mcp"]
-auto_start = true
-
-[[external_mcp.servers]]
-name = "git"
-command = ["npx", "-y", "@modelcontextprotocol/server-git"]
-auto_start = true
-
-[[external_mcp.servers]]
-name = "sequential-thinking"
-command = ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
-auto_start = true
-
-# =============================================================================
-# MCP Client Configuration (for .mcp.json replacement)
-# =============================================================================
-[mcp_client.servers.codebuddy]
-type = "stdio"
-command = "/usr/local/bin/codebuddy"
-args = ["start"]
-
-# =============================================================================
-# Environment-Specific Overrides
-# =============================================================================
-
-# Docker Development Environment
-[environments.docker]
-[environments.docker.server]
-host = "0.0.0.0"
-port = 3000
-timeout_ms = 120000
-
-[environments.docker.lsp]
-default_timeout_ms = 30000
-
-[environments.docker.fuse]
-mount_point = "/tmp/codeflow-mounts"
-read_only = false
-cache_timeout_seconds = 60
-max_file_size_bytes = 10485760  # 10 MB
-
-[environments.docker.logging]
 level = "debug"
-format = "pretty"
-
-# Production Environment
-[environments.production]
-[environments.production.server]
-host = "0.0.0.0"
-port = 3000
-max_clients = 100
-timeout_ms = 120000
-
-[environments.production.server.auth]
-jwt_secret = "${JWT_SECRET}"  # Environment variable substitution
-jwt_expiry_seconds = 86400    # 24 hours
-jwt_issuer = "codebuddy"
-jwt_audience = "codebuddy-clients"
-
-[environments.production.lsp]
-default_timeout_ms = 30000
-
-# TypeScript and Rust in production
-[[environments.production.lsp.servers]]
-extensions = ["ts", "tsx", "js", "jsx"]
-command = ["typescript-language-server", "--stdio"]
-restart_interval = 30
-
-[[environments.production.lsp.servers]]
-extensions = ["rs"]
-command = ["rust-analyzer"]
-restart_interval = 15
-
-[environments.production.fuse]
-mount_point = "/tmp/codeflow-mounts"
-read_only = false
-cache_timeout_seconds = 300    # 5 minutes
-max_file_size_bytes = 52428800 # 50 MB
-
-[environments.production.logging]
-level = "info"
 format = "json"
 
-[environments.production.logging.file]
-path = "/var/log/codebuddy/app.log"
-max_size_bytes = 104857600  # 100 MB
-max_files = 10
-
-[environments.production.cache]
+[cache]
 enabled = true
-ttl_seconds = 3600
-max_size_bytes = 1073741824  # 1 GB
-persistent = true
-cache_dir = "/var/cache/codebuddy"
+maxSizeBytes = 104857600
+ttlSeconds = 300
+persistent = false

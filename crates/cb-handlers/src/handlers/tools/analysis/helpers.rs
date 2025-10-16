@@ -1,4 +1,4 @@
-// Shared analysis utilities for legacy handler migrations
+// Shared analysis utilities
 //
 // This module provides common functionality used across analysis handlers:
 // - File filtering and extension matching

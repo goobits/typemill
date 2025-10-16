@@ -47,13 +47,13 @@ impl ToolHandler for AdvancedToolsHandler {
 
         match tool_name.as_str() {
             "execute_edits" => {
-                // The legacy tool was `apply_edits`, so we need to clone and modify the call
-                let mut legacy_tool_call = tool_call.clone();
-                legacy_tool_call.name = "apply_edits".to_string();
+                // Map public tool name to internal handler name
+                let mut internal_tool_call = tool_call.clone();
+                internal_tool_call.name = "apply_edits".to_string();
 
-                // WorkflowHandler now uses the new trait, so delegate directly
+                // Delegate to workflow handler
                 self.workflow_handler
-                    .handle_tool_call(context, &legacy_tool_call)
+                    .handle_tool_call(context, &internal_tool_call)
                     .await
             }
             "execute_batch" => {

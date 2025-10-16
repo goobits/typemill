@@ -24,41 +24,6 @@ pub struct SystemToolsPlugin {
     plugin_registry: Arc<cb_plugin_api::PluginRegistry>,
 }
 
-impl Default for SystemToolsPlugin {
-    /// **DEPRECATED**: Do not use Default in production.
-    ///
-    /// This implementation exists only for backward compatibility and testing.
-    /// Production code MUST use `SystemToolsPlugin::new(registry)` with a
-    /// registry obtained from `cb_services::services::build_language_plugin_registry()`.
-    ///
-    /// # Why this exists
-    ///
-    /// Due to circular dependency constraints (cb-plugins cannot depend on cb-services),
-    /// we cannot call the centralized builder here. This Default impl creates a
-    /// minimal registry for non-production use only.
-    ///
-    /// # Production usage
-    ///
-    /// ```rust,ignore
-    /// let registry = cb_services::services::build_language_plugin_registry();
-    /// let plugin = SystemToolsPlugin::new(registry);
-    /// ```
-    fn default() -> Self {
-        // IMPORTANT: This is NOT production code. Production code uses new() with
-        // a registry from cb_services::services::build_language_plugin_registry()
-        #[allow(unused_mut)] // mut needed when language features are enabled
-        let plugin_registry = {
-            let mut registry = cb_plugin_api::PluginRegistry::new();
-            #[cfg(feature = "lang-rust")]
-            registry.register(cb_lang_rust::RustPlugin::new().into());
-            #[cfg(feature = "lang-typescript")]
-            registry.register(cb_lang_typescript::TypeScriptPlugin::new().into());
-            Arc::new(registry)
-        };
-        Self::new(plugin_registry)
-    }
-}
-
 impl SystemToolsPlugin {
     /// Creates a new instance of the `SystemToolsPlugin` with injected registry.
     ///

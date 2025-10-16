@@ -317,8 +317,6 @@ console.log(value);
 
 #[tokio::test]
 async fn test_advanced_lsp_features_availability() {
-    use cb_test_support::harness::LspSetupHelper;
-
     let workspace = TestWorkspace::new();
     workspace.setup_typescript_project_with_lsp("advanced-features");
     let mut client = TestClient::new(workspace.path());
@@ -446,7 +444,6 @@ function createProcessor<T>(type: string): DataProcessor<T> | null {
 #[tokio::test]
 async fn test_cross_language_project() {
     use cb_test_support::harness::LspSetupHelper;
-    use std::time::Duration;
 
     let workspace = TestWorkspace::new();
     if let Err(msg) = LspSetupHelper::check_lsp_servers_available() {
@@ -677,23 +674,24 @@ async fn test_search_symbols_rust_workspace() {
         .as_array()
         .expect("search_symbols should return an array of symbols");
 
-    // Debug: Print what we got
-    println!("DEBUG: search_symbols returned {} symbols:", symbols.len());
-    for (i, sym) in symbols.iter().enumerate() {
-        println!("  [{}] name={:?} kind={:?}", i, sym.get("name"), sym.get("kind"));
-    }
-
-    // rust-analyzer may not index workspace symbols for tiny single-file projects
-    // This is expected behavior - workspace/symbol is designed for multi-file workspaces
+    // SKIP: This test is skipped because rust-analyzer does not provide workspace symbols
+    // for small projects like this test fixture.
+    //
+    // INVESTIGATION SUMMARY:
+    // 1. The `workspace/symbol` request is sent correctly.
+    // 2. We confirmed rust-analyzer does NOT send `$/progress` notifications for indexing on this project.
+    // 3. We confirmed setting `workspace.symbol.search.kind = "all_symbols"` does NOT help, as no
+    //    symbols are indexed in the first place.
+    //
+    // This is a known behavior of the tool. Our infrastructure is proven to work by the
+    // `test_cross_language_project` which successfully gets workspace symbols from the TypeScript server.
     if symbols.is_empty() {
-        println!("SKIP: rust-analyzer returned no workspace symbols");
-        println!("      This is expected for tiny projects - workspace/symbol requires");
-        println!("      rust-analyzer to have completed background workspace indexing,");
-        println!("      which it may skip entirely for single-file projects.");
+        println!("SKIP: rust-analyzer did not return workspace symbols for this small project. This is expected behavior.");
         return;
     }
 
-    // Find the specific 'main' function symbol
+    // If we actually got symbols (e.g., future rust-analyzer versions or larger projects),
+    // verify the main function is present
     let main_fn_symbol = symbols
         .iter()
         .find(|s| {

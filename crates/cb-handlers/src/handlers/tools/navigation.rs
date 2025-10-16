@@ -63,7 +63,7 @@ impl NavigationHandler {
                     continue; // Skip plugins with no extensions
                 };
 
-                // Use the legacy name for the actual plugin request
+                // Use the internal plugin method name
                 let mut request =
                     PluginRequest::new("search_workspace_symbols".to_string(), file_path);
                 request = request.with_params(args.clone());
@@ -204,7 +204,7 @@ impl ToolHandler for NavigationHandler {
 
         let mut call = tool_call.clone();
 
-        // Handle renames for backward compatibility with legacy plugins
+        // Handle tool name mappings for internal plugins
         if call.name == "get_symbol_info" {
             call.name = "get_hover".to_string();
         }

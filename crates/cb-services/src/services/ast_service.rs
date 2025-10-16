@@ -122,7 +122,7 @@ fn build_import_graph_with_plugin(
         extension,
         "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "rs"
     ) {
-        // Use legacy cb-ast for other languages (if any remain)
+        // Fallback to cb-ast parser for other languages (if any remain)
         return cb_ast::parser::build_import_graph(source, path)
             .map_err(|e| cb_protocol::ApiError::internal(format!("AST parsing failed: {}", e)));
     }

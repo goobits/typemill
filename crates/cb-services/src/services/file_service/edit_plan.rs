@@ -821,41 +821,6 @@ impl FileService {
         Ok(transform_result.transformed_source)
     }
 
-    /// Legacy wrapper for apply_edits_to_content that reads from file and writes back
-    /// Used for backward compatibility with existing code
-    #[allow(dead_code)]
-    async fn apply_file_edits(&self, file_path: &Path, edits: &[TextEdit]) -> ServerResult<()> {
-        if edits.is_empty() {
-            return Ok(());
-        }
-
-        // Read current file content
-        let content = match fs::read_to_string(file_path).await {
-            Ok(content) => content,
-            Err(e) => {
-                return Err(ServerError::Internal(format!(
-                    "Failed to read file {}: {}",
-                    file_path.display(),
-                    e
-                )));
-            }
-        };
-
-        // Apply edits using the new function
-        let modified_content = self.apply_edits_to_content(&content, edits)?;
-
-        // Write modified content back to file
-        fs::write(file_path, modified_content).await.map_err(|e| {
-            ServerError::Internal(format!(
-                "Failed to write file {}: {}",
-                file_path.display(),
-                e
-            ))
-        })?;
-
-        Ok(())
-    }
-
     /// Apply a dependency update (import/export change) to a file
     async fn apply_dependency_update(
         &self,

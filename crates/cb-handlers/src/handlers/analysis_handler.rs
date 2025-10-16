@@ -1,7 +1,7 @@
 //! Code analysis tool handler
 //!
 //! This module is reserved for deep static analysis tools.
-//! Legacy handlers have been removed in favor of the unified analysis API.
+//! This module provides deep static analysis tools via the unified analysis API.
 
 use super::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;

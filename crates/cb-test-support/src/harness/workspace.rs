@@ -197,9 +197,81 @@ flake8>=5.0.0
     }
 
     /// Create a Rust project with LSP configuration.
+    /// Creates a multi-module project large enough for rust-analyzer to index workspace symbols.
     pub fn setup_rust_project_with_lsp(&self, name: &str) {
         self.setup_rust_project(name);
-        self.create_file("src/main.rs", "fn main() { println!(\"hello\"); }");
+
+        // Create a realistic multi-module structure so rust-analyzer indexes workspace symbols
+        self.create_file("src/main.rs", r#"
+mod utils;
+mod config;
+
+fn main() {
+    let config = config::Config::new();
+    let result = utils::process_data(&config);
+    println!("Result: {}", result);
+}
+
+pub fn helper_function() -> i32 {
+    42
+}
+"#);
+
+        self.create_file("src/utils.rs", r#"
+use crate::config::Config;
+
+pub fn process_data(config: &Config) -> String {
+    format!("Processing with timeout: {}", config.timeout)
+}
+
+pub fn calculate_sum(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+pub struct DataProcessor {
+    pub name: String,
+}
+
+impl DataProcessor {
+    pub fn new(name: String) -> Self {
+        Self { name }
+    }
+
+    pub fn process(&self) -> String {
+        format!("Processing: {}", self.name)
+    }
+}
+"#);
+
+        self.create_file("src/config.rs", r#"
+pub struct Config {
+    pub timeout: u32,
+    pub retry_count: u32,
+}
+
+impl Config {
+    pub fn new() -> Self {
+        Self {
+            timeout: 5000,
+            retry_count: 3,
+        }
+    }
+
+    pub fn with_timeout(timeout: u32) -> Self {
+        Self {
+            timeout,
+            retry_count: 3,
+        }
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+"#);
+
         self.setup_lsp_config();
     }
 
