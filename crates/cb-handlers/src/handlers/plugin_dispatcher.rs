@@ -428,6 +428,52 @@ impl PluginDispatcher {
             Vec::new()
         }
     }
+
+    /// Gracefully shutdown the dispatcher and all LSP clients
+    pub async fn shutdown(&self) -> ServerResult<()> {
+        debug!("PluginDispatcher shutting down");
+
+        // Shutdown LSP adapter if it exists
+        if let Some(adapter) = self.lsp_adapter.lock().await.as_ref() {
+            match adapter.shutdown().await {
+                Ok(_) => {
+                    debug!("LSP adapter shutdown successfully");
+                }
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        "Failed to shutdown LSP adapter cleanly, some clients may not have shutdown"
+                    );
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Drop for PluginDispatcher {
+    fn drop(&mut self) {
+        // Attempt to shutdown LSP adapter when dispatcher is dropped
+        // This is best-effort - we spawn a task to avoid blocking Drop
+        let lsp_adapter = self.lsp_adapter.clone();
+
+        tokio::spawn(async move {
+            if let Some(adapter) = lsp_adapter.lock().await.as_ref() {
+                match adapter.shutdown().await {
+                    Ok(_) => {
+                        debug!("LSP adapter shutdown successfully from PluginDispatcher drop");
+                    }
+                    Err(e) => {
+                        warn!(
+                            error = %e,
+                            "Failed to shutdown LSP adapter from PluginDispatcher drop"
+                        );
+                    }
+                }
+            }
+        });
+    }
 }
 
 #[async_trait]

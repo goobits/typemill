@@ -342,8 +342,19 @@ impl LspService for RealLspService {
 
 impl Drop for RealLspService {
     fn drop(&mut self) {
+        // RealLspService manages its own Child process (not LspClient)
+        // We need to kill and wait for the process to avoid zombies
         if let Ok(mut child) = self.child.lock() {
-            let _ = child.start_kill();
+            let pid = child.id();
+
+            // First try to kill the process
+            if let Err(e) = child.start_kill() {
+                eprintln!("Failed to kill RealLspService process (PID {:?}): {}", pid, e);
+            }
+
+            // Note: We can't spawn an async task here because std::sync::Mutex is not Send
+            // across await points. The zombie reaper will clean up this process.
+            eprintln!("RealLspService process killed (PID {:?}) - zombie reaper will clean up", pid);
         }
     }
 }

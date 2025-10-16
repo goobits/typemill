@@ -308,6 +308,14 @@ impl ServerHandle {
     pub async fn shutdown(self) -> ServerResult<()> {
         tracing::info!("Shutting down server...");
 
+        // Shutdown dispatcher (which shutdowns LSP clients)
+        if let Err(e) = self._dispatcher.shutdown().await {
+            tracing::warn!(
+                error = %e,
+                "Failed to shutdown dispatcher cleanly"
+            );
+        }
+
         // Send shutdown signal
         if self.shutdown_tx.send(()).is_err() {
             tracing::warn!("Server already shut down");
