@@ -719,7 +719,7 @@ use serde::{Serialize, Deserialize};
 use crate::parser;
 "#;
 
-        let imports = support.parse_imports(content);
+        let imports = ImportParser::parse_imports(&support, content);
         // Parser returns module paths, not including the final symbol name
         // e.g., "use std::collections::HashMap" returns module_path="std::collections"
         assert!(imports.len() >= 3);
@@ -737,7 +737,7 @@ use other::stuff;
 "#;
 
         let (result, changes) =
-            support.rewrite_imports_for_rename(content, "old_crate", "new_crate");
+            ImportRenameSupport::rewrite_imports_for_rename(&support, content, "old_crate", "new_crate");
         assert_eq!(changes, 1);
         assert!(result.contains("new_crate"));
         assert!(!result.contains("use old_crate"));
@@ -752,9 +752,9 @@ use std::collections::HashMap;
 use serde::Serialize;
 "#;
 
-        assert!(support.contains_import(content, "std::collections"));
-        assert!(support.contains_import(content, "serde"));
-        assert!(!support.contains_import(content, "tokio"));
+        assert!(ImportParser::contains_import(&support, content, "std::collections"));
+        assert!(ImportParser::contains_import(&support, content, "serde"));
+        assert!(!ImportParser::contains_import(&support, content, "tokio"));
     }
 
     #[test]
@@ -764,7 +764,7 @@ use serde::Serialize;
 
 fn main() {}"#;
 
-        let result = support.add_import(content, "serde::Serialize");
+        let result = ImportMutationSupport::add_import(&support, content, "serde::Serialize");
         assert!(result.contains("use serde::Serialize;"));
         assert!(result.contains("use std::collections::HashMap;"));
     }
@@ -778,7 +778,7 @@ use tokio::runtime::Runtime;
 
 fn main() {}"#;
 
-        let result = support.remove_import(content, "serde");
+        let result = ImportMutationSupport::remove_import(&support, content, "serde");
         assert!(!result.contains("use serde::Serialize"));
         assert!(result.contains("use std::collections::HashMap"));
         assert!(result.contains("use tokio::runtime::Runtime"));
@@ -799,7 +799,8 @@ pub fn lib_fn() -> Entity {
 }"#;
 
         // The old_name and new_name will be full module paths like "mylib::core::types"
-        let (result, changes) = support.rewrite_imports_for_rename(
+        let (result, changes) = ImportRenameSupport::rewrite_imports_for_rename(
+            &support,
             content,
             "mylib::core::types",
             "mylib::core::models",
@@ -836,7 +837,8 @@ pub fn lib_fn() {
 "#;
 
         // The old_name and new_name will be full module paths like "test_project::utils::helpers"
-        let (result, changes) = support.rewrite_imports_for_rename(
+        let (result, changes) = ImportRenameSupport::rewrite_imports_for_rename(
+            &support,
             content,
             "test_project::utils::helpers",
             "test_project::utils::support",
