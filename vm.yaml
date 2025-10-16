@@ -11,9 +11,9 @@ project:
   name: codebuddy
   workspace_path: /workspace
 vm:
-  cpus: 6
+  cpus: unlimited
   gui: false
-  memory: 8192
+  memory: unlimited
   port_binding: 127.0.0.1
   timezone: America/Los_Angeles
   user: developer
