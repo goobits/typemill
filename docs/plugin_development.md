@@ -24,8 +24,8 @@ crates/languages/cb-lang-{language}/
     ├── lib.rs              # Main plugin struct + LanguagePlugin trait
     ├── parser.rs           # Symbol extraction & import parsing
     ├── manifest.rs         # Manifest file parsing
-    ├── import_support.rs   # Optional: ImportSupport trait
-    └── workspace_support.rs # Optional: WorkspaceSupport trait
+    ├── import_support_impl.rs # Optional: Segregated import traits (new pattern)
+    └── workspace_support.rs   # Optional: WorkspaceSupport trait
 ```
 
 ## Core Trait: LanguagePlugin
@@ -40,14 +40,43 @@ crates/languages/cb-lang-{language}/
 
 ## Optional Capability Traits
 
-### ImportSupport (if capabilities().imports = true)
+**NEW: Segregated Import Traits (Interface Segregation Principle)**
 
+Plugins now implement 5 focused traits instead of one monolithic `ImportSupport`:
+
+### ImportParser (parsing only)
 | Method | Purpose |
 |--------|---------|
-| `parse_imports()` | Extract import statements |
+| `parse_imports()` | Extract import paths from content |
+| `contains_import()` | Check if content imports a specific module |
+
+### ImportRenameSupport (for file/symbol renames)
+| Method | Purpose |
+|--------|---------|
+| `rewrite_imports_for_rename()` | Update imports when symbols/modules rename |
+
+### ImportMoveSupport (for file moves)
+| Method | Purpose |
+|--------|---------|
 | `rewrite_imports_for_move()` | Update imports when files move |
-| `rewrite_imports_for_rename()` | Update imports when modules rename |
-| `find_module_references()` | Find all references to a module |
+
+### ImportMutationSupport (add/remove imports)
+| Method | Purpose |
+|--------|---------|
+| `add_import()` | Add a new import statement |
+| `remove_import()` | Remove an existing import |
+| `remove_named_import()` | Remove a specific symbol from an import |
+
+### ImportAdvancedSupport (advanced operations)
+| Method | Purpose |
+|--------|---------|
+| `update_import_reference()` | Advanced import reference updates |
+
+**Benefits:**
+- Simple plugins (like Markdown) only implement `ImportParser` (2 methods)
+- Complex plugins (like Rust) implement all traits as needed
+- 60% reduction in required code for simple plugins
+- Clear separation of concerns
 
 ### WorkspaceSupport (if capabilities().workspace = true)
 
@@ -126,7 +155,9 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 | Subprocess AST (dynamic) | Python plugin | `crates/languages/cb-lang-python/` |
 | Subprocess AST (JS ecosystem) | TypeScript plugin | `crates/languages/cb-lang-typescript/` |
 | Native Rust parsing | Rust plugin | `crates/languages/cb-lang-rust/` |
-| ImportSupport | All plugins | `src/import_support.rs` in any plugin |
+| **Segregated Import Traits (NEW)** | **TypeScript, Markdown, Rust** | **`src/import_support_impl.rs`** |
+| Simple ImportParser only | Markdown plugin | `cb-lang-markdown/src/import_support_impl.rs` |
+| Full import trait suite | Rust plugin | `cb-lang-rust/src/import_support.rs` |
 | WorkspaceSupport | Rust, Go, TypeScript | `src/workspace_support.rs` |
 
 ## Plugin Comparison
@@ -148,10 +179,12 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 - [ ] `as_any()` implemented
 
 ### Import Support (if capabilities().imports = true)
-- [ ] `parse_imports()` handles all import styles
-- [ ] `rewrite_imports_for_move()` updates relative paths
-- [ ] `rewrite_imports_for_rename()` renames modules
-- [ ] `find_module_references()` finds all references
+**Choose traits based on plugin needs:**
+- [ ] **ImportParser** (required): `parse_imports()` handles all import styles, `contains_import()` checks for imports
+- [ ] **ImportRenameSupport** (if needed): `rewrite_imports_for_rename()` updates imports for renames
+- [ ] **ImportMoveSupport** (if needed): `rewrite_imports_for_move()` updates relative paths for file moves
+- [ ] **ImportMutationSupport** (if needed): `add_import()`, `remove_import()`, `remove_named_import()` for import mutations
+- [ ] **ImportAdvancedSupport** (if needed): `update_import_reference()` for advanced operations
 
 ### Workspace Support (if capabilities().workspace = true)
 - [ ] `is_workspace_manifest()` detects workspace files
