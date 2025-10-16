@@ -95,45 +95,50 @@ impl DirectLspAdapter {
             // Get or create client for this extension
             match self.get_or_create_client(extension).await {
                 Ok(client) => {
-                    // For rust-analyzer, wait briefly for workspace indexing to complete
-                    // This ensures workspace/symbol queries return complete results.
-                    // Use a short timeout since the progress notification might not be sent
-                    // if indexing is already done or if the server doesn't support it.
+                    // For rust-analyzer, use hybrid approach for workspace indexing:
+                    // 1. Try event-driven wait for progress notifications (2s timeout)
+                    // 2. If no progress notification, fall back to brief sleep (2s)
+                    // This handles both cases: servers that send $/progress and those that don't
                     if extension == "rs" {
                         debug!(
                             extension = %extension,
                             "Waiting for rust-analyzer workspace indexing before workspace/symbol query"
                         );
-                        // Check if indexing is already completed
+
                         let token = cb_lsp::progress::ProgressToken::String(
                             "rustAnalyzer/Indexing".to_string(),
                         );
+
+                        // Check if indexing is already completed
                         if client.is_progress_completed(&token) {
                             debug!(
                                 extension = %extension,
                                 "rust-analyzer indexing already complete"
                             );
                         } else {
-                            // Wait up to 5 seconds for indexing notification
-                            // This is a short timeout since most projects index quickly
+                            // Try event-driven wait first (2s timeout)
+                            // rust-analyzer may not send progress notifications for small projects
                             match client
-                                .wait_for_indexing(std::time::Duration::from_secs(5))
+                                .wait_for_indexing(std::time::Duration::from_secs(2))
                                 .await
                             {
                                 Ok(()) => {
                                     debug!(
                                         extension = %extension,
-                                        "rust-analyzer indexing complete, proceeding with workspace/symbol query"
+                                        "rust-analyzer indexing complete via progress notification"
                                     );
                                 }
-                                Err(e) => {
-                                    // Timeout or error - proceed anyway
-                                    // The server might not send progress notifications,
-                                    // or indexing might already be done
+                                Err(_) => {
+                                    // Timeout - rust-analyzer likely doesn't send progress for small projects
+                                    // Fall back to brief sleep to allow background indexing
                                     debug!(
                                         extension = %extension,
-                                        error = %e,
-                                        "rust-analyzer indexing wait timed out (5s), proceeding anyway - indexing may already be complete"
+                                        "No progress notification received, using fallback sleep (2s)"
+                                    );
+                                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                                    debug!(
+                                        extension = %extension,
+                                        "Fallback sleep complete, proceeding with workspace/symbol query"
                                     );
                                 }
                             }
