@@ -76,8 +76,8 @@ pub fn get_all_imported_files(
     if let Some(ext) = current_file.extension().and_then(|e| e.to_str()) {
         for plugin in plugins {
             if plugin.handles_extension(ext) {
-                if let Some(import_support) = plugin.import_support() {
-                    let import_specifiers = import_support.parse_imports(content);
+                if let Some(import_parser) = plugin.import_parser() {
+                    let import_specifiers = import_parser.parse_imports(content);
                     for specifier in import_specifiers {
                         if let Some(resolved) =
                             resolve_import_to_file(&specifier, current_file, project_files, project_root)

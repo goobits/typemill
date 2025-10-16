@@ -494,7 +494,7 @@ impl ReferenceUpdater {
             }
         };
 
-        let import_support = match plugin.import_support() {
+        let import_advanced_support = match plugin.import_advanced_support() {
             Some(is) => is,
             None => {
                 return Ok(false);
@@ -507,7 +507,7 @@ impl ReferenceUpdater {
         };
 
         let original_content = content.clone();
-        let updated_content = import_support
+        let updated_content = import_advanced_support
             .update_import_reference(file_path, &content, update)
             .map_err(|e| {
                 ServerError::Internal(format!("Failed to update import reference: {}", e))

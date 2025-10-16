@@ -124,7 +124,28 @@ impl LanguagePlugin for RustPlugin {
         self
     }
 
+    #[allow(deprecated)]
     fn import_support(&self) -> Option<&dyn cb_plugin_api::ImportSupport> {
+        Some(&self.import_support)
+    }
+
+    fn import_parser(&self) -> Option<&dyn cb_plugin_api::ImportParser> {
+        Some(&self.import_support)
+    }
+
+    fn import_rename_support(&self) -> Option<&dyn cb_plugin_api::ImportRenameSupport> {
+        Some(&self.import_support)
+    }
+
+    fn import_move_support(&self) -> Option<&dyn cb_plugin_api::ImportMoveSupport> {
+        Some(&self.import_support)
+    }
+
+    fn import_mutation_support(&self) -> Option<&dyn cb_plugin_api::ImportMutationSupport> {
+        Some(&self.import_support)
+    }
+
+    fn import_advanced_support(&self) -> Option<&dyn cb_plugin_api::ImportAdvancedSupport> {
         Some(&self.import_support)
     }
 
@@ -686,11 +707,11 @@ impl RustPlugin {
 
         // Step 2: Update use statements (existing logic)
         // Delegate to import capability with simpler signature
-        if let Some(import_support) = self.import_support() {
+        if let Some(rename_support) = self.import_rename_support() {
             if let Some(info) = rename_info {
                 let old_name = info["old_crate_name"].as_str().unwrap_or("");
                 let new_name = info["new_crate_name"].as_str().unwrap_or("");
-                let (new_content, changes) = import_support.rewrite_imports_for_rename(&updated_content, old_name, new_name);
+                let (new_content, changes) = rename_support.rewrite_imports_for_rename(&updated_content, old_name, new_name);
                 total_changes += changes;
                 updated_content = new_content;
             } else {
@@ -792,7 +813,7 @@ impl RustPlugin {
 
                     // Rewrite if module paths differ (handles both cross-crate and same-crate moves)
                     if old_module_path != new_module_path {
-                        let (new_content, changes) = import_support.rewrite_imports_for_rename(
+                        let (new_content, changes) = rename_support.rewrite_imports_for_rename(
                             &updated_content,
                             &old_module_path,
                             &new_module_path,

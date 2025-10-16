@@ -108,3 +108,120 @@ pub struct DeletePlan {
     pub metadata: PlanMetadata,
     pub file_checksums: HashMap<String, String>,
 }
+
+/// Common interface for all refactoring plans
+pub trait RefactorPlanExt {
+    /// Get file checksums for validation
+    fn checksums(&self) -> &HashMap<String, String>;
+
+    /// Get workspace edit (DeletePlan returns empty edit)
+    fn workspace_edit(&self) -> &WorkspaceEdit;
+
+    /// Get warnings
+    fn warnings(&self) -> &[PlanWarning];
+
+    /// Estimate complexity (sum of affected/created/deleted files)
+    fn complexity(&self) -> u8;
+
+    /// Extract impact areas (kind + language)
+    fn impact_areas(&self) -> Vec<String>;
+}
+
+impl RefactorPlanExt for RenamePlan {
+    fn checksums(&self) -> &HashMap<String, String> { &self.file_checksums }
+    fn workspace_edit(&self) -> &WorkspaceEdit { &self.edits }
+    fn warnings(&self) -> &[PlanWarning] { &self.warnings }
+    fn complexity(&self) -> u8 {
+        let total = self.summary.affected_files + self.summary.created_files + self.summary.deleted_files;
+        total.min(255) as u8
+    }
+    fn impact_areas(&self) -> Vec<String> {
+        vec![self.metadata.kind.clone(), self.metadata.language.clone()]
+    }
+}
+
+impl RefactorPlanExt for ExtractPlan {
+    fn checksums(&self) -> &HashMap<String, String> { &self.file_checksums }
+    fn workspace_edit(&self) -> &WorkspaceEdit { &self.edits }
+    fn warnings(&self) -> &[PlanWarning] { &self.warnings }
+    fn complexity(&self) -> u8 {
+        let total = self.summary.affected_files + self.summary.created_files + self.summary.deleted_files;
+        total.min(255) as u8
+    }
+    fn impact_areas(&self) -> Vec<String> {
+        vec![self.metadata.kind.clone(), self.metadata.language.clone()]
+    }
+}
+
+impl RefactorPlanExt for InlinePlan {
+    fn checksums(&self) -> &HashMap<String, String> { &self.file_checksums }
+    fn workspace_edit(&self) -> &WorkspaceEdit { &self.edits }
+    fn warnings(&self) -> &[PlanWarning] { &self.warnings }
+    fn complexity(&self) -> u8 {
+        let total = self.summary.affected_files + self.summary.created_files + self.summary.deleted_files;
+        total.min(255) as u8
+    }
+    fn impact_areas(&self) -> Vec<String> {
+        vec![self.metadata.kind.clone(), self.metadata.language.clone()]
+    }
+}
+
+impl RefactorPlanExt for MovePlan {
+    fn checksums(&self) -> &HashMap<String, String> { &self.file_checksums }
+    fn workspace_edit(&self) -> &WorkspaceEdit { &self.edits }
+    fn warnings(&self) -> &[PlanWarning] { &self.warnings }
+    fn complexity(&self) -> u8 {
+        let total = self.summary.affected_files + self.summary.created_files + self.summary.deleted_files;
+        total.min(255) as u8
+    }
+    fn impact_areas(&self) -> Vec<String> {
+        vec![self.metadata.kind.clone(), self.metadata.language.clone()]
+    }
+}
+
+impl RefactorPlanExt for ReorderPlan {
+    fn checksums(&self) -> &HashMap<String, String> { &self.file_checksums }
+    fn workspace_edit(&self) -> &WorkspaceEdit { &self.edits }
+    fn warnings(&self) -> &[PlanWarning] { &self.warnings }
+    fn complexity(&self) -> u8 {
+        let total = self.summary.affected_files + self.summary.created_files + self.summary.deleted_files;
+        total.min(255) as u8
+    }
+    fn impact_areas(&self) -> Vec<String> {
+        vec![self.metadata.kind.clone(), self.metadata.language.clone()]
+    }
+}
+
+impl RefactorPlanExt for TransformPlan {
+    fn checksums(&self) -> &HashMap<String, String> { &self.file_checksums }
+    fn workspace_edit(&self) -> &WorkspaceEdit { &self.edits }
+    fn warnings(&self) -> &[PlanWarning] { &self.warnings }
+    fn complexity(&self) -> u8 {
+        let total = self.summary.affected_files + self.summary.created_files + self.summary.deleted_files;
+        total.min(255) as u8
+    }
+    fn impact_areas(&self) -> Vec<String> {
+        vec![self.metadata.kind.clone(), self.metadata.language.clone()]
+    }
+}
+
+impl RefactorPlanExt for DeletePlan {
+    fn checksums(&self) -> &HashMap<String, String> { &self.file_checksums }
+    fn workspace_edit(&self) -> &WorkspaceEdit {
+        // Return empty edit - DeletePlan uses deletions field instead
+        static EMPTY: WorkspaceEdit = WorkspaceEdit {
+            changes: None,
+            document_changes: None,
+            change_annotations: None,
+        };
+        &EMPTY
+    }
+    fn warnings(&self) -> &[PlanWarning] { &self.warnings }
+    fn complexity(&self) -> u8 {
+        let total = self.summary.affected_files + self.summary.created_files + self.summary.deleted_files;
+        total.min(255) as u8
+    }
+    fn impact_areas(&self) -> Vec<String> {
+        vec![self.metadata.kind.clone(), self.metadata.language.clone()]
+    }
+}

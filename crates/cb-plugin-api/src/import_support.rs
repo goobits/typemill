@@ -1,18 +1,21 @@
-//! Import support trait for language plugins
+//! Import support traits for language plugins
 //!
-//! Provides import parsing, analysis, and rewriting capabilities.
-//! Languages implement this trait only if they support import operations.
+//! Provides import parsing, analysis, and rewriting capabilities through segregated traits.
+//! Languages implement only the traits they need for their specific capabilities.
 
 use crate::{PluginError, PluginResult};
 use cb_protocol::DependencyUpdate;
 use std::path::Path;
 
-/// Optional trait for languages that support import operations
+// ============================================================================
+// Segregated Import Traits (New Architecture)
+// ============================================================================
+
+/// Core import parsing (everyone implements this)
 ///
-/// All methods are **synchronous** (no async overhead).
-/// Plugins store an implementation in their struct and return `&dyn ImportSupport`
-/// from the main `LanguagePlugin::import_support()` method.
-pub trait ImportSupport: Send + Sync {
+/// This is the foundational trait for import operations. All languages that support
+/// imports should implement this trait.
+pub trait ImportParser: Send + Sync {
     /// Parse import statements from source code
     ///
     /// # Arguments
@@ -28,6 +31,22 @@ pub trait ImportSupport: Send + Sync {
     /// ```
     fn parse_imports(&self, content: &str) -> Vec<String>;
 
+    /// Check if content contains an import of a specific module
+    ///
+    /// # Arguments
+    /// * `content` - Source code content
+    /// * `module` - Module name to search for
+    ///
+    /// # Returns
+    /// true if module is imported, false otherwise
+    fn contains_import(&self, content: &str, module: &str) -> bool;
+}
+
+/// Rename-specific import rewriting
+///
+/// Implement this trait if your language supports rewriting imports when
+/// a symbol or module is renamed.
+pub trait ImportRenameSupport: Send + Sync {
     /// Rewrite imports when a symbol is renamed
     ///
     /// # Arguments
@@ -43,7 +62,13 @@ pub trait ImportSupport: Send + Sync {
         old_name: &str,
         new_name: &str,
     ) -> (String, usize);
+}
 
+/// Move-specific import rewriting
+///
+/// Implement this trait if your language supports rewriting imports when
+/// a file is moved to a new location.
+pub trait ImportMoveSupport: Send + Sync {
     /// Rewrite imports when a file is moved
     ///
     /// # Arguments
@@ -59,17 +84,13 @@ pub trait ImportSupport: Send + Sync {
         old_path: &Path,
         new_path: &Path,
     ) -> (String, usize);
+}
 
-    /// Check if content contains an import of a specific module
-    ///
-    /// # Arguments
-    /// * `content` - Source code content
-    /// * `module` - Module name to search for
-    ///
-    /// # Returns
-    /// true if module is imported, false otherwise
-    fn contains_import(&self, content: &str, module: &str) -> bool;
-
+/// Import mutation operations
+///
+/// Implement this trait if your language supports adding, removing, or
+/// modifying individual import statements.
+pub trait ImportMutationSupport: Send + Sync {
     /// Add a new import statement to source code
     ///
     /// # Arguments
@@ -90,6 +111,27 @@ pub trait ImportSupport: Send + Sync {
     /// Updated content with import removed
     fn remove_import(&self, content: &str, module: &str) -> String;
 
+    /// Remove a specific named import from a single line of code.
+    ///
+    /// # Arguments
+    /// * `line` - A single line of code containing an import statement.
+    /// * `import_name` - The name of the import to remove (e.g., "useState").
+    ///
+    /// # Returns
+    /// The modified line. If the named import was the only one, it may return an empty string.
+    fn remove_named_import(&self, line: &str, _import_name: &str) -> PluginResult<String> {
+        Err(PluginError::not_supported(format!(
+            "{} does not support removing named imports",
+            line
+        )))
+    }
+}
+
+/// Advanced AST-based import operations
+///
+/// Implement this trait if your language supports sophisticated AST-based
+/// import transformations beyond simple text rewriting.
+pub trait ImportAdvancedSupport: Send + Sync {
     /// Update an import reference in a file using AST-based transformation.
     ///
     /// This is a more powerful, AST-aware version of import rewriting.
@@ -110,15 +152,65 @@ pub trait ImportSupport: Send + Sync {
         // Default implementation returns original content, indicating no change.
         Ok(content.to_string())
     }
+}
 
-    /// Remove a specific named import from a single line of code.
-    ///
-    /// # Arguments
-    /// * `line` - A single line of code containing an import statement.
-    /// * `import_name` - The name of the import to remove (e.g., "useState").
-    ///
-    /// # Returns
-    /// The modified line. If the named import was the only one, it may return an empty string.
+// ============================================================================
+// Legacy Monolithic Trait (Deprecated)
+// ============================================================================
+
+/// DEPRECATED: Old monolithic trait kept for backward compatibility
+///
+/// This trait will be removed in version 0.7.0. New code should use the
+/// segregated traits instead:
+/// - `ImportParser` for basic parsing
+/// - `ImportRenameSupport` for rename operations
+/// - `ImportMoveSupport` for move operations
+/// - `ImportMutationSupport` for add/remove operations
+/// - `ImportAdvancedSupport` for AST-based operations
+#[deprecated(
+    since = "0.6.0",
+    note = "Use segregated traits (ImportParser, ImportRenameSupport, etc.) instead"
+)]
+pub trait ImportSupport: Send + Sync {
+    /// Parse import statements from source code
+    fn parse_imports(&self, content: &str) -> Vec<String>;
+
+    /// Rewrite imports when a symbol is renamed
+    fn rewrite_imports_for_rename(
+        &self,
+        content: &str,
+        old_name: &str,
+        new_name: &str,
+    ) -> (String, usize);
+
+    /// Rewrite imports when a file is moved
+    fn rewrite_imports_for_move(
+        &self,
+        content: &str,
+        old_path: &Path,
+        new_path: &Path,
+    ) -> (String, usize);
+
+    /// Check if content contains an import of a specific module
+    fn contains_import(&self, content: &str, module: &str) -> bool;
+
+    /// Add a new import statement
+    fn add_import(&self, content: &str, module: &str) -> String;
+
+    /// Remove an import statement
+    fn remove_import(&self, content: &str, module: &str) -> String;
+
+    /// Update an import reference using AST-based transformation
+    fn update_import_reference(
+        &self,
+        _file_path: &Path,
+        content: &str,
+        _update: &DependencyUpdate,
+    ) -> PluginResult<String> {
+        Ok(content.to_string())
+    }
+
+    /// Remove a specific named import from a single line
     fn remove_named_import(&self, line: &str, _import_name: &str) -> PluginResult<String> {
         Err(PluginError::not_supported(format!(
             "{} does not support removing named imports",

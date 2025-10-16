@@ -8,7 +8,7 @@ use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
 use cb_protocol::{
-    ApiError, ApiResult as ServerResult, EditPlan, EditPlanMetadata, RefactorPlan, TextEdit,
+    ApiError, ApiResult as ServerResult, EditPlan, EditPlanMetadata, RefactorPlan, RefactorPlanExt, TextEdit,
 };
 use lsp_types::{Uri, WorkspaceEdit};
 use serde::{Deserialize, Serialize};
@@ -217,7 +217,15 @@ impl ToolHandler for WorkspaceApplyHandler {
             let _ = file.flush();
         }
 
-        let workspace_edit = extract_workspace_edit(&params.plan);
+        let workspace_edit = match &params.plan {
+            RefactorPlan::RenamePlan(p) => p.workspace_edit(),
+            RefactorPlan::ExtractPlan(p) => p.workspace_edit(),
+            RefactorPlan::InlinePlan(p) => p.workspace_edit(),
+            RefactorPlan::MovePlan(p) => p.workspace_edit(),
+            RefactorPlan::ReorderPlan(p) => p.workspace_edit(),
+            RefactorPlan::TransformPlan(p) => p.workspace_edit(),
+            RefactorPlan::DeletePlan(p) => p.workspace_edit(),
+        };
 
         if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
             use std::io::Write;
@@ -226,7 +234,7 @@ impl ToolHandler for WorkspaceApplyHandler {
         }
 
         // Step 3: Convert LSP WorkspaceEdit to internal EditPlan format
-        let mut edit_plan = convert_to_edit_plan(workspace_edit, &params.plan)?;
+        let mut edit_plan = convert_to_edit_plan(workspace_edit.clone(), &params.plan)?;
 
         // Write debug info to file - AFTER CONVERSION
         if let Ok(mut file) = std::fs::OpenOptions::new()
@@ -311,7 +319,15 @@ impl ToolHandler for WorkspaceApplyHandler {
                                     applied_files: result.modified_files.clone(),
                                     created_files: extract_created_files(&edit_plan),
                                     deleted_files: extract_deleted_files(&edit_plan),
-                                    warnings: extract_warnings(&params.plan),
+                                    warnings: match &params.plan {
+                                        RefactorPlan::RenamePlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                                        RefactorPlan::ExtractPlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                                        RefactorPlan::InlinePlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                                        RefactorPlan::MovePlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                                        RefactorPlan::ReorderPlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                                        RefactorPlan::TransformPlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                                        RefactorPlan::DeletePlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                                    },
                                     validation: Some(validation_result),
                                     rollback_available: false, // Validation consumed backup
                                 })
@@ -369,7 +385,15 @@ impl ToolHandler for WorkspaceApplyHandler {
                         applied_files: result.modified_files.clone(),
                         created_files: extract_created_files(&edit_plan),
                         deleted_files: extract_deleted_files(&edit_plan),
-                        warnings: extract_warnings(&params.plan),
+                        warnings: match &params.plan {
+                            RefactorPlan::RenamePlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                            RefactorPlan::ExtractPlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                            RefactorPlan::InlinePlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                            RefactorPlan::MovePlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                            RefactorPlan::ReorderPlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                            RefactorPlan::TransformPlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                            RefactorPlan::DeletePlan(p) => p.warnings().iter().map(|w| w.message.clone()).collect(),
+                        },
                         validation: None,
                         rollback_available: true, // No validation, backup still available in principle
                     })
@@ -398,7 +422,15 @@ async fn validate_checksums(
     plan: &RefactorPlan,
     file_service: &cb_services::services::FileService,
 ) -> ServerResult<()> {
-    let checksums = get_checksums_from_plan(plan);
+    let checksums = match plan {
+        RefactorPlan::RenamePlan(p) => p.checksums(),
+        RefactorPlan::ExtractPlan(p) => p.checksums(),
+        RefactorPlan::InlinePlan(p) => p.checksums(),
+        RefactorPlan::MovePlan(p) => p.checksums(),
+        RefactorPlan::ReorderPlan(p) => p.checksums(),
+        RefactorPlan::TransformPlan(p) => p.checksums(),
+        RefactorPlan::DeletePlan(p) => p.checksums(),
+    };
 
     if checksums.is_empty() {
         debug!("No checksums to validate");
@@ -411,13 +443,13 @@ async fn validate_checksums(
     if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
         use std::io::Write;
         let _ = writeln!(file, "validate_checksums: {} files to validate", checksums.len());
-        for (path, _) in &checksums {
+        for (path, _) in checksums {
             let _ = writeln!(file, "  - {}", path);
         }
         let _ = file.flush();
     }
 
-    for (file_path, expected_checksum) in &checksums {
+    for (file_path, expected_checksum) in checksums {
         if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/directory_rename_debug.log") {
             use std::io::Write;
             let _ = writeln!(file, "Validating: {}", file_path);
@@ -473,52 +505,6 @@ fn calculate_checksum(content: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(content.as_bytes());
     format!("{:x}", hasher.finalize())
-}
-
-/// Extract checksums from any plan type
-fn get_checksums_from_plan(plan: &RefactorPlan) -> HashMap<String, String> {
-    match plan {
-        RefactorPlan::RenamePlan(p) => p.file_checksums.clone(),
-        RefactorPlan::ExtractPlan(p) => p.file_checksums.clone(),
-        RefactorPlan::InlinePlan(p) => p.file_checksums.clone(),
-        RefactorPlan::MovePlan(p) => p.file_checksums.clone(),
-        RefactorPlan::ReorderPlan(p) => p.file_checksums.clone(),
-        RefactorPlan::TransformPlan(p) => p.file_checksums.clone(),
-        RefactorPlan::DeletePlan(p) => p.file_checksums.clone(),
-    }
-}
-
-/// Extract WorkspaceEdit from any plan type
-fn extract_workspace_edit(plan: &RefactorPlan) -> WorkspaceEdit {
-    match plan {
-        RefactorPlan::RenamePlan(p) => p.edits.clone(),
-        RefactorPlan::ExtractPlan(p) => p.edits.clone(),
-        RefactorPlan::InlinePlan(p) => p.edits.clone(),
-        RefactorPlan::MovePlan(p) => p.edits.clone(),
-        RefactorPlan::ReorderPlan(p) => p.edits.clone(),
-        RefactorPlan::TransformPlan(p) => p.edits.clone(),
-        // DeletePlan uses explicit deletions field, not WorkspaceEdit
-        RefactorPlan::DeletePlan(_) => WorkspaceEdit {
-            changes: None,
-            document_changes: None,
-            change_annotations: None,
-        },
-    }
-}
-
-/// Extract warnings from any plan type
-fn extract_warnings(plan: &RefactorPlan) -> Vec<String> {
-    let warnings = match plan {
-        RefactorPlan::RenamePlan(p) => &p.warnings,
-        RefactorPlan::ExtractPlan(p) => &p.warnings,
-        RefactorPlan::InlinePlan(p) => &p.warnings,
-        RefactorPlan::MovePlan(p) => &p.warnings,
-        RefactorPlan::ReorderPlan(p) => &p.warnings,
-        RefactorPlan::TransformPlan(p) => &p.warnings,
-        RefactorPlan::DeletePlan(p) => &p.warnings,
-    };
-
-    warnings.iter().map(|w| w.message.clone()).collect()
 }
 
 /// Convert LSP WorkspaceEdit to internal EditPlan format
@@ -733,41 +719,26 @@ fn convert_to_edit_plan(
             intent_name: "workspace.apply_edit".to_string(),
             intent_arguments: serde_json::to_value(plan).unwrap(),
             created_at: chrono::Utc::now(),
-            complexity: estimate_complexity(plan),
-            impact_areas: extract_impact_areas(plan),
+            complexity: match plan {
+                RefactorPlan::RenamePlan(p) => p.complexity(),
+                RefactorPlan::ExtractPlan(p) => p.complexity(),
+                RefactorPlan::InlinePlan(p) => p.complexity(),
+                RefactorPlan::MovePlan(p) => p.complexity(),
+                RefactorPlan::ReorderPlan(p) => p.complexity(),
+                RefactorPlan::TransformPlan(p) => p.complexity(),
+                RefactorPlan::DeletePlan(p) => p.complexity(),
+            },
+            impact_areas: match plan {
+                RefactorPlan::RenamePlan(p) => p.impact_areas(),
+                RefactorPlan::ExtractPlan(p) => p.impact_areas(),
+                RefactorPlan::InlinePlan(p) => p.impact_areas(),
+                RefactorPlan::MovePlan(p) => p.impact_areas(),
+                RefactorPlan::ReorderPlan(p) => p.impact_areas(),
+                RefactorPlan::TransformPlan(p) => p.impact_areas(),
+                RefactorPlan::DeletePlan(p) => p.impact_areas(),
+            },
         },
     })
-}
-
-/// Estimate complexity of plan (for metadata)
-fn estimate_complexity(plan: &RefactorPlan) -> u8 {
-    let summary = match plan {
-        RefactorPlan::RenamePlan(p) => &p.summary,
-        RefactorPlan::ExtractPlan(p) => &p.summary,
-        RefactorPlan::InlinePlan(p) => &p.summary,
-        RefactorPlan::MovePlan(p) => &p.summary,
-        RefactorPlan::ReorderPlan(p) => &p.summary,
-        RefactorPlan::TransformPlan(p) => &p.summary,
-        RefactorPlan::DeletePlan(p) => &p.summary,
-    };
-
-    let total = summary.affected_files + summary.created_files + summary.deleted_files;
-    total.min(255) as u8 // Cap at 255 since u8 max
-}
-
-/// Extract impact areas from plan (for metadata)
-fn extract_impact_areas(plan: &RefactorPlan) -> Vec<String> {
-    let metadata = match plan {
-        RefactorPlan::RenamePlan(p) => &p.metadata,
-        RefactorPlan::ExtractPlan(p) => &p.metadata,
-        RefactorPlan::InlinePlan(p) => &p.metadata,
-        RefactorPlan::MovePlan(p) => &p.metadata,
-        RefactorPlan::ReorderPlan(p) => &p.metadata,
-        RefactorPlan::TransformPlan(p) => &p.metadata,
-        RefactorPlan::DeletePlan(p) => &p.metadata,
-    };
-
-    vec![metadata.kind.clone(), metadata.language.clone()]
 }
 
 /// Extract created files from edit plan
