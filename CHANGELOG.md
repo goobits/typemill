@@ -15,6 +15,17 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 #### Added
 
+- **Comprehensive Rename Coverage (Proposal 02f)** - 100% coverage of affected references across multiple file types
+  - **String literal path updates** in Rust files (e.g., `"config/settings.toml"` → `"configuration/settings.toml"`)
+  - **Markdown link updates** in documentation files (e.g., `[Guide](docs/guide.md)` → `[Guide](documentation/guide.md)`)
+  - **TOML/YAML config file updates** for build configurations and CI/CD workflows
+  - **Smart path detection** heuristics that only update path-like strings (requires `/` or file extension)
+  - **Planning phase scanning** - all edits surface in `rename.plan` dry-run output for review before execution
+  - **Relative + absolute path matching** - handles both `"config/file.toml"` and `"/workspace/config/file.toml"`
+  - **Plugin-based architecture** using language-specific plugins (Rust, Markdown, TOML, YAML)
+  - **Atomic execution** with automatic rollback on any failure
+  - Verified 100% coverage: 9/9 files updated in comprehensive test scenario (integration-tests → tests rename)
+
 - **Unified Refactoring API** - Complete implementation of `plan -> apply` refactoring pattern
   - New `*.plan` commands for safe, dry-run refactoring previews: `rename.plan`, `extract.plan`, `inline.plan`, `move.plan`, `reorder.plan`, `transform.plan`, `delete.plan`
   - New `workspace.apply_edit` command to execute refactoring plans atomically
