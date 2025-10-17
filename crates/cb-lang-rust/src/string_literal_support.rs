@@ -90,27 +90,52 @@ pub fn rewrite_string_literals(
         let string_content = cap.get(1).unwrap().as_str();
 
         if is_path_like(string_content) {
+            // Skip if already updated (idempotency check for nested renames)
+            // Example: old="tests", new="tests/e2e", skip if string already contains "tests/e2e"
+            let is_nested_rename = new_path_str.as_ref().starts_with(&format!("{}/", old_path_str));
+
+            if is_nested_rename && string_content.contains(new_path_str.as_ref()) {
+                continue;
+            }
+
             // Try to match against multiple forms:
-            // 1. Absolute path: /workspace/config
+            // 1. Absolute path at start: /workspace/config
             // 2. Relative path starting with name: config/settings.toml
-            // But NOT nested paths like: src/config/file.rs (unless it's part of absolute path)
-            let matches = string_content.contains(old_path_str.as_ref())
-                || (!old_name.is_empty() && (
-                    string_content == old_name  // Exact match
-                    || string_content.starts_with(&format!("{}/", old_name))  // Starts with dir/
-                ));
+            // 3. Relative path with ../ prefix: ../../config/settings.toml
+            // But NOT nested paths like: src/config/file.rs
+            let matches = (string_content == old_path_str.as_ref()
+                            || string_content.starts_with(&format!("{}/", old_path_str))
+                            || string_content.starts_with(&format!("{}\\", old_path_str)))
+                || (!old_name.is_empty() && {
+                    // Strip leading ../ or ..\ (Windows) to check what the actual path starts with
+                    let mut normalized = string_content;
+                    while normalized.starts_with("../") || normalized.starts_with("..\\") {
+                        normalized = normalized.strip_prefix("../")
+                            .or_else(|| normalized.strip_prefix("..\\"))
+                            .unwrap_or(normalized);
+                    }
+                    normalized == old_name
+                        || normalized.starts_with(&format!("{}/", old_name))
+                        || normalized.starts_with(&format!("{}\\", old_name))
+                });
 
             if matches {
-                // Replace both absolute and relative forms
-                let new_content = if string_content.contains(old_path_str.as_ref()) {
-                    string_content.replace(old_path_str.as_ref(), new_path_str.as_ref())
+                // Replace only first occurrence to prevent nested replacements
+                let new_content = if string_content == old_path_str.as_ref()
+                                    || string_content.starts_with(&format!("{}/", old_path_str)) {
+                    string_content.replacen(old_path_str.as_ref(), new_path_str.as_ref(), 1)
                 } else if !old_name.is_empty() {
-                    // Extract new name for relative replacement
-                    let new_name = new_path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or(new_path_str.as_ref());
-                    string_content.replace(old_name, new_name)
+                    // For nested renames (tests -> tests/e2e), use full new path
+                    // For simple renames (config -> configuration), use just the new name
+                    let replacement = if is_nested_rename {
+                        new_path_str.as_ref()
+                    } else {
+                        new_path
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or(new_path_str.as_ref())
+                    };
+                    string_content.replacen(old_name, replacement, 1)
                 } else {
                     string_content.to_string()
                 };
@@ -142,23 +167,47 @@ pub fn rewrite_string_literals(
             let string_content = cap.get(1).unwrap().as_str();
 
             if is_path_like(string_content) {
+                // Skip if already updated (idempotency check for nested renames)
+                let is_nested_rename = new_path_str.as_ref().starts_with(&format!("{}/", old_path_str));
+
+                if is_nested_rename && string_content.contains(new_path_str.as_ref()) {
+                    continue;
+                }
+
                 // Same matching logic as regular strings
-                let matches = string_content.contains(old_path_str.as_ref())
-                    || (!old_name.is_empty() && (
-                        string_content == old_name  // Exact match
-                        || string_content.starts_with(&format!("{}/", old_name))  // Starts with dir/
-                    ));
+                let matches = (string_content == old_path_str.as_ref()
+                                || string_content.starts_with(&format!("{}/", old_path_str))
+                                || string_content.starts_with(&format!("{}\\", old_path_str)))
+                    || (!old_name.is_empty() && {
+                        // Strip leading ../ or ..\ (Windows) to check what the actual path starts with
+                        let mut normalized = string_content;
+                        while normalized.starts_with("../") || normalized.starts_with("..\\") {
+                            normalized = normalized.strip_prefix("../")
+                                .or_else(|| normalized.strip_prefix("..\\"))
+                                .unwrap_or(normalized);
+                        }
+                        normalized == old_name
+                            || normalized.starts_with(&format!("{}/", old_name))
+                            || normalized.starts_with(&format!("{}\\", old_name))
+                    });
 
                 if matches {
-                    // Replace both absolute and relative forms
-                    let new_content = if string_content.contains(old_path_str.as_ref()) {
-                        string_content.replace(old_path_str.as_ref(), new_path_str.as_ref())
+                    // Replace only first occurrence to prevent nested replacements
+                    let new_content = if string_content == old_path_str.as_ref()
+                                        || string_content.starts_with(&format!("{}/", old_path_str)) {
+                        string_content.replacen(old_path_str.as_ref(), new_path_str.as_ref(), 1)
                     } else if !old_name.is_empty() {
-                        let new_name = new_path
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or(new_path_str.as_ref());
-                        string_content.replace(old_name, new_name)
+                        // For nested renames (tests -> tests/e2e), use full new path
+                        // For simple renames (config -> configuration), use just the new name
+                        let replacement = if is_nested_rename {
+                            new_path_str.as_ref()
+                        } else {
+                            new_path
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .unwrap_or(new_path_str.as_ref())
+                        };
+                        string_content.replacen(old_name, replacement, 1)
                     } else {
                         string_content.to_string()
                     };
@@ -345,9 +394,10 @@ fn main() {
 
     #[test]
     fn test_windows_paths_in_raw_strings() {
+        // Test Windows backslash paths that START with the directory name
         let source = r#"
 fn main() {
-    let path = r"C:\Users\integration-tests\file.rs";
+    let path = r"integration-tests\file.rs";
 }
 "#;
         let (result, count) = rewrite_string_literals(
@@ -357,7 +407,7 @@ fn main() {
         ).unwrap();
 
         assert_eq!(count, 1);
-        assert!(result.contains(r"C:\Users\tests\file.rs"));
+        assert!(result.contains(r#"r"tests\file.rs""#));
     }
 
     #[test]
@@ -433,5 +483,56 @@ fn main() {
         assert_eq!(count, 1, "Should only update path starting with directory name");
         assert!(result.contains("\"tests/fixtures/test.rs\""));
         assert!(result.contains("\"src/integration-tests/file.rs\""), "Should not update nested occurrence");
+    }
+
+    #[test]
+    fn test_idempotent_replacement() {
+        let source = r#"let path = "tests/README.md";"#;
+
+        // Apply once
+        let (once, _) = rewrite_string_literals(
+            source,
+            Path::new("tests"),
+            Path::new("tests/e2e")
+        ).unwrap();
+
+        // Apply again to result
+        let (twice, count) = rewrite_string_literals(
+            &once,
+            Path::new("tests"),
+            Path::new("tests/e2e")
+        ).unwrap();
+
+        assert_eq!(once, twice, "Should be idempotent");
+        assert_eq!(count, 0, "Second pass should find nothing to replace");
+        assert!(!twice.contains("tests/e2e/e2e/"), "No nested paths");
+    }
+
+    #[test]
+    fn test_no_nested_replacement_in_already_updated_paths() {
+        let source = r#"let path = "tests/e2e/fixtures/data.json";"#;
+
+        let (result, count) = rewrite_string_literals(
+            source,
+            Path::new("tests"),
+            Path::new("tests/e2e")
+        ).unwrap();
+
+        assert_eq!(count, 0, "Should not match paths already containing new path");
+        assert_eq!(result, source, "Content should be unchanged");
+    }
+
+    #[test]
+    fn test_relative_path_no_nested_replacement() {
+        let source = r#"let path = "../../tests/utils.rs";"#;
+
+        let (result, _) = rewrite_string_literals(
+            source,
+            Path::new("tests"),
+            Path::new("tests/e2e")
+        ).unwrap();
+
+        assert!(result.contains("../../tests/e2e/utils.rs"));
+        assert!(!result.contains("../../tests/e2e/e2e/e2e/"));
     }
 }
