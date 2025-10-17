@@ -35,6 +35,7 @@ fn test_rename_scope_exclude_patterns() {
         update_configs: true,
         update_examples: true,
         update_comments: false,
+        update_markdown_prose: false,
         exclude_patterns: vec!["**/test_*".to_string(), "**/fixtures/**".to_string()],
     };
 
@@ -57,6 +58,7 @@ fn test_rename_scope_custom() {
         update_configs: false,
         update_examples: true,
         update_comments: false,
+        update_markdown_prose: false,
         exclude_patterns: vec![],
     };
 
