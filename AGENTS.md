@@ -232,38 +232,40 @@ pub fn lib_fn() {
 
 ### Comprehensive Rename Coverage
 
-CodeBuddy's rename functionality now provides **93%+ coverage** of affected references by updating multiple file types:
+CodeBuddy's rename functionality provides **100% coverage** of affected references by updating multiple file types during directory and file renames. All edits are surfaced in the dry-run plan for review before execution.
 
 **What gets updated automatically:**
 
 1. **Code files** (.rs, .ts, .js):
-   - Import statements
-   - Module declarations
-   - Qualified paths
-   - **String literals** with paths
+   - Import statements and module declarations
+   - Qualified paths in code
+   - **String literal paths** (e.g., `"config/settings.toml"`)
+   - Raw string literals (r"...", r#"..."#)
+   - Both absolute and relative path forms
 
-2. **Documentation** (.md):
-   - Markdown links
-   - Code blocks
-   - Path references
-   - (Skips prose text)
+2. **Documentation** (.md, .markdown):
+   - Markdown links `[text](path)`
+   - Inline code references
+   - Path mentions (skips prose text without slashes/extensions)
 
 3. **Configuration** (.toml, .yaml, .yml):
-   - Path values
-   - Build configurations
-   - CI/CD workflows
+   - Path values in any field
+   - Build script paths
+   - CI/CD workflow paths
+   - Preserves formatting and comments
 
 4. **Cargo.toml**:
-   - Workspace members
+   - Workspace member paths
+   - Package names (crate renames)
    - Path dependencies
-   - Package names
+   - Dependent crate references
 
 **Scope Control:**
 
 Use the `options.scope` parameter to control what gets updated:
 
-- `"all"` (default): Updates everything (93%+ coverage)
-- `"code-only"`: Only code and examples (no docs/configs)
+- `"all"` (default): Updates everything (100% coverage)
+- `"code-only"`: Only code files (.rs, .ts, .js) - skips docs/configs
 - `"custom"`: Fine-grained control with exclude patterns
 
 **Example:**
@@ -272,7 +274,7 @@ Use the `options.scope` parameter to control what gets updated:
   "target": {"kind": "directory", "path": "old-dir"},
   "new_name": "new-dir",
   "options": {
-    "scope": "code-only"  // Skip .md and .toml files
+    "scope": "code-only"  // Skip .md, .toml, .yaml files
   }
 }
 ```
@@ -280,18 +282,25 @@ Use the `options.scope` parameter to control what gets updated:
 **Coverage Example:**
 
 Renaming `integration-tests/` → `tests/`:
-- ✅ 2 Rust files (imports, string literals)
-- ✅ 3 Cargo.toml files (workspace, dependencies)
-- ✅ 8 Markdown files (links, code blocks)
-- ✅ 2 Config files (.cargo/config.toml, CI YAML)
-- **Total: 15 files (100% of affected references)**
+- ✅ 3 Rust files (imports + string literals like `"integration-tests/fixtures/data.json"`)
+- ✅ 3 Cargo.toml files (workspace members, package name, dependencies)
+- ✅ 3 Markdown files (links `[readme](integration-tests/README.md)`)
+- ✅ 2 Config files (.cargo/config.toml, CI YAML workflows)
+- **Total: 9 files updated (100% of affected references)**
 
 **Path Detection:**
 
-Only updates strings that look like paths:
-- Contains `/`: `"old-dir/file.rs"` ✅
-- Has extension: `"config.toml"` ✅
-- Prose text: `"We use old-dir"` ❌ (skipped)
+Smart heuristic only updates strings that look like paths:
+- Contains slash: `"old-dir/file.rs"` ✅
+- Has file extension: `"config.toml"` ✅
+- Prose text: `"We use old-dir as a pattern"` ❌ (skipped - no slash or extension)
+- Relative paths match absolute: `"config/file.toml"` matches `/workspace/config`
+
+**Implementation Details:**
+- Scans all file types during planning phase (not just at execution)
+- Uses language-specific plugins (Rust, Markdown, TOML, YAML)
+- All edits appear in `rename.plan` dry-run output for review
+- Atomic execution with rollback on any failure
 
 ### Actionable Suggestions Configuration
 
