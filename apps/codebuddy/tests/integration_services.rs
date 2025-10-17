@@ -8,7 +8,7 @@
 //! instantiate service components and test their integration.
 
 use cb_ast::AstCache;
-use cb_plugins::PluginManager;
+use codebuddy_plugin_system::PluginManager;
 use cb_protocol::AstService;
 use cb_server::handlers::AppState;
 use cb_server::services::{DefaultAstService, FileService, LockManager, OperationQueue};

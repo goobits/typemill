@@ -6,7 +6,7 @@ use tempfile::TempDir;
 
 pub async fn create_test_app_state() -> (Arc<AppState>, TempDir) {
     use cb_core::workspaces::WorkspaceManager;
-    use cb_plugins::PluginManager;
+    use codebuddy_plugin_system::PluginManager;
     use cb_services::services::app_state_factory::create_services_bundle;
 
     let temp_dir = TempDir::new().unwrap();

@@ -8,7 +8,7 @@
 
 use async_trait::async_trait;
 use cb_core::model::mcp::ToolCall;
-use cb_plugins::{
+use codebuddy_plugin_system::{
     Capabilities, LanguagePlugin, PluginMetadata, PluginRegistry, PluginRequest, PluginResponse,
     PluginResult,
 };
@@ -76,7 +76,7 @@ impl LanguagePlugin for BenchmarkPlugin {
             })),
             error: None,
             request_id: request.request_id,
-            metadata: cb_plugins::protocol::ResponseMetadata {
+            metadata: codebuddy_plugin_system::protocol::ResponseMetadata {
                 plugin_name: self.name.clone(),
                 processing_time_ms: Some(self.response_delay_ms),
                 cached: false,
