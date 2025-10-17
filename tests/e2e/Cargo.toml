@@ -1,20 +1,20 @@
 [package]
-name = "tests"
+name = "e2e"
 version = "1.0.1-beta"
 edition = "2021"
 description = "Integration tests and test utilities for Codeflow Buddy"
 license = "MIT"
 
 [dependencies]
-cb-core = { path = "../crates/cb-core" }
-cb-ast = { path = "../crates/cb-ast" }
-cb-protocol = { path = "../crates/cb-protocol" }
-cb-plugin-api = { path = "../crates/cb-plugin-api" }
-cb-server = { path = "../crates/cb-server", features = ["test-helpers"] }
-cb-client = { path = "../crates/cb-client" }
-cb-plugins = { path = "../crates/cb-plugins" }
-cb-handlers = { path = "../crates/cb-handlers", features = ["analysis-circular-deps", "analysis-deep-dead-code"] }
-cb-test-support = { path = "../crates/cb-test-support" }
+cb-core = { path = "../../crates/cb-core" }
+cb-ast = { path = "../../crates/cb-ast" }
+cb-protocol = { path = "../../crates/cb-protocol" }
+cb-plugin-api = { path = "../../crates/cb-plugin-api" }
+cb-server = { path = "../../crates/cb-server", features = ["test-helpers"] }
+cb-client = { path = "../../crates/cb-client" }
+cb-plugins = { path = "../../crates/cb-plugins" }
+cb-handlers = { path = "../../crates/cb-handlers", features = ["analysis-circular-deps", "analysis-deep-dead-code"] }
+cb-test-support = { path = "../../crates/cb-test-support" }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 mockall = { workspace = true }

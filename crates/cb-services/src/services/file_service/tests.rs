@@ -713,7 +713,7 @@ mod move_tests {
 
     use cb_protocol::ApiError;
 
-    use super::tests::create_test_service;
+    use super::e2e::create_test_service;
 
     #[tokio::test]
     async fn test_move_file_dry_run() {

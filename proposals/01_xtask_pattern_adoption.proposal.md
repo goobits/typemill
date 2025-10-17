@@ -368,7 +368,7 @@ pub fn run(args: Args) -> Result<()> {
 
     // Generate basic test
     let test_rs = generate_test(&lang);
-    fs::write(crate_dir.join("tests/integration_test.rs"), test_rs)?;
+    fs::write(crate_dir.join("../tests/e2e/integration_test.rs"), test_rs)?;
 
     // Add to workspace
     if !args.skip_workspace {

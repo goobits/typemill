@@ -123,7 +123,7 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Core crates (`cb-core`, `cb-services`, `cb-ast`) completely decoupled from specific languages
   - No more `languages.toml` or build-time code generation required
   - Adding/removing languages requires no core crate changes - just link the crate
-  - Contract tests automatically validate all discovered plugins
+  - Contract tests/e2e automatically validate all discovered plugins
 
 #### Changed
 
@@ -546,7 +546,7 @@ This release represents a complete architectural transformation, implementing ad
 - **Execution Tests**: Added comprehensive command execution tests for CI
   - Real command execution simulation with `echo`
   - Verification that quoted paths work correctly in actual execution
-  - Integration tests for MCP command structure
+  - Integration tests/e2e for MCP command structure
   - New test deployment/scripts: `test:execution` and `test:all`
 
 ### Fixed
@@ -780,7 +780,7 @@ Your contributions help make codebuddy better for everyone! 🙏
 ### Added
 
 - Comprehensive test coverage for 1-based and 0-based indexing behavior
-- Character position conversion tests for all MCP tools
+- Character position conversion tests/e2e for all MCP tools
 - Edge case testing for character indexing boundaries
 
 ## [0.3.2] - 2025-06-27

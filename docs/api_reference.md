@@ -817,7 +817,7 @@ To avoid false positives in prose text, CodeBuddy only updates strings that:
 - ✅ Appear in structured contexts (links, code blocks)
 
 **Examples:**
-- ✅ `"tests/fixtures"` - Updated (contains `/`)
+- ✅ `"../tests/e2e/fixtures"` - Updated (contains `/`)
 - ✅ `"config.toml"` - Updated (file extension)
 - ❌ `"We use tests"` - Skipped (no `/`, no extension)
 
@@ -834,7 +834,7 @@ Returns a `RefactorPlan` with:
 
 **Coverage Metrics:**
 
-For the rename `tests/` → `tests/`:
+For the rename `../../tests/e2e/` → `../../tests/e2e/`:
 - **Before:** 33% coverage (5/15 files)
 - **After:** 93%+ coverage (14/15 files)
 

@@ -7,7 +7,7 @@ Fast reference for test organization, execution, and best practices.
 | Layer | Location | Purpose | Speed | Count | Feature Flag |
 |-------|----------|---------|-------|-------|--------------|
 | **Unit** | `crates/*/src/` | Individual functions, business logic | ⚡ <100ms | 100s | default |
-| **Integration** | `tests/src/` | Tool handlers with mocks | ⚡ <5s | 81 | default |
+| **Integration** | `tests/e2e/src/` | Tool handlers with mocks | ⚡ <5s | 81 | default |
 | **E2E** | `apps/codebuddy/tests/e2e_*.rs` | Complete workflows | 🐌 <30s | 58 | default |
 | **Smoke** | `apps/codebuddy/tests/smoke/` | Protocol connectivity | 🐌 <1min | 5 | `#[ignore]` |
 

@@ -1947,7 +1947,7 @@ impl ToolHandler for DeadCodeHandler {
         };
 
         if !is_valid {
-            let supported = "'unused_imports', 'unused_symbols', 'unreachable_code', 'unused_parameters', 'unused_types', 'unused_variables'".to_string();
+            let mut supported = "'unused_imports', 'unused_symbols', 'unreachable_code', 'unused_parameters', 'unused_types', 'unused_variables'".to_string();
             #[cfg(feature = "analysis-deep-dead-code")]
             supported.push_str(", 'deep'");
             return Err(ServerError::InvalidRequest(format!(

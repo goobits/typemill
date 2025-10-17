@@ -327,7 +327,7 @@ Each agent writes 3 integration tests (one per category they own).
 Example for Quality (Agent 1):
 
 ```rust
-// tests/src/test_suggestions_quality.rs
+// ../tests/e2e/src/test_suggestions_quality.rs
 
 #[tokio::test]
 async fn test_quality_analysis_generates_suggestions() {
@@ -361,7 +361,7 @@ async fn test_quality_analysis_generates_suggestions() {
 One agent writes this test demonstrating the full workflow:
 
 ```rust
-// tests/src/test_closed_loop_workflow.rs
+// ../tests/e2e/src/test_closed_loop_workflow.rs
 
 #[tokio::test]
 async fn test_closed_loop_workflow_dead_code_removal() {

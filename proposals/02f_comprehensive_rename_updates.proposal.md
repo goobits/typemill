@@ -9,13 +9,13 @@
 CodeBuddy's `rename.plan` tool currently updates only ~9% of references when renaming directories/files:
 - ✅ Updates Rust imports (`use` statements)
 - ✅ Updates `Cargo.toml` workspace members and dependencies
-- ❌ Misses string literals in code (`"tests/path"`)
+- ❌ Misses string literals in code (`"../tests/e2e/path"`)
 - ❌ Misses documentation files (.md files with 98+ references)
 - ❌ Misses config files (`.cargo/config.toml`, CI configs)
 - ❌ Misses examples directory
 - ❌ Misses `.gitignore` patterns
 
-Example: Renaming `tests/` → `tests/` affects 113 references across 15 files, but only updates 5 files.
+Example: Renaming `../../tests/e2e/` → `../../tests/e2e/` affects 113 references across 15 files, but only updates 5 files.
 
 This forces manual find/replace for critical infrastructure files and extensive documentation, reducing confidence in the refactoring tool.
 
@@ -28,9 +28,9 @@ Extend rename/move detection to cover all functional references while avoiding f
 Detect and update path strings in Rust code:
 ```rust
 // Should be updated:
-let path = "tests/fixtures";
-std::fs::read("tests/test.rs");
-Command::new("cargo").arg("--manifest-path=tests/Cargo.toml");
+let path = "../tests/e2e/fixtures";
+std::fs::read("../tests/e2e/test.rs");
+Command::new("cargo").arg("--manifest-path=../tests/e2e/Cargo.toml");
 ```
 
 **Detection logic:**
@@ -43,10 +43,10 @@ Command::new("cargo").arg("--manifest-path=tests/Cargo.toml");
 Update markdown files with smart path detection:
 ```markdown
 ✅ Update these (clear path references):
-- Code blocks: `tests/src/main.rs`
-- Directory trees: `├── tests/`
-- File paths: `/workspace/tests/`
-- Links: `[guide](tests/TESTING_GUIDE.md)`
+- Code blocks: `../../tests/e2e/src/main.rs`
+- Directory trees: `├── ../../tests/e2e/`
+- File paths: `/workspace/../tests/e2e/`
+- Links: `[guide](../tests/e2e/TESTING_GUIDE.md)`
 
 ❌ Skip these (prose):
 - "We use tests as a pattern"
@@ -114,7 +114,7 @@ Add opt-in support for updating comments:
 
 ## Success Criteria
 
-**Measured by test case: Rename `tests/` → `tests/`**
+**Measured by test case: Rename `tests/` → `../../tests/e2e/`**
 
 Before: 5/15 files updated (33%)
 After: 14+/15 files updated (93%+)

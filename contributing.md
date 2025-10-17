@@ -85,13 +85,13 @@ make test-lsp
 You can also run `cargo-nextest` directly for more granular control:
 
 ```bash
-# Run all workspace tests
+# Run all workspace tests/e2e
 cargo nextest run --workspace
 
 # Run a specific test file
 cargo nextest run --test lsp_features
 
-# Run ignored/skipped tests
+# Run ignored/skipped tests/e2e
 cargo nextest run --status-level skip
 ```
 
@@ -391,7 +391,7 @@ Analysis handlers are organized by category in `crates/cb-handlers/src/handlers/
 1. Add the kind to the appropriate category handler (e.g., `quality.rs`)
 2. Implement a detection function with signature: `(complexity_report, content, symbols, language, file_path) -> Vec<Finding>`
 3. Register the function in `batch.rs` helpers
-4. Add test cases in `tests/src/test_analyze_<category>.rs`
+4. Add test cases in `tests/e2e/src/test_analyze_<category>.rs`
 
 See [40_PROPOSAL_UNIFIED_ANALYSIS_API.md](../40_PROPOSAL_UNIFIED_ANALYSIS_API.md) for complete architecture details.
 
@@ -788,7 +788,7 @@ async fn get_diagnostics(...) -> ServerResult<Value> {
 ```
 
 #### Testing
-Add tests for your tools (see [tests/TESTING_GUIDE.md](tests/TESTING_GUIDE.md)):
+Add tests for your tools (see [tests/e2e/TESTING_GUIDE.md](tests/e2e/TESTING_GUIDE.md)):
 
 **Standard tool tests:**
 ```rust
@@ -852,7 +852,7 @@ mod tests {
 ```
 
 **Integration tests for unified refactoring API:**
-- Test in `tests/src/test_<operation>_integration.rs`
+- Test in `tests/e2e/src/test_<operation>_integration.rs`
 - Cover both plan generation and application via `workspace.apply_edit`
 - Test rollback behavior on errors
 - Test checksum validation

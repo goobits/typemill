@@ -5,7 +5,10 @@ use cb_analysis_circular_deps::{
     builder::DependencyGraphBuilder, find_circular_dependencies, Cycle,
 };
 use cb_core::model::mcp::ToolCall;
-use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use cb_protocol::{
+    analysis_result::{AnalysisResult, Finding, FindingLocation, Severity},
+    ApiError as ServerError, ApiResult as ServerResult, SafetyLevel, Suggestion,
+};
 use serde_json::{json, Value};
 #[cfg(feature = "analysis-circular-deps")]
 use std::collections::HashMap;

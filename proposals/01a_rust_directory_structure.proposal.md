@@ -13,7 +13,7 @@ Reorganize the workspace to follow Rust ecosystem conventions and best practices
 
 **Current Issues:**
 - 20+ files in root directory (hard to navigate)
-- Non-standard directory names (`tests/` vs Rust convention `tests/`)
+- Non-standard directory names (`tests/e2e/` vs Rust convention `tests/e2e/`)
 - Documentation scattered across root and `docs/`
 - Configuration files in multiple locations (`.config/`, `config/`, root)
 - Unclear where to add new files
@@ -28,9 +28,9 @@ Reorganize the workspace to follow Rust ecosystem conventions and best practices
 
 ### Phase 1: Structural Changes (High Priority)
 
-#### 1.1: Rename `tests/` → `tests/`
+#### 1.1: Rename `tests/e2e/` → `tests/e2e/`
 
-**Rust Convention:** Integration tests belong in `tests/` at workspace level.
+**Rust Convention:** Integration tests belong in `tests/e2e/` at workspace level.
 
 ```bash
 mv tests tests
@@ -340,7 +340,7 @@ EOF
 - [ ] Verify CI passes
 
 ### Phase 1: Structure (can be done in parallel)
-- [ ] Rename `tests/` → `tests/`
+- [ ] Rename `tests/e2e/` → `tests/e2e/`
 - [ ] Update `Cargo.toml` workspace members
 - [ ] Update all crate references in `Cargo.toml` files
 - [ ] Move root docs to `docs/` subdirectories
@@ -357,7 +357,7 @@ EOF
 - [ ] Update Docker/deployment scripts
 
 ### Phase 3: Validation
-- [ ] Run tests: `cargo nextest run --workspace`
+- [ ] Run ../../tests/e2e: `cargo nextest run --workspace`
 - [ ] Check documentation builds (if applicable)
 - [ ] Verify `cargo build --release` works
 - [ ] Test installation script
@@ -426,7 +426,7 @@ EOF
 ## Success Criteria
 
 - [ ] Root directory has ≤12 files/directories
-- [ ] `tests/` directory follows Rust convention
+- [ ] `tests/e2e/` directory follows Rust convention
 - [ ] All documentation accessible from `docs/README.md`
 - [ ] All tests pass after migration
 - [ ] CI/CD pipeline works without modification (or updated successfully)

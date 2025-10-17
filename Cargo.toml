@@ -20,14 +20,13 @@ members = [
     "crates/cb-lang-toml",
     "crates/cb-lang-yaml",
     "apps/codebuddy",
-    "tests",
     "crates/cb-bench",
     "crates/cb-test-support",
     "analysis/cb-analysis-common",
     "analysis/cb-analysis-dead-code",
     "analysis/cb-analysis-deep-dead-code",
     "analysis/cb-analysis-graph",
-    "analysis/cb-analysis-circular-deps",
+    "analysis/cb-analysis-circular-deps", "tests/e2e",
 ]
 resolver = "2"
 
