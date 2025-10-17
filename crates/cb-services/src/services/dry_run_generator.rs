@@ -131,9 +131,18 @@ mod tests {
                 intent_name: "test".to_string(),
                 intent_arguments: serde_json::json!({}),
                 created_at: chrono::Utc::now(),
-                complexity: cb_protocol::Complexity::Low,
+                complexity: 1, // Low complexity (1-10 scale)
                 impact_areas: vec![],
             },
+        }
+    }
+
+    fn default_location() -> EditLocation {
+        EditLocation {
+            start_line: 0,
+            start_column: 0,
+            end_line: 0,
+            end_column: 0,
         }
     }
 
@@ -144,7 +153,7 @@ mod tests {
         let plan = create_test_plan(vec![TextEdit {
             file_path: Some("src/main.rs".to_string()),
             edit_type: EditType::Replace,
-            location: EditLocation::default(),
+            location: default_location(),
             original_text: String::new(),
             new_text: String::new(),
             priority: 0,
@@ -168,7 +177,7 @@ mod tests {
         let plan = create_test_plan(vec![TextEdit {
             file_path: Some("src/new.rs".to_string()),
             edit_type: EditType::Create,
-            location: EditLocation::default(),
+            location: default_location(),
             original_text: String::new(),
             new_text: String::new(),
             priority: 0,
@@ -191,7 +200,7 @@ mod tests {
         let plan = create_test_plan(vec![TextEdit {
             file_path: Some("src/old.rs".to_string()),
             edit_type: EditType::Delete,
-            location: EditLocation::default(),
+            location: default_location(),
             original_text: String::new(),
             new_text: String::new(),
             priority: 0,
@@ -231,7 +240,7 @@ mod tests {
             TextEdit {
                 file_path: Some("src/main.rs".to_string()),
                 edit_type: EditType::Replace,
-                location: EditLocation::default(),
+                location: default_location(),
                 original_text: String::new(),
                 new_text: String::new(),
                 priority: 0,
@@ -240,7 +249,7 @@ mod tests {
             TextEdit {
                 file_path: Some("src/main.rs".to_string()),
                 edit_type: EditType::Replace,
-                location: EditLocation::default(),
+                location: default_location(),
                 original_text: String::new(),
                 new_text: String::new(),
                 priority: 0,
@@ -261,7 +270,7 @@ mod tests {
         let plan = create_test_plan(vec![TextEdit {
             file_path: Some("src/old.rs".to_string()),
             edit_type: EditType::Move,
-            location: EditLocation::default(),
+            location: default_location(),
             original_text: String::new(),
             new_text: "src/new.rs".to_string(),
             priority: 0,
