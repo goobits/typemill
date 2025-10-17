@@ -50,6 +50,165 @@ pub struct TransformStatistics {
     pub characters_removed: i32,
 }
 
+/// Deduplicate overlapping edits by removing redundant edits
+///
+/// When multiple edits target overlapping text regions, keep only the most specific/largest edit
+/// to prevent conflicts where one edit modifies text that another edit expects to be unchanged.
+fn deduplicate_overlapping_edits(edits: &[TextEdit]) -> Vec<TextEdit> {
+    if edits.is_empty() {
+        return Vec::new();
+    }
+
+    tracing::debug!(
+        total_edits = edits.len(),
+        "Starting edit deduplication"
+    );
+
+    let mut unique_edits = Vec::new();
+
+    for (idx, new_edit) in edits.iter().enumerate() {
+        tracing::debug!(
+            edit_index = idx,
+            edit_description = %new_edit.description,
+            start_line = new_edit.location.start_line,
+            start_col = new_edit.location.start_column,
+            end_line = new_edit.location.end_line,
+            end_col = new_edit.location.end_column,
+            original_text = %new_edit.original_text,
+            new_text = %new_edit.new_text,
+            "Processing edit for deduplication"
+        );
+
+        let mut is_redundant = false;
+
+        // Check if this edit overlaps with any existing edit
+        for i in 0..unique_edits.len() {
+            let existing_edit = &unique_edits[i];
+
+            if edits_overlap(new_edit, existing_edit) {
+                // Determine which edit to keep (the larger/more specific one)
+                let new_size = edit_text_length(new_edit);
+                let existing_size = edit_text_length(existing_edit);
+
+                tracing::warn!(
+                    new_edit_desc = %new_edit.description,
+                    existing_edit_desc = %existing_edit.description,
+                    new_size = new_size,
+                    existing_size = existing_size,
+                    "Found overlapping edits"
+                );
+
+                if new_size > existing_size {
+                    // New edit is larger - replace the existing one
+                    tracing::warn!(
+                        keeping = "new",
+                        new_desc = %new_edit.description,
+                        replacing_desc = %existing_edit.description,
+                        "Keeping larger edit"
+                    );
+                    unique_edits[i] = new_edit.clone();
+                    is_redundant = false;
+                } else {
+                    // Existing edit is larger - skip the new one
+                    tracing::warn!(
+                        keeping = "existing",
+                        existing_desc = %existing_edit.description,
+                        skipping_desc = %new_edit.description,
+                        "Skipping smaller/equal edit"
+                    );
+                    is_redundant = true;
+                }
+                break;
+            }
+        }
+
+        if !is_redundant {
+            // Check if we already added this edit (exact duplicate)
+            if !unique_edits.iter().any(|e| edits_are_identical(e, new_edit)) {
+                tracing::debug!(
+                    edit_desc = %new_edit.description,
+                    "Adding unique edit to list"
+                );
+                unique_edits.push(new_edit.clone());
+            } else {
+                tracing::debug!(
+                    edit_desc = %new_edit.description,
+                    "Skipping exact duplicate edit"
+                );
+            }
+        }
+    }
+
+    tracing::debug!(
+        original_count = edits.len(),
+        unique_count = unique_edits.len(),
+        removed_count = edits.len() - unique_edits.len(),
+        "Deduplication complete"
+    );
+
+    unique_edits
+}
+
+/// Check if two edits overlap in their text regions
+fn edits_overlap(edit1: &TextEdit, edit2: &TextEdit) -> bool {
+    // Two edits overlap if their line/column ranges intersect
+
+    // Check if they're on completely different lines
+    if edit1.location.end_line < edit2.location.start_line
+        || edit2.location.end_line < edit1.location.start_line
+    {
+        return false; // No overlap
+    }
+
+    // If they share any lines, check column ranges
+    // Simplified: if their original text contains each other, they overlap
+    if !edit1.original_text.is_empty() && !edit2.original_text.is_empty() {
+        // Check if one is a substring of the other
+        if edit1.original_text.contains(&edit2.original_text)
+            || edit2.original_text.contains(&edit1.original_text)
+        {
+            return true;
+        }
+    }
+
+    // Check precise position overlap for same line
+    if edit1.location.start_line == edit2.location.start_line
+        && edit1.location.end_line == edit2.location.end_line
+    {
+        // Same line - check column overlap
+        let e1_start = edit1.location.start_column;
+        let e1_end = edit1.location.end_column;
+        let e2_start = edit2.location.start_column;
+        let e2_end = edit2.location.end_column;
+
+        // Ranges overlap if: start1 <= end2 AND start2 <= end1
+        return e1_start <= e2_end && e2_start <= e1_end;
+    }
+
+    // Multi-line overlap: they share at least one line
+    true
+}
+
+/// Check if two edits are identical
+fn edits_are_identical(edit1: &TextEdit, edit2: &TextEdit) -> bool {
+    edit1.location.start_line == edit2.location.start_line
+        && edit1.location.start_column == edit2.location.start_column
+        && edit1.location.end_line == edit2.location.end_line
+        && edit1.location.end_column == edit2.location.end_column
+        && edit1.original_text == edit2.original_text
+        && edit1.new_text == edit2.new_text
+}
+
+/// Calculate the text length of an edit (for determining which is more specific)
+fn edit_text_length(edit: &TextEdit) -> usize {
+    if !edit.original_text.is_empty() {
+        edit.original_text.len()
+    } else {
+        // For inserts, use new_text length
+        edit.new_text.len()
+    }
+}
+
 /// Apply an edit plan to source code
 pub fn apply_edit_plan(source: &str, plan: &EditPlan) -> AstResult<TransformResult> {
     let mut result_source = source.to_string();
@@ -60,8 +219,19 @@ pub fn apply_edit_plan(source: &str, plan: &EditPlan) -> AstResult<TransformResu
     let mut characters_added = 0;
     let mut characters_removed = 0;
 
+    // Deduplicate overlapping edits before applying (prevents conflicts)
+    let deduplicated_edits = deduplicate_overlapping_edits(&plan.edits);
+    let removed_count = plan.edits.len() - deduplicated_edits.len();
+    if removed_count > 0 {
+        tracing::warn!(
+            removed_count = removed_count,
+            original_count = plan.edits.len(),
+            "Removed redundant overlapping edits to prevent conflicts"
+        );
+    }
+
     // Sort edits by priority (highest first) and then by location (reverse order to avoid offset issues)
-    let mut sorted_edits = plan.edits.clone();
+    let mut sorted_edits = deduplicated_edits;
     sorted_edits.sort_by(|a, b| {
         match b.priority.cmp(&a.priority) {
             std::cmp::Ordering::Equal => {

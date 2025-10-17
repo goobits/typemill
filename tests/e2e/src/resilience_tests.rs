@@ -660,8 +660,8 @@ async fn test_authentication_failure_websocket() {
     // Start WebSocket server with authentication enabled
     // Use CARGO_MANIFEST_DIR to construct path to binary in workspace
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
-    let debug_path = std::path::Path::new(&manifest_dir).join("../target/debug/codebuddy");
-    let release_path = std::path::Path::new(&manifest_dir).join("../target/release/codebuddy");
+    let debug_path = std::path::Path::new(&manifest_dir).join("../../target/debug/codebuddy");
+    let release_path = std::path::Path::new(&manifest_dir).join("../../target/release/codebuddy");
 
     let binary_path = if debug_path.exists() {
         debug_path
