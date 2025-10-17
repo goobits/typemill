@@ -265,11 +265,28 @@ async fn plan_documentation_and_config_edits(
     use std::path::PathBuf;
 
     let mut edits = Vec::new();
+    let mut files_to_scan: Vec<PathBuf> = Vec::new();
 
     // Find all markdown, TOML, YAML, and Rust files in the project
     // Rust files are included to catch hardcoded path string literals
     let file_extensions = ["md", "markdown", "toml", "yaml", "yml", "rs"];
-    let mut files_to_scan: Vec<PathBuf> = Vec::new();
+
+    // Pre-compute the files inside the directory being moved so we can
+    // update references to specific files (e.g., docs/guide.md)
+    let mut moved_files: Vec<(PathBuf, PathBuf)> = Vec::new();
+    let moved_walker = ignore::WalkBuilder::new(old_path)
+        .hidden(false)
+        .git_ignore(true)
+        .build();
+
+    for entry in moved_walker.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if let Ok(relative) = path.strip_prefix(old_path) {
+                moved_files.push((path.to_path_buf(), new_path.join(relative)));
+            }
+        }
+    }
 
     for ext in &file_extensions {
         if let Some(plugin) = plugin_registry.find_by_extension(ext) {
@@ -300,53 +317,78 @@ async fn plan_documentation_and_config_edits(
             for file_path in &files_to_scan {
                 match tokio::fs::read_to_string(file_path).await {
                     Ok(content) => {
+                        let mut combined_content = content.clone();
+                        let mut total_changes = 0usize;
+
                         // Call the plugin's rewrite_file_references to get updated content
                         // Returns Option<(String, usize)> where String is new content and usize is change count
                         if let Some((updated_content, change_count)) = plugin.rewrite_file_references(
-                            &content,
+                            &combined_content,
                             old_path,
                             new_path,
                             file_path,
                             project_root,
                             None, // No rename_info for simple moves
                         ) {
-                            if change_count > 0 && updated_content != content {
-                                // File needs updating - create a full-file replacement edit
-                                let line_count = content.lines().count().max(1);
-                                let last_line_len = content
-                                    .lines()
-                                    .last()
-                                    .map(|l| l.len())
-                                    .unwrap_or(0);
-
-                                let edit = TextEdit {
-                                    file_path: Some(file_path.to_string_lossy().to_string()),
-                                    edit_type: EditType::Replace,
-                                    location: EditLocation {
-                                        start_line: 0,
-                                        start_column: 0,
-                                        end_line: (line_count - 1) as u32,
-                                        end_column: last_line_len as u32,
-                                    },
-                                    original_text: content.clone(),
-                                    new_text: updated_content,
-                                    priority: 0,
-                                    description: format!(
-                                        "Update {} path references in {}",
-                                        change_count,
-                                        file_path.display()
-                                    ),
-                                };
-
-                                info!(
-                                    file = %file_path.display(),
-                                    extension = ext,
-                                    changes = change_count,
-                                    "Generated edit for file"
-                                );
-
-                                edits.push(edit);
+                            if change_count > 0 && updated_content != combined_content {
+                                total_changes += change_count;
+                                combined_content = updated_content;
                             }
+                        }
+
+                        // Also update references to specific files inside the moved directory
+                        for (old_file, new_file) in &moved_files {
+                            if let Some((updated_content, change_count)) = plugin.rewrite_file_references(
+                                &combined_content,
+                                old_file,
+                                new_file,
+                                file_path,
+                                project_root,
+                                None,
+                            ) {
+                                if change_count > 0 && updated_content != combined_content {
+                                    total_changes += change_count;
+                                    combined_content = updated_content;
+                                }
+                            }
+                        }
+
+                        if total_changes > 0 && combined_content != content {
+                            // File needs updating - create a full-file replacement edit
+                            let line_count = content.lines().count().max(1);
+                            let last_line_len = content
+                                .lines()
+                                .last()
+                                .map(|l| l.len())
+                                .unwrap_or(0);
+
+                            let edit = TextEdit {
+                                file_path: Some(file_path.to_string_lossy().to_string()),
+                                edit_type: EditType::Replace,
+                                location: EditLocation {
+                                    start_line: 0,
+                                    start_column: 0,
+                                    end_line: (line_count - 1) as u32,
+                                    end_column: last_line_len as u32,
+                                },
+                                original_text: content.clone(),
+                                new_text: combined_content,
+                                priority: 0,
+                                description: format!(
+                                    "Update {} path references in {}",
+                                    total_changes,
+                                    file_path.display()
+                                ),
+                            };
+
+                            info!(
+                                file = %file_path.display(),
+                                extension = ext,
+                                changes = total_changes,
+                                "Generated edit for file"
+                            );
+
+                            edits.push(edit);
                         }
                     }
                     Err(e) => {
