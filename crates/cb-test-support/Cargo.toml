@@ -22,3 +22,29 @@ cb-protocol = { path = "../cb-protocol" }
 cb-plugin-api = { path = "../cb-plugin-api" }
 cb-handlers = { path = "../cb-handlers" }
 cb-services = { path = "../cb-services" }
+
+# Benchmark dependencies (merged from cb-bench)
+cb-server = { path = "../cb-server" }
+cb-plugins = { path = "../cb-plugins" }
+cb-ast = { path = "../cb-ast" }
+simd-json = "0.16"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+
+# Benchmarks (merged from cb-bench)
+[[bench]]
+name = "dispatch_benchmark"
+harness = false
+
+[[bench]]
+name = "serialization_benchmark"
+harness = false
+
+[[bench]]
+name = "forwarding_benchmark"
+harness = false
+
+[[bench]]
+name = "optimization_benchmark"
+harness = false
