@@ -7,7 +7,7 @@
 //! - Plugin registry initialization time
 
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use codebuddy_plugin_system::{
     Capabilities, LanguagePlugin, PluginMetadata, PluginRegistry, PluginRequest, PluginResponse,
     PluginResult,

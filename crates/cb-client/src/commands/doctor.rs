@@ -1,6 +1,6 @@
 use crate::commands::{Command, GlobalArgs};
 use crate::ClientResult;
-use cb_core::config::AppConfig;
+use codebuddy_core::config::AppConfig;
 
 pub struct DoctorCommand;
 
@@ -46,7 +46,7 @@ impl DoctorCommand {
     }
 
     /// Checks for the existence of configured LSP servers.
-    async fn check_language_servers(&self, servers: &[cb_core::config::LspServerConfig]) {
+    async fn check_language_servers(&self, servers: &[codebuddy_core::config::LspServerConfig]) {
         println!("\nChecking language servers:");
         for server in servers {
             let cmd = &server.command[0];
@@ -69,7 +69,7 @@ impl DoctorCommand {
 
     /// Helper to check if a command exists on the system's PATH.
     fn command_exists(&self, cmd: &str) -> bool {
-        cb_core::utils::system::command_exists(cmd)
+        codebuddy_core::utils::system::command_exists(cmd)
     }
 }
 

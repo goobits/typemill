@@ -1,6 +1,6 @@
 //! Test helper functions and utilities
 
-use cb_core::{model::*, AppConfig};
+use codebuddy_core::{ model::* , AppConfig };
 use cb_protocol::{EditPlan, ImportGraph};
 use serde_json::json;
 use std::path::Path;

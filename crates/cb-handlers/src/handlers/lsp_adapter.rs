@@ -16,7 +16,7 @@ pub struct DirectLspAdapter {
     /// LSP clients by extension
     lsp_clients: Arc<Mutex<HashMap<String, Arc<cb_lsp::lsp_system::LspClient>>>>,
     /// LSP configuration
-    config: cb_core::config::LspConfig,
+    config: codebuddy_core::config::LspConfig,
     /// Supported file extensions
     extensions: Vec<String>,
     /// Adapter name
@@ -24,7 +24,7 @@ pub struct DirectLspAdapter {
 }
 
 impl DirectLspAdapter {
-    pub fn new(config: cb_core::config::LspConfig, extensions: Vec<String>, name: String) -> Self {
+    pub fn new(config: codebuddy_core::config::LspConfig, extensions: Vec<String>, name: String) -> Self {
         Self {
             lsp_clients: Arc::new(Mutex::new(HashMap::new())),
             config,

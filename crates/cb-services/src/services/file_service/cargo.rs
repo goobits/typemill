@@ -1,5 +1,5 @@
 use super::FileService;
-use cb_core::dry_run::DryRunnable;
+use codebuddy_core::dry_run::DryRunnable;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};

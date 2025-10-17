@@ -5,7 +5,7 @@
 use super::tools::{ToolHandler, ToolHandlerContext};
 use crate::utils::{dry_run::wrap_dry_run_result, remote_exec};
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use serde_json::{json, Value};
 use std::path::Path;

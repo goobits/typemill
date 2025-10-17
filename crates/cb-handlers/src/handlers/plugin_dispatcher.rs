@@ -18,8 +18,8 @@
 
 use crate::register_handlers_with_logging;
 use async_trait::async_trait;
-use cb_core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
-use cb_core::workspaces::WorkspaceManager;
+use codebuddy_core::model::mcp::{ McpMessage , McpRequest , McpResponse , ToolCall };
+use codebuddy_core::workspaces::WorkspaceManager;
 use codebuddy_plugin_system::{LspAdapterPlugin, PluginManager};
 use cb_protocol::AstService;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
@@ -102,7 +102,7 @@ impl PluginDispatcher {
             let plugin_registry = cb_services::services::build_language_plugin_registry();
 
             // Get LSP configuration from app config
-            let app_config = cb_core::config::AppConfig::load()
+            let app_config = codebuddy_core::config::AppConfig::load()
                 .map_err(|e| {
                     error!(error = %e, "Failed to load app config");
                     ServerError::Internal(format!("Failed to load app config: {}", e))
@@ -219,9 +219,10 @@ impl PluginDispatcher {
                 // Register refactoring handlers (feature-gated)
                 #[cfg(feature = "refactor-rename")]
                 {
-                    use super::RenameHandler;
+                    use super::{RenameHandler, QuickRenameHandler};
                     register_handlers_with_logging!(registry, {
-                        RenameHandler => "Unified rename handler"
+                        RenameHandler => "Unified rename handler",
+                        QuickRenameHandler => "Quick rename handler (one-step plan + execute)"
                     });
                 }
                 #[cfg(feature = "refactor-extract")]
@@ -496,7 +497,7 @@ pub async fn create_test_dispatcher() -> PluginDispatcher {
 
     let cache_settings = cb_ast::CacheSettings::default();
     let plugin_manager = Arc::new(PluginManager::new());
-    let config = cb_core::AppConfig::default();
+    let config = codebuddy_core::AppConfig::default();
 
     let services = cb_services::services::app_state_factory::create_services_bundle(
         &project_root,
@@ -543,7 +544,7 @@ mod tests {
         let operation_queue = Arc::new(cb_services::services::OperationQueue::new(
             lock_manager.clone(),
         ));
-        let config = cb_core::AppConfig::default();
+        let config = codebuddy_core::AppConfig::default();
         let file_service = Arc::new(cb_services::services::FileService::new(
             project_root.clone(),
             ast_cache.clone(),

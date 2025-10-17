@@ -23,7 +23,7 @@ pub async fn create_services_bundle(
     project_root: &PathBuf,
     cache_settings: cb_ast::CacheSettings,
     plugin_manager: Arc<codebuddy_plugin_system::PluginManager>,
-    config: &cb_core::AppConfig,
+    config: &codebuddy_core::AppConfig,
 ) -> ServicesBundle {
     // Build the language plugin registry (centralized)
     let plugin_registry = super::registry_builder::build_language_plugin_registry();
@@ -202,7 +202,7 @@ fn spawn_operation_worker(
 #[cfg(feature = "mcp-proxy")]
 pub async fn register_mcp_proxy_if_enabled(
     plugin_manager: &Arc<codebuddy_plugin_system::PluginManager>,
-    external_mcp_config: Option<&cb_core::config::ExternalMcpConfig>,
+    external_mcp_config: Option<&codebuddy_core::config::ExternalMcpConfig>,
 ) -> Result<(), cb_protocol::ApiError> {
     if let Some(config) = external_mcp_config {
         use codebuddy_plugin_system::mcp::McpProxyPlugin;

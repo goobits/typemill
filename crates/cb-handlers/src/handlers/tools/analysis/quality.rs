@@ -2,7 +2,7 @@
 
 use super::super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_protocol::analysis_result::{
     AnalysisResult, AnalysisScope, Finding, FindingLocation, Position, Range, RefactorCall,
     SafetyLevel, Severity, Suggestion,

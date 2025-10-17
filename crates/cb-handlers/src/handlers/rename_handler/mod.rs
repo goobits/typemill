@@ -12,7 +12,7 @@ mod utils;
 
 use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_protocol::{
     refactor_plan::{PlanSummary, PlanWarning},
     ApiError as ServerError, ApiResult as ServerResult, RefactorPlan,
@@ -76,15 +76,15 @@ pub(crate) struct RenameOptions {
 
     /// Custom scope configuration (when scope="custom")
     #[serde(default)]
-    pub custom_scope: Option<cb_core::rename_scope::RenameScope>,
+    pub custom_scope: Option<codebuddy_core::rename_scope::RenameScope>,
 }
 
 impl RenameOptions {
     /// Build RenameScope from options
-    pub fn to_rename_scope(&self) -> Option<cb_core::rename_scope::RenameScope> {
+    pub fn to_rename_scope(&self) -> Option<codebuddy_core::rename_scope::RenameScope> {
         match self.scope.as_deref() {
-            Some("code-only") => Some(cb_core::rename_scope::RenameScope::code_only()),
-            Some("all") | None => Some(cb_core::rename_scope::RenameScope::all()),
+            Some("code-only") => Some(codebuddy_core::rename_scope::RenameScope::code_only()),
+            Some("all") | None => Some(codebuddy_core::rename_scope::RenameScope::all()),
             Some("custom") => self.custom_scope.clone(),
             _ => None,
         }

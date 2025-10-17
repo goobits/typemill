@@ -15,7 +15,7 @@ use crate::handlers::tools::analysis::suggestions::{
     Scope, SuggestionGenerator, RefactorType,
 };
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_plugin_api::ParsedSource;
 use cb_protocol::analysis_result::{
     Finding, FindingLocation, Position, Range, SafetyLevel, Severity, Suggestion,

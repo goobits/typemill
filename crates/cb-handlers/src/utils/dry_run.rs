@@ -1,6 +1,6 @@
 //! Dry-run result wrapping utilities
 
-use cb_core::dry_run::DryRunnable;
+use codebuddy_core::dry_run::DryRunnable;
 use cb_protocol::ApiResult as ServerResult;
 use serde_json::{json, Value};
 

@@ -375,7 +375,7 @@ pub(super) use_git: bool,
 ### Location
 - `crates/cb-lsp/src/` - LSP client management
 - `crates/cb-plugins/src/` - Plugin system
-- `crates/cb-core/src/` - Configuration and logging
+- `crates/codebuddy-core/src/` - Configuration and logging
 
 ### Strengths
 
@@ -411,7 +411,7 @@ pub async fn dispatch(
 
 **3. Configuration Management**
 ```rust
-// File: crates/cb-core/src/ - AppConfig structure
+// File: crates/codebuddy-core/src/ - AppConfig structure
 - Centralized configuration
 - No hardcoded values in service code
 - LSP, cache, logging all configurable

@@ -7,7 +7,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use cb_core::{
+use codebuddy_core::{
     auth::{
         generate_token,
         jwt::{decode, Claims, DecodingKey, Validation},

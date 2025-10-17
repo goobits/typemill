@@ -8,7 +8,7 @@
 use super::{ToolHandler, ToolHandlerContext};
 use crate::handlers::refactoring_handler::RefactoringHandler;
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_protocol::ApiResult as ServerResult;
 use serde_json::Value;
 

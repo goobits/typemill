@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use cb_analysis_circular_deps::{
     builder::DependencyGraphBuilder, find_circular_dependencies, Cycle,
 };
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_protocol::{
     analysis_result::{AnalysisResult, Finding, FindingLocation, Severity},
     ApiError as ServerError, ApiResult as ServerResult, SafetyLevel, Suggestion,

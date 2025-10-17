@@ -4,7 +4,6 @@ edition = "2021"
 
 [dependencies]
 cb-types = { path = "../cb-types" }
-cb-core = { path = "../cb-core" }
 cb-ast = { path = "../cb-ast" }
 cb-lsp = { path = "../cb-lsp" }
 cb-protocol = { path = "../cb-protocol" }
@@ -33,10 +32,11 @@ chrono = "0.4"
 sha2 = "0.10"
 urlencoding = "2.1"
 codebuddy-plugin-system = { path = "../codebuddy-plugin-system" }
+codebuddy-core = { path = "../codebuddy-core" }
 
 [features]
 default = []
-mcp-proxy = ["cb-core/mcp-proxy", "codebuddy-plugin-system/mcp-proxy"]
+mcp-proxy = ["codebuddy-core/mcp-proxy", "codebuddy-plugin-system/mcp-proxy"]
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

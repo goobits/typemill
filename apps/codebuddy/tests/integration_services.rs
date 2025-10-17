@@ -138,7 +138,7 @@ async fn create_test_app_state(project_root: PathBuf) -> Arc<AppState> {
     ));
     let lock_manager = Arc::new(LockManager::new());
     let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
-    let config = cb_core::AppConfig::default();
+    let config = codebuddy_core::AppConfig::default();
     let file_service = Arc::new(FileService::new(
         project_root.clone(),
         ast_cache.clone(),
@@ -226,7 +226,7 @@ async fn test_cache_performance_improvement() {
 
 #[tokio::test]
 async fn test_workspace_edit_in_process() {
-    use cb_core::model::mcp::{McpMessage, McpRequest};
+    use codebuddy_core::model::mcp::{ McpMessage , McpRequest };
     use cb_server::test_helpers::create_test_dispatcher_with_root;
     use cb_transport::SessionInfo;
     use std::time::Instant;

@@ -1,7 +1,7 @@
 use super::FileService;
 use crate::services::operation_queue::{FileOperation, OperationTransaction, OperationType};
 use crate::services::reference_updater::find_project_files;
-use cb_core::dry_run::DryRunnable;
+use codebuddy_core::dry_run::DryRunnable;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use serde_json::{json, Value};
 use std::path::Path;

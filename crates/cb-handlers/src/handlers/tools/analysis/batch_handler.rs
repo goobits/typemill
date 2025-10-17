@@ -4,7 +4,7 @@ use crate::handlers::tools::analysis::batch::{
     run_batch_analysis, AnalysisQuery, BatchAnalysisRequest,
 };
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use serde::Deserialize;
 use serde_json::{json, Value};

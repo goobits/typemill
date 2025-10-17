@@ -6,7 +6,6 @@ license = "MIT"
 
 [dependencies]
 cb-protocol = { path = "../cb-protocol" }
-cb-core = { path = "../cb-core" }
 cb-ast = { path = "../cb-ast" }
 cb-transport = { path = "../cb-transport" }
 cb-lsp = { path = "../cb-lsp" }
@@ -35,10 +34,11 @@ toml_edit = "0.23"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 tempfile = "3.0"
 codebuddy-plugin-system = { path = "../codebuddy-plugin-system" }
+codebuddy-core = { path = "../codebuddy-core" }
 
 [features]
 default = []
-mcp-proxy = ["cb-core/mcp-proxy", "cb-services/mcp-proxy"]
+mcp-proxy = ["codebuddy-core/mcp-proxy", "cb-services/mcp-proxy"]
 test-helpers = []
 
 [dev-dependencies]

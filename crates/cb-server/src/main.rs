@@ -1,6 +1,6 @@
 //! cb-server main binary
 
-use cb_core::AppConfig;
+use codebuddy_core::AppConfig;
 use clap::{Parser, Subcommand};
 use std::sync::Arc;
 
@@ -29,12 +29,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Arc::new(AppConfig::load()?);
 
     // Initialize tracing based on configuration
-    cb_core::logging::initialize(&config);
+    codebuddy_core::logging::initialize(&config);
 
     tracing::info!("Starting Codeflow Buddy Server");
 
     // Create workspace manager for tracking connected containers
-    let workspace_manager = Arc::new(cb_core::workspaces::WorkspaceManager::new());
+    let workspace_manager = Arc::new(codebuddy_core::workspaces::WorkspaceManager::new());
 
     // Create dispatcher using shared library function (reduces duplication)
     let dispatcher = cb_server::create_dispatcher_with_workspace(config.clone(), workspace_manager)

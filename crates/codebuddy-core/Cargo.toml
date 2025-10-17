@@ -1,5 +1,5 @@
 [package]
-name = "cb-core"
+name = "codebuddy-core"
 edition = "2021"
 description = "Core types, configuration, and error handling for Codeflow Buddy"
 license = "MIT"

@@ -23,10 +23,8 @@ thiserror = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
-
-# Codebuddy workspace dependencies
-cb-core = { workspace = true }
 cb-plugin-api = { workspace = true }
+codebuddy-core = { workspace = true }
 
 [dev-dependencies]
 # For testing

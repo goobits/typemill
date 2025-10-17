@@ -4,7 +4,7 @@
 
 use super::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use serde_json::{json, Value};
 use tracing::{debug, error, info, warn};
@@ -77,7 +77,7 @@ impl WorkflowHandler {
             .get("intent")
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'intent' parameter".into()))?;
 
-        let intent: cb_core::model::workflow::Intent = serde_json::from_value(intent_value.clone())
+        let intent: codebuddy_core::model::workflow::Intent = serde_json::from_value(intent_value.clone())
             .map_err(|e| ServerError::InvalidRequest(format!("Invalid intent format: {}", e)))?;
 
         // Check if we should execute the workflow

@@ -1,8 +1,8 @@
 //! CLI command handling for the codebuddy server
 
 use cb_client::format_plan;
-use cb_core::config::AppConfig;
-use cb_core::utils::system::command_exists;
+use codebuddy_core::config::AppConfig;
+use codebuddy_core::utils::system::command_exists;
 use cb_protocol::analysis_result::AnalysisResult;
 use cb_protocol::refactor_plan::RefactorPlan;
 use cb_transport::SessionInfo;
@@ -142,7 +142,7 @@ pub async fn run() {
         Commands::Start { .. } | Commands::Serve { .. } => {
             // Load configuration to determine log format
             let config = AppConfig::load().unwrap_or_default();
-            cb_core::logging::initialize(&config);
+            codebuddy_core::logging::initialize(&config);
         }
         _ => {
             // For other commands, we want direct console output
@@ -303,7 +303,7 @@ async fn handle_cycles_command(command: Cycles) {
         }
     };
 
-    use cb_core::model::mcp::{McpMessage, McpRequest};
+    use codebuddy_core::model::mcp::{ McpMessage , McpRequest };
     let params = serde_json::json!({
         "name": "analyze.circular_dependencies",
         "arguments": args,
@@ -834,7 +834,7 @@ async fn handle_tool_command(tool_name: &str, args_json: &str, format: &str) {
     let arguments: serde_json::Value = match serde_json::from_str(args_json) {
         Ok(val) => val,
         Err(e) => {
-            let error = cb_core::model::mcp::McpError::invalid_request(format!(
+            let error = codebuddy_core::model::mcp::McpError::invalid_request(format!(
                 "Invalid JSON arguments: {}",
                 e
             ));
@@ -855,7 +855,7 @@ async fn handle_tool_command(tool_name: &str, args_json: &str, format: &str) {
     };
 
     // Construct MCP request message
-    use cb_core::model::mcp::{McpMessage, McpRequest};
+    use codebuddy_core::model::mcp::{ McpMessage , McpRequest };
     let params = serde_json::json!({
         "name": tool_name,
         "arguments": arguments,

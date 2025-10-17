@@ -6,7 +6,6 @@ description = "Integration tests and test utilities for Codeflow Buddy"
 license = "MIT"
 
 [dependencies]
-cb-core = { path = "../../crates/cb-core" }
 cb-ast = { path = "../../crates/cb-ast" }
 cb-protocol = { path = "../../crates/cb-protocol" }
 cb-plugin-api = { path = "../../crates/cb-plugin-api" }
@@ -38,6 +37,7 @@ shellexpand = "3.1"
 tracing-subscriber = { workspace = true }
 once_cell = "1.19"
 codebuddy-plugin-system = { path = "../../crates/codebuddy-plugin-system" }
+codebuddy-core = { path = "../../crates/codebuddy-core" }
 
 [features]
 default = ["fast-tests"]

@@ -18,7 +18,7 @@ pub async fn create_initialized_dispatcher_with_workspace(
 ) -> Result<Arc<PluginDispatcher>, std::io::Error> {
     // Load configuration
     let config =
-        cb_core::config::AppConfig::load().map_err(|e| std::io::Error::other(e.to_string()))?;
+        codebuddy_core::config::AppConfig::load().map_err(|e| std::io::Error::other(e.to_string()))?;
 
     // Create dispatcher using shared library function (reduces duplication)
     let dispatcher =

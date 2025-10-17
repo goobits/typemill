@@ -1,7 +1,7 @@
 //! WebSocket transport implementation
 
 use crate::{McpDispatcher, SessionInfo};
-use cb_core::{
+use codebuddy_core::{
     auth::jwt::{decode, Claims, DecodingKey, Validation},
     config::AppConfig,
     model::mcp::{McpError, McpMessage, McpRequest, McpResponse},
@@ -202,7 +202,7 @@ async fn handle_connection(
                 let request_id = uuid::Uuid::new_v4();
 
                 // Create request span for automatic context propagation
-                let span = cb_core::logging::request_span(&request_id.to_string(), "websocket");
+                let span = codebuddy_core::logging::request_span(&request_id.to_string(), "websocket");
                 let _enter = span.enter();
 
                 tracing::debug!(message_size = text.len(), "Received message");
@@ -410,7 +410,7 @@ async fn handle_initialize(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cb_core::config::{AuthConfig, CacheConfig, LoggingConfig, LspConfig, ServerConfig};
+    use codebuddy_core::config::{ AuthConfig , CacheConfig , LoggingConfig , LspConfig , ServerConfig };
 
     fn create_test_config(with_auth: bool) -> AppConfig {
         AppConfig {

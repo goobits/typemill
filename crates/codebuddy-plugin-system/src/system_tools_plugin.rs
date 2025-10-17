@@ -8,7 +8,7 @@ use crate::{
     PluginResult,
 };
 use async_trait::async_trait;
-use cb_core::language::detect_package_manager;
+use codebuddy_core::language::detect_package_manager;
 use ignore::WalkBuilder;
 use serde::Deserialize;
 use serde_json::{json, Value};

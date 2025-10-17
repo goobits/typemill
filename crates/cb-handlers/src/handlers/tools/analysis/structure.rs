@@ -14,7 +14,7 @@
 
 use super::super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_plugin_api::{Symbol, SymbolKind};
 use cb_protocol::analysis_result::{
     Finding, FindingLocation, SafetyLevel, Severity, Suggestion,

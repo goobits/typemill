@@ -10,7 +10,6 @@ homepage.workspace = true
 # Core plugin API
 cb-plugin-api = { path = "../cb-plugin-api" }
 cb-protocol = { path = "../cb-protocol" }
-cb-core = { path = "../cb-core" }
 cb-lang-common = { path = "../cb-lang-common" }
 
 # Async operations
@@ -37,6 +36,7 @@ swc_ecma_parser = "24"
 swc_ecma_ast = "15"
 swc_ecma_visit = "15"
 swc_ecma_codegen = "17"
+codebuddy-core = { path = "../codebuddy-core" }
 
 [dev-dependencies]
 tokio-test = "0.4"

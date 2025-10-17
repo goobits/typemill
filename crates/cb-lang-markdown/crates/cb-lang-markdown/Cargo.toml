@@ -10,7 +10,6 @@ homepage.workspace = true
 # Our core plugin API
 cb-plugin-api = { path = "../cb-plugin-api" }
 cb-protocol = { path = "../cb-protocol" }
-cb-core = { path = "../cb-core" }
 cb-lang-common = { path = "../cb-lang-common" }
 
 # For markdown link parsing
@@ -30,3 +29,4 @@ tokio = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
+codebuddy-core = { path = "../../../codebuddy-core" }

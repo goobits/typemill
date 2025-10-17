@@ -146,7 +146,7 @@ impl<'a> MoveService<'a> {
         &self,
         old_path: &Path,
         new_path: &Path,
-        rename_scope: Option<&cb_core::rename_scope::RenameScope>,
+        rename_scope: Option<&codebuddy_core::rename_scope::RenameScope>,
     ) -> ServerResult<EditPlan> {
         // Choose ScanScope based on RenameScope settings
         // Use ScanScope::All if string literals should be updated
@@ -184,7 +184,7 @@ impl<'a> MoveService<'a> {
         &self,
         old_path: &Path,
         new_path: &Path,
-        rename_scope: Option<&cb_core::rename_scope::RenameScope>,
+        rename_scope: Option<&codebuddy_core::rename_scope::RenameScope>,
     ) -> ServerResult<EditPlan> {
         // Choose ScanScope based on RenameScope settings
         // Use ScanScope::All if string literals should be updated

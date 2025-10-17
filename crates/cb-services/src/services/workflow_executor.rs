@@ -1,6 +1,6 @@
 //! The WorkflowExecutor service for executing multi-step workflows.
 
-use cb_core::model::workflow::Workflow;
+use codebuddy_core::model::workflow::Workflow;
 use codebuddy_plugin_system::{PluginManager, PluginRequest};
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use dashmap::DashMap;
@@ -146,7 +146,7 @@ impl DefaultWorkflowExecutor {
     #[allow(clippy::too_many_arguments)]
     async fn execute_workflow_step(
         &self,
-        step: &cb_core::model::workflow::Step,
+        step: &codebuddy_core::model::workflow::Step,
         step_index: usize,
         workflow_name: &str,
         total_steps: usize,

@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use cb_core::model::lsp::{
+use codebuddy_core::model::lsp::{
     CompletionItem, CompletionList, Diagnostic, DiagnosticSeverity, DocumentSymbol, Hover,
     Location, Position, Range, SymbolKind, TextEdit, WorkspaceEdit,
 };

@@ -15,13 +15,13 @@
 pub mod test_helpers;
 
 // Re-export workspaces from cb-core for backward compatibility
-pub use cb_core::workspaces;
+pub use codebuddy_core::workspaces;
 
 // Re-export from new crates for backward compatibility
 pub use cb_handlers::handlers;
 pub use cb_services::services;
 
-use cb_core::AppConfig;
+use codebuddy_core::AppConfig;
 use cb_handlers::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
 pub use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult, AstService, LspService};
 use std::path::PathBuf;
@@ -81,7 +81,7 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
     )
     .await;
 
-    let workspace_manager = Arc::new(cb_core::workspaces::WorkspaceManager::new());
+    let workspace_manager = Arc::new(codebuddy_core::workspaces::WorkspaceManager::new());
 
     // Create application state
     let app_state = Arc::new(AppState {
@@ -134,7 +134,7 @@ impl ServerOptions {
 /// the standalone binary (main.rs) and the unified binary (apps/codebuddy).
 pub async fn create_dispatcher_with_workspace(
     config: Arc<AppConfig>,
-    workspace_manager: Arc<cb_core::workspaces::WorkspaceManager>,
+    workspace_manager: Arc<codebuddy_core::workspaces::WorkspaceManager>,
 ) -> ServerResult<Arc<PluginDispatcher>> {
     // Get project root
     let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));

@@ -6,8 +6,6 @@ description = "Codeflow Buddy client implementation"
 license = "MIT"
 
 [dependencies]
-# Core dependencies
-cb-core = { path = "../cb-core" }
 cb-protocol = { path = "../cb-protocol" }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -37,10 +35,11 @@ async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = { workspace = true }
 codebuddy-plugin-system = { path = "../codebuddy-plugin-system", optional = true }
+codebuddy-core = { path = "../codebuddy-core" }
 
 [features]
 default = []
-mcp-proxy = ["codebuddy-plugin-system", "cb-core/mcp-proxy"]
+mcp-proxy = ["codebuddy-plugin-system", "codebuddy-core/mcp-proxy"]
 
 [dev-dependencies]
 tempfile = "3.0"

@@ -1,6 +1,6 @@
 //! Client error types
 
-use cb_core::CoreError;
+use codebuddy_core::CoreError;
 use thiserror::Error;
 
 /// Client operation errors

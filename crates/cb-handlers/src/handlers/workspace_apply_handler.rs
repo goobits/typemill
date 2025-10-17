@@ -12,7 +12,7 @@
 
 use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_protocol::{ApiError, ApiResult as ServerResult, RefactorPlan, RefactorPlanExt};
 use cb_services::{
     services::file_service::EditPlanResult, ChecksumValidator, DryRunGenerator, PlanConverter,

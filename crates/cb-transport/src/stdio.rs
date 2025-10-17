@@ -1,7 +1,7 @@
 //! Stdio transport implementation for MCP
 
 use crate::McpDispatcher;
-use cb_core::model::mcp::{McpError, McpMessage, McpResponse};
+use codebuddy_core::model::mcp::{ McpError , McpMessage , McpResponse };
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use uuid::Uuid;
@@ -103,7 +103,7 @@ pub async fn start_stdio_server(
         let request_id = Uuid::new_v4();
 
         // Create request span for automatic context propagation
-        let span = cb_core::logging::request_span(&request_id.to_string(), "stdio");
+        let span = codebuddy_core::logging::request_span(&request_id.to_string(), "stdio");
         let _enter = span.enter();
 
         tracing::debug!(message_length = message.len(), "Received framed message");

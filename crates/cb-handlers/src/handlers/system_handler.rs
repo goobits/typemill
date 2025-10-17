@@ -9,7 +9,7 @@
 use super::lsp_adapter::DirectLspAdapter;
 use super::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -160,7 +160,7 @@ impl SystemHandler {
         let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
         // Load LSP config to create a temporary DirectLspAdapter for notification
-        let app_config = cb_core::config::AppConfig::load()
+        let app_config = codebuddy_core::config::AppConfig::load()
             .map_err(|e| ServerError::Internal(format!("Failed to load app config: {}", e)))?;
         let lsp_config = app_config.lsp;
 

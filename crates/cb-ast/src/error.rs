@@ -1,6 +1,6 @@
 //! AST error types
 
-use cb_core::CoreError;
+use codebuddy_core::CoreError;
 use thiserror::Error;
 
 /// AST operation errors

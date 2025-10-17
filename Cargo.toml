@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "crates/cb-core",
     "crates/cb-types",
     "crates/cb-protocol",
     "crates/cb-plugin-api",
@@ -25,7 +24,7 @@ members = [
     "analysis/cb-analysis-deep-dead-code",
     "analysis/cb-analysis-graph",
     "analysis/cb-analysis-circular-deps",
-    "tests/e2e",
+    "tests/e2e", "crates/codebuddy-core",
 ]
 resolver = "2"
 
@@ -75,7 +74,7 @@ dashmap = "5.5"
 futures = "0.3"
 
 # Core API crates
-cb-core = { path = "crates/cb-core" }
+codebuddy-core = { path = "crates/codebuddy-core" }
 cb-plugin-api = { path = "crates/cb-plugin-api" }
 
 # Graph analysis

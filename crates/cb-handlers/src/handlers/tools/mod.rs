@@ -4,7 +4,7 @@
 //! Each handler is responsible for a specific domain of functionality.
 
 use async_trait::async_trait;
-use cb_core::model::mcp::ToolCall;
+use codebuddy_core::model::mcp::ToolCall;
 use cb_protocol::ApiResult as ServerResult;
 use serde_json::Value;
 
@@ -161,7 +161,7 @@ pub type ToolContext = ToolHandlerContext;
 ///
 /// ```text
 /// use cb_server::handlers::tools::{ToolHandler, ToolHandlerContext};
-/// use cb_core::model::mcp::ToolCall;
+/// use codebuddy_core::model::mcp::ToolCall;
 /// use async_trait::async_trait;
 ///
 /// struct MyHandler;
