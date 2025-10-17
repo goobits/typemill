@@ -30,6 +30,16 @@ pub struct RenameScope {
     #[serde(default)]
     pub update_comments: bool,
 
+    /// Update inline code and prose paths in markdown files (opt-in)
+    /// When false (default), only updates markdown links: [text](path)
+    /// When true, also updates:
+    /// - Inline code: `integration-tests/src/`
+    /// - Code blocks containing paths
+    /// - Plain text paths in tables/directory trees
+    /// WARNING: May update code examples. Review changes carefully.
+    #[serde(default)]
+    pub update_markdown_prose: bool,
+
     /// Custom exclude patterns (glob patterns)
     #[serde(default)]
     pub exclude_patterns: Vec<String>,
@@ -55,6 +65,7 @@ impl RenameScope {
             update_configs: false,
             update_examples: true,
             update_comments: false,
+            update_markdown_prose: false,
             exclude_patterns: vec![],
         }
     }
@@ -68,6 +79,7 @@ impl RenameScope {
             update_configs: true,
             update_examples: true,
             update_comments: false,
+            update_markdown_prose: false, // Still opt-in for safety
             exclude_patterns: vec![],
         }
     }
@@ -142,11 +154,24 @@ mod tests {
             update_string_literals: true,
             update_examples: true,
             update_comments: false,
+            update_markdown_prose: false,
             exclude_patterns: vec!["**/test_*".to_string(), "**/fixtures/**".to_string()],
         };
 
         assert!(!scope.should_include_file(Path::new("src/test_utils.rs")));
         assert!(!scope.should_include_file(Path::new("fixtures/example.md")));
         assert!(scope.should_include_file(Path::new("src/main.rs")));
+    }
+
+    #[test]
+    fn test_markdown_prose_opt_in() {
+        let default_scope = RenameScope::all();
+        assert!(!default_scope.update_markdown_prose); // Opt-in by default
+
+        let custom_scope = RenameScope {
+            update_markdown_prose: true,
+            ..RenameScope::all()
+        };
+        assert!(custom_scope.update_markdown_prose);
     }
 }

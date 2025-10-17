@@ -24,6 +24,10 @@ pub struct MarkdownImportSupport {
     ref_definition_regex: Regex,
     /// Regex for autolinks: <path>
     autolink_regex: Regex,
+    /// Regex for inline code containing paths: `path/to/file`
+    inline_code_regex: Regex,
+    /// Regex for plain prose paths (not in links or code): integration-tests/src/
+    prose_path_regex: Regex,
 }
 
 impl MarkdownImportSupport {
@@ -40,11 +44,43 @@ impl MarkdownImportSupport {
         // Excludes mailto: and other URL schemes
         let autolink_regex = Regex::new(r"<([^>]+)>").unwrap();
 
+        // Matches inline code containing paths: `path/to/file` or `path\to\file`
+        // Must contain a slash or backslash to look like a path
+        let inline_code_regex = Regex::new(r"`([^`]+[/\\][^`]*)`").unwrap();
+
+        // Matches word-boundary separated paths in prose (not inside links, code, or quotes)
+        // This is intentionally conservative to avoid false positives
+        // Matches patterns like: integration-tests/src/ or docs/api.md
+        let prose_path_regex = Regex::new(r"\b([a-zA-Z0-9_-]+/[a-zA-Z0-9_/.-]+)\b").unwrap();
+
         Self {
             inline_link_regex,
             ref_definition_regex,
             autolink_regex,
+            inline_code_regex,
+            prose_path_regex,
         }
+    }
+
+    /// Check if a string looks like a path (contains slash and extension, or matches path patterns)
+    fn looks_like_path(text: &str) -> bool {
+        // Must contain a slash or backslash
+        if !text.contains('/') && !text.contains('\\') {
+            return false;
+        }
+
+        // Skip if it looks like code (contains quotes, parentheses, or code keywords)
+        if text.contains('"') || text.contains('(') || text.contains(')') {
+            return false;
+        }
+
+        // Skip common non-path patterns
+        if text.starts_with("http://") || text.starts_with("https://") || text.starts_with("mailto:") {
+            return false;
+        }
+
+        // Looks like a path if it has a slash
+        true
     }
 
     /// Check if a path looks like a file reference (not a URL)
@@ -288,9 +324,48 @@ impl ImportRenameSupport for MarkdownImportSupport {
             })
             .to_string();
 
+        // Rewrite inline code paths (opt-in feature for updating prose)
+        // This catches patterns like `integration-tests/src/` in tables and text
+        result = self
+            .inline_code_regex
+            .replace_all(&result, |caps: &Captures| {
+                let full_match = caps.get(0).unwrap().as_str();
+                let code_content = caps.get(1).unwrap().as_str();
+
+                if Self::looks_like_path(code_content) {
+                    // Simple substring replacement for paths in inline code
+                    if code_content.contains(old_name) {
+                        count += 1;
+                        let updated_content = code_content.replace(old_name, new_name);
+                        return format!("`{}`", updated_content);
+                    }
+                }
+
+                full_match.to_string()
+            })
+            .to_string();
+
+        // Rewrite prose paths (plain text paths in documentation)
+        // This catches patterns like "integration-tests/" in directory trees
+        result = self
+            .prose_path_regex
+            .replace_all(&result, |caps: &Captures| {
+                let full_match = caps.get(0).unwrap().as_str();
+                let path_content = caps.get(1).unwrap().as_str();
+
+                // Only replace if it matches or contains the old path
+                if path_content == old_name || path_content.starts_with(&format!("{}/", old_name)) {
+                    count += 1;
+                    return path_content.replace(old_name, new_name);
+                }
+
+                full_match.to_string()
+            })
+            .to_string();
+
         debug!(
             changes = count,
-            "Rewrote markdown links for rename (inline + reference-style + autolinks)"
+            "Rewrote markdown links for rename (inline + reference-style + autolinks + inline code + prose)"
         );
         (result, count)
     }
@@ -563,5 +638,44 @@ Also [here](docs/architecture/ARCHITECTURE.md#overview).
 
         assert!(!updated.contains("ARCHITECTURE.md"));
         assert!(updated.contains("API.md"));
+    }
+
+    #[test]
+    fn test_rewrite_inline_code_paths() {
+        let support = MarkdownImportSupport::new();
+        let content = r#"
+| Layer | Location | Purpose |
+|-------|----------|---------|
+| **Integration** | `integration-tests/src/` | Tool handlers with mocks |
+
+Directory tree:
+├── integration-tests/
+│   ├── src/
+│   └── tests/
+"#;
+
+        let (updated, count) = ImportRenameSupport::rewrite_imports_for_rename(
+            &support,
+            content,
+            "integration-tests",
+            "tests",
+        );
+
+        assert_eq!(count, 2, "Should update inline code and plain text paths");
+        assert!(updated.contains("`tests/src/`"), "Should update inline code in table");
+        assert!(updated.contains("tests/"), "Should update plain text in directory tree");
+        assert!(!updated.contains("integration-tests"), "Should not contain old path");
+    }
+
+    #[test]
+    fn test_inline_code_path_detection() {
+        assert!(MarkdownImportSupport::looks_like_path("integration-tests/src/"));
+        assert!(MarkdownImportSupport::looks_like_path("docs/api.md"));
+        assert!(MarkdownImportSupport::looks_like_path("src\\main.rs")); // Windows path
+
+        // Should skip these
+        assert!(!MarkdownImportSupport::looks_like_path("no-slashes"));
+        assert!(!MarkdownImportSupport::looks_like_path("cargo test --manifest-path integration-tests/Cargo.toml"));
+        assert!(!MarkdownImportSupport::looks_like_path("https://example.com/path"));
     }
 }
