@@ -1,4 +1,4 @@
-use cb_core::workspaces::{Workspace, WorkspaceManager};
+use codebuddy_core::workspaces::{Workspace, WorkspaceManager};
 
 #[test]
 fn test_user_isolation() {

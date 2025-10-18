@@ -15,11 +15,10 @@ cb-client = { path = "../../crates/cb-client" }
 cb-ast = { path = "../../crates/cb-ast" }
 cb-protocol = { path = "../../crates/cb-protocol" }
 cb-transport = { path = "../../crates/cb-transport" }
+cb-plugin-api = { path = "../../crates/cb-plugin-api" }
 
-# Language plugins - must be direct dependencies for inventory discovery
-cb-lang-rust = { workspace = true }
-cb-lang-typescript = { workspace = true }
-cb-lang-markdown = { workspace = true }
+# Plugin bundle - contains all language plugins for inventory discovery
+codebuddy-plugin-bundle = { path = "../../crates/codebuddy-plugin-bundle" }
 
 tokio = { version = "1", features = ["full"] }
 axum = { version = "0.8", features = ["ws"] }

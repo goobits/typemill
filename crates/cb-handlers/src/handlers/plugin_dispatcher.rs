@@ -499,11 +499,15 @@ pub async fn create_test_dispatcher() -> PluginDispatcher {
     let plugin_manager = Arc::new(PluginManager::new());
     let config = codebuddy_core::AppConfig::default();
 
+    // Build plugin registry for tests
+    let plugin_registry = cb_services::services::registry_builder::build_language_plugin_registry();
+
     let services = cb_services::services::app_state_factory::create_services_bundle(
         &project_root,
         cache_settings,
         plugin_manager.clone(),
         &config,
+        plugin_registry,
     )
     .await;
 

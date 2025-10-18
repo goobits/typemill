@@ -1,0 +1,16 @@
+[package]
+name = "codebuddy-plugin-bundle"
+version = "0.1.0"
+edition = "2021"
+description = "Plugin bundle containing all language plugins for codebuddy"
+
+[dependencies]
+# Core plugin API
+cb-plugin-api = { path = "../cb-plugin-api" }
+
+# All language plugins
+cb-lang-rust = { workspace = true }
+cb-lang-typescript = { workspace = true }
+cb-lang-markdown = { workspace = true }
+cb-lang-toml = { path = "../cb-lang-toml" }
+cb-lang-yaml = { path = "../cb-lang-yaml" }

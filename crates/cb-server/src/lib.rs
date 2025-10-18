@@ -73,11 +73,15 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
     #[cfg(feature = "mcp-proxy")]
     register_mcp_proxy_if_enabled(&plugin_manager, options.config.external_mcp.as_ref()).await?;
 
+    // Build language plugin registry
+    let plugin_registry = cb_services::services::registry_builder::build_language_plugin_registry();
+
     let services = create_services_bundle(
         &project_root,
         cache_settings,
         plugin_manager.clone(),
         &options.config,
+        plugin_registry,
     )
     .await;
 
@@ -135,6 +139,7 @@ impl ServerOptions {
 pub async fn create_dispatcher_with_workspace(
     config: Arc<AppConfig>,
     workspace_manager: Arc<codebuddy_core::workspaces::WorkspaceManager>,
+    plugin_registry: Arc<cb_plugin_api::PluginRegistry>,
 ) -> ServerResult<Arc<PluginDispatcher>> {
     // Get project root
     let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -161,6 +166,7 @@ pub async fn create_dispatcher_with_workspace(
         cache_settings,
         plugin_manager.clone(),
         &config,
+        plugin_registry,
     )
     .await;
 

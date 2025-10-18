@@ -2,6 +2,7 @@
 //!
 //! Eliminates duplication across CLI, stdio, WebSocket entry points
 
+use cb_plugin_api::PluginRegistry;
 use cb_server::handlers::plugin_dispatcher::PluginDispatcher;
 use cb_server::workspaces::WorkspaceManager;
 use std::sync::Arc;
@@ -20,9 +21,17 @@ pub async fn create_initialized_dispatcher_with_workspace(
     let config =
         codebuddy_core::config::AppConfig::load().map_err(|e| std::io::Error::other(e.to_string()))?;
 
+    // Build plugin registry from the plugin bundle
+    let plugins = codebuddy_plugin_bundle::all_plugins();
+    let mut plugin_registry = PluginRegistry::new();
+    for plugin in plugins {
+        plugin_registry.register(plugin);
+    }
+    let plugin_registry = Arc::new(plugin_registry);
+
     // Create dispatcher using shared library function (reduces duplication)
     let dispatcher =
-        cb_server::create_dispatcher_with_workspace(Arc::new(config), workspace_manager)
+        cb_server::create_dispatcher_with_workspace(Arc::new(config), workspace_manager, plugin_registry)
             .await
             .map_err(|e| std::io::Error::other(e.to_string()))?;
 

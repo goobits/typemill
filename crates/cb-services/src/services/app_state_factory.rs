@@ -19,14 +19,17 @@ pub struct ServicesBundle {
 }
 
 /// Create services bundle with default configuration
+///
+/// # Parameters
+/// - `plugin_registry`: Pre-built plugin registry (injected by the application layer)
 pub async fn create_services_bundle(
     project_root: &PathBuf,
     cache_settings: cb_ast::CacheSettings,
     plugin_manager: Arc<codebuddy_plugin_system::PluginManager>,
     config: &codebuddy_core::AppConfig,
+    plugin_registry: Arc<cb_plugin_api::PluginRegistry>,
 ) -> ServicesBundle {
-    // Build the language plugin registry (centralized)
-    let plugin_registry = super::registry_builder::build_language_plugin_registry();
+    // Plugin registry is now injected by the caller (dependency injection)
 
     let ast_cache = Arc::new(AstCache::with_settings(cache_settings));
     let ast_service = Arc::new(DefaultAstService::new(

@@ -5,6 +5,7 @@ description = "Codeflow Buddy server implementation"
 license = "MIT"
 
 [dependencies]
+cb-plugin-api = { path = "../cb-plugin-api" }
 cb-protocol = { path = "../cb-protocol" }
 cb-ast = { path = "../cb-ast" }
 cb-transport = { path = "../cb-transport" }

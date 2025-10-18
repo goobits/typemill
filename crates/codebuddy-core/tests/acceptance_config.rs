@@ -1,7 +1,7 @@
 //! Acceptance tests for configuration management
 //! These tests verify the public API contract for configuration loading
 
-use cb_core::{config::LogFormat, AppConfig, CoreError};
+use codebuddy_core::{config::LogFormat, AppConfig, CoreError};
 use serial_test::serial;
 use std::env;
 use tempfile::TempDir;

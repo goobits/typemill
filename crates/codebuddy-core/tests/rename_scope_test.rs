@@ -1,4 +1,4 @@
-use cb_core::rename_scope::RenameScope;
+use codebuddy_core::rename_scope::RenameScope;
 use std::path::Path;
 
 #[test]

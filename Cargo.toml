@@ -17,6 +17,7 @@ members = [
     "crates/cb-lang-markdown",
     "crates/cb-lang-toml",
     "crates/cb-lang-yaml",
+    "crates/codebuddy-plugin-bundle",
     "apps/codebuddy",
     "crates/cb-test-support",
     "analysis/cb-analysis-common",

@@ -1,6 +1,6 @@
 //! Tests for protocol models
 
-use cb_core::model::*;
+use codebuddy_core::model::*;
 use serde_json::json;
 
 #[test]

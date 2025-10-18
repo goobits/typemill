@@ -36,8 +36,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create workspace manager for tracking connected containers
     let workspace_manager = Arc::new(codebuddy_core::workspaces::WorkspaceManager::new());
 
+    // Build plugin registry
+    let plugin_registry = cb_services::services::registry_builder::build_language_plugin_registry();
+
     // Create dispatcher using shared library function (reduces duplication)
-    let dispatcher = cb_server::create_dispatcher_with_workspace(config.clone(), workspace_manager)
+    let dispatcher = cb_server::create_dispatcher_with_workspace(config.clone(), workspace_manager, plugin_registry)
         .await
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
