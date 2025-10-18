@@ -31,6 +31,9 @@ pub mod test_comprehensive_rename_coverage;
 pub mod test_cargo_package_rename;
 
 #[cfg(test)]
+pub mod test_consolidation_bug_fix;
+
+#[cfg(test)]
 pub mod test_extract_integration;
 
 #[cfg(test)]

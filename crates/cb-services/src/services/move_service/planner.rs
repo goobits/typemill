@@ -78,12 +78,50 @@ pub async fn plan_directory_move(
     // Check if this is a Cargo package
     let is_cargo_pkg = cargo::is_cargo_package(old_abs).await?;
 
+    // Detect if this is a consolidation move (into another crate's src/ directory)
+    // Pattern: crates/target-crate/src/module should be treated as consolidation
+    let is_consolidation = new_abs
+        .components()
+        .collect::<Vec<_>>()
+        .windows(2)
+        .any(|w| w[0].as_os_str() == "src");
+
+    info!(
+        is_consolidation,
+        old_path = %old_abs.display(),
+        new_path = %new_abs.display(),
+        "Consolidation detection result"
+    );
+
     // Extract rename info if this is a Cargo package
     let rename_info = if is_cargo_pkg {
-        info!("Detected Cargo package, extracting rename info");
-        cargo::extract_cargo_rename_info(old_abs, new_abs)
-            .await
-            .ok()
+        if is_consolidation {
+            info!("Detected Cargo package consolidation move, extracting consolidation rename info");
+            match cargo::extract_consolidation_rename_info(old_abs, new_abs).await {
+                Ok(info) => {
+                    info!(
+                        submodule_name = info.get("submodule_name").and_then(|v| v.as_str()),
+                        target_crate_name = info.get("target_crate_name").and_then(|v| v.as_str()),
+                        "Successfully extracted consolidation rename info"
+                    );
+                    Some(info)
+                }
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        old_path = %old_abs.display(),
+                        new_path = %new_abs.display(),
+                        "Failed to extract consolidation rename info - will not filter Cargo.toml"
+                    );
+                    None
+                }
+            }
+        } else {
+            info!("Detected Cargo package rename, extracting rename info");
+            cargo::extract_cargo_rename_info(old_abs, new_abs)
+                .await
+                .ok()
+        }
     } else {
         None
     };
@@ -105,7 +143,8 @@ pub async fn plan_directory_move(
         .await?;
 
     // If this is a Cargo package, add manifest edits
-    if is_cargo_pkg {
+    // EXCEPT for consolidation moves - those handle Cargo.toml updates during execution
+    if is_cargo_pkg && !is_consolidation {
         info!("Adding Cargo.toml manifest edits to plan");
 
         let edits_before = edit_plan.edits.len();

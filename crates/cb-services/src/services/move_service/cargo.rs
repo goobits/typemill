@@ -52,6 +52,80 @@ pub async fn extract_cargo_rename_info(
     }))
 }
 
+/// Extract consolidation rename information for import updating
+///
+/// This calculates:
+/// - old_crate_name: The name from the old Cargo.toml
+/// - new_import_prefix: The new import path (e.g., "target_crate::submodule")
+/// - submodule_name: The name of the subdirectory that will contain the consolidated code
+/// - target_crate_name: The name of the target crate
+pub async fn extract_consolidation_rename_info(
+    old_package_path: &Path,
+    new_package_path: &Path,
+) -> ServerResult<Value> {
+    // Read the old Cargo.toml to get the old crate name
+    let old_cargo_toml = old_package_path.join("Cargo.toml");
+    let old_content = fs::read_to_string(&old_cargo_toml)
+        .await
+        .map_err(|e| ServerError::Internal(format!("Failed to read old Cargo.toml: {}", e)))?;
+
+    let old_crate_name = extract_package_name(&old_content)?.replace('-', "_");
+
+    // Find the target crate by looking for Cargo.toml in parent directories
+    let mut target_crate_name = String::new();
+    let mut current = new_package_path;
+
+    while let Some(parent) = current.parent() {
+        let cargo_toml = parent.join("Cargo.toml");
+        if cargo_toml.exists() {
+            if let Ok(content) = fs::read_to_string(&cargo_toml).await {
+                if content.contains("[package]") {
+                    // Found the target crate
+                    if let Ok(name) = extract_package_name(&content) {
+                        target_crate_name = name.replace('-', "_");
+                        break;
+                    }
+                }
+            }
+        }
+        current = parent;
+    }
+
+    if target_crate_name.is_empty() {
+        return Err(ServerError::Internal(
+            "Could not find target crate Cargo.toml".to_string(),
+        ));
+    }
+
+    // Extract submodule name from the new path
+    // e.g., "crates/cb-types/src/protocol" -> "protocol"
+    let submodule_name = new_package_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| ServerError::Internal("Invalid new directory path".to_string()))?
+        .to_string();
+
+    // Build the new import prefix
+    // e.g., "cb_types::protocol"
+    let new_import_prefix = format!("{}::{}", target_crate_name, submodule_name);
+
+    tracing::info!(
+        old_crate_name = %old_crate_name,
+        new_import_prefix = %new_import_prefix,
+        submodule_name = %submodule_name,
+        target_crate_name = %target_crate_name,
+        "Extracted consolidation rename information"
+    );
+
+    Ok(json!({
+        "old_crate_name": old_crate_name,
+        "new_crate_name": new_import_prefix.clone(), // For compatibility with update_imports_for_rename
+        "new_import_prefix": new_import_prefix,
+        "submodule_name": submodule_name,
+        "target_crate_name": target_crate_name,
+    }))
+}
+
 /// Extract package name from Cargo.toml content
 fn extract_package_name(content: &str) -> ServerResult<String> {
     for line in content.lines() {

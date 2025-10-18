@@ -580,39 +580,25 @@ impl FileService {
                                 // Clone the dependency spec and update the path
                                 let mut new_dep = old_dep.clone();
 
-                                // If it's a table with a path, update the path
+                                // For consolidation, REMOVE path dependencies so they resolve via workspace
+                                // The target crate should be available through workspace.dependencies
                                 if let Some(dep_table) = new_dep.as_inline_table_mut() {
                                     if dep_table.contains_key("path") {
-                                        // Calculate relative path from this Cargo.toml to target crate
-                                        let this_cargo_dir = path.parent().ok_or_else(|| {
-                                            ServerError::Internal(format!(
-                                                "Cannot get parent directory of Cargo.toml: {}",
-                                                path.display()
-                                            ))
-                                        })?;
-                                        if let Some(rel_path) =
-                                            pathdiff::diff_paths(target_crate_path, this_cargo_dir)
-                                        {
-                                            let path_str = rel_path.to_string_lossy().to_string();
-                                            dep_table
-                                                .insert("path", toml_edit::Value::from(path_str));
-                                        }
+                                        dep_table.remove("path");
+                                        info!(
+                                            file = ?path,
+                                            crate_name = %target_crate_name,
+                                            "Removed path dependency (will resolve via workspace)"
+                                        );
                                     }
                                 } else if let Some(dep_table) = new_dep.as_table_mut() {
                                     if dep_table.contains_key("path") {
-                                        // Same logic for regular tables
-                                        let this_cargo_dir = path.parent().ok_or_else(|| {
-                                            ServerError::Internal(format!(
-                                                "Cannot get parent directory of Cargo.toml: {}",
-                                                path.display()
-                                            ))
-                                        })?;
-                                        if let Some(rel_path) =
-                                            pathdiff::diff_paths(target_crate_path, this_cargo_dir)
-                                        {
-                                            let path_str = rel_path.to_string_lossy().to_string();
-                                            dep_table.insert("path", toml_edit::value(path_str));
-                                        }
+                                        dep_table.remove("path");
+                                        info!(
+                                            file = ?path,
+                                            crate_name = %target_crate_name,
+                                            "Removed path dependency (will resolve via workspace)"
+                                        );
                                     }
                                 }
 
@@ -1008,14 +994,31 @@ impl FileService {
                         .position(|m| m.as_str() == Some(&old_path_str));
                     if let Some(index) = index_opt {
                         members.remove(index);
-                        members.push(new_path_str.as_str());
 
-                        info!(
-                            workspace = ?workspace_toml_path,
-                            old = %old_path_str,
-                            new = %new_path_str,
-                            "Updated workspace members"
-                        );
+                        // Check if this is a consolidation move (into another crate's src/ directory)
+                        // Pattern: crates/target-crate/src/module should NOT be added to workspace members
+                        let is_nested_module = new_rel_path.components()
+                            .collect::<Vec<_>>()
+                            .windows(2)
+                            .any(|w| w[0].as_os_str() == "src");
+
+                        if !is_nested_module {
+                            // Regular rename - add new path to workspace members
+                            members.push(new_path_str.as_str());
+                            info!(
+                                workspace = ?workspace_toml_path,
+                                old = %old_path_str,
+                                new = %new_path_str,
+                                "Updated workspace members"
+                            );
+                        } else {
+                            // Consolidation - only remove old member, don't add new nested path
+                            info!(
+                                workspace = ?workspace_toml_path,
+                                removed = %old_path_str,
+                                "Removed workspace member (consolidation detected)"
+                            );
+                        }
 
                         fs::write(&workspace_toml_path, doc.to_string())
                             .await

@@ -49,7 +49,26 @@ impl ReferenceUpdater {
         let is_directory_rename = old_path.is_dir();
 
         // From edit_builder.rs
-        let project_files = find_project_files(&self.project_root, plugins).await?;
+        let mut project_files = find_project_files(&self.project_root, plugins).await?;
+
+        // For consolidation moves (detected via rename_info), exclude Cargo.toml files
+        // These are handled semantically by consolidate_rust_package, not via generic path updates
+        let is_consolidation = rename_info
+            .and_then(|info| info.get("submodule_name"))
+            .is_some();
+
+        if is_consolidation {
+            let before_count = project_files.len();
+            project_files.retain(|path| {
+                path.file_name() != Some(std::ffi::OsStr::new("Cargo.toml"))
+            });
+            let after_count = project_files.len();
+            tracing::info!(
+                filtered_count = before_count - after_count,
+                "Filtered Cargo.toml files during consolidation (handled semantically)"
+            );
+        }
+
         tracing::info!(
             project_files_count = project_files.len(),
             "Found project files"
