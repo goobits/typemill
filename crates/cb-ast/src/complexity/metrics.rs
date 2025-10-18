@@ -326,6 +326,8 @@ pub fn count_parameters(function_body: &str, language: &str) -> u32 {
                 || trimmed.starts_with("pub fn ")
                 || trimmed.starts_with("async fn ")
                 || trimmed.starts_with("const fn ")
+                || trimmed.starts_with("export function ") // TypeScript/JavaScript export
+                || trimmed.starts_with("export async function ") // TypeScript/JavaScript async export
         })
         .unwrap_or("");
 

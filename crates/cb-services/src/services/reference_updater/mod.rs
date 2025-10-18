@@ -88,11 +88,28 @@ impl ReferenceUpdater {
             self.find_affected_files_for_rename(old_path, new_path, &project_files, plugins)
                 .await?
         } else if is_directory_rename {
-            // For non-Rust directory renames, use per-file detection
-            // Build a mapping of importer -> set of files in directory it imports
+            // For non-Rust directory renames, use BOTH per-file AND directory-level detection
+            // 1. Per-file detection: Find files that import specific files in the directory
+            // 2. Directory-level detection: Find files with string literals referencing the directory
             let mut all_affected = HashSet::new();
             let mut importer_to_imported_files: HashMap<PathBuf, HashSet<(PathBuf, PathBuf)>> = HashMap::new();
 
+            // FIRST: Directory-level detection for string literals (e.g., "config/settings.toml")
+            // This is essential for catching path references that aren't imports
+            tracing::info!(
+                old_path = %old_path.display(),
+                new_path = %new_path.display(),
+                "Running directory-level detection for string literals"
+            );
+            let directory_level_affected = self
+                .find_affected_files_for_rename(old_path, new_path, &project_files, plugins)
+                .await?;
+
+            for file in directory_level_affected {
+                all_affected.insert(file);
+            }
+
+            // SECOND: Per-file detection for import-based references
             let files_in_directory: Vec<&PathBuf> = project_files
                 .iter()
                 .filter(|f| f.starts_with(old_path) && f.is_file())
@@ -131,7 +148,7 @@ impl ReferenceUpdater {
             tracing::info!(
                 affected_files_count = affected_vec.len(),
                 files_in_directory_count = files_in_dir_count,
-                "Directory rename: found affected files"
+                "Directory rename: found affected files (including string literals)"
             );
 
             affected_vec

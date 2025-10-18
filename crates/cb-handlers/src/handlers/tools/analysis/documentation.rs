@@ -128,13 +128,13 @@ pub fn detect_coverage(
 
     let mut metrics = HashMap::new();
     metrics.insert("total_symbols".to_string(), json!(total_symbols));
-    metrics.insert("documented_symbols".to_string(), json!(documented_count));
+    metrics.insert("documented_count".to_string(), json!(documented_count));
     metrics.insert(
         "coverage_percentage".to_string(),
         json!(coverage_percentage),
     );
     metrics.insert(
-        "undocumented_public_count".to_string(),
+        "undocumented_count".to_string(),
         json!(undocumented_public.len()),
     );
     metrics.insert(
@@ -462,8 +462,8 @@ pub fn detect_style(
         return findings;
     }
 
-    // Detect mixed comment styles
-    let comment_styles = detect_comment_styles(&doc_comments, language);
+    // Detect mixed comment styles from original content (before stripping prefixes)
+    let comment_styles = detect_comment_styles_from_content(content, language);
     let mixed_styles = comment_styles.len() > 1;
 
     // Check capitalization and punctuation consistency
@@ -1284,7 +1284,62 @@ fn extract_all_doc_comments(content: &str, language: &str) -> Vec<(usize, String
     comments
 }
 
-/// Detect comment styles used in doc comments
+/// Detect comment styles used in doc comments from original content
+///
+/// # Parameters
+/// - `content`: The original source code content
+/// - `language`: The language for style detection
+///
+/// # Returns
+/// A vector of distinct comment styles found
+fn detect_comment_styles_from_content(content: &str, language: &str) -> Vec<String> {
+    let mut styles = std::collections::HashSet::new();
+
+    match language.to_lowercase().as_str() {
+        "rust" => {
+            // Check for ///,  //!, /** */ styles
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("///") {
+                    styles.insert("///".to_string());
+                } else if trimmed.starts_with("//!") {
+                    styles.insert("//!".to_string());
+                } else if trimmed.starts_with("/**") || trimmed.starts_with("*") && line.contains("/**") {
+                    styles.insert("/**".to_string());
+                }
+            }
+        }
+        "python" => {
+            // Check for """ vs ''' styles
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("\"\"\"") || trimmed.contains("\"\"\"") {
+                    styles.insert("\"\"\"".to_string());
+                } else if trimmed.starts_with("'''") || trimmed.contains("'''") {
+                    styles.insert("'''".to_string());
+                }
+            }
+        }
+        "typescript" | "javascript" => {
+            // Check for /** */ vs /// styles
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("/**") || (trimmed.starts_with("*") && content.contains("/**")) {
+                    styles.insert("/**".to_string());
+                } else if trimmed.starts_with("///") {
+                    styles.insert("///".to_string());
+                }
+            }
+        }
+        _ => {
+            styles.insert("mixed".to_string());
+        }
+    }
+
+    styles.into_iter().collect()
+}
+
+/// Detect comment styles used in doc comments (DEPRECATED - use detect_comment_styles_from_content)
 ///
 /// # Parameters
 /// - `doc_comments`: The extracted doc comments
@@ -1292,6 +1347,7 @@ fn extract_all_doc_comments(content: &str, language: &str) -> Vec<(usize, String
 ///
 /// # Returns
 /// A vector of distinct comment styles found
+#[allow(dead_code)]
 fn detect_comment_styles(doc_comments: &[(usize, String)], language: &str) -> Vec<String> {
     let mut styles = std::collections::HashSet::new();
 
