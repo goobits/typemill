@@ -107,8 +107,6 @@ fn build_import_graph_with_plugin(
     path: &Path,
     registry: Arc<PluginRegistry>,
 ) -> Result<cb_protocol::ImportGraph, cb_protocol::ApiError> {
-    use cb_protocol::{ImportGraph, ImportGraphMetadata, ImportInfo};
-    use std::collections::HashSet;
 
     // Determine file extension
     let extension = path
@@ -132,68 +130,9 @@ fn build_import_graph_with_plugin(
         cb_protocol::ApiError::internal(format!("No plugin found for .{} files", extension))
     })?;
 
-    let language = plugin.metadata().name.to_lowercase();
-
-    // Get imports from plugin
-    let imports: Vec<ImportInfo> = match language.as_str() {
-        "typescript" => {
-            let graph =
-                cb_lang_typescript::parser::analyze_imports(source, Some(path)).map_err(|e| {
-                    cb_protocol::ApiError::internal(format!("Failed to parse imports: {}", e))
-                })?;
-            graph.imports
-        }
-        "rust" => cb_lang_rust::parser::parse_imports(source).map_err(|e| {
-            cb_protocol::ApiError::internal(format!("Failed to parse imports: {}", e))
-        })?,
-        _ => {
-            return Err(cb_protocol::ApiError::internal(format!(
-                "Unsupported language: {}",
-                language
-            )));
-        }
-    };
-
-    // Detect external dependencies
-    let external_dependencies = imports
-        .iter()
-        .filter_map(|imp| {
-            if is_external_dependency(&imp.module_path) {
-                Some(imp.module_path.clone())
-            } else {
-                None
-            }
-        })
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .collect();
-
-    Ok(ImportGraph {
-        source_file: path.to_string_lossy().to_string(),
-        imports,
-        importers: Vec::new(),
-        metadata: ImportGraphMetadata {
-            language: language.clone(),
-            parsed_at: chrono::Utc::now(),
-            parser_version: "1.0.0-plugin".to_string(),
-            circular_dependencies: Vec::new(),
-            external_dependencies,
-        },
-    })
+    // Use the trait method for detailed import analysis
+    plugin
+        .analyze_detailed_imports(source, Some(path))
+        .map_err(|e| cb_protocol::ApiError::internal(format!("Failed to parse imports: {}", e)))
 }
 
-/// Check if a module path represents an external dependency
-fn is_external_dependency(module_path: &str) -> bool {
-    if module_path.starts_with("./") || module_path.starts_with("../") {
-        return false;
-    }
-    if module_path.starts_with("/") || module_path.starts_with("src/") {
-        return false;
-    }
-    if module_path.starts_with("@") {
-        return true;
-    }
-    !module_path.contains("/")
-        || module_path.contains("node_modules")
-        || !module_path.starts_with(".")
-}

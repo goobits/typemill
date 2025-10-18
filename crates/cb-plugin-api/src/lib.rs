@@ -354,6 +354,49 @@ pub trait LanguagePlugin: Send + Sync {
     /// Get plugin capabilities
     fn capabilities(&self) -> PluginCapabilities;
 
+    /// Analyze detailed imports from source code, returning full ImportGraph.
+    ///
+    /// This method provides comprehensive import analysis including:
+    /// - Detailed import information (module paths, named imports, aliases)
+    /// - External dependency detection
+    /// - Source locations for each import
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - Source code content to analyze
+    /// * `file_path` - Optional file path for context (used for relative imports)
+    ///
+    /// # Returns
+    ///
+    /// Full `ImportGraph` with detailed metadata, or error if parsing fails.
+    ///
+    /// # Default Implementation
+    ///
+    /// Returns an empty ImportGraph. Plugins should override this to provide
+    /// language-specific import analysis.
+    fn analyze_detailed_imports(
+        &self,
+        _source: &str,
+        _file_path: Option<&Path>,
+    ) -> PluginResult<cb_protocol::ImportGraph> {
+        use chrono::Utc;
+        // Default: return empty graph
+        Ok(cb_protocol::ImportGraph {
+            source_file: _file_path
+                .map(|p| p.display().to_string())
+                .unwrap_or_default(),
+            imports: vec![],
+            importers: vec![],
+            metadata: cb_protocol::ImportGraphMetadata {
+                language: self.metadata().name.to_string(),
+                parsed_at: Utc::now(),
+                parser_version: "0.0.0".to_string(),
+                circular_dependencies: vec![],
+                external_dependencies: vec![],
+            },
+        })
+    }
+
     /// Get import parser if available
     fn import_parser(&self) -> Option<&dyn ImportParser> {
         None

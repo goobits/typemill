@@ -677,10 +677,9 @@ mod tests {
             root.join("my_crate/src/main.rs"),
         ];
 
-        // Create Rust plugin (needed for file detection)
-        let rust_plugin = cb_lang_rust::RustPlugin::new();
-        let plugins: Vec<std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>> =
-            vec![std::sync::Arc::from(rust_plugin)];
+        // Get plugins from registry
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let plugins = plugin_registry.all();
 
         // Test: find_affected_files_for_rename should detect my_crate/src/main.rs
         let affected = updater
@@ -756,10 +755,9 @@ mod tests {
             root.join("common/src/processor.rs"),
         ];
 
-        // Create Rust plugin
-        let rust_plugin = cb_lang_rust::RustPlugin::new();
-        let plugins: Vec<std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>> =
-            vec![std::sync::Arc::from(rust_plugin)];
+        // Get plugins from registry
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let plugins = plugin_registry.all();
 
         // Test: find_affected_files_for_rename should detect common/src/processor.rs
         let affected = updater

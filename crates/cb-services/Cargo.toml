@@ -24,12 +24,10 @@ globset = "0.4"
 toml_edit = "0.23"
 pathdiff = "0.2"
 chrono = "0.4"
-# Language plugins - needed for detailed import analysis (future: abstract via trait)
+# NOTE: cb-lang-rust retained ONLY for Rust-specific module path utilities
+# (compute_module_path_from_file, find_crate_name_from_cargo_toml)
+# Used by reference_updater/detectors/rust.rs for cross-crate move detection
 cb-lang-rust = { workspace = true }
-cb-lang-typescript = { workspace = true }
-cb-lang-markdown = { workspace = true }
-cb-lang-toml = { path = "../cb-lang-toml" }
-cb-lang-yaml = { path = "../cb-lang-yaml" }
 sha2 = "0.10"
 urlencoding = "2.1"
 codebuddy-plugin-system = { path = "../codebuddy-plugin-system" }

@@ -84,6 +84,14 @@ impl LanguagePlugin for TypeScriptPlugin {
         manifest::load_package_json(path).await
     }
 
+    fn analyze_detailed_imports(
+        &self,
+        source: &str,
+        file_path: Option<&Path>,
+    ) -> PluginResult<cb_protocol::ImportGraph> {
+        parser::analyze_imports(source, file_path)
+    }
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }

@@ -260,10 +260,9 @@ export function main() {
             root.join("src/main.ts"),
         ];
 
-        // Create TypeScript plugin
-        let ts_plugin = cb_lang_typescript::TypeScriptPlugin::new();
-        let plugins: Vec<std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>> =
-            vec![std::sync::Arc::from(ts_plugin)];
+        // Get plugins from registry
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let plugins = plugin_registry.all();
 
         // Test generic detector
         let affected = find_generic_affected_files(
@@ -313,11 +312,9 @@ export function main() {
             root.join("config.yml"),
         ];
 
-        // Create YAML plugin
-        let yaml_plugin = cb_lang_yaml::YamlLanguagePlugin::new();
-
-        let plugins: Vec<std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>> =
-            vec![std::sync::Arc::from(yaml_plugin)];
+        // Get plugins from registry
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let plugins = plugin_registry.all();
 
         let affected = find_generic_affected_files(
             old_path,
@@ -360,10 +357,9 @@ export function main() {
             root.join("config.toml"),
         ];
 
-        // Create TOML plugin
-        let toml_plugin = cb_lang_toml::TomlLanguagePlugin::new();
-        let plugins: Vec<std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>> =
-            vec![std::sync::Arc::from(toml_plugin)];
+        // Get plugins from registry
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let plugins = plugin_registry.all();
 
         let affected = find_generic_affected_files(
             old_path,
@@ -406,9 +402,9 @@ export function main() {
         ];
 
         // Create Markdown plugin
-        let md_plugin = cb_lang_markdown::MarkdownPlugin::new();
-        let plugins: Vec<std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>> =
-            vec![std::sync::Arc::from(md_plugin)];
+        // Get plugins from registry
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let plugins = plugin_registry.all();
 
         let affected = find_generic_affected_files(
             &old_path,
@@ -459,10 +455,9 @@ export function main() {
             root.join("src/main.rs"),
         ];
 
-        // Create Rust plugin
-        let rust_plugin = cb_lang_rust::RustPlugin::new();
-        let plugins: Vec<std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>> =
-            vec![std::sync::Arc::from(rust_plugin)];
+        // Get plugins from registry
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let plugins = plugin_registry.all();
 
         let affected = find_generic_affected_files(
             old_path,
