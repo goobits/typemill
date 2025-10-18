@@ -44,3 +44,8 @@ libc = "0.2"
 futures-util = "0.3"
 chrono = "0.4"
 tokio = { workspace = true }
+# Language plugins needed for test discovery via inventory
+cb-lang-typescript = { workspace = true }
+cb-lang-markdown = { workspace = true }
+cb-lang-toml = { path = "../cb-lang-toml" }
+cb-lang-yaml = { path = "../cb-lang-yaml" }

@@ -116,10 +116,19 @@ pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
 mod tests {
     use super::*;
 
-    // NOTE: These tests will only pass after the language plugins (`cb-lang-*`)
-    // have been updated to use the `codebuddy_plugin!` macro for self-registration.
-    // The `cb-services` crate depends on the language crates, so they will be
-    // linked, allowing `inventory` to discover them.
+    // Force linker to include language plugins for inventory collection in tests
+    // Since cb-services no longer directly depends on most plugins, we need to
+    // ensure they're linked into test binaries for discovery to work.
+    #[cfg(test)]
+    extern crate cb_lang_rust;
+    #[cfg(test)]
+    extern crate cb_lang_typescript;
+    #[cfg(test)]
+    extern crate cb_lang_markdown;
+    #[cfg(test)]
+    extern crate cb_lang_toml;
+    #[cfg(test)]
+    extern crate cb_lang_yaml;
 
     #[test]
     fn test_registry_builder_creates_non_empty_registry() {
