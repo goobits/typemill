@@ -1,4 +1,5 @@
 use super::FileService;
+use cb_lang_rust::workspace::cargo_util;
 use codebuddy_foundation::core::dry_run::DryRunnable;
 use codebuddy_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
 use serde_json::{json, Value};
@@ -809,14 +810,7 @@ impl FileService {
 
     /// Check if a directory is a Cargo package by looking for a Cargo.toml with a [package] section.
     pub(super) async fn is_cargo_package(&self, dir: &Path) -> ServerResult<bool> {
-        let cargo_toml_path = dir.join("Cargo.toml");
-        if !cargo_toml_path.exists() {
-            return Ok(false);
-        }
-        match fs::read_to_string(&cargo_toml_path).await {
-            Ok(content) => Ok(content.contains("[package]")),
-            Err(_) => Ok(false),
-        }
+        cargo_util::is_cargo_package(dir).await
     }
 
     /// Find the parent crate's Cargo.toml by traversing up from a directory
