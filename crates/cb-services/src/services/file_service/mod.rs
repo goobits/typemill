@@ -2,7 +2,7 @@
 
 // Module declarations
 mod basic_ops;
-mod cargo;
+mod cargo_helpers; // Minimal helpers for legacy consolidation feature
 mod consolidation;
 mod dependency_analysis;
 mod edit_plan;

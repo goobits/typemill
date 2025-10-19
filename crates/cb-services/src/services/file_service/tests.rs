@@ -610,56 +610,10 @@ mod workspace_tests {
         (service, operation_queue)
     }
 
-    #[tokio::test]
-    async fn test_update_workspace_manifests_simple_rename() {
-        let temp_dir = TempDir::new().unwrap();
-        let project_root = temp_dir.path();
-
-        // Create a workspace Cargo.toml
-        let workspace_toml_content = r#"
-[workspace]
-members = [
-    "crates/my-crate",
-]
-"#;
-        fs::write(project_root.join("Cargo.toml"), workspace_toml_content)
-            .await
-            .unwrap();
-
-        // Create the package directory and its Cargo.toml
-        let old_crate_dir = project_root.join("crates/my-crate");
-        fs::create_dir_all(&old_crate_dir).await.unwrap();
-        fs::write(
-            old_crate_dir.join("Cargo.toml"),
-            "[package]\nname = \"my-crate\"",
-        )
-        .await
-        .unwrap();
-
-        let new_crate_dir = project_root.join("crates/my-renamed-crate");
-
-        // Setup FileService
-        let (service, _queue) = create_test_service(&temp_dir);
-
-        // Run the update
-        service
-            .update_workspace_manifests(&old_crate_dir, &new_crate_dir)
-            .await
-            .unwrap();
-
-        // Verify the workspace Cargo.toml was updated
-        let updated_content = fs::read_to_string(project_root.join("Cargo.toml"))
-            .await
-            .unwrap();
-        let doc = updated_content.parse::<toml_edit::DocumentMut>().unwrap();
-        let members = doc["workspace"]["members"].as_array().unwrap();
-
-        assert_eq!(members.len(), 1);
-        assert_eq!(
-            members.iter().next().unwrap().as_str(),
-            Some("crates/my-renamed-crate")
-        );
-    }
+    // Removed test: test_update_workspace_manifests_simple_rename
+    // This tested the old update_workspace_manifests method which has been removed.
+    // Workspace manifest updates are now handled by the language-agnostic plugin system
+    // via RustWorkspaceSupport.plan_directory_move(). See cb-lang-rust/src/workspace_support.rs
 
     #[test]
     fn test_adjust_relative_path_logic() {
@@ -830,7 +784,7 @@ mod move_tests {
 
         // Perform a dry-run move
         service
-            .rename_directory_with_imports(source_dir, dest_dir, true, false, None, false)
+            .rename_directory_with_imports(source_dir, dest_dir, true, None, false)
             .await
             .unwrap();
 
@@ -860,7 +814,7 @@ mod move_tests {
 
         // Perform a real move
         service
-            .rename_directory_with_imports(source_dir, dest_dir, false, false, None, false)
+            .rename_directory_with_imports(source_dir, dest_dir, false, None, false)
             .await
             .unwrap();
         queue.wait_until_idle().await;
@@ -893,7 +847,7 @@ mod move_tests {
 
         // Attempt to move, expecting a collision error.
         let result = service
-            .rename_directory_with_imports(source_dir, dest_dir, false, false, None, false)
+            .rename_directory_with_imports(source_dir, dest_dir, false, None, false)
             .await;
 
         assert!(result.is_err());
@@ -934,7 +888,7 @@ mod move_tests {
 
         // Perform a real move
         service
-            .rename_directory_with_imports(source_dir, dest_dir, false, false, None, false)
+            .rename_directory_with_imports(source_dir, dest_dir, false, None, false)
             .await
             .unwrap();
         queue.wait_until_idle().await;

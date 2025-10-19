@@ -218,23 +218,18 @@ impl FileService {
     }
 
     /// Rename a directory and update all imports pointing to files within it
+    ///
+    /// NOTE: This is a legacy internal tool. New code should use the Unified Refactoring API
+    /// (rename.plan + workspace.apply_edit) which handles consolidation through the plugin system.
     pub async fn rename_directory_with_imports(
         &self,
         old_dir_path: &Path,
         new_dir_path: &Path,
         dry_run: bool,
-        consolidate: bool,
         scan_scope: Option<cb_plugin_api::ScanScope>,
         details: bool,
     ) -> ServerResult<DryRunnable<Value>> {
-        info!(old_path = ?old_dir_path, new_path = ?new_dir_path, dry_run, consolidate, "Renaming directory");
-
-        // If consolidate flag is set, use consolidation logic instead
-        if consolidate {
-            return self
-                .consolidate_rust_package(old_dir_path, new_dir_path, dry_run)
-                .await;
-        }
+        info!(old_path = ?old_dir_path, new_path = ?new_dir_path, dry_run, "Renaming directory (legacy internal tool)");
 
         let old_abs_dir = self.to_absolute_path(old_dir_path);
         let new_abs_dir = self.to_absolute_path(new_dir_path);
@@ -263,7 +258,7 @@ impl FileService {
                 }
             }
 
-            let is_cargo_pkg = self.is_cargo_package(&old_abs_dir).await?;
+            let is_cargo_pkg = old_abs_dir.join("Cargo.toml").exists();
 
             // Build response with optional details
             let mut response = json!({
@@ -311,7 +306,7 @@ impl FileService {
                 }
             }
 
-            let is_cargo_pkg = self.is_cargo_package(&old_abs_dir).await?;
+            let is_cargo_pkg = old_abs_dir.join("Cargo.toml").exists();
 
             // IMPORTANT: Find affected files BEFORE renaming the directory!
             // The old directory must still exist on disk for the import resolver to work correctly.
