@@ -1947,9 +1947,10 @@ impl ToolHandler for DeadCodeHandler {
         };
 
         if !is_valid {
-            let mut supported = "'unused_imports', 'unused_symbols', 'unreachable_code', 'unused_parameters', 'unused_types', 'unused_variables'".to_string();
             #[cfg(feature = "analysis-deep-dead-code")]
-            supported.push_str(", 'deep'");
+            let supported = "'unused_imports', 'unused_symbols', 'unreachable_code', 'unused_parameters', 'unused_types', 'unused_variables', 'deep'".to_string();
+            #[cfg(not(feature = "analysis-deep-dead-code"))]
+            let supported = "'unused_imports', 'unused_symbols', 'unreachable_code', 'unused_parameters', 'unused_types', 'unused_variables'".to_string();
             return Err(ServerError::InvalidRequest(format!(
                 "Unsupported kind '{}'. Supported: {}",
                 kind, supported

@@ -1,5 +1,3 @@
-#![allow(dead_code, unused_variables, clippy::mutable_key_type, clippy::needless_range_loop, clippy::ptr_arg, clippy::manual_clamp)]
-
 //! Convert EditPlan (internal format) to MovePlan (MCP protocol format)
 //!
 //! This module bridges the gap between:

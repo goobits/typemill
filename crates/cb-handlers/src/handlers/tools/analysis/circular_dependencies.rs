@@ -6,8 +6,8 @@ use cb_analysis_circular_deps::{
 };
 use codebuddy_foundation::core::model::mcp::ToolCall;
 use codebuddy_foundation::protocol::{
-    analysis_result::{AnalysisResult, Finding, FindingLocation, Severity},
-    ApiError as ServerError, ApiResult as ServerResult, SafetyLevel, Suggestion,
+    analysis_result::{AnalysisResult, Finding, FindingLocation, SafetyLevel, Severity, Suggestion},
+    ApiError as ServerError, ApiResult as ServerResult,
 };
 use serde_json::{json, Value};
 #[cfg(feature = "analysis-circular-deps")]
