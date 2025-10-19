@@ -72,10 +72,13 @@ impl FileService {
                     "old_path": old_abs.to_string_lossy(),
                     "new_path": new_abs.to_string_lossy(),
                     "actions": {
-                        "move_src": format!("{} -> {}", old_src_dir.display(), new_abs.display()),
+                        "move_src": format!("{}/src/* -> {}", old_abs.display(), new_abs.display()),
+                        "rename_lib_rs": format!("{}/lib.rs -> {}/mod.rs", new_abs.display(), new_abs.display()),
                         "merge_dependencies": format!("{} -> {}", old_cargo_toml.display(), new_cargo_toml.display()),
                         "remove_from_workspace": "Remove old crate from workspace members",
+                        "update_cargo_dependencies": format!("Update all Cargo.toml files: {} → {}", old_crate_name, target_crate_name),
                         "update_imports": format!("use {}::... → use {}::...", old_crate_name, new_import_prefix),
+                        "add_module_declaration": format!("Add 'pub mod {};' to {}/src/lib.rs", submodule_name, target_crate_name),
                         "delete_old_crate": format!("Delete {}", old_abs.display())
                     },
                     "import_changes": {
@@ -84,8 +87,7 @@ impl FileService {
                         "submodule": submodule_name,
                         "target_crate": target_crate_name
                     },
-                    "next_steps": format!("After consolidation, add 'pub mod {};' to {}/src/lib.rs", submodule_name, target_crate_name),
-                    "note": "This is a dry run. No changes will be made."
+                    "note": "This is a dry run. No changes will be made. All steps above will be automated during execution."
                 }),
             ));
         }
@@ -150,6 +152,20 @@ impl FileService {
         }
 
         info!(files_moved = moved_files.len(), "Moved source files");
+
+        // Step 1.5: Rename lib.rs to mod.rs (Rust module convention)
+        let lib_rs_path = new_abs.join("lib.rs");
+        let mod_rs_path = new_abs.join("mod.rs");
+        if lib_rs_path.exists() {
+            fs::rename(&lib_rs_path, &mod_rs_path).await.map_err(|e| {
+                ServerError::Internal(format!("Failed to rename lib.rs to mod.rs: {}", e))
+            })?;
+            info!(
+                old_path = ?lib_rs_path,
+                new_path = ?mod_rs_path,
+                "Renamed lib.rs to mod.rs for directory module"
+            );
+        }
 
         // Step 2: Merge Cargo.toml dependencies
         // Find the parent crate's Cargo.toml (traverse up from new_abs)
@@ -279,13 +295,42 @@ impl FileService {
             }
         }
 
-        // Step 6: Log lib.rs suggestion
-        let lib_rs_path = format!("{}/src/lib.rs", target_crate_name);
-        let suggestion = format!(
-            "📝 Next step: Add 'pub mod {};' to {} to make the consolidated module public",
-            submodule_name, lib_rs_path
-        );
-        info!(suggestion = %suggestion, "Consolidation complete");
+        // Step 6: Auto-add module declaration to target lib.rs
+        let target_lib_rs = target_crate_path.join("src/lib.rs");
+        if target_lib_rs.exists() {
+            match self.add_module_declaration(&target_lib_rs, &submodule_name).await {
+                Ok(added) => {
+                    if added {
+                        info!(
+                            lib_rs = ?target_lib_rs,
+                            module = %submodule_name,
+                            "Added module declaration to target lib.rs"
+                        );
+                    } else {
+                        info!(
+                            lib_rs = ?target_lib_rs,
+                            module = %submodule_name,
+                            "Module declaration already exists in target lib.rs"
+                        );
+                    }
+                }
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        lib_rs = ?target_lib_rs,
+                        module = %submodule_name,
+                        "Failed to add module declaration, please add manually: pub mod {};",
+                        submodule_name
+                    );
+                }
+            }
+        } else {
+            warn!(
+                lib_rs = ?target_lib_rs,
+                "Target lib.rs not found, please manually add: pub mod {};",
+                submodule_name
+            );
+        }
 
         info!(
             old_path = ?old_abs,
@@ -310,8 +355,8 @@ impl FileService {
                     "files_modified": files_with_import_updates.len(),
                     "modified_files": files_with_import_updates,
                 },
-                "next_steps": suggestion,
-                "note": format!("Consolidation complete! All imports have been automatically updated from '{}' to '{}'.", old_crate_name, new_import_prefix)
+                "module_declaration_added": format!("pub mod {}; added to {}/src/lib.rs", submodule_name, target_crate_name),
+                "note": format!("Consolidation complete! All imports updated from '{}' to '{}', and module declaration added automatically.", old_crate_name, new_import_prefix)
             }),
         ))
     }
@@ -1615,6 +1660,60 @@ impl FileService {
         }
 
         Ok(planned_updates)
+    }
+
+    /// Add a module declaration to a lib.rs file
+    ///
+    /// Inserts `pub mod <module_name>;` in the appropriate location (after existing mod declarations).
+    /// Returns Ok(true) if the declaration was added, Ok(false) if it already exists.
+    async fn add_module_declaration(
+        &self,
+        lib_rs_path: &Path,
+        module_name: &str,
+    ) -> ServerResult<bool> {
+        let content = fs::read_to_string(lib_rs_path).await.map_err(|e| {
+            ServerError::Internal(format!("Failed to read lib.rs: {}", e))
+        })?;
+
+        // Check if the module declaration already exists
+        let declaration = format!("pub mod {};", module_name);
+        if content.contains(&declaration) || content.contains(&format!("pub mod {module_name} ;")) {
+            return Ok(false); // Already exists
+        }
+
+        // Find the insertion point (after last `pub mod` declaration)
+        let lines: Vec<&str> = content.lines().collect();
+        let mut insertion_line = 0;
+        let mut found_mod_declaration = false;
+
+        for (i, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("pub mod ") || trimmed.starts_with("mod ") {
+                insertion_line = i + 1;
+                found_mod_declaration = true;
+            } else if found_mod_declaration && !trimmed.is_empty() && !trimmed.starts_with("//") {
+                // Stop at first non-comment, non-empty line after mod declarations
+                break;
+            }
+        }
+
+        // Insert the declaration
+        let mut new_lines = lines.clone();
+        new_lines.insert(insertion_line, &declaration);
+        let new_content = new_lines.join("\n");
+
+        // Preserve trailing newline if original had one
+        let final_content = if content.ends_with('\n') {
+            format!("{}\n", new_content)
+        } else {
+            new_content
+        };
+
+        fs::write(lib_rs_path, final_content).await.map_err(|e| {
+            ServerError::Internal(format!("Failed to write lib.rs: {}", e))
+        })?;
+
+        Ok(true)
     }
 
     /// Preview a single Cargo.toml dependency update
