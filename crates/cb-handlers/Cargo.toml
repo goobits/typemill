@@ -26,7 +26,6 @@ codebuddy-foundation = { path = "../codebuddy-foundation" }
 cb-services = { path = "../cb-services" }
 cb-plugin-api = { path = "../cb-plugin-api" }
 cb-lsp = { path = "../cb-lsp" }
-cb-ast = { path = "../cb-ast" }
 
 # Language plugins (feature-gated, temporarily reduced to TS + Rust)
 cb-lang-rust = { workspace = true, optional = true }
@@ -67,3 +66,4 @@ pathdiff = "0.2"
 codebuddy-plugin-system = { path = "../codebuddy-plugin-system" }
 codebuddy-config = { path = "../codebuddy-config" }
 codebuddy-workspaces = { path = "../codebuddy-workspaces" }
+codebuddy-ast = { path = "../codebuddy-ast" }

@@ -12,7 +12,6 @@ categories = ["development-tools", "command-line-utilities"]
 [dependencies]
 cb-server = { path = "../../crates/cb-server" }
 cb-client = { path = "../../crates/cb-client" }
-cb-ast = { path = "../../crates/cb-ast" }
 codebuddy-foundation = { path = "../../crates/codebuddy-foundation" }
 cb-transport = { path = "../../crates/cb-transport" }
 cb-plugin-api = { path = "../../crates/cb-plugin-api" }
@@ -35,6 +34,7 @@ clap = { version = "4.0", features = ["derive"] }
 fs2 = "0.4"
 codebuddy-plugin-system = { path = "../../crates/codebuddy-plugin-system" }
 codebuddy-config = { path = "../../crates/codebuddy-config" }
+codebuddy-ast = { path = "../../crates/codebuddy-ast" }
 
 [dev-dependencies]
 cb-test-support = { path = "../../crates/cb-test-support" }

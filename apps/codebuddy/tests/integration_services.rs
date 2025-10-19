@@ -7,7 +7,7 @@
 //! Unlike E2E tests which use TestClient and MCP protocol, these tests directly
 //! instantiate service components and test their integration.
 
-use cb_ast::AstCache;
+use codebuddy_ast::AstCache;
 use codebuddy_plugin_system::PluginManager;
 use codebuddy_foundation::protocol::AstService;
 use cb_server::handlers::AppState;

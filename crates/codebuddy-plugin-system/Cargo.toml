@@ -14,7 +14,6 @@ tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 thiserror = { workspace = true }
 dashmap = { workspace = true }
-cb-ast = { path = "../cb-ast", optional = true }
 codebuddy-foundation = { path = "../codebuddy-foundation", optional = true }
 chrono = "0.4"
 ignore = "0.4"
@@ -22,13 +21,14 @@ reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], default-fea
 html2md-rs = "0.10"
 url = "2.4"
 codebuddy-config = { path = "../codebuddy-config", optional = true }
+codebuddy-ast = { path = "../codebuddy-ast", optional = true }
 
 [dev-dependencies]
 tokio-test = "0.4"
 
 [features]
 default = ["runtime"]
-runtime = ["codebuddy-foundation", "codebuddy-config", "cb-ast"]
+runtime = ["codebuddy-foundation", "codebuddy-config", "codebuddy-ast"]
 mcp-proxy = ["runtime", "codebuddy-config/mcp-proxy"]
 lang-rust = ["runtime"]
 lang-typescript = ["runtime"]

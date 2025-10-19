@@ -103,7 +103,7 @@ impl InlineHandler {
 
         // Call AST refactoring function directly without LSP service
         // Note: LSP integration removed as DirectLspAdapter doesn't implement LspRefactoringService
-        let edit_plan = cb_ast::refactoring::inline_variable::plan_inline_variable(
+        let edit_plan = codebuddy_ast::refactoring::inline_variable::plan_inline_variable(
             &file_content,
             target.position.line,
             target.position.character,
@@ -142,7 +142,7 @@ impl InlineHandler {
             .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
 
         // Try AST-based inline for functions
-        let edit_plan = cb_ast::refactoring::inline_variable::plan_inline_variable(
+        let edit_plan = codebuddy_ast::refactoring::inline_variable::plan_inline_variable(
             &file_content,
             target.position.line,
             target.position.character,
@@ -179,7 +179,7 @@ impl InlineHandler {
             .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
 
         // Use AST-only approach for inlining constants
-        let edit_plan = cb_ast::refactoring::inline_variable::plan_inline_variable(
+        let edit_plan = codebuddy_ast::refactoring::inline_variable::plan_inline_variable(
             &file_content,
             target.position.line,
             target.position.character,

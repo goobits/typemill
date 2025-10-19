@@ -56,7 +56,7 @@ use tracing::debug;
 /// - Metrics including imported symbols
 /// - Suggestion to remove the import
 pub fn detect_unused_imports(
-    _complexity_report: &cb_ast::complexity::ComplexityReport,
+    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -279,7 +279,7 @@ pub fn detect_unused_imports(
 /// - Metrics including symbol type
 /// - Suggestions to remove or make private
 pub fn detect_unused_symbols(
-    complexity_report: &cb_ast::complexity::ComplexityReport,
+    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -416,7 +416,7 @@ pub fn detect_unused_symbols(
 /// - Metrics including lines unreachable and terminator statement
 /// - Suggestion to remove the unreachable code
 pub fn detect_unreachable_code(
-    _complexity_report: &cb_ast::complexity::ComplexityReport,
+    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -597,7 +597,7 @@ pub fn detect_unreachable_code(
 /// - Metrics including parameter name and function name
 /// - Suggestion to remove the parameter (requires review)
 pub fn detect_unused_parameters(
-    complexity_report: &cb_ast::complexity::ComplexityReport,
+    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -775,7 +775,7 @@ pub fn detect_unused_parameters(
 /// - Metrics including type name and kind
 /// - Suggestion to remove the type (requires review)
 pub fn detect_unused_types(
-    _complexity_report: &cb_ast::complexity::ComplexityReport,
+    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -899,7 +899,7 @@ pub fn detect_unused_types(
 /// - Metrics including variable name and scope
 /// - Suggestion to remove the variable
 pub fn detect_unused_variables(
-    complexity_report: &cb_ast::complexity::ComplexityReport,
+    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -1994,7 +1994,7 @@ impl ToolHandler for DeadCodeHandler {
                     let plugin = context.app_state.language_plugins.get_plugin(extension).ok_or_else(|| ServerError::Unsupported(format!("No language plugin found for extension: {}", extension)))?;
                     let parsed_source = plugin.parse(&content).await.map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
                     let language = plugin.metadata().name;
-                    let complexity_report = cb_ast::complexity::analyze_file_complexity(&file_path, &content, &parsed_source.symbols, language);
+                    let complexity_report = codebuddy_ast::complexity::analyze_file_complexity(&file_path, &content, &parsed_source.symbols, language);
 
                     // Choose detection function
                     let analysis_fn = if kind == "unused_imports" {
@@ -2090,7 +2090,7 @@ impl ToolHandler for DeadCodeHandler {
                     let plugin = context.app_state.language_plugins.get_plugin(extension).ok_or_else(|| ServerError::Unsupported(format!("No language plugin found for extension: {}", extension)))?;
                     let parsed_source = plugin.parse(&content).await.map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
                     let language = plugin.metadata().name;
-                    let complexity_report = cb_ast::complexity::analyze_file_complexity(&file_path, &content, &parsed_source.symbols, language);
+                    let complexity_report = codebuddy_ast::complexity::analyze_file_complexity(&file_path, &content, &parsed_source.symbols, language);
 
                     // Choose detection function
                     let analysis_fn = match kind {

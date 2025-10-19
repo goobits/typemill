@@ -175,7 +175,7 @@ impl QualityHandler {
             };
 
             let language = plugin.metadata().name;
-            let report = cb_ast::complexity::analyze_file_complexity(
+            let report = codebuddy_ast::complexity::analyze_file_complexity(
                 &file_path.to_string_lossy(),
                 &content,
                 &parsed.symbols,
@@ -192,8 +192,8 @@ impl QualityHandler {
 
                 if matches!(
                     func.rating,
-                    cb_ast::complexity::ComplexityRating::Complex
-                        | cb_ast::complexity::ComplexityRating::VeryComplex
+                    codebuddy_ast::complexity::ComplexityRating::Complex
+                        | codebuddy_ast::complexity::ComplexityRating::VeryComplex
                 ) {
                     needs_attention += 1;
                 }
@@ -304,7 +304,7 @@ impl QualityHandler {
     /// Transform ComplexityReport into AnalysisResult
     fn transform_complexity_report(
         &self,
-        report: cb_ast::complexity::ComplexityReport,
+        report: codebuddy_ast::complexity::ComplexityReport,
         thresholds: &QualityThresholds,
         include_suggestions: bool,
         scope: AnalysisScope,
@@ -347,8 +347,8 @@ impl QualityHandler {
 
             // Determine severity based on rating
             let severity = match func.rating {
-                cb_ast::complexity::ComplexityRating::VeryComplex => Severity::High,
-                cb_ast::complexity::ComplexityRating::Complex => Severity::Medium,
+                codebuddy_ast::complexity::ComplexityRating::VeryComplex => Severity::High,
+                codebuddy_ast::complexity::ComplexityRating::Complex => Severity::Medium,
                 _ => Severity::Low,
             };
 
@@ -488,7 +488,7 @@ impl QualityHandler {
 
 /// Detect code smells in a file
 pub fn detect_smells(
-    complexity_report: &cb_ast::complexity::ComplexityReport,
+    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -563,7 +563,7 @@ pub fn detect_smells(
     }
 
     // 2. God classes (>20 methods)
-    let classes = cb_ast::complexity::aggregate_class_complexity(
+    let classes = codebuddy_ast::complexity::aggregate_class_complexity(
         file_path,
         &complexity_report.functions,
         language,
@@ -723,7 +723,7 @@ fn detect_magic_numbers_for_smells(content: &str, file_path: &str, language: &st
 
 /// Analyze readability issues in functions
 pub fn analyze_readability(
-    complexity_report: &cb_ast::complexity::ComplexityReport,
+    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
     _content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     _language: &str,
@@ -951,7 +951,7 @@ pub fn analyze_readability(
 
 /// Analyze overall maintainability metrics for a file or workspace
 pub fn analyze_maintainability(
-    complexity_report: &cb_ast::complexity::ComplexityReport,
+    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
     _content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     _language: &str,
@@ -963,10 +963,10 @@ pub fn analyze_maintainability(
     let mut rating_counts: HashMap<String, usize> = HashMap::new();
     for func in &complexity_report.functions {
         let rating_str = match func.rating {
-            cb_ast::complexity::ComplexityRating::Simple => "simple",
-            cb_ast::complexity::ComplexityRating::Moderate => "moderate",
-            cb_ast::complexity::ComplexityRating::Complex => "complex",
-            cb_ast::complexity::ComplexityRating::VeryComplex => "very_complex",
+            codebuddy_ast::complexity::ComplexityRating::Simple => "simple",
+            codebuddy_ast::complexity::ComplexityRating::Moderate => "moderate",
+            codebuddy_ast::complexity::ComplexityRating::Complex => "complex",
+            codebuddy_ast::complexity::ComplexityRating::VeryComplex => "very_complex",
         };
         *rating_counts.entry(rating_str.to_string()).or_insert(0) += 1;
     }
@@ -1066,8 +1066,8 @@ pub fn analyze_maintainability(
             .filter(|f| {
                 matches!(
                     f.rating,
-                    cb_ast::complexity::ComplexityRating::Complex
-                        | cb_ast::complexity::ComplexityRating::VeryComplex
+                    codebuddy_ast::complexity::ComplexityRating::Complex
+                        | codebuddy_ast::complexity::ComplexityRating::VeryComplex
                 )
             })
             .map(|f| {
@@ -1242,7 +1242,7 @@ impl ToolHandler for QualityHandler {
                 let language = plugin.metadata().name;
 
                 // Analyze complexity
-                let complexity_report = cb_ast::complexity::analyze_file_complexity(
+                let complexity_report = codebuddy_ast::complexity::analyze_file_complexity(
                     &file_path,
                     &content,
                     &parsed.symbols,

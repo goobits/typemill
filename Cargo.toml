@@ -2,7 +2,6 @@
 members = [
     "crates/cb-plugin-api",
     "crates/codebuddy-plugin-system",
-    "crates/cb-ast",
     "crates/cb-lsp",
     "crates/cb-services",
     "crates/cb-handlers",
@@ -28,7 +27,7 @@ members = [
     "crates/codebuddy-config",
     "crates/codebuddy-workspaces",
     "crates/codebuddy-auth",
-    "crates/xtask",
+    "crates/xtask", "crates/codebuddy-ast",
 ]
 resolver = "2"
 

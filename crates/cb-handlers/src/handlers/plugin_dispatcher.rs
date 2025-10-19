@@ -500,7 +500,7 @@ pub async fn create_test_dispatcher() -> PluginDispatcher {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let project_root = temp_dir.path().to_path_buf();
 
-    let cache_settings = cb_ast::CacheSettings::default();
+    let cache_settings = codebuddy_ast::CacheSettings::default();
     let plugin_manager = Arc::new(PluginManager::new());
     let config = codebuddy_config::AppConfig::default();
 
@@ -543,7 +543,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
 
         let language_plugins = crate::LanguagePluginRegistry::new();
-        let ast_cache = Arc::new(cb_ast::AstCache::new());
+        let ast_cache = Arc::new(codebuddy_ast::AstCache::new());
         let ast_service = Arc::new(cb_services::services::DefaultAstService::new(
             ast_cache.clone(),
             language_plugins.inner.clone(),

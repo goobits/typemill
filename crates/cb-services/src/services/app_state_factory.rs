@@ -4,7 +4,7 @@
 #![allow(unexpected_cfgs)]
 
 use super::*;
-use cb_ast::AstCache;
+use codebuddy_ast::AstCache;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -24,7 +24,7 @@ pub struct ServicesBundle {
 /// - `plugin_registry`: Pre-built plugin registry (injected by the application layer)
 pub async fn create_services_bundle(
     project_root: &PathBuf,
-    cache_settings: cb_ast::CacheSettings,
+    cache_settings: codebuddy_ast::CacheSettings,
     plugin_manager: Arc<codebuddy_plugin_system::PluginManager>,
     config: &codebuddy_config::AppConfig,
     plugin_registry: Arc<cb_plugin_api::PluginRegistry>,

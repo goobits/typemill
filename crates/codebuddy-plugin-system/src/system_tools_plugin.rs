@@ -322,7 +322,7 @@ impl SystemToolsPlugin {
     /// Handle extract_module_to_package tool
     async fn handle_extract_module_to_package(&self, params: Value) -> PluginResult<Value> {
         // Deserialize parameters
-        let parsed: cb_ast::package_extractor::ExtractModuleToPackageParams =
+        let parsed: codebuddy_ast::package_extractor::ExtractModuleToPackageParams =
             serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
                 message: format!("Invalid extract_module_to_package args: {}", e),
             })?;
@@ -336,7 +336,7 @@ impl SystemToolsPlugin {
         );
 
         // Call the planning function from cb-ast with injected registry
-        let edit_plan = cb_ast::package_extractor::plan_extract_module_to_package_with_registry(
+        let edit_plan = codebuddy_ast::package_extractor::plan_extract_module_to_package_with_registry(
             parsed,
             &self.plugin_registry,
         )

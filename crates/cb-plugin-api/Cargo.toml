@@ -15,3 +15,6 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Inventory for static plugin registration (Layer 0 - no upward dependencies)
 inventory = "0.3"
+
+[dev-dependencies]
+tempfile = { workspace = true }

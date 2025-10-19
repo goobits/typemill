@@ -61,7 +61,7 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
     #[cfg(feature = "mcp-proxy")]
     use cb_services::services::app_state_factory::register_mcp_proxy_if_enabled;
 
-    let cache_settings = cb_ast::CacheSettings::from_config(
+    let cache_settings = codebuddy_ast::CacheSettings::from_config(
         options.config.cache.enabled,
         options.config.cache.ttl_seconds,
         options.config.cache.max_size_bytes,
@@ -149,7 +149,7 @@ pub async fn create_dispatcher_with_workspace(
     #[cfg(feature = "mcp-proxy")]
     use cb_services::services::app_state_factory::register_mcp_proxy_if_enabled;
 
-    let cache_settings = cb_ast::CacheSettings::from_config(
+    let cache_settings = codebuddy_ast::CacheSettings::from_config(
         config.cache.enabled,
         config.cache.ttl_seconds,
         config.cache.max_size_bytes,
