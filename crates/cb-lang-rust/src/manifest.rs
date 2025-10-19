@@ -193,6 +193,28 @@ pub fn rename_dependency(
         rename_in_table(build_deps, old_name, new_name, new_path);
     }
 
+    // Update in [features]
+    // Features can reference dependencies like: runtime = ["dep1", "dep2", "dep3/feature"]
+    if let Some(features) = doc.get_mut("features").and_then(Item::as_table_mut) {
+        for (_feature_name, feature_value) in features.iter_mut() {
+            // Features can be arrays of strings like ["dep1", "dep2/feature"]
+            if let Some(feature_array) = feature_value.as_array_mut() {
+                for element in feature_array.iter_mut() {
+                    if let Some(dep_ref) = element.as_str() {
+                        // Check for exact match (e.g., "cb-ast")
+                        if dep_ref == old_name {
+                            *element = toml_edit::Value::from(new_name).into();
+                        }
+                        // Check for slash-prefixed feature (e.g., "cb-ast/some-feature")
+                        else if let Some(feature_suffix) = dep_ref.strip_prefix(&format!("{}/", old_name)) {
+                            *element = toml_edit::Value::from(format!("{}/{}", new_name, feature_suffix)).into();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Ok(doc.to_string())
 }
 
@@ -285,6 +307,52 @@ my-dep = { path = "../my-dep", version = "0.1", optional = true, features = ["fe
         assert!(result.contains("features = [\"feat1\", \"feat2\"]"));
         assert!(result.contains("default-features = false"));
         assert!(result.contains("version = \"0.1\""));
+    }
+
+    #[test]
+    fn test_rename_dependency_updates_features() {
+        let cargo_toml = r#"
+[package]
+name = "test-crate"
+version = "0.1.0"
+
+[dependencies]
+cb-ast = { path = "../cb-ast", optional = true }
+other-dep = { path = "../other" }
+
+[features]
+default = ["runtime"]
+runtime = ["other-dep", "cb-ast"]
+advanced = ["cb-ast/extra-feature"]
+"#;
+
+        let result = rename_dependency(
+            cargo_toml,
+            "cb-ast",
+            "codebuddy-ast",
+            Some("../codebuddy-ast"),
+        )
+        .unwrap();
+
+        // Verify dependency was renamed
+        assert!(result.contains("codebuddy-ast = { path"));
+        assert!(!result.contains("cb-ast = { path"));
+
+        // Verify feature flags were updated
+        assert!(result.contains("codebuddy-ast"));
+        assert!(result.contains("other-dep"));
+
+        // Check that feature references were updated
+        let has_runtime_feature = result.contains(r#"runtime = ["other-dep", "codebuddy-ast"]"#)
+            || (result.contains("runtime") && result.contains("codebuddy-ast") && result.contains("other-dep"));
+        assert!(has_runtime_feature, "runtime feature should reference codebuddy-ast");
+
+        let has_advanced_feature = result.contains(r#"advanced = ["codebuddy-ast/extra-feature"]"#)
+            || (result.contains("advanced") && result.contains("codebuddy-ast/extra-feature"));
+        assert!(has_advanced_feature, "advanced feature should reference codebuddy-ast/extra-feature");
+
+        // Verify old name is completely gone
+        assert!(!result.contains("cb-ast"), "cb-ast should not appear anywhere in result");
     }
 
     #[test]

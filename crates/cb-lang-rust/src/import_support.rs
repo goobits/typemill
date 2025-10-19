@@ -291,7 +291,72 @@ impl ImportRenameSupport for RustImportSupport {
 
         debug!(changes = changes_count, "Rewrote Rust imports using AST");
 
-        (result, changes_count)
+        // Second pass: Update qualified paths in code (not in use statements)
+        // This catches inline qualified paths like: cb_ast::CacheSettings::new()
+        let lines: Vec<String> = result.lines().map(|s| s.to_string()).collect();
+        let mut final_result = String::new();
+        let mut qualified_path_changes = 0;
+
+        // Build regex pattern with word boundary to avoid false positives
+        // Pattern: \b + old_name + \s*::
+        // This matches "cb_ast::" but not "my_cb_ast::"
+        let pattern = format!(r"\b{}\s*::", regex::escape(old_name));
+        let re = match regex::Regex::new(&pattern) {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::warn!(error = %e, pattern = %pattern, "Failed to compile regex for qualified paths");
+                return (result, changes_count);
+            }
+        };
+
+        for line in lines {
+            let trimmed = line.trim();
+
+            // Skip use statements (already processed in first pass)
+            if trimmed.starts_with("use ") {
+                final_result.push_str(&line);
+                final_result.push('\n');
+                continue;
+            }
+
+            // Search for qualified paths using regex
+            if re.is_match(&line) {
+                let updated_line = re.replace_all(&line, |_caps: &regex::Captures| {
+                    format!("{}::", new_name)
+                });
+
+                if updated_line != line {
+                    qualified_path_changes += 1;
+                    tracing::debug!(
+                        old_line = %line,
+                        new_line = %updated_line,
+                        "Updated qualified path reference"
+                    );
+                }
+
+                final_result.push_str(&updated_line);
+            } else {
+                final_result.push_str(&line);
+            }
+
+            final_result.push('\n');
+        }
+
+        // Remove trailing newline if original didn't have one
+        if !result.ends_with('\n') && final_result.ends_with('\n') {
+            final_result.pop();
+        }
+
+        changes_count += qualified_path_changes;
+
+        tracing::info!(
+            use_statement_changes = changes_count - qualified_path_changes,
+            qualified_path_changes = qualified_path_changes,
+            total_changes = changes_count,
+            "Completed import rewrite with qualified path updates"
+        );
+
+        (final_result, changes_count)
     }
 }
 
@@ -515,5 +580,83 @@ pub fn lib_fn() {
             "Should NOT contain old crate-relative import. Actual:\n{}",
             result
         );
+    }
+
+    #[test]
+    fn test_rewrite_qualified_paths() {
+        let support = RustImportSupport;
+        let content = r#"
+use std::sync::Arc;
+
+pub fn example() {
+    let cache = cb_ast::CacheSettings::default();
+    let report = cb_ast::complexity::analyze_file_complexity(&path, &content, &symbols, lang);
+    cb_ast::refactoring::extract_function::plan_extract_function(params).await?;
+}
+"#;
+
+        let (result, changes) = support.rewrite_imports_for_rename(content, "cb_ast", "codebuddy_ast");
+
+        assert!(changes > 0, "Should detect changes");
+        assert!(!result.contains("cb_ast::"), "Should replace all cb_ast:: occurrences. Result:\n{}", result);
+        assert!(result.contains("codebuddy_ast::CacheSettings"), "Should update CacheSettings reference");
+        assert!(result.contains("codebuddy_ast::complexity::analyze_file_complexity"), "Should update complexity reference");
+        assert!(result.contains("codebuddy_ast::refactoring::extract_function"), "Should update refactoring reference");
+    }
+
+    #[test]
+    fn test_qualified_paths_and_use_statements() {
+        let support = RustImportSupport;
+        let content = r#"
+use cb_ast::CacheSettings;
+
+pub fn example() {
+    let cache = cb_ast::CacheSettings::default();
+}
+"#;
+
+        let (result, changes) = support.rewrite_imports_for_rename(content, "cb_ast", "codebuddy_ast");
+
+        // Both the use statement AND the qualified path should be updated
+        assert!(result.contains("use codebuddy_ast::CacheSettings"), "Should update use statement. Result:\n{}", result);
+        assert!(result.contains("codebuddy_ast::CacheSettings::default()"), "Should update qualified path. Result:\n{}", result);
+        assert!(!result.contains("cb_ast::"), "Should not contain any cb_ast:: references. Result:\n{}", result);
+        assert!(changes >= 2, "Should update both use and qualified path, got {}", changes);
+    }
+
+    #[test]
+    fn test_qualified_paths_word_boundary() {
+        let support = RustImportSupport;
+        let content = r#"
+pub fn example() {
+    let cache = cb_ast::CacheSettings::default();
+    let my_cb_ast_thing = 123;  // Should NOT be changed
+    let cb_ast_prefix = "test";  // Should NOT be changed
+}
+"#;
+
+        let (result, _changes) = support.rewrite_imports_for_rename(content, "cb_ast", "codebuddy_ast");
+
+        assert!(result.contains("codebuddy_ast::CacheSettings"), "Should update qualified path");
+        assert!(result.contains("my_cb_ast_thing"), "Should preserve variable names with cb_ast prefix");
+        assert!(result.contains("cb_ast_prefix"), "Should preserve variable names with cb_ast in them");
+        assert_eq!(result.matches("codebuddy_ast").count(), 1, "Should only replace the qualified path, not variable names");
+    }
+
+    #[test]
+    fn test_qualified_paths_with_spacing() {
+        let support = RustImportSupport;
+        let content = r#"
+pub fn example() {
+    let cache = cb_ast :: CacheSettings::default();
+    let report = cb_ast::  complexity::analyze_file();
+}
+"#;
+
+        let (result, changes) = support.rewrite_imports_for_rename(content, "cb_ast", "codebuddy_ast");
+
+        assert!(changes > 0, "Should detect changes");
+        assert!(!result.contains("cb_ast"), "Should replace all cb_ast references regardless of spacing");
+        assert!(result.contains("codebuddy_ast::"), "Should normalize to standard spacing");
     }
 }
