@@ -30,6 +30,57 @@ impl FileService {
             "Executing consolidation post-processing"
         );
 
+        // Task 0: Pre-validation - Check for circular dependencies
+        info!("Running pre-consolidation dependency analysis");
+        let analysis = self
+            .validate_no_circular_dependencies(
+                Path::new(&metadata.source_crate_path),
+                Path::new(&metadata.target_crate_path),
+            )
+            .await?;
+
+        if analysis.has_circular_dependency {
+            warn!(
+                source_crate = %analysis.source_crate,
+                target_crate = %analysis.target_crate,
+                dependency_chain = ?analysis.dependency_chain,
+                problematic_modules_count = analysis.problematic_modules.len(),
+                "Circular dependency detected - consolidation would break workspace"
+            );
+
+            // Log problematic modules
+            for module in &analysis.problematic_modules {
+                warn!(
+                    file = %module.file_path,
+                    imports_crate = %module.imports_crate,
+                    imports_count = module.imports.len(),
+                    "Module would create circular dependency"
+                );
+            }
+
+            return Err(ServerError::InvalidRequest(format!(
+                "Circular dependency detected: {} would create a cycle via {}. \
+                {} problematic module(s) found. \
+                Consider moving these modules to {} instead: {}",
+                analysis.source_crate,
+                analysis.dependency_chain.join(" → "),
+                analysis.problematic_modules.len(),
+                analysis.target_crate,
+                analysis
+                    .problematic_modules
+                    .iter()
+                    .map(|m| m.file_path.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )));
+        }
+
+        info!(
+            source_crate = %analysis.source_crate,
+            target_crate = %analysis.target_crate,
+            "No circular dependencies detected - safe to proceed"
+        );
+
         // Task 1: Fix nested src/ structure
         self.flatten_nested_src_directory(&metadata.target_module_path)
             .await?;
