@@ -380,6 +380,11 @@ impl FileService {
     }
 
     /// Fix self-imports in a single Rust file
+    ///
+    /// Converts external crate imports to internal crate imports:
+    /// 1. use statements: `use crate_name::` → `use crate::`
+    /// 2. pub use statements: `pub use crate_name::` → `pub use crate::`
+    /// 3. qualified paths: `crate_name::` → `crate::`
     async fn fix_self_imports_in_file(
         &self,
         file_path: &Path,
@@ -391,29 +396,33 @@ impl FileService {
             ServerError::Internal(format!("Failed to read {}: {}", file_path.display(), e))
         })?;
 
-        // Replace various forms of self-imports:
-        // 1. use crate_name:: → use crate::
-        // 2. crate_name:: in type paths, impl blocks, etc.
-
         let mut new_content = content.clone();
-        let mut file_replacements = 0;
+        let mut use_count = 0;
+        let mut pub_use_count = 0;
+        let mut qualified_count = 0;
 
         // Pattern 1: `use crate_name::` → `use crate::`
         let use_pattern = format!("use {}::", crate_ident);
         let use_replacement = "use crate::";
         if new_content.contains(&use_pattern) {
-            let count = new_content.matches(&use_pattern).count();
+            use_count = new_content.matches(&use_pattern).count();
             new_content = new_content.replace(&use_pattern, use_replacement);
-            file_replacements += count;
         }
 
-        // Pattern 2: `crate_name::` in other contexts (type paths, impl blocks, etc.)
-        // Match only when preceded by whitespace, '<', '(', or at start of line
-        // to avoid matching inside identifiers
+        // Pattern 2: `pub use crate_name::` → `pub use crate::`
+        let pub_use_pattern = format!("pub use {}::", crate_ident);
+        let pub_use_replacement = "pub use crate::";
+        if new_content.contains(&pub_use_pattern) {
+            pub_use_count = new_content.matches(&pub_use_pattern).count();
+            new_content = new_content.replace(&pub_use_pattern, pub_use_replacement);
+        }
+
+        // Pattern 3: `crate_name::` in other contexts (type paths, impl blocks, etc.)
+        // Match only when preceded by valid context characters
         let qualified_pattern = format!("{}::", crate_ident);
         let qualified_replacement = "crate::";
 
-        // Split on the pattern and rebuild, being careful about context
+        // Split on the pattern and rebuild with context checking
         let parts: Vec<&str> = new_content.split(&qualified_pattern).collect();
         if parts.len() > 1 {
             let mut rebuilt = String::new();
@@ -421,16 +430,20 @@ impl FileService {
                 rebuilt.push_str(part);
                 if i < parts.len() - 1 {
                     // Check if this is a valid replacement context
-                    // (after whitespace, '<', '(', or at line start)
                     let should_replace = part.is_empty()
                         || part.ends_with(|c: char| c.is_whitespace())
                         || part.ends_with('<')
                         || part.ends_with('(')
-                        || part.ends_with(',');
+                        || part.ends_with(',')
+                        || part.ends_with('{')
+                        || part.ends_with('[')
+                        || part.ends_with('&')
+                        || part.ends_with('*')
+                        || part.ends_with('!');
 
                     if should_replace {
                         rebuilt.push_str(qualified_replacement);
-                        file_replacements += 1;
+                        qualified_count += 1;
                     } else {
                         rebuilt.push_str(&qualified_pattern);
                     }
@@ -438,6 +451,8 @@ impl FileService {
             }
             new_content = rebuilt;
         }
+
+        let file_replacements = use_count + pub_use_count + qualified_count;
 
         // Only write if changes were made
         if file_replacements > 0 {
@@ -450,7 +465,10 @@ impl FileService {
 
             info!(
                 file = %file_path.display(),
-                replacements = file_replacements,
+                use_statements = use_count,
+                pub_use_statements = pub_use_count,
+                qualified_paths = qualified_count,
+                total_replacements = file_replacements,
                 "Fixed self-imports in file"
             );
         }
@@ -568,6 +586,11 @@ impl FileService {
     }
 
     /// Update imports in a single Rust file for consolidation
+    ///
+    /// Handles multiple import patterns:
+    /// 1. use statements: `use source_crate::` → `use target_crate::module::`
+    /// 2. pub use statements: `pub use source_crate::` → `pub use target_crate::module::`
+    /// 3. qualified paths: `source_crate::` → `target_crate::module::`
     async fn update_imports_in_single_file(
         &self,
         file_path: &Path,
@@ -591,39 +614,53 @@ impl FileService {
         }
 
         let mut new_content = content.clone();
-        let mut file_replacements = 0;
+        let mut use_count = 0;
+        let mut pub_use_count = 0;
+        let mut qualified_count = 0;
 
         // Pattern 1: `use source_crate::` → `use target_crate::module::`
         let use_pattern = format!("use {}::", source_ident);
         let use_replacement = format!("use {}::{}::", target_ident, target_module);
         if new_content.contains(&use_pattern) {
-            let count = new_content.matches(&use_pattern).count();
+            use_count = new_content.matches(&use_pattern).count();
             new_content = new_content.replace(&use_pattern, &use_replacement);
-            file_replacements += count;
         }
 
-        // Pattern 2: qualified paths `source_crate::` → `target_crate::module::`
-        // Be careful to only replace in valid contexts
+        // Pattern 2: `pub use source_crate::` → `pub use target_crate::module::`
+        let pub_use_pattern = format!("pub use {}::", source_ident);
+        let pub_use_replacement = format!("pub use {}::{}::", target_ident, target_module);
+        if new_content.contains(&pub_use_pattern) {
+            pub_use_count = new_content.matches(&pub_use_pattern).count();
+            new_content = new_content.replace(&pub_use_pattern, &pub_use_replacement);
+        }
+
+        // Pattern 3: qualified paths `source_crate::` → `target_crate::module::`
+        // Only replace in valid contexts (not inside identifiers)
         let qualified_pattern = format!("{}::", source_ident);
         let qualified_replacement = format!("{}::{}::", target_ident, target_module);
 
+        // Split and rebuild with context checking
         let parts: Vec<&str> = new_content.split(&qualified_pattern).collect();
         if parts.len() > 1 {
             let mut rebuilt = String::new();
             for (i, part) in parts.iter().enumerate() {
                 rebuilt.push_str(part);
                 if i < parts.len() - 1 {
-                    // Check context - should replace after whitespace, '<', '(', ',', or at start
+                    // Check context - should replace after whitespace, '<', '(', ',', '{', '[', '&', '*', or at start
                     let should_replace = part.is_empty()
                         || part.ends_with(|c: char| c.is_whitespace())
                         || part.ends_with('<')
                         || part.ends_with('(')
                         || part.ends_with(',')
-                        || part.ends_with('{');
+                        || part.ends_with('{')
+                        || part.ends_with('[')
+                        || part.ends_with('&')
+                        || part.ends_with('*')
+                        || part.ends_with('!');
 
                     if should_replace {
                         rebuilt.push_str(&qualified_replacement);
-                        file_replacements += 1;
+                        qualified_count += 1;
                     } else {
                         rebuilt.push_str(&qualified_pattern);
                     }
@@ -631,6 +668,8 @@ impl FileService {
             }
             new_content = rebuilt;
         }
+
+        let file_replacements = use_count + pub_use_count + qualified_count;
 
         // Only write if changes were made
         if file_replacements > 0 {
@@ -643,7 +682,10 @@ impl FileService {
 
             info!(
                 file = %file_path.display(),
-                replacements = file_replacements,
+                use_statements = use_count,
+                pub_use_statements = pub_use_count,
+                qualified_paths = qualified_count,
+                total_replacements = file_replacements,
                 "Updated imports for consolidation"
             );
         }
