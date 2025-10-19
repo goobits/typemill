@@ -209,181 +209,130 @@ skip-tree = [
 ]
 
 # =============================================================================
-# ARCHITECTURAL LAYER ENFORCEMENT (DISABLED DURING CONSOLIDATION)
+# ARCHITECTURAL LAYER ENFORCEMENT
 # =============================================================================
-# NOTE: These rules are temporarily disabled during Proposal 06 consolidation
-# TODO: Enable and update after consolidation completes (crate renames, merges)
-# This section enforces the layered architecture documented in:
-# docs/architecture/layers.md
+# Enforces the layered architecture documented in docs/architecture/layers.md
 #
-# NEW Layer Hierarchy (Proposal 06 - post-consolidation):
-# - Layer 7: Application (cb-server, cb-client, cb-transport)
+# Layer Hierarchy (after consolidation):
+# - Layer 7: Application (cb-server, cb-client, cb-transport, codebuddy, codebuddy-auth, codebuddy-workspaces)
 # - Layer 6: Handlers (cb-handlers)
-# - Layer 5: Services (cb-services, cb-ast, cb-lsp, codebuddy-plugin-system)
+# - Layer 5: Services (cb-services, cb-ast, cb-lsp, codebuddy-plugin-system, codebuddy-plugin-bundle)
 # - Layer 4: Language Plugins (cb-lang-*)
 # - Layer 3: Plugin API (cb-plugin-api)
-# - Layer 2: Foundation (codebuddy-foundation after consolidation)
+# - Layer 2: Foundation (codebuddy-foundation)
 # - Layer 1: Support (cb-test-support, xtask, analysis/*)
 #
-# DISABLED until consolidation completes, then will be updated for new structure:
+# Rules enforce: Higher layers cannot depend on lower layers (upward dependencies forbidden)
+#
+# NOTE: Foundation isolation (Layer 2 depending only on external crates) cannot be enforced
+# via cargo-deny bans.deny. Use code review to ensure foundation remains dependency-free.
+#
+# Semantics: [[bans.deny]] with wrappers means "this crate can ONLY be depended on by crates in wrappers list"
 
 # =============================================================================
-# LAYER 0 → LAYER 1: FORBIDDEN (Upward Dependency)
-# Language plugins must not depend on infrastructure layer
+# CRITICAL ENFORCEMENT: Plugins (Layer 4) cannot depend on Services (Layer 5+)
 # =============================================================================
+# Prevents plugins from reaching up to business logic layer
+# Wrappers list specifies WHO CAN depend on these crates (plugins NOT included)
 
-#[[bans.deny]]
-#name = "cb-core"
-#wrappers = ["cb-plugin-api", "cb-plugin-registry", "cb-lang-common", "cb-lang-rust", "cb-lang-typescript", "cb-lang-markdown", "cb-lang-toml", "cb-lang-yaml"]
+[[bans.deny]]
+name = "cb-services"
+wrappers = ["cb-handlers", "cb-server", "cb-client", "codebuddy", "cb-test-support", "e2e"]
 
-#[[bans.deny]]
-#name = "cb-lsp"
-#wrappers = ["cb-plugin-api", "cb-plugin-registry", "cb-lang-common", "cb-lang-rust", "cb-lang-typescript"]
+[[bans.deny]]
+name = "cb-ast"
+wrappers = ["cb-transport", "cb-services", "codebuddy-plugin-system", "cb-handlers", "cb-server", "codebuddy", "cb-test-support", "e2e"]
 
-# =============================================================================
-# LAYER 0 → LAYER 2+: FORBIDDEN (Upward Dependency)
-# Language plugins must not depend on business logic or higher layers
-# =============================================================================
+[[bans.deny]]
+name = "cb-lsp"
+wrappers = ["cb-services", "cb-handlers", "cb-server", "codebuddy", "cb-test-support", "e2e"]
 
-#[[bans.deny]]
-#name = "cb-services"
-#wrappers = ["cb-plugin-api", "cb-plugin-registry", "cb-lang-common", "cb-lang-rust", "cb-lang-typescript", "cb-lang-markdown", "cb-lang-toml", "cb-lang-yaml"]
+[[bans.deny]]
+name = "codebuddy-plugin-system"
+wrappers = ["cb-services", "cb-handlers", "cb-server", "cb-client", "codebuddy", "cb-test-support", "e2e"]
 
-#[[bans.deny]]
-#name = "cb-ast"
-#wrappers = ["cb-plugin-api", "cb-lang-common", "cb-lang-rust", "cb-lang-typescript"]
-
-#[[bans.deny]]
-#name = "cb-plugins"
-#wrappers = ["cb-plugin-api"]
-
-#[[bans.deny]]
-#name = "cb-server"
-#wrappers = ["cb-plugin-api", "cb-plugin-registry", "cb-lang-common", "cb-lang-rust", "cb-lang-typescript"]
-
-#[[bans.deny]]
-#name = "cb-handlers"
-#wrappers = ["cb-plugin-api"]
-
-#[[bans.deny]]
-#name = "cb-transport"
-#wrappers = ["cb-plugin-api"]
+[[bans.deny]]
+name = "codebuddy-plugin-bundle"
+wrappers = ["cb-services", "cb-server", "codebuddy", "cb-test-support"]
 
 # =============================================================================
-# LAYER 1 → LAYER 2+: FORBIDDEN (Upward Dependency)
-# Infrastructure must not depend on business logic or higher layers
+# CRITICAL ENFORCEMENT: Cross-Plugin Isolation (Layer 4)
 # =============================================================================
+# Prevents plugins from depending on each other (except via cb-lang-common)
 
-#[[bans.deny]]
-#name = "cb-services"
-#wrappers = ["cb-core", "cb-lsp", "cb-types", "cb-protocol", "cb-client"]
+[[bans.deny]]
+name = "cb-lang-rust"
+wrappers = ["cb-ast", "cb-handlers", "cb-services", "codebuddy-plugin-system", "codebuddy-plugin-bundle", "cb-server", "codebuddy", "cb-test-support", "e2e"]
 
-#[[bans.deny]]
-#name = "cb-ast"
-#wrappers = ["cb-core", "cb-lsp"]
+[[bans.deny]]
+name = "cb-lang-typescript"
+wrappers = ["cb-ast", "cb-handlers", "cb-services", "codebuddy-plugin-system", "codebuddy-plugin-bundle", "cb-server", "codebuddy", "cb-test-support", "e2e"]
 
-#[[bans.deny]]
-#name = "cb-plugins"
-#wrappers = ["cb-core"]
+[[bans.deny]]
+name = "cb-lang-markdown"
+wrappers = ["cb-ast", "cb-services", "codebuddy-plugin-system", "codebuddy-plugin-bundle", "cb-test-support"]
 
-#[[bans.deny]]
-#name = "cb-server"
-#wrappers = ["cb-core", "cb-lsp", "cb-types", "cb-protocol", "cb-client"]
+[[bans.deny]]
+name = "cb-lang-toml"
+wrappers = ["cb-services", "codebuddy-plugin-system", "codebuddy-plugin-bundle", "cb-test-support"]
 
-#[[bans.deny]]
-#name = "cb-handlers"
-#wrappers = ["cb-core", "cb-lsp", "cb-protocol"]
-
-#[[bans.deny]]
-#name = "cb-transport"
-#wrappers = ["cb-core", "cb-lsp"]
+[[bans.deny]]
+name = "cb-lang-yaml"
+wrappers = ["cb-services", "codebuddy-plugin-system", "codebuddy-plugin-bundle", "cb-test-support"]
 
 # =============================================================================
-# LAYER 2 → LAYER 3+: FORBIDDEN (Upward Dependency)
-# Business logic must not depend on orchestration or presentation layers
+# IMPORTANT ENFORCEMENT: Services (Layer 5) cannot depend on Handlers (Layer 6+)
 # =============================================================================
 
-#[[bans.deny]]
-#name = "cb-server"
-#wrappers = ["cb-services", "cb-ast", "cb-plugins"]
-
-#[[bans.deny]]
-#name = "cb-handlers"
-#wrappers = ["cb-services", "cb-ast", "cb-plugins"]
-
-#[[bans.deny]]
-#name = "cb-transport"
-#wrappers = ["cb-services", "cb-ast", "cb-plugins"]
+[[bans.deny]]
+name = "cb-handlers"
+wrappers = ["cb-server", "codebuddy", "cb-test-support", "e2e"]
 
 # =============================================================================
-# LAYER 3 → LAYER 4+: FORBIDDEN (Upward Dependency)
-# Orchestration must not depend on presentation layer
+# IMPORTANT ENFORCEMENT: Handlers (Layer 6) cannot depend on Application (Layer 7)
 # =============================================================================
 
-#[[bans.deny]]
-#name = "cb-handlers"
-#wrappers = ["cb-server"]
+[[bans.deny]]
+name = "cb-server"
+wrappers = ["codebuddy", "cb-test-support", "e2e"]
 
-#[[bans.deny]]
-#name = "cb-transport"
-#wrappers = ["cb-server"]
-
-# =============================================================================
-# LAYER 4 → LAYER 5: FORBIDDEN (Upward Dependency)
-# Presentation must not depend on application layer
-# =============================================================================
-
-#[[bans.deny]]
-#name = "codebuddy"
-#wrappers = ["cb-handlers", "cb-transport"]
+[[bans.deny]]
+name = "codebuddy"
+wrappers = ["cb-test-support", "e2e"]
 
 # =============================================================================
-# CROSS-LAYER SHORTCUTS: FORBIDDEN
-# Enforce proper layer traversal (no skipping layers)
+# TEST ISOLATION: Production cannot depend on test-support
 # =============================================================================
 
-# Handlers should not directly use LSP (should go through server/services)
-#[[bans.deny]]
-#name = "cb-lsp"
-#wrappers = ["cb-handlers"]
-
-# Transport should not directly use services (should delegate to handlers)
-#[[bans.deny]]
-#name = "cb-services"
-#wrappers = ["cb-transport"]
-
-#[[bans.deny]]
-#name = "cb-ast"
-#wrappers = ["cb-transport"]
-
-#[[bans.deny]]
-#name = "cb-plugins"
-#wrappers = ["cb-transport"]
+[[bans.deny]]
+name = "cb-test-support"
+wrappers = ["codebuddy", "e2e"]
 
 # =============================================================================
 # ANALYSIS WORKSPACE ISOLATION
-# Analysis crates are separate tooling and should not be runtime dependencies
 # =============================================================================
+# Analysis crates are optional runtime dependencies (feature-gated in cb-handlers)
+# Allow cb-handlers to optionally depend on them via feature flags
 
-#[[bans.deny]]
-#name = "cb-analysis-common"
-#wrappers = ["codebuddy", "cb-server", "cb-services"]
+[[bans.deny]]
+name = "cb-analysis-common"
+wrappers = ["cb-handlers", "cb-analysis-dead-code", "cb-analysis-deep-dead-code", "cb-analysis-graph", "cb-analysis-circular-deps"]
 
-#[[bans.deny]]
-#name = "cb-analysis-dead-code"
-#wrappers = ["codebuddy"]
+[[bans.deny]]
+name = "cb-analysis-dead-code"
+wrappers = ["cb-handlers"]
 
-#[[bans.deny]]
-#name = "cb-analysis-deep-dead-code"
-#wrappers = ["codebuddy"]
+[[bans.deny]]
+name = "cb-analysis-deep-dead-code"
+wrappers = ["cb-handlers"]
 
-#[[bans.deny]]
-#name = "cb-analysis-graph"
-#wrappers = ["codebuddy"]
+[[bans.deny]]
+name = "cb-analysis-graph"
+wrappers = ["cb-handlers", "cb-analysis-circular-deps"]
 
-#[[bans.deny]]
-#name = "cb-analysis-circular-deps"
-#wrappers = ["codebuddy"]
+[[bans.deny]]
+name = "cb-analysis-circular-deps"
+wrappers = ["cb-handlers"]
 
 # List of features to allow/deny
 # Each entry the name of a crate and a version range. If version is

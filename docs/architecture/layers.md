@@ -194,7 +194,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 
 ## Enforcement
 
-The `deny.toml` configuration enforces architectural boundaries programmatically.
+The `deny.toml` configuration enforces architectural boundaries programmatically using cargo-deny's bans feature.
 
 ### Validation Commands
 
@@ -202,9 +202,32 @@ The `deny.toml` configuration enforces architectural boundaries programmatically
 # Check architectural violations
 cargo deny check bans
 
+# Check all (advisories, licenses, bans, sources)
+cargo deny check
+
 # Visualize dependency graph
 cargo depgraph --workspace-only | dot -Tpng > deps.png
 ```
+
+### What's Enforced
+
+**✅ Active Enforcement:**
+- Plugins (Layer 4) cannot depend on Services (Layer 5) or higher
+- Cross-plugin isolation - plugins cannot depend on each other (except via cb-lang-common)
+- Services (Layer 5) cannot depend on Handlers (Layer 6) or higher
+- Handlers (Layer 6) cannot depend on Application (Layer 7)
+- Production crates cannot depend on cb-test-support
+- Analysis crates remain isolated (only cb-handlers can optionally use them via features)
+
+**⚠️ Not Enforced by cargo-deny:**
+- Foundation (Layer 2) isolation - Manually verify codebuddy-foundation only depends on external crates
+- Review Cargo.toml changes to foundation carefully
+
+### Status
+
+- ✅ **Phase 06a COMPLETE** (2025-10-19)
+- Architectural enforcement rules enabled and passing
+- Updated for post-consolidation crate structure
 
 ## Migration Plan (Proposal 06)
 
