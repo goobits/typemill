@@ -1,6 +1,6 @@
 //! Configuration management for Codeflow Buddy
 
-use cb_types::error::{CoreError, CoreResult};
+use codebuddy_foundation::error::{CoreError, CoreResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;

@@ -4,7 +4,7 @@ edition = "2021"
 license.workspace = true
 
 [dependencies]
-cb-types = { path = "../cb-types" }
+codebuddy-foundation = { path = "../codebuddy-foundation" }
 cb-ast = { path = "../cb-ast" }
 cb-lsp = { path = "../cb-lsp" }
 cb-protocol = { path = "../cb-protocol" }

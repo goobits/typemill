@@ -870,7 +870,7 @@ impl FileService {
             .to_string();
 
         // Build the new import prefix
-        // e.g., "cb_types::protocol"
+        // e.g., "codebuddy_foundation::protocol"
         let new_import_prefix = format!("{}::{}", target_crate_name, submodule_name);
 
         info!(

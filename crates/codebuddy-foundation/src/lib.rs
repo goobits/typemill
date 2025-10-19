@@ -10,4 +10,12 @@
 //! - cb-types
 //! - cb-protocol
 
-// Modules will be added here during consolidation
+// ============================================================================
+// TYPES MODULE (consolidated from cb-types)
+// ============================================================================
+pub mod error;
+pub mod model;
+
+// Re-export commonly used types for convenience
+pub use error::*;
+pub use model::*;

@@ -1,6 +1,6 @@
 //! API error types for the codebuddy system
 
-use cb_types::error::{error_codes, ApiError as CoreApiError};
+use codebuddy_foundation::error::{error_codes, ApiError as CoreApiError};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -182,17 +182,17 @@ impl ApiError {
     }
 }
 
-/// Convert from cb_types::error::CoreError to ApiError
-impl From<cb_types::error::CoreError> for ApiError {
-    fn from(error: cb_types::error::CoreError) -> Self {
+/// Convert from codebuddy_foundation::error::CoreError to ApiError
+impl From<codebuddy_foundation::error::CoreError> for ApiError {
+    fn from(error: codebuddy_foundation::error::CoreError) -> Self {
         match error {
-            cb_types::error::CoreError::Config { message } => ApiError::Config { message },
-            cb_types::error::CoreError::NotFound { resource } => ApiError::NotFound(resource),
-            cb_types::error::CoreError::InvalidData { message } => {
+            codebuddy_foundation::error::CoreError::Config { message } => ApiError::Config { message },
+            codebuddy_foundation::error::CoreError::NotFound { resource } => ApiError::NotFound(resource),
+            codebuddy_foundation::error::CoreError::InvalidData { message } => {
                 ApiError::InvalidRequest(message)
             }
-            cb_types::error::CoreError::Internal { message } => ApiError::Internal(message),
-            cb_types::error::CoreError::NotSupported { operation } => {
+            codebuddy_foundation::error::CoreError::Internal { message } => ApiError::Internal(message),
+            codebuddy_foundation::error::CoreError::NotSupported { operation } => {
                 ApiError::Unsupported(operation)
             }
             _ => ApiError::Internal(error.to_string()),
@@ -200,9 +200,9 @@ impl From<cb_types::error::CoreError> for ApiError {
     }
 }
 
-/// Convert from cb_types::model::mcp::McpError to ApiError
-impl From<cb_types::model::mcp::McpError> for ApiError {
-    fn from(error: cb_types::model::mcp::McpError) -> Self {
+/// Convert from codebuddy_foundation::model::mcp::McpError to ApiError
+impl From<codebuddy_foundation::model::mcp::McpError> for ApiError {
+    fn from(error: codebuddy_foundation::model::mcp::McpError) -> Self {
         ApiError::InvalidRequest(error.message)
     }
 }

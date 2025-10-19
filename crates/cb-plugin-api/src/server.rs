@@ -73,7 +73,7 @@ impl<P: LanguagePlugin + 'static> PluginServer<P> {
             Err(e) => {
                 // `PluginError` has a `From` impl for `ApiError`, which can be converted
                 // to the JSON-RPC error format.
-                let api_error: cb_types::error::ApiError = e.into();
+                let api_error: codebuddy_foundation::error::ApiError = e.into();
                 // JSON-RPC error code: -32603 = Internal error
                 return PluginResponse::error(req.id, -32603, &api_error.message);
             }

@@ -15,7 +15,7 @@
 //! - Refactoring operations
 
 use async_trait::async_trait;
-use cb_types::error::ApiError;
+use codebuddy_foundation::error::ApiError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
@@ -133,7 +133,7 @@ impl PluginError {
 /// Convert PluginError to ApiError for MCP responses
 impl From<PluginError> for ApiError {
     fn from(err: PluginError) -> Self {
-        use cb_types::error::error_codes::*;
+        use codebuddy_foundation::error::error_codes::*;
 
         match err {
             PluginError::Parse { message, location } => {

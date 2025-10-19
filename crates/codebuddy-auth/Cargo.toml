@@ -8,7 +8,7 @@ homepage.workspace = true
 description = "Authentication and JWT utilities for Codebuddy"
 
 [dependencies]
-cb-types = { path = "../cb-types" }
+codebuddy-foundation = { path = "../codebuddy-foundation" }
 jsonwebtoken = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

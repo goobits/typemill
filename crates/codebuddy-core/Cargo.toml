@@ -5,7 +5,7 @@ description = "Core types, configuration, and error handling for Codeflow Buddy"
 license = "MIT"
 
 [dependencies]
-cb-types = { path = "../cb-types" }
+codebuddy-foundation = { path = "../codebuddy-foundation" }
 cb-plugin-api = { path = "../cb-plugin-api" }
 codebuddy-config = { path = "../codebuddy-config" }
 serde = { workspace = true }

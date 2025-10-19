@@ -12,5 +12,5 @@ pub mod utils;
 pub use dry_run::{execute_with_dry_run, DryRunnable};
 
 // Re-export from cb-types for backwards compatibility
-pub use cb_types::error::{ApiError, CoreError};
-pub use cb_types::model;
+pub use codebuddy_foundation::error::{ApiError, CoreError};
+pub use codebuddy_foundation::model;
