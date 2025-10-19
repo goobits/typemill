@@ -26,6 +26,7 @@ members = [
     "analysis/cb-analysis-graph",
     "analysis/cb-analysis-circular-deps",
     "tests/e2e",
+    "crates/codebuddy-foundation",
     "crates/codebuddy-core",
     "crates/codebuddy-config",
     "crates/codebuddy-workspaces",
