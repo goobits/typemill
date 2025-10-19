@@ -36,4 +36,3 @@ tokio = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
-codebuddy-core = { path = "../codebuddy-core" }

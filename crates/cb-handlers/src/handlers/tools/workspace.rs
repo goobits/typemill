@@ -7,7 +7,7 @@ use crate::handlers::file_operation_handler::FileOperationHandler;
 use crate::handlers::refactoring_handler::RefactoringHandler;
 use crate::handlers::system_handler::SystemHandler;
 use async_trait::async_trait;
-use codebuddy_core::model::mcp::ToolCall;
+use codebuddy_foundation::core::model::mcp::ToolCall;
 use codebuddy_foundation::protocol::ApiResult as ServerResult;
 use serde_json::Value;
 

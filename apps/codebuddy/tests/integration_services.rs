@@ -226,7 +226,7 @@ async fn test_cache_performance_improvement() {
 
 #[tokio::test]
 async fn test_workspace_edit_in_process() {
-    use codebuddy_core::model::mcp::{ McpMessage , McpRequest };
+    use codebuddy_foundation::core::model::mcp::{ McpMessage , McpRequest };
     use cb_server::test_helpers::create_test_dispatcher_with_root;
     use cb_transport::SessionInfo;
     use std::time::Instant;

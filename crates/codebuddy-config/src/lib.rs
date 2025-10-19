@@ -4,6 +4,7 @@
 //! application settings and refactoring presets.
 
 pub mod config;
+pub mod logging;
 pub mod refactor_config;
 
 // Re-export commonly used types at the crate root for convenience

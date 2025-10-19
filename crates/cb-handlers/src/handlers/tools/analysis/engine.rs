@@ -10,7 +10,7 @@
 //! 6. Build and return AnalysisResult
 
 use super::super::ToolHandlerContext;
-use codebuddy_core::model::mcp::ToolCall;
+use codebuddy_foundation::core::model::mcp::ToolCall;
 use codebuddy_foundation::protocol::analysis_result::{ AnalysisResult , AnalysisScope , Finding };
 use codebuddy_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
 use serde::Deserialize;

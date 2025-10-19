@@ -1,7 +1,7 @@
 //! AST analysis functionality
 
 use crate::error::{AstError, AstResult};
-use codebuddy_core::model::IntentSpec;
+use codebuddy_foundation::core::model::IntentSpec;
 use codebuddy_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };

@@ -36,7 +36,7 @@ mod validation;
 
 use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use codebuddy_core::model::mcp::ToolCall;
+use codebuddy_foundation::core::model::mcp::ToolCall;
 use codebuddy_foundation::protocol::{
     refactor_plan::MovePlan, ApiError as ServerError, ApiResult as ServerResult, RefactorPlan,
 };

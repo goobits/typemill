@@ -69,7 +69,7 @@ impl DoctorCommand {
 
     /// Helper to check if a command exists on the system's PATH.
     fn command_exists(&self, cmd: &str) -> bool {
-        codebuddy_core::utils::system::command_exists(cmd)
+        codebuddy_foundation::core::utils::system::command_exists(cmd)
     }
 }
 

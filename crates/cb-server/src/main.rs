@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Arc::new(AppConfig::load()?);
 
     // Initialize tracing based on configuration
-    codebuddy_core::logging::initialize(&config);
+    codebuddy_config::logging::initialize(&config);
 
     tracing::info!("Starting Codeflow Buddy Server");
 

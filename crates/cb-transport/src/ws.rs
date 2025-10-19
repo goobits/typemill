@@ -3,7 +3,7 @@
 use crate::{McpDispatcher, SessionInfo};
 use codebuddy_auth::jwt::{decode, Claims, DecodingKey, Validation};
 use codebuddy_config::AppConfig;
-use codebuddy_core::model::mcp::{McpError, McpMessage, McpRequest, McpResponse};
+use codebuddy_foundation::core::model::mcp::{ McpError , McpMessage , McpRequest , McpResponse };
 use codebuddy_foundation::protocol::{ ApiError , ApiResult };
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -200,7 +200,7 @@ async fn handle_connection(
                 let request_id = uuid::Uuid::new_v4();
 
                 // Create request span for automatic context propagation
-                let span = codebuddy_core::logging::request_span(&request_id.to_string(), "websocket");
+                let span = codebuddy_config::logging::request_span(&request_id.to_string(), "websocket");
                 let _enter = span.enter();
 
                 tracing::debug!(message_size = text.len(), "Received message");

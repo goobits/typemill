@@ -6,7 +6,7 @@
 
 use super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use codebuddy_core::model::mcp::ToolCall;
+use codebuddy_foundation::core::model::mcp::ToolCall;
 use cb_plugin_api::{CreatePackageConfig, PackageType, Template};
 use codebuddy_foundation::protocol::{ ApiError , ApiResult as ServerResult };
 use serde::{Deserialize, Serialize};

@@ -64,7 +64,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
 {
   "target": {
     "kind": "file",                          // "file" or "directory"
-    "path": "crates/codebuddy-core/src/auth.rs"
+    "path": "../../crates/codebuddy-foundation/src/core/src/auth.rs"
   },
   "options": {
     "include_dev_dependencies": false,       // Optional
@@ -105,7 +105,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
 **Parameters:**
 ```json
 {
-  "source_manifest": "crates/codebuddy-core/Cargo.toml",
+  "source_manifest": "../../crates/codebuddy-foundation/src/core/Cargo.toml",
   "target_manifest": "crates/codebuddy-auth/Cargo.toml",
   "dependencies": ["tokio", "jsonwebtoken", "serde"],  // From analyze.module_dependencies
   "options": {
@@ -143,7 +143,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
 {
   "target": {
     "kind": "file",
-    "path": "crates/codebuddy-core/src/auth.rs"
+    "path": "../../crates/codebuddy-foundation/src/core/src/auth.rs"
   },
   "new_name": "crates/codebuddy-auth/src/lib.rs",
   "options": {
@@ -171,7 +171,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
     /* ... LSP WorkspaceEdit with import updates ... */
   ],
   "warnings": [
-    "After extraction, remove 'pub mod auth;' from crates/codebuddy-core/src/lib.rs"
+    "After extraction, remove 'pub mod auth;' from ../../crates/codebuddy-foundation/src/core/src/lib.rs"
   ]
 }
 ```
@@ -205,7 +205,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
   "member": "crates/codebuddy-auth",
   "manifest_updated": true,
   "current_members": [
-    "crates/codebuddy-core",
+    "../../crates/codebuddy-foundation/src/core",
     "crates/codebuddy-auth",
     // ... etc
   ]
@@ -240,7 +240,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
   "arguments": {
     "target": {
       "kind": "file",
-      "path": "crates/codebuddy-core/src/auth.rs"
+      "path": "../../crates/codebuddy-foundation/src/core/src/auth.rs"
     }
   }
 }
@@ -252,7 +252,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
 {
   "tool": "workspace.extract_dependencies",
   "arguments": {
-    "source_manifest": "crates/codebuddy-core/Cargo.toml",
+    "source_manifest": "../../crates/codebuddy-foundation/src/core/Cargo.toml",
     "target_manifest": "crates/codebuddy-auth/Cargo.toml",
     "dependencies": ["tokio", "jsonwebtoken", "serde"],
     "options": { "dry_run": false }
@@ -268,7 +268,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
   "arguments": {
     "target": {
       "kind": "file",
-      "path": "crates/codebuddy-core/src/auth.rs"
+      "path": "../../crates/codebuddy-foundation/src/core/src/auth.rs"
     },
     "new_name": "crates/codebuddy-auth/src/lib.rs",
     "options": { "split": true }
@@ -290,7 +290,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
 ✅ Moves file, updates all `use codebuddy_core::auth::*` → `use codebuddy_auth::*`
 
 ### Step 6: Manual cleanup (minimal)
-- Remove `pub mod auth;` from `crates/codebuddy-core/src/lib.rs`
+- Remove `pub mod auth;` from `../../crates/codebuddy-foundation/src/core/src/lib.rs`
 - Run `cargo check --workspace`
 
 ## Success Criteria

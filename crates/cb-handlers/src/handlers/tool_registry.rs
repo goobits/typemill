@@ -3,7 +3,7 @@
 //! Central registry for all tool handlers with automatic routing based on tool names.
 
 use super::tools::{ToolHandler, ToolHandlerContext};
-use codebuddy_core::model::mcp::ToolCall;
+use codebuddy_foundation::core::model::mcp::ToolCall;
 use codebuddy_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
 use serde_json::Value;
 use std::collections::HashMap;

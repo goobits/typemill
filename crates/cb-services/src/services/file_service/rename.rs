@@ -1,6 +1,6 @@
 use super::FileService;
 use crate::services::git_service::GitService;
-use codebuddy_core::dry_run::DryRunnable;
+use codebuddy_foundation::core::dry_run::DryRunnable;
 use codebuddy_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult , EditPlan };
 use serde_json::{json, Value};
 use std::path::Path;
@@ -36,7 +36,7 @@ impl FileService {
         &self,
         old_path: &Path,
         new_path: &Path,
-        rename_scope: Option<&codebuddy_core::rename_scope::RenameScope>,
+        rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
     ) -> ServerResult<EditPlan> {
         info!(old_path = ?old_path, new_path = ?new_path, "Planning file rename with imports");
 
@@ -51,7 +51,7 @@ impl FileService {
         &self,
         old_dir_path: &Path,
         new_dir_path: &Path,
-        rename_scope: Option<&codebuddy_core::rename_scope::RenameScope>,
+        rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
     ) -> ServerResult<EditPlan> {
         info!(old_dir_path = ?old_dir_path, new_dir_path = ?new_dir_path, "Planning directory rename with imports");
 

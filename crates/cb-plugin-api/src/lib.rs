@@ -25,6 +25,7 @@ use std::path::Path;
 // ============================================================================
 
 pub mod import_support;
+pub mod language;
 pub mod metadata;
 pub mod plugin_registry;
 pub mod project_factory;

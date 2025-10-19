@@ -12,7 +12,7 @@ mod utils;
 
 use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use codebuddy_core::model::mcp::ToolCall;
+use codebuddy_foundation::core::model::mcp::ToolCall;
 use codebuddy_foundation::protocol::{
     refactor_plan::{PlanSummary, PlanWarning},
     ApiError as ServerError, ApiResult as ServerResult, RefactorPlan,
@@ -76,7 +76,7 @@ pub(crate) struct RenameOptions {
 
     /// Custom scope configuration (when scope="custom")
     #[serde(default)]
-    pub custom_scope: Option<codebuddy_core::rename_scope::RenameScope>,
+    pub custom_scope: Option<codebuddy_foundation::core::rename_scope::RenameScope>,
 
     /// Consolidate source package into target (for directory renames only)
     /// When true, merges Cargo.toml dependencies and updates all imports.
@@ -87,10 +87,10 @@ pub(crate) struct RenameOptions {
 
 impl RenameOptions {
     /// Build RenameScope from options
-    pub fn to_rename_scope(&self) -> Option<codebuddy_core::rename_scope::RenameScope> {
+    pub fn to_rename_scope(&self) -> Option<codebuddy_foundation::core::rename_scope::RenameScope> {
         match self.scope.as_deref() {
-            Some("code-only") => Some(codebuddy_core::rename_scope::RenameScope::code_only()),
-            Some("all") | None => Some(codebuddy_core::rename_scope::RenameScope::all()),
+            Some("code-only") => Some(codebuddy_foundation::core::rename_scope::RenameScope::code_only()),
+            Some("all") | None => Some(codebuddy_foundation::core::rename_scope::RenameScope::all()),
             Some("custom") => self.custom_scope.clone(),
             _ => None,
         }

@@ -18,7 +18,7 @@
 
 use crate::register_handlers_with_logging;
 use async_trait::async_trait;
-use codebuddy_core::model::mcp::{ McpMessage , McpRequest , McpResponse , ToolCall };
+use codebuddy_foundation::core::model::mcp::{ McpMessage , McpRequest , McpResponse , ToolCall };
 use codebuddy_workspaces::WorkspaceManager;
 use codebuddy_plugin_system::{LspAdapterPlugin, PluginManager};
 use codebuddy_foundation::protocol::AstService;

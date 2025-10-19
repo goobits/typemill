@@ -21,7 +21,6 @@ ignore = "0.4"
 reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], default-features = false }
 html2md-rs = "0.10"
 url = "2.4"
-codebuddy-core = { path = "../codebuddy-core", optional = true }
 codebuddy-config = { path = "../codebuddy-config", optional = true }
 
 [dev-dependencies]
@@ -29,7 +28,7 @@ tokio-test = "0.4"
 
 [features]
 default = ["runtime"]
-runtime = ["codebuddy-core", "codebuddy-config", "cb-ast", "codebuddy-foundation"]
+runtime = ["codebuddy-foundation", "codebuddy-config", "cb-ast"]
 mcp-proxy = ["runtime", "codebuddy-config/mcp-proxy"]
 lang-rust = ["runtime"]
 lang-typescript = ["runtime"]

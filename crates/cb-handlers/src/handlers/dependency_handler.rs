@@ -2,7 +2,7 @@
 
 use super::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use codebuddy_core::model::mcp::ToolCall;
+use codebuddy_foundation::core::model::mcp::ToolCall;
 use codebuddy_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
 use serde::Deserialize;
 use serde_json::{json, Value};
