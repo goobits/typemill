@@ -348,49 +348,46 @@ impl FileService {
             let mut total_files_updated = std::collections::HashSet::new();
             let mut all_errors = Vec::new();
 
-            info!("Finding affected files before directory rename");
+            info!("Planning directory move and import updates");
 
+            // CRITICAL: Plan FIRST before making any filesystem changes
             // Use MoveService for planning - it handles all Cargo package logic internally
-            let edit_plan_result = self.move_service()
+            let edit_plan = self.move_service()
                 .plan_directory_move(&old_abs_dir, &new_abs_dir, scan_scope)
-                .await;
+                .await?; // Fail fast if planning fails
+
+            info!(
+                edits_planned = edit_plan.edits.len(),
+                "Plan generated successfully, now performing directory rename"
+            );
 
             // Now perform the actual directory rename
-            info!(
-                edits_planned = edit_plan_result.as_ref().map(|p| p.edits.len()).unwrap_or(0),
-                "Found affected files, now performing directory rename"
-            );
+            // Only execute if planning succeeded
             self.perform_rename(&old_abs_dir, &new_abs_dir).await?;
             info!("Directory renamed successfully");
 
             // Apply the edit plan to update imports
-            match edit_plan_result {
-                Ok(edit_plan) => match self.apply_edit_plan(&edit_plan).await {
-                    Ok(result) => {
-                        total_edits_applied += edit_plan.edits.len();
-                        let files_modified_count = result.modified_files.len();
-                        for file in result.modified_files {
-                            total_files_updated.insert(file);
-                        }
-                        if let Some(errors) = result.errors {
-                            all_errors.extend(errors);
-                        }
-                        info!(
-                            edits_applied = edit_plan.edits.len(),
-                            files_modified = files_modified_count,
-                            "Successfully updated imports for directory rename"
-                        );
+            match self.apply_edit_plan(&edit_plan).await {
+                Ok(result) => {
+                    total_edits_applied += edit_plan.edits.len();
+                    let files_modified_count = result.modified_files.len();
+                    for file in result.modified_files {
+                        total_files_updated.insert(file);
                     }
-                    Err(e) => {
-                        let error_msg =
-                            format!("Failed to apply import edits for directory rename: {}", e);
-                        warn!(error = %e, "Import update failed for directory");
-                        all_errors.push(error_msg);
+                    if let Some(errors) = result.errors {
+                        all_errors.extend(errors);
                     }
-                },
+                    info!(
+                        edits_applied = edit_plan.edits.len(),
+                        files_modified = files_modified_count,
+                        "Successfully updated imports for directory rename"
+                    );
+                }
                 Err(e) => {
-                    warn!(error = %e, old_dir = ?old_abs_dir, "Failed to update imports for directory");
-                    all_errors.push(format!("Failed to update imports for directory: {}", e));
+                    let error_msg =
+                        format!("Failed to apply import edits for directory rename: {}", e);
+                    warn!(error = %e, "Import update failed for directory");
+                    all_errors.push(error_msg);
                 }
             }
 
