@@ -209,22 +209,23 @@ skip-tree = [
 ]
 
 # =============================================================================
-# ARCHITECTURAL LAYER ENFORCEMENT (DISABLED - NEEDS REFINEMENT)
+# ARCHITECTURAL LAYER ENFORCEMENT (DISABLED DURING CONSOLIDATION)
 # =============================================================================
-# NOTE: These rules are temporarily disabled as they're causing false positives
-# TODO: Refine the syntax for conditional bans based on cargo-deny documentation
+# NOTE: These rules are temporarily disabled during Proposal 06 consolidation
+# TODO: Enable and update after consolidation completes (crate renames, merges)
 # This section enforces the layered architecture documented in:
 # docs/architecture/layers.md
 #
-# Layer Hierarchy (higher layers may depend on lower layers only):
-# - Layer 5: Application (apps/codebuddy)
-# - Layer 4: Presentation (cb-transport, cb-handlers)
-# - Layer 3: Orchestration (cb-server)
-# - Layer 2: Business Logic (cb-services, cb-ast, cb-plugins)
-# - Layer 1: Infrastructure (cb-lsp, cb-core, cb-types, cb-protocol, cb-client)
-# - Layer 0: Language Plugins (cb-lang-*, cb-plugin-api, cb-plugin-registry)
+# NEW Layer Hierarchy (Proposal 06 - post-consolidation):
+# - Layer 7: Application (cb-server, cb-client, cb-transport)
+# - Layer 6: Handlers (cb-handlers)
+# - Layer 5: Services (cb-services, cb-ast, cb-lsp, codebuddy-plugin-system)
+# - Layer 4: Language Plugins (cb-lang-*)
+# - Layer 3: Plugin API (cb-plugin-api)
+# - Layer 2: Foundation (codebuddy-foundation after consolidation)
+# - Layer 1: Support (cb-test-support, xtask, analysis/*)
 #
-# DISABLED until syntax is corrected:
+# DISABLED until consolidation completes, then will be updated for new structure:
 
 # =============================================================================
 # LAYER 0 → LAYER 1: FORBIDDEN (Upward Dependency)

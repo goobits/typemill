@@ -1,267 +1,233 @@
-# Architectural Layers & Dependency Model
+# Architectural Layers
 
-This document defines the formal layered architecture for the Codebuddy project. These layers are programmatically enforced using `cargo-deny` to prevent architectural drift and maintain clean separation of concerns.
+This document defines the layered dependency model for the Codebuddy/TypeMill workspace. These layers are programmatically enforced using `cargo-deny` to prevent "spider web" dependencies and maintain clean architecture.
 
 ## Layer Hierarchy
 
-The architecture follows a strict **unidirectional dependency flow**: higher layers may depend on lower layers, but never the reverse.
+Layers are organized from foundational (bottom) to application (top). Each layer can only depend on layers below it, never above.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    LAYER 5: APPLICATION                     │
-│                      (apps/codebuddy)                       │
-│                                                             │
-│  Entry point, CLI parsing, bootstrap, process management   │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ depends on ↓
-┌─────────────────────────────────────────────────────────────┐
-│                  LAYER 4: PRESENTATION                      │
-│              (cb-transport, cb-handlers)                    │
-│                                                             │
-│  MCP routing, WebSocket/stdio, session mgmt, marshaling    │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ depends on ↓
-┌─────────────────────────────────────────────────────────────┐
-│              LAYER 3: ORCHESTRATION & SERVER                │
-│                      (cb-server)                            │
-│                                                             │
-│  Tool registry, plugin dispatch, app state, request loop   │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ depends on ↓
-┌─────────────────────────────────────────────────────────────┐
-│                LAYER 2: BUSINESS LOGIC                      │
-│          (cb-services, cb-ast, cb-plugins)                  │
-│                                                             │
-│  Refactoring, analysis, import mgmt, plugin system          │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ depends on ↓
-┌─────────────────────────────────────────────────────────────┐
-│             LAYER 1: INFRASTRUCTURE & CORE                  │
-│   (cb-lsp, cb-core, cb-types, cb-protocol, cb-client)       │
-│                                                             │
-│  LSP comm, config, logging, error types, protocol defs     │
-└─────────────────────────────────────────────────────────────┘
-                           │ depends on ↓
-┌─────────────────────────────────────────────────────────────┐
-│               LAYER 0: LANGUAGE PLUGINS                     │
-│         (cb-lang-*, cb-lang-common, cb-plugin-api)          │
-│                                                             │
-│  Language-specific parsers, analyzers, plugin API           │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│  Layer 7: Application                   │  ← Entry points, CLI, servers
+├─────────────────────────────────────────┤
+│  Layer 6: Handlers                      │  ← MCP tool handlers
+├─────────────────────────────────────────┤
+│  Layer 5: Services                      │  ← Business logic, LSP integration
+├─────────────────────────────────────────┤
+│  Layer 4: Language Plugins              │  ← Language-specific implementations
+├─────────────────────────────────────────┤
+│  Layer 3: Plugin API                    │  ← Plugin trait definitions
+├─────────────────────────────────────────┤
+│  Layer 2: Foundation                    │  ← Core types, protocol, config
+├─────────────────────────────────────────┤
+│  Layer 1: Support (special)             │  ← Testing, tooling (can access any layer)
+└─────────────────────────────────────────┘
 ```
 
 ## Layer Definitions
 
-### Layer 5: Application
-**Crates**: `apps/codebuddy`
+### Layer 1: Support (Special Status)
 
-**Responsibilities**:
-- Binary entry point (`main()`)
-- CLI argument parsing
-- Server bootstrap and initialization
-- Process lifecycle management
+**Purpose:** Testing infrastructure, build tooling, and analysis tools
 
-**May depend on**: All lower layers
+**Crates:**
+- `cb-test-support` / `codebuddy-test-support`
+- `xtask`
+- `analysis/*` (codebuddy-analysis-*)
 
-**Must NOT**:
-- Contain business logic
-- Implement protocol handlers
-- Perform file I/O directly
+**Dependencies:** Can access any layer (testing needs)
+
+**Rationale:** Test and tooling crates need broad access to verify system behavior. They are never depended upon by production code.
 
 ---
 
-### Layer 4: Presentation
-**Crates**: `cb-transport`, `cb-handlers`
+### Layer 2: Foundation
 
-**Responsibilities**:
-- MCP request routing and dispatch
-- Transport protocol handling (WebSocket, stdio)
-- Session management
-- Request/response marshaling
-- Tool handler registration
+**Purpose:** Core data structures, protocol definitions, and configuration
 
-**May depend on**: Layers 0-3
+**Crates:**
+- `cb-types` / `codebuddy-types`
+- `cb-protocol` / `codebuddy-protocol`
+- `codebuddy-config`
+- `codebuddy-core` (configuration, logging, errors)
 
-**Must NOT**:
-- Contain business logic (e.g., plan conversion, validation)
-- Perform direct file I/O
-- Implement LSP communication
-- Parse or analyze code
+**Dependencies:**
+- External crates only (serde, tokio, etc.)
+- No workspace crate dependencies
 
----
+**Constraints:**
+- No upward dependencies
+- Minimal external dependencies
+- Stable APIs (changes ripple through entire codebase)
 
-### Layer 3: Orchestration & Server
-**Crates**: `cb-server`
-
-**Responsibilities**:
-- Central orchestration and wiring
-- Tool registry management
-- Plugin dispatcher coordination
-- AppState service container
-- Main request processing loop
-
-**May depend on**: Layers 0-2
-
-**Must NOT**:
-- Implement transport protocols
-- Contain business logic
-- Perform direct file operations
+**Planned Consolidation:**
+- **Target:** Merge `cb-types`, `cb-protocol`, `codebuddy-core` → `codebuddy-foundation`
+- **Rationale:** These crates are tightly coupled and rarely modified independently
 
 ---
 
-### Layer 2: Business Logic
-**Crates**: `cb-services`, `cb-ast`, `cb-plugins`
+### Layer 3: Plugin API
 
-**Responsibilities**:
-- Refactoring operations (plan generation, execution)
-- Code analysis and transformations
-- Import and reference management
-- Plugin system implementation
-- Service trait implementations
-- Plan conversion and validation
+**Purpose:** Define language plugin trait and capabilities
 
-**May depend on**: Layers 0-1
+**Crates:**
+- `cb-plugin-api` / `codebuddy-plugin-api`
 
-**Must NOT**:
-- Handle MCP protocol concerns
-- Manage WebSocket/stdio connections
-- Implement CLI parsing
+**Dependencies:**
+- Layer 2: Foundation (types, protocol)
 
-**Key Services**:
-- `AstService`: Code parsing and analysis
-- `FileService`: File operations with locking
-- `ReferenceUpdater`: Import/reference tracking
-- `PluginManager`: Language plugin dispatch
+**Constraints:**
+- Must remain stable (external plugins depend on this)
+- No dependencies on language implementations
+- No dependencies on services or handlers
 
 ---
 
-### Layer 1: Infrastructure & Core
-**Crates**: `cb-lsp`, `cb-core`, `cb-types`, `cb-protocol`, `cb-client`
+### Layer 4: Language Plugins
 
-**Responsibilities**:
-- LSP server communication (`cb-lsp`)
-- Configuration management (`cb-core`)
-- Logging and error handling (`cb-core`)
-- Core data types (`cb-types`)
-- Protocol trait definitions (`cb-protocol`)
-- CLI/WebSocket client (`cb-client`)
+**Purpose:** Language-specific implementations of code intelligence
 
-**May depend on**: Layer 0 only
+**Crates:**
+- `cb-lang-common` / `codebuddy-lang-common` (shared utilities)
+- `cb-lang-rust` / `codebuddy-lang-rust`
+- `cb-lang-typescript` / `codebuddy-lang-typescript`
+- `cb-lang-markdown` / `codebuddy-lang-markdown`
+- `cb-lang-toml` / `codebuddy-lang-toml`
+- `cb-lang-yaml` / `codebuddy-lang-yaml`
 
-**Must NOT**:
-- Contain business logic
-- Implement MCP tool handlers
-- Parse or analyze code
+**Dependencies:**
+- Layer 3: Plugin API
+- Layer 2: Foundation
 
-**Special Note**: `cb-protocol` defines service traits (interfaces) that Layer 2 implements. This is the **dependency inversion boundary**.
+**Constraints:**
+- Plugins are independent (no cross-plugin dependencies)
+- Each plugin only depends on plugin-api and foundation
+- `cb-lang-common` can be used by any plugin for shared utilities
 
 ---
 
-### Layer 0: Language Plugins
-**Crates**: `cb-lang-*`, `cb-lang-common`, `cb-plugin-api`, `cb-plugin-registry`
+### Layer 5: Services
 
-**Responsibilities**:
-- Language-specific parsing and analysis
-- Plugin API trait definitions (`cb-plugin-api`)
-- Plugin registration system (`cb-plugin-registry`)
-- Shared plugin utilities (`cb-lang-common`)
-- Individual language plugins (`cb-lang-rust`, `cb-lang-typescript`, etc.)
+**Purpose:** Core business logic, file operations, AST processing, LSP integration
 
-**May depend on**: Standard library and external parsing crates only
+**Crates:**
+- `cb-ast` / `codebuddy-ast` (AST parsing, code analysis)
+- `cb-services` / `codebuddy-services` (file service, lock manager, planner)
+- `cb-lsp` / `codebuddy-lsp` (LSP client management)
+- `codebuddy-plugin-bundle` (plugin registration)
+- `codebuddy-plugin-system` (plugin loading, dispatch)
 
-**Must NOT**:
-- Depend on any workspace crates outside Layer 0
-- Implement MCP or LSP protocol handling
-- Contain orchestration logic
+**Dependencies:**
+- Layer 4: Language Plugins
+- Layer 3: Plugin API
+- Layer 2: Foundation
 
-**Exception**: Plugins may depend on `cb-types` for shared data structures (e.g., `Symbol`, `SourceLocation`).
+**Constraints:**
+- Services coordinate plugins but don't implement language logic
+- No dependencies on handlers or application layer
+- Services can depend on each other within this layer (cb-services may use cb-ast)
+
+**Planned Consolidation:**
+- **Target:** Merge plugin-related crates → `codebuddy-plugin-system`
+- **Rationale:** Plugin loading and dispatch are tightly coupled
+
+---
+
+### Layer 6: Handlers
+
+**Purpose:** MCP tool implementations that delegate to services
+
+**Crates:**
+- `cb-handlers` / `codebuddy-handlers`
+
+**Dependencies:**
+- Layer 5: Services
+- Layer 4: Language Plugins (for thin delegating handlers)
+- Layer 3: Plugin API
+- Layer 2: Foundation
+
+**Constraints:**
+- Handlers are thin adapters (business logic belongs in services)
+- No upward dependencies
+- May directly access language plugins for simple delegation
+
+---
+
+### Layer 7: Application
+
+**Purpose:** Server, client, transport, and CLI entry points
+
+**Crates:**
+- `cb-server` / `codebuddy-server` (MCP server orchestration)
+- `cb-client` / `codebuddy-client` (CLI client, WebSocket client)
+- `cb-transport` / `codebuddy-transport` (stdio, WebSocket protocols)
+- `codebuddy-auth` (authentication)
+- `codebuddy-workspaces` (workspace management)
+
+**Dependencies:**
+- Layer 6: Handlers
+- Layer 5: Services
+- Layer 3: Plugin API (for registration)
+- Layer 2: Foundation
+
+**Constraints:**
+- Top-level wiring and initialization only
+- No business logic (delegate to services/handlers)
+- Entry points for binaries
 
 ---
 
 ## Dependency Rules
 
-### Allowed Dependencies
+### ✅ Allowed Dependencies
 
-| Layer | May Depend On | Rationale |
-|-------|---------------|-----------|
-| **5: Application** | 0, 1, 2, 3, 4 | Entry point needs access to all layers |
-| **4: Presentation** | 0, 1, 2, 3 | Needs server orchestration and services |
-| **3: Orchestration** | 0, 1, 2 | Wires together business logic and infrastructure |
-| **2: Business Logic** | 0, 1 | Uses infrastructure and language plugins |
-| **1: Infrastructure** | 0 | Uses plugin API for extensibility |
-| **0: Language Plugins** | None (stdlib + external crates only) | Pure language-specific logic |
+1. **Downward only:** Higher layers depend on lower layers
+2. **Same layer:** Within Layer 5 (services can depend on each other)
+3. **Support access:** Layer 1 (test/tooling) can access any layer
 
-### Forbidden Dependencies (Enforced by cargo-deny)
+### ❌ Forbidden Dependencies
 
-These rules prevent architectural violations:
+1. **Upward:** Lower layers depending on higher layers
+2. **Cross-plugin:** Language plugins depending on each other
+3. **Handler bypass:** Application layer bypassing handlers to call services directly
+4. **Production depends on test:** Any production crate depending on `cb-test-support`
 
-1. **No Upward Dependencies**: Lower layers MUST NOT depend on higher layers
-   - `cb-core` → `cb-services` ❌
-   - `cb-lsp` → `cb-server` ❌
-   - `cb-types` → `cb-handlers` ❌
+## Enforcement
 
-2. **No Cross-Layer Shortcuts**: Must follow layer hierarchy
-   - `cb-handlers` → `cb-lsp` directly ❌ (should go through `cb-server` or service traits)
-   - `apps/codebuddy` → `cb-ast` directly ❌ (should go through `cb-server`)
+The `deny.toml` configuration enforces architectural boundaries programmatically.
 
-3. **No Business Logic in Presentation**: Presentation layer must delegate to services
-   - `cb-handlers` must not implement plan conversion, validation, or file I/O
+### Validation Commands
 
-4. **No Infrastructure Logic in Business**: Business logic uses infrastructure through abstractions
-   - `cb-services` should not directly spawn LSP servers (use `cb-lsp` abstractions)
+```bash
+# Check architectural violations
+cargo deny check bans
 
-## Special Cases
+# Visualize dependency graph
+cargo depgraph --workspace-only | dot -Tpng > deps.png
+```
 
-### Cross-Cutting Concerns
+## Migration Plan (Proposal 06)
 
-**Testing Utilities** (`cb-test-support`, `cb-bench`):
-- May depend on any layer for testing purposes
-- Exempt from layer restrictions (test-only code)
-
-**Analysis Tools** (`analysis/*` crates):
-- Separate workspace for tooling
-- May analyze workspace structure but not participate in runtime architecture
-
-### Dependency Inversion
-
-The `cb-protocol` crate contains **trait definitions only**:
-- Defines `AstService`, `LspService`, `MessageDispatcher`, `ToolHandler` traits
-- Has no implementations (zero-cost abstraction boundary)
-- Higher layers depend on these traits
-- Lower layers implement these traits
-
-This creates proper dependency inversion: both presentation (`cb-handlers`) and business logic (`cb-services`) depend on the protocol abstraction, not on each other.
-
-## Validation
-
-These rules are enforced by:
-
-1. **`cargo-deny`**: Graph rules in `deny.toml` prevent forbidden dependencies
-2. **CI Pipeline**: Fails builds that violate layer boundaries
-3. **Code Review**: Manual review for architectural concerns
-4. **Documentation**: This file serves as the source of truth
-
-## Migration Path
-
-During the workspace consolidation (Proposal 06), crates will be merged while preserving these layers:
-
-- `cb-core` + `cb-types` + `cb-protocol` → `codebuddy-foundation` (Layer 1)
-- `cb-plugins` + `cb-plugin-registry` → `codebuddy-plugin-system` (Layer 0/2 boundary)
-- All crates renamed to `codebuddy-*` prefix
-
-The layer definitions will remain the same, but enforcement will be stricter after consolidation.
+This layered architecture will be fully realized through Proposal 06's consolidation and standardization phases.
 
 ## Benefits
 
-1. **Prevents Architectural Drift**: Automated enforcement stops violations at build time
-2. **Clear Mental Model**: Developers understand where code belongs
-3. **Easier Testing**: Each layer can be tested in isolation
-4. **Flexible Refactoring**: Layer boundaries define safe refactoring zones
-5. **Documentation as Code**: `deny.toml` serves as executable architecture documentation
+### For Developers
+- **Clear mental model:** Know where to add code
+- **Reduced coupling:** Changes are more localized
+- **Easier debugging:** Dependency direction is predictable
+
+### For Architecture
+- **Prevents rot:** Automatic detection of violations
+- **Scalable:** New crates fit into clear layers
+- **Modular:** Layers can be versioned independently
+
+### For Testing
+- **Isolated testing:** Lower layers test without mocking upper layers
+- **Clear boundaries:** Test one layer at a time
 
 ## References
 
-- [SOC_LAYER_DIAGRAM.md](../../SOC_LAYER_DIAGRAM.md) - Current state analysis and violations
-- [overview.md](./overview.md) - Detailed architecture documentation
-- [Proposal 06](../../proposals/06_workspace_consolidation.proposal.md) - Consolidation plan
-- `deny.toml` - Programmatic enforcement configuration
+- **Proposal 06:** Workspace Consolidation & Architectural Hardening
+- **deny.toml:** Programmatic enforcement configuration
+- **Architecture Overview:** [overview.md](overview.md)
