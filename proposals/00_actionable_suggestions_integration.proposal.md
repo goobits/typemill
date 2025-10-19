@@ -1,11 +1,12 @@
-# Proposal 01c2: Actionable Suggestions - Analysis Integration
+# Proposal 00: Actionable Suggestions - Analysis Integration
 
-**Status**: ⚠️ **PARTIALLY COMPLETE** (Dead Code Integration Only)
+**Status**: ✅ **DEAD CODE COMPLETE** | ⚠️ Other categories pending
 **Author**: Project Team
 **Date**: 2025-10-13 (Split from 01c)
+**Completion Date**: 2025-10-18 (Dead Code)
 **Parent Proposal**: [01b_unified_analysis_api.md](01b_unified_analysis_api.md)
 **Dependencies**: ✅ 01a, ✅ 01b, ✅ 01c1 (Core Infrastructure - MERGED)
-**Branch**: ✅ `feature/01c2-suggestions-integration` (MERGED - Partial)
+**Branch**: ✅ `feature/01c2-suggestions-integration` (MERGED)
 
 ---
 
@@ -19,53 +20,63 @@
 
 **Depends On**: ✅ 01c1 (Core Infrastructure) - MERGED
 
-**Current Status**: ⚠️ PARTIAL IMPLEMENTATION MERGED
-- ✅ Dead code integration (2 of 6 kinds: unused_imports, unused_symbols)
-- ❌ Remaining 4 dead code kinds (unreachable_code, unused_parameters, unused_types, unused_variables)
-- ❌ Quality, dependencies, structure, documentation, tests categories
-- ❌ Closed-loop workflow test
+**Current Status**: ✅ **DEAD CODE COMPLETE (All 6 kinds)**
+- ✅ Dead code integration (6 of 6 kinds complete)
+  - ✅ unused_imports - COMPLETE
+  - ✅ unused_symbols - COMPLETE
+  - ✅ unreachable_code - COMPLETE
+  - ✅ unused_parameters - COMPLETE
+  - ✅ unused_types - COMPLETE
+  - ✅ unused_variables - COMPLETE
+- ✅ All 6 dead code integration tests passing
+- ❌ Quality analysis - NOT STARTED
+- ❌ Dependencies analysis - NOT STARTED
+- ❌ Structure analysis - NOT STARTED
+- ❌ Documentation analysis - NOT STARTED
+- ❌ Tests analysis - NOT STARTED
+- ❌ Closed-loop workflow test - NOT STARTED
 
-**Known Issues**: 5 of 6 integration tests fail because suggestion generation only works for 2 dead code kinds.
+**Test Results**: ✅ 6/6 dead code tests passing, 822/822 workspace tests passing
 
 ---
 
 ## Scope - What This Branch Delivers
 
-### Category Integration ⚠️ PARTIAL
+### Category Integration ✅ DEAD CODE COMPLETE
 Integrate `SuggestionGenerator` into analysis handlers:
 - ❌ `analyze.quality` (complexity, code smells, maintainability, readability) - NOT STARTED
-- ⚠️ `analyze.dead_code` (unused imports, symbols) - **PARTIAL: 2 of 6 kinds**
-  - ✅ unused_imports - suggestion generation working
-  - ✅ unused_symbols - suggestion generation working
-  - ❌ unreachable_code - NO suggestions (still uses old path)
-  - ❌ unused_parameters - NO suggestions (still uses old path)
-  - ❌ unused_types - NO suggestions (still uses old path)
-  - ❌ unused_variables - NO suggestions (still uses old path)
+- ✅ `analyze.dead_code` (unused imports, symbols) - **COMPLETE: All 6 kinds**
+  - ✅ unused_imports - COMPLETE
+  - ✅ unused_symbols - COMPLETE
+  - ✅ unreachable_code - COMPLETE
+  - ✅ unused_parameters - COMPLETE
+  - ✅ unused_types - COMPLETE
+  - ✅ unused_variables - COMPLETE
 - ❌ `analyze.dependencies` (circular deps, coupling, cohesion) - NOT STARTED
 - ❌ `analyze.structure` (hierarchy, interfaces, inheritance) - NOT STARTED
 - ❌ `analyze.documentation` (coverage, quality, style) - NOT STARTED
 - ❌ `analyze.tests` (coverage, quality, assertions) - NOT STARTED
 
-### Refactoring Generators ⚠️ PARTIAL
+### Refactoring Generators ✅ DEAD CODE COMPLETE
 Implement finding-specific refactoring candidate generators:
 - ❌ **Quality**: Complexity → extract method, simplify boolean - NOT STARTED
-- ⚠️ **Dead Code**: Unused → delete (PARTIAL - only 2 kinds generate candidates)
-  - ✅ `generate_dead_code_refactoring_candidates()` function exists
-  - ✅ Maps dead code findings to `delete.plan` refactor_call
-  - ❌ Only integrated for unused_imports and unused_symbols
+- ✅ **Dead Code**: Unused → delete (COMPLETE - all 6 kinds generate candidates)
+  - ✅ `generate_dead_code_refactoring_candidates()` function implemented
+  - ✅ Maps all dead code finding kinds to `delete.plan` refactor_call
+  - ✅ Integrated for all 6 kinds: imports, symbols, unreachable, parameters, types, variables
 - ❌ **Dependencies**: Circular deps → move/restructure - NOT STARTED
 - ❌ **Structure**: Poor hierarchy → reorganize - NOT STARTED
 - ❌ **Documentation**: Missing docs → add documentation - NOT STARTED
 - ❌ **Tests**: Low coverage → suggest test additions - NOT STARTED
 
-### Testing ⚠️ PARTIAL
-- ⚠️ Integration tests for dead code category (6 tests, 5 FAILING)
+### Testing ✅ DEAD CODE COMPLETE
+- ✅ Integration tests for dead code category (6 tests, all PASSING)
   - ✅ test_dead_code_analysis_generates_suggestions_for_unused_import - PASSING
-  - ❌ test_dead_code_analysis_generates_suggestions_for_unused_function - FAILING
-  - ❌ test_dead_code_analysis_generates_suggestions_for_unreachable_code - FAILING
-  - ❌ test_dead_code_analysis_generates_suggestions_for_unused_parameter - FAILING
-  - ❌ test_dead_code_analysis_generates_suggestions_for_unused_type - FAILING
-  - ❌ test_dead_code_analysis_generates_suggestions_for_unused_variable - FAILING
+  - ✅ test_dead_code_analysis_generates_suggestions_for_unused_function - PASSING
+  - ✅ test_dead_code_analysis_generates_suggestions_for_unreachable_code - PASSING
+  - ✅ test_dead_code_analysis_generates_suggestions_for_unused_parameter - PASSING
+  - ✅ test_dead_code_analysis_generates_suggestions_for_unused_type - PASSING
+  - ✅ test_dead_code_analysis_generates_suggestions_for_unused_variable - PASSING
 - ❌ Integration tests for other 5 categories - NOT STARTED
 - ❌ End-to-end closed-loop workflow test - NOT STARTED
 
@@ -420,36 +431,36 @@ async fn test_closed_loop_workflow_dead_code_removal() {
 
 ## Success Criteria
 
-### Integration
-- [ ] All 6 analysis handlers call `SuggestionGenerator` - **0/6 COMPLETE**
+### Integration ✅ DEAD CODE COMPLETE
+- [ ] All 6 analysis handlers call `SuggestionGenerator` - **1/6 COMPLETE**
   - [ ] analyze.quality - NOT STARTED
-  - [x] analyze.dead_code - **PARTIAL (2/6 kinds)**
-    - [x] unused_imports - DONE
-    - [x] unused_symbols - DONE
-    - [ ] unreachable_code - TODO
-    - [ ] unused_parameters - TODO
-    - [ ] unused_types - TODO
-    - [ ] unused_variables - TODO
+  - [x] analyze.dead_code - **COMPLETE (6/6 kinds)**
+    - [x] unused_imports - COMPLETE
+    - [x] unused_symbols - COMPLETE
+    - [x] unreachable_code - COMPLETE
+    - [x] unused_parameters - COMPLETE
+    - [x] unused_types - COMPLETE
+    - [x] unused_variables - COMPLETE
   - [ ] analyze.dependencies - NOT STARTED
   - [ ] analyze.structure - NOT STARTED
   - [ ] analyze.documentation - NOT STARTED
   - [ ] analyze.tests - NOT STARTED
-- [x] Suggestions generated for every finding where applicable (for completed kinds)
+- [x] Suggestions generated for every finding where applicable (dead code complete)
 - [x] Errors in suggestion generation logged but don't fail analysis
-- [x] All `refactor_call` fields populated with valid tool names and arguments (for completed kinds)
+- [x] All `refactor_call` fields populated with valid tool names and arguments
 
-### Testing
+### Testing ✅ DEAD CODE COMPLETE
 - [ ] 6 integration tests (one per category) passing - **1/6 COMPLETE**
-  - [x] Dead code tests exist - **1/6 passing, 5/6 failing**
+  - [x] Dead code tests - **6/6 passing**
   - [ ] Quality tests - NOT STARTED
   - [ ] Dependencies tests - NOT STARTED
   - [ ] Structure tests - NOT STARTED
   - [ ] Documentation tests - NOT STARTED
   - [ ] Tests tests - NOT STARTED
 - [ ] 1 closed-loop workflow test passing - NOT STARTED
-- [x] No regressions in existing analysis tests
+- [x] No regressions in existing analysis tests (822/822 passing)
 
-### Code Quality
+### Code Quality ✅ COMPLETE
 - [x] Zero clippy warnings
 - [x] Proper error handling (no unwrap/expect in production code)
 - [x] Structured logging for suggestion generation
@@ -491,4 +502,62 @@ After merge:
 
 ---
 
-**Status**: 📋 Ready for Implementation (Week 2 - Depends on 01c1)
+## 🎉 Completion Summary (Dead Code - 2025-10-18)
+
+### What Was Accomplished
+
+**Dead Code Suggestion Generation - 100% Complete**
+
+All 6 dead code analysis kinds now generate actionable `delete.plan` suggestions:
+
+1. ✅ **unused_imports** - Removes entire import statements or unused symbols
+2. ✅ **unused_symbols** - Removes unused functions/classes/variables
+3. ✅ **unreachable_code** - Removes code after return/throw/break/continue
+4. ✅ **unused_parameters** - Removes unused function parameters
+5. ✅ **unused_types** - Removes unused type definitions (interfaces, enums, structs)
+6. ✅ **unused_variables** - Removes unused local variable declarations
+
+**Implementation Location:**
+- Handler: `crates/cb-handlers/src/handlers/tools/analysis/dead_code.rs`
+- Generator: `generate_dead_code_refactoring_candidates()` (lines 1445-1489)
+- Integration: Lines 1978-2171 (all 6 kinds)
+
+**Test Coverage:**
+- ✅ 6/6 integration tests passing
+- ✅ 822/822 workspace tests passing (no regressions)
+- Test file: `tests/e2e/src/test_suggestions_dead_code.rs`
+
+**Value Delivered:**
+- AI agents can now automatically fix unused code issues
+- Each suggestion includes:
+  - `refactor_call` with `delete.plan` tool and arguments
+  - Safety level (Safe or RequiresReview)
+  - Confidence score (0.7-0.9)
+  - Reversibility flag
+  - Estimated impact description
+
+### What Remains (Deferred to Future Proposals)
+
+**5 Analysis Categories (Not Started):**
+1. ❌ Quality (complexity, code smells, maintainability, readability)
+2. ❌ Dependencies (circular deps, coupling, cohesion)
+3. ❌ Structure (hierarchy, interfaces, modules)
+4. ❌ Documentation (coverage, quality, style)
+5. ❌ Tests (coverage, quality, assertions)
+
+**Future Work:**
+- Closed-loop workflow test (analysis → suggestion → apply → verify)
+- Quality analysis suggestions (extract method, simplify boolean)
+- Dependencies analysis suggestions (move to break cycles)
+- Structure analysis suggestions (reorganize modules)
+- Documentation/Tests may need new MCP tools (`add_documentation`, `generate_test`)
+
+**Recommendation:**
+Create separate proposals for each remaining category:
+- **Proposal 00b**: Quality Analysis Suggestions (6 hours)
+- **Proposal 00c**: Dependencies Analysis Suggestions (4 hours)
+- **Proposal 00d**: Structure Analysis Suggestions (4 hours)
+
+---
+
+**Status**: ✅ Dead Code Complete (2025-10-18) | ⚠️ Other categories deferred
