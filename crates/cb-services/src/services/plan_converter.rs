@@ -452,6 +452,7 @@ mod tests {
                 created_at: chrono::Utc::now(),
                 complexity: 1, // Low complexity (1-10 scale)
                 impact_areas: vec![],
+                consolidation: None,
             },
         };
 
@@ -502,6 +503,7 @@ mod tests {
                 created_at: chrono::Utc::now(),
                 complexity: 1, // Low complexity (1-10 scale)
                 impact_areas: vec![],
+                consolidation: None,
             },
         };
 
