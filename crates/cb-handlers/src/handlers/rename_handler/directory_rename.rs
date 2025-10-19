@@ -194,21 +194,6 @@ impl RenameHandler {
             .filter_map(|e| e.file_path.as_deref())
             .collect();
 
-        // Write debug info to file since MCP server logs aren't captured by tests
-        if let Ok(mut file) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("/tmp/directory_rename_debug.log")
-        {
-            use std::io::Write;
-            let _ = writeln!(file, "\n===== DIRECTORY RENAME DEBUG =====");
-            let _ = writeln!(file, "Total edits from EditPlan: {}", edit_plan.edits.len());
-            let _ = writeln!(file, "abs_old: {}", abs_old.display());
-            let _ = writeln!(file, "abs_new: {}", abs_new.display());
-            let _ = writeln!(file, "Edit file paths: {:?}", all_edit_paths);
-            let _ = writeln!(file, "==================================\n");
-        }
-
         debug!(
             total_edits = edit_plan.edits.len(),
             edit_paths = ?all_edit_paths,
@@ -222,18 +207,6 @@ impl RenameHandler {
             if let Some(ref file_path) = edit.file_path {
                 let path = Path::new(file_path);
 
-                // DEBUG: Log each edit to file
-                if let Ok(mut file) = std::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open("/tmp/directory_rename_debug.log")
-                {
-                    use std::io::Write;
-                    let _ = writeln!(file, "Processing edit: file_path={}, edit_type={:?}, description={}, exists={}",
-                        file_path, edit.edit_type, edit.description, path.exists());
-                }
-
-                // DEBUG: Log each edit being processed
                 debug!(
                     file_path = %file_path,
                     edit_type = ?edit.edit_type,
@@ -282,19 +255,6 @@ impl RenameHandler {
             }
         }
 
-        // DEBUG: Log summary to file
-        if let Ok(mut file) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("/tmp/directory_rename_debug.log")
-        {
-            use std::io::Write;
-            let _ = writeln!(file, "\nSummary:");
-            let _ = writeln!(file, "  Edits added to WorkspaceEdit: {}", edits_added_count);
-            let _ = writeln!(file, "  Unique files with edits: {}", files_with_edits.len());
-            let _ = writeln!(file, "===================================\n");
-        }
-
         debug!(
             edits_added_to_workspace_edit = edits_added_count,
             unique_files_with_edits = files_with_edits.len(),
@@ -312,30 +272,10 @@ impl RenameHandler {
             }));
         }
 
-        // DEBUG: Log document_changes count
-        if let Ok(mut file) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("/tmp/directory_rename_debug.log")
-        {
-            use std::io::Write;
-            let _ = writeln!(file, "\n=== WORKSPACE EDIT ===");
-            let _ = writeln!(file, "Total document_changes operations: {}", document_changes.len());
-            for (i, op) in document_changes.iter().enumerate() {
-                match op {
-                    DocumentChangeOperation::Op(ResourceOp::Rename(r)) => {
-                        let _ = writeln!(file, "  [{}] RenameFile: {:?} -> {:?}", i, r.old_uri, r.new_uri);
-                    }
-                    DocumentChangeOperation::Edit(e) => {
-                        let _ = writeln!(file, "  [{}] TextEdit: {:?} ({} edits)", i, e.text_document.uri, e.edits.len());
-                    }
-                    _ => {
-                        let _ = writeln!(file, "  [{}] Other operation", i);
-                    }
-                }
-            }
-            let _ = writeln!(file, "======================\n");
-        }
+        debug!(
+            document_changes_count = document_changes.len(),
+            "Created WorkspaceEdit with document changes"
+        );
 
         let workspace_edit = WorkspaceEdit {
             changes: None,
@@ -407,19 +347,10 @@ impl RenameHandler {
             created_at: chrono::Utc::now().to_rfc3339(),
         };
 
-        // DEBUG: Log checksums to file
-        if let Ok(mut file) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("/tmp/directory_rename_debug.log")
-        {
-            use std::io::Write;
-            let _ = writeln!(file, "\n=== CHECKSUMS IN RENAMEPLAN ===");
-            for (path, checksum) in &file_checksums {
-                let _ = writeln!(file, "  {}: {}", path, checksum);
-            }
-            let _ = writeln!(file, "================================\n");
-        }
+        debug!(
+            checksum_count = file_checksums.len(),
+            "Generated file checksums for rename plan"
+        );
 
         Ok(RenamePlan {
             edits: workspace_edit,
