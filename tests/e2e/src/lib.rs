@@ -158,3 +158,4 @@ impl TestHarnessError {
         }
     }
 }
+pub mod dogfood_cb_protocol_consolidation;
