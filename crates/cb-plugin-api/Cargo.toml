@@ -1,6 +1,7 @@
 [package]
 name = "cb-plugin-api"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 cb-protocol = { path = "../cb-protocol" }

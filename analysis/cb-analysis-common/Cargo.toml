@@ -2,6 +2,7 @@
 name = "cb-analysis-common"
 version = "1.0.0-rc4"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 async-trait = "0.1"

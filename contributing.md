@@ -232,9 +232,91 @@ We use the standard Rust formatting and linting tools to maintain a consistent c
 
 - **Code Quality Checks:**
   ```bash
-  make check                # Run fmt + clippy + test
+  make check                # Run fmt + clippy + test + audit + deny
   make check-duplicates     # Detect duplicate code & complexity
   ```
+
+## Dependency Management
+
+Before adding new dependencies to the project, please follow these guidelines:
+
+1. **Check if functionality already exists** in the workspace or standard library
+2. **Evaluate the dependency's**:
+   - Maintenance status (recent commits, active maintainers)
+   - License compatibility (MIT, Apache-2.0, BSD preferred)
+   - Security track record
+   - Binary size impact
+3. **Run dependency checks** to ensure no issues are introduced:
+   ```bash
+   cargo deny check
+   # Or use Makefile
+   make deny
+   ```
+
+### Running Dependency Checks
+
+```bash
+# Check all: advisories, licenses, bans, sources
+cargo deny check
+make deny
+
+# Check only security advisories
+cargo deny check advisories
+
+# Check only licenses
+cargo deny check licenses
+
+# Check only duplicate dependencies
+cargo deny check bans
+
+# Update advisory database
+cargo deny fetch
+make deny-update
+```
+
+### Handling cargo-deny Failures
+
+If `cargo deny check` fails:
+
+- **Advisories (Security Vulnerabilities):**
+  - Investigate the CVE/advisory details
+  - Assess risk for our use case
+  - Update dependency if patch is available
+  - If no patch exists, document why it's accepted in `deny.toml`
+
+- **Licenses:**
+  - Ensure new dependency has compatible license (MIT/Apache-2.0/BSD)
+  - Copyleft licenses (GPL, AGPL) are not allowed
+  - Add license exceptions only with team approval
+
+- **Bans (Duplicate Dependencies):**
+  - Try to use workspace version instead of adding new version
+  - Consolidate versions where possible
+  - If duplicate is unavoidable (transitive dependency), document reason in `deny.toml`
+
+- **Sources:**
+  - Prefer crates.io over git dependencies
+  - Git dependencies allowed only for patches/forks with clear justification
+  - Document why git source is necessary
+
+If an exception is truly needed, update `deny.toml` with a clear justification comment.
+
+### Example: Adding a New Dependency
+
+```toml
+# Good - use workspace version
+[dependencies]
+serde = { workspace = true }
+
+# Good - compatible license, latest stable
+reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
+
+# Bad - introduces duplicate version
+dashmap = "6.0"  # Workspace uses 5.5
+
+# Bad - git dependency without justification
+my-crate = { git = "https://github.com/..." }
+```
 
 ## Pull Request Process
 

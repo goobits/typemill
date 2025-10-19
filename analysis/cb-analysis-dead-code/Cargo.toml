@@ -2,6 +2,7 @@
 name = "cb-analysis-dead-code"
 version = "1.0.0-rc4"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 # Workspace dependencies

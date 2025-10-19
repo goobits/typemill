@@ -57,5 +57,22 @@ make test
 ```
 See **[contributing.md](contributing.md)** for the full development guide, including how to add new tools.
 
+## 🔒 Security
+
+This project uses [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) for comprehensive dependency management:
+
+- **Security vulnerability scanning** via RustSec Advisory Database
+- **License compliance checking** (MIT/Apache-2.0/BSD)
+- **Duplicate dependency detection** to minimize bloat
+- **Dependency source validation**
+
+Run security checks:
+```bash
+make deny           # Check all (advisories, licenses, duplicates, sources)
+cargo deny check    # Direct cargo-deny invocation
+```
+
+For more details on dependency management, see **[contributing.md](contributing.md#dependency-management)**.
+
 ## 📝 License
 MIT - see [LICENSE](LICENSE)

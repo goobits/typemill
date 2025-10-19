@@ -29,7 +29,7 @@ console = "0.15"
 indicatif = "0.17"
 
 # Utilities
-dirs = "5.0"
+dirs = "6.0"
 uuid = { version = "1.0", features = ["v4"] }
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }

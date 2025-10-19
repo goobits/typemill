@@ -1,6 +1,7 @@
 [package]
 name = "cb-services"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 cb-types = { path = "../cb-types" }

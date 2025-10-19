@@ -1,7 +1,7 @@
 # CodeBuddy Makefile
 # Simple build automation for common development tasks
 
-.PHONY: build release test test-fast test-full test-lsp install uninstall clean clean-cache first-time-setup install-lsp-servers dev-extras validate-setup help clippy fmt audit check check-duplicates dev watch ci build-parsers check-parser-deps check-analysis test-analysis check-handlers test-handlers check-core test-core check-lang test-lang dev-handlers dev-analysis dev-core dev-lang check-handlers-nav test-handlers-nav test-integration-refactor test-integration-analysis test-integration-nav
+.PHONY: build release test test-fast test-full test-lsp install uninstall clean clean-cache first-time-setup install-lsp-servers dev-extras validate-setup help clippy fmt audit deny deny-update check check-duplicates dev watch ci build-parsers check-parser-deps check-analysis test-analysis check-handlers test-handlers check-core test-core check-lang test-lang dev-handlers dev-analysis dev-core dev-lang check-handlers-nav test-handlers-nav test-integration-refactor test-integration-analysis test-integration-nav
 
 # Default target - show help
 .DEFAULT_GOAL := help
@@ -233,7 +233,19 @@ audit:
 	@echo "🔒 Running security audit..."
 	cargo audit
 
-check: fmt clippy test audit
+deny:
+	@echo "🔒 Running cargo-deny checks..."
+	@if ! command -v cargo-deny >/dev/null 2>&1; then \
+		echo "⚠️  cargo-deny not found. Installing..."; \
+		cargo install cargo-deny --locked; \
+	fi
+	cargo deny check
+
+deny-update:
+	@echo "📦 Updating advisory database..."
+	cargo deny fetch
+
+check: fmt clippy test audit deny
 
 check-duplicates:
 	@./scripts/check-duplicates.sh
@@ -485,7 +497,9 @@ help:
 	@echo "  make clippy            - Run clippy linter"
 	@echo "  make fmt               - Check code formatting"
 	@echo "  make audit             - Run security audit (cargo-audit)"
-	@echo "  make check             - Run fmt + clippy + test + audit"
+	@echo "  make deny              - Run dependency checks (cargo-deny: licenses, advisories, bans)"
+	@echo "  make deny-update       - Update advisory database for cargo-deny"
+	@echo "  make check             - Run fmt + clippy + test + audit + deny"
 	@echo "  make check-duplicates  - Detect duplicate code & complexity"
 	@echo "  make validate-setup    - Check if your dev environment is set up correctly"
 	@echo "  make ci                - Run all CI checks (for CI/CD)"

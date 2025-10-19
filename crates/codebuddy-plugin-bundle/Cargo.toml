@@ -2,6 +2,7 @@
 name = "codebuddy-plugin-bundle"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Plugin bundle containing all language plugins for codebuddy"
 
 [dependencies]
