@@ -101,6 +101,14 @@ pub mod test_suggestions_dead_code;
 #[cfg(test)]
 pub mod test_workspace_create;
 
+// Module dependency analysis tests (Proposal 50)
+#[cfg(test)]
+pub mod test_analyze_module_dependencies;
+
+// Workspace dependency extraction tests (Proposal 50)
+#[cfg(test)]
+pub mod test_workspace_extract_deps;
+
 pub use harness::{TestClient, TestWorkspace};
 pub use helpers::*;
 pub use mocks::{MockAstService, MockLspService};
