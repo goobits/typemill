@@ -1,10 +1,19 @@
 //! Consolidation post-processing for Rust crate consolidation operations
 //!
+//! **LANGUAGE-SPECIFIC**: This module contains Rust-specific logic for Cargo crate consolidation.
+//! It is part of the legacy consolidation workflow and is used by both the old and new APIs when
+//! consolidating Rust crates.
+//!
+//! **Future Work**: This logic should be moved to the cb-lang-rust plugin as part of the
+//! `WorkspaceSupport::execute_consolidation_post_processing()` trait method to achieve
+//! true language-agnostic architecture in cb-services.
+//!
 //! This module handles the post-processing tasks that must occur after moving
 //! files during a consolidation operation:
 //! 1. Flatten nested src/ directory structure
 //! 2. Rename lib.rs to mod.rs for directory modules
 //! 3. Add module declaration to target crate's lib.rs
+//! 4. Validate no circular dependencies are created
 
 use super::FileService;
 use codebuddy_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult , ConsolidationMetadata };

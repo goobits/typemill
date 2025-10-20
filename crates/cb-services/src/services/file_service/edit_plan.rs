@@ -34,20 +34,19 @@ impl FileService {
             "Edit plan contents"
         );
 
-        // Write debug info to file
-        if let Ok(mut file) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("/tmp/directory_rename_debug.log")
-        {
-            use std::io::Write;
-            let _ = writeln!(file, "\n=== FILE SERVICE: APPLY EDIT PLAN ===");
-            let _ = writeln!(file, "Total edits in plan: {}", plan.edits.len());
-            for (i, edit) in plan.edits.iter().enumerate() {
-                let _ = writeln!(file, "  [{}] edit_type={:?}, file_path={:?}, description={}",
-                    i, edit.edit_type, edit.file_path, edit.description);
-            }
-            let _ = writeln!(file, "======================================\n");
+        // Log edit plan details
+        debug!(
+            total_edits = plan.edits.len(),
+            "FileService: Applying edit plan"
+        );
+        for (i, edit) in plan.edits.iter().enumerate() {
+            debug!(
+                index = i,
+                edit_type = ?edit.edit_type,
+                file_path = ?edit.file_path,
+                description = %edit.description,
+                "Edit plan entry"
+            );
         }
 
         // For simplicity, we'll apply edits sequentially with individual locks

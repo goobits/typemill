@@ -1,5 +1,11 @@
 //! Dependency analysis for pre-consolidation validation
 //!
+//! **LANGUAGE-SPECIFIC**: This module contains Rust-specific logic for analyzing Cargo crate
+//! dependencies using `cargo metadata`. It is used exclusively by the consolidation post-processing
+//! workflow to detect circular dependencies.
+//!
+//! **Future Work**: This logic should be moved to the cb-lang-rust plugin alongside consolidation.rs
+//!
 //! This module provides functionality to detect circular dependencies
 //! that would be created by consolidating one crate into another.
 
