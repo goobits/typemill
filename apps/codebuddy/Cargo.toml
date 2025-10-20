@@ -13,7 +13,7 @@ categories = ["development-tools", "command-line-utilities"]
 cb-server = { path = "../../crates/cb-server", default-features = false }
 cb-client = { path = "../../crates/cb-client" }
 codebuddy-foundation = { path = "../../crates/codebuddy-foundation" }
-cb-transport = { path = "../../crates/cb-transport" }
+cb-transport = { path = "../../crates/cb-transport", default-features = false }
 cb-plugin-api = { path = "../../crates/cb-plugin-api" }
 
 # Plugin bundle - contains all language plugins for inventory discovery
@@ -69,9 +69,9 @@ e2e = { path = "../../tests/e2e" }
 
 [features]
 default = ["lang-rust", "lang-typescript", "lang-markdown", "lang-toml", "lang-yaml"]
-lang-rust = ["cb-server/lang-rust", "codebuddy-plugin-bundle/lang-rust", "codebuddy-ast/lang-rust", "codebuddy-plugin-system/lang-rust"]
-lang-typescript = ["cb-server/lang-typescript", "codebuddy-plugin-bundle/lang-typescript", "codebuddy-ast/lang-typescript", "codebuddy-plugin-system/lang-typescript"]
-lang-markdown = ["cb-server/lang-markdown", "codebuddy-plugin-bundle/lang-markdown", "codebuddy-ast/lang-markdown", "codebuddy-plugin-system/lang-markdown"]
+lang-rust = ["cb-server/lang-rust", "codebuddy-plugin-bundle/lang-rust", "codebuddy-ast/lang-rust", "codebuddy-plugin-system/lang-rust", "cb-transport/lang-rust"]
+lang-typescript = ["cb-server/lang-typescript", "codebuddy-plugin-bundle/lang-typescript", "codebuddy-ast/lang-typescript", "codebuddy-plugin-system/lang-typescript", "cb-transport/lang-typescript"]
+lang-markdown = ["cb-server/lang-markdown", "codebuddy-plugin-bundle/lang-markdown", "codebuddy-ast/lang-markdown", "codebuddy-plugin-system/lang-markdown", "cb-transport/lang-markdown"]
 lang-toml = ["cb-server/lang-toml", "codebuddy-plugin-bundle/lang-toml"]
 lang-yaml = ["cb-server/lang-yaml", "codebuddy-plugin-bundle/lang-yaml"]
 mcp-proxy = ["cb-server/mcp-proxy", "cb-client/mcp-proxy", "codebuddy-foundation/mcp-proxy", "codebuddy-config/mcp-proxy"]

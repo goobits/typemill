@@ -100,10 +100,10 @@ cb-analysis-graph = { path = "analysis/cb-analysis-graph" }
 # These cannot be consolidated without upstream updates
 
 # Language plugins (temporarily reduced to TS + Rust during unified API refactoring)
-cb-lang-common = { path = "crates/cb-lang-common" }
-cb-lang-rust = { path = "crates/cb-lang-rust" }
-cb-lang-typescript = { path = "crates/cb-lang-typescript" }
-cb-lang-markdown = { path = "crates/cb-lang-markdown" }
+cb-lang-common = { path = "crates/cb-lang-common", default-features = false }
+cb-lang-rust = { path = "crates/cb-lang-rust", default-features = false }
+cb-lang-typescript = { path = "crates/cb-lang-typescript", default-features = false }
+cb-lang-markdown = { path = "crates/cb-lang-markdown", default-features = false }
 
 # Optimize build times for dev dependencies
 [profile.dev.build-override]
