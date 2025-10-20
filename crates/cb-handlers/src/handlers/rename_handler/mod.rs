@@ -2,8 +2,8 @@
 //!
 //! Implements `rename.plan` command for:
 //! - Symbol renaming (via LSP)
-//! - File renaming (via FileService)
-//! - Directory renaming (via FileService)
+//! - File renaming (via MoveService)
+//! - Directory renaming (via MoveService)
 
 mod directory_rename;
 mod file_rename;

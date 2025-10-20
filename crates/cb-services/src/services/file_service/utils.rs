@@ -119,7 +119,7 @@ impl FileService {
     }
 
     /// Convert a path to absolute path within the project
-    pub(super) fn to_absolute_path(&self, path: &Path) -> PathBuf {
+    pub fn to_absolute_path(&self, path: &Path) -> PathBuf {
         if path.is_absolute() {
             path.to_path_buf()
         } else {

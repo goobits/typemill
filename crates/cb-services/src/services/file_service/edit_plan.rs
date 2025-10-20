@@ -1,3 +1,7 @@
+// TODO: Replace remaining /tmp/directory_rename_debug.log file dumps with structured tracing
+// There are approximately 10 debug log blocks throughout apply_edits_with_coordination()
+// that write to /tmp for debugging. These should be converted to debug!() tracing calls.
+
 use super::FileService;
 use codebuddy_foundation::protocol::{
     ApiError as ServerError, ApiResult as ServerResult, DependencyUpdate, EditPlan,

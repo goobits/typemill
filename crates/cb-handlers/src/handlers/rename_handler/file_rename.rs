@@ -9,7 +9,7 @@ use std::path::Path;
 use tracing::debug;
 
 impl RenameHandler {
-    /// Generate plan for file rename using FileService
+    /// Generate plan for file rename using MoveService
     pub(crate) async fn plan_file_rename(
         &self,
         params: &RenamePlanParams,
@@ -34,10 +34,9 @@ impl RenameHandler {
             .plan_file_move_with_scope(old_path, new_path, rename_scope.as_ref())
             .await?;
 
-        let abs_old = std::fs::canonicalize(old_path).unwrap_or_else(|_| old_path.to_path_buf());
-        let abs_new = std::fs::canonicalize(new_path.parent().unwrap_or(Path::new(".")))
-            .unwrap_or_else(|_| new_path.parent().unwrap_or(Path::new(".")).to_path_buf())
-            .join(new_path.file_name().unwrap_or(new_path.as_os_str()));
+        // Use FileService to resolve paths relative to project root (not CWD)
+        let abs_old = context.app_state.file_service.to_absolute_path(old_path);
+        let abs_new = context.app_state.file_service.to_absolute_path(new_path);
 
         debug!(
             edits_count = edit_plan.edits.len(),
@@ -51,13 +50,13 @@ impl RenameHandler {
                 edits_count = edit_plan.edits.len(),
                 first_edit_file = ?edit_plan.edits.first().and_then(|e| e.file_path.as_ref()),
                 first_edit_type = ?edit_plan.edits.first().map(|e| &e.edit_type),
-                "plan_file_rename: Received edits from FileService"
+                "plan_file_rename: Received edits from MoveService"
             );
         } else {
             tracing::warn!(
                 old_path = %old_path.display(),
                 new_path = %new_path.display(),
-                "plan_file_rename: No edits received from FileService for file rename!"
+                "plan_file_rename: No edits received from MoveService for file rename!"
             );
         }
 
