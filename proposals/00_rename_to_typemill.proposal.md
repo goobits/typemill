@@ -1002,3 +1002,99 @@ See full documentation at https://typemill.org/docs/migration
 **Status**: Ready for Review
 **Next Review Date**: 2025-10-22
 **Implementation Start**: After approval
+
+
+--------
+
+● Complete TypeMill Rename List
+
+  Crate Directory Renames (27 crates)
+
+  crates/cb-client → crates/mill-client
+  crates/cb-handlers → crates/mill-handlers
+  crates/cb-lsp → crates/mill-lsp
+  crates/cb-server → crates/mill-server
+  crates/cb-services → crates/mill-services
+  crates/cb-transport → crates/mill-transport
+  crates/cb-plugin-api → crates/mill-plugin-api
+  crates/cb-test-support → crates/mill-test-support
+  crates/cb-lang-common → crates/mill-lang-common
+  crates/cb-lang-rust → crates/mill-lang-rust
+  crates/cb-lang-typescript → crates/mill-lang-typescript
+  crates/cb-lang-markdown → crates/mill-lang-markdown
+  crates/cb-lang-toml → crates/mill-lang-toml
+  crates/cb-lang-yaml → crates/mill-lang-yaml
+  crates/codebuddy-foundation → crates/mill-foundation
+  crates/codebuddy-config → crates/mill-config
+  crates/codebuddy-ast → crates/mill-ast
+  crates/codebuddy-auth → crates/mill-auth
+  crates/codebuddy-workspaces → crates/mill-workspaces
+  crates/codebuddy-plugin-system → crates/mill-plugin-system
+  crates/codebuddy-plugin-bundle → crates/mill-plugin-bundle
+  analysis/cb-analysis-common → analysis/mill-analysis-common
+  analysis/cb-analysis-dead-code → analysis/mill-analysis-dead-code
+  analysis/cb-analysis-deep-dead-code → analysis/mill-analysis-deep-dead-code
+  analysis/cb-analysis-graph → analysis/mill-analysis-graph
+  analysis/cb-analysis-circular-deps → analysis/mill-analysis-circular-deps
+  apps/codebuddy → apps/mill
+
+  Package Names in Cargo.toml (27 crates)
+
+  cb-client → mill-client
+  cb-handlers → mill-handlers
+  cb-lsp → mill-lsp
+  cb-server → mill-server
+  cb-services → mill-services
+  cb-transport → mill-transport
+  cb-plugin-api → mill-plugin-api
+  cb-test-support → mill-test-support
+  cb-lang-common → mill-lang-common
+  cb-lang-rust → mill-lang-rust
+  cb-lang-typescript → mill-lang-typescript
+  cb-lang-markdown → mill-lang-markdown
+  cb-lang-toml → mill-lang-toml
+  cb-lang-yaml → mill-lang-yaml
+  codebuddy-foundation → mill-foundation
+  codebuddy-config → mill-config
+  codebuddy-ast → mill-ast
+  codebuddy-auth → mill-auth
+  codebuddy-workspaces → mill-workspaces
+  codebuddy-plugin-system → mill-plugin-system
+  codebuddy-plugin-bundle → mill-plugin-bundle
+  cb-analysis-common → mill-analysis-common
+  cb-analysis-dead-code → mill-analysis-dead-code
+  cb-analysis-deep-dead-code → mill-analysis-deep-dead-code
+  cb-analysis-graph → mill-analysis-graph
+  cb-analysis-circular-deps → mill-analysis-circular-deps
+  codebuddy (binary) → mill (binary)
+
+  Configuration & Paths
+
+  .codebuddy/ → .typemill/
+  .codebuddy/config.json → .typemill/config.json
+  .codebuddy/analysis.toml → .typemill/analysis.toml
+  codebuddy.toml → typemill.toml
+  codebuddy.example.toml → typemill.example.toml
+  target/release/codebuddy → target/release/mill
+  /usr/local/bin/codebuddy → /usr/local/bin/mill
+  ~/.local/bin/codebuddy → ~/.local/bin/mill
+
+  Environment Variables
+
+  CODEBUDDY_DISABLE_CACHE → TYPEMILL_DISABLE_CACHE
+  CODEBUDDY_DISABLE_AST_CACHE → TYPEMILL_DISABLE_AST_CACHE
+  CODEBUDDY_DISABLE_IMPORT_CACHE → TYPEMILL_DISABLE_IMPORT_CACHE
+  CODEBUDDY_DISABLE_LSP_METHOD_CACHE → TYPEMILL_DISABLE_LSP_METHOD_CACHE
+  CODEBUDDY__* (any multilevel config) → TYPEMILL__*
+
+  Documentation Files
+
+  No renames, just content updates in place (README.md, CLAUDE.md, etc.)
+
+  Infrastructure Files
+
+  .github/workflows/codebuddy-ci.yml → .github/workflows/mill-ci.yml
+  Docker image: codebuddy:latest → mill:latest
+  Docker containers: codebuddy-dev → mill-dev
+
+  Total Renames: 27 crate directories + 27 package names + 11 config/binary paths + 5+ env vars + 2 infrastructure files = ~72 rename operations

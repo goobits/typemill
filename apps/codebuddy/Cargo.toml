@@ -10,14 +10,14 @@ keywords = ["mcp", "lsp", "ai", "coding", "assistant"]
 categories = ["development-tools", "command-line-utilities"]
 
 [dependencies]
-cb-server = { path = "../../crates/cb-server" }
+cb-server = { path = "../../crates/cb-server", default-features = false }
 cb-client = { path = "../../crates/cb-client" }
 codebuddy-foundation = { path = "../../crates/codebuddy-foundation" }
 cb-transport = { path = "../../crates/cb-transport" }
 cb-plugin-api = { path = "../../crates/cb-plugin-api" }
 
 # Plugin bundle - contains all language plugins for inventory discovery
-codebuddy-plugin-bundle = { path = "../../crates/codebuddy-plugin-bundle" }
+codebuddy-plugin-bundle = { path = "../../crates/codebuddy-plugin-bundle", default-features = false }
 
 tokio = { version = "1", features = ["full"] }
 axum = { version = "0.8", features = ["ws"] }
@@ -32,14 +32,14 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 clap = { version = "4.0", features = ["derive"] }
 fs2 = "0.4"
-codebuddy-plugin-system = { path = "../../crates/codebuddy-plugin-system" }
+codebuddy-plugin-system = { path = "../../crates/codebuddy-plugin-system", default-features = false, features = ["runtime"] }
 codebuddy-config = { path = "../../crates/codebuddy-config" }
-codebuddy-ast = { path = "../../crates/codebuddy-ast" }
+codebuddy-ast = { path = "../../crates/codebuddy-ast", default-features = false }
 
 [dev-dependencies]
 cb-test-support = { path = "../../crates/cb-test-support" }
-cb-server = { path = "../../crates/cb-server", features = ["test-helpers"] }
-cb-handlers = { path = "../../crates/cb-handlers" }
+cb-server = { path = "../../crates/cb-server", default-features = false, features = ["test-helpers"] }
+cb-handlers = { path = "../../crates/cb-handlers", default-features = false, features = ["refactor-all"] }
 cb-lsp = { path = "../../crates/cb-lsp" }
 cb-plugin-api = { workspace = true }
 tokio = { workspace = true }
@@ -69,11 +69,11 @@ e2e = { path = "../../tests/e2e" }
 
 [features]
 default = ["lang-rust", "lang-typescript", "lang-markdown", "lang-toml", "lang-yaml"]
-lang-rust = ["codebuddy-plugin-bundle/lang-rust", "codebuddy-ast/lang-rust"]
-lang-typescript = ["codebuddy-plugin-bundle/lang-typescript", "codebuddy-ast/lang-typescript"]
-lang-markdown = ["codebuddy-plugin-bundle/lang-markdown", "codebuddy-ast/lang-markdown"]
-lang-toml = ["codebuddy-plugin-bundle/lang-toml"]
-lang-yaml = ["codebuddy-plugin-bundle/lang-yaml"]
+lang-rust = ["cb-server/lang-rust", "codebuddy-plugin-bundle/lang-rust", "codebuddy-ast/lang-rust", "codebuddy-plugin-system/lang-rust"]
+lang-typescript = ["cb-server/lang-typescript", "codebuddy-plugin-bundle/lang-typescript", "codebuddy-ast/lang-typescript", "codebuddy-plugin-system/lang-typescript"]
+lang-markdown = ["cb-server/lang-markdown", "codebuddy-plugin-bundle/lang-markdown", "codebuddy-ast/lang-markdown", "codebuddy-plugin-system/lang-markdown"]
+lang-toml = ["cb-server/lang-toml", "codebuddy-plugin-bundle/lang-toml"]
+lang-yaml = ["cb-server/lang-yaml", "codebuddy-plugin-bundle/lang-yaml"]
 mcp-proxy = ["cb-server/mcp-proxy", "cb-client/mcp-proxy", "codebuddy-foundation/mcp-proxy", "codebuddy-config/mcp-proxy"]
 
 # Platform-specific dependencies for process management

@@ -5,8 +5,9 @@ license.workspace = true
 
 [features]
 default = ["lang-rust", "lang-typescript", "refactor-all"]
-lang-rust = ["cb-lang-rust"]
-lang-typescript = ["cb-lang-typescript"]
+lang-rust = ["cb-lang-rust", "codebuddy-ast/lang-rust", "codebuddy-plugin-system/lang-rust"]
+lang-typescript = ["cb-lang-typescript", "codebuddy-ast/lang-typescript", "codebuddy-plugin-system/lang-typescript"]
+lang-markdown = ["codebuddy-ast/lang-markdown", "codebuddy-plugin-system/lang-markdown"]
 analysis-dead-code = ["dep:cb-analysis-dead-code", "dep:cb-analysis-common"]
 analysis-circular-deps = ["dep:cb-analysis-circular-deps", "dep:cb-analysis-graph"]
 analysis-deep-dead-code = ["dep:cb-analysis-deep-dead-code", "dep:cb-analysis-common"]
@@ -63,7 +64,7 @@ url = "2.5"
 globset = "0.4.10"
 urlencoding = "2.1.3"
 pathdiff = "0.2"
-codebuddy-plugin-system = { path = "../codebuddy-plugin-system" }
+codebuddy-plugin-system = { path = "../codebuddy-plugin-system", default-features = false, features = ["runtime"] }
 codebuddy-config = { path = "../codebuddy-config" }
 codebuddy-workspaces = { path = "../codebuddy-workspaces" }
-codebuddy-ast = { path = "../codebuddy-ast" }
+codebuddy-ast = { path = "../codebuddy-ast", default-features = false }

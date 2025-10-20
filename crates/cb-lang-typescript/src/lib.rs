@@ -170,8 +170,8 @@ impl cb_plugin_api::ModuleReferenceScanner for TypeScriptPlugin {
 
 impl cb_plugin_api::RefactoringProvider for TypeScriptPlugin {
     fn supports_inline_variable(&self) -> bool {
-        // TypeScript plugin supports inline variable refactoring
-        true
+        // Not yet implemented - return false until we implement the AST-based refactoring
+        false
     }
 
     fn inline_variable(
@@ -186,8 +186,8 @@ impl cb_plugin_api::RefactoringProvider for TypeScriptPlugin {
     }
 
     fn supports_extract_function(&self) -> bool {
-        // TypeScript plugin supports extract function refactoring
-        true
+        // Not yet implemented - return false until we implement the AST-based refactoring
+        false
     }
 
     fn extract_function(

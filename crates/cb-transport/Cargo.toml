@@ -25,8 +25,11 @@ uuid = { workspace = true }
 axum = "0.8"
 tower = "0.5.2"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
-codebuddy-ast = { path = "../codebuddy-ast" }
+codebuddy-ast = { path = "../codebuddy-ast", default-features = false }
 
 [features]
-default = []
+default = ["lang-rust", "lang-typescript", "lang-markdown"]
+lang-rust = ["codebuddy-ast/lang-rust"]
+lang-typescript = ["codebuddy-ast/lang-typescript"]
+lang-markdown = ["codebuddy-ast/lang-markdown"]
 mcp-proxy = ["codebuddy-foundation/mcp-proxy", "codebuddy-config/mcp-proxy"]

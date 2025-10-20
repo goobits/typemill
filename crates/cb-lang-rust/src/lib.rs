@@ -271,8 +271,8 @@ impl cb_plugin_api::ModuleReferenceScanner for RustPlugin {
 
 impl cb_plugin_api::RefactoringProvider for RustPlugin {
     fn supports_inline_variable(&self) -> bool {
-        // Rust plugin supports inline variable refactoring
-        true
+        // Not yet implemented - return false until we implement the AST-based refactoring
+        false
     }
 
     fn inline_variable(
@@ -287,8 +287,8 @@ impl cb_plugin_api::RefactoringProvider for RustPlugin {
     }
 
     fn supports_extract_function(&self) -> bool {
-        // Rust plugin supports extract function refactoring
-        true
+        // Not yet implemented - return false until we implement the AST-based refactoring
+        false
     }
 
     fn extract_function(
