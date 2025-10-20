@@ -8,7 +8,7 @@
 //! - Workspace dependency resolution
 
 use crate::harness::{TestClient, TestWorkspace};
-use serde_json::{json, Value};
+use serde_json::json;
 
 #[tokio::test]
 async fn test_analyze_single_file_dependencies() {

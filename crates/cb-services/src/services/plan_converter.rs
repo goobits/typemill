@@ -391,8 +391,6 @@ impl Default for PlanConverter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lsp_types::{Position, Range, TextEdit as LspTextEdit};
-    use std::collections::HashMap;
 
     #[test]
     fn test_uri_to_path_string_unix() {

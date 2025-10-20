@@ -195,7 +195,6 @@ pub fn extract_import_path(line: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cb_plugin_api::LanguagePlugin;
     use std::fs;
     use tempfile::TempDir;
 
