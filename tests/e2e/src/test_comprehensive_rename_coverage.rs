@@ -323,9 +323,7 @@ jobs:
 
 /// Test 6: Scope filtering (IMPLEMENTED)
 /// Verifies that scope options (code-only, all, custom) correctly filter edits
-/// Note: Scope filtering is implemented but requires additional integration work
 #[tokio::test]
-#[ignore] // TODO: Enable once scope parameter is exposed in rename.plan API
 async fn test_david_scope_filtering() {
     let workspace = TestWorkspace::new();
     let mut client = TestClient::new(workspace.path());
