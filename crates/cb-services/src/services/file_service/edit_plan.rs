@@ -369,11 +369,34 @@ impl FileService {
             info!(
                 source_crate = %consolidation.source_crate_name,
                 target_crate = %consolidation.target_crate_name,
-                "Detected consolidation operation, executing post-processing"
+                "Detected consolidation operation, calling plugin for post-processing"
             );
 
-            self.execute_consolidation_post_processing(consolidation)
-                .await?;
+            // Call consolidation post-processing via plugin system (language-agnostic)
+            // For Rust, this is handled by cb-lang-rust plugin
+            use std::path::Path;
+
+            // Get the Rust plugin from registry
+            if let Some(rust_plugin) = self.plugin_registry.find_by_extension("rs") {
+                if let Some(workspace_support) = rust_plugin.workspace_support() {
+                    workspace_support
+                        .execute_consolidation_post_processing(
+                            &consolidation.source_crate_name,
+                            &consolidation.target_crate_name,
+                            &consolidation.target_module_name,
+                            Path::new(&consolidation.source_crate_path),
+                            Path::new(&consolidation.target_crate_path),
+                            Path::new(&consolidation.target_module_path),
+                            &self.project_root,
+                        )
+                        .await
+                        .map_err(|e| ServerError::Internal(format!("Consolidation post-processing failed: {}", e)))?;
+                } else {
+                    warn!("Rust plugin found but does not support workspace consolidation");
+                }
+            } else {
+                warn!("No Rust plugin found for consolidation post-processing");
+            }
         }
 
         // Step 4: Apply text edits grouped by file with locking

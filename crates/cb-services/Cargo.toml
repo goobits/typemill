@@ -23,8 +23,6 @@ globset = "0.4"
 toml_edit = "0.23"
 pathdiff = "0.2"
 chrono = "0.4"
-cargo_metadata = "0.18"  # For dependency graph analysis
-petgraph = { workspace = true }  # For dependency graph traversal
 # NOTE: cb-lang-rust retained for reference_updater module path utilities only:
 # - reference_updater/detectors/rust.rs uses: compute_module_path_from_file, find_crate_name_from_cargo_toml
 # All move/rename/consolidation operations now use language-agnostic plugin system (see move_service/planner.rs)

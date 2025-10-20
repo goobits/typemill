@@ -131,4 +131,68 @@ pub trait WorkspaceSupport: Send + Sync {
         // Default: no manifest planning
         None
     }
+
+    // ========================================================================
+    // Consolidation Post-Processing (Language-specific file structure fixes)
+    // ========================================================================
+
+    /// Execute language-specific post-processing after a consolidation move
+    ///
+    /// This method handles file structure transformations that must occur after
+    /// moving files during a package consolidation, such as:
+    /// - Flattening nested source directories
+    /// - Renaming entry point files for module structure
+    /// - Adding module declarations to target package
+    /// - Validating no circular dependencies are created
+    /// - Merging package manifests
+    ///
+    /// # Arguments
+    /// * `source_crate_name` - Name of the package being consolidated
+    /// * `target_crate_name` - Name of the package receiving the code
+    /// * `target_module_name` - Module name in target package
+    /// * `source_crate_path` - Absolute path to source package root
+    /// * `target_crate_path` - Absolute path to target package root
+    /// * `target_module_path` - Absolute path to target module directory
+    /// * `project_root` - Workspace/project root directory
+    ///
+    /// # Returns
+    /// Ok(()) on success, or error if post-processing fails
+    ///
+    /// # Default Implementation
+    /// No-op. Languages with consolidation support should override.
+    ///
+    /// # Example (Rust)
+    /// ```ignore
+    /// // Rust implementation in cb-lang-rust:
+    /// async fn execute_consolidation_post_processing(
+    ///     &self,
+    ///     source_crate_name: &str,
+    ///     target_crate_name: &str,
+    ///     target_module_name: &str,
+    ///     source_crate_path: &Path,
+    ///     target_crate_path: &Path,
+    ///     target_module_path: &Path,
+    ///     project_root: &Path,
+    /// ) -> Result<(), String> {
+    ///     // 1. Flatten nested src/ directories
+    ///     // 2. Rename lib.rs → mod.rs
+    ///     // 3. Add module declaration to target lib.rs
+    ///     // 4. Validate no circular dependencies
+    ///     // 5. Merge Cargo.toml dependencies
+    ///     Ok(())
+    /// }
+    /// ```
+    async fn execute_consolidation_post_processing(
+        &self,
+        _source_crate_name: &str,
+        _target_crate_name: &str,
+        _target_module_name: &str,
+        _source_crate_path: &Path,
+        _target_crate_path: &Path,
+        _target_module_path: &Path,
+        _project_root: &Path,
+    ) -> Result<(), String> {
+        // Default: no post-processing
+        Ok(())
+    }
 }

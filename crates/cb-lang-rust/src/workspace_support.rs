@@ -5,6 +5,7 @@
 
 use async_trait::async_trait;
 use cb_plugin_api::workspace_support::WorkspaceSupport;
+use std::path::Path;
 use toml_edit::DocumentMut;
 use tracing::debug;
 
@@ -207,6 +208,36 @@ impl WorkspaceSupport for RustWorkspaceSupport {
             rename_info,
             is_consolidation: false,
         })
+    }
+
+    async fn execute_consolidation_post_processing(
+        &self,
+        source_crate_name: &str,
+        target_crate_name: &str,
+        target_module_name: &str,
+        source_crate_path: &Path,
+        target_crate_path: &Path,
+        target_module_path: &Path,
+        project_root: &Path,
+    ) -> Result<(), String> {
+        use crate::consolidation::execute_consolidation_post_processing;
+        use codebuddy_foundation::protocol::ConsolidationMetadata;
+
+        // Build metadata from parameters
+        let metadata = ConsolidationMetadata {
+            is_consolidation: true,
+            source_crate_name: source_crate_name.to_string(),
+            source_crate_path: source_crate_path.display().to_string(),
+            target_crate_name: target_crate_name.to_string(),
+            target_crate_path: target_crate_path.display().to_string(),
+            target_module_name: target_module_name.to_string(),
+            target_module_path: target_module_path.display().to_string(),
+        };
+
+        // Call the standalone function from consolidation module
+        execute_consolidation_post_processing(&metadata, project_root)
+            .await
+            .map_err(|e| e.to_string())
     }
 }
 

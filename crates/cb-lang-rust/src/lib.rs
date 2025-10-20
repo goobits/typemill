@@ -20,6 +20,11 @@ pub mod imports;
 // String literal path rewriting
 mod string_literal_support;
 
+// Consolidation support (Rust-specific post-processing)
+pub mod consolidation;
+pub mod dependency_analysis;
+pub mod cargo_helpers;
+
 use async_trait::async_trait;
 use cb_lang_common::{
     manifest_templates::{ManifestTemplate, TomlManifestTemplate},

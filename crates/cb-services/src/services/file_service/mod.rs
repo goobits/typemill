@@ -2,9 +2,6 @@
 
 // Module declarations
 mod basic_ops;
-mod cargo_helpers; // Minimal helpers for legacy consolidation feature
-mod consolidation;
-mod dependency_analysis;
 mod edit_plan;
 mod rename;
 mod utils;
@@ -13,7 +10,6 @@ mod utils;
 mod tests;
 
 // Re-export public types
-pub use self::dependency_analysis::{CircularDependencyAnalysis, ProblematicModule};
 pub use self::edit_plan::EditPlanResult;
 pub use self::utils::DocumentationUpdateReport;
 
