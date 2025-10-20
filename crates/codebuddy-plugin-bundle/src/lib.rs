@@ -14,10 +14,15 @@ use std::sync::Arc;
 // Force linker to include language plugins by actively using them.
 // This prevents linker dead code elimination from stripping the inventory submissions.
 // We reference each plugin's public type to ensure the crate is linked.
+#[cfg(feature = "lang-markdown")]
 use cb_lang_markdown::MarkdownPlugin;
+#[cfg(feature = "lang-rust")]
 use cb_lang_rust::RustPlugin;
+#[cfg(feature = "lang-toml")]
 use cb_lang_toml::TomlLanguagePlugin;
+#[cfg(feature = "lang-typescript")]
 use cb_lang_typescript::TypeScriptPlugin;
+#[cfg(feature = "lang-yaml")]
 use cb_lang_yaml::YamlLanguagePlugin;
 
 // This function is never called but ensures the linker includes all plugin crates
@@ -25,10 +30,15 @@ use cb_lang_yaml::YamlLanguagePlugin;
 fn _force_plugin_linkage() {
     // These type references ensure the plugin crates are linked
     // The actual plugin instances will be discovered via inventory
+    #[cfg(feature = "lang-markdown")]
     let _: Option<MarkdownPlugin> = None;
+    #[cfg(feature = "lang-rust")]
     let _: Option<RustPlugin> = None;
+    #[cfg(feature = "lang-toml")]
     let _: Option<TomlLanguagePlugin> = None;
+    #[cfg(feature = "lang-typescript")]
     let _: Option<TypeScriptPlugin> = None;
+    #[cfg(feature = "lang-yaml")]
     let _: Option<YamlLanguagePlugin> = None;
 }
 
@@ -83,15 +93,15 @@ mod tests {
     use super::*;
 
     // Force linker to include language plugins for inventory collection in tests
-    #[cfg(test)]
+    #[cfg(all(test, feature = "lang-markdown"))]
     extern crate cb_lang_markdown;
-    #[cfg(test)]
+    #[cfg(all(test, feature = "lang-rust"))]
     extern crate cb_lang_rust;
-    #[cfg(test)]
+    #[cfg(all(test, feature = "lang-typescript"))]
     extern crate cb_lang_typescript;
-    #[cfg(test)]
+    #[cfg(all(test, feature = "lang-toml"))]
     extern crate cb_lang_toml;
-    #[cfg(test)]
+    #[cfg(all(test, feature = "lang-yaml"))]
     extern crate cb_lang_yaml;
 
     #[test]

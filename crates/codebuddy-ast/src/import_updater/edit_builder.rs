@@ -234,18 +234,11 @@ pub(crate) async fn build_import_update_plan(
         // PRIORITY 3: file renames (for path-based imports)
         if let Some(scope) = scan_scope {
             // Use find_module_references for precise edits (works for both file and directory renames)
-            // Downcast to concrete plugin types to access find_module_references
-            // Note: Only Rust and TypeScript supported after language reduction
-            use cb_lang_rust::RustPlugin;
-            use cb_lang_typescript::TypeScriptPlugin;
+            // Use capability trait for language-agnostic module reference scanning
+            if let Some(scanner) = plugin.module_reference_scanner() {
+                let refs = scanner.scan_references(&content, old_module_name, scope).ok();
 
-            let refs_opt = if let Some(rust_plugin) = plugin.as_any().downcast_ref::<RustPlugin>() {
-                rust_plugin
-                    .find_module_references(&content, old_module_name, scope)
-                    .ok()
-            } else { plugin.as_any().downcast_ref::<TypeScriptPlugin>().map(|ts_plugin| ts_plugin.find_module_references(&content, old_module_name, scope)) };
-
-            if let Some(refs) = refs_opt {
+            if let Some(refs) = refs {
                 if !refs.is_empty() {
                     let edits = create_text_edits_from_references(
                         &refs,
@@ -261,6 +254,7 @@ pub(crate) async fn build_import_update_plan(
                     all_edits.extend(edits);
                     edited_file_count += 1;
                 }
+            }
             }
 
             // ADDITIONAL SCAN: Find inline fully-qualified paths

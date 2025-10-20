@@ -10,6 +10,7 @@ pub mod cache;
 pub mod complexity;
 pub mod error;
 pub mod import_updater;
+#[cfg(feature = "lang-rust")]
 pub mod package_extractor;
 pub mod parser;
 pub mod refactoring;

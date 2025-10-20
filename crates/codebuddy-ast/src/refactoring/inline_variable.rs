@@ -93,18 +93,21 @@ pub async fn plan_inline_variable(
 
     // Fallback to AST-based implementation (only TypeScript and Rust supported after language reduction)
     match detect_language(file_path) {
+        #[cfg(feature = "lang-typescript")]
         "typescript" | "javascript" => {
             ast_inline_variable_typescript(source, variable_line, variable_col, file_path)
         }
+        #[cfg(feature = "lang-rust")]
         "rust" => ast_inline_variable_rust(source, variable_line, variable_col, file_path),
         _ => Err(AstError::analysis(format!(
-            "Inline variable refactoring requires LSP service for file: {} (only TypeScript and Rust supported via AST)",
+            "Inline variable refactoring requires LSP service for file: {} (only available languages enabled)",
             file_path
         ))),
     }
 }
 
 /// Generate edit plan for inline variable refactoring (TypeScript/JavaScript) using AST
+#[cfg(feature = "lang-typescript")]
 fn ast_inline_variable_typescript(
     source: &str,
     variable_line: u32,
@@ -121,6 +124,7 @@ fn ast_inline_variable_typescript(
 }
 
 /// Generate edit plan for inline variable refactoring (Rust) using AST
+#[cfg(feature = "lang-rust")]
 fn ast_inline_variable_rust(
     source: &str,
     variable_line: u32,
