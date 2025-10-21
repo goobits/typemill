@@ -615,10 +615,37 @@ impl PluginRegistry {
         &self.plugins
     }
 
+    /// Get the refactoring provider capability for a specific file
+    ///
+    /// This looks up the plugin by file extension, then returns its refactoring capability.
+    /// This ensures the correct language plugin handles the file.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path` - Path to the file being refactored
+    ///
+    /// # Returns
+    ///
+    /// The refactoring provider for the file's language, or None if not supported
+    pub fn refactoring_provider_for_file(&self, file_path: &str) -> Option<&dyn RefactoringProvider> {
+        // Extract file extension
+        let extension = std::path::Path::new(file_path)
+            .extension()
+            .and_then(|ext| ext.to_str())?;
+
+        // Find plugin by extension
+        let plugin = self.find_by_extension(extension)?;
+
+        // Get capability from that specific plugin
+        plugin.refactoring_provider()
+    }
+
     /// Get the refactoring provider capability from the first plugin that supports it
     ///
-    /// This is useful for AST refactoring modules that need language-specific refactoring
-    /// capabilities without knowing which specific plugin to use.
+    /// **DEPRECATED**: Use `refactoring_provider_for_file()` instead to ensure correct
+    /// language plugin is selected. This method returns the first plugin with the capability,
+    /// which breaks multi-language support.
+    #[deprecated(note = "Use refactoring_provider_for_file() to ensure correct plugin selection")]
     pub fn refactoring_provider(&self) -> Option<&dyn RefactoringProvider> {
         self.plugins
             .iter()
@@ -700,5 +727,111 @@ mod tests {
         let plugin = registry.find_by_extension("mock");
         assert!(plugin.is_some());
         assert_eq!(plugin.unwrap().metadata().name, "Mock");
+    }
+
+    #[test]
+    fn test_refactoring_provider_for_file_routes_by_extension() {
+        use crate::RefactoringProvider;
+
+        // Mock plugin for Rust files
+        struct RustMockPlugin;
+
+        #[async_trait]
+        impl LanguagePlugin for RustMockPlugin {
+            fn metadata(&self) -> &LanguageMetadata {
+                static METADATA: LanguageMetadata = LanguageMetadata {
+                    name: "rust-mock",
+                    extensions: &["rs"],
+                    manifest_filename: "Cargo.toml",
+                    source_dir: "src",
+                    entry_point: "lib.rs",
+                    module_separator: "::",
+                };
+                &METADATA
+            }
+
+            fn capabilities(&self) -> PluginCapabilities {
+                PluginCapabilities::none()
+            }
+
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
+            }
+
+            async fn parse(&self, _: &str) -> PluginResult<ParsedSource> {
+                unimplemented!()
+            }
+
+            async fn analyze_manifest(&self, _: &Path) -> PluginResult<ManifestData> {
+                unimplemented!()
+            }
+
+            fn refactoring_provider(&self) -> Option<&dyn RefactoringProvider> {
+                Some(self)
+            }
+        }
+
+        #[async_trait]
+        impl RefactoringProvider for RustMockPlugin {}
+
+        // Mock plugin for TypeScript files
+        struct TypeScriptMockPlugin;
+
+        #[async_trait]
+        impl LanguagePlugin for TypeScriptMockPlugin {
+            fn metadata(&self) -> &LanguageMetadata {
+                static METADATA: LanguageMetadata = LanguageMetadata {
+                    name: "typescript-mock",
+                    extensions: &["ts", "tsx"],
+                    manifest_filename: "package.json",
+                    source_dir: "src",
+                    entry_point: "index.ts",
+                    module_separator: ".",
+                };
+                &METADATA
+            }
+
+            fn capabilities(&self) -> PluginCapabilities {
+                PluginCapabilities::none()
+            }
+
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
+            }
+
+            async fn parse(&self, _: &str) -> PluginResult<ParsedSource> {
+                unimplemented!()
+            }
+
+            async fn analyze_manifest(&self, _: &Path) -> PluginResult<ManifestData> {
+                unimplemented!()
+            }
+
+            fn refactoring_provider(&self) -> Option<&dyn RefactoringProvider> {
+                Some(self)
+            }
+        }
+
+        #[async_trait]
+        impl RefactoringProvider for TypeScriptMockPlugin {}
+
+        // Register both plugins
+        let mut registry = PluginRegistry::new();
+        registry.register(Arc::new(RustMockPlugin));
+        registry.register(Arc::new(TypeScriptMockPlugin));
+
+        // Test file-extension routing
+        let rust_provider = registry.refactoring_provider_for_file("src/main.rs");
+        assert!(rust_provider.is_some(), "Should find Rust provider for .rs file");
+
+        let ts_provider = registry.refactoring_provider_for_file("src/app.ts");
+        assert!(ts_provider.is_some(), "Should find TypeScript provider for .ts file");
+
+        let tsx_provider = registry.refactoring_provider_for_file("src/Component.tsx");
+        assert!(tsx_provider.is_some(), "Should find TypeScript provider for .tsx file");
+
+        // Test that non-existent extension returns None
+        let unknown_provider = registry.refactoring_provider_for_file("file.unknown");
+        assert!(unknown_provider.is_none(), "Should return None for unknown extension");
     }
 }

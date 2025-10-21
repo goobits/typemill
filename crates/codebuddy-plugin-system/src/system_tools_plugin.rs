@@ -344,50 +344,37 @@ impl SystemToolsPlugin {
             });
         }
 
-        // Deserialize parameters
-        #[cfg(feature = "lang-rust")]
+        // Deserialize parameters - no cfg guard needed, we check capabilities at runtime
         let parsed: codebuddy_ast::package_extractor::ExtractModuleToPackageParams =
             serde_json::from_value(params.clone()).map_err(|e| PluginError::SerializationError {
                 message: format!("Invalid extract_module_to_package args: {}", e),
             })?;
 
-        #[cfg(feature = "lang-rust")]
-        {
-            debug!(
-                source_package = %parsed.source_package,
-                module_path = %parsed.module_path,
-                target_package_path = %parsed.target_package_path,
-                target_package_name = %parsed.target_package_name,
-                "Extracting module to package"
-            );
+        debug!(
+            source_package = %parsed.source_package,
+            module_path = %parsed.module_path,
+            target_package_path = %parsed.target_package_path,
+            target_package_name = %parsed.target_package_name,
+            "Extracting module to package"
+        );
 
-            // Call the planning function from cb-ast with injected registry
-            let edit_plan = codebuddy_ast::package_extractor::plan_extract_module_to_package_with_registry(
-                parsed,
-                &self.plugin_registry,
-            )
-            .await
-            .map_err(|e| PluginError::PluginRequestFailed {
-                plugin: "system-tools".to_string(),
-                message: format!("Failed to plan extract_module_to_package: {}", e),
-            })?;
+        // Call the planning function from cb-ast with injected registry
+        // cb-ast is now language-agnostic and uses capability-based dispatch
+        let edit_plan = codebuddy_ast::package_extractor::plan_extract_module_to_package_with_registry(
+            parsed,
+            &self.plugin_registry,
+        )
+        .await
+        .map_err(|e| PluginError::PluginRequestFailed {
+            plugin: "system-tools".to_string(),
+            message: format!("Failed to plan extract_module_to_package: {}", e),
+        })?;
 
-            // Return the edit plan
-            Ok(json!({
-                "edit_plan": edit_plan,
-                "status": "success"
-            }))
-        }
-
-        #[cfg(not(feature = "lang-rust"))]
-        {
-            // This should never happen because we check for Rust plugin above
-            // But kept for safety during compilation without lang-rust feature
-            Err(PluginError::MethodNotSupported {
-                method: "extract_module_to_package".to_string(),
-                plugin: "system-tools (not compiled with lang-rust feature)".to_string(),
-            })
-        }
+        // Return the edit plan
+        Ok(json!({
+            "edit_plan": edit_plan,
+            "status": "success"
+        }))
     }
 }
 

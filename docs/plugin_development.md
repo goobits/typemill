@@ -291,9 +291,9 @@ See existing plugins for complete reference implementations:
 
 ## Plugin Dispatch Patterns
 
-### ✅ Capability-Based Dispatch (Current Standard)
+### ✅ Capability-Based Dispatch (Current Standard - Proposals 05 & 07 Complete)
 
-**Status:** Fully implemented and operational as of Proposal 05 completion.
+**Status:** Fully implemented and operational.
 
 Language-specific operations now use trait-based capability queries with zero cfg guards:
 

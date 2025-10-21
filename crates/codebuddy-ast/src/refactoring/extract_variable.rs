@@ -180,7 +180,7 @@ pub async fn plan_extract_variable(
 
     // Try language plugin capability first (faster, more reliable, under our control)
     if let Some(plugins) = language_plugins {
-        if let Some(provider) = plugins.refactoring_provider() {
+        if let Some(provider) = plugins.refactoring_provider_for_file(file_path) {
             if provider.supports_extract_variable() {
                 debug!(
                     file_path = %file_path,

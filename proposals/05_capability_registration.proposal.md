@@ -11,9 +11,15 @@
 3. Update host subsystems (system tools, import/refactor orchestration, manifest updaters) to query the registry for capabilities instead of using language-specific conditionals.
 4. Provide fallback behavior for missing capabilities to maintain graceful errors when a feature is unavailable.
 
-## Status: ✅ COMPLETE
+## Status: ✅ COMPLETE (with final fixes applied)
 
 All success criteria met. The capability registration system is fully implemented and operational.
+
+**Final fixes applied (2025-10-20):**
+- Fixed file-extension routing in `refactoring_provider_for_file()` to ensure correct language plugin selection
+- Removed last cfg guards from system_tools_plugin.rs
+- Removed cfg guard from package_extractor module export
+- All shared code now uses capability-based dispatch with zero cfg guards
 
 ### Implementation Summary
 
