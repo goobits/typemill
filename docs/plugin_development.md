@@ -224,6 +224,24 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 - [ ] `remove_workspace_member()` removes members
 - [ ] `merge_dependencies()` combines deps
 
+### Additional Capability Traits (Optional)
+**Choose based on plugin needs:**
+
+**ManifestUpdater** (for dependency management):
+- [ ] `manifest_updater()` discovery method implemented
+- [ ] `update_dependency()` updates manifest files (Cargo.toml, package.json)
+
+**ModuleLocator** (for module file discovery):
+- [ ] `module_locator()` discovery method implemented
+- [ ] `locate_module_files()` finds files for module paths
+
+**RefactoringProvider** (for AST refactoring):
+- [ ] `refactoring_provider()` discovery method implemented
+- [ ] `supports_inline_variable()`, `supports_extract_function()`, `supports_extract_variable()` flags
+- [ ] `plan_inline_variable()` generates inline variable refactoring plans
+- [ ] `plan_extract_function()` generates extract function refactoring plans
+- [ ] `plan_extract_variable()` generates extract variable refactoring plans
+
 ### Quality
 - [ ] Uses `ImportGraphBuilder` for ImportGraph
 - [ ] Uses `SubprocessAstTool` for external parsers (if applicable)
@@ -273,62 +291,168 @@ See existing plugins for complete reference implementations:
 
 ## Plugin Dispatch Patterns
 
-### Current Pattern: Runtime Match-Based Dispatch
+### ✅ Capability-Based Dispatch (Current Standard)
 
-Language-specific operations currently use runtime dispatch with compile-time feature guards:
+**Status:** Fully implemented and operational as of Proposal 05 completion.
+
+Language-specific operations now use trait-based capability queries with zero cfg guards:
 
 ```rust
-// Example from workspace.rs update_manifest_dependency
-let updated_content = match plugin.metadata().name {
+// Example: Manifest updates using ManifestUpdater capability
+let manifest_updater = plugin
+    .manifest_updater()
+    .ok_or_else(|| ApiError::Unsupported(
+        format!("Plugin '{}' does not support manifest updates", plugin.metadata().name)
+    ))?;
+
+let updated_content = manifest_updater
+    .update_dependency(path, old_dep, new_dep, new_path)
+    .await?;
+```
+
+**Benefits:**
+- ✅ Zero downcasting or cfg guards needed
+- ✅ Plugins self-advertise capabilities
+- ✅ Language-agnostic: shared code doesn't know about specific languages
+- ✅ Easy to add new capabilities
+- ✅ Clear error messages for unsupported operations
+
+### New Capability Traits
+
+**1. ManifestUpdater** - For manifest file updates
+
+```rust
+#[async_trait]
+pub trait ManifestUpdater: Send + Sync {
+    async fn update_dependency(
+        &self,
+        manifest_path: &Path,
+        old_name: &str,
+        new_name: &str,
+        new_version: Option<&str>,
+    ) -> PluginResult<String>;
+}
+
+// Implementation in language plugin:
+impl cb_plugin_api::ManifestUpdater for RustPlugin {
+    async fn update_dependency(...) -> PluginResult<String> {
+        // Update Cargo.toml dependencies
+    }
+}
+
+// Discovery method:
+fn manifest_updater(&self) -> Option<&dyn ManifestUpdater> {
+    Some(self)
+}
+```
+
+**2. ModuleLocator** - For module file discovery
+
+```rust
+#[async_trait]
+pub trait ModuleLocator: Send + Sync {
+    async fn locate_module_files(
+        &self,
+        package_path: &Path,
+        module_path: &str,
+    ) -> PluginResult<Vec<PathBuf>>;
+}
+
+// Implementation in language plugin:
+impl cb_plugin_api::ModuleLocator for RustPlugin {
+    async fn locate_module_files(...) -> PluginResult<Vec<PathBuf>> {
+        // Locate files for module path like "crate::utils::helpers"
+    }
+}
+
+// Discovery method:
+fn module_locator(&self) -> Option<&dyn ModuleLocator> {
+    Some(self)
+}
+```
+
+**3. RefactoringProvider** - For AST refactoring operations
+
+```rust
+#[async_trait]
+pub trait RefactoringProvider: Send + Sync {
+    fn supports_inline_variable(&self) -> bool;
+    fn supports_extract_function(&self) -> bool;
+    fn supports_extract_variable(&self) -> bool;
+
+    async fn plan_inline_variable(
+        &self,
+        source: &str,
+        variable_line: u32,
+        variable_col: u32,
+        file_path: &str,
+    ) -> PluginResult<EditPlan>;
+
+    async fn plan_extract_function(
+        &self,
+        source: &str,
+        start_line: u32,
+        end_line: u32,
+        function_name: &str,
+        file_path: &str,
+    ) -> PluginResult<EditPlan>;
+
+    async fn plan_extract_variable(
+        &self,
+        source: &str,
+        start_line: u32,
+        start_col: u32,
+        end_line: u32,
+        end_col: u32,
+        variable_name: Option<String>,
+        file_path: &str,
+    ) -> PluginResult<EditPlan>;
+}
+
+// Implementation in language plugin:
+impl cb_plugin_api::RefactoringProvider for RustPlugin {
+    fn supports_inline_variable(&self) -> bool { true }
+    fn supports_extract_function(&self) -> bool { true }
+    fn supports_extract_variable(&self) -> bool { true }
+
+    async fn plan_inline_variable(...) -> PluginResult<EditPlan> {
+        refactoring::plan_inline_variable(source, variable_line, variable_col, file_path)
+            .map_err(|e| PluginError::internal(format!("Rust refactoring error: {}", e)))
+    }
+    // ... other methods
+}
+
+// Discovery method:
+fn refactoring_provider(&self) -> Option<&dyn RefactoringProvider> {
+    Some(self)
+}
+```
+
+### Migration Pattern: Old → New
+
+**Old pattern (deprecated - cfg guards + downcasting):**
+```rust
+match plugin.metadata().name {
     #[cfg(feature = "lang-rust")]
     "rust" => {
-        plugin.as_any()
-            .downcast_ref::<RustPlugin>()?
-            .update_dependency(path, old_dep, new_dep, new_path)
-            .await?
+        plugin.as_any().downcast_ref::<RustPlugin>()?.method()
     }
     #[cfg(feature = "lang-typescript")]
     "typescript" => {
-        plugin.as_any()
-            .downcast_ref::<TypeScriptPlugin>()?
-            .update_dependency(path, old_dep, new_dep, new_path)
-            .await?
+        plugin.as_any().downcast_ref::<TypeScriptPlugin>()?.method()
     }
-    name => {
-        return Err(ApiError::Unsupported(
-            format!("Plugin '{}' does not support dependency updates", name)
-        ))
-    }
-};
+    _ => Err(...)
+}
 ```
 
-**Benefits:**
-- Single dispatch point (DRY principle)
-- Runtime plugin selection
-- Clear error messages for unsupported operations
-- ~30% less code than sequential if-let blocks
-
-**Status:** This pattern is in active use but will be replaced by capability-based dispatch (see below).
-
-### Future: Capability-Based Dispatch (In Progress)
-
-**Goal:** Replace downcasting with trait-based capability queries:
-
+**New pattern (capability-based):**
 ```rust
-// Future pattern (not yet implemented)
-let updater = plugin.get_capability::<DependencyUpdater>()?;
-let updated = updater.update_dependency(path, old_dep, new_dep, new_path).await?;
+let capability = plugin.capability_trait()
+    .ok_or_else(|| ApiError::Unsupported(...))?;
+capability.method().await?
 ```
 
-**Benefits:**
-- No downcasting needed
-- Plugins self-advertise capabilities
-- Zero cfg guards in shared code
-- Easier to add new capabilities
-
-**See:** `proposals/05_capability_registration.proposal.md` for detailed implementation plan.
-
-**Current Progress:** Single-language builds work (Success Criterion 1), but cfg guards remain in AST modules, workspace handlers, and system tools.
+**Results:** 12 cfg guards removed, 2 downcasts eliminated, -48 net lines while adding MORE functionality.
 
 ## Key Principles
 
