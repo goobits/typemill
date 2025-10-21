@@ -271,6 +271,65 @@ See existing plugins for complete reference implementations:
 - **TOML/YAML**: `crates/cb-lang-toml/`, `crates/cb-lang-yaml/` - Config file plugins
 - **TypeScript**: `crates/cb-lang-typescript/` - JavaScript ecosystem plugin
 
+## Plugin Dispatch Patterns
+
+### Current Pattern: Runtime Match-Based Dispatch
+
+Language-specific operations currently use runtime dispatch with compile-time feature guards:
+
+```rust
+// Example from workspace.rs update_manifest_dependency
+let updated_content = match plugin.metadata().name {
+    #[cfg(feature = "lang-rust")]
+    "rust" => {
+        plugin.as_any()
+            .downcast_ref::<RustPlugin>()?
+            .update_dependency(path, old_dep, new_dep, new_path)
+            .await?
+    }
+    #[cfg(feature = "lang-typescript")]
+    "typescript" => {
+        plugin.as_any()
+            .downcast_ref::<TypeScriptPlugin>()?
+            .update_dependency(path, old_dep, new_dep, new_path)
+            .await?
+    }
+    name => {
+        return Err(ApiError::Unsupported(
+            format!("Plugin '{}' does not support dependency updates", name)
+        ))
+    }
+};
+```
+
+**Benefits:**
+- Single dispatch point (DRY principle)
+- Runtime plugin selection
+- Clear error messages for unsupported operations
+- ~30% less code than sequential if-let blocks
+
+**Status:** This pattern is in active use but will be replaced by capability-based dispatch (see below).
+
+### Future: Capability-Based Dispatch (In Progress)
+
+**Goal:** Replace downcasting with trait-based capability queries:
+
+```rust
+// Future pattern (not yet implemented)
+let updater = plugin.get_capability::<DependencyUpdater>()?;
+let updated = updater.update_dependency(path, old_dep, new_dep, new_path).await?;
+```
+
+**Benefits:**
+- No downcasting needed
+- Plugins self-advertise capabilities
+- Zero cfg guards in shared code
+- Easier to add new capabilities
+
+**See:** `proposals/05_capability_registration.proposal.md` for detailed implementation plan.
+
+**Current Progress:** Single-language builds work (Success Criterion 1), but cfg guards remain in AST modules, workspace handlers, and system tools.
+
 ## Key Principles
 
 | Principle | Rationale |
