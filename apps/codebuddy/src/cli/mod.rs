@@ -105,6 +105,18 @@ pub enum Commands {
         /// Scope (e.g., "all", "code-only", "custom")
         #[arg(long, conflicts_with = "args")]
         scope: Option<String>,
+
+        /// Update code comments (opt-in for full project renames)
+        #[arg(long, conflicts_with = "args")]
+        update_comments: Option<bool>,
+
+        /// Update markdown prose and inline code (opt-in for full project renames)
+        #[arg(long, conflicts_with = "args")]
+        update_markdown_prose: Option<bool>,
+
+        /// Update exact identifier matches in configs (opt-in for crate name updates)
+        #[arg(long, conflicts_with = "args")]
+        update_exact_matches: Option<bool>,
     },
     /// List all public MCP tools (excludes internal tools)
     Tools {
@@ -245,6 +257,9 @@ pub async fn run() {
             name,
             kind,
             scope,
+            update_comments,
+            update_markdown_prose,
+            update_exact_matches,
         } => {
             handle_tool_command(
                 &tool_name,
@@ -256,6 +271,9 @@ pub async fn run() {
                 name.as_deref(),
                 kind.as_deref(),
                 scope.as_deref(),
+                update_comments,
+                update_markdown_prose,
+                update_exact_matches,
                 &format,
             )
             .await;
@@ -428,6 +446,9 @@ async fn handle_dead_code_command(command: DeadCode) {
     handle_tool_command(
         "analyze.dead_code",
         Some(&args_json),
+        None,
+        None,
+        None,
         None,
         None,
         None,
@@ -910,6 +931,9 @@ async fn handle_tool_command(
     name: Option<&str>,
     kind: Option<&str>,
     scope: Option<&str>,
+    update_comments: Option<bool>,
+    update_markdown_prose: Option<bool>,
+    update_exact_matches: Option<bool>,
     format: &str,
 ) {
     use std::collections::HashMap;
@@ -951,6 +975,15 @@ async fn handle_tool_command(
         }
         if let Some(v) = scope {
             flags.insert("scope".to_string(), v.to_string());
+        }
+        if let Some(v) = update_comments {
+            flags.insert("update_comments".to_string(), v.to_string());
+        }
+        if let Some(v) = update_markdown_prose {
+            flags.insert("update_markdown_prose".to_string(), v.to_string());
+        }
+        if let Some(v) = update_exact_matches {
+            flags.insert("update_exact_matches".to_string(), v.to_string());
         }
 
         match flag_parser::parse_flags_to_json(tool_name, flags) {

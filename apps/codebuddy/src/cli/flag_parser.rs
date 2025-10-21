@@ -166,6 +166,8 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
             "update_configs",
             "update_examples",
             "update_comments",
+            "update_markdown_prose",
+            "update_exact_matches",
         ],
     )?;
 
@@ -203,7 +205,8 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
             for (key, value) in &flags {
                 match key.as_str() {
                     "update_code" | "update_string_literals" | "update_docs"
-                    | "update_configs" | "update_examples" | "update_comments" => {
+                    | "update_configs" | "update_examples" | "update_comments"
+                    | "update_markdown_prose" | "update_exact_matches" => {
                         custom_scope[key] = json!(parse_bool(value)?);
                         has_custom = true;
                     }
