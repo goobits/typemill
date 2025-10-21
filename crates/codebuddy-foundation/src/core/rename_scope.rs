@@ -41,6 +41,20 @@ pub struct RenameScope {
     #[serde(default)]
     pub update_markdown_prose: bool,
 
+    /// Update exact identifier matches in config files (opt-in)
+    /// When false (default), only updates path-like strings (containing / or \)
+    /// When true, also updates exact word matches:
+    /// - Array items: ["old-name"]
+    /// - Config values: key = "old-name"
+    /// - Identifiers bounded by quotes, brackets, or separators
+    ///
+    /// Useful for updating crate names in non-Cargo.toml configs
+    /// (deny.toml, dependabot.yml, etc.)
+    ///
+    /// WARNING: May cause false positives. Review changes carefully.
+    #[serde(default)]
+    pub update_exact_matches: bool,
+
     /// Custom exclude patterns (glob patterns)
     #[serde(default)]
     pub exclude_patterns: Vec<String>,
@@ -67,6 +81,7 @@ impl RenameScope {
             update_examples: true,
             update_comments: false,
             update_markdown_prose: false,
+            update_exact_matches: false,
             exclude_patterns: vec![],
         }
     }
@@ -81,6 +96,7 @@ impl RenameScope {
             update_examples: true,
             update_comments: false,
             update_markdown_prose: false, // Still opt-in for safety
+            update_exact_matches: false,  // Still opt-in for safety
             exclude_patterns: vec![],
         }
     }

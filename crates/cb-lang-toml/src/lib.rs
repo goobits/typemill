@@ -112,11 +112,17 @@ impl LanguagePlugin for TomlLanguagePlugin {
         new_path: &Path,
         _current_file: &Path,
         _project_root: &Path,
-        _rename_info: Option<&serde_json::Value>,
+        rename_info: Option<&serde_json::Value>,
     ) -> Option<(String, usize)> {
+        // Extract update_exact_matches from rename_info
+        let update_exact_matches = rename_info
+            .and_then(|v| v.get("update_exact_matches"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
         match self
             .import_support
-            .rewrite_toml_paths(content, old_path, new_path)
+            .rewrite_toml_paths(content, old_path, new_path, update_exact_matches)
         {
             Ok((new_content, count)) => {
                 if count > 0 {

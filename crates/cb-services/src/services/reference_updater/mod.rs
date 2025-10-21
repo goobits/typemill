@@ -474,6 +474,8 @@ impl ReferenceUpdater {
         let is_rust_file = old_path.extension().and_then(|e| e.to_str()) == Some("rs");
         let is_rust_crate = old_path.is_dir() && old_path.join("Cargo.toml").exists();
 
+        let mut all_affected = Vec::new();
+
         if is_rust_file || is_rust_crate {
             // Call Rust plugin's reference detector via plugin registry
             if let Some(rust_plugin) = plugins.iter().find(|p| p.handles_extension("rs")) {
@@ -482,24 +484,46 @@ impl ReferenceUpdater {
                         .find_affected_files(old_path, new_path, &self.project_root, project_files)
                         .await;
 
-                    if !rust_affected.is_empty() {
-                        // Return early - we've found all affected Rust files
-                        return Ok(rust_affected);
-                    }
+                    // Add Rust files to the affected list
+                    all_affected.extend(rust_affected);
                 }
             }
+
+            // ALSO run generic detection to find non-Rust files (markdown/TOML/YAML)
+            // Filter out .rs files since they're already handled by Rust detector
+            let non_rust_files: Vec<PathBuf> = project_files
+                .iter()
+                .filter(|f| f.extension().and_then(|e| e.to_str()) != Some("rs"))
+                .cloned()
+                .collect();
+
+            let generic_affected = detectors::find_generic_affected_files(
+                old_path,
+                new_path,
+                &self.project_root,
+                &non_rust_files,
+                plugins,
+            );
+
+            all_affected.extend(generic_affected);
+        } else {
+            // Not a Rust file/crate - use generic detection for everything
+            let generic_affected = detectors::find_generic_affected_files(
+                old_path,
+                new_path,
+                &self.project_root,
+                project_files,
+                plugins,
+            );
+
+            all_affected.extend(generic_affected);
         }
 
-        // Fallback to generic import-based detection for non-Rust or when no Rust files affected
-        let generic_affected = detectors::find_generic_affected_files(
-            old_path,
-            new_path,
-            &self.project_root,
-            project_files,
-            plugins,
-        );
+        // Sort and dedup just in case (shouldn't be needed now but safe)
+        all_affected.sort();
+        all_affected.dedup();
 
-        Ok(generic_affected)
+        Ok(all_affected)
     }
 
     pub(crate) fn get_all_imported_files(

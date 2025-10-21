@@ -17,6 +17,7 @@ impl TomlImportSupport {
         content: &str,
         old_path: &Path,
         new_path: &Path,
+        update_exact_matches: bool,
     ) -> PluginResult<(String, usize)> {
         let mut doc: DocumentMut = content.parse().map_err(|e| {
             cb_plugin_api::PluginError::parse(format!("Failed to parse TOML: {}", e))
@@ -28,25 +29,42 @@ impl TomlImportSupport {
 
         // Update root items
         for (_key, item) in doc.iter_mut() {
-            Self::update_toml_item(item, &old_path_str, &new_path_str, &mut changes);
+            Self::update_toml_item(item, &old_path_str, &new_path_str, update_exact_matches, &mut changes);
         }
 
         Ok((doc.to_string(), changes))
     }
 
     /// Recursively update paths in TOML values
-    fn update_toml_item(item: &mut Item, old_path: &str, new_path: &str, changes: &mut usize) {
+    fn update_toml_item(item: &mut Item, old_path: &str, new_path: &str, update_exact_matches: bool, changes: &mut usize) {
         match item {
             Item::Value(Value::String(s)) => {
                 let formatted = s.value();
-                if Self::is_path_like(formatted) {
+                if Self::should_update_string(formatted, old_path, update_exact_matches) {
                     // Skip if already updated (idempotency check for nested renames)
                     let is_nested_rename = new_path.starts_with(&format!("{}/", old_path));
                     if is_nested_rename && formatted.contains(new_path) {
                         return;
                     }
 
-                    // Match at start of path, not anywhere
+                    // Check for basename match first (exact identifier matching)
+                    if update_exact_matches {
+                        if let (Some(old_basename), Some(new_basename)) = (
+                            std::path::Path::new(old_path).file_name(),
+                            std::path::Path::new(new_path).file_name(),
+                        ) {
+                            let old_basename_str = old_basename.to_string_lossy();
+                            let new_basename_str = new_basename.to_string_lossy();
+
+                            if formatted == &*old_basename_str {
+                                *s = toml_edit::Formatted::new(new_basename_str.to_string());
+                                *changes += 1;
+                                return;
+                            }
+                        }
+                    }
+
+                    // Path-based replacement (full path or path prefix)
                     if formatted == old_path || formatted.starts_with(&format!("{}/", old_path)) {
                         let new_value = formatted.replacen(old_path, new_path, 1);
                         *s = toml_edit::Formatted::new(new_value);
@@ -56,13 +74,13 @@ impl TomlImportSupport {
             }
             Item::Table(table) => {
                 for (_key, value) in table.iter_mut() {
-                    Self::update_toml_item(value, old_path, new_path, changes);
+                    Self::update_toml_item(value, old_path, new_path, update_exact_matches, changes);
                 }
             }
             Item::ArrayOfTables(array) => {
                 for table in array.iter_mut() {
                     for (_key, value) in table.iter_mut() {
-                        Self::update_toml_item(value, old_path, new_path, changes);
+                        Self::update_toml_item(value, old_path, new_path, update_exact_matches, changes);
                     }
                 }
             }
@@ -70,14 +88,31 @@ impl TomlImportSupport {
                 for value in arr.iter_mut() {
                     if let Value::String(s) = value {
                         let formatted = s.value();
-                        if Self::is_path_like(formatted) {
+                        if Self::should_update_string(formatted, old_path, update_exact_matches) {
                             // Skip if already updated (idempotency check for nested renames)
                             let is_nested_rename = new_path.starts_with(&format!("{}/", old_path));
                             if is_nested_rename && formatted.contains(new_path) {
                                 continue;
                             }
 
-                            // Match at start of path, not anywhere
+                            // Check for basename match first (exact identifier matching)
+                            if update_exact_matches {
+                                if let (Some(old_basename), Some(new_basename)) = (
+                                    std::path::Path::new(old_path).file_name(),
+                                    std::path::Path::new(new_path).file_name(),
+                                ) {
+                                    let old_basename_str = old_basename.to_string_lossy();
+                                    let new_basename_str = new_basename.to_string_lossy();
+
+                                    if formatted == &*old_basename_str {
+                                        *s = toml_edit::Formatted::new(new_basename_str.to_string());
+                                        *changes += 1;
+                                        continue;
+                                    }
+                                }
+                            }
+
+                            // Path-based replacement (full path or path prefix)
                             if formatted == old_path
                                 || formatted.starts_with(&format!("{}/", old_path))
                             {
@@ -91,6 +126,33 @@ impl TomlImportSupport {
             }
             _ => {}
         }
+    }
+
+    /// Check if a string should be updated based on matching strategy
+    fn should_update_string(s: &str, old_path: &str, update_exact_matches: bool) -> bool {
+        if Self::is_path_like(s) {
+            // Always update path-like strings
+            return true;
+        }
+
+        if update_exact_matches {
+            // Check for exact match (identifier matching)
+            // Match either the full path or just the basename
+            // This handles cases like "cb-test-support" matching "/workspace/crates/cb-test-support"
+            if s == old_path {
+                return true;
+            }
+
+            // Also match against the directory/file name (basename)
+            if let Some(basename) = std::path::Path::new(old_path).file_name() {
+                let basename_str = basename.to_string_lossy();
+                if s == basename_str {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     fn is_path_like(s: &str) -> bool {
@@ -113,7 +175,8 @@ impl ImportRenameSupport for TomlImportSupport {
     ) -> (String, usize) {
         // For TOML, old_name and new_name are path patterns
         // We use the internal method which handles TOML structure properly
-        match self.rewrite_toml_paths(content, Path::new(old_name), Path::new(new_name)) {
+        // Default to false for exact matches (legacy/generic path)
+        match self.rewrite_toml_paths(content, Path::new(old_name), Path::new(new_name), false) {
             Ok((new_content, count)) => (new_content, count),
             Err(_) => (content.to_string(), 0),
         }
