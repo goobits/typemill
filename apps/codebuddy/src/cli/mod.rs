@@ -68,9 +68,13 @@ pub enum Commands {
         /// Tool name (e.g., "rename.plan", "find_definition")
         tool_name: String,
 
-        /// Tool arguments as JSON string (required if not using flags)
-        #[arg(required_unless_present_any = ["target", "source"])]
+        /// Tool arguments as JSON string (use "-" for stdin, required if not using flags)
+        #[arg(required_unless_present_any = ["target", "source", "input_file"])]
         args: Option<String>,
+
+        /// Read arguments from file
+        #[arg(long, conflicts_with_all = ["args", "target", "source", "destination", "new_name", "name", "kind", "scope", "update_imports", "update_path_references", "update_markdown_links", "update_config_files", "update_comments", "update_markdown_text", "update_config_names", "update_all"])]
+        input_file: Option<String>,
 
         /// Output format (pretty or compact)
         #[arg(long, default_value = "pretty", value_parser = ["pretty", "compact"])]
@@ -79,64 +83,64 @@ pub enum Commands {
         // === Common flags across refactoring tools ===
 
         /// Target (format: kind:path or kind:path:line:char)
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         target: Option<String>,
 
         /// Source (format: path:line:char)
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         source: Option<String>,
 
         /// Destination (format: path or path:line:char)
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         destination: Option<String>,
 
         /// New name
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         new_name: Option<String>,
 
         /// Name for extracted element
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         name: Option<String>,
 
         /// Kind (e.g., "function", "variable", "imports", "to_async")
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         kind: Option<String>,
 
         /// Scope (e.g., "all", "code-only", "custom")
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         scope: Option<String>,
 
         /// Update import statements (use statements, imports)
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         update_imports: Option<bool>,
 
         /// Update path references in string literals ("crates/old-name")
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         update_path_references: Option<bool>,
 
         /// Update markdown link targets ([text](path))
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         update_markdown_links: Option<bool>,
 
         /// Update configuration files (Cargo.toml, deny.toml, etc.)
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         update_config_files: Option<bool>,
 
         /// Update code comments (opt-in for full project renames)
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         update_comments: Option<bool>,
 
         /// Update markdown text and inline code snippets (opt-in)
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         update_markdown_text: Option<bool>,
 
         /// Update crate/package names in config arrays (opt-in)
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         update_config_names: Option<bool>,
 
         /// Update everything (all update flags enabled)
         /// Shorthand for complete project renames
-        #[arg(long, conflicts_with = "args")]
+        #[arg(long, conflicts_with_all = ["args", "input_file"])]
         update_all: bool,
     },
     /// List all public MCP tools (excludes internal tools)
@@ -270,6 +274,7 @@ pub async fn run() {
         Commands::Tool {
             tool_name,
             args,
+            input_file,
             format,
             target,
             source,
@@ -290,6 +295,7 @@ pub async fn run() {
             handle_tool_command(
                 &tool_name,
                 args.as_deref(),
+                input_file.as_deref(),
                 target.as_deref(),
                 source.as_deref(),
                 destination.as_deref(),
@@ -477,6 +483,7 @@ async fn handle_dead_code_command(command: DeadCode) {
     handle_tool_command(
         "analyze.dead_code",
         Some(&args_json),
+        None, // input_file
         None,
         None,
         None,
@@ -960,6 +967,7 @@ async fn handle_tools_command(format: &str) {
 async fn handle_tool_command(
     tool_name: &str,
     args_json: Option<&str>,
+    input_file: Option<&str>,
     target: Option<&str>,
     source: Option<&str>,
     destination: Option<&str>,
@@ -978,19 +986,69 @@ async fn handle_tool_command(
     format: &str,
 ) {
     use std::collections::HashMap;
+    use std::io::{self, Read};
 
-    // Build arguments from either JSON or flags
-    let arguments: serde_json::Value = if let Some(json) = args_json {
-        // Use JSON directly
-        match serde_json::from_str(json) {
-            Ok(val) => val,
+    // Build arguments from either JSON, file, stdin, or flags
+    let arguments: serde_json::Value = if let Some(file_path) = input_file {
+        // Read JSON from file
+        let json = match std::fs::read_to_string(file_path) {
+            Ok(content) => content,
             Err(e) => {
                 let error = codebuddy_foundation::core::model::mcp::McpError::invalid_request(
-                    format!("Invalid JSON arguments: {}", e),
+                    format!("Failed to read input file '{}': {}", file_path, e),
                 );
                 let api_error = codebuddy_foundation::protocol::ApiError::from(error);
                 output_error(&api_error, format);
                 process::exit(1);
+            }
+        };
+        match serde_json::from_str(&json) {
+            Ok(val) => val,
+            Err(e) => {
+                let error = codebuddy_foundation::core::model::mcp::McpError::invalid_request(
+                    format!("Invalid JSON in file '{}': {}", file_path, e),
+                );
+                let api_error = codebuddy_foundation::protocol::ApiError::from(error);
+                output_error(&api_error, format);
+                process::exit(1);
+            }
+        }
+    } else if let Some(json) = args_json {
+        // Check if args is "-" for stdin
+        if json == "-" {
+            // Read JSON from stdin
+            let mut stdin_content = String::new();
+            if let Err(e) = io::stdin().read_to_string(&mut stdin_content) {
+                let error = codebuddy_foundation::core::model::mcp::McpError::invalid_request(
+                    format!("Failed to read from stdin: {}", e),
+                );
+                let api_error = codebuddy_foundation::protocol::ApiError::from(error);
+                output_error(&api_error, format);
+                process::exit(1);
+            }
+            match serde_json::from_str(&stdin_content) {
+                Ok(val) => val,
+                Err(e) => {
+                    let error = codebuddy_foundation::core::model::mcp::McpError::invalid_request(
+                        format!("Invalid JSON from stdin: {}", e),
+                    );
+                    let api_error = codebuddy_foundation::protocol::ApiError::from(error);
+                    output_error(&api_error, format);
+                    process::exit(1);
+                }
+            }
+        } else {
+            // Use JSON string directly
+            match serde_json::from_str(json) {
+                Ok(val) => val,
+                Err(e) => {
+                    let error = codebuddy_foundation::core::model::mcp::McpError::invalid_request(
+                        format!("Invalid JSON arguments: {}", e),
+                    );
+                    let api_error = codebuddy_foundation::protocol::ApiError::from(error);
+                    output_error(&api_error, format);
+                    process::exit(1);
+                }
             }
         }
     } else {
