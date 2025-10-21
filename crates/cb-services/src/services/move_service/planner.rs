@@ -4,7 +4,7 @@ use crate::services::reference_updater::ReferenceUpdater;
 use cb_plugin_api::{PluginRegistry, ScanScope};
 use codebuddy_foundation::protocol::{ApiResult as ServerResult, EditPlan};
 use std::path::Path;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 /// Plan a file move with import updates
 pub async fn plan_file_move(
@@ -252,7 +252,18 @@ async fn plan_documentation_and_config_edits(
     }
 
     for ext in &file_extensions {
+        debug!(
+            extension = ext,
+            "Looking for plugin for extension"
+        );
+
         if let Some(plugin) = plugin_registry.find_by_extension(ext) {
+            debug!(
+                extension = ext,
+                plugin_name = plugin.metadata().name,
+                "Found plugin for extension"
+            );
+
             // Walk the project to find files with this extension
             let walker = ignore::WalkBuilder::new(project_root)
                 .hidden(false)
@@ -392,6 +403,11 @@ async fn plan_documentation_and_config_edits(
             }
 
             files_to_scan.clear(); // Clear for next extension
+        } else {
+            debug!(
+                extension = ext,
+                "No plugin found for extension"
+            );
         }
     }
 

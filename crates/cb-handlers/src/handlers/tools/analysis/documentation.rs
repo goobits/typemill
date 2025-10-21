@@ -1007,6 +1007,7 @@ fn has_doc_comment(symbol: &Symbol, lines: &[&str], language: &str) -> bool {
 
     let patterns = get_doc_comment_patterns(language);
 
+    #[allow(clippy::needless_range_loop)]
     for i in start_idx..line_idx {
         let line = lines[i].trim();
         for pattern in &patterns {
@@ -1041,6 +1042,7 @@ fn extract_doc_comment(symbol: &Symbol, lines: &[&str], language: &str) -> Strin
     let mut doc_lines = Vec::new();
     let mut in_doc_block = false;
 
+    #[allow(clippy::needless_range_loop)]
     for i in start_idx..line_idx {
         let line = lines[i].trim();
 

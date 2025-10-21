@@ -308,7 +308,7 @@ fn collect_rust_files(dir: &Path) -> ServerResult<Vec<PathBuf>> {
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        if path.is_file() && path.extension().map_or(false, |ext| ext == "rs") {
+        if path.is_file() && path.extension().is_some_and(|ext| ext == "rs") {
             files.push(path.to_path_buf());
         }
     }
@@ -335,12 +335,15 @@ fn extract_root_crate(import_path: &str) -> Option<String> {
     }
 }
 
+/// Result type for classified dependencies: (external, workspace, std)
+type ClassifiedDeps = (HashMap<String, DependencySpec>, Vec<String>, Vec<String>);
+
 /// Classify dependencies into external, workspace, and std
 fn classify_dependencies(
     imports: &HashSet<String>,
     target_path: &Path,
     params: &ModuleDependenciesParams,
-) -> ServerResult<(HashMap<String, DependencySpec>, Vec<String>, Vec<String>)> {
+) -> ServerResult<ClassifiedDeps> {
     let mut external_deps = HashMap::new();
     let mut workspace_deps = Vec::new();
     let mut std_deps = Vec::new();
@@ -362,7 +365,7 @@ fn classify_dependencies(
     // Get workspace members
     let workspace_members = workspace_manifest
         .as_ref()
-        .map(|m| extract_workspace_members(m))
+        .map(extract_workspace_members)
         .unwrap_or_default();
 
     for import in imports {
@@ -490,7 +493,7 @@ fn extract_workspace_members(manifest: &toml_edit::DocumentMut) -> Vec<String> {
             for member in members_array.iter() {
                 if let Some(path) = member.as_str() {
                     // Extract crate name from path (e.g., "crates/cb-core" -> "cb-core")
-                    if let Some(name) = path.split('/').last() {
+                    if let Some(name) = path.split('/').next_back() {
                         members.push(name.to_string());
                     }
                 }

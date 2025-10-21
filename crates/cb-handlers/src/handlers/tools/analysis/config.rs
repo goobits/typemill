@@ -164,6 +164,7 @@ impl AnalysisConfig {
     ///
     /// # Returns
     /// A new `AnalysisConfig` with default preset settings
+    #[allow(clippy::should_implement_trait)]
     pub fn default() -> Self {
         let mut config = Self {
             preset: Some("default".to_string()),

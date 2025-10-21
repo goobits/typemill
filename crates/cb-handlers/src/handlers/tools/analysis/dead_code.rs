@@ -147,11 +147,8 @@ pub fn detect_unused_imports(
 
                             if !unused_symbols.is_empty() {
                                 let all_unused = unused_symbols.len() == symbols.len();
-                                let severity = if all_unused {
-                                    Severity::Low
-                                } else {
-                                    Severity::Low // Partial unused is still low priority
-                                };
+                                // Both fully unused and partially unused symbols are low priority
+                                let severity = Severity::Low;
 
                                 let mut metrics = HashMap::new();
                                 metrics.insert("module_path".to_string(), json!(module_path_str));
@@ -473,6 +470,7 @@ pub fn detect_unreachable_code(
             let mut unreachable_start = None;
             let mut unreachable_count = 0;
 
+            #[allow(clippy::needless_range_loop)]
             for j in (i + 1)..lines.len() {
                 let next_line = lines[j].trim();
 
@@ -623,6 +621,7 @@ pub fn detect_unused_parameters(
         // Extract function signature (may span multiple lines)
         let mut signature = String::new();
         let mut found_opening_brace = false;
+        #[allow(clippy::needless_range_loop)]
         for i in func_start..func_end {
             signature.push_str(lines[i]);
             if lines[i].contains('{') {

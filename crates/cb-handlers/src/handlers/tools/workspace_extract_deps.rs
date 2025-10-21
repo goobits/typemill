@@ -274,7 +274,7 @@ fn extract_dependencies(
             warnings.push(warning);
 
             // Still add to result with already_exists flag
-            let dep_info = extract_dependency_info(dep_name, &dep_item, true);
+            let dep_info = extract_dependency_info(dep_name, dep_item, true);
             dependencies_added.push(dep_info);
             continue;
         }
@@ -284,12 +284,12 @@ fn extract_dependencies(
             &mut target_doc,
             target_section,
             dep_name,
-            &dep_item,
+            dep_item,
             options,
         )?;
 
         // Add to result
-        let dep_info = extract_dependency_info(dep_name, &dep_item, false);
+        let dep_info = extract_dependency_info(dep_name, dep_item, false);
         dependencies_added.push(dep_info);
         debug!(dependency = %dep_name, "Added dependency to target");
     }

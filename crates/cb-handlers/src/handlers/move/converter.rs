@@ -131,6 +131,7 @@ fn build_workspace_edit(
         ))];
 
     // Group text edits by file
+    #[allow(clippy::mutable_key_type)]
     let mut files_with_edits = HashMap::new();
     for edit in edits {
         if let Some(ref file_path) = edit.file_path {

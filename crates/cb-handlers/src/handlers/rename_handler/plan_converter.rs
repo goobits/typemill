@@ -69,6 +69,7 @@ pub fn editplan_to_workspace_edit(
     ))];
 
     // Group text edits by file
+    #[allow(clippy::mutable_key_type)]
     let mut files_with_edits: HashMap<Uri, Vec<TextEdit>> = HashMap::new();
 
     for edit in &edit_plan.edits {
@@ -109,7 +110,7 @@ pub fn editplan_to_workspace_edit(
 
             files_with_edits
                 .entry(file_uri)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(lsp_edit);
         } else {
             debug!(
