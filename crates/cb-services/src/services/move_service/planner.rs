@@ -173,7 +173,7 @@ pub async fn plan_directory_move(
     info!("Scanning for documentation and config file updates");
     let doc_config_edits_before = edit_plan.edits.len();
 
-    match plan_documentation_and_config_edits(old_abs, new_abs, plugin_registry, project_root, rename_scope).await
+    match plan_documentation_and_config_edits(old_abs, new_abs, plugin_registry, project_root).await
     {
         Ok(edits) if !edits.is_empty() => {
             info!(
@@ -221,7 +221,6 @@ async fn plan_documentation_and_config_edits(
     new_path: &Path,
     plugin_registry: &PluginRegistry,
     project_root: &Path,
-    rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
 ) -> ServerResult<Vec<codebuddy_foundation::protocol::TextEdit>> {
     use codebuddy_foundation::protocol::{EditLocation, EditType, TextEdit};
     use std::path::PathBuf;
@@ -290,31 +289,6 @@ async fn plan_documentation_and_config_edits(
 
             // Process each file with its plugin
             for file_path in &files_to_scan {
-                // Check if file should be included based on rename scope
-                // Default scope has update_examples=true, so only skip if explicitly disabled
-                let update_examples = rename_scope
-                    .map(|s| s.update_examples)
-                    .unwrap_or(true); // Default to true (RenameScope::default().update_examples)
-
-                let matches_skip_filter = should_skip_file_for_examples(file_path);
-                let should_skip_examples = !update_examples && matches_skip_filter;
-
-                info!(
-                    file = %file_path.display(),
-                    update_examples,
-                    matches_skip_filter,
-                    should_skip_examples,
-                    "Processing file for edits"
-                );
-
-                if should_skip_examples {
-                    info!(
-                        file = %file_path.display(),
-                        "Skipping file that commonly contains example code (update_examples=false)"
-                    );
-                    continue;
-                }
-
                 match tokio::fs::read_to_string(file_path).await {
                     Ok(content) => {
                         let mut combined_content = content.clone();
@@ -428,115 +402,4 @@ async fn plan_documentation_and_config_edits(
     }
 
     Ok(edits)
-}
-
-/// Check if a file should be skipped because it commonly contains example code
-///
-/// Files like AGENTS.md, CLAUDE.md, proposals, and changelogs often show
-/// "before/after" code examples that should NOT be updated during renames.
-fn should_skip_file_for_examples(path: &Path) -> bool {
-    let path_str = path.to_string_lossy();
-
-    // Skip main documentation files that contain code examples
-    if path_str.contains("CLAUDE.md")
-        || path_str.contains("AGENTS.md")
-        || path_str.contains("GEMINI.md")
-    {
-        return true;
-    }
-
-    // Skip proposal files (often contain before/after examples)
-    if path_str.contains("/proposals/") || path_str.contains("\\proposals\\") {
-        return true;
-    }
-
-    // Skip changelog (often contains example code)
-    if path_str.contains("CHANGELOG.md") {
-        return true;
-    }
-
-    // Skip files with "example" in the name
-    if path_str.contains("/example") || path_str.contains("\\example") {
-        return true;
-    }
-
-    false
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::path::PathBuf;
-
-    #[test]
-    fn test_should_skip_file_for_examples_agents_md() {
-        let path = PathBuf::from("/workspace/AGENTS.md");
-        assert!(
-            should_skip_file_for_examples(&path),
-            "Should skip AGENTS.md (contains example code)"
-        );
-    }
-
-    #[test]
-    fn test_should_skip_file_for_examples_claude_md() {
-        let path = PathBuf::from("/workspace/CLAUDE.md");
-        assert!(
-            should_skip_file_for_examples(&path),
-            "Should skip CLAUDE.md (contains example code)"
-        );
-    }
-
-    #[test]
-    fn test_should_skip_file_for_examples_proposals() {
-        let path = PathBuf::from("/workspace/proposals/02f_rename.md");
-        assert!(
-            should_skip_file_for_examples(&path),
-            "Should skip proposal files (contain before/after examples)"
-        );
-
-        let path_windows = PathBuf::from("C:\\workspace\\proposals\\02f_rename.md");
-        assert!(
-            should_skip_file_for_examples(&path_windows),
-            "Should skip proposal files on Windows too"
-        );
-    }
-
-    #[test]
-    fn test_should_skip_file_for_examples_changelog() {
-        let path = PathBuf::from("/workspace/CHANGELOG.md");
-        assert!(
-            should_skip_file_for_examples(&path),
-            "Should skip CHANGELOG.md (contains example code)"
-        );
-    }
-
-    #[test]
-    fn test_should_skip_file_for_examples_example_dirs() {
-        let path = PathBuf::from("/workspace/examples/tutorial.md");
-        assert!(
-            should_skip_file_for_examples(&path),
-            "Should skip files in example directories"
-        );
-    }
-
-    #[test]
-    fn test_should_not_skip_regular_docs() {
-        let path = PathBuf::from("/workspace/docs/api_reference.md");
-        assert!(
-            !should_skip_file_for_examples(&path),
-            "Should NOT skip regular documentation files"
-        );
-
-        let path2 = PathBuf::from("/workspace/README.md");
-        assert!(
-            !should_skip_file_for_examples(&path2),
-            "Should NOT skip README.md"
-        );
-
-        let path3 = PathBuf::from("/workspace/tests/e2e/TESTING_GUIDE.md");
-        assert!(
-            !should_skip_file_for_examples(&path3),
-            "Should NOT skip test documentation"
-        );
-    }
 }
