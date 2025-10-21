@@ -20,7 +20,7 @@ cb-lang-yaml = { path = "../cb-lang-yaml", optional = true, default-features = f
 tracing = { workspace = true }
 
 [features]
-default = ["lang-rust", "lang-typescript", "lang-markdown", "lang-toml", "lang-yaml"]
+default = []
 lang-rust = ["dep:cb-lang-rust"]
 lang-typescript = ["dep:cb-lang-typescript"]
 lang-markdown = ["dep:cb-lang-markdown"]

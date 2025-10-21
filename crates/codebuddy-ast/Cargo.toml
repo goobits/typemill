@@ -32,7 +32,7 @@ toml_edit = "0.23" # For parsing and modifying Cargo.toml files
 codebuddy-config = { path = "../codebuddy-config" }
 
 [features]
-default = ["lang-rust", "lang-typescript", "lang-markdown"]
+default = []
 lang-rust = ["dep:cb-lang-rust"]
 lang-typescript = ["dep:cb-lang-typescript"]
 lang-markdown = ["dep:cb-lang-markdown"]

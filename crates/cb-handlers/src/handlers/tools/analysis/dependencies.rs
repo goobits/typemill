@@ -1041,16 +1041,17 @@ fn parse_imports_with_plugin(
     language: &str,
     file_path: &str,
 ) -> Result<Vec<codebuddy_foundation::protocol::ImportInfo>, String> {
-    use std::path::Path;
-
     match language.to_lowercase().as_str() {
+        #[cfg(feature = "lang-typescript")]
         "typescript" | "javascript" => {
             // Use TypeScript plugin's parser
+            use std::path::Path;
             let path = Path::new(file_path);
             let graph = cb_lang_typescript::parser::analyze_imports(content, Some(path))
                 .map_err(|e| format!("TypeScript parser failed: {}", e))?;
             Ok(graph.imports)
         }
+        #[cfg(feature = "lang-rust")]
         "rust" => {
             // Use Rust plugin's parser
             cb_lang_rust::parser::parse_imports(content)

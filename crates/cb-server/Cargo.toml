@@ -7,7 +7,7 @@ license = "MIT"
 [dependencies]
 cb-plugin-api = { path = "../cb-plugin-api" }
 codebuddy-foundation = { path = "../codebuddy-foundation" }
-cb-transport = { path = "../cb-transport" }
+cb-transport = { path = "../cb-transport", default-features = false }
 cb-lsp = { path = "../cb-lsp" }
 cb-services = { path = "../cb-services", default-features = false }
 cb-handlers = { path = "../cb-handlers", default-features = false, features = ["analysis-deep-dead-code"] }
@@ -41,9 +41,9 @@ codebuddy-ast = { path = "../codebuddy-ast", default-features = false }
 
 [features]
 default = ["lang-rust", "lang-typescript", "lang-markdown"]
-lang-rust = ["cb-handlers/lang-rust", "cb-services/lang-rust", "codebuddy-ast/lang-rust", "codebuddy-plugin-bundle/lang-rust", "codebuddy-plugin-system/lang-rust"]
-lang-typescript = ["cb-handlers/lang-typescript", "cb-services/lang-typescript", "codebuddy-ast/lang-typescript", "codebuddy-plugin-bundle/lang-typescript", "codebuddy-plugin-system/lang-typescript"]
-lang-markdown = ["cb-services/lang-markdown", "codebuddy-ast/lang-markdown", "codebuddy-plugin-bundle/lang-markdown", "codebuddy-plugin-system/lang-markdown"]
+lang-rust = ["cb-handlers/lang-rust", "cb-services/lang-rust", "codebuddy-ast/lang-rust", "codebuddy-plugin-bundle/lang-rust", "codebuddy-plugin-system/lang-rust", "cb-transport/lang-rust"]
+lang-typescript = ["cb-handlers/lang-typescript", "cb-services/lang-typescript", "codebuddy-ast/lang-typescript", "codebuddy-plugin-bundle/lang-typescript", "codebuddy-plugin-system/lang-typescript", "cb-transport/lang-typescript"]
+lang-markdown = ["cb-services/lang-markdown", "codebuddy-ast/lang-markdown", "codebuddy-plugin-bundle/lang-markdown", "codebuddy-plugin-system/lang-markdown", "cb-transport/lang-markdown"]
 lang-toml = ["codebuddy-plugin-bundle/lang-toml"]
 lang-yaml = ["codebuddy-plugin-bundle/lang-yaml"]
 mcp-proxy = ["codebuddy-foundation/mcp-proxy", "codebuddy-config/mcp-proxy", "cb-services/mcp-proxy"]

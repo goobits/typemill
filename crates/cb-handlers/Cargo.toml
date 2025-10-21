@@ -5,9 +5,9 @@ license.workspace = true
 
 [features]
 default = ["lang-rust", "lang-typescript", "refactor-all"]
-lang-rust = ["cb-lang-rust", "codebuddy-ast/lang-rust", "codebuddy-plugin-system/lang-rust", "cb-services/lang-rust"]
-lang-typescript = ["cb-lang-typescript", "codebuddy-ast/lang-typescript", "codebuddy-plugin-system/lang-typescript", "cb-services/lang-typescript"]
-lang-markdown = ["codebuddy-ast/lang-markdown", "codebuddy-plugin-system/lang-markdown", "cb-services/lang-markdown"]
+lang-rust = ["cb-lang-rust", "codebuddy-ast/lang-rust", "codebuddy-plugin-system/lang-rust", "cb-services/lang-rust", "cb-transport/lang-rust"]
+lang-typescript = ["cb-lang-typescript", "codebuddy-ast/lang-typescript", "codebuddy-plugin-system/lang-typescript", "cb-services/lang-typescript", "cb-transport/lang-typescript"]
+lang-markdown = ["codebuddy-ast/lang-markdown", "codebuddy-plugin-system/lang-markdown", "cb-services/lang-markdown", "cb-transport/lang-markdown"]
 analysis-dead-code = ["dep:cb-analysis-dead-code", "dep:cb-analysis-common"]
 analysis-circular-deps = ["dep:cb-analysis-circular-deps", "dep:cb-analysis-graph"]
 analysis-deep-dead-code = ["dep:cb-analysis-deep-dead-code", "dep:cb-analysis-common"]
@@ -53,7 +53,7 @@ toml = "0.9"
 toml_edit = "0.23"
 tempfile = "3.0"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
-cb-transport = { path = "../cb-transport" }
+cb-transport = { path = "../cb-transport", default-features = false }
 chrono = { version = "0.4", features = ["serde"] }
 walkdir = "2.5"
 futures = { workspace = true }
