@@ -88,8 +88,9 @@ pub(crate) struct RenameOptions {
 
 impl RenameOptions {
     /// Build RenameScope from options
+    /// Resolves update_all flag if present in custom_scope
     pub fn to_rename_scope(&self) -> Option<codebuddy_foundation::core::rename_scope::RenameScope> {
-        match self.scope.as_deref() {
+        let scope = match self.scope.as_deref() {
             Some("code-only") => {
                 Some(codebuddy_foundation::core::rename_scope::RenameScope::code_only())
             }
@@ -98,7 +99,10 @@ impl RenameOptions {
             }
             Some("custom") => self.custom_scope.clone(),
             _ => None,
-        }
+        };
+
+        // Resolve update_all flag if present
+        scope.map(|s| s.resolve_update_all())
     }
 }
 

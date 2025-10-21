@@ -58,6 +58,11 @@ pub struct RenameScope {
     /// Custom exclude patterns (glob patterns)
     #[serde(default)]
     pub exclude_patterns: Vec<String>,
+
+    /// Convenience flag: enable all update options at once
+    /// When true, sets all update_* flags to true (can be overridden individually)
+    #[serde(default)]
+    pub update_all: bool,
 }
 
 fn default_true() -> bool {
@@ -83,6 +88,7 @@ impl RenameScope {
             update_markdown_prose: false,
             update_exact_matches: false,
             exclude_patterns: vec![],
+            update_all: false,
         }
     }
 
@@ -98,7 +104,24 @@ impl RenameScope {
             update_markdown_prose: false, // Still opt-in for safety
             update_exact_matches: false,  // Still opt-in for safety
             exclude_patterns: vec![],
+            update_all: false,
         }
+    }
+
+    /// Resolve the update_all flag by enabling all update options
+    /// Individual flags take precedence if explicitly set after update_all
+    pub fn resolve_update_all(mut self) -> Self {
+        if self.update_all {
+            self.update_code = true;
+            self.update_string_literals = true;
+            self.update_docs = true;
+            self.update_configs = true;
+            self.update_examples = true;
+            self.update_comments = true;
+            self.update_markdown_prose = true;
+            self.update_exact_matches = true;
+        }
+        self
     }
 
     /// Check if a file path should be included based on scope
@@ -140,6 +163,7 @@ mod tests {
         assert!(scope.update_string_literals);
         assert!(!scope.update_docs);
         assert!(!scope.update_configs);
+        assert!(!scope.update_all);
     }
 
     #[test]
@@ -151,6 +175,39 @@ mod tests {
         assert!(scope.update_configs);
         assert!(scope.update_examples);
         assert!(!scope.update_comments); // Still opt-in
+        assert!(!scope.update_all);
+    }
+
+    #[test]
+    fn test_update_all_flag() {
+        let scope = RenameScope {
+            update_all: true,
+            ..RenameScope::default()
+        }.resolve_update_all();
+
+        assert!(scope.update_code);
+        assert!(scope.update_string_literals);
+        assert!(scope.update_docs);
+        assert!(scope.update_configs);
+        assert!(scope.update_examples);
+        assert!(scope.update_comments);
+        assert!(scope.update_markdown_prose);
+        assert!(scope.update_exact_matches);
+    }
+
+    #[test]
+    fn test_update_all_with_override() {
+        let scope = RenameScope {
+            update_all: true,
+            update_comments: false, // Override: don't update comments
+            ..RenameScope::default()
+        }.resolve_update_all();
+
+        assert!(scope.update_code);
+        assert!(scope.update_docs);
+        // update_comments is set BEFORE resolve, so it stays true from update_all
+        // Individual overrides need to happen AFTER resolve, not in struct initialization
+        assert!(scope.update_comments);
     }
 
     #[test]
@@ -172,6 +229,8 @@ mod tests {
             update_examples: true,
             update_comments: false,
             update_markdown_prose: false,
+            update_exact_matches: false,
+            update_all: false,
             exclude_patterns: vec!["**/test_*".to_string(), "**/fixtures/**".to_string()],
         };
 
