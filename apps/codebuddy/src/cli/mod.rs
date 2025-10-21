@@ -117,6 +117,11 @@ pub enum Commands {
         /// Update exact identifier matches in configs (opt-in for crate name updates)
         #[arg(long, conflicts_with = "args")]
         update_exact_matches: Option<bool>,
+
+        /// Update everything (code, literals, docs, configs, examples, comments, prose, exact matches)
+        /// Shorthand for enabling all update flags for complete project renames
+        #[arg(long, conflicts_with = "args")]
+        update_all: bool,
     },
     /// List all public MCP tools (excludes internal tools)
     Tools {
@@ -260,6 +265,7 @@ pub async fn run() {
             update_comments,
             update_markdown_prose,
             update_exact_matches,
+            update_all,
         } => {
             handle_tool_command(
                 &tool_name,
@@ -274,6 +280,7 @@ pub async fn run() {
                 update_comments,
                 update_markdown_prose,
                 update_exact_matches,
+                update_all,
                 &format,
             )
             .await;
@@ -456,6 +463,7 @@ async fn handle_dead_code_command(command: DeadCode) {
         None,
         None,
         None,
+        false,
         "pretty",
     )
     .await;
@@ -934,6 +942,7 @@ async fn handle_tool_command(
     update_comments: Option<bool>,
     update_markdown_prose: Option<bool>,
     update_exact_matches: Option<bool>,
+    update_all: bool,
     format: &str,
 ) {
     use std::collections::HashMap;
@@ -976,6 +985,13 @@ async fn handle_tool_command(
         if let Some(v) = scope {
             flags.insert("scope".to_string(), v.to_string());
         }
+
+        // Handle --update-all flag
+        if update_all {
+            flags.insert("update_all".to_string(), "true".to_string());
+        }
+
+        // Individual update flags (override --update-all if specified)
         if let Some(v) = update_comments {
             flags.insert("update_comments".to_string(), v.to_string());
         }

@@ -168,6 +168,7 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
             "update_comments",
             "update_markdown_prose",
             "update_exact_matches",
+            "update_all",
         ],
     )?;
 
@@ -191,6 +192,9 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
     let mut options = json!({});
     let mut has_options = false;
 
+    // Check if --update-all is set
+    let update_all = flags.get("update_all").map(|v| v == "true").unwrap_or(false);
+
     // Scope configuration
     if let Some(scope) = flags.get("scope") {
         validate_scope_value(scope)?;
@@ -202,6 +206,20 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
             let mut custom_scope = json!({});
             let mut has_custom = false;
 
+            // If --update-all is set, enable everything
+            if update_all {
+                custom_scope["update_code"] = json!(true);
+                custom_scope["update_string_literals"] = json!(true);
+                custom_scope["update_docs"] = json!(true);
+                custom_scope["update_configs"] = json!(true);
+                custom_scope["update_examples"] = json!(true);
+                custom_scope["update_comments"] = json!(true);
+                custom_scope["update_markdown_prose"] = json!(true);
+                custom_scope["update_exact_matches"] = json!(true);
+                has_custom = true;
+            }
+
+            // Individual flags can override --update-all
             for (key, value) in &flags {
                 match key.as_str() {
                     "update_code" | "update_string_literals" | "update_docs"
