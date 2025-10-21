@@ -245,13 +245,14 @@ impl ReferenceUpdater {
                         let line_count = content.lines().count();
                         let last_line_len = content.lines().last().map(|l| l.len()).unwrap_or(0);
 
-                        // For files inside the renamed directory, use the NEW path
-                        let edit_file_path = if file_path.starts_with(old_path) {
+                        // For directory renames, files inside the renamed directory need to use the NEW path
+                        // For file renames, all affected files are outside the renamed file, so use original paths
+                        let edit_file_path = if is_directory_rename && file_path.starts_with(old_path) {
                             // File is inside the renamed directory - compute new path
                             let relative_path = file_path.strip_prefix(old_path).unwrap_or(&file_path);
                             new_path.join(relative_path)
                         } else {
-                            // File is outside the renamed directory - use original path
+                            // File is outside the renamed item (or it's a file rename) - use original path
                             file_path.clone()
                         };
 
