@@ -4,11 +4,13 @@ use crate::harness::{TestClient, TestWorkspace};
 use serde_json::json;
 
 /// Test complete Cargo package rename workflow
-/// Verifies all 4 critical features from Proposal 02g:
+/// Verifies all 6 critical features from Proposal 02g + edge cases:
 /// 1. Root workspace Cargo.toml members list updated
 /// 2. Package name in moved Cargo.toml updated
 /// 3. Dev-dependency references updated across workspace
-/// 4. Build succeeds without manual fixes
+/// 4. Feature flag references updated (Bug: rename_cargo_crate_edge_cases.md)
+/// 5. Self-referencing imports updated (Bug: rename_cargo_crate_edge_cases.md)
+/// 6. Build succeeds without manual fixes
 #[tokio::test]
 async fn test_complete_cargo_package_rename() {
     let workspace = TestWorkspace::new();
@@ -26,7 +28,7 @@ members = [
 "#,
     );
 
-    // Create integration-tests package
+    // Create integration-tests package with both lib.rs and main.rs
     workspace.create_directory("integration-tests/src");
     workspace.create_file(
         "integration-tests/Cargo.toml",
@@ -35,9 +37,24 @@ members = [
 name = "integration-tests"
 version = "0.1.0"
 edition = "2021"
+
+[features]
+test-feature = []
 "#,
     );
     workspace.create_file("integration-tests/src/lib.rs", "pub fn test_helper() {}");
+
+    // Add main.rs with self-import (Bug 2: Self-referencing imports)
+    workspace.create_file(
+        "integration-tests/src/main.rs",
+        r#"
+use integration_tests::test_helper;
+
+fn main() {
+    test_helper();
+}
+"#,
+    );
 
     // Create app package that depends on integration-tests
     workspace.create_directory("app/src");
@@ -51,6 +68,10 @@ edition = "2021"
 
 [dev-dependencies]
 integration-tests = { path = "../integration-tests" }
+
+[features]
+# Bug 1: Feature flag references - should be updated when integration-tests is renamed
+testing = ["integration-tests/test-feature"]
 "#,
     );
     workspace.create_file("app/src/lib.rs", "pub fn app_fn() {}");
@@ -118,14 +139,38 @@ integration-tests = { path = "../integration-tests" }
         "App Cargo.toml should reference 'tests' with correct path. Actual:\n{}",
         app_cargo
     );
+    // Check that dependency key name doesn't reference old name (ignore comments)
     assert!(
-        !app_cargo.contains("integration-tests"),
-        "App Cargo.toml should not reference 'integration-tests' anymore. Actual:\n{}",
+        !app_cargo.contains("integration-tests = {") && !app_cargo.contains("integration-tests/"),
+        "App Cargo.toml should not reference 'integration-tests' in dependencies or features. Actual:\n{}",
         app_cargo
+    );
+
+    // VERIFICATION 4: Feature flag references updated (Bug 1)
+    assert!(
+        app_cargo.contains(r#"["tests/test-feature"]"#)
+            || app_cargo.contains("[\"tests/test-feature\"]"),
+        "Bug 1: Feature flags should be updated from 'integration-tests/test-feature' to 'tests/test-feature'. Actual:\n{}",
+        app_cargo
+    );
+
+    // VERIFICATION 5: Self-referencing imports updated (Bug 2)
+    let main_rs = workspace.read_file("tests/src/main.rs");
+    assert!(
+        main_rs.contains("use tests::test_helper;"),
+        "Bug 2: Self-import should be updated from 'integration_tests' to 'tests'. Actual:\n{}",
+        main_rs
+    );
+    assert!(
+        !main_rs.contains("integration_tests"),
+        "Bug 2: Should not contain old crate name 'integration_tests'. Actual:\n{}",
+        main_rs
     );
 
     println!("✅ All Cargo package rename features verified!");
     println!("  ✓ Root workspace members updated");
     println!("  ✓ Package name updated");
     println!("  ✓ Dev-dependency references updated");
+    println!("  ✓ Feature flag references updated (Bug 1)");
+    println!("  ✓ Self-referencing imports updated (Bug 2)");
 }

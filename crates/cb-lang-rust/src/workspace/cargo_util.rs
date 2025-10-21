@@ -548,6 +548,33 @@ async fn plan_single_cargo_toml_dependency_update(
         }
     }
 
+    // Update feature flags that reference the renamed crate
+    // Feature flags use basename-only syntax: "crate-name/feature" or "dep:crate-name"
+    if let Some(features) = doc.get_mut("features").and_then(|f| f.as_table_mut()) {
+        for (_feature_name, feature_value) in features.iter_mut() {
+            if let Some(feature_list) = feature_value.as_array_mut() {
+                for item in feature_list.iter_mut() {
+                    if let Some(feature_ref) = item.as_str() {
+                        // Handle "crate-name/feature-name" syntax
+                        if let Some((crate_part, feature_part)) = feature_ref.split_once('/') {
+                            if crate_part == old_crate_name {
+                                *item = toml_edit::Value::from(format!("{}/{}", new_crate_name, feature_part));
+                                updated = true;
+                            }
+                        }
+                        // Handle "dep:crate-name" syntax
+                        else if let Some(dep_name) = feature_ref.strip_prefix("dep:") {
+                            if dep_name == old_crate_name {
+                                *item = toml_edit::Value::from(format!("dep:{}", new_crate_name));
+                                updated = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if updated {
         Ok(Some((
             cargo_toml_path.to_path_buf(),

@@ -966,8 +966,22 @@ impl RustPlugin {
             if let Some(info) = rename_info {
                 let old_name = info["old_crate_name"].as_str().unwrap_or("");
                 let new_name = info["new_crate_name"].as_str().unwrap_or("");
+
+                // Convert Cargo.toml names (with hyphens) to Rust identifiers (with underscores)
+                // Cargo: "integration-tests" -> Rust: "integration_tests"
+                let old_rust_name = old_name.replace('-', "_");
+                let new_rust_name = new_name.replace('-', "_");
+
+                tracing::info!(
+                    old_cargo_name = %old_name,
+                    new_cargo_name = %new_name,
+                    old_rust_name = %old_rust_name,
+                    new_rust_name = %new_rust_name,
+                    "Converting crate names for Rust import rewriting"
+                );
+
                 let (new_content, changes) =
-                    rename_support.rewrite_imports_for_rename(&updated_content, old_name, new_name);
+                    rename_support.rewrite_imports_for_rename(&updated_content, &old_rust_name, &new_rust_name);
                 total_changes += changes;
                 updated_content = new_content;
             } else {

@@ -160,7 +160,9 @@ impl ReferenceUpdater {
                 .await?
         };
 
-        if is_directory_rename {
+        // For directory renames, exclude files inside the renamed directory UNLESS it's a Rust crate rename
+        // For Rust crate renames, we need to process files inside the crate to update self-referencing imports
+        if is_directory_rename && !is_rust_crate_rename {
             affected_files.retain(|file| !file.starts_with(old_path));
         }
 
@@ -934,9 +936,10 @@ mod tests {
             update_docs: false, // Exclude docs
             update_configs: false,
             update_string_literals: false,
-            update_examples: false,
             update_comments: false,
             update_markdown_prose: false,
+            update_exact_matches: false,
+            update_all: false,
             exclude_patterns: vec![],
         };
 
@@ -1000,9 +1003,10 @@ mod tests {
             update_docs: false,
             update_configs: false, // Exclude configs
             update_string_literals: false,
-            update_examples: false,
             update_comments: false,
             update_markdown_prose: false,
+            update_exact_matches: false,
+            update_all: false,
             exclude_patterns: vec![],
         };
 
@@ -1060,9 +1064,10 @@ mod tests {
             update_docs: true,
             update_configs: false,
             update_string_literals: false,
-            update_examples: false,
             update_comments: false,
             update_markdown_prose: false,
+            update_exact_matches: false,
+            update_all: false,
             exclude_patterns: vec![
                 String::from("**/tests/**"),
                 String::from("**/CONTRIBUTING.md"), // Must match full path
@@ -1131,9 +1136,10 @@ mod tests {
             update_docs: true,
             update_configs: true,
             update_string_literals: true,
-            update_examples: true,
             update_comments: true,
             update_markdown_prose: true,
+            update_exact_matches: false,
+            update_all: false,
             exclude_patterns: vec![],
         };
 
