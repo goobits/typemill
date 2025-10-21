@@ -526,7 +526,7 @@ pub async fn create_test_dispatcher() -> PluginDispatcher {
         cache_settings,
         plugin_manager.clone(),
         &config,
-        plugin_registry,
+        plugin_registry.clone(),
     )
     .await;
 
@@ -542,7 +542,7 @@ pub async fn create_test_dispatcher() -> PluginDispatcher {
         operation_queue: services.operation_queue,
         start_time: std::time::Instant::now(),
         workspace_manager,
-        language_plugins: crate::LanguagePluginRegistry::new(),
+        language_plugins: crate::LanguagePluginRegistry::from_registry(plugin_registry),
     });
 
     PluginDispatcher::new(app_state, plugin_manager)
@@ -556,7 +556,9 @@ mod tests {
     async fn create_test_app_state() -> Arc<AppState> {
         let temp_dir = TempDir::new().unwrap();
 
-        let language_plugins = crate::LanguagePluginRegistry::new();
+        // Build plugin registry for tests
+        let plugin_registry = cb_services::services::registry_builder::build_language_plugin_registry();
+        let language_plugins = crate::LanguagePluginRegistry::from_registry(plugin_registry);
         let ast_cache = Arc::new(codebuddy_ast::AstCache::new());
         let ast_service = Arc::new(cb_services::services::DefaultAstService::new(
             ast_cache.clone(),

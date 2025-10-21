@@ -291,9 +291,14 @@ See existing plugins for complete reference implementations:
 
 ## Plugin Dispatch Patterns
 
-### ✅ Capability-Based Dispatch (Current Standard - Proposals 05 & 07 Complete)
+> **📌 IMPORTANT: Capability-Based Dispatch is the ONLY Correct Pattern**
+>
+> All plugin dispatch in shared code MUST use capability traits. Downcasting and
+> cfg guards are strictly forbidden. See warning below for details.
 
-**Status:** Fully implemented and operational.
+### ✅ Capability-Based Dispatch (REQUIRED - Proposals 05 & 07 Complete)
+
+**Status:** Fully implemented and operational. **This is the only approved dispatch pattern.**
 
 Language-specific operations now use trait-based capability queries with zero cfg guards:
 
@@ -430,7 +435,19 @@ fn refactoring_provider(&self) -> Option<&dyn RefactoringProvider> {
 
 ### Migration Pattern: Old → New
 
-**Old pattern (deprecated - cfg guards + downcasting):**
+> ⚠️ **WARNING: Downcasting is Strictly Forbidden**
+>
+> **NEVER use `as_any().downcast_ref::<ConcretePlugin>()` in shared code.**
+> This pattern:
+> - Breaks language-agnostic architecture
+> - Reintroduces compile-time coupling
+> - Defeats the purpose of the capability system
+> - Will be rejected in code review
+>
+> **Always use capability traits** for language-specific operations. If a capability
+> doesn't exist for your use case, create a new one instead of downcasting.
+
+**Old pattern (DEPRECATED and FORBIDDEN - cfg guards + downcasting):**
 ```rust
 match plugin.metadata().name {
     #[cfg(feature = "lang-rust")]

@@ -3,9 +3,13 @@
 //! This module provides a registry for language plugins that implement the
 //! `LanguagePlugin` trait. The registry allows for dynamic discovery and routing
 //! of language-specific operations based on file extensions.
+//!
+//! **IMPORTANT**: This registry uses dependency injection. Language plugins must be
+//! registered at the application layer (e.g., in apps/codebuddy/src/main.rs) and
+//! injected via `from_registry()`. This eliminates compile-time coupling between
+//! the handler layer and specific language implementations.
 
 use cb_plugin_api::{LanguagePlugin, PluginRegistry};
-use cb_services::services::build_language_plugin_registry;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -14,31 +18,34 @@ use tracing::debug;
 /// This registry wraps the core `PluginRegistry` from `cb-plugin-api` and
 /// provides additional functionality for integration with the handler system.
 ///
-/// **IMPORTANT**: This registry uses the centralized builder from
-/// `cb_services::services::build_language_plugin_registry()` to ensure all plugins are
-/// registered in a single location.
+/// **IMPORTANT**: This registry requires dependency injection. Create it using
+/// `from_registry()` with a pre-built PluginRegistry. Never auto-build plugins
+/// at this layer - that defeats the purpose of dependency injection.
 #[derive(Clone)]
 pub struct LanguagePluginRegistry {
     pub inner: Arc<PluginRegistry>,
 }
 
 impl LanguagePluginRegistry {
-    /// Create a new registry with all available language plugins
+    /// Create a registry from an existing PluginRegistry (RECOMMENDED)
     ///
-    /// This method uses the centralized plugin builder to ensure consistency
-    /// across the application. All plugin registration happens in
-    /// `crates/cb-services/src/services/registry_builder.rs`.
-    pub fn new() -> Self {
-        // Use the centralized builder - this is the ONLY correct way to create a registry
-        let registry = build_language_plugin_registry();
-
-        Self { inner: registry }
-    }
-
-    /// Create a registry from an existing PluginRegistry
+    /// This is the primary way to create a LanguagePluginRegistry. The PluginRegistry
+    /// should be built at the application layer (e.g., in apps/codebuddy/src/main.rs)
+    /// using `cb_services::services::registry_builder::build_language_plugin_registry()`,
+    /// then injected here.
     ///
-    /// Use this when you already have a PluginRegistry (e.g., from the plugin bundle)
-    /// and want to wrap it in a LanguagePluginRegistry for handler-layer use.
+    /// # Example
+    /// ```rust
+    /// use cb_plugin_api::PluginRegistry;
+    /// use cb_services::services::registry_builder::build_language_plugin_registry;
+    /// use std::sync::Arc;
+    ///
+    /// // At application layer (apps/codebuddy/src/main.rs)
+    /// let registry = build_language_plugin_registry();
+    ///
+    /// // Inject into handler layer
+    /// let handler_registry = LanguagePluginRegistry::from_registry(registry);
+    /// ```
     pub fn from_registry(registry: Arc<PluginRegistry>) -> Self {
         Self { inner: registry }
     }
@@ -98,8 +105,5 @@ impl LanguagePluginRegistry {
     }
 }
 
-impl Default for LanguagePluginRegistry {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// NOTE: No Default impl - this would bypass dependency injection.
+// Always use from_registry() to create LanguagePluginRegistry with an injected PluginRegistry.

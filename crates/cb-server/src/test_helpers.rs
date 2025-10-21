@@ -173,7 +173,7 @@ pub async fn create_test_dispatcher_with_root(
         lock_manager.clone(),
         operation_queue.clone(),
         &config,
-        plugin_registry,
+        plugin_registry.clone(),
     ));
     let planner = crate::services::planner::DefaultPlanner::new();
     let plugin_manager = Arc::new(PluginManager::new());
@@ -191,7 +191,7 @@ pub async fn create_test_dispatcher_with_root(
         operation_queue,
         start_time: std::time::Instant::now(),
         workspace_manager,
-        language_plugins: cb_handlers::LanguagePluginRegistry::new(),
+        language_plugins: cb_handlers::LanguagePluginRegistry::from_registry(plugin_registry),
     });
 
     PluginDispatcher::new(app_state, plugin_manager)

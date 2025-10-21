@@ -29,12 +29,25 @@ use std::sync::Arc;
 use tokio::sync::oneshot;
 
 /// Server configuration options
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ServerOptions {
     /// Application configuration
     pub config: AppConfig,
     /// Enable debug mode
     pub debug: bool,
+    /// Optional pre-built language plugin registry (for dependency injection)
+    /// If None, will build registry automatically using all available plugins
+    pub plugin_registry: Option<Arc<cb_plugin_api::PluginRegistry>>,
+}
+
+impl std::fmt::Debug for ServerOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ServerOptions")
+            .field("config", &self.config)
+            .field("debug", &self.debug)
+            .field("plugin_registry", &self.plugin_registry.as_ref().map(|_| "<PluginRegistry>"))
+            .finish()
+    }
 }
 
 /// Handle to a running server
@@ -73,8 +86,11 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
     #[cfg(feature = "mcp-proxy")]
     register_mcp_proxy_if_enabled(&plugin_manager, options.config.external_mcp.as_ref()).await?;
 
-    // Build language plugin registry
-    let plugin_registry = cb_services::services::registry_builder::build_language_plugin_registry();
+    // Use injected plugin registry or build one
+    let plugin_registry = options.plugin_registry.unwrap_or_else(|| {
+        tracing::debug!("No plugin registry injected, building default registry");
+        cb_services::services::registry_builder::build_language_plugin_registry()
+    });
 
     let services = create_services_bundle(
         &project_root,
@@ -118,11 +134,32 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
 
 impl ServerOptions {
     /// Create server options from app config
+    ///
+    /// By default, this does not inject a plugin registry - the server will build
+    /// one automatically. For dependency injection, use `with_plugin_registry()`.
     pub fn from_config(config: AppConfig) -> Self {
         Self {
             config,
             debug: false,
+            plugin_registry: None,
         }
+    }
+
+    /// Set a pre-built plugin registry (for dependency injection)
+    ///
+    /// This allows the application layer to control which language plugins are loaded.
+    ///
+    /// # Example
+    /// ```rust
+    /// use cb_services::services::registry_builder::build_language_plugin_registry;
+    ///
+    /// let registry = build_language_plugin_registry();
+    /// let options = ServerOptions::from_config(config)
+    ///     .with_plugin_registry(registry);
+    /// ```
+    pub fn with_plugin_registry(mut self, registry: Arc<cb_plugin_api::PluginRegistry>) -> Self {
+        self.plugin_registry = Some(registry);
+        self
     }
 
     /// Enable debug mode
