@@ -696,7 +696,7 @@ All debug scripts, test analysis, and experimental code goes in `.debug/` (gitig
 ### For Understanding the System
 - **[docs/architecture/overview.md](docs/architecture/overview.md)** - Complete system architecture
 - **[docs/architecture/internal_tools.md](docs/architecture/internal_tools.md)** - Internal vs public tools policy
-- **[docs/workflows.md](docs/workflows.md)** - Workflow automation engine
+- **[docs/development/workflows.md](docs/development/workflows.md)** - Workflow automation engine
 
 ### For Tool Reference
 - **[docs/api_reference.md](docs/api_reference.md)** - Complete MCP tools API with examples

@@ -325,7 +325,7 @@ fn collect_rust_files(dir: &Path) -> ServerResult<Vec<PathBuf>> {
 /// - "self::module" -> None (relative)
 /// - "super::parent" -> None (relative)
 fn extract_root_crate(import_path: &str) -> Option<String> {
-    // Split by :: and get first segment
+    // Split by:: and get first segment
     let first_segment = import_path.split("::").next()?;
 
     // Filter out Rust keywords and relative paths

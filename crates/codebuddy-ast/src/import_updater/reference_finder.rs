@@ -93,7 +93,7 @@ pub(crate) fn find_inline_crate_references(
             };
 
             if is_word_boundary {
-                // Extract the full qualified path (including trailing :: and identifiers)
+                // Extract the full qualified path (including trailing:: and identifiers)
                 let remaining = &line[absolute_pos..];
                 let mut path_end = search_pattern.len();
 

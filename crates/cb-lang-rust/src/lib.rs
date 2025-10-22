@@ -531,7 +531,7 @@ impl RustPlugin {
             ));
         }
 
-        // Normalize module path (handle both :: and . separators)
+        // Normalize module path (handle both:: and . separators)
         let normalized = module_path.replace('.', "::");
         let parts: Vec<&str> = normalized.split("::").collect();
 
@@ -1283,7 +1283,7 @@ impl Wrapper {
         // Should have changed exactly 2 use statements
         assert_eq!(count, 2);
 
-        // Verify use statements were rewritten (note: quote! adds spaces around ::)
+        // Verify use statements were rewritten (note: quote! adds spaces around::)
         assert!(result.contains("use new_crate"));
         assert!(result.contains("Foo"));
         assert!(result.contains("bar"));

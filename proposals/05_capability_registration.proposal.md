@@ -24,7 +24,7 @@ All success criteria met. The capability registration system is fully implemente
   - `test_capability_discovery_pattern` - Tests full capability suite discovery
   - `test_partial_capability_support` - Tests graceful degradation
 - Documented capability trait pattern comprehensively in CLAUDE.md and contributing.md
-- Updated docs/plugin_development.md with strong warnings against downcasting
+- Updated ../docs/development/plugin_development.md with strong warnings against downcasting
 
 **Critical fixes applied (2025-10-20):**
 - Fixed file-extension routing in `refactoring_provider_for_file()` to ensure correct language plugin selection
@@ -61,7 +61,7 @@ All success criteria met. The capability registration system is fully implemente
 - [x] ~~Replace `#[cfg(feature = "...")]` in system_tools_plugin.rs~~ - Out of scope (deprecated module)
 - [x] Update manifest update flows to use `ManifestUpdater` capability instead of downcasting
 - [x] Add tests that cover capability-based dispatch (101 tests passing)
-- [x] Document the capability registration contract for contributors in `docs/plugin_development.md`
+- [x] Document the capability registration contract for contributors in `../docs/development/plugin_development.md`
 
 ## Success Criteria
 

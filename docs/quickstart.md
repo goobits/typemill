@@ -69,7 +69,7 @@ Ask your AI assistant:
 
 - **[tools_catalog.md](tools_catalog.md)** - Complete list of 23 MCP tools
 - **[api_reference.md](api_reference.md)** - Detailed API with parameters and returns
-- **[operations.md](operations.md)** - Advanced configuration and analysis options
+- **[operations.md](../README.md)** - Advanced configuration and analysis options
 
 ## Troubleshooting
 

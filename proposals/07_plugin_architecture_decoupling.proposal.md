@@ -60,7 +60,7 @@ To fix this architectural violation, we will decouple the services layer from th
 **Result:** True dependency injection from application layer ✅
 
 ### Issue 4: Documentation Updated ✅
-**Problem:** `docs/plugin_development.md` showcased downcasting as acceptable pattern.
+**Problem:** `../docs/development/plugin_development.md` showcased downcasting as acceptable pattern.
 
 **Solution:**
 - Added strong warning box: "Downcasting is Strictly Forbidden"

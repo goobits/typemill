@@ -86,7 +86,7 @@ async fn test_locate_module_files_nested_module() {
 
 #[tokio::test]
 async fn test_locate_module_files_dot_separator() {
-    // Test that the function accepts both :: and . as separators
+    // Test that the function accepts both:: and . as separators
     let temp_dir = tempdir().unwrap();
     let src_dir = temp_dir.path().join("src");
     fs::create_dir(&src_dir).unwrap();

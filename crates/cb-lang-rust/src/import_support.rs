@@ -769,7 +769,7 @@ pub fn example() {
         let support = RustImportSupport;
         let content = r#"
 pub fn example() {
-    let cache = cb_ast :: CacheSettings::default();
+    let cache = cb_ast:: CacheSettings::default();
     let report = cb_ast::  complexity::analyze_file();
 }
 "#;
