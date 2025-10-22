@@ -56,7 +56,7 @@ use tracing::debug;
 /// - Metrics including imported symbols
 /// - Suggestion to remove the import
 pub fn detect_unused_imports(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -277,7 +277,7 @@ pub fn detect_unused_imports(
 /// - Metrics including symbol type
 /// - Suggestions to remove or make private
 pub fn detect_unused_symbols(
-    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -415,7 +415,7 @@ pub fn detect_unused_symbols(
 /// - Metrics including lines unreachable and terminator statement
 /// - Suggestion to remove the unreachable code
 pub fn detect_unreachable_code(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -598,7 +598,7 @@ pub fn detect_unreachable_code(
 /// - Metrics including parameter name and function name
 /// - Suggestion to remove the parameter (requires review)
 pub fn detect_unused_parameters(
-    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -778,7 +778,7 @@ pub fn detect_unused_parameters(
 /// - Metrics including type name and kind
 /// - Suggestion to remove the type (requires review)
 pub fn detect_unused_types(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -903,7 +903,7 @@ pub fn detect_unused_types(
 /// - Metrics including variable name and scope
 /// - Suggestion to remove the variable
 pub fn detect_unused_variables(
-    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -2026,7 +2026,7 @@ impl ToolHandler for DeadCodeHandler {
                         ServerError::Internal(format!("Failed to parse file: {}", e))
                     })?;
                     let language = plugin.metadata().name;
-                    let complexity_report = codebuddy_ast::complexity::analyze_file_complexity(
+                    let complexity_report = mill_ast::complexity::analyze_file_complexity(
                         &file_path,
                         &content,
                         &parsed_source.symbols,
@@ -2164,7 +2164,7 @@ impl ToolHandler for DeadCodeHandler {
                         ServerError::Internal(format!("Failed to parse file: {}", e))
                     })?;
                     let language = plugin.metadata().name;
-                    let complexity_report = codebuddy_ast::complexity::analyze_file_complexity(
+                    let complexity_report = mill_ast::complexity::analyze_file_complexity(
                         &file_path,
                         &content,
                         &parsed_source.symbols,

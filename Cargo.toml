@@ -23,7 +23,7 @@ members = [
     "crates/codebuddy-foundation",
     "crates/mill-workspaces",
     "crates/mill-auth",
-    "crates/xtask", "crates/codebuddy-ast", "crates/mill-client", "crates/mill-test-support", "crates/mill-handlers", "crates/mill-config",
+    "crates/xtask", "crates/mill-ast", "crates/mill-client", "crates/mill-test-support", "crates/mill-handlers", "crates/mill-config",
 ]
 resolver = "2"
 

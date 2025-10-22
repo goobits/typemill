@@ -140,7 +140,7 @@ plugin.capability_trait()?.method()
 - `cb-lang-rust/src/lib.rs` - Implemented all 3 traits
 - `cb-lang-typescript/src/lib.rs` - Implemented ManifestUpdater and RefactoringProvider
 - `cb-handlers/src/handlers/tools/workspace.rs` - Removed 2 cfg guards
-- `codebuddy-ast/src/package_extractor/planner.rs` - Removed 1 downcast
-- `codebuddy-ast/src/refactoring/extract_function.rs` - Removed 3 cfg guards
-- `codebuddy-ast/src/refactoring/extract_variable.rs` - Removed 3 cfg guards
-- `codebuddy-ast/src/refactoring/inline_variable.rs` - Removed 4 cfg guards
+- `mill-ast/src/package_extractor/planner.rs` - Removed 1 downcast
+- `mill-ast/src/refactoring/extract_function.rs` - Removed 3 cfg guards
+- `mill-ast/src/refactoring/extract_variable.rs` - Removed 3 cfg guards
+- `mill-ast/src/refactoring/inline_variable.rs` - Removed 4 cfg guards

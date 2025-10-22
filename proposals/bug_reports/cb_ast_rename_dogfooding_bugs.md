@@ -1,4 +1,4 @@
-# Bug Report: cb-ast → codebuddy-ast Rename Dogfooding Issues
+# Bug Report: cb-ast → mill-ast Rename Dogfooding Issues
 
 **Date**: 2025-10-19
 **Context**: Dogfooding codebuddy's rename.plan feature on itself (Phase 3 of Proposal 06)
@@ -6,7 +6,7 @@
 
 ## Summary
 
-During the dogfooding rename of `cb-ast` → `codebuddy-ast`, the rename plan successfully updated most references but missed several edge cases that should have been caught by the comprehensive rename coverage feature (93% → 100% coverage, implemented in Proposal 02g).
+During the dogfooding rename of `cb-ast` → `mill-ast`, the rename plan successfully updated most references but missed several edge cases that should have been caught by the comprehensive rename coverage feature (93% → 100% coverage, implemented in Proposal 02g).
 
 ## Bugs Discovered
 
@@ -18,13 +18,13 @@ During the dogfooding rename of `cb-ast` → `codebuddy-ast`, the rename plan su
 **What happened**:
 ```toml
 [dependencies]
-codebuddy-ast = { path = "../codebuddy-ast", optional = true }  # ✅ Updated correctly
+mill-ast = { path = "../mill-ast", optional = true }  # ✅ Updated correctly
 
 [features]
 runtime = ["codebuddy-foundation", "mill-config", "cb-ast"]  # ❌ NOT updated
 ```
 
-**Expected**: Feature flag should have been updated to `"codebuddy-ast"`
+**Expected**: Feature flag should have been updated to `"mill-ast"`
 
 **Root cause**: The rename plan's Cargo.toml parser correctly updated the dependency on line 24 but failed to update the feature flag reference on line 31. Feature flags can reference optional dependencies and should be included in the rename scope.
 

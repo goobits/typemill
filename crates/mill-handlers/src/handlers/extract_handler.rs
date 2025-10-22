@@ -14,7 +14,7 @@
 
 use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use codebuddy_ast::refactoring::CodeRange;
+use mill_ast::refactoring::CodeRange;
 use codebuddy_foundation::core::model::mcp::ToolCall;
 use codebuddy_foundation::protocol::{
     ApiError as ServerError, ApiResult as ServerResult, EditPlan, ExtractPlan, PlanMetadata,
@@ -121,7 +121,7 @@ impl ExtractHandler {
 
         // Call AST refactoring function directly without LSP service
         // Note: LSP integration removed as DirectLspAdapter doesn't implement LspRefactoringService
-        let edit_plan = codebuddy_ast::refactoring::extract_function::plan_extract_function(
+        let edit_plan = mill_ast::refactoring::extract_function::plan_extract_function(
             &file_content,
             &code_range,
             &source.name,
@@ -169,7 +169,7 @@ impl ExtractHandler {
 
         // Try to use extract_variable if available, otherwise fall back to extract_function
         // and adapt the result (AST-only approach, no LSP service)
-        let edit_plan = codebuddy_ast::refactoring::extract_function::plan_extract_function(
+        let edit_plan = mill_ast::refactoring::extract_function::plan_extract_function(
             &file_content,
             &code_range,
             &source.name,
@@ -214,7 +214,7 @@ impl ExtractHandler {
             .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
 
         // Use AST-only approach for extracting constants
-        let edit_plan = codebuddy_ast::refactoring::extract_function::plan_extract_function(
+        let edit_plan = mill_ast::refactoring::extract_function::plan_extract_function(
             &file_content,
             &code_range,
             &source.name,

@@ -21,7 +21,7 @@
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │                    BUSINESS LOGIC LAYER                         │
-│     (mill-services, codebuddy-ast, codebuddy-foundation)          │
+│     (mill-services, mill-ast, codebuddy-foundation)          │
 ├─────────────────────────────────────────────────────────────────┤
 │ Concerns:                          │ Status:                    │
 │ • Refactoring planning             │ ✓ Service traits           │

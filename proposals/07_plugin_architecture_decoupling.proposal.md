@@ -140,7 +140,7 @@ The current mill-services architecture with auto-discovery is SUPERIOR to the or
 
 ### 08a: Verification
 - [x] `cargo check --workspace` passes
-- [x] `cargo test -p codebuddy-ast` passes (13/13 tests)
+- [x] `cargo test -p mill-ast` passes (13/13 tests)
 - [x] All functionality works correctly through capability-based architecture
 
 ## Success Criteria

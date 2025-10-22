@@ -64,7 +64,7 @@ use tracing::debug;
 /// - Severity: High if ratio < 0.5, Medium if < 0.8, Low otherwise
 /// - Suggestions to add tests for untested functions
 pub fn detect_coverage(
-    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -216,7 +216,7 @@ pub fn detect_coverage(
 /// - Severity: Medium if test smells found
 /// - Suggestions to refactor test smells, improve test naming
 pub fn detect_quality(
-    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -398,7 +398,7 @@ pub fn detect_quality(
 /// - Severity: Medium if tests lack assertions or have too many
 /// - Suggestions to add assertions, split complex tests
 pub fn detect_assertions(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -596,7 +596,7 @@ pub fn detect_assertions(
 /// - Severity: Medium if poor organization
 /// - Suggestions to organize tests, add missing test files
 pub fn detect_organization(
-    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -824,7 +824,7 @@ fn get_test_patterns(language: &str) -> Vec<&'static str> {
 /// # Returns
 /// A vector of function names that lack tests
 fn identify_untested_functions(
-    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     language: &str,
 ) -> Vec<String> {

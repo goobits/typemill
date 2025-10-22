@@ -716,15 +716,15 @@ pub fn example() {
             result
         );
         assert!(
-            result.contains("codebuddy_ast::CacheSettings"),
+            result.contains("mill_ast::CacheSettings"),
             "Should update CacheSettings reference"
         );
         assert!(
-            result.contains("codebuddy_ast::complexity::analyze_file_complexity"),
+            result.contains("mill_ast::complexity::analyze_file_complexity"),
             "Should update complexity reference"
         );
         assert!(
-            result.contains("codebuddy_ast::refactoring::extract_function"),
+            result.contains("mill_ast::refactoring::extract_function"),
             "Should update refactoring reference"
         );
     }
@@ -745,12 +745,12 @@ pub fn example() {
 
         // Both the use statement AND the qualified path should be updated
         assert!(
-            result.contains("use codebuddy_ast::CacheSettings"),
+            result.contains("use mill_ast::CacheSettings"),
             "Should update use statement. Result:\n{}",
             result
         );
         assert!(
-            result.contains("codebuddy_ast::CacheSettings::default()"),
+            result.contains("mill_ast::CacheSettings::default()"),
             "Should update qualified path. Result:\n{}",
             result
         );
@@ -781,7 +781,7 @@ pub fn example() {
             support.rewrite_imports_for_rename(content, "cb_ast", "codebuddy_ast");
 
         assert!(
-            result.contains("codebuddy_ast::CacheSettings"),
+            result.contains("mill_ast::CacheSettings"),
             "Should update qualified path"
         );
         assert!(
@@ -818,7 +818,7 @@ pub fn example() {
             "Should replace all cb_ast references regardless of spacing"
         );
         assert!(
-            result.contains("codebuddy_ast::"),
+            result.contains("mill_ast::"),
             "Should normalize to standard spacing"
         );
     }

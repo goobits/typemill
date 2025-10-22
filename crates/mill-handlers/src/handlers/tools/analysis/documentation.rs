@@ -63,7 +63,7 @@ use tracing::debug;
 /// - Severity: High if coverage < 50%, Medium if < 70%, Low otherwise
 /// - Suggestions to add documentation to undocumented public symbols
 pub fn detect_coverage(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -237,7 +237,7 @@ pub fn detect_coverage(
 /// - Severity: Medium if quality issues found
 /// - Suggestions to add parameter docs, return docs, examples
 pub fn detect_quality(
-    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -447,7 +447,7 @@ pub fn detect_quality(
 /// - Severity: Low (style is informational)
 /// - Suggestions to use consistent doc comment style
 pub fn detect_style(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -601,7 +601,7 @@ pub fn detect_style(
 /// - Severity: Medium if complex functions lack examples
 /// - Suggestions to add examples to complex functions
 pub fn detect_examples(
-    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -778,7 +778,7 @@ pub fn detect_examples(
 /// - Severity: High if FIXMEs found, Medium if many TODOs (> 10), Low otherwise
 /// - Suggestions to address FIXMEs, create issues for TODOs
 pub fn detect_todos(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[Symbol],
     language: &str,

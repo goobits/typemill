@@ -18,7 +18,7 @@ use crate::services::lock_manager::LockManager;
 use crate::services::move_service::MoveService;
 use crate::services::operation_queue::OperationQueue;
 use crate::services::reference_updater::ReferenceUpdater;
-use codebuddy_ast::AstCache;
+use mill_ast::AstCache;
 use mill_config::config::AppConfig;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

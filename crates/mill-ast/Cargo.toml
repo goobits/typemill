@@ -1,5 +1,5 @@
 [package]
-name = "codebuddy-ast"
+name = "mill-ast"
 edition = "2021"
 description = "AST parsing and transformation for Codeflow Buddy"
 license = "MIT"

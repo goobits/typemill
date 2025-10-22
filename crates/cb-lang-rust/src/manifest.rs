@@ -332,34 +332,34 @@ advanced = ["cb-ast/extra-feature"]
         let result = rename_dependency(
             cargo_toml,
             "cb-ast",
-            "codebuddy-ast",
-            Some("../codebuddy-ast"),
+            "mill-ast",
+            Some("../mill-ast"),
         )
         .unwrap();
 
         // Verify dependency was renamed
-        assert!(result.contains("codebuddy-ast = { path"));
+        assert!(result.contains("mill-ast = { path"));
         assert!(!result.contains("cb-ast = { path"));
 
         // Verify feature flags were updated
-        assert!(result.contains("codebuddy-ast"));
+        assert!(result.contains("mill-ast"));
         assert!(result.contains("other-dep"));
 
         // Check that feature references were updated
-        let has_runtime_feature = result.contains(r#"runtime = ["other-dep", "codebuddy-ast"]"#)
+        let has_runtime_feature = result.contains(r#"runtime = ["other-dep", "mill-ast"]"#)
             || (result.contains("runtime")
-                && result.contains("codebuddy-ast")
+                && result.contains("mill-ast")
                 && result.contains("other-dep"));
         assert!(
             has_runtime_feature,
-            "runtime feature should reference codebuddy-ast"
+            "runtime feature should reference mill-ast"
         );
 
-        let has_advanced_feature = result.contains(r#"advanced = ["codebuddy-ast/extra-feature"]"#)
-            || (result.contains("advanced") && result.contains("codebuddy-ast/extra-feature"));
+        let has_advanced_feature = result.contains(r#"advanced = ["mill-ast/extra-feature"]"#)
+            || (result.contains("advanced") && result.contains("mill-ast/extra-feature"));
         assert!(
             has_advanced_feature,
-            "advanced feature should reference codebuddy-ast/extra-feature"
+            "advanced feature should reference mill-ast/extra-feature"
         );
 
         // Verify old name is completely gone

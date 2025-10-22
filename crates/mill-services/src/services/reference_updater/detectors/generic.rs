@@ -170,7 +170,7 @@ fn resolve_import_to_file(
     project_files: &[PathBuf],
     project_root: &Path,
 ) -> Option<PathBuf> {
-    let resolver = codebuddy_ast::ImportPathResolver::new(project_root);
+    let resolver = mill_ast::ImportPathResolver::new(project_root);
     resolver.resolve_import_to_file(specifier, importing_file, project_files)
 }
 

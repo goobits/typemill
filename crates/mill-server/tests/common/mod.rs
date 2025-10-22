@@ -11,7 +11,7 @@ pub async fn create_test_app_state() -> (Arc<AppState>, TempDir) {
 
     let temp_dir = TempDir::new().unwrap();
     let project_root = temp_dir.path().to_path_buf();
-    let cache_settings = codebuddy_ast::CacheSettings::default();
+    let cache_settings = mill_ast::CacheSettings::default();
     let plugin_manager = Arc::new(PluginManager::new());
     let config = mill_config::AppConfig::default();
 

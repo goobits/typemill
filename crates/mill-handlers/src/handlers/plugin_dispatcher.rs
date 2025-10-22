@@ -569,7 +569,7 @@ pub async fn create_test_dispatcher() -> PluginDispatcher {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let project_root = temp_dir.path().to_path_buf();
 
-    let cache_settings = codebuddy_ast::CacheSettings::default();
+    let cache_settings = mill_ast::CacheSettings::default();
     let plugin_manager = Arc::new(PluginManager::new());
     let config = mill_config::AppConfig::default();
 
@@ -615,7 +615,7 @@ mod tests {
         let plugin_registry =
             mill_services::services::registry_builder::build_language_plugin_registry();
         let language_plugins = crate::LanguagePluginRegistry::from_registry(plugin_registry);
-        let ast_cache = Arc::new(codebuddy_ast::AstCache::new());
+        let ast_cache = Arc::new(mill_ast::AstCache::new());
         let ast_service = Arc::new(mill_services::services::DefaultAstService::new(
             ast_cache.clone(),
             language_plugins.inner.clone(),

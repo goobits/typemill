@@ -9,7 +9,7 @@ use tokio::fs;
 use tracing::{debug, error, info, warn};
 
 // Import the transformer for delegating text edit application
-use codebuddy_ast::transformer;
+use mill_ast::transformer;
 
 /// Result of applying an edit plan
 #[derive(Debug, Clone, serde::Serialize)]

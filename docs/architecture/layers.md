@@ -111,7 +111,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Purpose:** Core business logic, file operations, AST processing, LSP integration
 
 **Crates:**
-- `cb-ast` / `codebuddy-ast` (AST parsing, code analysis)
+- `cb-ast` / `mill-ast` (AST parsing, code analysis)
 - `mill-services` / `codebuddy-services` (file service, lock manager, planner)
 - `mill-lsp` / `codebuddy-lsp` (LSP client management)
 - `mill-plugin-bundle` (plugin registration)

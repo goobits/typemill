@@ -172,7 +172,7 @@ if let RefactorPlan::DeletePlan(delete_plan) = &params.plan {
 
 ### Location
 - `../../crates/mill-services/src/services/`
-- `crates/codebuddy-ast/src/`
+- `../../crates/mill-ast/src/`
 
 ### Strengths
 

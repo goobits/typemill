@@ -67,4 +67,4 @@ pathdiff = "0.2"
 codebuddy-plugin-system = { path = "../codebuddy-plugin-system", default-features = false, features = ["runtime"] }
 mill-config = { path = "../mill-config" }
 mill-workspaces = { path = "../mill-workspaces" }
-codebuddy-ast = { path = "../codebuddy-ast", default-features = false }
+mill-ast = { path = "../mill-ast", default-features = false }

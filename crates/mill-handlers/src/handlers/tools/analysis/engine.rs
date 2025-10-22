@@ -35,7 +35,7 @@ use tracing::{debug, info};
 /// # Returns
 /// A vector of findings detected by the analysis function
 pub type AnalysisFn = fn(
-    &codebuddy_ast::complexity::ComplexityReport,
+    &mill_ast::complexity::ComplexityReport,
     &str,
     &[cb_plugin_api::Symbol],
     &str,
@@ -146,7 +146,7 @@ pub fn extract_file_path(args: &Value, scope_param: &ScopeParam) -> ServerResult
 /// use mill_handlers::handlers::tools::analysis::engine::{run_analysis, AnalysisFn};
 ///
 /// fn my_analysis_fn(
-///     complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+///     complexity_report: &mill_ast::complexity::ComplexityReport,
 ///     content: &str,
 ///     symbols: &[cb_plugin_api::Symbol],
 ///     language: &str,
@@ -205,7 +205,7 @@ pub async fn run_analysis(
 /// use mill_handlers::handlers::tools::analysis::config::AnalysisConfig;
 ///
 /// fn my_analysis_fn(
-///     complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+///     complexity_report: &mill_ast::complexity::ComplexityReport,
 ///     content: &str,
 ///     symbols: &[cb_plugin_api::Symbol],
 ///     language: &str,
@@ -321,7 +321,7 @@ pub async fn run_analysis_with_config(
     );
 
     // Step 6: Analyze complexity
-    let complexity_report = codebuddy_ast::complexity::analyze_file_complexity(
+    let complexity_report = mill_ast::complexity::analyze_file_complexity(
         &file_path,
         &content,
         &parsed.symbols,

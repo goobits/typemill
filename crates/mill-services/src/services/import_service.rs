@@ -1,7 +1,7 @@
 //! Service for managing import updates across the codebase
 
 use cb_plugin_api::PluginRegistry;
-use codebuddy_ast::{find_project_files, update_imports_for_rename, ImportPathResolver};
+use mill_ast::{ find_project_files , update_imports_for_rename , ImportPathResolver };
 use codebuddy_foundation::protocol::DependencyUpdate;
 use codebuddy_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use std::path::{Path, PathBuf};

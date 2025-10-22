@@ -90,7 +90,7 @@ struct CachedAst {
     symbols: Vec<Symbol>,
     content: String,
     language: String,
-    complexity_report: codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: mill_ast::complexity::ComplexityReport,
 }
 
 #[derive(Debug, Error)]
@@ -361,7 +361,7 @@ async fn parse_single_file(
 
     let language = plugin.metadata().name.to_string();
 
-    let complexity_report = codebuddy_ast::complexity::analyze_file_complexity(
+    let complexity_report = mill_ast::complexity::analyze_file_complexity(
         &file_path.display().to_string(),
         &content,
         &parsed.symbols,
@@ -402,10 +402,10 @@ async fn analyze_file_with_cached_ast(
                 for func in &cached_ast.complexity_report.functions {
                     if func.complexity.cognitive >= 10 || func.complexity.cyclomatic >= 15 {
                         let severity = match func.rating {
-                            codebuddy_ast::complexity::ComplexityRating::VeryComplex => {
+                            mill_ast::complexity::ComplexityRating::VeryComplex => {
                                 Severity::High
                             }
-                            codebuddy_ast::complexity::ComplexityRating::Complex => {
+                            mill_ast::complexity::ComplexityRating::Complex => {
                                 Severity::Medium
                             }
                             _ => Severity::Low,

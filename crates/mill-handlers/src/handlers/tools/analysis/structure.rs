@@ -62,7 +62,7 @@ use tracing::debug;
 /// - Low severity (informational)
 /// - No suggestions (structural information only)
 pub fn detect_symbols(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -157,7 +157,7 @@ pub fn detect_symbols(
 /// - Medium severity if depth > 5
 /// - Suggestions to flatten hierarchy if too deep
 pub fn detect_hierarchy(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -303,7 +303,7 @@ pub fn detect_hierarchy(
 /// - Medium severity if fat interfaces found
 /// - Suggestions to split fat interfaces (ISP)
 pub fn detect_interfaces(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -452,7 +452,7 @@ pub fn detect_interfaces(
 /// - High severity if depth > 4 (fragile base class)
 /// - Suggestions to prefer composition over deep inheritance
 pub fn detect_inheritance(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,
@@ -591,7 +591,7 @@ pub fn detect_inheritance(
 /// - Medium severity if god modules or many orphaned items
 /// - Suggestions to split large modules or organize orphaned items
 pub fn detect_modules(
-    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     symbols: &[Symbol],
     language: &str,

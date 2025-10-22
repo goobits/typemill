@@ -4,7 +4,7 @@ mod tests {
     use crate::services::file_service::FileService;
     use crate::services::lock_manager::LockManager;
     use crate::services::operation_queue::{OperationQueue, OperationType};
-    use codebuddy_ast::AstCache;
+    use mill_ast::AstCache;
     use codebuddy_foundation::protocol::{
         ApiError, DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit,
     };
@@ -522,7 +522,7 @@ mod workspace_tests {
     use crate::services::file_service::FileService;
     use crate::services::lock_manager::LockManager;
     use crate::services::operation_queue::OperationQueue;
-    use codebuddy_ast::AstCache;
+    use mill_ast::AstCache;
     use std::sync::Arc;
     use tempfile::TempDir;
 

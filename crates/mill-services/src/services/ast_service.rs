@@ -5,7 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use cb_plugin_api::PluginRegistry;
-use codebuddy_ast::AstCache;
+use mill_ast::AstCache;
 use codebuddy_foundation::protocol::{ApiResult, CacheStats, ImportGraph};
 use tracing::{debug, trace};
 
@@ -122,7 +122,7 @@ fn build_import_graph_with_plugin(
         "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "rs"
     ) {
         // Fallback to cb-ast parser for other languages (if any remain)
-        return codebuddy_ast::parser::build_import_graph(source, path).map_err(|e| {
+        return mill_ast::parser::build_import_graph(source, path).map_err(|e| {
             codebuddy_foundation::protocol::ApiError::internal(format!("AST parsing failed: {}", e))
         });
     }

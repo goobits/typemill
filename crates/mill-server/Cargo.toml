@@ -36,15 +36,15 @@ codebuddy-plugin-system = { path = "../codebuddy-plugin-system", default-feature
 mill-config = { path = "../mill-config" }
 mill-plugin-bundle = { path = "../mill-plugin-bundle", default-features = false }
 mill-workspaces = { path = "../mill-workspaces" }
-codebuddy-ast = { path = "../codebuddy-ast", default-features = false }
+mill-ast = { path = "../mill-ast", default-features = false }
 mill-handlers = { path = "../mill-handlers", default-features = false, features = ["analysis-deep-dead-code", "refactor-all"] }
 
 [features]
 default = ["lang-rust", "lang-typescript", "lang-markdown"]
 # NOTE: cb-handlers no longer has language features - it uses dependency injection
-lang-rust = ["mill-services/lang-rust", "codebuddy-ast/lang-rust", "mill-plugin-bundle/lang-rust", "codebuddy-plugin-system/lang-rust", "mill-transport/lang-rust"]
-lang-typescript = ["mill-services/lang-typescript", "codebuddy-ast/lang-typescript", "mill-plugin-bundle/lang-typescript", "codebuddy-plugin-system/lang-typescript", "mill-transport/lang-typescript"]
-lang-markdown = ["mill-services/lang-markdown", "codebuddy-ast/lang-markdown", "mill-plugin-bundle/lang-markdown", "codebuddy-plugin-system/lang-markdown", "mill-transport/lang-markdown"]
+lang-rust = ["mill-services/lang-rust", "mill-ast/lang-rust", "mill-plugin-bundle/lang-rust", "codebuddy-plugin-system/lang-rust", "mill-transport/lang-rust"]
+lang-typescript = ["mill-services/lang-typescript", "mill-ast/lang-typescript", "mill-plugin-bundle/lang-typescript", "codebuddy-plugin-system/lang-typescript", "mill-transport/lang-typescript"]
+lang-markdown = ["mill-services/lang-markdown", "mill-ast/lang-markdown", "mill-plugin-bundle/lang-markdown", "codebuddy-plugin-system/lang-markdown", "mill-transport/lang-markdown"]
 lang-toml = ["mill-plugin-bundle/lang-toml"]
 lang-yaml = ["mill-plugin-bundle/lang-yaml"]
 mcp-proxy = ["codebuddy-foundation/mcp-proxy", "mill-config/mcp-proxy", "mill-services/mcp-proxy"]

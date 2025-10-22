@@ -70,7 +70,7 @@ use codebuddy_foundation::protocol::analysis_result::AnalysisResult;
 /// - Metrics including source_module, imported_symbols, import_category, import_type
 /// - Low severity (informational only)
 pub fn detect_imports(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -216,7 +216,7 @@ pub fn detect_imports(
 /// - Info severity (architectural information)
 /// - No suggestions (informational only)
 pub fn detect_graph(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -312,7 +312,7 @@ pub fn detect_graph(
 /// - High severity (architectural smell)
 /// - Suggestion to refactor and break cycle
 pub fn detect_circular(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -417,7 +417,7 @@ pub fn detect_circular(
 /// - Medium severity if high coupling detected
 /// - Suggestion to reduce coupling via interfaces or dependency injection
 pub fn detect_coupling(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,
@@ -536,7 +536,7 @@ pub fn detect_coupling(
 /// - Medium severity if low cohesion detected
 /// - Suggestion to split module or refactor for better cohesion
 pub fn detect_cohesion(
-    complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    complexity_report: &mill_ast::complexity::ComplexityReport,
     _content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     _language: &str,
@@ -658,7 +658,7 @@ pub fn detect_cohesion(
 /// - Medium severity if depth excessive (> 5)
 /// - Suggestion to flatten dependency tree or refactor architecture
 pub fn detect_depth(
-    _complexity_report: &codebuddy_ast::complexity::ComplexityReport,
+    _complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
     _symbols: &[cb_plugin_api::Symbol],
     language: &str,

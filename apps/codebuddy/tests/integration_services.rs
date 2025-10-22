@@ -13,7 +13,7 @@ extern crate mill_plugin_bundle;
 use mill_server::handlers::AppState;
 use mill_server::services::{ DefaultAstService , FileService , LockManager , OperationQueue };
 use mill_server::workspaces::WorkspaceManager;
-use codebuddy_ast::AstCache;
+use mill_ast::AstCache;
 use codebuddy_foundation::protocol::AstService;
 use codebuddy_plugin_system::PluginManager;
 use serde_json::json;

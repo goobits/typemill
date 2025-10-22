@@ -73,7 +73,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 **Foundation/Infrastructure Crates (7 crates - `codebuddy-*` prefix):**
 - `codebuddy-foundation` - Core foundation layer
 - `mill-config` - Configuration system
-- `codebuddy-ast` - AST processing and manipulation
+- `mill-ast` - AST processing and manipulation
 - `mill-auth` - Authentication and authorization
 - `mill-workspaces` - Workspace management
 - `codebuddy-plugin-system` - Plugin system orchestration
@@ -122,7 +122,7 @@ All crates will adopt the `mill-*` prefix for consistency and simplicity.
 **Foundation/Infrastructure:**
 - `codebuddy-foundation` → `mill-foundation`
 - `mill-config` → `mill-config`
-- `codebuddy-ast` → `mill-ast`
+- `mill-ast` → `mill-ast`
 - `mill-auth` → `mill-auth`
 - `mill-workspaces` → `mill-workspaces`
 - `codebuddy-plugin-system` → `mill-plugin-system`
@@ -500,7 +500,7 @@ git tag v2.0.0
 **Foundation/Infrastructure (7 crates):**
 - [ ] `codebuddy-foundation` → `mill-foundation`
 - [ ] `mill-config` → `mill-config`
-- [ ] `codebuddy-ast` → `mill-ast`
+- [ ] `mill-ast` → `mill-ast`
 - [ ] `mill-auth` → `mill-auth`
 - [ ] `mill-workspaces` → `mill-workspaces`
 - [ ] `codebuddy-plugin-system` → `mill-plugin-system`
@@ -1026,7 +1026,7 @@ See full documentation at https://typemill.org/docs/migration
   crates/cb-lang-yaml → crates/mill-lang-yaml
   crates/codebuddy-foundation → crates/mill-foundation
   ../crates/mill-config → crates/mill-config
-  crates/codebuddy-ast → crates/mill-ast
+  ../crates/mill-ast → crates/mill-ast
   ../crates/mill-auth → crates/mill-auth
   ../crates/mill-workspaces → crates/mill-workspaces
   crates/codebuddy-plugin-system → crates/mill-plugin-system
@@ -1056,7 +1056,7 @@ See full documentation at https://typemill.org/docs/migration
   cb-lang-yaml → mill-lang-yaml
   codebuddy-foundation → mill-foundation
   mill-config → mill-config
-  codebuddy-ast → mill-ast
+  mill-ast → mill-ast
   mill-auth → mill-auth
   mill-workspaces → mill-workspaces
   codebuddy-plugin-system → mill-plugin-system
