@@ -24,7 +24,7 @@ use mill_transport::McpDispatcher;
 use mill_foundation::core::model::mcp::{ McpMessage , McpRequest , McpResponse , ToolCall };
 use mill_foundation::protocol::AstService;
 use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
-use codebuddy_plugin_system::{LspAdapterPlugin, PluginManager};
+use mill_plugin_system::{ LspAdapterPlugin , PluginManager };
 use mill_workspaces::WorkspaceManager;
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -182,7 +182,7 @@ impl PluginDispatcher {
             }
 
             // Register System Tools plugin for workspace-level operations
-            let system_plugin = Arc::new(codebuddy_plugin_system::system_tools_plugin::SystemToolsPlugin::new(
+            let system_plugin = Arc::new(mill_plugin_system::system_tools_plugin::SystemToolsPlugin::new(
                 plugin_registry.clone(),
             ));
             self.plugin_manager

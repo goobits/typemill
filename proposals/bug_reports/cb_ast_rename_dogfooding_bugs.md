@@ -12,7 +12,7 @@ During the dogfooding rename of `cb-ast` → `mill-ast`, the rename plan success
 
 ### Bug 1: Feature Flag References Not Updated
 **Severity**: High
-**File**: `crates/codebuddy-plugin-system/Cargo.toml`
+**File**: `../../crates/mill-plugin-system/Cargo.toml`
 **Issue**: Feature flag still referenced old crate name
 
 **What happened**:
@@ -30,7 +30,7 @@ runtime = ["mill-foundation", "mill-config", "cb-ast"]  # ❌ NOT updated
 
 **Impact**: `cargo check` failed with:
 ```
-error: failed to load manifest for workspace member `/workspace/crates/codebuddy-plugin-system`
+error: failed to load manifest for workspace member `/workspace/crates/mill-plugin-system`
 ```
 
 ---
@@ -48,13 +48,13 @@ let cache_settings = cb_ast::CacheSettings::from_config(  // ❌ NOT updated
 // ../../crates/mill-handlers/src/handlers/inline_handler.rs:106
 let edit_plan = cb_ast::refactoring::inline_variable::plan_inline_variable(  // ❌ NOT updated
 
-// crates/codebuddy-plugin-system/src/system_tools_plugin.rs:325
+// ../../crates/mill-plugin-system/src/system_tools_plugin.rs:325
 let parsed: cb_ast::package_extractor::ExtractModuleToPackageParams =  // ❌ NOT updated
 ```
 
 **Total affected**:
 - 60+ occurrences across 16 crates
-- Files: mill-server, cb-handlers, mill-services, codebuddy-plugin-system
+- Files: mill-server, cb-handlers, mill-services, mill-plugin-system
 
 **Expected**: All qualified paths should have been updated by the rename plan
 

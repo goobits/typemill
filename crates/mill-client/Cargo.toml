@@ -34,12 +34,12 @@ uuid = { version = "1.0", features = ["v4"] }
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = { workspace = true }
-codebuddy-plugin-system = { path = "../codebuddy-plugin-system", optional = true }
+mill-plugin-system = { path = "../mill-plugin-system", optional = true }
 mill-config = { path = "../mill-config" }
 
 [features]
 default = []
-mcp-proxy = ["codebuddy-plugin-system", "mill-foundation/mcp-proxy", "mill-config/mcp-proxy"]
+mcp-proxy = ["mill-plugin-system", "mill-foundation/mcp-proxy", "mill-config/mcp-proxy"]
 
 [dev-dependencies]
 tempfile = "3.0"

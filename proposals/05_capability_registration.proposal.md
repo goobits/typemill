@@ -53,7 +53,7 @@ All success criteria met. The capability registration system is fully implemente
 
 ## Checklists
 
-- [x] ~~Extend `codebuddy-plugin-system` to store capability metadata~~ - Not needed; capability traits provide metadata
+- [x] ~~Extend `mill-plugin-system` to store capability metadata~~ - Not needed; capability traits provide metadata
 - [x] Implement capability registration hooks inside existing plugins (Rust, TypeScript)
 - [x] Replace `#[cfg(feature = "...")]` language checks in analysis tools
 - [x] Replace `#[cfg(feature = "...")]` in AST refactoring modules (10 guards removed)

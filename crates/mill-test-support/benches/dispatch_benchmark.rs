@@ -9,10 +9,7 @@
 use async_trait::async_trait;
 use mill_server::handlers::plugin_dispatcher::create_test_dispatcher;
 use mill_foundation::core::model::mcp::ToolCall;
-use codebuddy_plugin_system::{
-    Capabilities, LanguagePlugin, PluginMetadata, PluginRegistry, PluginRequest, PluginResponse,
-    PluginResult,
-};
+use mill_plugin_system::{ Capabilities , LanguagePlugin , PluginMetadata , PluginRegistry , PluginRequest , PluginResponse , PluginResult , };
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -76,7 +73,7 @@ impl LanguagePlugin for BenchmarkPlugin {
             })),
             error: None,
             request_id: request.request_id,
-            metadata: codebuddy_plugin_system::protocol::ResponseMetadata {
+            metadata: mill_plugin_system::protocol::ResponseMetadata {
                 plugin_name: self.name.clone(),
                 processing_time_ms: Some(self.response_delay_ms),
                 cached: false,

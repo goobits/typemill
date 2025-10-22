@@ -76,7 +76,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 - `mill-ast` - AST processing and manipulation
 - `mill-auth` - Authentication and authorization
 - `mill-workspaces` - Workspace management
-- `codebuddy-plugin-system` - Plugin system orchestration
+- `mill-plugin-system` - Plugin system orchestration
 - `mill-plugin-bundle` - Plugin bundle packaging
 
 **Analysis Crates (5 crates - `cb-analysis-*` prefix):**
@@ -125,7 +125,7 @@ All crates will adopt the `mill-*` prefix for consistency and simplicity.
 - `mill-ast` → `mill-ast`
 - `mill-auth` → `mill-auth`
 - `mill-workspaces` → `mill-workspaces`
-- `codebuddy-plugin-system` → `mill-plugin-system`
+- `mill-plugin-system` → `mill-plugin-system`
 - `mill-plugin-bundle` → `mill-plugin-bundle`
 
 **Analysis:**
@@ -503,7 +503,7 @@ git tag v2.0.0
 - [ ] `mill-ast` → `mill-ast`
 - [ ] `mill-auth` → `mill-auth`
 - [ ] `mill-workspaces` → `mill-workspaces`
-- [ ] `codebuddy-plugin-system` → `mill-plugin-system`
+- [ ] `mill-plugin-system` → `mill-plugin-system`
 - [ ] `mill-plugin-bundle` → `mill-plugin-bundle`
 
 **Analysis (5 crates):**
@@ -1029,7 +1029,7 @@ See full documentation at https://typemill.org/docs/migration
   ../crates/mill-ast → crates/mill-ast
   ../crates/mill-auth → crates/mill-auth
   ../crates/mill-workspaces → crates/mill-workspaces
-  crates/codebuddy-plugin-system → crates/mill-plugin-system
+  ../crates/mill-plugin-system → crates/mill-plugin-system
   ../crates/mill-plugin-bundle → crates/mill-plugin-bundle
   analysis/cb-analysis-common → analysis/mill-analysis-common
   analysis/cb-analysis-dead-code → analysis/mill-analysis-dead-code
@@ -1059,7 +1059,7 @@ See full documentation at https://typemill.org/docs/migration
   mill-ast → mill-ast
   mill-auth → mill-auth
   mill-workspaces → mill-workspaces
-  codebuddy-plugin-system → mill-plugin-system
+  mill-plugin-system → mill-plugin-system
   mill-plugin-bundle → mill-plugin-bundle
   cb-analysis-common → mill-analysis-common
   cb-analysis-dead-code → mill-analysis-dead-code

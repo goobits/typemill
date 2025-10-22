@@ -1540,7 +1540,7 @@ impl DeadCodeHandler {
                 &self,
                 query: &str,
             ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
-                use codebuddy_plugin_system::LspService;
+                use mill_plugin_system::LspService;
                 self.adapter
                     .request("workspace/symbol", json!({ "query": query }))
                     .await
@@ -1554,7 +1554,7 @@ impl DeadCodeHandler {
                 line: u32,
                 character: u32,
             ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
-                use codebuddy_plugin_system::LspService;
+                use mill_plugin_system::LspService;
                 let params = json!({
                     "textDocument": { "uri": uri },
                     "position": { "line": line, "character": character },
@@ -1572,7 +1572,7 @@ impl DeadCodeHandler {
                 &self,
                 uri: &str,
             ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
-                use codebuddy_plugin_system::LspService;
+                use mill_plugin_system::LspService;
                 self.adapter
                     .request(
                         "textDocument/documentSymbol",
@@ -1787,7 +1787,7 @@ impl DeadCodeHandler {
                 &self,
                 query: &str,
             ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
-                use codebuddy_plugin_system::LspService;
+                use mill_plugin_system::LspService;
                 self.adapter
                     .request("workspace/symbol", json!({ "query": query }))
                     .await
@@ -1801,7 +1801,7 @@ impl DeadCodeHandler {
                 line: u32,
                 character: u32,
             ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
-                use codebuddy_plugin_system::LspService;
+                use mill_plugin_system::LspService;
                 let params = json!({
                     "textDocument": { "uri": uri },
                     "position": { "line": line, "character": character },
@@ -1819,7 +1819,7 @@ impl DeadCodeHandler {
                 &self,
                 uri: &str,
             ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
-                use codebuddy_plugin_system::LspService;
+                use mill_plugin_system::LspService;
                 self.adapter
                     .request(
                         "textDocument/documentSymbol",

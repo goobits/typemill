@@ -5,7 +5,7 @@ use mill_config::config::{ AppConfig , ExternalMcpConfig , ExternalMcpServerConf
 use std::path::Path;
 
 #[cfg(feature = "mcp-proxy")]
-use codebuddy_plugin_system::mcp::presets;
+use mill_plugin_system::mcp::presets;
 
 /// List available MCP presets
 pub fn list_presets() -> Result<()> {

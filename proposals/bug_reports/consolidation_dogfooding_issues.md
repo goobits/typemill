@@ -128,7 +128,7 @@ mill-foundation = { path = "../mill-foundation" }
 - `../../crates/mill-test-support/Cargo.toml`
 - `crates/cb-ast/Cargo.toml`
 - `../../crates/mill-transport/Cargo.toml`
-- `crates/codebuddy-plugin-system/Cargo.toml`
+- `../../crates/mill-plugin-system/Cargo.toml`
 - `../../crates/mill-server/Cargo.toml`
 - `apps/codebuddy/Cargo.toml`
 - `tests/e2e/Cargo.toml`

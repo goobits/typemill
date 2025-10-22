@@ -215,7 +215,7 @@ error: feature `mcp-proxy` includes `cb-core/mcp-proxy`, but `cb-core` is not a 
 
 Files:
 - `Cargo.toml` (workspace root)
-- `crates/codebuddy-plugin-system/Cargo.toml`
+- `../../crates/mill-plugin-system/Cargo.toml`
 - `../../crates/mill-services/Cargo.toml`
 - `../../crates/mill-client/Cargo.toml`
 - `../../crates/mill-transport/Cargo.toml`

@@ -115,7 +115,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 - `mill-services` / `codebuddy-services` (file service, lock manager, planner)
 - `mill-lsp` / `codebuddy-lsp` (LSP client management)
 - `mill-plugin-bundle` (plugin registration)
-- `codebuddy-plugin-system` (plugin loading, dispatch)
+- `mill-plugin-system` (plugin loading, dispatch)
 
 **Dependencies:**
 - Layer 4: Language Plugins
@@ -128,7 +128,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 - Services can depend on each other within this layer (mill-services may use cb-ast)
 
 **Planned Consolidation:**
-- **Target:** Merge plugin-related crates → `codebuddy-plugin-system`
+- **Target:** Merge plugin-related crates → `mill-plugin-system`
 - **Rationale:** Plugin loading and dispatch are tightly coupled
 
 ---

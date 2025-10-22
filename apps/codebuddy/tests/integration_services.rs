@@ -15,7 +15,7 @@ use mill_server::services::{ DefaultAstService , FileService , LockManager , Ope
 use mill_server::workspaces::WorkspaceManager;
 use mill_ast::AstCache;
 use mill_foundation::protocol::AstService;
-use codebuddy_plugin_system::PluginManager;
+use mill_plugin_system::PluginManager;
 use serde_json::json;
 use std::fs;
 use std::path::PathBuf;

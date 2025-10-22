@@ -11,7 +11,7 @@ use super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::protocol::ApiResult as ServerResult;
-use codebuddy_plugin_system::PluginRequest;
+use mill_plugin_system::PluginRequest;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 

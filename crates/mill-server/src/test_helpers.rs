@@ -6,7 +6,7 @@ use crate::services::{DefaultAstService, FileService, LockManager, OperationQueu
 use crate::workspaces::WorkspaceManager;
 use mill_ast::AstCache;
 use mill_config::AppConfig;
-use codebuddy_plugin_system::PluginManager;
+use mill_plugin_system::PluginManager;
 use std::sync::Arc;
 
 /// Spawn background worker to process file operations from the queue (test version)

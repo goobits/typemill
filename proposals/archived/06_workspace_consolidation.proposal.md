@@ -52,12 +52,12 @@ This proposal adopts the "Pragmatic Layered Workspace" strategy to refactor the 
 - [x] For `cb-core`, `cb-types`, and `cb-protocol`, generate a `rename.plan` with the `consolidate: true` option, targeting `../../crates/mill-foundation` as the destination.
 - [x] Execute the generated plans using `workspace.apply_edit`.
 - [x] Manually add the public modules (`pub mod core;` etc.) to `../../crates/mill-foundation/src/lib.rs` as required by the consolidation workflow.
-- [x] Create `crates/codebuddy-plugin-system` and use the same `rename.plan(consolidate) -> workspace.apply_edit` workflow to merge `cb-plugins` and `cb-plugin-registry`.
+- [x] Create `../../crates/mill-plugin-system` and use the same `rename.plan(consolidate) -> workspace.apply_edit` workflow to merge `cb-plugins` and `cb-plugin-registry`.
 - [x] Use the `rename.plan(consolidate)` workflow to merge `cb-bench` into `cb-test-support`.
 
 **Completion Notes:**
 - ✅ mill-foundation (cb-core + cb-types + cb-protocol) - merged and verified
-- ✅ codebuddy-plugin-system (cb-plugins + cb-plugin-registry) - merged and verified
+- ✅ mill-plugin-system (cb-plugins + cb-plugin-registry) - merged and verified
 - ✅ cb-test-support (cb-bench merged) - completed
 - All builds passing, old crates deleted, workspace members updated
 - Circular dependency detection integrated into consolidation workflow

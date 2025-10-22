@@ -130,7 +130,7 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 - **Plugin Architecture** - Runtime plugin discovery replaces compile-time coupling
 - **Single-language Builds** - Optional feature flags for focused development (`lang-rust`, `lang-typescript`)
-- **Crate Consolidation** - Merged multiple crates into `mill-foundation` and `codebuddy-plugin-system`
+- **Crate Consolidation** - Merged multiple crates into `mill-foundation` and `mill-plugin-system`
 
 #### Fixed
 

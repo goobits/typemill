@@ -25,7 +25,7 @@ pub struct ServicesBundle {
 pub async fn create_services_bundle(
     project_root: &PathBuf,
     cache_settings: mill_ast::CacheSettings,
-    plugin_manager: Arc<codebuddy_plugin_system::PluginManager>,
+    plugin_manager: Arc<mill_plugin_system::PluginManager>,
     config: &mill_config::AppConfig,
     plugin_registry: Arc<cb_plugin_api::PluginRegistry>,
 ) -> ServicesBundle {
@@ -66,7 +66,7 @@ pub async fn create_services_bundle(
 /// Spawn background worker to process file operations from the queue
 fn spawn_operation_worker(
     queue: Arc<super::operation_queue::OperationQueue>,
-    plugin_manager: Arc<codebuddy_plugin_system::PluginManager>,
+    plugin_manager: Arc<mill_plugin_system::PluginManager>,
 ) {
     use super::operation_queue::OperationType;
     use tokio::fs;
@@ -161,7 +161,7 @@ fn spawn_operation_worker(
                             })
                         }
                         OperationType::UpdateDependency => {
-                            use codebuddy_plugin_system::protocol::PluginRequest;
+                            use mill_plugin_system::protocol::PluginRequest;
                             let request =
                                 PluginRequest::new("update_dependency", op.file_path.clone())
                                     .with_params(op.params.clone());
@@ -206,12 +206,12 @@ fn spawn_operation_worker(
 /// Register MCP proxy plugin if feature is enabled
 #[cfg(feature = "mcp-proxy")]
 pub async fn register_mcp_proxy_if_enabled(
-    plugin_manager: &Arc<codebuddy_plugin_system::PluginManager>,
+    plugin_manager: &Arc<mill_plugin_system::PluginManager>,
     external_mcp_config: Option<&mill_config::config::ExternalMcpConfig>,
 ) -> Result<(), mill_foundation::protocol::ApiError> {
     if let Some(config) = external_mcp_config {
-        use codebuddy_plugin_system::mcp::McpProxyPlugin;
-        use codebuddy_plugin_system::LanguagePlugin;
+        use mill_plugin_system::mcp::McpProxyPlugin;
+        use mill_plugin_system::LanguagePlugin;
 
         tracing::info!(
             servers_count = config.servers.len(),

@@ -51,7 +51,7 @@ package `cb-plugin-api`
 - `/workspace/crates/mill-foundation/src/core/language.rs` (removed)
 - `/workspace/crates/cb-plugin-api/src/language.rs` (new location)
 - `/workspace/crates/cb-ast/src/package_extractor/planner.rs` (import updated)
-- `/workspace/crates/codebuddy-plugin-system/src/system_tools_plugin.rs` (import updated)
+- `/workspace/crates/mill-plugin-system/src/system_tools_plugin.rs` (import updated)
 
 ---
 

@@ -298,7 +298,7 @@ Unit test `test_rename_dependency_updates_features` already validates this behav
 
 **Feature Refs:**
 - `crates/cb-lang-rust/src/manifest.rs`
-- `crates/codebuddy-plugin-system/Cargo.toml` (test case)
+- `../../crates/mill-plugin-system/Cargo.toml` (test case)
 
 **Test Files:**
 - Add: `crates/cb-lang-rust/src/manifest.rs` (unit test for feature refs)
