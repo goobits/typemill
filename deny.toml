@@ -214,7 +214,7 @@ skip-tree = [
 # Enforces the layered architecture documented in docs/architecture/layers.md
 #
 # Layer Hierarchy (after consolidation):
-# - Layer 7: Application (cb-server, cb-client, cb-transport, codebuddy, codebuddy-auth, codebuddy-workspaces)
+# - Layer 7: Application (cb-server, mill-client, cb-transport, codebuddy, codebuddy-auth, codebuddy-workspaces)
 # - Layer 6: Handlers (cb-handlers)
 # - Layer 5: Services (cb-services, cb-ast, cb-lsp, codebuddy-plugin-system, codebuddy-plugin-bundle)
 # - Layer 4: Language Plugins (cb-lang-*)
@@ -237,7 +237,7 @@ skip-tree = [
 
 [[bans.deny]]
 name = "cb-services"
-wrappers = ["cb-handlers", "cb-server", "cb-client", "codebuddy", "cb-test-support", "e2e"]
+wrappers = ["cb-handlers", "cb-server", "mill-client", "codebuddy", "cb-test-support", "e2e"]
 
 [[bans.deny]]
 name = "cb-ast"
@@ -249,7 +249,7 @@ wrappers = ["cb-services", "cb-handlers", "cb-server", "codebuddy", "cb-test-sup
 
 [[bans.deny]]
 name = "codebuddy-plugin-system"
-wrappers = ["cb-services", "cb-handlers", "cb-server", "cb-client", "codebuddy", "cb-test-support", "e2e"]
+wrappers = ["cb-services", "cb-handlers", "cb-server", "mill-client", "codebuddy", "cb-test-support", "e2e"]
 
 [[bans.deny]]
 name = "codebuddy-plugin-bundle"

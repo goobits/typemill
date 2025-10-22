@@ -47,9 +47,9 @@ impl std::error::Error for ConventionError {}
 /// Simple target:
 /// ```
 /// use codebuddy::cli::conventions::parse_target_convention;
-/// let result = parse_target_convention("directory:crates/cb-client").unwrap();
+/// let result = parse_target_convention("directory:crates/mill-client").unwrap();
 /// assert_eq!(result["kind"], "directory");
-/// assert_eq!(result["path"], "crates/cb-client");
+/// assert_eq!(result["path"], "crates/mill-client");
 /// ```
 ///
 /// Target with position (symbol):
@@ -213,9 +213,9 @@ mod tests {
 
     #[test]
     fn test_parse_target_directory() {
-        let result = parse_target_convention("directory:crates/cb-client").unwrap();
+        let result = parse_target_convention("directory:crates/mill-client").unwrap();
         assert_eq!(result["kind"], "directory");
-        assert_eq!(result["path"], "crates/cb-client");
+        assert_eq!(result["path"], "crates/mill-client");
         assert!(result.get("selector").is_none());
     }
 
