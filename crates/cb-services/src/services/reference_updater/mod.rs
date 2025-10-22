@@ -85,7 +85,20 @@ impl ReferenceUpdater {
         // Check if this is a Rust crate rename (directory with Cargo.toml)
         let is_rust_crate_rename = is_directory_rename && old_path.join("Cargo.toml").exists();
 
-        let mut affected_files = if is_rust_crate_rename {
+        // Check if scope is comprehensive (e.g., --update-all)
+        // In comprehensive mode, use ALL files matching scope instead of reference-based detection
+        // This ensures 100% coverage by letting plugins decide what to update
+        let is_comprehensive = rename_scope.map_or(false, |s| s.is_comprehensive());
+
+        let mut affected_files = if is_comprehensive {
+            // Comprehensive mode: scan ALL files in scope
+            // Plugins will handle detection based on update_exact_matches, update_markdown_prose, etc.
+            tracing::info!(
+                project_files_count = project_files.len(),
+                "Using comprehensive scope - scanning all files matching scope filters"
+            );
+            project_files.clone()
+        } else if is_rust_crate_rename {
             // For Rust crate renames, call the detector ONCE with the directory paths
             // This allows the detector to scan for crate-level imports
             tracing::info!(

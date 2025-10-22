@@ -117,6 +117,23 @@ impl RenameScope {
         self
     }
 
+    /// Check if this scope is comprehensive (all file types enabled)
+    ///
+    /// A comprehensive scope means we should scan ALL files matching the scope,
+    /// not just files we detect as having references. This ensures 100% coverage
+    /// for operations like `--update-all`.
+    ///
+    /// # Returns
+    ///
+    /// `true` if `update_all` is set OR all major file types are enabled
+    pub fn is_comprehensive(&self) -> bool {
+        self.update_all
+            || (self.update_code
+                && self.update_docs
+                && self.update_configs
+                && self.update_string_literals)
+    }
+
     /// Check if a file path should be included based on scope
     pub fn should_include_file(&self, path: &Path) -> bool {
         // Check exclude patterns first
