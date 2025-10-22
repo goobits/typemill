@@ -194,6 +194,11 @@ impl ReferenceUpdater {
 
         let mut all_edits = Vec::new();
 
+        // Serialize rename_scope to JSON and merge with existing rename_info
+        // This ensures plugins receive BOTH cargo package info AND scope flags
+        // (e.g., update_exact_matches, update_comments, update_markdown_prose)
+        let merged_rename_info = merge_rename_info(rename_info, rename_scope);
+
         tracing::info!(
             affected_files_count = affected_files.len(),
             "Processing affected files for reference updates"
@@ -237,7 +242,7 @@ impl ReferenceUpdater {
                     new_path, // Pass the new directory path
                     &file_path,
                     &self.project_root,
-                    rename_info, // This contains old_crate_name and new_crate_name
+                    merged_rename_info.as_ref(), // Contains both cargo info AND scope flags
                 );
 
                 if let Some((updated_content, count)) = rewrite_result {
@@ -298,7 +303,7 @@ impl ReferenceUpdater {
                     new_path, // Directory path
                     &file_path,
                     &self.project_root,
-                    rename_info,
+                    merged_rename_info.as_ref(),
                 );
 
                 if let Some((updated_content, count)) = mod_decl_result {
@@ -340,7 +345,7 @@ impl ReferenceUpdater {
                         &new_file_path, // New path of specific file in directory
                         &file_path,
                         &self.project_root,
-                        rename_info,
+                        merged_rename_info.as_ref(),
                     );
 
                     if let Some((updated_content, count)) = rewrite_result {
@@ -412,7 +417,7 @@ impl ReferenceUpdater {
                     new_path,
                     &file_path,
                     &self.project_root,
-                    rename_info,
+                    merged_rename_info.as_ref(),
                 );
 
                 tracing::info!(
@@ -633,6 +638,79 @@ impl ReferenceUpdater {
             })?;
 
         Ok(true)
+    }
+}
+
+/// Merges existing rename_info (cargo package names) with serialized RenameScope (scope flags)
+///
+/// # Arguments
+///
+/// * `rename_info` - Optional JSON containing cargo package info (old_crate_name, new_crate_name)
+/// * `rename_scope` - Optional RenameScope with flags (update_comments, update_exact_matches, etc.)
+///
+/// # Returns
+///
+/// Merged JSON Value containing both cargo info and scope flags, or None if both inputs are None
+///
+/// # Example
+///
+/// Input rename_info:
+/// ```json
+/// {
+///   "old_crate_name": "cb_client",
+///   "new_crate_name": "mill_client"
+/// }
+/// ```
+///
+/// Input rename_scope (serialized):
+/// ```json
+/// {
+///   "update_comments": true,
+///   "update_exact_matches": true,
+///   "update_markdown_prose": true
+/// }
+/// ```
+///
+/// Output:
+/// ```json
+/// {
+///   "old_crate_name": "cb_client",
+///   "new_crate_name": "mill_client",
+///   "update_comments": true,
+///   "update_exact_matches": true,
+///   "update_markdown_prose": true
+/// }
+/// ```
+fn merge_rename_info(
+    rename_info: Option<&serde_json::Value>,
+    rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
+) -> Option<serde_json::Value> {
+    match (rename_info, rename_scope) {
+        (Some(info), Some(scope)) => {
+            // Both exist - merge them
+            let mut merged = info.clone();
+            if let Some(scope_json) = serde_json::to_value(scope).ok() {
+                if let (Some(merged_obj), Some(scope_obj)) = (merged.as_object_mut(), scope_json.as_object()) {
+                    // Merge scope fields into the existing rename_info
+                    for (key, value) in scope_obj {
+                        merged_obj.insert(key.clone(), value.clone());
+                    }
+                }
+            }
+            Some(merged)
+        }
+        (Some(info), None) => {
+            // Only rename_info exists
+            Some(info.clone())
+        }
+        (None, Some(scope)) => {
+            // Only rename_scope exists - serialize it
+            serde_json::to_value(scope).ok()
+        }
+        (None, None) => {
+            // Neither exists
+            None
+        }
     }
 }
 

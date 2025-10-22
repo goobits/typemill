@@ -1017,7 +1017,7 @@ See full documentation at https://typemill.org/docs/migration
   crates/cb-services → crates/mill-services
   crates/cb-transport → crates/mill-transport
   crates/cb-plugin-api → crates/mill-plugin-api
-  crates/cb-test-support → crates/mill-test-support
+  ../crates/mill-test-support → crates/mill-test-support
   crates/cb-lang-common → crates/mill-lang-common
   crates/cb-lang-rust → crates/mill-lang-rust
   crates/cb-lang-typescript → crates/mill-lang-typescript

@@ -10,7 +10,6 @@ codebuddy-foundation = { path = "../../crates/codebuddy-foundation" }
 cb-plugin-api = { path = "../../crates/cb-plugin-api" }
 cb-server = { path = "../../crates/cb-server", default-features = false, features = ["test-helpers"] }
 cb-handlers = { path = "../../crates/cb-handlers", default-features = false, features = ["analysis-circular-deps", "analysis-deep-dead-code", "refactor-all"] }
-cb-test-support = { path = "../../crates/cb-test-support" }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 mockall = { workspace = true }
@@ -37,6 +36,7 @@ once_cell = "1.19"
 codebuddy-plugin-system = { path = "../../crates/codebuddy-plugin-system", default-features = false, features = ["runtime"] }
 codebuddy-ast = { path = "../../crates/codebuddy-ast", default-features = false }
 mill-client = { path = "../../crates/mill-client" }
+mill-test-support = { path = "../../crates/mill-test-support" }
 
 [features]
 default = ["fast-tests"]

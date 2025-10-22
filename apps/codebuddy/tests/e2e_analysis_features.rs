@@ -4,7 +4,7 @@
 //! These tests focus on end-to-end workflows and LSP fallback scenarios.
 //! MCP protocol layer is tested separately in mcp_protocol_smoke_test.rs.
 
-use cb_test_support::harness::{
+use mill_test_support::harness::{
     discover_plugins_with_fixtures, plugin_language_name, TestClient, TestWorkspace,
 };
 use serde_json::json;

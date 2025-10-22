@@ -1,4 +1,4 @@
-use cb_test_support::harness::{TestClient, TestWorkspace};
+use mill_test_support::harness::{ TestClient , TestWorkspace };
 use serde_json::json;
 #[tokio::test]
 async fn test_apply_workspace_edit_single_file() {
@@ -447,7 +447,7 @@ function createProcessor<T>(type: string): DataProcessor<T> | null {
 
 #[tokio::test]
 async fn test_cross_language_project() {
-    use cb_test_support::harness::LspSetupHelper;
+    use mill_test_support::harness::LspSetupHelper;
 
     let workspace = TestWorkspace::new();
     if let Err(msg) = LspSetupHelper::check_lsp_servers_available() {
@@ -640,7 +640,7 @@ export function formatResponse(data) {
 
 #[tokio::test]
 async fn test_search_symbols_rust_workspace() {
-    use cb_test_support::harness::LspSetupHelper;
+    use mill_test_support::harness::LspSetupHelper;
 
     // Check if rust-analyzer is available
     if !LspSetupHelper::is_command_available("rust-analyzer") {

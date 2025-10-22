@@ -66,7 +66,7 @@ Fast reference for test organization, execution, and best practices.
 
 | Layer | File | Purpose | Languages |
 |-------|------|---------|-----------|
-| **Fixtures** | `crates/cb-test-support/src/harness/test_fixtures.rs` | Test data (code snippets, expected results) | TS, Py, Go, Rust |
+| **Fixtures** | `../crates/mill-test-support/src/harness/test_fixtures.rs` | Test data (code snippets, expected results) | TS, Py, Go, Rust |
 | **Runners** | `apps/codebuddy/tests/lsp_feature_runners.rs` | Generic test logic (language-agnostic) | All |
 | **Declarations** | `apps/codebuddy/tests/lsp_features.rs` | Test matrix (connects fixtures + runners) | All |
 

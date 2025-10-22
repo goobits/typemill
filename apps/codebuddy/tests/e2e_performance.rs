@@ -8,7 +8,7 @@ use std::{
 };
 
 #[cfg(feature = "heavy-tests")]
-use cb_test_support::harness::{TestClient, TestWorkspace};
+use mill_test_support::harness::{ TestClient , TestWorkspace };
 
 #[tokio::test]
 #[cfg(feature = "heavy-tests")]

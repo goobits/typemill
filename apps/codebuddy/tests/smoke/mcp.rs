@@ -21,7 +21,7 @@
 //!
 //! This keeps tests fast and avoids redundancy.
 
-use cb_test_support::harness::{TestClient, TestWorkspace};
+use mill_test_support::harness::{ TestClient , TestWorkspace };
 use serde_json::json;
 
 #[tokio::test]

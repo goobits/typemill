@@ -1,5 +1,5 @@
 [package]
-name = "cb-test-support"
+name = "mill-test-support"
 version = "1.0.0-rc4"
 edition = "2021"
 license.workspace = true

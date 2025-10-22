@@ -12,7 +12,7 @@
 //! - Complex nested directory structures
 
 use crate::harness::{TestClient, TestWorkspace};
-use cb_test_support::harness::mcp_fixtures::{MARKDOWN_RENAME_FILE_TESTS, RENAME_FILE_TESTS};
+use mill_test_support::harness::mcp_fixtures::{ MARKDOWN_RENAME_FILE_TESTS , RENAME_FILE_TESTS };
 use serde_json::json;
 
 // =============================================================================

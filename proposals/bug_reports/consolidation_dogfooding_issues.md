@@ -125,7 +125,7 @@ codebuddy-foundation = { path = "../codebuddy-foundation" }
 - `crates/cb-plugin-api/Cargo.toml`
 - `../../crates/mill-client/Cargo.toml`
 - `crates/cb-lang-*/Cargo.toml`
-- `crates/cb-test-support/Cargo.toml`
+- `../../crates/mill-test-support/Cargo.toml`
 - `crates/cb-ast/Cargo.toml`
 - `crates/cb-transport/Cargo.toml`
 - `crates/codebuddy-plugin-system/Cargo.toml`

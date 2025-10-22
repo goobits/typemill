@@ -3,8 +3,8 @@
 //! Each runner function is parameterized to accept a fixture struct,
 //! making them reusable across multiple languages.
 
-use cb_test_support::harness::test_fixtures::*;
-use cb_test_support::harness::LspTestBuilder;
+use mill_test_support::harness::test_fixtures::*;
+use mill_test_support::harness::LspTestBuilder;
 use codebuddy_foundation::protocol::LspService;
 use serde_json::json;
 pub async fn run_go_to_definition_test(case: &GoToDefinitionTestCase, use_real_lsp: bool) {
@@ -534,7 +534,7 @@ pub async fn run_rename_test(case: &RenameTestCase, use_real_lsp: bool) {
 // LSP Compliance Test Runner
 // =============================================================================
 
-use cb_test_support::harness::test_fixtures::{LspComplianceBehavior, LspComplianceTestCase};
+use mill_test_support::harness::test_fixtures::{ LspComplianceBehavior , LspComplianceTestCase };
 
 /// Executes a single LSP compliance test case.
 pub async fn run_lsp_compliance_test(case: &LspComplianceTestCase) {

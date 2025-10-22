@@ -10,7 +10,7 @@ When renaming a crate or directory, the file discovery mechanism fails to find m
 
 ## Impact
 
-**Real-world example from cb-test-support → mill-test-support rename:**
+**Real-world example from mill-test-support → some-test-support rename:**
 
 - **Expected**: 29 files with references should be updated
 - **Actual**: Only 22 files in the plan (76% coverage)
@@ -83,7 +83,7 @@ Found files for extension, extension: "markdown", files_found: 0
 
 ```bash
 ./target/debug/codebuddy tool rename.plan '{
-  "target": {"kind": "directory", "path": "crates/cb-test-support"},
+  "target": {"kind": "directory", "path": "../../crates/mill-test-support"},
   "new_name": "crates/mill-test-support"
 }'
 ```
@@ -252,7 +252,7 @@ After fix, the following should work:
 2. **Real-world rename includes all files**:
    ```bash
    ./target/debug/codebuddy tool rename.plan '{
-     "target": {"kind": "directory", "path": "crates/cb-test-support"},
+     "target": {"kind": "directory", "path": "../../crates/mill-test-support"},
      "new_name": "crates/mill-test-support"
    }'
    # Should show 29 files (currently shows 22)

@@ -15,7 +15,6 @@ members = [
     "crates/cb-lang-yaml",
     "crates/codebuddy-plugin-bundle",
     "apps/codebuddy",
-    "crates/cb-test-support",
     "analysis/cb-analysis-common",
     "analysis/cb-analysis-dead-code",
     "analysis/cb-analysis-deep-dead-code",
@@ -26,7 +25,7 @@ members = [
     "crates/codebuddy-config",
     "crates/codebuddy-workspaces",
     "crates/codebuddy-auth",
-    "crates/xtask", "crates/codebuddy-ast", "crates/mill-client",
+    "crates/xtask", "crates/codebuddy-ast", "crates/mill-client", "crates/mill-test-support",
 ]
 resolver = "2"
 

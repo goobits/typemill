@@ -6,7 +6,7 @@ The test suite uses a **data-driven architecture** that separates test logic fro
 
 ### Three-Layer Architecture
 
-1. **Fixtures** (`crates/cb-test-support/src/harness/test_fixtures.rs`)
+1. **Fixtures** (`../../crates/mill-test-support/src/harness/test_fixtures.rs`)
    - Language-specific test data
    - Contains code snippets, file names, and expected outcomes
    - Static data structures
@@ -27,7 +27,7 @@ To add test support for Go, you only need to edit **one file**:
 
 ### Step 1: Add Test Cases to Fixtures
 
-Edit `crates/cb-test-support/src/harness/test_fixtures.rs`:
+Edit `../../crates/mill-test-support/src/harness/test_fixtures.rs`:
 
 ```rust
 pub const GO_TO_DEFINITION_TESTS: &[GoToDefinitionTestCase] = &[
@@ -90,7 +90,7 @@ To add tests for a new LSP feature (e.g., "call hierarchy"):
 
 ### Step 1: Define Fixture Struct
 
-Add to `crates/cb-test-support/src/harness/test_fixtures.rs`:
+Add to `../../crates/mill-test-support/src/harness/test_fixtures.rs`:
 
 ```rust
 #[derive(Debug, Clone)]
@@ -379,7 +379,7 @@ The codebase has **two server binaries**:
 
 ### Why TestClient Uses `cb-server`
 
-The `TestClient` (in `crates/cb-test-support/src/harness/client.rs`) spawns `cb-server` instead of `codebuddy` to allow tests to run in parallel without PID lock conflicts. Each test gets its own isolated server instance.
+The `TestClient` (in `../../crates/mill-test-support/src/harness/client.rs`) spawns `cb-server` instead of `codebuddy` to allow tests to run in parallel without PID lock conflicts. Each test gets its own isolated server instance.
 
 **Important**: `cb-server` is **always available** when running tests because:
 - It's part of the workspace dependencies
