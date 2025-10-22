@@ -1,9 +1,12 @@
 # Codebuddy MCP Tools API Reference
 
-**Version:** 1.0.0-rc4
-**Last Updated:** 2025-10-08
+**Package Version:** 0.6.0
+**API Version:** 1.0.0-rc4
+**Last Updated:** 2025-10-21
 
 Your complete guide to all MCP tools available in Codebuddy. Use this reference to understand parameters, return types, and see practical examples for each tool.
+
+> **Note on versioning:** The package version (0.6.x) tracks the overall Codebuddy release, while the API version (1.0.0-rcX) reflects the stability of the MCP tools API contract. The API is in release candidate status as we finalize the 1.0 contract.
 
 > **Note:** For detailed implementation contracts (JSON schemas, validation rules, error codes), see [architecture/api_contracts.md](architecture/api_contracts.md).
 

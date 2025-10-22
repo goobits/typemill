@@ -65,11 +65,38 @@ Ask your AI assistant:
 - "Show me all references to the `Config` type"
 - "Rename the function `oldName` to `newName`"
 
+## Common CLI Commands
+
+### File Operations
+
+```bash
+# Move/rename a file
+codebuddy tool rename --target file:src/old.rs --new-name src/new.rs
+
+# Move a directory
+codebuddy tool rename --target directory:old-dir --new-name new-dir
+```
+
+### Code Operations
+
+```bash
+# Move code symbol (function/class) between files
+codebuddy tool move --source src/app.rs:10:5 --destination src/utils.rs
+
+# Extract function
+codebuddy tool extract --kind function --source src/app.rs:10:5 --name handleLogin
+```
+
+**Important:**
+- Use `rename` for **file/directory operations**
+- Use `move` for **code symbol operations** (requires line:char position)
+
+If you use the wrong tool, Codebuddy will provide a helpful error with the correct command.
+
 ## Next Steps
 
-- **[tools_catalog.md](tools_catalog.md)** - Complete list of 23 MCP tools
+- **[tools_catalog.md](tools_catalog.md)** - Complete list of 35 MCP tools
 - **[api_reference.md](api_reference.md)** - Detailed API with parameters and returns
-- **[operations.md](../README.md)** - Advanced configuration and analysis options
 
 ## Troubleshooting
 

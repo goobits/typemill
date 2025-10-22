@@ -207,5 +207,4 @@ All refactoring operations follow a safe two-step pattern:
 
 - [api_reference.md](api_reference.md) - Complete tool API
 - [tools_catalog.md](tools_catalog.md) - Tool lookup table
-- [operations.md](../../README.md) - Advanced configuration
 - [docs/archive/workflows-verbose.md](archive/workflows-verbose.md) - Full guide with examples
