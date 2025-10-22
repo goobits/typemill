@@ -1066,6 +1066,75 @@ codebuddy tool delete.plan '{
 
 ---
 
+### Quick Operations (One-Step Refactoring)
+
+For convenience, each refactoring operation has a "quick" version that combines the `.plan` and `workspace.apply_edit` steps into a single command. These tools accept the same parameters as their `.plan` counterparts but automatically execute the changes.
+
+**Available Quick Operations:**
+- `rename` - One-step rename (wraps `rename.plan` + `workspace.apply_edit`)
+- `extract` - One-step extract (wraps `extract.plan` + `workspace.apply_edit`)
+- `inline` - One-step inline (wraps `inline.plan` + `workspace.apply_edit`)
+- `move` - One-step move (wraps `move.plan` + `workspace.apply_edit`)
+- `reorder` - One-step reorder (wraps `reorder.plan` + `workspace.apply_edit`)
+- `transform` - One-step transform (wraps `transform.plan` + `workspace.apply_edit`)
+- `delete` - One-step delete (wraps `delete.plan` + `workspace.apply_edit`)
+
+**Parameters:**
+- Identical to the corresponding `.plan` operation
+- No additional parameters required
+
+**Returns:**
+- Combined result from plan generation and execution
+- Includes both the plan details and the apply result
+- Same structure as calling `.plan` followed by `workspace.apply_edit`
+
+**Example: Quick Rename**
+```bash
+# Instead of two steps:
+codebuddy tool rename.plan '{
+  "target": {"kind": "file", "path": "src/old.rs"},
+  "new_name": "src/new.rs"
+}'
+codebuddy tool workspace.apply_edit '{"plan": ...}'
+
+# Use one step:
+codebuddy tool rename '{
+  "target": {"kind": "file", "path": "src/old.rs"},
+  "new_name": "src/new.rs"
+}'
+```
+
+**Example: Quick Extract**
+```bash
+codebuddy tool extract '{
+  "kind": "function",
+  "source": {
+    "file_path": "src/app.ts",
+    "range": {
+      "start": {"line": 25, "character": 8},
+      "end": {"line": 30, "character": 9}
+    },
+    "name": "handleLogin"
+  }
+}'
+```
+
+**When to Use Quick Operations:**
+- ✅ Small, low-risk refactorings
+- ✅ When you trust the operation to be safe
+- ✅ For rapid iteration during development
+- ❌ Complex, cross-file refactorings (use two-step for preview)
+- ❌ Production code changes (use two-step for review)
+- ❌ Unfamiliar codebases (use two-step to understand impact)
+
+**Safety Considerations:**
+- Quick operations provide no preview before execution
+- Changes are applied immediately to the filesystem
+- For critical refactorings, use the two-step pattern instead
+- Consider using `dry_run: true` in the plan step first to preview
+
+---
+
 ### Shared Apply Command (`workspace.apply_edit`)
 
 Executes any refactoring plan.
@@ -1340,6 +1409,146 @@ Executes multiple analysis queries in a single batch for optimized performance. 
 ```
 
 **Returns**: A `BatchAnalysisResult` with an array of results for each query, along with a summary and metadata for the entire batch operation.
+
+---
+
+### `analyze.module_dependencies`
+
+Analyze Rust module dependencies to determine which external crates, workspace dependencies, and standard library modules are required. Essential for crate extraction workflows (Proposal 50).
+
+**Parameters:**
+```json
+{
+  "target": {
+    "kind": "file" | "directory",              // Required: What to analyze
+    "path": "crates/big-crate/src/module"      // Required: Path to analyze
+  },
+  "options": {
+    "include_dev_dependencies": false,         // Optional: Include dev deps (default: false)
+    "include_workspace_deps": true,            // Optional: Include workspace deps (default: true)
+    "resolve_features": true                   // Optional: Resolve cargo features (default: true)
+  }
+}
+```
+
+**Returns:**
+```json
+{
+  "external_dependencies": {
+    "serde": {
+      "version": "1.0",
+      "features": ["derive"],
+      "optional": false,
+      "source": "workspace"
+    },
+    "tokio": {
+      "version": "1.28",
+      "features": ["full", "macros"],
+      "optional": false,
+      "source": "crates.io"
+    }
+  },
+  "workspace_dependencies": [
+    "cb-types",
+    "cb-protocol",
+    "codebuddy-foundation"
+  ],
+  "std_dependencies": [
+    "std::collections",
+    "std::fs",
+    "std::path"
+  ],
+  "import_analysis": {
+    "total_imports": 42,
+    "external_crates": 2,
+    "workspace_crates": 3,
+    "std_crates": 3,
+    "unresolved_imports": []
+  },
+  "files_analyzed": [
+    "crates/big-crate/src/module/mod.rs",
+    "crates/big-crate/src/module/parser.rs",
+    "crates/big-crate/src/module/utils.rs"
+  ]
+}
+```
+
+**Example: Analyze Single File**
+```bash
+codebuddy tool analyze.module_dependencies '{
+  "target": {
+    "kind": "file",
+    "path": "crates/cb-server/src/handlers/analysis_handler.rs"
+  },
+  "options": {
+    "include_dev_dependencies": false
+  }
+}'
+```
+
+**Example: Analyze Entire Directory**
+```bash
+codebuddy tool analyze.module_dependencies '{
+  "target": {
+    "kind": "directory",
+    "path": "crates/cb-ast"
+  },
+  "options": {
+    "include_workspace_deps": true,
+    "resolve_features": true
+  }
+}'
+```
+
+**Use Cases:**
+1. **Pre-extraction Analysis**: Determine dependencies before extracting a module to a new crate
+2. **Dependency Auditing**: Understand coupling between modules and external libraries
+3. **Cargo.toml Generation**: Auto-generate dependencies section for new packages
+4. **Refactoring Planning**: Identify dependencies that need to be added/removed during restructuring
+
+**Returns Breakdown:**
+
+- **external_dependencies**: Third-party crates from crates.io with version constraints
+- **workspace_dependencies**: Internal workspace crates that are imported
+- **std_dependencies**: Standard library modules used
+- **import_analysis**: Summary statistics of import usage
+- **files_analyzed**: Complete list of files that were scanned
+
+**Notes:**
+- Scans all `.rs` files recursively for directory targets
+- Parses `use` statements to extract crate dependencies
+- Cross-references with workspace `Cargo.toml` to resolve versions
+- Distinguishes between workspace and external dependencies
+- Reports unresolved imports for manual investigation
+- Supports feature detection (e.g., `serde = { version = "1.0", features = ["derive"] }`)
+
+**Integration with workspace.extract_dependencies:**
+
+This tool provides the analysis foundation for `workspace.extract_dependencies`, which uses the results to:
+1. Generate Cargo.toml dependencies section
+2. Update workspace manifest
+3. Validate dependency compatibility
+
+**Example Workflow:**
+```bash
+# 1. Analyze dependencies
+codebuddy tool analyze.module_dependencies '{
+  "target": {"kind": "directory", "path": "crates/old-crate/src/module"}
+}'
+
+# 2. Use results to plan extraction
+codebuddy tool workspace.extract_dependencies '{
+  "source_path": "crates/old-crate/src/module",
+  "target_package": "crates/new-crate"
+}'
+
+# 3. Create the new package with dependencies
+codebuddy tool workspace.create_package '{
+  "package_path": "crates/new-crate"
+}'
+```
+
+---
 
 ### Actionable Suggestions
 
@@ -1999,6 +2208,190 @@ List files in a directory with optional glob pattern filtering.
 ## Workspace Operations
 
 Project-wide operations and analysis.
+
+### `workspace.create_package`
+
+Create a new package (crate, module, or library) in the workspace with proper manifest files and structure.
+
+**Parameters:**
+```json
+{
+  "package_path": "crates/my-package",           // Required: Path for new package
+  "package_type": "library" | "binary",          // Optional: Package type (default: "library")
+  "options": {
+    "dry_run": false,                            // Optional: Preview operation
+    "add_to_workspace": true,                    // Optional: Add to workspace manifest (default: true)
+    "template": "basic" | "full"                 // Optional: Template to use (default: "basic")
+  }
+}
+```
+
+**Returns:**
+```json
+{
+  "created_files": [
+    "crates/my-package/Cargo.toml",
+    "crates/my-package/src/lib.rs"
+  ],
+  "workspace_updated": true,
+  "package_info": {
+    "name": "my-package",
+    "version": "0.1.0",
+    "manifest_path": "crates/my-package/Cargo.toml"
+  },
+  "dry_run": false
+}
+```
+
+**Example: Create Rust Library**
+```bash
+codebuddy tool workspace.create_package '{
+  "package_path": "crates/my-util",
+  "package_type": "library",
+  "options": {
+    "add_to_workspace": true,
+    "template": "basic"
+  }
+}'
+```
+
+**Example: Preview Package Creation**
+```bash
+codebuddy tool workspace.create_package '{
+  "package_path": "crates/experimental",
+  "options": {"dry_run": true}
+}'
+```
+
+**Notes:**
+- Automatically creates manifest file (Cargo.toml for Rust)
+- Creates source directory structure (src/lib.rs or src/main.rs)
+- Updates workspace manifest if `add_to_workspace: true`
+- Validates package name for language conventions
+- Template "basic" creates minimal structure, "full" adds common directories
+
+---
+
+### `workspace.extract_dependencies`
+
+Extract and analyze dependencies needed by a module when extracting it to a standalone package. Part of crate extraction workflow (Proposal 50).
+
+**Parameters:**
+```json
+{
+  "source_path": "crates/big-crate/src/module",  // Required: Module to extract
+  "target_package": "crates/new-crate",          // Required: Target package path
+  "options": {
+    "include_dev_dependencies": false,           // Optional: Include dev deps (default: false)
+    "resolve_versions": true                     // Optional: Resolve version constraints (default: true)
+  }
+}
+```
+
+**Returns:**
+```json
+{
+  "external_dependencies": {
+    "serde": {"version": "1.0", "features": ["derive"]},
+    "tokio": {"version": "1.0", "features": ["full"]}
+  },
+  "workspace_dependencies": ["cb-types", "cb-protocol"],
+  "manifest_updates": {
+    "dependencies_to_add": 2,
+    "workspace_deps_to_add": 2
+  },
+  "analysis": {
+    "total_imports": 15,
+    "external_crates": 2,
+    "workspace_crates": 2,
+    "unresolved": []
+  }
+}
+```
+
+**Example: Extract Module Dependencies**
+```bash
+codebuddy tool workspace.extract_dependencies '{
+  "source_path": "crates/codebuddy-core/src/analysis",
+  "target_package": "crates/cb-analysis",
+  "options": {
+    "include_dev_dependencies": false,
+    "resolve_versions": true
+  }
+}'
+```
+
+**Use Cases:**
+- Determine dependencies before extracting module to new crate
+- Audit module coupling and dependency usage
+- Generate Cargo.toml dependencies section automatically
+- Detect missing or unused dependencies
+
+**Notes:**
+- Analyzes use statements to determine required crates
+- Resolves versions from workspace manifest
+- Distinguishes external vs. workspace dependencies
+- Reports unresolved imports for manual review
+
+---
+
+### `workspace.update_members`
+
+Update the workspace members list in the root manifest file (Cargo.toml, package.json, etc.).
+
+**Parameters:**
+```json
+{
+  "action": "add" | "remove",                    // Required: Action to perform
+  "member_path": "crates/new-package",           // Required: Package path
+  "options": {
+    "dry_run": false,                            // Optional: Preview operation
+    "sort_members": true                         // Optional: Sort members list (default: true)
+  }
+}
+```
+
+**Returns:**
+```json
+{
+  "success": true,
+  "action": "add",
+  "member_path": "crates/new-package",
+  "workspace_manifest": "Cargo.toml",
+  "members": [
+    "crates/cb-server",
+    "crates/cb-types",
+    "crates/new-package"
+  ],
+  "dry_run": false
+}
+```
+
+**Example: Add Package to Workspace**
+```bash
+codebuddy tool workspace.update_members '{
+  "action": "add",
+  "member_path": "crates/my-util",
+  "options": {"sort_members": true}
+}'
+```
+
+**Example: Remove Package from Workspace**
+```bash
+codebuddy tool workspace.update_members '{
+  "action": "remove",
+  "member_path": "crates/deprecated-package"
+}'
+```
+
+**Notes:**
+- Automatically detects workspace manifest file
+- Validates member path exists (for add action)
+- Maintains manifest formatting and comments
+- Sorts members alphabetically if `sort_members: true`
+- Idempotent (adding existing member or removing non-existent is no-op)
+
+---
 
 ### `rename_directory`
 

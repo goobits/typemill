@@ -7,12 +7,12 @@ Fast lookup table for all Codebuddy MCP tools.
 
 ---
 
-**Public Tools:** 23 MCP tools (visible to AI agents)
+**Public Tools:** 35 MCP tools (visible to AI agents)
 **Internal Tools:** 20 backend-only tools (see [Internal Tools](#internal-tools-backend-only) below)
 
 ---
 
-## Navigation & Intelligence (13 tools)
+## Navigation & Intelligence (8 tools)
 
 | Tool | Description | Required Parameters | Returns |
 |------|-------------|---------------------|---------|
@@ -20,49 +20,48 @@ Fast lookup table for all Codebuddy MCP tools.
 | `find_references` | Find all references to a symbol | `file_path`, `line`, `character`, `symbol_name` | Array of reference locations |
 | `find_implementations` | Find implementations of an interface/abstract class | `file_path`, `line`, `character` | Implementation locations |
 | `find_type_definition` | Find the underlying type definition | `file_path`, `line`, `character` | Type definition locations |
-| `get_document_symbols` | Get hierarchical symbol structure for a file | `file_path` | Nested symbol tree with ranges |
-| `search_workspace_symbols` | Search for symbols across the workspace | `query` | Array of matching symbols with locations |
-| `get_hover` | Get hover info (docs, types, signatures) | `file_path`, `line`, `character` | Markdown documentation content |
-| `get_completions` | Get intelligent code completions | `file_path`, `line`, `character` | Completion items with details |
-| `get_signature_help` | Get function signature help | `file_path`, `line`, `character` | Signature info with parameters |
+| `search_symbols` | Search for symbols across the workspace | `query` | Array of matching symbols with locations |
+| `get_symbol_info` | Get detailed symbol information | `file_path`, `line`, `character` | Symbol details with documentation |
 | `get_diagnostics` | Get diagnostics (errors, warnings, hints) | `file_path` | Array of diagnostics with severity |
-| `prepare_call_hierarchy` | Prepare call hierarchy for a symbol | `file_path`, `line`, `character` | Call hierarchy item |
-| `get_call_hierarchy_incoming_calls` | Get incoming calls for a hierarchy item | `item` (from prepare) | Array of callers |
-| `get_call_hierarchy_outgoing_calls` | Get outgoing calls from a hierarchy item | `item` (from prepare) | Array of callees |
+| `get_call_hierarchy` | Get call hierarchy for a symbol | `file_path`, `line`, `character` | Call hierarchy with callers/callees |
 
 ---
 
-## Editing & Refactoring (11 tools)
+## Editing & Refactoring (15 tools)
+
+### Plan Operations (7 tools - dry-run, preview only)
 
 | Tool | Description | Required Parameters | Returns |
 |------|-------------|---------------------|---------|
-| `rename.plan` | **Plan** rename refactoring (dry-run, part of unified API) | `file_path`, `symbol_name`, `new_name` | Refactoring plan (not applied) |
-| `extract.plan` | **Plan** extract function/variable (dry-run, part of unified API) | `file_path`, `start_line`, `end_line`, `name`, `kind` | Refactoring plan (not applied) |
-| `inline.plan` | **Plan** inline variable refactoring (dry-run, part of unified API) | `file_path`, `symbol_name`, `line` | Refactoring plan (not applied) |
-| `move.plan` | **Plan** move symbol refactoring (dry-run, part of unified API) | `file_path`, `symbol_name`, `target_path` | Refactoring plan (not applied) |
-| `workspace.apply_edit` | **Apply** a refactoring plan from *.plan tools | `edit` (from *.plan result) | Applied changes |
-| `organize_imports` | Organize and sort imports, remove unused | `file_path` | Import changes applied |
-| `optimize_imports` | Organize imports AND remove unused imports | `file_path` | Optimized import summary |
-| `get_code_actions` | Get available quick fixes and refactorings | `file_path` | Array of code actions |
-| `format_document` | Format document using language server | `file_path` | Formatting changes |
-| `extract_variable` | Extract expression into a new variable | `file_path`, `start_line`, `start_character`, `end_line`, `end_character`, `variable_name` | Workspace edits |
+| `rename.plan` | **Plan** rename refactoring | `target`, `new_name`, `options` | Refactoring plan (not applied) |
+| `extract.plan` | **Plan** extract function/variable | `kind`, `source`, `options` | Refactoring plan (not applied) |
+| `inline.plan` | **Plan** inline variable refactoring | `kind`, `target`, `options` | Refactoring plan (not applied) |
+| `move.plan` | **Plan** move symbol refactoring | `kind`, `source`, `destination` | Refactoring plan (not applied) |
+| `reorder.plan` | **Plan** reorder parameters/imports | `kind`, `target`, `options` | Refactoring plan (not applied) |
+| `transform.plan` | **Plan** code transformation | `kind`, `target`, `options` | Refactoring plan (not applied) |
+| `delete.plan` | **Plan** delete code/imports | `kind`, `target`, `options` | Refactoring plan (not applied) |
 
----
-
-## File Operations (6 tools)
+### Quick Operations (7 tools - one-step plan+execute)
 
 | Tool | Description | Required Parameters | Returns |
 |------|-------------|---------------------|---------|
-| `create_file` | Create a new file with optional content | `file_path` | Success status, file path |
-| `read_file` | Read file contents | `file_path` | File content as string |
-| `write_file` | Write content to a file | `file_path`, `content` | Success status |
-| `delete_file` | Delete a file with safety checks | `file_path` | Success status, warnings if imported |
-| `rename_file` | Rename file and auto-update imports | `old_path`, `new_path` | Files updated, imports changed |
-| `list_files` | List files in a directory with optional glob pattern filtering | `directory` (optional), `recursive` (optional), `pattern` (optional glob) | Array of file entries with metadata |
+| `rename` | **Execute** rename (one-step) | Same as `rename.plan` | Applied changes |
+| `extract` | **Execute** extract (one-step) | Same as `extract.plan` | Applied changes |
+| `inline` | **Execute** inline (one-step) | Same as `inline.plan` | Applied changes |
+| `move` | **Execute** move (one-step) | Same as `move.plan` | Applied changes |
+| `reorder` | **Execute** reorder (one-step) | Same as `reorder.plan` | Applied changes |
+| `transform` | **Execute** transform (one-step) | Same as `transform.plan` | Applied changes |
+| `delete` | **Execute** delete (one-step) | Same as `delete.plan` | Applied changes |
+
+### Apply Tool (1 tool)
+
+| Tool | Description | Required Parameters | Returns |
+|------|-------------|---------------------|---------|
+| `workspace.apply_edit` | **Apply** a refactoring plan from *.plan tools | `plan` (from *.plan result), `options` | Applied changes with summary |
 
 ---
 
-## Unified Analysis API (7 tools)
+## Unified Analysis API (8 tools)
 
 | Tool | Description | Required Parameters | Returns |
 |------|-------------|---------------------|---------|
@@ -72,45 +71,43 @@ Fast lookup table for all Codebuddy MCP tools.
 | `analyze.structure` | Code structure (symbols, hierarchy, interfaces, inheritance, modules) | `kind`, `scope`, `options` | AnalysisResult with findings |
 | `analyze.documentation` | Documentation quality (coverage, quality, style, examples, todos) | `kind`, `scope`, `options` | AnalysisResult with findings |
 | `analyze.tests` | Test analysis (coverage, quality, assertions, organization) | `kind`, `scope`, `options` | AnalysisResult with findings |
-| `analyze.batch` | Multi-file batch analysis with optimized AST caching | `files`, `category`, `kinds`, `options` | BatchAnalysisResult |
+| `analyze.batch` | Multi-file batch analysis with optimized AST caching | `queries`, `options` | BatchAnalysisResult |
+| `analyze.module_dependencies` | Rust module dependency analysis for crate extraction | `target`, `options` | Module dependencies (external, workspace, std) |
 
 ---
 
-## Workspace Operations (0 public tools)
-
-**Note:** All workspace operation tools are now internal-only, used by backend workflows.
-
-For workspace-level analysis, use the **Unified Analysis API** tools above with `scope: { type: "workspace" }`.
-
----
-
-## Advanced Operations (2 tools)
+## Workspace Operations (3 tools)
 
 | Tool | Description | Required Parameters | Returns |
 |------|-------------|---------------------|---------|
-| `apply_edits` | Apply atomic multi-file edits with rollback | `edit_plan` | Files modified, edits applied |
-| `batch_execute` | Execute multiple file operations atomically | `operations` (array) | Results per operation |
+| `workspace.create_package` | Create a new package in the workspace | `package_path`, `package_type`, `options` | Created files, package info |
+| `workspace.extract_dependencies` | Extract dependencies from a module for crate extraction | `source_path`, `target_package`, `options` | Dependency manifest, workspace updates |
+| `workspace.update_members` | Update workspace member list in manifest | `action`, `member_path`, `options` | Updated manifest, member list |
 
 ---
 
-## System & Health (3 tools)
+## System & Health (1 tool)
 
 | Tool | Description | Required Parameters | Returns |
 |------|-------------|---------------------|---------|
 | `health_check` | Get comprehensive server health and statistics | None | Status, uptime, LSP servers, memory |
-| `web_fetch` | Fetch content from a URL | `url` | Content, status code, headers |
-| `system_status` | Get basic system operational status | None | Status, uptime, message |
 
 ---
 
 ## Quick Notes
 
-### Unified Refactoring API (Two-Step Pattern)
-The new unified API uses a **plan → apply** pattern for safe refactoring:
+### Unified Refactoring API (Two Patterns)
+
+**Two-Step Pattern (Recommended for Safety):**
 1. **`*.plan` tools** (e.g., `rename.plan`, `extract.plan`, `inline.plan`, `move.plan`) - Generate refactoring plan (dry-run, never writes to filesystem)
 2. **`workspace.apply_edit`** - Apply the plan to make actual changes
 
-**Benefits:**
+**One-Step Pattern (Quick Operations):**
+- **Quick tools** (e.g., `rename`, `extract`, `inline`, `move`) - Combine plan + execute in one call
+- Same parameters as `.plan` versions, but automatically applies changes
+- Less safe (no preview), but convenient for small, trusted operations
+
+**Benefits of Two-Step:**
 - Preview all changes before applying
 - Safe by design (*.plan commands are always dry-run)
 - Consistent pattern across all refactorings
