@@ -9,7 +9,6 @@ This file provides guidance to AI assistants when working with code in this repo
 
 1. **[api_reference.md](docs/api_reference.md)** - **READ THIS FIRST** - Complete MCP tools API reference
 2. **[tools_catalog.md](docs/tools_catalog.md)** - Fast lookup table for all 35 public tools
-3. **[operations.md](docs/operations.md)** - Advanced configuration and analysis options
 
 ---
 
@@ -435,6 +434,26 @@ cargo nextest run --workspace --features heavy-tests
 **Note:** Language support temporarily reduced to TypeScript + Rust during unified API refactoring. Multi-language support (Python, Go, Java, Swift, C#) preserved in git tag `pre-language-reduction`.
 
 ## Architecture & Configuration
+
+### Access Patterns: Single Source of Truth
+
+All tool functionality is implemented ONCE in `mill-handlers` and accessed via multiple interfaces:
+
+```
+Handler (mill-handlers)
+    ↓
+┌───┴────┬──────────┬──────────┐
+│        │          │          │
+MCP   CLI-JSON  CLI-Flags  CLI-Helpers
+(WS)                      (convert-naming)
+```
+
+- **MCP Protocol**: JSON-RPC over stdio/WebSocket
+- **CLI JSON**: `codebuddy tool <name> '{"target": ...}'`
+- **CLI Flags**: `codebuddy tool <name> --target file:path`
+- **CLI Helpers**: `codebuddy convert-naming --from kebab-case --to camelCase`
+
+**Zero duplication**: Business logic lives only in handlers, CLI/MCP are thin adapters.
 
 For detailed system architecture, see **[docs/architecture/overview.md](docs/architecture/overview.md)**.
 
@@ -952,4 +971,3 @@ All debug scripts, test analysis, and experimental code goes in `.debug/` (gitig
 ### For Tool Reference
 - **[docs/api_reference.md](docs/api_reference.md)** - Complete MCP tools API with examples
 - **[docs/tools_catalog.md](docs/tools_catalog.md)** - Fast lookup table for all tools
-- **[docs/operations.md](docs/operations.md)** - Advanced configuration and analysis

@@ -2,6 +2,16 @@
 
 Advanced configuration, analysis options, and operational patterns.
 
+## Access Patterns
+
+All functionality is implemented ONCE in handlers, accessed via:
+- **MCP**: JSON-RPC over stdio/WebSocket
+- **CLI JSON**: `codebuddy tool rename.plan '{"target": {...}}'`
+- **CLI Flags**: `codebuddy tool rename.plan --target file:path --new-name new.rs`
+- **CLI Helpers**: `codebuddy convert-naming --from kebab-case --to camelCase --glob "src/**/*.js"`
+
+Business logic lives only in `mill-handlers`, interfaces are thin adapters.
+
 ## Configuration
 
 ### LSP Server Configuration
@@ -96,13 +106,33 @@ All refactoring follows the **plan → apply** pattern:
 
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
-| `rename.plan` | Rename symbol/file/directory | `target`, `new_name` |
+| `rename.plan` | Rename symbol/file/directory | `target`, `new_name` OR `targets` (batch) |
 | `extract.plan` | Extract function/variable | `kind`, `source`, `name` |
 | `inline.plan` | Inline variable/function | `kind`, `target` |
 | `move.plan` | Move code between files | `kind`, `source`, `destination` |
 | `reorder.plan` | Reorder parameters/imports | `kind`, `target`, `options` |
 | `transform.plan` | Transform code (e.g., to async) | `kind`, `target` |
 | `delete.plan` | Delete unused code | `kind`, `target` |
+
+### Batch Rename
+
+Rename multiple files/directories in a single atomic operation:
+
+```json
+{
+  "targets": [
+    {"kind": "file", "path": "src/old.js", "new_name": "src/new.js"},
+    {"kind": "directory", "path": "test/", "new_name": "tests/"}
+  ]
+}
+```
+
+**CLI Helper** - Convert naming conventions in bulk:
+```bash
+codebuddy convert-naming --from kebab-case --to camelCase --glob "src/**/*.js" --dry-run
+```
+
+Supports: `kebab-case`, `snake_case`, `camelCase`, `PascalCase`
 
 ### Apply Options
 
