@@ -186,7 +186,7 @@ Plugin Layer (6 active plugins):
   ├─ cb-lang-rust (620 lines: reference detector moved ✅)
   ├─ cb-lang-typescript
   ├─ cb-lang-markdown (now active ✅)
-  ├─ cb-lang-toml (now active ✅)
+  ├─ mill-lang-toml (now active ✅)
   ├─ cb-lang-yaml (now active ✅)
   └─ mill-lang-common (shared utilities)
 

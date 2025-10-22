@@ -169,7 +169,7 @@ use cb_client::run_cli;  // ❌ Should be mill_client
 
 **Approach:** Add basename matching for TOML feature flags
 
-**Implementation location:** `crates/cb-lang-toml/src/exact_identifier_support.rs` (or similar)
+**Implementation location:** `../../crates/mill-lang-toml/src/exact_identifier_support.rs` (or similar)
 
 **Logic:**
 ```rust

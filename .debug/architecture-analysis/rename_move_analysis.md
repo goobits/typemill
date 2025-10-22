@@ -51,7 +51,7 @@ CodeBuddy has evolved from **60-70% coverage (Oct 16)** to **85-90% coverage (Oc
    - Idempotency protection prevents nested replacement bugs
 
 2. **Configuration File Support** (TOML & YAML plugins now active)
-   - cb-lang-toml: AST-based path value rewriting
+   - mill-lang-toml: AST-based path value rewriting
    - cb-lang-yaml: Sequence and value updates
    - Both with nested structure support
 

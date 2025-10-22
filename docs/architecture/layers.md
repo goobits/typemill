@@ -92,7 +92,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 - `cb-lang-rust` / `codebuddy-lang-rust`
 - `cb-lang-typescript` / `codebuddy-lang-typescript`
 - `cb-lang-markdown` / `codebuddy-lang-markdown`
-- `cb-lang-toml` / `codebuddy-lang-toml`
+- `mill-lang-toml` / `codebuddy-lang-toml`
 - `cb-lang-yaml` / `codebuddy-lang-yaml`
 
 **Dependencies:**

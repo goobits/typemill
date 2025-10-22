@@ -121,7 +121,7 @@ mod tests {
     #[cfg(test)]
     extern crate cb_lang_rust;
     #[cfg(test)]
-    extern crate cb_lang_toml;
+    extern crate mill_lang_toml;
     #[cfg(test)]
     extern crate cb_lang_typescript;
     #[cfg(test)]

@@ -273,7 +273,7 @@ name = "cb-lang-markdown"
 wrappers = ["cb-ast", "mill-services", "mill-plugin-system", "mill-plugin-bundle", "mill-test-support"]
 
 [[bans.deny]]
-name = "cb-lang-toml"
+name = "mill-lang-toml"
 wrappers = ["mill-services", "mill-plugin-system", "mill-plugin-bundle", "mill-test-support"]
 
 [[bans.deny]]

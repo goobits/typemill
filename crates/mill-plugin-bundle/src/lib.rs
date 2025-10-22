@@ -19,7 +19,7 @@ use cb_lang_markdown::MarkdownPlugin;
 #[cfg(feature = "lang-rust")]
 use cb_lang_rust::RustPlugin;
 #[cfg(feature = "lang-toml")]
-use cb_lang_toml::TomlLanguagePlugin;
+use mill_lang_toml::TomlLanguagePlugin;
 #[cfg(feature = "lang-typescript")]
 use cb_lang_typescript::TypeScriptPlugin;
 #[cfg(feature = "lang-yaml")]
@@ -98,7 +98,7 @@ mod tests {
     #[cfg(all(test, feature = "lang-rust"))]
     extern crate cb_lang_rust;
     #[cfg(all(test, feature = "lang-toml"))]
-    extern crate cb_lang_toml;
+    extern crate mill_lang_toml;
     #[cfg(all(test, feature = "lang-typescript"))]
     extern crate cb_lang_typescript;
     #[cfg(all(test, feature = "lang-yaml"))]
