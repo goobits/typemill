@@ -11,6 +11,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The project underwent a complete architectural transformation from TypeScript/Node.js to pure Rust in 2025, bringing native performance, memory safety, and compile-time type guarantees.
 
+### [0.6.1] - 2025-10-22
+
+🚀 **Version 0.6.1** - Rename tool enhancements, quick refactoring operations, and comprehensive comment/prose updates
+
+#### Added
+
+- **CLI convert-naming Command** - Bulk naming convention conversion tool
+  - Convert between kebab-case, snake_case, camelCase, PascalCase
+  - Supports batch file renaming with convention transformations
+  - Standalone utility for naming convention migration
+
+- **Batch Rename Support** - Enhanced rename.plan with batch operations
+  - Multiple file/directory renames in single operation
+  - Coordinated reference updates across batch
+  - Optimized for large-scale refactoring projects
+
+- **Quick Refactoring Operations** - One-step plan+execute tools
+  - Generic `QuickRefactoringHandler` eliminates code duplication
+  - 7 quick tools: `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete`
+  - Same parameters as `*.plan` versions but auto-apply changes
+  - CLI flag support for convenient command-line usage
+
+- **Comment and Prose Updates** - Comprehensive rename coverage for documentation
+  - Rust plugin: Phase 3 comment scanning with smart boundary matching
+  - TOML plugin: Comment updates in configuration files
+  - Markdown plugin: Prose identifier updates in documentation
+  - Smart boundary regex for hyphenated identifiers: `(?<![a-zA-Z0-9])identifier(?![a-zA-Z0-9])`
+  - Opt-in via `update_comments` and `update_markdown_prose` flags
+
+- **Comprehensive Scope Mode** - 100% file coverage for `--update-all`
+  - Auto-upgrade to custom scope when update flags are present
+  - Scans ALL files matching scope filters (no reference detection gaps)
+  - Plugins receive merged rename_info with all scope flags
+  - Ensures no files missed due to detection heuristics
+
+- **stdin and File Input Support** - Handle large JSON payloads for tool command
+  - `--input-file <path>` reads arguments from file
+  - Args value `"-"` reads from stdin
+  - Enables dogfooding of `rename.plan` + `workspace.apply_edit` workflow
+  - Solves shell argument limit issues (600KB+ plans)
+
+#### Fixed
+
+- **Multi-line Grouped Import Rewriting** - Rust plugin correctly handles multi-line import groups
+- **Cargo Crate Rename Edge Cases** - Fixed two critical bugs:
+  - Feature flag references (`crate-name/feature` and `dep:crate-name` syntax)
+  - Self-referencing imports within renamed crate (hyphen→underscore conversion)
+- **File Path Handling** - Edits to files inside renamed directories now target correct new paths
+- **Mod Declaration Detection** - Works for projects without Cargo.toml (uses directory name fallback)
+- **CLI Flag Parser** - `--update-all` flag now works without requiring `--scope custom`
+- **Quick Tool Flags** - All 7 quick refactoring tools now support CLI flags
+
+#### Changed
+
+- **Internal Crate Renames** - Dogfooding rename tool with mill-* naming convention:
+  - `cb-server` → `mill-server` (core MCP server)
+  - `cb-lsp` → `mill-lsp` (LSP integration layer)
+  - `cb-handlers` → `mill-handlers` (tool handlers)
+  - `cb-services` → `mill-services` (business logic)
+  - `cb-transport` → `mill-transport` (WebSocket/stdio)
+  - `cb-client` → `mill-client` (client library)
+
+#### Documentation
+
+- **Version Numbering Clarification** - Separated package version (0.6.x) from API version (1.0.0-rcX)
+- **Removed operations.md References** - Cleaned up references to non-existent documentation
+- **Quick Operations Documentation** - Added complete docs for all 7 quick refactoring tools
+- **Tool Count Updates** - Updated from 23 → 35 public MCP tools across all docs
+- **Architecture Documentation** - Synced AGENTS.md and GEMINI.md with latest architecture
+
+---
+
 ### [0.6.0] - 2025-10-21
 
 🚀 **Version 0.6.0** - Plugin architecture modernization and comprehensive refactoring/analysis APIs
