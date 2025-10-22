@@ -1118,7 +1118,7 @@ pub fn format_plan(plan: &RefactorPlan) -> String
 
 **Usage:**
 ```rust
-use cb_client::format_plan;
+use mill_client::format_plan;
 use cb_protocol::refactor_plan::RefactorPlan;
 
 // After generating a plan

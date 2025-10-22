@@ -159,7 +159,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 
 **Crates:**
 - `cb-server` / `codebuddy-server` (MCP server orchestration)
-- `cb-client` / `codebuddy-client` (CLI client, WebSocket client)
+- `mill-client` / `codebuddy-client` (CLI client, WebSocket client)
 - `cb-transport` / `codebuddy-transport` (stdio, WebSocket protocols)
 - `codebuddy-auth` (authentication)
 - `codebuddy-workspaces` (workspace management)
