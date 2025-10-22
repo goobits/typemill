@@ -56,6 +56,7 @@ macro_rules! register_handlers {
 /// - **Compile-Time Safety**: Ensures all handlers implement `ToolHandler` trait
 #[macro_export]
 macro_rules! register_handlers_with_logging {
+    // Pattern 1: Type names (original behavior)
     ($registry:expr, { $($handler:ident => $description:expr),* $(,)? }) => {
         {
             use std::sync::Arc;
@@ -64,6 +65,17 @@ macro_rules! register_handlers_with_logging {
                 let handler = Arc::new($handler::new());
                 let handler_name = stringify!($handler);
                 $registry.register_with_name(handler, handler_name);
+                debug!("Registered {}", $description);
+            )*
+        }
+    };
+    // Pattern 2: Pre-constructed Arc instances (for Arc<dyn ToolHandler>)
+    ($registry:expr, @arc { $($handler_var:ident => $description:expr),* $(,)? }) => {
+        {
+            use tracing::debug;
+            $(
+                let handler_name = stringify!($handler_var);
+                $registry.register_with_name($handler_var.clone(), handler_name);
                 debug!("Registered {}", $description);
             )*
         }

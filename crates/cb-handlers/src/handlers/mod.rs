@@ -12,6 +12,7 @@ pub mod macros;
 #[path = "move/mod.rs"]
 pub mod r#move;
 pub mod plugin_dispatcher;
+pub mod quick_refactoring_handler;
 pub mod quick_rename_handler;
 pub mod refactoring_handler;
 pub mod rename_handler;
@@ -32,6 +33,7 @@ pub use file_operation_handler::FileOperationHandler;
 pub use inline_handler::InlineHandler;
 pub use lsp_adapter::DirectLspAdapter;
 pub use plugin_dispatcher::{create_test_dispatcher, AppState, PluginDispatcher};
+pub use quick_refactoring_handler::QuickRefactoringHandler;
 pub use quick_rename_handler::QuickRenameHandler;
 pub use r#move::MoveHandler;
 pub use refactoring_handler::RefactoringHandler;
