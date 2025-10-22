@@ -731,7 +731,7 @@ async fn test_zombie_reaper_integration() {
     // This test verifies that the zombie reaper infrastructure is working at the
     // integration level by spawning a test process, registering it, and verifying cleanup.
     //
-    // Note: Unit tests for the zombie reaper itself are in cb-lsp/src/lsp_system/zombie_reaper.rs
+    // Note: Unit tests for the zombie reaper itself are in mill-lsp/src/lsp_system/zombie_reaper.rs
 
     use std::process::{Command, Stdio};
     use std::time::Duration;
@@ -748,7 +748,7 @@ async fn test_zombie_reaper_integration() {
     let pid = child.id() as i32;
 
     // Register with zombie reaper
-    cb_lsp::lsp_system::ZOMBIE_REAPER.register(pid);
+    mill_lsp::lsp_system::ZOMBIE_REAPER.register(pid);
 
     // Wait for process to exit (creating a zombie)
     let _ = child.wait();

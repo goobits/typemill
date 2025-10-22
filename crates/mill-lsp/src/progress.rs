@@ -16,7 +16,7 @@
 //! ## Usage
 //!
 //! ```rust,no_run
-//! use cb_lsp::progress::{ProgressManager, ProgressToken};
+//! use mill_lsp::progress::{ProgressManager, ProgressToken};
 //! use std::time::Duration;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -259,7 +259,7 @@ impl ProgressManager {
     /// ## Example
     ///
     /// ```rust,no_run
-    /// # use cb_lsp::progress::{ProgressManager, ProgressToken};
+    /// # use mill_lsp::progress::{ProgressManager, ProgressToken};
     /// # use std::time::Duration;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let manager = ProgressManager::new();

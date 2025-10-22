@@ -8,7 +8,7 @@ This file provides guidance to AI assistants when working with code in this repo
 **Before working with this codebase, please read:**
 
 1. **[api_reference.md](docs/api_reference.md)** - **READ THIS FIRST** - Complete MCP tools API reference
-2. **[tools_catalog.md](docs/tools_catalog.md)** - Fast lookup table for all 23 public tools
+2. **[tools_catalog.md](docs/tools_catalog.md)** - Fast lookup table for all 35 public tools
 3. **[operations.md](docs/operations.md)** - Advanced configuration and analysis options
 
 ---
@@ -31,29 +31,36 @@ Pure Rust MCP server bridging Language Server Protocol (LSP) functionality to AI
 
 Codebuddy provides comprehensive MCP tools for code intelligence and refactoring. See **[api_reference.md](docs/api_reference.md)** for complete API reference with detailed parameters, return types, and examples.
 
-**Current Architecture**: 23 public tools visible to AI agents via MCP `tools/list`, plus 20 internal tools for backend workflows.
+**Current Architecture**: 35 public tools visible to AI agents via MCP `tools/list`, plus 20 internal tools for backend workflows.
 
 **Note:** Internal tools exist for backend use only (lifecycle hooks, workflow plumbing, legacy operations). These are hidden from MCP `tools/list` to simplify the API surface for AI agents. See [api_reference.md Internal Tools](docs/api_reference.md#internal-tools) section.
 
-### Quick Reference (23 Public Tools)
+### Quick Reference (35 Public Tools)
 
 **Navigation & Intelligence (8 tools)**
 - `find_definition`, `find_references`, `search_symbols`
 - `find_implementations`, `find_type_definition`, `get_symbol_info`
 - `get_diagnostics`, `get_call_hierarchy`
 
-**Editing & Refactoring (7 tools - Unified API)**
-- `rename.plan`, `extract.plan`, `inline.plan`, `move.plan`
-- `reorder.plan`, `transform.plan`, `delete.plan`
-- `workspace.apply_edit` (executes any plan)
+**Editing & Refactoring (15 tools - Unified API)**
+- **Plan Operations (7 tools)**: `rename.plan`, `extract.plan`, `inline.plan`, `move.plan`, `reorder.plan`, `transform.plan`, `delete.plan`
+- **Quick Operations (7 tools)**: `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete` (one-step plan+execute)
+- **Apply**: `workspace.apply_edit` (executes any plan)
 
-**Analysis (6 tools - Unified Analysis API)**
+**Workspace Operations (3 tools)**
+- `workspace.create_package` (create new packages in workspace)
+- `workspace.extract_dependencies` (extract module dependencies for crate extraction)
+- `workspace.update_members` (update workspace member list)
+
+**Analysis (8 tools - Unified Analysis API)**
 - `analyze.quality` (complexity, smells, maintainability, readability)
 - `analyze.dead_code` (unused imports, symbols, parameters, variables, types, unreachable code)
 - `analyze.dependencies` (imports, graph, circular dependencies, coupling, cohesion, depth)
 - `analyze.structure` (symbols, hierarchy, interfaces, inheritance, modules)
 - `analyze.documentation` (coverage, quality, style, examples, todos)
 - `analyze.tests` (coverage, quality, assertions, organization)
+- `analyze.batch` (multi-file batch analysis with optimized AST caching)
+- `analyze.module_dependencies` (Rust module dependency analysis for crate extraction)
 
 **System & Health (1 tool)**
 - `health_check`
@@ -76,12 +83,30 @@ Codebuddy provides comprehensive MCP tools for code intelligence and refactoring
 }
 ```
 
-### Dry Run and Previews
+### Refactoring Patterns: Two-Step vs One-Step
 
-The Unified Refactoring API is designed for safety with a `plan -> apply` pattern.
+The Unified Refactoring API supports both safe two-step and convenient one-step patterns:
 
+#### Two-Step Pattern (Recommended for Safety)
 - **`*.plan()` commands are always dry runs.** They generate a plan of changes but never write to the filesystem. This is the primary way to preview a refactoring.
 - **`workspace.apply_edit`** can be run with `dry_run: true` in its options for a final preview before execution.
+
+#### One-Step Pattern (Quick Operations)
+For convenience, each refactoring has a "quick" version that combines plan + execute in one call:
+- **Quick tools**: `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete`
+- **Usage**: Same parameters as `*.plan` versions, but automatically applies changes
+- **Safety**: Less safe than two-step pattern - no preview before execution
+- **When to use**: For small, low-risk refactorings when you trust the operation
+
+**Example comparison:**
+```json
+// Two-step (safer): Preview first, then apply
+{"name": "rename.plan", "arguments": {...}}
+{"name": "workspace.apply_edit", "arguments": {"plan": ...}}
+
+// One-step (faster): Direct execution
+{"name": "rename", "arguments": {...}}
+```
 
 File and workspace operations also support `dry_run: true`:
 

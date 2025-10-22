@@ -26,7 +26,7 @@ graph TD
     subgraph Services
         F[cb-ast]
         G[cb-plugins]
-        H[cb-lsp]
+        H[mill-lsp]
         I[cb-services]
         J[cb-handlers]
         K[cb-transport]
@@ -67,7 +67,7 @@ graph TD
 
 - **`cb-ast`**: Handles Abstract Syntax Tree (AST) parsing, code analysis, and transformations. It's responsible for language intelligence features like finding unused imports and analyzing code complexity.
 - **`cb-plugins`**: Manages the language plugin system, including plugin registration, discovery, and dispatching requests to the appropriate language plugin.
-- **`cb-lsp`**: Provides the integration with the Language Server Protocol (LSP), managing LSP clients and translating between MCP and LSP.
+- **`mill-lsp`**: Provides the integration with the Language Server Protocol (LSP), managing LSP clients and translating between MCP and LSP.
 - **`cb-services`**: Contains business logic for file operations, import management, and other core services.
 - **`mill-handlers`**: Defines the handlers for each MCP tool, mapping tool requests to the corresponding service implementations.
 - **`cb-transport`**: Implements the communication protocols, including WebSocket and stdio, for receiving MCP requests and sending responses.

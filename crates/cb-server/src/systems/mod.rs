@@ -1,4 +1,4 @@
-//! System components (now moved to cb-lsp crate)
+//! System components (now moved to mill-lsp crate)
 
-// Re-export from cb-lsp for backward compatibility
-pub use cb_lsp::lsp_system::LspClient;
+// Re-export from mill-lsp for backward compatibility
+pub use mill_lsp::lsp_system::LspClient;

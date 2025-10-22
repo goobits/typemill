@@ -49,7 +49,7 @@
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │                  INFRASTRUCTURE LAYER                           │
-│      (cb-lsp, cb-plugins, codebuddy-config, plugin system)      │
+│      (mill-lsp, cb-plugins, codebuddy-config, plugin system)      │
 ├─────────────────────────────────────────────────────────────────┤
 │ Concerns:                          │ Status:                    │
 │ • LSP server communication         │ ✓ LSP encapsulation        │
@@ -346,7 +346,7 @@ Improvement: +1.5 points (+20%)
 ├─ Complexity: LOW
 ├─ Risk: LOW
 ├─ Status: DEFERRED (acceptable for debug output)
-└─ File: /workspace/crates/cb-lsp/src/lsp_system/client.rs
+└─ File: /workspace/crates/mill-lsp/src/lsp_system/client.rs
 ```
 
 ## Benefits Achieved

@@ -216,7 +216,7 @@ skip-tree = [
 # Layer Hierarchy (after consolidation):
 # - Layer 7: Application (cb-server, mill-client, cb-transport, codebuddy, codebuddy-auth, codebuddy-workspaces)
 # - Layer 6: Handlers (mill-handlers)
-# - Layer 5: Services (cb-services, cb-ast, cb-lsp, codebuddy-plugin-system, codebuddy-plugin-bundle)
+# - Layer 5: Services (cb-services, cb-ast, mill-lsp, codebuddy-plugin-system, codebuddy-plugin-bundle)
 # - Layer 4: Language Plugins (cb-lang-*)
 # - Layer 3: Plugin API (cb-plugin-api)
 # - Layer 2: Foundation (codebuddy-foundation)
@@ -244,7 +244,7 @@ name = "cb-ast"
 wrappers = ["cb-transport", "cb-services", "codebuddy-plugin-system", "mill-handlers", "cb-server", "codebuddy", "mill-test-support", "e2e"]
 
 [[bans.deny]]
-name = "cb-lsp"
+name = "mill-lsp"
 wrappers = ["cb-services", "mill-handlers", "cb-server", "codebuddy", "mill-test-support", "e2e"]
 
 [[bans.deny]]

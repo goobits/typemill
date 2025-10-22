@@ -70,7 +70,7 @@ This proposal adopts the "Pragmatic Layered Workspace" strategy to refactor the 
   - Multiple bug fix and enhancement commits
 
 ### 07a: Workspace Standardization
-- [ ] For each remaining `cb-*` crate, generate a `rename.plan` to rename it to `codebuddy-*` (e.g., `cb-lsp` -> `codebuddy-lsp`).
+- [ ] For each remaining `cb-*` crate, generate a `rename.plan` to rename it to `codebuddy-*` (e.g., `mill-lsp` -> `codebuddy-lsp`).
 - [ ] Execute all rename plans using `workspace.apply_edit`. The tool will update all `use` statements and `Cargo.toml` references across the workspace.
 - [ ] Generate a `rename.plan` to move the `analysis` directory to `tooling/analysis`.
 - [ ] Execute the move plan using `workspace.apply_edit`.

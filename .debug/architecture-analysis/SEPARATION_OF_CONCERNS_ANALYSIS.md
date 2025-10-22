@@ -50,7 +50,7 @@ Business Logic Layer (cb-services, cb-ast)
           ↓
 Data Access Layer (file-service, reference-updater)
           ↓
-Infrastructure Layer (cb-lsp, cb-plugins, cb-core)
+Infrastructure Layer (mill-lsp, cb-plugins, cb-core)
 ```
 
 ### Layer Responsibilities
@@ -60,7 +60,7 @@ Infrastructure Layer (cb-lsp, cb-plugins, cb-core)
 | **Presentation** | cb-transport, cb-handlers | MCP routing, HTTP/WebSocket handling, request/response marshaling |
 | **Business Logic** | cb-services, cb-ast | Refactoring planning, import management, code analysis |
 | **Data Access** | file-service, reference-updater | File I/O, import graph construction, caching |
-| **Infrastructure** | cb-lsp, cb-plugins, cb-core | LSP communication, language plugin dispatch, configuration |
+| **Infrastructure** | mill-lsp, cb-plugins, cb-core | LSP communication, language plugin dispatch, configuration |
 
 ---
 
@@ -404,7 +404,7 @@ pub(super) use_git: bool,
 ## 5. Infrastructure Layer Analysis
 
 ### Location
-- `crates/cb-lsp/src/` - LSP client management
+- `../../crates/mill-lsp/src/` - LSP client management
 - `crates/cb-plugins/src/` - Plugin system
 - `crates/codebuddy-foundation/src/core/src/` - Configuration and logging
 
@@ -412,7 +412,7 @@ pub(super) use_git: bool,
 
 **1. LSP Client Encapsulation**
 ```rust
-// File: crates/cb-lsp/src/lsp_system/client.rs:25-39
+// File: ../../crates/mill-lsp/src/lsp_system/client.rs:25-39
 pub struct LspClient {
     process: Arc<Mutex<Child>>,
     message_tx: mpsc::Sender<LspMessage>,
@@ -452,7 +452,7 @@ pub async fn dispatch(
 
 **1. Direct File I/O in LSP Client**
 ```rust
-// File: crates/cb-lsp/src/lsp_system/client.rs:297-330
+// File: ../../crates/mill-lsp/src/lsp_system/client.rs:297-330
 // Stderr reader task - writes directly to eprintln!()
 eprintln!("🔍 LSP stderr reader task started for: {}", server_command);
 // ... more eprintln! calls
@@ -466,7 +466,7 @@ eprintln!("🛑 LSP stderr reader task ended for: {} (read {} lines)", server_co
 
 **2. LSP PATH Augmentation Logic**
 ```rust
-// File: crates/cb-lsp/src/lsp_system/client.rs:90-145
+// File: ../../crates/mill-lsp/src/lsp_system/client.rs:90-145
 // Large block of PATH construction logic
 let mut path_additions = vec![];
 if let Ok(home) = std::env::var("HOME") {
@@ -632,7 +632,7 @@ pub fn new(
 
 ### ⚠ Low Issues (1 REMAINING - Acceptable)
 1. **Debug output using eprintln! in LSP client** ⚠ **DEFERRED**
-   - **Location:** `/workspace/crates/cb-lsp/src/lsp_system/client.rs` (7 instances)
+   - **Location:** `/workspace/crates/mill-lsp/src/lsp_system/client.rs` (7 instances)
    - **Status:** Acceptable for LSP debug output monitoring
    - **Rationale:** LSP stderr monitoring requires real-time output capture
    - **Priority:** Low - not affecting production behavior

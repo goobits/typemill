@@ -119,7 +119,7 @@ codebuddy-foundation = { path = "../codebuddy-foundation" }
 
 ### Files Affected
 16+ `Cargo.toml` files across workspace:
-- `crates/cb-lsp/Cargo.toml`
+- `../../crates/mill-lsp/Cargo.toml`
 - `crates/cb-services/Cargo.toml`
 - `../../crates/mill-handlers/Cargo.toml`
 - `crates/cb-plugin-api/Cargo.toml`

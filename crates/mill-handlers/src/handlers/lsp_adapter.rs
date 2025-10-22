@@ -14,7 +14,7 @@ use tracing::{debug, warn};
 /// Direct LSP adapter that bypasses the old LSP manager and its hard-coded mappings
 pub struct DirectLspAdapter {
     /// LSP clients by extension
-    lsp_clients: Arc<Mutex<HashMap<String, Arc<cb_lsp::lsp_system::LspClient>>>>,
+    lsp_clients: Arc<Mutex<HashMap<String, Arc<mill_lsp::lsp_system::LspClient>>>>,
     /// LSP configuration
     config: codebuddy_config::config::LspConfig,
     /// Supported file extensions
@@ -41,7 +41,7 @@ impl DirectLspAdapter {
     pub async fn get_or_create_client(
         &self,
         extension: &str,
-    ) -> Result<Arc<cb_lsp::lsp_system::LspClient>, String> {
+    ) -> Result<Arc<mill_lsp::lsp_system::LspClient>, String> {
         // Check if a client already exists and is alive
         let mut clients = self.lsp_clients.lock().await;
         if let Some(client) = clients.get(extension) {
@@ -91,7 +91,7 @@ impl DirectLspAdapter {
             .clone();
 
         // Create new LSP client
-        let client = cb_lsp::lsp_system::LspClient::new(server_config)
+        let client = mill_lsp::lsp_system::LspClient::new(server_config)
             .await
             .map_err(|e| format!("Failed to create LSP client: {}", e))?;
 
@@ -130,7 +130,7 @@ impl DirectLspAdapter {
                             "Checking for rust-analyzer workspace indexing progress"
                         );
 
-                        let token = cb_lsp::progress::ProgressToken::String(
+                        let token = mill_lsp::progress::ProgressToken::String(
                             "rustAnalyzer/Indexing".to_string(),
                         );
 

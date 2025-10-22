@@ -129,11 +129,11 @@ The codebuddy codebase has achieved **production-ready separation of concerns** 
 
 ### Priority 4 (30 min) - Move PATH Logic to Configuration
 - Move PATH augmentation from LSP client to configuration layer
-- File: `crates/cb-lsp/src/lsp_system/client.rs`
+- File: `../../crates/mill-lsp/src/lsp_system/client.rs`
 
 ### Priority 5 (30 min) - Fix Debug Output
 - Replace `eprintln!` with tracing framework
-- File: `crates/cb-lsp/src/lsp_system/client.rs`
+- File: `../../crates/mill-lsp/src/lsp_system/client.rs`
 
 ## File Locations of Violations
 
@@ -143,11 +143,11 @@ The codebuddy codebase has achieved **production-ready separation of concerns** 
 ### Medium
 - `/workspace/crates/cb-handlers/src/handlers/workspace_apply_handler.rs` (lines 228-290 - plan conversion)
 - `/workspace/crates/cb-services/src/services/file_service/mod.rs` (lines 28-49 - mixed concerns)
-- `/workspace/crates/cb-lsp/src/lsp_system/client.rs` (lines 90-145 - PATH logic)
+- `/workspace/crates/mill-lsp/src/lsp_system/client.rs` (lines 90-145 - PATH logic)
 - `/workspace/crates/cb-services/src/services/file_service/mod.rs` (lines 41-46 - git coupling)
 
 ### Low
-- `/workspace/crates/cb-lsp/src/lsp_system/client.rs` (multiple eprintln! calls)
+- `/workspace/crates/mill-lsp/src/lsp_system/client.rs` (multiple eprintln! calls)
 - `/workspace/crates/cb-handlers/src/handlers/tools/navigation.rs` (lines 25-118 - plugin dispatch)
 - `/workspace/crates/cb-services/src/services/file_service/mod.rs` (line 53 - too many params)
 

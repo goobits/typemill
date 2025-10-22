@@ -26,7 +26,7 @@ refactor-all = ["refactor-rename", "refactor-extract", "refactor-inline", "refac
 codebuddy-foundation = { path = "../codebuddy-foundation" }
 cb-services = { path = "../cb-services", default-features = false }
 cb-plugin-api = { path = "../cb-plugin-api" }
-cb-lsp = { path = "../cb-lsp" }
+mill-lsp = { path = "../mill-lsp" }
 
 # NOTE: No language plugin dependencies here!
 # Handlers operate on trait objects (&dyn LanguagePlugin) provided via PluginRegistry.

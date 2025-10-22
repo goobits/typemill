@@ -204,14 +204,14 @@ codebuddy-foundation = { path = "../codebuddy-foundation" }  # line 32 - duplica
 The automated sed replacements added new entries without checking for existing ones, or failed to remove old entries first.
 
 **Files Affected**: 11 Cargo.toml files
-- cb-lsp, cb-services, cb-handlers, cb-client
+- mill-lsp, cb-services, cb-handlers, cb-client
 - cb-lang-typescript, cb-lang-rust, cb-test-support
 - cb-transport, cb-server, tests/e2e, apps/codebuddy
 
 **Manual Fix Required**:
 ```bash
 # Remove duplicate lines individually
-sed -i '19d' /workspace/crates/cb-lsp/Cargo.toml
+sed -i '19d' /workspace/crates/mill-lsp/Cargo.toml
 sed -i '34d' /workspace/crates/cb-services/Cargo.toml
 # ... (repeated for all affected files)
 ```

@@ -1,5 +1,5 @@
 [package]
-name = "cb-lsp"
+name = "mill-lsp"
 edition = "2021"
 license.workspace = true
 

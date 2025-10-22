@@ -8,7 +8,7 @@ license = "MIT"
 cb-plugin-api = { path = "../cb-plugin-api" }
 codebuddy-foundation = { path = "../codebuddy-foundation" }
 cb-transport = { path = "../cb-transport", default-features = false }
-cb-lsp = { path = "../cb-lsp" }
+mill-lsp = { path = "../mill-lsp" }
 cb-services = { path = "../cb-services", default-features = false }
 tokio = { workspace = true }
 async-trait = { workspace = true }

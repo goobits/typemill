@@ -38,7 +38,7 @@ mill-client = { path = "../../crates/mill-client" }
 
 [dev-dependencies]
 cb-server = { path = "../../crates/cb-server", default-features = false, features = ["test-helpers"] }
-cb-lsp = { path = "../../crates/cb-lsp" }
+mill-lsp = { path = "../../crates/mill-lsp" }
 cb-plugin-api = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }

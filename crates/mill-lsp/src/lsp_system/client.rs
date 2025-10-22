@@ -765,8 +765,8 @@ impl LspClient {
     /// ## Example
     ///
     /// ```rust,no_run
-    /// # use cb_lsp::lsp_system::LspClient;
-    /// # use cb_lsp::progress::ProgressToken;
+    /// # use mill_lsp::lsp_system::LspClient;
+    /// # use mill_lsp::progress::ProgressToken;
     /// # use std::time::Duration;
     /// # async fn example(client: &LspClient) -> Result<(), Box<dyn std::error::Error>> {
     /// let token = ProgressToken::String("rustAnalyzer/Indexing".to_string());
@@ -794,7 +794,7 @@ impl LspClient {
     /// ## Example
     ///
     /// ```rust,no_run
-    /// # use cb_lsp::lsp_system::LspClient;
+    /// # use mill_lsp::lsp_system::LspClient;
     /// # use std::time::Duration;
     /// # async fn example(client: &LspClient) -> Result<(), Box<dyn std::error::Error>> {
     /// // Wait up to 30 seconds for indexing to complete

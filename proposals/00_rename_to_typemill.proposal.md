@@ -55,7 +55,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 **Core Service Crates (14 crates - `cb-*` prefix):**
 - `cb-client` - CLI client implementation
 - `mill-handlers` - MCP tool handler implementations
-- `cb-lsp` - LSP client and server management
+- `mill-lsp` - LSP client and server management
 - `cb-server` - MCP server core
 - `cb-services` - Core services (file, AST, planner, workflow)
 - `cb-transport` - WebSocket and stdio transport
@@ -104,7 +104,7 @@ All crates will adopt the `mill-*` prefix for consistency and simplicity.
 **Core Service Crates:**
 - `cb-client` → `mill-client`
 - `mill-handlers` → `mill-handlers`
-- `cb-lsp` → `mill-lsp`
+- `mill-lsp` → `mill-lsp`
 - `cb-server` → `mill-server`
 - `cb-services` → `mill-services`
 - `cb-transport` → `mill-transport`
@@ -482,7 +482,7 @@ git tag v2.0.0
 **Core Service Crates (8 crates):**
 - [ ] `cb-client` → `mill-client`
 - [ ] `mill-handlers` → `mill-handlers`
-- [ ] `cb-lsp` → `mill-lsp`
+- [ ] `mill-lsp` → `mill-lsp`
 - [ ] `cb-server` → `mill-server`
 - [ ] `cb-services` → `mill-services`
 - [ ] `cb-transport` → `mill-transport`
@@ -1012,7 +1012,7 @@ See full documentation at https://typemill.org/docs/migration
 
   ../crates/mill-client → crates/mill-client
   ../crates/mill-handlers → crates/mill-handlers
-  crates/cb-lsp → crates/mill-lsp
+  ../crates/mill-lsp → crates/mill-lsp
   crates/cb-server → crates/mill-server
   crates/cb-services → crates/mill-services
   crates/cb-transport → crates/mill-transport
@@ -1042,7 +1042,7 @@ See full documentation at https://typemill.org/docs/migration
 
   cb-client → mill-client
   cb-handlers → mill-handlers
-  cb-lsp → mill-lsp
+  mill-lsp → mill-lsp
   cb-server → mill-server
   cb-services → mill-services
   cb-transport → mill-transport
