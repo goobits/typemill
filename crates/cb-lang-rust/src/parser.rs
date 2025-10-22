@@ -324,7 +324,25 @@ fn rewrite_use_tree_with_segments(
             }
         }
         UseTree::Name(_) => None,
-        UseTree::Rename(_) => None,
+        UseTree::Rename(rename) => {
+            // Handle rename patterns: use old_name as alias;
+            // Check if the renamed ident matches our old module at this depth
+            if depth < old_segments.len() && rename.ident == old_segments[depth] {
+                // Check if this completes the match (all segments matched)
+                if depth + 1 == old_segments.len() {
+                    // Simple case: single segment replacement
+                    // Replace the ident with the new name (keeping the alias)
+                    let mut new_rename = rename.clone();
+                    new_rename.ident = syn::Ident::new(new_segments[depth], rename.ident.span());
+                    Some(UseTree::Rename(new_rename))
+                } else {
+                    // Multi-segment paths in rename context not supported yet
+                    None
+                }
+            } else {
+                None
+            }
+        }
         UseTree::Glob(_) => None,
         UseTree::Group(group) => {
             let mut modified = false;

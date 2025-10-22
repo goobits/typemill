@@ -85,8 +85,28 @@ impl ImportRenameSupport for RustImportSupport {
             let line = lines[idx];
             let trimmed = line.trim();
 
-            // Check if starting a new use statement
-            if !in_use_stmt && trimmed.starts_with("use ") {
+            // PHASE 1: Handle extern crate declarations
+            // Note: extern crate is a deprecated Rust 2015 pattern, but still needs support
+            if trimmed.starts_with("extern crate ") {
+                // Convert hyphenated crate names to underscored for Rust identifiers
+                let old_rust_ident = old_name.replace('-', "_");
+                let new_rust_ident = new_name.replace('-', "_");
+
+                let pattern = format!("extern crate {}", old_rust_ident);
+                if line.contains(&pattern) {
+                    let updated_line = line.replace(&pattern, &format!("extern crate {}", new_rust_ident));
+                    result.push_str(&updated_line);
+                    changes_count += 1;
+                    if idx < lines.len() - 1 {
+                        result.push('\n');
+                    }
+                    idx += 1;
+                    continue;
+                }
+            }
+
+            // Check if starting a new use statement (including pub use)
+            if !in_use_stmt && (trimmed.starts_with("use ") || trimmed.starts_with("pub use ")) {
                 in_use_stmt = true;
                 use_stmt_lines.clear();
                 use_stmt_indent = line.len() - trimmed.len();
@@ -168,10 +188,14 @@ impl ImportRenameSupport for RustImportSupport {
         let mut final_result = String::new();
         let mut qualified_path_changes = 0;
 
+        // Convert hyphenated crate names to underscored for Rust identifiers
+        let old_rust_ident = old_name.replace('-', "_");
+        let new_rust_ident = new_name.replace('-', "_");
+
         // Build regex pattern with word boundary to avoid false positives
-        // Pattern: \b + old_name + \s*::
+        // Pattern: \b + old_rust_ident + \s*::
         // This matches "cb_ast::" but not "my_cb_ast::"
-        let pattern = format!(r"\b{}\s*::", regex::escape(old_name));
+        let pattern = format!(r"\b{}\s*::", regex::escape(&old_rust_ident));
         let re = match regex::Regex::new(&pattern) {
             Ok(r) => r,
             Err(e) => {
@@ -183,8 +207,8 @@ impl ImportRenameSupport for RustImportSupport {
         for line in lines {
             let trimmed = line.trim();
 
-            // Skip use statements (already processed in first pass)
-            if trimmed.starts_with("use ") {
+            // Skip use statements (already processed in first pass, including pub use)
+            if trimmed.starts_with("use ") || trimmed.starts_with("pub use ") {
                 final_result.push_str(&line);
                 final_result.push('\n');
                 continue;
@@ -193,7 +217,7 @@ impl ImportRenameSupport for RustImportSupport {
             // Search for qualified paths using regex
             if re.is_match(&line) {
                 let updated_line =
-                    re.replace_all(&line, |_caps: &regex::Captures| format!("{}::", new_name));
+                    re.replace_all(&line, |_caps: &regex::Captures| format!("{}::", new_rust_ident));
 
                 if updated_line != line {
                     qualified_path_changes += 1;
@@ -322,15 +346,21 @@ impl RustImportSupport {
 
         let trimmed = concatenated.trim();
 
+        // Convert hyphenated crate names to underscored for Rust identifiers
+        let old_rust_ident = old_name.replace('-', "_");
+        let new_rust_ident = new_name.replace('-', "_");
+
         tracing::info!(
             use_statement = %trimmed,
             old_name = %old_name,
             new_name = %new_name,
+            old_rust_ident = %old_rust_ident,
+            new_rust_ident = %new_rust_ident,
             "Processing use statement"
         );
 
-        // Check if this statement contains the old module name
-        let contains_old_module = trimmed.contains(old_name);
+        // Check if this statement contains the old module name (as Rust identifier)
+        let contains_old_module = trimmed.contains(&old_rust_ident);
 
         // Check for various import patterns
         let crate_import_matches = if old_name.contains("::") {
@@ -443,7 +473,7 @@ impl RustImportSupport {
                         .unwrap_or(new_name);
                     (old_suffix.to_string(), new_suffix.to_string())
                 } else {
-                    (old_name.to_string(), new_name.to_string())
+                    (old_rust_ident.clone(), new_rust_ident.clone())
                 };
 
                 tracing::info!(
@@ -458,7 +488,12 @@ impl RustImportSupport {
                     &effective_old,
                     &effective_new,
                 ) {
-                    let formatted = format!("use {};", quote::quote!(#new_tree));
+                    // Preserve visibility (pub, pub(crate), etc.)
+                    let vis_str = match &item_use.vis {
+                        syn::Visibility::Public(_) => "pub ",
+                        _ => "",
+                    };
+                    let formatted = format!("{}use {};", vis_str, quote::quote!(#new_tree));
                     let normalized = formatted.replace(" :: ", "::");
                     let indent_str = " ".repeat(indent);
                     let mut result = format!("{}{}\n", indent_str, normalized);
@@ -848,5 +883,136 @@ pub fn example() {
             result.starts_with("    use mill_services"),
             "Should preserve leading indentation"
         );
+    }
+
+    #[test]
+    fn test_extern_crate_rename() {
+        let support = RustImportSupport;
+
+        // Test extern crate declarations (deprecated Rust 2015 pattern)
+        let content = r#"extern crate codebuddy_plugin_bundle;
+extern crate other_crate;
+
+fn main() {
+    codebuddy_plugin_bundle::init();
+}
+"#;
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "codebuddy-plugin-bundle", // Note: hyphenated input
+            "mill-plugin-bundle",
+        );
+
+        println!("Result:\n{}", result);
+        println!("Changes: {}", changes);
+
+        // Should update both extern crate and qualified path
+        assert_eq!(changes, 2, "Should detect 2 changes (extern crate + qualified path)");
+        assert!(
+            result.contains("extern crate mill_plugin_bundle;"),
+            "Should update extern crate with underscores"
+        );
+        assert!(
+            !result.contains("codebuddy_plugin_bundle"),
+            "Should replace all old references"
+        );
+        assert!(
+            result.contains("mill_plugin_bundle::init()"),
+            "Should update qualified paths"
+        );
+        assert!(
+            result.contains("extern crate other_crate;"),
+            "Should preserve other extern crate declarations"
+        );
+    }
+
+    #[test]
+    fn test_pub_use_as_rename() {
+        let support = RustImportSupport;
+
+        // Test pub use ... as pattern (re-exports)
+        let content = r#"pub use codebuddy_workspaces as workspaces;
+use codebuddy_workspaces::Thing;
+
+fn main() {
+    codebuddy_workspaces::utility();
+}
+"#;
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "codebuddy-workspaces", // Note: hyphenated input
+            "mill-workspaces",
+        );
+
+        println!("Result:\n{}", result);
+        println!("Changes: {}", changes);
+
+        // Should update pub use, regular use, and qualified path
+        assert_eq!(changes, 3, "Should detect 3 changes");
+        assert!(
+            result.contains("pub use mill_workspaces as workspaces;"),
+            "Should update pub use with underscores"
+        );
+        assert!(
+            result.contains("use mill_workspaces::Thing;"),
+            "Should update regular use statement"
+        );
+        assert!(
+            result.contains("mill_workspaces::utility()"),
+            "Should update qualified paths"
+        );
+        assert!(
+            !result.contains("codebuddy_workspaces"),
+            "Should replace all old references"
+        );
+    }
+
+    #[test]
+    fn test_extern_crate_and_pub_use_combined() {
+        let support = RustImportSupport;
+
+        // Real-world test case combining both patterns
+        let content = r#"// Force linker to include plugin-bundle
+extern crate codebuddy_plugin_bundle;
+
+// Re-export workspaces
+pub use codebuddy_workspaces as workspaces;
+
+use codebuddy_workspaces::WorkspaceManager;
+
+fn init() {
+    let _plugins = codebuddy_plugin_bundle::all_plugins();
+    let manager = codebuddy_workspaces::WorkspaceManager::new();
+}
+"#;
+
+        // Rename plugin-bundle
+        let (result1, changes1) = support.rewrite_imports_for_rename(
+            content,
+            "codebuddy-plugin-bundle",
+            "mill-plugin-bundle",
+        );
+
+        assert_eq!(changes1, 2, "Should update extern crate + qualified path");
+        assert!(result1.contains("extern crate mill_plugin_bundle;"));
+        assert!(result1.contains("mill_plugin_bundle::all_plugins()"));
+
+        // Rename workspaces
+        let (result2, changes2) = support.rewrite_imports_for_rename(
+            &result1,
+            "codebuddy-workspaces",
+            "mill-workspaces",
+        );
+
+        assert_eq!(changes2, 3, "Should update pub use + use + qualified path");
+        assert!(result2.contains("pub use mill_workspaces as workspaces;"));
+        assert!(result2.contains("use mill_workspaces::WorkspaceManager;"));
+        assert!(result2.contains("mill_workspaces::WorkspaceManager::new()"));
+
+        // Verify no old names remain
+        assert!(!result2.contains("codebuddy_plugin_bundle"));
+        assert!(!result2.contains("codebuddy_workspaces"));
     }
 }
