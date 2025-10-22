@@ -8,7 +8,7 @@ homepage.workspace = true
 description = "Transport layer for WebSocket and stdio communication"
 
 [dependencies]
-codebuddy-foundation = { path = "../codebuddy-foundation" }
+mill-foundation = { path = "../mill-foundation" }
 mill-auth = { path = "../mill-auth" }
 mill-config = { path = "../mill-config" }
 mill-workspaces = { path = "../mill-workspaces" }
@@ -32,4 +32,4 @@ default = ["lang-rust", "lang-typescript", "lang-markdown"]
 lang-rust = ["mill-ast/lang-rust"]
 lang-typescript = ["mill-ast/lang-typescript"]
 lang-markdown = ["mill-ast/lang-markdown"]
-mcp-proxy = ["codebuddy-foundation/mcp-proxy", "mill-config/mcp-proxy"]
+mcp-proxy = ["mill-foundation/mcp-proxy", "mill-config/mcp-proxy"]

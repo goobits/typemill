@@ -7,8 +7,8 @@
 use super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use cb_plugin_api::{CreatePackageConfig, PackageType, Template};
-use codebuddy_foundation::core::model::mcp::ToolCall;
-use codebuddy_foundation::protocol::{ApiError, ApiResult as ServerResult};
+use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::protocol::{ ApiError , ApiResult as ServerResult };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{debug, error};

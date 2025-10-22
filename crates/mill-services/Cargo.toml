@@ -4,7 +4,7 @@ edition = "2021"
 license.workspace = true
 
 [dependencies]
-codebuddy-foundation = { path = "../codebuddy-foundation" }
+mill-foundation = { path = "../mill-foundation" }
 mill-lsp = { path = "../mill-lsp" }
 cb-plugin-api = { path = "../cb-plugin-api" }
 anyhow = { workspace = true }
@@ -34,7 +34,7 @@ default = ["lang-rust", "lang-typescript", "lang-markdown"]
 lang-rust = ["mill-ast/lang-rust", "codebuddy-plugin-system/lang-rust"]
 lang-typescript = ["mill-ast/lang-typescript", "codebuddy-plugin-system/lang-typescript"]
 lang-markdown = ["mill-ast/lang-markdown", "codebuddy-plugin-system/lang-markdown"]
-mcp-proxy = ["codebuddy-foundation/mcp-proxy", "mill-config/mcp-proxy", "codebuddy-plugin-system/mcp-proxy"]
+mcp-proxy = ["mill-foundation/mcp-proxy", "mill-config/mcp-proxy", "codebuddy-plugin-system/mcp-proxy"]
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

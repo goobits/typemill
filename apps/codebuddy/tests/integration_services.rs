@@ -14,7 +14,7 @@ use mill_server::handlers::AppState;
 use mill_server::services::{ DefaultAstService , FileService , LockManager , OperationQueue };
 use mill_server::workspaces::WorkspaceManager;
 use mill_ast::AstCache;
-use codebuddy_foundation::protocol::AstService;
+use mill_foundation::protocol::AstService;
 use codebuddy_plugin_system::PluginManager;
 use serde_json::json;
 use std::fs;
@@ -231,7 +231,7 @@ async fn test_cache_performance_improvement() {
 async fn test_workspace_edit_in_process() {
     use mill_server::test_helpers::create_test_dispatcher_with_root;
     use mill_transport::SessionInfo;
-    use codebuddy_foundation::core::model::mcp::{McpMessage, McpRequest};
+    use mill_foundation::core::model::mcp::{ McpMessage , McpRequest };
     use std::time::Instant;
     use tempfile::TempDir;
 

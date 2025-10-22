@@ -3,9 +3,7 @@
 //! This module provides a single source of truth for converting EditPlan
 //! (internal planning format) to WorkspaceEdit (LSP protocol format) for rename operations.
 
-use codebuddy_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, EditPlan,
-};
+use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult , EditPlan , };
 use lsp_types::{
     DocumentChangeOperation, DocumentChanges, OptionalVersionedTextDocumentIdentifier, RenameFile,
     ResourceOp, TextDocumentEdit, TextEdit, Uri, WorkspaceEdit,

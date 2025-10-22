@@ -21,7 +21,7 @@
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │                    BUSINESS LOGIC LAYER                         │
-│     (mill-services, mill-ast, codebuddy-foundation)          │
+│     (mill-services, mill-ast, mill-foundation)          │
 ├─────────────────────────────────────────────────────────────────┤
 │ Concerns:                          │ Status:                    │
 │ • Refactoring planning             │ ✓ Service traits           │
@@ -177,7 +177,7 @@ Language-Specific Logic Moved to Plugins (Phase 3):
 ## Crate Structure (Post-Consolidation)
 
 ```
-Foundation Layer (codebuddy-foundation):
+Foundation Layer (mill-foundation):
   ├─ core (types, errors, config models)
   ├─ protocol (MCP protocol types)
   └─ 3 crates consolidated ✅
@@ -205,7 +205,7 @@ Total Crates: 27 (from original 30+ before consolidation)
 ## Trait Boundaries (Excellent Design - Unchanged)
 
 ```
-codebuddy-foundation/protocol (THE BOUNDARY)
+mill-foundation/protocol (THE BOUNDARY)
 ┌───────────────────────────────────────────┐
 │ Trait Definitions (No implementations)    │
 ├───────────────────────────────────────────┤

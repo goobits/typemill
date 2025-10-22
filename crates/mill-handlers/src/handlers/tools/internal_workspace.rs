@@ -7,8 +7,8 @@
 
 use super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use codebuddy_foundation::core::model::mcp::ToolCall;
-use codebuddy_foundation::protocol::{ApiError, ApiResult as ServerResult};
+use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::protocol::{ ApiError , ApiResult as ServerResult };
 use serde_json::Value;
 
 pub struct InternalWorkspaceHandler;
@@ -80,10 +80,10 @@ impl InternalWorkspaceHandler {
                     .ok_or_else(|| ApiError::InvalidRequest("Edit missing newText".to_string()))?
                     .to_string();
 
-                all_edits.push(codebuddy_foundation::protocol::TextEdit {
+                all_edits.push(mill_foundation::protocol::TextEdit {
                     file_path: Some(file_path.clone()),
-                    edit_type: codebuddy_foundation::protocol::EditType::Replace,
-                    location: codebuddy_foundation::protocol::EditLocation {
+                    edit_type: mill_foundation::protocol::EditType::Replace,
+                    location: mill_foundation::protocol::EditLocation {
                         start_line,
                         start_column: start_char,
                         end_line,
@@ -98,12 +98,12 @@ impl InternalWorkspaceHandler {
         }
 
         // Create EditPlan
-        let plan = codebuddy_foundation::protocol::EditPlan {
+        let plan = mill_foundation::protocol::EditPlan {
             source_file: String::new(), // Multi-file workspace edit
             edits: all_edits,
             dependency_updates: Vec::new(),
             validations: Vec::new(),
-            metadata: codebuddy_foundation::protocol::EditPlanMetadata {
+            metadata: mill_foundation::protocol::EditPlanMetadata {
                 intent_name: "apply_workspace_edit".to_string(),
                 intent_arguments: serde_json::Value::Object(args.clone()),
                 created_at: chrono::Utc::now(),

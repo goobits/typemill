@@ -61,7 +61,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 - Stable APIs (changes ripple through entire codebase)
 
 **Planned Consolidation:**
-- **Target:** Merge `cb-types`, `cb-protocol`, `codebuddy-core` → `codebuddy-foundation`
+- **Target:** Merge `cb-types`, `cb-protocol`, `codebuddy-core` → `mill-foundation`
 - **Rationale:** These crates are tightly coupled and rarely modified independently
 
 ---
@@ -220,7 +220,7 @@ cargo depgraph --workspace-only | dot -Tpng > deps.png
 - Analysis crates remain isolated (only mill-handlers can optionally use them via features)
 
 **⚠️ Not Enforced by cargo-deny:**
-- Foundation (Layer 2) isolation - Manually verify codebuddy-foundation only depends on external crates
+- Foundation (Layer 2) isolation - Manually verify mill-foundation only depends on external crates
 - Review Cargo.toml changes to foundation carefully
 
 ### Status

@@ -4,7 +4,7 @@
 mod common;
 
 use mill_server::services::{ FileOperation , OperationType };
-use codebuddy_foundation::protocol::ApiError;
+use mill_foundation::protocol::ApiError;
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;

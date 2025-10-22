@@ -1,10 +1,7 @@
 use super::{RenameHandler, RenameOptions, RenameTarget};
 use crate::handlers::common::calculate_checksums_for_directory_rename;
 use crate::handlers::tools::ToolHandlerContext;
-use codebuddy_foundation::protocol::{
-    refactor_plan::{PlanMetadata, PlanSummary, PlanWarning, RenamePlan},
-    ApiResult as ServerResult,
-};
+use mill_foundation::protocol::{ refactor_plan::{ PlanMetadata , PlanSummary , PlanWarning , RenamePlan } , ApiResult as ServerResult , };
 use std::path::Path;
 use tracing::{debug, info};
 

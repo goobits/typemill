@@ -3,7 +3,7 @@
 //! Provides builders and helpers for creating SourceLocation instances
 //! used in import tracking and error reporting.
 
-use codebuddy_foundation::protocol::SourceLocation;
+use mill_foundation::protocol::SourceLocation;
 
 /// Builder for constructing SourceLocation instances
 ///

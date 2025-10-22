@@ -1,7 +1,7 @@
 use crate::error::AstError;
 use crate::package_extractor::ExtractModuleToPackageParams;
 use cb_plugin_api::LanguagePlugin;
-use codebuddy_foundation::protocol::{EditLocation, EditType, TextEdit};
+use mill_foundation::protocol::{ EditLocation , EditType , TextEdit };
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::debug;
@@ -243,7 +243,7 @@ pub(crate) async fn add_import_update_edits(
             // TODO: This import scanning logic is currently incomplete (empty imports vec)
             // and needs to be refactored to use ImportParser capability trait.
             // For now, this is a placeholder that will be completed in a future PR.
-            let imports: Vec<codebuddy_foundation::protocol::ImportInfo> = vec![];
+            let imports: Vec<mill_foundation::protocol::ImportInfo> = vec![];
 
             for import in imports {
                 let module_path_normalized = params.module_path.replace('.', "::");

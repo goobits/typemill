@@ -6,7 +6,7 @@ license = "MIT"
 
 [dependencies]
 cb-plugin-api = { path = "../cb-plugin-api" }
-codebuddy-foundation = { path = "../codebuddy-foundation" }
+mill-foundation = { path = "../mill-foundation" }
 mill-transport = { path = "../mill-transport", default-features = false }
 mill-lsp = { path = "../mill-lsp" }
 mill-services = { path = "../mill-services", default-features = false }
@@ -47,7 +47,7 @@ lang-typescript = ["mill-services/lang-typescript", "mill-ast/lang-typescript", 
 lang-markdown = ["mill-services/lang-markdown", "mill-ast/lang-markdown", "mill-plugin-bundle/lang-markdown", "codebuddy-plugin-system/lang-markdown", "mill-transport/lang-markdown"]
 lang-toml = ["mill-plugin-bundle/lang-toml"]
 lang-yaml = ["mill-plugin-bundle/lang-yaml"]
-mcp-proxy = ["codebuddy-foundation/mcp-proxy", "mill-config/mcp-proxy", "mill-services/mcp-proxy"]
+mcp-proxy = ["mill-foundation/mcp-proxy", "mill-config/mcp-proxy", "mill-services/mcp-proxy"]
 test-helpers = []
 
 [dev-dependencies]

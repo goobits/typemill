@@ -23,9 +23,7 @@ pub use mill_services::services;
 
 use mill_handlers::handlers::plugin_dispatcher::{ AppState , PluginDispatcher };
 use mill_config::AppConfig;
-pub use codebuddy_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, AstService, LspService,
-};
+pub use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult , AstService , LspService , };
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::oneshot;

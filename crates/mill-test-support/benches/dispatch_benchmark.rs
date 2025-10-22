@@ -8,7 +8,7 @@
 
 use async_trait::async_trait;
 use mill_server::handlers::plugin_dispatcher::create_test_dispatcher;
-use codebuddy_foundation::core::model::mcp::ToolCall;
+use mill_foundation::core::model::mcp::ToolCall;
 use codebuddy_plugin_system::{
     Capabilities, LanguagePlugin, PluginMetadata, PluginRegistry, PluginRequest, PluginResponse,
     PluginResult,

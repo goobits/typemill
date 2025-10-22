@@ -14,7 +14,7 @@ use cb_plugin_api::{
     },
     PluginResult,
 };
-use codebuddy_foundation::protocol::DependencyUpdate;
+use mill_foundation::protocol::DependencyUpdate;
 use std::path::Path;
 use tracing::{debug, warn};
 

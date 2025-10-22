@@ -2,7 +2,7 @@
 //! These tests verify the public API contract for configuration loading
 
 use mill_config::{ AppConfig , LogFormat };
-use codebuddy_foundation::core::CoreError;
+use mill_foundation::core::CoreError;
 use serial_test::serial;
 use std::env;
 use tempfile::TempDir;

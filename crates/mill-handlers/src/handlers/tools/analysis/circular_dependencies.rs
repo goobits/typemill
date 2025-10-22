@@ -4,12 +4,10 @@ use async_trait::async_trait;
 use cb_analysis_circular_deps::{
     builder::DependencyGraphBuilder, find_circular_dependencies, Cycle,
 };
-use codebuddy_foundation::core::model::mcp::ToolCall;
+use mill_foundation::core::model::mcp::ToolCall;
 #[cfg(feature = "analysis-circular-deps")]
-use codebuddy_foundation::protocol::analysis_result::{
-    AnalysisResult, Finding, FindingLocation, SafetyLevel, Severity, Suggestion,
-};
-use codebuddy_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::protocol::analysis_result::{ AnalysisResult , Finding , FindingLocation , SafetyLevel , Severity , Suggestion , };
+use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
 use serde_json::{json, Value};
 #[cfg(feature = "analysis-circular-deps")]
 use std::collections::HashMap;
@@ -110,12 +108,12 @@ impl ToolHandler for CircularDependenciesHandler {
 
             let analysis_result = AnalysisResult {
                 findings,
-                summary: codebuddy_foundation::protocol::analysis_result::AnalysisSummary {
+                summary: mill_foundation::protocol::analysis_result::AnalysisSummary {
                     total_findings: result.summary.total_cycles,
                     returned_findings: result.summary.total_cycles,
                     has_more: false,
                     by_severity:
-                        codebuddy_foundation::protocol::analysis_result::SeverityBreakdown {
+                        mill_foundation::protocol::analysis_result::SeverityBreakdown {
                             high: result.summary.total_cycles,
                             medium: 0,
                             low: 0,
@@ -124,10 +122,10 @@ impl ToolHandler for CircularDependenciesHandler {
                     symbols_analyzed: Some(result.summary.total_modules_in_cycles),
                     analysis_time_ms: result.summary.analysis_time_ms,
                 },
-                metadata: codebuddy_foundation::protocol::analysis_result::AnalysisMetadata {
+                metadata: mill_foundation::protocol::analysis_result::AnalysisMetadata {
                     category: "dependencies".to_string(),
                     kind: "circular".to_string(),
-                    scope: codebuddy_foundation::protocol::analysis_result::AnalysisScope {
+                    scope: mill_foundation::protocol::analysis_result::AnalysisScope {
                         scope_type: "workspace".to_string(),
                         path: project_root.to_string_lossy().to_string(),
                         include: vec![],

@@ -8,9 +8,7 @@ use super::{
     tests_handler, AnalysisConfig,
 };
 use cb_plugin_api::Symbol;
-use codebuddy_foundation::protocol::analysis_result::{
-    AnalysisResult, AnalysisScope, Finding, FindingLocation, Position, Range, Severity,
-};
+use mill_foundation::protocol::analysis_result::{ AnalysisResult , AnalysisScope , Finding , FindingLocation , Position , Range , Severity , };
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};

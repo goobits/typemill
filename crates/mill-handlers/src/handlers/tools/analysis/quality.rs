@@ -2,12 +2,9 @@
 
 use super::super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use codebuddy_foundation::core::model::mcp::ToolCall;
-use codebuddy_foundation::protocol::analysis_result::{
-    AnalysisResult, AnalysisScope, Finding, FindingLocation, Position, Range, RefactorCall,
-    SafetyLevel, Severity, Suggestion,
-};
-use codebuddy_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::protocol::analysis_result::{ AnalysisResult , AnalysisScope , Finding , FindingLocation , Position , Range , RefactorCall , SafetyLevel , Severity , Suggestion , };
+use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -414,7 +411,7 @@ impl QualityHandler {
                         safety: SafetyLevel::RequiresReview,
                         confidence: 0.75,
                         reversible: true,
-                        refactor_call: Some(codebuddy_foundation::protocol::analysis_result::RefactorCall {
+                        refactor_call: Some(mill_foundation::protocol::analysis_result::RefactorCall {
                             command: "extract.plan".to_string(),
                             arguments: json!({
                                 "kind": "function",

@@ -13,11 +13,8 @@ mod utils;
 
 use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use codebuddy_foundation::core::model::mcp::ToolCall;
-use codebuddy_foundation::protocol::{
-    refactor_plan::{PlanSummary, PlanWarning},
-    ApiError as ServerError, ApiResult as ServerResult, RefactorPlan,
-};
+use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::protocol::{ refactor_plan::{ PlanSummary , PlanWarning } , ApiError as ServerError , ApiResult as ServerResult , RefactorPlan , };
 use lsp_types::{Position, WorkspaceEdit};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -87,7 +84,7 @@ pub(crate) struct RenameOptions {
 
     /// Custom scope configuration (when scope="custom")
     #[serde(default)]
-    pub custom_scope: Option<codebuddy_foundation::core::rename_scope::RenameScope>,
+    pub custom_scope: Option<mill_foundation::core::rename_scope::RenameScope>,
 
     /// Consolidate source package into target (for directory renames only)
     /// When true, merges Cargo.toml dependencies and updates all imports.
@@ -99,13 +96,13 @@ pub(crate) struct RenameOptions {
 impl RenameOptions {
     /// Build RenameScope from options
     /// Resolves update_all flag if present in custom_scope
-    pub fn to_rename_scope(&self) -> Option<codebuddy_foundation::core::rename_scope::RenameScope> {
+    pub fn to_rename_scope(&self) -> Option<mill_foundation::core::rename_scope::RenameScope> {
         let scope = match self.scope.as_deref() {
             Some("code-only") => {
-                Some(codebuddy_foundation::core::rename_scope::RenameScope::code_only())
+                Some(mill_foundation::core::rename_scope::RenameScope::code_only())
             }
             Some("all") | None => {
-                Some(codebuddy_foundation::core::rename_scope::RenameScope::all())
+                Some(mill_foundation::core::rename_scope::RenameScope::all())
             }
             Some("custom") => self.custom_scope.clone(),
             _ => None,
@@ -334,8 +331,8 @@ impl RenameHandler {
         targets: &[RenameTarget],
         options: &RenameOptions,
         context: &ToolHandlerContext,
-    ) -> ServerResult<codebuddy_foundation::protocol::refactor_plan::RenamePlan> {
-        use codebuddy_foundation::protocol::refactor_plan::{PlanMetadata, RenamePlan};
+    ) -> ServerResult<mill_foundation::protocol::refactor_plan::RenamePlan> {
+        use mill_foundation::protocol::refactor_plan::{ PlanMetadata , RenamePlan };
 
         debug!(targets_count = targets.len(), "Planning batch rename");
 

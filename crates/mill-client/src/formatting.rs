@@ -1,6 +1,6 @@
 use crate::error::ClientError;
 use crate::websocket::MCPResponse;
-use codebuddy_foundation::protocol::refactor_plan::RefactorPlan;
+use mill_foundation::protocol::refactor_plan::RefactorPlan;
 use console::{style, Emoji};
 use indicatif::{ProgressBar, ProgressStyle};
 use serde_json::Value;
@@ -552,7 +552,7 @@ impl Formatter {
 /// - "Extracts function 'helper' into a new declaration in 2 files"
 /// - "Moves code to 'target.rs' affecting 1 file"
 pub fn format_plan(plan: &RefactorPlan) -> String {
-    use codebuddy_foundation::protocol::refactor_plan::*;
+    use mill_foundation::protocol::refactor_plan::*;
 
     match plan {
         RefactorPlan::RenamePlan(p) => {
@@ -648,7 +648,7 @@ pub fn format_client_error(error: &ClientError) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use codebuddy_foundation::protocol::refactor_plan::*;
+    use mill_foundation::protocol::refactor_plan::*;
     use lsp_types::WorkspaceEdit;
     use serde_json::json;
     use std::collections::HashMap;

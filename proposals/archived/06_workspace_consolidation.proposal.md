@@ -48,25 +48,25 @@ This proposal adopts the "Pragmatic Layered Workspace" strategy to refactor the 
 - Commit: `708f446c feat: Enable cargo-deny architectural layer enforcement (Phase 06a)`
 
 ### 06b: Foundational Consolidation ✅ COMPLETE
-- [x] Create the target directory and manifest for the new `crates/codebuddy-foundation` crate.
-- [x] For `cb-core`, `cb-types`, and `cb-protocol`, generate a `rename.plan` with the `consolidate: true` option, targeting `crates/codebuddy-foundation` as the destination.
+- [x] Create the target directory and manifest for the new `../../crates/mill-foundation` crate.
+- [x] For `cb-core`, `cb-types`, and `cb-protocol`, generate a `rename.plan` with the `consolidate: true` option, targeting `../../crates/mill-foundation` as the destination.
 - [x] Execute the generated plans using `workspace.apply_edit`.
-- [x] Manually add the public modules (`pub mod core;` etc.) to `crates/codebuddy-foundation/src/lib.rs` as required by the consolidation workflow.
+- [x] Manually add the public modules (`pub mod core;` etc.) to `../../crates/mill-foundation/src/lib.rs` as required by the consolidation workflow.
 - [x] Create `crates/codebuddy-plugin-system` and use the same `rename.plan(consolidate) -> workspace.apply_edit` workflow to merge `cb-plugins` and `cb-plugin-registry`.
 - [x] Use the `rename.plan(consolidate)` workflow to merge `cb-bench` into `cb-test-support`.
 
 **Completion Notes:**
-- ✅ codebuddy-foundation (cb-core + cb-types + cb-protocol) - merged and verified
+- ✅ mill-foundation (cb-core + cb-types + cb-protocol) - merged and verified
 - ✅ codebuddy-plugin-system (cb-plugins + cb-plugin-registry) - merged and verified
 - ✅ cb-test-support (cb-bench merged) - completed
 - All builds passing, old crates deleted, workspace members updated
 - Circular dependency detection integrated into consolidation workflow
 - Comprehensive import path updates for 100% coverage
 - Related commits:
-  - `c01c1c96 feat: Create codebuddy-foundation crate`
-  - `e9d5c049 feat: Consolidate cb-types into codebuddy-foundation`
-  - `841a5d7d feat: Complete cb-protocol consolidation into codebuddy-foundation`
-  - `fb25c4ef feat: Consolidate codebuddy-core into codebuddy-foundation`
+  - `c01c1c96 feat: Create mill-foundation crate`
+  - `e9d5c049 feat: Consolidate cb-types into mill-foundation`
+  - `841a5d7d feat: Complete cb-protocol consolidation into mill-foundation`
+  - `fb25c4ef feat: Consolidate codebuddy-core into mill-foundation`
   - Multiple bug fix and enhancement commits
 
 ### 07a: Workspace Standardization

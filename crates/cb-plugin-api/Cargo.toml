@@ -4,7 +4,7 @@ edition = "2021"
 license.workspace = true
 
 [dependencies]
-codebuddy-foundation = { path = "../codebuddy-foundation" }
+mill-foundation = { path = "../mill-foundation" }
 async-trait = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -11,7 +11,7 @@ categories = ["development-tools", "command-line-utilities"]
 
 [dependencies]
 mill-server = { path = "../../crates/mill-server", default-features = false }
-codebuddy-foundation = { path = "../../crates/codebuddy-foundation" }
+mill-foundation = { path = "../../crates/mill-foundation" }
 mill-transport = { path = "../../crates/mill-transport", default-features = false }
 cb-plugin-api = { path = "../../crates/cb-plugin-api" }
 
@@ -75,7 +75,7 @@ lang-typescript = ["mill-server/lang-typescript", "mill-plugin-bundle/lang-types
 lang-markdown = ["mill-server/lang-markdown", "mill-plugin-bundle/lang-markdown", "mill-ast/lang-markdown", "codebuddy-plugin-system/lang-markdown", "mill-transport/lang-markdown"]
 lang-toml = ["mill-server/lang-toml", "mill-plugin-bundle/lang-toml"]
 lang-yaml = ["mill-server/lang-yaml", "mill-plugin-bundle/lang-yaml"]
-mcp-proxy = ["mill-server/mcp-proxy", "mill-client/mcp-proxy", "codebuddy-foundation/mcp-proxy", "mill-config/mcp-proxy"]
+mcp-proxy = ["mill-server/mcp-proxy", "mill-client/mcp-proxy", "mill-foundation/mcp-proxy", "mill-config/mcp-proxy"]
 
 # Platform-specific dependencies for process management
 [target.'cfg(unix)'.dependencies]

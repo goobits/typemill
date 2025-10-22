@@ -3,8 +3,8 @@
 use crate::{McpDispatcher, SessionInfo};
 use mill_auth::jwt::{ decode , Claims , DecodingKey , Validation };
 use mill_config::AppConfig;
-use codebuddy_foundation::core::model::mcp::{McpError, McpMessage, McpRequest, McpResponse};
-use codebuddy_foundation::protocol::{ApiError, ApiResult};
+use mill_foundation::core::model::mcp::{ McpError , McpMessage , McpRequest , McpResponse };
+use mill_foundation::protocol::{ ApiError , ApiResult };
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::json;

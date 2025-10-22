@@ -20,9 +20,7 @@ mod planner;
 
 use crate::services::reference_updater::ReferenceUpdater;
 use cb_plugin_api::{PluginRegistry, ScanScope};
-use codebuddy_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, EditPlan,
-};
+use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult , EditPlan , };
 use std::path::{Path, PathBuf};
 use tracing::info;
 
@@ -149,7 +147,7 @@ impl<'a> MoveService<'a> {
         &self,
         old_path: &Path,
         new_path: &Path,
-        rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
+        rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
     ) -> ServerResult<EditPlan> {
         info!(
             old_path = %old_path.display(),
@@ -215,7 +213,7 @@ impl<'a> MoveService<'a> {
         &self,
         old_path: &Path,
         new_path: &Path,
-        rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
+        rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
     ) -> ServerResult<EditPlan> {
         info!(
             old_path = %old_path.display(),

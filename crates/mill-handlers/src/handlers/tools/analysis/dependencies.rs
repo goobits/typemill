@@ -15,11 +15,9 @@
 
 use super::super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use codebuddy_foundation::core::model::mcp::ToolCall;
-use codebuddy_foundation::protocol::analysis_result::{
-    Finding, FindingLocation, Position, Range, SafetyLevel, Severity, Suggestion,
-};
-use codebuddy_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::protocol::analysis_result::{ Finding , FindingLocation , Position , Range , SafetyLevel , Severity , Suggestion , };
+use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -31,7 +29,7 @@ use cb_analysis_circular_deps::{
 };
 
 #[cfg(feature = "analysis-circular-deps")]
-use codebuddy_foundation::protocol::analysis_result::AnalysisResult;
+use mill_foundation::protocol::analysis_result::AnalysisResult;
 
 /// Detect and analyze import/export statements using plugin-based AST parsing
 ///
@@ -1048,7 +1046,7 @@ fn parse_imports_with_plugin(
     language: &str,
     file_path: &str,
     registry: &crate::LanguagePluginRegistry,
-) -> Result<Vec<codebuddy_foundation::protocol::ImportInfo>, String> {
+) -> Result<Vec<mill_foundation::protocol::ImportInfo>, String> {
     use std::path::Path;
 
     // Map language names to file extensions
@@ -1081,7 +1079,7 @@ fn parse_imports_with_plugin(
 /// # Returns
 /// A vector of symbol names (including default, namespace, and named imports)
 fn extract_symbols_from_import_info(
-    import_info: &codebuddy_foundation::protocol::ImportInfo,
+    import_info: &mill_foundation::protocol::ImportInfo,
 ) -> Vec<String> {
     let mut symbols = Vec::new();
 
@@ -1216,12 +1214,12 @@ impl ToolHandler for DependenciesHandler {
 
                 let analysis_result = AnalysisResult {
                     findings,
-                    summary: codebuddy_foundation::protocol::analysis_result::AnalysisSummary {
+                    summary: mill_foundation::protocol::analysis_result::AnalysisSummary {
                         total_findings: result.summary.total_cycles,
                         returned_findings: result.summary.total_cycles,
                         has_more: false,
                         by_severity:
-                            codebuddy_foundation::protocol::analysis_result::SeverityBreakdown {
+                            mill_foundation::protocol::analysis_result::SeverityBreakdown {
                                 high: result.summary.total_cycles,
                                 medium: 0,
                                 low: 0,
@@ -1230,10 +1228,10 @@ impl ToolHandler for DependenciesHandler {
                         symbols_analyzed: Some(result.summary.total_modules_in_cycles),
                         analysis_time_ms: result.summary.analysis_time_ms,
                     },
-                    metadata: codebuddy_foundation::protocol::analysis_result::AnalysisMetadata {
+                    metadata: mill_foundation::protocol::analysis_result::AnalysisMetadata {
                         category: "dependencies".to_string(),
                         kind: "circular".to_string(),
-                        scope: codebuddy_foundation::protocol::analysis_result::AnalysisScope {
+                        scope: mill_foundation::protocol::analysis_result::AnalysisScope {
                             scope_type: "workspace".to_string(),
                             path: project_root.to_string_lossy().to_string(),
                             include: vec![],

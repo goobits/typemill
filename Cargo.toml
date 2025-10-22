@@ -20,10 +20,9 @@ members = [
     "analysis/cb-analysis-graph",
     "analysis/cb-analysis-circular-deps",
     "tests/e2e",
-    "crates/codebuddy-foundation",
     "crates/mill-workspaces",
     "crates/mill-auth",
-    "crates/xtask", "crates/mill-ast", "crates/mill-client", "crates/mill-test-support", "crates/mill-handlers", "crates/mill-config",
+    "crates/xtask", "crates/mill-ast", "crates/mill-client", "crates/mill-test-support", "crates/mill-handlers", "crates/mill-config", "crates/mill-foundation",
 ]
 resolver = "2"
 
@@ -73,7 +72,7 @@ dashmap = "5.5"
 futures = "0.3"
 
 # Core API crates
-codebuddy-foundation = { path = "crates/codebuddy-foundation" }
+mill-foundation = { path = "crates/mill-foundation" }
 codebuddy-config = { path = "crates/codebuddy-config" }
 cb-plugin-api = { path = "crates/cb-plugin-api" }
 

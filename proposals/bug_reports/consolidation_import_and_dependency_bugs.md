@@ -8,11 +8,11 @@
 
 ## Summary
 
-When consolidating the `cb-protocol` crate into `codebuddy-foundation`, the consolidation tool successfully moved files and updated workspace members, but **failed to update import paths and merge dependencies**, leaving the workspace in a broken state requiring manual fixes.
+When consolidating the `cb-protocol` crate into `mill-foundation`, the consolidation tool successfully moved files and updated workspace members, but **failed to update import paths and merge dependencies**, leaving the workspace in a broken state requiring manual fixes.
 
 ## Expected Behavior
 
-When consolidating a crate (e.g., `cb-protocol` → `codebuddy-foundation/src/protocol`), the tool should:
+When consolidating a crate (e.g., `cb-protocol` → `mill-foundation/src/protocol`), the tool should:
 
 1. ✅ Move source files from `source-crate/src/*` to `target-crate/src/module/*`
 2. ✅ Remove source crate from workspace members
@@ -57,10 +57,10 @@ find /workspace/crates /workspace/apps /workspace/tests -name "*.rs" -type f \
 ### Bug #2: Self-Imports Not Fixed in Moved Code
 
 **What happened:**
-- After moving code INTO `codebuddy-foundation`, the moved files still imported from `codebuddy_foundation::`
+- After moving code INTO `mill-foundation`, the moved files still imported from `codebuddy_foundation::`
 - Should have been changed to `crate::` since the code is now INSIDE that crate
 
-**Example from `/workspace/crates/codebuddy-foundation/src/protocol/error.rs`:**
+**Example from `/workspace/crates/mill-foundation/src/protocol/error.rs`:**
 ```rust
 // After consolidation - BROKEN
 use codebuddy_foundation::error::{error_codes, ApiError as CoreApiError};
@@ -74,7 +74,7 @@ impl From<crate::model::mcp::McpError> for ApiError { ... }
 ```
 
 **Impact:**
-- 9 compilation errors in `codebuddy-foundation/src/protocol/error.rs`
+- 9 compilation errors in `mill-foundation/src/protocol/error.rs`
 - "use of unresolved module or unlinked crate `codebuddy_foundation`"
 
 **Manual fix required:**
@@ -101,7 +101,7 @@ lsp-types = "0.97"
 - Compilation errors: "use of unresolved module or unlinked crate `async_trait`"
 
 **Manual fix required:**
-Added to `/workspace/crates/codebuddy-foundation/Cargo.toml`:
+Added to `/workspace/crates/mill-foundation/Cargo.toml`:
 ```toml
 [dependencies]
 # ... existing deps ...
@@ -126,7 +126,7 @@ lsp-types = "0.97"
    - Updates: `use utils::` → `use helpers::`
    - ✅ Works correctly
 
-2. When a crate consolidates: `cb-protocol` → `codebuddy-foundation/src/protocol`
+2. When a crate consolidates: `cb-protocol` → `mill-foundation/src/protocol`
    - Expected: `use cb_protocol::` → `use codebuddy_foundation::protocol::`
    - Actual: ❌ No update performed
 
@@ -162,7 +162,7 @@ pub async fn execute_consolidation_post_processing(&self, metadata: &Consolidati
 
 **Hypothesis**: Import updater lacks **context awareness** of which crate the code is moving INTO:
 
-- When moving `cb-protocol/src/error.rs` → `codebuddy-foundation/src/protocol/error.rs`
+- When moving `cb-protocol/src/error.rs` → `mill-foundation/src/protocol/error.rs`
 - The file contains: `use codebuddy_foundation::error::`
 - This is now a **self-import** (code importing from its own crate)
 - Should be rewritten to: `use crate::error::`
@@ -314,7 +314,7 @@ async fn test_consolidation_leaves_workspace_buildable() {
 
 **Affected during bug manifestation**:
 - 66 files with `cb_protocol::` references (import bugs)
-- 1 file with self-import bugs (`codebuddy-foundation/src/protocol/error.rs`)
+- 1 file with self-import bugs (`mill-foundation/src/protocol/error.rs`)
 - 2 Cargo.toml files (missing dependency merges)
 
 **Code to modify**:
@@ -356,7 +356,7 @@ After fixes, running consolidation should result in:
 
 ## Notes
 
-- This bug was discovered during **dogfooding** Proposal 06b: Consolidating `cb-protocol` → `codebuddy-foundation`
+- This bug was discovered during **dogfooding** Proposal 06b: Consolidating `cb-protocol` → `mill-foundation`
 - The consolidation **planning** step correctly identified 173 files to update
 - The consolidation **execution** step only updated Cargo.toml dependency declarations, not import statements
 - Manual fixes took ~10 minutes and required deep knowledge of the codebase

@@ -178,7 +178,7 @@ if let RefactorPlan::DeletePlan(delete_plan) = &params.plan {
 
 **1. Service Trait Abstractions**
 ```rust
-// File: crates/codebuddy-foundation/src/protocol/src/lib.rs:441-465
+// File: ../../crates/mill-foundation/src/protocol/src/lib.rs:441-465
 #[async_trait]
 pub trait AstService: Send + Sync {
     async fn build_import_graph(&self, file: &Path) -> ApiResult<ImportGraph>;
@@ -406,7 +406,7 @@ pub(super) use_git: bool,
 ### Location
 - `../../crates/mill-lsp/src/` - LSP client management
 - `crates/cb-plugins/src/` - Plugin system
-- `crates/codebuddy-foundation/src/core/src/` - Configuration and logging
+- `../../crates/mill-foundation/src/core/src/` - Configuration and logging
 
 ### Strengths
 
@@ -442,7 +442,7 @@ pub async fn dispatch(
 
 **3. Configuration Management**
 ```rust
-// File: crates/codebuddy-foundation/src/core/src/ - AppConfig structure
+// File: ../../crates/mill-foundation/src/core/src/ - AppConfig structure
 - Centralized configuration
 - No hardcoded values in service code
 - LSP, cache, logging all configurable
@@ -487,7 +487,7 @@ if let Ok(home) = std::env::var("HOME") {
 
 **1. Protocol Layer (`cb-protocol`)**
 ```rust
-// File: crates/codebuddy-foundation/src/protocol/src/lib.rs:441-465
+// File: ../../crates/mill-foundation/src/protocol/src/lib.rs:441-465
 - Well-defined service traits
 - No implementation details
 - Serves as contract between layers
@@ -513,7 +513,7 @@ pub trait ToolHandler: Send + Sync {
 
 **3. Error Type Hierarchy**
 ```rust
-// File: crates/codebuddy-foundation/src/protocol/src/error.rs
+// File: ../../crates/mill-foundation/src/protocol/src/error.rs
 pub type ApiResult<T> = Result<T, ApiError>;
 
 pub enum ApiError {

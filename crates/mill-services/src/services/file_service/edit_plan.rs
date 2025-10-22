@@ -1,8 +1,5 @@
 use super::FileService;
-use codebuddy_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, DependencyUpdate, EditPlan,
-    EditPlanMetadata, TextEdit,
-};
+use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult , DependencyUpdate , EditPlan , EditPlanMetadata , TextEdit , };
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -128,9 +125,9 @@ impl FileService {
 
         // Files affected by text edits (group by file_path)
         // Skip file operations (Move, Create, Delete) - they're handled separately
-        use codebuddy_foundation::protocol::EditType;
+        use mill_foundation::protocol::EditType;
         use std::collections::HashMap;
-        let mut edits_by_file: HashMap<String, Vec<&codebuddy_foundation::protocol::TextEdit>> =
+        let mut edits_by_file: HashMap<String, Vec<&mill_foundation::protocol::TextEdit>> =
             HashMap::new();
 
         for edit in &plan.edits {
@@ -410,7 +407,7 @@ impl FileService {
             let _guard = file_lock.write().await;
 
             // Convert &TextEdit to TextEdit
-            let owned_edits: Vec<codebuddy_foundation::protocol::TextEdit> =
+            let owned_edits: Vec<mill_foundation::protocol::TextEdit> =
                 edits.iter().map(|e| (*e).clone()).collect();
 
             // Get the original content from snapshot (guarantees atomicity)

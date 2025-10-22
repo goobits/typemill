@@ -1,7 +1,7 @@
 //! Integration tests for concurrent operations
 
 use super::*;
-use codebuddy_foundation::protocol::ApiError as ServerError;
+use mill_foundation::protocol::ApiError as ServerError;
 use futures_util::future;
 use serde_json::{json, Value};
 use std::path::PathBuf;

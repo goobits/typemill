@@ -3,10 +3,7 @@
 //! Converts LSP WorkspaceEdit structures to internal EditPlan format.
 //! Handles all edit types: Replace, Create, Move, Delete.
 
-use codebuddy_foundation::protocol::{
-    ApiError, ApiResult as ServerResult, ConsolidationMetadata, EditPlan, EditPlanMetadata,
-    EditType, RefactorPlan, RefactorPlanExt, TextEdit,
-};
+use mill_foundation::protocol::{ ApiError , ApiResult as ServerResult , ConsolidationMetadata , EditPlan , EditPlanMetadata , EditType , RefactorPlan , RefactorPlanExt , TextEdit , };
 use lsp_types::{Uri, WorkspaceEdit};
 use std::path::Path;
 use tracing::{debug, info};
@@ -57,7 +54,7 @@ impl PlanConverter {
                     edits.push(TextEdit {
                         file_path: Some(file_path_str.clone()),
                         edit_type: EditType::Replace,
-                        location: codebuddy_foundation::protocol::EditLocation {
+                        location: mill_foundation::protocol::EditLocation {
                             start_line: lsp_edit.range.start.line,
                             start_column: lsp_edit.range.start.character,
                             end_line: lsp_edit.range.end.line,
@@ -257,7 +254,7 @@ impl PlanConverter {
             edits.push(TextEdit {
                 file_path: Some(file_path_str.clone()),
                 edit_type: EditType::Replace,
-                location: codebuddy_foundation::protocol::EditLocation {
+                location: mill_foundation::protocol::EditLocation {
                     start_line: text_edit.range.start.line,
                     start_column: text_edit.range.start.character,
                     end_line: text_edit.range.end.line,
@@ -289,7 +286,7 @@ impl PlanConverter {
                 edits.push(TextEdit {
                     file_path: Some(file_path_str.clone()),
                     edit_type: EditType::Create,
-                    location: codebuddy_foundation::protocol::EditLocation {
+                    location: mill_foundation::protocol::EditLocation {
                         start_line: 0,
                         start_column: 0,
                         end_line: 0,
@@ -316,7 +313,7 @@ impl PlanConverter {
                 edits.push(TextEdit {
                     file_path: Some(old_path.clone()),
                     edit_type: EditType::Move,
-                    location: codebuddy_foundation::protocol::EditLocation {
+                    location: mill_foundation::protocol::EditLocation {
                         start_line: 0,
                         start_column: 0,
                         end_line: 0,
@@ -338,7 +335,7 @@ impl PlanConverter {
                 edits.push(TextEdit {
                     file_path: Some(file_path_str.clone()),
                     edit_type: EditType::Delete,
-                    location: codebuddy_foundation::protocol::EditLocation {
+                    location: mill_foundation::protocol::EditLocation {
                         start_line: 0,
                         start_column: 0,
                         end_line: 0,
@@ -422,7 +419,7 @@ mod tests {
                 TextEdit {
                     file_path: Some("new_file.rs".to_string()),
                     edit_type: EditType::Create,
-                    location: codebuddy_foundation::protocol::EditLocation {
+                    location: mill_foundation::protocol::EditLocation {
                         start_line: 0,
                         start_column: 0,
                         end_line: 0,
@@ -436,7 +433,7 @@ mod tests {
                 TextEdit {
                     file_path: Some("existing.rs".to_string()),
                     edit_type: EditType::Replace,
-                    location: codebuddy_foundation::protocol::EditLocation {
+                    location: mill_foundation::protocol::EditLocation {
                         start_line: 0,
                         start_column: 0,
                         end_line: 0,
@@ -473,7 +470,7 @@ mod tests {
                 TextEdit {
                     file_path: Some("old_file.rs".to_string()),
                     edit_type: EditType::Delete,
-                    location: codebuddy_foundation::protocol::EditLocation {
+                    location: mill_foundation::protocol::EditLocation {
                         start_line: 0,
                         start_column: 0,
                         end_line: 0,
@@ -487,7 +484,7 @@ mod tests {
                 TextEdit {
                     file_path: Some("existing.rs".to_string()),
                     edit_type: EditType::Replace,
-                    location: codebuddy_foundation::protocol::EditLocation {
+                    location: mill_foundation::protocol::EditLocation {
                         start_line: 0,
                         start_column: 0,
                         end_line: 0,

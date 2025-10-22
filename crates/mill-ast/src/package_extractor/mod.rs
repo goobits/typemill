@@ -12,7 +12,7 @@ pub mod workspace;
 mod tests;
 
 use crate::error::AstResult;
-use codebuddy_foundation::protocol::EditPlan;
+use mill_foundation::protocol::EditPlan;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

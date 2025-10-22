@@ -8,11 +8,8 @@
 
 use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use codebuddy_foundation::core::model::mcp::ToolCall;
-use codebuddy_foundation::protocol::{
-    refactor_plan::{PlanMetadata, PlanSummary, TransformPlan},
-    ApiError as ServerError, ApiResult as ServerResult, RefactorPlan,
-};
+use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::protocol::{ refactor_plan::{ PlanMetadata , PlanSummary , TransformPlan } , ApiError as ServerError , ApiResult as ServerResult , RefactorPlan , };
 use lsp_types::{Range, WorkspaceEdit};
 use serde::Deserialize;
 use serde_json::{json, Value};

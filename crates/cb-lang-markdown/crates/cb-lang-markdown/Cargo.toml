@@ -29,4 +29,4 @@ tokio = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
-codebuddy-foundation = { path = "../codebuddy-foundation" }
+mill-foundation = { path = "../../../mill-foundation" }

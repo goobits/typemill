@@ -6,10 +6,10 @@ use std::sync::Arc;
 
 use cb_plugin_api::PluginRegistry;
 use mill_ast::AstCache;
-use codebuddy_foundation::protocol::{ApiResult, CacheStats, ImportGraph};
+use mill_foundation::protocol::{ ApiResult , CacheStats , ImportGraph };
 use tracing::{debug, trace};
 
-use codebuddy_foundation::protocol::AstService;
+use mill_foundation::protocol::AstService;
 
 /// Default implementation of the AST service with caching
 pub struct DefaultAstService {
@@ -106,13 +106,13 @@ fn build_import_graph_with_plugin(
     source: &str,
     path: &Path,
     registry: Arc<PluginRegistry>,
-) -> Result<codebuddy_foundation::protocol::ImportGraph, codebuddy_foundation::protocol::ApiError> {
+) -> Result<mill_foundation::protocol::ImportGraph, mill_foundation::protocol::ApiError> {
     // Determine file extension
     let extension = path
         .extension()
         .and_then(|ext| ext.to_str())
         .ok_or_else(|| {
-            codebuddy_foundation::protocol::ApiError::internal("File has no extension")
+            mill_foundation::protocol::ApiError::internal("File has no extension")
         })?;
 
     // For languages without plugins, fall back to cb-ast
@@ -123,13 +123,13 @@ fn build_import_graph_with_plugin(
     ) {
         // Fallback to cb-ast parser for other languages (if any remain)
         return mill_ast::parser::build_import_graph(source, path).map_err(|e| {
-            codebuddy_foundation::protocol::ApiError::internal(format!("AST parsing failed: {}", e))
+            mill_foundation::protocol::ApiError::internal(format!("AST parsing failed: {}", e))
         });
     }
 
     // Find appropriate plugin from injected registry
     let plugin = registry.find_by_extension(extension).ok_or_else(|| {
-        codebuddy_foundation::protocol::ApiError::internal(format!(
+        mill_foundation::protocol::ApiError::internal(format!(
             "No plugin found for .{} files",
             extension
         ))
@@ -139,7 +139,7 @@ fn build_import_graph_with_plugin(
     plugin
         .analyze_detailed_imports(source, Some(path))
         .map_err(|e| {
-            codebuddy_foundation::protocol::ApiError::internal(format!(
+            mill_foundation::protocol::ApiError::internal(format!(
                 "Failed to parse imports: {}",
                 e
             ))

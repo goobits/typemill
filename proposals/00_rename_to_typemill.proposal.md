@@ -71,7 +71,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 - `cb-lang-yaml` - YAML configuration plugin
 
 **Foundation/Infrastructure Crates (7 crates - `codebuddy-*` prefix):**
-- `codebuddy-foundation` - Core foundation layer
+- `mill-foundation` - Core foundation layer
 - `mill-config` - Configuration system
 - `mill-ast` - AST processing and manipulation
 - `mill-auth` - Authentication and authorization
@@ -120,7 +120,7 @@ All crates will adopt the `mill-*` prefix for consistency and simplicity.
 - `cb-lang-yaml` → `mill-lang-yaml`
 
 **Foundation/Infrastructure:**
-- `codebuddy-foundation` → `mill-foundation`
+- `mill-foundation` → `mill-foundation`
 - `mill-config` → `mill-config`
 - `mill-ast` → `mill-ast`
 - `mill-auth` → `mill-auth`
@@ -498,7 +498,7 @@ git tag v2.0.0
 - [ ] `cb-lang-yaml` → `mill-lang-yaml`
 
 **Foundation/Infrastructure (7 crates):**
-- [ ] `codebuddy-foundation` → `mill-foundation`
+- [ ] `mill-foundation` → `mill-foundation`
 - [ ] `mill-config` → `mill-config`
 - [ ] `mill-ast` → `mill-ast`
 - [ ] `mill-auth` → `mill-auth`
@@ -1024,7 +1024,7 @@ See full documentation at https://typemill.org/docs/migration
   crates/cb-lang-markdown → crates/mill-lang-markdown
   crates/cb-lang-toml → crates/mill-lang-toml
   crates/cb-lang-yaml → crates/mill-lang-yaml
-  crates/codebuddy-foundation → crates/mill-foundation
+  ../crates/mill-foundation → crates/mill-foundation
   ../crates/mill-config → crates/mill-config
   ../crates/mill-ast → crates/mill-ast
   ../crates/mill-auth → crates/mill-auth
@@ -1054,7 +1054,7 @@ See full documentation at https://typemill.org/docs/migration
   cb-lang-markdown → mill-lang-markdown
   cb-lang-toml → mill-lang-toml
   cb-lang-yaml → mill-lang-yaml
-  codebuddy-foundation → mill-foundation
+  mill-foundation → mill-foundation
   mill-config → mill-config
   mill-ast → mill-ast
   mill-auth → mill-auth

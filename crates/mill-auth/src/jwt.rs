@@ -1,6 +1,6 @@
 //! JWT authentication utilities
 
-use codebuddy_foundation::error::CoreError;
+use mill_foundation::error::CoreError;
 pub use jsonwebtoken::{decode, DecodingKey, Validation};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::{Deserialize, Serialize};

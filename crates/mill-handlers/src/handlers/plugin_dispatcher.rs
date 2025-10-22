@@ -21,9 +21,9 @@ use async_trait::async_trait;
 use mill_services::services::planner::Planner;
 use mill_services::services::workflow_executor::WorkflowExecutor;
 use mill_transport::McpDispatcher;
-use codebuddy_foundation::core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
-use codebuddy_foundation::protocol::AstService;
-use codebuddy_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::core::model::mcp::{ McpMessage , McpRequest , McpResponse , ToolCall };
+use mill_foundation::protocol::AstService;
+use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
 use codebuddy_plugin_system::{LspAdapterPlugin, PluginManager};
 use mill_workspaces::WorkspaceManager;
 use serde_json::{json, Value};
@@ -557,10 +557,10 @@ impl McpDispatcher for PluginDispatcher {
         &self,
         message: McpMessage,
         session_info: &mill_transport::SessionInfo,
-    ) -> codebuddy_foundation::protocol::ApiResult<McpMessage> {
+    ) -> mill_foundation::protocol::ApiResult<McpMessage> {
         self.dispatch(message, session_info)
             .await
-            .map_err(|e| codebuddy_foundation::protocol::ApiError::internal(e.to_string()))
+            .map_err(|e| mill_foundation::protocol::ApiError::internal(e.to_string()))
     }
 }
 

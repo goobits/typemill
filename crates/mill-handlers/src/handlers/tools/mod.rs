@@ -4,8 +4,8 @@
 //! Each handler is responsible for a specific domain of functionality.
 
 use async_trait::async_trait;
-use codebuddy_foundation::core::model::mcp::ToolCall;
-use codebuddy_foundation::protocol::ApiResult as ServerResult;
+use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::protocol::ApiResult as ServerResult;
 use serde_json::Value;
 
 use super::lsp_adapter::DirectLspAdapter;
@@ -51,7 +51,7 @@ pub use dispatch::dispatch_to_language_plugin;
 /// Dispatch helpers for language plugin operations
 mod dispatch {
     use super::ToolHandlerContext;
-    use codebuddy_foundation::protocol::{ApiError, ApiResult};
+    use mill_foundation::protocol::{ ApiError , ApiResult };
     use std::path::Path;
 
     /// Dispatch a file operation to the appropriate language plugin based on file extension
@@ -167,7 +167,7 @@ pub type ToolContext = ToolHandlerContext;
 ///
 /// ```text
 /// use mill_server::handlers::tools::{ToolHandler, ToolHandlerContext};
-/// use codebuddy_foundation::core::model::mcp::ToolCall;
+/// use mill_foundation::core::model::mcp::ToolCall;
 /// use async_trait::async_trait;
 ///
 /// struct MyHandler;

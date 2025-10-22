@@ -5,8 +5,8 @@
 //! (for MCP clients like Claude Code).
 
 use async_trait::async_trait;
-use codebuddy_foundation::core::model::mcp::McpMessage;
-use codebuddy_foundation::protocol::ApiResult;
+use mill_foundation::core::model::mcp::McpMessage;
+use mill_foundation::protocol::ApiResult;
 
 pub mod admin;
 pub mod session;

@@ -4,7 +4,7 @@
 //! Languages implement only the traits they need for their specific capabilities.
 
 use crate::{PluginError, PluginResult};
-use codebuddy_foundation::protocol::DependencyUpdate;
+use mill_foundation::protocol::DependencyUpdate;
 use std::path::Path;
 
 // ============================================================================

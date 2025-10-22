@@ -2,7 +2,7 @@
 
 use crate::services::reference_updater::ReferenceUpdater;
 use cb_plugin_api::{PluginRegistry, ScanScope};
-use codebuddy_foundation::protocol::{ApiResult as ServerResult, EditPlan};
+use mill_foundation::protocol::{ ApiResult as ServerResult , EditPlan };
 use std::path::Path;
 use tracing::{info, warn};
 
@@ -13,7 +13,7 @@ pub async fn plan_file_move(
     reference_updater: &ReferenceUpdater,
     plugin_registry: &PluginRegistry,
     scan_scope: Option<ScanScope>,
-    rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
+    rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
 ) -> ServerResult<EditPlan> {
     info!(
         old_path = %old_abs.display(),
@@ -72,7 +72,7 @@ pub async fn plan_directory_move(
     plugin_registry: &PluginRegistry,
     project_root: &Path,
     scan_scope: Option<ScanScope>,
-    rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
+    rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
 ) -> ServerResult<EditPlan> {
     info!(
         old_path = %old_abs.display(),
@@ -221,9 +221,9 @@ async fn plan_documentation_and_config_edits(
     new_path: &Path,
     plugin_registry: &PluginRegistry,
     project_root: &Path,
-    rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
-) -> ServerResult<Vec<codebuddy_foundation::protocol::TextEdit>> {
-    use codebuddy_foundation::protocol::{EditLocation, EditType, TextEdit};
+    rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
+) -> ServerResult<Vec<mill_foundation::protocol::TextEdit>> {
+    use mill_foundation::protocol::{ EditLocation , EditType , TextEdit };
     use std::path::PathBuf;
 
     let mut edits = Vec::new();

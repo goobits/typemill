@@ -1454,7 +1454,7 @@ Analyze Rust module dependencies to determine which external crates, workspace d
   "workspace_dependencies": [
     "cb-types",
     "cb-protocol",
-    "codebuddy-foundation"
+    "mill-foundation"
   ],
   "std_dependencies": [
     "std::collections",
@@ -2474,7 +2474,7 @@ When enabled, performs Rust crate consolidation by merging one crate into anothe
 ```bash
 # Preview consolidation
 codebuddy tool rename_directory '{
-  "old_path": "../crates/codebuddy-foundation/src/protocol",
+  "old_path": "../../crates/mill-foundation/src/protocol",
   "new_path": "crates/cb-types/src/protocol",
   "consolidate": true,
   "dry_run": true
@@ -2482,7 +2482,7 @@ codebuddy tool rename_directory '{
 
 # Execute consolidation
 codebuddy tool rename_directory '{
-  "old_path": "../crates/codebuddy-foundation/src/protocol",
+  "old_path": "../../crates/mill-foundation/src/protocol",
   "new_path": "crates/cb-types/src/protocol",
   "consolidate": true
 }'
@@ -2493,7 +2493,7 @@ codebuddy tool rename_directory '{
 {
   "success": true,
   "operation": "consolidate_rust_package",
-  "old_path": "../crates/codebuddy-foundation/src/protocol",
+  "old_path": "../../crates/mill-foundation/src/protocol",
   "new_path": "crates/cb-types/src/protocol",
   "files_moved": 15,
   "import_updates": {

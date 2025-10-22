@@ -1,7 +1,7 @@
 //! Tests for error handling
 
-use codebuddy_foundation::error::CoreError;
-use codebuddy_foundation::error::CoreResult;
+use mill_foundation::error::CoreError;
+use mill_foundation::error::CoreResult;
 use std::io;
 
 #[test]

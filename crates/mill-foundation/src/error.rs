@@ -128,7 +128,7 @@ pub mod error_codes {
 ///
 /// # Example
 /// ```rust,no_run
-/// use codebuddy_foundation::error::ApiError;
+/// use mill_foundation::error::ApiError;
 /// use serde_json::json;
 ///
 /// let error = ApiError {

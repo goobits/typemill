@@ -834,7 +834,7 @@ use cb_services::{
     services::file_service::EditPlanResult, ChecksumValidator, DryRunGenerator, PlanConverter,
     PostApplyValidator, ValidationConfig, ValidationResult,
 };
-use codebuddy_foundation::core::model::mcp::ToolCall;
+use mill_foundation::core::model::mcp::ToolCall;
 
 pub fn example() {
     let validator = cb_services::ChecksumValidator::new();

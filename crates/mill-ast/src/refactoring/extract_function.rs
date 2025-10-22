@@ -1,6 +1,6 @@
 use super::{CodeRange, ExtractableFunction, LspRefactoringService};
 use crate::error::{AstError, AstResult};
-use codebuddy_foundation::protocol::EditPlan;
+use mill_foundation::protocol::EditPlan;
 use tracing::debug;
 
 /// Analyze code selection for function extraction (simplified fallback)
@@ -63,7 +63,7 @@ async fn lsp_extract_function(
         .ok_or_else(|| AstError::analysis("Code action missing edit field".to_string()))?;
 
     // Convert to EditPlan
-    codebuddy_foundation::protocol::EditPlan::from_lsp_workspace_edit(
+    mill_foundation::protocol::EditPlan::from_lsp_workspace_edit(
         workspace_edit,
         file_path,
         "extract_function",

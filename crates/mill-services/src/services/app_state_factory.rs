@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 /// Bundle of core services used by AppState
 pub struct ServicesBundle {
-    pub ast_service: Arc<dyn codebuddy_foundation::protocol::AstService>,
+    pub ast_service: Arc<dyn mill_foundation::protocol::AstService>,
     pub file_service: Arc<FileService>,
     pub lock_manager: Arc<LockManager>,
     pub operation_queue: Arc<OperationQueue>,
@@ -87,7 +87,7 @@ fn spawn_operation_worker(
                     let result = match op.operation_type {
                         OperationType::CreateDir => {
                             fs::create_dir_all(&op.file_path).await.map_err(|e| {
-                                codebuddy_foundation::protocol::ApiError::Internal(format!(
+                                mill_foundation::protocol::ApiError::Internal(format!(
                                     "Failed to create directory {}: {}",
                                     op.file_path.display(),
                                     e
@@ -102,7 +102,7 @@ fn spawn_operation_worker(
                                 .unwrap_or("");
 
                             let mut file = fs::File::create(&op.file_path).await.map_err(|e| {
-                                codebuddy_foundation::protocol::ApiError::Internal(format!(
+                                mill_foundation::protocol::ApiError::Internal(format!(
                                     "Failed to create file {}: {}",
                                     op.file_path.display(),
                                     e
@@ -111,7 +111,7 @@ fn spawn_operation_worker(
 
                             use tokio::io::AsyncWriteExt;
                             file.write_all(content.as_bytes()).await.map_err(|e| {
-                                codebuddy_foundation::protocol::ApiError::Internal(format!(
+                                mill_foundation::protocol::ApiError::Internal(format!(
                                     "Failed to write content to {}: {}",
                                     op.file_path.display(),
                                     e
@@ -119,7 +119,7 @@ fn spawn_operation_worker(
                             })?;
 
                             file.sync_all().await.map_err(|e| {
-                                codebuddy_foundation::protocol::ApiError::Internal(format!(
+                                mill_foundation::protocol::ApiError::Internal(format!(
                                     "Failed to sync file {}: {}",
                                     op.file_path.display(),
                                     e
@@ -131,7 +131,7 @@ fn spawn_operation_worker(
                         OperationType::Delete => {
                             if op.file_path.exists() {
                                 fs::remove_file(&op.file_path).await.map_err(|e| {
-                                    codebuddy_foundation::protocol::ApiError::Internal(format!(
+                                    mill_foundation::protocol::ApiError::Internal(format!(
                                         "Failed to delete file {}: {}",
                                         op.file_path.display(),
                                         e
@@ -147,12 +147,12 @@ fn spawn_operation_worker(
                                 .get("new_path")
                                 .and_then(|v| v.as_str())
                                 .ok_or_else(|| {
-                                codebuddy_foundation::protocol::ApiError::InvalidRequest(
+                                mill_foundation::protocol::ApiError::InvalidRequest(
                                     "Rename operation missing new_path".to_string(),
                                 )
                             })?;
                             fs::rename(&op.file_path, new_path_str).await.map_err(|e| {
-                                codebuddy_foundation::protocol::ApiError::Internal(format!(
+                                mill_foundation::protocol::ApiError::Internal(format!(
                                     "Failed to rename file {} to {}: {}",
                                     op.file_path.display(),
                                     new_path_str,
@@ -171,7 +171,7 @@ fn spawn_operation_worker(
                                 .await
                                 .map(|_| ())
                                 .map_err(|e| {
-                                    codebuddy_foundation::protocol::ApiError::Plugin(e.to_string())
+                                    mill_foundation::protocol::ApiError::Plugin(e.to_string())
                                 })
                         }
                         OperationType::Read | OperationType::Format | OperationType::Refactor => {
@@ -208,7 +208,7 @@ fn spawn_operation_worker(
 pub async fn register_mcp_proxy_if_enabled(
     plugin_manager: &Arc<codebuddy_plugin_system::PluginManager>,
     external_mcp_config: Option<&mill_config::config::ExternalMcpConfig>,
-) -> Result<(), codebuddy_foundation::protocol::ApiError> {
+) -> Result<(), mill_foundation::protocol::ApiError> {
     if let Some(config) = external_mcp_config {
         use codebuddy_plugin_system::mcp::McpProxyPlugin;
         use codebuddy_plugin_system::LanguagePlugin;
@@ -220,7 +220,7 @@ pub async fn register_mcp_proxy_if_enabled(
 
         let mut plugin = McpProxyPlugin::new(config.servers.clone());
         plugin.initialize().await.map_err(|e| {
-            codebuddy_foundation::protocol::ApiError::plugin(format!(
+            mill_foundation::protocol::ApiError::plugin(format!(
                 "Failed to initialize MCP proxy plugin: {}",
                 e
             ))
@@ -230,7 +230,7 @@ pub async fn register_mcp_proxy_if_enabled(
             .register_plugin("mcp-proxy", Arc::new(plugin))
             .await
             .map_err(|e| {
-                codebuddy_foundation::protocol::ApiError::plugin(format!(
+                mill_foundation::protocol::ApiError::plugin(format!(
                     "Failed to register MCP proxy plugin: {}",
                     e
                 ))

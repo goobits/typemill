@@ -173,9 +173,9 @@ During the `codebuddy-config → mill-config` rename, feature definitions **were
 +mill-config = { path = "../mill-config", optional = true }
 
  [features]
--runtime = ["codebuddy-foundation", "codebuddy-config", "mill-ast"]
+-runtime = ["mill-foundation", "codebuddy-config", "mill-ast"]
 -mcp-proxy = ["runtime", "codebuddy-config/mcp-proxy"]
-+runtime = ["codebuddy-foundation", "mill-config", "mill-ast"]
++runtime = ["mill-foundation", "mill-config", "mill-ast"]
 +mcp-proxy = ["runtime", "mill-config/mcp-proxy"]
 ```
 

@@ -6,7 +6,7 @@ description = "Codeflow Buddy client implementation"
 license = "MIT"
 
 [dependencies]
-codebuddy-foundation = { path = "../codebuddy-foundation" }
+mill-foundation = { path = "../mill-foundation" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -39,7 +39,7 @@ mill-config = { path = "../mill-config" }
 
 [features]
 default = []
-mcp-proxy = ["codebuddy-plugin-system", "codebuddy-foundation/mcp-proxy", "mill-config/mcp-proxy"]
+mcp-proxy = ["codebuddy-plugin-system", "mill-foundation/mcp-proxy", "mill-config/mcp-proxy"]
 
 [dev-dependencies]
 tempfile = "3.0"

@@ -1,5 +1,5 @@
 use super::FileService;
-use codebuddy_foundation::protocol::ApiResult as ServerResult;
+use mill_foundation::protocol::ApiResult as ServerResult;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use tokio::fs;

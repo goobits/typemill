@@ -3,11 +3,11 @@
 **Date**: 2025-10-18
 **Status**: OPEN
 **Severity**: HIGH (Blocks successful consolidation)
-**Context**: Dogfooding consolidation of `cb-protocol` → `codebuddy-foundation/src/protocol`
+**Context**: Dogfooding consolidation of `cb-protocol` → `mill-foundation/src/protocol`
 
 ## Summary
 
-Tested the consolidation tools (Proposal 50) by dogfooding them on the actual `cb-protocol` → `codebuddy-foundation` consolidation. The tools successfully updated Rust imports but failed to complete several critical consolidation tasks, requiring extensive manual cleanup.
+Tested the consolidation tools (Proposal 50) by dogfooding them on the actual `cb-protocol` → `mill-foundation` consolidation. The tools successfully updated Rust imports but failed to complete several critical consolidation tasks, requiring extensive manual cleanup.
 
 ## Test Execution
 
@@ -30,7 +30,7 @@ Consolidation created nested `protocol/src/` structure instead of flat `protocol
 
 ### Expected Behavior
 ```
-crates/codebuddy-foundation/src/protocol/
+../../crates/mill-foundation/src/protocol/
 ├── mod.rs          (renamed from lib.rs)
 ├── analysis_result.rs
 ├── error.rs
@@ -40,7 +40,7 @@ crates/codebuddy-foundation/src/protocol/
 
 ### Actual Behavior
 ```
-crates/codebuddy-foundation/src/protocol/
+../../crates/mill-foundation/src/protocol/
 ├── src/
 │   ├── lib.rs      (should be mod.rs at parent level)
 │   ├── analysis_result.rs
@@ -76,10 +76,10 @@ When consolidating a crate into a module, `lib.rs` must be renamed to `mod.rs`.
 
 ### Expected Behavior
 - Source: `crates/cb-protocol/src/lib.rs`
-- Target: `crates/codebuddy-foundation/src/protocol/mod.rs`
+- Target: `../../crates/mill-foundation/src/protocol/mod.rs`
 
 ### Actual Behavior
-- Target: `crates/codebuddy-foundation/src/protocol/lib.rs` (incorrect)
+- Target: `../../crates/mill-foundation/src/protocol/lib.rs` (incorrect)
 
 ### Root Cause
 Consolidation doesn't understand Rust module conventions:
@@ -88,8 +88,8 @@ Consolidation doesn't understand Rust module conventions:
 
 ### Manual Fix Required
 ```bash
-mv crates/codebuddy-foundation/src/protocol/lib.rs \
-   crates/codebuddy-foundation/src/protocol/mod.rs
+mv ../../crates/mill-foundation/src/protocol/lib.rs \
+   ../../crates/mill-foundation/src/protocol/mod.rs
 ```
 
 ---
@@ -103,14 +103,14 @@ mv crates/codebuddy-foundation/src/protocol/lib.rs \
 Consolidation updated Rust `use` statements but did NOT update `Cargo.toml` dependency declarations across the workspace.
 
 ### Expected Behavior
-All references to `cb-protocol` in `Cargo.toml` files should be updated to `codebuddy-foundation`:
+All references to `cb-protocol` in `Cargo.toml` files should be updated to `mill-foundation`:
 
 ```toml
 # BEFORE
 cb-protocol = { path = "../cb-protocol" }
 
 # AFTER
-codebuddy-foundation = { path = "../codebuddy-foundation" }
+mill-foundation = { path = "../mill-foundation" }
 ```
 
 ### Actual Behavior
@@ -137,8 +137,8 @@ codebuddy-foundation = { path = "../codebuddy-foundation" }
 Additionally, duplicate entries created (likely from double-application of sed):
 ```toml
 # Duplicate keys
-codebuddy-foundation = { path = "../codebuddy-foundation" }
-codebuddy-foundation = { path = "../codebuddy-foundation" }
+mill-foundation = { path = "../mill-foundation" }
+mill-foundation = { path = "../mill-foundation" }
 ```
 
 ### Root Cause
@@ -150,7 +150,7 @@ Import rewriting logic only processes `.rs` files, not `.toml` files. Consolidat
 ### Manual Fix Required
 ```bash
 # Replace all cb-protocol references
-find . -name "Cargo.toml" -exec sed -i 's/cb-protocol/codebuddy-foundation/g' {} \;
+find . -name "Cargo.toml" -exec sed -i 's/cb-protocol/mill-foundation/g' {} \;
 # Remove duplicates
 # (manual editing required for each file)
 ```
@@ -204,7 +204,7 @@ Consolidation doesn't add `pub mod protocol;` to target crate's `lib.rs`.
 ### Expected Behavior
 Target crate automatically updated:
 ```rust
-// crates/codebuddy-foundation/src/lib.rs
+// ../../crates/mill-foundation/src/lib.rs
 pub mod error;
 pub mod model;
 pub mod protocol;  // ADDED BY CONSOLIDATION
@@ -217,14 +217,14 @@ No module declaration added - developers must manually expose the module.
 Consolidation moves files but doesn't update the target crate's module tree. The plan warned about this:
 ```
 Warning: After consolidation, manually add 'pub mod protocol;' to
-/workspace/crates/codebuddy-foundation/src/lib.rs
+/workspace/crates/mill-foundation/src/lib.rs
 ```
 
 But this should be automated, not manual.
 
 ### Manual Fix Required
 ```rust
-// Add to crates/codebuddy-foundation/src/lib.rs
+// Add to ../../crates/mill-foundation/src/lib.rs
 pub mod protocol;
 ```
 
@@ -239,7 +239,7 @@ pub mod protocol;
 Source crate's `Cargo.toml` dependencies not merged into target crate.
 
 ### Expected Behavior
-Dependencies from `cb-protocol/Cargo.toml` should be merged into `codebuddy-foundation/Cargo.toml`:
+Dependencies from `cb-protocol/Cargo.toml` should be merged into `mill-foundation/Cargo.toml`:
 
 ```toml
 # cb-protocol/Cargo.toml (source)
@@ -249,7 +249,7 @@ async-trait = { workspace = true }
 serde = { workspace = true }
 # ...
 
-# After consolidation → codebuddy-foundation/Cargo.toml
+# After consolidation → mill-foundation/Cargo.toml
 [dependencies]
 lsp-types = "0.97"          # MERGED FROM SOURCE
 async-trait = { workspace = true }  # MERGED
@@ -271,7 +271,7 @@ Consolidation doesn't parse or merge `Cargo.toml` dependencies. The source `Carg
 # Extract dependencies from source Cargo.toml
 git show HEAD:crates/cb-protocol/Cargo.toml
 
-# Manually add to crates/codebuddy-foundation/Cargo.toml:
+# Manually add to ../../crates/mill-foundation/Cargo.toml:
 [dependencies]
 lsp-types = "0.97"
 async-trait = { workspace = true }
@@ -458,7 +458,7 @@ After implementing fixes:
 
 ## Priority
 
-**P0 (Blocker)** - Consolidation mode is unusable without these fixes. Must be resolved before attempting additional consolidations (codebuddy-core → codebuddy-foundation).
+**P0 (Blocker)** - Consolidation mode is unusable without these fixes. Must be resolved before attempting additional consolidations (codebuddy-core → mill-foundation).
 
 ## Next Steps
 

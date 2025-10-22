@@ -7,12 +7,12 @@
 
 ## Summary
 
-During the consolidation of `codebuddy-core` into `codebuddy-foundation/src/core`, multiple critical issues were discovered that prevented successful workspace compilation. These issues stem from circular dependencies and incomplete import path updates by the consolidation tool.
+During the consolidation of `codebuddy-core` into `mill-foundation/src/core`, multiple critical issues were discovered that prevented successful workspace compilation. These issues stem from circular dependencies and incomplete import path updates by the consolidation tool.
 
 ## Environment
 
 - **Source Crate**: `crates/codebuddy-core`
-- **Target Location**: `crates/codebuddy-foundation/src/core`
+- **Target Location**: `../../crates/mill-foundation/src/core`
 - **Consolidation Command**: `rename.plan` with `consolidate: true`
 - **Affected Files**: 19 Rust files with import references
 
@@ -24,10 +24,10 @@ During the consolidation of `codebuddy-core` into `codebuddy-foundation/src/core
 **Impact**: Workspace build failure
 
 **Description**:
-The consolidation tool moved `language.rs` into `codebuddy-foundation/src/core/`, but this module depends on `cb-plugin-api::iter_plugins()`. This creates a circular dependency:
+The consolidation tool moved `language.rs` into `mill-foundation/src/core/`, but this module depends on `cb-plugin-api::iter_plugins()`. This creates a circular dependency:
 
 ```
-cb-plugin-api → codebuddy-foundation → (language.rs) → cb-plugin-api
+cb-plugin-api → mill-foundation → (language.rs) → cb-plugin-api
 ```
 
 **Root Cause**:
@@ -37,8 +37,8 @@ The consolidation tool doesn't detect or prevent circular dependencies when movi
 ```
 error: cyclic package dependency: package `cb-plugin-api v0.0.0` depends on itself. Cycle:
 package `cb-plugin-api`
-    ... which satisfies path dependency `cb-plugin-api` of package `codebuddy-foundation`
-    ... which satisfies path dependency `codebuddy-foundation` of package `cb-plugin-api`
+    ... which satisfies path dependency `cb-plugin-api` of package `mill-foundation`
+    ... which satisfies path dependency `mill-foundation` of package `cb-plugin-api`
 ```
 
 **Workaround Applied**:
@@ -48,7 +48,7 @@ package `cb-plugin-api`
 - Fixed self-imports: `use cb_plugin_api::iter_plugins` → `use crate::iter_plugins`
 
 **Files Affected**:
-- `/workspace/crates/codebuddy-foundation/src/core/language.rs` (removed)
+- `/workspace/crates/mill-foundation/src/core/language.rs` (removed)
 - `/workspace/crates/cb-plugin-api/src/language.rs` (new location)
 - `/workspace/crates/cb-ast/src/package_extractor/planner.rs` (import updated)
 - `/workspace/crates/codebuddy-plugin-system/src/system_tools_plugin.rs` (import updated)
@@ -61,15 +61,15 @@ package `cb-plugin-api`
 **Impact**: Workspace build failure
 
 **Description**:
-Similar to Bug #1, `logging.rs` was moved into `codebuddy-foundation/src/core/`, but it depends on `mill-config::{AppConfig, LogFormat}`. This creates another circular dependency:
+Similar to Bug #1, `logging.rs` was moved into `mill-foundation/src/core/`, but it depends on `mill-config::{AppConfig, LogFormat}`. This creates another circular dependency:
 
 ```
-cb-plugin-api → codebuddy-foundation → mill-config → cb-plugin-api
+cb-plugin-api → mill-foundation → mill-config → cb-plugin-api
 ```
 
-Additionally, `mill-config` directly depends on `codebuddy-foundation`, so:
+Additionally, `mill-config` directly depends on `mill-foundation`, so:
 ```
-codebuddy-foundation → (logging.rs) → mill-config → codebuddy-foundation
+mill-foundation → (logging.rs) → mill-config → mill-foundation
 ```
 
 **Root Cause**:
@@ -80,8 +80,8 @@ Same as Bug #1 - the consolidation tool doesn't analyze transitive dependencies 
 error: cyclic package dependency: package `cb-plugin-api v0.0.0` depends on itself. Cycle:
 package `cb-plugin-api`
     ... which satisfies path dependency `cb-plugin-api` of package `mill-config`
-    ... which satisfies path dependency `mill-config` of package `codebuddy-foundation`
-    ... which satisfies path dependency `codebuddy-foundation` of package `cb-plugin-api`
+    ... which satisfies path dependency `mill-config` of package `mill-foundation`
+    ... which satisfies path dependency `mill-foundation` of package `cb-plugin-api`
 ```
 
 **Workaround Applied**:
@@ -92,7 +92,7 @@ package `cb-plugin-api`
 - Added missing dependency: `tracing-subscriber` to `mill-config/Cargo.toml`
 
 **Files Affected**:
-- `/workspace/crates/codebuddy-foundation/src/core/logging.rs` (removed)
+- `/workspace/crates/mill-foundation/src/core/logging.rs` (removed)
 - `/workspace/crates/mill-config/src/logging.rs` (new location)
 - `/workspace/crates/mill-transport/src/stdio.rs` (import updated)
 - `/workspace/crates/mill-transport/src/ws.rs` (import updated)
@@ -142,9 +142,9 @@ find /workspace -type f \( -name "*.rs" -o -name "*.toml" \) ! -path "*/target/*
 - `/workspace/crates/cb-test-support/benches/forwarding_benchmark.rs`
 - `/workspace/crates/cb-client/src/commands/doctor.rs`
 - `/workspace/crates/mill-services/src/services/move_service/mod.rs`
-- `/workspace/crates/codebuddy-foundation/src/core/tests/rename_scope_test.rs`
-- `/workspace/crates/codebuddy-foundation/src/core/tests/acceptance_config.rs`
-- `/workspace/crates/codebuddy-foundation/src/core/tests/model_tests.rs`
+- `/workspace/crates/mill-foundation/src/core/tests/rename_scope_test.rs`
+- `/workspace/crates/mill-foundation/src/core/tests/acceptance_config.rs`
+- `/workspace/crates/mill-foundation/src/core/tests/model_tests.rs`
 - And 4 more files
 
 ---
@@ -190,14 +190,14 @@ sed -i 's/use codebuddy_config::/use crate::/g' \
 **Impact**: Cargo build errors
 
 **Description**:
-When updating dependencies from `codebuddy-core` to `codebuddy-foundation`, duplicate entries were created in Cargo.toml files.
+When updating dependencies from `codebuddy-core` to `mill-foundation`, duplicate entries were created in Cargo.toml files.
 
 **Example** (`cb-ast/Cargo.toml`):
 ```toml
 [dependencies]
-codebuddy-foundation = { path = "../codebuddy-foundation" }  # line 8 - original
+mill-foundation = { path = "../mill-foundation" }  # line 8 - original
 # ... other deps ...
-codebuddy-foundation = { path = "../codebuddy-foundation" }  # line 32 - duplicate
+mill-foundation = { path = "../mill-foundation" }  # line 32 - duplicate
 ```
 
 **Root Cause**:
@@ -231,7 +231,7 @@ After consolidation, the source crate's workspace member entry and workspace dep
 [workspace]
 members = [
     # ... other members ...
-    "crates/codebuddy-foundation",
+    "../../crates/mill-foundation",
     "crates/codebuddy-core",  # ✗ Should be removed
     # ...
 ]
@@ -254,7 +254,7 @@ The consolidation tool removes the source directory but doesn't update the works
 
 ## Consolidated Modules Successfully Moved
 
-Despite the issues above, the following modules from `codebuddy-core` were successfully consolidated into `codebuddy-foundation/src/core`:
+Despite the issues above, the following modules from `codebuddy-core` were successfully consolidated into `mill-foundation/src/core`:
 
 ✅ `dry_run.rs` - Dry run execution utilities
 ✅ `rename_scope.rs` - Rename scope configuration
@@ -262,7 +262,7 @@ Despite the issues above, the following modules from `codebuddy-core` were succe
 ❌ `language.rs` - Moved to `cb-plugin-api` (circular dependency)
 ❌ `logging.rs` - Moved to `mill-config` (circular dependency)
 
-**Module Re-exports**: Successfully updated in `codebuddy-foundation/src/core/mod.rs`:
+**Module Re-exports**: Successfully updated in `mill-foundation/src/core/mod.rs`:
 ```rust
 pub use crate::error::{ApiError, CoreError};  // ✓ correct self-reference
 pub use crate::model;  // ✓ correct self-reference
@@ -409,7 +409,7 @@ Allow users to exclude specific modules from consolidation:
 ```json
 {
   "target": {"kind": "directory", "path": "crates/codebuddy-core"},
-  "new_name": "crates/codebuddy-foundation/src/core",
+  "new_name": "../../crates/mill-foundation/src/core",
   "options": {
     "consolidate": true,
     "exclude_modules": ["language.rs", "logging.rs"]
@@ -431,7 +431,7 @@ This would:
 **Workaround Complexity**: Medium - requires understanding of Rust module system and dependency graphs
 **Time to Fix**: ~2 hours of manual work to resolve all issues
 
-**Recommendation**: Implement Fixes #1, #2, and #3 before next consolidation phase (mill-config/mill-workspaces/mill-auth → codebuddy-foundation).
+**Recommendation**: Implement Fixes #1, #2, and #3 before next consolidation phase (mill-config/mill-workspaces/mill-auth → mill-foundation).
 
 ---
 

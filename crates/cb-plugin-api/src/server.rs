@@ -2,7 +2,7 @@
 //! standalone, out-of-process RPC server that communicates over stdio.
 
 use crate::{LanguagePlugin, PluginResult};
-use codebuddy_foundation::protocol::plugin_protocol::{PluginRequest, PluginResponse};
+use mill_foundation::protocol::plugin_protocol::{ PluginRequest , PluginResponse };
 use serde_json::Value;
 use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::{error, info};
@@ -73,7 +73,7 @@ impl<P: LanguagePlugin + 'static> PluginServer<P> {
             Err(e) => {
                 // `PluginError` has a `From` impl for `ApiError`, which can be converted
                 // to the JSON-RPC error format.
-                let api_error: codebuddy_foundation::error::ApiError = e.into();
+                let api_error: mill_foundation::error::ApiError = e.into();
                 // JSON-RPC error code: -32603 = Internal error
                 return PluginResponse::error(req.id, -32603, &api_error.message);
             }

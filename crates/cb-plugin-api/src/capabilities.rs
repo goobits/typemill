@@ -13,7 +13,7 @@
 
 use crate::{ModuleReference, PluginResult, ScanScope};
 use async_trait::async_trait;
-use codebuddy_foundation::protocol::ImportGraph;
+use mill_foundation::protocol::ImportGraph;
 use std::path::Path;
 
 // ============================================================================
@@ -154,7 +154,7 @@ pub trait RefactoringProvider: Send + Sync {
         _variable_line: u32,
         _variable_col: u32,
         _file_path: &str,
-    ) -> PluginResult<codebuddy_foundation::protocol::EditPlan> {
+    ) -> PluginResult<mill_foundation::protocol::EditPlan> {
         Err(crate::PluginError::not_supported("plan_inline_variable"))
     }
 
@@ -181,7 +181,7 @@ pub trait RefactoringProvider: Send + Sync {
         _end_line: u32,
         _function_name: &str,
         _file_path: &str,
-    ) -> PluginResult<codebuddy_foundation::protocol::EditPlan> {
+    ) -> PluginResult<mill_foundation::protocol::EditPlan> {
         Err(crate::PluginError::not_supported("plan_extract_function"))
     }
 
@@ -213,7 +213,7 @@ pub trait RefactoringProvider: Send + Sync {
         _end_col: u32,
         _variable_name: Option<String>,
         _file_path: &str,
-    ) -> PluginResult<codebuddy_foundation::protocol::EditPlan> {
+    ) -> PluginResult<mill_foundation::protocol::EditPlan> {
         Err(crate::PluginError::not_supported("plan_extract_variable"))
     }
 

@@ -4,8 +4,8 @@
 
 use super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
-use codebuddy_foundation::core::model::mcp::ToolCall;
-use codebuddy_foundation::protocol::{ApiError, ApiResult as ServerResult};
+use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::protocol::{ ApiError , ApiResult as ServerResult };
 use codebuddy_plugin_system::PluginRequest;
 use serde_json::{json, Value};
 use std::path::PathBuf;

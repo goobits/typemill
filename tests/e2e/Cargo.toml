@@ -6,7 +6,7 @@ description = "Integration tests and test utilities for Codeflow Buddy"
 license = "MIT"
 
 [dependencies]
-codebuddy-foundation = { path = "../../crates/codebuddy-foundation" }
+mill-foundation = { path = "../../crates/mill-foundation" }
 cb-plugin-api = { path = "../../crates/cb-plugin-api" }
 mill-server = { path = "../../crates/mill-server", default-features = false, features = ["test-helpers"] }
 tokio = { workspace = true }

@@ -231,7 +231,7 @@ impl WorkspaceSupport for RustWorkspaceSupport {
         project_root: &Path,
     ) -> Result<(), String> {
         use crate::consolidation::execute_consolidation_post_processing;
-        use codebuddy_foundation::protocol::ConsolidationMetadata;
+        use mill_foundation::protocol::ConsolidationMetadata;
 
         // Build metadata from parameters
         let metadata = ConsolidationMetadata {

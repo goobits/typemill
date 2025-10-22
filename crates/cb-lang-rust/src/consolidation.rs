@@ -12,7 +12,7 @@
 
 use crate::cargo_helpers::merge_cargo_dependencies;
 use cb_plugin_api::{PluginError, PluginResult};
-use codebuddy_foundation::protocol::ConsolidationMetadata;
+use mill_foundation::protocol::ConsolidationMetadata;
 use std::path::Path;
 use tokio::fs;
 use tracing::{info, warn};
@@ -568,9 +568,9 @@ async fn add_module_declaration_to_target_lib_rs(
 /// After moving code INTO a crate, imports that reference that crate are now
 /// self-imports and should use `crate::` instead of the crate name.
 ///
-/// Example: When moving code into `codebuddy-foundation`:
-/// - `use codebuddy_foundation::error::CoreError;` → `use crate::error::CoreError;`
-/// - `impl From<codebuddy_foundation::model::...>` → `impl From<crate::model::...>`
+/// Example: When moving code into `mill-foundation`:
+/// - `use mill_foundation::error::CoreError;` → `use crate::error::CoreError;`
+/// - `impl From<mill_foundation::model::...>` → `impl From<crate::model::...>`
 async fn fix_self_imports_in_consolidated_module(
     target_crate_name: &str,
     target_module_path: &str,
@@ -581,7 +581,7 @@ async fn fix_self_imports_in_consolidated_module(
         "Fixing self-imports in consolidated module"
     );
 
-    // Convert crate name to Rust identifier format (e.g., "codebuddy-foundation" → "codebuddy_foundation")
+    // Convert crate name to Rust identifier format (e.g., "mill-foundation" → "codebuddy_foundation")
     let crate_ident = target_crate_name.replace('-', "_");
     let module_dir = Path::new(target_module_path);
 

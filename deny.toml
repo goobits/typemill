@@ -219,7 +219,7 @@ skip-tree = [
 # - Layer 5: Services (mill-services, cb-ast, mill-lsp, codebuddy-plugin-system, mill-plugin-bundle)
 # - Layer 4: Language Plugins (cb-lang-*)
 # - Layer 3: Plugin API (cb-plugin-api)
-# - Layer 2: Foundation (codebuddy-foundation)
+# - Layer 2: Foundation (mill-foundation)
 # - Layer 1: Support (mill-test-support, xtask, analysis/*)
 #
 # Rules enforce: Higher layers cannot depend on lower layers (upward dependencies forbidden)

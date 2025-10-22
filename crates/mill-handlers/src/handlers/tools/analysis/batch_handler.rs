@@ -4,8 +4,8 @@ use crate::handlers::tools::analysis::batch::{
     run_batch_analysis, AnalysisQuery, BatchAnalysisRequest,
 };
 use async_trait::async_trait;
-use codebuddy_foundation::core::model::mcp::ToolCall;
-use codebuddy_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
 use serde::Deserialize;
 use serde_json::{json, Value};
 

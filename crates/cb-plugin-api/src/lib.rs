@@ -15,7 +15,7 @@
 //! - Refactoring operations
 
 use async_trait::async_trait;
-use codebuddy_foundation::error::ApiError;
+use mill_foundation::error::ApiError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
@@ -141,7 +141,7 @@ impl PluginError {
 /// Convert PluginError to ApiError for MCP responses
 impl From<PluginError> for ApiError {
     fn from(err: PluginError) -> Self {
-        use codebuddy_foundation::error::error_codes::*;
+        use mill_foundation::error::error_codes::*;
 
         match err {
             PluginError::Parse { message, location } => {
@@ -422,16 +422,16 @@ pub trait LanguagePlugin: Send + Sync {
         &self,
         _source: &str,
         _file_path: Option<&Path>,
-    ) -> PluginResult<codebuddy_foundation::protocol::ImportGraph> {
+    ) -> PluginResult<mill_foundation::protocol::ImportGraph> {
         use chrono::Utc;
         // Default: return empty graph
-        Ok(codebuddy_foundation::protocol::ImportGraph {
+        Ok(mill_foundation::protocol::ImportGraph {
             source_file: _file_path
                 .map(|p| p.display().to_string())
                 .unwrap_or_default(),
             imports: vec![],
             importers: vec![],
-            metadata: codebuddy_foundation::protocol::ImportGraphMetadata {
+            metadata: mill_foundation::protocol::ImportGraphMetadata {
                 language: self.metadata().name.to_string(),
                 parsed_at: Utc::now(),
                 parser_version: "0.0.0".to_string(),

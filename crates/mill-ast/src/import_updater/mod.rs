@@ -25,7 +25,7 @@ pub async fn update_imports_for_rename(
     rename_info: Option<&serde_json::Value>,
     dry_run: bool,
     scan_scope: Option<cb_plugin_api::ScanScope>,
-) -> AstResult<codebuddy_foundation::protocol::EditPlan> {
+) -> AstResult<mill_foundation::protocol::EditPlan> {
     edit_builder::build_import_update_plan(
         old_path,
         new_path,

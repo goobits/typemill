@@ -7,9 +7,9 @@ use mill_client::format_plan;
 use mill_transport::SessionInfo;
 use clap::{Parser, Subcommand};
 use mill_config::config::AppConfig;
-use codebuddy_foundation::core::utils::system::command_exists;
-use codebuddy_foundation::protocol::analysis_result::AnalysisResult;
-use codebuddy_foundation::protocol::refactor_plan::RefactorPlan;
+use mill_foundation::core::utils::system::command_exists;
+use mill_foundation::protocol::analysis_result::AnalysisResult;
+use mill_foundation::protocol::refactor_plan::RefactorPlan;
 use fs2::FileExt;
 use std::fs::{File, OpenOptions};
 use std::path::PathBuf;
@@ -465,7 +465,7 @@ async fn handle_cycles_command(command: Cycles) {
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            let error = codebuddy_foundation::protocol::ApiError::internal(format!(
+            let error = mill_foundation::protocol::ApiError::internal(format!(
                 "Failed to initialize: {}",
                 e
             ));
@@ -474,7 +474,7 @@ async fn handle_cycles_command(command: Cycles) {
         }
     };
 
-    use codebuddy_foundation::core::model::mcp::{McpMessage, McpRequest};
+    use mill_foundation::core::model::mcp::{ McpMessage , McpRequest };
     let params = serde_json::json!({
         "name": "analyze.circular_dependencies",
         "arguments": args,
@@ -509,7 +509,7 @@ async fn handle_cycles_command(command: Cycles) {
                     output_result(&result, &command.format);
                 }
             } else if let Some(error) = response.error {
-                let api_error = codebuddy_foundation::protocol::ApiError::from(error);
+                let api_error = mill_foundation::protocol::ApiError::from(error);
                 output_error(&api_error, &command.format);
                 process::exit(1);
             }
@@ -520,7 +520,7 @@ async fn handle_cycles_command(command: Cycles) {
         }
         Err(server_error) => {
             let api_error =
-                codebuddy_foundation::protocol::ApiError::internal(server_error.to_string());
+                mill_foundation::protocol::ApiError::internal(server_error.to_string());
             output_error(&api_error, &command.format);
             process::exit(1);
         }
@@ -1052,10 +1052,10 @@ async fn handle_tool_command(
         let json = match std::fs::read_to_string(file_path) {
             Ok(content) => content,
             Err(e) => {
-                let error = codebuddy_foundation::core::model::mcp::McpError::invalid_request(
+                let error = mill_foundation::core::model::mcp::McpError::invalid_request(
                     format!("Failed to read input file '{}': {}", file_path, e),
                 );
-                let api_error = codebuddy_foundation::protocol::ApiError::from(error);
+                let api_error = mill_foundation::protocol::ApiError::from(error);
                 output_error(&api_error, format);
                 process::exit(1);
             }
@@ -1063,10 +1063,10 @@ async fn handle_tool_command(
         match serde_json::from_str(&json) {
             Ok(val) => val,
             Err(e) => {
-                let error = codebuddy_foundation::core::model::mcp::McpError::invalid_request(
+                let error = mill_foundation::core::model::mcp::McpError::invalid_request(
                     format!("Invalid JSON in file '{}': {}", file_path, e),
                 );
-                let api_error = codebuddy_foundation::protocol::ApiError::from(error);
+                let api_error = mill_foundation::protocol::ApiError::from(error);
                 output_error(&api_error, format);
                 process::exit(1);
             }
@@ -1077,20 +1077,20 @@ async fn handle_tool_command(
             // Read JSON from stdin
             let mut stdin_content = String::new();
             if let Err(e) = io::stdin().read_to_string(&mut stdin_content) {
-                let error = codebuddy_foundation::core::model::mcp::McpError::invalid_request(
+                let error = mill_foundation::core::model::mcp::McpError::invalid_request(
                     format!("Failed to read from stdin: {}", e),
                 );
-                let api_error = codebuddy_foundation::protocol::ApiError::from(error);
+                let api_error = mill_foundation::protocol::ApiError::from(error);
                 output_error(&api_error, format);
                 process::exit(1);
             }
             match serde_json::from_str(&stdin_content) {
                 Ok(val) => val,
                 Err(e) => {
-                    let error = codebuddy_foundation::core::model::mcp::McpError::invalid_request(
+                    let error = mill_foundation::core::model::mcp::McpError::invalid_request(
                         format!("Invalid JSON from stdin: {}", e),
                     );
-                    let api_error = codebuddy_foundation::protocol::ApiError::from(error);
+                    let api_error = mill_foundation::protocol::ApiError::from(error);
                     output_error(&api_error, format);
                     process::exit(1);
                 }
@@ -1100,10 +1100,10 @@ async fn handle_tool_command(
             match serde_json::from_str(json) {
                 Ok(val) => val,
                 Err(e) => {
-                    let error = codebuddy_foundation::core::model::mcp::McpError::invalid_request(
+                    let error = mill_foundation::core::model::mcp::McpError::invalid_request(
                         format!("Invalid JSON arguments: {}", e),
                     );
-                    let api_error = codebuddy_foundation::protocol::ApiError::from(error);
+                    let api_error = mill_foundation::protocol::ApiError::from(error);
                     output_error(&api_error, format);
                     process::exit(1);
                 }
@@ -1166,7 +1166,7 @@ async fn handle_tool_command(
         match flag_parser::parse_flags_to_json(tool_name, flags) {
             Ok(json) => json,
             Err(e) => {
-                let error = codebuddy_foundation::protocol::ApiError::InvalidRequest(format!(
+                let error = mill_foundation::protocol::ApiError::InvalidRequest(format!(
                     "Invalid flag arguments: {}",
                     e
                 ));
@@ -1180,7 +1180,7 @@ async fn handle_tool_command(
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            let error = codebuddy_foundation::protocol::ApiError::internal(format!(
+            let error = mill_foundation::protocol::ApiError::internal(format!(
                 "Failed to initialize: {}",
                 e
             ));
@@ -1190,7 +1190,7 @@ async fn handle_tool_command(
     };
 
     // Construct MCP request message
-    use codebuddy_foundation::core::model::mcp::{McpMessage, McpRequest};
+    use mill_foundation::core::model::mcp::{ McpMessage , McpRequest };
     let params = serde_json::json!({
         "name": tool_name,
         "arguments": arguments,
@@ -1227,7 +1227,7 @@ async fn handle_tool_command(
             if let Some(result) = response.result {
                 output_result(&result, format);
             } else if let Some(error) = response.error {
-                let api_error = codebuddy_foundation::protocol::ApiError::from(error);
+                let api_error = mill_foundation::protocol::ApiError::from(error);
                 output_error(&api_error, format);
                 process::exit(1);
             }
@@ -1239,7 +1239,7 @@ async fn handle_tool_command(
         Err(server_error) => {
             // Convert ServerError to ApiError and output to stderr
             let api_error =
-                codebuddy_foundation::protocol::ApiError::internal(server_error.to_string());
+                mill_foundation::protocol::ApiError::internal(server_error.to_string());
             output_error(&api_error, format);
             process::exit(1);
         }
@@ -1255,7 +1255,7 @@ async fn handle_convert_naming(
     dry_run: bool,
     format: &str,
 ) {
-    use codebuddy_foundation::core::model::mcp::{McpMessage, McpRequest};
+    use mill_foundation::core::model::mcp::{ McpMessage , McpRequest };
     use glob::glob;
     use serde_json::json;
 
@@ -1266,7 +1266,7 @@ async fn handle_convert_naming(
             .filter_map(|p| p.to_str().map(String::from))
             .collect(),
         Err(e) => {
-            let error = codebuddy_foundation::protocol::ApiError::InvalidRequest(format!(
+            let error = mill_foundation::protocol::ApiError::InvalidRequest(format!(
                 "Invalid glob pattern '{}': {}",
                 glob_pattern, e
             ));
@@ -1347,7 +1347,7 @@ async fn handle_convert_naming(
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            let error = codebuddy_foundation::protocol::ApiError::internal(format!(
+            let error = mill_foundation::protocol::ApiError::internal(format!(
                 "Failed to initialize: {}",
                 e
             ));
@@ -1413,7 +1413,7 @@ async fn handle_convert_naming(
                             if apply_response.error.is_some() {
                                 eprintln!("❌ Failed to apply renames");
                                 output_error(
-                                    &codebuddy_foundation::protocol::ApiError::internal(
+                                    &mill_foundation::protocol::ApiError::internal(
                                         format!("{:?}", apply_response.error)
                                     ),
                                     format
@@ -1478,7 +1478,7 @@ fn output_result(result: &serde_json::Value, format: &str) {
 }
 
 /// Output error to stderr based on format
-fn output_error(error: &codebuddy_foundation::protocol::ApiError, format: &str) {
+fn output_error(error: &mill_foundation::protocol::ApiError, format: &str) {
     let error_json = serde_json::to_value(error).unwrap_or(serde_json::json!({
         "error": error.to_string()
     }));

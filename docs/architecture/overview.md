@@ -649,7 +649,7 @@ To support multiple users securely, Codebuddy implements a multi-tenancy model t
 ### Implementation Details
 
 -   **`user_id` Claim**: The JWT payload must contain a `user_id` claim, which is a unique identifier for the user.
--   **`WorkspaceManager` Partitioning**: The `WorkspaceManager` no longer uses a simple `workspace_id` as the key. Instead, it uses a composite key `(user_id, workspace_id)`. This change in `../../../../crates/codebuddy-foundation/src/core/src/workspaces.rs` is the core of the data isolation model.
+-   **`WorkspaceManager` Partitioning**: The `WorkspaceManager` no longer uses a simple `workspace_id` as the key. Instead, it uses a composite key `(user_id, workspace_id)`. This change in `../../../../../../crates/mill-foundation/src/core/src/workspaces.rs` is the core of the data isolation model.
 -   **API Endpoint Authorization**: Endpoints that manage workspaces (e.g., `/workspaces/register`, `/workspaces/{id}/execute`) now extract the `user_id` from the JWT. All subsequent calls to the `WorkspaceManager` must provide this `user_id`, ensuring that operations are performed only on the workspaces owned by that user.
 
 This architecture provides a robust and secure foundation for multi-user environments, preventing data leakage and unauthorized access.

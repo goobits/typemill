@@ -21,7 +21,7 @@ During the dogfooding rename of `cb-ast` → `mill-ast`, the rename plan success
 mill-ast = { path = "../mill-ast", optional = true }  # ✅ Updated correctly
 
 [features]
-runtime = ["codebuddy-foundation", "mill-config", "cb-ast"]  # ❌ NOT updated
+runtime = ["mill-foundation", "mill-config", "cb-ast"]  # ❌ NOT updated
 ```
 
 **Expected**: Feature flag should have been updated to `"mill-ast"`

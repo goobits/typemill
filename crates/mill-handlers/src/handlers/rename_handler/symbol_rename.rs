@@ -1,9 +1,6 @@
 use super::{RenameHandler, RenameOptions, RenameTarget};
 use crate::handlers::tools::ToolHandlerContext;
-use codebuddy_foundation::protocol::{
-    refactor_plan::{PlanMetadata, RenamePlan},
-    ApiError as ServerError, ApiResult as ServerResult,
-};
+use mill_foundation::protocol::{ refactor_plan::{ PlanMetadata , RenamePlan } , ApiError as ServerError , ApiResult as ServerResult , };
 use lsp_types::WorkspaceEdit;
 use serde_json::json;
 use std::path::Path;

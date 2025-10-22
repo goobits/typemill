@@ -151,7 +151,7 @@ This is where the scanner reports finding 0 markdown files despite them existing
 
 3. **Scope handling**:
    ```rust
-   // crates/codebuddy-foundation/src/core/rename_scope.rs
+   // ../../crates/mill-foundation/src/core/rename_scope.rs
    pub fn all() -> Self {
        Self {
            update_docs: true,      // ✅ Enabled

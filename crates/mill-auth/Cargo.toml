@@ -8,7 +8,7 @@ homepage.workspace = true
 description = "Authentication and JWT utilities for Codebuddy"
 
 [dependencies]
-codebuddy-foundation = { path = "../codebuddy-foundation" }
+mill-foundation = { path = "../mill-foundation" }
 jsonwebtoken = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

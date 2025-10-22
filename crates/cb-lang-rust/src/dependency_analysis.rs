@@ -28,7 +28,7 @@ pub struct CircularDependencyAnalysis {
     pub target_crate: String,
 
     /// The dependency chain that creates the cycle
-    /// Example: ["cb-plugin-api", "codebuddy-foundation", "cb-plugin-api"]
+    /// Example: ["cb-plugin-api", "mill-foundation", "cb-plugin-api"]
     pub dependency_chain: Vec<String>,
 
     /// Modules in source crate that cause the circular dependency

@@ -1,7 +1,7 @@
 //! Advanced refactoring operations using AST analysis
 use crate::error::AstResult;
 use async_trait::async_trait;
-use codebuddy_foundation::protocol::EditLocation;
+use mill_foundation::protocol::EditLocation;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

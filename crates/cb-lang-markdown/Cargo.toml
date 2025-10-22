@@ -9,7 +9,7 @@ homepage.workspace = true
 [dependencies]
 # Our core plugin API
 cb-plugin-api = { path = "../cb-plugin-api" }
-codebuddy-foundation = { path = "../codebuddy-foundation" }
+mill-foundation = { path = "../mill-foundation" }
 cb-lang-common = { path = "../cb-lang-common" }
 
 # For markdown link parsing

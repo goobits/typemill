@@ -1,8 +1,6 @@
 //! Cargo package detection and manifest handling for directory moves
 
-use codebuddy_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, EditLocation, EditType, TextEdit,
-};
+use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult , EditLocation , EditType , TextEdit , };
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -105,7 +103,7 @@ pub async fn extract_consolidation_rename_info(
         .to_string();
 
     // Build the new import prefix
-    // e.g., "codebuddy_foundation::protocol"
+    // e.g., "mill_foundation::protocol"
     let new_import_prefix = format!("{}::{}", target_crate_name, submodule_name);
 
     tracing::info!(

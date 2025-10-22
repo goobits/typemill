@@ -1,7 +1,7 @@
 //! The WorkflowExecutor service for executing multi-step workflows.
 
-use codebuddy_foundation::core::model::workflow::Workflow;
-use codebuddy_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::core::model::workflow::Workflow;
+use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
 use codebuddy_plugin_system::{PluginManager, PluginRequest};
 use dashmap::DashMap;
 use serde_json::{json, Value};
@@ -146,7 +146,7 @@ impl DefaultWorkflowExecutor {
     #[allow(clippy::too_many_arguments)]
     async fn execute_workflow_step(
         &self,
-        step: &codebuddy_foundation::core::model::workflow::Step,
+        step: &mill_foundation::core::model::workflow::Step,
         step_index: usize,
         workflow_name: &str,
         total_steps: usize,

@@ -1,5 +1,5 @@
 use crate::harness::{TestClient, TestWorkspace};
-use codebuddy_foundation::protocol::analysis_result::AnalysisResult;
+use mill_foundation::protocol::analysis_result::AnalysisResult;
 use serde_json::json;
 
 #[cfg(feature = "e2e-tests")]

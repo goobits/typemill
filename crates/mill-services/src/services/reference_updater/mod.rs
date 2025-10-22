@@ -9,10 +9,7 @@ pub mod detectors;
 
 pub use cache::FileImportInfo;
 
-use codebuddy_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, DependencyUpdate, EditLocation, EditPlan,
-    EditPlanMetadata, EditType, TextEdit,
-};
+use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult , DependencyUpdate , EditLocation , EditPlan , EditPlanMetadata , EditType , TextEdit , };
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -46,7 +43,7 @@ impl ReferenceUpdater {
         rename_info: Option<&serde_json::Value>,
         _dry_run: bool,
         _scan_scope: Option<cb_plugin_api::ScanScope>,
-        rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
+        rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
     ) -> ServerResult<EditPlan> {
         let is_directory_rename = old_path.is_dir();
 
@@ -706,7 +703,7 @@ impl ReferenceUpdater {
 /// ```
 fn merge_rename_info(
     rename_info: Option<&serde_json::Value>,
-    rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
+    rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
 ) -> Option<serde_json::Value> {
     match (rename_info, rename_scope) {
         (Some(info), Some(scope)) => {
@@ -793,7 +790,7 @@ fn merge_rename_info(
 pub async fn find_project_files(
     project_root: &Path,
     plugins: &[std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
-    rename_scope: Option<&codebuddy_foundation::core::rename_scope::RenameScope>,
+    rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
 ) -> ServerResult<Vec<PathBuf>> {
     let mut files = Vec::new();
 
@@ -801,7 +798,7 @@ pub async fn find_project_files(
         dir: &'a Path,
         files: &'a mut Vec<PathBuf>,
         plugins: &'a [std::sync::Arc<dyn cb_plugin_api::LanguagePlugin>],
-        rename_scope: Option<&'a codebuddy_foundation::core::rename_scope::RenameScope>,
+        rename_scope: Option<&'a mill_foundation::core::rename_scope::RenameScope>,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ServerResult<()>> + Send + 'a>> {
         Box::pin(async move {
             if dir.is_dir() {
@@ -1069,7 +1066,7 @@ mod tests {
         );
 
         // Test WITH RenameScope - update_docs=false should exclude .md files
-        let scope_no_docs = codebuddy_foundation::core::rename_scope::RenameScope {
+        let scope_no_docs = mill_foundation::core::rename_scope::RenameScope {
             update_code: true,
             update_docs: false, // Exclude docs
             update_configs: false,
@@ -1136,7 +1133,7 @@ mod tests {
         );
 
         // Test WITH RenameScope - update_configs=false should exclude config files
-        let scope_no_configs = codebuddy_foundation::core::rename_scope::RenameScope {
+        let scope_no_configs = mill_foundation::core::rename_scope::RenameScope {
             update_code: true,
             update_docs: false,
             update_configs: false, // Exclude configs
@@ -1197,7 +1194,7 @@ mod tests {
         let plugins = plugin_registry.all();
 
         // Test WITH RenameScope and exclude patterns
-        let scope = codebuddy_foundation::core::rename_scope::RenameScope {
+        let scope = mill_foundation::core::rename_scope::RenameScope {
             update_code: true,
             update_docs: true,
             update_configs: false,
@@ -1269,7 +1266,7 @@ mod tests {
         let plugins = plugin_registry.all();
 
         // Test WITH comprehensive RenameScope - all flags true
-        let scope = codebuddy_foundation::core::rename_scope::RenameScope {
+        let scope = mill_foundation::core::rename_scope::RenameScope {
             update_code: true,
             update_docs: true,
             update_configs: true,

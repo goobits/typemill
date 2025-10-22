@@ -3,10 +3,7 @@
 //! Provides checksum calculation, conflict detection, and warning generation
 //! for file, directory, and symbol moves.
 
-use codebuddy_foundation::protocol::{
-    refactor_plan::{PlanSummary, PlanWarning},
-    ApiError as ServerError, ApiResult as ServerResult,
-};
+use mill_foundation::protocol::{ refactor_plan::{ PlanSummary , PlanWarning } , ApiError as ServerError , ApiResult as ServerResult , };
 use lsp_types::{Uri, WorkspaceEdit};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};

@@ -1,7 +1,7 @@
 use super::common::extract_range_text;
 use super::{CodeRange, ExtractVariableAnalysis, LspRefactoringService};
 use crate::error::{AstError, AstResult};
-use codebuddy_foundation::protocol::EditPlan;
+use mill_foundation::protocol::EditPlan;
 use tracing::debug;
 
 /// Analyze a selected expression for extraction into a variable (simplified fallback)
@@ -150,7 +150,7 @@ async fn lsp_extract_variable(
         .get("edit")
         .ok_or_else(|| AstError::analysis("Code action missing edit field".to_string()))?;
 
-    codebuddy_foundation::protocol::EditPlan::from_lsp_workspace_edit(
+    mill_foundation::protocol::EditPlan::from_lsp_workspace_edit(
         workspace_edit,
         file_path,
         "extract_variable",

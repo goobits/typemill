@@ -24,7 +24,7 @@ thiserror = { workspace = true }
 # Logging
 tracing = { workspace = true }
 cb-plugin-api = { workspace = true }
-codebuddy-foundation = { workspace = true }
+mill-foundation = { workspace = true }
 
 [dev-dependencies]
 # For testing

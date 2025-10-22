@@ -86,7 +86,7 @@ impl LanguagePlugin for TypeScriptPlugin {
         &self,
         source: &str,
         file_path: Option<&Path>,
-    ) -> PluginResult<codebuddy_foundation::protocol::ImportGraph> {
+    ) -> PluginResult<mill_foundation::protocol::ImportGraph> {
         parser::analyze_imports(source, file_path)
     }
 
@@ -183,7 +183,7 @@ impl cb_plugin_api::RefactoringProvider for TypeScriptPlugin {
         variable_line: u32,
         variable_col: u32,
         file_path: &str,
-    ) -> cb_plugin_api::PluginResult<codebuddy_foundation::protocol::EditPlan> {
+    ) -> cb_plugin_api::PluginResult<mill_foundation::protocol::EditPlan> {
         refactoring::plan_inline_variable(source, variable_line, variable_col, file_path)
     }
 
@@ -198,7 +198,7 @@ impl cb_plugin_api::RefactoringProvider for TypeScriptPlugin {
         end_line: u32,
         function_name: &str,
         file_path: &str,
-    ) -> cb_plugin_api::PluginResult<codebuddy_foundation::protocol::EditPlan> {
+    ) -> cb_plugin_api::PluginResult<mill_foundation::protocol::EditPlan> {
         refactoring::plan_extract_function(source, start_line, end_line, function_name, file_path)
     }
 
@@ -215,7 +215,7 @@ impl cb_plugin_api::RefactoringProvider for TypeScriptPlugin {
         end_col: u32,
         variable_name: Option<String>,
         file_path: &str,
-    ) -> cb_plugin_api::PluginResult<codebuddy_foundation::protocol::EditPlan> {
+    ) -> cb_plugin_api::PluginResult<mill_foundation::protocol::EditPlan> {
         refactoring::plan_extract_variable(
             source,
             start_line,
@@ -232,7 +232,7 @@ impl cb_plugin_api::ImportAnalyzer for TypeScriptPlugin {
     fn build_import_graph(
         &self,
         file_path: &Path,
-    ) -> cb_plugin_api::PluginResult<codebuddy_foundation::protocol::ImportGraph> {
+    ) -> cb_plugin_api::PluginResult<mill_foundation::protocol::ImportGraph> {
         // Read the file content
         let content = std::fs::read_to_string(file_path).map_err(|e| {
             cb_plugin_api::PluginError::internal(format!("Failed to read file: {}", e))

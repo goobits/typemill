@@ -12,7 +12,7 @@ use std::path::Path;
 #[derive(Debug, Clone)]
 pub struct MoveManifestPlan {
     /// Manifest file updates (e.g., workspace members, package names, dependency paths)
-    pub manifest_edits: Vec<codebuddy_foundation::protocol::TextEdit>,
+    pub manifest_edits: Vec<mill_foundation::protocol::TextEdit>,
 
     /// Rename metadata (package names, module names, etc.) for import updates
     pub rename_info: Option<serde_json::Value>,
