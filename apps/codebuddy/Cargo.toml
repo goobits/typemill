@@ -31,6 +31,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 clap = { version = "4.0", features = ["derive"] }
 fs2 = "0.4"
+glob = "0.3"
 codebuddy-plugin-system = { path = "../../crates/codebuddy-plugin-system", default-features = false, features = ["runtime"] }
 codebuddy-config = { path = "../../crates/codebuddy-config" }
 codebuddy-ast = { path = "../../crates/codebuddy-ast", default-features = false }

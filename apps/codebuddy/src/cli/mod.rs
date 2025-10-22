@@ -64,8 +64,19 @@ pub enum Commands {
     /// Check client configuration and diagnose potential problems
     Doctor,
     /// Call an MCP tool directly (without WebSocket server)
+    ///
+    /// Common tools:
+    ///   rename  - Move/rename files and directories
+    ///   move    - Move code symbols (functions/classes) between files
+    ///   extract - Extract code into functions/variables
+    ///   inline  - Inline variables/functions
+    ///
+    /// Use 'codebuddy tools' to list all available tools.
     Tool {
-        /// Tool name (e.g., "rename.plan", "find_definition")
+        /// Tool name (e.g., "rename", "move", "find_definition")
+        ///
+        /// Important: 'move' is for moving CODE SYMBOLS (functions, classes).
+        ///           For moving/renaming FILES, use 'rename' instead.
         tool_name: String,
 
         /// Tool arguments as JSON string (use "-" for stdin, required if not using flags)
@@ -81,12 +92,16 @@ pub enum Commands {
         format: String,
 
         // === Common flags across refactoring tools ===
+        // NOTE: Not all flags work with all tools. Tool-specific validation
+        // will provide helpful errors if you use the wrong flags.
 
         /// Target (format: kind:path or kind:path:line:char)
+        /// Used by: rename, inline, reorder, transform, delete
         #[arg(long, conflicts_with_all = ["args", "input_file"])]
         target: Option<String>,
 
-        /// Source (format: path:line:char)
+        /// Source (format: path:line:char for code positions)
+        /// Used by: move, extract
         #[arg(long, conflicts_with_all = ["args", "input_file"])]
         source: Option<String>,
 
@@ -155,6 +170,39 @@ pub enum Commands {
     Mcp(mill_client::McpCommands),
     /// Perform static analysis on the codebase
     Analyze(Analyze),
+    /// Convert naming conventions in bulk (e.g., kebab-case to camelCase)
+    ///
+    /// Scans files matching the pattern and renames them according to the
+    /// specified naming convention conversion. Uses batch rename internally.
+    ///
+    /// Examples:
+    ///   codebuddy convert-naming --from kebab-case --to camelCase --glob "src/**/*.js"
+    ///   codebuddy convert-naming --from snake_case --to camelCase --glob "**/*.ts" --target files
+    ConvertNaming {
+        /// Source naming convention (kebab-case, snake_case, camelCase, PascalCase)
+        #[arg(long)]
+        from: String,
+
+        /// Target naming convention (kebab-case, snake_case, camelCase, PascalCase)
+        #[arg(long)]
+        to: String,
+
+        /// Glob pattern to match files (e.g., "src/**/*.js")
+        #[arg(long)]
+        glob: String,
+
+        /// What to rename: files, directories, or symbols
+        #[arg(long, default_value = "files", value_parser = ["files", "directories", "symbols"])]
+        target: String,
+
+        /// Dry run - show what would be renamed without executing
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Output format (pretty or compact)
+        #[arg(long, default_value = "pretty", value_parser = ["pretty", "compact"])]
+        format: String,
+    },
 }
 
 /// The analyze command.
@@ -324,6 +372,16 @@ pub async fn run() {
         }
         Commands::Analyze(analyze_command) => {
             handle_analyze_command(analyze_command).await;
+        }
+        Commands::ConvertNaming {
+            from,
+            to,
+            glob,
+            target,
+            dry_run,
+            format,
+        } => {
+            handle_convert_naming(&from, &to, &glob, &target, dry_run, &format).await;
         }
     }
 }
@@ -1183,6 +1241,212 @@ async fn handle_tool_command(
             let api_error =
                 codebuddy_foundation::protocol::ApiError::internal(server_error.to_string());
             output_error(&api_error, format);
+            process::exit(1);
+        }
+    }
+}
+
+/// Handle convert-naming command - bulk rename files based on naming convention
+async fn handle_convert_naming(
+    from_convention: &str,
+    to_convention: &str,
+    glob_pattern: &str,
+    target_type: &str,
+    dry_run: bool,
+    format: &str,
+) {
+    use codebuddy_foundation::core::model::mcp::{McpMessage, McpRequest};
+    use glob::glob;
+    use serde_json::json;
+
+    // Scan files matching glob pattern
+    let matches: Vec<String> = match glob(glob_pattern) {
+        Ok(paths) => paths
+            .filter_map(|p| p.ok())
+            .filter_map(|p| p.to_str().map(String::from))
+            .collect(),
+        Err(e) => {
+            let error = codebuddy_foundation::protocol::ApiError::InvalidRequest(format!(
+                "Invalid glob pattern '{}': {}",
+                glob_pattern, e
+            ));
+            output_error(&error, format);
+            process::exit(1);
+        }
+    };
+
+    if matches.is_empty() {
+        eprintln!("No files matched pattern: {}", glob_pattern);
+        eprintln!("Tip: Use quotes around glob patterns: \"src/**/*.js\"");
+        process::exit(1);
+    }
+
+    // Generate targets array by converting each filename
+    let mut targets = Vec::new();
+    let mut skipped = Vec::new();
+
+    for file_path in &matches {
+        // Extract just the filename (not the full path)
+        let path = std::path::Path::new(file_path);
+        let filename = path.file_name().and_then(|n| n.to_str());
+
+        if let Some(fname) = filename {
+            // Try to convert the filename
+            if let Some(new_filename) = conventions::convert_filename(fname, from_convention, to_convention) {
+                // Skip if no change
+                if fname == new_filename {
+                    skipped.push(file_path.clone());
+                    continue;
+                }
+
+                // Build new path with converted filename
+                let new_path = if let Some(parent) = path.parent() {
+                    parent.join(&new_filename)
+                } else {
+                    std::path::PathBuf::from(&new_filename)
+                };
+
+                targets.push(json!({
+                    "kind": target_type,
+                    "path": file_path,
+                    "new_name": new_path.to_str().unwrap(),
+                }));
+            } else {
+                skipped.push(file_path.clone());
+            }
+        }
+    }
+
+    if targets.is_empty() {
+        eprintln!("✅ No files need renaming (all already match target convention)");
+        eprintln!("   Files checked: {}", matches.len());
+        process::exit(0);
+    }
+
+    // Show preview
+    println!("🔄 Converting {} {} from {} to {}", targets.len(), target_type, from_convention, to_convention);
+    println!();
+    for target in &targets {
+        println!("  {} → {}",
+            target["path"].as_str().unwrap(),
+            target["new_name"].as_str().unwrap()
+        );
+    }
+    if !skipped.is_empty() {
+        println!();
+        println!("⏭️  Skipped {} files (no change needed)", skipped.len());
+    }
+    println!();
+
+    if dry_run {
+        println!("🔍 Dry run complete (use without --dry-run to execute)");
+        return;
+    }
+
+    // Call batch rename via dispatcher
+    let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
+        Ok(d) => d,
+        Err(e) => {
+            let error = codebuddy_foundation::protocol::ApiError::internal(format!(
+                "Failed to initialize: {}",
+                e
+            ));
+            output_error(&error, format);
+            process::exit(1);
+        }
+    };
+
+    // Build rename.plan request with batch targets
+    let arguments = json!({
+        "targets": targets,
+        "options": {
+            "scope": "all"  // Update imports, string literals, docs, configs
+        }
+    });
+
+    let params = json!({
+        "name": "rename.plan",
+        "arguments": arguments,
+    });
+
+    let request = McpRequest {
+        jsonrpc: "2.0".to_string(),
+        id: Some(json!(1)),
+        method: "tools/call".to_string(),
+        params: Some(params),
+    };
+
+    let message = McpMessage::Request(request);
+    let session_info = SessionInfo::default();
+
+    // Execute rename plan
+    println!("📝 Generating rename plan...");
+    match dispatcher.dispatch(message, &session_info).await {
+        Ok(McpMessage::Response(response)) => {
+            if let Some(result) = response.result {
+                if let Some(content) = result.get("content") {
+                    // Got the plan, now apply it
+                    println!("✅ Plan generated");
+                    println!();
+
+                    // Apply the plan
+                    let apply_params = json!({
+                        "name": "workspace.apply_edit",
+                        "arguments": {
+                            "plan": content,
+                            "options": {
+                                "dry_run": false
+                            }
+                        }
+                    });
+
+                    let apply_request = McpRequest {
+                        jsonrpc: "2.0".to_string(),
+                        id: Some(json!(2)),
+                        method: "tools/call".to_string(),
+                        params: Some(apply_params),
+                    };
+
+                    println!("🚀 Applying renames...");
+                    match dispatcher.dispatch(McpMessage::Request(apply_request), &session_info).await {
+                        Ok(McpMessage::Response(apply_response)) => {
+                            if apply_response.error.is_some() {
+                                eprintln!("❌ Failed to apply renames");
+                                output_error(
+                                    &codebuddy_foundation::protocol::ApiError::internal(
+                                        format!("{:?}", apply_response.error)
+                                    ),
+                                    format
+                                );
+                                process::exit(1);
+                            } else {
+                                println!("✅ Successfully renamed {} files!", targets.len());
+                            }
+                        }
+                        Ok(_) => {
+                            eprintln!("❌ Unexpected response type from apply_edit");
+                            process::exit(1);
+                        }
+                        Err(e) => {
+                            eprintln!("❌ Error applying renames: {}", e);
+                            process::exit(1);
+                        }
+                    }
+                } else {
+                    eprintln!("❌ Plan response missing content");
+                    process::exit(1);
+                }
+            } else if let Some(error) = response.error {
+                eprintln!("❌ Failed to generate plan: {:?}", error);
+                process::exit(1);
+            }
+        }
+        Ok(_) => {
+            eprintln!("❌ Unexpected response type");
+            process::exit(1);
+        }
+        Err(e) => {
+            eprintln!("❌ Error: {}", e);
             process::exit(1);
         }
     }

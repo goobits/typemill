@@ -46,6 +46,8 @@ pub enum FlagParseError {
     InvalidValue { flag: String, value: String, reason: String },
     /// Convention parsing error (from Agent 2's parsers)
     ConventionError(String),
+    /// Wrong tool for operation (with suggested correct tool)
+    WrongTool { current_tool: String, suggested_tool: String, reason: String, example: String },
 }
 
 impl fmt::Display for FlagParseError {
@@ -68,6 +70,16 @@ impl fmt::Display for FlagParseError {
             }
             FlagParseError::ConventionError(msg) => {
                 write!(f, "Convention parsing error: {}", msg)
+            }
+            FlagParseError::WrongTool { current_tool, suggested_tool, reason, example } => {
+                write!(
+                    f,
+                    "Wrong tool for this operation.\n\n\
+                     Tool '{}' is for {}.\n\
+                     For your operation, use '{}'.\n\n\
+                     Example:\n  {}",
+                    current_tool, reason, suggested_tool, example
+                )
             }
         }
     }
@@ -364,6 +376,58 @@ fn parse_extract_flags(flags: HashMap<String, String>) -> Result<Value, FlagPars
 /// }
 /// ```
 fn parse_move_flags(flags: HashMap<String, String>) -> Result<Value, FlagParseError> {
+    // DETECTION: Check for common mistake - using 'move' for file operations
+    // The 'move' tool is for moving CODE SYMBOLS (functions, classes) between files.
+    // The 'rename' tool is for moving/renaming FILES and DIRECTORIES.
+
+    // Check 1: If --target or --new-name are present, user wants 'rename'
+    if flags.contains_key("target") || flags.contains_key("new_name") {
+        let source_example = flags.get("target")
+            .or_else(|| flags.get("source"))
+            .cloned()
+            .unwrap_or_else(|| "docs/old.md".to_string());
+        let dest_example = flags.get("new_name")
+            .or_else(|| flags.get("destination"))
+            .cloned()
+            .unwrap_or_else(|| "docs/new.md".to_string());
+
+        // Ensure file: prefix is added only once
+        let source_with_prefix = if source_example.starts_with("file:") || source_example.starts_with("directory:") {
+            source_example
+        } else {
+            format!("file:{}", source_example)
+        };
+
+        return Err(FlagParseError::WrongTool {
+            current_tool: "move".to_string(),
+            suggested_tool: "rename".to_string(),
+            reason: "moving CODE SYMBOLS (functions/classes) between files".to_string(),
+            example: format!(
+                "codebuddy tool rename --target {} --new-name {}",
+                source_with_prefix, dest_example
+            ),
+        });
+    }
+
+    // Check 2: If --source doesn't contain line:char, it's probably a file path
+    if let Some(source) = flags.get("source") {
+        // Source should be "path:line:char" for symbol moves
+        // If it lacks ":" or has only one ":", it's likely a file path
+        let colon_count = source.matches(':').count();
+        if colon_count < 2 {
+            let dest = flags.get("destination").map(|s| s.as_str()).unwrap_or("destination/path");
+            return Err(FlagParseError::WrongTool {
+                current_tool: "move".to_string(),
+                suggested_tool: "rename".to_string(),
+                reason: "moving CODE SYMBOLS (functions/classes) between files".to_string(),
+                example: format!(
+                    "codebuddy tool rename --target file:{} --new-name {}",
+                    source, dest
+                ),
+            });
+        }
+    }
+
     // Validate allowed flags
     validate_flags(&flags, &["kind", "source", "destination", "update_imports"])?;
 
