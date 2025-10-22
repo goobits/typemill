@@ -15,7 +15,7 @@ use mill_plugin_api::DependencySource;
 /// # Example
 ///
 /// ```rust
-/// use cb_lang_common::versioning::detect_dependency_source;
+/// use mill_lang_common::versioning::detect_dependency_source;
 /// use mill_plugin_api::DependencySource;
 ///
 /// let git = detect_dependency_source("git+https://github.com/user/repo.git");
@@ -74,7 +74,7 @@ pub fn detect_dependency_source(spec: &str) -> DependencySource {
 /// # Example
 ///
 /// ```rust
-/// use cb_lang_common::versioning::extract_version_number;
+/// use mill_lang_common::versioning::extract_version_number;
 ///
 /// assert_eq!(extract_version_number("^1.2.3"), "1.2.3");
 /// assert_eq!(extract_version_number("~2.0.0"), "2.0.0");

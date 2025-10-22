@@ -63,7 +63,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 - `cb-test-support` - Testing utilities and harness
 
 **Language Plugins (6 crates - `cb-lang-*` prefix):**
-- `cb-lang-common` - Common language plugin infrastructure
+- `mill-lang-common` - Common language plugin infrastructure
 - `cb-lang-rust` - Rust language plugin
 - `cb-lang-typescript` - TypeScript/JavaScript plugin
 - `cb-lang-markdown` - Markdown documentation plugin
@@ -112,7 +112,7 @@ All crates will adopt the `mill-*` prefix for consistency and simplicity.
 - `cb-test-support` → `mill-test-support`
 
 **Language Plugins:**
-- `cb-lang-common` → `mill-lang-common`
+- `mill-lang-common` → `mill-lang-common`
 - `cb-lang-rust` → `mill-lang-rust`
 - `cb-lang-typescript` → `mill-lang-typescript`
 - `cb-lang-markdown` → `mill-lang-markdown`
@@ -490,7 +490,7 @@ git tag v2.0.0
 - [ ] `cb-test-support` → `mill-test-support`
 
 **Language Plugins (6 crates):**
-- [ ] `cb-lang-common` → `mill-lang-common`
+- [ ] `mill-lang-common` → `mill-lang-common`
 - [ ] `cb-lang-rust` → `mill-lang-rust`
 - [ ] `cb-lang-typescript` → `mill-lang-typescript`
 - [ ] `cb-lang-markdown` → `mill-lang-markdown`
@@ -1018,7 +1018,7 @@ See full documentation at https://typemill.org/docs/migration
   ../crates/mill-transport → crates/mill-transport
   ../crates/mill-plugin-api → crates/mill-plugin-api
   ../crates/mill-test-support → crates/mill-test-support
-  crates/cb-lang-common → crates/mill-lang-common
+  ../crates/mill-lang-common → crates/mill-lang-common
   crates/cb-lang-rust → crates/mill-lang-rust
   crates/cb-lang-typescript → crates/mill-lang-typescript
   crates/cb-lang-markdown → crates/mill-lang-markdown
@@ -1048,7 +1048,7 @@ See full documentation at https://typemill.org/docs/migration
   mill-transport → mill-transport
   mill-plugin-api → mill-plugin-api
   cb-test-support → mill-test-support
-  cb-lang-common → mill-lang-common
+  mill-lang-common → mill-lang-common
   cb-lang-rust → mill-lang-rust
   cb-lang-typescript → mill-lang-typescript
   cb-lang-markdown → mill-lang-markdown

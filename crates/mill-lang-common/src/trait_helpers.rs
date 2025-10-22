@@ -11,7 +11,7 @@
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::workspace_support_impl;
+/// use mill_lang_common::workspace_support_impl;
 ///
 /// pub struct MyWorkspaceSupport;
 ///

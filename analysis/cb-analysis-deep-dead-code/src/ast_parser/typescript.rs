@@ -2,7 +2,7 @@
 //! symbol information for deep dead code analysis.
 
 use cb_analysis_common::graph::{SymbolKind, SymbolNode};
-use cb_lang_common::{run_ast_tool, SubprocessAstTool};
+use mill_lang_common::{ run_ast_tool , SubprocessAstTool };
 use lsp_types::{Position, Range};
 use serde::Deserialize;
 use std::fs;

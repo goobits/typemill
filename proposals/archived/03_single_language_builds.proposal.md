@@ -413,7 +413,7 @@ The capability trait approach prevents duplication as we add more languages. As 
 
 ### Additional Scaling Benefits
 
-1. **Centralized Helpers**: Move shared refactoring infrastructure to `cb-lang-common` so new languages reuse code instead of duplicating it.
+1. **Centralized Helpers**: Move shared refactoring infrastructure to `mill-lang-common` so new languages reuse code instead of duplicating it.
 
 2. **Capability Discovery**: Plugin manager can query capabilities at runtime:
    ```rust

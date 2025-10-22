@@ -23,7 +23,7 @@ use tracing::debug;
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::parsing::parse_with_fallback;
+/// use mill_lang_common::parsing::parse_with_fallback;
 ///
 /// let imports = parse_with_fallback(
 ///     || parse_imports_ast(source),
@@ -68,7 +68,7 @@ where
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::parsing::parse_with_optional_fallback;
+/// use mill_lang_common::parsing::parse_with_optional_fallback;
 ///
 /// let imports = parse_with_optional_fallback(
 ///     || parse_imports_ast(source),
@@ -108,7 +108,7 @@ where
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::parsing::try_parsers;
+/// use mill_lang_common::parsing::try_parsers;
 ///
 /// let result = try_parsers(
 ///     vec![

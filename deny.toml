@@ -258,7 +258,7 @@ wrappers = ["mill-services", "mill-server", "codebuddy", "mill-test-support"]
 # =============================================================================
 # CRITICAL ENFORCEMENT: Cross-Plugin Isolation (Layer 4)
 # =============================================================================
-# Prevents plugins from depending on each other (except via cb-lang-common)
+# Prevents plugins from depending on each other (except via mill-lang-common)
 
 [[bans.deny]]
 name = "cb-lang-rust"

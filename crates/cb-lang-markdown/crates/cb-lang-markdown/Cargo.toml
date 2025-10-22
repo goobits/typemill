@@ -10,7 +10,6 @@ homepage.workspace = true
 # Our core plugin API
 mill-plugin-api = { path = "../mill-plugin-api" }
 cb-protocol = { path = "../cb-protocol" }
-cb-lang-common = { path = "../cb-lang-common" }
 
 # For markdown link parsing
 regex = "1.10"
@@ -30,3 +29,4 @@ tokio = { workspace = true }
 # Error handling
 thiserror = { workspace = true }
 mill-foundation = { path = "../../../mill-foundation" }
+mill-lang-common = { path = "../../../mill-lang-common" }

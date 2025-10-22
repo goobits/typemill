@@ -3,9 +3,7 @@
 //! This module implements the segregated import traits for Rust, providing
 //! synchronous methods for parsing, analyzing, and rewriting import statements.
 
-use cb_lang_common::import_helpers::{
-    find_last_matching_line, insert_line_at, remove_lines_matching,
-};
+use mill_lang_common::import_helpers::{ find_last_matching_line , insert_line_at , remove_lines_matching , };
 use mill_plugin_api::{ ImportAdvancedSupport , ImportMoveSupport , ImportMutationSupport , ImportParser , ImportRenameSupport , };
 use std::path::Path;
 use tracing::debug;

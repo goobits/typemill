@@ -370,7 +370,7 @@ pub mod utils {
 mod tests {
     use super::fixtures::*;
     use super::utils::*;
-    use cb_lang_common::import_helpers::*;
+    use mill_lang_common::import_helpers::*;
 
     #[test]
     fn test_fixtures_are_valid() {

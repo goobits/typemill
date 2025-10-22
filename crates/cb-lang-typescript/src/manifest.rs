@@ -28,7 +28,7 @@
 //! }
 //! ```
 
-use cb_lang_common::read_manifest;
+use mill_lang_common::read_manifest;
 use mill_plugin_api::{ Dependency , DependencySource , ManifestData , PluginError , PluginResult };
 use serde_json::{Map, Value};
 use std::path::Path;

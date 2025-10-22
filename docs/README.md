@@ -34,7 +34,7 @@
 - **[Testing Guide](development/testing.md)** - Test infrastructure and workflow
 - **[Workflows](development/workflows.md)** - Workflow automation engine
 - **[Logging Guidelines](development/logging_guidelines.md)** - Structured logging standards
-- **[cb-lang-common API](development/cb_lang_common.md)** - Language plugin utilities
+- **[mill-lang-common API](development/cb_lang_common.md)** - Language plugin utilities
 
 ---
 

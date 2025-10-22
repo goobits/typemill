@@ -188,7 +188,7 @@ Plugin Layer (6 active plugins):
   ├─ cb-lang-markdown (now active ✅)
   ├─ cb-lang-toml (now active ✅)
   ├─ cb-lang-yaml (now active ✅)
-  └─ cb-lang-common (shared utilities)
+  └─ mill-lang-common (shared utilities)
 
 Services Layer (mill-services):
   ├─ file_service/ (focused on file I/O)

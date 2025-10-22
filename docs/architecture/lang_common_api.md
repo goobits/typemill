@@ -1,7 +1,7 @@
 # Language Plugin Common API
 
 ## Scope
-- Defines canonical contracts for line-level import primitives in `cb-lang-common`.
+- Defines canonical contracts for line-level import primitives in `mill-lang-common`.
 - Applies to core plugins (TypeScript, Rust) and external language plugins.
 - Overrides any conflicting implementation details; code must conform to this spec.
 
@@ -9,7 +9,7 @@
 
 **Current (preserved):**
 ```
-cb-lang-common/src/
+mill-lang-common/src/
 ├── import_parsing.rs
 ├── import_graph.rs
 └── lib.rs
@@ -17,7 +17,7 @@ cb-lang-common/src/
 
 **Addition:**
 ```
-cb-lang-common/src/
+mill-lang-common/src/
 └── import_helpers.rs     # 4 functions, ~100 lines
 ```
 

@@ -110,7 +110,7 @@ impl AstToolOutput {
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::ast_deserialization::parse_ast_output;
+/// use mill_lang_common::ast_deserialization::parse_ast_output;
 ///
 /// let json = r#"{"symbols": [{"name": "foo", "kind": "function", "line": 0}]}"#;
 /// let output = parse_ast_output(json)?;

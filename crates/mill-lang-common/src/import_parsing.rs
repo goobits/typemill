@@ -14,7 +14,7 @@
 /// # Example
 ///
 /// ```rust
-/// use cb_lang_common::import_parsing::parse_import_alias;
+/// use mill_lang_common::import_parsing::parse_import_alias;
 ///
 /// let (name, alias) = parse_import_alias("foo as bar");
 /// assert_eq!(name, "foo");
@@ -45,7 +45,7 @@ pub fn parse_import_alias(text: &str) -> (String, Option<String>) {
 /// # Example
 ///
 /// ```rust
-/// use cb_lang_common::import_parsing::extract_package_name;
+/// use mill_lang_common::import_parsing::extract_package_name;
 ///
 /// assert_eq!(extract_package_name("@types/node"), "@types/node");
 /// assert_eq!(extract_package_name("@types/node/fs"), "@types/node");

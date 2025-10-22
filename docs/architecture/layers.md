@@ -88,7 +88,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Purpose:** Language-specific implementations of code intelligence
 
 **Crates:**
-- `cb-lang-common` / `codebuddy-lang-common` (shared utilities)
+- `mill-lang-common` / `codebuddy-lang-common` (shared utilities)
 - `cb-lang-rust` / `codebuddy-lang-rust`
 - `cb-lang-typescript` / `codebuddy-lang-typescript`
 - `cb-lang-markdown` / `codebuddy-lang-markdown`
@@ -102,7 +102,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Constraints:**
 - Plugins are independent (no cross-plugin dependencies)
 - Each plugin only depends on plugin-api and foundation
-- `cb-lang-common` can be used by any plugin for shared utilities
+- `mill-lang-common` can be used by any plugin for shared utilities
 
 ---
 
@@ -213,7 +213,7 @@ cargo depgraph --workspace-only | dot -Tpng > deps.png
 
 **✅ Active Enforcement:**
 - Plugins (Layer 4) cannot depend on Services (Layer 5) or higher
-- Cross-plugin isolation - plugins cannot depend on each other (except via cb-lang-common)
+- Cross-plugin isolation - plugins cannot depend on each other (except via mill-lang-common)
 - Services (Layer 5) cannot depend on Handlers (Layer 6) or higher
 - Handlers (Layer 6) cannot depend on Application (Layer 7)
 - Production crates cannot depend on mill-test-support

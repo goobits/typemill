@@ -7,7 +7,7 @@ pub mod refactoring;
 pub mod workspace_support;
 
 use async_trait::async_trait;
-use cb_lang_common::read_manifest;
+use mill_lang_common::read_manifest;
 use mill_plugin_api::codebuddy_plugin;
 use mill_plugin_api::{ import_support::{ ImportAdvancedSupport , ImportMoveSupport , ImportMutationSupport , ImportParser , ImportRenameSupport , } , LanguageMetadata , LanguagePlugin , LspConfig , ManifestData , ParsedSource , PluginCapabilities , PluginError , PluginResult , WorkspaceSupport , };
 use std::path::Path;

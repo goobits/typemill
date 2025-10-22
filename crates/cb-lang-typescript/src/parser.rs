@@ -1,5 +1,5 @@
 //! TypeScript/JavaScript import parsing and symbol extraction logic.
-use cb_lang_common::{parse_with_fallback, run_ast_tool, ImportGraphBuilder, SubprocessAstTool};
+use mill_lang_common::{ parse_with_fallback , run_ast_tool , ImportGraphBuilder , SubprocessAstTool };
 use mill_plugin_api::{ PluginError , PluginResult , Symbol , SymbolKind };
 use mill_foundation::protocol::{ ImportGraph , ImportInfo , ImportType , SourceLocation };
 use serde::Deserialize;

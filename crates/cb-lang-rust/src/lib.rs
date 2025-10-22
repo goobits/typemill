@@ -29,10 +29,7 @@ pub mod dependency_analysis;
 pub mod reference_detector;
 
 use async_trait::async_trait;
-use cb_lang_common::{
-    manifest_templates::{ManifestTemplate, TomlManifestTemplate},
-    read_manifest,
-};
+use mill_lang_common::{ manifest_templates::{ ManifestTemplate , TomlManifestTemplate } , read_manifest , };
 use mill_plugin_api::codebuddy_plugin;
 use mill_plugin_api::{ LanguageMetadata , LanguagePlugin , LspConfig , ManifestData , ParsedSource , PluginCapabilities , PluginResult , };
 use std::path::Path;

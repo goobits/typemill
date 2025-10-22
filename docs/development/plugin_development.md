@@ -155,7 +155,7 @@ fn _force_plugin_linkage() {
 
 **When to use:** Rust parser available, performance critical
 
-## cb-lang-common Utilities
+## mill-lang-common Utilities
 
 Essential utilities to reduce boilerplate (~460 lines saved):
 
@@ -475,7 +475,7 @@ capability.method().await?
 
 | Principle | Rationale |
 |-----------|-----------|
-| Use cb-lang-common utilities | Reduces boilerplate by ~460 lines |
+| Use mill-lang-common utilities | Reduces boilerplate by ~460 lines |
 | Follow existing patterns | Proven architecture, easier review |
 | Write comprehensive tests | 30+ tests minimum for robust code |
 | Use structured logging | Machine-readable, production-ready |

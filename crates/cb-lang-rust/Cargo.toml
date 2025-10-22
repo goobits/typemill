@@ -10,7 +10,7 @@ homepage.workspace = true
 # Our core plugin API
 mill-plugin-api = { path = "../mill-plugin-api" }
 mill-foundation = { path = "../mill-foundation" }
-cb-lang-common = { path = "../cb-lang-common" }
+mill-lang-common = { path = "../mill-lang-common" }
 
 # For parsing Rust code
 syn = { version = "2.0", features = ["full", "visit", "extra-traits"] }

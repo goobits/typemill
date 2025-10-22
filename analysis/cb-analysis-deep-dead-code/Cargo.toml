@@ -7,7 +7,7 @@ license.workspace = true
 [dependencies]
 # Workspace dependencies
 cb-analysis-common = { workspace = true }
-cb-lang-common = { workspace = true }
+mill-lang-common = { workspace = true }
 
 # External dependencies
 async-trait = { workspace = true }

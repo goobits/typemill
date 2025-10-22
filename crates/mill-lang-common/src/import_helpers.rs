@@ -19,7 +19,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use cb_lang_common::import_helpers::*;
+//! use mill_lang_common::import_helpers::*;
 //!
 //! let content = "import A\nimport B\ncode";
 //! let idx = find_last_matching_line(content, |line| line.trim().starts_with("import"));
@@ -48,7 +48,7 @@
 ///
 /// # Examples
 /// ```
-/// use cb_lang_common::import_helpers::find_last_matching_line;
+/// use mill_lang_common::import_helpers::find_last_matching_line;
 ///
 /// let content = "import A\nimport B\ncode";
 /// let idx = find_last_matching_line(content, |line| line.trim().starts_with("import"));
@@ -84,7 +84,7 @@ where
 ///
 /// # Examples
 /// ```
-/// use cb_lang_common::import_helpers::insert_line_at;
+/// use mill_lang_common::import_helpers::insert_line_at;
 ///
 /// let content = "line 0\nline 1";
 /// let result = insert_line_at(content, 1, "NEW");
@@ -137,7 +137,7 @@ pub fn insert_line_at(content: &str, line_index: usize, new_line: &str) -> Strin
 ///
 /// # Examples
 /// ```
-/// use cb_lang_common::import_helpers::remove_lines_matching;
+/// use mill_lang_common::import_helpers::remove_lines_matching;
 ///
 /// let content = "import A\nimport B\ncode";
 /// let (result, count) = remove_lines_matching(content, |line| {
@@ -194,7 +194,7 @@ where
 ///
 /// # Examples
 /// ```
-/// use cb_lang_common::import_helpers::replace_in_lines;
+/// use mill_lang_common::import_helpers::replace_in_lines;
 ///
 /// let content = "use old::Foo;\nuse old::Bar;";
 /// let (result, count) = replace_in_lines(content, "old", "new");

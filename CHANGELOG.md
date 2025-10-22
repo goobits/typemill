@@ -252,7 +252,7 @@ The project underwent a complete architectural transformation from TypeScript/No
 - **Cognitive Complexity Metrics** - Enhanced code metrics with cognitive complexity scoring
 
 - **Enhanced `rename_directory` Workspace Operations** - Auto-update Cargo.toml path dependencies and manifest updates
-- **cb-lang-common Utility Library** - Shared utility modules for language plugins with ImportGraph builder
+- **mill-lang-common Utility Library** - Shared utility modules for language plugins with ImportGraph builder
 
 - **Swift language support** - Complete implementation with AST-based parsing, import manipulation, and Swift Package Manager support
 - **Build and test performance optimizations** - Added test feature flags (`fast`/`lsp`/`e2e`/`heavy`), cargo-nextest support, and build configuration improvements
@@ -260,7 +260,7 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 #### Changed
 
-- **Language Plugin Integration** - All language plugins now integrate with cb-lang-common utilities
+- **Language Plugin Integration** - All language plugins now integrate with mill-lang-common utilities
 - **Crate Organization** - Moved all language plugins to flat `crates/` layout for consistency
 
 #### Fixed

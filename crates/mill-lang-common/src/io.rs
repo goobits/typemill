@@ -13,7 +13,7 @@ use tracing::debug;
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::io::read_manifest;
+/// use mill_lang_common::io::read_manifest;
 ///
 /// let content = read_manifest(Path::new("Cargo.toml")).await?;
 /// ```

@@ -1,10 +1,10 @@
-# cb-lang-common Utility Reference
+# mill-lang-common Utility Reference
 
 **Version**: 1.0.0-rc2
-**Location**: `/workspace/crates/cb-lang-common`
+**Location**: `/workspace/crates/mill-lang-common`
 **Last Updated**: 2025-10-07
 
-Quick reference for the `cb-lang-common` utility crate that provides shared functionality for all language plugins. For detailed implementation examples, see [plugin_development.md](../plugin_development.md).
+Quick reference for the `mill-lang-common` utility crate that provides shared functionality for all language plugins. For detailed implementation examples, see [plugin_development.md](../plugin_development.md).
 
 ---
 
@@ -52,7 +52,7 @@ let result: Vec<MyImport> = run_ast_tool(tool, source)?;
 - `with_arg(arg: &str)` - Add argument
 - `with_env(key, val)` - Set environment variable
 
-**Source**: [`cb-lang-common/src/subprocess.rs`](../cb-lang-common/src/subprocess.rs)
+**Source**: [`mill-lang-common/src/subprocess.rs`](../mill-lang-common/src/subprocess.rs)
 
 ---
 
@@ -79,7 +79,7 @@ let graph = ImportGraphBuilder::new("python")
 - `with_parser_version(version: &str)` - Parser version
 - `build()` - Build ImportGraph
 
-**Source**: [`cb-lang-common/src/import_graph.rs`](../cb-lang-common/src/import_graph.rs)
+**Source**: [`mill-lang-common/src/import_graph.rs`](../mill-lang-common/src/import_graph.rs)
 
 ---
 
@@ -102,7 +102,7 @@ let indent = LineExtractor::get_indentation_str(source, line_num);
 - `LineExtractor::get_indentation_str(source: &str, line: usize) -> &str`
 - `LineExtractor::detect_indentation(source: &str) -> String`
 
-**Source**: [`cb-lang-common/src/refactoring.rs`](../cb-lang-common/src/refactoring.rs)
+**Source**: [`mill-lang-common/src/refactoring.rs`](../mill-lang-common/src/refactoring.rs)
 
 ---
 
@@ -121,7 +121,7 @@ let imports = parse_with_fallback(
 )?;
 ```
 
-**Source**: [`cb-lang-common/src/parsing.rs`](../cb-lang-common/src/parsing.rs)
+**Source**: [`mill-lang-common/src/parsing.rs`](../mill-lang-common/src/parsing.rs)
 
 ---
 
@@ -146,7 +146,7 @@ let source = read_source_file(path).await?;
 - `read_source_file(path: &Path) -> Result<String>` - Read source files
 - `write_file(path: &Path, content: &str) -> Result<()>` - Write files
 
-**Source**: [`cb-lang-common/src/io.rs`](../cb-lang-common/src/io.rs)
+**Source**: [`mill-lang-common/src/io.rs`](../mill-lang-common/src/io.rs)
 
 ---
 
@@ -169,7 +169,7 @@ return Err(rich_error(
 return Err(error_with_context("Parse failed", &format!("file: {}", path)));
 ```
 
-**Source**: [`cb-lang-common/src/error_helpers.rs`](../cb-lang-common/src/error_helpers.rs)
+**Source**: [`mill-lang-common/src/error_helpers.rs`](../mill-lang-common/src/error_helpers.rs)
 
 ---
 
@@ -189,7 +189,7 @@ let (name, alias) = parse_import_alias("numpy as np");
 let path = parse_module_path("package.module.Class");
 ```
 
-**Source**: [`cb-lang-common/src/import_parsing.rs`](../cb-lang-common/src/import_parsing.rs)
+**Source**: [`mill-lang-common/src/import_parsing.rs`](../mill-lang-common/src/import_parsing.rs)
 
 ---
 
@@ -210,7 +210,7 @@ let manifest = template.generate("my-lib", "1.0.0", &["dep1", "dep2"]);
 - `TomlManifestTemplate` - Cargo.toml, pyproject.toml
 - `JsonManifestTemplate` - package.json
 
-**Source**: [`cb-lang-common/src/manifest_templates.rs`](../cb-lang-common/src/manifest_templates.rs)
+**Source**: [`mill-lang-common/src/manifest_templates.rs`](../mill-lang-common/src/manifest_templates.rs)
 
 ---
 
@@ -233,7 +233,7 @@ assert_eq!(git.owner, "user");
 assert_eq!(git.repo, "repo");
 ```
 
-**Source**: [`cb-lang-common/src/versioning.rs`](../cb-lang-common/src/versioning.rs)
+**Source**: [`mill-lang-common/src/versioning.rs`](../mill-lang-common/src/versioning.rs)
 
 ---
 
@@ -254,7 +254,7 @@ async fn test_parser() {
 }
 ```
 
-**Source**: [`cb-lang-common/src/testing.rs`](../cb-lang-common/src/testing.rs)
+**Source**: [`mill-lang-common/src/testing.rs`](../mill-lang-common/src/testing.rs)
 
 ---
 

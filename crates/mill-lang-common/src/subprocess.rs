@@ -6,7 +6,7 @@
 //! # Usage
 //!
 //! ```rust,ignore
-//! use cb_lang_common::subprocess::{SubprocessAstTool, run_ast_tool};
+//! use mill_lang_common::subprocess::{SubprocessAstTool, run_ast_tool};
 //!
 //! const PYTHON_TOOL: &str = include_str!("../resources/ast_tool.py");
 //!

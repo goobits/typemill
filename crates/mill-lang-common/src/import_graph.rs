@@ -15,7 +15,7 @@ use std::path::Path;
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::import_graph::ImportGraphBuilder;
+/// use mill_lang_common::import_graph::ImportGraphBuilder;
 ///
 /// let graph = ImportGraphBuilder::new("typescript")
 ///     .with_source_file(Some(&path))

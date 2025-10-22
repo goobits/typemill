@@ -10,7 +10,7 @@ use mill_foundation::protocol::SourceLocation;
 /// # Example
 ///
 /// ```rust
-/// use cb_lang_common::location::LocationBuilder;
+/// use mill_lang_common::location::LocationBuilder;
 ///
 /// let loc = LocationBuilder::at_line(42)
 ///     .with_columns(10, 25)

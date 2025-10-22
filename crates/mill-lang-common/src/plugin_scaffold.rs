@@ -302,7 +302,7 @@ homepage.workspace = true
 mill-plugin-api = {{ path = "../../mill-plugin-api" }}
 cb-protocol = {{ path = "../../cb-protocol" }}
 cb-core = {{ path = "../../cb-core" }}
-cb-lang-common = {{ path = "../cb-lang-common" }}
+mill-lang-common = {{ path = "../mill-lang-common" }}
 
 # Async operations
 async-trait = {{ workspace = true }}
@@ -421,6 +421,6 @@ mod tests {
         let cargo_toml = scaffold.generate_cargo_toml();
 
         assert!(cargo_toml.contains("name = \"cb-lang-elixir\""));
-        assert!(cargo_toml.contains("cb-lang-common"));
+        assert!(cargo_toml.contains("mill-lang-common"));
     }
 }

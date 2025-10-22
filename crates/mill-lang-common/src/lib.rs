@@ -43,7 +43,7 @@
 //! ## Subprocess utilities
 //!
 //! ```rust,ignore
-//! use cb_lang_common::subprocess::{SubprocessAstTool, run_ast_tool};
+//! use mill_lang_common::subprocess::{SubprocessAstTool, run_ast_tool};
 //!
 //! const PYTHON_TOOL: &str = include_str!("../resources/ast_tool.py");
 //!
@@ -58,7 +58,7 @@
 //! ## Error handling
 //!
 //! ```rust,ignore
-//! use cb_lang_common::error_helpers::ErrorBuilder;
+//! use mill_lang_common::error_helpers::ErrorBuilder;
 //!
 //! let error = ErrorBuilder::parse("Invalid syntax")
 //!     .with_path(&file_path)
@@ -69,7 +69,7 @@
 //! ## File I/O
 //!
 //! ```rust,ignore
-//! use cb_lang_common::io::{read_manifest, find_source_files};
+//! use mill_lang_common::io::{read_manifest, find_source_files};
 //!
 //! let content = read_manifest(Path::new("Cargo.toml")).await?;
 //! let files = find_source_files(root, &["rs", "toml"]).await?;
@@ -78,7 +78,7 @@
 //! ## Import parsing
 //!
 //! ```rust,ignore
-//! use cb_lang_common::import_parsing::parse_import_alias;
+//! use mill_lang_common::import_parsing::parse_import_alias;
 //!
 //! let (name, alias) = parse_import_alias("foo as bar");
 //! ```

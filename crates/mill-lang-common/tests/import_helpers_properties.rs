@@ -12,7 +12,7 @@
 //!
 //! Total: 22 property-based tests (100+ test cases per property)
 
-use cb_lang_common::import_helpers::*;
+use mill_lang_common::import_helpers::*;
 use proptest::prelude::*;
 
 // ============================================================================

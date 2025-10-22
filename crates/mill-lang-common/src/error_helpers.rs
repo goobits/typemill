@@ -12,7 +12,7 @@ use std::path::Path;
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::error_helpers::ErrorBuilder;
+/// use mill_lang_common::error_helpers::ErrorBuilder;
 ///
 /// let error = ErrorBuilder::parse("Invalid syntax")
 ///     .with_path(&file_path)
@@ -100,7 +100,7 @@ impl ErrorBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use cb_lang_common::error_helpers::ErrorBuilder;
+    /// use mill_lang_common::error_helpers::ErrorBuilder;
     ///
     /// let builder = ErrorBuilder::parse("Invalid syntax")
     ///     .with_line(42)
@@ -155,7 +155,7 @@ impl ErrorBuilder {
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::parse_error;
+/// use mill_lang_common::parse_error;
 ///
 /// return Err(parse_error!("Expected identifier, found {}", token));
 /// ```

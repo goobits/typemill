@@ -13,7 +13,7 @@
 //! # Running Benchmarks
 //!
 //! ```bash
-//! cargo bench -p cb-lang-common
+//! cargo bench -p mill-lang-common
 //! ```
 //!
 //! # Performance Targets
@@ -23,7 +23,7 @@
 //! - **remove_lines_matching**: < 500us for 1K lines
 //! - **replace_in_lines**: < 1ms for 1K lines with 100 replacements
 
-use cb_lang_common::import_helpers::*;
+use mill_lang_common::import_helpers::*;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
 // ============================================================================

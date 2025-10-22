@@ -82,7 +82,7 @@ homepage.workspace = true
 
 [dependencies]
 mill-plugin-api = {{ path = "../mill-plugin-api" }}
-cb-lang-common = {{ path = "../cb-lang-common" }}
+mill-lang-common = {{ path = "../mill-lang-common" }}
 cb-protocol = {{ path = "../cb-protocol" }}
 
 async-trait = {{ workspace = true }}

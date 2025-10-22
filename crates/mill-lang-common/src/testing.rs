@@ -12,7 +12,7 @@ use tempfile::{NamedTempFile, TempDir};
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::testing::create_temp_manifest;
+/// use mill_lang_common::testing::create_temp_manifest;
 ///
 /// let file = create_temp_manifest("[package]\nname = \"test\"", "Cargo.toml").await?;
 /// // Use file.path() in tests
@@ -31,7 +31,7 @@ pub async fn create_temp_manifest(content: &str, filename: &str) -> std::io::Res
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::testing::create_temp_project;
+/// use mill_lang_common::testing::create_temp_project;
 ///
 /// let files = vec![
 ///     ("src/main.rs", "fn main() {}"),
@@ -65,7 +65,7 @@ pub async fn create_temp_project(files: &[(&str, &str)]) -> std::io::Result<Temp
 /// # Example
 ///
 /// ```rust
-/// use cb_lang_common::testing::mock_ast_output;
+/// use mill_lang_common::testing::mock_ast_output;
 ///
 /// let json = mock_ast_output(&[
 ///     ("foo", "function"),
@@ -111,7 +111,7 @@ pub fn mock_symbol_array(symbols: &[(&str, &str)]) -> String {
 /// # Example
 ///
 /// ```rust,ignore
-/// use cb_lang_common::assert_plugin_ok;
+/// use mill_lang_common::assert_plugin_ok;
 ///
 /// let result = plugin.parse(source).await;
 /// let parsed = assert_plugin_ok!(result);
