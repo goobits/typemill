@@ -133,7 +133,7 @@ use cb_core::config;  // → use codebuddy_core::config
 
 ### Files Affected
 
-- `crates/cb-client/src/commands/doctor.rs` (2 qualified paths)
+- `../../crates/mill-client/src/commands/doctor.rs` (2 qualified paths)
 - `crates/cb-transport/src/stdio.rs` (1 qualified path)
 - `crates/cb-transport/src/ws.rs` (1 qualified path)
 - Various other files (found via `grep -r "cb_core::"`)
@@ -217,7 +217,7 @@ Files:
 - `Cargo.toml` (workspace root)
 - `crates/codebuddy-plugin-system/Cargo.toml`
 - `crates/cb-services/Cargo.toml`
-- `crates/cb-client/Cargo.toml`
+- `../../crates/mill-client/Cargo.toml`
 - `crates/cb-transport/Cargo.toml`
 - `crates/cb-server/Cargo.toml`
 - `apps/codebuddy/Cargo.toml`

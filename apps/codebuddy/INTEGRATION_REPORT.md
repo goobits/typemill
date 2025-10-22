@@ -13,7 +13,7 @@ Implemented three smart parsers that convert shorthand notation to full JSON:
 #### `parse_target_convention(s: &str) -> Result<Value, ConventionError>`
 Parses target specifications in multiple formats:
 - **Simple file**: `file:src/utils.rs` → `{"kind": "file", "path": "src/utils.rs"}`
-- **Simple directory**: `directory:crates/cb-client` → `{"kind": "directory", "path": "crates/cb-client"}`
+- **Simple directory**: `directory:../../crates/mill-client` → `{"kind": "directory", "path": "../../crates/mill-client"}`
 - **Symbol with position**: `symbol:src/app.rs:10:5` → `{"kind": "symbol", "path": "src/app.rs", "selector": {"position": {"line": 10, "character": 5}}}`
 - **Alias support**: `dir:` recognized as `directory:`
 

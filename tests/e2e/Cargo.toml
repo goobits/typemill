@@ -9,7 +9,6 @@ license = "MIT"
 codebuddy-foundation = { path = "../../crates/codebuddy-foundation" }
 cb-plugin-api = { path = "../../crates/cb-plugin-api" }
 cb-server = { path = "../../crates/cb-server", default-features = false, features = ["test-helpers"] }
-cb-client = { path = "../../crates/cb-client" }
 cb-handlers = { path = "../../crates/cb-handlers", default-features = false, features = ["analysis-circular-deps", "analysis-deep-dead-code", "refactor-all"] }
 cb-test-support = { path = "../../crates/cb-test-support" }
 tokio = { workspace = true }
@@ -37,6 +36,7 @@ tracing-subscriber = { workspace = true }
 once_cell = "1.19"
 codebuddy-plugin-system = { path = "../../crates/codebuddy-plugin-system", default-features = false, features = ["runtime"] }
 codebuddy-ast = { path = "../../crates/codebuddy-ast", default-features = false }
+mill-client = { path = "../../crates/mill-client" }
 
 [features]
 default = ["fast-tests"]

@@ -172,7 +172,7 @@ allow-git = [
 
 **Action:** Update `cb-client` to dirs v6
 ```toml
-# crates/cb-client/Cargo.toml
+# ../../crates/mill-client/Cargo.toml
 [dependencies]
 -dirs = "5.0"
 +dirs = "6.0"

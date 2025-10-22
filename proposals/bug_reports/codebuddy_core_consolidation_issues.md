@@ -114,7 +114,7 @@ The consolidation tool's post-processing step `update_imports_for_consolidation(
 **Error Messages**:
 ```
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `codebuddy_core`
-  --> crates/cb-client/src/commands/doctor.rs:72:9
+  --> ../../crates/mill-client/src/commands/doctor.rs:72:9
    |
 72 |         codebuddy_core::utils::system::command_exists(cmd)
    |         ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `codebuddy_core`

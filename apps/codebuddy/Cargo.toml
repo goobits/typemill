@@ -11,7 +11,6 @@ categories = ["development-tools", "command-line-utilities"]
 
 [dependencies]
 cb-server = { path = "../../crates/cb-server", default-features = false }
-cb-client = { path = "../../crates/cb-client" }
 codebuddy-foundation = { path = "../../crates/codebuddy-foundation" }
 cb-transport = { path = "../../crates/cb-transport", default-features = false }
 cb-plugin-api = { path = "../../crates/cb-plugin-api" }
@@ -35,6 +34,7 @@ fs2 = "0.4"
 codebuddy-plugin-system = { path = "../../crates/codebuddy-plugin-system", default-features = false, features = ["runtime"] }
 codebuddy-config = { path = "../../crates/codebuddy-config" }
 codebuddy-ast = { path = "../../crates/codebuddy-ast", default-features = false }
+mill-client = { path = "../../crates/mill-client" }
 
 [dev-dependencies]
 cb-test-support = { path = "../../crates/cb-test-support" }
@@ -74,7 +74,7 @@ lang-typescript = ["cb-server/lang-typescript", "codebuddy-plugin-bundle/lang-ty
 lang-markdown = ["cb-server/lang-markdown", "codebuddy-plugin-bundle/lang-markdown", "codebuddy-ast/lang-markdown", "codebuddy-plugin-system/lang-markdown", "cb-transport/lang-markdown"]
 lang-toml = ["cb-server/lang-toml", "codebuddy-plugin-bundle/lang-toml"]
 lang-yaml = ["cb-server/lang-yaml", "codebuddy-plugin-bundle/lang-yaml"]
-mcp-proxy = ["cb-server/mcp-proxy", "cb-client/mcp-proxy", "codebuddy-foundation/mcp-proxy", "codebuddy-config/mcp-proxy"]
+mcp-proxy = ["cb-server/mcp-proxy", "mill-client/mcp-proxy", "codebuddy-foundation/mcp-proxy", "codebuddy-config/mcp-proxy"]
 
 # Platform-specific dependencies for process management
 [target.'cfg(unix)'.dependencies]

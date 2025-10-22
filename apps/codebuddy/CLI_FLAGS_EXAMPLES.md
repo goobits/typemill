@@ -13,7 +13,7 @@ This document shows example commands that will work once Agent 1 implements the 
 ### Target Convention
 ```bash
 # Simple directory target
---target directory:crates/cb-client
+--target directory:../../crates/mill-client
 
 # Simple file target
 --target file:src/app.rs
@@ -120,7 +120,7 @@ codebuddy tool rename.plan \
 ### Using Flags (New)
 ```bash
 codebuddy tool rename.plan \
-  --target directory:crates/cb-client \
+  --target directory:../../crates/mill-client \
   --new-name crates/cb-core/src/client
 ```
 
@@ -129,7 +129,7 @@ codebuddy tool rename.plan \
 codebuddy tool rename.plan '{
   "target": {
     "kind": "directory",
-    "path": "crates/cb-client"
+    "path": "../../crates/mill-client"
   },
   "new_name": "crates/cb-core/src/client"
 }'

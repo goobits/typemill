@@ -314,7 +314,7 @@ Rename each crate directory using `rename.plan` + `workspace.apply_edit`:
 ```bash
 # Example: Rename cb-client → mill-client
 codebuddy rename.plan \
-  --target directory:crates/cb-client \
+  --target directory:../crates/mill-client \
   --new-name crates/mill-client \
   --dry-run
 
@@ -861,7 +861,7 @@ codebuddy get_diagnostics --scope workspace
 ```bash
 # Rename a crate directory (with dry-run preview)
 codebuddy rename.plan \
-  --target directory:crates/cb-client \
+  --target directory:../crates/mill-client \
   --new-name crates/mill-client \
   --dry-run
 
@@ -1010,7 +1010,7 @@ See full documentation at https://typemill.org/docs/migration
 
   Crate Directory Renames (27 crates)
 
-  crates/cb-client → crates/mill-client
+  ../crates/mill-client → crates/mill-client
   crates/cb-handlers → crates/mill-handlers
   crates/cb-lsp → crates/mill-lsp
   crates/cb-server → crates/mill-server

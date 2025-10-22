@@ -107,6 +107,7 @@ pub fn parse_flags_to_json(
     flags: HashMap<String, String>,
 ) -> Result<Value, FlagParseError> {
     match tool_name {
+        // Plan tools (two-step: plan -> apply)
         "rename.plan" => parse_rename_flags(flags),
         "extract.plan" => parse_extract_flags(flags),
         "move.plan" => parse_move_flags(flags),
@@ -114,6 +115,14 @@ pub fn parse_flags_to_json(
         "reorder.plan" => parse_reorder_flags(flags),
         "transform.plan" => parse_transform_flags(flags),
         "delete.plan" => parse_delete_flags(flags),
+        // Quick tools (one-step: plan + apply) - use same flag parsers
+        "rename" => parse_rename_flags(flags),
+        "extract" => parse_extract_flags(flags),
+        "move" => parse_move_flags(flags),
+        "inline" => parse_inline_flags(flags),
+        "reorder" => parse_reorder_flags(flags),
+        "transform" => parse_transform_flags(flags),
+        "delete" => parse_delete_flags(flags),
         _ => Err(FlagParseError::UnknownFlag(format!(
             "Tool '{}' does not support flag-based arguments",
             tool_name

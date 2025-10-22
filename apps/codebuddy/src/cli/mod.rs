@@ -3,7 +3,7 @@
 mod conventions;
 mod flag_parser;
 
-use cb_client::format_plan;
+use mill_client::format_plan;
 use cb_transport::SessionInfo;
 use clap::{Parser, Subcommand};
 use codebuddy_config::config::AppConfig;
@@ -152,7 +152,7 @@ pub enum Commands {
     /// Manage MCP server presets
     #[cfg(feature = "mcp-proxy")]
     #[command(subcommand)]
-    Mcp(cb_client::McpCommands),
+    Mcp(mill_client::McpCommands),
     /// Perform static analysis on the codebase
     Analyze(Analyze),
 }
@@ -329,17 +329,17 @@ pub async fn run() {
 }
 
 #[cfg(feature = "mcp-proxy")]
-async fn handle_mcp_command(command: cb_client::McpCommands) {
+async fn handle_mcp_command(command: mill_client::McpCommands) {
     let result = match command {
-        cb_client::McpCommands::List => cb_client::commands::mcp::list_presets(),
-        cb_client::McpCommands::Add { preset_id } => {
-            cb_client::commands::mcp::add_preset(&preset_id)
+        mill_client::McpCommands::List => mill_client::commands::mcp::list_presets(),
+        mill_client::McpCommands::Add { preset_id } => {
+            mill_client::commands::mcp::add_preset(&preset_id)
         }
-        cb_client::McpCommands::Remove { preset_id } => {
-            cb_client::commands::mcp::remove_preset(&preset_id)
+        mill_client::McpCommands::Remove { preset_id } => {
+            mill_client::commands::mcp::remove_preset(&preset_id)
         }
-        cb_client::McpCommands::Info { preset_id } => {
-            cb_client::commands::mcp::info_preset(&preset_id)
+        mill_client::McpCommands::Info { preset_id } => {
+            mill_client::commands::mcp::info_preset(&preset_id)
         }
     };
 

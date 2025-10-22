@@ -1109,7 +1109,7 @@ codebuddy tool workspace.apply_edit "{\"plan\": $PLAN}"
 
 ### Formatting Plans (Server-Side Utility)
 
-The Rust server/client (`crates/cb-client`) provides a `format_plan` utility for generating human-readable descriptions of refactoring plans. This is a **server-side utility** used for CLI output, logging, and debugging.
+The Rust server/client (`../crates/mill-client`) provides a `format_plan` utility for generating human-readable descriptions of refactoring plans. This is a **server-side utility** used for CLI output, logging, and debugging.
 
 **Function Signature:**
 ```rust

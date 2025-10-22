@@ -453,7 +453,7 @@ The server loads configuration from `.codebuddy/config.json` in the current work
   - To disable: set `"fuse": null` in `.codebuddy/config.json`
   - Docker: Use `deployment/docker-compose --profile fuse up codebuddy-fuse` to enable
 - **API Interfaces** (`crates/cb-protocol/`) - Service trait definitions
-- **Client Library** (`crates/cb-client/`) - CLI client and WebSocket client
+- **Client Library** (`crates/mill-client/`) - CLI client and WebSocket client
 
 ### Data Flow
 

@@ -93,14 +93,14 @@ codebuddy tool rename '{
 **Problem:** The path matching logic requires exact or prefix matches of the full renamed path. It doesn't handle basename-only references.
 
 **Why it fails:**
-1. We rename `crates/cb-client` → `crates/mill-client`
+1. We rename `../../crates/mill-client` → `crates/mill-client`
 2. The feature flag has `cb-client/mcp-proxy`
-3. Path matcher checks if `"cb-client/mcp-proxy"` contains `"crates/cb-client"` → NO
+3. Path matcher checks if `"cb-client/mcp-proxy"` contains `"../../crates/mill-client"` → NO
 4. Path matcher checks if `"cb-client/mcp-proxy"` starts with `"cb-client"` → YES, but...
 5. The logic likely requires the full path context to avoid false positives
 6. Since `cb-client/mcp-proxy` is a Cargo feature reference (not a file path), it uses basename only
 
-**Core issue:** Feature flags use **crate basenames**, not full paths. The rename logic doesn't recognize that `cb-client` in a feature flag refers to the crate at `crates/cb-client`.
+**Core issue:** Feature flags use **crate basenames**, not full paths. The rename logic doesn't recognize that `cb-client` in a feature flag refers to the crate at `../../crates/mill-client`.
 
 **Example from real rename:**
 ```toml
@@ -126,7 +126,7 @@ So the path updater DOES work for path dependencies, but NOT for feature referen
 **Problem:** Import rewriting is file-location-based, not crate-name-based. Self-imports use crate names, not file paths.
 
 **Why it fails:**
-1. We rename `crates/cb-client/` → `crates/mill-client/`
+1. We rename `../../crates/mill-client/` → `crates/mill-client/`
 2. Cargo.toml package name is updated: `name = "mill-client"` ✅
 3. The import `use cb_client::run_cli;` is analyzed
 4. Import rewriter checks: "Did the module `cb_client` move locations?"
@@ -173,7 +173,7 @@ use cb_client::run_cli;  // ❌ Should be mill_client
 
 **Logic:**
 ```rust
-// When renaming crates/cb-client → crates/mill-client:
+// When renaming ../../crates/mill-client → crates/mill-client:
 //
 // 1. Extract basename from old path: "cb-client"
 // 2. Extract basename from new path: "mill-client"
