@@ -8,8 +8,7 @@ This file provides guidance to AI assistants when working with code in this repo
 **Before working with this codebase, please read:**
 
 1. **[api_reference.md](docs/api_reference.md)** - **READ THIS FIRST** - Complete MCP tools API reference
-2. **[tools_catalog.md](docs/tools_catalog.md)** - Fast lookup table for all 23 public tools
-3. **[operations.md](docs/operations.md)** - Advanced configuration and analysis options
+2. **[tools_catalog.md](docs/tools_catalog.md)** - Fast lookup table for all 35 public tools
 
 ---
 
@@ -701,4 +700,3 @@ All debug scripts, test analysis, and experimental code goes in `.debug/` (gitig
 ### For Tool Reference
 - **[docs/api_reference.md](docs/api_reference.md)** - Complete MCP tools API with examples
 - **[docs/tools_catalog.md](docs/tools_catalog.md)** - Fast lookup table for all tools
-- **[docs/operations.md](docs/operations.md)** - Advanced configuration and analysis
