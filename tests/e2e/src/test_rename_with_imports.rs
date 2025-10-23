@@ -69,7 +69,7 @@ async fn test_rename_file_updates_imports_from_fixtures() {
                 json!({
                     "plan": plan,
                     "options": {
-                        "dryRun": false,
+                        "dry_run": false,
                         "validate_checksums": true
                     }
                 }),
@@ -209,7 +209,7 @@ async fn test_rename_file_updates_parent_directory_importer() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -277,7 +277,7 @@ async fn test_rename_file_updates_sibling_directory_importer() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -345,7 +345,7 @@ async fn test_directory_rename_updates_all_imports() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -428,7 +428,7 @@ async fn test_markdown_file_rename_updates_links() {
                 json!({
                     "plan": plan,
                     "options": {
-                        "dryRun": false,
+                        "dry_run": false,
                         "validate_checksums": true
                     }
                 }),
@@ -539,7 +539,7 @@ Check [GitHub](https://github.com/user/repo) repo.
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )

@@ -61,7 +61,7 @@ Object with creation details:
       "package_path": "/workspace/crates/my-util",
       "package_type": "library",
       "options": {
-        "dryRun": false,
+        "dry_run": false,
         "add_to_workspace": true,
         "template": "minimal"
       }
@@ -82,7 +82,7 @@ Object with creation details:
       "version": "0.1.0",
       "manifest_path": "/workspace/crates/my-util/Cargo.toml"
     },
-    "dryRun": false
+    "dry_run": false
   }
 }
 ```
@@ -181,7 +181,7 @@ Object with extraction results:
       "target_manifest": "/workspace/crates/new-crate/Cargo.toml",
       "dependencies": ["tokio", "serde"],
       "options": {
-        "dryRun": false,
+        "dry_run": false,
         "preserve_versions": true,
         "preserve_features": true,
         "section": "dependencies"
@@ -207,7 +207,7 @@ Object with extraction results:
       }
     ],
     "target_manifest_updated": true,
-    "dryRun": false,
+    "dry_run": false,
     "warnings": []
   }
 }
@@ -271,7 +271,7 @@ Object with extraction results:
       "target_manifest": "/workspace/target/Cargo.toml",
       "dependencies": ["anyhow"],
       "options": {
-        "dryRun": true
+        "dry_run": true
       }
     }
   }
@@ -331,7 +331,7 @@ Object with update results:
       "action": "add",
       "members": ["crates/new-crate1", "crates/new-crate2"],
       "options": {
-        "dryRun": false,
+        "dry_run": false,
         "create_if_missing": false
       }
     }
@@ -350,7 +350,7 @@ Object with update results:
     ],
     "changes_made": 2,
     "workspace_updated": true,
-    "dryRun": false
+    "dry_run": false
   }
 }
 ```
@@ -367,7 +367,7 @@ Object with update results:
       "action": "remove",
       "members": ["crates/deprecated"],
       "options": {
-        "dryRun": false
+        "dry_run": false
       }
     }
   }
@@ -381,7 +381,7 @@ Object with update results:
     "members_after": ["crates/foo", "crates/bar"],
     "changes_made": 1,
     "workspace_updated": true,
-    "dryRun": false
+    "dry_run": false
   }
 }
 ```
@@ -408,7 +408,7 @@ Object with update results:
     "members_after": ["crates/a", "crates/b", "crates/c"],
     "changes_made": 0,
     "workspace_updated": false,
-    "dryRun": false
+    "dry_run": false
   }
 }
 ```
@@ -447,7 +447,7 @@ Object with update results:
       "action": "add",
       "members": ["crates/preview"],
       "options": {
-        "dryRun": true
+        "dry_run": true
       }
     }
   }
@@ -458,7 +458,7 @@ Object with update results:
   "result": {
     "changes_made": 1,
     "workspace_updated": false,
-    "dryRun": true
+    "dry_run": true
   }
 }
 ```
@@ -562,7 +562,7 @@ When `dry_run: false`, returns ApplyResult:
       "pattern": "user",
       "replacement": "account",
       "mode": "literal",
-      "wholeWord": true
+      "whole_word": true
     }
   }
 }
@@ -601,7 +601,7 @@ When `dry_run: false`, returns ApplyResult:
       "pattern": "user_name",
       "replacement": "account_id",
       "mode": "literal",
-      "preserveCase": true
+      "preserve_case": true
     }
   }
 }
@@ -624,8 +624,8 @@ When `dry_run: false`, returns ApplyResult:
       "pattern": "old_function",
       "replacement": "new_function",
       "scope": {
-        "includePatterns": ["**/*.rs"],
-        "excludePatterns": ["**/target/**", "**/tests/**"]
+        "include_patterns": ["**/*.rs"],
+        "exclude_patterns": ["**/target/**", "**/tests/**"]
       }
     }
   }
@@ -662,7 +662,7 @@ When `dry_run: false`, returns ApplyResult:
     "arguments": {
       "pattern": "old_config_path",
       "replacement": "new_config_path",
-      "dryRun": false
+      "dry_run": false
     }
   }
 }
@@ -820,7 +820,7 @@ codebuddy tool workspace.extract_dependencies '{
   "target_manifest": "crates/target/Cargo.toml",
   "dependencies": ["dep1", "dep2", "dep3"],
   "options": {
-    "dryRun": true
+    "dry_run": true
   }
 }'
 
@@ -832,7 +832,7 @@ codebuddy tool workspace.extract_dependencies '{
   "target_manifest": "crates/target/Cargo.toml",
   "dependencies": ["dep1", "dep2", "dep3"],
   "options": {
-    "dryRun": false
+    "dry_run": false
   }
 }'
 ```
@@ -848,7 +848,7 @@ codebuddy tool workspace.find_replace '{
   "replacement": "TYPEMILL_$1",
   "mode": "regex",
   "scope": {
-    "includePatterns": ["**/*.rs", "**/*.toml", "**/*.md"]
+    "include_patterns": ["**/*.rs", "**/*.toml", "**/*.md"]
   }
 }'
 
@@ -860,15 +860,15 @@ codebuddy tool workspace.find_replace '{
   "replacement": "TYPEMILL_$1",
   "mode": "regex",
   "scope": {
-    "includePatterns": ["**/*.rs", "**/*.toml", "**/*.md"]
+    "include_patterns": ["**/*.rs", "**/*.toml", "**/*.md"]
   },
-  "dryRun": false
+  "dry_run": false
 }'
 
 # Alternative: Use workspace.apply_edit with the plan from step 1
 codebuddy tool workspace.apply_edit '{
   "plan": "<plan from step 1>",
-  "options": {"dryRun": false}
+  "options": {"dry_run": false}
 }'
 ```
 

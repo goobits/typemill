@@ -62,7 +62,7 @@ edition = "2021"
                 "target_manifest": target_path.to_string_lossy(),
                 "dependencies": ["tokio", "serde"],
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "preserve_versions": true,
                     "preserve_features": true,
                     "section": "dependencies"
@@ -164,7 +164,7 @@ edition = "2021"
                 "target_manifest": target_path.to_string_lossy(),
                 "dependencies": ["tempfile"],
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "section": "dev-dependencies"
                 }
             }),
@@ -237,7 +237,7 @@ serde = "0.9"
                 "target_manifest": target_path.to_string_lossy(),
                 "dependencies": ["tokio", "serde"],
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -330,7 +330,7 @@ edition = "2021"
                 "target_manifest": target_path.to_string_lossy(),
                 "dependencies": ["my-common"],
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -400,7 +400,7 @@ edition = "2021"
                 "target_manifest": target_path.to_string_lossy(),
                 "dependencies": ["my-local"],
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -470,7 +470,7 @@ edition = "2021"
                 "target_manifest": target_path.to_string_lossy(),
                 "dependencies": ["nonexistent"],
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -544,7 +544,7 @@ edition = "2021"
                 "target_manifest": target_path.to_string_lossy(),
                 "dependencies": ["tokio"],
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )
@@ -555,7 +555,7 @@ edition = "2021"
 
     // Verify dry_run flag in result
     assert_eq!(
-        content.get("dryRun").and_then(|v| v.as_bool()),
+        content.get("dry_run").and_then(|v| v.as_bool()),
         Some(true),
         "dry_run should be true"
     );
@@ -629,7 +629,7 @@ edition = "2021"
                 "target_manifest": target_path.to_string_lossy(),
                 "dependencies": ["feature-dep"],
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -708,7 +708,7 @@ edition = "2021"
                 "target_manifest": target_path.to_string_lossy(),
                 "dependencies": ["cc"],
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "section": "build-dependencies"
                 }
             }),

@@ -67,7 +67,7 @@ async fn test_extract_function_plan_basic_workflow() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dryRun": false
+                            "dry_run": false
                         }
                     }),
                 )
@@ -141,7 +141,7 @@ async fn test_extract_variable_dry_run() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dryRun": true
+                            "dry_run": true
                         }
                     }),
                 )

@@ -55,7 +55,7 @@ async fn test_delete_file_plan_and_apply() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "validate_checksums": true
                 }
             }),
@@ -122,7 +122,7 @@ async fn test_delete_file_dry_run_preview() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )
@@ -245,7 +245,7 @@ async fn test_delete_directory_plan_and_apply() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )

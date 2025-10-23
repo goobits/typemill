@@ -86,7 +86,7 @@ edition = "2021"
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "validate_checksums": true
                 }
             }),
@@ -223,7 +223,7 @@ common = { path = "../common" }
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "validate_checksums": true
                 }
             }),
@@ -340,7 +340,7 @@ common = { path = "../common" }
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "validate_checksums": true
                 }
             }),
@@ -441,7 +441,7 @@ edition = "2021"
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "validate_checksums": true
                 }
             }),
@@ -611,7 +611,7 @@ utils = { path = "../utils" }
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "validate_checksums": true
                 }
             }),

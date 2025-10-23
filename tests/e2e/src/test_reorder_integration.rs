@@ -75,7 +75,7 @@ pub fn test() {}
                     json!({
                         "plan": plan,
                         "options": {
-                            "dryRun": false,
+                            "dry_run": false,
                             "validate_checksums": true
                         }
                     }),
@@ -163,7 +163,7 @@ pub fn test() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dryRun": true
+                            "dry_run": true
                         }
                     }),
                 )

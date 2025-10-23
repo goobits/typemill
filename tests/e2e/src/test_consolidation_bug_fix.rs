@@ -271,7 +271,7 @@ fn main() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )

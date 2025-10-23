@@ -45,7 +45,7 @@ edition = "2021"
                 "package_path": package_path.to_string_lossy(),
                 "package_type": "library",
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "add_to_workspace": true,
                     "template": "minimal"
                 }
@@ -130,7 +130,7 @@ edition = "2021"
                 "package_path": package_path.to_string_lossy(),
                 "package_type": "binary",
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "add_to_workspace": true,
                     "template": "minimal"
                 }
@@ -193,7 +193,7 @@ edition = "2021"
                 "package_path": package_path.to_string_lossy(),
                 "package_type": "library",
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "add_to_workspace": false,
                     "template": "minimal"
                 }
@@ -241,7 +241,7 @@ async fn test_create_package_dry_run() {
                 "package_path": package_path.to_string_lossy(),
                 "package_type": "library",
                 "options": {
-                    "dryRun": true,
+                    "dry_run": true,
                     "add_to_workspace": true,
                     "template": "minimal"
                 }
@@ -292,7 +292,7 @@ edition = "2021"
                 "package_path": package_path.to_string_lossy(),
                 "package_type": "library",
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "add_to_workspace": true,
                     "template": "full"
                 }
@@ -355,7 +355,7 @@ edition = "2021"
                 "package_path": package_path.to_string_lossy(),
                 "package_type": "library",
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "add_to_workspace": true,
                     "template": "minimal"
                 }

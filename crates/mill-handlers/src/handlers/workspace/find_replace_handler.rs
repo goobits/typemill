@@ -38,7 +38,6 @@ impl Default for FindReplaceHandler {
 
 /// Parameters for find/replace operations
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct FindReplaceParams {
     /// Pattern to search for (literal or regex)
     pub pattern: String,
@@ -85,7 +84,6 @@ fn default_dry_run() -> bool {
 
 /// Scope configuration for controlling which files to search
 #[derive(Debug, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
 pub struct ScopeConfig {
     /// Glob patterns to include (e.g., ["**/*.rs", "**/*.toml"])
     #[serde(default)]
@@ -108,7 +106,6 @@ fn default_excludes() -> Vec<String> {
 
 /// Result of applying a find/replace operation
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ApplyResult {
     pub success: bool,
     pub files_modified: Vec<String>,

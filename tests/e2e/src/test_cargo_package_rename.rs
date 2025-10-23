@@ -103,7 +103,7 @@ testing = ["integration-tests/test-feature"]
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )

@@ -62,7 +62,7 @@ async fn test_rename_plan_and_apply_workflow() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "validate_checksums": true
                 }
             }),
@@ -152,7 +152,7 @@ async fn test_extract_plan_and_apply_workflow() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -319,7 +319,7 @@ async fn test_dry_run_across_all_operations() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )

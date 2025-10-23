@@ -100,7 +100,7 @@ async fn test_basic_file_rename_works() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -177,7 +177,7 @@ fn main() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -239,7 +239,7 @@ See the [Guide](docs/guide.md) for details.
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -312,7 +312,7 @@ jobs:
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -371,7 +371,7 @@ async fn test_david_scope_filtering() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
@@ -432,7 +432,7 @@ async fn test_comprehensive_93_percent_coverage() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )

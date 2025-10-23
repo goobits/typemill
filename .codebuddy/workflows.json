@@ -27,7 +27,7 @@
             "plan": "$steps.0.plan",
             "options": {
               "validate_checksums": true,
-              "dryRun": false
+              "dry_run": false
             }
           },
           "description": "Apply rename changes across the project",
@@ -64,7 +64,7 @@
             "plan": "$steps.0.plan",
             "options": {
               "validate_checksums": true,
-              "dryRun": false
+              "dry_run": false
             }
           },
           "description": "Apply extraction changes",
@@ -151,7 +151,7 @@
             "plan": "$steps.0.plan",
             "options": {
               "validate_checksums": true,
-              "dryRun": false
+              "dry_run": false
             }
           },
           "description": "Apply rename changes across the project",

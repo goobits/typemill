@@ -81,7 +81,7 @@ async fn test_transform_if_to_match_plan_and_apply() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dryRun": false
+                            "dry_run": false
                         }
                     }),
                 )
@@ -166,7 +166,7 @@ async fn test_transform_add_async_dry_run() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dryRun": true
+                            "dry_run": true
                         }
                     }),
                 )

@@ -48,7 +48,7 @@ async fn test_move_folder_with_imports() {
                 json!({
                     "plan": plan,
                     "options": {
-                        "dryRun": false,
+                        "dry_run": false,
                         "validate_checksums": true
                     }
                 }),
@@ -119,7 +119,7 @@ async fn test_move_file_plan_and_apply() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false,
+                    "dry_run": false,
                     "validate_checksums": true
                 }
             }),
@@ -194,7 +194,7 @@ async fn test_move_file_dry_run_preview() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )

@@ -61,7 +61,7 @@ async fn test_rename_file_dry_run_does_not_modify_disk() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )
@@ -135,7 +135,7 @@ async fn test_create_file_dry_run_does_not_create_file() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )
@@ -193,7 +193,7 @@ async fn test_delete_file_dry_run_does_not_delete_file() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )
@@ -255,7 +255,7 @@ async fn test_rename_directory_dry_run_does_not_modify_disk() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )
@@ -348,7 +348,7 @@ async fn test_dry_run_rename_file_shows_accurate_files_to_modify() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )
@@ -436,7 +436,7 @@ async fn test_dry_run_rename_file_rust_mod_declarations() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )
@@ -519,7 +519,7 @@ async fn test_dry_run_rename_directory_shows_files_list() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )
@@ -606,7 +606,7 @@ async fn test_dry_run_rename_directory_shows_import_updates() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )
@@ -682,7 +682,7 @@ async fn test_dry_run_vs_execution_consistency() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": true
+                    "dry_run": true
                 }
             }),
         )
@@ -699,7 +699,7 @@ async fn test_dry_run_vs_execution_consistency() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dryRun": false
+                    "dry_run": false
                 }
             }),
         )
