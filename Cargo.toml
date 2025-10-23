@@ -15,7 +15,7 @@ members = [
     "crates/mill-plugin-bundle",
     "apps/codebuddy",
     "analysis/mill-analysis-common",
-    "analysis/cb-analysis-dead-code",
+    "analysis/mill-analysis-dead-code",
     "analysis/cb-analysis-deep-dead-code",
     "analysis/cb-analysis-graph",
     "analysis/cb-analysis-circular-deps",
@@ -87,7 +87,6 @@ walkdir = "2.5"
 
 # Analysis crates
 mill-analysis-common = { path = "analysis/mill-analysis-common" }
-cb-analysis-dead-code = { path = "analysis/cb-analysis-dead-code" }
 cb-analysis-graph = { path = "analysis/cb-analysis-graph" }
 
 # Note: Multiple versions of hashbrown, bitflags, dirs, and getrandom exist
@@ -99,6 +98,7 @@ mill-lang-common = { path = "crates/mill-lang-common", default-features = false 
 mill-lang-typescript = { path = "crates/mill-lang-typescript", default-features = false }
 mill-lang-markdown = { path = "crates/mill-lang-markdown", default-features = false }
 mill-lang-rust = { path = "crates/mill-lang-rust", default-features = false }
+mill-analysis-dead-code = { path = "analysis/mill-analysis-dead-code" }
 
 # Optimize build times for dev dependencies
 [profile.dev.build-override]

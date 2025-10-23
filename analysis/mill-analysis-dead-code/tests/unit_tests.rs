@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use mill_analysis_common::{ AnalysisEngine , AnalysisError , LspProvider };
-use cb_analysis_dead_code::{config::DeadCodeConfig, DeadCodeAnalyzer};
+use mill_analysis_dead_code::{ config::DeadCodeConfig , DeadCodeAnalyzer };
 use serde_json::Value;
 use std::path::Path;
 use std::sync::Arc;
