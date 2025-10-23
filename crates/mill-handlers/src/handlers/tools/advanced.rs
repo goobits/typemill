@@ -240,7 +240,7 @@ impl ToolHandler for AdvancedToolsHandler {
                             dry_run,
                         } => {
                             let params = json!({
-                                "file_path": path,
+                                "filePath": path,
                                 "content": content.unwrap_or_default(),
                                 "dryRun": dry_run.unwrap_or(false)
                             });
@@ -248,7 +248,7 @@ impl ToolHandler for AdvancedToolsHandler {
                         }
                         BatchOperation::DeleteFile { path, dry_run } => {
                             let params = json!({
-                                "file_path": path,
+                                "filePath": path,
                                 "dryRun": dry_run.unwrap_or(false)
                             });
                             (OperationType::Delete, PathBuf::from(path), params)
@@ -259,7 +259,7 @@ impl ToolHandler for AdvancedToolsHandler {
                             dry_run,
                         } => {
                             let params = json!({
-                                "file_path": path,
+                                "filePath": path,
                                 "content": content,
                                 "dryRun": dry_run.unwrap_or(false)
                             });

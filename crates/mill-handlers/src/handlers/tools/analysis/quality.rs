@@ -416,7 +416,7 @@ impl QualityHandler {
                             arguments: json!({
                                 "kind": "function",
                                 "source": {
-                                    "file_path": report.file_path,
+                                    "filePath": report.file_path,
                                     "range": {
                                         "start": { "line": func.line, "character": 0 },
                                         "end": { "line": func.line + func.metrics.sloc as usize, "character": 0 }
@@ -546,7 +546,7 @@ pub fn detect_smells(
                         arguments: json!({
                             "kind": "function",
                             "source": {
-                                "file_path": file_path,
+                                "filePath": file_path,
                                 "range": {
                                     "start": { "line": func.line, "character": 0 },
                                     "end": { "line": func.line + func.metrics.sloc as usize, "character": 0 }
@@ -881,7 +881,7 @@ pub fn analyze_readability(
                         arguments: json!({
                             "kind": "function",
                             "source": {
-                                "file_path": file_path,
+                                "filePath": file_path,
                                 "range": {
                                     "start": { "line": func.line, "character": 0 },
                                     "end": { "line": func.line + func.metrics.sloc as usize, "character": 0 }

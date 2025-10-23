@@ -69,8 +69,8 @@ async fn test_move_file_updates_imports_from_fixtures() {
                 json!({
                     "plan": plan,
                     "options": {
-                        "dry_run": false,
-                        "validate_checksums": true
+                        "dryRun": false,
+                        "validateChecksums": true
                     }
                 }),
             )
@@ -210,8 +210,8 @@ async fn test_rust_move_file_updates_imports_from_fixtures() {
                 json!({
                     "plan": plan,
                     "options": {
-                        "dry_run": false,
-                        "validate_checksums": true
+                        "dryRun": false,
+                        "validateChecksums": true
                     }
                 }),
             )

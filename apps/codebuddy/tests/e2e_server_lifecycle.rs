@@ -112,7 +112,7 @@ async fn test_message_ordering() {
             .call_tool(
                 "write_file",
                 json!({
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "content": format!("{} - {}", content, i)
                 }),
             )
@@ -126,7 +126,7 @@ async fn test_message_ordering() {
             .call_tool(
                 "read_file",
                 json!({
-                    "file_path": file_path.to_string_lossy()
+                    "filePath": file_path.to_string_lossy()
                 }),
             )
             .await
@@ -153,7 +153,7 @@ async fn test_error_propagation() {
         .call_tool(
             "read_file",
             json!({
-                "file_path": nonexistent.to_string_lossy()
+                "filePath": nonexistent.to_string_lossy()
             }),
         )
         .await;
@@ -213,7 +213,7 @@ async fn test_rapid_transport_operations() {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "content": content
                 }),
             )
@@ -224,7 +224,7 @@ async fn test_rapid_transport_operations() {
             .call_tool(
                 "read_file",
                 json!({
-                    "file_path": file_path.to_string_lossy()
+                    "filePath": file_path.to_string_lossy()
                 }),
             )
             .await;
@@ -276,7 +276,7 @@ async fn test_transport_health_monitoring() {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": test_file.to_string_lossy(),
+                    "filePath": test_file.to_string_lossy(),
                     "content": format!("Health test {}", i)
                 }),
             )

@@ -338,7 +338,7 @@ pub fn detect_unused_symbols(
                             arguments: json!({
                                 "kind": "function",
                                 "target": {
-                                    "file_path": file_path,
+                                    "filePath": file_path,
                                     "range": {
                                         "start": { "line": func.line, "character": 0 },
                                         "end": { "line": func.line + func.metrics.sloc as usize, "character": 0 }
@@ -1481,7 +1481,7 @@ fn generate_dead_code_refactoring_candidates(
             refactor_call_args: json!({
                 "kind": json_kind,
                 "target": {
-                    "file_path": finding.location.file_path,
+                    "filePath": finding.location.file_path,
                     "range": range
                 }
             }),

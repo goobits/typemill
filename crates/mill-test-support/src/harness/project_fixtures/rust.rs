@@ -35,7 +35,7 @@ tempfile = "3.0"
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": cargo_toml.to_string_lossy(),
+                    "filePath": cargo_toml.to_string_lossy(),
                     "content": cargo_content
                 }),
             )
@@ -83,7 +83,7 @@ mod tests {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": lib_file.to_string_lossy(),
+                    "filePath": lib_file.to_string_lossy(),
                     "content": lib_content
                 }),
             )
@@ -233,7 +233,7 @@ mod tests {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": models_file.to_string_lossy(),
+                    "filePath": models_file.to_string_lossy(),
                     "content": models_content
                 }),
             )

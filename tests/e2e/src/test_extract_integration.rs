@@ -34,7 +34,7 @@ async fn test_extract_function_plan_basic_workflow() {
             json!({
                 "kind": "function",
                 "source": {
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "range": {
                         "start": {"line": 1, "character": 4},
                         "end": {"line": 2, "character": 26}
@@ -67,7 +67,7 @@ async fn test_extract_function_plan_basic_workflow() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dry_run": false
+                            "dryRun": false
                         }
                     }),
                 )
@@ -116,7 +116,7 @@ async fn test_extract_variable_dry_run() {
             json!({
                 "kind": "variable",
                 "source": {
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "range": {
                         "start": {"line": 1, "character": 17},
                         "end": {"line": 1, "character": 27}
@@ -141,7 +141,7 @@ async fn test_extract_variable_dry_run() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dry_run": true
+                            "dryRun": true
                         }
                     }),
                 )
@@ -196,7 +196,7 @@ async fn test_extract_constant_checksum_validation() {
             json!({
                 "kind": "constant",
                 "source": {
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "range": {
                         "start": {"line": 1, "character": 4},
                         "end": {"line": 1, "character": 6}
@@ -230,7 +230,7 @@ async fn test_extract_constant_checksum_validation() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "validate_checksums": true
+                            "validateChecksums": true
                         }
                     }),
                 )
@@ -272,7 +272,7 @@ async fn test_extract_plan_metadata_structure() {
             json!({
                 "kind": "variable",
                 "source": {
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "range": {
                         "start": {"line": 2, "character": 4},
                         "end": {"line": 2, "character": 9}

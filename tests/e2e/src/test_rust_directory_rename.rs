@@ -69,7 +69,7 @@ edition = "2021"
                     "kind": "directory",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -86,8 +86,8 @@ edition = "2021"
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
-                    "validate_checksums": true
+                    "dryRun": false,
+                    "validateChecksums": true
                 }
             }),
         )
@@ -206,7 +206,7 @@ common = { path = "../common" }
                     "kind": "directory",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -223,8 +223,8 @@ common = { path = "../common" }
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
-                    "validate_checksums": true
+                    "dryRun": false,
+                    "validateChecksums": true
                 }
             }),
         )
@@ -323,7 +323,7 @@ common = { path = "../common" }
                     "kind": "directory",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -340,8 +340,8 @@ common = { path = "../common" }
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
-                    "validate_checksums": true
+                    "dryRun": false,
+                    "validateChecksums": true
                 }
             }),
         )
@@ -424,7 +424,7 @@ edition = "2021"
                     "kind": "directory",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -441,8 +441,8 @@ edition = "2021"
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
-                    "validate_checksums": true
+                    "dryRun": false,
+                    "validateChecksums": true
                 }
             }),
         )
@@ -594,7 +594,7 @@ utils = { path = "../utils" }
                     "kind": "directory",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -611,8 +611,8 @@ utils = { path = "../utils" }
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
-                    "validate_checksums": true
+                    "dryRun": false,
+                    "validateChecksums": true
                 }
             }),
         )

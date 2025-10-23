@@ -65,7 +65,7 @@ async fn test_mcp_protocol_layer() {
         .call_tool(
             "read_file",
             json!({
-                "file_path": test_file.to_str().unwrap()
+                "filePath": test_file.to_str().unwrap()
             }),
         )
         .await
@@ -89,7 +89,7 @@ async fn test_mcp_protocol_layer() {
         .call_tool(
             "find_definition",
             json!({
-                "file_path": test_file.to_str().unwrap(),
+                "filePath": test_file.to_str().unwrap(),
                 "line": 0,
                 "character": 0
             }),
@@ -170,11 +170,11 @@ async fn test_mcp_protocol_layer() {
             "rename.plan",
             json!({
                 "target": {
-                    "file_path": test_file.to_str().unwrap(),
+                    "filePath": test_file.to_str().unwrap(),
                     "line": 0,
                     "character": 0
                 },
-                "new_name": "test_renamed"
+                "newName": "test_renamed"
             }),
         )
         .await;

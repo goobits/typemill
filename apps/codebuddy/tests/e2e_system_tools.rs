@@ -38,7 +38,7 @@ const test: Test = { id: 1 };
     let _response = client
         .call_tool(
             "get_document_symbols",
-            json!({ "file_path" : ts_file.to_string_lossy() }),
+            json!({ "filePath" : ts_file.to_string_lossy() }),
         )
         .await;
     tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
@@ -154,7 +154,7 @@ edition = "2021"
                     "kind": "directory",
                     "path": "crates/crate_b"
                 },
-                "new_name": "crates/crate_renamed"
+                "newName": "crates/crate_renamed"
             }),
         )
         .await;
@@ -168,7 +168,7 @@ edition = "2021"
             "workspace.apply_edit",
             json!({
                 "plan": plan,
-                "options": { "dry_run": false }
+                "options": { "dryRun": false }
             }),
         )
         .await;

@@ -133,7 +133,7 @@ resolver = "2"
                     "kind": "directory",
                     "path": workspace.absolute_path("crates/source-crate").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("crates/target-crate").to_string_lossy()
+                "newName": workspace.absolute_path("crates/target-crate").to_string_lossy()
             }),
         )
         .await
@@ -166,7 +166,7 @@ resolver = "2"
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )

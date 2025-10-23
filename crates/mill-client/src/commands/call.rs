@@ -212,27 +212,27 @@ impl CallCommand {
             (
                 "Find definition of a symbol",
                 "find_definition",
-                r#"{"file_path": "src/main.rs", "symbol_name": "main"}"#,
+                r#"{"filePath": "src/main.rs", "symbol_name": "main"}"#,
             ),
             (
                 "Find references to a symbol",
                 "find_references",
-                r#"{"file_path": "src/lib.rs", "symbol_name": "MyFunction"}"#,
+                r#"{"filePath": "src/lib.rs", "symbol_name": "MyFunction"}"#,
             ),
             (
                 "Get document symbols",
                 "get_document_symbols",
-                r#"{"file_path": "src/types.rs"}"#,
+                r#"{"filePath": "src/types.rs"}"#,
             ),
             (
                 "Format a document",
                 "format_document",
-                r#"{"file_path": "src/main.rs"}"#,
+                r#"{"filePath": "src/main.rs"}"#,
             ),
             (
                 "Get diagnostics",
                 "get_diagnostics",
-                r#"{"file_path": "src/lib.rs"}"#,
+                r#"{"filePath": "src/lib.rs"}"#,
             ),
         ];
 
@@ -276,7 +276,7 @@ impl CallCommand {
         let symbol_name = ctx.interactive.required_input("Symbol name", None)?;
 
         let params = serde_json::json!({
-            "file_path": file_path,
+            "filePath": file_path,
             "symbol_name": symbol_name
         });
 
@@ -288,7 +288,7 @@ impl CallCommand {
         let file_path = ctx.interactive.required_input("File path", None)?;
 
         let params = serde_json::json!({
-            "file_path": file_path
+            "filePath": file_path
         });
 
         Ok(Some(params))
@@ -407,7 +407,7 @@ mod tests {
 
     #[test]
     fn test_call_command_with_params() {
-        let params = r#"{"file_path": "src/main.rs"}"#.to_string();
+        let params = r#"{"filePath": "src/main.rs"}"#.to_string();
         let cmd = CallCommand::new("test_tool".to_string(), Some(params.clone()))
             .with_url("ws://localhost:3000".to_string())
             .with_token("test-token".to_string())

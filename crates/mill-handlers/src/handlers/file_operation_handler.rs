@@ -185,7 +185,7 @@ impl FileOperationHandler {
         })?;
 
         let file_path = args
-            .get("file_path")
+            .get("filePath")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
         let content = args.get("content").and_then(|v| v.as_str());
@@ -217,7 +217,7 @@ impl FileOperationHandler {
         })?;
 
         let file_path = args
-            .get("file_path")
+            .get("filePath")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
         let force = args.get("force").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -245,7 +245,7 @@ impl FileOperationHandler {
             .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for read_file".into()))?;
 
         let file_path = args
-            .get("file_path")
+            .get("filePath")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
         let workspace_id = args.get("workspace_id").and_then(|v| v.as_str());
@@ -277,7 +277,7 @@ impl FileOperationHandler {
 
         Ok(json!({
             "success": true,
-            "file_path": file_path,
+            "filePath": file_path,
             "content": content
         }))
     }
@@ -292,7 +292,7 @@ impl FileOperationHandler {
         })?;
 
         let file_path = args
-            .get("file_path")
+            .get("filePath")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
         let content = args
@@ -336,7 +336,7 @@ impl FileOperationHandler {
 
             Ok(json!({
                 "success": true,
-                "file_path": file_path,
+                "filePath": file_path,
                 "message": "File written successfully"
             }))
         } else {

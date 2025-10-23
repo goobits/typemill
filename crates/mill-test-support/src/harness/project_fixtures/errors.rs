@@ -20,7 +20,7 @@ impl ProjectFixtures {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": syntax_error_file.to_string_lossy(),
+                    "filePath": syntax_error_file.to_string_lossy(),
                     "content": r#"
 // This file contains intentional syntax errors for testing
 
@@ -56,7 +56,7 @@ export { User, brokenFunction, BrokenClass;
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": type_error_file.to_string_lossy(),
+                    "filePath": type_error_file.to_string_lossy(),
                     "content": r#"
 // This file contains intentional type errors
 
@@ -102,7 +102,7 @@ export const validConstant = "this works";
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": import_error_file.to_string_lossy(),
+                    "filePath": import_error_file.to_string_lossy(),
                     "content": r#"
 // This file contains intentional import errors
 

@@ -20,7 +20,7 @@ async fn test_malformed_tool_requests() {
         .call_tool(
             "find_definition",
             json!({
-                "file_path": "/valid/path.ts",
+                "filePath": "/valid/path.ts",
                 "line": "not_a_number",
                 "character": 5
             }),
@@ -40,7 +40,7 @@ async fn test_malformed_tool_requests() {
         .call_tool(
             "find_definition",
             json!({
-                "file_path": valid_file.to_string_lossy(),
+                "filePath": valid_file.to_string_lossy(),
                 "line": -1,
                 "character": -1
             }),
@@ -66,7 +66,7 @@ async fn test_lsp_server_unavailable() {
         .call_tool(
             "find_definition",
             json!({
-                "file_path": unknown_file.to_string_lossy(),
+                "filePath": unknown_file.to_string_lossy(),
                 "line": 0,
                 "character": 0
             }),
@@ -102,7 +102,7 @@ async fn test_dependency_update_errors() {
         .call_tool(
             "update_dependencies",
             json!({
-                "file_path": invalid_json.to_string_lossy(),
+                "filePath": invalid_json.to_string_lossy(),
                 "add_dependencies": {
                     "test": "1.0.0"
                 }
@@ -124,7 +124,7 @@ async fn test_dependency_update_errors() {
         .call_tool(
             "update_dependencies",
             json!({
-                "file_path": wrong_structure.to_string_lossy(),
+                "filePath": wrong_structure.to_string_lossy(),
                 "add_dependencies": {
                     "test": "1.0.0"
                 }
@@ -185,7 +185,7 @@ export class Class{} implements Interface{} {{
         .call_tool(
             "get_document_symbols",
             json!({
-                "file_path": large_ts_file.to_string_lossy()
+                "filePath": large_ts_file.to_string_lossy()
             }),
         )
         .await;
@@ -243,7 +243,7 @@ async fn test_resource_exhaustion() {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "content": content
                 }),
             )
@@ -253,7 +253,7 @@ async fn test_resource_exhaustion() {
             .call_tool(
                 "read_file",
                 json!({
-                    "file_path": file_path.to_string_lossy()
+                    "filePath": file_path.to_string_lossy()
                 }),
             )
             .await;
@@ -312,7 +312,7 @@ async fn test_invalid_characters_in_paths() {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "content": format!("Content for {}", path)
                 }),
             )
@@ -326,7 +326,7 @@ async fn test_invalid_characters_in_paths() {
                         .call_tool(
                             "read_file",
                             json!({
-                                "file_path": file_path.to_string_lossy()
+                                "filePath": file_path.to_string_lossy()
                             }),
                         )
                         .await

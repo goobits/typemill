@@ -39,7 +39,7 @@ async fn test_literal_basic_replace() {
                 "pattern": "username",
                 "replacement": "userid",
                 "mode": "literal",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -92,8 +92,8 @@ async fn test_literal_whole_word() {
                 "pattern": "user",
                 "replacement": "account",
                 "mode": "literal",
-                "whole_word": true,
-                "dry_run": false
+                "wholeWord": true,
+                "dryRun": false
             }),
         )
         .await
@@ -136,7 +136,7 @@ async fn test_literal_case_sensitive() {
                 "pattern": "user",
                 "replacement": "account",
                 "mode": "literal",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -185,7 +185,7 @@ let user = "Bob";
                 "pattern": r"user_[a-z]+",
                 "replacement": "account_info",
                 "mode": "regex",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -233,7 +233,7 @@ CODEBUDDY_MAX_WORKERS = 10
                 "pattern": r"CODEBUDDY_([A-Z_]+)",
                 "replacement": "TYPEMILL_$1",
                 "mode": "regex",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -278,7 +278,7 @@ item_count = 42
                 "pattern": r"(?P<first>\w+)_(?P<second>\w+)",
                 "replacement": "${second}_${first}",
                 "mode": "regex",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -316,7 +316,7 @@ async fn test_regex_invalid_pattern() {
                 "pattern": "[unclosed",
                 "replacement": "replacement",
                 "mode": "regex",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await;
@@ -357,8 +357,8 @@ let USER_NAME = "screaming";
                 "pattern": "user_name",
                 "replacement": "account_id",
                 "mode": "literal",
-                "preserve_case": true,
-                "dry_run": false
+                "preserveCase": true,
+                "dryRun": false
             }),
         )
         .await
@@ -404,8 +404,8 @@ async fn test_preserve_case_disabled() {
                 "pattern": "userName",
                 "replacement": "accountId",
                 "mode": "literal",
-                "preserve_case": false,
-                "dry_run": false
+                "preserveCase": false,
+                "dryRun": false
             }),
         )
         .await
@@ -451,9 +451,9 @@ async fn test_scope_include_patterns() {
                 "replacement": "account",
                 "mode": "literal",
                 "scope": {
-                    "include_patterns": ["**/*.rs", "**/*.toml"]
+                    "includePatterns": ["**/*.rs", "**/*.toml"]
                 },
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -496,9 +496,9 @@ async fn test_scope_exclude_patterns() {
                 "replacement": "account",
                 "mode": "literal",
                 "scope": {
-                    "exclude_patterns": ["**/target/**"]
+                    "excludePatterns": ["**/target/**"]
                 },
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -539,7 +539,7 @@ async fn test_scope_default_excludes() {
                 "pattern": "user",
                 "replacement": "account",
                 "mode": "literal",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -589,7 +589,7 @@ async fn test_multi_file_replace() {
                 "pattern": "user",
                 "replacement": "account",
                 "mode": "literal",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -676,7 +676,7 @@ async fn test_dry_run_preview() {
                 "pattern": "user",
                 "replacement": "account",
                 "mode": "literal",
-                "dry_run": true
+                "dryRun": true
             }),
         )
         .await
@@ -728,7 +728,7 @@ async fn test_execute_mode() {
                 "pattern": "user",
                 "replacement": "account",
                 "mode": "literal",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -773,7 +773,7 @@ async fn test_empty_pattern() {
                 "pattern": "",
                 "replacement": "replacement",
                 "mode": "literal",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await;
@@ -799,7 +799,7 @@ async fn test_pattern_not_found() {
                 "pattern": "nonexistent",
                 "replacement": "replacement",
                 "mode": "literal",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -847,7 +847,7 @@ async fn test_utf8_content() {
                 "pattern": "user",
                 "replacement": "account",
                 "mode": "literal",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -895,7 +895,7 @@ async fn test_large_file() {
                 "pattern": "user",
                 "replacement": "account",
                 "mode": "literal",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -942,7 +942,7 @@ function user_logout() {
                 "pattern": r"user_(\w+)",
                 "replacement": "account_$1",
                 "mode": "regex",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await
@@ -985,7 +985,7 @@ let z = user*2;
                 "pattern": "user",
                 "replacement": "account",
                 "mode": "literal",
-                "dry_run": false
+                "dryRun": false
             }),
         )
         .await

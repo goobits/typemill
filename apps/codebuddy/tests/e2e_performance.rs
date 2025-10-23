@@ -31,7 +31,7 @@ async fn test_large_file_performance() {
         .call_tool(
             "create_file",
             json!({
-                "file_path": large_file.to_string_lossy(),
+                "filePath": large_file.to_string_lossy(),
                 "content": content
             }),
         )
@@ -51,7 +51,7 @@ async fn test_large_file_performance() {
         .call_tool(
             "read_file",
             json!({
-                "file_path": large_file.to_string_lossy()
+                "filePath": large_file.to_string_lossy()
             }),
         )
         .await
@@ -72,7 +72,7 @@ async fn test_large_file_performance() {
         .call_tool_with_timeout(
             "get_document_symbols",
             json!({
-                "file_path": large_file.to_string_lossy()
+                "filePath": large_file.to_string_lossy()
             }),
             Duration::from_secs(60),
         )
@@ -160,7 +160,7 @@ export function process{}(data: Data{}): string {{
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "content": content
                 }),
             )
@@ -288,7 +288,7 @@ export class RapidClass{} {{
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "content": content
                 }),
             )
@@ -299,7 +299,7 @@ export class RapidClass{} {{
             .call_tool(
                 "read_file",
                 json!({
-                    "file_path": file_path.to_string_lossy()
+                    "filePath": file_path.to_string_lossy()
                 }),
             )
             .await;
@@ -310,7 +310,7 @@ export class RapidClass{} {{
             .call_tool(
                 "get_document_symbols",
                 json!({
-                    "file_path": file_path.to_string_lossy()
+                    "filePath": file_path.to_string_lossy()
                 }),
             )
             .await;
@@ -397,7 +397,7 @@ const oldConstant{} = "old_value_{}";
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "content": content
                 }),
             )
@@ -516,7 +516,7 @@ const oldConstant{} = "old_value_{}";
             .call_tool(
                 "read_file",
                 json!({
-                    "file_path": file_path.to_string_lossy()
+                    "filePath": file_path.to_string_lossy()
                 }),
             )
             .await
@@ -578,7 +578,7 @@ async fn test_memory_usage_large_operations() {
         .call_tool(
             "create_file",
             json!({
-                "file_path": large_file.to_string_lossy(),
+                "filePath": large_file.to_string_lossy(),
                 "content": large_content
             }),
         )
@@ -598,7 +598,7 @@ async fn test_memory_usage_large_operations() {
         .call_tool(
             "read_file",
             json!({
-                "file_path": large_file.to_string_lossy()
+                "filePath": large_file.to_string_lossy()
             }),
         )
         .await
@@ -621,7 +621,7 @@ async fn test_memory_usage_large_operations() {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "content": content
                 }),
             )
@@ -817,7 +817,7 @@ export class UserService{} {{
         .call_tool_with_timeout(
             "find_definition",
             json!({
-                "file_path": services_dir.join("service0.ts").to_string_lossy(),
+                "filePath": services_dir.join("service0.ts").to_string_lossy(),
                 "line": 1,
                 "character": 10 // Should point to User0 import
             }),
@@ -891,7 +891,7 @@ export class UserService{} {{
         .call_tool_with_timeout(
             "find_references",
             json!({
-                "file_path": types_dir.join("types0.ts").to_string_lossy(),
+                "filePath": types_dir.join("types0.ts").to_string_lossy(),
                 "line": 1,
                 "character": 18, // User0 interface
                 "include_declaration": true
@@ -957,7 +957,7 @@ async fn test_stress_test_rapid_operations() {
                     .call_tool(
                         "create_file",
                         json!({
-                            "file_path": file_path.to_string_lossy(),
+                            "filePath": file_path.to_string_lossy(),
                             "content": format!("Stress test content {}", i)
                         }),
                     )
@@ -982,7 +982,7 @@ async fn test_stress_test_rapid_operations() {
                         .call_tool(
                             "read_file",
                             json!({
-                                "file_path": file_path.to_string_lossy()
+                                "filePath": file_path.to_string_lossy()
                             }),
                         )
                         .await;

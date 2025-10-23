@@ -206,7 +206,7 @@ fn bench_dispatch_complex_tool(c: &mut Criterion) {
             let tool_call = ToolCall {
                 name: "find_definition".to_string(),
                 arguments: Some(json!({
-                    "file_path": "test.ts",
+                    "filePath": "test.ts",
                     "line": 10,
                     "character": 5
                 })),

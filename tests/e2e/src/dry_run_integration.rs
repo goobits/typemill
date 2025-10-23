@@ -31,7 +31,7 @@ async fn test_rename_file_dry_run_does_not_modify_disk() {
                     "kind": "file",
                     "path": old_file_path.to_str().unwrap()
                 },
-                "new_name": new_file_path.to_str().unwrap()
+                "newName": new_file_path.to_str().unwrap()
             }),
         )
         .await
@@ -61,7 +61,7 @@ async fn test_rename_file_dry_run_does_not_modify_disk() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -109,7 +109,7 @@ async fn test_create_file_dry_run_does_not_create_file() {
             json!({
                 "kind": "constant",
                 "source": {
-                    "file_path": source_path.to_str().unwrap(),
+                    "filePath": source_path.to_str().unwrap(),
                     "range": {
                         "start": { "line": 0, "character": 0 },
                         "end": { "line": 0, "character": 23 }
@@ -135,7 +135,7 @@ async fn test_create_file_dry_run_does_not_create_file() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -193,7 +193,7 @@ async fn test_delete_file_dry_run_does_not_delete_file() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -236,7 +236,7 @@ async fn test_rename_directory_dry_run_does_not_modify_disk() {
                     "kind": "directory",
                     "path": old_dir.to_str().unwrap()
                 },
-                "new_name": new_dir.to_str().unwrap()
+                "newName": new_dir.to_str().unwrap()
             }),
         )
         .await
@@ -255,7 +255,7 @@ async fn test_rename_directory_dry_run_does_not_modify_disk() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -307,7 +307,7 @@ async fn test_dry_run_rename_file_shows_accurate_files_to_modify() {
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -348,7 +348,7 @@ async fn test_dry_run_rename_file_shows_accurate_files_to_modify() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -397,7 +397,7 @@ async fn test_dry_run_rename_file_rust_mod_declarations() {
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -436,7 +436,7 @@ async fn test_dry_run_rename_file_rust_mod_declarations() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -486,7 +486,7 @@ async fn test_dry_run_rename_directory_shows_files_list() {
                     "kind": "directory",
                     "path": old_dir.to_string_lossy()
                 },
-                "new_name": new_dir.to_string_lossy()
+                "newName": new_dir.to_string_lossy()
             }),
         )
         .await
@@ -519,7 +519,7 @@ async fn test_dry_run_rename_directory_shows_files_list() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -570,7 +570,7 @@ async fn test_dry_run_rename_directory_shows_import_updates() {
                     "kind": "directory",
                     "path": old_dir.to_string_lossy()
                 },
-                "new_name": new_dir.to_string_lossy()
+                "newName": new_dir.to_string_lossy()
             }),
         )
         .await
@@ -606,7 +606,7 @@ async fn test_dry_run_rename_directory_shows_import_updates() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -656,7 +656,7 @@ async fn test_dry_run_vs_execution_consistency() {
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -682,7 +682,7 @@ async fn test_dry_run_vs_execution_consistency() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -699,7 +699,7 @@ async fn test_dry_run_vs_execution_consistency() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )

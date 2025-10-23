@@ -65,7 +65,7 @@ lib = { path = "../lib" }
                     "kind": "directory",
                     "path": workspace.absolute_path("crates/lib").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy(),
+                "newName": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy(),
                 "options": {
                     "consolidate": true
                 }
@@ -186,7 +186,7 @@ edition = "2021"
                     "kind": "directory",
                     "path": workspace.absolute_path("crates/lib").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy()
+                "newName": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy()
                 // NOTE: No "options.consolidate" specified
             }),
         )
@@ -279,7 +279,7 @@ edition = "2021"
                     "kind": "directory",
                     "path": workspace.absolute_path("crates/lib").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy(),
+                "newName": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy(),
                 "options": {
                     "consolidate": false  // Explicitly disable consolidation
                 }
@@ -340,7 +340,7 @@ async fn test_non_consolidation_rename() {
                     "kind": "directory",
                     "path": workspace.absolute_path("src/old_dir").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("src/new_dir").to_string_lossy()
+                "newName": workspace.absolute_path("src/new_dir").to_string_lossy()
             }),
         )
         .await

@@ -272,7 +272,7 @@ const oldConstant{} = "old_value_{}";
             params: Some(json!({
                 "name": "create_file",
                 "arguments": {
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "content": content
                 }
             })),

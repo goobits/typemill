@@ -50,7 +50,7 @@ function createProcessor<T>(type: string): DataProcessor<T> | null {
         .call_tool_with_timeout(
             "get_symbol_info",
             json!(
-                { "file_path" : file_path.to_string_lossy(), "line" : 1, "character" : 20
+                { "filePath" : file_path.to_string_lossy(), "line" : 1, "character" : 20
                 }
             ),
             std::time::Duration::from_secs(60),
@@ -87,7 +87,7 @@ function createProcessor<T>(type: string): DataProcessor<T> | null {
         .call_tool(
             "find_definition",
             json!(
-                { "file_path" : file_path.to_string_lossy(), "line" : 5, "character" : 45
+                { "filePath" : file_path.to_string_lossy(), "line" : 5, "character" : 45
                 }
             ),
         )
@@ -111,7 +111,7 @@ function createProcessor<T>(type: string): DataProcessor<T> | null {
     let response = client
         .call_tool(
             "get_document_symbols",
-            json!({ "file_path" : file_path.to_string_lossy() }),
+            json!({ "filePath" : file_path.to_string_lossy() }),
         )
         .await
         .expect("get_document_symbols should succeed");
@@ -214,7 +214,7 @@ export function formatResponse(data) {
         .call_tool(
             "get_symbol_info",
             json!(
-                { "file_path" : ts_file.to_string_lossy(), "line" : 2, "character" : 10 }
+                { "filePath" : ts_file.to_string_lossy(), "line" : 2, "character" : 10 }
             ),
         )
         .await;
@@ -231,7 +231,7 @@ export function formatResponse(data) {
     let response = client
         .call_tool(
             "get_document_symbols",
-            json!({ "file_path" : ts_file.to_string_lossy() }),
+            json!({ "filePath" : ts_file.to_string_lossy() }),
         )
         .await
         .expect("TypeScript LSP call should succeed");
@@ -268,7 +268,7 @@ export function formatResponse(data) {
     let response = client
         .call_tool(
             "get_document_symbols",
-            json!({ "file_path" : js_file.to_string_lossy() }),
+            json!({ "filePath" : js_file.to_string_lossy() }),
         )
         .await
         .expect("JavaScript LSP call should succeed");

@@ -33,7 +33,7 @@ async fn test_inline_variable_plan_and_apply() {
             json!({
                 "kind": "variable",
                 "target": {
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "position": {"line": 1, "character": 8}
                 }
             }),
@@ -60,8 +60,8 @@ async fn test_inline_variable_plan_and_apply() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dry_run": false,
-                            "validate_checksums": true
+                            "dryRun": false,
+                            "validateChecksums": true
                         }
                     }),
                 )
@@ -112,7 +112,7 @@ pub fn test() -> i32 {
             json!({
                 "kind": "function",
                 "target": {
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "position": {"line": 0, "character": 3}
                 }
             }),
@@ -147,7 +147,7 @@ pub fn test() -> i32 {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dry_run": true
+                            "dryRun": true
                         }
                     }),
                 )
@@ -204,7 +204,7 @@ pub fn get_buffer() -> Vec<u8> {
             json!({
                 "kind": "constant",
                 "target": {
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "position": {"line": 0, "character": 6}
                 }
             }),
@@ -236,7 +236,7 @@ pub fn get_buffer() -> Vec<u8> {
                     json!({
                         "plan": plan,
                         "options": {
-                            "validate_checksums": true
+                            "validateChecksums": true
                         }
                     }),
                 )
@@ -285,7 +285,7 @@ pub fn use_twice() -> i32 {
             json!({
                 "kind": "function",
                 "target": {
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "position": {"line": 0, "character": 7}
                 }
             }),

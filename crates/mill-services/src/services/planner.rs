@@ -217,7 +217,7 @@ mod tests {
                                         "symbol_name": "{old_name}"
                                     }
                                 },
-                                "new_name": "{new_name}"
+                                "newName": "{new_name}"
                             },
                             "description": "Generate rename plan for '{old_name}' → '{new_name}'",
                             "requires_confirmation": null
@@ -227,7 +227,7 @@ mod tests {
                             "params": {
                                 "plan": "$steps.0.plan",
                                 "options": {
-                                    "validate_checksums": true,
+                                    "validateChecksums": true,
                                     "dryRun": false
                                 }
                             },
@@ -235,7 +235,7 @@ mod tests {
                             "requires_confirmation": true
                         }
                     ],
-                    "required_params": ["file_path", "old_name", "new_name"]
+                    "required_params": ["filePath", "old_name", "newName"]
                 },
                 "refactor.extractFunction": {
                     "name": "Extract function '{function_name}'",
@@ -248,7 +248,7 @@ mod tests {
                             "params": {
                                 "kind": "function",
                                 "source": {
-                                    "file_path": "{file_path}",
+                                    "filePath": "{file_path}",
                                     "range": {
                                         "start": {"line": "{start_line}", "character": 0},
                                         "end": {"line": "{end_line}", "character": 0}
@@ -264,7 +264,7 @@ mod tests {
                             "params": {
                                 "plan": "$steps.0.plan",
                                 "options": {
-                                    "validate_checksums": true,
+                                    "validateChecksums": true,
                                     "dryRun": false
                                 }
                             },
@@ -272,7 +272,7 @@ mod tests {
                             "requires_confirmation": true
                         }
                     ],
-                    "required_params": ["file_path", "start_line", "end_line", "function_name"]
+                    "required_params": ["filePath", "start_line", "end_line", "function_name"]
                 },
                 "docs.generateDocstring": {
                     "name": "Generate documentation for '{symbol_name}'",
@@ -283,7 +283,7 @@ mod tests {
                         {
                             "tool": "get_document_symbols",
                             "params": {
-                                "file_path": "{file_path}"
+                                "filePath": "{file_path}"
                             },
                             "description": "Find the location of symbol '{symbol_name}'",
                             "requires_confirmation": null
@@ -291,7 +291,7 @@ mod tests {
                         {
                             "tool": "get_hover",
                             "params": {
-                                "file_path": "{file_path}",
+                                "filePath": "{file_path}",
                                 "line": "$steps.0.symbols.0.range.start.line",
                                 "character": "$steps.0.symbols.0.range.start.character"
                             },
@@ -323,7 +323,7 @@ mod tests {
                             "requires_confirmation": null
                         }
                     ],
-                    "required_params": ["file_path", "symbol_name"]
+                    "required_params": ["filePath", "symbol_name"]
                 }
             }
         }
@@ -344,9 +344,9 @@ mod tests {
         let intent = Intent {
             name: "refactor.renameSymbol".to_string(),
             params: json!({
-                "file_path": "src/test.ts",
+                "filePath": "src/test.ts",
                 "old_name": "oldFunc",
-                "new_name": "newFunc"
+                "newName": "newFunc"
             }),
         };
 
@@ -364,7 +364,7 @@ mod tests {
         assert_eq!(
             workflow.steps[0]
                 .params
-                .get("new_name")
+                .get("newName")
                 .unwrap()
                 .as_str()
                 .unwrap(),
@@ -383,7 +383,7 @@ mod tests {
         let intent = Intent {
             name: "refactor.extractFunction".to_string(),
             params: json!({
-                "file_path": "src/main.ts",
+                "filePath": "src/main.ts",
                 "start_line": 10,
                 "end_line": 20,
                 "function_name": "extractedFunc"
@@ -416,7 +416,7 @@ mod tests {
         let intent = Intent {
             name: "docs.generateDocstring".to_string(),
             params: json!({
-                "file_path": "src/utils.ts",
+                "filePath": "src/utils.ts",
                 "symbol_name": "myFunction"
             }),
         };
@@ -434,7 +434,7 @@ mod tests {
         assert_eq!(
             workflow.steps[0]
                 .params
-                .get("file_path")
+                .get("filePath")
                 .unwrap()
                 .as_str()
                 .unwrap(),
@@ -464,7 +464,7 @@ mod tests {
         let intent = Intent {
             name: "refactor.renameSymbol".to_string(),
             params: json!({
-                "file_path": "src/test.ts",
+                "filePath": "src/test.ts",
                 // Missing old_name and new_name
             }),
         };
@@ -504,9 +504,9 @@ mod tests {
         let intent = Intent {
             name: "refactor.renameSymbolWithImports".to_string(),
             params: json!({
-                "file_path": "src/example.rs",
+                "filePath": "src/example.rs",
                 "old_name": "OldStruct",
-                "new_name": "NewStruct"
+                "newName": "NewStruct"
             }),
         };
 
@@ -530,7 +530,7 @@ mod tests {
         assert_eq!(step1.tool, "rename.plan");
         assert!(step1.params.get("target").is_some(), "Should have target");
         assert_eq!(
-            step1.params.get("new_name").unwrap().as_str().unwrap(),
+            step1.params.get("newName").unwrap().as_str().unwrap(),
             "NewStruct"
         );
 

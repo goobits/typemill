@@ -41,7 +41,7 @@ async fn test_rename_plan_basic_structure() {
                     "kind": "directory",
                     "path": workspace.absolute_path("old-dir").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("new-dir").to_string_lossy()
+                "newName": workspace.absolute_path("new-dir").to_string_lossy()
             }),
         )
         .await
@@ -82,7 +82,7 @@ async fn test_basic_file_rename_works() {
                     "kind": "file",
                     "path": workspace.absolute_path("old_file.rs").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("new_file.rs").to_string_lossy()
+                "newName": workspace.absolute_path("new_file.rs").to_string_lossy()
             }),
         )
         .await
@@ -100,7 +100,7 @@ async fn test_basic_file_rename_works() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -159,7 +159,7 @@ fn main() {
                     "kind": "directory",
                     "path": workspace.absolute_path("config").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("configuration").to_string_lossy()
+                "newName": workspace.absolute_path("configuration").to_string_lossy()
             }),
         )
         .await
@@ -177,7 +177,7 @@ fn main() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -221,7 +221,7 @@ See the [Guide](docs/guide.md) for details.
                     "kind": "directory",
                     "path": workspace.absolute_path("docs").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("documentation").to_string_lossy()
+                "newName": workspace.absolute_path("documentation").to_string_lossy()
             }),
         )
         .await
@@ -239,7 +239,7 @@ See the [Guide](docs/guide.md) for details.
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -294,7 +294,7 @@ jobs:
                     "kind": "directory",
                     "path": workspace.absolute_path("integration-tests").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("tests").to_string_lossy()
+                "newName": workspace.absolute_path("tests").to_string_lossy()
             }),
         )
         .await
@@ -312,7 +312,7 @@ jobs:
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -350,7 +350,7 @@ async fn test_david_scope_filtering() {
                     "kind": "directory",
                     "path": workspace.absolute_path("old").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("new").to_string_lossy(),
+                "newName": workspace.absolute_path("new").to_string_lossy(),
                 "options": {
                     "scope": "code-only"
                 }
@@ -371,7 +371,7 @@ async fn test_david_scope_filtering() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -411,7 +411,7 @@ async fn test_comprehensive_93_percent_coverage() {
                     "kind": "directory",
                     "path": workspace.absolute_path("integration-tests").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("tests").to_string_lossy(),
+                "newName": workspace.absolute_path("tests").to_string_lossy(),
                 "options": {
                     "scope": "all"
                 }
@@ -432,7 +432,7 @@ async fn test_comprehensive_93_percent_coverage() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )

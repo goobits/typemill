@@ -28,7 +28,7 @@ async fn test_rename_file_plan_and_apply() {
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -58,8 +58,8 @@ async fn test_rename_file_plan_and_apply() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
-                    "validate_checksums": true
+                    "dryRun": false,
+                    "validateChecksums": true
                 }
             }),
         )
@@ -109,7 +109,7 @@ async fn test_rename_file_dry_run_preview() {
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -127,7 +127,7 @@ async fn test_rename_file_dry_run_preview() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -175,7 +175,7 @@ async fn test_rename_checksum_validation_rejects_stale_plan() {
                     "kind": "file",
                     "path": file_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -196,7 +196,7 @@ async fn test_rename_checksum_validation_rejects_stale_plan() {
             json!({
                 "plan": plan,
                 "options": {
-                    "validate_checksums": true
+                    "validateChecksums": true
                 }
             }),
         )
@@ -239,7 +239,7 @@ async fn test_rename_directory_plan_and_apply() {
                     "kind": "directory",
                     "path": old_dir.to_string_lossy()
                 },
-                "new_name": new_dir.to_string_lossy()
+                "newName": new_dir.to_string_lossy()
             }),
         )
         .await
@@ -263,8 +263,8 @@ async fn test_rename_directory_plan_and_apply() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
-                    "validate_checksums": true
+                    "dryRun": false,
+                    "validateChecksums": true
                 }
             }),
         )

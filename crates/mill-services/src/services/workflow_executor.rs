@@ -175,7 +175,7 @@ impl DefaultWorkflowExecutor {
 
         // Create plugin request
         let file_path = resolved_params
-            .get("file_path")
+            .get("filePath")
             .and_then(|v| v.as_str())
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("."));
@@ -442,7 +442,7 @@ mod tests {
         );
 
         let params = json!({
-            "file_path": "test.ts",
+            "filePath": "test.ts",
             "locations": "$steps.0.locations"
         });
 
@@ -451,7 +451,7 @@ mod tests {
 
         let result = resolved.unwrap();
         assert_eq!(
-            result.get("file_path").unwrap().as_str().unwrap(),
+            result.get("filePath").unwrap().as_str().unwrap(),
             "test.ts"
         );
         assert!(result.get("locations").unwrap().is_array());

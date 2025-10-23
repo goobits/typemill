@@ -98,7 +98,7 @@ edition = "2021"
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -115,7 +115,7 @@ edition = "2021"
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -228,7 +228,7 @@ edition = "2021"
                     "kind": "directory",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -245,7 +245,7 @@ edition = "2021"
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -369,7 +369,7 @@ edition = "2021"
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -386,7 +386,7 @@ edition = "2021"
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )

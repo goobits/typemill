@@ -22,7 +22,7 @@ impl ProjectFixtures {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": init_file.to_string_lossy(),
+                    "filePath": init_file.to_string_lossy(),
                     "content": "\"\"\"Python project for testing.\"\"\"\n__version__ = \"1.0.0\"\n"
                 }),
             )
@@ -105,7 +105,7 @@ class Project:
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": models_file.to_string_lossy(),
+                    "filePath": models_file.to_string_lossy(),
                     "content": models_content
                 }),
             )
@@ -241,7 +241,7 @@ class ProjectService:
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": services_file.to_string_lossy(),
+                    "filePath": services_file.to_string_lossy(),
                     "content": services_content
                 }),
             )
@@ -346,7 +346,7 @@ class CircularBuffer:
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": utils_file.to_string_lossy(),
+                    "filePath": utils_file.to_string_lossy(),
                     "content": utils_content
                 }),
             )
@@ -356,7 +356,7 @@ class CircularBuffer:
         // Create requirements.txt
         let requirements_file = workspace.path().join("requirements.txt");
         client.call_tool("create_file", json!({
-            "file_path": requirements_file.to_string_lossy(),
+            "filePath": requirements_file.to_string_lossy(),
             "content": "pytest>=7.0.0\npytest-asyncio>=0.21.0\nmypy>=1.0.0\nblack>=22.0.0\nflake8>=5.0.0\n"
         })).await?;
         created_files.push(requirements_file);

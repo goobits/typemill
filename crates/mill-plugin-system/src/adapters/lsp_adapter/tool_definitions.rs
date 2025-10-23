@@ -9,11 +9,11 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file" },
+                    "filePath": { "type": "string", "description": "The path to the file" },
                     "symbol_name": { "type": "string", "description": "The name of the symbol" },
                     "symbol_kind": { "type": "string", "description": "The kind of symbol (function, class, variable, method, etc.)" }
                 },
-                "required": ["file_path", "symbol_name"]
+                "required": ["filePath", "symbol_name"]
             }
         }),
         json!({
@@ -22,12 +22,12 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file" },
+                    "filePath": { "type": "string", "description": "The path to the file" },
                     "symbol_name": { "type": "string", "description": "The name of the symbol" },
                     "symbol_kind": { "type": "string", "description": "The kind of symbol (function, class, variable, method, etc.)" },
                     "include_declaration": { "type": "boolean", "description": "Whether to include the declaration", "default": true }
                 },
-                "required": ["file_path", "symbol_name"]
+                "required": ["filePath", "symbol_name"]
             }
         }),
         json!({
@@ -36,11 +36,11 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file" },
+                    "filePath": { "type": "string", "description": "The path to the file" },
                     "symbol_name": { "type": "string", "description": "The name of the interface or abstract class" },
                     "symbol_kind": { "type": "string", "description": "The kind of symbol (interface, class, etc.)" }
                 },
-                "required": ["file_path", "symbol_name"]
+                "required": ["filePath", "symbol_name"]
             }
         }),
         json!({
@@ -49,11 +49,11 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file" },
+                    "filePath": { "type": "string", "description": "The path to the file" },
                     "symbol_name": { "type": "string", "description": "The name of the symbol" },
                     "symbol_kind": { "type": "string", "description": "The kind of symbol (variable, property, etc.)" }
                 },
-                "required": ["file_path", "symbol_name"]
+                "required": ["filePath", "symbol_name"]
             }
         }),
         json!({
@@ -74,9 +74,9 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file" }
+                    "filePath": { "type": "string", "description": "The path to the file" }
                 },
-                "required": ["file_path"]
+                "required": ["filePath"]
             }
         }),
         // Editing Tools
@@ -86,9 +86,9 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The absolute path to the file to organize imports for." }
+                    "filePath": { "type": "string", "description": "The absolute path to the file to organize imports for." }
                 },
-                "required": ["file_path"]
+                "required": ["filePath"]
             }
         }),
         json!({
@@ -97,7 +97,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file" },
+                    "filePath": { "type": "string", "description": "The path to the file" },
                     "range": {
                         "type": "object",
                         "description": "Optional range to get code actions for. If not provided, gets actions for entire file.",
@@ -122,7 +122,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                         "required": ["start", "end"]
                     }
                 },
-                "required": ["file_path"]
+                "required": ["filePath"]
             }
         }),
         json!({
@@ -131,7 +131,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file to format" },
+                    "filePath": { "type": "string", "description": "The path to the file to format" },
                     "options": {
                         "type": "object",
                         "description": "Formatting options",
@@ -144,7 +144,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                         }
                     }
                 },
-                "required": ["file_path"]
+                "required": ["filePath"]
             }
         }),
         // Intelligence Tools
@@ -154,11 +154,11 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file" },
+                    "filePath": { "type": "string", "description": "The path to the file" },
                     "line": { "type": "number", "description": "The line number (1-indexed)" },
                     "character": { "type": "number", "description": "The character position in the line (0-indexed)" }
                 },
-                "required": ["file_path", "line", "character"]
+                "required": ["filePath", "line", "character"]
             }
         }),
         json!({
@@ -167,12 +167,12 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file" },
+                    "filePath": { "type": "string", "description": "The path to the file" },
                     "line": { "type": "number", "description": "The line number (1-indexed)" },
                     "character": { "type": "number", "description": "The character position in the line (0-indexed)" },
                     "trigger_character": { "type": "string", "description": "Optional trigger character (e.g., \".\", \":\", \">\") that caused the completion request" }
                 },
-                "required": ["file_path", "line", "character"]
+                "required": ["filePath", "line", "character"]
             }
         }),
         json!({
@@ -181,12 +181,12 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file" },
+                    "filePath": { "type": "string", "description": "The path to the file" },
                     "line": { "type": "number", "description": "The line number (1-indexed)" },
                     "character": { "type": "number", "description": "The character position in the line (0-indexed)" },
                     "trigger_character": { "type": "string", "description": "Optional trigger character that invoked signature help (e.g., \"(\", \",\")" }
                 },
-                "required": ["file_path", "line", "character"]
+                "required": ["filePath", "line", "character"]
             }
         }),
         // Diagnostics Tools
@@ -196,9 +196,9 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file to get diagnostics for" }
+                    "filePath": { "type": "string", "description": "The path to the file to get diagnostics for" }
                 },
-                "required": ["file_path"]
+                "required": ["filePath"]
             }
         }),
         // File Management Tools
@@ -221,12 +221,12 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path where the new file should be created" },
+                    "filePath": { "type": "string", "description": "The path where the new file should be created" },
                     "content": { "type": "string", "description": "Initial content for the file (default: empty string)" },
                     "overwrite": { "type": "boolean", "description": "Whether to overwrite existing file if it exists (default: false)" },
                     "dryRun": { "type": "boolean", "description": "Preview changes without applying them (default: false)" }
                 },
-                "required": ["file_path"]
+                "required": ["filePath"]
             }
         }),
         json!({
@@ -235,11 +235,11 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file to delete" },
+                    "filePath": { "type": "string", "description": "The path to the file to delete" },
                     "force": { "type": "boolean", "description": "Force deletion even if file has uncommitted changes (default: false)" },
                     "dryRun": { "type": "boolean", "description": "Preview changes without applying them (default: false)" }
                 },
-                "required": ["file_path"]
+                "required": ["filePath"]
             }
         }),
         // Call Hierarchy Tools
@@ -249,11 +249,11 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file" },
+                    "filePath": { "type": "string", "description": "The path to the file" },
                     "line": { "type": "number", "description": "The line number (1-indexed)" },
                     "character": { "type": "number", "description": "The character position in the line (0-indexed)" }
                 },
-                "required": ["file_path", "line", "character"]
+                "required": ["filePath", "line", "character"]
             }
         }),
         json!({
@@ -291,9 +291,9 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "Path to the file that was opened" }
+                    "filePath": { "type": "string", "description": "Path to the file that was opened" }
                 },
-                "required": ["file_path"]
+                "required": ["filePath"]
             }
         }),
         json!({
@@ -302,9 +302,9 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file that was saved" }
+                    "filePath": { "type": "string", "description": "The path to the file that was saved" }
                 },
-                "required": ["file_path"]
+                "required": ["filePath"]
             }
         }),
         json!({
@@ -313,9 +313,9 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "file_path": { "type": "string", "description": "The path to the file that was closed" }
+                    "filePath": { "type": "string", "description": "The path to the file that was closed" }
                 },
-                "required": ["file_path"]
+                "required": ["filePath"]
             }
         }),
     ]

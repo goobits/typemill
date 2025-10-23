@@ -24,7 +24,7 @@ async fn test_refactoring_workflow_end_to_end() {
                     "path": "src/main.ts",
                     "selector": {"position": {"line": 0, "character": 9}}
                 },
-                "new_name": "newFoo"
+                "newName": "newFoo"
             }),
         )
         .await

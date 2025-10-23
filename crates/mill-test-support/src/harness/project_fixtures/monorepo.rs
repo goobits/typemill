@@ -42,7 +42,7 @@ impl ProjectFixtures {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": root_package.to_string_lossy(),
+                    "filePath": root_package.to_string_lossy(),
                     "content": root_content
                 }),
             )
@@ -65,7 +65,7 @@ impl ProjectFixtures {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": shared_package.to_string_lossy(),
+                    "filePath": shared_package.to_string_lossy(),
                     "content": r#"
 {
   "name": "@monorepo/shared",
@@ -95,7 +95,7 @@ impl ProjectFixtures {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": shared_index.to_string_lossy(),
+                    "filePath": shared_index.to_string_lossy(),
                     "content": r#"
 export interface BaseEntity {
     id: string;
@@ -150,7 +150,7 @@ export class Logger {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": frontend_package.to_string_lossy(),
+                    "filePath": frontend_package.to_string_lossy(),
                     "content": r#"
 {
   "name": "@monorepo/frontend",
@@ -182,7 +182,7 @@ export class Logger {
             .call_tool(
                 "create_file",
                 json!({
-                    "file_path": frontend_app.to_string_lossy(),
+                    "filePath": frontend_app.to_string_lossy(),
                     "content": r#"
 import { User, Project, generateId, validateEmail, Logger } from '@monorepo/shared';
 import React, { useState, useEffect } from 'react';

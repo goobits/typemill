@@ -132,7 +132,7 @@ impl NavigationHandler {
             _ => {
                 // Extract file path for file-specific operations
                 let file_path_str =
-                    args.get("file_path")
+                    args.get("filePath")
                         .and_then(|v| v.as_str())
                         .ok_or_else(|| {
                             mill_foundation::protocol::ApiError::InvalidRequest(
@@ -278,7 +278,7 @@ impl InternalNavigationHandler {
     ) -> Result<PluginRequest, mill_foundation::protocol::ApiError> {
         let args = tool_call.arguments.clone().unwrap_or(json!({}));
         let file_path_str = args
-            .get("file_path")
+            .get("filePath")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
                 mill_foundation::protocol::ApiError::InvalidRequest(

@@ -352,7 +352,7 @@ if __name__ == "__main__":
             // Verify any findings are from .ts files
             for finding in findings {
                 let location = &finding["location"];
-                let file_path = location["file_path"].as_str().unwrap();
+                let file_path = location["filePath"].as_str().unwrap();
                 assert!(
                     file_path.ends_with(".ts") || file_path.ends_with(".tsx"),
                     "Should only analyze TypeScript files, found: {}",
@@ -409,7 +409,7 @@ function unusedHelper() {
     let symbols_response = client
         .call_tool(
             "get_document_symbols",
-            json!({ "file_path": helper_ts.to_string_lossy() }),
+            json!({ "filePath": helper_ts.to_string_lossy() }),
         )
         .await;
 

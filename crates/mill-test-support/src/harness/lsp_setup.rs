@@ -260,7 +260,7 @@ export function testFunction(param: string): string {
             .call_tool(
                 "get_document_symbols",
                 json!({
-                    "file_path": test_file.to_string_lossy()
+                    "filePath": test_file.to_string_lossy()
                 }),
             )
             .await

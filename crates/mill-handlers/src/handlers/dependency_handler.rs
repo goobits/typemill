@@ -266,7 +266,7 @@ impl ToolHandler for DependencyHandler {
             return Ok(json!({
                 "preview": true,
                 "changes": {
-                    "file_path": args.file_path,
+                    "filePath": args.file_path,
                     "add_dependencies": args.add_dependencies,
                     "add_dev_dependencies": args.add_dev_dependencies,
                     "remove_dependencies": args.remove_dependencies,

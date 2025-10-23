@@ -518,7 +518,7 @@ impl TestClient {
                 .call_tool(
                     "get_document_symbols",
                     serde_json::json!({
-                        "file_path": file_path.to_string_lossy()
+                        "filePath": file_path.to_string_lossy()
                     }),
                 )
                 .await

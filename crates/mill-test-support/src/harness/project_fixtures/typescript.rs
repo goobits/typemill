@@ -74,7 +74,7 @@ export class EntityValidator{i} {{
                 .call_tool(
                     "create_file",
                     json!({
-                        "file_path": file_path.to_string_lossy(),
+                        "filePath": file_path.to_string_lossy(),
                         "content": content
                     }),
                 )
@@ -148,7 +148,7 @@ export async function batchCreateEntities{i}(names: string[]): Promise<Entity{i}
                 .call_tool(
                     "create_file",
                     json!({
-                        "file_path": file_path.to_string_lossy(),
+                        "filePath": file_path.to_string_lossy(),
                         "content": content
                     }),
                 )
@@ -244,7 +244,7 @@ export class EntityService{i} {{
                 .call_tool(
                     "create_file",
                     json!({
-                        "file_path": file_path.to_string_lossy(),
+                        "filePath": file_path.to_string_lossy(),
                         "content": content
                     }),
                 )
@@ -344,7 +344,7 @@ export function createComponent{i}(entities: Entity{i}[], filter?: EntityFilter{
                 .call_tool(
                     "create_file",
                     json!({
-                        "file_path": file_path.to_string_lossy(),
+                        "filePath": file_path.to_string_lossy(),
                         "content": content
                     }),
                 )

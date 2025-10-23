@@ -95,13 +95,13 @@ impl RefactoringOperation {
                 end_line,
                 end_char: _,
             } => json!({
-                "file_path": file_path,
+                "filePath": file_path,
                 "start_line": start_line,
                 "end_line": end_line,
                 "function_name": new_name
             }),
             RefactoringOperation::InlineVariable { line, character } => json!({
-                "file_path": file_path,
+                "filePath": file_path,
                 "line": line,
                 "character": character
             }),
@@ -112,7 +112,7 @@ impl RefactoringOperation {
                 end_line,
                 end_char,
             } => json!({
-                "file_path": file_path,
+                "filePath": file_path,
                 "start_line": start_line,
                 "start_character": start_char,
                 "end_line": end_line,

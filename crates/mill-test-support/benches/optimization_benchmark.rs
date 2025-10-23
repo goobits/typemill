@@ -122,7 +122,7 @@ fn bench_complete_mcp_cycle_optimized(c: &mut Criterion) {
         params: Some(json!({
             "name": "find_references",
             "arguments": {
-                "file_path": "/tmp/large_project/main.rs",
+                "filePath": "/tmp/large_project/main.rs",
                 "symbol_name": "process_data",
                 "include_declaration": true,
                 "page": 0,

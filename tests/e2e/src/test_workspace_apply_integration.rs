@@ -28,7 +28,7 @@ async fn test_workspace_apply_discriminated_union_rename() {
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -52,7 +52,7 @@ async fn test_workspace_apply_discriminated_union_rename() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -214,7 +214,7 @@ async fn test_workspace_apply_checksum_validation_all_plan_types() {
                     "kind": "file",
                     "path": file_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -234,7 +234,7 @@ async fn test_workspace_apply_checksum_validation_all_plan_types() {
             json!({
                 "plan": plan,
                 "options": {
-                    "validate_checksums": true
+                    "validateChecksums": true
                 }
             }),
         )
@@ -288,7 +288,7 @@ async fn test_workspace_apply_dry_run_all_plan_types() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -333,7 +333,7 @@ async fn test_workspace_apply_rollback_on_error() {
                     "kind": "file",
                     "path": file_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -350,7 +350,7 @@ async fn test_workspace_apply_rollback_on_error() {
             json!({
                 "plan": plan,
                 "options": {
-                    "rollback_on_error": true
+                    "rollbackOnError": true
                 }
             }),
         )
@@ -379,7 +379,7 @@ async fn test_workspace_apply_post_validation_success() {
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await

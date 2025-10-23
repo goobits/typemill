@@ -68,7 +68,7 @@ function main() {
     assert_eq!(refactor_call.command, "delete.plan");
     assert_eq!(refactor_call.arguments["kind"], "import");
     assert_eq!(
-        refactor_call.arguments["target"]["file_path"]
+        refactor_call.arguments["target"]["filePath"]
             .as_str()
             .unwrap(),
         test_file.to_string_lossy()
@@ -136,7 +136,7 @@ usedFunction();
     assert_eq!(refactor_call.command, "delete.plan");
     assert_eq!(refactor_call.arguments["kind"], "function");
     assert_eq!(
-        refactor_call.arguments["target"]["file_path"]
+        refactor_call.arguments["target"]["filePath"]
             .as_str()
             .unwrap(),
         test_file.to_string_lossy()

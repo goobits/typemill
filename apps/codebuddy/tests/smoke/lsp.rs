@@ -78,7 +78,7 @@ const goodbye = farewell("World");
         .call_tool(
             "find_definition",
             json!({
-                "file_path": ts_file.to_string_lossy(),
+                "filePath": ts_file.to_string_lossy(),
                 "line": 9,
                 "character": 22
             }),
@@ -102,7 +102,7 @@ const goodbye = farewell("World");
         .call_tool(
             "find_references",
             json!({
-                "file_path": ts_file.to_string_lossy(),
+                "filePath": ts_file.to_string_lossy(),
                 "line": 1,
                 "character": 17
             }),
@@ -127,7 +127,7 @@ const goodbye = farewell("World");
             .call_tool(
                 "find_definition",
                 json!({
-                    "file_path": ts_file.to_string_lossy(),
+                    "filePath": ts_file.to_string_lossy(),
                     "line": 1,
                     "character": 17
                 }),
@@ -202,7 +202,7 @@ edition = "2021"
         .call_tool(
             "find_definition",
             json!({
-                "file_path": ts_file.to_string_lossy(),
+                "filePath": ts_file.to_string_lossy(),
                 "line": 1,
                 "character": 17
             }),
@@ -220,7 +220,7 @@ edition = "2021"
         .call_tool(
             "find_definition",
             json!({
-                "file_path": rs_file.to_string_lossy(),
+                "filePath": rs_file.to_string_lossy(),
                 "line": 1,
                 "character": 8
             }),

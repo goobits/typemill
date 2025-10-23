@@ -106,7 +106,7 @@ pub fn extract_file_path(args: &Value, scope_param: &ScopeParam) -> ServerResult
     scope_param
         .path
         .clone()
-        .or_else(|| args.get("file_path").and_then(|v| v.as_str()).map(String::from))
+        .or_else(|| args.get("filePath").and_then(|v| v.as_str()).map(String::from))
         .ok_or_else(|| {
             ServerError::InvalidRequest(
                 "Missing file path. For MVP, only file-level analysis is supported via scope.path or file_path parameter".into(),
@@ -456,7 +456,7 @@ mod tests {
     #[test]
     fn test_extract_file_path_from_file_path_param() {
         let args = json!({
-            "file_path": "/path/from/param.rs"
+            "filePath": "/path/from/param.rs"
         });
         let scope = ScopeParam {
             scope_type: None,
@@ -472,7 +472,7 @@ mod tests {
     #[test]
     fn test_extract_file_path_scope_takes_precedence() {
         let args = json!({
-            "file_path": "/path/from/param.rs"
+            "filePath": "/path/from/param.rs"
         });
         let scope = ScopeParam {
             scope_type: None,

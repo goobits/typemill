@@ -37,7 +37,7 @@ async fn test_transform_if_to_match_plan_and_apply() {
             json!({
                 "transformation": {
                     "kind": "if_to_match",
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "range": {
                         "start": {"line": 1, "character": 4},
                         "end": {"line": 7, "character": 5}
@@ -81,7 +81,7 @@ async fn test_transform_if_to_match_plan_and_apply() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dry_run": false
+                            "dryRun": false
                         }
                     }),
                 )
@@ -128,7 +128,7 @@ async fn test_transform_add_async_dry_run() {
             json!({
                 "transformation": {
                     "kind": "add_async",
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "range": {
                         "start": {"line": 0, "character": 7},
                         "end": {"line": 0, "character": 17}
@@ -166,7 +166,7 @@ async fn test_transform_add_async_dry_run() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dry_run": true
+                            "dryRun": true
                         }
                     }),
                 )
@@ -225,7 +225,7 @@ async fn test_transform_fn_to_closure_checksum_validation() {
             json!({
                 "transformation": {
                     "kind": "fn_to_closure",
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "range": {
                         "start": {"line": 1, "character": 4},
                         "end": {"line": 3, "character": 5}
@@ -276,7 +276,7 @@ async fn test_transform_fn_to_closure_checksum_validation() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "validate_checksums": true
+                            "validateChecksums": true
                         }
                     }),
                 )
@@ -321,7 +321,7 @@ async fn test_transform_plan_metadata_structure() {
             json!({
                 "transformation": {
                     "kind": "if_to_match",
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "range": {
                         "start": {"line": 1, "character": 4},
                         "end": {"line": 5, "character": 5}

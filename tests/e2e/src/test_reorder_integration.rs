@@ -33,10 +33,10 @@ pub fn test() {}
             json!({
                 "target": {
                     "kind": "imports",
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "position": {"line": 0, "character": 0}
                 },
-                "new_order": []
+                "newOrder": []
             }),
         )
         .await;
@@ -75,8 +75,8 @@ pub fn test() {}
                     json!({
                         "plan": plan,
                         "options": {
-                            "dry_run": false,
-                            "validate_checksums": true
+                            "dryRun": false,
+                            "validateChecksums": true
                         }
                     }),
                 )
@@ -127,10 +127,10 @@ pub fn test() {
             json!({
                 "target": {
                     "kind": "parameters",
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "position": {"line": 0, "character": 7}
                 },
-                "new_order": ["z", "x", "y"]
+                "newOrder": ["z", "x", "y"]
             }),
         )
         .await;
@@ -163,7 +163,7 @@ pub fn test() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dry_run": true
+                            "dryRun": true
                         }
                     }),
                 )
@@ -220,10 +220,10 @@ async fn test_reorder_fields_checksum_validation() {
             json!({
                 "target": {
                     "kind": "fields",
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "position": {"line": 0, "character": 11}
                 },
-                "new_order": ["z", "y", "x"]
+                "newOrder": ["z", "y", "x"]
             }),
         )
         .await;
@@ -267,7 +267,7 @@ async fn test_reorder_fields_checksum_validation() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "validate_checksums": true
+                            "validateChecksums": true
                         }
                     }),
                 )
@@ -311,10 +311,10 @@ async fn test_reorder_statements_plan_structure() {
             json!({
                 "target": {
                     "kind": "statements",
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "position": {"line": 1, "character": 0}
                 },
-                "new_order": ["let a = 1;", "let b = 2;", "let c = 3;"]
+                "newOrder": ["let a = 1;", "let b = 2;", "let c = 3;"]
             }),
         )
         .await;

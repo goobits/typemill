@@ -450,7 +450,7 @@ mod tests {
             id: "test_id".to_string(),
             method: "find_definition".to_string(),
             params: Some(serde_json::json!({
-                "file_path": "src/main.rs",
+                "filePath": "src/main.rs",
                 "symbol_name": "main"
             })),
         };

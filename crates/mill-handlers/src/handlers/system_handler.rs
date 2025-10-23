@@ -137,7 +137,7 @@ impl SystemHandler {
 
         let args = tool_call.arguments.unwrap_or(json!({}));
         let file_path_str = args
-            .get("file_path")
+            .get("filePath")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
 
@@ -230,7 +230,7 @@ impl SystemHandler {
 
         let args = tool_call.arguments.unwrap_or(json!({}));
         let file_path_str = args
-            .get("file_path")
+            .get("filePath")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
 
@@ -269,7 +269,7 @@ impl SystemHandler {
 
         let args = tool_call.arguments.unwrap_or(json!({}));
         let file_path_str = args
-            .get("file_path")
+            .get("filePath")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
 

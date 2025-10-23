@@ -116,7 +116,7 @@ Configuration: `crates/my-crate/Cargo.toml`
                     "kind": "directory",
                     "path": workspace.absolute_path("crates/my-crate").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("crates/renamed-crate").to_string_lossy()
+                "newName": workspace.absolute_path("crates/renamed-crate").to_string_lossy()
             }),
         )
         .await

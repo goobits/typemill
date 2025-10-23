@@ -479,7 +479,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "file_path": {
+                        "filePath": {
                             "type": "string",
                             "description": "Path to the file"
                         },
@@ -500,7 +500,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                             "description": "Preview changes without applying them"
                         }
                     },
-                    "required": ["file_path", "start_line", "end_line", "function_name"]
+                    "required": ["filePath", "start_line", "end_line", "function_name"]
                 }
             }),
             json!({
@@ -509,7 +509,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "file_path": {
+                        "filePath": {
                             "type": "string",
                             "description": "Path to the file"
                         },
@@ -526,7 +526,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                             "description": "Preview changes without applying them"
                         }
                     },
-                    "required": ["file_path", "line"]
+                    "required": ["filePath", "line"]
                 }
             }),
             json!({
@@ -535,7 +535,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "file_path": {
+                        "filePath": {
                             "type": "string",
                             "description": "Path to the file"
                         },
@@ -564,7 +564,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                             "description": "Preview changes without applying them"
                         }
                     },
-                    "required": ["file_path", "start_line", "start_character", "end_line", "end_character", "variable_name"]
+                    "required": ["filePath", "start_line", "start_character", "end_line", "end_character", "variable_name"]
                 }
             }),
             json!({

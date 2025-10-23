@@ -51,7 +51,7 @@ async fn test_rename_file_updates_imports_from_fixtures() {
                         "kind": "file",
                         "path": old_path.to_string_lossy()
                     },
-                    "new_name": new_path.to_string_lossy()
+                    "newName": new_path.to_string_lossy()
                 }),
             )
             .await
@@ -69,8 +69,8 @@ async fn test_rename_file_updates_imports_from_fixtures() {
                 json!({
                     "plan": plan,
                     "options": {
-                        "dry_run": false,
-                        "validate_checksums": true
+                        "dryRun": false,
+                        "validateChecksums": true
                     }
                 }),
             )
@@ -192,7 +192,7 @@ async fn test_rename_file_updates_parent_directory_importer() {
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -209,7 +209,7 @@ async fn test_rename_file_updates_parent_directory_importer() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -260,7 +260,7 @@ async fn test_rename_file_updates_sibling_directory_importer() {
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -277,7 +277,7 @@ async fn test_rename_file_updates_sibling_directory_importer() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -328,7 +328,7 @@ async fn test_directory_rename_updates_all_imports() {
                     "kind": "directory",
                     "path": old_dir.to_string_lossy()
                 },
-                "new_name": new_dir.to_string_lossy()
+                "newName": new_dir.to_string_lossy()
             }),
         )
         .await
@@ -345,7 +345,7 @@ async fn test_directory_rename_updates_all_imports() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -410,7 +410,7 @@ async fn test_markdown_file_rename_updates_links() {
                         "kind": "file",
                         "path": old_path.to_string_lossy()
                     },
-                    "new_name": new_path.to_string_lossy()
+                    "newName": new_path.to_string_lossy()
                 }),
             )
             .await
@@ -428,8 +428,8 @@ async fn test_markdown_file_rename_updates_links() {
                 json!({
                     "plan": plan,
                     "options": {
-                        "dry_run": false,
-                        "validate_checksums": true
+                        "dryRun": false,
+                        "validateChecksums": true
                     }
                 }),
             )
@@ -522,7 +522,7 @@ Check [GitHub](https://github.com/user/repo) repo.
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -539,7 +539,7 @@ Check [GitHub](https://github.com/user/repo) repo.
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )

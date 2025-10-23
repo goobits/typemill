@@ -44,7 +44,7 @@ export interface Extended{i} extends PerfInterface{i} {{
                 .call_tool(
                     "create_file",
                     json!({
-                        "file_path": file_path.to_string_lossy(),
+                        "filePath": file_path.to_string_lossy(),
                         "content": content
                     }),
                 )
@@ -99,7 +99,7 @@ export class PerfClass{i} {{
                 .call_tool(
                     "create_file",
                     json!({
-                        "file_path": file_path.to_string_lossy(),
+                        "filePath": file_path.to_string_lossy(),
                         "content": content
                     }),
                 )

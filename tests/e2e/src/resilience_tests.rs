@@ -41,7 +41,7 @@ async fn test_lsp_crash_resilience() {
         "params": {
             "name": "find_definition",
             "arguments": {
-                "file_path": "/workspace/tests/fixtures/src/test-file.ts",
+                "filePath": "/workspace/tests/fixtures/src/test-file.ts",
                 "symbol_name": "TestProcessor"
             }
         }
@@ -102,7 +102,7 @@ async fn test_lsp_crash_resilience() {
         "params": {
             "name": "find_definition",
             "arguments": {
-                "file_path": "/workspace/tests/fixtures/src/test-file.ts",
+                "filePath": "/workspace/tests/fixtures/src/test-file.ts",
                 "symbol_name": "AnotherSymbol"
             }
         }
@@ -368,13 +368,13 @@ async fn test_find_dead_code_workflow() {
         // We expect to find the unused function and class
         let found_unused_function = findings.iter().any(|item| {
             let title = item["title"].as_str().or_else(|| item["message"].as_str());
-            let file_path = item["location"]["file_path"].as_str().unwrap_or("");
+            let file_path = item["location"]["filePath"].as_str().unwrap_or("");
             title == Some("unusedFunction") && file_path.contains("processor.ts")
         });
 
         let found_unused_class = findings.iter().any(|item| {
             let title = item["title"].as_str().or_else(|| item["message"].as_str());
-            let file_path = item["location"]["file_path"].as_str().unwrap_or("");
+            let file_path = item["location"]["filePath"].as_str().unwrap_or("");
             title == Some("UnusedClass") && file_path.contains("processor.ts")
         });
 
@@ -491,7 +491,7 @@ async fn test_basic_filesystem_operations() {
         "params": {
             "name": "read_file",
             "arguments": {
-                "file_path": format!("{}/src/main.ts", project_path)
+                "filePath": format!("{}/src/main.ts", project_path)
             }
         }
     });
@@ -524,7 +524,7 @@ async fn test_basic_filesystem_operations() {
         "params": {
             "name": "create_file",
             "arguments": {
-                "file_path": temp_file_path,
+                "filePath": temp_file_path,
                 "content": "// Temporary test file\nexport const tempVar = 'test';\n"
             }
         }
@@ -543,7 +543,7 @@ async fn test_basic_filesystem_operations() {
         "params": {
             "name": "read_file",
             "arguments": {
-                "file_path": temp_file_path
+                "filePath": temp_file_path
             }
         }
     });
@@ -569,7 +569,7 @@ async fn test_basic_filesystem_operations() {
         "params": {
             "name": "delete_file",
             "arguments": {
-                "file_path": temp_file_path
+                "filePath": temp_file_path
             }
         }
     });

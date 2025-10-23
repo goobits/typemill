@@ -22,7 +22,7 @@ fn create_complex_request() -> McpRequest {
         params: Some(json!({
             "tool": "find_references",
             "arguments": {
-                "file_path": "/tmp/very/long/path/to/some/deeply/nested/source/file.rs",
+                "filePath": "/tmp/very/long/path/to/some/deeply/nested/source/file.rs",
                 "symbol_name": "VeryLongSymbolNameThatRepresentsARealWorldScenario",
                 "include_declaration": true,
                 "additional_options": {

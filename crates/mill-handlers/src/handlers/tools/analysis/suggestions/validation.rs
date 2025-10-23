@@ -67,7 +67,7 @@ fn validate_refactor_call(refactor_call: &RefactorCall) -> Result<()> {
 }
 
 fn validate_delete_args(args: &Value) -> Result<()> {
-    if args.get("file_path").is_none() {
+    if args.get("filePath").is_none() {
         bail!("delete.plan missing file_path");
     }
     if args.get("line").is_none() && args.get("start_line").is_none() {
@@ -77,7 +77,7 @@ fn validate_delete_args(args: &Value) -> Result<()> {
 }
 
 fn validate_extract_args(args: &Value) -> Result<()> {
-    if args.get("file_path").is_none() {
+    if args.get("filePath").is_none() {
         bail!("extract.plan missing file_path");
     }
     if args.get("start_line").is_none() || args.get("end_line").is_none() {
@@ -87,7 +87,7 @@ fn validate_extract_args(args: &Value) -> Result<()> {
 }
 
 fn validate_inline_args(args: &Value) -> Result<()> {
-    if args.get("file_path").is_none() {
+    if args.get("filePath").is_none() {
         bail!("inline.plan missing file_path");
     }
     if args.get("line").is_none() {
@@ -115,7 +115,7 @@ mod tests {
             refactor_call: Some(RefactorCall {
                 command: "delete.plan".to_string(),
                 arguments: json!({
-                    "file_path": "test.rs",
+                    "filePath": "test.rs",
                     "line": 10,
                 }),
             }),

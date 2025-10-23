@@ -85,7 +85,7 @@ testing = ["integration-tests/test-feature"]
                     "kind": "directory",
                     "path": workspace.absolute_path("integration-tests").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("tests").to_string_lossy()
+                "newName": workspace.absolute_path("tests").to_string_lossy()
             }),
         )
         .await
@@ -103,7 +103,7 @@ testing = ["integration-tests/test-feature"]
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )

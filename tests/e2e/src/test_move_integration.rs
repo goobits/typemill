@@ -48,8 +48,8 @@ async fn test_move_folder_with_imports() {
                 json!({
                     "plan": plan,
                     "options": {
-                        "dry_run": false,
-                        "validate_checksums": true
+                        "dryRun": false,
+                        "validateChecksums": true
                     }
                 }),
             )
@@ -119,8 +119,8 @@ async fn test_move_file_plan_and_apply() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
-                    "validate_checksums": true
+                    "dryRun": false,
+                    "validateChecksums": true
                 }
             }),
         )
@@ -194,7 +194,7 @@ async fn test_move_file_dry_run_preview() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -266,7 +266,7 @@ async fn test_move_file_checksum_validation() {
             json!({
                 "plan": plan,
                 "options": {
-                    "validate_checksums": true
+                    "validateChecksums": true
                 }
             }),
         )

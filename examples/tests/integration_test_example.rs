@@ -17,8 +17,8 @@ async fn test_rename_tool_basic() {
             "rename.plan",
             json!({
                 "symbol": "foo",
-                "new_name": "bar",
-                "file_path": workspace.absolute_path("test.ts")
+                "newName": "bar",
+                "filePath": workspace.absolute_path("test.ts")
             }),
         )
         .await

@@ -86,7 +86,7 @@ fn main() {
                     "kind": "directory",
                     "path": workspace.absolute_path("crates/lib").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy(),
+                "newName": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy(),
                 "options": {
                     "consolidate": true
                 }
@@ -250,7 +250,7 @@ fn main() {
                     "kind": "directory",
                     "path": workspace.absolute_path("crates/lib").to_string_lossy()
                 },
-                "new_name": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy(),
+                "newName": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy(),
                 "options": {
                     "consolidate": true
                 }
@@ -271,7 +271,7 @@ fn main() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )

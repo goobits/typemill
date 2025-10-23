@@ -141,15 +141,15 @@ async fn test_workflow_batch_operations() {
     let operations = vec![
         json!({
             "operation": "read_file",
-            "file_path": workspace.path().join("file1.ts").to_string_lossy()
+            "filePath": workspace.path().join("file1.ts").to_string_lossy()
         }),
         json!({
             "operation": "read_file",
-            "file_path": workspace.path().join("file2.ts").to_string_lossy()
+            "filePath": workspace.path().join("file2.ts").to_string_lossy()
         }),
         json!({
             "operation": "read_file",
-            "file_path": workspace.path().join("file3.ts").to_string_lossy()
+            "filePath": workspace.path().join("file3.ts").to_string_lossy()
         }),
     ];
 
@@ -214,7 +214,7 @@ console.log(_.partition([1, 2, 3, 4], n => n % 2));
             "analyze.dependencies",
             json!({
                 "kind": "imports",
-                "file_path": main_ts.to_string_lossy()
+                "filePath": main_ts.to_string_lossy()
             }),
         )
         .await;
@@ -417,10 +417,10 @@ export function caller() {
         .call_tool(
             "rename.plan",
             json!({
-                "file_path": test_file.to_string_lossy(),
+                "filePath": test_file.to_string_lossy(),
                 "line": 2,
                 "character": 17,
-                "new_name": "newFunctionName"
+                "newName": "newFunctionName"
             }),
         )
         .await;

@@ -36,7 +36,7 @@ async fn test_rename_plan_and_apply_workflow() {
                     "kind": "file",
                     "path": file_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -62,8 +62,8 @@ async fn test_rename_plan_and_apply_workflow() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
-                    "validate_checksums": true
+                    "dryRun": false,
+                    "validateChecksums": true
                 }
             }),
         )
@@ -120,7 +120,7 @@ async fn test_extract_plan_and_apply_workflow() {
             json!({
                 "kind": "function",
                 "source": {
-                    "file_path": file_path.to_string_lossy(),
+                    "filePath": file_path.to_string_lossy(),
                     "range": {
                         "start": {"line": 1, "character": 4},
                         "end": {"line": 3, "character": 18}
@@ -152,7 +152,7 @@ async fn test_extract_plan_and_apply_workflow() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -210,7 +210,7 @@ async fn test_checksum_validation_across_all_plan_types() {
             json!({
                 "plan": plan,
                 "options": {
-                    "validate_checksums": true
+                    "validateChecksums": true
                 }
             }),
         )
@@ -300,7 +300,7 @@ async fn test_dry_run_across_all_operations() {
                     "kind": "file",
                     "path": old_path.to_string_lossy()
                 },
-                "new_name": new_path.to_string_lossy()
+                "newName": new_path.to_string_lossy()
             }),
         )
         .await
@@ -319,7 +319,7 @@ async fn test_dry_run_across_all_operations() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
