@@ -38,4 +38,4 @@ lang-markdown = []
 
 [dev-dependencies]
 tempfile = "3.0"
-cb-lang-rust = { path = "../cb-lang-rust", default-features = false }
+mill-lang-rust = { path = "../mill-lang-rust", default-features = false }

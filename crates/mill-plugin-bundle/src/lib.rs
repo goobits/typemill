@@ -17,7 +17,7 @@ use std::sync::Arc;
 #[cfg(feature = "lang-markdown")]
 use mill_lang_markdown::MarkdownPlugin;
 #[cfg(feature = "lang-rust")]
-use cb_lang_rust::RustPlugin;
+use mill_lang_rust::RustPlugin;
 #[cfg(feature = "lang-toml")]
 use mill_lang_toml::TomlLanguagePlugin;
 #[cfg(feature = "lang-typescript")]
@@ -96,7 +96,7 @@ mod tests {
     #[cfg(all(test, feature = "lang-markdown"))]
     extern crate mill_lang_markdown;
     #[cfg(all(test, feature = "lang-rust"))]
-    extern crate cb_lang_rust;
+    extern crate mill_lang_rust;
     #[cfg(all(test, feature = "lang-toml"))]
     extern crate mill_lang_toml;
     #[cfg(all(test, feature = "lang-typescript"))]

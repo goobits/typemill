@@ -465,7 +465,7 @@ The magic is handled by the `inventory` crate, which collects all the static `Pl
 Inside a language plugin crate (e.g., `cb-lang-rust`), registration is a single macro call:
 
 ```rust
-// In crates/cb-lang-rust/src/lib.rs
+// In ../../crates/mill-lang-rust/src/lib.rs
 use cb_plugin_registry::codebuddy_plugin;
 
 codebuddy_plugin! {

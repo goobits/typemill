@@ -151,7 +151,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 - `mill-plugin-bundle` ✓
 
 **Language Plugins Needing Rename (3 crates):**
-- `crates/cb-lang-rust` → `crates/mill-lang-rust`
+- `../crates/mill-lang-rust` → `crates/mill-lang-rust`
 - `crates/cb-lang-typescript` → `crates/mill-lang-typescript`
 - `../crates/mill-lang-yaml` → `crates/mill-lang-yaml`
 
@@ -212,7 +212,7 @@ mill serve
 
 **Usage Sites (6+ files):**
 - `crates/mill-lang-rust/src/lib.rs`
-- `crates/cb-lang-rust/src/lib.rs`
+- `../crates/mill-lang-rust/src/lib.rs`
 - `crates/mill-lang-typescript/src/lib.rs`
 - `crates/cb-lang-typescript/src/lib.rs`
 - `crates/mill-lang-markdown/src/lib.rs`
@@ -401,7 +401,7 @@ Rename remaining crate directories using `rename.plan` + `workspace.apply_edit`:
 ```bash
 # Language Plugins (3 crates)
 codebuddy rename.plan \
-  --target directory:crates/cb-lang-rust \
+  --target directory:../crates/mill-lang-rust \
   --new-name crates/mill-lang-rust \
   --dry-run
 
@@ -452,7 +452,7 @@ codebuddy get_diagnostics --scope workspace
 ```bash
 codebuddy rename.plan '{
   "targets": [
-    {"kind": "directory", "path": "crates/cb-lang-rust", "new_name": "crates/mill-lang-rust"},
+    {"kind": "directory", "path": "../crates/mill-lang-rust", "new_name": "crates/mill-lang-rust"},
     {"kind": "directory", "path": "crates/cb-lang-typescript", "new_name": "crates/mill-lang-typescript"},
     {"kind": "directory", "path": "../crates/mill-lang-yaml", "new_name": "crates/mill-lang-yaml"},
     {"kind": "directory", "path": "analysis/cb-analysis-common", "new_name": "analysis/mill-analysis-common"},
@@ -511,7 +511,7 @@ rg "codebuddy_plugin!" --files-with-matches
 
 # 2. Update all plugin invocations (6+ files):
 #    - crates/mill-lang-rust/src/lib.rs
-#    - crates/cb-lang-rust/src/lib.rs
+#    - ../crates/mill-lang-rust/src/lib.rs
 #    - crates/mill-lang-typescript/src/lib.rs
 #    - crates/cb-lang-typescript/src/lib.rs
 #    - crates/mill-lang-markdown/src/lib.rs
@@ -663,7 +663,7 @@ git tag v2.0.0
 **NOTE:** 18 crates already use `mill-*` prefix ✓
 
 **Language Plugins (3 crates):**
-- [ ] `crates/cb-lang-rust` → `crates/mill-lang-rust`
+- [ ] `../crates/mill-lang-rust` → `crates/mill-lang-rust`
 - [ ] `crates/cb-lang-typescript` → `crates/mill-lang-typescript`
 - [ ] `../crates/mill-lang-yaml` → `crates/mill-lang-yaml`
 
@@ -1187,7 +1187,7 @@ See full documentation at https://typemill.org/docs/migration
 ### Crate Directory Renames (9 crates needing rename)
 
 **Language Plugins (3):**
-- `crates/cb-lang-rust` → `crates/mill-lang-rust`
+- `../crates/mill-lang-rust` → `crates/mill-lang-rust`
 - `crates/cb-lang-typescript` → `crates/mill-lang-typescript`
 - `../crates/mill-lang-yaml` → `crates/mill-lang-yaml`
 

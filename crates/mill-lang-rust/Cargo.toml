@@ -1,5 +1,5 @@
 [package]
-name = "cb-lang-rust"
+name = "mill-lang-rust"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -27,7 +27,7 @@ pub fn build_import_graph(source: &str, path: &Path) -> AstResult<ImportGraph> {
         "rust" => {
             // Rust import parsing is handled by cb-lang-rust plugin
             // Cannot be called here due to circular dependency (cb-lang-rust depends on cb-ast)
-            // Use cb_lang_rust::parse_imports() directly when needed
+            // Use mill_lang_rust::parse_imports() directly when needed
             tracing::debug!("Rust import parsing should use cb-lang-rust plugin directly");
             Vec::new()
         }

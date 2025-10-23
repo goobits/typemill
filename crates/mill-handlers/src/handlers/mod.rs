@@ -22,6 +22,7 @@ pub mod tool_registry;
 pub mod tools;
 pub mod transform_handler;
 pub mod workflow_handler;
+pub mod workspace;
 pub mod workspace_apply_handler;
 // Note: mcp_tools module removed - all functionality now handled by plugin system
 // Note: dead_code module moved from system_handler to analysis_handler

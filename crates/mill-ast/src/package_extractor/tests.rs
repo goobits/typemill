@@ -1,6 +1,6 @@
 use super::*;
 use crate::package_extractor::planner::plan_extract_module_to_package;
-use cb_lang_rust::RustPlugin;
+use mill_lang_rust::RustPlugin;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;

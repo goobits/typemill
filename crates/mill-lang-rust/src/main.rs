@@ -5,7 +5,7 @@
 //! over stdio.
 
 // This allows the binary to use the library features of its own crate.
-use cb_lang_rust::RustPlugin;
+use mill_lang_rust::RustPlugin;
 use mill_plugin_api::PluginServer;
 
 #[tokio::main]

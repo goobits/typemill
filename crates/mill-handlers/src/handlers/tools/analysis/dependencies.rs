@@ -46,7 +46,7 @@ use mill_foundation::protocol::analysis_result::AnalysisResult;
 ///
 /// # Plugin-First Approach
 /// - TypeScript/JavaScript: Uses cb_lang_typescript::parser::analyze_imports
-/// - Rust: Uses cb_lang_rust::parser::parse_imports
+/// - Rust: Uses mill_lang_rust::parser::parse_imports
 /// - Unsupported languages: Returns empty findings (no regex fallback)
 ///
 /// # Heuristics (Categorization)

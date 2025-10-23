@@ -184,7 +184,7 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 
 | Use Case | Best Reference | Location |
 |----------|---------------|----------|
-| Native Rust parsing | Rust plugin | `crates/cb-lang-rust/` |
+| Native Rust parsing | Rust plugin | `../../crates/mill-lang-rust/` |
 | Simple document plugin | Markdown plugin | `../../crates/mill-lang-markdown/` |
 | Config file plugin | TOML/YAML plugins | `../../crates/mill-lang-toml/`, `../../crates/mill-lang-yaml/` |
 | **Auto-Discovery Pattern** | **All current plugins** | **`src/lib.rs` - `codebuddy_plugin!` macro** |
@@ -284,7 +284,7 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 ## Code Examples
 
 See existing plugins for complete reference implementations:
-- **Rust**: `crates/cb-lang-rust/` - Full-featured with all capabilities
+- **Rust**: `../../crates/mill-lang-rust/` - Full-featured with all capabilities
 - **Markdown**: `../../crates/mill-lang-markdown/` - Simple plugin with basic import support
 - **TOML/YAML**: `../../crates/mill-lang-toml/`, `../../crates/mill-lang-yaml/` - Config file plugins
 - **TypeScript**: `crates/cb-lang-typescript/` - JavaScript ecosystem plugin
@@ -494,5 +494,5 @@ capability.method().await?
 
 - [mill-plugin-api/src/lib.rs](../../../crates/mill-plugin-api/src/lib.rs) - Core trait definitions
 - [mill-plugin-bundle/src/lib.rs](../../../crates/mill-plugin-bundle/src/lib.rs) - Bundle implementation
-- [cb-lang-rust/](../crates/cb-lang-rust/) - Full reference implementation
+- [cb-lang-rust/](../../../crates/mill-lang-rust/) - Full reference implementation
 - [CLAUDE.md](../CLAUDE.md) - Project documentation including plugin overview

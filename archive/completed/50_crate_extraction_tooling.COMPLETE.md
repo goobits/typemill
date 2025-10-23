@@ -56,7 +56,7 @@ Successfully implemented all 5 tools for complete crate extraction workflow:
 
 **New Files Created:**
 - `../../crates/mill-plugin-api/src/project_factory.rs` - ProjectFactory trait
-- `crates/cb-lang-rust/src/project_factory.rs` - Rust implementation
+- `../../crates/mill-lang-rust/src/project_factory.rs` - Rust implementation
 - `../../crates/mill-handlers/src/handlers/tools/workspace_create.rs` - Handler
 - `../../crates/mill-handlers/src/handlers/tools/analysis/module_dependencies.rs` - Handler
 - `../../crates/mill-handlers/src/handlers/tools/workspace_extract_deps.rs` - Handler

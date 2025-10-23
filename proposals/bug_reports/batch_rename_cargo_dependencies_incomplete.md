@@ -25,7 +25,7 @@ The batch rename tool (`rename` with `targets` array) successfully renames direc
      "targets": [
        {
          "kind": "directory",
-         "path": "crates/cb-lang-rust",
+         "path": "../../crates/mill-lang-rust",
          "new_name": "crates/mill-lang-rust"
        },
        {
@@ -46,7 +46,7 @@ The batch rename tool (`rename` with `targets` array) successfully renames direc
 
 With `"scope": "all"`, **all** Cargo.toml references should be updated atomically:
 
-- ✅ Root `Cargo.toml` workspace members: `"crates/cb-lang-rust"` → `"crates/mill-lang-rust"`
+- ✅ Root `Cargo.toml` workspace members: `"../../crates/mill-lang-rust"` → `"crates/mill-lang-rust"`
 - ✅ Root `Cargo.toml` workspace dependencies: `cb-lang-rust = { path = ... }` → `mill-lang-rust = { path = ... }`
 - ✅ Dependent crate `Cargo.toml` files: `cb-lang-rust = { workspace = true }` → `mill-lang-rust = { workspace = true }`
 - ✅ Feature flags: `lang-rust = ["dep:cb-lang-rust"]` → `lang-rust = ["dep:mill-lang-rust"]`
@@ -60,7 +60,7 @@ With `"scope": "all"`, **all** Cargo.toml references should be updated atomicall
 The tool **partially** updated references:
 
 ### ✅ What Was Updated (28 files):
-- Directory renames: `crates/cb-lang-rust/` → `crates/mill-lang-rust/`
+- Directory renames: `../../crates/mill-lang-rust/` → `crates/mill-lang-rust/`
 - Package names in renamed crate's Cargo.toml: `name = "mill-lang-rust"`
 - Some import statements in .rs files
 - Some documentation .md files
@@ -72,7 +72,7 @@ The tool **partially** updated references:
    ```toml
    # MISSED - Still references old paths
    members = [
-       "crates/cb-lang-rust",           # ❌ Should be mill-lang-rust
+       "../../crates/mill-lang-rust",           # ❌ Should be mill-lang-rust
        "crates/cb-lang-typescript",     # ❌ Should be mill-lang-typescript
    ]
    ```
@@ -80,7 +80,7 @@ The tool **partially** updated references:
 2. **Root `Cargo.toml` workspace dependencies** (lines 99-100):
    ```toml
    # MISSED - Still references old crate names
-   cb-lang-rust = { path = "crates/cb-lang-rust", default-features = false }
+   cb-lang-rust = { path = "../../crates/mill-lang-rust", default-features = false }
    cb-lang-typescript = { path = "crates/cb-lang-typescript", default-features = false }
    ```
 
@@ -159,8 +159,8 @@ The rename tool appears to use **different update strategies** for different fil
 ## Hypotheses
 
 **Theory 1: String literal path detection is too conservative**
-- The tool updates paths like `"crates/cb-lang-rust/src"` (contains `/`)
-- But misses `"crates/cb-lang-rust"` in workspace members (also contains `/`)
+- The tool updates paths like `"../../crates/mill-lang-rust/src"` (contains `/`)
+- But misses `"../../crates/mill-lang-rust"` in workspace members (also contains `/`)
 - **Inconsistent behavior for same pattern**
 
 **Theory 2: Workspace dependency graph not analyzed**

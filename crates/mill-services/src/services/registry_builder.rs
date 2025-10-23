@@ -119,7 +119,7 @@ mod tests {
     #[cfg(test)]
     extern crate mill_lang_markdown;
     #[cfg(test)]
-    extern crate cb_lang_rust;
+    extern crate mill_lang_rust;
     #[cfg(test)]
     extern crate mill_lang_toml;
     #[cfg(test)]

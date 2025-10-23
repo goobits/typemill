@@ -261,7 +261,7 @@ wrappers = ["mill-services", "mill-server", "codebuddy", "mill-test-support"]
 # Prevents plugins from depending on each other (except via mill-lang-common)
 
 [[bans.deny]]
-name = "cb-lang-rust"
+name = "mill-lang-rust"
 wrappers = ["cb-ast", "mill-handlers", "mill-services", "mill-plugin-system", "mill-plugin-bundle", "mill-server", "codebuddy", "mill-test-support", "e2e"]
 
 [[bans.deny]]

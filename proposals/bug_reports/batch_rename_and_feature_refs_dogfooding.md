@@ -258,8 +258,8 @@ No fix needed. This issue can be CLOSED.
 ### Fix #2: Feature Refs Update
 
 **NO FIX NEEDED** - Feature refs are already working correctly. Code exists at:
-- `crates/cb-lang-rust/src/manifest.rs` lines 196-219
-- `crates/cb-lang-rust/src/workspace/cargo_util.rs` (additional handling)
+- `../../crates/mill-lang-rust/src/manifest.rs` lines 196-219
+- `../../crates/mill-lang-rust/src/workspace/cargo_util.rs` (additional handling)
 
 Unit test `test_rename_dependency_updates_features` already validates this behavior.
 
@@ -297,11 +297,11 @@ Unit test `test_rename_dependency_updates_features` already validates this behav
 - `crates/mill-handlers/src/handlers/quick_rename_handler.rs`
 
 **Feature Refs:**
-- `crates/cb-lang-rust/src/manifest.rs`
+- `../../crates/mill-lang-rust/src/manifest.rs`
 - `../../crates/mill-plugin-system/Cargo.toml` (test case)
 
 **Test Files:**
-- Add: `crates/cb-lang-rust/src/manifest.rs` (unit test for feature refs)
+- Add: `../../crates/mill-lang-rust/src/manifest.rs` (unit test for feature refs)
 - Add: Integration test for batch rename
 
 ---

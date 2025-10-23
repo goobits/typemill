@@ -196,7 +196,7 @@ use cb_client::run_cli;  // ❌ Should be mill_client
 
 **Approach:** Detect crate renames and update intra-crate imports
 
-**Implementation location:** `crates/cb-lang-rust/src/import_rename_support.rs`
+**Implementation location:** `../../crates/mill-lang-rust/src/import_rename_support.rs`
 
 **Logic:**
 ```rust
