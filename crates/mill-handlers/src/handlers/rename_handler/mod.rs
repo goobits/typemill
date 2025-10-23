@@ -200,6 +200,62 @@ impl ToolHandler for RenameHandler {
 }
 
 impl RenameHandler {
+    /// Deduplicate document changes by merging text edits for the same file
+    ///
+    /// When multiple targets in a batch rename modify the same file (e.g., root Cargo.toml),
+    /// we need to merge their edits rather than having the last one win.
+    fn dedupe_document_changes(
+        changes: Vec<lsp_types::DocumentChangeOperation>,
+    ) -> Vec<lsp_types::DocumentChangeOperation> {
+        use std::collections::HashMap;
+        use lsp_types::{ DocumentChangeOperation , TextDocumentEdit , OptionalVersionedTextDocumentIdentifier };
+
+        // Separate edits from other operations (rename/create/delete)
+        let mut edits_by_uri: HashMap<lsp_types::Uri, Vec<lsp_types::TextEdit>> = HashMap::new();
+        let mut other_operations = Vec::new();
+
+        for change in changes {
+            match change {
+                DocumentChangeOperation::Edit(text_doc_edit) => {
+                    let uri = text_doc_edit.text_document.uri.clone();
+                    edits_by_uri
+                        .entry(uri)
+                        .or_default()
+                        .extend(text_doc_edit.edits.iter().filter_map(|edit_or_annotated| {
+                            match edit_or_annotated {
+                                lsp_types::OneOf::Left(edit) => Some(edit.clone()),
+                                lsp_types::OneOf::Right(annotated) => Some(annotated.text_edit.clone()),
+                            }
+                        }));
+                }
+                other_op => {
+                    other_operations.push(other_op);
+                }
+            }
+        }
+
+        // Rebuild document changes with merged edits
+        let mut result = Vec::new();
+
+        // Add merged text edits
+        for (uri, edits) in edits_by_uri {
+            result.push(DocumentChangeOperation::Edit(TextDocumentEdit {
+                text_document: OptionalVersionedTextDocumentIdentifier {
+                    uri,
+                    version: None,
+                },
+                edits: edits.into_iter()
+                    .map(lsp_types::OneOf::Left)
+                    .collect(),
+            }));
+        }
+
+        // Add other operations (rename/create/delete) unchanged
+        result.extend(other_operations);
+
+        result
+    }
+
     /// Analyze WorkspaceEdit to calculate checksums and summary
     pub(crate) async fn analyze_workspace_edit(
         &self,
@@ -456,10 +512,14 @@ impl RenameHandler {
             total_affected_files.insert(std::path::PathBuf::from(&target.path));
         }
 
+        // Deduplicate and merge text edits for the same file
+        // This prevents "last edit wins" when multiple targets modify the same config file
+        let deduped_document_changes = Self::dedupe_document_changes(all_document_changes);
+
         // Build merged WorkspaceEdit with documentChanges
         let merged_workspace_edit = WorkspaceEdit {
             changes: None,
-            document_changes: Some(lsp_types::DocumentChanges::Operations(all_document_changes)),
+            document_changes: Some(lsp_types::DocumentChanges::Operations(deduped_document_changes)),
             change_annotations: None,
         };
 

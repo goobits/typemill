@@ -287,13 +287,18 @@ pub async fn plan_workspace_manifest_updates(
                     ServerError::Internal("`[workspace.members]` is not a valid array".to_string())
                 })?;
 
+                // Normalize comparison: trim whitespace from both sides to handle formatting quirks
                 let index_opt = members
                     .iter()
-                    .position(|m| m.as_str() == Some(&old_path_str));
+                    .position(|m| {
+                        m.as_str()
+                            .map(|s| s.trim())
+                            == Some(old_path_str.trim())
+                    });
 
                 if let Some(index) = index_opt {
-                    members.remove(index);
-                    members.push(new_path_str.as_str());
+                    // Update in-place to preserve array order and formatting
+                    members.replace(index, new_path_str.as_str());
 
                     let new_content = doc.to_string();
                     planned_updates.push((

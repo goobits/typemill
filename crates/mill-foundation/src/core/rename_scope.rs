@@ -96,7 +96,7 @@ impl RenameScope {
             update_configs: true,
             update_comments: false,
             update_markdown_prose: false, // Still opt-in for safety
-            update_exact_matches: false,  // Still opt-in for safety
+            update_exact_matches: true,   // Enable for Cargo crate names and config files
             exclude_patterns: vec![],
             update_all: false,
         }

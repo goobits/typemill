@@ -47,7 +47,16 @@ impl TomlImportSupport {
                         return;
                     }
 
-                    // Check for basename match first (exact identifier matching)
+                    // Check for cargo command-line flags first
+                    if update_exact_matches {
+                        if let Some(new_value) = Self::update_cargo_flags(formatted, old_path, new_path) {
+                            *s = toml_edit::Formatted::new(new_value);
+                            *changes += 1;
+                            return;
+                        }
+                    }
+
+                    // Check for basename match (exact identifier matching)
                     if update_exact_matches {
                         if let (Some(old_basename), Some(new_basename)) = (
                             std::path::Path::new(old_path).file_name(),
@@ -95,7 +104,16 @@ impl TomlImportSupport {
                                 continue;
                             }
 
-                            // Check for basename match first (exact identifier matching)
+                            // Check for cargo command-line flags first
+                            if update_exact_matches {
+                                if let Some(new_value) = Self::update_cargo_flags(formatted, old_path, new_path) {
+                                    *s = toml_edit::Formatted::new(new_value);
+                                    *changes += 1;
+                                    continue;
+                                }
+                            }
+
+                            // Check for basename match (exact identifier matching)
                             if update_exact_matches {
                                 if let (Some(old_basename), Some(new_basename)) = (
                                     std::path::Path::new(old_path).file_name(),
@@ -163,6 +181,51 @@ impl TomlImportSupport {
             || s.ends_with(".md")
             || s.ends_with(".yml")
             || s.ends_with(".yaml")
+    }
+
+    /// Update cargo command-line flags containing crate names
+    ///
+    /// Handles patterns like:
+    /// - "-p cb-lang-rust" → "-p mill-lang-rust"
+    /// - "--package cb-lang-rust" → "--package mill-lang-rust"
+    /// - "check -p cb-lang-rust -p other" → "check -p mill-lang-rust -p other"
+    fn update_cargo_flags(s: &str, old_path: &str, new_path: &str) -> Option<String> {
+        // Extract crate name from path (last component)
+        let old_crate_name = std::path::Path::new(old_path)
+            .file_name()?
+            .to_string_lossy();
+        let new_crate_name = std::path::Path::new(new_path)
+            .file_name()?
+            .to_string_lossy();
+
+        // Check if string contains cargo package flags
+        let has_package_flag = s.contains("-p ") || s.contains("--package ");
+
+        if !has_package_flag {
+            return None;
+        }
+
+        // Replace crate names after -p or --package flags
+        let mut result = s.to_string();
+        let mut changed = false;
+
+        // Handle -p flag
+        for pattern in [
+            format!("-p {}", old_crate_name),
+            format!("--package {}", old_crate_name),
+        ] {
+            if result.contains(&pattern) {
+                let replacement = pattern.replace(&*old_crate_name, &*new_crate_name);
+                result = result.replace(&pattern, &replacement);
+                changed = true;
+            }
+        }
+
+        if changed {
+            Some(result)
+        } else {
+            None
+        }
     }
 }
 
