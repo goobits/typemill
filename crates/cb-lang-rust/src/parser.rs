@@ -293,22 +293,30 @@ fn rewrite_use_tree_with_segments(
                     tracing::info!(
                         old_segments = ?old_segments,
                         new_segments = ?new_segments,
+                        depth = depth,
                         "Matched full module path, replacing"
                     );
 
-                    // Build new path tree from new_segments + remaining original tree
-                    build_new_use_tree(new_segments, &path.tree)
+                    // Build new path tree from NEW segments at this depth onwards + remaining original tree
+                    // This prevents double-prefixing when called recursively
+                    build_new_use_tree(&new_segments[depth..], &path.tree)
                 } else {
                     // Partial match, continue matching next level
-                    // When the recursion returns a replacement, it means we matched
-                    // all old segments somewhere deeper. In that case, the returned
-                    // tree already has the new segments built in, so we return it directly.
-                    rewrite_use_tree_with_segments(
+                    // If the recursion returns a replacement, we need to preserve the current
+                    // path segment and replace only the subtree
+                    if let Some(new_subtree) = rewrite_use_tree_with_segments(
                         &path.tree,
                         old_segments,
                         new_segments,
                         depth + 1,
-                    )
+                    ) {
+                        // Preserve the current path segment and replace the subtree
+                        let mut new_path = path.clone();
+                        new_path.tree = Box::new(new_subtree);
+                        Some(UseTree::Path(new_path))
+                    } else {
+                        None
+                    }
                 }
             } else {
                 // No match at this depth, check subtree recursively (reset depth to 0)
@@ -323,7 +331,25 @@ fn rewrite_use_tree_with_segments(
                 }
             }
         }
-        UseTree::Name(_) => None,
+        UseTree::Name(name) => {
+            // Handle terminal UseName nodes
+            // Check if this name matches the segment we're looking for at this depth
+            if depth < old_segments.len() && name.ident == old_segments[depth] {
+                // Check if this completes the match (all segments matched)
+                if depth + 1 == old_segments.len() {
+                    // This is the final segment - replace it with the new name
+                    let mut new_name = name.clone();
+                    new_name.ident = syn::Ident::new(new_segments[depth], name.ident.span());
+                    Some(UseTree::Name(new_name))
+                } else {
+                    // More segments expected but we're at a terminal node - no match
+                    None
+                }
+            } else {
+                // Name doesn't match the segment we're looking for
+                None
+            }
+        }
         UseTree::Rename(rename) => {
             // Handle rename patterns: use old_name as alias;
             // Check if the renamed ident matches our old module at this depth

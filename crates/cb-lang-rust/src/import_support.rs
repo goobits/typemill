@@ -44,7 +44,36 @@ impl ImportParser for RustImportSupport {
             Ok(imports) => {
                 let module_paths: Vec<String> =
                     imports.iter().map(|imp| imp.module_path.clone()).collect();
-                module_paths.iter().any(|imp| imp.contains(module))
+
+                // Use segment-based matching to avoid false positives
+                // e.g., searching for "test" should NOT match "my_test_module"
+                let search_segments: Vec<&str> = module.split("::").collect();
+
+                module_paths.iter().any(|imp| {
+                    let imp_segments: Vec<&str> = imp.split("::").collect();
+
+                    // Check if search_segments matches as:
+                    // 1. Exact match
+                    if imp_segments == search_segments {
+                        return true;
+                    }
+
+                    // 2. Prefix match (search is a prefix of import)
+                    // e.g., "std::collections" contains "std"
+                    if imp_segments.starts_with(&search_segments) {
+                        return true;
+                    }
+
+                    // 3. Contiguous subsequence match
+                    // e.g., "crate::foo::bar::baz" contains "bar::baz"
+                    if search_segments.len() <= imp_segments.len() {
+                        imp_segments
+                            .windows(search_segments.len())
+                            .any(|window| window == search_segments.as_slice())
+                    } else {
+                        false
+                    }
+                })
             }
             Err(_) => false,
         }
@@ -315,8 +344,122 @@ impl ImportMutationSupport for RustImportSupport {
     }
 }
 
+/// Import prefix classification for consistent pattern matching
+#[derive(Debug, PartialEq, Eq)]
+enum ImportPrefix {
+    /// `crate::` prefix (absolute path from crate root)
+    Crate,
+    /// `super::` prefix (parent module)
+    Super,
+    /// `self::` prefix (current module)
+    SelfPath,
+    /// External crate or relative path (no special prefix)
+    External,
+    /// Unknown/unclassified
+    Unknown,
+}
+
 // Helper methods for RustImportSupport
 impl RustImportSupport {
+    /// Count the number of nested super/self prefixes in a UseTree.
+    ///
+    /// For `use super::super::utils::Thing;`, this returns (Super, 2).
+    /// For `use super::utils::Thing;`, this returns (Super, 1).
+    fn count_relative_prefix(tree: &syn::UseTree) -> (ImportPrefix, usize) {
+        let mut count = 0;
+        let mut current = tree;
+        let mut prefix_type = ImportPrefix::Unknown;
+
+        loop {
+            match current {
+                syn::UseTree::Path(path) => {
+                    let ident_str = path.ident.to_string();
+                    match ident_str.as_str() {
+                        "super" => {
+                            count += 1;
+                            prefix_type = ImportPrefix::Super;
+                            current = &*path.tree;
+                        }
+                        "self" => {
+                            count += 1;
+                            prefix_type = ImportPrefix::SelfPath;
+                            current = &*path.tree;
+                        }
+                        "crate" => {
+                            count = 1;
+                            prefix_type = ImportPrefix::Crate;
+                            break;
+                        }
+                        _ => {
+                            // Hit a non-prefix segment
+                            if count == 0 {
+                                prefix_type = ImportPrefix::External;
+                            }
+                            break;
+                        }
+                    }
+                }
+                _ => break,
+            }
+        }
+
+        (prefix_type, count)
+    }
+
+    /// Normalize relative import paths to include the prefix keyword.
+    ///
+    /// For super/self imports, this extracts the suffix after the first "::"
+    /// and prepends the appropriate prefix (accounting for nested super/self).
+    ///
+    /// Examples:
+    /// - Input: old_name="parent::utils", new_name="parent::helpers", tree=super::utils
+    ///   Output: ("super::utils", "super::helpers")
+    /// - Input: old_name="grandparent::utils", new_name="grandparent::helpers", tree=super::super::utils
+    ///   Output: ("super::super::utils", "super::super::helpers")
+    /// - Input: old_name="parent::utils", new_name="parent::helpers::new", tree=super::utils
+    ///   Output: ("super::utils", "super::helpers::new")
+    fn normalize_relative_import_paths(
+        old_name: &str,
+        new_name: &str,
+        tree: &syn::UseTree,
+    ) -> (String, String) {
+        let (prefix_type, prefix_count) = Self::count_relative_prefix(tree);
+
+        // Extract the suffix after the first "::" (or use the whole name if no ::)
+        // This preserves multi-segment renames like "parent::helpers::experimental"
+        let old_suffix = old_name.split_once("::").map(|(_, s)| s).unwrap_or(old_name);
+        let new_suffix = new_name.split_once("::").map(|(_, s)| s).unwrap_or(new_name);
+
+        match prefix_type {
+            ImportPrefix::Super => {
+                // Build the prefix string with the correct number of super:: segments
+                let super_prefix = "super::".repeat(prefix_count);
+                (
+                    format!("{}{}", super_prefix, old_suffix),
+                    format!("{}{}", super_prefix, new_suffix),
+                )
+            }
+            ImportPrefix::SelfPath => {
+                // Build the prefix string with the correct number of self:: segments
+                let self_prefix = "self::".repeat(prefix_count);
+                (
+                    format!("{}{}", self_prefix, old_suffix),
+                    format!("{}{}", self_prefix, new_suffix),
+                )
+            }
+            ImportPrefix::Crate => {
+                (
+                    format!("crate::{}", old_suffix),
+                    format!("crate::{}", new_suffix),
+                )
+            }
+            _ => {
+                // External or unknown - use the suffix as-is
+                (old_suffix.to_string(), new_suffix.to_string())
+            }
+        }
+    }
+
     /// Process a complete use statement (single-line or multi-line) and return the transformed version if changed.
     ///
     /// Returns: Option<(transformed_text, change_count)>
@@ -387,11 +530,17 @@ impl RustImportSupport {
 
         let old_module_name = old_name.split("::").last().unwrap_or("");
         let super_import_matches = !old_module_name.is_empty()
-            && (trimmed.contains(&format!("super::{}::", old_module_name))
-                || trimmed.contains(&format!("super::{}::*", old_module_name)));
+            && (trimmed.contains(&format!("super::{}::", old_module_name))     // super::module::Thing
+                || trimmed.contains(&format!("super::{}::*", old_module_name))  // super::module::*
+                || trimmed.contains(&format!("super::{};", old_module_name))    // super::module;
+                || trimmed.contains(&format!("super::{} as", old_module_name))  // super::module as alias
+                || trimmed.contains(&format!("super::{}::{{", old_module_name))); // super::module::{...}
         let self_import_matches = !old_module_name.is_empty()
-            && (trimmed.contains(&format!("self::{}::", old_module_name))
-                || trimmed.contains(&format!("self::{}::*", old_module_name)));
+            && (trimmed.contains(&format!("self::{}::", old_module_name))     // self::module::Thing
+                || trimmed.contains(&format!("self::{}::*", old_module_name))  // self::module::*
+                || trimmed.contains(&format!("self::{};", old_module_name))    // self::module;
+                || trimmed.contains(&format!("self::{} as", old_module_name))  // self::module as alias
+                || trimmed.contains(&format!("self::{}::{{", old_module_name))); // self::module::{...}
 
         // If none of the patterns match, no change needed
         if !contains_old_module
@@ -403,40 +552,76 @@ impl RustImportSupport {
             return None;
         }
 
-        // Handle super:: and self:: imports with simple string replacement
+        // Handle super:: and self:: imports using AST transformation
+        // This approach handles ALL UseTree variants (Path, Name, Rename, Glob, Group)
+        // instead of just the limited patterns we had with string replacement
         if super_import_matches || self_import_matches {
-            let new_module_name = new_name.split("::").last().unwrap_or("");
-            if !old_module_name.is_empty() && !new_module_name.is_empty() {
-                let mut new_stmt = trimmed.to_string();
+            // Extract just the use statement for parsing
+            let use_stmt = if let Some(semi_idx) = trimmed.find(';') {
+                &trimmed[..=semi_idx]
+            } else {
+                trimmed
+            };
 
-                new_stmt = new_stmt.replace(
-                    &format!("super::{}::", old_module_name),
-                    &format!("super::{}::", new_module_name),
-                );
-                new_stmt = new_stmt.replace(
-                    &format!("super::{}::*", old_module_name),
-                    &format!("super::{}::*", new_module_name),
-                );
-                new_stmt = new_stmt.replace(
-                    &format!("self::{}::", old_module_name),
-                    &format!("self::{}::", new_module_name),
-                );
-                new_stmt = new_stmt.replace(
-                    &format!("self::{}::*", old_module_name),
-                    &format!("self::{}::*", new_module_name),
+            // Try to parse the use statement
+            if let Ok(item_use) = syn::parse_str::<syn::ItemUse>(use_stmt) {
+                // Normalize the module paths to include the prefix
+                // e.g., "parent::utils" → "super::utils", "current::utils" → "self::utils"
+                let (effective_old, effective_new) =
+                    Self::normalize_relative_import_paths(old_name, new_name, &item_use.tree);
+
+                tracing::info!(
+                    effective_old = %effective_old,
+                    effective_new = %effective_new,
+                    original_statement = %trimmed,
+                    "Normalized super/self import paths for AST transformation"
                 );
 
-                let indent_str = " ".repeat(indent);
-                let mut result = format!("{}{}\n", indent_str, new_stmt);
+                // Use AST rewriter to handle all UseTree variants
+                if let Some(new_tree) = crate::parser::rewrite_use_tree(
+                    &item_use.tree,
+                    &effective_old,
+                    &effective_new,
+                ) {
+                    let formatted = format!("use {};", quote::quote!(#new_tree));
+                    // Normalize spacing: remove extra spaces around ::, {, }, and commas
+                    let normalized = formatted
+                        .replace(" :: ", "::")
+                        .replace("{ ", "{")
+                        .replace(" }", "}")
+                        .replace(" , ", ", ");
+                    let indent_str = " ".repeat(indent);
+                    let mut result = format!("{}{}\n", indent_str, normalized);
 
-                // Don't add extra newline if this is the last line
-                let last_line_idx = use_stmt_lines.last().map(|(idx, _)| *idx).unwrap_or(0);
-                if last_line_idx >= all_lines.len() - 1 {
-                    result.pop(); // Remove trailing newline
+                    // Don't add extra newline if this is the last line
+                    let last_line_idx = use_stmt_lines.last().map(|(idx, _)| *idx).unwrap_or(0);
+                    if last_line_idx >= all_lines.len() - 1 {
+                        result.pop();
+                    }
+
+                    tracing::info!(
+                        original = %trimmed,
+                        transformed = %normalized,
+                        "Successfully transformed super/self import via AST"
+                    );
+
+                    return Some((result, 1));
+                } else {
+                    tracing::warn!(
+                        statement = %use_stmt,
+                        "AST rewriter returned None for super/self import"
+                    );
                 }
-
-                return Some((result, 1));
+            } else {
+                tracing::warn!(
+                    statement = %use_stmt,
+                    "Failed to parse super/self import statement"
+                );
             }
+
+            // Fallback: return None to let the main AST path handle it
+            // This prevents breaking on unparseable statements
+            return None;
         }
 
         // Extract just the use statement (up to and including the semicolon)
@@ -618,6 +803,90 @@ use serde::Serialize;
         ));
         assert!(ImportParser::contains_import(&support, content, "serde"));
         assert!(!ImportParser::contains_import(&support, content, "tokio"));
+    }
+
+    #[test]
+    fn test_contains_import_no_false_positives() {
+        let support = RustImportSupport;
+        let content = r#"
+use my_test_module::Thing;
+use testing_utils::Helper;
+use scorecard::Report;
+"#;
+
+        // Should NOT match "test" as substring of "my_test_module" or "testing_utils"
+        assert!(!ImportParser::contains_import(&support, content, "test"));
+
+        // Should NOT match "core" as substring of "scorecard"
+        assert!(!ImportParser::contains_import(&support, content, "core"));
+
+        // Should match exact module names
+        assert!(ImportParser::contains_import(&support, content, "my_test_module"));
+        assert!(ImportParser::contains_import(&support, content, "testing_utils"));
+        assert!(ImportParser::contains_import(&support, content, "scorecard"));
+    }
+
+    #[test]
+    fn test_contains_import_exact_match() {
+        let support = RustImportSupport;
+        let content = r#"
+use std::collections::HashMap;
+use crate::parser::utils;
+"#;
+
+        // Exact matches
+        assert!(ImportParser::contains_import(&support, content, "std"));
+        assert!(ImportParser::contains_import(&support, content, "std::collections"));
+        assert!(ImportParser::contains_import(&support, content, "crate"));
+        assert!(ImportParser::contains_import(&support, content, "crate::parser"));
+    }
+
+    #[test]
+    fn test_contains_import_prefix_match() {
+        let support = RustImportSupport;
+        let content = r#"
+use std::collections::HashMap;
+use crate::foo::bar::baz::Thing;
+"#;
+
+        // Prefix matches
+        assert!(ImportParser::contains_import(&support, content, "std"));
+        assert!(ImportParser::contains_import(&support, content, "crate::foo"));
+        assert!(ImportParser::contains_import(&support, content, "crate::foo::bar"));
+    }
+
+    #[test]
+    fn test_contains_import_subsequence_match() {
+        let support = RustImportSupport;
+        let content = r#"
+use crate::foo::bar::baz::Thing;
+use std::collections::hash::map::HashMap;
+"#;
+
+        // Contiguous subsequence matches
+        assert!(ImportParser::contains_import(&support, content, "bar::baz"));
+        assert!(ImportParser::contains_import(&support, content, "foo::bar::baz"));
+        assert!(ImportParser::contains_import(&support, content, "hash::map"));
+
+        // Should NOT match non-contiguous subsequences
+        assert!(!ImportParser::contains_import(&support, content, "foo::baz")); // skips "bar"
+        assert!(!ImportParser::contains_import(&support, content, "std::map")); // skips "collections::hash"
+    }
+
+    #[test]
+    fn test_contains_import_single_vs_multi_segment() {
+        let support = RustImportSupport;
+        let content = r#"
+use std::collections::HashMap;
+use my_std::other::Thing;
+"#;
+
+        // Single segment "std" should match "std::collections" but not "my_std"
+        assert!(ImportParser::contains_import(&support, content, "std"));
+        assert!(!ImportParser::contains_import(&support, content, "std::other"));
+
+        // "my_std" should match exactly
+        assert!(ImportParser::contains_import(&support, content, "my_std"));
     }
 
     #[test]
@@ -1072,5 +1341,276 @@ fn init() {
 
         // Old name should be replaced
         assert!(!result.contains("cb_plugin_api"));
+    }
+
+    #[test]
+    fn test_import_prefix_classification() {
+        // Test that we can classify import prefixes and count nested levels using AST
+        let crate_import = syn::parse_str::<syn::ItemUse>("use crate::foo::bar;").unwrap();
+        let super_import = syn::parse_str::<syn::ItemUse>("use super::foo::bar;").unwrap();
+        let super_super_import = syn::parse_str::<syn::ItemUse>("use super::super::foo::bar;").unwrap();
+        let self_import = syn::parse_str::<syn::ItemUse>("use self::foo::bar;").unwrap();
+        let external_import = syn::parse_str::<syn::ItemUse>("use std::collections::HashMap;").unwrap();
+
+        let (prefix_type, count) = RustImportSupport::count_relative_prefix(&crate_import.tree);
+        assert_eq!(prefix_type, ImportPrefix::Crate);
+        assert_eq!(count, 1);
+
+        let (prefix_type, count) = RustImportSupport::count_relative_prefix(&super_import.tree);
+        assert_eq!(prefix_type, ImportPrefix::Super);
+        assert_eq!(count, 1);
+
+        let (prefix_type, count) = RustImportSupport::count_relative_prefix(&super_super_import.tree);
+        assert_eq!(prefix_type, ImportPrefix::Super);
+        assert_eq!(count, 2, "Should count nested super:: prefixes");
+
+        let (prefix_type, count) = RustImportSupport::count_relative_prefix(&self_import.tree);
+        assert_eq!(prefix_type, ImportPrefix::SelfPath);
+        assert_eq!(count, 1);
+
+        let (prefix_type, count) = RustImportSupport::count_relative_prefix(&external_import.tree);
+        assert_eq!(prefix_type, ImportPrefix::External);
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_consistent_pattern_matching() {
+        // Verify that import pattern matching is consistent across all types
+        let support = RustImportSupport;
+
+        // Test crate:: imports
+        let crate_content = r#"
+use crate::utils::helper;
+use crate::types::Thing;
+"#;
+        let (result, changes) = support.rewrite_imports_for_rename(
+            crate_content,
+            "test_project::utils",
+            "test_project::helpers",
+        );
+        assert_eq!(changes, 1, "Should update crate:: import");
+        assert!(result.contains("use crate::helpers::helper;"));
+
+        // Test super:: imports (documenting current behavior)
+        let super_content = r#"
+use super::utils::*;
+use super::utils::Thing;
+"#;
+        let (result, changes) = support.rewrite_imports_for_rename(
+            super_content,
+            "parent::utils",
+            "parent::helpers",
+        );
+        // Current implementation should handle these
+        assert!(changes >= 2, "Should update super:: imports");
+        assert!(result.contains("super::helpers::"));
+
+        // Test self:: imports (documenting current behavior)
+        let self_content = r#"
+use self::utils::*;
+use self::utils::Thing;
+"#;
+        let (result, changes) = support.rewrite_imports_for_rename(
+            self_content,
+            "current::utils",
+            "current::helpers",
+        );
+        // Current implementation should handle these
+        assert!(changes >= 2, "Should update self:: imports");
+        assert!(result.contains("self::helpers::"));
+    }
+
+    // ============================================================================
+    // Comprehensive Super/Self Import Pattern Tests (Issue #1)
+    // ============================================================================
+
+    #[test]
+    fn test_super_direct_module_import() {
+        let support = RustImportSupport;
+        let content = "use super::utils;";
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "parent::utils",
+            "parent::helpers",
+        );
+
+        assert_eq!(changes, 1, "Should update direct super import. Result: {}", result);
+        assert!(result.contains("use super::helpers;"), "Result: {}", result);
+        assert!(!result.contains("super::utils"), "Result: {}", result);
+    }
+
+    #[test]
+    fn test_super_aliased_import() {
+        let support = RustImportSupport;
+        let content = "use super::utils as util_helpers;";
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "parent::utils",
+            "parent::helpers",
+        );
+
+        assert_eq!(changes, 1, "Should update aliased super import");
+        assert!(result.contains("use super::helpers as util_helpers;"), "Result: {}", result);
+        assert!(!result.contains("super::utils"), "Result: {}", result);
+    }
+
+    #[test]
+    fn test_super_grouped_imports() {
+        let support = RustImportSupport;
+        let content = "use super::utils::{Thing1, Thing2, Thing3};";
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "parent::utils",
+            "parent::helpers",
+        );
+
+        assert_eq!(changes, 1, "Should update grouped super import");
+        assert!(result.contains("use super::helpers::{Thing1, Thing2, Thing3}"), "Result: {}", result);
+        assert!(!result.contains("super::utils"), "Result: {}", result);
+    }
+
+    #[test]
+    fn test_super_glob_import() {
+        let support = RustImportSupport;
+        let content = "use super::utils::*;";
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "parent::utils",
+            "parent::helpers",
+        );
+
+        assert_eq!(changes, 1, "Should update glob super import");
+        assert!(result.contains("use super::helpers::*;"), "Result: {}", result);
+        assert!(!result.contains("super::utils"), "Result: {}", result);
+    }
+
+    #[test]
+    fn test_super_nested_path() {
+        let support = RustImportSupport;
+        let content = "use super::utils::submodule::Thing;";
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "parent::utils",
+            "parent::helpers",
+        );
+
+        assert_eq!(changes, 1, "Should update nested super import");
+        assert!(result.contains("use super::helpers::submodule::Thing;"), "Result: {}", result);
+        assert!(!result.contains("super::utils"), "Result: {}", result);
+    }
+
+    #[test]
+    fn test_self_direct_module_import() {
+        let support = RustImportSupport;
+        let content = "use self::utils;";
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "current::utils",
+            "current::helpers",
+        );
+
+        assert_eq!(changes, 1, "Should update direct self import");
+        assert!(result.contains("use self::helpers;"), "Result: {}", result);
+        assert!(!result.contains("self::utils"), "Result: {}", result);
+    }
+
+    #[test]
+    fn test_self_aliased_import() {
+        let support = RustImportSupport;
+        let content = "use self::utils as my_utils;";
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "current::utils",
+            "current::helpers",
+        );
+
+        assert_eq!(changes, 1, "Should update aliased self import");
+        assert!(result.contains("use self::helpers as my_utils;"), "Result: {}", result);
+        assert!(!result.contains("self::utils"), "Result: {}", result);
+    }
+
+    #[test]
+    fn test_self_grouped_imports() {
+        let support = RustImportSupport;
+        let content = "use self::utils::{Foo, Bar};";
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "current::utils",
+            "current::helpers",
+        );
+
+        assert_eq!(changes, 1, "Should update grouped self import");
+        assert!(result.contains("use self::helpers::{Foo, Bar}"), "Result: {}", result);
+        assert!(!result.contains("self::utils"), "Result: {}", result);
+    }
+
+    #[test]
+    fn test_self_glob_import() {
+        let support = RustImportSupport;
+        let content = "use self::utils::*;";
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "current::utils",
+            "current::helpers",
+        );
+
+        assert_eq!(changes, 1, "Should update glob self import");
+        assert!(result.contains("use self::helpers::*;"), "Result: {}", result);
+        assert!(!result.contains("self::utils"), "Result: {}", result);
+    }
+
+    #[test]
+    fn test_multiline_super_imports() {
+        let support = RustImportSupport;
+        let content = r#"use super::utils::{
+    Thing1,
+    Thing2,
+    Thing3
+};"#;
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "parent::utils",
+            "parent::helpers",
+        );
+
+        assert_eq!(changes, 1, "Should update multi-line super import");
+        assert!(result.contains("super::helpers"), "Result: {}", result);
+        assert!(!result.contains("super::utils"), "Result: {}", result);
+    }
+
+    #[test]
+    fn test_mixed_super_self_patterns() {
+        let support = RustImportSupport;
+        let content = r#"
+use super::utils;
+use super::utils::Thing;
+use super::utils::*;
+use super::utils as u;
+use self::helpers::Tool;
+"#;
+
+        let (result, changes) = support.rewrite_imports_for_rename(
+            content,
+            "parent::utils",
+            "parent::renamed_utils",
+        );
+
+        assert!(changes >= 4, "Should update at least 4 super:: imports, got {}", changes);
+        assert!(result.contains("super::renamed_utils;"), "Result: {}", result);
+        assert!(result.contains("super::renamed_utils::Thing;"), "Result: {}", result);
+        assert!(result.contains("super::renamed_utils::*;"), "Result: {}", result);
+        assert!(result.contains("super::renamed_utils as u;"), "Result: {}", result);
+        // self::helpers should remain unchanged
+        assert!(result.contains("self::helpers::Tool;"), "Result: {}", result);
     }
 }
