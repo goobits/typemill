@@ -343,6 +343,68 @@ Smart heuristic only updates strings that look like paths:
 - All edits appear in `rename.plan` dry-run output for review
 - Atomic execution with rollback on any failure
 
+### Batch Rename (Multiple Items at Once)
+
+CodeBuddy supports renaming **multiple files and/or directories** in a single atomic operation using the `targets` parameter:
+
+**Single rename (one item):**
+```json
+{
+  "target": {"kind": "directory", "path": "old-dir"},
+  "new_name": "new-dir"
+}
+```
+
+**Batch rename (multiple items):**
+```json
+{
+  "targets": [
+    {"kind": "directory", "path": "old-dir1", "new_name": "new-dir1"},
+    {"kind": "directory", "path": "old-dir2", "new_name": "new-dir2"},
+    {"kind": "file", "path": "src/old.rs", "new_name": "src/new.rs"}
+  ]
+}
+```
+
+**Key differences:**
+- **Single mode**: `target` + `new_name` (separate parameters)
+- **Batch mode**: `targets` array where each target includes its own `new_name`
+
+**Features:**
+- ✅ Mix files and directories in same batch
+- ✅ Conflict detection (prevents multiple renames to same destination)
+- ✅ Atomic operation (all succeed or all rollback)
+- ✅ All references updated across all renamed items
+- ✅ Shares same `options` for all targets
+- ✅ Works with both `rename.plan` (preview) and `rename` (quick)
+
+**Example - Batch rename with CLI:**
+```bash
+# Preview batch rename
+codebuddy tool rename.plan '{
+  "targets": [
+    {"kind": "file", "path": "src/utils.rs", "new_name": "src/helpers.rs"},
+    {"kind": "file", "path": "src/config.rs", "new_name": "src/settings.rs"}
+  ],
+  "options": {"scope": "all"}
+}'
+
+# Apply immediately (one-step)
+codebuddy tool rename '{
+  "targets": [
+    {"kind": "directory", "path": "tests/unit", "new_name": "tests/unit-tests"},
+    {"kind": "directory", "path": "tests/integration", "new_name": "tests/e2e"}
+  ]
+}'
+```
+
+**Use cases:**
+- Renaming multiple files to match naming conventions (snake_case → kebab-case)
+- Reorganizing project structure in one operation
+- Refactoring related components together
+
+See **[api_reference.md - Batch Mode](docs/api_reference.md#1-rename-operations-renameplan)** for complete details on validation, conflict detection, and advanced usage.
+
 ### Actionable Suggestions Configuration
 
 Configure suggestion generation in `.codebuddy/analysis.toml`:

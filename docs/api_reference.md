@@ -701,20 +701,38 @@ All `.plan` commands return a structured plan object. Key fields include:
 
 Generates a plan for renaming symbols, files, or directories with automatic reference updates.
 
+**Two Modes:**
+- **Single Mode**: Rename one item using `target` + `new_name`
+- **Batch Mode**: Rename multiple items using `targets` array
+
 **Parameters for `rename.plan`:**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `target` | object | Yes | What to rename (see Target Object below) |
-| `new_name` | string | Yes | New name for the target |
+| `target` | object | Conditional* | Single rename: What to rename (see Target Object below) |
+| `new_name` | string | Conditional* | Single rename: New name for the target |
+| `targets` | array | Conditional* | Batch rename: Array of targets to rename (see Batch Mode below) |
 | `options` | object | No | Rename options (see Options Object below) |
 
-**Target Object:**
+**\*Required:** Must specify either (`target` + `new_name`) OR `targets`, but not both.
+
+**Target Object (Single Mode):**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `kind` | string | Yes | Type: `"symbol"`, `"file"`, or `"directory"` |
 | `path` | string | Yes | Path to the target |
+| `selector` | object | Conditional | Required for symbol renames (see Symbol Selector) |
+
+**Batch Mode:**
+
+When using `targets` array, each target object includes its own `new_name`:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `kind` | string | Yes | Type: `"symbol"`, `"file"`, or `"directory"` |
+| `path` | string | Yes | Path to the target |
+| `new_name` | string | Yes | New name for this specific target |
 | `selector` | object | Conditional | Required for symbol renames (see Symbol Selector) |
 
 **Options Object:**
@@ -763,6 +781,8 @@ When `scope: "custom"`, provide a `custom_scope` object:
 
 **Examples:**
 
+**Single Mode Examples:**
+
 **Basic file rename (all scope):**
 ```bash
 codebuddy tool rename.plan '{
@@ -781,7 +801,7 @@ codebuddy tool rename.plan '{
     "kind": "directory",
     "path": "tests"
   },
-  "new_name": "tests",
+  "new_name": "integration-tests",
   "options": {
     "scope": "code-only"
   }
@@ -806,6 +826,92 @@ codebuddy tool rename.plan '{
       "exclude_patterns": ["**/test_*", "**/fixtures/**"]
     }
   }
+}'
+```
+
+**Batch Mode Examples:**
+
+**Rename multiple files at once:**
+```bash
+codebuddy tool rename.plan '{
+  "targets": [
+    {
+      "kind": "file",
+      "path": "src/utils.rs",
+      "new_name": "src/helpers.rs"
+    },
+    {
+      "kind": "file",
+      "path": "src/config.rs",
+      "new_name": "src/settings.rs"
+    },
+    {
+      "kind": "file",
+      "path": "lib/old_name.ts",
+      "new_name": "lib/new-name.ts"
+    }
+  ],
+  "options": {
+    "scope": "all"
+  }
+}'
+```
+
+**Rename multiple directories:**
+```bash
+codebuddy tool rename.plan '{
+  "targets": [
+    {
+      "kind": "directory",
+      "path": "tests/unit",
+      "new_name": "tests/unit-tests"
+    },
+    {
+      "kind": "directory",
+      "path": "tests/integration",
+      "new_name": "tests/integration-tests"
+    }
+  ]
+}'
+```
+
+**Mixed batch rename (files + directories):**
+```bash
+codebuddy tool rename.plan '{
+  "targets": [
+    {
+      "kind": "directory",
+      "path": "old-module",
+      "new_name": "new-module"
+    },
+    {
+      "kind": "file",
+      "path": "old-module/utils.rs",
+      "new_name": "new-module/helpers.rs"
+    }
+  ],
+  "options": {
+    "scope": "code-only"
+  }
+}'
+```
+
+**Batch rename with quick operation (one-step):**
+```bash
+# Apply batch renames immediately without preview
+codebuddy tool rename '{
+  "targets": [
+    {
+      "kind": "file",
+      "path": "src/foo.rs",
+      "new_name": "src/bar.rs"
+    },
+    {
+      "kind": "file",
+      "path": "src/baz.rs",
+      "new_name": "src/qux.rs"
+    }
+  ]
 }'
 ```
 
@@ -846,6 +952,53 @@ To avoid false positives in prose text, CodeBuddy only updates strings that:
 - ✅ `"../tests/e2e/fixtures"` - Updated (contains `/`)
 - ✅ `"config.toml"` - Updated (file extension)
 - ❌ `"We use tests"` - Skipped (no `/`, no extension)
+
+**Batch Mode Behavior:**
+
+When using `targets` array for batch renames:
+
+**Validation:**
+- ✅ Each target must include `new_name` field (unlike single mode where it's a separate parameter)
+- ✅ Detects naming conflicts (multiple sources renaming to same destination)
+- ❌ Fails if any conflicts are detected before planning
+- ✅ Cannot mix `target` and `targets` parameters (mutual exclusion)
+
+**Planning:**
+- Plans each rename individually
+- Merges all edits into single atomic plan
+- Tracks all affected files across all renames
+- Returns metadata with `kind: "batch_rename"`
+
+**Execution:**
+- All renames succeed or all rollback (atomic operation)
+- Updates all references across all renamed items
+- Shares same `options` configuration for all targets
+- Maximum recommended: 100 targets per batch
+
+**Conflict Detection Example:**
+```json
+{
+  "targets": [
+    {
+      "kind": "file",
+      "path": "src/utils.rs",
+      "new_name": "src/helpers.rs"
+    },
+    {
+      "kind": "file",
+      "path": "lib/old.rs",
+      "new_name": "src/helpers.rs"  // ❌ CONFLICT!
+    }
+  ]
+}
+```
+This will fail with error: `"Multiple targets rename to 'src/helpers.rs': src/utils.rs, lib/old.rs"`
+
+**Use Cases:**
+- ✅ Renaming multiple files to match naming conventions (kebab-case → snake_case)
+- ✅ Restructuring project directories in one operation
+- ✅ Bulk file organization (moving multiple files to new structure)
+- ✅ Refactoring related components together
 
 **Returns:** A `RenamePlan` object.
 
