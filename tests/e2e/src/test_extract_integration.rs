@@ -301,7 +301,7 @@ async fn test_extract_plan_metadata_structure() {
 
             let metadata = plan.get("metadata").unwrap();
             assert_eq!(
-                metadata.get("plan_version").and_then(|v| v.as_str()),
+                metadata.get("planVersion").and_then(|v| v.as_str()),
                 Some("1.0"),
                 "Plan version should be 1.0"
             );
