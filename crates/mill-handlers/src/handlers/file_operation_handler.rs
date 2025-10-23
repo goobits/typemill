@@ -95,7 +95,7 @@ impl FileOperationHandler {
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'new_path' parameter".into()))?;
         let dry_run = args
-            .get("dry_run")
+            .get("dryRun")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
@@ -194,7 +194,7 @@ impl FileOperationHandler {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
         let dry_run = args
-            .get("dry_run")
+            .get("dryRun")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
@@ -222,7 +222,7 @@ impl FileOperationHandler {
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
         let force = args.get("force").and_then(|v| v.as_bool()).unwrap_or(false);
         let dry_run = args
-            .get("dry_run")
+            .get("dryRun")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
@@ -300,7 +300,7 @@ impl FileOperationHandler {
             .and_then(|v| v.as_str())
             .ok_or_else(|| ServerError::InvalidRequest("Missing 'content' parameter".into()))?;
         let dry_run = args
-            .get("dry_run")
+            .get("dryRun")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
         let workspace_id = args.get("workspace_id").and_then(|v| v.as_str());

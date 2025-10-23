@@ -52,7 +52,7 @@ async fn test_workspace_apply_discriminated_union_rename() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -288,7 +288,7 @@ async fn test_workspace_apply_dry_run_all_plan_types() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )

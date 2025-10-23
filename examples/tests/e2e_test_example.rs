@@ -36,7 +36,7 @@ async fn test_refactoring_workflow_end_to_end() {
             "workspace.apply_edit",
             json!({
                 "plan": plan["result"],
-                "options": {"dry_run": false}
+                "options": {"dryRun": false}
             }),
         )
         .await

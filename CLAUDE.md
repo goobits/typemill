@@ -245,7 +245,7 @@ pub fn lib_fn() {
     "name": "workspace.apply_edit",
     "arguments": {
       "plan": "<plan from step 1>",
-      "options": { "dry_run": false }
+      "options": { "dryRun": false }
     }
   }
 }

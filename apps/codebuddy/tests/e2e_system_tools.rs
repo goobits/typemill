@@ -234,7 +234,7 @@ async fn test_update_dependencies_dry_run() {
             "update_dependencies",
             json!(
                 { "file_path" : package_json.to_string_lossy(), "add_dependencies" : {
-                "express" : "^4.18.0" }, "dry_run" : true }
+                "express" : "^4.18.0" }, "dryRun" : true }
             ),
         )
         .await

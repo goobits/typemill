@@ -105,7 +105,7 @@ utils = { path = "../utils" }
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
+                    "dryRun": false,
                     "validate_checksums": true
                 }
             }),
@@ -240,7 +240,7 @@ utils = { workspace = true }
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
+                    "dryRun": false,
                     "validate_checksums": true
                 }
             }),
@@ -367,7 +367,7 @@ utils = { path = "../utils", version = "0.1.0" }
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
+                    "dryRun": false,
                     "validate_checksums": true
                 }
             }),
@@ -493,7 +493,7 @@ path = "../common"
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
+                    "dryRun": false,
                     "validate_checksums": true
                 }
             }),

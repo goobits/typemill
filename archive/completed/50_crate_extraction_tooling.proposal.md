@@ -27,7 +27,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
   "crate_path": "../../crates/mill-auth",     // Required
   "crate_type": "lib",                       // Optional: "lib" (default) or "bin"
   "options": {
-    "dry_run": true,                         // Optional: preview mode
+    "dryRun": true,                         // Optional: preview mode
     "add_to_workspace": true,                // Optional: auto-register (default: true)
     "template": "minimal"                    // Optional: "minimal" (default) or "full"
   }
@@ -109,7 +109,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
   "target_manifest": "../../crates/mill-auth/Cargo.toml",
   "dependencies": ["tokio", "jsonwebtoken", "serde"],  // From analyze.module_dependencies
   "options": {
-    "dry_run": true,
+    "dryRun": true,
     "preserve_versions": true,                         // Copy exact version specs
     "preserve_features": true                          // Copy feature flags
   }
@@ -193,7 +193,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
   "member": "../../crates/mill-auth",
   "manifest_path": "./Cargo.toml",           // Optional: defaults to workspace root
   "options": {
-    "dry_run": true
+    "dryRun": true
   }
 }
 ```
@@ -227,7 +227,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
   "tool": "workspace.create_crate",
   "arguments": {
     "crate_path": "../../crates/mill-auth",
-    "options": { "dry_run": false }
+    "options": { "dryRun": false }
   }
 }
 ```
@@ -255,7 +255,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
     "source_manifest": "../../../../crates/mill-foundation/src/core/Cargo.toml",
     "target_manifest": "../../crates/mill-auth/Cargo.toml",
     "dependencies": ["tokio", "jsonwebtoken", "serde"],
-    "options": { "dry_run": false }
+    "options": { "dryRun": false }
   }
 }
 ```
@@ -283,7 +283,7 @@ Add 3 new public MCP tools + 1 enhancement to existing tool for complete crate e
   "tool": "workspace.apply_edit",
   "arguments": {
     "plan": "<plan from step 4>",
-    "options": { "dry_run": false }
+    "options": { "dryRun": false }
   }
 }
 ```

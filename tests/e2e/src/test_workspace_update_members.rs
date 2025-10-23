@@ -48,7 +48,7 @@ edition = "2021"
                 "action": "add",
                 "members": ["crates/new-crate1", "crates/new-crate2"],
                 "options": {
-                    "dry_run": false,
+                    "dryRun": false,
                     "create_if_missing": false
                 }
             }),
@@ -131,7 +131,7 @@ edition = "2021"
                 "action": "remove",
                 "members": ["crates/crate2"],
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -287,7 +287,7 @@ edition = "2021"
                 "action": "add",
                 "members": ["crates/existing-crate"],
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -347,7 +347,7 @@ edition = "2021"
                 "action": "add",
                 "members": ["crates/new-crate"],
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -358,7 +358,7 @@ edition = "2021"
 
     // Verify dry_run flag
     assert_eq!(
-        content.get("dry_run").and_then(|v| v.as_bool()),
+        content.get("dryRun").and_then(|v| v.as_bool()),
         Some(true),
         "dry_run should be true"
     );
@@ -417,7 +417,7 @@ edition = "2021"
                 "action": "add",
                 "members": ["crates/new-crate"],
                 "options": {
-                    "dry_run": false,
+                    "dryRun": false,
                     "create_if_missing": true
                 }
             }),
@@ -479,7 +479,7 @@ edition = "2021"
                 "action": "add",
                 "members": ["crates/new-crate"],
                 "options": {
-                    "dry_run": false,
+                    "dryRun": false,
                     "create_if_missing": false
                 }
             }),
@@ -564,7 +564,7 @@ edition = "2021"
                 "action": "remove",
                 "members": ["crates/nonexistent"],
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -616,7 +616,7 @@ edition = "2021"
                 "action": "add",
                 "members": ["crates\\my-crate"],
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )

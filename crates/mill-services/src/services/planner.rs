@@ -228,7 +228,7 @@ mod tests {
                                 "plan": "$steps.0.plan",
                                 "options": {
                                     "validate_checksums": true,
-                                    "dry_run": false
+                                    "dryRun": false
                                 }
                             },
                             "description": "Apply rename changes across the project",
@@ -265,7 +265,7 @@ mod tests {
                                 "plan": "$steps.0.plan",
                                 "options": {
                                     "validate_checksums": true,
-                                    "dry_run": false
+                                    "dryRun": false
                                 }
                             },
                             "description": "Apply extraction changes",

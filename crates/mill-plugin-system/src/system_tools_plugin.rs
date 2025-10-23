@@ -278,7 +278,7 @@ impl SystemToolsPlugin {
             "project_path": project_path,
             "package_manager": detected_manager,
             "update_type": update_type,
-            "dry_run": dry_run,
+            "dryRun": dry_run,
             "command": format!("{} {}", command, args.join(" ")),
             "success": success,
             "exit_code": exit_code,
@@ -412,7 +412,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                             "type": "boolean",
                             "description": "If true, execute the workflow after planning. If false or omitted, only return the plan."
                         },
-                        "dry_run": {
+                        "dryRun": {
                             "type": "boolean",
                             "description": "If true, execute the workflow in dry-run mode (preview changes without modifying files). Only applies when execute is true."
                         },
@@ -466,7 +466,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                             "type": "string",
                             "description": "Type of update (minor, major, patch)"
                         },
-                        "dry_run": {
+                        "dryRun": {
                             "type": "boolean",
                             "description": "Preview changes without applying them"
                         }
@@ -495,7 +495,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                             "type": "string",
                             "description": "Name for the new function"
                         },
-                        "dry_run": {
+                        "dryRun": {
                             "type": "boolean",
                             "description": "Preview changes without applying them"
                         }
@@ -521,7 +521,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                             "type": "number",
                             "description": "Optional character position in the line (0-indexed, defaults to 0)"
                         },
-                        "dry_run": {
+                        "dryRun": {
                             "type": "boolean",
                             "description": "Preview changes without applying them"
                         }
@@ -559,7 +559,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                             "type": "string",
                             "description": "Name for the new variable"
                         },
-                        "dry_run": {
+                        "dryRun": {
                             "type": "boolean",
                             "description": "Preview changes without applying them"
                         }
@@ -821,7 +821,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                             "default": true,
                             "description": "Auto-generate package manifest (Cargo.toml, package.json, etc.)"
                         },
-                        "dry_run": {
+                        "dryRun": {
                             "type": "boolean",
                             "default": false,
                             "description": "Preview changes without applying them"

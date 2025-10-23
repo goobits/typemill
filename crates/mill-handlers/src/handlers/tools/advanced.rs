@@ -212,7 +212,7 @@ impl ToolHandler for AdvancedToolsHandler {
                                     "manifest_path": manifest_path.clone(),
                                     "dependency_name": dependency_name,
                                     "version": version,
-                                    "dry_run": true,
+                                    "dryRun": true,
                                 });
                                 let file_path =
                                     PathBuf::from(manifest_path.unwrap_or_else(|| ".".to_string()));
@@ -242,14 +242,14 @@ impl ToolHandler for AdvancedToolsHandler {
                             let params = json!({
                                 "file_path": path,
                                 "content": content.unwrap_or_default(),
-                                "dry_run": dry_run.unwrap_or(false)
+                                "dryRun": dry_run.unwrap_or(false)
                             });
                             (OperationType::Write, PathBuf::from(path), params)
                         }
                         BatchOperation::DeleteFile { path, dry_run } => {
                             let params = json!({
                                 "file_path": path,
-                                "dry_run": dry_run.unwrap_or(false)
+                                "dryRun": dry_run.unwrap_or(false)
                             });
                             (OperationType::Delete, PathBuf::from(path), params)
                         }
@@ -261,7 +261,7 @@ impl ToolHandler for AdvancedToolsHandler {
                             let params = json!({
                                 "file_path": path,
                                 "content": content,
-                                "dry_run": dry_run.unwrap_or(false)
+                                "dryRun": dry_run.unwrap_or(false)
                             });
                             (OperationType::Write, PathBuf::from(path), params)
                         }
@@ -273,7 +273,7 @@ impl ToolHandler for AdvancedToolsHandler {
                             let params = json!({
                                 "old_path": old_path,
                                 "new_path": new_path.clone(),
-                                "dry_run": dry_run.unwrap_or(false)
+                                "dryRun": dry_run.unwrap_or(false)
                             });
                             (OperationType::Rename, PathBuf::from(old_path), params)
                         }
@@ -287,7 +287,7 @@ impl ToolHandler for AdvancedToolsHandler {
                                 "manifest_path": manifest_path.clone(),
                                 "dependency_name": dependency_name,
                                 "version": version,
-                                "dry_run": dry_run.unwrap_or(false)
+                                "dryRun": dry_run.unwrap_or(false)
                             });
                             let file_path =
                                 PathBuf::from(manifest_path.unwrap_or_else(|| ".".to_string()));

@@ -58,7 +58,7 @@ async fn test_rename_file_plan_and_apply() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
+                    "dryRun": false,
                     "validate_checksums": true
                 }
             }),
@@ -127,7 +127,7 @@ async fn test_rename_file_dry_run_preview() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": true
+                    "dryRun": true
                 }
             }),
         )
@@ -263,7 +263,7 @@ async fn test_rename_directory_plan_and_apply() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false,
+                    "dryRun": false,
                     "validate_checksums": true
                 }
             }),

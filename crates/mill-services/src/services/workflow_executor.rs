@@ -167,7 +167,7 @@ impl DefaultWorkflowExecutor {
         // If dry_run is enabled, add it to the parameters for all tools
         if dry_run {
             if let Value::Object(ref mut map) = resolved_params {
-                map.insert("dry_run".to_string(), Value::Bool(true));
+                map.insert("dryRun".to_string(), Value::Bool(true));
             }
         }
 
@@ -341,7 +341,7 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
             "success": true,
             "workflow": workflow.name,
             "steps_executed": workflow.steps.len(),
-            "dry_run": dry_run,
+            "dryRun": dry_run,
             "log": log,
             "result": final_result
         }))
@@ -413,7 +413,7 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
             "success": true,
             "workflow": workflow.name,
             "steps_executed": workflow.steps.len(),
-            "dry_run": dry_run,
+            "dryRun": dry_run,
             "log": log,
             "result": final_result
         }))

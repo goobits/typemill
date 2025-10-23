@@ -90,7 +90,7 @@ impl WorkflowHandler {
 
         // Check if dry-run mode is requested
         let dry_run = args
-            .get("dry_run")
+            .get("dryRun")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 

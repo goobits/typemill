@@ -166,7 +166,7 @@ resolver = "2"
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )

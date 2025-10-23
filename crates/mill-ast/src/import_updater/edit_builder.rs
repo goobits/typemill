@@ -458,7 +458,7 @@ pub(crate) async fn build_import_update_plan(
                 "old_path": old_path.to_string_lossy(),
                 "new_path": new_path.to_string_lossy(),
                 "scan_scope": scan_scope.map(|s| format!("{:?}", s)),
-                "dry_run": dry_run,
+                "dryRun": dry_run,
             }),
             created_at: chrono::Utc::now(),
             complexity: if scan_scope.is_some() { 7 } else { 5 },

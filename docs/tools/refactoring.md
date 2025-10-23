@@ -771,7 +771,7 @@ An `ApplyResult` object containing:
         "is_consolidation": false
       },
       "options": {
-        "dry_run": false,
+        "dryRun": false,
         "validate_checksums": true,
         "rollback_on_error": true,
         "validation": {
@@ -844,7 +844,7 @@ The safest refactoring approach:
   "arguments": {
     "plan": { /* plan from step 1 */ },
     "options": {
-      "dry_run": false,
+      "dryRun": false,
       "validate_checksums": true,
       "validation": {
         "command": "cargo test",
@@ -872,7 +872,7 @@ Use `dry_run: true` for final review before applying:
   "arguments": {
     "plan": { /* plan */ },
     "options": {
-      "dry_run": true  // Returns success without modifying files
+      "dryRun": true  // Returns success without modifying files
     }
   }
 }

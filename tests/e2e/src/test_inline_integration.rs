@@ -60,7 +60,7 @@ async fn test_inline_variable_plan_and_apply() {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dry_run": false,
+                            "dryRun": false,
                             "validate_checksums": true
                         }
                     }),
@@ -147,7 +147,7 @@ pub fn test() -> i32 {
                     json!({
                         "plan": plan,
                         "options": {
-                            "dry_run": true
+                            "dryRun": true
                         }
                     }),
                 )

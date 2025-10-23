@@ -24,7 +24,7 @@ impl<T: Serialize> DryRunnable<T> {
     /// Convert to JSON response with dry_run indicator
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
-            "dry_run": self.dry_run,
+            "dryRun": self.dry_run,
             "result": self.result
         })
     }
@@ -104,7 +104,7 @@ mod tests {
         let result = DryRunnable::new(true, "test_data");
         let json = result.to_json();
 
-        assert_eq!(json["dry_run"], true);
+        assert_eq!(json["dryRun"], true);
         assert_eq!(json["result"], "test_data");
     }
 }

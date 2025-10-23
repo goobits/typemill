@@ -64,7 +64,7 @@ async fn test_rust_rename_updates_mod_in_parent_mod_rs() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -141,7 +141,7 @@ async fn test_rust_rename_updates_mod_in_lib_rs() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -219,7 +219,7 @@ async fn test_rust_rename_updates_sibling_mod_rs() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -306,7 +306,7 @@ async fn test_rust_rename_nested_mod_tree() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )
@@ -392,7 +392,7 @@ async fn test_rust_rename_affects_both_mod_and_use() {
             json!({
                 "plan": plan,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             }),
         )

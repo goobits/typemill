@@ -25,7 +25,7 @@ codebuddy tool rename_directory '{
   "old_path": "crates/cb-types",
   "new_path": "crates/codebuddy-core/src/types",
   "consolidate": true,
-  "dry_run": true
+  "dryRun": true
 }'
 ```
 
@@ -294,7 +294,7 @@ codebuddy tool rename_directory '{
   "old_path": "crates/cb-types",
   "new_path": "crates/codebuddy-core/src/types",
   "consolidate": true,
-  "dry_run": true
+  "dryRun": true
 }'
 ```
 

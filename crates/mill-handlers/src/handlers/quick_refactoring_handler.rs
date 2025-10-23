@@ -119,7 +119,7 @@ impl QuickRefactoringHandler {
             arguments: Some(json!({
                 "plan": plan_content,
                 "options": {
-                    "dry_run": false
+                    "dryRun": false
                 }
             })),
         };

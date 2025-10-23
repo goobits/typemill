@@ -1336,7 +1336,7 @@ async fn handle_convert_naming(
                         "arguments": {
                             "plan": content,
                             "options": {
-                                "dry_run": false
+                                "dryRun": false
                             }
                         }
                     });

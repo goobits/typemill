@@ -162,7 +162,7 @@ pub fn parse_flags_to_json(
 ///   "options": {
 ///     "scope": "all|code-only|custom",
 ///     "custom_scope": {...},
-///     "exclude_patterns": [...],
+///     "excludePatterns": [...],
 ///     "strict": bool,
 ///     "validate_scope": bool,
 ///     "update_imports": bool,
@@ -178,7 +178,7 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
             "target",
             "new_name",
             "scope",
-            "exclude_patterns",
+            "excludePatterns",
             "strict",
             "validate_scope",
             "consolidate",
@@ -215,7 +215,7 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
             k.as_str(),
             "update_comments" | "update_markdown_prose" | "update_all"
         )
-    }) || flags.contains_key("exclude_patterns");
+    }) || flags.contains_key("excludePatterns");
 
     // Scope configuration
     let scope = flags.get("scope").map(|s| s.as_str());
@@ -248,8 +248,8 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
             }
         }
 
-        if let Some(patterns) = flags.get("exclude_patterns") {
-            custom_scope["exclude_patterns"] = parse_string_array(patterns)?;
+        if let Some(patterns) = flags.get("excludePatterns") {
+            custom_scope["excludePatterns"] = parse_string_array(patterns)?;
         }
 
         options["custom_scope"] = custom_scope;
@@ -947,7 +947,7 @@ mod tests {
                 ("scope", "custom"),
                 ("update_code", "true"),
                 ("update_docs", "false"),
-                ("exclude_patterns", "test_*,fixtures/**"),
+                ("excludePatterns", "test_*,fixtures/**"),
             ]),
         );
         assert!(result.is_ok());
@@ -956,7 +956,7 @@ mod tests {
         assert_eq!(json["options"]["custom_scope"]["update_code"], true);
         assert_eq!(json["options"]["custom_scope"]["update_docs"], false);
         assert_eq!(
-            json["options"]["custom_scope"]["exclude_patterns"][0],
+            json["options"]["custom_scope"]["excludePatterns"][0],
             "test_*"
         );
     }
