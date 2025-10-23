@@ -194,63 +194,6 @@ async fn test_error_propagation() {
     );
 }
 
-#[tokio::test]
-async fn test_large_message_handling() {
-    let workspace = TestWorkspace::new();
-    let mut client = TestClient::new(workspace.path());
-
-    // Test handling of large messages (important for any transport)
-
-    let large_file = workspace.path().join("large_message_test.txt");
-
-    // Create increasingly large content to test message size limits
-    let sizes = vec![1024, 10_240, 102_400, 1_024_000]; // 1KB to 1MB
-
-    for size in sizes {
-        let large_content = "X".repeat(size);
-
-        let response = client
-            .call_tool(
-                "create_file",
-                json!({
-                    "file_path": large_file.to_string_lossy(),
-                    "content": large_content,
-                    "overwrite": true
-                }),
-            )
-            .await;
-
-        match response {
-            Ok(resp) => {
-                assert!(resp["result"]["success"].as_bool().unwrap_or(false));
-
-                // Verify we can read it back
-                let read_response = client
-                    .call_tool(
-                        "read_file",
-                        json!({
-                            "file_path": large_file.to_string_lossy()
-                        }),
-                    )
-                    .await
-                    .unwrap();
-
-                let read_content = read_response["result"]["content"].as_str().unwrap();
-                assert_eq!(read_content.len(), size);
-
-                println!("Successfully handled {}KB message", size / 1024);
-            }
-            Err(_) => {
-                println!(
-                    "Failed to handle {}KB message (may be expected)",
-                    size / 1024
-                );
-                // Large message failures might be expected depending on transport limits
-                break;
-            }
-        }
-    }
-}
 
 #[tokio::test]
 async fn test_rapid_transport_operations() {

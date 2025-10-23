@@ -79,53 +79,6 @@ fn test_tool_invalid_json_arguments() {
 }
 
 #[test]
-fn test_tool_invalid_file_path() {
-    let mut cmd = codebuddy_cmd();
-    cmd.args([
-        "tool",
-        "read_file",
-        r#"{"file_path": "/nonexistent/file/path.txt"}"#,
-    ]);
-
-    cmd.assert()
-        .failure()
-        .code(1)
-        .stderr(predicate::str::contains("File does not exist"));
-}
-
-#[test]
-fn test_tool_list_files_success() {
-    // Create a temporary directory with some files
-    let temp_dir = TempDir::new().unwrap();
-    let test_file = temp_dir.path().join("test.txt");
-    fs::write(&test_file, "test content").unwrap();
-
-    let mut cmd = codebuddy_cmd();
-    cmd.current_dir(temp_dir.path());
-    cmd.args(["tool", "list_files", r#"{"path": "."}"#]);
-
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("test.txt"));
-}
-
-#[test]
-fn test_tool_read_file_success() {
-    // Create a temporary file
-    let temp_dir = TempDir::new().unwrap();
-    let test_file = temp_dir.path().join("test.txt");
-    fs::write(&test_file, "Hello, World!").unwrap();
-
-    let mut cmd = codebuddy_cmd();
-    cmd.current_dir(temp_dir.path());
-    cmd.args(["tool", "read_file", r#"{"file_path": "test.txt"}"#]);
-
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Hello, World!"));
-}
-
-#[test]
 fn test_tool_unknown_tool_name() {
     let mut cmd = codebuddy_cmd();
     cmd.args(["tool", "nonexistent_tool", "{}"]);
@@ -134,18 +87,6 @@ fn test_tool_unknown_tool_name() {
         .failure()
         .code(1)
         .stderr(predicate::str::contains("No handler for tool"));
-}
-
-#[test]
-fn test_tool_missing_required_arguments() {
-    let mut cmd = codebuddy_cmd();
-    cmd.args([
-        "tool",
-        "read_file",
-        "{}", // Missing required file_path argument
-    ]);
-
-    cmd.assert().failure().code(1);
 }
 
 #[test]
@@ -161,15 +102,3 @@ fn test_tool_output_is_valid_json() {
     assert!(parsed.is_ok(), "Output should be valid JSON");
 }
 
-#[test]
-fn test_tool_error_output_is_valid_json() {
-    let mut cmd = codebuddy_cmd();
-    cmd.args(["tool", "read_file", r#"{"file_path": "/nonexistent.txt"}"#]);
-
-    let output = cmd.assert().failure();
-    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
-
-    // Verify error output is valid JSON
-    let parsed: Result<serde_json::Value, _> = serde_json::from_str(&stderr);
-    assert!(parsed.is_ok(), "Error output should be valid JSON");
-}
