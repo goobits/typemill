@@ -66,7 +66,7 @@ edition = "2021"
     );
 
     assert_eq!(
-        content.get("changes_made").and_then(|v| v.as_u64()),
+        content.get("changesMade").and_then(|v| v.as_u64()),
         Some(2),
         "Should have made 2 changes"
     );
@@ -79,13 +79,13 @@ edition = "2021"
 
     // Verify members_before and members_after
     let members_before = content
-        .get("members_before")
+        .get("membersBefore")
         .and_then(|v| v.as_array())
         .expect("members_before should be an array");
     assert_eq!(members_before.len(), 1);
 
     let members_after = content
-        .get("members_after")
+        .get("membersAfter")
         .and_then(|v| v.as_array())
         .expect("members_after should be an array");
     assert_eq!(members_after.len(), 3);
@@ -148,7 +148,7 @@ edition = "2021"
     );
 
     assert_eq!(
-        content.get("changes_made").and_then(|v| v.as_u64()),
+        content.get("changesMade").and_then(|v| v.as_u64()),
         Some(1),
         "Should have made 1 change"
     );
@@ -161,7 +161,7 @@ edition = "2021"
 
     // Verify members count
     let members_after = content
-        .get("members_after")
+        .get("membersAfter")
         .and_then(|v| v.as_array())
         .expect("members_after should be an array");
     assert_eq!(members_after.len(), 2);
@@ -224,7 +224,7 @@ edition = "2021"
     );
 
     assert_eq!(
-        content.get("changes_made").and_then(|v| v.as_u64()),
+        content.get("changesMade").and_then(|v| v.as_u64()),
         Some(0),
         "Should have made 0 changes"
     );
@@ -237,13 +237,13 @@ edition = "2021"
 
     // Verify members list
     let members_before = content
-        .get("members_before")
+        .get("membersBefore")
         .and_then(|v| v.as_array())
         .expect("members_before should be an array");
     assert_eq!(members_before.len(), 3);
 
     let members_after = content
-        .get("members_after")
+        .get("membersAfter")
         .and_then(|v| v.as_array())
         .expect("members_after should be an array");
     assert_eq!(members_after.len(), 3);
@@ -298,7 +298,7 @@ edition = "2021"
 
     // Verify no changes were made
     assert_eq!(
-        content.get("changes_made").and_then(|v| v.as_u64()),
+        content.get("changesMade").and_then(|v| v.as_u64()),
         Some(0),
         "Should have made 0 changes"
     );
@@ -311,7 +311,7 @@ edition = "2021"
 
     // Verify members list unchanged
     let members_after = content
-        .get("members_after")
+        .get("membersAfter")
         .and_then(|v| v.as_array())
         .expect("members_after should be an array");
     assert_eq!(members_after.len(), 1);
@@ -378,13 +378,13 @@ edition = "2021"
 
     // Verify we got the preview of changes
     assert_eq!(
-        content.get("changes_made").and_then(|v| v.as_u64()),
+        content.get("changesMade").and_then(|v| v.as_u64()),
         Some(1),
         "Should report 1 change would be made"
     );
 
     let members_after = content
-        .get("members_after")
+        .get("membersAfter")
         .and_then(|v| v.as_array())
         .expect("members_after should show preview");
     assert_eq!(members_after.len(), 2);
@@ -435,7 +435,7 @@ edition = "2021"
     );
 
     assert_eq!(
-        content.get("changes_made").and_then(|v| v.as_u64()),
+        content.get("changesMade").and_then(|v| v.as_u64()),
         Some(1),
         "Should have made 1 change"
     );
@@ -575,7 +575,7 @@ edition = "2021"
 
     // Verify no changes were made
     assert_eq!(
-        content.get("changes_made").and_then(|v| v.as_u64()),
+        content.get("changesMade").and_then(|v| v.as_u64()),
         Some(0),
         "Should have made 0 changes"
     );
@@ -627,7 +627,7 @@ edition = "2021"
 
     // Verify member was added
     assert_eq!(
-        content.get("changes_made").and_then(|v| v.as_u64()),
+        content.get("changesMade").and_then(|v| v.as_u64()),
         Some(1),
         "Should have made 1 change"
     );

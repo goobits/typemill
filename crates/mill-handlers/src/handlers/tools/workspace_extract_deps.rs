@@ -99,6 +99,7 @@ impl DependencySection {
 // Result type for MCP interface
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExtractDependenciesResult {
     pub dependencies_extracted: usize,
     pub dependencies_added: Vec<DependencyInfo>,
@@ -108,6 +109,7 @@ pub struct ExtractDependenciesResult {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DependencyInfo {
     pub name: String,
     pub version: String,
