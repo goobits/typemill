@@ -1,7 +1,7 @@
 # Proposal 01: Workspace Find & Replace Tool - COMPLETED
 
-**Status:** ✅ Implemented (86% test coverage, 19/22 tests passing)  
-**Archived:** 2025-10-23  
+**Status:** ✅ Implemented (100% test coverage, 22/22 tests passing)
+**Archived:** 2025-10-23
 **Implementation:** `crates/mill-handlers/src/handlers/workspace/find_replace_handler.rs`
 
 ## Summary
@@ -21,16 +21,16 @@ Successfully implemented `workspace.find_replace` as a public MCP tool with lite
 - ✅ Parameter validation
 - ✅ Dry-run defaults to true
 
-✅ Testing (86% - 19/22 tests passing)
+✅ Testing (100% - 22/22 tests passing)
 - ✅ Literal replacement across multiple files
 - ✅ Regex with capture groups ($1, $2, named captures)
 - ✅ Case preservation (all styles)
 - ✅ Scope filtering (include/exclude patterns)
 - ✅ Dry-run mode
 - ✅ UTF-8 handling
-- ❌ Empty pattern error handling (test fails, handler works)
-- ❌ Invalid regex error handling (test fails, handler works)
-- ❌ Default excludes scope test (logic issue)
+- ✅ Empty pattern error handling
+- ✅ Invalid regex error handling
+- ✅ Default excludes scope test
 
 ✅ Documentation (100%)
 - ✅ `docs/tools/workspace.md` - Complete API reference
@@ -47,22 +47,12 @@ Successfully implemented `workspace.find_replace` as a public MCP tool with lite
 | Literal mode works | ✅ | 100% functional |
 | Regex with captures | ✅ | $1, $2, named groups all work |
 | Case preservation | ✅ | All case styles supported |
-| Default excludes | ⚠️ | Works, but 1 test fails |
+| Default excludes | ✅ | Works correctly |
 | Dry-run defaults true | ✅ | Safety-first design |
 | Dry-run returns plan | ✅ | EditPlan format |
 | Atomic operations | ✅ | Via file service |
-| Test coverage >90% | ⚠️ | 86% (19/22 tests) |
+| Test coverage >90% | ✅ | 100% (22/22 tests) |
 | Documentation complete | ✅ | Comprehensive docs |
-
-## Remaining Work (Optional)
-
-Minor edge case fixes (not blocking):
-
-1. **test_empty_pattern** - Fix error propagation in test harness
-2. **test_regex_invalid_pattern** - Same as above
-3. **test_scope_default_excludes** - Adjust default exclude logic
-
-These are test issues, not functionality issues. The tool works correctly in actual usage.
 
 ## Performance Bonus
 
@@ -96,7 +86,8 @@ This optimization benefits ALL test suites using TestClient.
 ## Commits
 
 - `ced2e161` - fix: correct workspace.find_replace response format
-- `7ba16f89` - perf: replace fixed 5s sleep with health check polling
+- `7ba16f89` - perf: replace fixed 5s sleep with health check polling (85x speedup)
+- `77a22edc` - fix: resolve 3 edge case failures (100% test coverage achieved)
 
 ## Usage Example
 
@@ -122,14 +113,23 @@ This optimization benefits ALL test suites using TestClient.
 
 ## Conclusion
 
-✅ **Ready for production use**
+✅ **Production-ready with 100% test coverage**
 
-The tool is feature-complete and passes 86% of tests. The 3 failing tests are edge cases in test infrastructure, not actual functionality issues. The tool successfully:
+The tool is feature-complete and passes all 22 tests. All edge cases resolved:
 
-- Performs literal and regex find/replace across workspaces
-- Preserves case styles intelligently
-- Filters files with glob patterns
-- Provides safe dry-run previews
-- Integrates with the unified refactoring API
+1. **Error handling** - Empty patterns and invalid regex properly return errors
+2. **Default excludes** - Correctly excludes target/, node_modules/, .git/ by default
+3. **Test infrastructure** - JSON-RPC error handling properly integrated
 
-Proposal archived as completed.
+The tool successfully:
+
+- ✅ Performs literal and regex find/replace across workspaces
+- ✅ Preserves case styles intelligently (snake_case, camelCase, PascalCase, UPPER_CASE)
+- ✅ Filters files with glob patterns and smart defaults
+- ✅ Provides safe dry-run previews (defaults to true)
+- ✅ Integrates with the unified refactoring API
+- ✅ 100% test coverage with all edge cases handled
+
+**Bonus:** 85x test performance improvement benefits entire test suite.
+
+Proposal archived as completed with full implementation.
