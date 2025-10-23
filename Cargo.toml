@@ -14,7 +14,7 @@ members = [
     "crates/mill-lang-yaml",
     "crates/mill-plugin-bundle",
     "apps/codebuddy",
-    "analysis/cb-analysis-common",
+    "analysis/mill-analysis-common",
     "analysis/cb-analysis-dead-code",
     "analysis/cb-analysis-deep-dead-code",
     "analysis/cb-analysis-graph",
@@ -86,7 +86,7 @@ bincode = "1.3"
 walkdir = "2.5"
 
 # Analysis crates
-cb-analysis-common = { path = "analysis/cb-analysis-common" }
+mill-analysis-common = { path = "analysis/mill-analysis-common" }
 cb-analysis-dead-code = { path = "analysis/cb-analysis-dead-code" }
 cb-analysis-graph = { path = "analysis/cb-analysis-graph" }
 

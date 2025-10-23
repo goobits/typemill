@@ -1,7 +1,7 @@
 // analysis/cb-analysis-deep-dead-code/tests/deep_dead_code_test.rs
 
 use async_trait::async_trait;
-use cb_analysis_common::{AnalysisEngine, AnalysisError, LspProvider};
+use mill_analysis_common::{ AnalysisEngine , AnalysisError , LspProvider };
 use cb_analysis_deep_dead_code::{DeepDeadCodeAnalyzer, DeepDeadCodeConfig};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};

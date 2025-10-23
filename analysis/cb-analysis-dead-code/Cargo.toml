@@ -5,8 +5,6 @@ edition = "2021"
 license.workspace = true
 
 [dependencies]
-# Workspace dependencies
-cb-analysis-common = { path = "../cb-analysis-common" }
 
 # External dependencies
 async-trait = "0.1"
@@ -17,6 +15,7 @@ thiserror = "1.0"
 futures = "0.3"
 tracing = "0.1"
 walkdir = "2"
+mill-analysis-common = { path = "../mill-analysis-common" }
 
 [dev-dependencies]
 mockall = "0.13"

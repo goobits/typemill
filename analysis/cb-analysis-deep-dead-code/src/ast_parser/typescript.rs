@@ -1,7 +1,7 @@
 //! This module is responsible for parsing TypeScript/JavaScript source code and extracting
 //! symbol information for deep dead code analysis.
 
-use cb_analysis_common::graph::{SymbolKind, SymbolNode};
+use mill_analysis_common::graph::{ SymbolKind , SymbolNode };
 use mill_lang_common::{ run_ast_tool , SubprocessAstTool };
 use lsp_types::{Position, Range};
 use serde::Deserialize;

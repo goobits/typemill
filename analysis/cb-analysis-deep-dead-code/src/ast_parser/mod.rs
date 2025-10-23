@@ -5,7 +5,7 @@
 
 pub mod typescript;
 
-use cb_analysis_common::graph::{SymbolKind, SymbolNode};
+use mill_analysis_common::graph::{ SymbolKind , SymbolNode };
 use lsp_types::{Position, Range};
 use std::fs;
 use std::path::Path;

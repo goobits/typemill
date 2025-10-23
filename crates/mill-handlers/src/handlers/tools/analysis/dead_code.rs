@@ -1515,7 +1515,7 @@ impl DeadCodeHandler {
         kind: &str,
     ) -> ServerResult<Value> {
         use crate::handlers::lsp_adapter::DirectLspAdapter;
-        use cb_analysis_common::{AnalysisEngine, LspProvider};
+        use mill_analysis_common::{ AnalysisEngine , LspProvider };
         use cb_analysis_dead_code::{DeadCodeAnalyzer, DeadCodeConfig};
         use mill_foundation::protocol::analysis_result::{ AnalysisResult , AnalysisScope };
         use std::path::Path;
@@ -1539,13 +1539,13 @@ impl DeadCodeHandler {
             async fn workspace_symbols(
                 &self,
                 query: &str,
-            ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
+            ) -> Result<Vec<Value>, mill_analysis_common::AnalysisError> {
                 use mill_plugin_system::LspService;
                 self.adapter
                     .request("workspace/symbol", json!({ "query": query }))
                     .await
                     .map(|v| v.as_array().cloned().unwrap_or_default())
-                    .map_err(|e| cb_analysis_common::AnalysisError::LspError(e.to_string()))
+                    .map_err(|e| mill_analysis_common::AnalysisError::LspError(e.to_string()))
             }
 
             async fn find_references(
@@ -1553,7 +1553,7 @@ impl DeadCodeHandler {
                 uri: &str,
                 line: u32,
                 character: u32,
-            ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
+            ) -> Result<Vec<Value>, mill_analysis_common::AnalysisError> {
                 use mill_plugin_system::LspService;
                 let params = json!({
                     "textDocument": { "uri": uri },
@@ -1565,13 +1565,13 @@ impl DeadCodeHandler {
                     .request("textDocument/references", params)
                     .await
                     .map(|v| v.as_array().cloned().unwrap_or_default())
-                    .map_err(|e| cb_analysis_common::AnalysisError::LspError(e.to_string()))
+                    .map_err(|e| mill_analysis_common::AnalysisError::LspError(e.to_string()))
             }
 
             async fn document_symbols(
                 &self,
                 uri: &str,
-            ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
+            ) -> Result<Vec<Value>, mill_analysis_common::AnalysisError> {
                 use mill_plugin_system::LspService;
                 self.adapter
                     .request(
@@ -1580,7 +1580,7 @@ impl DeadCodeHandler {
                     )
                     .await
                     .map(|v| v.as_array().cloned().unwrap_or_default())
-                    .map_err(|e| cb_analysis_common::AnalysisError::LspError(e.to_string()))
+                    .map_err(|e| mill_analysis_common::AnalysisError::LspError(e.to_string()))
             }
         }
 
@@ -1762,7 +1762,7 @@ impl DeadCodeHandler {
         kind: &str,
     ) -> ServerResult<Value> {
         use crate::handlers::lsp_adapter::DirectLspAdapter;
-        use cb_analysis_common::{AnalysisEngine, LspProvider};
+        use mill_analysis_common::{ AnalysisEngine , LspProvider };
         use cb_analysis_deep_dead_code::{DeepDeadCodeAnalyzer, DeepDeadCodeConfig};
         use mill_foundation::protocol::analysis_result::{ AnalysisResult , AnalysisScope };
         use std::path::Path;
@@ -1786,13 +1786,13 @@ impl DeadCodeHandler {
             async fn workspace_symbols(
                 &self,
                 query: &str,
-            ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
+            ) -> Result<Vec<Value>, mill_analysis_common::AnalysisError> {
                 use mill_plugin_system::LspService;
                 self.adapter
                     .request("workspace/symbol", json!({ "query": query }))
                     .await
                     .map(|v| v.as_array().cloned().unwrap_or_default())
-                    .map_err(|e| cb_analysis_common::AnalysisError::LspError(e.to_string()))
+                    .map_err(|e| mill_analysis_common::AnalysisError::LspError(e.to_string()))
             }
 
             async fn find_references(
@@ -1800,7 +1800,7 @@ impl DeadCodeHandler {
                 uri: &str,
                 line: u32,
                 character: u32,
-            ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
+            ) -> Result<Vec<Value>, mill_analysis_common::AnalysisError> {
                 use mill_plugin_system::LspService;
                 let params = json!({
                     "textDocument": { "uri": uri },
@@ -1812,13 +1812,13 @@ impl DeadCodeHandler {
                     .request("textDocument/references", params)
                     .await
                     .map(|v| v.as_array().cloned().unwrap_or_default())
-                    .map_err(|e| cb_analysis_common::AnalysisError::LspError(e.to_string()))
+                    .map_err(|e| mill_analysis_common::AnalysisError::LspError(e.to_string()))
             }
 
             async fn document_symbols(
                 &self,
                 uri: &str,
-            ) -> Result<Vec<Value>, cb_analysis_common::AnalysisError> {
+            ) -> Result<Vec<Value>, mill_analysis_common::AnalysisError> {
                 use mill_plugin_system::LspService;
                 self.adapter
                     .request(
@@ -1827,7 +1827,7 @@ impl DeadCodeHandler {
                     )
                     .await
                     .map(|v| v.as_array().cloned().unwrap_or_default())
-                    .map_err(|e| cb_analysis_common::AnalysisError::LspError(e.to_string()))
+                    .map_err(|e| mill_analysis_common::AnalysisError::LspError(e.to_string()))
             }
         }
 

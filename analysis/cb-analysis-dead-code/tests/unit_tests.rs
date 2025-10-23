@@ -1,7 +1,7 @@
 //! Unit tests for the dead code analysis crate.
 
 use async_trait::async_trait;
-use cb_analysis_common::{AnalysisEngine, AnalysisError, LspProvider};
+use mill_analysis_common::{ AnalysisEngine , AnalysisError , LspProvider };
 use cb_analysis_dead_code::{config::DeadCodeConfig, DeadCodeAnalyzer};
 use serde_json::Value;
 use std::path::Path;

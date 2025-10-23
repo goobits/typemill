@@ -1,10 +1,7 @@
 // analysis/cb-analysis-deep-dead-code/src/graph_builder.rs
 
 use crate::ast_parser::{typescript::TypeScriptSymbolExtractor, RustSymbolExtractor};
-use cb_analysis_common::{
-    graph::{DependencyGraph, SymbolNode, UsageContext},
-    AnalysisError, LspProvider,
-};
+use mill_analysis_common::{ graph::{ DependencyGraph , SymbolNode , UsageContext } , AnalysisError , LspProvider , };
 use lsp_types::{Location, Range};
 use serde_json::Value;
 use std::collections::HashMap;

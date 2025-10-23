@@ -6,7 +6,7 @@ pub mod types;
 pub mod utils;
 
 use async_trait::async_trait;
-use cb_analysis_common::{AnalysisEngine, AnalysisError, AnalysisMetadata, LspProvider};
+use mill_analysis_common::{ AnalysisEngine , AnalysisError , AnalysisMetadata , LspProvider };
 pub use config::DeadCodeConfig;
 use detector::run_analysis;
 use std::path::Path;

@@ -184,7 +184,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 - `../crates/mill-lang-yaml` → `crates/mill-lang-yaml`
 
 **Analysis Crates Needing Rename (5 crates):**
-- `analysis/cb-analysis-common` → `analysis/mill-analysis-common`
+- `../analysis/mill-analysis-common` → `analysis/mill-analysis-common`
 - `analysis/cb-analysis-dead-code` → `analysis/mill-analysis-dead-code`
 - `analysis/cb-analysis-deep-dead-code` → `analysis/mill-analysis-deep-dead-code`
 - `analysis/cb-analysis-graph` → `analysis/mill-analysis-graph`
@@ -445,7 +445,7 @@ codebuddy rename.plan \
 
 # Analysis Crates (5 crates)
 codebuddy rename.plan \
-  --target directory:analysis/cb-analysis-common \
+  --target directory:../analysis/mill-analysis-common \
   --new-name analysis/mill-analysis-common \
   --dry-run
 
@@ -483,7 +483,7 @@ codebuddy rename.plan '{
     {"kind": "directory", "path": "../crates/mill-lang-rust", "new_name": "crates/mill-lang-rust"},
     {"kind": "directory", "path": "../crates/mill-lang-typescript", "new_name": "crates/mill-lang-typescript"},
     {"kind": "directory", "path": "../crates/mill-lang-yaml", "new_name": "crates/mill-lang-yaml"},
-    {"kind": "directory", "path": "analysis/cb-analysis-common", "new_name": "analysis/mill-analysis-common"},
+    {"kind": "directory", "path": "../analysis/mill-analysis-common", "new_name": "analysis/mill-analysis-common"},
     {"kind": "directory", "path": "analysis/cb-analysis-dead-code", "new_name": "analysis/mill-analysis-dead-code"},
     {"kind": "directory", "path": "analysis/cb-analysis-deep-dead-code", "new_name": "analysis/mill-analysis-deep-dead-code"},
     {"kind": "directory", "path": "analysis/cb-analysis-graph", "new_name": "analysis/mill-analysis-graph"},
@@ -696,7 +696,7 @@ git tag v2.0.0
 - [ ] `../crates/mill-lang-yaml` → `crates/mill-lang-yaml`
 
 **Analysis (5 crates):**
-- [ ] `analysis/cb-analysis-common` → `analysis/mill-analysis-common`
+- [ ] `../analysis/mill-analysis-common` → `analysis/mill-analysis-common`
 - [ ] `analysis/cb-analysis-dead-code` → `analysis/mill-analysis-dead-code`
 - [ ] `analysis/cb-analysis-deep-dead-code` → `analysis/mill-analysis-deep-dead-code`
 - [ ] `analysis/cb-analysis-graph` → `analysis/mill-analysis-graph`
@@ -1220,7 +1220,7 @@ See full documentation at https://typemill.org/docs/migration
 - `../crates/mill-lang-yaml` → `crates/mill-lang-yaml`
 
 **Analysis Crates (5):**
-- `analysis/cb-analysis-common` → `analysis/mill-analysis-common`
+- `../analysis/mill-analysis-common` → `analysis/mill-analysis-common`
 - `analysis/cb-analysis-dead-code` → `analysis/mill-analysis-dead-code`
 - `analysis/cb-analysis-deep-dead-code` → `analysis/mill-analysis-deep-dead-code`
 - `analysis/cb-analysis-graph` → `analysis/mill-analysis-graph`

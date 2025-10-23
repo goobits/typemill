@@ -315,7 +315,7 @@ wrappers = ["codebuddy", "e2e"]
 # Allow mill-handlers to optionally depend on them via feature flags
 
 [[bans.deny]]
-name = "cb-analysis-common"
+name = "mill-analysis-common"
 wrappers = ["mill-handlers", "cb-analysis-dead-code", "cb-analysis-deep-dead-code", "cb-analysis-graph", "cb-analysis-circular-deps"]
 
 [[bans.deny]]

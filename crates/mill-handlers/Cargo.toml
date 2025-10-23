@@ -8,9 +8,9 @@ default = ["refactor-all"]
 # NOTE: Language features removed - handlers use dependency injection via PluginRegistry.
 # Language plugins are registered at the binary level (apps/codebuddy/src/main.rs),
 # not at the handler layer. This eliminates compile-time coupling.
-analysis-dead-code = ["dep:cb-analysis-dead-code", "dep:cb-analysis-common"]
+analysis-dead-code = ["dep:cb-analysis-dead-code", "dep:mill-analysis-common"]
 analysis-circular-deps = ["dep:cb-analysis-circular-deps", "dep:cb-analysis-graph"]
-analysis-deep-dead-code = ["dep:cb-analysis-deep-dead-code", "dep:cb-analysis-common"]
+analysis-deep-dead-code = ["dep:cb-analysis-deep-dead-code", "dep:mill-analysis-common"]
 
 # Refactoring operations - optional for faster compilation
 refactor-rename = []
@@ -27,13 +27,6 @@ mill-foundation = { path = "../mill-foundation" }
 mill-services = { path = "../mill-services", default-features = false }
 mill-plugin-api = { path = "../mill-plugin-api" }
 mill-lsp = { path = "../mill-lsp" }
-
-# NOTE: No language plugin dependencies here!
-# Handlers operate on trait objects (&dyn LanguagePlugin) provided via PluginRegistry.
-# Concrete plugins are wired at the application layer, not in shared handler code.
-
-# Analysis crates (optional)
-cb-analysis-common = { path = "../../analysis/cb-analysis-common", optional = true }
 cb-analysis-dead-code = { path = "../../analysis/cb-analysis-dead-code", optional = true }
 cb-analysis-circular-deps = { path = "../../analysis/cb-analysis-circular-deps", optional = true }
 cb-analysis-graph = { path = "../../analysis/cb-analysis-graph", optional = true }
@@ -68,3 +61,4 @@ mill-plugin-system = { path = "../mill-plugin-system", default-features = false,
 mill-config = { path = "../mill-config" }
 mill-workspaces = { path = "../mill-workspaces" }
 mill-ast = { path = "../mill-ast", default-features = false }
+mill-analysis-common = { path = "../../analysis/mill-analysis-common", optional = true }
