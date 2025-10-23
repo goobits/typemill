@@ -81,7 +81,7 @@ lib = { path = "../lib" }
 
     // Verify is_consolidation flag is set
     assert_eq!(
-        plan.get("is_consolidation").and_then(|v| v.as_bool()),
+        plan.get("isConsolidation").and_then(|v| v.as_bool()),
         Some(true),
         "Plan should have is_consolidation=true when explicitly requested"
     );
@@ -200,7 +200,7 @@ edition = "2021"
 
     // Verify is_consolidation was auto-detected
     assert_eq!(
-        plan.get("is_consolidation").and_then(|v| v.as_bool()),
+        plan.get("isConsolidation").and_then(|v| v.as_bool()),
         Some(true),
         "Plan should have is_consolidation=true via auto-detection"
     );
@@ -295,7 +295,7 @@ edition = "2021"
 
     // Verify is_consolidation is false (override worked)
     assert_eq!(
-        plan.get("is_consolidation").and_then(|v| v.as_bool()),
+        plan.get("isConsolidation").and_then(|v| v.as_bool()),
         Some(false),
         "Plan should have is_consolidation=false when explicitly set to false"
     );
@@ -353,7 +353,7 @@ async fn test_non_consolidation_rename() {
 
     // Verify is_consolidation is false
     let is_consolidation = plan
-        .get("is_consolidation")
+        .get("isConsolidation")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 

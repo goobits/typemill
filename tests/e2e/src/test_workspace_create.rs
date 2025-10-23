@@ -368,7 +368,7 @@ edition = "2021"
 
     // Verify created_files list
     let created_files = content
-        .get("created_files")
+        .get("createdFiles")
         .and_then(|v| v.as_array())
         .expect("created_files should be an array");
 

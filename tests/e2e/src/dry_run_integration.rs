@@ -323,13 +323,13 @@ async fn test_dry_run_rename_file_shows_accurate_files_to_modify() {
 
     // Check summary fields
     // For file renames: affected_files counts all files involved (rename + import updates)
-    let affected_files = plan["summary"]["affected_files"]
+    let affected_files = plan["summary"]["affectedFiles"]
         .as_u64()
         .expect("affected_files should be a number");
-    let created_files = plan["summary"]["created_files"]
+    let created_files = plan["summary"]["createdFiles"]
         .as_u64()
         .expect("created_files should be a number");
-    let deleted_files = plan["summary"]["deleted_files"]
+    let deleted_files = plan["summary"]["deletedFiles"]
         .as_u64()
         .expect("deleted_files should be a number");
 
@@ -408,13 +408,13 @@ async fn test_dry_run_rename_file_rust_mod_declarations() {
     // Verify: Preview shows accurate file counts
     // For file renames: affected_files = files with content edits (imports updated)
     // created_files/deleted_files track the rename operation itself
-    let affected_files = plan["summary"]["affected_files"]
+    let affected_files = plan["summary"]["affectedFiles"]
         .as_u64()
         .expect("affected_files should be a number");
-    let created_files = plan["summary"]["created_files"]
+    let created_files = plan["summary"]["createdFiles"]
         .as_u64()
         .expect("created_files should be a number");
-    let deleted_files = plan["summary"]["deleted_files"]
+    let deleted_files = plan["summary"]["deletedFiles"]
         .as_u64()
         .expect("deleted_files should be a number");
 
@@ -500,10 +500,10 @@ async fn test_dry_run_rename_directory_shows_files_list() {
 
     // Verify: Summary shows correct file count
     // For directory renames, files being moved count as created/deleted
-    let created_files = plan["summary"]["created_files"]
+    let created_files = plan["summary"]["createdFiles"]
         .as_u64()
         .expect("created_files should be a number");
-    let deleted_files = plan["summary"]["deleted_files"]
+    let deleted_files = plan["summary"]["deletedFiles"]
         .as_u64()
         .expect("deleted_files should be a number");
 
@@ -579,13 +579,13 @@ async fn test_dry_run_rename_directory_shows_import_updates() {
     let plan = &plan_response["result"]["content"];
 
     // Verify: Preview shows files that will be updated
-    let affected_files = plan["summary"]["affected_files"]
+    let affected_files = plan["summary"]["affectedFiles"]
         .as_u64()
         .expect("affected_files should be a number");
-    let created_files = plan["summary"]["created_files"]
+    let created_files = plan["summary"]["createdFiles"]
         .as_u64()
         .expect("created_files should be a number");
-    let deleted_files = plan["summary"]["deleted_files"]
+    let deleted_files = plan["summary"]["deletedFiles"]
         .as_u64()
         .expect("deleted_files should be a number");
 
@@ -665,13 +665,13 @@ async fn test_dry_run_vs_execution_consistency() {
     let plan = &plan_response["result"]["content"];
 
     // Capture dry-run predictions
-    let dry_run_affected_files = plan["summary"]["affected_files"]
+    let dry_run_affected_files = plan["summary"]["affectedFiles"]
         .as_u64()
         .expect("affected_files should be a number");
-    let dry_run_created_files = plan["summary"]["created_files"]
+    let dry_run_created_files = plan["summary"]["createdFiles"]
         .as_u64()
         .expect("created_files should be a number");
-    let dry_run_deleted_files = plan["summary"]["deleted_files"]
+    let dry_run_deleted_files = plan["summary"]["deletedFiles"]
         .as_u64()
         .expect("deleted_files should be a number");
 

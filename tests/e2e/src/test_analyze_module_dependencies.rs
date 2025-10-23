@@ -53,7 +53,7 @@ pub struct Service {
         .expect("Response should have result field");
 
     // Verify external dependencies
-    let external_deps = result["external_dependencies"]
+    let external_deps = result["externalDependencies"]
         .as_object()
         .expect("Should have external_dependencies");
 
@@ -71,7 +71,7 @@ pub struct Service {
     );
 
     // Verify std dependencies
-    let std_deps = result["std_dependencies"]
+    let std_deps = result["stdDependencies"]
         .as_array()
         .expect("Should have std_dependencies");
 
@@ -81,13 +81,13 @@ pub struct Service {
     );
 
     // Verify import analysis
-    let import_analysis = &result["import_analysis"];
+    let import_analysis = &result["importAnalysis"];
     assert!(
-        import_analysis["total_imports"].as_u64().unwrap() > 0,
+        import_analysis["totalImports"].as_u64().unwrap() > 0,
         "Should count imports"
     );
     assert!(
-        import_analysis["external_crates"].as_u64().unwrap() >= 3,
+        import_analysis["externalCrates"].as_u64().unwrap() >= 3,
         "Should count external crates"
     );
 
@@ -182,7 +182,7 @@ pub struct ServiceB {
         .expect("Response should have result field");
 
     // Verify workspace dependencies detected
-    let workspace_deps = result["workspace_dependencies"]
+    let workspace_deps = result["workspaceDependencies"]
         .as_array()
         .expect("Should have workspace_dependencies");
 
@@ -195,7 +195,7 @@ pub struct ServiceB {
     );
 
     // Verify external dependencies don't include workspace crates
-    let external_deps = result["external_dependencies"]
+    let external_deps = result["externalDependencies"]
         .as_object()
         .expect("Should have external_dependencies");
 
@@ -248,7 +248,7 @@ pub fn process(data: HashMap<String, Arc<dyn Display>>) {
         .expect("Response should have result field");
 
     // Verify std dependencies detected
-    let std_deps = result["std_dependencies"]
+    let std_deps = result["stdDependencies"]
         .as_array()
         .expect("Should have std_dependencies");
 
@@ -264,7 +264,7 @@ pub fn process(data: HashMap<String, Arc<dyn Display>>) {
     );
 
     // Verify no external dependencies
-    let external_deps = result["external_dependencies"]
+    let external_deps = result["externalDependencies"]
         .as_object()
         .expect("Should have external_dependencies");
 
@@ -346,7 +346,7 @@ pub struct SessionStore {
     );
 
     // Verify external dependencies from both files
-    let external_deps = result["external_dependencies"]
+    let external_deps = result["externalDependencies"]
         .as_object()
         .expect("Should have external_dependencies");
 
@@ -360,9 +360,9 @@ pub struct SessionStore {
     );
 
     // Verify import analysis counts
-    let import_analysis = &result["import_analysis"];
+    let import_analysis = &result["importAnalysis"];
     assert!(
-        import_analysis["total_imports"].as_u64().unwrap() > 0,
+        import_analysis["totalImports"].as_u64().unwrap() > 0,
         "Should count imports from all files"
     );
 }
@@ -464,7 +464,7 @@ pub struct B {
         .expect("Response should have result field");
 
     // Verify workspace dependencies are excluded
-    let workspace_deps = result["workspace_dependencies"]
+    let workspace_deps = result["workspaceDependencies"]
         .as_array()
         .expect("Should have workspace_dependencies");
 
@@ -475,14 +475,14 @@ pub struct B {
     );
 
     // Verify std dependencies also excluded
-    let std_deps = result["std_dependencies"]
+    let std_deps = result["stdDependencies"]
         .as_array()
         .expect("Should have std_dependencies");
 
     assert_eq!(std_deps.len(), 0, "Std dependencies should be excluded");
 
     // Verify external dependencies still present
-    let external_deps = result["external_dependencies"]
+    let external_deps = result["externalDependencies"]
         .as_object()
         .expect("Should have external_dependencies");
 
