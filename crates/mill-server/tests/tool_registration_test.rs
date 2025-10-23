@@ -1,14 +1,14 @@
 use mill_server::handlers::plugin_dispatcher::create_test_dispatcher;
 
 #[tokio::test]
-async fn test_all_35_public_tools_are_registered() {
+async fn test_all_36_public_tools_are_registered() {
     let dispatcher = create_test_dispatcher().await;
     dispatcher.initialize().await.unwrap();
 
     let registry = dispatcher.tool_registry.lock().await;
     let registered_tools = registry.list_tools();
 
-    const EXPECTED_TOOLS: [&str; 35] = [
+    const EXPECTED_TOOLS: [&str; 36] = [
         // Navigation (8) - get_document_symbols moved to internal
         "find_definition",
         "find_references",
@@ -34,11 +34,12 @@ async fn test_all_35_public_tools_are_registered() {
         "reorder",
         "transform",
         "delete",
-        // Workspace (4)
+        // Workspace (5)
         "workspace.apply_edit",
         "workspace.create_package",
         "workspace.extract_dependencies",
         "workspace.update_members",
+        "workspace.find_replace",
         // System (1)
         "health_check",
         // Analysis (8) - Unified Analysis API
