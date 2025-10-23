@@ -79,6 +79,7 @@ pub struct UpdateMembersOptions {
 // Result type for MCP interface
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateMembersResult {
     pub action: String,
     pub members_before: Vec<String>,

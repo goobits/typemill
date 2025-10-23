@@ -92,9 +92,9 @@ pub struct Service {
     );
 
     // Verify files analyzed
-    let files = result["files_analyzed"]
+    let files = result["filesAnalyzed"]
         .as_array()
-        .expect("Should have files_analyzed");
+        .expect("Should have filesAnalyzed");
     assert_eq!(files.len(), 1, "Should analyze exactly one file");
 }
 
@@ -336,9 +336,9 @@ pub struct SessionStore {
         .expect("Response should have result field");
 
     // Verify multiple files analyzed
-    let files = result["files_analyzed"]
+    let files = result["filesAnalyzed"]
         .as_array()
-        .expect("Should have files_analyzed");
+        .expect("Should have filesAnalyzed");
 
     assert!(
         files.len() >= 3,

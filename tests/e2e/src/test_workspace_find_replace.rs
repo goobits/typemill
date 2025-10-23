@@ -56,12 +56,12 @@ async fn test_literal_basic_replace() {
         "Operation should succeed"
     );
     assert_eq!(
-        content.get("files_modified").and_then(|v| v.as_array()).map(|a| a.len()),
+        content.get("filesModified").and_then(|v| v.as_array()).map(|a| a.len()),
         Some(1),
         "Should modify 1 file"
     );
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(4),
         "Should replace 4 occurrences"
     );
@@ -105,7 +105,7 @@ async fn test_literal_whole_word() {
 
     // Assert: Only "user" replaced, not "username" or "user_id"
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(2),
         "Should replace only 2 standalone 'user' occurrences"
     );
@@ -148,7 +148,7 @@ async fn test_literal_case_sensitive() {
 
     // Assert: Only lowercase "user" replaced
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(1),
         "Should replace only lowercase 'user'"
     );
@@ -197,7 +197,7 @@ let user = "Bob";
 
     // Assert: Matches user_name, user_id, user_email (3 occurrences)
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(3),
         "Should replace 3 matches"
     );
@@ -244,7 +244,7 @@ CODEBUDDY_MAX_WORKERS = 10
         .expect("Should have result");
 
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(3),
         "Should replace 3 matches"
     );
@@ -289,7 +289,7 @@ item_count = 42
         .expect("Should have result");
 
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(2),
         "Should replace 2 matches"
     );
@@ -370,7 +370,7 @@ let USER_NAME = "screaming";
 
     // Note: Literal mode is case-sensitive, so only snake_case will match
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(1),
         "Should replace 1 match (case-sensitive literal)"
     );
@@ -416,7 +416,7 @@ async fn test_preserve_case_disabled() {
         .expect("Should have result");
 
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(2),
         "Should replace 2 matches"
     );
@@ -464,7 +464,7 @@ async fn test_scope_include_patterns() {
         .expect("Should have result");
 
     assert_eq!(
-        content.get("files_modified").and_then(|v| v.as_array()).map(|a| a.len()),
+        content.get("filesModified").and_then(|v| v.as_array()).map(|a| a.len()),
         Some(2),
         "Should modify only 2 files (.rs and .toml)"
     );
@@ -509,7 +509,7 @@ async fn test_scope_exclude_patterns() {
         .expect("Should have result");
 
     assert_eq!(
-        content.get("files_modified").and_then(|v| v.as_array()).map(|a| a.len()),
+        content.get("filesModified").and_then(|v| v.as_array()).map(|a| a.len()),
         Some(1),
         "Should modify only 1 file (excluding target/)"
     );
@@ -551,7 +551,7 @@ async fn test_scope_default_excludes() {
 
     // Should only modify src/main.rs
     assert_eq!(
-        content.get("files_modified").and_then(|v| v.as_array()).map(|a| a.len()),
+        content.get("filesModified").and_then(|v| v.as_array()).map(|a| a.len()),
         Some(1),
         "Should modify only 1 file (excluding default paths)"
     );
@@ -600,12 +600,12 @@ async fn test_multi_file_replace() {
         .expect("Should have result");
 
     assert_eq!(
-        content.get("files_modified").and_then(|v| v.as_array()).map(|a| a.len()),
+        content.get("filesModified").and_then(|v| v.as_array()).map(|a| a.len()),
         Some(5),
         "Should modify all 5 files"
     );
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(5),
         "Should replace 5 matches total"
     );
@@ -815,12 +815,12 @@ async fn test_pattern_not_found() {
         "Should succeed"
     );
     assert_eq!(
-        content.get("matches_found").and_then(|v| v.as_u64()),
+        content.get("matchesFound").and_then(|v| v.as_u64()),
         Some(0),
         "Should find 0 matches"
     );
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(0),
         "Should replace 0 matches"
     );
@@ -858,7 +858,7 @@ async fn test_utf8_content() {
         .expect("Should have result");
 
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(2),
         "Should replace 2 matches"
     );
@@ -906,7 +906,7 @@ async fn test_large_file() {
         .expect("Should have result");
 
     assert_eq!(
-        result_content.get("matches_replaced").and_then(|v| v.as_u64()),
+        result_content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(1000),
         "Should replace all 1000 matches"
     );
@@ -953,7 +953,7 @@ function user_logout() {
         .expect("Should have result");
 
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(2),
         "Should replace 2 function names"
     );
@@ -996,7 +996,7 @@ let z = user*2;
         .expect("Should have result");
 
     assert_eq!(
-        content.get("matches_replaced").and_then(|v| v.as_u64()),
+        content.get("matchesReplaced").and_then(|v| v.as_u64()),
         Some(3),
         "Should replace all 3 literal matches"
     );

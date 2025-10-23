@@ -118,6 +118,7 @@ fn default_excludes() -> Vec<String> {
 
 /// Result of applying a find/replace operation
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ApplyResult {
     pub success: bool,
     pub files_modified: Vec<String>,

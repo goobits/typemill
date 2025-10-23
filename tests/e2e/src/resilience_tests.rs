@@ -391,8 +391,8 @@ async fn test_find_dead_code_workflow() {
 
         // Validate analysis statistics in summary
         assert!(
-            summary["files_analyzed"].is_number(),
-            "Should have files_analyzed count"
+            summary["filesAnalyzed"].is_number(),
+            "Should have filesAnalyzed count"
         );
         assert!(
             summary["analysis_time_ms"].is_number(),

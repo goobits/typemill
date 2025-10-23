@@ -58,7 +58,7 @@ edition = "2021"
 
     // Verify the operation succeeded
     assert_eq!(
-        content.get("workspace_updated").and_then(|v| v.as_bool()),
+        content.get("workspaceUpdated").and_then(|v| v.as_bool()),
         Some(true),
         "Workspace should be updated"
     );
@@ -143,7 +143,7 @@ edition = "2021"
 
     // Verify the operation succeeded
     assert_eq!(
-        content.get("workspace_updated").and_then(|v| v.as_bool()),
+        content.get("workspaceUpdated").and_then(|v| v.as_bool()),
         Some(true),
         "Workspace should be updated"
     );
@@ -206,7 +206,7 @@ edition = "2021"
 
     // Verify workspace was NOT updated
     assert_eq!(
-        content.get("workspace_updated").and_then(|v| v.as_bool()),
+        content.get("workspaceUpdated").and_then(|v| v.as_bool()),
         Some(false),
         "Workspace should not be updated"
     );
@@ -305,7 +305,7 @@ edition = "2021"
 
     // Verify the operation succeeded
     assert_eq!(
-        content.get("workspace_updated").and_then(|v| v.as_bool()),
+        content.get("workspaceUpdated").and_then(|v| v.as_bool()),
         Some(true),
         "Workspace should be updated"
     );

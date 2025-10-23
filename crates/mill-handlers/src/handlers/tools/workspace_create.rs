@@ -77,6 +77,7 @@ fn default_true() -> bool {
 // Result type for MCP interface
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreatePackageResult {
     pub created_files: Vec<String>,
     pub workspace_updated: bool,
