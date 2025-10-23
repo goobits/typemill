@@ -98,7 +98,7 @@ cb-analysis-graph = { path = "analysis/cb-analysis-graph" }
 mill-lang-common = { path = "crates/mill-lang-common", default-features = false }
 cb-lang-rust = { path = "crates/cb-lang-rust", default-features = false }
 cb-lang-typescript = { path = "crates/cb-lang-typescript", default-features = false }
-cb-lang-markdown = { path = "crates/cb-lang-markdown", default-features = false }
+mill-lang-markdown = { path = "crates/mill-lang-markdown", default-features = false }
 
 # Optimize build times for dev dependencies
 [profile.dev.build-override]

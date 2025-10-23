@@ -117,7 +117,7 @@ mod tests {
     // Since cb-services no longer directly depends on most plugins, we need to
     // ensure they're linked into test binaries for discovery to work.
     #[cfg(test)]
-    extern crate cb_lang_markdown;
+    extern crate mill_lang_markdown;
     #[cfg(test)]
     extern crate cb_lang_rust;
     #[cfg(test)]

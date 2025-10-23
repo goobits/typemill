@@ -1,5 +1,5 @@
 /// Simple test to verify markdown plugin basics work
-use cb_lang_markdown::MarkdownPlugin;
+use mill_lang_markdown::MarkdownPlugin;
 use mill_plugin_api::{ import_support::ImportParser , LanguagePlugin };
 
 #[test]

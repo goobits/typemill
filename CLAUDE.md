@@ -7,8 +7,7 @@ This file provides guidance to AI assistants when working with code in this repo
 
 **Before working with this codebase, please read:**
 
-1. **[api_reference.md](docs/api_reference.md)** - **READ THIS FIRST** - Complete MCP tools API reference
-2. **[tools_catalog.md](docs/tools_catalog.md)** - Fast lookup table for all 35 public tools
+1. **[docs/tools/](docs/tools/)** - **READ THIS FIRST** - Complete MCP tools API reference (35 tools across 5 categories)
 
 ---
 
@@ -28,11 +27,11 @@ Pure Rust MCP server bridging Language Server Protocol (LSP) functionality to AI
 
 ## MCP Tools
 
-Codebuddy provides comprehensive MCP tools for code intelligence and refactoring. See **[api_reference.md](docs/api_reference.md)** for complete API reference with detailed parameters, return types, and examples.
+Codebuddy provides comprehensive MCP tools for code intelligence and refactoring. See **[docs/tools/](docs/tools/)** for complete API reference with detailed parameters, return types, and examples.
 
 **Current Architecture**: 35 public tools visible to AI agents via MCP `tools/list`, plus 20 internal tools for backend workflows.
 
-**Note:** Internal tools exist for backend use only (lifecycle hooks, workflow plumbing, legacy operations). These are hidden from MCP `tools/list` to simplify the API surface for AI agents. See [api_reference.md Internal Tools](docs/api_reference.md#internal-tools) section.
+**Note:** Internal tools exist for backend use only (lifecycle hooks, workflow plumbing, legacy operations). These are hidden from MCP `tools/list` to simplify the API surface for AI agents. See [docs/architecture/internal_tools.md](docs/architecture/internal_tools.md) for details.
 
 ### Quick Reference (35 Public Tools)
 
@@ -64,7 +63,7 @@ Codebuddy provides comprehensive MCP tools for code intelligence and refactoring
 **System & Health (1 tool)**
 - `health_check`
 
-**Note**: File operations, workspace tools, and legacy analysis tools are now internal-only. AI agents should use the public API above. See [api_reference.md](docs/api_reference.md) for complete details.
+**Note**: File operations, workspace tools, and legacy analysis tools are now internal-only. AI agents should use the public API above. See [docs/tools/](docs/tools/) for complete details.
 
 ### MCP Usage Pattern
 

@@ -15,7 +15,7 @@ use std::sync::Arc;
 // This prevents linker dead code elimination from stripping the inventory submissions.
 // We reference each plugin's public type to ensure the crate is linked.
 #[cfg(feature = "lang-markdown")]
-use cb_lang_markdown::MarkdownPlugin;
+use mill_lang_markdown::MarkdownPlugin;
 #[cfg(feature = "lang-rust")]
 use cb_lang_rust::RustPlugin;
 #[cfg(feature = "lang-toml")]
@@ -94,7 +94,7 @@ mod tests {
 
     // Force linker to include language plugins for inventory collection in tests
     #[cfg(all(test, feature = "lang-markdown"))]
-    extern crate cb_lang_markdown;
+    extern crate mill_lang_markdown;
     #[cfg(all(test, feature = "lang-rust"))]
     extern crate cb_lang_rust;
     #[cfg(all(test, feature = "lang-toml"))]

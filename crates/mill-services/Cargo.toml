@@ -46,6 +46,6 @@ tokio = { workspace = true }
 # Language plugins needed for test discovery via inventory
 cb-lang-rust = { workspace = true }
 cb-lang-typescript = { workspace = true }
-cb-lang-markdown = { workspace = true }
 mill-lang-toml = { path = "../mill-lang-toml" }
 cb-lang-yaml = { path = "../cb-lang-yaml" }
+mill-lang-markdown = { workspace = true }

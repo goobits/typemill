@@ -1021,7 +1021,7 @@ See full documentation at https://typemill.org/docs/migration
   ../crates/mill-lang-common → crates/mill-lang-common
   crates/cb-lang-rust → crates/mill-lang-rust
   crates/cb-lang-typescript → crates/mill-lang-typescript
-  crates/cb-lang-markdown → crates/mill-lang-markdown
+  ../crates/mill-lang-markdown → crates/mill-lang-markdown
   ../crates/mill-lang-toml → crates/mill-lang-toml
   crates/cb-lang-yaml → crates/mill-lang-yaml
   ../crates/mill-foundation → crates/mill-foundation
