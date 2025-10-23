@@ -8,7 +8,7 @@
 
 **New users start here:**
 
-- **[Quickstart](quickstart.md)** - Get Codebuddy running in 2 minutes
+- **[../README.md](../README.md)** - Project overview and quickstart (get running in 2 minutes)
 - **[Tools Catalog](tools_catalog.md)** - Fast lookup of all 35 MCP tools
 - **[API Reference](api_reference.md)** - Complete tool API with parameters, returns, and examples
 
@@ -18,7 +18,6 @@
 
 **Using Codebuddy in production:**
 
-- **[Operations Guide](operations/README.md)** - Configuration, deployment, and advanced options
 - **[Docker Deployment](operations/docker_deployment.md)** - Containerized deployment guide
 - **[Cache Configuration](operations/cache_configuration.md)** - Performance tuning with caching
 - **[CI/CD Integration](operations/cicd.md)** - Continuous integration setup
@@ -56,10 +55,10 @@
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| [Quickstart](quickstart.md) | 2-minute setup | End users |
+| [../README.md](../README.md) | Project overview & quickstart | End users |
 | [API Reference](api_reference.md) | Complete tool API | AI assistants, integrators |
 | [Tools Catalog](tools_catalog.md) | Fast lookup table | Everyone |
-| [Operations](operations/README.md) | Production deployment | DevOps, operators |
+| [Docker Deployment](operations/docker_deployment.md) | Production deployment | DevOps, operators |
 | [Contributing](../contributing.md) | Development workflow | Contributors |
 | [Architecture](architecture/overview.md) | System internals | Core developers |
 

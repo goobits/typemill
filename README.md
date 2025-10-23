@@ -1,231 +1,187 @@
-# Operations Guide
+# Codebuddy
 
-Advanced configuration, analysis options, and operational patterns.
+**Pure Rust MCP server bridging Language Server Protocol (LSP) to AI coding assistants**
 
-## Access Patterns
+Codebuddy provides 35 comprehensive MCP tools for code navigation, refactoring, code intelligence, and batch operations. Built on Rust for performance and safety.
 
-All functionality is implemented ONCE in handlers, accessed via:
-- **MCP**: JSON-RPC over stdio/WebSocket
-- **CLI JSON**: `codebuddy tool rename.plan '{"target": {...}}'`
-- **CLI Flags**: `codebuddy tool rename.plan --target file:path --new-name new.rs`
-- **CLI Helpers**: `codebuddy convert-naming --from kebab-case --to camelCase --glob "src/**/*.js"`
+## Quick Start
 
-Business logic lives only in `mill-handlers`, interfaces are thin adapters.
+Get Codebuddy running in 2 minutes.
 
-## Configuration
+### Prerequisites
 
-### LSP Server Configuration
+- Language server for your project (e.g., `typescript-language-server`, `rust-analyzer`)
+- AI assistant with MCP support (Claude Desktop, etc.)
 
-Location: `.codebuddy/config.json`
+### Installation
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `servers` | Array | Yes | List of language server configurations |
-| `servers[].extensions` | String[] | Yes | File extensions (e.g., `["ts", "tsx"]`) |
-| `servers[].command` | String[] | Yes | Command to spawn LSP server |
-| `servers[].rootDir` | String | No | Working directory for LSP server |
-| `servers[].restartInterval` | Number | No | Auto-restart interval (minutes, min: 1) |
+**Option A: Install script (recommended)**
+```bash
+curl -fsSL https://raw.githubusercontent.com/goobits/codebuddy/main/install.sh | bash
+```
 
-**Auto-detect:** Run `codebuddy setup` to generate config from project files.
+**Option B: Build from source**
+```bash
+cargo install codebuddy --locked
+```
 
-**Manual config:** See [examples/setup/mill-config.json](../examples/setup/mill-config.json)
+### Setup
 
-### Analysis Configuration
+Auto-detect languages and create `.codebuddy/config.json`:
+```bash
+codebuddy setup
+```
 
-Location: `.codebuddy/analysis.toml`
+### Start Server
 
-#### Suggestions Settings
+```bash
+codebuddy start
+```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `min_confidence` | Float | 0.7 | Minimum confidence threshold (0.0-1.0) |
-| `include_safety_levels` | String[] | `["safe", "requires_review"]` | Safety levels to include |
-| `max_per_finding` | Integer | 3 | Max suggestions per finding |
-| `generate_refactor_calls` | Boolean | true | Generate executable refactoring commands |
+### Connect Your AI Assistant
 
-**Safety Levels:**
-- `safe` - Can be applied automatically
-- `requires_review` - Manual review recommended
-- `experimental` - May have edge cases
-
-**Presets:**
-- `strict` - Only safe suggestions, high confidence (0.8+)
-- `default` - Safe + requires_review, medium confidence (0.7+)
-- `relaxed` - All levels, low confidence (0.5+)
-
-## Unified Analysis API
-
-All `analyze.*` tools follow the same pattern:
-
-### Common Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `kind` | String | Yes | Analysis type (varies by category) |
-| `scope` | Object | Yes | Target scope (file/directory/workspace) |
-| `options` | Object | No | Analysis options |
-
-### Scope Types
-
-| Type | Required Fields | Example |
-|------|----------------|---------|
-| `file` | `path` | `{"type": "file", "path": "src/app.ts"}` |
-| `directory` | `path`, `recursive` | `{"type": "directory", "path": "src", "recursive": true}` |
-| `workspace` | - | `{"type": "workspace"}` |
-
-### Analysis Categories
-
-| Category | Tool | Kinds |
-|----------|------|-------|
-| **Quality** | `analyze.quality` | complexity, smells, maintainability, readability |
-| **Dead Code** | `analyze.dead_code` | unused_imports, unused_symbols, unused_parameters, unused_variables, unused_types, unreachable |
-| **Dependencies** | `analyze.dependencies` | imports, graph, circular, coupling, cohesion, depth |
-| **Structure** | `analyze.structure` | symbols, hierarchy, interfaces, inheritance, modules |
-| **Documentation** | `analyze.documentation` | coverage, quality, style, examples, todos |
-| **Tests** | `analyze.tests` | coverage, quality, assertions, organization |
-
-### Common Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `threshold` | Float | - | Threshold for numeric metrics |
-| `include_tests` | Boolean | false | Include test files in analysis |
-| `follow_imports` | Boolean | true | Follow import chains |
-| `max_depth` | Integer | - | Maximum traversal depth |
-
-## Unified Refactoring API
-
-All refactoring follows the **plan → apply** pattern:
-
-### Two-Step Pattern
-
-1. **Generate plan** - Use `*.plan` tool (dry-run, never writes)
-2. **Apply changes** - Use `workspace.apply_edit` (writes files)
-
-### Refactoring Tools
-
-| Tool | Purpose | Key Parameters |
-|------|---------|----------------|
-| `rename.plan` | Rename symbol/file/directory | `target`, `new_name` OR `targets` (batch) |
-| `extract.plan` | Extract function/variable | `kind`, `source`, `name` |
-| `inline.plan` | Inline variable/function | `kind`, `target` |
-| `move.plan` | Move code between files | `kind`, `source`, `destination` |
-| `reorder.plan` | Reorder parameters/imports | `kind`, `target`, `options` |
-| `transform.plan` | Transform code (e.g., to async) | `kind`, `target` |
-| `delete.plan` | Delete unused code | `kind`, `target` |
-
-### Batch Rename
-
-Rename multiple files/directories in a single atomic operation:
-
+Add to your MCP configuration:
 ```json
 {
-  "targets": [
-    {"kind": "file", "path": "src/old.js", "new_name": "src/new.js"},
-    {"kind": "directory", "path": "test/", "new_name": "tests/"}
-  ]
+  "mcpServers": {
+    "codebuddy": {
+      "command": "codebuddy",
+      "args": ["start"]
+    }
+  }
 }
 ```
 
-**CLI Helper** - Convert naming conventions in bulk:
-```bash
-codebuddy convert-naming --from kebab-case --to camelCase --glob "src/**/*.js" --dry-run
-```
+Full example: [examples/setup/mcp-config.json](examples/setup/mcp-config.json)
 
-Supports: `kebab-case`, `snake_case`, `camelCase`, `PascalCase`
-
-### Apply Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `dry_run` | Boolean | false | Preview without applying |
-| `backup` | Boolean | true | Create backup before changes |
-| `fail_fast` | Boolean | true | Stop on first error |
-
-## Rust-Specific Operations
-
-### File Rename Auto-Updates
-
-When renaming Rust files, automatic updates occur:
-
-**Updates made:**
-- Module declarations in parent files (`pub mod old;` → `pub mod new;`)
-- Use statements (`use old::*` → `use new::*`)
-- Qualified paths (`old::func()` → `new::func()`)
-- Cross-crate imports (when moving between crates)
-
-**Coverage:** Handles 80% of common scenarios. Complex nested module paths may require manual verification.
-
-### Crate Consolidation
-
-**Internal tool:** `rename_directory` with `consolidate: true` (backend use only)
-
-**What it does:**
-1. Moves `source-crate/src/*` → `target-crate/src/module/*`
-2. Merges dependencies from source `Cargo.toml`
-3. Removes source from workspace members
-4. Updates all imports (`source_crate::*` → `target_crate::module::*`)
-5. Deletes source crate directory
-
-**Manual step required:** Add to `target-crate/src/lib.rs`:
-```rust
-pub mod module;  // Exposes consolidated code
-```
-
-## Cache Control
-
-### Environment Variables
-
-| Variable | Effect | Use Case |
-|----------|--------|----------|
-| `CODEBUDDY_DISABLE_CACHE=1` | Disable all caches | Debugging, testing |
-| `CODEBUDDY_DISABLE_AST_CACHE=1` | Disable AST cache only | AST parser debugging |
-| `CODEBUDDY_DISABLE_IMPORT_CACHE=1` | Disable import cache only | Import resolution issues |
-| `CODEBUDDY_DISABLE_LSP_METHOD_CACHE=1` | Disable LSP method cache only | LSP protocol debugging |
-
-See [cache_configuration.md](operations/cache_configuration.md) for complete cache guide.
-
-## Server Health Monitoring
-
-### Health Check Tool
-
-`health_check` returns:
-- Server status and uptime
-- LSP servers loaded
-- Memory usage
-- Cache statistics
-- Active connections
-
-### Status Command
+### Verify
 
 ```bash
 codebuddy status
 ```
 
-Shows:
-- Server running state
-- Language servers detected
-- Configuration issues
-- Connection health
+## First Tool Calls
 
-## Language Support Matrix
+Ask your AI assistant:
+- "Find the definition of `main` in src/main.rs"
+- "Show me all references to the `Config` type"
+- "Rename the function `oldName` to `newName`"
 
-| Language | Extensions | LSP Server | AST Parser | Refactoring Support |
-|----------|-----------|------------|------------|---------------------|
-| TypeScript/JavaScript | ts, tsx, js, jsx | typescript-language-server | SWC | Full ✅ |
-| Rust | rs | rust-analyzer | syn | Full ✅ |
-| Python* | py | pylsp | Native AST | Full ✅ |
-| Go* | go | gopls | tree-sitter | Full ✅ |
-| Java* | java | jdtls | tree-sitter | Full ✅ |
-| Swift* | swift | sourcekit-lsp | tree-sitter | Full ✅ |
-| C#* | cs | omnisharp | tree-sitter | Partial ⚠️ |
+## Common CLI Commands
 
-*Available in git tag `pre-language-reduction`
+### File Operations
 
-## Key Links
+```bash
+# Move/rename a file
+codebuddy tool rename --target file:src/old.rs --new-name src/new.rs
 
-- [quickstart.md](quickstart.md) - Get running in 2 minutes
-- [tools_catalog.md](tools_catalog.md) - Complete tool list
-- [../api_reference.md](../api_reference.md) - Detailed API reference
-- [contributing.md](../contributing.md) - Developer guide
-- [docs/architecture/overview.md](architecture/overview.md) - System architecture
+# Move a directory
+codebuddy tool rename --target directory:old-dir --new-name new-dir
+```
+
+### Code Operations
+
+```bash
+# Move code symbol (function/class) between files
+codebuddy tool move --source src/app.rs:10:5 --destination src/utils.rs
+
+# Extract function
+codebuddy tool extract --kind function --source src/app.rs:10:5 --name handleLogin
+```
+
+**Important:**
+- Use `rename` for **file/directory operations**
+- Use `move` for **code symbol operations** (requires line:char position)
+
+If you use the wrong tool, Codebuddy will provide a helpful error with the correct command.
+
+## Available Tools (35 total)
+
+**Navigation & Intelligence (8 tools)**
+- `find_definition`, `find_references`, `search_symbols`
+- `find_implementations`, `find_type_definition`, `get_symbol_info`
+- `get_diagnostics`, `get_call_hierarchy`
+
+**Editing & Refactoring (15 tools)**
+- **Plan Operations**: `rename.plan`, `extract.plan`, `inline.plan`, `move.plan`, `reorder.plan`, `transform.plan`, `delete.plan`
+- **Quick Operations**: `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete`
+- **Apply**: `workspace.apply_edit`
+
+**Analysis (8 tools)**
+- `analyze.quality`, `analyze.dead_code`, `analyze.dependencies`
+- `analyze.structure`, `analyze.documentation`, `analyze.tests`
+- `analyze.batch`, `analyze.module_dependencies`
+
+**Workspace (3 tools)**
+- `workspace.create_package`, `workspace.extract_dependencies`, `workspace.update_members`
+
+**System (1 tool)**
+- `health_check`
+
+## Documentation
+
+- **[docs/tools_catalog.md](docs/tools_catalog.md)** - Fast lookup of all 35 tools
+- **[docs/api_reference.md](docs/api_reference.md)** - Complete API with parameters and examples
+- **[contributing.md](contributing.md)** - Development guide
+- **[docs/architecture/overview.md](docs/architecture/overview.md)** - System architecture
+- **[docs/operations/docker_deployment.md](docs/operations/docker_deployment.md)** - Docker deployment
+
+## Language Support
+
+| Language | Extensions | LSP Server | Refactoring |
+|----------|-----------|------------|-------------|
+| TypeScript/JavaScript | ts, tsx, js, jsx | typescript-language-server | Full ✅ |
+| Rust | rs | rust-analyzer | Full ✅ |
+
+*Additional languages (Python, Go, Java, Swift, C#) available in git tag `pre-language-reduction`*
+
+## Troubleshooting
+
+**Server won't start:**
+- Check `codebuddy status` for LSP server availability
+- Verify language servers are installed and in PATH
+- Check `.codebuddy/config.json` for correct command paths
+
+**Tools not working:**
+- Ensure file extensions match config (e.g., `.rs` → `rust-analyzer`)
+- Check MCP connection with AI assistant
+- Review server logs for errors
+
+**Performance issues:**
+- Enable cache (disabled by default for development)
+- Adjust `restartInterval` in config (recommended: 10-30 minutes)
+- Check system resources (LSP servers can be memory-intensive)
+
+## Features
+
+**Safe Refactoring**
+- Two-step plan → apply pattern for all refactorings
+- Dry-run mode previews changes before applying
+- Atomic operations with automatic rollback on failure
+
+**Comprehensive Coverage**
+- Automatic import updates for file renames
+- Cross-file reference tracking
+- Rust-specific crate consolidation support
+- Batch operations for bulk changes
+
+**Production Ready**
+- Pure Rust implementation for performance
+- WebSocket server with JWT authentication
+- Multi-tenant workspace isolation
+- Structured logging for observability
+- Docker deployment support
+
+## Contributing
+
+See [contributing.md](contributing.md) for development setup, testing, and PR workflow.
+
+## License
+
+See [LICENSE](LICENSE) for details.
+
+## Links
+
+- **Issues:** [GitHub Issues](https://github.com/goobits/codebuddy/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/goobits/codebuddy/discussions)
+- **Security:** security@goobits.com (private disclosure)
