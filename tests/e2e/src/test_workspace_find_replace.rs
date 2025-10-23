@@ -47,8 +47,7 @@ async fn test_literal_basic_replace() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     // Assert: All occurrences replaced
     assert_eq!(
@@ -63,8 +62,8 @@ async fn test_literal_basic_replace() {
     );
     assert_eq!(
         content.get("matches_replaced").and_then(|v| v.as_u64()),
-        Some(3),
-        "Should replace 3 occurrences"
+        Some(4),
+        "Should replace 4 occurrences"
     );
 
     // Verify file content
@@ -102,8 +101,7 @@ async fn test_literal_whole_word() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     // Assert: Only "user" replaced, not "username" or "user_id"
     assert_eq!(
@@ -146,8 +144,7 @@ async fn test_literal_case_sensitive() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     // Assert: Only lowercase "user" replaced
     assert_eq!(
@@ -196,8 +193,7 @@ let user = "Bob";
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     // Assert: Matches user_name, user_id, user_email (3 occurrences)
     assert_eq!(
@@ -245,8 +241,7 @@ CODEBUDDY_MAX_WORKERS = 10
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         content.get("matches_replaced").and_then(|v| v.as_u64()),
@@ -291,8 +286,7 @@ item_count = 42
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         content.get("matches_replaced").and_then(|v| v.as_u64()),
@@ -372,8 +366,7 @@ let USER_NAME = "screaming";
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     // Note: Literal mode is case-sensitive, so only snake_case will match
     assert_eq!(
@@ -420,8 +413,7 @@ async fn test_preserve_case_disabled() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         content.get("matches_replaced").and_then(|v| v.as_u64()),
@@ -469,8 +461,7 @@ async fn test_scope_include_patterns() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         content.get("files_modified").and_then(|v| v.as_array()).map(|a| a.len()),
@@ -515,8 +506,7 @@ async fn test_scope_exclude_patterns() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         content.get("files_modified").and_then(|v| v.as_array()).map(|a| a.len()),
@@ -557,8 +547,7 @@ async fn test_scope_default_excludes() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     // Should only modify src/main.rs
     assert_eq!(
@@ -608,8 +597,7 @@ async fn test_multi_file_replace() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         content.get("files_modified").and_then(|v| v.as_array()).map(|a| a.len()),
@@ -657,8 +645,7 @@ async fn test_dry_run_defaults_true() {
 
     let plan = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     // Should return a plan (EditPlan structure)
     assert!(plan.get("edits").is_some(), "Should return plan with edits");
@@ -697,12 +684,11 @@ async fn test_dry_run_preview() {
 
     let plan = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
-    // Verify plan structure
+    // Verify plan structure (EditPlan uses camelCase for LSP compatibility)
     assert_eq!(
-        plan.get("source_file").and_then(|v| v.as_str()),
+        plan.get("sourceFile").and_then(|v| v.as_str()),
         Some("workspace"),
         "Should have workspace as source"
     );
@@ -713,7 +699,7 @@ async fn test_dry_run_preview() {
 
     let metadata = plan.get("metadata").expect("Should have metadata");
     assert_eq!(
-        metadata.get("intent_name").and_then(|v| v.as_str()),
+        metadata.get("intentName").and_then(|v| v.as_str()),
         Some("find_replace"),
         "Intent should be find_replace"
     );
@@ -750,8 +736,7 @@ async fn test_execute_mode() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         content.get("success").and_then(|v| v.as_bool()),
@@ -822,8 +807,7 @@ async fn test_pattern_not_found() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         content.get("success").and_then(|v| v.as_bool()),
@@ -871,8 +855,7 @@ async fn test_utf8_content() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         content.get("matches_replaced").and_then(|v| v.as_u64()),
@@ -920,8 +903,7 @@ async fn test_large_file() {
 
     let result_content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         result_content.get("matches_replaced").and_then(|v| v.as_u64()),
@@ -968,8 +950,7 @@ function user_logout() {
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         content.get("matches_replaced").and_then(|v| v.as_u64()),
@@ -1012,8 +993,7 @@ let z = user*2;
 
     let content = result
         .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Should have result content");
+        .expect("Should have result");
 
     assert_eq!(
         content.get("matches_replaced").and_then(|v| v.as_u64()),

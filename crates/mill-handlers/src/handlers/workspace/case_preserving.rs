@@ -494,7 +494,7 @@ mod tests {
     fn test_detect_mixed_case() {
         // XMLHttpRequest has single-char words mixed with multi-char
         assert_eq!(detect_case_style("XMLHttpRequest"), CaseStyle::Mixed);
-        // But simple two-word acronym combos are Pascal
+        // XMLParser is detected as Pascal (3 uppercase letters + Pascal word)
         assert_eq!(detect_case_style("XMLParser"), CaseStyle::Pascal);
     }
 
@@ -545,7 +545,6 @@ mod tests {
 
     #[test]
     fn test_real_world_snake_to_all() {
-        let original = "user_name";
         let new_val = "account_id";
 
         // snake_case → snake_case

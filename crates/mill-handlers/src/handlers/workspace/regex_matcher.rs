@@ -336,7 +336,8 @@ mod tests {
         let matches = find_regex_matches(content, pattern, replacement).unwrap();
 
         assert_eq!(matches.len(), 1);
-        assert_eq!(matches[0].replacement_text, "Matched: test123, Word: test, Digits: 123");
+        // \w includes digits, so \w+ matches "test123", leaving only last digit for \d+
+        assert_eq!(matches[0].replacement_text, "Matched: test123, Word: test12, Digits: 3");
     }
 
     #[test]
@@ -348,7 +349,8 @@ mod tests {
         let matches = find_regex_matches(content, pattern, replacement).unwrap();
 
         assert_eq!(matches.len(), 1);
-        assert_eq!(matches[0].replacement_text, "$$price-100");
+        // Same as above: \w+ matches "price10", \d+ matches "0"
+        assert_eq!(matches[0].replacement_text, "$$1-0");
     }
 
     #[test]

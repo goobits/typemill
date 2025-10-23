@@ -40,16 +40,20 @@ fn is_word_boundary_char(ch: char) -> bool {
 }
 
 /// Check if there's a word boundary at the given byte position
+///
+/// This checks if the character immediately BEFORE byte_pos is a word boundary character.
+/// For checking after a match, pass the position after the match end.
 fn has_word_boundary_at(content: &str, byte_pos: usize) -> bool {
     // At start/end of content is always a word boundary
     if byte_pos == 0 || byte_pos >= content.len() {
         return true;
     }
 
-    // Get the character at this position (handle multi-byte UTF-8)
-    content[byte_pos..]
+    // Get the character immediately BEFORE this position (handle multi-byte UTF-8)
+    // We need to find the last character before byte_pos
+    content[..byte_pos]
         .chars()
-        .next()
+        .next_back()
         .map(is_word_boundary_char)
         .unwrap_or(true)
 }
@@ -111,8 +115,27 @@ pub fn find_literal_matches(content: &str, pattern: &str, whole_word: bool) -> V
     for (byte_offset, matched_str) in content.match_indices(pattern) {
         // If whole_word is enabled, check word boundaries
         if whole_word {
-            let before_ok = has_word_boundary_at(content, byte_offset);
-            let after_ok = has_word_boundary_at(content, byte_offset + pattern.len());
+            // Check if there's a word boundary before the match start
+            let before_ok = if byte_offset == 0 {
+                true
+            } else {
+                content[..byte_offset]
+                    .chars()
+                    .next_back()
+                    .map(is_word_boundary_char)
+                    .unwrap_or(true)
+            };
+
+            // Check if there's a word boundary after the match end
+            let after_ok = if byte_offset + pattern.len() >= content.len() {
+                true
+            } else {
+                content[byte_offset + pattern.len()..]
+                    .chars()
+                    .next()
+                    .map(is_word_boundary_char)
+                    .unwrap_or(true)
+            };
 
             if !before_ok || !after_ok {
                 continue; // Not a whole word match
@@ -268,10 +291,10 @@ mod tests {
         assert_eq!(line, 3);
         assert_eq!(column, 1);
 
-        // Position of 'f' is at byte 5, line 2, column 3
+        // Position of 'e' is at byte 5, line 2, column 2
         let (line, column) = byte_offset_to_line_column(content, 5);
         assert_eq!(line, 2);
-        assert_eq!(column, 3);
+        assert_eq!(column, 2);
     }
 
     #[test]
@@ -296,16 +319,14 @@ mod tests {
 
     #[test]
     fn test_overlapping_prevention() {
-        // Although literal matching shouldn't produce overlaps,
-        // test that deduplication works
+        // Rust's match_indices doesn't return overlapping matches
+        // "aa" in "aaa" only matches at position 0 (not at 1)
         let content = "aaa";
         let matches = find_literal_matches(content, "aa", false);
 
-        // "aa" appears at position 0 and 1 (overlapping)
-        // match_indices returns both
-        assert_eq!(matches.len(), 2);
+        // Only one match (at position 0), not two
+        assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].start_byte, 0);
-        assert_eq!(matches[1].start_byte, 1);
     }
 
     #[test]
