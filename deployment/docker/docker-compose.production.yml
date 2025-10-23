@@ -11,12 +11,12 @@ services:
       - "127.0.0.1:3000:3000"  # Internal only, proxied by nginx
     environment:
       - RUST_LOG=info
-      - CODEBUDDY__SERVER__PORT=3000
-      - CODEBUDDY__SERVER__HOST=0.0.0.0
-      - CODEBUDDY__SERVER__MAX_CLIENTS=100
-      - CODEBUDDY__LOGGING__LEVEL=info
-      - CODEBUDDY__LOGGING__FORMAT=json
-      - CODEBUDDY__SERVER__AUTH__JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - TYPEMILL__SERVER__PORT=3000
+      - TYPEMILL__SERVER__HOST=0.0.0.0
+      - TYPEMILL__SERVER__MAX_CLIENTS=100
+      - TYPEMILL__LOGGING__LEVEL=info
+      - TYPEMILL__LOGGING__FORMAT=json
+      - TYPEMILL__SERVER__AUTH__JWT_SECRET=${JWT_SECRET:-change-me-in-production}
     restart: unless-stopped
     networks:
       - codebuddy-prod

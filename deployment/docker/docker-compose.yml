@@ -13,10 +13,10 @@ services:
       - "4000:4000"  # Admin/health endpoints
     environment:
       - RUST_LOG=debug
-      - CODEBUDDY__SERVER__PORT=3000
-      - CODEBUDDY__SERVER__HOST=0.0.0.0
-      - CODEBUDDY__LOGGING__LEVEL=debug
-      - CODEBUDDY__LOGGING__FORMAT=pretty
+      - TYPEMILL__SERVER__PORT=3000
+      - TYPEMILL__SERVER__HOST=0.0.0.0
+      - TYPEMILL__LOGGING__LEVEL=debug
+      - TYPEMILL__LOGGING__FORMAT=pretty
     volumes:
       # Mount host source code for hot-reloading
       - ../rust:/app/rust

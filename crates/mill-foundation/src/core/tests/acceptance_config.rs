@@ -140,9 +140,9 @@ fn test_config_env_override() {
     env::set_current_dir(temp_dir.path()).unwrap();
 
     // Set environment variables
-    env::set_var("CODEBUDDY__SERVER__PORT", "9000");
-    env::set_var("CODEBUDDY__LOGGING__LEVEL", "error");
-    env::set_var("CODEBUDDY__CACHE__ENABLED", "false");
+    env::set_var("TYPEMILL__SERVER__PORT", "9000");
+    env::set_var("TYPEMILL__LOGGING__LEVEL", "error");
+    env::set_var("TYPEMILL__CACHE__ENABLED", "false");
 
     let config = AppConfig::load().unwrap();
 
@@ -152,9 +152,9 @@ fn test_config_env_override() {
     assert!(!config.cache.enabled);
 
     // Clean up
-    env::remove_var("CODEBUDDY__SERVER__PORT");
-    env::remove_var("CODEBUDDY__LOGGING__LEVEL");
-    env::remove_var("CODEBUDDY__CACHE__ENABLED");
+    env::remove_var("TYPEMILL__SERVER__PORT");
+    env::remove_var("TYPEMILL__LOGGING__LEVEL");
+    env::remove_var("TYPEMILL__CACHE__ENABLED");
     env::set_current_dir(original_dir).unwrap();
 }
 
