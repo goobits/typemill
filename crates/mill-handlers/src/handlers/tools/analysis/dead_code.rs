@@ -1763,7 +1763,7 @@ impl DeadCodeHandler {
     ) -> ServerResult<Value> {
         use crate::handlers::lsp_adapter::DirectLspAdapter;
         use mill_analysis_common::{ AnalysisEngine , LspProvider };
-        use cb_analysis_deep_dead_code::{DeepDeadCodeAnalyzer, DeepDeadCodeConfig};
+        use mill_analysis_deep_dead_code::{ DeepDeadCodeAnalyzer , DeepDeadCodeConfig };
         use mill_foundation::protocol::analysis_result::{ AnalysisResult , AnalysisScope };
         use std::path::Path;
         use std::sync::Arc;

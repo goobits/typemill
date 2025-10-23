@@ -215,7 +215,7 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 - **Analysis Subsystem Architecture** - Complete implementation of advanced analysis subsystem
   - New `analysis/mill-analysis-common` crate with shared traits (`AnalysisEngine`, `LspProvider`)
-  - New `analysis/cb-analysis-deep-dead-code` crate with dependency graph analysis
+  - New `analysis/mill-analysis-deep-dead-code` crate with dependency graph analysis
   - Cross-file dead code detection with import/export tracking
   - Configurable analysis via feature flags (`analysis-dead-code`)
   - Trait-based architecture for dependency inversion and extensibility

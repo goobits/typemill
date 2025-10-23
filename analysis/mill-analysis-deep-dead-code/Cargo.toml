@@ -1,5 +1,5 @@
 [package]
-name = "cb-analysis-deep-dead-code"
+name = "mill-analysis-deep-dead-code"
 version = "1.0.0-rc4"
 edition = "2021"
 license.workspace = true

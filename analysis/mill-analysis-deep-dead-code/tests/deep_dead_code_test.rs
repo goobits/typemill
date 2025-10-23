@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use mill_analysis_common::{ AnalysisEngine , AnalysisError , LspProvider };
-use cb_analysis_deep_dead_code::{DeepDeadCodeAnalyzer, DeepDeadCodeConfig};
+use mill_analysis_deep_dead_code::{ DeepDeadCodeAnalyzer , DeepDeadCodeConfig };
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;

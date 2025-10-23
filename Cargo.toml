@@ -16,7 +16,7 @@ members = [
     "apps/codebuddy",
     "analysis/mill-analysis-common",
     "analysis/mill-analysis-dead-code",
-    "analysis/cb-analysis-deep-dead-code",
+    "analysis/mill-analysis-deep-dead-code",
     "analysis/cb-analysis-graph",
     "analysis/cb-analysis-circular-deps",
     "tests/e2e",
