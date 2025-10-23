@@ -120,8 +120,7 @@ If you use the wrong tool, Codebuddy will provide a helpful error with the corre
 
 ## Documentation
 
-- **[docs/tools_catalog.md](docs/tools_catalog.md)** - Fast lookup of all 35 tools
-- **[docs/api_reference.md](docs/api_reference.md)** - Complete API with parameters and examples
+- **[docs/tools/](docs/tools/)** - Complete tool reference (35 tools across 5 categories)
 - **[contributing.md](contributing.md)** - Development guide
 - **[docs/architecture/overview.md](docs/architecture/overview.md)** - System architecture
 - **[docs/operations/docker_deployment.md](docs/operations/docker_deployment.md)** - Docker deployment

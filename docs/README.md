@@ -9,8 +9,7 @@
 **New users start here:**
 
 - **[../README.md](../README.md)** - Project overview and quickstart (get running in 2 minutes)
-- **[Tools Catalog](tools_catalog.md)** - Fast lookup of all 35 MCP tools
-- **[API Reference](api_reference.md)** - Complete tool API with parameters, returns, and examples
+- **[Tools Reference](tools/)** - Complete tool API organized by category (35 tools)
 
 ---
 
@@ -56,8 +55,7 @@
 | Document | Purpose | Audience |
 |----------|---------|----------|
 | [../README.md](../README.md) | Project overview & quickstart | End users |
-| [API Reference](api_reference.md) | Complete tool API | AI assistants, integrators |
-| [Tools Catalog](tools_catalog.md) | Fast lookup table | Everyone |
+| [Tools Reference](tools/) | Complete tool API by category | AI assistants, integrators |
 | [Docker Deployment](operations/docker_deployment.md) | Production deployment | DevOps, operators |
 | [Contributing](../contributing.md) | Development workflow | Contributors |
 | [Architecture](architecture/overview.md) | System internals | Core developers |
