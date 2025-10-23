@@ -15,6 +15,7 @@ use mill_foundation::protocol::{
     ApiError, ApiResult as ServerResult, EditLocation, EditPlan, EditPlanMetadata, EditType,
     TextEdit,
 };
+use regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -83,7 +84,7 @@ fn default_dry_run() -> bool {
 }
 
 /// Scope configuration for controlling which files to search
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 pub struct ScopeConfig {
     /// Glob patterns to include (e.g., ["**/*.rs", "**/*.toml"])
     #[serde(default)]
@@ -92,6 +93,15 @@ pub struct ScopeConfig {
     /// Glob patterns to exclude (e.g., ["**/target/**"])
     #[serde(default = "default_excludes")]
     pub exclude_patterns: Vec<String>,
+}
+
+impl Default for ScopeConfig {
+    fn default() -> Self {
+        Self {
+            include_patterns: Vec::new(),
+            exclude_patterns: default_excludes(),
+        }
+    }
 }
 
 fn default_excludes() -> Vec<String> {
@@ -134,6 +144,13 @@ impl ToolHandler for FindReplaceHandler {
             return Err(ApiError::InvalidRequest(
                 "Pattern cannot be empty".to_string(),
             ));
+        }
+
+        // Validate regex pattern early (before processing any files)
+        if params.mode == SearchMode::Regex {
+            regex::Regex::new(&params.pattern).map_err(|e| {
+                ApiError::InvalidRequest(format!("Invalid regex pattern: {}", e))
+            })?;
         }
 
         info!(

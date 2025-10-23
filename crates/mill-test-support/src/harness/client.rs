@@ -184,6 +184,7 @@ impl TestClient {
     }
 
     /// Send a tools/call request with the given tool name and arguments.
+    /// Returns an error if the response contains an error field (JSON-RPC error).
     pub async fn call_tool(
         &mut self,
         tool_name: &str,
@@ -202,7 +203,17 @@ impl TestClient {
             }
         });
 
-        self.send_request(request)
+        let response = self.send_request(request)?;
+
+        // Check if the response contains an error field
+        if let Some(error) = response.get("error") {
+            let error_msg = error.get("message")
+                .and_then(|m| m.as_str())
+                .unwrap_or("Unknown error");
+            return Err(format!("Tool call error: {}", error_msg).into());
+        }
+
+        Ok(response)
     }
 
     /// Check if the server process is still alive.
