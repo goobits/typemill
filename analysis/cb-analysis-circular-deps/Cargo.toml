@@ -7,7 +7,6 @@ repository.workspace = true
 homepage.workspace = true
 
 [dependencies]
-cb-analysis-graph = { workspace = true }
 mill-plugin-api = { workspace = true }
 petgraph = { workspace = true }
 serde = { workspace = true }
@@ -17,6 +16,7 @@ walkdir = { workspace = true }
 path-clean = "1.0"
 ignore = "0.4"
 tracing = { workspace = true }
+mill-analysis-graph = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

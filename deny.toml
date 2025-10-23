@@ -316,7 +316,7 @@ wrappers = ["codebuddy", "e2e"]
 
 [[bans.deny]]
 name = "mill-analysis-common"
-wrappers = ["mill-handlers", "mill-analysis-dead-code", "mill-analysis-deep-dead-code", "cb-analysis-graph", "cb-analysis-circular-deps"]
+wrappers = ["mill-handlers", "mill-analysis-dead-code", "mill-analysis-deep-dead-code", "mill-analysis-graph", "cb-analysis-circular-deps"]
 
 [[bans.deny]]
 name = "mill-analysis-dead-code"
@@ -327,7 +327,7 @@ name = "mill-analysis-deep-dead-code"
 wrappers = ["mill-handlers"]
 
 [[bans.deny]]
-name = "cb-analysis-graph"
+name = "mill-analysis-graph"
 wrappers = ["mill-handlers", "cb-analysis-circular-deps"]
 
 [[bans.deny]]

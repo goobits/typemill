@@ -17,7 +17,7 @@ members = [
     "analysis/mill-analysis-common",
     "analysis/mill-analysis-dead-code",
     "analysis/mill-analysis-deep-dead-code",
-    "analysis/cb-analysis-graph",
+    "analysis/mill-analysis-graph",
     "analysis/cb-analysis-circular-deps",
     "tests/e2e",
     "crates/mill-workspaces",
@@ -87,7 +87,6 @@ walkdir = "2.5"
 
 # Analysis crates
 mill-analysis-common = { path = "analysis/mill-analysis-common" }
-cb-analysis-graph = { path = "analysis/cb-analysis-graph" }
 
 # Note: Multiple versions of hashbrown, bitflags, dirs, and getrandom exist
 # due to transitive dependencies from upstream crates (dashmap, lsp-types, swc_*, etc.)
@@ -99,6 +98,7 @@ mill-lang-typescript = { path = "crates/mill-lang-typescript", default-features 
 mill-lang-markdown = { path = "crates/mill-lang-markdown", default-features = false }
 mill-lang-rust = { path = "crates/mill-lang-rust", default-features = false }
 mill-analysis-dead-code = { path = "analysis/mill-analysis-dead-code" }
+mill-analysis-graph = { path = "analysis/mill-analysis-graph" }
 
 # Optimize build times for dev dependencies
 [profile.dev.build-override]

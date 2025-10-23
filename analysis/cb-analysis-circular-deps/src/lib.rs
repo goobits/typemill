@@ -2,7 +2,7 @@
 
 pub mod builder;
 
-use cb_analysis_graph::dependency::{DependencyGraph, NodeId};
+use mill_analysis_graph::dependency::{ DependencyGraph , NodeId };
 use petgraph::algo::tarjan_scc;
 use petgraph::visit::EdgeRef;
 use serde::{Deserialize, Serialize};
@@ -189,7 +189,7 @@ fn build_import_chain(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cb_analysis_graph::dependency::{Dependency, DependencyGraph, DependencyKind, ModuleNode};
+    use mill_analysis_graph::dependency::{ Dependency , DependencyGraph , DependencyKind , ModuleNode };
     use pretty_assertions::assert_eq;
     use std::path::PathBuf;
 

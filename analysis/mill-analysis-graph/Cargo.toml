@@ -1,5 +1,5 @@
 [package]
-name = "cb-analysis-graph"
+name = "mill-analysis-graph"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
