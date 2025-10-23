@@ -442,6 +442,7 @@ impl ToolHandler for ExtractHandler {
 // Parameter structures
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ExtractPlanParams {
     kind: String,
     source: SourceRange,
@@ -450,6 +451,7 @@ struct ExtractPlanParams {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct SourceRange {
     file_path: String,
     range: Range, // lsp_types::Range
@@ -459,6 +461,7 @@ struct SourceRange {
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
 struct ExtractOptions {
     #[serde(default)]
     visibility: Option<String>, // "public" | "private"

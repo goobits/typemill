@@ -77,7 +77,7 @@ edition = "2021"
     // Verify extraction succeeded
     assert_eq!(
         content
-            .get("dependencies_extracted")
+            .get("dependenciesExtracted")
             .and_then(|v| v.as_u64()),
         Some(2),
         "Should extract 2 dependencies"
@@ -85,7 +85,7 @@ edition = "2021"
 
     assert_eq!(
         content
-            .get("target_manifest_updated")
+            .get("targetManifestUpdated")
             .and_then(|v| v.as_bool()),
         Some(true),
         "Target manifest should be updated"
@@ -175,7 +175,7 @@ edition = "2021"
     let content = result.get("result").expect("Result should exist");
     assert_eq!(
         content
-            .get("dependencies_extracted")
+            .get("dependenciesExtracted")
             .and_then(|v| v.as_u64()),
         Some(1)
     );
@@ -287,7 +287,7 @@ serde = "0.9"
 }
 
 #[tokio::test]
-async fn test_extract_workspace_dependencies() {
+async fn test_extract_workspaceDependencies() {
     // Test extracting workspace dependencies ({ workspace = true })
     let workspace = TestWorkspace::new();
     let mut client = TestClient::new(workspace.path());
@@ -340,7 +340,7 @@ edition = "2021"
     let content = result.get("result").expect("Result should exist");
     assert_eq!(
         content
-            .get("dependencies_extracted")
+            .get("dependenciesExtracted")
             .and_then(|v| v.as_u64()),
         Some(1)
     );
@@ -410,7 +410,7 @@ edition = "2021"
     let content = result.get("result").expect("Result should exist");
     assert_eq!(
         content
-            .get("dependencies_extracted")
+            .get("dependenciesExtracted")
             .and_then(|v| v.as_u64()),
         Some(1)
     );
@@ -482,7 +482,7 @@ edition = "2021"
     // Should succeed but with warning
     assert_eq!(
         content
-            .get("dependencies_extracted")
+            .get("dependenciesExtracted")
             .and_then(|v| v.as_u64()),
         Some(0),
         "Should extract 0 dependencies"
@@ -560,10 +560,10 @@ edition = "2021"
         "dry_run should be true"
     );
 
-    // Verify target_manifest_updated is false
+    // Verify targetManifestUpdated is false
     assert_eq!(
         content
-            .get("target_manifest_updated")
+            .get("targetManifestUpdated")
             .and_then(|v| v.as_bool()),
         Some(false),
         "Target should not be updated in dry_run"
@@ -572,7 +572,7 @@ edition = "2021"
     // Verify dependencies analysis still happened
     assert_eq!(
         content
-            .get("dependencies_extracted")
+            .get("dependenciesExtracted")
             .and_then(|v| v.as_u64()),
         Some(1),
         "Should still analyze dependencies"
@@ -639,7 +639,7 @@ edition = "2021"
     let content = result.get("result").expect("Result should exist");
     assert_eq!(
         content
-            .get("dependencies_extracted")
+            .get("dependenciesExtracted")
             .and_then(|v| v.as_u64()),
         Some(1)
     );
@@ -719,7 +719,7 @@ edition = "2021"
     let content = result.get("result").expect("Result should exist");
     assert_eq!(
         content
-            .get("dependencies_extracted")
+            .get("dependenciesExtracted")
             .and_then(|v| v.as_u64()),
         Some(1)
     );
