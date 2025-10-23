@@ -179,16 +179,9 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
             "exclude_patterns",
             "strict",
             "validate_scope",
-            "update_imports",
             "consolidate",
-            "update_code",
-            "update_string_literals",
-            "update_docs",
-            "update_configs",
-            "update_examples",
             "update_comments",
             "update_markdown_prose",
-            "update_exact_matches",
             "update_all",
         ],
     )?;
@@ -213,20 +206,12 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
     let mut options = json!({});
     let mut has_options = false;
 
-    // Check if any update flags are present (including update_all)
+    // Check if any update flags are present (opt-in flags only)
     // If so, we need to create a custom scope even if --scope wasn't explicitly set
     let has_update_flags = flags.keys().any(|k| {
         matches!(
             k.as_str(),
-            "update_code"
-                | "update_string_literals"
-                | "update_docs"
-                | "update_configs"
-                | "update_examples"
-                | "update_comments"
-                | "update_markdown_prose"
-                | "update_exact_matches"
-                | "update_all"
+            "update_comments" | "update_markdown_prose" | "update_all"
         )
     }) || flags.contains_key("exclude_patterns");
 
@@ -251,13 +236,10 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
     if effective_scope == "custom" && has_update_flags {
         let mut custom_scope = json!({});
 
-        // Pass through all update flags (including update_all)
-        // RenameScope.resolve_update_all() will handle the expansion
+        // Pass through opt-in update flags only (update_all triggers expansion in RenameScope.resolve_update_all())
         for (key, value) in &flags {
             match key.as_str() {
-                "update_code" | "update_string_literals" | "update_docs"
-                | "update_configs" | "update_examples" | "update_comments"
-                | "update_markdown_prose" | "update_exact_matches" | "update_all" => {
+                "update_comments" | "update_markdown_prose" | "update_all" => {
                     custom_scope[key] = json!(parse_bool(value)?);
                 }
                 _ => {}

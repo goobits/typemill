@@ -205,6 +205,7 @@ impl PluginDispatcher {
                     WorkspaceUpdateMembersHandler,
                 };
                 use super::tools::analysis::{BatchAnalysisHandler, DeadCodeHandler, DependenciesHandler, DocumentationHandler, ModuleDependenciesHandler, QualityHandler, StructureHandler, TestsHandler};
+                use super::workspace::FindReplaceHandler;
                 use super::{
                     FileOperationHandler, WorkspaceApplyHandler,
                 };
@@ -232,6 +233,7 @@ impl PluginDispatcher {
                     WorkspaceCreateHandler => "WorkspaceCreateHandler with 1 tool (workspace.create_package)",
                     WorkspaceExtractDepsHandler => "WorkspaceExtractDepsHandler with 1 tool (workspace.extract_dependencies)",
                     WorkspaceUpdateMembersHandler => "WorkspaceUpdateMembersHandler with 1 tool (workspace.update_members)",
+                    FindReplaceHandler => "FindReplaceHandler with 1 tool (workspace.find_replace)",
                     ModuleDependenciesHandler => "ModuleDependenciesHandler with 1 tool (analyze.module_dependencies)",
                     WorkspaceApplyHandler => "Unified workspace apply handler"
                 });

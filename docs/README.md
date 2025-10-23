@@ -9,7 +9,7 @@
 **New users start here:**
 
 - **[../README.md](../README.md)** - Project overview and quickstart (get running in 2 minutes)
-- **[Tools Reference](tools/)** - Complete tool API organized by category (35 tools)
+- **[Tools Reference](tools/)** - Complete tool API organized by category (36 tools)
 
 ---
 

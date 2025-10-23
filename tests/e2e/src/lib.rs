@@ -122,6 +122,10 @@ pub mod test_workspace_extract_deps;
 #[cfg(test)]
 pub mod test_workspace_update_members;
 
+// Workspace find/replace tests
+#[cfg(test)]
+pub mod test_workspace_find_replace;
+
 pub use harness::{TestClient, TestWorkspace};
 pub use helpers::*;
 pub use mocks::{MockAstService, MockLspService};

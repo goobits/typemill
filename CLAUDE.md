@@ -29,11 +29,11 @@ Pure Rust MCP server bridging Language Server Protocol (LSP) functionality to AI
 
 Codebuddy provides comprehensive MCP tools for code intelligence and refactoring. See **[docs/tools/](docs/tools/)** for complete API reference with detailed parameters, return types, and examples.
 
-**Current Architecture**: 35 public tools visible to AI agents via MCP `tools/list`, plus 20 internal tools for backend workflows.
+**Current Architecture**: 36 public tools visible to AI agents via MCP `tools/list`, plus 20 internal tools for backend workflows.
 
 **Note:** Internal tools exist for backend use only (lifecycle hooks, workflow plumbing, legacy operations). These are hidden from MCP `tools/list` to simplify the API surface for AI agents. See [docs/architecture/internal_tools.md](docs/architecture/internal_tools.md) for details.
 
-### Quick Reference (35 Public Tools)
+### Quick Reference (36 Public Tools)
 
 **Navigation & Intelligence (8 tools)**
 - `find_definition`, `find_references`, `search_symbols`
@@ -45,10 +45,11 @@ Codebuddy provides comprehensive MCP tools for code intelligence and refactoring
 - **Quick Operations (7 tools)**: `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete` (one-step plan+execute)
 - **Apply**: `workspace.apply_edit` (executes any plan)
 
-**Workspace Operations (3 tools)**
+**Workspace Operations (4 tools)**
 - `workspace.create_package` (create new packages in workspace)
 - `workspace.extract_dependencies` (extract module dependencies for crate extraction)
 - `workspace.update_members` (update workspace member list)
+- `workspace.find_replace` (find and replace text across workspace)
 
 **Analysis (8 tools - Unified Analysis API)**
 - `analyze.quality` (complexity, smells, maintainability, readability)

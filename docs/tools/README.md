@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-**Complete API reference for all 35 Codebuddy MCP tools**
+**Complete API reference for all 36 Codebuddy MCP tools**
 
 This directory contains focused documentation for each tool category. Each category file follows a consistent structure with terse but complete documentation, real examples from the codebase, and common patterns.
 
@@ -44,10 +44,11 @@ This directory contains focused documentation for each tool category. Each categ
 | `analyze.tests` | Analysis | Test analysis | [analysis.md](analysis.md#analyzetests) |
 | `analyze.batch` | Analysis | Multi-file batch analysis | [analysis.md](analysis.md#analyzebatch) |
 | `analyze.module_dependencies` | Analysis | Rust module dependencies | [analysis.md](analysis.md#analyzemodule_dependencies) |
-| **Workspace (3 tools)** ||||
+| **Workspace (4 tools)** ||||
 | `workspace.create_package` | Workspace | Create new package | [workspace.md](workspace.md#workspacecreate_package) |
 | `workspace.extract_dependencies` | Workspace | Extract module dependencies | [workspace.md](workspace.md#workspaceextract_dependencies) |
 | `workspace.update_members` | Workspace | Update workspace members | [workspace.md](workspace.md#workspaceupdate_members) |
+| `workspace.find_replace` | Workspace | Find and replace text workspace-wide | [workspace.md](workspace.md#workspacefind_replace) |
 | **System (1 tool)** ||||
 | `health_check` | System | Server health & statistics | [system.md](system.md#health_check) |
 
@@ -71,9 +72,9 @@ All refactoring operations support two-step workflow: generate a plan (dry-run) 
 Comprehensive code analysis covering quality, dead code, dependencies, structure, documentation, and tests. All tools follow the same parameter pattern for easy adoption.
 
 ### [Workspace](workspace.md)
-**3 package management tools** for workspace operations.
+**4 workspace management tools** for package and text operations.
 
-Create packages, extract dependencies for crate extraction, and manage workspace member lists. Essential for maintaining multi-package Rust workspaces.
+Create packages, extract dependencies for crate extraction, manage workspace member lists, and perform workspace-wide find/replace operations. Essential for maintaining multi-package Rust workspaces.
 
 ### [System](system.md)
 **1 health monitoring tool** for server diagnostics.

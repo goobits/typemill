@@ -2,7 +2,7 @@
 
 Package management operations for multi-crate Rust workspaces. Create new packages, extract dependencies for crate extraction workflows, and manage workspace member lists in Cargo.toml.
 
-**Tool count:** 3 tools
+**Tool count:** 4 tools
 **Related categories:** [Refactoring](refactoring.md) (rename for crate consolidation), [Analysis](analysis.md) (analyze.module_dependencies for dependency analysis)
 
 ## Table of Contents
@@ -11,11 +11,13 @@ Package management operations for multi-crate Rust workspaces. Create new packag
   - [workspace.create_package](#workspacecreate_package)
   - [workspace.extract_dependencies](#workspaceextract_dependencies)
   - [workspace.update_members](#workspaceupdate_members)
+  - [workspace.find_replace](#workspacefind_replace)
 - [Common Patterns](#common-patterns)
   - [Crate Extraction Workflow](#crate-extraction-workflow)
   - [Package Creation with Dependencies](#package-creation-with-dependencies)
   - [Workspace Reorganization](#workspace-reorganization)
   - [Dependency Audit Before Extraction](#dependency-audit-before-extraction)
+  - [Project-Wide Text Replacement](#project-wide-text-replacement)
 - [Integration with Other Tools](#integration-with-other-tools)
   - [With rename.plan (Crate Consolidation)](#with-renameplan-crate-consolidation)
   - [With analyze.module_dependencies](#with-analyzemodule_dependencies)
@@ -473,6 +475,245 @@ Object with update results:
 
 ---
 
+### workspace.find_replace
+
+**Purpose:** Find and replace text across the workspace with support for literal/regex patterns, case preservation, and file scope filtering.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| pattern | string | Yes | Pattern to search for (literal or regex) |
+| replacement | string | Yes | Replacement text (may contain $1, $2 for regex) |
+| mode | string | No | Search mode: "literal" or "regex" (default: "literal") |
+| whole_word | boolean | No | For literal mode: match whole words only (default: false) |
+| preserve_case | boolean | No | Preserve case style when replacing (default: false) |
+| scope | object | No | File scope configuration |
+| scope.include_patterns | string[] | No | Glob patterns to include (e.g., ["**/*.rs"]) (default: []) |
+| scope.exclude_patterns | string[] | No | Glob patterns to exclude (default: see below) |
+| dry_run | boolean | No | Preview changes without applying (default: true) |
+
+**Default Excludes:** `**/target/**`, `**/node_modules/**`, `**/.git/**`, `**/build/**`, `**/dist/**`
+
+**Returns:**
+
+When `dry_run: true` (default), returns an EditPlan:
+- `source_file` (string): Always "workspace" for workspace operations
+- `edits` (TextEdit[]): Array of text edits with file paths, locations, and changes
+- `metadata` (object): Operation metadata (intent, complexity, impact areas)
+
+When `dry_run: false`, returns ApplyResult:
+- `success` (boolean): Whether operation succeeded
+- `files_modified` (string[]): List of modified file paths
+- `matches_found` (number): Total number of matches discovered
+- `matches_replaced` (number): Total number of matches replaced
+
+**Example - Simple literal replacement:**
+
+```json
+// MCP request
+{
+  "method": "tools/call",
+  "params": {
+    "name": "workspace.find_replace",
+    "arguments": {
+      "pattern": "username",
+      "replacement": "userid",
+      "mode": "literal"
+    }
+  }
+}
+
+// Response (dry_run: true by default)
+{
+  "result": {
+    "source_file": "workspace",
+    "edits": [
+      {
+        "file_path": "/workspace/src/auth.rs",
+        "edit_type": "Replace",
+        "location": {
+          "start_line": 42,
+          "start_column": 10,
+          "end_line": 42,
+          "end_column": 18
+        },
+        "original_text": "username",
+        "new_text": "userid",
+        "description": "Replace 'username' with 'userid' (literal)"
+      }
+    ],
+    "metadata": {
+      "intent_name": "find_replace",
+      "complexity": 3
+    }
+  }
+}
+```
+
+**Example - Whole word matching:**
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "workspace.find_replace",
+    "arguments": {
+      "pattern": "user",
+      "replacement": "account",
+      "mode": "literal",
+      "whole_word": true
+    }
+  }
+}
+
+// Matches "user" but NOT "username" or "userInfo"
+```
+
+**Example - Regex with capture groups:**
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "workspace.find_replace",
+    "arguments": {
+      "pattern": "CODEBUDDY_([A-Z_]+)",
+      "replacement": "TYPEMILL_$1",
+      "mode": "regex"
+    }
+  }
+}
+
+// Converts:
+// CODEBUDDY_ENABLE_LOGS → TYPEMILL_ENABLE_LOGS
+// CODEBUDDY_DEBUG_MODE → TYPEMILL_DEBUG_MODE
+```
+
+**Example - Case-preserving replacement:**
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "workspace.find_replace",
+    "arguments": {
+      "pattern": "user_name",
+      "replacement": "account_id",
+      "mode": "literal",
+      "preserve_case": true
+    }
+  }
+}
+
+// Converts:
+// user_name → account_id (snake_case)
+// userName → accountId (camelCase)
+// UserName → AccountId (PascalCase)
+// USER_NAME → ACCOUNT_ID (SCREAMING_SNAKE)
+```
+
+**Example - Scoped replacement (Rust files only):**
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "workspace.find_replace",
+    "arguments": {
+      "pattern": "old_function",
+      "replacement": "new_function",
+      "scope": {
+        "include_patterns": ["**/*.rs"],
+        "exclude_patterns": ["**/target/**", "**/tests/**"]
+      }
+    }
+  }
+}
+
+// Only searches .rs files, excluding target/ and tests/
+```
+
+**Example - Named capture groups:**
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "workspace.find_replace",
+    "arguments": {
+      "pattern": "(?P<module>\\w+)::(?P<function>\\w+)",
+      "replacement": "${function}_from_${module}",
+      "mode": "regex"
+    }
+  }
+}
+
+// Converts: utils::format → format_from_utils
+```
+
+**Example - Execute replacement (dry_run: false):**
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "workspace.find_replace",
+    "arguments": {
+      "pattern": "old_config_path",
+      "replacement": "new_config_path",
+      "dry_run": false
+    }
+  }
+}
+
+// Response
+{
+  "result": {
+    "success": true,
+    "files_modified": [
+      "/workspace/src/config.rs",
+      "/workspace/README.md"
+    ],
+    "matches_found": 5,
+    "matches_replaced": 5
+  }
+}
+```
+
+**Error Cases:**
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| InvalidRequest: "Pattern cannot be empty" | Empty pattern string | Provide non-empty pattern |
+| InvalidRequest: "Regex error: ..." | Invalid regex syntax | Fix regex pattern syntax |
+| InvalidRequest: "Invalid exclude pattern" | Malformed glob pattern | Fix glob pattern syntax |
+| Internal: "Failed to read file" | Permission denied or file locked | Check file permissions |
+
+**Notes:**
+- **Safety-first design:** `dry_run` defaults to `true` to prevent accidental mass replacements
+- **Case preservation limitations:** May not handle acronyms perfectly (e.g., "HTTPServer")
+- **Regex mode:** Does not support case preservation (use literal mode instead)
+- **Binary files:** Automatically skipped during file discovery
+- **Large files:** Files over 100MB may be slow to process
+- **Atomic operations:** When `dry_run: false`, all changes are applied atomically (all succeed or all rollback)
+- **Git-aware:** Respects `.gitignore` patterns during file discovery
+- **Performance:** For 1000+ matches, consider using include_patterns to reduce scope
+
+**Best Practices:**
+
+1. **Always preview first:** Use default `dry_run: true` to review changes
+2. **Scope appropriately:** Use include/exclude patterns to target specific file types
+3. **Test regex patterns:** Validate complex regex on small samples before workspace-wide replacement
+4. **Case preservation:** Review changes when using preserve_case with acronyms or mixed-case identifiers
+5. **Large replacements:** For 100+ file modifications, consider breaking into smaller scoped operations
+
+**Related Tools:**
+- `workspace.apply_edit` - Apply a generated EditPlan from dry-run preview
+- `rename.plan` - For renaming files, directories, and symbols (more semantic than text replacement)
+
+---
+
 ## Common Patterns
 
 ### Crate Extraction Workflow
@@ -595,6 +836,48 @@ codebuddy tool workspace.extract_dependencies '{
   }
 }'
 ```
+
+### Project-Wide Text Replacement
+
+Safe workflow for replacing text across the workspace:
+
+```bash
+# 1. Preview replacement (dry_run defaults to true)
+codebuddy tool workspace.find_replace '{
+  "pattern": "CODEBUDDY_([A-Z_]+)",
+  "replacement": "TYPEMILL_$1",
+  "mode": "regex",
+  "scope": {
+    "include_patterns": ["**/*.rs", "**/*.toml", "**/*.md"]
+  }
+}'
+
+# 2. Review the EditPlan output showing all changes
+
+# 3. Execute the replacement
+codebuddy tool workspace.find_replace '{
+  "pattern": "CODEBUDDY_([A-Z_]+)",
+  "replacement": "TYPEMILL_$1",
+  "mode": "regex",
+  "scope": {
+    "include_patterns": ["**/*.rs", "**/*.toml", "**/*.md"]
+  },
+  "dry_run": false
+}'
+
+# Alternative: Use workspace.apply_edit with the plan from step 1
+codebuddy tool workspace.apply_edit '{
+  "plan": "<plan from step 1>",
+  "options": {"dry_run": false}
+}'
+```
+
+**Common use cases:**
+- Environment variable prefix changes (CODEBUDDY_* → TYPEMILL_*)
+- Configuration path updates (.codebuddy → .typemill)
+- CLI command updates in documentation (codebuddy → typemill)
+- Dependency renames in manifests
+- API endpoint path changes
 
 ---
 

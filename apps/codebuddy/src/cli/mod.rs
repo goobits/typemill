@@ -84,7 +84,7 @@ pub enum Commands {
         args: Option<String>,
 
         /// Read arguments from file
-        #[arg(long, conflicts_with_all = ["args", "target", "source", "destination", "new_name", "name", "kind", "scope", "update_imports", "update_path_references", "update_markdown_links", "update_config_files", "update_comments", "update_markdown_text", "update_config_names", "update_all"])]
+        #[arg(long, conflicts_with_all = ["args", "target", "source", "destination", "new_name", "name", "kind", "scope", "update_comments", "update_markdown_prose", "update_all"])]
         input_file: Option<String>,
 
         /// Output format (pretty or compact)
@@ -121,40 +121,19 @@ pub enum Commands {
         #[arg(long, conflicts_with_all = ["args", "input_file"])]
         kind: Option<String>,
 
-        /// Scope (e.g., "all", "code-only", "custom")
+        /// Scope preset: "all" (default - code/docs/configs/exact matches), "code-only" (imports/strings only), "custom" (via --input-file)
         #[arg(long, conflicts_with_all = ["args", "input_file"])]
         scope: Option<String>,
 
-        /// Update import statements (use statements, imports)
-        #[arg(long, conflicts_with_all = ["args", "input_file"])]
-        update_imports: Option<bool>,
-
-        /// Update path references in string literals ("crates/old-name")
-        #[arg(long, conflicts_with_all = ["args", "input_file"])]
-        update_path_references: Option<bool>,
-
-        /// Update markdown link targets ([text](path))
-        #[arg(long, conflicts_with_all = ["args", "input_file"])]
-        update_markdown_links: Option<bool>,
-
-        /// Update configuration files (Cargo.toml, deny.toml, etc.)
-        #[arg(long, conflicts_with_all = ["args", "input_file"])]
-        update_config_files: Option<bool>,
-
-        /// Update code comments (opt-in for full project renames)
+        /// Update code comments (opt-in - may modify historical/explanatory comments)
         #[arg(long, conflicts_with_all = ["args", "input_file"])]
         update_comments: Option<bool>,
 
-        /// Update markdown text and inline code snippets (opt-in)
+        /// Update markdown prose and inline code (opt-in - may modify code examples)
         #[arg(long, conflicts_with_all = ["args", "input_file"])]
-        update_markdown_text: Option<bool>,
+        update_markdown_prose: Option<bool>,
 
-        /// Update crate/package names in config arrays (opt-in)
-        #[arg(long, conflicts_with_all = ["args", "input_file"])]
-        update_config_names: Option<bool>,
-
-        /// Update everything (all update flags enabled)
-        /// Shorthand for complete project renames
+        /// Enable all opt-in flags (comments + markdown prose)
         #[arg(long, conflicts_with_all = ["args", "input_file"])]
         update_all: bool,
     },
@@ -331,13 +310,8 @@ pub async fn run() {
             name,
             kind,
             scope,
-            update_imports,
-            update_path_references,
-            update_markdown_links,
-            update_config_files,
             update_comments,
-            update_markdown_text,
-            update_config_names,
+            update_markdown_prose,
             update_all,
         } => {
             handle_tool_command(
@@ -351,13 +325,8 @@ pub async fn run() {
                 name.as_deref(),
                 kind.as_deref(),
                 scope.as_deref(),
-                update_imports,
-                update_path_references,
-                update_markdown_links,
-                update_config_files,
                 update_comments,
-                update_markdown_text,
-                update_config_names,
+                update_markdown_prose,
                 update_all,
                 &format,
             )
@@ -542,21 +511,16 @@ async fn handle_dead_code_command(command: DeadCode) {
         "analyze.dead_code",
         Some(&args_json),
         None, // input_file
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
+        None, // target
+        None, // source
+        None, // destination
+        None, // new_name
+        None, // name
+        None, // kind
+        None, // scope
+        None, // update_comments
+        None, // update_markdown_prose
+        false, // update_all
         "pretty",
     )
     .await;
@@ -1033,13 +997,8 @@ async fn handle_tool_command(
     name: Option<&str>,
     kind: Option<&str>,
     scope: Option<&str>,
-    update_imports: Option<bool>,
-    update_path_references: Option<bool>,
-    update_markdown_links: Option<bool>,
-    update_config_files: Option<bool>,
     update_comments: Option<bool>,
-    update_markdown_text: Option<bool>,
-    update_config_names: Option<bool>,
+    update_markdown_prose: Option<bool>,
     update_all: bool,
     format: &str,
 ) {
@@ -1134,33 +1093,15 @@ async fn handle_tool_command(
             flags.insert("scope".to_string(), v.to_string());
         }
 
-        // Handle --update-all flag
+        // Handle update flags (opt-in flags only - scope presets handle defaults)
         if update_all {
             flags.insert("update_all".to_string(), "true".to_string());
-        }
-
-        // Map new CLI flag names to internal RenameScope field names
-        // This keeps internal struct unchanged while improving UX
-        if let Some(v) = update_imports {
-            flags.insert("update_code".to_string(), v.to_string());
-        }
-        if let Some(v) = update_path_references {
-            flags.insert("update_string_literals".to_string(), v.to_string());
-        }
-        if let Some(v) = update_markdown_links {
-            flags.insert("update_docs".to_string(), v.to_string());
-        }
-        if let Some(v) = update_config_files {
-            flags.insert("update_configs".to_string(), v.to_string());
         }
         if let Some(v) = update_comments {
             flags.insert("update_comments".to_string(), v.to_string());
         }
-        if let Some(v) = update_markdown_text {
+        if let Some(v) = update_markdown_prose {
             flags.insert("update_markdown_prose".to_string(), v.to_string());
-        }
-        if let Some(v) = update_config_names {
-            flags.insert("update_exact_matches".to_string(), v.to_string());
         }
 
         match flag_parser::parse_flags_to_json(tool_name, flags) {

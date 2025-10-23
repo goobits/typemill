@@ -2,7 +2,7 @@
 
 **Pure Rust MCP server bridging Language Server Protocol (LSP) to AI coding assistants**
 
-Codebuddy provides 35 comprehensive MCP tools for code navigation, refactoring, code intelligence, and batch operations. Built on Rust for performance and safety.
+Codebuddy provides 36 comprehensive MCP tools for code navigation, refactoring, code intelligence, and batch operations. Built on Rust for performance and safety.
 
 ## Quick Start
 
@@ -95,7 +95,7 @@ codebuddy tool extract --kind function --source src/app.rs:10:5 --name handleLog
 
 If you use the wrong tool, Codebuddy will provide a helpful error with the correct command.
 
-## Available Tools (35 total)
+## Available Tools (36 total)
 
 **Navigation & Intelligence (8 tools)**
 - `find_definition`, `find_references`, `search_symbols`
@@ -112,15 +112,15 @@ If you use the wrong tool, Codebuddy will provide a helpful error with the corre
 - `analyze.structure`, `analyze.documentation`, `analyze.tests`
 - `analyze.batch`, `analyze.module_dependencies`
 
-**Workspace (3 tools)**
-- `workspace.create_package`, `workspace.extract_dependencies`, `workspace.update_members`
+**Workspace (4 tools)**
+- `workspace.create_package`, `workspace.extract_dependencies`, `workspace.update_members`, `workspace.find_replace`
 
 **System (1 tool)**
 - `health_check`
 
 ## Documentation
 
-- **[docs/tools/](docs/tools/)** - Complete tool reference (35 tools across 5 categories)
+- **[docs/tools/](docs/tools/)** - Complete tool reference (36 tools across 5 categories)
 - **[contributing.md](contributing.md)** - Development guide
 - **[docs/architecture/overview.md](docs/architecture/overview.md)** - System architecture
 - **[docs/operations/docker_deployment.md](docs/operations/docker_deployment.md)** - Docker deployment
