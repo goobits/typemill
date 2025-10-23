@@ -92,11 +92,25 @@ impl ToolRegistry {
     ///
     /// Returns the tool result on success, or an error if no handler is found
     /// or the handler fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidRequest` if attempting to call an internal tool.
+    /// Internal tools are backend-only and not accessible via CLI/MCP.
     pub async fn handle_tool(
         &self,
         tool_call: ToolCall,
         context: &ToolHandlerContext,
     ) -> ServerResult<Value> {
+        // Block internal tools from external calls (CLI/MCP)
+        if self.internal_tools.contains(&tool_call.name) {
+            return Err(ServerError::InvalidRequest(format!(
+                "Tool '{}' is internal and not available via CLI/MCP. Use the public API instead. \
+                 Run 'codebuddy tools' to see available public tools.",
+                tool_call.name
+            )));
+        }
+
         if let Some(handler) = self.handlers.get(&tool_call.name) {
             handler.handle_tool_call(context, &tool_call).await
         } else {

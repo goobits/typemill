@@ -107,27 +107,9 @@ For convenience, each refactoring has a "quick" version that combines plan + exe
 {"name": "rename", "arguments": {...}}
 ```
 
-File and workspace operations also support `dry_run: true`:
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "rename_file",
-    "arguments": {
-      "old_path": "src/old.ts",
-      "new_path": "src/new.ts",
-      "dry_run": true
-    }
-  }
-}
-```
-
 **Supported operations:**
 - Refactoring plans: All `*.plan` commands (always dry-run)
 - Workspace execution: `workspace.apply_edit` (supports `dry_run: true`)
-
-**Note**: File and directory operations (`create_file`, `write_file`, `delete_file`, `rename_file`, `rename_directory`) are now internal tools used by backend workflows.
 
 **Benefits:**
 - Preview changes before applying them
