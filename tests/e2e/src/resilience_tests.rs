@@ -405,8 +405,8 @@ async fn test_find_dead_code_workflow() {
             "Should have filesAnalyzed count"
         );
         assert!(
-            summary["analysis_time_ms"].is_number(),
-            "Should have analysis_time_ms"
+            summary["analysisTimeMs"].is_number(),
+            "Should have analysisTimeMs"
         );
 
         // If we found dead code, it should include our unused items
