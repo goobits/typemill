@@ -237,23 +237,23 @@ skip-tree = [
 
 [[bans.deny]]
 name = "mill-services"
-wrappers = ["mill-handlers", "mill-server", "mill-client", "codebuddy", "mill-test-support", "e2e"]
+wrappers = ["mill-handlers", "mill-server", "mill-client", "mill", "mill-test-support", "e2e"]
 
 [[bans.deny]]
 name = "cb-ast"
-wrappers = ["mill-transport", "mill-services", "mill-plugin-system", "mill-handlers", "mill-server", "codebuddy", "mill-test-support", "e2e"]
+wrappers = ["mill-transport", "mill-services", "mill-plugin-system", "mill-handlers", "mill-server", "mill", "mill-test-support", "e2e"]
 
 [[bans.deny]]
 name = "mill-lsp"
-wrappers = ["mill-services", "mill-handlers", "mill-server", "codebuddy", "mill-test-support", "e2e"]
+wrappers = ["mill-services", "mill-handlers", "mill-server", "mill", "mill-test-support", "e2e"]
 
 [[bans.deny]]
 name = "mill-plugin-system"
-wrappers = ["mill-services", "mill-handlers", "mill-server", "mill-client", "codebuddy", "mill-test-support", "e2e"]
+wrappers = ["mill-services", "mill-handlers", "mill-server", "mill-client", "mill", "mill-test-support", "e2e"]
 
 [[bans.deny]]
 name = "mill-plugin-bundle"
-wrappers = ["mill-services", "mill-server", "codebuddy", "mill-test-support"]
+wrappers = ["mill-services", "mill-server", "mill", "mill-test-support"]
 
 # =============================================================================
 # CRITICAL ENFORCEMENT: Cross-Plugin Isolation (Layer 4)
@@ -262,11 +262,11 @@ wrappers = ["mill-services", "mill-server", "codebuddy", "mill-test-support"]
 
 [[bans.deny]]
 name = "mill-lang-rust"
-wrappers = ["cb-ast", "mill-handlers", "mill-services", "mill-plugin-system", "mill-plugin-bundle", "mill-server", "codebuddy", "mill-test-support", "e2e"]
+wrappers = ["cb-ast", "mill-handlers", "mill-services", "mill-plugin-system", "mill-plugin-bundle", "mill-server", "mill", "mill-test-support", "e2e"]
 
 [[bans.deny]]
 name = "mill-lang-typescript"
-wrappers = ["cb-ast", "mill-handlers", "mill-services", "mill-plugin-system", "mill-plugin-bundle", "mill-server", "codebuddy", "mill-test-support", "e2e"]
+wrappers = ["cb-ast", "mill-handlers", "mill-services", "mill-plugin-system", "mill-plugin-bundle", "mill-server", "mill", "mill-test-support", "e2e"]
 
 [[bans.deny]]
 name = "cb-lang-markdown"
@@ -286,7 +286,7 @@ wrappers = ["mill-services", "mill-plugin-system", "mill-plugin-bundle", "mill-t
 
 [[bans.deny]]
 name = "mill-handlers"
-wrappers = ["mill-server", "codebuddy", "mill-test-support", "e2e"]
+wrappers = ["mill-server", "mill", "mill-test-support", "e2e"]
 
 # =============================================================================
 # IMPORTANT ENFORCEMENT: Handlers (Layer 6) cannot depend on Application (Layer 7)
@@ -294,10 +294,10 @@ wrappers = ["mill-server", "codebuddy", "mill-test-support", "e2e"]
 
 [[bans.deny]]
 name = "mill-server"
-wrappers = ["codebuddy", "mill-test-support", "e2e"]
+wrappers = ["mill", "mill-test-support", "e2e"]
 
 [[bans.deny]]
-name = "codebuddy"
+name = "mill"
 wrappers = ["mill-test-support", "e2e"]
 
 # =============================================================================
@@ -306,7 +306,7 @@ wrappers = ["mill-test-support", "e2e"]
 
 [[bans.deny]]
 name = "mill-test-support"
-wrappers = ["codebuddy", "e2e"]
+wrappers = ["mill", "e2e"]
 
 # =============================================================================
 # ANALYSIS WORKSPACE ISOLATION

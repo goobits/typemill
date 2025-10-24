@@ -22,7 +22,7 @@ The codebase has mature regex infrastructure and some basic case conversion util
 ### 1.2 Glob/Pattern Matching Libraries
 
 **glob (0.3)**
-- Used in: `apps/codebuddy`, `crates/mill-foundation`, `crates/mill-config`
+- Used in: `apps/mill`, `crates/mill-foundation`, `crates/mill-config`
 - Purpose: File glob pattern matching
 - Method: `glob::Pattern::new()` for simple glob compilation
 
@@ -333,7 +333,7 @@ fn replace_with_case_preservation(
 
 1. **Case detection**: 
    - New module: `crates/mill-lang-common/src/case_detection.rs`
-   - Or extend: `apps/codebuddy/src/cli/conventions.rs` with detection logic
+   - Or extend: `apps/mill/src/cli/conventions.rs` with detection logic
 
 2. **Case-aware find/replace**:
    - New module: `crates/mill-ast/src/case_aware_replace.rs`

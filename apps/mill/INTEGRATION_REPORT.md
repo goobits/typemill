@@ -6,7 +6,7 @@ Agent 2 has successfully completed all tasks for adding flag-based CLI support t
 
 ## What Agent 2 Built
 
-### 1. Convention Parsers (`src/cli/conventions.rs`)
+### 1. Convention Parsers (`../mill/src/cli/conventions.rs`)
 
 Implemented three smart parsers that convert shorthand notation to full JSON:
 
@@ -34,7 +34,7 @@ Parses destination targets:
 - ✅ 15 comprehensive tests covering all cases
 - ✅ Edge case handling (paths with spaces, colons, Windows paths)
 
-### 2. CLI Structure Updates (`src/cli/mod.rs`)
+### 2. CLI Structure Updates (`../mill/src/cli/mod.rs`)
 
 Modified the CLI to accept flags in addition to JSON:
 
@@ -231,20 +231,20 @@ codebuddy tool delete.plan \
    - Error types
    - 15 comprehensive tests
 
-2. `/workspace/apps/codebuddy/src/cli/mod.rs` (4 lines)
+2. `../mill/workspace/apps/codebuddy/src/cli/mod.rs` (4 lines)
    - Module exports
 
-3. `/workspace/apps/codebuddy/CLI_FLAGS_EXAMPLES.md` (documentation)
-4. `/workspace/apps/codebuddy/INTEGRATION_REPORT.md` (this file)
+3. `../mill/workspace/apps/codebuddy/CLI_FLAGS_EXAMPLES.md` (documentation)
+4. `../mill/workspace/apps/codebuddy/INTEGRATION_REPORT.md` (this file)
 
 ### Modified:
-1. `/workspace/apps/codebuddy/src/cli.rs` → `/workspace/apps/codebuddy/src/cli/mod.rs`
+1. `../mill/workspace/apps/codebuddy/src/cli.rs` → `../mill/workspace/apps/codebuddy/src/cli/mod.rs`
    - Added module declarations
    - Updated Tool command structure
    - Modified handle_tool_command signature
    - Added flag-to-JSON conversion logic
 
-2. `/workspace/apps/codebuddy/src/cli/flag_parser.rs` (by Agent 1, integrated by Agent 2)
+2. `../mill/workspace/apps/codebuddy/src/cli/flag_parser.rs` (by Agent 1, integrated by Agent 2)
    - Replaced stub convention parsers with Agent 2's implementations
    - Added integration layer
 

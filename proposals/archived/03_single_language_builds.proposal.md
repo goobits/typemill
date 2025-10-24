@@ -33,7 +33,7 @@ mill-lang-typescript = { workspace = true }
 cb-lang-rust = { workspace = true }
 mill-lang-typescript = { workspace = true }
 
-# apps/codebuddy/Cargo.toml:19
+# ../../apps/mill/Cargo.toml:19
 cb-lang-rust = { workspace = true }
 mill-lang-typescript = { workspace = true }
 ```
@@ -164,7 +164,7 @@ lang-markdown = ["dep:cb-lang-markdown"]
 Repeat for:
 - `mill-services/Cargo.toml`
 - `cb-plugins/Cargo.toml`
-- `apps/codebuddy/Cargo.toml`
+- `../../apps/mill/Cargo.toml`
 - `cb-handlers/Cargo.toml`
 - `tests/e2e/Cargo.toml`
 

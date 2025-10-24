@@ -48,7 +48,7 @@ impl std::error::Error for ConventionError {}
 ///
 /// Simple target:
 /// ```
-/// use codebuddy::cli::conventions::parse_target_convention;
+/// use mill::cli::conventions::parse_target_convention;
 /// let result = parse_target_convention("directory:crates/mill-client").unwrap();
 /// assert_eq!(result["kind"], "directory");
 /// assert_eq!(result["path"], "crates/mill-client");
@@ -56,7 +56,7 @@ impl std::error::Error for ConventionError {}
 ///
 /// Target with position (symbol):
 /// ```
-/// use codebuddy::cli::conventions::parse_target_convention;
+/// use mill::cli::conventions::parse_target_convention;
 /// let result = parse_target_convention("symbol:src/app.rs:10:5").unwrap();
 /// assert_eq!(result["kind"], "symbol");
 /// assert_eq!(result["path"], "src/app.rs");
@@ -110,7 +110,7 @@ pub fn parse_target_convention(s: &str) -> Result<Value, ConventionError> {
 /// # Examples
 ///
 /// ```
-/// use codebuddy::cli::conventions::parse_source_convention;
+/// use mill::cli::conventions::parse_source_convention;
 /// let result = parse_source_convention("src/app.rs:45:8").unwrap();
 /// assert_eq!(result["file_path"], "src/app.rs");
 /// assert_eq!(result["line"], 45);
@@ -119,7 +119,7 @@ pub fn parse_target_convention(s: &str) -> Result<Value, ConventionError> {
 ///
 /// Just path (for operations that don't need a position):
 /// ```
-/// use codebuddy::cli::conventions::parse_source_convention;
+/// use mill::cli::conventions::parse_source_convention;
 /// let result = parse_source_convention("src/app.rs").unwrap();
 /// assert_eq!(result["file_path"], "src/app.rs");
 /// ```
@@ -162,14 +162,14 @@ pub fn parse_source_convention(s: &str) -> Result<Value, ConventionError> {
 ///
 /// Simple path:
 /// ```
-/// use codebuddy::cli::conventions::parse_destination_convention;
+/// use mill::cli::conventions::parse_destination_convention;
 /// let result = parse_destination_convention("src/utils.rs").unwrap();
 /// assert_eq!(result["file_path"], "src/utils.rs");
 /// ```
 ///
 /// Path with position:
 /// ```
-/// use codebuddy::cli::conventions::parse_destination_convention;
+/// use mill::cli::conventions::parse_destination_convention;
 /// let result = parse_destination_convention("src/utils.rs:10:0").unwrap();
 /// assert_eq!(result["file_path"], "src/utils.rs");
 /// assert_eq!(result["line"], 10);
@@ -214,7 +214,7 @@ pub fn parse_destination_convention(s: &str) -> Result<Value, ConventionError> {
 /// # Examples
 ///
 /// ```
-/// use codebuddy::cli::conventions::convert_filename;
+/// use mill::cli::conventions::convert_filename;
 /// assert_eq!(convert_filename("user-profile.js", "kebab-case", "camelCase"), Some("userProfile.js".to_string()));
 /// assert_eq!(convert_filename("user_name.rs", "snake_case", "camelCase"), Some("userName.rs".to_string()));
 /// assert_eq!(convert_filename("UserData.ts", "PascalCase", "kebab-case"), Some("user-data.ts".to_string()));

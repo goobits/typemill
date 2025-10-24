@@ -6,7 +6,7 @@ license.workspace = true
 [features]
 default = ["refactor-all"]
 # NOTE: Language features removed - handlers use dependency injection via PluginRegistry.
-# Language plugins are registered at the binary level (apps/codebuddy/src/main.rs),
+# Language plugins are registered at the binary level (apps/mill/src/main.rs),
 # not at the handler layer. This eliminates compile-time coupling.
 analysis-dead-code = ["dep:mill-analysis-dead-code", "dep:mill-analysis-common"]
 analysis-circular-deps = ["dep:mill-analysis-circular-deps", "dep:mill-analysis-graph"]

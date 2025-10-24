@@ -8,7 +8,7 @@
 //! import statements updated.
 //!
 //! **Bug**: Currently, not all files with imports are being scanned and updated.
-//! For example, apps/codebuddy/tests/e2e_analysis_features.rs contains
+//! For example, apps/mill/tests/e2e_analysis_features.rs contains
 //! `use mill_test_support::harness::test_helpers;` but is not included in the rename plan.
 //!
 //! This test should FAIL until the bug is fixed.

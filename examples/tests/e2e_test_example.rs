@@ -1,5 +1,5 @@
 // Example: E2E Test Pattern
-// Location: apps/codebuddy/tests/e2e_*.rs
+// Location: apps/mill/tests/e2e_*.rs
 // Purpose: Test complete workflows with real components
 
 use mill_test_support::harness::{ TestClient , TestWorkspace };

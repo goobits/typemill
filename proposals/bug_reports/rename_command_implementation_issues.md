@@ -46,7 +46,7 @@ tool rename.plan '...' | jq '{plan: .content, options: {dry_run: false}}' | tool
 
 ### Root Cause
 
-The CLI tool argument parser (`apps/codebuddy/src/cli.rs`) expects:
+The CLI tool argument parser (`../../apps/mill/src/cli.rs`) expects:
 - `<ARGS>` as a **JSON string** parameter
 - No mechanism for reading from stdin
 - No template syntax like `@stdin` or `@file`
@@ -81,7 +81,7 @@ impl QuickRenameHandler {
 
 **Option A: Add stdin support to CLI** (Better for composability)
 ```rust
-// In apps/codebuddy/src/cli.rs
+// In ../../apps/mill/src/cli.rs
 pub struct ToolCommand {
     pub tool_name: String,
     #[arg(value_name = "ARGS", help = "JSON arguments or '-' for stdin")]
@@ -220,7 +220,7 @@ Files:
 - `../../crates/mill-client/Cargo.toml`
 - `../../crates/mill-transport/Cargo.toml`
 - `../../crates/mill-server/Cargo.toml`
-- `apps/codebuddy/Cargo.toml`
+- `../../apps/mill/Cargo.toml`
 
 ### Manual Fix Applied
 

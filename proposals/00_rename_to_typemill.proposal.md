@@ -38,7 +38,7 @@
   - Enabled `update_exact_matches` in default scope
 
 **Next Steps:**
-- **Phase 4**: Application binary rename (apps/codebuddy → apps/mill)
+- **Phase 4**: Application binary rename (../apps/mill → apps/mill)
 - **Phase 5**: Configuration directory path updates
 - **Phase 6**: Plugin macro rename
 - **Phase 7**: Test fixture updates
@@ -125,7 +125,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 - `cb-analysis-circular-deps` - Circular dependency detection *(needs rename)*
 
 **Applications:**
-- `apps/codebuddy` - Main binary application (produces `codebuddy` executable) *(needs rename)*
+- `../apps/mill` - Main binary application (produces `codebuddy` executable) *(needs rename)*
 
 **Development Tools:**
 - `crates/xtask` - Build automation tasks
@@ -203,7 +203,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 - `../analysis/mill-analysis-circular-deps` → `analysis/mill-analysis-circular-deps`
 
 **Application Needing Rename (1 crate):**
-- `apps/codebuddy` → `apps/mill`
+- `../apps/mill` → `apps/mill`
   - Binary name: `codebuddy` → `mill`
 
 **Development Tools (No rename - 1 crate):**
@@ -441,9 +441,9 @@ rg "'codebuddy'" --type rust
 ### Phase 4: Binary and App Rename
 
 ```bash
-# Rename apps/codebuddy → apps/mill
+# Rename ../apps/mill → apps/mill
 codebuddy rename.plan \
-  --target directory:apps/codebuddy \
+  --target directory:../apps/mill \
   --new-name apps/mill
 
 codebuddy workspace.apply_edit --plan <plan>
@@ -639,7 +639,7 @@ git tag v2.0.0
 - [x] `cb-analysis-circular-deps` → `mill-analysis-circular-deps` ✅
 
 **Applications:**
-- [ ] `apps/codebuddy` → `apps/mill` (including binary name)
+- [ ] `../apps/mill` → `apps/mill` (including binary name)
 
 **After each rename:**
 - [ ] Validate with `get_diagnostics`
@@ -893,7 +893,7 @@ mill env migrate  # Helper command to rewrite .env files
 |-------|----------|--------|-------------|
 | **Phase 2**: Discovery | 2-3 hours | ✅ Complete | Run discovery tools, inventory all references |
 | **Phase 3**: Crate Renames | 6-8 hours | ✅ Complete | Rename all 9 crates using CLI |
-| **Phase 4**: Binary Rename | 1 hour | 🔄 Next | Rename apps/codebuddy → apps/mill |
+| **Phase 4**: Binary Rename | 1 hour | 🔄 Next | Rename ../apps/mill → apps/mill |
 | **Phase 5**: Config Paths | 2-3 hours | Pending | Update .codebuddy → .typemill references |
 | **Phase 6**: Plugin Macro | 1-2 hours | Pending | Rename codebuddy_plugin! → mill_plugin! |
 | **Phase 7**: Test Fixtures | 1 hour | Pending | Update test playground packages |
@@ -1166,7 +1166,7 @@ See full documentation at https://typemill.org/docs/migration
 - `../analysis/mill-analysis-circular-deps` → `analysis/mill-analysis-circular-deps`
 
 **Applications (1):**
-- `apps/codebuddy` → `apps/mill`
+- `../apps/mill` → `apps/mill`
 
 **Already Renamed (18 crates using mill-* prefix):** ✓
 - mill-client, mill-handlers, mill-lsp, mill-server, mill-services, mill-transport

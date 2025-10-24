@@ -8,8 +8,8 @@ Fast reference for test organization, execution, and best practices.
 |-------|----------|---------|-------|-------|--------------|
 | **Unit** | `crates/*/src/` | Individual functions, business logic | ⚡ <100ms | 100s | default |
 | **Integration** | `tests/e2e/src/` | Tool handlers with mocks | ⚡ <5s | 81 | default |
-| **E2E** | `apps/codebuddy/tests/e2e_*.rs` | Complete workflows | 🐌 <30s | 58 | default |
-| **Smoke** | `apps/codebuddy/tests/smoke/` | Protocol connectivity | 🐌 <1min | 5 | `#[ignore]` |
+| **E2E** | `../../apps/mill/tests/e2e_*.rs` | Complete workflows | 🐌 <30s | 58 | default |
+| **Smoke** | `../../apps/mill/tests/smoke/` | Protocol connectivity | 🐌 <1min | 5 | `#[ignore]` |
 
 **Total:** 244+ tests across 93+ files
 
@@ -67,8 +67,8 @@ Fast reference for test organization, execution, and best practices.
 | Layer | File | Purpose | Languages |
 |-------|------|---------|-----------|
 | **Fixtures** | `../crates/mill-test-support/src/harness/test_fixtures.rs` | Test data (code snippets, expected results) | TS, Py, Go, Rust |
-| **Runners** | `apps/codebuddy/tests/lsp_feature_runners.rs` | Generic test logic (language-agnostic) | All |
-| **Declarations** | `apps/codebuddy/tests/lsp_features.rs` | Test matrix (connects fixtures + runners) | All |
+| **Runners** | `../../apps/mill/tests/lsp_feature_runners.rs` | Generic test logic (language-agnostic) | All |
+| **Declarations** | `../../apps/mill/tests/lsp_features.rs` | Test matrix (connects fixtures + runners) | All |
 
 ### Adding a New Language
 
@@ -98,7 +98,7 @@ Fast reference for test organization, execution, and best practices.
 
 | Binary | Location | PID Lock | Parallel Tests | Used By |
 |--------|----------|----------|----------------|---------|
-| `codebuddy` | `apps/codebuddy` | ✅ `/tmp/codebuddy.pid` | ❌ Conflicts | CLI, users |
+| `codebuddy` | `../../apps/mill` | ✅ `/tmp/codebuddy.pid` | ❌ Conflicts | CLI, users |
 | `mill-server` | `../crates/mill-server` | ❌ No lock | ✅ Isolated instances | TestClient, CI |
 
 **Important:** TestClient uses `mill-server` (not `codebuddy`) to enable parallel test execution.
@@ -124,7 +124,7 @@ workspace/
 │   └── tests/              # Integration tests
 │       ├── lsp_features.rs       # Data-driven LSP tests
 │       └── lsp_feature_runners.rs # Test runners
-└── apps/codebuddy/tests/   # E2E and smoke tests
+└── ../../apps/mill/tests/   # E2E and smoke tests
     ├── e2e_*.rs            # E2E workflows
     └── smoke/              # Protocol tests (#[ignore])
 ```

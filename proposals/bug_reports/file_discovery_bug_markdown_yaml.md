@@ -18,7 +18,7 @@ When renaming a crate or directory, the file discovery mechanism fails to find m
   - `docs/architecture/layers.md` - Documentation
   - `deny.toml` - Configuration (not YAML but similar issue)
   - `proposals/*.md` - 4 proposal documents
-  - `apps/codebuddy/tests/e2e_analysis_features.rs` - Wait, this is a .rs file! (separate issue)
+  - `../../apps/mill/tests/e2e_analysis_features.rs` - Wait, this is a .rs file! (separate issue)
 
 **For markdown/YAML specifically:**
 

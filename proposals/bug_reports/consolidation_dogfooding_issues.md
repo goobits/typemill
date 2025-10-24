@@ -130,7 +130,7 @@ mill-foundation = { path = "../mill-foundation" }
 - `../../crates/mill-transport/Cargo.toml`
 - `../../crates/mill-plugin-system/Cargo.toml`
 - `../../crates/mill-server/Cargo.toml`
-- `apps/codebuddy/Cargo.toml`
+- `../../apps/mill/Cargo.toml`
 - `tests/e2e/Cargo.toml`
 - `analysis/*/Cargo.toml` (multiple)
 

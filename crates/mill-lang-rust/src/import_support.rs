@@ -1275,7 +1275,7 @@ fn main() {
 
         // Real-world test case combining both patterns
         let content = r#"// Force linker to include plugin-bundle
-extern crate codebuddy_plugin_bundle;
+extern crate mill_plugin_bundle;
 
 // Re-export workspaces
 pub use codebuddy_workspaces as workspaces;

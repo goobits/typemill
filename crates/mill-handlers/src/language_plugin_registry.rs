@@ -5,7 +5,7 @@
 //! of language-specific operations based on file extensions.
 //!
 //! **IMPORTANT**: This registry uses dependency injection. Language plugins must be
-//! registered at the application layer (e.g., in apps/codebuddy/src/main.rs) and
+//! registered at the application layer (e.g., in apps/mill/src/main.rs) and
 //! injected via `from_registry()`. This eliminates compile-time coupling between
 //! the handler layer and specific language implementations.
 
@@ -30,7 +30,7 @@ impl LanguagePluginRegistry {
     /// Create a registry from an existing PluginRegistry (RECOMMENDED)
     ///
     /// This is the primary way to create a LanguagePluginRegistry. The PluginRegistry
-    /// should be built at the application layer (e.g., in apps/codebuddy/src/main.rs)
+    /// should be built at the application layer (e.g., in apps/mill/src/main.rs)
     /// using `mill_services::services::registry_builder::build_language_plugin_registry()`,
     /// then injected here.
     ///
@@ -40,7 +40,7 @@ impl LanguagePluginRegistry {
     /// use mill_services::services::registry_builder::build_language_plugin_registry;
     /// use std::sync::Arc;
     ///
-    /// // At application layer (apps/codebuddy/src/main.rs)
+    /// // At application layer (apps/mill/src/main.rs)
     /// let registry = build_language_plugin_registry();
     ///
     /// // Inject into handler layer

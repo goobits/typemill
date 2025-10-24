@@ -11,12 +11,12 @@ The test suite uses a **data-driven architecture** that separates test logic fro
    - Contains code snippets, file names, and expected outcomes
    - Static data structures
 
-2. **Runners** (`apps/codebuddy/tests/lsp_feature_runners.rs`)
+2. **Runners** (`../../apps/mill/tests/lsp_feature_runners.rs`)
    - Generic test logic
    - One runner function per LSP feature
    - Language-agnostic implementation
 
-3. **Test Declarations** (`apps/codebuddy/tests/lsp_features.rs`)
+3. **Test Declarations** (`../../apps/mill/tests/lsp_features.rs`)
    - Minimal test file
    - Connects fixtures with runners
    - Automatically generates test matrix
@@ -113,7 +113,7 @@ pub const CALL_HIERARCHY_TESTS: &[CallHierarchyTestCase] = &[
 
 ### Step 2: Implement Runner Function
 
-Add to `apps/codebuddy/tests/lsp_feature_runners.rs`:
+Add to `../../apps/mill/tests/lsp_feature_runners.rs`:
 
 ```rust
 pub async fn run_call_hierarchy_test(case: &CallHierarchyTestCase, use_real_lsp: bool) {
@@ -126,7 +126,7 @@ pub async fn run_call_hierarchy_test(case: &CallHierarchyTestCase, use_real_lsp:
 
 ### Step 3: Declare Tests
 
-Add to `apps/codebuddy/tests/lsp_features.rs`:
+Add to `../../apps/mill/tests/lsp_features.rs`:
 
 ```rust
 #[tokio::test]
@@ -365,7 +365,7 @@ cargo nextest run --status-level skip --test-threads=1
 
 The codebase has **two server binaries**:
 
-1. **`codebuddy`** (apps/codebuddy) - CLI wrapper with lifecycle management
+1. **`codebuddy`** (../../apps/mill) - CLI wrapper with lifecycle management
    - Uses a global PID lock file at `/tmp/codebuddy.pid`
    - Prevents multiple instances via file locking
    - Provides commands: `start`, `stop`, `status`, `serve`, etc.

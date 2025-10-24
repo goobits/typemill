@@ -18,7 +18,7 @@ use serde_json::json;
 /// Test that files in non-standard locations are discovered during rename
 ///
 /// This is a regression test for the bug where:
-/// - apps/codebuddy/tests/e2e_analysis_features.rs had imports but wasn't found
+/// - apps/mill/tests/e2e_analysis_features.rs had imports but wasn't found
 /// - examples/tests/data_driven_fixture_example.rs had imports but wasn't found
 /// - docs/*.md have references but weren't found
 /// - proposals/*.md have references but weren't found
@@ -54,7 +54,7 @@ resolver = "2"
 "#,
     );
 
-    // Create app with tests directory (mirrors apps/codebuddy structure)
+    // Create app with tests directory (mirrors apps/mill structure)
     workspace.create_directory("apps/client-app/tests");
     workspace.create_file(
         "apps/client-app/Cargo.toml",
@@ -158,7 +158,7 @@ Configuration: `crates/my-crate/Cargo.toml`
 
     // CRITICAL ASSERTIONS: These files MUST be in the plan
 
-    // 1. App test file (mirrors apps/codebuddy/tests/e2e_analysis_features.rs)
+    // 1. App test file (mirrors apps/mill/tests/e2e_analysis_features.rs)
     assert!(
         files_in_plan.iter().any(|f| f.contains("apps/client-app/tests/feature_test.rs")),
         "❌ BUG: apps/client-app/tests/feature_test.rs not in plan (has Rust import!)"

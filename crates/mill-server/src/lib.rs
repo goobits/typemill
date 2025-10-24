@@ -175,7 +175,7 @@ impl ServerOptions {
 /// Create AppState and PluginDispatcher with custom workspace manager
 ///
 /// This is a helper function to reduce code duplication between
-/// the standalone binary (main.rs) and the unified binary (apps/codebuddy).
+/// the standalone binary (main.rs) and the unified binary (apps/mill).
 pub async fn create_dispatcher_with_workspace(
     config: Arc<AppConfig>,
     workspace_manager: Arc<mill_workspaces::WorkspaceManager>,

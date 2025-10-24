@@ -13,7 +13,7 @@ The system is built on a multi-crate architecture with focused responsibilities 
 ```mermaid
 graph TD
     subgraph Application
-        A[apps/codebuddy]
+        A[../../apps/mill]
     end
 
     subgraph Core
@@ -71,7 +71,7 @@ The codebase follows a strict layered architecture with enforced dependencies:
 - **Foundation**: `cb-types`, `cb-protocol`, `mill-config`, `codebuddy-core`
 - **Services**: `cb-ast`, `mill-services`, `mill-lsp`, `mill-plugin-bundle`
 - **Handlers**: `mill-handlers`
-- **Application**: `mill-server`, `mill-client`, `mill-transport`, `apps/codebuddy`
+- **Application**: `mill-server`, `mill-client`, `mill-transport`, `../../apps/mill`
 
 For detailed layer definitions, dependency rules, and enforcement via `cargo-deny`, see **[layers.md](layers.md)**.
 

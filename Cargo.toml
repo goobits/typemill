@@ -13,7 +13,7 @@ members = [
     "crates/mill-lang-toml",
     "crates/mill-lang-yaml",
     "crates/mill-plugin-bundle",
-    "apps/codebuddy",
+    "apps/mill",
     "analysis/mill-analysis-common",
     "analysis/mill-analysis-dead-code",
     "analysis/mill-analysis-deep-dead-code",
