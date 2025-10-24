@@ -498,3 +498,17 @@ pub fn build_move_params(
         "destination": workspace.absolute_path(destination).to_string_lossy().to_string()
     })
 }
+
+/// Helper to build delete parameters with absolute paths
+pub fn build_delete_params(
+    workspace: &TestWorkspace,
+    path: &str,
+    kind: &str,
+) -> Value {
+    json!({
+        "target": {
+            "kind": kind,
+            "path": workspace.absolute_path(path).to_string_lossy().to_string()
+        }
+    })
+}
