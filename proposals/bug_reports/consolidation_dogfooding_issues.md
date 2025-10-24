@@ -16,7 +16,7 @@ Tested the consolidation tools (Proposal 50) by dogfooding them on the actual `c
 - `rename.plan` with `consolidate: true` - ✅ Generated plan
 - `workspace.apply_edit` with `dry_run: false` - ⚠️ Partially worked
 
-**Result**: Consolidation succeeded in updating 171+ Rust files with correct imports (`cb_protocol::` → `codebuddy_foundation::protocol::`), but left the workspace in a broken state requiring 6 categories of manual fixes.
+**Result**: Consolidation succeeded in updating 171+ Rust files with correct imports (`cb_protocol::` → `mill_foundation::protocol::`), but left the workspace in a broken state requiring 6 categories of manual fixes.
 
 ---
 
@@ -114,7 +114,7 @@ mill-foundation = { path = "../mill-foundation" }
 ```
 
 ### Actual Behavior
-- ✅ Rust code: `use cb_protocol::*` → `use codebuddy_foundation::protocol::*` (WORKED)
+- ✅ Rust code: `use cb_protocol::*` → `use mill_foundation::protocol::*` (WORKED)
 - ❌ Cargo.toml: `cb-protocol = { ... }` → (NO CHANGE)
 
 ### Files Affected
@@ -458,12 +458,12 @@ After implementing fixes:
 
 ## Priority
 
-**P0 (Blocker)** - Consolidation mode is unusable without these fixes. Must be resolved before attempting additional consolidations (codebuddy-core → mill-foundation).
+**P0 (Blocker)** - Consolidation mode is unusable without these fixes. Must be resolved before attempting additional consolidations (mill-core → mill-foundation).
 
 ## Next Steps
 
 1. Implement all 6 fixes in consolidation tooling
 2. Write regression tests for each fix
 3. Re-run dogfooding test to verify clean consolidation
-4. Proceed with codebuddy-core consolidation as validation
+4. Proceed with mill-core consolidation as validation
 5. Document lessons learned in Proposal 06 completion report

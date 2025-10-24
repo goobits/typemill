@@ -21,7 +21,7 @@ The batch rename tool (`rename` with `targets` array) successfully renames direc
 
 2. **Execute batch rename**:
    ```bash
-   codebuddy tool rename '{
+   mill tool rename '{
      "targets": [
        {
          "kind": "directory",
@@ -186,8 +186,8 @@ The rename tool appears to use **different update strategies** for different fil
 ## Comparison: Single vs Batch Rename
 
 **Same issue occurs in both modes:**
-- Single rename: `codebuddy tool rename '{"target": {...}, "newName": "..."}'`
-- Batch rename: `codebuddy tool rename '{"targets": [...]}'`
+- Single rename: `mill tool rename '{"target": {...}, "newName": "..."}'`
+- Batch rename: `mill tool rename '{"targets": [...]}'`
 
 This is **not** a batch-specific bug, but a general Cargo.toml update coverage issue.
 

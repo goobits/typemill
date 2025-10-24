@@ -26,11 +26,11 @@ We use a few different tools for setup. Here's what each one is for:
 
 | Tool | Who is it for? | Purpose |
 |---|---|---|
-| `install.sh` | **End Users** | Automated installer. Builds from source and copies the `codebuddy` binary to your system. |
+| `install.sh` | **End Users** | Automated installer. Builds from source and copies the `mill` binary to your system. |
 | `make first-time-setup` | **Developers** | **THE complete setup command**. Installs all dev tools (cargo-nextest, sccache, mold), builds parsers, builds project, installs LSP servers, validates everything (~3-5 min). |
 | `make build-parsers` | **Developers** | Builds only the external language parsers (Java, C#, TypeScript). Usually not needed directly—included in `first-time-setup`. |
 | `make build` | **Developers** | Builds the core Rust project only. |
-| `codebuddy setup` | **Both** | A runtime configuration wizard that helps you configure Language Server Protocol (LSP) servers for your projects. |
+| `mill setup` | **Both** | A runtime configuration wizard that helps you configure Language Server Protocol (LSP) servers for your projects. |
 
 ### Developer Setup Workflow
 
@@ -39,7 +39,7 @@ For the best first-time setup experience, we recommend using the `Makefile` targ
 1.  **Clone the repository:**
     ```bash
     git clone https://github.com/goobits/typemill.git
-    cd codebuddy
+    cd mill
     ```
 
 2.  **Run the first-time setup command:**
@@ -55,7 +55,7 @@ For the best first-time setup experience, we recommend using the `Makefile` targ
 3.  **Configure Language Servers:**
     ```bash
     # Run the interactive setup wizard
-    codebuddy setup
+    mill setup
     ```
     This will detect your project languages and help you set up the necessary LSP servers.
 
@@ -243,7 +243,7 @@ This project uses the **xtask pattern** for build automation. Instead of shell s
 ### Available Tasks
 
 ```bash
-# Install codebuddy
+# Install mill
 cargo xtask install
 
 # Run all checks (fmt, clippy, test, deny)
@@ -811,7 +811,7 @@ Codebuddy uses a **unified refactoring API** with a consistent `plan -> apply` p
 **Example Flow:**
 ```bash
 # Step 1: Generate a plan (read-only, safe to explore)
-PLAN=$(codebuddy tool rename.plan '{
+PLAN=$(mill tool rename.plan '{
   "target": {"kind": "symbol", "path": "src/app.ts", "selector": {"position": {"line": 15, "character": 8}}},
   "newName": "newUser"
 }')
@@ -820,7 +820,7 @@ PLAN=$(codebuddy tool rename.plan '{
 echo $PLAN | jq .
 
 # Step 3: Apply the plan (atomic, with rollback on failure)
-codebuddy tool workspace.apply_edit "{\"plan\": $PLAN}"
+mill tool workspace.apply_edit "{\"plan\": $PLAN}"
 ```
 
 **Internal Tools (Hidden from MCP):**
@@ -852,7 +852,7 @@ Codebuddy uses a **unified analysis API** with a consistent `analyze.<category>(
 **Example Flow:**
 ```bash
 # Analyze code quality
-codebuddy tool analyze.quality '{
+mill tool analyze.quality '{
   "kind": "complexity",
   "scope": {"type": "file", "path": "src/app.ts"}
 }'

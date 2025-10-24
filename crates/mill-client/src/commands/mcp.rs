@@ -22,7 +22,7 @@ pub fn list_presets() -> Result<()> {
         for (id, preset) in presets {
             println!("  {} - {}", id, preset.description);
         }
-        println!("\nUsage: codebuddy mcp add <preset>");
+        println!("\nUsage: mill mcp add <preset>");
 
         Ok(())
     }
@@ -40,7 +40,7 @@ pub fn add_preset(preset_id: &str) -> Result<()> {
         // Get preset
         let preset = presets::get_preset(preset_id).ok_or_else(|| {
             anyhow::anyhow!(
-                "Preset '{}' not found. Run 'codebuddy mcp list' to see available presets.",
+                "Preset '{}' not found. Run 'mill mcp list' to see available presets.",
                 preset_id
             )
         })?;
@@ -114,7 +114,7 @@ pub fn remove_preset(preset_id: &str) -> Result<()> {
 
         if external_mcp.servers.len() == initial_len {
             bail!(
-                "Preset '{}' is not configured. Run 'codebuddy mcp list' to see available presets.",
+                "Preset '{}' is not configured. Run 'mill mcp list' to see available presets.",
                 preset_id
             );
         }
@@ -140,7 +140,7 @@ pub fn info_preset(preset_id: &str) -> Result<()> {
         // Get preset
         let preset = presets::get_preset(preset_id).ok_or_else(|| {
             anyhow::anyhow!(
-                "Preset '{}' not found. Run 'codebuddy mcp list' to see available presets.",
+                "Preset '{}' not found. Run 'mill mcp list' to see available presets.",
                 preset_id
             )
         })?;
@@ -182,20 +182,20 @@ pub fn info_preset(preset_id: &str) -> Result<()> {
                     );
                     println!();
                     if !is_installed {
-                        println!("To install: codebuddy mcp add {}", preset.id);
+                        println!("To install: mill mcp add {}", preset.id);
                     } else {
-                        println!("To remove:  codebuddy mcp remove {}", preset.id);
+                        println!("To remove:  mill mcp remove {}", preset.id);
                     }
                 } else {
                     println!("Status:      ✗ Not installed");
                     println!();
-                    println!("To install: codebuddy mcp add {}", preset.id);
+                    println!("To install: mill mcp add {}", preset.id);
                 }
             }
         } else {
             println!("Status:      ✗ Not installed");
             println!();
-            println!("To install: codebuddy mcp add {}", preset.id);
+            println!("To install: mill mcp add {}", preset.id);
         }
 
         println!();

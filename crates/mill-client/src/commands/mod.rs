@@ -98,7 +98,7 @@ impl CommandContext {
         // Validate that we have a URL
         if config.url.is_none() {
             return Err(ClientError::ConfigError(
-                "No server URL configured. Run 'codebuddy setup' or provide --url".to_string(),
+                "No server URL configured. Run 'mill setup' or provide --url".to_string(),
             ));
         }
 
@@ -223,7 +223,7 @@ impl CommandContext {
         let mut suggestions = Vec::new();
 
         if self.config.url.is_none() {
-            suggestions.push("Run 'codebuddy setup' to configure server URL".to_string());
+            suggestions.push("Run 'mill setup' to configure server URL".to_string());
         }
 
         if !self.config.has_token() {

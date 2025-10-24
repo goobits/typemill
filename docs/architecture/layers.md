@@ -31,9 +31,9 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Purpose:** Testing infrastructure, build tooling, and analysis tools
 
 **Crates:**
-- `mill-test-support` / `codebuddy-test-support`
+- `mill-test-support` / `mill-test-support`
 - `xtask`
-- `analysis/*` (codebuddy-analysis-*)
+- `analysis/*` (mill-analysis-*)
 
 **Dependencies:** Can access any layer (testing needs)
 
@@ -46,10 +46,10 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Purpose:** Core data structures, protocol definitions, and configuration
 
 **Crates:**
-- `cb-types` / `codebuddy-types`
-- `cb-protocol` / `codebuddy-protocol`
+- `cb-types` / `mill-types`
+- `cb-protocol` / `mill-protocol`
 - `mill-config`
-- `codebuddy-core` (configuration, logging, errors)
+- `mill-core` (configuration, logging, errors)
 
 **Dependencies:**
 - External crates only (serde, tokio, etc.)
@@ -61,7 +61,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 - Stable APIs (changes ripple through entire codebase)
 
 **Planned Consolidation:**
-- **Target:** Merge `cb-types`, `cb-protocol`, `codebuddy-core` → `mill-foundation`
+- **Target:** Merge `cb-types`, `cb-protocol`, `mill-core` → `mill-foundation`
 - **Rationale:** These crates are tightly coupled and rarely modified independently
 
 ---
@@ -71,7 +71,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Purpose:** Define language plugin trait and capabilities
 
 **Crates:**
-- `mill-plugin-api` / `codebuddy-plugin-api`
+- `mill-plugin-api` / `mill-plugin-api`
 
 **Dependencies:**
 - Layer 2: Foundation (types, protocol)
@@ -88,12 +88,12 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Purpose:** Language-specific implementations of code intelligence
 
 **Crates:**
-- `mill-lang-common` / `codebuddy-lang-common` (shared utilities)
-- `cb-lang-rust` / `codebuddy-lang-rust`
-- `mill-lang-typescript` / `codebuddy-lang-typescript`
-- `cb-lang-markdown` / `codebuddy-lang-markdown`
-- `mill-lang-toml` / `codebuddy-lang-toml`
-- `cb-lang-yaml` / `codebuddy-lang-yaml`
+- `mill-lang-common` / `mill-lang-common` (shared utilities)
+- `cb-lang-rust` / `mill-lang-rust`
+- `mill-lang-typescript` / `mill-lang-typescript`
+- `cb-lang-markdown` / `mill-lang-markdown`
+- `mill-lang-toml` / `mill-lang-toml`
+- `cb-lang-yaml` / `mill-lang-yaml`
 
 **Dependencies:**
 - Layer 3: Plugin API
@@ -112,8 +112,8 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 
 **Crates:**
 - `cb-ast` / `mill-ast` (AST parsing, code analysis)
-- `mill-services` / `codebuddy-services` (file service, lock manager, planner)
-- `mill-lsp` / `codebuddy-lsp` (LSP client management)
+- `mill-services` / `mill-services` (file service, lock manager, planner)
+- `mill-lsp` / `mill-lsp` (LSP client management)
 - `mill-plugin-bundle` (plugin registration)
 - `mill-plugin-system` (plugin loading, dispatch)
 
@@ -138,7 +138,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Purpose:** MCP tool implementations that delegate to services
 
 **Crates:**
-- `mill-handlers` / `codebuddy-handlers`
+- `mill-handlers` / `mill-handlers`
 
 **Dependencies:**
 - Layer 5: Services
@@ -158,9 +158,9 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Purpose:** Server, client, transport, and CLI entry points
 
 **Crates:**
-- `mill-server` / `codebuddy-server` (MCP server orchestration)
-- `mill-client` / `codebuddy-client` (CLI client, WebSocket client)
-- `mill-transport` / `codebuddy-transport` (stdio, WebSocket protocols)
+- `mill-server` / `mill-server` (MCP server orchestration)
+- `mill-client` / `mill-client` (CLI client, WebSocket client)
+- `mill-transport` / `mill-transport` (stdio, WebSocket protocols)
 - `mill-auth` (authentication)
 - `mill-workspaces` (workspace management)
 

@@ -210,13 +210,13 @@ use cb_plugin_api::{
     LanguagePlugin, LanguageMetadata, PluginCapabilities, ManifestData,
     ParsedSource, PluginResult, LspConfig,
 };
-use cb_plugin_registry::codebuddy_plugin;
+use cb_plugin_registry::mill_plugin;
 use async_trait::async_trait;
 use std::path::Path;
 
 // Register the plugin with the Codebuddy system.
 // This macro creates a static descriptor that is collected at link-time.
-codebuddy_plugin! {
+mill_plugin! {
     name: "${LANG_LOWER}",
     extensions: [${EXTENSIONS_ARRAY_QUOTED}],
     manifest: "${MANIFEST}",
@@ -368,7 +368,7 @@ cat > "$PLUGIN_DIR/README.md" << EOF
 
 ${LANG_TITLE} language support for Codebuddy via the \`LanguagePlugin\` trait.
 
-This plugin self-registers with the Codebuddy system using the \`codebuddy_plugin!\` macro.
+This plugin self-registers with the Codebuddy system using the \`mill_plugin!\` macro.
 
 ## Configuration
 

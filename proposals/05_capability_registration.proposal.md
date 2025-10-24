@@ -65,7 +65,7 @@ All success criteria met. The capability registration system is fully implemente
 
 ## Success Criteria
 
-- [x] `cargo check --no-default-features --features lang-rust -p codebuddy` builds without compiling TypeScript-specific handlers or code paths.
+- [x] `cargo check --no-default-features --features lang-rust -p mill` builds without compiling TypeScript-specific handlers or code paths.
 - [x] System tool dispatch uses capability lookups only; no remaining language-specific `#[cfg]` guards in shared crates (12 guards removed).
 - [x] Adding a mocked language plugin in tests requires only registering its capabilities, with no code changes outside the plugin.
 - [x] Manifest update tooling succeeds when the relevant capability is present and returns a structured error when absent.

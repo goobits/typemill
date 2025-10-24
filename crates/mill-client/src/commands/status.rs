@@ -334,7 +334,7 @@ impl StatusCommand {
         match error {
             ClientError::ConnectionError(msg) if msg.contains("Connection refused") => {
                 println!("• The server is not running or not accepting connections");
-                println!("• Check if codebuddy server is started on the specified port");
+                println!("• Check if mill server is started on the specified port");
                 println!("• Verify the port number in your configuration");
             }
             ClientError::ConnectionError(msg) if msg.contains("timeout") => {
@@ -404,20 +404,20 @@ impl StatusCommand {
                 has_recommendations = true;
                 match category.as_str() {
                     "Config File" => {
-                        println!("• Run 'codebuddy setup' to create configuration");
+                        println!("• Run 'mill setup' to create configuration");
                     }
                     "Server URL" => {
-                        println!("• Configure server URL with 'codebuddy setup'");
-                        println!("• Or use --url flag: codebuddy status --url ws://localhost:3000");
+                        println!("• Configure server URL with 'mill setup'");
+                        println!("• Or use --url flag: mill status --url ws://localhost:3000");
                     }
                     "Connection" => {
-                        println!("• Ensure codebuddy server is running");
+                        println!("• Ensure mill server is running");
                         println!("• Check server URL and network connectivity");
-                        println!("• Run 'codebuddy setup' to reconfigure");
+                        println!("• Run 'mill setup' to reconfigure");
                     }
                     "Authentication" => {
                         println!("• Verify authentication token is correct");
-                        println!("• Update token with 'codebuddy setup'");
+                        println!("• Update token with 'mill setup'");
                     }
                     "Server Capabilities" => {
                         println!("• Server might be an older version");

@@ -1,7 +1,7 @@
 # Bug Report: cb-ast → mill-ast Rename Dogfooding Issues
 
 **Date**: 2025-10-19
-**Context**: Dogfooding codebuddy's rename.plan feature on itself (Phase 3 of Proposal 06)
+**Context**: Dogfooding mill's rename.plan feature on itself (Phase 3 of Proposal 06)
 **Severity**: Medium - Rename succeeded but required manual fixes for edge cases
 
 ## Summary
@@ -38,7 +38,7 @@ error: failed to load manifest for workspace member `/workspace/crates/mill-plug
 ### Bug 2: Qualified Path References Not Updated (60+ occurrences)
 **Severity**: High
 **File**: Multiple files across 16+ crates
-**Issue**: Code using `cb_ast::` qualified paths was not updated to `codebuddy_ast::`
+**Issue**: Code using `cb_ast::` qualified paths was not updated to `mill_ast::`
 
 **Examples**:
 ```rust
@@ -65,7 +65,7 @@ let parsed: cb_ast::package_extractor::ExtractModuleToPackageParams =  // ❌ NO
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cb_ast`
 ```
 
-**Manual fix required**: `find /workspace/crates -name "*.rs" -type f -exec sed -i 's/cb_ast::/codebuddy_ast::/g' {} +`
+**Manual fix required**: `find /workspace/crates -name "*.rs" -type f -exec sed -i 's/cb_ast::/mill_ast::/g' {} +`
 
 ---
 
@@ -74,7 +74,7 @@ error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cb_
 **File**: Multiple files
 **Issue**: While the rename plan showed it would update imports, some `use cb_ast::*` statements were missed
 
-**Expected**: All `use cb_ast::*` should become `use codebuddy_ast::*`
+**Expected**: All `use cb_ast::*` should become `use mill_ast::*`
 
 **Actual**: These were caught by the global find-replace fix for Bug 2, but should have been handled by the rename plan itself
 
@@ -182,10 +182,10 @@ tempfile = { workspace = true }
 
 ```bash
 # 1. Generate rename plan
-cargo nextest run test_rename_cb_ast_to_codebuddy_ast
+cargo nextest run test_rename_cb_ast_to_mill_ast
 
 # 2. Apply rename
-cargo nextest run test_apply_rename_cb_ast_to_codebuddy_ast
+cargo nextest run test_apply_rename_cb_ast_to_mill_ast
 
 # 3. Verify workspace compiles
 cargo check --workspace

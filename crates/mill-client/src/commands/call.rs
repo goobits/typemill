@@ -238,7 +238,7 @@ impl CallCommand {
 
         for (description, tool, params) in examples {
             println!("{}", ctx.formatter.info(description));
-            println!("  codebuddy call {} '{}'", tool, params);
+            println!("  mill call {} '{}'", tool, params);
             println!();
         }
 

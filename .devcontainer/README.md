@@ -90,7 +90,7 @@ Edit `.devcontainer/devcontainer.json` features or add `apt-get install` to `pos
 - The environment is still usable, just run `make first-time-setup` manually
 
 ### LSP server not working
-- Run `codebuddy doctor` to diagnose
+- Run `mill doctor` to diagnose
 - Check PATH includes `~/.cargo/bin` and `~/.local/bin`
 
 ## Performance Tips

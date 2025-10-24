@@ -1,4 +1,4 @@
-//! Core API types and traits for the codebuddy system
+//! Core API types and traits for the mill system
 //!
 //! This crate provides foundational types, traits, and error handling
 //! that are shared across all workspace crates. It has no dependencies
@@ -143,7 +143,7 @@ pub struct EditPlan {
 impl EditPlan {
     /// Create an EditPlan from an LSP WorkspaceEdit
     ///
-    /// Converts LSP's WorkspaceEdit format into CodeBuddy's EditPlan format.
+    /// Converts LSP's WorkspaceEdit format into TypeMill's EditPlan format.
     /// This enables refactoring operations to use LSP server responses directly.
     ///
     /// # Arguments

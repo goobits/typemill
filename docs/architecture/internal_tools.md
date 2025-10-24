@@ -148,16 +148,16 @@ This ensures:
 
 ## CLI Tool Listing
 
-The `codebuddy tools` command lists **only public tools** (those visible to AI agents via MCP).
+The `mill tools` command lists **only public tools** (those visible to AI agents via MCP).
 
 Internal tools are hidden from this listing but remain:
-- Callable via `codebuddy tool <internal-tool-name> <args>` (for testing/debugging)
+- Callable via `mill tool <internal-tool-name> <args>` (for testing/debugging)
 - Registered in the system for backend workflows
 - Documented in this file
 
 **Example output:**
 ```bash
-$ codebuddy tools
+$ mill tools
 ┌────────────────────────────────┬────────────────────┐
 │ TOOL NAME                      │ HANDLER            │
 ├────────────────────────────────┼────────────────────┤

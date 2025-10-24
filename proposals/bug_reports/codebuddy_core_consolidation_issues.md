@@ -1,4 +1,4 @@
-# Bug Report: codebuddy-core Consolidation Issues
+# Bug Report: mill-core Consolidation Issues
 
 **Date**: 2025-10-18
 **Severity**: High
@@ -7,11 +7,11 @@
 
 ## Summary
 
-During the consolidation of `codebuddy-core` into `mill-foundation/src/core`, multiple critical issues were discovered that prevented successful workspace compilation. These issues stem from circular dependencies and incomplete import path updates by the consolidation tool.
+During the consolidation of `mill-core` into `mill-foundation/src/core`, multiple critical issues were discovered that prevented successful workspace compilation. These issues stem from circular dependencies and incomplete import path updates by the consolidation tool.
 
 ## Environment
 
-- **Source Crate**: `crates/codebuddy-core`
+- **Source Crate**: `crates/mill-core`
 - **Target Location**: `../../crates/mill-foundation/src/core`
 - **Consolidation Command**: `rename.plan` with `consolidate: true`
 - **Affected Files**: 19 Rust files with import references
@@ -44,7 +44,7 @@ package `mill-plugin-api`
 **Workaround Applied**:
 - Removed `language.rs` from consolidation target
 - Moved `language.rs` to `mill-plugin-api` crate instead
-- Updated imports from `codebuddy_core::language` → `cb_plugin_api::language`
+- Updated imports from `mill_core::language` → `cb_plugin_api::language`
 - Fixed self-imports: `use cb_plugin_api::iter_plugins` → `use crate::iter_plugins`
 
 **Files Affected**:
@@ -87,8 +87,8 @@ package `mill-plugin-api`
 **Workaround Applied**:
 - Removed `logging.rs` from consolidation target
 - Moved `logging.rs` to `mill-config` crate (since it depends on config types)
-- Updated imports from `codebuddy_foundation::core::logging` → `codebuddy_config::logging`
-- Fixed self-imports: `use codebuddy_config::` → `use crate::`
+- Updated imports from `mill_foundation::core::logging` → `mill_config::logging`
+- Fixed self-imports: `use mill_config::` → `use crate::`
 - Added missing dependency: `tracing-subscriber` to `mill-config/Cargo.toml`
 
 **Files Affected**:
@@ -106,27 +106,27 @@ package `mill-plugin-api`
 **Impact**: Build errors across workspace
 
 **Description**:
-After consolidation, all imports referencing `codebuddy_core::` were not automatically updated to `codebuddy_foundation::core::`. This affected 19 files across the workspace.
+After consolidation, all imports referencing `mill_core::` were not automatically updated to `mill_foundation::core::`. This affected 19 files across the workspace.
 
 **Root Cause**:
 The consolidation tool's post-processing step `update_imports_for_consolidation()` did not properly update all import statements to reflect the new module path.
 
 **Error Messages**:
 ```
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `codebuddy_core`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `mill_core`
   --> ../../crates/mill-client/src/commands/doctor.rs:72:9
    |
-72 |         codebuddy_core::utils::system::command_exists(cmd)
-   |         ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `codebuddy_core`
+72 |         mill_core::utils::system::command_exists(cmd)
+   |         ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `mill_core`
 ```
 
 **Manual Fix Required**:
 ```bash
 find /workspace -type f \( -name "*.rs" -o -name "*.toml" \) ! -path "*/target/*" \
-  -exec sed -i 's/codebuddy_core::/codebuddy_foundation::core::/g' {} +
+  -exec sed -i 's/mill_core::/mill_foundation::core::/g' {} +
 
 find /workspace -type f \( -name "*.rs" -o -name "*.toml" \) ! -path "*/target/*" \
-  -exec sed -i 's/use codebuddy_core\b/use codebuddy_foundation::core/g' {} +
+  -exec sed -i 's/use mill_core\b/use mill_foundation::core/g' {} +
 ```
 
 **Files Affected**: 19 files
@@ -160,7 +160,7 @@ When modules are moved to a new crate location, self-imports (imports of the con
 **Example**:
 In `language.rs` after moving to `mill-plugin-api`:
 ```rust
-// Before move (in codebuddy-core):
+// Before move (in mill-core):
 use cb_plugin_api::iter_plugins;  // ✓ correct
 
 // After move to mill-plugin-api (incorrect):
@@ -178,7 +178,7 @@ The consolidation tool doesn't analyze whether moved modules are importing their
 sed -i 's/use cb_plugin_api::iter_plugins;/use crate::iter_plugins;/g' \
   /workspace/crates/mill-plugin-api/src/language.rs
 
-sed -i 's/use codebuddy_config::/use crate::/g' \
+sed -i 's/use mill_config::/use crate::/g' \
   /workspace/crates/mill-config/src/logging.rs
 ```
 
@@ -190,7 +190,7 @@ sed -i 's/use codebuddy_config::/use crate::/g' \
 **Impact**: Cargo build errors
 
 **Description**:
-When updating dependencies from `codebuddy-core` to `mill-foundation`, duplicate entries were created in Cargo.toml files.
+When updating dependencies from `mill-core` to `mill-foundation`, duplicate entries were created in Cargo.toml files.
 
 **Example** (`cb-ast/Cargo.toml`):
 ```toml
@@ -232,12 +232,12 @@ After consolidation, the source crate's workspace member entry and workspace dep
 members = [
     # ... other members ...
     "../../crates/mill-foundation",
-    "crates/codebuddy-core",  # ✗ Should be removed
+    "crates/mill-core",  # ✗ Should be removed
     # ...
 ]
 
 [workspace.dependencies]
-codebuddy-core = { path = "crates/codebuddy-core" }  # ✗ Should be removed
+mill-core = { path = "crates/mill-core" }  # ✗ Should be removed
 ```
 
 **Root Cause**:
@@ -246,15 +246,15 @@ The consolidation tool removes the source directory but doesn't update the works
 **Manual Fix Required**:
 ```rust
 // Edit /workspace/Cargo.toml
-// Remove: "crates/codebuddy-core" from members array
-// Remove: codebuddy-core = { path = "crates/codebuddy-core" } from dependencies
+// Remove: "crates/mill-core" from members array
+// Remove: mill-core = { path = "crates/mill-core" } from dependencies
 ```
 
 ---
 
 ## Consolidated Modules Successfully Moved
 
-Despite the issues above, the following modules from `codebuddy-core` were successfully consolidated into `mill-foundation/src/core`:
+Despite the issues above, the following modules from `mill-core` were successfully consolidated into `mill-foundation/src/core`:
 
 ✅ `dry_run.rs` - Dry run execution utilities
 ✅ `rename_scope.rs` - Rename scope configuration
@@ -312,9 +312,9 @@ Enhance `update_imports_for_consolidation()` to:
    ```rust
    // Current: Only updates use statements
    // Needed: Also update inline qualified paths
-   codebuddy_core::utils::system::command_exists(cmd)
+   mill_core::utils::system::command_exists(cmd)
    // →
-   codebuddy_foundation::core::utils::system::command_exists(cmd)
+   mill_foundation::core::utils::system::command_exists(cmd)
    ```
 
 2. **Handle self-imports correctly**:
@@ -408,7 +408,7 @@ Allow users to exclude specific modules from consolidation:
 
 ```json
 {
-  "target": {"kind": "directory", "path": "crates/codebuddy-core"},
+  "target": {"kind": "directory", "path": "crates/mill-core"},
   "newName": "../../crates/mill-foundation/src/core",
   "options": {
     "consolidate": true,

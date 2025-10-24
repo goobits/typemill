@@ -30,7 +30,7 @@ mill-config = { path = "../mill-config" }
 
 [features]
 # Language features are preserved for backward compatibility but do not enable dependencies
-# codebuddy-ast now uses capability traits from mill-plugin-api instead of direct plugin dependencies
+# mill-ast now uses capability traits from mill-plugin-api instead of direct plugin dependencies
 default = []
 lang-rust = []
 lang-typescript = []

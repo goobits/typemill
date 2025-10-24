@@ -17,7 +17,7 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 /// LOG_LEVEL=debug cargo run
 ///
 /// # Production with JSON logs
-/// LOG_LEVEL=info LOG_FORMAT=json ./codebuddy serve
+/// LOG_LEVEL=info LOG_FORMAT=json ./mill serve
 ///
 /// # Module-specific filtering (most powerful)
 /// RUST_LOG=cb_handlers=debug,cb_lsp=info cargo run

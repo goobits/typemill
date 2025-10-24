@@ -7,7 +7,7 @@
 - ✅ **Phase 06b**: Foundational Consolidation (6 crates → 3 consolidated crates)
 
 **Remaining Phases:**
-- ⏳ **Phase 07a**: Workspace Standardization (rename 19 crates: cb-* → codebuddy-*)
+- ⏳ **Phase 07a**: Workspace Standardization (rename 19 crates: cb-* → mill-*)
 - ⏳ **Phase 08a**: Verification & Documentation
 
 ---
@@ -17,15 +17,15 @@
 The current workspace has several issues hindering maintainability and developer velocity:
 1.  **Crate Sprawl:** The workspace contains many small, tightly-coupled crates (e.g., `cb-core`, `cb-types`, `cb-protocol`) that are rarely modified independently, increasing cognitive overhead.
 2.  **High-Friction Changes:** A single logical change often requires editing multiple crates, leading to complex pull requests and internal version churn.
-3.  **Inconsistent Structure & Naming:** Crates use a `cb-*` prefix while the binary is `codebuddy`, and the `analysis` workspace is a separate top-level island, creating an inconsistent structure.
+3.  **Inconsistent Structure & Naming:** Crates use a `cb-*` prefix while the binary is `mill`, and the `analysis` workspace is a separate top-level island, creating an inconsistent structure.
 4.  **Implicit Architecture:** The desired layered architecture is documented but not programmatically enforced, creating a risk of dependency violations ("spider webs") over time.
 
 ## Solution(s)
 
-This proposal adopts the "Pragmatic Layered Workspace" strategy to refactor the codebase into a more cohesive and maintainable structure. All file and directory operations will be performed using `codebuddy`'s own refactoring tools to dogfood the product.
+This proposal adopts the "Pragmatic Layered Workspace" strategy to refactor the codebase into a more cohesive and maintainable structure. All file and directory operations will be performed using `mill`'s own refactoring tools to dogfood the product.
 
 1.  **Consolidate Core Crates:** Merge the most tightly-coupled crates into logical components.
-2.  **Standardize Naming:** Rename all workspace crates to use a consistent `codebuddy-*` prefix.
+2.  **Standardize Naming:** Rename all workspace crates to use a consistent `mill-*` prefix.
 3.  **Unify Tooling Directory:** Move the `analysis` workspace under a new top-level `tooling/` directory.
 4.  **Enforce Architectural Layers:** Use `cargo-deny` to programmatically enforce the documented layered dependency model.
 
@@ -66,15 +66,15 @@ This proposal adopts the "Pragmatic Layered Workspace" strategy to refactor the 
   - `c01c1c96 feat: Create mill-foundation crate`
   - `e9d5c049 feat: Consolidate cb-types into mill-foundation`
   - `841a5d7d feat: Complete cb-protocol consolidation into mill-foundation`
-  - `fb25c4ef feat: Consolidate codebuddy-core into mill-foundation`
+  - `fb25c4ef feat: Consolidate mill-core into mill-foundation`
   - Multiple bug fix and enhancement commits
 
 ### 07a: Workspace Standardization
-- [ ] For each remaining `cb-*` crate, generate a `rename.plan` to rename it to `codebuddy-*` (e.g., `mill-lsp` -> `codebuddy-lsp`).
+- [ ] For each remaining `cb-*` crate, generate a `rename.plan` to rename it to `mill-*` (e.g., `mill-lsp` -> `mill-lsp`).
 - [ ] Execute all rename plans using `workspace.apply_edit`. The tool will update all `use` statements and `Cargo.toml` references across the workspace.
 - [ ] Generate a `rename.plan` to move the `analysis` directory to `tooling/analysis`.
 - [ ] Execute the move plan using `workspace.apply_edit`.
-- [ ] Sequentially run `rename.plan` on each crate within `tooling/analysis/` to apply the `codebuddy-analysis-*` prefix.
+- [ ] Sequentially run `rename.plan` on each crate within `tooling/analysis/` to apply the `mill-analysis-*` prefix.
 
 ### 08a: Verification & Documentation
 - [ ] Run `cargo test --workspace` to ensure all functionality remains intact after the refactoring.
@@ -87,13 +87,13 @@ This proposal adopts the "Pragmatic Layered Workspace" strategy to refactor the 
 ## Success Criteria
 
 1.  The number of crates in the `crates/` directory is reduced from 22 to 16.
-2.  All crates in the workspace (including those in `tooling/analysis/`) follow the `codebuddy-*` naming convention.
+2.  All crates in the workspace (including those in `tooling/analysis/`) follow the `mill-*` naming convention.
 3.  The `analysis` workspace is located at `tooling/analysis/`.
 4.  `cargo test --workspace` completes successfully.
 5.  `cargo deny check` passes with zero violations.
 6.  `analyze.dead_code` reports no unexpected dead code from the refactor.
 7.  `analyze.dependencies` confirms a simplified dependency graph.
-8.  All file and directory manipulations were executed using the project's own `codebuddy` refactoring tools.
+8.  All file and directory manipulations were executed using the project's own `mill` refactoring tools.
 
 ## Benefits
 

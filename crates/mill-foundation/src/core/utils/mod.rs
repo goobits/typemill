@@ -1,2 +1,2 @@
-//! Common utilities for codebuddy
+//! Common utilities for mill
 pub mod system;

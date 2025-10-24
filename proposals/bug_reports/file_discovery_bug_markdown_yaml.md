@@ -82,7 +82,7 @@ Found files for extension, extension: "markdown", files_found: 0
 ### Test Case 2: Real-world Reproduction
 
 ```bash
-./target/debug/codebuddy tool rename.plan '{
+./target/debug/mill tool rename.plan '{
   "target": {"kind": "directory", "path": "../../crates/mill-test-support"},
   "newName": "crates/mill-test-support"
 }'
@@ -92,7 +92,7 @@ Found files for extension, extension: "markdown", files_found: 0
 - `docs/architecture/layers.md`
 - `proposals/00_rename_to_typemill.proposal.md`
 - `proposals/archived/06_workspace_consolidation.proposal.md`
-- `proposals/bug_reports/codebuddy_core_consolidation_issues.md`
+- `proposals/bug_reports/mill_core_consolidation_issues.md`
 - `proposals/bug_reports/consolidation_dogfooding_issues.md`
 
 All contain `cb-test-support` or `cb_test_support` references.
@@ -251,7 +251,7 @@ After fix, the following should work:
 
 2. **Real-world rename includes all files**:
    ```bash
-   ./target/debug/codebuddy tool rename.plan '{
+   ./target/debug/mill tool rename.plan '{
      "target": {"kind": "directory", "path": "../../crates/mill-test-support"},
      "newName": "crates/mill-test-support"
    }'

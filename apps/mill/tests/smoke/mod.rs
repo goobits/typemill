@@ -44,7 +44,7 @@
 //! ## Requirements
 //!
 //! **MCP tests:**
-//! - Running MCP server (typically started via `codebuddy start`)
+//! - Running MCP server (typically started via `mill start`)
 //!
 //! **LSP tests:**
 //! - TypeScript: `npm install -g typescript-language-server`

@@ -4,7 +4,7 @@
 //! This enables `rename.plan` to track markdown link references when files are moved.
 
 use async_trait::async_trait;
-use mill_plugin_api::codebuddy_plugin;
+use mill_plugin_api::mill_plugin;
 use mill_plugin_api::{ import_support::{ ImportAdvancedSupport , ImportMoveSupport , ImportMutationSupport , ImportParser , ImportRenameSupport , } , LanguageMetadata , LanguagePlugin , ManifestData , ParsedSource , PluginCapabilities , PluginError , PluginResult , SourceLocation , Symbol , SymbolKind , };
 use regex::Regex;
 use std::path::Path;
@@ -15,7 +15,7 @@ mod import_support_impl;
 use import_support_impl::MarkdownImportSupport;
 
 // Self-register the plugin with the Codebuddy system.
-codebuddy_plugin! {
+mill_plugin! {
     name: "markdown",
     extensions: ["md", "markdown"],
     manifest: "package.json",

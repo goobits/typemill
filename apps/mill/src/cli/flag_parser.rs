@@ -393,7 +393,7 @@ fn parse_move_flags(flags: HashMap<String, String>) -> Result<Value, FlagParseEr
             suggested_tool: "rename".to_string(),
             reason: "moving CODE SYMBOLS (functions/classes) between files".to_string(),
             example: format!(
-                "codebuddy tool rename --target {} --new-name {}",
+                "mill tool rename --target {} --new-name {}",
                 source_with_prefix, dest_example
             ),
         });
@@ -411,7 +411,7 @@ fn parse_move_flags(flags: HashMap<String, String>) -> Result<Value, FlagParseEr
                 suggested_tool: "rename".to_string(),
                 reason: "moving CODE SYMBOLS (functions/classes) between files".to_string(),
                 example: format!(
-                    "codebuddy tool rename --target file:{} --new-name {}",
+                    "mill tool rename --target file:{} --new-name {}",
                     source, dest
                 ),
             });

@@ -248,7 +248,7 @@ All logging is initialized through `cb_core::logging::initialize()` which provid
 LOG_LEVEL=debug cargo run
 
 # Production with JSON logs
-LOG_LEVEL=info LOG_FORMAT=json ./codebuddy serve
+LOG_LEVEL=info LOG_FORMAT=json ./mill serve
 
 # Module-specific filtering (most control)
 RUST_LOG=cb_handlers=debug,cb_lsp=info cargo run
@@ -290,10 +290,10 @@ To save logs to a file, use your shell's redirection capabilities:
 
 ```bash
 # Redirect only stderr (where logs go) to app.log
-./codebuddy serve 2> app.log
+./mill serve 2> app.log
 
 # To redirect both stdout and stderr (useful for development)
-./codebuddy serve &> app.log
+./mill serve &> app.log
 ```
 
 ## Migration Guidelines

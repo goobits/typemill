@@ -1,6 +1,6 @@
 //! Transport layer implementations for WebSocket and stdio communication
 //!
-//! This crate provides transport mechanisms for the codebuddy server,
+//! This crate provides transport mechanisms for the mill server,
 //! enabling communication via WebSocket (for production) and stdio
 //! (for MCP clients like Claude Code).
 

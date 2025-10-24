@@ -6,7 +6,7 @@
 
 ## Problem
 
-CodeBuddy's `rename.plan` tool currently updates only ~9% of references when renaming directories/files:
+TypeMill's `rename.plan` tool currently updates only ~9% of references when renaming directories/files:
 - ✅ Updates Rust imports (`use` statements)
 - ✅ Updates `Cargo.toml` workspace members and dependencies
 - ❌ Misses string literals in code (`"../tests/e2e/path"`)
@@ -141,7 +141,7 @@ After: 14+/15 files updated (93%+)
 - Documentation stays in sync automatically
 - CI configs update with code changes
 
-**For CodeBuddy:**
+**For TypeMill:**
 - Positions tool as production-ready for large refactorings
 - Differentiates from basic find/replace tools
 - Builds trust through transparency (categorized dry-run)

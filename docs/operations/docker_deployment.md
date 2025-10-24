@@ -37,7 +37,7 @@ curl http://localhost/health
 ### Development Stack (`docker-compose.yml`)
 
 **Components:**
-- **`codebuddy`** - Application server with Rust toolchain and `cargo-watch`
+- **`mill`** - Application server with Rust toolchain and `cargo-watch`
 - **Source Mount** - Local `./rust` directory mounted for live reloading
 - **Build Cache** - Volumes for `cargo` registry and `target` directory
 
@@ -49,7 +49,7 @@ curl http://localhost/health
 ### Production Stack (`docker-compose.production.yml`)
 
 **Components:**
-- **`codebuddy`** - Minimal hardened image (compiled binary only)
+- **`mill`** - Minimal hardened image (compiled binary only)
 - **`nginx`** - Reverse proxy with SSL/TLS termination
 
 **Features:**
@@ -103,7 +103,7 @@ docker-compose -f deployment/docker/docker-compose.yml \
   -f deployment/docker/docker-compose.production.yml logs -f
 
 # Filter by service
-docker-compose logs -f codebuddy
+docker-compose logs -f mill
 docker-compose logs -f nginx
 ```
 
@@ -174,7 +174,7 @@ FUSE requires `SYS_ADMIN` capability which disables container security boundarie
 ```yaml
 # DO NOT USE IN PRODUCTION
 services:
-  codebuddy-fuse:
+  mill-fuse:
     cap_add:
       - SYS_ADMIN  # Required for FUSE, disables security
 ```
@@ -232,7 +232,7 @@ ENV RUSTC_WRAPPER=sccache
 **Reduce disk usage:**
 ```bash
 # Clean build artifacts
-docker-compose exec codebuddy cargo clean
+docker-compose exec mill cargo clean
 
 # Remove unused images
 docker image prune
@@ -248,7 +248,7 @@ docker image prune
 **Resource limits:**
 ```yaml
 services:
-  codebuddy:
+  mill:
     deploy:
       resources:
         limits:

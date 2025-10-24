@@ -50,7 +50,7 @@ pub use project_factory::{
     CreatePackageConfig, CreatePackageResult, PackageInfo, PackageType, ProjectFactory, Template,
 };
 pub use reference_detector::ReferenceDetector;
-// Note: codebuddy_plugin! macro is automatically exported at crate root due to #[macro_export]
+// Note: mill_plugin! macro is automatically exported at crate root due to #[macro_export]
 pub use server::PluginServer;
 pub use test_fixtures::{
     ComplexityFixture, LanguageTestFixtures, RefactoringFixture, RefactoringOperation,

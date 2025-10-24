@@ -604,7 +604,7 @@ async fn plan_single_cargo_toml_dependency_update(
                             }
                         }
                         // Handle bare crate name (implicit dependency feature)
-                        // e.g. runtime = ["codebuddy-foundation", "mill-config"]
+                        // e.g. runtime = ["mill-foundation", "mill-config"]
                         else if feature_ref == old_crate_name {
                             *item = toml_edit::Value::from(new_crate_name.to_string());
                             updated = true;
@@ -702,14 +702,14 @@ name = "test-package"
 version = "0.1.0"
 
 [dependencies]
-codebuddy-foundation = { path = "../codebuddy-foundation", optional = true }
+mill-foundation = { path = "../mill-foundation", optional = true }
 mill-config = { path = "../mill-config", optional = true }
 
 [features]
 default = ["runtime"]
-runtime = ["codebuddy-foundation", "mill-config"]
-experimental = ["dep:codebuddy-foundation"]
-advanced = ["codebuddy-foundation/serde"]
+runtime = ["mill-foundation", "mill-config"]
+experimental = ["dep:mill-foundation"]
+advanced = ["mill-foundation/serde"]
 "#;
 
         std::fs::write(&cargo_toml, content).unwrap();
@@ -717,7 +717,7 @@ advanced = ["codebuddy-foundation/serde"]
         let new_crate_path = temp_dir.path().join("../mill-foundation");
         let result = plan_single_cargo_toml_dependency_update(
             &cargo_toml,
-            "codebuddy-foundation",
+            "mill-foundation",
             "mill-foundation",
             &new_crate_path,
             content,

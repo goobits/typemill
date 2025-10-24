@@ -6,7 +6,7 @@
 **Author**: Project Team
 **Date**: 2025-10-20
 **Updated**: 2025-10-23
-**Current Name**: `codebuddy` / `codebuddy` CLI
+**Current Name**: `mill` / `mill` CLI
 **Proposed Name**: `typemill` / `mill` CLI
 
 ## Progress Update (2025-10-23)
@@ -52,7 +52,7 @@
 
 ## Executive Summary
 
-This proposal outlines the complete strategy for renaming the project from **CodeBuddy** to **TypeMill**, with the CLI command changing from `codebuddy` to `mill`. The rename encompasses **31+ Rust crates**, comprehensive documentation, infrastructure configuration, user-facing interfaces, macros, and test fixtures, executed as a major version bump to **v2.0.0**.
+This proposal outlines the complete strategy for renaming the project from **TypeMill** to **TypeMill**, with the CLI command changing from `mill` to `mill`. The rename encompasses **31+ Rust crates**, comprehensive documentation, infrastructure configuration, user-facing interfaces, macros, and test fixtures, executed as a major version bump to **v2.0.0**.
 
 ---
 
@@ -125,7 +125,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 - `cb-analysis-circular-deps` - Circular dependency detection *(needs rename)*
 
 **Applications:**
-- `../apps/mill` - Main binary application (produces `codebuddy` executable) *(needs rename)*
+- `../apps/mill` - Main binary application (produces `mill` executable) *(needs rename)*
 
 **Development Tools:**
 - `crates/xtask` - Build automation tasks
@@ -135,19 +135,19 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 ### Additional Rename Targets
 
 **Plugin Registration Macro:**
-- `codebuddy_plugin!` → `typemill_plugin!` (or `mill_plugin!`)
+- `mill_plugin!` → `typemill_plugin!` (or `mill_plugin!`)
   - Location: `crates/mill-plugin-api/src/plugin_registry.rs`
   - Used in: All language plugins for self-registration
   - Impact: Requires updates in 6+ plugin files
 
 **Test Fixtures:**
-- `tests/e2e/test-fixtures/rust/Cargo.toml` - Package: `codebuddy-playground` → `mill-playground`
-- `tests/e2e/test-fixtures/python/pyproject.toml` - Package: `codebuddy-playground-python` → `mill-playground-python`
+- `tests/e2e/test-fixtures/rust/Cargo.toml` - Package: `mill-playground` → `mill-playground`
+- `tests/e2e/test-fixtures/python/pyproject.toml` - Package: `mill-playground-python` → `mill-playground-python`
 - `crates/mill-test-support/src/harness/fixtures.rs` - Java package: `com.mill.example` → `com.mill.example`
 
 **Configuration Files:**
-- `codebuddy.toml` → `typemill.toml` (main configuration file)
-- `codebuddy.example.toml` → `typemill.example.toml` (example configuration)
+- `mill.toml` → `typemill.toml` (main configuration file)
+- `mill.example.toml` → `typemill.example.toml` (example configuration)
 
 **Scripts and Shell Files (10+ files):**
 - `install.sh` - Main installation script
@@ -204,7 +204,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 
 **Application Needing Rename (1 crate):**
 - `../apps/mill` → `apps/mill`
-  - Binary name: `codebuddy` → `mill`
+  - Binary name: `mill` → `mill`
 
 **Development Tools (No rename - 1 crate):**
 - `crates/xtask` (unchanged - internal development tool)
@@ -218,10 +218,10 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 **Primary Command:**
 ```bash
 # Old
-codebuddy setup
-codebuddy status
-codebuddy start
-codebuddy serve
+mill setup
+mill status
+mill start
+mill serve
 
 # New
 mill setup
@@ -245,7 +245,7 @@ mill serve
 ### 3. Plugin System Macro
 
 **Macro Rename:**
-- `codebuddy_plugin!` → `mill_plugin!` (or `typemill_plugin!`)
+- `mill_plugin!` → `mill_plugin!` (or `typemill_plugin!`)
 
 **Definition Location:**
 - `crates/mill-plugin-api/src/plugin_registry.rs`
@@ -262,7 +262,7 @@ mill serve
 **Example Change:**
 ```rust
 // Old
-codebuddy_plugin!(
+mill_plugin!(
     name: "rust",
     extensions: ["rs"],
     // ...
@@ -287,13 +287,13 @@ mill_plugin!(
 - `.typemill/workflows.json` → `.typemill/workflows.json`
 
 **Configuration Files:**
-- `codebuddy.toml` → `typemill.toml`
-- `codebuddy.example.toml` → `typemill.example.toml`
+- `mill.toml` → `typemill.toml`
+- `mill.example.toml` → `typemill.example.toml`
 
 **Binary Path:**
-- `target/release/codebuddy` → `target/release/mill`
-- `/usr/local/bin/codebuddy` → `/usr/local/bin/mill`
-- `~/.local/bin/codebuddy` → `~/.local/bin/mill`
+- `target/release/mill` → `target/release/mill`
+- `/usr/local/bin/mill` → `/usr/local/bin/mill`
+- `~/.local/bin/mill` → `~/.local/bin/mill`
 
 ---
 
@@ -320,9 +320,9 @@ mill_plugin!(
 
 **Test Playground Packages:**
 - `tests/e2e/test-fixtures/rust/Cargo.toml`:
-  - Package name: `codebuddy-playground` → `mill-playground`
+  - Package name: `mill-playground` → `mill-playground`
 - `tests/e2e/test-fixtures/python/pyproject.toml`:
-  - Package name: `codebuddy-playground-python` → `mill-playground-python`
+  - Package name: `mill-playground-python` → `mill-playground-python`
 
 **Test Support Fixtures:**
 - `crates/mill-test-support/src/harness/fixtures.rs`:
@@ -343,13 +343,13 @@ mill_plugin!(
 - `CHANGELOG.md` - Historical context and version history
 - All `docs/**/*.md` files
 - `Cargo.toml` - Package metadata
-- `codebuddy.toml` / `codebuddy.example.toml` → `typemill.toml` / `typemill.example.toml`
+- `mill.toml` / `mill.example.toml` → `typemill.toml` / `typemill.example.toml`
 
 **Example Updates:**
 ```bash
 # Old examples
-cargo run --bin codebuddy
-./target/release/codebuddy setup
+cargo run --bin mill
+./target/release/mill setup
 
 # New examples
 cargo run --bin mill
@@ -361,7 +361,7 @@ cargo run --bin mill
 ### 8. Code References
 
 **Rust Code:**
-- Module imports: `use codebuddy::*` → `use mill::*`
+- Module imports: `use mill::*` → `use mill::*`
 - Binary targets in `Cargo.toml`: `[[bin]] name = "mill"` → `[[bin]] name = "mill"`
 - Error messages and help text
 - Log messages mentioning project name
@@ -378,13 +378,13 @@ cargo run --bin mill
 ### 9. Infrastructure
 
 **Docker:**
-- Image names: `codebuddy:latest` → `mill:latest`
-- Container names: `codebuddy-dev` → `mill-dev`
+- Image names: `mill:latest` → `mill:latest`
+- Container names: `mill-dev` → `mill-dev`
 - Volume mount paths
 - Docker compose service names
 
 **GitHub/CI:**
-- Workflow files: `.github/workflows/codebuddy-ci.yml` → `.github/workflows/mill-ci.yml`
+- Workflow files: `.github/workflows/mill-ci.yml` → `.github/workflows/mill-ci.yml`
 - Release artifact names
 - Repository name consideration (with automatic redirect)
 
@@ -404,10 +404,10 @@ Use TypeMill's own CLI to discover all references:
 
 ```bash
 # Find all symbol references to "mill"
-codebuddy search_symbols --query "mill"
+mill search_symbols --query "mill"
 
 # Analyze dependency graph
-codebuddy analyze.dependencies --kind graph --scope workspace
+mill analyze.dependencies --kind graph --scope workspace
 
 # Find all .typemill path references
 rg "\.typemill" --files-with-matches
@@ -417,7 +417,7 @@ rg "TYPEMILL_" --files-with-matches
 
 # Find all string literals in code
 rg '"mill"' --type rust
-rg "'codebuddy'" --type rust
+rg "'mill'" --type rust
 ```
 
 ### Phase 3: Crate Renames (9 Crates) - ✅ COMPLETE
@@ -442,11 +442,11 @@ rg "'codebuddy'" --type rust
 
 ```bash
 # Rename ../apps/mill → apps/mill
-codebuddy rename.plan \
+mill rename.plan \
   --target directory:../apps/mill \
   --new-name apps/mill
 
-codebuddy workspace.apply_edit --plan <plan>
+mill workspace.apply_edit --plan <plan>
 
 # Manual edit: Update binary name in apps/mill/Cargo.toml
 # [[bin]]
@@ -473,12 +473,12 @@ rg "\.typemill" --files-with-matches
 ### Phase 6: Plugin Macro Rename
 
 ```bash
-# Find all codebuddy_plugin! usages
-rg "codebuddy_plugin!" --files-with-matches
+# Find all mill_plugin! usages
+rg "mill_plugin!" --files-with-matches
 
 # Manual code edits required:
 # 1. Update macro definition in crates/mill-plugin-api/src/plugin_registry.rs
-#    - Rename `codebuddy_plugin!` → `mill_plugin!`
+#    - Rename `mill_plugin!` → `mill_plugin!`
 #    - Keep macro_export attribute
 #    - Update any internal references
 
@@ -492,7 +492,7 @@ rg "codebuddy_plugin!" --files-with-matches
 #    - ../crates/mill-lang-yaml/src/lib.rs
 
 # Search and replace pattern:
-# codebuddy_plugin!( → mill_plugin!(
+# mill_plugin!( → mill_plugin!(
 ```
 
 ### Phase 7: Test Fixture Updates
@@ -500,10 +500,10 @@ rg "codebuddy_plugin!" --files-with-matches
 ```bash
 # Update test playground packages
 # tests/e2e/test-fixtures/rust/Cargo.toml
-sed -i 's/codebuddy-playground/mill-playground/g' tests/e2e/test-fixtures/rust/Cargo.toml
+sed -i 's/mill-playground/mill-playground/g' tests/e2e/test-fixtures/rust/Cargo.toml
 
 # tests/e2e/test-fixtures/python/pyproject.toml
-sed -i 's/codebuddy-playground-python/mill-playground-python/g' tests/e2e/test-fixtures/python/pyproject.toml
+sed -i 's/mill-playground-python/mill-playground-python/g' tests/e2e/test-fixtures/python/pyproject.toml
 
 # crates/mill-test-support/src/harness/fixtures.rs
 sed -i 's/com.mill.example/com.mill.example/g' crates/mill-test-support/src/harness/fixtures.rs
@@ -528,17 +528,17 @@ rg "TYPEMILL_" --files-with-matches
 
 ```bash
 # Update all markdown files
-fd -e md -x sed -i 's/codebuddy/mill/g' {} \;
-fd -e md -x sed -i 's/CodeBuddy/TypeMill/g' {} \;
+fd -e md -x sed -i 's/mill/mill/g' {} \;
+fd -e md -x sed -i 's/TypeMill/TypeMill/g' {} \;
 
 # Update TOML files
-fd -e toml -x sed -i 's/codebuddy/mill/g' {} \;
+fd -e toml -x sed -i 's/mill/mill/g' {} \;
 
 # Update YAML files
-fd -e yaml -e yml -x sed -i 's/codebuddy/mill/g' {} \;
+fd -e yaml -e yml -x sed -i 's/mill/mill/g' {} \;
 
 # Update shell scripts
-fd -e sh -x sed -i 's/codebuddy/mill/g' {} \;
+fd -e sh -x sed -i 's/mill/mill/g' {} \;
 
 # Manual review required for:
 # - README.md
@@ -552,14 +552,14 @@ fd -e sh -x sed -i 's/codebuddy/mill/g' {} \;
 
 ```bash
 # Docker files
-sed -i 's/codebuddy/mill/g' deployment/docker/Dockerfile
-sed -i 's/codebuddy/mill/g' deployment/docker/docker-compose*.yml
+sed -i 's/mill/mill/g' deployment/docker/Dockerfile
+sed -i 's/mill/mill/g' deployment/docker/docker-compose*.yml
 
 # GitHub workflows
-sed -i 's/codebuddy/mill/g' .github/workflows/*.yml
+sed -i 's/mill/mill/g' .github/workflows/*.yml
 
 # Scripts
-sed -i 's/codebuddy/mill/g' scripts/install.sh
+sed -i 's/mill/mill/g' scripts/install.sh
 ```
 
 ### Phase 11: Validation
@@ -603,9 +603,9 @@ git add .
 git commit -m "feat: Rename project to TypeMill (mill CLI)
 
 BREAKING CHANGES:
-- Project renamed from CodeBuddy to TypeMill
-- CLI command changed from 'codebuddy' to 'mill'
-- All crates renamed from cb-*/codebuddy-* to mill-*
+- Project renamed from TypeMill to TypeMill
+- CLI command changed from 'mill' to 'mill'
+- All crates renamed from cb-*/mill-* to mill-*
 - Config directory changed from .typemill/ to .typemill/
 - Environment variables changed from TYPEMILL_* to TYPEMILL_*
 
@@ -648,7 +648,7 @@ git tag v2.0.0
 
 ### Plugin Macro Updates
 
-- [ ] Update macro definition: `codebuddy_plugin!` → `mill_plugin!`
+- [ ] Update macro definition: `mill_plugin!` → `mill_plugin!`
 - [ ] Update macro invocations in 6+ plugin files
 - [ ] Verify all plugins still register correctly after rename
 - [ ] Test plugin system works with new macro name
@@ -666,7 +666,7 @@ git tag v2.0.0
 - [ ] Implement dual-path support (.typemill/ primary, .typemill/ fallback)
 - [ ] Add migration warnings for legacy paths
 - [ ] Update path constants in code
-- [ ] Update configuration file names (codebuddy.toml → typemill.toml)
+- [ ] Update configuration file names (mill.toml → typemill.toml)
 - [ ] Update `.typemill/workflows.json` → `.typemill/workflows.json`
 
 ### Environment Variable Updates
@@ -756,7 +756,7 @@ cp -r .typemill .typemill.backup
 mv .typemill .typemill
 
 # Update scripts
-sed -i 's/codebuddy/mill/g' scripts/*.sh
+sed -i 's/mill/mill/g' scripts/*.sh
 
 # Update environment variables
 mill env migrate  # Helper command to rewrite .env files
@@ -775,7 +775,7 @@ mill env migrate  # Helper command to rewrite .env files
 - Migration prompt shown on first run
 
 **CLI Command:**
-- Optional: Create `codebuddy` symlink to `mill` for 2-3 releases
+- Optional: Create `mill` symlink to `mill` for 2-3 releases
 - Show deprecation warning when symlink used
 - Remove in v3.0.0
 
@@ -786,7 +786,7 @@ mill env migrate  # Helper command to rewrite .env files
 ### For End Users
 
 1. **CLI Command Change**
-   - All scripts using `codebuddy` must change to `mill`
+   - All scripts using `mill` must change to `mill`
    - Shell aliases and shortcuts need updating
    - CI/CD pipelines need updating
 
@@ -808,13 +808,13 @@ mill env migrate  # Helper command to rewrite .env files
 ### For Developers/Contributors
 
 1. **Import Paths**
-   - All `use codebuddy::*` → `use mill::*`
+   - All `use mill::*` → `use mill::*`
    - All `use cb_*::*` → `use mill_*::*`
    - Crate dependencies updated in Cargo.toml
 
 2. **Crate Names**
    - All `cb-*` → `mill-*`
-   - All `codebuddy-*` → `mill-*`
+   - All `mill-*` → `mill-*`
    - Affects plugin development and extensions
 
 3. **Repository Structure**
@@ -833,7 +833,7 @@ mill env migrate  # Helper command to rewrite .env files
 - Deprecation warnings in CLI output
 - Comprehensive changelog
 - Keep environment variable backward compatibility
-- Optional: `codebuddy` → `mill` symlink for transition period
+- Optional: `mill` → `mill` symlink for transition period
 
 ### Risk 2: Broken CI/CD Pipelines
 **Impact**: High
@@ -895,7 +895,7 @@ mill env migrate  # Helper command to rewrite .env files
 | **Phase 3**: Crate Renames | 6-8 hours | ✅ Complete | Rename all 9 crates using CLI |
 | **Phase 4**: Binary Rename | 1 hour | 🔄 Next | Rename ../apps/mill → apps/mill |
 | **Phase 5**: Config Paths | 2-3 hours | Pending | Update .typemill → .typemill references |
-| **Phase 6**: Plugin Macro | 1-2 hours | Pending | Rename codebuddy_plugin! → mill_plugin! |
+| **Phase 6**: Plugin Macro | 1-2 hours | Pending | Rename mill_plugin! → mill_plugin! |
 | **Phase 7**: Test Fixtures | 1 hour | Pending | Update test playground packages |
 | **Phase 8**: Environment Variables | 2-3 hours | Pending | Add dual-prefix support, migration helper |
 | **Phase 9**: Documentation | 4-6 hours | Pending | Update all markdown, TOML, YAML files |
@@ -911,7 +911,7 @@ mill env migrate  # Helper command to rewrite .env files
 
 ## Open Questions
 
-1. **Symlink Transition Period**: Should we create a `codebuddy` → `mill` symlink for 2-3 releases?
+1. **Symlink Transition Period**: Should we create a `mill` → `mill` symlink for 2-3 releases?
    - Recommendation: **Optional** - Only if significant user feedback requests it
 
 2. **Repository Name**: Should GitHub repository also be renamed?
@@ -961,8 +961,8 @@ mill env migrate  # Helper command to rewrite .env files
 - All other `docs/**/*.md`
 
 **Configuration:**
-- `codebuddy.toml` → `typemill.toml`
-- `codebuddy.example.toml` → `typemill.example.toml`
+- `mill.toml` → `typemill.toml`
+- `mill.example.toml` → `typemill.example.toml`
 - `.typemill/config.json` → `.typemill/config.json`
 - `.typemill/analysis.toml` → `.typemill/analysis.toml`
 
@@ -986,33 +986,33 @@ mill env migrate  # Helper command to rewrite .env files
 
 ```bash
 # Find symbol references
-codebuddy search_symbols --query "mill"
+mill search_symbols --query "mill"
 
 # Analyze dependencies
-codebuddy analyze.dependencies --kind graph --scope workspace
-codebuddy analyze.dependencies --kind circular --scope workspace
+mill analyze.dependencies --kind graph --scope workspace
+mill analyze.dependencies --kind circular --scope workspace
 
 # Find dead code
-codebuddy analyze.dead_code --kind unused_imports --scope workspace
+mill analyze.dead_code --kind unused_imports --scope workspace
 
 # Get diagnostics
-codebuddy get_diagnostics --scope workspace
+mill get_diagnostics --scope workspace
 ```
 
 ### Rename Commands
 
 ```bash
 # Rename a crate directory (with dry-run preview)
-codebuddy rename.plan \
+mill rename.plan \
   --target directory:../crates/mill-client \
   --new-name crates/mill-client \
   --dry-run
 
 # Apply the rename plan
-codebuddy workspace.apply_edit --plan <plan-json>
+mill workspace.apply_edit --plan <plan-json>
 
 # Validate after rename
-codebuddy get_diagnostics --scope workspace
+mill get_diagnostics --scope workspace
 ```
 
 ### Build and Test Commands
@@ -1036,7 +1036,7 @@ cargo xtask install
 **MIGRATION.md** (to be created):
 
 ```markdown
-# Migrating from CodeBuddy to TypeMill
+# Migrating from TypeMill to TypeMill
 
 Version 2.0.0 introduces a new name: **TypeMill** (CLI: `mill`)
 
@@ -1045,7 +1045,7 @@ Version 2.0.0 introduces a new name: **TypeMill** (CLI: `mill`)
 ### 1. Update CLI Command
 ```bash
 # Old
-codebuddy setup
+mill setup
 
 # New
 mill setup
@@ -1061,7 +1061,7 @@ mill setup
 ### 3. Update Scripts
 ```bash
 # Find and replace in your scripts
-sed -i 's/codebuddy/mill/g' scripts/*.sh
+sed -i 's/mill/mill/g' scripts/*.sh
 ```
 
 ### 4. Update Environment Variables
@@ -1097,9 +1097,9 @@ See full documentation at https://typemill.org/docs/migration
 
 **Project Renamed to TypeMill**
 
-- **CLI command**: `codebuddy` → `mill`
-- **Project name**: CodeBuddy → TypeMill
-- **All crates renamed**: `cb-*` and `codebuddy-*` → `mill-*`
+- **CLI command**: `mill` → `mill`
+- **Project name**: TypeMill → TypeMill
+- **All crates renamed**: `cb-*` and `mill-*` → `mill-*`
 - **Config directory**: `.typemill/` → `.typemill/`
 - **Environment variables**: `TYPEMILL_*` → `TYPEMILL_*`
 
@@ -1118,8 +1118,8 @@ See full documentation at https://typemill.org/docs/migration
 
 ### Internal Changes
 
-- 27 crates renamed from `cb-*` / `codebuddy-*` → `mill-*`
-- Binary renamed from `codebuddy` → `mill`
+- 27 crates renamed from `cb-*` / `mill-*` → `mill-*`
+- Binary renamed from `mill` → `mill`
 - All documentation updated
 - Docker images renamed
 - CI/CD workflows updated
@@ -1178,7 +1178,7 @@ See full documentation at https://typemill.org/docs/migration
 ### Macro Renames (1 definition + 6+ usage sites)
 
 **Macro Definition:**
-- `codebuddy_plugin!` → `mill_plugin!` (in crates/mill-plugin-api/src/plugin_registry.rs)
+- `mill_plugin!` → `mill_plugin!` (in crates/mill-plugin-api/src/plugin_registry.rs)
 
 **Macro Usage Sites (6+):**
 - All language plugin lib.rs files
@@ -1187,8 +1187,8 @@ See full documentation at https://typemill.org/docs/migration
 
 ### Test Fixture Renames (3 files)
 
-- `tests/e2e/test-fixtures/rust/Cargo.toml` - Package: `codebuddy-playground` → `mill-playground`
-- `tests/e2e/test-fixtures/python/pyproject.toml` - Package: `codebuddy-playground-python` → `mill-playground-python`
+- `tests/e2e/test-fixtures/rust/Cargo.toml` - Package: `mill-playground` → `mill-playground`
+- `tests/e2e/test-fixtures/python/pyproject.toml` - Package: `mill-playground-python` → `mill-playground-python`
 - `crates/mill-test-support/src/harness/fixtures.rs` - Java package: `com.mill.example` → `com.mill.example`
 
 ---
@@ -1202,13 +1202,13 @@ See full documentation at https://typemill.org/docs/migration
 - `.typemill/workflows.json` → `.typemill/workflows.json`
 
 **Configuration Files:**
-- `codebuddy.toml` → `typemill.toml`
-- `codebuddy.example.toml` → `typemill.example.toml`
+- `mill.toml` → `typemill.toml`
+- `mill.example.toml` → `typemill.example.toml`
 
 **Binary Paths:**
-- `target/release/codebuddy` → `target/release/mill`
-- `/usr/local/bin/codebuddy` → `/usr/local/bin/mill`
-- `~/.local/bin/codebuddy` → `~/.local/bin/mill`
+- `target/release/mill` → `target/release/mill`
+- `/usr/local/bin/mill` → `/usr/local/bin/mill`
+- `~/.local/bin/mill` → `~/.local/bin/mill`
 
 ---
 
@@ -1246,11 +1246,11 @@ See full documentation at https://typemill.org/docs/migration
 ### Infrastructure Files
 
 **CI/CD:**
-- `.github/workflows/*.yml` - Update codebuddy references to mill
+- `.github/workflows/*.yml` - Update mill references to mill
 
 **Docker:**
-- Image names: `codebuddy:latest` → `mill:latest`
-- Container names: `codebuddy-dev` → `mill-dev`
+- Image names: `mill:latest` → `mill:latest`
+- Container names: `mill-dev` → `mill-dev`
 - Dockerfile and docker-compose files
 
 **Scripts (10+ files):**
@@ -1288,11 +1288,11 @@ See full documentation at https://typemill.org/docs/migration
 | **TOTAL OPERATIONS** | **90+** |
 
 **Breakdown:**
-- **9 directory renames** (automated via CodeBuddy's batch rename)
+- **9 directory renames** (automated via TypeMill's batch rename)
 - **7+ macro updates** (manual search-replace)
 - **3 test fixtures** (manual edits)
 - **67+ configuration, path, and metadata updates** (mix of automated + manual)
 
 **Automation Potential:**
-- ~60% can be automated with CodeBuddy's own tools
+- ~60% can be automated with TypeMill's own tools
 - ~40% requires manual edits (macros, env vars, prose docs)

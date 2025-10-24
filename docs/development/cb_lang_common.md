@@ -280,7 +280,7 @@ Current adoption across 4 plugins (Go, Python, Rust, TypeScript):
 ### Before (TypeScript plugin, 40 lines)
 ```rust
 let tmp_dir = Builder::new()
-    .prefix("codebuddy-ts-ast")
+    .prefix("mill-ts-ast")
     .tempdir()
     .map_err(|e| PluginError::internal(format!("Failed to create temp dir: {}", e)))?;
 

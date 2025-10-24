@@ -775,7 +775,7 @@ All navigation tools require configured LSP servers in `.typemill/config.json`:
 }
 ```
 
-Run `codebuddy setup` for automatic language server detection and configuration.
+Run `mill setup` for automatic language server detection and configuration.
 
 ---
 

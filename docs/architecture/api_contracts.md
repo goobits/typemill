@@ -4,7 +4,7 @@
 
 ## Scope
 - Defines canonical request/response contracts for the unified analysis and refactoring APIs.
-- Applies to MCP tools exposed by the `codebuddy` server in the unified release.
+- Applies to MCP tools exposed by the `mill` server in the unified release.
 - Overrides conflicting details in proposal drafts; downstream docs should link here.
 
 ## Serialization Conventions

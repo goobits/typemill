@@ -55,7 +55,7 @@ This creates `.config/cargo-deny.toml` (or `deny.toml` at root - we'll move it).
 **File:** `.config/cargo-deny.toml`
 
 ```toml
-# cargo-deny configuration for codebuddy
+# cargo-deny configuration for mill
 # https://embarkstudios.github.io/cargo-deny/
 
 # Note: All sections are optional, uncomment to configure

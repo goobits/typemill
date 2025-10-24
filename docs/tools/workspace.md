@@ -722,7 +722,7 @@ Complete workflow for extracting a module into a standalone crate:
 
 ```bash
 # 1. Analyze dependencies for the module
-codebuddy tool analyze.module_dependencies '{
+mill tool analyze.module_dependencies '{
   "target": {
     "kind": "directory",
     "path": "crates/big-crate/src/analysis"
@@ -730,7 +730,7 @@ codebuddy tool analyze.module_dependencies '{
 }'
 
 # 2. Create new package
-codebuddy tool workspace.create_package '{
+mill tool workspace.create_package '{
   "packagePath": "crates/cb-analysis",
   "package_type": "library",
   "options": {
@@ -740,7 +740,7 @@ codebuddy tool workspace.create_package '{
 }'
 
 # 3. Extract dependencies to new package
-codebuddy tool workspace.extract_dependencies '{
+mill tool workspace.extract_dependencies '{
   "source_manifest": "crates/big-crate/Cargo.toml",
   "target_manifest": "crates/cb-analysis/Cargo.toml",
   "dependencies": ["tokio", "serde", "anyhow"],
@@ -751,7 +751,7 @@ codebuddy tool workspace.extract_dependencies '{
 }'
 
 # 4. Move code files (using rename.plan + workspace.apply_edit)
-codebuddy tool rename.plan '{
+mill tool rename.plan '{
   "target": {
     "kind": "directory",
     "path": "crates/big-crate/src/analysis"
@@ -760,7 +760,7 @@ codebuddy tool rename.plan '{
 }'
 
 # 5. Apply the move
-codebuddy tool workspace.apply_edit '{
+mill tool workspace.apply_edit '{
   "plan": "<plan from step 4>"
 }'
 ```
@@ -771,13 +771,13 @@ Create a new package and set up dependencies in one workflow:
 
 ```bash
 # 1. Create package
-codebuddy tool workspace.create_package '{
+mill tool workspace.create_package '{
   "packagePath": "crates/new-service",
   "package_type": "binary"
 }'
 
 # 2. Extract common dependencies from existing package
-codebuddy tool workspace.extract_dependencies '{
+mill tool workspace.extract_dependencies '{
   "source_manifest": "crates/common/Cargo.toml",
   "target_manifest": "crates/new-service/Cargo.toml",
   "dependencies": ["tokio", "tracing", "serde"]
@@ -790,20 +790,20 @@ Remove deprecated crates from workspace:
 
 ```bash
 # 1. List current members
-codebuddy tool workspace.update_members '{
+mill tool workspace.update_members '{
   "workspace_manifest": "Cargo.toml",
   "action": "list"
 }'
 
 # 2. Remove deprecated crates
-codebuddy tool workspace.update_members '{
+mill tool workspace.update_members '{
   "workspace_manifest": "Cargo.toml",
   "action": "remove",
   "members": ["crates/deprecated-a", "crates/deprecated-b"]
 }'
 
 # 3. Verify removal
-codebuddy tool workspace.update_members '{
+mill tool workspace.update_members '{
   "workspace_manifest": "Cargo.toml",
   "action": "list"
 }'
@@ -815,7 +815,7 @@ Preview dependencies before extracting a module:
 
 ```bash
 # 1. Dry-run dependency extraction
-codebuddy tool workspace.extract_dependencies '{
+mill tool workspace.extract_dependencies '{
   "source_manifest": "crates/source/Cargo.toml",
   "target_manifest": "crates/target/Cargo.toml",
   "dependencies": ["dep1", "dep2", "dep3"],
@@ -827,7 +827,7 @@ codebuddy tool workspace.extract_dependencies '{
 # 2. Review warnings for conflicts
 
 # 3. Execute if no issues
-codebuddy tool workspace.extract_dependencies '{
+mill tool workspace.extract_dependencies '{
   "source_manifest": "crates/source/Cargo.toml",
   "target_manifest": "crates/target/Cargo.toml",
   "dependencies": ["dep1", "dep2", "dep3"],
@@ -843,7 +843,7 @@ Safe workflow for replacing text across the workspace:
 
 ```bash
 # 1. Preview replacement (dryRun defaults to true)
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "TYPEMILL_([A-Z_]+)",
   "replacement": "TYPEMILL_$1",
   "mode": "regex",
@@ -855,7 +855,7 @@ codebuddy tool workspace.find_replace '{
 # 2. Review the EditPlan output showing all changes
 
 # 3. Execute the replacement
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "TYPEMILL_([A-Z_]+)",
   "replacement": "TYPEMILL_$1",
   "mode": "regex",
@@ -866,7 +866,7 @@ codebuddy tool workspace.find_replace '{
 }'
 
 # Alternative: Use workspace.apply_edit with the plan from step 1
-codebuddy tool workspace.apply_edit '{
+mill tool workspace.apply_edit '{
   "plan": "<plan from step 1>",
   "options": {"dryRun": false}
 }'
@@ -875,7 +875,7 @@ codebuddy tool workspace.apply_edit '{
 **Common use cases:**
 - Environment variable prefix changes (TYPEMILL_* → TYPEMILL_*)
 - Configuration path updates (.typemill → .typemill)
-- CLI command updates in documentation (codebuddy → typemill)
+- CLI command updates in documentation (mill → typemill)
 - Dependency renames in manifests
 - API endpoint path changes
 
@@ -890,7 +890,7 @@ Workspace tools integrate with `rename.plan` for crate consolidation:
 ```bash
 # Extract module to new crate, then consolidate back
 # See CLAUDE.md "Rust Crate Consolidation" section
-codebuddy tool rename.plan '{
+mill tool rename.plan '{
   "target": {"kind": "directory", "path": "crates/source-crate"},
   "newName": "crates/target-crate/src/module",
   "options": {"consolidate": true}
@@ -909,14 +909,14 @@ Use dependency analysis before extraction:
 
 ```bash
 # 1. Analyze what dependencies a module needs
-codebuddy tool analyze.module_dependencies '{
+mill tool analyze.module_dependencies '{
   "target": {"kind": "directory", "path": "crates/big-crate/src/module"}
 }'
 
 # Returns: external_dependencies, workspace_dependencies, std_dependencies
 
 # 2. Use results to extract exact dependencies needed
-codebuddy tool workspace.extract_dependencies '{
+mill tool workspace.extract_dependencies '{
   "source_manifest": "crates/big-crate/Cargo.toml",
   "target_manifest": "crates/new-crate/Cargo.toml",
   "dependencies": ["<deps from analysis>"]

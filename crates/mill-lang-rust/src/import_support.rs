@@ -1190,17 +1190,17 @@ pub fn example() {
         let support = RustImportSupport;
 
         // Test extern crate declarations (deprecated Rust 2015 pattern)
-        let content = r#"extern crate codebuddy_plugin_bundle;
+        let content = r#"extern crate mill_plugin_bundle;
 extern crate other_crate;
 
 fn main() {
-    codebuddy_plugin_bundle::init();
+    mill_plugin_bundle::init();
 }
 "#;
 
         let (result, changes) = support.rewrite_imports_for_rename(
             content,
-            "codebuddy-plugin-bundle", // Note: hyphenated input
+            "mill-plugin-bundle", // Note: hyphenated input
             "mill-plugin-bundle",
         );
 
@@ -1214,7 +1214,7 @@ fn main() {
             "Should update extern crate with underscores"
         );
         assert!(
-            !result.contains("codebuddy_plugin_bundle"),
+            !result.contains("mill_plugin_bundle"),
             "Should replace all old references"
         );
         assert!(
@@ -1232,17 +1232,17 @@ fn main() {
         let support = RustImportSupport;
 
         // Test pub use ... as pattern (re-exports)
-        let content = r#"pub use codebuddy_workspaces as workspaces;
-use codebuddy_workspaces::Thing;
+        let content = r#"pub use mill_workspaces as workspaces;
+use mill_workspaces::Thing;
 
 fn main() {
-    codebuddy_workspaces::utility();
+    mill_workspaces::utility();
 }
 "#;
 
         let (result, changes) = support.rewrite_imports_for_rename(
             content,
-            "codebuddy-workspaces", // Note: hyphenated input
+            "mill-workspaces", // Note: hyphenated input
             "mill-workspaces",
         );
 
@@ -1264,7 +1264,7 @@ fn main() {
             "Should update qualified paths"
         );
         assert!(
-            !result.contains("codebuddy_workspaces"),
+            !result.contains("mill_workspaces"),
             "Should replace all old references"
         );
     }
@@ -1278,20 +1278,20 @@ fn main() {
 extern crate mill_plugin_bundle;
 
 // Re-export workspaces
-pub use codebuddy_workspaces as workspaces;
+pub use mill_workspaces as workspaces;
 
-use codebuddy_workspaces::WorkspaceManager;
+use mill_workspaces::WorkspaceManager;
 
 fn init() {
-    let _plugins = codebuddy_plugin_bundle::all_plugins();
-    let manager = codebuddy_workspaces::WorkspaceManager::new();
+    let _plugins = mill_plugin_bundle::all_plugins();
+    let manager = mill_workspaces::WorkspaceManager::new();
 }
 "#;
 
         // Rename plugin-bundle
         let (result1, changes1) = support.rewrite_imports_for_rename(
             content,
-            "codebuddy-plugin-bundle",
+            "mill-plugin-bundle",
             "mill-plugin-bundle",
         );
 
@@ -1302,7 +1302,7 @@ fn init() {
         // Rename workspaces
         let (result2, changes2) = support.rewrite_imports_for_rename(
             &result1,
-            "codebuddy-workspaces",
+            "mill-workspaces",
             "mill-workspaces",
         );
 
@@ -1312,8 +1312,8 @@ fn init() {
         assert!(result2.contains("mill_workspaces::WorkspaceManager::new()"));
 
         // Verify no old names remain
-        assert!(!result2.contains("codebuddy_plugin_bundle"));
-        assert!(!result2.contains("codebuddy_workspaces"));
+        assert!(!result2.contains("mill_plugin_bundle"));
+        assert!(!result2.contains("mill_workspaces"));
     }
 
     #[test]

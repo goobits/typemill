@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// TypeScript/JavaScript AST analysis tool for CodeBuddy
+// TypeScript/JavaScript AST analysis tool for TypeMill
 //
 // This tool parses TypeScript/JavaScript source code and extracts import information
 // and symbols using @babel/parser for maximum compatibility.

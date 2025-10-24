@@ -14,19 +14,19 @@ Provides 36 MCP tools for code navigation, refactoring, analysis, and batch oper
 ## 🚀 Quick Start
 ```bash
 # Install (recommended method)
-curl -fsSL https://raw.githubusercontent.com/goobits/codebuddy/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/goobits/mill/main/install.sh | bash
 
 # Alternative: Build from source
-cargo install codebuddy --locked
+cargo install mill --locked
 
 # Auto-detect languages and configure
-codebuddy setup
+mill setup
 
 # Start the server
-codebuddy start
+mill start
 
 # Verify it's running
-codebuddy status
+mill status
 ```
 
 ### Connect Your AI Assistant
@@ -55,19 +55,19 @@ Ask your AI assistant:
 ## 🛠️ CLI Usage
 ```bash
 # File operations (no position needed)
-codebuddy tool rename --target file:src/old.rs --new-name src/new.rs
-codebuddy tool rename --target directory:old-dir --new-name new-dir
+mill tool rename --target file:src/old.rs --new-name src/new.rs
+mill tool rename --target directory:old-dir --new-name new-dir
 
 # Code operations (requires line:char position)
-codebuddy tool move --source src/app.rs:10:5 --destination src/utils.rs
-codebuddy tool extract --kind function --source src/app.rs:10:5 --name handleLogin
+mill tool move --source src/app.rs:10:5 --destination src/utils.rs
+mill tool extract --kind function --source src/app.rs:10:5 --name handleLogin
 
 # Analysis
-codebuddy tool analyze.quality --kind complexity --scope workspace
-codebuddy tool analyze.dead_code --kind unused_imports --scope file:src/app.rs
+mill tool analyze.quality --kind complexity --scope workspace
+mill tool analyze.dead_code --kind unused_imports --scope file:src/app.rs
 
 # Workspace operations
-codebuddy tool workspace.find_replace --pattern "oldName" --replacement "newName"
+mill tool workspace.find_replace --pattern "oldName" --replacement "newName"
 ```
 
 **Key Distinction:**
@@ -113,7 +113,7 @@ codebuddy tool workspace.find_replace --pattern "oldName" --replacement "newName
 cat .typemill/config.json
 
 # Restart LSP servers (if experiencing issues)
-codebuddy stop && codebuddy start
+mill stop && mill start
 
 # Enable caching (disabled by default for development)
 export TYPEMILL_DISABLE_CACHE=0
@@ -142,7 +142,7 @@ export TYPEMILL_DISABLE_CACHE=0
 **Server won't start:**
 ```bash
 # Check LSP server availability
-codebuddy status
+mill status
 
 # Verify language servers are installed
 which typescript-language-server
@@ -173,7 +173,7 @@ cat .typemill/config.json
 ```bash
 # Clone repository
 git clone https://github.com/goobits/typemill.git
-cd codebuddy
+cd mill
 
 # First-time setup (installs dev tools, builds parsers, validates)
 make first-time-setup

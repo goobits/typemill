@@ -8,12 +8,12 @@ pub mod workspace_support;
 
 use async_trait::async_trait;
 use mill_lang_common::read_manifest;
-use mill_plugin_api::codebuddy_plugin;
+use mill_plugin_api::mill_plugin;
 use mill_plugin_api::{ import_support::{ ImportAdvancedSupport , ImportMoveSupport , ImportMutationSupport , ImportParser , ImportRenameSupport , } , LanguageMetadata , LanguagePlugin , LspConfig , ManifestData , ParsedSource , PluginCapabilities , PluginError , PluginResult , WorkspaceSupport , };
 use std::path::Path;
 
 // Self-register the plugin with the Codebuddy system.
-codebuddy_plugin! {
+mill_plugin! {
     name: "typescript",
     extensions: ["ts", "tsx", "js", "jsx", "mjs", "cjs"],
     manifest: "package.json",

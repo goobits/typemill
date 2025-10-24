@@ -38,13 +38,13 @@ Replace all occurrences of a simple string:
 
 ```bash
 # Preview replacement
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "username",
   "replacement": "user_id"
 }'
 
 # Execute replacement
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "username",
   "replacement": "user_id",
   "dryRun": false
@@ -72,7 +72,7 @@ fn authenticate(user_id: &str) -> Result<User> {
 Avoid partial matches by using whole word mode:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "user",
   "replacement": "account",
   "wholeWord": true
@@ -98,7 +98,7 @@ let user_info = load_info();  // "user_info" unchanged
 Automatically preserve case styles across different naming conventions:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "user_name",
   "replacement": "account_id",
   "preserveCase": true
@@ -144,7 +144,7 @@ struct AccountId {
 Change environment variable prefix across entire codebase:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "TYPEMILL_([A-Z_]+)",
   "replacement": "TYPEMILL_$1",
   "mode": "regex",
@@ -175,7 +175,7 @@ let cache = env::var("TYPEMILL_ENABLE_CACHE")?;
 Update configuration directory paths:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "\\.typemill/([a-z_]+\\.toml)",
   "replacement": ".typemill/$1",
   "mode": "regex"
@@ -199,7 +199,7 @@ const ANALYSIS_CONFIG: &str = ".typemill/analysis.toml";
 Use named capture groups for clarity:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "(?P<module>\\w+)::(?P<function>\\w+)\\(\\)",
   "replacement": "${function}_from_${module}()",
   "mode": "regex",
@@ -228,7 +228,7 @@ let validated = validate_from_validator();
 Update version numbers in manifests:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "version = \"0\\.1\\.([0-9]+)\"",
   "replacement": "version = \"0.2.$1\"",
   "mode": "regex",
@@ -267,7 +267,7 @@ other-crate = { version = "0.2.2", path = "../other" }
 Target only Rust source files:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "OldType",
   "replacement": "NewType",
   "scope": {
@@ -282,7 +282,7 @@ codebuddy tool workspace.find_replace '{
 Update CLI command references in documentation:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "mill",
   "replacement": "typemill",
   "scope": {
@@ -295,16 +295,16 @@ codebuddy tool workspace.find_replace '{
 ```markdown
 ## Installation
 
-Install codebuddy with cargo:
+Install mill with cargo:
 
 \`\`\`bash
-cargo install codebuddy
+cargo install mill
 \`\`\`
 
-Run codebuddy server:
+Run mill server:
 
 \`\`\`bash
-codebuddy serve
+mill serve
 \`\`\`
 ```
 
@@ -330,7 +330,7 @@ typemill serve
 Update only TOML and YAML configuration files:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "old_setting",
   "replacement": "new_setting",
   "scope": {
@@ -349,7 +349,7 @@ Complete project rename from "mill" to "typemill":
 
 ```bash
 # Step 1: Preview all changes
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "mill",
   "replacement": "typemill",
   "preserveCase": true,
@@ -361,7 +361,7 @@ codebuddy tool workspace.find_replace '{
 # Step 2: Review the EditPlan carefully
 
 # Step 3: Execute the replacement
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "mill",
   "replacement": "typemill",
   "preserveCase": true,
@@ -373,17 +373,17 @@ codebuddy tool workspace.find_replace '{
 ```
 
 **Changes applied:**
-- `codebuddy` → `typemill` (lowercase)
+- `mill` → `typemill` (lowercase)
 - `Codebuddy` → `Typemill` (title case)
 - `CODEBUDDY` → `TYPEMILL` (uppercase)
-- `CodeBuddy` → `TypeMill` (PascalCase)
+- `TypeMill` → `TypeMill` (PascalCase)
 
 ### API Endpoint Migration
 
 Update API endpoint paths:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "/api/v1/([a-z_]+)",
   "replacement": "/api/v2/$1",
   "mode": "regex",
@@ -410,7 +410,7 @@ const POSTS_ENDPOINT: &str = "/api/v2/posts";
 Rename dependency imports after upstream package rename:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "use old_crate::",
   "replacement": "use new_crate::",
   "scope": {
@@ -438,7 +438,7 @@ use new_crate::utils::{helper, formatter};
 Consolidate multiple error types into one:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "(FileError|ParseError|ValidationError)",
   "replacement": "AppError",
   "mode": "regex",
@@ -473,14 +473,14 @@ For complex refactorings, perform staged replacements:
 
 ```bash
 # Stage 1: Rename the core type
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "OldServiceImpl",
   "replacement": "NewServiceImpl",
   "dryRun": false
 }'
 
 # Stage 2: Update trait references
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "OldService",
   "replacement": "NewService",
   "wholeWord": true,
@@ -488,7 +488,7 @@ codebuddy tool workspace.find_replace '{
 }'
 
 # Stage 3: Update module paths
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "use services::old_service",
   "replacement": "use services::new_service",
   "dryRun": false
@@ -501,7 +501,7 @@ Replace only in specific contexts using regex lookahead/lookbehind:
 
 ```bash
 # Replace "config" only when it appears as a function parameter
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "\\(config: ",
   "replacement": "(settings: ",
   "mode": "regex",
@@ -532,7 +532,7 @@ fn init(settings: Config) -> Result<App> {
 Update function signatures with capture groups:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "fn (\\w+)\\(\\&self\\) -> (\\w+)",
   "replacement": "fn $1(&self) -> Result<$2>",
   "mode": "regex",
@@ -566,12 +566,12 @@ fn get_id(&self) -> Result<u64> { ... }
 
 ```bash
 # Instead of:
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "data"
 }'
 
 # Use:
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "data",
   "wholeWord": true,
   "scope": {
@@ -605,7 +605,7 @@ codebuddy tool workspace.find_replace '{
 
 ```bash
 # Won't preserve case:
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "user.*",
   "replacement": "account",
   "mode": "regex",
@@ -613,7 +613,7 @@ codebuddy tool workspace.find_replace '{
 }'
 
 # Will preserve case:
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "user_name",
   "replacement": "account_id",
   "mode": "literal",
@@ -629,13 +629,13 @@ codebuddy tool workspace.find_replace '{
 
 ```bash
 # Won't expand $1:
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "TYPEMILL_([A-Z_]+)",
   "replacement": "TYPEMILL_$1"
 }' # mode defaults to "literal"
 
 # Will expand $1:
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "TYPEMILL_([A-Z_]+)",
   "replacement": "TYPEMILL_$1",
   "mode": "regex"
@@ -649,7 +649,7 @@ codebuddy tool workspace.find_replace '{
 **Solution:** These are excluded by default, but verify exclude patterns:
 
 ```bash
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "something",
   "replacement": "other",
   "scope": {
@@ -678,12 +678,12 @@ codebuddy tool workspace.find_replace '{
 
 ```bash
 # Slow - scans entire workspace:
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "old_name"
 }'
 
 # Fast - only scans specific directories:
-codebuddy tool workspace.find_replace '{
+mill tool workspace.find_replace '{
   "pattern": "old_name",
   "scope": {
     "includePatterns": ["crates/my-crate/**/*.rs"]

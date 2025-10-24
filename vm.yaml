@@ -8,7 +8,7 @@ tart:
 project:
   backup_pattern: '*backup*.sql.gz'
   hostname: dev.typemill.local
-  name: codebuddy
+  name: mill
   workspace_path: /workspace
 vm:
   cpus: unlimited
@@ -79,7 +79,7 @@ terminal:
   show_git_branch: true
   show_timestamp: false
   theme: dracula
-  username: codebuddy-dev
+  username: mill-dev
 aliases:
   claudeyolo: claude --dangerously-skip-permissions
   geminiyolo: GEMINI_API_KEY=${GEMINI_API_KEY:-} gemini

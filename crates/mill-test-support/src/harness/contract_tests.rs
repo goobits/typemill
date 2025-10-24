@@ -19,7 +19,7 @@ extern crate mill_plugin_bundle;
 #[test]
 fn test_all_plugins_conform_to_contract() {
     let plugins = plugin_discovery::get_test_registry().all().to_vec();
-    assert!(!plugins.is_empty(), "No language plugins were discovered. Ensure plugins are linked and use codebuddy_plugin! macro.");
+    assert!(!plugins.is_empty(), "No language plugins were discovered. Ensure plugins are linked and use mill_plugin! macro.");
 
     let rt = Runtime::new().unwrap();
 

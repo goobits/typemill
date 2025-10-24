@@ -24,16 +24,16 @@ One critical issue discovered while dogfooding the rename tool during the mill-*
 Used the batch rename feature (added in commit 15d46fe4) to rename two crates simultaneously:
 
 ```bash
-./target/release/codebuddy tool rename.plan '{
+./target/release/mill tool rename.plan '{
   "targets": [
     {
       "kind": "directory",
-      "path": "crates/codebuddy-config",
+      "path": "crates/mill-config",
       "newName": "crates/mill-config"
     },
     {
       "kind": "directory",
-      "path": "crates/codebuddy-auth",
+      "path": "crates/mill-auth",
       "newName": "crates/mill-auth"
     }
   ],
@@ -77,7 +77,7 @@ Should return a plan with all files that would be affected by both renames:
 ### Also Tried Quick Rename
 
 ```bash
-./target/release/codebuddy tool rename '{
+./target/release/mill tool rename '{
   "targets": [...same...]
 }'
 ```
@@ -100,15 +100,15 @@ Fell back to individual renames (which work perfectly):
 
 ```bash
 # First rename - WORKS ✅
-./target/release/codebuddy tool rename \
-  --target "directory:crates/codebuddy-config" \
+./target/release/mill tool rename \
+  --target "directory:crates/mill-config" \
   --new-name "crates/mill-config" \
   --update-all
 # Result: 53 files updated
 
 # Second rename - WORKS ✅
-./target/release/codebuddy tool rename \
-  --target "directory:crates/codebuddy-auth" \
+./target/release/mill tool rename \
+  --target "directory:crates/mill-auth" \
   --new-name "crates/mill-auth" \
   --update-all
 # Result: 16 files updated
@@ -137,8 +137,8 @@ Fell back to individual renames (which work perfectly):
 ```json
 {
   "targets": [
-    {"kind": "directory", "path": "crates/codebuddy-config", "newName": "crates/mill-config"},
-    {"kind": "directory", "path": "crates/codebuddy-auth", "newName": "crates/mill-auth"}
+    {"kind": "directory", "path": "crates/mill-config", "newName": "crates/mill-config"},
+    {"kind": "directory", "path": "crates/mill-auth", "newName": "crates/mill-auth"}
   ],
   "options": {"scope": "all"}
 }
@@ -164,17 +164,17 @@ Fell back to individual renames (which work perfectly):
 
 ### What Actually Happened
 
-During the `codebuddy-config → mill-config` rename, feature definitions **were updated correctly**:
+During the `mill-config → mill-config` rename, feature definitions **were updated correctly**:
 
 **Git Diff (commit eab9c9c8):**
 ```diff
  [dependencies]
--codebuddy-config = { path = "../codebuddy-config", optional = true }
+-mill-config = { path = "../mill-config", optional = true }
 +mill-config = { path = "../mill-config", optional = true }
 
  [features]
--runtime = ["mill-foundation", "codebuddy-config", "mill-ast"]
--mcp-proxy = ["runtime", "codebuddy-config/mcp-proxy"]
+-runtime = ["mill-foundation", "mill-config", "mill-ast"]
+-mcp-proxy = ["runtime", "mill-config/mcp-proxy"]
 +runtime = ["mill-foundation", "mill-config", "mill-ast"]
 +mcp-proxy = ["runtime", "mill-config/mcp-proxy"]
 ```
@@ -188,8 +188,8 @@ Feature flag updates were fixed in previous sessions:
 - **Oct 21** (commit b296b6fb): Additional feature flag fixes in `cargo_util.rs`
 
 The `rename_dependency()` function already handles:
-- ✅ Exact matches: `"codebuddy-config"` → `"mill-config"`
-- ✅ Feature references: `"codebuddy-config/feature"` → `"mill-config/feature"`
+- ✅ Exact matches: `"mill-config"` → `"mill-config"`
+- ✅ Feature references: `"mill-config/feature"` → `"mill-config/feature"`
 
 ### Conclusion
 
@@ -215,10 +215,10 @@ No fix needed. This issue can be CLOSED.
 
 ### For Issue #1 (Batch Rename):
 
-1. Build latest: `cargo build --release --bin codebuddy`
+1. Build latest: `cargo build --release --bin mill`
 2. Run batch rename:
    ```bash
-   ./target/release/codebuddy tool rename.plan '{
+   ./target/release/mill tool rename.plan '{
      "targets": [
        {"kind": "directory", "path": "crates/A", "newName": "crates/B"},
        {"kind": "directory", "path": "crates/C", "newName": "crates/D"}
@@ -285,8 +285,8 @@ Unit test `test_rename_dependency_updates_features` already validates this behav
 
 1. **Investigate & fix batch rename** (Issue #1)
 2. **Implement feature refs update** (Issue #2)
-3. **Re-test with same 2 crates** (codebuddy-config, codebuddy-auth)
-4. **If successful, use batch rename for remaining 5 codebuddy-* crates**
+3. **Re-test with same 2 crates** (mill-config, mill-auth)
+4. **If successful, use batch rename for remaining 5 mill-* crates**
 
 ---
 

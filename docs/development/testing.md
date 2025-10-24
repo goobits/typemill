@@ -30,7 +30,7 @@ Fast reference for test organization, execution, and best practices.
 | `cargo nextest run --workspace --features lsp-tests` | + LSP server tests | ~60s |
 | `cargo nextest run --workspace --all-features` | + Heavy tests (benchmarks) | ~80s |
 | `cargo nextest run --workspace --ignored --features lsp-tests` | Smoke tests only | ~1min |
-| `cargo nextest run -p codebuddy --test e2e_*` | E2E tests only | ~30s |
+| `cargo nextest run -p mill --test e2e_*` | E2E tests only | ~30s |
 | `cargo nextest run --workspace --no-capture` | With test output | varies |
 
 ## Test Coverage by Category
@@ -98,10 +98,10 @@ Fast reference for test organization, execution, and best practices.
 
 | Binary | Location | PID Lock | Parallel Tests | Used By |
 |--------|----------|----------|----------------|---------|
-| `codebuddy` | `../../apps/mill` | ✅ `/tmp/codebuddy.pid` | ❌ Conflicts | CLI, users |
+| `mill` | `../../apps/mill` | ✅ `/tmp/mill.pid` | ❌ Conflicts | CLI, users |
 | `mill-server` | `../crates/mill-server` | ❌ No lock | ✅ Isolated instances | TestClient, CI |
 
-**Important:** TestClient uses `mill-server` (not `codebuddy`) to enable parallel test execution.
+**Important:** TestClient uses `mill-server` (not `mill`) to enable parallel test execution.
 
 ### Test Helpers
 
@@ -182,7 +182,7 @@ workspace/
 | LSP tests fail | LSP servers not installed | Install: `npm i -g typescript-language-server`, `rustup component add rust-analyzer` |
 | LSP servers not found | Not in PATH | Check: `which typescript-language-server` |
 | Smoke tests skip | Marked `#[ignore]` | Run: `cargo nextest run --ignored --features lsp-tests` |
-| Server already running | Using `codebuddy` not `mill-server` | TestClient should use `mill-server` |
+| Server already running | Using `mill` not `mill-server` | TestClient should use `mill-server` |
 | Tests fail intermittently | Race conditions | Fix synchronization, avoid sleeps |
 
 ## Warning Signs

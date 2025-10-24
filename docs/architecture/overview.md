@@ -68,7 +68,7 @@ The codebase follows a strict layered architecture with enforced dependencies:
 7. **Application** - Server, client, transport
 
 **Key crates:**
-- **Foundation**: `cb-types`, `cb-protocol`, `mill-config`, `codebuddy-core`
+- **Foundation**: `cb-types`, `cb-protocol`, `mill-config`, `mill-core`
 - **Services**: `cb-ast`, `mill-services`, `mill-lsp`, `mill-plugin-bundle`
 - **Handlers**: `mill-handlers`
 - **Application**: `mill-server`, `mill-client`, `mill-transport`, `../../apps/mill`
@@ -448,7 +448,7 @@ pub struct AppState {
 
 This crate is the heart of the self-registration mechanism. It provides:
 - A `PluginDescriptor` struct that holds all metadata about a language plugin (its name, file extensions, capabilities, and a factory function to create an instance).
-- A macro, `codebuddy_plugin!`, that language plugins use to declare their metadata.
+- A macro, `mill_plugin!`, that language plugins use to declare their metadata.
 - An iterator, `iter_plugins()`, which the server uses at startup to get a list of all registered plugins.
 
 The magic is handled by the `inventory` crate, which collects all the static `PluginDescriptor` instances created by the macro into a single, iterable collection that the application can access.
@@ -459,9 +459,9 @@ Inside a language plugin crate (e.g., `cb-lang-rust`), registration is a single 
 
 ```rust
 // In ../../crates/mill-lang-rust/src/lib.rs
-use cb_plugin_registry::codebuddy_plugin;
+use cb_plugin_registry::mill_plugin;
 
-codebuddy_plugin! {
+mill_plugin! {
     name: "rust",
     extensions: ["rs"],
     manifest: "Cargo.toml",
@@ -699,7 +699,7 @@ For adding support for new programming languages, see the **[Language Plugins Gu
 
 1. **Plugin Structure**: Directory layout and file organization
 2. **Trait Implementation**: `LanguagePlugin` trait requirements
-3. **Registration**: Calling the `codebuddy_plugin!` macro to enable self-registration.
+3. **Registration**: Calling the `mill_plugin!` macro to enable self-registration.
 4. **Testing**: Unit and integration test requirements
 5. **Reference Examples**: Rust, Go, TypeScript plugin implementations
 
@@ -716,12 +716,12 @@ This section defines the external and internal contracts for the MCP server impl
 #### WebSocket Transport (Default)
 - **Endpoint**: `ws://127.0.0.1:3040`
 - **Protocol**: JSON-RPC 2.0 over WebSocket
-- **Command**: `codebuddy serve`
+- **Command**: `mill serve`
 - **Features**: Session management, concurrent connections, health endpoints
 
 #### Stdio Transport
 - **Protocol**: JSON-RPC 2.0 over stdin/stdout (newline-delimited)
-- **Command**: `codebuddy start`
+- **Command**: `mill start`
 - **Features**: MCP protocol compatibility, editor integration support
 - **Usage**: Designed for MCP clients like Claude Code
 

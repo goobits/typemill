@@ -4,7 +4,7 @@
 //! This enables `rename.plan` to track path references when files are moved.
 
 use async_trait::async_trait;
-use mill_plugin_api::codebuddy_plugin;
+use mill_plugin_api::mill_plugin;
 use mill_plugin_api::{ import_support::ImportRenameSupport , LanguageMetadata , LanguagePlugin , ManifestData , ParsedSource , PluginCapabilities , PluginError , PluginResult , };
 use std::path::Path;
 use tracing::debug;
@@ -14,7 +14,7 @@ mod import_support_impl;
 use import_support_impl::YamlImportSupport;
 
 // Self-register the plugin with the Codebuddy system.
-codebuddy_plugin! {
+mill_plugin! {
     name: "yaml",
     extensions: ["yaml", "yml"],
     manifest: "package.json",

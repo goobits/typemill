@@ -277,7 +277,7 @@ public class Main {
 }
 "#;
     workspace.create_file(
-        "src/main/java/com/codebuddy/example/Main.java",
+        "src/main/java/com/mill/example/Main.java",
         main_content,
     );
 
@@ -326,7 +326,7 @@ public class Helper {
 }
 "#;
     workspace.create_file(
-        "src/main/java/com/codebuddy/example/utils/Helper.java",
+        "src/main/java/com/mill/example/utils/Helper.java",
         helper_content,
     );
 
@@ -369,7 +369,7 @@ public class StringProcessor {
 }
 "#;
     workspace.create_file(
-        "src/main/java/com/codebuddy/example/utils/StringProcessor.java",
+        "src/main/java/com/mill/example/utils/StringProcessor.java",
         processor_content,
     );
 
@@ -421,7 +421,7 @@ public class DataItem {
 }
 "#;
     workspace.create_file(
-        "src/main/java/com/codebuddy/example/data/DataItem.java",
+        "src/main/java/com/mill/example/data/DataItem.java",
         item_content,
     );
 
@@ -494,7 +494,7 @@ public class DataProcessor {
 }
 "#;
     workspace.create_file(
-        "src/main/java/com/codebuddy/example/data/DataProcessor.java",
+        "src/main/java/com/mill/example/data/DataProcessor.java",
         data_processor_content,
     );
 

@@ -30,7 +30,7 @@ pub mod reference_detector;
 
 use async_trait::async_trait;
 use mill_lang_common::{ manifest_templates::{ ManifestTemplate , TomlManifestTemplate } , read_manifest , };
-use mill_plugin_api::codebuddy_plugin;
+use mill_plugin_api::mill_plugin;
 use mill_plugin_api::{ LanguageMetadata , LanguagePlugin , LspConfig , ManifestData , ParsedSource , PluginCapabilities , PluginResult , };
 use std::path::Path;
 
@@ -38,7 +38,7 @@ use std::path::Path;
 use imports::{compute_module_path_from_file, find_crate_name_from_cargo_toml};
 
 // Self-register the plugin with the Codebuddy system.
-codebuddy_plugin! {
+mill_plugin! {
     name: "rust",
     extensions: ["rs"],
     manifest: "Cargo.toml",

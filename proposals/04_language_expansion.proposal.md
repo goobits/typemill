@@ -15,7 +15,7 @@
 
 ## Overview
 
-CodeBuddy supports multiple languages via LSP integration and language plugins. This document tracks expansion to cover the top 10 most popular programming languages, with **7 already complete** and **3 remaining**.
+TypeMill supports multiple languages via LSP integration and language plugins. This document tracks expansion to cover the top 10 most popular programming languages, with **7 already complete** and **3 remaining**.
 
 ## Current Support Status
 
@@ -165,7 +165,7 @@ All language plugins implement the `LanguagePlugin` trait with capability-based 
 | C          | `clangd`  | Same as C++ |
 | PHP        | `intelephense` | `npm install -g intelephense` |
 
-**Configuration:** Add to `.typemill/config.json` after installation. Run `codebuddy setup` for auto-detection.
+**Configuration:** Add to `.typemill/config.json` after installation. Run `mill setup` for auto-detection.
 
 ## Success Metrics
 

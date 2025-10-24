@@ -7,7 +7,7 @@ COPY rust ./rust
 # Stage 2: Builder - for compiling the release binary
 FROM base as builder
 WORKDIR /app/rust
-RUN cargo build --release --bin codebuddy
+RUN cargo build --release --bin mill
 
 # Stage 3: Final - for production
 FROM debian:bookworm-slim as final
@@ -24,14 +24,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for security
-RUN useradd -r -s /bin/false -m codebuddy
-COPY --from=builder /app/rust/target/release/codebuddy /usr/local/bin/
-RUN chown codebuddy:codebuddy /usr/local/bin/codebuddy
-USER codebuddy
+RUN useradd -r -s /bin/false -m mill
+COPY --from=builder /app/rust/target/release/mill /usr/local/bin/
+RUN chown mill:mill /usr/local/bin/mill
+USER mill
 
 # Install LSP servers as non-root user
-ENV NPM_CONFIG_PREFIX=/home/codebuddy/.npm-global
-ENV PATH="/home/codebuddy/.npm-global/bin:${PATH}"
+ENV NPM_CONFIG_PREFIX=/home/mill/.npm-global
+ENV PATH="/home/mill/.npm-global/bin:${PATH}"
 RUN npm install -g typescript-language-server typescript && \
     pip3 install --user python-lsp-server[all]
 

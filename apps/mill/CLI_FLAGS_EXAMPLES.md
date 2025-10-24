@@ -43,17 +43,17 @@ This document shows example commands that will work once Agent 1 implements the 
 
 ```bash
 # Rename a directory
-codebuddy tool rename.plan \
+mill tool rename.plan \
   --target directory:crates/cb-types \
-  --new-name crates/codebuddy-core/src/types
+  --new-name crates/mill-core/src/types
 
 # Rename a file
-codebuddy tool rename.plan \
+mill tool rename.plan \
   --target file:src/utils.rs \
   --new-name src/helpers.rs
 
 # Rename a symbol
-codebuddy tool rename.plan \
+mill tool rename.plan \
   --target symbol:src/app.rs:10:5 \
   --new-name newFunctionName
 ```
@@ -62,13 +62,13 @@ codebuddy tool rename.plan \
 
 ```bash
 # Extract a function
-codebuddy tool extract.plan \
+mill tool extract.plan \
   --source src/app.rs:45:8 \
   --name extractedFunction \
   --kind function
 
 # Extract a variable
-codebuddy tool extract.plan \
+mill tool extract.plan \
   --source src/app.rs:20:4 \
   --name extractedVar \
   --kind variable
@@ -78,7 +78,7 @@ codebuddy tool extract.plan \
 
 ```bash
 # Move code to a new location
-codebuddy tool move.plan \
+mill tool move.plan \
   --target symbol:src/app.rs:10:5 \
   --destination src/utils.rs:20:0
 ```
@@ -87,12 +87,12 @@ codebuddy tool move.plan \
 
 ```bash
 # Delete unused imports
-codebuddy tool delete.plan \
+mill tool delete.plan \
   --target file:src/app.rs \
   --kind imports
 
 # Delete a specific symbol
-codebuddy tool delete.plan \
+mill tool delete.plan \
   --target symbol:src/app.rs:10:5
 ```
 
@@ -100,7 +100,7 @@ codebuddy tool delete.plan \
 
 ```bash
 # Transform to async
-codebuddy tool transform.plan \
+mill tool transform.plan \
   --target symbol:src/app.rs:10:5 \
   --kind to_async
 ```
@@ -109,7 +109,7 @@ codebuddy tool transform.plan \
 
 ```bash
 # Rename with custom scope
-codebuddy tool rename.plan \
+mill tool rename.plan \
   --target directory:old-dir \
   --new-name new-dir \
   --scope code-only
@@ -119,14 +119,14 @@ codebuddy tool rename.plan \
 
 ### Using Flags (New)
 ```bash
-codebuddy tool rename.plan \
+mill tool rename.plan \
   --target directory:../../crates/mill-client \
   --new-name crates/cb-core/src/client
 ```
 
 ### Using JSON (Original)
 ```bash
-codebuddy tool rename.plan '{
+mill tool rename.plan '{
   "target": {
     "kind": "directory",
     "path": "../../crates/mill-client"
@@ -161,10 +161,10 @@ Both approaches work! Flags are ergonomic for simple cases, JSON for complex one
 
 ```bash
 # Test convention parsers (working now)
-cargo test --bin codebuddy cli::conventions
+cargo test --bin mill cli::conventions
 
 # Test full integration (after Agent 1 completes)
-codebuddy tool rename.plan --target file:test.rs --new-name test2.rs
+mill tool rename.plan --target file:test.rs --new-name test2.rs
 ```
 
 ## Notes for Agent 1

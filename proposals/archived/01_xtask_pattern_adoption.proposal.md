@@ -121,7 +121,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Install codebuddy and set up development environment
+    /// Install mill and set up development environment
     Install(install::InstallArgs),
 
     /// Check for duplicate code in the codebase
@@ -197,7 +197,7 @@ pub struct InstallArgs {
 }
 
 pub fn run(args: InstallArgs) -> Result<()> {
-    println!("Installing codebuddy...\n");
+    println!("Installing mill...\n");
 
     // Build
     if !args.skip_build {
@@ -214,7 +214,7 @@ pub fn run(args: InstallArgs) -> Result<()> {
 
     // Determine binary location
     let profile_dir = if args.dev { "debug" } else { "release" };
-    let binary_name = if cfg!(windows) { "codebuddy.exe" } else { "mill" };
+    let binary_name = if cfg!(windows) { "mill.exe" } else { "mill" };
     let binary_path = PathBuf::from("target")
         .join(profile_dir)
         .join(binary_name);
@@ -622,7 +622,7 @@ This project uses the `xtask` pattern for build automation. Instead of shell scr
 ### Available Tasks
 
 ```bash
-# Install codebuddy
+# Install mill
 cargo xtask install
 
 # Check for duplicate code
@@ -661,7 +661,7 @@ cargo xtask check-all
 
 Common tasks:
 ```bash
-cargo xtask install           # Install codebuddy
+cargo xtask install           # Install mill
 cargo xtask check-all          # Run all checks
 cargo xtask new-lang python    # Scaffold new language plugin
 ```

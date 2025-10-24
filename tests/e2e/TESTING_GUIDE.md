@@ -365,8 +365,8 @@ cargo nextest run --status-level skip --test-threads=1
 
 The codebase has **two server binaries**:
 
-1. **`codebuddy`** (../../apps/mill) - CLI wrapper with lifecycle management
-   - Uses a global PID lock file at `/tmp/codebuddy.pid`
+1. **`mill`** (../../apps/mill) - CLI wrapper with lifecycle management
+   - Uses a global PID lock file at `/tmp/mill.pid`
    - Prevents multiple instances via file locking
    - Provides commands: `start`, `stop`, `status`, `serve`, etc.
    - **Not suitable for parallel tests** due to lock conflicts
@@ -379,14 +379,14 @@ The codebase has **two server binaries**:
 
 ### Why TestClient Uses `mill-server`
 
-The `TestClient` (in `../../crates/mill-test-support/src/harness/client.rs`) spawns `mill-server` instead of `codebuddy` to allow tests to run in parallel without PID lock conflicts. Each test gets its own isolated server instance.
+The `TestClient` (in `../../crates/mill-test-support/src/harness/client.rs`) spawns `mill-server` instead of `mill` to allow tests to run in parallel without PID lock conflicts. Each test gets its own isolated server instance.
 
 **Important**: `mill-server` is **always available** when running tests because:
 - It's part of the workspace dependencies
 - Cargo automatically builds it when running `cargo test`
 - No additional setup required
 
-If you see test failures about "server already running", it means the test is incorrectly trying to use `codebuddy` instead of `mill-server`.
+If you see test failures about "server already running", it means the test is incorrectly trying to use `mill` instead of `mill-server`.
 
 ## Test Organization
 

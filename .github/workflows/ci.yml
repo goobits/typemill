@@ -139,9 +139,9 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: codebuddy-${{ matrix.os }}
+        name: mill-${{ matrix.os }}
         path: |
-          target/release/codebuddy${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          target/release/mill${{ matrix.os == 'windows-latest' && '.exe' || '' }}
           target/release/cb${{ matrix.os == 'windows-latest' && '.exe' || '' }}
         if-no-files-found: warn
 

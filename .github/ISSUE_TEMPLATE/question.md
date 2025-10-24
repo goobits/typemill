@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Ask a question about codebuddy
+about: Ask a question about mill
 title: '[QUESTION] '
 labels: question
 assignees: ''
@@ -19,7 +19,7 @@ assignees: ''
 ## Environment (if relevant)
 - **OS**: 
 - **Node.js version**: 
-- **codebuddy version**: 
+- **mill version**: 
 - **MCP client**: 
 
 ## Related documentation

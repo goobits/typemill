@@ -19,7 +19,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Install codebuddy and set up development environment
+    /// Install mill and set up development environment
     Install(install::InstallArgs),
 
     /// Check for duplicate code in the codebase

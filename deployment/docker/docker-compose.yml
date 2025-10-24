@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  codebuddy:
+  mill:
     build:
       context: ..
       dockerfile: docker/Dockerfile
       target: development
-    container_name: codebuddy-dev
+    container_name: mill-dev
     working_dir: /app/rust
     ports:
       - "3000:3000"  # WebSocket server
@@ -26,16 +26,16 @@ services:
       - rust-target:/app/rust/target
     restart: unless-stopped
     networks:
-      - codebuddy-net
+      - mill-net
 
   python-workspace:
     image: python:3.11-slim
     container_name: python-workspace
     depends_on:
-      codebuddy:
+      mill:
         condition: service_started
     networks:
-      - codebuddy-net
+      - mill-net
     volumes:
       - ./agent.py:/app/agent.py:ro
     expose:
@@ -54,12 +54,12 @@ services:
           sleep 1;
         done;
         echo 'Agent is ready.' &&
-        echo 'Waiting for CodeBuddy admin server...' &&
-        until curl -s --fail http://codebuddy-dev:4000/health > /dev/null; do
+        echo 'Waiting for TypeMill admin server...' &&
+        until curl -s --fail http://mill-dev:4000/health > /dev/null; do
           sleep 1;
         done;
-        echo 'CodeBuddy is healthy. Registering workspace...' &&
-        curl -X POST http://codebuddy-dev:4000/workspaces/register \
+        echo 'TypeMill is healthy. Registering workspace...' &&
+        curl -X POST http://mill-dev:4000/workspaces/register \
           -H 'Content-Type: application/json' \
           -d '{\"id\": \"python-workspace\", \"language\": \"python\", \"project_name\": \"Sample Python Project\", \"agent_url\": \"http://python-workspace:8000\"}' &&
         echo 'Workspace registered. Agent running...' &&
@@ -71,5 +71,5 @@ volumes:
   rust-target:
 
 networks:
-  codebuddy-net:
+  mill-net:
     driver: bridge

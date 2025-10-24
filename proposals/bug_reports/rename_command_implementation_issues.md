@@ -2,7 +2,7 @@
 
 **Date:** 2025-10-17
 **Feature:** QuickRenameHandler (`rename` tool)
-**Context:** Implementing one-step rename command and dogfooding it to rename `cb-core → codebuddy-core`
+**Context:** Implementing one-step rename command and dogfooding it to rename `cb-core → mill-core`
 
 ---
 
@@ -17,8 +17,8 @@ The original goal was to pipe output from `rename.plan` directly to `workspace.a
 
 ```bash
 # Intended usage (doesn't work):
-./target/debug/codebuddy tool rename.plan '{"target": {...}}' | \
-  ./target/debug/codebuddy tool workspace.apply_edit ???
+./target/debug/mill tool rename.plan '{"target": {...}}' | \
+  ./target/debug/mill tool workspace.apply_edit ???
 ```
 
 **Issues encountered:**
@@ -74,7 +74,7 @@ impl QuickRenameHandler {
 
 **New usage:**
 ```bash
-./target/debug/codebuddy tool rename '{"target": {"kind": "directory", "path": "crates/cb-core"}, "newName": "crates/codebuddy-core"}'
+./target/debug/mill tool rename '{"target": {"kind": "directory", "path": "crates/cb-core"}, "newName": "crates/mill-core"}'
 ```
 
 ### Recommendation
@@ -101,8 +101,8 @@ let json_str = if args == "-" {
 **Option B: Add template syntax**
 ```bash
 # Support @file and @stdin
-codebuddy tool workspace.apply_edit '{"plan": @file:/tmp/plan.json, "options": {...}}'
-codebuddy tool workspace.apply_edit '{"plan": @stdin, "options": {...}}'
+mill tool workspace.apply_edit '{"plan": @file:/tmp/plan.json, "options": {...}}'
+mill tool workspace.apply_edit '{"plan": @stdin, "options": {...}}'
 ```
 
 **Option C: Keep QuickRenameHandler** (Current solution)
@@ -128,7 +128,7 @@ cb_core::utils::system::command_exists
 cb_core::logging::request_span
 
 // Only these were updated:
-use cb_core::config;  // → use codebuddy_core::config
+use cb_core::config;  // → use mill_core::config
 ```
 
 ### Files Affected
@@ -153,7 +153,7 @@ This is documented in `CLAUDE.md`:
 ### Manual Fix Applied
 
 ```bash
-find crates/ apps/ tests/ -name "*.rs" -type f -exec sed -i 's/cb_core::/codebuddy_core::/g' {} \;
+find crates/ apps/ tests/ -name "*.rs" -type f -exec sed -i 's/cb_core::/mill_core::/g' {} \;
 ```
 
 ### Recommendation
@@ -191,7 +191,7 @@ This would catch:
 
 ### Problem
 
-After renaming `cb-core → codebuddy-core`, the workspace failed to build:
+After renaming `cb-core → mill-core`, the workspace failed to build:
 
 ```
 error: feature `runtime` includes `cb-core` which is neither a dependency nor another feature
@@ -226,10 +226,10 @@ Files:
 
 ```bash
 # Root workspace dependencies
-sed -i 's/cb-core = { path = "crates\/cb-core" }/codebuddy-core = { path = "crates\/codebuddy-core" }/g' Cargo.toml
+sed -i 's/cb-core = { path = "crates\/cb-core" }/mill-core = { path = "crates\/mill-core" }/g' Cargo.toml
 
 # Feature flags across all Cargo.toml files
-sed -i 's/cb-core/codebuddy-core/g' crates/*/Cargo.toml apps/*/Cargo.toml
+sed -i 's/cb-core/mill-core/g' crates/*/Cargo.toml apps/*/Cargo.toml
 ```
 
 ### Root Cause
@@ -387,6 +387,6 @@ The dogfooding exercise successfully demonstrated the tool works for real-world 
 After all fixes:
 - ✅ Build succeeds: `cargo build` → 0 errors
 - ✅ All imports updated: 230+ files
-- ✅ Directory renamed: `cb-core` → `codebuddy-core`
+- ✅ Directory renamed: `cb-core` → `mill-core`
 - ✅ Git commit successful: 118 files changed
 - ✅ Ready for next consolidation phase

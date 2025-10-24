@@ -66,13 +66,13 @@ Codebuddy supports environment variables for fine-grained cache control. This is
 Disable **all** caches at once:
 
 ```bash
-TYPEMILL_DISABLE_CACHE=1 codebuddy serve
+TYPEMILL_DISABLE_CACHE=1 mill serve
 ```
 
 or
 
 ```bash
-TYPEMILL_DISABLE_CACHE=true codebuddy serve
+TYPEMILL_DISABLE_CACHE=true mill serve
 ```
 
 ### Individual Cache Controls
@@ -81,13 +81,13 @@ Disable specific caches while keeping others enabled:
 
 ```bash
 # Disable only AST cache
-TYPEMILL_DISABLE_AST_CACHE=1 codebuddy serve
+TYPEMILL_DISABLE_AST_CACHE=1 mill serve
 
 # Disable only import cache (used during directory renames)
-TYPEMILL_DISABLE_IMPORT_CACHE=1 codebuddy serve
+TYPEMILL_DISABLE_IMPORT_CACHE=1 mill serve
 
 # Disable only LSP method translation cache
-TYPEMILL_DISABLE_LSP_METHOD_CACHE=1 codebuddy serve
+TYPEMILL_DISABLE_LSP_METHOD_CACHE=1 mill serve
 ```
 
 ### Priority Order
@@ -104,7 +104,7 @@ Environment variables take precedence over configuration file settings:
 **Example:**
 ```bash
 # Even if config.json has "enabled": true, this will disable AST cache
-TYPEMILL_DISABLE_AST_CACHE=1 codebuddy serve
+TYPEMILL_DISABLE_AST_CACHE=1 mill serve
 ```
 
 ## Configuration File
@@ -183,7 +183,7 @@ Cache warming (pre-populating caches on startup) is a planned feature.
 2. Verify the cache is using modification time validation
 3. Temporarily disable cache to confirm it's cache-related:
    ```bash
-   TYPEMILL_DISABLE_CACHE=1 codebuddy serve
+   TYPEMILL_DISABLE_CACHE=1 mill serve
    ```
 
 ### Issue: High memory usage
@@ -220,7 +220,7 @@ Cache warming (pre-populating caches on startup) is a planned feature.
 
 **Solution:** Disable import cache to force fresh scans:
 ```bash
-TYPEMILL_DISABLE_IMPORT_CACHE=1 ./target/release/codebuddy tool rename.plan ...
+TYPEMILL_DISABLE_IMPORT_CACHE=1 ./target/release/mill tool rename.plan ...
 ```
 
 ## Best Practices
@@ -232,7 +232,7 @@ During active development, consider disabling caches:
 ```bash
 # Development mode - disable all caches
 export TYPEMILL_DISABLE_CACHE=1
-codebuddy serve
+mill serve
 ```
 
 ### Production
@@ -275,7 +275,7 @@ TYPEMILL_DISABLE_IMPORT_CACHE=1 cargo test import_updates
 Planned cache features:
 
 1. **Cache statistics endpoint**: View cache performance metrics
-2. **Cache clear command**: `codebuddy cache clear [--ast] [--import] [--all]`
+2. **Cache clear command**: `mill cache clear [--ast] [--import] [--all]`
 3. **Cache warming**: Pre-populate caches on startup
 4. **Persistent cache**: Disk-based cache for faster restarts
 5. **Cache metrics**: Prometheus-compatible metrics export

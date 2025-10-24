@@ -12,7 +12,7 @@ name: Codebuddy CI Test
 on: [push, pull_request]
 
 jobs:
-  test-codebuddy-install:
+  test-mill-install:
     runs-on: ubuntu-latest
     name: Test Codebuddy Installation from Scratch
 
@@ -42,8 +42,8 @@ jobs:
 
       - name: Install Codebuddy via cargo
         run: |
-          cargo install codebuddy --locked
-          codebuddy --version
+          cargo install mill --locked
+          mill --version
 
       - name: Install Language Servers
         run: |
@@ -75,12 +75,12 @@ jobs:
       - name: Run Codebuddy Tools to Verify Installation
         run: |
           echo "Running status and doctor..."
-          codebuddy status
-          codebuddy doctor
+          mill status
+          mill doctor
 
           echo "Running get_diagnostics..."
-          # This command will test if the LSP server is working via codebuddy
-          codebuddy tool get_diagnostics --file-path "src/main.ts"
+          # This command will test if the LSP server is working via mill
+          mill tool get_diagnostics --file-path "src/main.ts"
 ```
 
 ### Workflow Breakdown
@@ -88,11 +88,11 @@ jobs:
 1.  **Checkout Code**: The workflow begins by checking out your repository's code.
 2.  **Install Rust and Node.js**: It sets up the necessary environments for Rust and Node.js. Node.js is required for the `typescript-language-server`.
 3.  **Cache Dependencies**: Caching is used for `cargo` dependencies to speed up subsequent runs.
-4.  **Install Codebuddy**: Codebuddy is installed non-interactively using `cargo install codebuddy --locked`. The `--locked` flag ensures a reproducible build based on the `Cargo.lock` file.
+4.  **Install Codebuddy**: Codebuddy is installed non-interactively using `cargo install mill --locked`. The `--locked` flag ensures a reproducible build based on the `Cargo.lock` file.
 5.  **Install Language Servers**: The `typescript-language-server` is installed globally using `npm`. `rust-analyzer` is installed as a rustup component.
 6.  **Configure Codebuddy**: A configuration file is created programmatically at `.typemill/config.json`. This avoids any interactive setup prompts.
 7.  **Create a Test File**: A dummy `src/main.ts` file is created to have a target for the Codebuddy tool commands.
-8.  **Verify Installation**: The workflow runs `codebuddy status`, `codebuddy doctor`, and `codebuddy tool get_diagnostics` to confirm that the installation is successful and the language servers are operational.
+8.  **Verify Installation**: The workflow runs `mill status`, `mill doctor`, and `mill tool get_diagnostics` to confirm that the installation is successful and the language servers are operational.
 
 ## Other CI/CD Environments
 

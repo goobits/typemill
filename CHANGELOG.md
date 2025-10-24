@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to CodeBuddy will be documented in this file.
+All notable changes to TypeMill will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -17,12 +17,12 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 #### Breaking Changes
 
-- **TypeMill Branding Migration** - Complete rename from CodeBuddy to TypeMill
-  - Configuration directory: `.codebuddy/` → `.typemill/`
-  - Binary name: `codebuddy` → `mill` (apps/mill → apps/mill)
+- **TypeMill Branding Migration** - Complete rename from TypeMill to TypeMill
+  - Configuration directory: `.mill/` → `.typemill/`
+  - Binary name: `mill` → `mill` (apps/mill → apps/mill)
   - Environment variables: `TYPEMILL__*` → `TYPEMILL__*`
   - All internal crates renamed: `cb-*` → `mill-*` (27 crate renames)
-  - Package name: `codebuddy` → `typemill`
+  - Package name: `mill` → `typemill`
 
 - **JSON API Standardization** - All JSON parameters converted to camelCase
   - 487 field replacements across codebase for consistency
@@ -77,7 +77,7 @@ The project underwent a complete architectural transformation from TypeScript/No
 - **Rust Crate Organization** - Complete mill-* naming convention
   - Analysis crates: cb-analysis-* → mill-analysis-* (5 crates)
   - Language plugins: cb-lang-* → mill-lang-* (5 crates)
-  - Core crates: codebuddy-* → mill-* (17 crates)
+  - Core crates: mill-* → mill-* (17 crates)
   - Foundation crates: cb-plugin-api → mill-plugin-api, etc.
 
 #### Fixed
@@ -104,16 +104,16 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 #### Removed
 
-- **Legacy Naming** - All references to old CodeBuddy branding
-  - Removed `.codebuddy/` configuration directory support
-  - Removed `codebuddy` binary name (use `mill` instead)
+- **Legacy Naming** - All references to old TypeMill branding
+  - Removed `.mill/` configuration directory support
+  - Removed `mill` binary name (use `mill` instead)
   - Removed `TYPEMILL__*` environment variable support
   - Cleaned up stale nested crates in mill-lang-markdown
 
 #### Migration Notes
 
-- **Configuration**: Move `.codebuddy/` to `.typemill/` in your projects
-- **Binary**: Update scripts and commands from `codebuddy` to `mill`
+- **Configuration**: Move `.mill/` to `.typemill/` in your projects
+- **Binary**: Update scripts and commands from `mill` to `mill`
 - **Environment**: Rename `TYPEMILL__*` to `TYPEMILL__*` in your environment
 - **JSON API**: Update client code to use camelCase for all JSON parameters
 - **Scope**: Update `"project"` to `"standard"` (old name deprecated with warning)
@@ -280,12 +280,12 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 - **Comprehensive Documentation Updates** - All docs updated for language reduction with disclaimers and git tag references
 - **API Contracts and Proposals** - Refined unified API implementation plans
-- **Plugin Development Guide** - Updated to use `codebuddy_plugin!` macro instead of `languages.toml`
+- **Plugin Development Guide** - Updated to use `mill_plugin!` macro instead of `languages.toml`
 
 #### Added
 
 - **Plugin Self-Registration System** - Self-registering language plugins with link-time discovery
-  - New `cb-plugin-registry` crate with `PluginDescriptor` and `codebuddy_plugin!` macro
+  - New `cb-plugin-registry` crate with `PluginDescriptor` and `mill_plugin!` macro
   - Plugins self-register using `inventory` crate for automatic discovery at link time
   - Core crates (`cb-core`, `mill-services`, `cb-ast`) completely decoupled from specific languages
   - No more `languages.toml` or build-time code generation required
@@ -312,7 +312,7 @@ The project underwent a complete architectural transformation from TypeScript/No
 - **For users needing Python/Go/Java/Swift/C# support**: Use git tag `pre-language-reduction` or version `0.4.0`
 - **For contributors**: Multi-language support will be restored in future release after unified API implementation
 - **Git tag preservation**: `git checkout pre-language-reduction` to access full multi-language implementation
-- **Plugin developers**: Use `codebuddy_plugin!` macro in your plugin's `lib.rs` to enable self-registration
+- **Plugin developers**: Use `mill_plugin!` macro in your plugin's `lib.rs` to enable self-registration
 
 ---
 
@@ -616,7 +616,7 @@ This release represents a complete architectural transformation, implementing ad
 ## [1.0.1] - 2025-09-21
 
 ### Changed
-- Project renamed from `codeflow-buddy` to `codebuddy` for better clarity
+- Project renamed from `codeflow-buddy` to `mill` for better clarity
 - Updated repository URLs and package references
 - Streamlined test suite by removing redundant tests
 
@@ -662,7 +662,7 @@ This release represents a complete architectural transformation, implementing ad
 ### Fixed
 
 - **MCP Command Argument Order**: Fixed `claude mcp add` command argument order
-  - Corrected to: `claude mcp add codebuddy <command> [args...] --env <env>`
+  - Corrected to: `claude mcp add mill <command> [args...] --env <env>`
   - Server name and command are now properly positioned as positional arguments
   - Options are placed after the command as required by the CLI
   - Resolves "missing required argument 'commandOrUrl'" error
@@ -761,7 +761,7 @@ This release represents a complete architectural transformation, implementing ad
 
 ### Acknowledgements
 
-Special thanks to @secondcircle for the major enhancement that transforms codebuddy from a read-only query tool into a functional refactoring tool with actual file editing capabilities (#13). This change significantly improves the user experience from preview-only to actually applying changes.
+Special thanks to @secondcircle for the major enhancement that transforms mill from a read-only query tool into a functional refactoring tool with actual file editing capabilities (#13). This change significantly improves the user experience from preview-only to actually applying changes.
 
 ## [0.5.3] - 2025-08-16
 
@@ -784,7 +784,7 @@ Special thanks to the contributors of recent enhancements and fixes.
 - @lwsinclair for adding the MseeP.ai badge to improve project visibility (#4)
 - @maschwenk for the rootDir preloading fix in the previous release (#5)
 
-Your contributions help make codebuddy better for everyone! 🙏
+Your contributions help make mill better for everyone! 🙏
 
 ## [0.5.2] - 2025-08-04
 
@@ -932,8 +932,8 @@ Your contributions help make codebuddy better for everyone! 🙏
 
 ### Fixed
 
-- Fixed setup command to use `npx @goobits/codebuddy@latest` instead of `npx @goobits/codebuddy` for MCP configuration
-- Updated all documentation to consistently use `npx @goobits/codebuddy@latest` for better version control
+- Fixed setup command to use `npx @goobits/mill@latest` instead of `npx @goobits/mill` for MCP configuration
+- Updated all documentation to consistently use `npx @goobits/mill@latest` for better version control
 
 ## [0.3.3] - 2025-06-28
 
@@ -962,7 +962,7 @@ Your contributions help make codebuddy better for everyone! 🙏
 
 ### Fixed
 
-- `npx @goobits/codebuddy@latest setup` command now executes properly without hanging
+- `npx @goobits/mill@latest setup` command now executes properly without hanging
 - Setup subcommand execution flow and error handling
 - Eliminated duplicate execution when running setup via `node dist/index.js setup`
 - Streamlined build process by removing separate setup.js compilation
@@ -971,7 +971,7 @@ Your contributions help make codebuddy better for everyone! 🙏
 
 ### Added
 
-- Interactive configuration generator with `codebuddy setup` command
+- Interactive configuration generator with `mill setup` command
 - Support for 15 language servers (TypeScript, Python, Go, Rust, C/C++, Java, Ruby, PHP, C#, Swift, Kotlin, Dart, Elixir, Haskell, Lua)
 - Emacs-style keyboard navigation (Ctrl+P/Ctrl+N) for setup interface
 - Automatic installation instructions display for selected language servers
@@ -1009,13 +1009,13 @@ Your contributions help make codebuddy better for everyone! 🙏
 ### Added
 
 - npm publishing configuration
-- Executable binary support (`codebuddy` command)
+- Executable binary support (`mill` command)
 - Proper package.json metadata
 - Installation instructions in README
 
 ### Changed
 
-- Project renamed from `lsmcp` to `codebuddy` for better clarity
+- Project renamed from `lsmcp` to `mill` for better clarity
 - Updated all references and documentation
 
 ## [0.1.0]
@@ -1031,6 +1031,6 @@ Your contributions help make codebuddy better for everyone! 🙏
 - Test suite with Bun
 - Documentation for setup and usage
 
-[0.2.1]: https://github.com/ktnyt/codebuddy/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/ktnyt/codebuddy/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/ktnyt/codebuddy/releases/tag/v0.1.0
+[0.2.1]: https://github.com/ktnyt/mill/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/ktnyt/mill/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/ktnyt/mill/releases/tag/v0.1.0

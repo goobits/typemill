@@ -30,7 +30,7 @@ The consolidation completed **4 out of 7 tasks**, leaving the workspace broken:
 
 **What happened:**
 - Files still contained `use cb_protocol::` and `cb_protocol::` references
-- Should have been updated to `use codebuddy_foundation::protocol::`
+- Should have been updated to `use mill_foundation::protocol::`
 
 **Example from `/workspace/crates/cb-lang-rust/src/refactoring.rs`:**
 ```rust
@@ -38,7 +38,7 @@ The consolidation completed **4 out of 7 tasks**, leaving the workspace broken:
 use cb_protocol::refactor_plan::{RefactorPlan, RenamePlan};
 
 // Expected - WORKING
-use codebuddy_foundation::protocol::refactor_plan::{RefactorPlan, RenamePlan};
+use mill_foundation::protocol::refactor_plan::{RefactorPlan, RenamePlan};
 ```
 
 **Impact:**
@@ -49,23 +49,23 @@ use codebuddy_foundation::protocol::refactor_plan::{RefactorPlan, RenamePlan};
 **Manual fix required:**
 ```bash
 find /workspace/crates /workspace/apps /workspace/tests -name "*.rs" -type f \
-  -exec sed -i 's/use cb_protocol::/use codebuddy_foundation::protocol::/g' {} +
+  -exec sed -i 's/use cb_protocol::/use mill_foundation::protocol::/g' {} +
 find /workspace/crates /workspace/apps /workspace/tests -name "*.rs" -type f \
-  -exec sed -i 's/cb_protocol::/codebuddy_foundation::protocol::/g' {} +
+  -exec sed -i 's/cb_protocol::/mill_foundation::protocol::/g' {} +
 ```
 
 ### Bug #2: Self-Imports Not Fixed in Moved Code
 
 **What happened:**
-- After moving code INTO `mill-foundation`, the moved files still imported from `codebuddy_foundation::`
+- After moving code INTO `mill-foundation`, the moved files still imported from `mill_foundation::`
 - Should have been changed to `crate::` since the code is now INSIDE that crate
 
 **Example from `/workspace/crates/mill-foundation/src/protocol/error.rs`:**
 ```rust
 // After consolidation - BROKEN
-use codebuddy_foundation::error::{error_codes, ApiError as CoreApiError};
-impl From<codebuddy_foundation::error::CoreError> for ApiError { ... }
-impl From<codebuddy_foundation::model::mcp::McpError> for ApiError { ... }
+use mill_foundation::error::{error_codes, ApiError as CoreApiError};
+impl From<mill_foundation::error::CoreError> for ApiError { ... }
+impl From<mill_foundation::model::mcp::McpError> for ApiError { ... }
 
 // Expected - WORKING
 use crate::error::{error_codes, ApiError as CoreApiError};
@@ -75,11 +75,11 @@ impl From<crate::model::mcp::McpError> for ApiError { ... }
 
 **Impact:**
 - 9 compilation errors in `mill-foundation/src/protocol/error.rs`
-- "use of unresolved module or unlinked crate `codebuddy_foundation`"
+- "use of unresolved module or unlinked crate `mill_foundation`"
 
 **Manual fix required:**
 ```rust
-// Changed 4 locations from codebuddy_foundation:: to crate::
+// Changed 4 locations from mill_foundation:: to crate::
 ```
 
 ### Bug #3: Dependencies Not Merged from Source Cargo.toml
@@ -127,12 +127,12 @@ lsp-types = "0.97"
    - ✅ Works correctly
 
 2. When a crate consolidates: `cb-protocol` → `mill-foundation/src/protocol`
-   - Expected: `use cb_protocol::` → `use codebuddy_foundation::protocol::`
+   - Expected: `use cb_protocol::` → `use mill_foundation::protocol::`
    - Actual: ❌ No update performed
 
 **Likely issue**: Import updater doesn't handle the **namespace change** that occurs during consolidation:
 - Old namespace: `cb_protocol::`
-- New namespace: `codebuddy_foundation::protocol::`
+- New namespace: `mill_foundation::protocol::`
 
 The updater may be looking for file path changes but missing the **crate name + module path** transformation.
 
@@ -163,7 +163,7 @@ pub async fn execute_consolidation_post_processing(&self, metadata: &Consolidati
 **Hypothesis**: Import updater lacks **context awareness** of which crate the code is moving INTO:
 
 - When moving `cb-protocol/src/error.rs` → `mill-foundation/src/protocol/error.rs`
-- The file contains: `use codebuddy_foundation::error::`
+- The file contains: `use mill_foundation::error::`
 - This is now a **self-import** (code importing from its own crate)
 - Should be rewritten to: `use crate::error::`
 
@@ -230,7 +230,7 @@ pub async fn update_imports_for_consolidation(
     // Search for: use {old_crate_name}::
     // Replace with: use {new_crate_name}::{new_module_path}::
 
-    // Example: cb_protocol:: → codebuddy_foundation::protocol::
+    // Example: cb_protocol:: → mill_foundation::protocol::
 }
 ```
 
@@ -255,8 +255,8 @@ async fn fix_self_imports_in_consolidated_module(
 ```
 
 **Example transformations**:
-- `use codebuddy_foundation::error::` → `use crate::error::`
-- `impl From<codebuddy_foundation::error::CoreError>` → `impl From<crate::error::CoreError>`
+- `use mill_foundation::error::` → `use crate::error::`
+- `impl From<mill_foundation::error::CoreError>` → `impl From<crate::error::CoreError>`
 
 ### Fix #3: Merge Dependencies from Source Cargo.toml
 

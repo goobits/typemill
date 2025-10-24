@@ -51,7 +51,7 @@ Current documentation has **significant redundancy and inconsistency**:
 # Codebase Guide for AI Assistants
 
 ## Quick Reference
-- Package: codebuddy | Runtime: Rust
+- Package: mill | Runtime: Rust
 - 35 MCP tools across 5 categories (see docs/tools_catalog.md)
 
 ## Essential Documentation
@@ -242,7 +242,7 @@ docs/operations/
 
 ### Step 5: Fix tool count inconsistencies
 - [ ] Update all references to "23 tools" → "35 tools"
-- [ ] Verify against `codebuddy tools` output
+- [ ] Verify against `mill tools` output
 
 ### Step 6: Deprecation (next release, 0.7.1)
 - [ ] Delete `CLAUDE.md` after one release cycle with deprecation warning
@@ -318,7 +318,7 @@ docs/operations/
 
 ## References
 
-- **Current tool output:** `codebuddy tools` shows 35 public tools
+- **Current tool output:** `mill tools` shows 35 public tools
 - **Out of sync files:** CLAUDE.md (35 tools) vs AGENTS.md/GEMINI.md (23 tools)
 - **Industry patterns:** Most repos have README.md as quickstart + single CONTRIBUTING.md
 - **AI assistant conventions:** GitHub uses CODEOWNERS, SECURITY.md (single files, not vendor-specific)

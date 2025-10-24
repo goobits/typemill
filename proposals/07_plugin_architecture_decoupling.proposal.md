@@ -14,11 +14,11 @@ As identified by the architecture audit, the services layer (`mill-services`, `c
 
 To fix this architectural violation, we will decouple the services layer from the language implementations using dependency injection.
 
-1.  **Create a Plugin Bundle Crate:** A new crate, `mill-plugin-bundle`, will be created at the application layer. Its sole responsibility is to declare dependencies on all concrete `codebuddy-lang-*` plugins. **Note:** This crate will contain no runtime logic and should only export a single function for instantiating the plugins.
+1.  **Create a Plugin Bundle Crate:** A new crate, `mill-plugin-bundle`, will be created at the application layer. Its sole responsibility is to declare dependencies on all concrete `mill-lang-*` plugins. **Note:** This crate will contain no runtime logic and should only export a single function for instantiating the plugins.
 
-2.  **Remove Direct Dependencies:** All `codebuddy-lang-*` dependencies will be removed from `mill-services/Cargo.toml` and `cb-ast/Cargo.toml`.
+2.  **Remove Direct Dependencies:** All `mill-lang-*` dependencies will be removed from `mill-services/Cargo.toml` and `cb-ast/Cargo.toml`.
 
-3.  **Inject the Plugin Registry:** The services layer will be modified to accept a pre-populated `PluginRegistry` instance during initialization. The main `codebuddy` binary will become responsible for building the registry from the `plugin-bundle` and injecting it.
+3.  **Inject the Plugin Registry:** The services layer will be modified to accept a pre-populated `PluginRegistry` instance during initialization. The main `mill` binary will become responsible for building the registry from the `plugin-bundle` and injecting it.
 
 4.  **Refactor to Dynamic Dispatch:** All code in the services layer that currently uses direct, compile-time knowledge of specific plugins will be refactored to use the injected registry for dynamic, runtime dispatch.
 
@@ -116,7 +116,7 @@ To fix this architectural violation, we will decouple the services layer from th
 ### Architecture Notes
 
 The current mill-services architecture with auto-discovery is SUPERIOR to the originally proposed dependency injection approach because:
-1. Plugins self-register using the `codebuddy_plugin!` macro
+1. Plugins self-register using the `mill_plugin!` macro
 2. No manual wiring needed - plugins are discovered automatically
 3. Adding new plugins requires zero changes to mill-services
 4. More flexible and extensible than pre-populated registry injection
@@ -125,11 +125,11 @@ The current mill-services architecture with auto-discovery is SUPERIOR to the or
 
 ### 07a: Create the Plugin Bundle
 - [x] ~~Create a new crate: `../crates/mill-plugin-bundle`~~ - Already exists
-- [x] ~~Add dependencies for all existing `codebuddy-lang-*` crates~~ - Already done
+- [x] ~~Add dependencies for all existing `mill-lang-*` crates~~ - Already done
 - [x] ~~Expose plugin instantiation function~~ - Uses auto-discovery instead (better)
 
 ### 07b: Decouple cb-ast (COMPLETE)
-- [x] Remove all `codebuddy-lang-*` dependencies from `crates/cb-ast/Cargo.toml` (kept as dev-dependency for tests)
+- [x] Remove all `mill-lang-*` dependencies from `crates/cb-ast/Cargo.toml` (kept as dev-dependency for tests)
 - [x] Replace direct plugin references with capability-based dispatch
 - [x] All functionality works via capabilities instead of downcasting
 

@@ -1,6 +1,6 @@
 //! Main entry point for Rust playground
 
-use codebuddy_playground::{DataProcessor, DataItem, ProcessorConfig};
+use mill_playground::{DataProcessor, DataItem, ProcessorConfig};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting Rust playground example");
@@ -45,11 +45,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Demonstrate utility functions
-    let utils_data = codebuddy_playground::utils::create_sample_data();
-    let average = codebuddy_playground::utils::calculate_average(&utils_data);
+    let utils_data = mill_playground::utils::create_sample_data();
+    let average = mill_playground::utils::calculate_average(&utils_data);
     println!("Utility average: {:.2}", average);
 
-    let processed_utils = codebuddy_playground::utils::process_data(utils_data)?;
+    let processed_utils = mill_playground::utils::process_data(utils_data)?;
     println!("Processed {} items with utilities", processed_utils.len());
 
     Ok(())

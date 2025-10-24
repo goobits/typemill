@@ -1,5 +1,5 @@
 {
-  "name": "codebuddy-playground-typescript",
+  "name": "mill-playground-typescript",
   "version": "1.0.0",
   "description": "TypeScript playground for testing LSP functionality",
   "main": "index.ts",

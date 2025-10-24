@@ -435,7 +435,7 @@ mod tests {
             use std::path::Path;
             pub use crate::foo::Bar;
             use mill_plugin_api::iter_plugins;
-            use codebuddy_core::utils;
+            use mill_core::utils;
         "#;
 
         let imports = extract_rust_imports(content);
@@ -444,6 +444,6 @@ mod tests {
         assert!(imports.contains(&"std::path::Path".to_string()));
         assert!(imports.contains(&"crate::foo::Bar".to_string()));
         assert!(imports.contains(&"mill_plugin_api::iter_plugins".to_string()));
-        assert!(imports.contains(&"codebuddy_core::utils".to_string()));
+        assert!(imports.contains(&"mill_core::utils".to_string()));
     }
 }

@@ -1,7 +1,7 @@
 //! Language Plugin Bundle
 //!
 //! This crate serves as the single collection point for all language plugins
-//! in the codebuddy system. It depends on all concrete language implementations
+//! in the mill system. It depends on all concrete language implementations
 //! and provides a simple function to instantiate them.
 //!
 //! This separation ensures that core service layers (`cb-services`, `cb-ast`)
@@ -45,7 +45,7 @@ fn _force_plugin_linkage() {
 /// Returns all language plugins available in this bundle.
 ///
 /// This function uses the plugin registry's auto-discovery mechanism
-/// to find all plugins that have self-registered using the `codebuddy_plugin!` macro.
+/// to find all plugins that have self-registered using the `mill_plugin!` macro.
 ///
 /// # Returns
 ///

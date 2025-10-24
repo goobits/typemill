@@ -9,7 +9,7 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>CodeBuddy Java Test Fixtures</name>
+    <name>TypeMill Java Test Fixtures</name>
     <description>Test fixtures for Java AST functionality</description>
 
     <properties>

@@ -21,9 +21,9 @@ The codebase has **excellent consolidation functionality** for merging Rust crat
 **A. Internal tool (works, but hidden):**
 ```bash
 # This works but is internal-only:
-codebuddy tool rename_directory '{
+mill tool rename_directory '{
   "old_path": "crates/cb-types",
-  "new_path": "crates/codebuddy-core/src/types",
+  "new_path": "crates/mill-core/src/types",
   "consolidate": true,
   "dryRun": true
 }'
@@ -81,7 +81,7 @@ pub(crate) struct RenameOptions {
     #[serde(default)]
     pub scope: Option<String>,
     #[serde(default)]
-    pub custom_scope: Option<codebuddy_core::rename_scope::RenameScope>,
+    pub custom_scope: Option<mill_core::rename_scope::RenameScope>,
 
     /// NEW: Consolidate source package into target (for directory renames only)
     /// When true, merges Cargo.toml dependencies and updates all imports
@@ -133,12 +133,12 @@ impl RenameHandler {
 
 ```bash
 # Now users can consolidate via public API:
-codebuddy tool rename '{
+mill tool rename '{
   "target": {
     "kind": "directory",
     "path": "crates/cb-types"
   },
-  "newName": "crates/codebuddy-core/src/types",
+  "newName": "crates/mill-core/src/types",
   "options": {
     "consolidate": true
   }
@@ -170,9 +170,9 @@ fn is_consolidation_move(old_path: &Path, new_path: &Path) -> bool {
 
 ```bash
 # Auto-detects consolidation (no flag needed):
-codebuddy tool rename '{
+mill tool rename '{
   "target": {"kind": "directory", "path": "crates/cb-types"},
-  "newName": "crates/codebuddy-core/src/types"
+  "newName": "crates/mill-core/src/types"
 }'
 ```
 
@@ -210,9 +210,9 @@ impl ToolHandler for ConsolidateHandler {
 **Usage:**
 
 ```bash
-codebuddy tool consolidate.plan '{
+mill tool consolidate.plan '{
   "source": "crates/cb-types",
-  "target": "crates/codebuddy-core/src/types"
+  "target": "crates/mill-core/src/types"
 }'
 ```
 
@@ -243,8 +243,8 @@ codebuddy tool consolidate.plan '{
 3. **Also expose `consolidate` as a convenience command alias**
    ```bash
    # These are equivalent:
-   codebuddy tool consolidate '{"source": "...", "target": "..."}'
-   codebuddy tool rename '{"target": {"kind": "directory", "path": "..."}, "newName": "...", "options": {"consolidate": true}}'
+   mill tool consolidate '{"source": "...", "target": "..."}'
+   mill tool rename '{"target": {"kind": "directory", "path": "..."}, "newName": "...", "options": {"consolidate": true}}'
    ```
 
 ### Implementation Steps
@@ -290,9 +290,9 @@ codebuddy tool consolidate.plan '{
 
 ```bash
 # Must use internal tool:
-codebuddy tool rename_directory '{
+mill tool rename_directory '{
   "old_path": "crates/cb-types",
-  "new_path": "crates/codebuddy-core/src/types",
+  "new_path": "crates/mill-core/src/types",
   "consolidate": true,
   "dryRun": true
 }'
@@ -302,23 +302,23 @@ codebuddy tool rename_directory '{
 
 ```bash
 # Option A: Explicit flag
-codebuddy tool rename '{
+mill tool rename '{
   "target": {"kind": "directory", "path": "crates/cb-types"},
-  "newName": "crates/codebuddy-core/src/types",
+  "newName": "crates/mill-core/src/types",
   "options": {"consolidate": true}
 }'
 
 # Option B: Auto-detect (implicit)
-codebuddy tool rename '{
+mill tool rename '{
   "target": {"kind": "directory", "path": "crates/cb-types"},
-  "newName": "crates/codebuddy-core/src/types"
+  "newName": "crates/mill-core/src/types"
 }'
 # Auto-detects: "Oh, you're moving a crate into another crate's src/, I'll consolidate!"
 
 # Option C: Convenience alias
-codebuddy tool consolidate '{
+mill tool consolidate '{
   "source": "crates/cb-types",
-  "target": "crates/codebuddy-core/src/types"
+  "target": "crates/mill-core/src/types"
 }'
 ```
 

@@ -47,7 +47,7 @@ impl SubprocessAstTool {
     /// Create a new subprocess tool with the given runtime
     pub fn new(runtime: impl Into<String>) -> Self {
         let runtime = runtime.into();
-        let temp_prefix = format!("codebuddy-{}-ast", runtime);
+        let temp_prefix = format!("mill-{}-ast", runtime);
 
         Self {
             runtime,

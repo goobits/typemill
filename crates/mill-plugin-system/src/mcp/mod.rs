@@ -1,7 +1,7 @@
 //! MCP Proxy Plugin System
 //!
 //! Optional plugin that proxies requests to external MCP servers
-//! like context7, allowing codebuddy to integrate with any MCP-compatible tool.
+//! like context7, allowing mill to integrate with any MCP-compatible tool.
 
 pub mod client;
 pub mod error;

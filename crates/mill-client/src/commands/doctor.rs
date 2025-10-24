@@ -40,7 +40,7 @@ impl DoctorCommand {
             Ok(_) => println!("[✓] Found and parsed successfully."),
             Err(e) => {
                 println!("[✗] Error: {}", e);
-                println!("  > Run `codebuddy setup` to create a new configuration file.");
+                println!("  > Run `mill setup` to create a new configuration file.");
             }
         }
     }

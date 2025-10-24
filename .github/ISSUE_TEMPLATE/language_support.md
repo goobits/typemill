@@ -20,7 +20,7 @@ How to install the language server:
 ```
 
 ## Configuration
-Suggested configuration for `codebuddy.json`:
+Suggested configuration for `mill.json`:
 ```json
 {
   "extensions": ["rs"],

@@ -8,7 +8,7 @@
 //!
 //! The registry builder discovers all available language plugins at runtime
 //! using the `cb-plugin-registry` crate. Plugins self-register using the
-//! `codebuddy_plugin!` macro, and this builder collects them into the
+//! `mill_plugin!` macro, and this builder collects them into the
 //! `PluginRegistry`.
 
 use mill_plugin_api::iter_plugins;
@@ -131,7 +131,7 @@ mod tests {
     fn test_registry_builder_creates_non_empty_registry() {
         let registry = build_language_plugin_registry();
         // This test requires that plugins are linked and have registered themselves.
-        assert!(!registry.all().is_empty(), "No plugins were discovered. Ensure language crates are linked and use codebuddy_plugin!.");
+        assert!(!registry.all().is_empty(), "No plugins were discovered. Ensure language crates are linked and use mill_plugin!.");
     }
 
     #[test]
@@ -140,7 +140,7 @@ mod tests {
 
         let plugin = registry.find_by_extension("rs");
         assert!(plugin.is_some(), "Rust plugin not found for extension 'rs'");
-        // The name should match the one provided in the `codebuddy_plugin!` macro.
+        // The name should match the one provided in the `mill_plugin!` macro.
         assert_eq!(plugin.unwrap().metadata().name, "rust");
     }
 
@@ -153,7 +153,7 @@ mod tests {
             plugin.is_some(),
             "TypeScript plugin not found for extension 'ts'"
         );
-        // The name should match the one provided in the `codebuddy_plugin!` macro.
+        // The name should match the one provided in the `mill_plugin!` macro.
         assert_eq!(plugin.unwrap().metadata().name, "typescript");
     }
 

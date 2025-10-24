@@ -51,7 +51,7 @@ macro_rules! register_handlers {
 ///
 /// # Benefits
 ///
-/// - **Automatic Type Tracking**: Handler type names are captured for `codebuddy list-tools`
+/// - **Automatic Type Tracking**: Handler type names are captured for `mill list-tools`
 /// - **Debug Visibility**: Logs each registration with tool count
 /// - **Compile-Time Safety**: Ensures all handlers implement `ToolHandler` trait
 #[macro_export]

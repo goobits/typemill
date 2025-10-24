@@ -4,9 +4,9 @@
 # Downloads and installs the pre-built binary for the current platform.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/goobits/codebuddy/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/goobits/mill/main/install.sh | bash
 # Or, for more transparency:
-#   curl -fsSL -o install.sh https://raw.githubusercontent.com/goobits/codebuddy/main/install.sh
+#   curl -fsSL -o install.sh https://raw.githubusercontent.com/goobits/mill/main/install.sh
 #   bash install.sh
 #
 
@@ -16,7 +16,7 @@ IFS=$'\n\t'
 # --- Configuration ---
 # REPO: The GitHub repository to download from.
 # VERSION: The specific version to install. Using a fixed version for reliability.
-readonly REPO="goobits/codebuddy"
+readonly REPO="goobits/mill"
 readonly VERSION="1.0.0-rc4"
 
 # --- Colors for Output ---
@@ -152,7 +152,7 @@ main() {
     determine_install_dir
 
     # Step 3: Construct download URL and download binary
-    local binary_name="codebuddy-${OS}-${ARCH}"
+    local binary_name="mill-${OS}-${ARCH}"
     local download_url="https://github.com/${REPO}/releases/download/${VERSION}/${binary_name}"
     local temp_binary
     temp_binary=$(mktemp)
@@ -167,10 +167,10 @@ main() {
     log_success "Download complete."
 
     # Step 4: Install the binary
-    log_info "Installing codebuddy..."
+    log_info "Installing mill..."
     chmod +x "${temp_binary}"
 
-    local install_path="${INSTALL_DIR}/codebuddy"
+    local install_path="${INSTALL_DIR}/mill"
 
     # Use sudo if we are not the owner of the directory
     if [[ -w "${INSTALL_DIR}" ]]; then
@@ -186,8 +186,8 @@ main() {
 
     # Step 5: Verify installation
     log_info "Verifying installation..."
-    if ! command_exists codebuddy; then
-        log_warn "codebuddy command not found in PATH."
+    if ! command_exists mill; then
+        log_warn "mill command not found in PATH."
         echo -e "Your shell's PATH variable may need to be updated to include:"
         echo -e "  ${YELLOW}${INSTALL_DIR}${NC}"
         echo ""
@@ -199,7 +199,7 @@ main() {
     fi
 
     local installed_version
-    installed_version=$(codebuddy --version)
+    installed_version=$(mill --version)
     log_success "Installation successful! ${installed_version}"
 
     echo ""
@@ -208,9 +208,9 @@ main() {
     echo "╚════════════════════════════════════════════╝"
     echo ""
     echo "Next steps:"
-    echo "  1. Configure language servers for your project: ${YELLOW}codebuddy setup${NC}"
-    echo "  2. Start the server: ${YELLOW}codebuddy start${NC}"
-    echo "  3. Check the status: ${YELLOW}codebuddy status${NC}"
+    echo "  1. Configure language servers for your project: ${YELLOW}mill setup${NC}"
+    echo "  2. Start the server: ${YELLOW}mill start${NC}"
+    echo "  3. Check the status: ${YELLOW}mill status${NC}"
     echo ""
     echo "For full documentation, visit: https://github.com/${REPO}"
     echo ""

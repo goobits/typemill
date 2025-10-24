@@ -19,7 +19,7 @@ pub struct InstallArgs {
 }
 
 pub fn run(args: InstallArgs) -> Result<()> {
-    println!("{}", "Installing codebuddy...\n".bold());
+    println!("{}", "Installing mill...\n".bold());
 
     // Build
     if !args.skip_build {
@@ -38,7 +38,7 @@ pub fn run(args: InstallArgs) -> Result<()> {
     // Determine binary location
     let profile_dir = if args.dev { "debug" } else { "release" };
     let binary_name = if cfg!(windows) {
-        "codebuddy.exe"
+        "mill.exe"
     } else {
         "mill"
     };
@@ -82,7 +82,7 @@ pub fn run(args: InstallArgs) -> Result<()> {
         println!(
             "\n{} Installation complete! Run: {}",
             "✓".green(),
-            "codebuddy --version".cyan()
+            "mill --version".cyan()
         );
     }
 

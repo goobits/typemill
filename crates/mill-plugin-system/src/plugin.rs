@@ -78,7 +78,7 @@ pub struct PluginMetadata {
     /// Plugin-specific configuration schema (JSON Schema)
     pub config_schema: Option<Value>,
     /// Priority for plugin selection (higher = higher priority)
-    /// Default is 50. User can configure in codebuddy.toml
+    /// Default is 50. User can configure in mill.toml
     #[serde(default = "default_priority")]
     pub priority: u32,
 }

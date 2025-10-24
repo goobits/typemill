@@ -1,4 +1,4 @@
-//! Integration tests for the `codebuddy tool` CLI subcommand
+//! Integration tests for the `mill tool` CLI subcommand
 
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -7,17 +7,17 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// Helper to create a test binary command with helpful error messaging
-fn codebuddy_cmd() -> Command {
+fn mill_cmd() -> Command {
     let binary_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
         .parent()
         .unwrap()
-        .join("target/debug/codebuddy");
+        .join("target/debug/mill");
 
     if !binary_path.exists() {
         panic!(
-            "\n\n❌ codebuddy binary not found at: {}\n\
+            "\n\n❌ mill binary not found at: {}\n\
             \n\
             ℹ️  To run CLI integration tests, build the binary first:\n\
             \n\
@@ -30,12 +30,12 @@ fn codebuddy_cmd() -> Command {
         );
     }
 
-    Command::cargo_bin("mill").expect("codebuddy binary should exist after check above")
+    Command::cargo_bin("mill").expect("mill binary should exist after check above")
 }
 
 #[test]
 fn test_tool_health_check_success() {
-    let mut cmd = codebuddy_cmd();
+    let mut cmd = mill_cmd();
     cmd.args(["tool", "health_check", "{}"]);
 
     cmd.assert()
@@ -46,7 +46,7 @@ fn test_tool_health_check_success() {
 
 #[test]
 fn test_tool_health_check_pretty_format() {
-    let mut cmd = codebuddy_cmd();
+    let mut cmd = mill_cmd();
     cmd.args(["tool", "health_check", "{}", "--format", "pretty"]);
 
     cmd.assert()
@@ -57,7 +57,7 @@ fn test_tool_health_check_pretty_format() {
 
 #[test]
 fn test_tool_health_check_compact_format() {
-    let mut cmd = codebuddy_cmd();
+    let mut cmd = mill_cmd();
     cmd.args(["tool", "health_check", "{}", "--format", "compact"]);
 
     let output = cmd.assert().success();
@@ -70,7 +70,7 @@ fn test_tool_health_check_compact_format() {
 
 #[test]
 fn test_tool_invalid_json_arguments() {
-    let mut cmd = codebuddy_cmd();
+    let mut cmd = mill_cmd();
     cmd.args(["tool", "health_check", "not-valid-json"]);
 
     cmd.assert()
@@ -80,7 +80,7 @@ fn test_tool_invalid_json_arguments() {
 
 #[test]
 fn test_tool_unknown_tool_name() {
-    let mut cmd = codebuddy_cmd();
+    let mut cmd = mill_cmd();
     cmd.args(["tool", "nonexistent_tool", "{}"]);
 
     cmd.assert()
@@ -91,7 +91,7 @@ fn test_tool_unknown_tool_name() {
 
 #[test]
 fn test_tool_output_is_valid_json() {
-    let mut cmd = codebuddy_cmd();
+    let mut cmd = mill_cmd();
     cmd.args(["tool", "health_check", "{}", "--format", "compact"]);
 
     let output = cmd.assert().success();

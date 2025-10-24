@@ -10,9 +10,9 @@ use std::time::{Duration, Instant};
 /// Test client for interacting with the cb-server binary.
 /// Manages process lifecycle and JSON-RPC communication.
 ///
-/// **Important**: This spawns `cb-server` (not `codebuddy`) to avoid PID file lock conflicts
-/// when running tests in parallel. The `codebuddy` binary uses a global lock file at
-/// `/tmp/codebuddy.pid` to prevent multiple instances, which would cause tests to fail.
+/// **Important**: This spawns `cb-server` (not `mill`) to avoid PID file lock conflicts
+/// when running tests in parallel. The `mill` binary uses a global lock file at
+/// `/tmp/mill.pid` to prevent multiple instances, which would cause tests to fail.
 /// The `cb-server` binary is automatically built by cargo and doesn't use locks.
 pub struct TestClient {
     pub process: Child,
@@ -22,10 +22,10 @@ pub struct TestClient {
 }
 
 impl TestClient {
-    /// Spawns codebuddy server in stdio mode with the given working directory.
+    /// Spawns mill server in stdio mode with the given working directory.
     pub fn new(working_dir: &Path) -> Self {
         // Determine the path to the cb-server binary by finding the workspace root
-        // Use cb-server instead of codebuddy to avoid PID lock conflicts in parallel tests
+        // Use cb-server instead of mill to avoid PID lock conflicts in parallel tests
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
             .expect("CARGO_MANIFEST_DIR not set. Please run tests with `cargo test`.");
         let workspace_root = find_workspace_root(&manifest_dir).expect(
@@ -54,7 +54,7 @@ impl TestClient {
                 .to_lowercase()
                 .contains("debug")
             {
-                eprintln!("DEBUG: Expanded PATH for codebuddy server (shellexpand)");
+                eprintln!("DEBUG: Expanded PATH for mill server (shellexpand)");
                 eprintln!("DEBUG:   Original: {}", path);
                 eprintln!("DEBUG:   Expanded: {}", result);
             }

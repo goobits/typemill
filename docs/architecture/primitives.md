@@ -403,7 +403,7 @@ Codebuddy implements a consistent, safe `plan -> apply` pattern for all refactor
 
 ```bash
 # Step 1: Generate rename plan (read-only, safe to explore)
-PLAN=$(codebuddy tool rename.plan '{
+PLAN=$(mill tool rename.plan '{
   "target": {
     "kind": "symbol",
     "path": "src/app.ts",
@@ -417,7 +417,7 @@ echo "$PLAN" | jq '.edits | length'  # See number of changes
 echo "$PLAN" | jq '.warnings'        # Check for warnings
 
 # Step 3: Apply plan with validation
-codebuddy tool workspace.apply_edit "{
+mill tool workspace.apply_edit "{
   \"plan\": $PLAN,
   \"options\": {
     \"validate_checksums\": true,

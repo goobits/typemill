@@ -21,7 +21,7 @@ This file provides guidance to AI assistants when working with code in this repo
 
 ## Project Information
 
-**Package**: `codebuddy` | **Command**: `codebuddy` | **Runtime**: Rust
+**Package**: `mill` | **Command**: `mill` | **Runtime**: Rust
 
 Pure Rust MCP server bridging Language Server Protocol (LSP) functionality to AI coding assistants with comprehensive tools for navigation, refactoring, code intelligence, and batch operations.
 
@@ -149,7 +149,7 @@ Example auto-detected consolidation (no `consolidate: true` needed):
 ```json
 {
   "target": {"kind": "directory", "path": "crates/cb-types"},
-  "newName": "crates/codebuddy-core/src/types"
+  "newName": "crates/mill-core/src/types"
 }
 ```
 
@@ -176,7 +176,7 @@ For detailed parameters, return types, and examples, see **[docs/tools/](docs/to
 
 ### Rust File Renames with Automatic Updates
 
-When renaming Rust files using `rename.plan` + `workspace.apply_edit`, codebuddy automatically updates:
+When renaming Rust files using `rename.plan` + `workspace.apply_edit`, mill automatically updates:
 
 **1. Module Declarations** - Parent files (lib.rs/mod.rs) get updated:
 ```rust
@@ -255,7 +255,7 @@ pub fn lib_fn() {
 
 ### Comprehensive Rename Coverage
 
-CodeBuddy's rename functionality provides **100% coverage** of affected references by updating multiple file types during directory and file renames. All edits are surfaced in the dry-run plan for review before execution.
+TypeMill's rename functionality provides **100% coverage** of affected references by updating multiple file types during directory and file renames. All edits are surfaced in the dry-run plan for review before execution.
 
 **What gets updated automatically:**
 
@@ -361,7 +361,7 @@ Smart heuristic only updates strings that look like paths:
 
 ### Batch Rename (Multiple Items at Once)
 
-CodeBuddy supports renaming **multiple files and/or directories** in a single atomic operation using the `targets` parameter:
+TypeMill supports renaming **multiple files and/or directories** in a single atomic operation using the `targets` parameter:
 
 **Single rename (one item):**
 ```json
@@ -397,7 +397,7 @@ CodeBuddy supports renaming **multiple files and/or directories** in a single at
 **Example - Batch rename with CLI:**
 ```bash
 # Preview batch rename
-codebuddy tool rename.plan '{
+mill tool rename.plan '{
   "targets": [
     {"kind": "file", "path": "src/utils.rs", "newName": "src/helpers.rs"},
     {"kind": "file", "path": "src/config.rs", "newName": "src/settings.rs"}
@@ -406,7 +406,7 @@ codebuddy tool rename.plan '{
 }'
 
 # Apply immediately (one-step)
-codebuddy tool rename '{
+mill tool rename '{
   "targets": [
     {"kind": "directory", "path": "tests/unit", "newName": "tests/unit-tests"},
     {"kind": "directory", "path": "tests/integration", "newName": "tests/e2e"}
@@ -466,17 +466,17 @@ cargo fmt
 cargo check
 
 # CLI commands for configuration and management
-./target/release/codebuddy --version # Show version information
-./target/release/codebuddy setup    # Smart setup with auto-detection
-./target/release/codebuddy status   # Show what's working right now
-./target/release/codebuddy start    # Start the MCP server for AI assistants
-./target/release/codebuddy stop     # Stop the running MCP server
-./target/release/codebuddy serve    # Start WebSocket server
-./target/release/codebuddy link     # Link to AI assistants
-./target/release/codebuddy unlink   # Remove AI from config
+./target/release/mill --version # Show version information
+./target/release/mill setup    # Smart setup with auto-detection
+./target/release/mill status   # Show what's working right now
+./target/release/mill start    # Start the MCP server for AI assistants
+./target/release/mill stop     # Stop the running MCP server
+./target/release/mill serve    # Start WebSocket server
+./target/release/mill link     # Link to AI assistants
+./target/release/mill unlink   # Remove AI from config
 
 # Build automation (xtask pattern - cross-platform Rust tasks)
-cargo xtask install           # Install codebuddy to ~/.local/bin
+cargo xtask install           # Install mill to ~/.local/bin
 cargo xtask check-all         # Run all checks (fmt, clippy, test, deny)
 cargo xtask check-duplicates  # Check for duplicate code
 cargo xtask check-features    # Validate cargo features
@@ -527,9 +527,9 @@ MCP   CLI-JSON  CLI-Flags  CLI-Helpers
 ```
 
 - **MCP Protocol**: JSON-RPC over stdio/WebSocket
-- **CLI JSON**: `codebuddy tool <name> '{"target": ...}'`
-- **CLI Flags**: `codebuddy tool <name> --target file:path`
-- **CLI Helpers**: `codebuddy convert-naming --from kebab-case --to camelCase`
+- **CLI JSON**: `mill tool <name> '{"target": ...}'`
+- **CLI Flags**: `mill tool <name> --target file:path`
+- **CLI Helpers**: `mill convert-naming --from kebab-case --to camelCase`
 
 **Zero duplication**: Business logic lives only in handlers, CLI/MCP are thin adapters.
 
@@ -554,7 +554,7 @@ For Docker deployment details, see **[docs/operations/docker_deployment.md](docs
   - Requires `SYS_ADMIN` capability (disables container security boundaries)
   - Not recommended for production use
   - To disable: set `"fuse": null` in `.typemill/config.json`
-  - Docker: Use `deployment/docker-compose --profile fuse up codebuddy-fuse` to enable
+  - Docker: Use `deployment/docker-compose --profile fuse up mill-fuse` to enable
 - **API Interfaces** (`crates/cb-protocol/`) - Service trait definitions
 - **Client Library** (`crates/mill-client/`) - CLI client and WebSocket client
 
@@ -595,11 +595,11 @@ Supported language servers (configurable):
 
 ## Configuration
 
-The server loads configuration from `.typemill/config.json` in the current working directory. If no configuration exists, run `codebuddy setup` to create one.
+The server loads configuration from `.typemill/config.json` in the current working directory. If no configuration exists, run `mill setup` to create one.
 
 ### Smart Setup  
 
-Use `codebuddy setup` to configure LSP servers with auto-detection:
+Use `mill setup` to configure LSP servers with auto-detection:
 
 - Scans project for file extensions (respects .gitignore)
 - Presents pre-configured language server options for detected languages
@@ -709,13 +709,13 @@ The implementation handles LSP protocol specifics:
 cargo build --release
 
 # The resulting binary is self-contained and ready for deployment
-./target/release/codebuddy serve
+./target/release/mill serve
 ```
 
 ### WebSocket Server Configuration
 ```bash
 # Start WebSocket server (default port 3000)
-./target/release/codebuddy serve
+./target/release/mill serve
 ```
 
 ### Environment Variables

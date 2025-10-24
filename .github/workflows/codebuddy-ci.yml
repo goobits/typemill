@@ -3,7 +3,7 @@ name: Codebuddy CI Test
 on: [push, pull_request]
 
 jobs:
-  test-codebuddy-install:
+  test-mill-install:
     runs-on: ubuntu-latest
     name: Test Codebuddy Installation from Scratch
 
@@ -33,8 +33,8 @@ jobs:
 
       - name: Install Codebuddy via cargo
         run: |
-          cargo install codebuddy --locked
-          codebuddy --version
+          cargo install mill --locked
+          mill --version
 
       - name: Install Language Servers
         run: |
@@ -66,9 +66,9 @@ jobs:
       - name: Run Codebuddy Tools to Verify Installation
         run: |
           echo "Running status and doctor..."
-          codebuddy status
-          codebuddy doctor
+          mill status
+          mill doctor
 
           echo "Running get_diagnostics..."
-          # This command will test if the LSP server is working via codebuddy
-          codebuddy tool get_diagnostics --file-path "src/main.ts"
+          # This command will test if the LSP server is working via mill
+          mill tool get_diagnostics --file-path "src/main.ts"

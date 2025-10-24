@@ -2,7 +2,7 @@
 
 ## Summary
 
-Agent 2 has successfully completed all tasks for adding flag-based CLI support to codebuddy. The implementation is fully integrated with Agent 1's generic flag parser and all tests pass.
+Agent 2 has successfully completed all tasks for adding flag-based CLI support to mill. The implementation is fully integrated with Agent 1's generic flag parser and all tests pass.
 
 ## What Agent 2 Built
 
@@ -146,17 +146,17 @@ test result: ok. 49 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ### Rename Operations
 ```bash
 # Rename a directory
-codebuddy tool rename.plan \
+mill tool rename.plan \
   --target directory:crates/cb-types \
-  --new-name crates/codebuddy-core/src/types
+  --new-name crates/mill-core/src/types
 
 # Rename a file
-codebuddy tool rename.plan \
+mill tool rename.plan \
   --target file:src/utils.rs \
   --new-name src/helpers.rs
 
 # Rename with scope control
-codebuddy tool rename.plan \
+mill tool rename.plan \
   --target directory:old-dir \
   --new-name new-dir \
   --scope code-only
@@ -165,13 +165,13 @@ codebuddy tool rename.plan \
 ### Extract Operations
 ```bash
 # Extract a function
-codebuddy tool extract.plan \
+mill tool extract.plan \
   --kind function \
   --source src/app.rs:45:8 \
   --name handleLogin
 
 # Extract with visibility
-codebuddy tool extract.plan \
+mill tool extract.plan \
   --kind variable \
   --source src/app.rs:20:4 \
   --name extractedVar \
@@ -181,7 +181,7 @@ codebuddy tool extract.plan \
 ### Move Operations
 ```bash
 # Move a symbol
-codebuddy tool move.plan \
+mill tool move.plan \
   --source src/app.rs:10:5 \
   --destination src/utils.rs:20:0
 ```
@@ -189,13 +189,13 @@ codebuddy tool move.plan \
 ### Reorder Operations
 ```bash
 # Reorder imports alphabetically
-codebuddy tool reorder.plan \
+mill tool reorder.plan \
   --kind imports \
   --target src/app.rs \
   --strategy alphabetical
 
 # Reorder with custom order
-codebuddy tool reorder.plan \
+mill tool reorder.plan \
   --kind imports \
   --target src/app.rs \
   --strategy custom \
@@ -205,7 +205,7 @@ codebuddy tool reorder.plan \
 ### Transform Operations
 ```bash
 # Transform to async
-codebuddy tool transform.plan \
+mill tool transform.plan \
   --kind to_async \
   --target src/app.rs:10:5
 ```
@@ -213,12 +213,12 @@ codebuddy tool transform.plan \
 ### Delete Operations
 ```bash
 # Delete unused imports
-codebuddy tool delete.plan \
+mill tool delete.plan \
   --kind unused_imports \
   --target file:src/app.rs
 
 # Delete dead code workspace-wide
-codebuddy tool delete.plan \
+mill tool delete.plan \
   --kind dead_code \
   --target workspace:.
 ```

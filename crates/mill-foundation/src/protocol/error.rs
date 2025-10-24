@@ -1,4 +1,4 @@
-//! API error types for the codebuddy system
+//! API error types for the mill system
 
 use crate::error::{error_codes, ApiError as CoreApiError};
 use serde::Serialize;

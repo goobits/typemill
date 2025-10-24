@@ -91,16 +91,16 @@ Plugins now implement 5 focused traits instead of one monolithic `ImportSupport`
 
 ## Plugin Registration (Auto-Discovery)
 
-Codebuddy uses compile-time auto-discovery via the `codebuddy_plugin!` macro and `inventory` crate:
+Codebuddy uses compile-time auto-discovery via the `mill_plugin!` macro and `inventory` crate:
 
 ### Step 1: Self-Register Your Plugin
 
 In your plugin's `src/lib.rs`:
 
 ```rust
-use cb_plugin_api::codebuddy_plugin;
+use cb_plugin_api::mill_plugin;
 
-codebuddy_plugin! {
+mill_plugin! {
     name: "python",
     extensions: ["py", "pyi"],
     manifest: "pyproject.toml",
@@ -187,7 +187,7 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 | Native Rust parsing | Rust plugin | `../../crates/mill-lang-rust/` |
 | Simple document plugin | Markdown plugin | `../../crates/mill-lang-markdown/` |
 | Config file plugin | TOML/YAML plugins | `../../crates/mill-lang-toml/`, `../../crates/mill-lang-yaml/` |
-| **Auto-Discovery Pattern** | **All current plugins** | **`src/lib.rs` - `codebuddy_plugin!` macro** |
+| **Auto-Discovery Pattern** | **All current plugins** | **`src/lib.rs` - `mill_plugin!` macro** |
 | Simple ImportParser only | Markdown plugin | `cb-lang-markdown/src/import_support.rs` |
 | Full import trait suite | Rust plugin | `cb-lang-rust/src/import_support.rs` |
 | WorkspaceSupport | Rust plugin | `cb-lang-rust/src/workspace_support.rs` |
@@ -254,7 +254,7 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 - [ ] Plugin-specific README.md with examples
 
 ### Integration
-- [ ] `codebuddy_plugin!` macro implemented in `src/lib.rs`
+- [ ] `mill_plugin!` macro implemented in `src/lib.rs`
 - [ ] Added to `mill-plugin-bundle/Cargo.toml` dependencies
 - [ ] Added to `mill-plugin-bundle/src/lib.rs` `_force_plugin_linkage()`
 - [ ] Workspace builds: `cargo build --workspace`
@@ -273,7 +273,7 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 
 | Problem | Cause | Solution |
 |---------|-------|----------|
-| Plugin not found during build | Not registered | Check `codebuddy_plugin!` macro in src/lib.rs, verify bundle link, check `_force_plugin_linkage()` |
+| Plugin not found during build | Not registered | Check `mill_plugin!` macro in src/lib.rs, verify bundle link, check `_force_plugin_linkage()` |
 | Plugin not auto-discovered | Linker optimization | Ensure plugin is in `_force_plugin_linkage()` in bundle's lib.rs |
 | ImportGraph has no imports | Not being called | Verify `parse_imports()` called, check regex patterns, use debug logging |
 | LanguageMetadata constant not found | Build error | Run `cargo clean && cargo build -p cb-lang-yourlang` |

@@ -106,7 +106,7 @@ impl ToolRegistry {
         if self.internal_tools.contains(&tool_call.name) {
             return Err(ServerError::InvalidRequest(format!(
                 "Tool '{}' is internal and not available via CLI/MCP. Use the public API instead. \
-                 Run 'codebuddy tools' to see available public tools.",
+                 Run 'mill tools' to see available public tools.",
                 tool_call.name
             )));
         }
@@ -171,7 +171,7 @@ impl ToolRegistry {
     /// Get all registered tools with their handler information
     ///
     /// Returns a mapping of tool names to handler type names for diagnostics
-    /// and CLI tools. This is useful for the `codebuddy list-tools` command.
+    /// and CLI tools. This is useful for the `mill list-tools` command.
     ///
     /// # Returns
     ///

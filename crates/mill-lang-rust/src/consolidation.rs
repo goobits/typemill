@@ -581,7 +581,7 @@ async fn fix_self_imports_in_consolidated_module(
         "Fixing self-imports in consolidated module"
     );
 
-    // Convert crate name to Rust identifier format (e.g., "mill-foundation" → "codebuddy_foundation")
+    // Convert crate name to Rust identifier format (e.g., "mill-foundation" → "mill_foundation")
     let crate_ident = target_crate_name.replace('-', "_");
     let module_dir = Path::new(target_module_path);
 

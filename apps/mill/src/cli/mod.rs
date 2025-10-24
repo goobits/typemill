@@ -1,4 +1,4 @@
-//! CLI command handling for the codebuddy server
+//! CLI command handling for the mill server
 
 mod conventions;
 mod flag_parser;
@@ -77,7 +77,7 @@ pub enum Commands {
     ///   --scope comments    : Standard + code comments
     ///   --scope everything  : Comments + markdown prose (most comprehensive)
     ///
-    /// Use 'codebuddy tools' to list all available tools.
+    /// Use 'mill tools' to list all available tools.
     Tool {
         /// Tool name (e.g., "rename", "move", "find_definition")
         ///
@@ -162,8 +162,8 @@ pub enum Commands {
     /// specified naming convention conversion. Uses batch rename internally.
     ///
     /// Examples:
-    ///   codebuddy convert-naming --from kebab-case --to camelCase --glob "src/**/*.js"
-    ///   codebuddy convert-naming --from snake_case --to camelCase --glob "**/*.ts" --target files
+    ///   mill convert-naming --from kebab-case --to camelCase --glob "src/**/*.js"
+    ///   mill convert-naming --from snake_case --to camelCase --glob "**/*.ts" --target files
     ConvertNaming {
         /// Source naming convention (kebab-case, snake_case, camelCase, PascalCase)
         #[arg(long)]
@@ -263,7 +263,7 @@ pub async fn run() {
                 Ok(guard) => guard,
                 Err(e) => {
                     eprintln!("❌ Error: Codebuddy server is already running");
-                    eprintln!("   Use 'codebuddy stop' to stop the running instance first");
+                    eprintln!("   Use 'mill stop' to stop the running instance first");
                     eprintln!("   ({})", e);
                     process::exit(1);
                 }
@@ -278,7 +278,7 @@ pub async fn run() {
                 Ok(guard) => guard,
                 Err(e) => {
                     eprintln!("❌ Error: Codebuddy server is already running");
-                    eprintln!("   Use 'codebuddy stop' to stop the running instance first");
+                    eprintln!("   Use 'mill stop' to stop the running instance first");
                     eprintln!("   ({})", e);
                     process::exit(1);
                 }
@@ -535,7 +535,7 @@ async fn handle_dead_code_command(command: DeadCode) {
 
 /// Handle the setup command
 async fn handle_setup() {
-    println!("🚀 Setting up codebuddy configuration...");
+    println!("🚀 Setting up mill configuration...");
 
     // Create default configuration
     let config = AppConfig::default();
@@ -610,7 +610,7 @@ async fn handle_status() {
         }
     } else {
         println!("   ⭕ Not running");
-        println!("   💡 Start with: codebuddy start");
+        println!("   💡 Start with: mill start");
         false
     };
 
@@ -650,18 +650,18 @@ async fn handle_status() {
         }
         Err(e) => {
             println!("   ❌ Configuration error: {}", e);
-            println!("   💡 Run: codebuddy setup");
+            println!("   💡 Run: mill setup");
         }
     }
 
     println!();
 
-    // 3. Show all running codebuddy processes (helpful for debugging)
+    // 3. Show all running mill processes (helpful for debugging)
     println!("🔍 Running Codebuddy Processes:");
-    match find_all_codebuddy_processes() {
+    match find_all_mill_processes() {
         Ok(pids) => {
             if pids.is_empty() {
-                println!("   ⭕ No codebuddy processes found");
+                println!("   ⭕ No mill processes found");
             } else {
                 for pid in pids {
                     let marker = if server_running
@@ -722,7 +722,7 @@ async fn handle_doctor() {
         }
         Err(e) => {
             println!("[✗] Error: {}", e);
-            println!("  > Run `codebuddy setup` to create a new configuration file.");
+            println!("  > Run `mill setup` to create a new configuration file.");
         }
     }
 
@@ -743,9 +743,9 @@ async fn handle_stop() {
         Ok(pid_str) => {
             if let Ok(pid) = pid_str.trim().parse::<u32>() {
                 if is_process_running(pid) {
-                    println!("🛑 Stopping codebuddy server (PID: {})...", pid);
+                    println!("🛑 Stopping mill server (PID: {})...", pid);
                     if terminate_process(pid) {
-                        println!("✅ Successfully stopped codebuddy server");
+                        println!("✅ Successfully stopped mill server");
                         let _ = std::fs::remove_file(&pid_file);
                     } else {
                         error!("Failed to stop server process");
@@ -770,7 +770,7 @@ async fn handle_stop() {
 /// Handle the link command (placeholder)
 async fn handle_link() {
     println!("🔗 Link command not yet implemented");
-    println!("   This will configure codebuddy to work with AI assistants");
+    println!("   This will configure mill to work with AI assistants");
 }
 
 /// Handle the unlink command (placeholder)
@@ -826,11 +826,11 @@ fn acquire_pid_lock() -> Result<File, std::io::Error> {
 fn get_pid_file_path() -> PathBuf {
     #[cfg(unix)]
     {
-        PathBuf::from("/tmp/codebuddy.pid")
+        PathBuf::from("/tmp/mill.pid")
     }
     #[cfg(windows)]
     {
-        std::env::temp_dir().join("codebuddy.pid")
+        std::env::temp_dir().join("mill.pid")
     }
 }
 
@@ -861,8 +861,8 @@ fn is_process_running(pid: u32) -> bool {
     }
 }
 
-/// Find all running codebuddy processes
-fn find_all_codebuddy_processes() -> Result<Vec<u32>, String> {
+/// Find all running mill processes
+fn find_all_mill_processes() -> Result<Vec<u32>, String> {
     #[cfg(unix)]
     {
         use std::process::Command;
@@ -889,7 +889,7 @@ fn find_all_codebuddy_processes() -> Result<Vec<u32>, String> {
         use std::process::Command;
 
         let output = Command::new("tasklist")
-            .args(&["/FI", "IMAGENAME eq codebuddy.exe", "/FO", "CSV", "/NH"])
+            .args(&["/FI", "IMAGENAME eq mill.exe", "/FO", "CSV", "/NH"])
             .output()
             .map_err(|e| format!("Failed to run tasklist: {}", e))?;
 
@@ -897,7 +897,7 @@ fn find_all_codebuddy_processes() -> Result<Vec<u32>, String> {
         let pids: Vec<u32> = stdout
             .lines()
             .filter_map(|line| {
-                // CSV format: "codebuddy.exe","1234","Console","1","12,345 K"
+                // CSV format: "mill.exe","1234","Console","1","12,345 K"
                 line.split(',')
                     .nth(1)
                     .and_then(|pid_str| pid_str.trim_matches('"').parse::<u32>().ok())

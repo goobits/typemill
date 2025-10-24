@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tracing::{debug, info, warn};
 
-/// Client configuration for connecting to codebuddy server
+/// Client configuration for connecting to mill server
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientConfig {
     /// WebSocket server URL (e.g., "ws://localhost:3000")

@@ -170,7 +170,7 @@ pub struct ExternalMcpServerConfig {
     /// Environment variables (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub env: Option<HashMap<String, String>>,
-    /// Auto-start on codebuddy startup
+    /// Auto-start on mill startup
     pub auto_start: bool,
 }
 
@@ -401,8 +401,8 @@ impl AppConfig {
     ///
     /// Configuration is loaded in the following priority order (highest to lowest):
     /// 1. Environment variables (TYPEMILL__*)
-    /// 2. Environment-specific profile from codebuddy.toml (based on TYPEMILL_ENV)
-    /// 3. Base configuration from codebuddy.toml
+    /// 2. Environment-specific profile from mill.toml (based on TYPEMILL_ENV)
+    /// 3. Base configuration from mill.toml
     /// 4. Default values
     pub fn load() -> CoreResult<Self> {
         use figment::{
@@ -426,8 +426,8 @@ impl AppConfig {
 
         let figment = Figment::from(figment::providers::Serialized::defaults(default_value));
 
-        // 2. Load codebuddy.toml if it exists (base configuration)
-        let toml_paths = ["codebuddy.toml", ".typemill/config.toml"];
+        // 2. Load mill.toml if it exists (base configuration)
+        let toml_paths = ["mill.toml", ".typemill/config.toml"];
 
         let mut figment_with_toml = figment;
         let mut toml_found = false;

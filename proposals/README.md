@@ -37,7 +37,7 @@ All can run simultaneously:
   - Depends on: Phase 3 completion
 
 ### Phase 5: Major Breaking Changes
-- `05_rename_to_typemill.md` - Rename project codebuddy → typemill
+- `05_rename_to_typemill.md` - Rename project mill → typemill
   - ⚠️ **DISRUPTIVE** - Requires team consensus
 
 ## Archived Proposals

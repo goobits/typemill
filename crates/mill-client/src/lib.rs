@@ -217,7 +217,7 @@ use std::time::Duration;
 /// A powerful, interactive client for the Codebuddy server.
 #[derive(Parser, Debug)]
 #[command(name = "mill")]
-#[command(about = "Codebuddy Client - Connect to and interact with codebuddy servers", long_about = None)]
+#[command(about = "Codebuddy Client - Connect to and interact with mill servers", long_about = None)]
 #[command(version)]
 #[command(propagate_version = true)]
 pub struct CliArgs {
@@ -281,7 +281,7 @@ pub enum Commands {
         long_about = "Execute a raw MCP tool on the server. This is useful for scripting and advanced operations."
     )]
     #[command(
-        after_help = "Example: codebuddy tool read_file '{\"file_path\":\"/path/to/file.txt\"}'"
+        after_help = "Example: mill tool read_file '{\"file_path\":\"/path/to/file.txt\"}'"
     )]
     Call {
         /// The name of the MCP tool to execute (e.g., `read_file`, `get_hover`).
@@ -347,7 +347,7 @@ pub enum Commands {
 
     /// Generate shell completion scripts.
     #[command(long_about = "Generate shell completion scripts for your shell.
-To use, add `source <(codebuddy completions <shell>)` to your shell's startup file.")]
+To use, add `source <(mill completions <shell>)` to your shell's startup file.")]
     Completions {
         /// The shell to generate completions for.
         #[arg(value_enum)]

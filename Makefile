@@ -1,4 +1,4 @@
-# CodeBuddy Makefile
+# TypeMill Makefile
 # Simple build automation for common development tasks
 
 .PHONY: build release test test-fast test-full test-lsp install uninstall clean clean-cache first-time-setup install-lsp-servers dev-extras validate-setup help clippy fmt audit deny deny-update check check-duplicates dev watch ci build-parsers check-parser-deps check-analysis test-analysis check-handlers test-handlers check-core test-core check-lang test-lang dev-handlers dev-analysis dev-core dev-lang check-handlers-nav test-handlers-nav test-integration-refactor test-integration-analysis test-integration-nav
@@ -110,8 +110,8 @@ install:
 
 # Uninstall from ~/.local/bin
 uninstall:
-	@rm -f ~/.local/bin/codebuddy
-	@echo "✓ Removed ~/.local/bin/codebuddy"
+	@rm -f ~/.local/bin/mill
+	@echo "✓ Removed ~/.local/bin/mill"
 
 # Clean build artifacts
 clean:
@@ -158,7 +158,7 @@ install-lsp-servers:
 	@echo ""
 	@echo "✅ LSP server installation complete!"
 	@echo ""
-	@echo "💡 Verify installation with: codebuddy status"
+	@echo "💡 Verify installation with: mill status"
 	@echo "📝 Note: Additional LSP servers (Python/pylsp, Go/gopls) available in git tag 'pre-language-reduction'"
 
 # Install optional development tools (quality analysis and debugging)
@@ -190,7 +190,7 @@ dev-extras:
 	@echo "  cargo deny check                # Check dependencies for issues"
 	@echo "  cargo bloat --release           # Analyze binary size"
 	@echo "  cargo expand module::path       # Expand macros"
-	@echo "  cargo flamegraph --bin codebuddy # Generate performance flamegraph"
+	@echo "  cargo flamegraph --bin mill # Generate performance flamegraph"
 
 # Code quality targets
 clippy:
@@ -389,19 +389,19 @@ validate-setup:
 	@echo "📝 Note: Language support focused on TypeScript + Rust"
 	@echo ""
 	@echo "Checking build artifacts:"
-	@if [ -f "target/debug/codebuddy" ]; then \
-		echo "  ✅ Debug binary (target/debug/codebuddy)"; \
-		./target/debug/codebuddy --version | sed 's/^/     /'; \
+	@if [ -f "target/debug/mill" ]; then \
+		echo "  ✅ Debug binary (target/debug/mill)"; \
+		./target/debug/mill --version | sed 's/^/     /'; \
 	else \
 		echo "  ❌ Debug binary not found (run: make build)"; \
 	fi
-	@if [ -f "target/release/codebuddy" ]; then \
-		echo "  ✅ Release binary (target/release/codebuddy)"; \
+	@if [ -f "target/release/mill" ]; then \
+		echo "  ✅ Release binary (target/release/mill)"; \
 	else \
 		echo "  ⚠️  Release binary not found (run: make release)"; \
 	fi
 	@echo ""
-	@if [ -f "target/debug/codebuddy" ] && command -v cargo-nextest >/dev/null 2>&1; then \
+	@if [ -f "target/debug/mill" ] && command -v cargo-nextest >/dev/null 2>&1; then \
 		echo "✅ Development environment is ready!"; \
 		echo "   Run 'make test' to verify everything works."; \
 		echo "   LSP tests require: make install-lsp-servers"; \
@@ -412,7 +412,7 @@ validate-setup:
 
 # Show available commands
 help:
-	@echo "CodeBuddy - Available Commands"
+	@echo "TypeMill - Available Commands"
 	@echo "================================"
 	@echo ""
 	@echo "🚀 First-Time Setup:"
@@ -479,7 +479,7 @@ help:
 	@echo "  make check-parser-deps - Check parser build dependencies"
 	@echo ""
 	@echo "🤖 Build Automation (xtask):"
-	@echo "  cargo xtask install    - Install codebuddy to $$HOME/.local/bin"
+	@echo "  cargo xtask install    - Install mill to $$HOME/.local/bin"
 	@echo "  cargo xtask check-all  - Run all checks (fmt, clippy, test, deny)"
 	@echo "  cargo xtask new-lang <lang> - Scaffold new language plugin"
 	@echo "  cargo xtask --help     - Show all xtask commands"

@@ -5,7 +5,7 @@ pub use inventory;
 
 /// Describes a language plugin to the core system.
 ///
-/// This struct is created by the `codebuddy_plugin!` macro and collected
+/// This struct is created by the `mill_plugin!` macro and collected
 /// at link-time by the `inventory` crate.
 pub struct PluginDescriptor {
     pub name: &'static str,
@@ -29,7 +29,7 @@ pub fn iter_plugins() -> impl Iterator<Item = &'static PluginDescriptor> {
 /// This macro creates and submits a `PluginDescriptor` to the `inventory`
 /// system, making it discoverable at runtime.
 #[macro_export]
-macro_rules! codebuddy_plugin {
+macro_rules! mill_plugin {
     (
         name: $name:expr,
         extensions: $extensions:expr,

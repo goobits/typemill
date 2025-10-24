@@ -14,7 +14,7 @@ impl SetupCommand {
     async fn run_wizard(&self, ctx: &mut CommandContext) -> ClientResult<()> {
         ctx.interactive.banner(
             "🚀 Codebuddy Client Setup",
-            Some("Let's configure your client to connect to the codebuddy server"),
+            Some("Let's configure your client to connect to the mill server"),
         )?;
 
         // Current configuration summary if exists
@@ -67,7 +67,7 @@ impl SetupCommand {
 
             ctx.interactive.banner(
                 "✅ Setup Complete",
-                Some("Your codebuddy client is now configured!"),
+                Some("Your mill client is now configured!"),
             )?;
 
             self.show_next_steps(ctx)?;
@@ -89,7 +89,7 @@ impl SetupCommand {
 
         println!();
         ctx.interactive
-            .info("Enter the WebSocket URL of your codebuddy server");
+            .info("Enter the WebSocket URL of your mill server");
         ctx.interactive.info("Common formats:");
         println!("  • Local development: ws://localhost:3000");
         println!("  • Remote server: ws://your-server.com:3000");
@@ -278,7 +278,7 @@ impl SetupCommand {
 
         match error {
             ClientError::ConnectionError(msg) if msg.contains("Connection refused") => {
-                println!("  • Make sure the codebuddy server is running");
+                println!("  • Make sure the mill server is running");
                 println!("  • Check that the port is correct (default: 3000)");
                 println!("  • Verify the server is accepting WebSocket connections");
             }
@@ -310,14 +310,14 @@ impl SetupCommand {
     fn show_next_steps(&self, ctx: &CommandContext) -> ClientResult<()> {
         println!();
         ctx.interactive.info("Next steps:");
-        println!("  1. Test your connection: codebuddy status");
-        println!("  2. Start an interactive session: codebuddy connect");
-        println!("  3. Call a specific tool: codebuddy tool <tool_name> <args>");
+        println!("  1. Test your connection: mill status");
+        println!("  2. Start an interactive session: mill connect");
+        println!("  3. Call a specific tool: mill tool <tool_name> <args>");
         println!();
 
         ctx.interactive
             .info("For help with any command, use --help flag");
-        println!("  Example: codebuddy tool --help");
+        println!("  Example: mill tool --help");
         println!();
 
         Ok(())
@@ -399,7 +399,7 @@ impl Command for SetupCommand {
     }
 
     fn description(&self) -> &'static str {
-        "Interactive configuration wizard for the codebuddy client"
+        "Interactive configuration wizard for the mill client"
     }
 }
 
@@ -413,7 +413,7 @@ mod tests {
         assert_eq!(cmd.name(), "setup");
         assert_eq!(
             cmd.description(),
-            "Interactive configuration wizard for the codebuddy client"
+            "Interactive configuration wizard for the mill client"
         );
     }
 

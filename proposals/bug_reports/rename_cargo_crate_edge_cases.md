@@ -35,7 +35,7 @@ some-feature = ["foo/feature-x"]
 
 **Command:**
 ```bash
-codebuddy tool rename '{
+mill tool rename '{
   "target": {"kind": "directory", "path": "crates/foo"},
   "newName": "crates/baz",
   "options": {"scope": "custom", "custom_scope": {"update_all": true}}
@@ -68,7 +68,7 @@ name = "mylib"
 
 **Command:**
 ```bash
-codebuddy tool rename '{
+mill tool rename '{
   "target": {"kind": "directory", "path": "crates/mylib"},
   "newName": "crates/yourlib"
 }'
