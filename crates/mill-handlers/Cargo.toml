@@ -62,3 +62,6 @@ mill-analysis-dead-code = { path = "../../analysis/mill-analysis-dead-code", opt
 mill-analysis-deep-dead-code = { path = "../../analysis/mill-analysis-deep-dead-code", optional = true }
 mill-analysis-graph = { path = "../../analysis/mill-analysis-graph", optional = true }
 mill-analysis-circular-deps = { path = "../../analysis/mill-analysis-circular-deps", optional = true }
+
+[dev-dependencies]
+mill-test-support = { path = "../mill-test-support" }

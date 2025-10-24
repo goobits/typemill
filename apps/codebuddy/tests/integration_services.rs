@@ -350,7 +350,7 @@ const oldConstant{} = "old_value_{}";
     };
 
     assert!(
-        result["applied"].as_bool().unwrap_or(false),
+        result["success"].as_bool().unwrap_or(false),
         "Workspace edit should be applied"
     );
 

@@ -175,7 +175,7 @@ edition = "2021"
     assert!(apply_result.is_ok(), "workspace.apply_edit should succeed");
     let apply_response = apply_result.unwrap();
     assert_eq!(
-        apply_response["result"]["applied"], true,
+        apply_response["result"]["success"], true,
         "Edit should be applied successfully"
     );
     let ws_manifest = workspace.read_file("Cargo.toml");
