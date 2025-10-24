@@ -511,7 +511,7 @@ mod tests {
         };
 
         let result = planner.plan_for_intent(&intent);
-        assert!(result.is_ok(), "Workflow planning should succeed");
+        assert!(result.is_ok(), "Workflow planning should succeed. Error: {:?}", result.as_ref().err());
 
         let workflow = result.unwrap();
         assert_eq!(

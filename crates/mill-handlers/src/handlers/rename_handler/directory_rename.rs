@@ -75,7 +75,16 @@ impl RenameHandler {
         }
 
         // Get scope configuration from options
-        let rename_scope = options.to_rename_scope();
+        let mut rename_scope = options.to_rename_scope();
+
+        // For consolidation moves, exclude Cargo.toml files from generic path updates
+        // The semantic Cargo.toml changes (merging dependencies, updating workspace members)
+        // are handled during execution, not in the plan
+        if is_consolidation {
+            if let Some(ref mut scope) = rename_scope {
+                scope.exclude_patterns.push("**/Cargo.toml".to_string());
+            }
+        }
 
         // Get the EditPlan with import updates (call MoveService directly)
         let edit_plan = context

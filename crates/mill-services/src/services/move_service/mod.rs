@@ -194,9 +194,18 @@ impl<'a> MoveService<'a> {
         // Note: With the updated find_project_files(), files should already be filtered correctly,
         // but we keep this for belt-and-suspenders safety
         if let Some(scope) = rename_scope {
+            use tracing::debug;
             edit_plan.edits.retain(|edit| {
                 if let Some(ref file_path) = edit.file_path {
-                    scope.should_include_file(Path::new(file_path))
+                    let should_include = scope.should_include_file(Path::new(file_path));
+                    if !should_include {
+                        debug!(
+                            file_path = %file_path,
+                            exclude_patterns = ?scope.exclude_patterns,
+                            "Filtering out file from edit plan"
+                        );
+                    }
+                    should_include
                 } else {
                     true // Keep edits without file paths
                 }
@@ -268,9 +277,18 @@ impl<'a> MoveService<'a> {
         // Note: With the updated find_project_files(), files should already be filtered correctly,
         // but we keep this for belt-and-suspenders safety
         if let Some(scope) = rename_scope {
+            use tracing::debug;
             edit_plan.edits.retain(|edit| {
                 if let Some(ref file_path) = edit.file_path {
-                    scope.should_include_file(Path::new(file_path))
+                    let should_include = scope.should_include_file(Path::new(file_path));
+                    if !should_include {
+                        debug!(
+                            file_path = %file_path,
+                            exclude_patterns = ?scope.exclude_patterns,
+                            "Filtering out file from edit plan"
+                        );
+                    }
+                    should_include
                 } else {
                     true // Keep edits without file paths
                 }

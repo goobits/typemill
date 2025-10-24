@@ -1,7 +1,7 @@
 {
   "workflows": {
     "refactor.renameSymbol": {
-      "name": "Rename '{old_name}' to '{new_name}'",
+      "name": "Rename '{old_name}' to '{newName}'",
       "metadata": {
         "complexity": 2
       },
@@ -11,14 +11,14 @@
           "params": {
             "target": {
               "kind": "symbol",
-              "path": "{file_path}",
+              "path": "{filePath}",
               "selector": {
                 "symbol_name": "{old_name}"
               }
             },
-            "new_name": "{new_name}"
+            "newName": "{newName}"
           },
-          "description": "Generate rename plan for '{old_name}' → '{new_name}'",
+          "description": "Generate rename plan for '{old_name}' → '{newName}'",
           "requires_confirmation": null
         },
         {
@@ -34,7 +34,7 @@
           "requires_confirmation": true
         }
       ],
-      "required_params": ["file_path", "old_name", "new_name"]
+      "required_params": ["filePath", "old_name", "newName"]
     },
     "refactor.extractFunction": {
       "name": "Extract function '{function_name}'",
@@ -125,7 +125,7 @@
       "required_params": ["file_path", "symbol_name"]
     },
     "refactor.renameSymbolWithImports": {
-      "name": "Rename symbol '{old_name}' to '{new_name}' with import updates",
+      "name": "Rename symbol '{old_name}' to '{newName}' with import updates",
       "metadata": {
         "complexity": 2
       },
@@ -135,14 +135,14 @@
           "params": {
             "target": {
               "kind": "symbol",
-              "path": "{file_path}",
+              "path": "{filePath}",
               "selector": {
                 "symbol_name": "{old_name}"
               }
             },
-            "new_name": "{new_name}"
+            "newName": "{newName}"
           },
-          "description": "Generate rename plan for '{old_name}' → '{new_name}'",
+          "description": "Generate rename plan for '{old_name}' → '{newName}'",
           "requires_confirmation": null
         },
         {
@@ -158,7 +158,7 @@
           "requires_confirmation": true
         }
       ],
-      "required_params": ["file_path", "old_name", "new_name"]
+      "required_params": ["filePath", "old_name", "newName"]
     },
     "research.topic": {
       "name": "Research topic '{topic}'",
