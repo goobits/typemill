@@ -160,7 +160,7 @@ edition = "2021"
         .await;
     assert!(plan_result.is_ok(), "rename.plan should succeed");
     let plan_response = plan_result.unwrap();
-    let plan = &plan_response["result"];
+    let plan = &plan_response["result"]["content"];
 
     // Step 2: Apply the plan using workspace.apply_edit
     let apply_result = client
@@ -175,7 +175,7 @@ edition = "2021"
     assert!(apply_result.is_ok(), "workspace.apply_edit should succeed");
     let apply_response = apply_result.unwrap();
     assert_eq!(
-        apply_response["result"]["success"], true,
+        apply_response["result"]["content"]["success"], true,
         "Edit should be applied successfully"
     );
     let ws_manifest = workspace.read_file("Cargo.toml");
