@@ -578,7 +578,7 @@ When `dryRun: false`, returns ApplyResult:
   "params": {
     "name": "workspace.find_replace",
     "arguments": {
-      "pattern": "CODEBUDDY_([A-Z_]+)",
+      "pattern": "TYPEMILL_([A-Z_]+)",
       "replacement": "TYPEMILL_$1",
       "mode": "regex"
     }
@@ -586,8 +586,8 @@ When `dryRun: false`, returns ApplyResult:
 }
 
 // Converts:
-// CODEBUDDY_ENABLE_LOGS → TYPEMILL_ENABLE_LOGS
-// CODEBUDDY_DEBUG_MODE → TYPEMILL_DEBUG_MODE
+// TYPEMILL_ENABLE_LOGS → TYPEMILL_ENABLE_LOGS
+// TYPEMILL_DEBUG_MODE → TYPEMILL_DEBUG_MODE
 ```
 
 **Example - Case-preserving replacement:**
@@ -844,7 +844,7 @@ Safe workflow for replacing text across the workspace:
 ```bash
 # 1. Preview replacement (dryRun defaults to true)
 codebuddy tool workspace.find_replace '{
-  "pattern": "CODEBUDDY_([A-Z_]+)",
+  "pattern": "TYPEMILL_([A-Z_]+)",
   "replacement": "TYPEMILL_$1",
   "mode": "regex",
   "scope": {
@@ -856,7 +856,7 @@ codebuddy tool workspace.find_replace '{
 
 # 3. Execute the replacement
 codebuddy tool workspace.find_replace '{
-  "pattern": "CODEBUDDY_([A-Z_]+)",
+  "pattern": "TYPEMILL_([A-Z_]+)",
   "replacement": "TYPEMILL_$1",
   "mode": "regex",
   "scope": {
@@ -873,7 +873,7 @@ codebuddy tool workspace.apply_edit '{
 ```
 
 **Common use cases:**
-- Environment variable prefix changes (CODEBUDDY_* → TYPEMILL_*)
+- Environment variable prefix changes (TYPEMILL_* → TYPEMILL_*)
 - Configuration path updates (.typemill → .typemill)
 - CLI command updates in documentation (codebuddy → typemill)
 - Dependency renames in manifests

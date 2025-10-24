@@ -136,7 +136,7 @@ find /workspace -type f \( -name "*.rs" -o -name "*.toml" \) ! -path "*/target/*
 - `/workspace/crates/cb-handlers/src/handlers/rename_handler/mod.rs`
 - `/workspace/crates/cb-handlers/src/handlers/tools/mod.rs`
 - `/workspace/crates/mill-transport/src/stdio.rs`
-- `/workspace/apps/codebuddy/src/cli.rs`
+- `/workspace/apps/mill/src/cli.rs`
 - `/workspace/crates/mill-services/src/services/file_service/rename.rs`
 - `/workspace/crates/mill-server/src/main.rs`
 - `/workspace/crates/cb-test-support/benches/forwarding_benchmark.rs`

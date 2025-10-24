@@ -226,25 +226,25 @@ codebuddy tool delete.plan \
 ## Files Created/Modified
 
 ### Created:
-1. `/workspace/apps/codebuddy/src/cli/conventions.rs` (315 lines)
+1. `/workspace/apps/mill/src/cli/conventions.rs` (315 lines)
    - Three convention parsers
    - Error types
    - 15 comprehensive tests
 
-2. `../mill/workspace/apps/codebuddy/src/cli/mod.rs` (4 lines)
+2. `../mill/workspace/apps/mill/src/cli/mod.rs` (4 lines)
    - Module exports
 
-3. `../mill/workspace/apps/codebuddy/CLI_FLAGS_EXAMPLES.md` (documentation)
-4. `../mill/workspace/apps/codebuddy/INTEGRATION_REPORT.md` (this file)
+3. `../mill/workspace/apps/mill/CLI_FLAGS_EXAMPLES.md` (documentation)
+4. `../mill/workspace/apps/mill/INTEGRATION_REPORT.md` (this file)
 
 ### Modified:
-1. `../mill/workspace/apps/codebuddy/src/cli.rs` → `../mill/workspace/apps/codebuddy/src/cli/mod.rs`
+1. `../mill/workspace/apps/mill/src/cli.rs` → `../mill/workspace/apps/mill/src/cli/mod.rs`
    - Added module declarations
    - Updated Tool command structure
    - Modified handle_tool_command signature
    - Added flag-to-JSON conversion logic
 
-2. `../mill/workspace/apps/codebuddy/src/cli/flag_parser.rs` (by Agent 1, integrated by Agent 2)
+2. `../mill/workspace/apps/mill/src/cli/flag_parser.rs` (by Agent 1, integrated by Agent 2)
    - Replaced stub convention parsers with Agent 2's implementations
    - Added integration layer
 

@@ -1,6 +1,6 @@
-package com.typemill.example.data;
+package com.mill.example.data;
 
-import com.typemill.example.utils.Helper;
+import com.mill.example.utils.Helper;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.stream.Collectors;

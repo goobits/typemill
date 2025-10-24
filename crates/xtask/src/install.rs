@@ -26,7 +26,7 @@ pub fn run(args: InstallArgs) -> Result<()> {
         let profile = if args.dev { "dev" } else { "release" };
         println!("Building in {} mode...", profile.cyan());
 
-        let mut cmd = vec!["build", "-p", "codebuddy"];
+        let mut cmd = vec!["build", "-p", "mill"];
         if !args.dev {
             cmd.push("--release");
         }
@@ -40,7 +40,7 @@ pub fn run(args: InstallArgs) -> Result<()> {
     let binary_name = if cfg!(windows) {
         "codebuddy.exe"
     } else {
-        "codebuddy"
+        "mill"
     };
     let binary_path = PathBuf::from("target").join(profile_dir).join(binary_name);
 

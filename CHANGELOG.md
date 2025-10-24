@@ -19,8 +19,8 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 - **TypeMill Branding Migration** - Complete rename from CodeBuddy to TypeMill
   - Configuration directory: `.codebuddy/` → `.typemill/`
-  - Binary name: `codebuddy` → `mill` (apps/codebuddy → apps/mill)
-  - Environment variables: `CODEBUDDY__*` → `TYPEMILL__*`
+  - Binary name: `codebuddy` → `mill` (apps/mill → apps/mill)
+  - Environment variables: `TYPEMILL__*` → `TYPEMILL__*`
   - All internal crates renamed: `cb-*` → `mill-*` (27 crate renames)
   - Package name: `codebuddy` → `typemill`
 
@@ -107,14 +107,14 @@ The project underwent a complete architectural transformation from TypeScript/No
 - **Legacy Naming** - All references to old CodeBuddy branding
   - Removed `.codebuddy/` configuration directory support
   - Removed `codebuddy` binary name (use `mill` instead)
-  - Removed `CODEBUDDY__*` environment variable support
+  - Removed `TYPEMILL__*` environment variable support
   - Cleaned up stale nested crates in mill-lang-markdown
 
 #### Migration Notes
 
 - **Configuration**: Move `.codebuddy/` to `.typemill/` in your projects
 - **Binary**: Update scripts and commands from `codebuddy` to `mill`
-- **Environment**: Rename `CODEBUDDY__*` to `TYPEMILL__*` in your environment
+- **Environment**: Rename `TYPEMILL__*` to `TYPEMILL__*` in your environment
 - **JSON API**: Update client code to use camelCase for all JSON parameters
 - **Scope**: Update `"project"` to `"standard"` (old name deprecated with warning)
 
@@ -690,7 +690,7 @@ This release represents a complete architectural transformation, implementing ad
 - **Platform-specific Path Quoting**: Fixed config path quoting based on platform (#14)
   - Windows: Paths with spaces are quoted in environment variables
   - macOS/Linux: Paths are not quoted to avoid literal quotes in values
-  - Resolves "Config file specified in CODEBUDDY_CONFIG_PATH does not exist" error on Unix systems
+  - Resolves "Config file specified in TYPEMILL_CONFIG_PATH does not exist" error on Unix systems
 
 ### Enhanced
 

@@ -66,7 +66,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
    - Metaphor: A mill processes raw materials into refined products; TypeMill processes code into better code
 
 2. **Stronger Brand Identity**
-   - "codebuddy" is generic and conflicts with existing tools/services
+   - "mill" is generic and conflicts with existing tools/services
    - "typemill" is distinctive and memorable
    - Conveys professionalism and precision
 
@@ -143,7 +143,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 **Test Fixtures:**
 - `tests/e2e/test-fixtures/rust/Cargo.toml` - Package: `codebuddy-playground` → `mill-playground`
 - `tests/e2e/test-fixtures/python/pyproject.toml` - Package: `codebuddy-playground-python` → `mill-playground-python`
-- `crates/mill-test-support/src/harness/fixtures.rs` - Java package: `com.typemill.example` → `com.mill.example`
+- `crates/mill-test-support/src/harness/fixtures.rs` - Java package: `com.mill.example` → `com.mill.example`
 
 **Configuration Files:**
 - `codebuddy.toml` → `typemill.toml` (main configuration file)
@@ -158,7 +158,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 - Various debug scripts in `.debug/` directory
 
 **Repository Metadata:**
-- Repository URL: `https://github.com/goobits/codebuddy` → `https://github.com/goobits/typemill`
+- Repository URL: `https://github.com/goobits/typemill` → `https://github.com/goobits/typemill`
 - Homepage: Same as repository
 - Appears in: Root `Cargo.toml` + 31+ crate `Cargo.toml` files
 
@@ -300,13 +300,13 @@ mill_plugin!(
 ### 5. Environment Variables
 
 **Prefix Migration:**
-- `CODEBUDDY__*` (multilevel config) → `TYPEMILL__*`
-- `CODEBUDDY_*` (CLI/runtime helpers) → `TYPEMILL_*`
+- `TYPEMILL__*` (multilevel config) → `TYPEMILL__*`
+- `TYPEMILL_*` (CLI/runtime helpers) → `TYPEMILL_*`
 
 **Examples:**
-- `CODEBUDDY_DISABLE_CACHE` → `TYPEMILL_DISABLE_CACHE`
-- `CODEBUDDY_DISABLE_AST_CACHE` → `TYPEMILL_DISABLE_AST_CACHE`
-- `CODEBUDDY_DISABLE_IMPORT_CACHE` → `TYPEMILL_DISABLE_IMPORT_CACHE`
+- `TYPEMILL_DISABLE_CACHE` → `TYPEMILL_DISABLE_CACHE`
+- `TYPEMILL_DISABLE_AST_CACHE` → `TYPEMILL_DISABLE_AST_CACHE`
+- `TYPEMILL_DISABLE_IMPORT_CACHE` → `TYPEMILL_DISABLE_IMPORT_CACHE`
 
 **Migration Strategy:**
 - Maintain dual-read support for legacy variables for **two release cycles**
@@ -326,7 +326,7 @@ mill_plugin!(
 
 **Test Support Fixtures:**
 - `crates/mill-test-support/src/harness/fixtures.rs`:
-  - Java package: `com.typemill.example` → `com.mill.example`
+  - Java package: `com.mill.example` → `com.mill.example`
 
 **Impact:** These fixtures are used in integration tests and need updating to prevent test failures.
 
@@ -362,7 +362,7 @@ cargo run --bin mill
 
 **Rust Code:**
 - Module imports: `use codebuddy::*` → `use mill::*`
-- Binary targets in `Cargo.toml`: `[[bin]] name = "codebuddy"` → `[[bin]] name = "mill"`
+- Binary targets in `Cargo.toml`: `[[bin]] name = "mill"` → `[[bin]] name = "mill"`
 - Error messages and help text
 - Log messages mentioning project name
 - String literals with `.typemill` paths → `.typemill`
@@ -403,8 +403,8 @@ This rename operation will dogfood TypeMill's own refactoring capabilities using
 Use TypeMill's own CLI to discover all references:
 
 ```bash
-# Find all symbol references to "codebuddy"
-codebuddy search_symbols --query "codebuddy"
+# Find all symbol references to "mill"
+codebuddy search_symbols --query "mill"
 
 # Analyze dependency graph
 codebuddy analyze.dependencies --kind graph --scope workspace
@@ -412,11 +412,11 @@ codebuddy analyze.dependencies --kind graph --scope workspace
 # Find all .typemill path references
 rg "\.typemill" --files-with-matches
 
-# Find all CODEBUDDY_ environment variables
-rg "CODEBUDDY_" --files-with-matches
+# Find all TYPEMILL_ environment variables
+rg "TYPEMILL_" --files-with-matches
 
 # Find all string literals in code
-rg '"codebuddy"' --type rust
+rg '"mill"' --type rust
 rg "'codebuddy'" --type rust
 ```
 
@@ -506,17 +506,17 @@ sed -i 's/codebuddy-playground/mill-playground/g' tests/e2e/test-fixtures/rust/C
 sed -i 's/codebuddy-playground-python/mill-playground-python/g' tests/e2e/test-fixtures/python/pyproject.toml
 
 # crates/mill-test-support/src/harness/fixtures.rs
-sed -i 's/com.typemill.example/com.mill.example/g' crates/mill-test-support/src/harness/fixtures.rs
+sed -i 's/com.mill.example/com.mill.example/g' crates/mill-test-support/src/harness/fixtures.rs
 ```
 
 ### Phase 8: Environment Variable Updates
 
 ```bash
-# Find all CODEBUDDY_ references
-rg "CODEBUDDY_" --files-with-matches
+# Find all TYPEMILL_ references
+rg "TYPEMILL_" --files-with-matches
 
 # Manual code edits:
-# - Extend config loaders to check TYPEMILL_* first, fallback to CODEBUDDY_*
+# - Extend config loaders to check TYPEMILL_* first, fallback to TYPEMILL_*
 # - Add structured warnings for legacy prefixes
 # - Update documentation
 
@@ -607,7 +607,7 @@ BREAKING CHANGES:
 - CLI command changed from 'codebuddy' to 'mill'
 - All crates renamed from cb-*/codebuddy-* to mill-*
 - Config directory changed from .typemill/ to .typemill/
-- Environment variables changed from CODEBUDDY_* to TYPEMILL_*
+- Environment variables changed from TYPEMILL_* to TYPEMILL_*
 
 See MIGRATION.md for detailed migration guide.
 
@@ -671,8 +671,8 @@ git tag v2.0.0
 
 ### Environment Variable Updates
 
-- [ ] Find all CODEBUDDY_* references
-- [ ] Update config loaders for dual-prefix support (TYPEMILL_* + CODEBUDDY_* fallback)
+- [ ] Find all TYPEMILL_* references
+- [ ] Update config loaders for dual-prefix support (TYPEMILL_* + TYPEMILL_* fallback)
 - [ ] Add structured warnings for legacy prefixes
 - [ ] Implement `mill env migrate` CLI command
 - [ ] Update documentation with new environment variables
@@ -714,7 +714,7 @@ git tag v2.0.0
 - [ ] Analyze dead code: No unused imports introduced
 - [ ] Analyze dependencies: No circular dependencies introduced
 - [ ] Test migration path: Verify .typemill/ → .typemill/ auto-migration works
-- [ ] Test environment variable fallback: Legacy CODEBUDDY_* vars still work
+- [ ] Test environment variable fallback: Legacy TYPEMILL_* vars still work
 
 ### Release Preparation
 
@@ -765,7 +765,7 @@ mill env migrate  # Helper command to rewrite .env files
 ### Backward Compatibility
 
 **Environment Variables:**
-- Legacy `CODEBUDDY_*` variables supported for **2 release cycles** (v2.0.0 - v2.2.0)
+- Legacy `TYPEMILL_*` variables supported for **2 release cycles** (v2.0.0 - v2.2.0)
 - Deprecation warning shown when legacy variables detected
 - Removed in v3.0.0
 
@@ -801,7 +801,7 @@ mill env migrate  # Helper command to rewrite .env files
    - Docker images renamed
 
 4. **Environment Variables**
-   - `CODEBUDDY_*` → `TYPEMILL_*`
+   - `TYPEMILL_*` → `TYPEMILL_*`
    - Legacy variables work with deprecation warning (2 release cycles)
    - Use `mill env migrate` for automatic updates
 
@@ -879,7 +879,7 @@ mill env migrate  # Helper command to rewrite .env files
 - [ ] No circular dependencies introduced
 - [ ] CLI commands work with `mill` prefix
 - [ ] Migration path tested: `.typemill/` → `.typemill/` works
-- [ ] Environment variable fallback works: `CODEBUDDY_*` → `TYPEMILL_*`
+- [ ] Environment variable fallback works: `TYPEMILL_*` → `TYPEMILL_*`
 - [ ] Documentation 100% updated and accurate
 - [ ] Docker builds succeed with new names
 - [ ] Installation script works for fresh installs
@@ -986,7 +986,7 @@ mill env migrate  # Helper command to rewrite .env files
 
 ```bash
 # Find symbol references
-codebuddy search_symbols --query "codebuddy"
+codebuddy search_symbols --query "mill"
 
 # Analyze dependencies
 codebuddy analyze.dependencies --kind graph --scope workspace
@@ -1070,12 +1070,12 @@ sed -i 's/codebuddy/mill/g' scripts/*.sh
 mill env migrate
 
 # Or manually rename:
-# CODEBUDDY_DISABLE_CACHE → TYPEMILL_DISABLE_CACHE
+# TYPEMILL_DISABLE_CACHE → TYPEMILL_DISABLE_CACHE
 ```
 
 ## Backward Compatibility
 
-- Legacy `CODEBUDDY_*` environment variables work until v3.0.0
+- Legacy `TYPEMILL_*` environment variables work until v3.0.0
 - `.typemill/` directory read as fallback
 - Deprecation warnings guide you to update
 
@@ -1101,7 +1101,7 @@ See full documentation at https://typemill.org/docs/migration
 - **Project name**: CodeBuddy → TypeMill
 - **All crates renamed**: `cb-*` and `codebuddy-*` → `mill-*`
 - **Config directory**: `.typemill/` → `.typemill/`
-- **Environment variables**: `CODEBUDDY_*` → `TYPEMILL_*`
+- **Environment variables**: `TYPEMILL_*` → `TYPEMILL_*`
 
 ### Migration
 
@@ -1112,7 +1112,7 @@ See full documentation at https://typemill.org/docs/migration
 
 ### Backward Compatibility
 
-- Legacy `CODEBUDDY_*` environment variables supported until v3.0.0
+- Legacy `TYPEMILL_*` environment variables supported until v3.0.0
 - `.typemill/` configuration directory read as fallback
 - Automatic migration on first run
 
@@ -1189,7 +1189,7 @@ See full documentation at https://typemill.org/docs/migration
 
 - `tests/e2e/test-fixtures/rust/Cargo.toml` - Package: `codebuddy-playground` → `mill-playground`
 - `tests/e2e/test-fixtures/python/pyproject.toml` - Package: `codebuddy-playground-python` → `mill-playground-python`
-- `crates/mill-test-support/src/harness/fixtures.rs` - Java package: `com.typemill.example` → `com.mill.example`
+- `crates/mill-test-support/src/harness/fixtures.rs` - Java package: `com.mill.example` → `com.mill.example`
 
 ---
 
@@ -1215,15 +1215,15 @@ See full documentation at https://typemill.org/docs/migration
 ### Environment Variables (10+ variables)
 
 **Cache Control:**
-- `CODEBUDDY_DISABLE_CACHE` → `TYPEMILL_DISABLE_CACHE`
-- `CODEBUDDY_DISABLE_AST_CACHE` → `TYPEMILL_DISABLE_AST_CACHE`
-- `CODEBUDDY_DISABLE_IMPORT_CACHE` → `TYPEMILL_DISABLE_IMPORT_CACHE`
-- `CODEBUDDY_DISABLE_LSP_METHOD_CACHE` → `TYPEMILL_DISABLE_LSP_METHOD_CACHE`
+- `TYPEMILL_DISABLE_CACHE` → `TYPEMILL_DISABLE_CACHE`
+- `TYPEMILL_DISABLE_AST_CACHE` → `TYPEMILL_DISABLE_AST_CACHE`
+- `TYPEMILL_DISABLE_IMPORT_CACHE` → `TYPEMILL_DISABLE_IMPORT_CACHE`
+- `TYPEMILL_DISABLE_LSP_METHOD_CACHE` → `TYPEMILL_DISABLE_LSP_METHOD_CACHE`
 
 **Client/Server Config:**
-- `CODEBUDDY_URL` → `TYPEMILL_URL`
-- `CODEBUDDY_TOKEN` → `TYPEMILL_TOKEN`
-- `CODEBUDDY_TIMEOUT` → `TYPEMILL_TIMEOUT`
+- `TYPEMILL_URL` → `TYPEMILL_URL`
+- `TYPEMILL_TOKEN` → `TYPEMILL_TOKEN`
+- `TYPEMILL_TIMEOUT` → `TYPEMILL_TIMEOUT`
 - `TYPEMILL__SERVER__PORT` → `TYPEMILL__SERVER__PORT`
 - `TYPEMILL__LOGGING__LEVEL` → `TYPEMILL__LOGGING__LEVEL`
 - `TYPEMILL__CACHE__ENABLED` → `TYPEMILL__CACHE__ENABLED`
@@ -1264,8 +1264,8 @@ See full documentation at https://typemill.org/docs/migration
 ### Repository Metadata (32+ files)
 
 **GitHub URLs (in all Cargo.toml files):**
-- `repository = "https://github.com/goobits/codebuddy"` → `"https://github.com/goobits/typemill"`
-- `homepage = "https://github.com/goobits/codebuddy"` → `"https://github.com/goobits/typemill"`
+- `repository = "https://github.com/goobits/typemill"` → `"https://github.com/goobits/typemill"`
+- `homepage = "https://github.com/goobits/typemill"` → `"https://github.com/goobits/typemill"`
 
 **Appears in:**
 - Root Cargo.toml + 31 crate Cargo.toml files

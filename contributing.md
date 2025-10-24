@@ -38,7 +38,7 @@ For the best first-time setup experience, we recommend using the `Makefile` targ
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/goobits/codebuddy.git
+    git clone https://github.com/goobits/typemill.git
     cd codebuddy
     ```
 

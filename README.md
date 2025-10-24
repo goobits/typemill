@@ -34,8 +34,8 @@ Add to your MCP configuration (e.g., Claude Desktop):
 ```json
 {
   "mcpServers": {
-    "codebuddy": {
-      "command": "codebuddy",
+    "mill": {
+      "command": "mill",
       "args": ["start"]
     }
   }
@@ -116,7 +116,7 @@ cat .typemill/config.json
 codebuddy stop && codebuddy start
 
 # Enable caching (disabled by default for development)
-export CODEBUDDY_DISABLE_CACHE=0
+export TYPEMILL_DISABLE_CACHE=0
 ```
 
 ### Example Configuration
@@ -158,7 +158,7 @@ cat .typemill/config.json
 - Review server logs for errors
 
 **Performance issues:**
-- Enable cache: `unset CODEBUDDY_DISABLE_CACHE`
+- Enable cache: `unset TYPEMILL_DISABLE_CACHE`
 - Adjust `restartInterval` in config (recommended: 10-30 minutes)
 - Check system resources (LSP servers can be memory-intensive)
 
@@ -172,7 +172,7 @@ cat .typemill/config.json
 ## 🧪 Development
 ```bash
 # Clone repository
-git clone https://github.com/goobits/codebuddy.git
+git clone https://github.com/goobits/typemill.git
 cd codebuddy
 
 # First-time setup (installs dev tools, builds parsers, validates)
@@ -194,6 +194,6 @@ See [contributing.md](contributing.md) for detailed development guide.
 See [LICENSE](LICENSE) for details.
 
 ## 💡 Support
-- **Issues:** [GitHub Issues](https://github.com/goobits/codebuddy/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/goobits/codebuddy/discussions)
+- **Issues:** [GitHub Issues](https://github.com/goobits/typemill/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/goobits/typemill/discussions)
 - **Security:** security@goobits.com (private disclosure)

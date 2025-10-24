@@ -1071,7 +1071,7 @@ All findings include actionable suggestions:
 - Analyses reuse parsed AST within same file
 - Batch operations optimize cache utilization
 - Cache statistics in batch metadata
-- Disable with `CODEBUDDY_DISABLE_AST_CACHE=1`
+- Disable with `TYPEMILL_DISABLE_AST_CACHE=1`
 
 **Language support:**
 - Full support: Rust, TypeScript/JavaScript

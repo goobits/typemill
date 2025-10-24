@@ -66,13 +66,13 @@ Codebuddy supports environment variables for fine-grained cache control. This is
 Disable **all** caches at once:
 
 ```bash
-CODEBUDDY_DISABLE_CACHE=1 codebuddy serve
+TYPEMILL_DISABLE_CACHE=1 codebuddy serve
 ```
 
 or
 
 ```bash
-CODEBUDDY_DISABLE_CACHE=true codebuddy serve
+TYPEMILL_DISABLE_CACHE=true codebuddy serve
 ```
 
 ### Individual Cache Controls
@@ -81,13 +81,13 @@ Disable specific caches while keeping others enabled:
 
 ```bash
 # Disable only AST cache
-CODEBUDDY_DISABLE_AST_CACHE=1 codebuddy serve
+TYPEMILL_DISABLE_AST_CACHE=1 codebuddy serve
 
 # Disable only import cache (used during directory renames)
-CODEBUDDY_DISABLE_IMPORT_CACHE=1 codebuddy serve
+TYPEMILL_DISABLE_IMPORT_CACHE=1 codebuddy serve
 
 # Disable only LSP method translation cache
-CODEBUDDY_DISABLE_LSP_METHOD_CACHE=1 codebuddy serve
+TYPEMILL_DISABLE_LSP_METHOD_CACHE=1 codebuddy serve
 ```
 
 ### Priority Order
@@ -95,8 +95,8 @@ CODEBUDDY_DISABLE_LSP_METHOD_CACHE=1 codebuddy serve
 Environment variables take precedence over configuration file settings:
 
 ```
-1. CODEBUDDY_DISABLE_CACHE (master switch)
-2. CODEBUDDY_DISABLE_*_CACHE (individual switches)
+1. TYPEMILL_DISABLE_CACHE (master switch)
+2. TYPEMILL_DISABLE_*_CACHE (individual switches)
 3. Configuration file (cache.enabled)
 4. Default (enabled)
 ```
@@ -104,7 +104,7 @@ Environment variables take precedence over configuration file settings:
 **Example:**
 ```bash
 # Even if config.json has "enabled": true, this will disable AST cache
-CODEBUDDY_DISABLE_AST_CACHE=1 codebuddy serve
+TYPEMILL_DISABLE_AST_CACHE=1 codebuddy serve
 ```
 
 ## Configuration File
@@ -183,7 +183,7 @@ Cache warming (pre-populating caches on startup) is a planned feature.
 2. Verify the cache is using modification time validation
 3. Temporarily disable cache to confirm it's cache-related:
    ```bash
-   CODEBUDDY_DISABLE_CACHE=1 codebuddy serve
+   TYPEMILL_DISABLE_CACHE=1 codebuddy serve
    ```
 
 ### Issue: High memory usage
@@ -220,7 +220,7 @@ Cache warming (pre-populating caches on startup) is a planned feature.
 
 **Solution:** Disable import cache to force fresh scans:
 ```bash
-CODEBUDDY_DISABLE_IMPORT_CACHE=1 ./target/release/codebuddy tool rename.plan ...
+TYPEMILL_DISABLE_IMPORT_CACHE=1 ./target/release/codebuddy tool rename.plan ...
 ```
 
 ## Best Practices
@@ -231,7 +231,7 @@ During active development, consider disabling caches:
 
 ```bash
 # Development mode - disable all caches
-export CODEBUDDY_DISABLE_CACHE=1
+export TYPEMILL_DISABLE_CACHE=1
 codebuddy serve
 ```
 
@@ -255,7 +255,7 @@ In CI/CD pipelines, disable caches to ensure fresh results:
 
 ```bash
 # CI/CD mode
-CODEBUDDY_DISABLE_CACHE=1 cargo test
+TYPEMILL_DISABLE_CACHE=1 cargo test
 ```
 
 ### Testing
@@ -264,10 +264,10 @@ When testing cache behavior, use individual controls:
 
 ```bash
 # Test AST cache specifically
-CODEBUDDY_DISABLE_AST_CACHE=1 cargo test ast_cache
+TYPEMILL_DISABLE_AST_CACHE=1 cargo test ast_cache
 
 # Test import cache specifically
-CODEBUDDY_DISABLE_IMPORT_CACHE=1 cargo test import_updates
+TYPEMILL_DISABLE_IMPORT_CACHE=1 cargo test import_updates
 ```
 
 ## Future Enhancements

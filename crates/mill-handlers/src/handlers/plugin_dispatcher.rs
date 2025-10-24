@@ -472,7 +472,7 @@ impl PluginDispatcher {
                 "tools": {}
             },
             "serverInfo": {
-                "name": "codebuddy",
+                "name": "mill",
                 "version": "0.1.0"
             }
         }))

@@ -1,4 +1,4 @@
-package com.typemill.example.utils;
+package com.mill.example.utils;
 
 /**
  * String processing utilities

@@ -377,8 +377,8 @@ impl Command for SetupCommand {
 
         // Check for quick setup mode via environment variables
         if let (Ok(url), token) = (
-            std::env::var("CODEBUDDY_URL"),
-            std::env::var("CODEBUDDY_TOKEN").ok(),
+            std::env::var("TYPEMILL_URL"),
+            std::env::var("TYPEMILL_TOKEN").ok(),
         ) {
             if !ctx.interactive.confirm(
                 &format!("Use environment variables for setup? (URL: {})", url),

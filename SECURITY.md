@@ -120,7 +120,7 @@ cargo clippy -- -D warnings || exit 1
 
 Subscribe to security advisories:
 - [RustSec Advisory Database](https://rustsec.org/)
-- [GitHub Security Advisories](https://github.com/goobits/codebuddy/security/advisories)
+- [GitHub Security Advisories](https://github.com/goobits/typemill/security/advisories)
 
 ## License
 

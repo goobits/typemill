@@ -77,8 +77,8 @@ All documentation follows these principles:
 
 ## 🆘 Need Help?
 
-- **Issues:** [GitHub Issues](https://github.com/goobits/codebuddy/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/goobits/codebuddy/discussions)
+- **Issues:** [GitHub Issues](https://github.com/goobits/typemill/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/goobits/typemill/discussions)
 - **Security:** security@goobits.com (private disclosure)
 
 ---

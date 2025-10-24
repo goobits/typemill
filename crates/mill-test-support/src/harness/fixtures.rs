@@ -228,12 +228,12 @@ pub fn create_java_project() -> TestWorkspace {
     workspace.setup_java_project("java-test-project");
 
     // Create Main.java
-    let main_content = r#"package com.typemill.example;
+    let main_content = r#"package com.mill.example;
 
-import com.typemill.example.utils.Helper;
-import com.typemill.example.utils.StringProcessor;
-import com.typemill.example.data.DataItem;
-import com.typemill.example.data.DataProcessor;
+import com.mill.example.utils.Helper;
+import com.mill.example.utils.StringProcessor;
+import com.mill.example.data.DataItem;
+import com.mill.example.data.DataProcessor;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -282,7 +282,7 @@ public class Main {
     );
 
     // Create Helper.java
-    let helper_content = r#"package com.typemill.example.utils;
+    let helper_content = r#"package com.mill.example.utils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -331,7 +331,7 @@ public class Helper {
     );
 
     // Create StringProcessor.java
-    let processor_content = r#"package com.typemill.example.utils;
+    let processor_content = r#"package com.mill.example.utils;
 
 /**
  * String processing utilities
@@ -374,7 +374,7 @@ public class StringProcessor {
     );
 
     // Create DataItem.java
-    let item_content = r#"package com.typemill.example.data;
+    let item_content = r#"package com.mill.example.data;
 
 /**
  * Represents a data item with id, name, and numeric value
@@ -426,9 +426,9 @@ public class DataItem {
     );
 
     // Create DataProcessor.java
-    let data_processor_content = r#"package com.typemill.example.data;
+    let data_processor_content = r#"package com.mill.example.data;
 
-import com.typemill.example.utils.Helper;
+import com.mill.example.utils.Helper;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.stream.Collectors;

@@ -166,9 +166,9 @@ async fn test_regex_capture_groups() {
 
     workspace.create_file(
         "config.toml",
-        r#"CODEBUDDY_ENABLE_LOGS = true
-CODEBUDDY_DEBUG_MODE = false
-CODEBUDDY_MAX_WORKERS = 10
+        r#"TYPEMILL_ENABLE_LOGS = true
+TYPEMILL_DEBUG_MODE = false
+TYPEMILL_MAX_WORKERS = 10
 "#,
     );
 
@@ -176,7 +176,7 @@ CODEBUDDY_MAX_WORKERS = 10
         .call_tool(
             "workspace.find_replace",
             json!({
-                "pattern": r"CODEBUDDY_([A-Z_]+)",
+                "pattern": r"TYPEMILL_([A-Z_]+)",
                 "replacement": "TYPEMILL_$1",
                 "mode": "regex",
                 "dryRun": false

@@ -1,4 +1,4 @@
-package com.typemill.example.utils;
+package com.mill.example.utils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;

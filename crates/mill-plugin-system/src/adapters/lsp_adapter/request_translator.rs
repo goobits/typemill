@@ -6,14 +6,14 @@ use url::Url;
 /// Returns true if cache should be used, false if disabled
 fn is_lsp_method_cache_enabled() -> bool {
     // Check master switch first
-    if let Ok(val) = std::env::var("CODEBUDDY_DISABLE_CACHE") {
+    if let Ok(val) = std::env::var("TYPEMILL_DISABLE_CACHE") {
         if val == "1" || val.to_lowercase() == "true" {
             return false;
         }
     }
 
     // Check LSP-specific switch
-    if let Ok(val) = std::env::var("CODEBUDDY_DISABLE_LSP_METHOD_CACHE") {
+    if let Ok(val) = std::env::var("TYPEMILL_DISABLE_LSP_METHOD_CACHE") {
         if val == "1" || val.to_lowercase() == "true" {
             return false;
         }

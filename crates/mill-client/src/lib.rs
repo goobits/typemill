@@ -216,7 +216,7 @@ use std::time::Duration;
 
 /// A powerful, interactive client for the Codebuddy server.
 #[derive(Parser, Debug)]
-#[command(name = "codebuddy")]
+#[command(name = "mill")]
 #[command(about = "Codebuddy Client - Connect to and interact with codebuddy servers", long_about = None)]
 #[command(version)]
 #[command(propagate_version = true)]

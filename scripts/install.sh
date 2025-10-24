@@ -10,10 +10,10 @@ set -e
 #
 # Usage:
 #   ./install.sh                        # Interactive mode (prompts for location)
-#   CODEBUDDY_INSTALL_MODE=system ./install.sh  # System-wide (/usr/local/bin)
-#   CODEBUDDY_INSTALL_MODE=local ./install.sh   # User-local (~/.local/bin)
+#   TYPEMILL_INSTALL_MODE=system ./install.sh  # System-wide (/usr/local/bin)
+#   TYPEMILL_INSTALL_MODE=local ./install.sh   # User-local (~/.local/bin)
 
-BINARY_NAME="codebuddy"
+BINARY_NAME="mill"
 SOURCE_BINARY="/workspace/rust/target/release/cb-server"
 
 # Detect operating system
@@ -28,7 +28,7 @@ detect_os() {
 OS_TYPE=$(detect_os)
 
 # Determine installation mode from environment or prompt
-INSTALL_MODE="${CODEBUDDY_INSTALL_MODE:-}"
+INSTALL_MODE="${TYPEMILL_INSTALL_MODE:-}"
 
 if [ -z "$INSTALL_MODE" ]; then
     # Interactive: ask user for install preference
@@ -231,7 +231,7 @@ setup_project_mcp() {
     cat > "$mcp_config" << EOF
 {
   "mcpServers": {
-    "codebuddy": {
+    "mill": {
       "type": "stdio",
       "command": "$INSTALL_DIR/$BINARY_NAME",
       "args": [

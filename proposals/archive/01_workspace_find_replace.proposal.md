@@ -30,7 +30,7 @@ Implement `workspace.find_replace` as a public MCP tool with:
 {
   "name": "workspace.find_replace",
   "arguments": {
-    "pattern": "CODEBUDDY_([A-Z_]+)",
+    "pattern": "TYPEMILL_([A-Z_]+)",
     "replacement": "TYPEMILL_$1",
     "mode": "literal|regex",
     "preserveCase": false,
@@ -107,7 +107,7 @@ Implement `workspace.find_replace` as a public MCP tool with:
 
 **Use Cases:**
 - Configuration path updates (`.typemill` → `.typemill`)
-- Environment variable prefix changes (`CODEBUDDY_*` → `TYPEMILL_*`)
+- Environment variable prefix changes (`TYPEMILL_*` → `TYPEMILL_*`)
 - CLI command updates in documentation
 - Project-wide naming conventions
 - Dependency version updates in manifests

@@ -24,7 +24,7 @@ fn parse_json(s: &str) -> Result<serde_json::Value, String> {
 
 /// The main CLI struct.
 #[derive(Parser)]
-#[command(name = "codebuddy")]
+#[command(name = "mill")]
 #[command(about = "Pure Rust MCP server bridging Language Server Protocol functionality")]
 #[command(version)]
 pub struct Cli {
@@ -868,7 +868,7 @@ fn find_all_codebuddy_processes() -> Result<Vec<u32>, String> {
         use std::process::Command;
 
         let output = Command::new("pgrep")
-            .arg("codebuddy")
+            .arg("mill")
             .output()
             .map_err(|e| format!("Failed to run pgrep: {}", e))?;
 

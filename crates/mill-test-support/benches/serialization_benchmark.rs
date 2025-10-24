@@ -40,7 +40,7 @@ fn create_simple_response() -> McpResponse {
     McpResponse {
         id: Some(json!("bench-123")),
         result: Some(json!({
-            "project": "codebuddy",
+            "project": "mill",
             "version": "0.1.0"
         })),
         error: None,

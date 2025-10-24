@@ -606,7 +606,7 @@ impl LspClient {
         let mut initialize_params = json!({
             "processId": std::process::id(),
             "clientInfo": {
-                "name": "codebuddy",
+                "name": "mill",
                 "version": "0.1.0"
             },
             "capabilities": {

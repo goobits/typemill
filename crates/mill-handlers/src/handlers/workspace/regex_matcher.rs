@@ -286,16 +286,16 @@ mod tests {
 
     #[test]
     fn test_basic_regex_matching() {
-        let content = "CODEBUDDY_ENABLE_LOGS and CODEBUDDY_DEBUG_MODE";
-        let pattern = r"CODEBUDDY_([A-Z_]+)";
+        let content = "TYPEMILL_ENABLE_LOGS and TYPEMILL_DEBUG_MODE";
+        let pattern = r"TYPEMILL_([A-Z_]+)";
         let replacement = "TYPEMILL_$1";
 
         let matches = find_regex_matches(content, pattern, replacement).unwrap();
 
         assert_eq!(matches.len(), 2);
-        assert_eq!(matches[0].matched_text, "CODEBUDDY_ENABLE_LOGS");
+        assert_eq!(matches[0].matched_text, "TYPEMILL_ENABLE_LOGS");
         assert_eq!(matches[0].replacement_text, "TYPEMILL_ENABLE_LOGS");
-        assert_eq!(matches[1].matched_text, "CODEBUDDY_DEBUG_MODE");
+        assert_eq!(matches[1].matched_text, "TYPEMILL_DEBUG_MODE");
         assert_eq!(matches[1].replacement_text, "TYPEMILL_DEBUG_MODE");
     }
 
@@ -395,8 +395,8 @@ mod tests {
 
     #[test]
     fn test_line_and_column_positions() {
-        let content = "Line 1\nLine 2 has CODEBUDDY_TEST\nLine 3";
-        let pattern = r"CODEBUDDY_(\w+)";
+        let content = "Line 1\nLine 2 has TYPEMILL_TEST\nLine 3";
+        let pattern = r"TYPEMILL_(\w+)";
         let replacement = "TYPEMILL_$1";
 
         let matches = find_regex_matches(content, pattern, replacement).unwrap();
@@ -451,8 +451,8 @@ mod tests {
 
     #[test]
     fn test_multiline_content() {
-        let content = "CODEBUDDY_A\nCODEBUDDY_B\nCODEBUDDY_C";
-        let pattern = r"CODEBUDDY_([A-Z])";
+        let content = "TYPEMILL_A\nTYPEMILL_B\nTYPEMILL_C";
+        let pattern = r"TYPEMILL_([A-Z])";
         let replacement = "TYPEMILL_$1";
 
         let matches = find_regex_matches(content, pattern, replacement).unwrap();
@@ -478,7 +478,7 @@ mod tests {
     #[test]
     fn test_no_matches() {
         let content = "no matches here";
-        let pattern = r"CODEBUDDY_\w+";
+        let pattern = r"TYPEMILL_\w+";
         let replacement = "TYPEMILL_$1";
 
         let matches = find_regex_matches(content, pattern, replacement).unwrap();
@@ -499,14 +499,14 @@ mod tests {
 
     #[test]
     fn test_unicode_handling() {
-        let content = "Hello 世界 CODEBUDDY_TEST";
-        let pattern = r"CODEBUDDY_(\w+)";
+        let content = "Hello 世界 TYPEMILL_TEST";
+        let pattern = r"TYPEMILL_(\w+)";
         let replacement = "TYPEMILL_$1";
 
         let matches = find_regex_matches(content, pattern, replacement).unwrap();
 
         assert_eq!(matches.len(), 1);
-        assert_eq!(matches[0].matched_text, "CODEBUDDY_TEST");
+        assert_eq!(matches[0].matched_text, "TYPEMILL_TEST");
         assert_eq!(matches[0].replacement_text, "TYPEMILL_TEST");
     }
 

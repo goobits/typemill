@@ -1,9 +1,9 @@
-package com.typemill.example;
+package com.mill.example;
 
-import com.typemill.example.utils.Helper;
-import com.typemill.example.utils.StringProcessor;
-import com.typemill.example.data.DataItem;
-import com.typemill.example.data.DataProcessor;
+import com.mill.example.utils.Helper;
+import com.mill.example.utils.StringProcessor;
+import com.mill.example.data.DataItem;
+import com.mill.example.data.DataProcessor;
 
 import java.util.List;
 import java.util.ArrayList;

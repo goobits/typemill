@@ -313,7 +313,7 @@ if let Some(workspace_deps) = doc.get_mut("workspace")
 When running the `rename` command, it outputs verbose debug snapshots:
 
 ```
-DEBUG SNAPSHOT: /workspace/apps/codebuddy/src/cli.rs - line_count=949, line[0].len=49, line[1].len=0
+DEBUG SNAPSHOT: /workspace/apps/mill/src/cli.rs - line_count=949, line[0].len=49, line[1].len=0
 DEBUG SNAPSHOT: /workspace/crates/cb-handlers/src/handlers/tools/analysis/dead_code.rs - line_count=2176, line[0].len=38, line[1].len=0
 ... (80+ lines of debug output)
 ```

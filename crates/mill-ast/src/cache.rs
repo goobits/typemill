@@ -44,14 +44,14 @@ impl CacheSettings {
     /// Returns true if cache should be disabled
     fn is_cache_disabled_by_env() -> bool {
         // Check master switch first
-        if let Ok(val) = std::env::var("CODEBUDDY_DISABLE_CACHE") {
+        if let Ok(val) = std::env::var("TYPEMILL_DISABLE_CACHE") {
             if val == "1" || val.to_lowercase() == "true" {
                 return true;
             }
         }
 
         // Check AST-specific switch
-        if let Ok(val) = std::env::var("CODEBUDDY_DISABLE_AST_CACHE") {
+        if let Ok(val) = std::env::var("TYPEMILL_DISABLE_AST_CACHE") {
             if val == "1" || val.to_lowercase() == "true" {
                 return true;
             }
@@ -69,7 +69,7 @@ impl CacheSettings {
         let max_entries = (max_size_bytes / avg_entry_size as u64).max(100) as usize;
 
         // Check environment variables for cache control
-        // Priority: CODEBUDDY_DISABLE_CACHE > CODEBUDDY_DISABLE_AST_CACHE > config
+        // Priority: TYPEMILL_DISABLE_CACHE > TYPEMILL_DISABLE_AST_CACHE > config
         let env_disabled = Self::is_cache_disabled_by_env();
         let final_enabled = if env_disabled { false } else { enabled };
 

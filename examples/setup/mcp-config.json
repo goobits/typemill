@@ -1,7 +1,7 @@
 {
   "mcpServers": {
-    "codebuddy": {
-      "command": "codebuddy",
+    "mill": {
+      "command": "mill",
       "args": ["start"]
     }
   }

@@ -401,7 +401,7 @@ impl AppConfig {
     ///
     /// Configuration is loaded in the following priority order (highest to lowest):
     /// 1. Environment variables (TYPEMILL__*)
-    /// 2. Environment-specific profile from codebuddy.toml (based on CODEBUDDY_ENV)
+    /// 2. Environment-specific profile from codebuddy.toml (based on TYPEMILL_ENV)
     /// 3. Base configuration from codebuddy.toml
     /// 4. Default values
     pub fn load() -> CoreResult<Self> {
@@ -411,7 +411,7 @@ impl AppConfig {
         };
 
         // Determine which environment profile to use
-        let env_profile = std::env::var("CODEBUDDY_ENV").unwrap_or_else(|_| "default".to_string());
+        let env_profile = std::env::var("TYPEMILL_ENV").unwrap_or_else(|_| "default".to_string());
 
         tracing::debug!(
             profile = %env_profile,

@@ -724,10 +724,10 @@ cargo build --release
 - `RUST_LOG` - Logging level (debug/info/warn/error)
 
 **Cache Control:**
-- `CODEBUDDY_DISABLE_CACHE=1` - Disable all caches (master switch)
-- `CODEBUDDY_DISABLE_AST_CACHE=1` - Disable only AST cache
-- `CODEBUDDY_DISABLE_IMPORT_CACHE=1` - Disable only import cache
-- `CODEBUDDY_DISABLE_LSP_METHOD_CACHE=1` - Disable only LSP method translation cache
+- `TYPEMILL_DISABLE_CACHE=1` - Disable all caches (master switch)
+- `TYPEMILL_DISABLE_AST_CACHE=1` - Disable only AST cache
+- `TYPEMILL_DISABLE_IMPORT_CACHE=1` - Disable only import cache
+- `TYPEMILL_DISABLE_LSP_METHOD_CACHE=1` - Disable only LSP method translation cache
 
 See **[docs/operations/cache_configuration.md](docs/operations/cache_configuration.md)** for complete cache configuration guide.
 

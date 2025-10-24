@@ -145,7 +145,7 @@ Change environment variable prefix across entire codebase:
 
 ```bash
 codebuddy tool workspace.find_replace '{
-  "pattern": "CODEBUDDY_([A-Z_]+)",
+  "pattern": "TYPEMILL_([A-Z_]+)",
   "replacement": "TYPEMILL_$1",
   "mode": "regex",
   "scope": {
@@ -157,9 +157,9 @@ codebuddy tool workspace.find_replace '{
 **Before:**
 ```rust
 // src/config.rs
-let log_level = env::var("CODEBUDDY_LOG_LEVEL")?;
-let debug = env::var("CODEBUDDY_DEBUG_MODE").is_ok();
-let cache = env::var("CODEBUDDY_ENABLE_CACHE")?;
+let log_level = env::var("TYPEMILL_LOG_LEVEL")?;
+let debug = env::var("TYPEMILL_DEBUG_MODE").is_ok();
+let cache = env::var("TYPEMILL_ENABLE_CACHE")?;
 ```
 
 **After:**
@@ -283,7 +283,7 @@ Update CLI command references in documentation:
 
 ```bash
 codebuddy tool workspace.find_replace '{
-  "pattern": "codebuddy",
+  "pattern": "mill",
   "replacement": "typemill",
   "scope": {
     "includePatterns": ["**/*.md", "**/README*"]
@@ -345,12 +345,12 @@ codebuddy tool workspace.find_replace '{
 
 ### Project Rename
 
-Complete project rename from "codebuddy" to "typemill":
+Complete project rename from "mill" to "typemill":
 
 ```bash
 # Step 1: Preview all changes
 codebuddy tool workspace.find_replace '{
-  "pattern": "codebuddy",
+  "pattern": "mill",
   "replacement": "typemill",
   "preserveCase": true,
   "scope": {
@@ -362,7 +362,7 @@ codebuddy tool workspace.find_replace '{
 
 # Step 3: Execute the replacement
 codebuddy tool workspace.find_replace '{
-  "pattern": "codebuddy",
+  "pattern": "mill",
   "replacement": "typemill",
   "preserveCase": true,
   "scope": {
@@ -630,13 +630,13 @@ codebuddy tool workspace.find_replace '{
 ```bash
 # Won't expand $1:
 codebuddy tool workspace.find_replace '{
-  "pattern": "CODEBUDDY_([A-Z_]+)",
+  "pattern": "TYPEMILL_([A-Z_]+)",
   "replacement": "TYPEMILL_$1"
 }' # mode defaults to "literal"
 
 # Will expand $1:
 codebuddy tool workspace.find_replace '{
-  "pattern": "CODEBUDDY_([A-Z_]+)",
+  "pattern": "TYPEMILL_([A-Z_]+)",
   "replacement": "TYPEMILL_$1",
   "mode": "regex"
 }'

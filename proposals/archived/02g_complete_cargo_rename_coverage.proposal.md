@@ -59,14 +59,14 @@ Scan all `Cargo.toml` files in workspace for `[dev-dependencies]` referencing th
 
 **Current behavior:**
 ```toml
-# /workspace/apps/codebuddy/Cargo.toml - NOT UPDATED
+# /workspace/apps/mill/Cargo.toml - NOT UPDATED
 [dev-dependencies]
 integration-tests = { path = "../../integration-tests" }  # ❌ Path broken
 ```
 
 **Expected behavior:**
 ```toml
-# /workspace/apps/codebuddy/Cargo.toml - UPDATED
+# /workspace/apps/mill/Cargo.toml - UPDATED
 [dev-dependencies]
 tests = { path = "../../tests" }  # ✅ Both name and path updated
 ```

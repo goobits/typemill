@@ -10,7 +10,7 @@
     "auth": {
       "jwtSecret": "test-secret",
       "jwtExpirySeconds": 86400,
-      "jwtIssuer": "codebuddy",
+      "jwtIssuer": "mill",
       "jwtAudience": "codeflow-clients"
     }
   },
