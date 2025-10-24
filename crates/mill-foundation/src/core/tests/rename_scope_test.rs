@@ -2,8 +2,8 @@ use mill_foundation::core::rename_scope::RenameScope;
 use std::path::Path;
 
 #[test]
-fn test_rename_scope_code_only() {
-    let scope = RenameScope::code_only();
+fn test_rename_scope_code() {
+    let scope = RenameScope::code();
 
     // Code files should be included
     assert!(scope.should_include_file(Path::new("src/main.rs")));
@@ -16,8 +16,8 @@ fn test_rename_scope_code_only() {
 }
 
 #[test]
-fn test_rename_scope_all() {
-    let scope = RenameScope::all();
+fn test_rename_scope_project() {
+    let scope = RenameScope::project();
 
     // All files should be included
     assert!(scope.should_include_file(Path::new("src/main.rs")));
@@ -27,15 +27,48 @@ fn test_rename_scope_all() {
 }
 
 #[test]
+fn test_rename_scope_comments() {
+    let scope = RenameScope::comments();
+
+    // Code files should be included
+    assert!(scope.should_include_file(Path::new("src/main.rs")));
+    assert!(scope.should_include_file(Path::new("lib/utils.ts")));
+
+    // Documentation and config files should be included
+    assert!(scope.should_include_file(Path::new("README.md")));
+    assert!(scope.should_include_file(Path::new("Cargo.toml")));
+
+    // Comments enabled
+    assert!(scope.update_comments);
+
+    // Prose still opt-in
+    assert!(!scope.update_markdown_prose);
+}
+
+#[test]
+fn test_rename_scope_everything() {
+    let scope = RenameScope::everything();
+
+    // All files should be included
+    assert!(scope.should_include_file(Path::new("src/main.rs")));
+    assert!(scope.should_include_file(Path::new("README.md")));
+    assert!(scope.should_include_file(Path::new("Cargo.toml")));
+
+    // All options enabled
+    assert!(scope.update_comments);
+    assert!(scope.update_markdown_prose);
+}
+
+#[test]
 fn test_rename_scope_exclude_patterns() {
     let scope = RenameScope {
         update_code: true,
         update_string_literals: true,
         update_docs: true,
         update_configs: true,
-        update_examples: true,
         update_comments: false,
         update_markdown_prose: false,
+        update_exact_matches: false,
         exclude_patterns: vec!["**/test_*".to_string(), "**/fixtures/**".to_string()],
     };
 
@@ -56,9 +89,9 @@ fn test_rename_scope_custom() {
         update_string_literals: false,
         update_docs: true,
         update_configs: false,
-        update_examples: true,
         update_comments: false,
         update_markdown_prose: false,
+        update_exact_matches: false,
         exclude_patterns: vec![],
     };
 

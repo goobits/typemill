@@ -226,10 +226,10 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
     let scope = flags.get("scope").map(|s| s.as_str());
 
     // Auto-upgrade to custom scope if update flags are present
-    let effective_scope = if has_update_flags && scope != Some("code-only") {
+    let effective_scope = if has_update_flags && scope != Some("code") && scope != Some("code-only") {
         "custom"
     } else {
-        scope.unwrap_or("all")
+        scope.unwrap_or("project")
     };
 
     // Only set scope in options if it was explicitly provided or auto-upgraded
@@ -777,11 +777,23 @@ fn parse_string_array(s: &str) -> Result<Value, FlagParseError> {
 
 fn validate_scope_value(scope: &str) -> Result<(), FlagParseError> {
     match scope {
-        "all" | "code-only" | "custom" => Ok(()),
+        // New scope names (preferred)
+        "code" | "project" | "comments" | "everything" | "custom" => Ok(()),
+
+        // Deprecated but still accepted
+        "code-only" => {
+            eprintln!("⚠️  Warning: 'code-only' is deprecated. Use 'code' instead.");
+            Ok(())
+        }
+        "all" => {
+            eprintln!("⚠️  Warning: 'all' is deprecated. Use 'project' instead.");
+            Ok(())
+        }
+
         _ => Err(FlagParseError::InvalidValue {
             flag: "scope".to_string(),
             value: scope.to_string(),
-            reason: "must be 'all', 'code-only', or 'custom'".to_string(),
+            reason: "must be 'code', 'project', 'comments', 'everything', or 'custom'".to_string(),
         }),
     }
 }

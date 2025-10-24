@@ -287,17 +287,51 @@ CodeBuddy's rename functionality provides **100% coverage** of affected referenc
 
 Use the `options.scope` parameter to control what gets updated:
 
-- `"all"` (default): Updates everything (100% coverage)
-- `"code-only"`: Only code files (.rs, .ts, .js) - skips docs/configs
+- `"code"`: Code only (imports, module declarations, string literal paths)
+- `"project"` (default): Code + docs + configs (recommended for most renames)
+- `"comments"`: Project scope + code comments
+- `"everything"`: Comments scope + markdown prose text
 - `"custom"`: Fine-grained control with exclude patterns
 
-**Example:**
+**Deprecated (still works with warnings):**
+- `"code-only"` → use `"code"` instead
+- `"all"` → use `"project"` instead
+
+**Examples:**
 ```json
+// Minimal scope (code only)
 {
   "target": {"kind": "directory", "path": "old-dir"},
   "newName": "new-dir",
   "options": {
-    "scope": "code-only"  // Skip .md, .toml, .yaml files
+    "scope": "code"  // Skip .md, .toml, .yaml files
+  }
+}
+
+// Default scope (recommended)
+{
+  "target": {"kind": "directory", "path": "old-dir"},
+  "newName": "new-dir",
+  "options": {
+    "scope": "project"
+  }
+}
+
+// Include comments
+{
+  "target": {"kind": "directory", "path": "old-dir"},
+  "newName": "new-dir",
+  "options": {
+    "scope": "comments"
+  }
+}
+
+// Update everything including prose
+{
+  "target": {"kind": "directory", "path": "old-dir"},
+  "newName": "new-dir",
+  "options": {
+    "scope": "everything"
   }
 }
 ```
@@ -368,7 +402,7 @@ codebuddy tool rename.plan '{
     {"kind": "file", "path": "src/utils.rs", "newName": "src/helpers.rs"},
     {"kind": "file", "path": "src/config.rs", "newName": "src/settings.rs"}
   ],
-  "options": {"scope": "all"}
+  "options": {"scope": "project"}
 }'
 
 # Apply immediately (one-step)

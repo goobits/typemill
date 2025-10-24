@@ -102,12 +102,28 @@ impl RenameOptions {
     /// Resolves update_all flag if present in custom_scope
     pub fn to_rename_scope(&self) -> Option<mill_foundation::core::rename_scope::RenameScope> {
         let scope = match self.scope.as_deref() {
+            // New names (preferred)
+            Some("code") => {
+                Some(mill_foundation::core::rename_scope::RenameScope::code())
+            }
+            Some("project") | None => {
+                Some(mill_foundation::core::rename_scope::RenameScope::project())
+            }
+            Some("comments") => {
+                Some(mill_foundation::core::rename_scope::RenameScope::comments())
+            }
+            Some("everything") => {
+                Some(mill_foundation::core::rename_scope::RenameScope::everything())
+            }
+
+            // Deprecated aliases (still work)
             Some("code-only") => {
-                Some(mill_foundation::core::rename_scope::RenameScope::code_only())
+                Some(mill_foundation::core::rename_scope::RenameScope::code())
             }
-            Some("all") | None => {
-                Some(mill_foundation::core::rename_scope::RenameScope::all())
+            Some("all") => {
+                Some(mill_foundation::core::rename_scope::RenameScope::project())
             }
+
             Some("custom") => self.custom_scope.clone(),
             _ => None,
         };

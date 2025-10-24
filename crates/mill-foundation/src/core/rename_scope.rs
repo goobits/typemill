@@ -67,12 +67,13 @@ fn default_true() -> bool {
 
 impl Default for RenameScope {
     fn default() -> Self {
-        Self::all()
+        Self::project() // CHANGED FROM: Self::all()
     }
 }
 
 impl RenameScope {
     /// Code-only preset: only update imports and string literals
+    #[deprecated(since = "2.0.0", note = "Use `code()` instead")]
     pub fn code_only() -> Self {
         Self {
             update_code: true,
@@ -88,6 +89,7 @@ impl RenameScope {
     }
 
     /// All preset: update everything (default)
+    #[deprecated(since = "2.0.0", note = "Use `project()` instead")]
     pub fn all() -> Self {
         Self {
             update_code: true,
@@ -100,6 +102,39 @@ impl RenameScope {
             exclude_patterns: vec![],
             update_all: false,
         }
+    }
+
+    /// Code preset: only update imports and string literals
+    ///
+    /// This is the new name for `code_only()`. Use this for minimal scope.
+    pub fn code() -> Self {
+        Self::code_only() // Delegate to existing implementation
+    }
+
+    /// Project preset: update code + docs + configs (DEFAULT)
+    ///
+    /// This is the new name for `all()` and the recommended default scope.
+    /// Updates all structural parts of the project without touching comments or prose.
+    pub fn project() -> Self {
+        Self::all() // Delegate to existing implementation
+    }
+
+    /// Comments preset: project scope + code comments
+    ///
+    /// Adds code comment updates to the project scope.
+    pub fn comments() -> Self {
+        let mut scope = Self::project();
+        scope.update_comments = true;
+        scope
+    }
+
+    /// Everything preset: comments scope + markdown prose
+    ///
+    /// The most comprehensive scope - updates everything including prose text.
+    pub fn everything() -> Self {
+        let mut scope = Self::comments();
+        scope.update_markdown_prose = true;
+        scope
     }
 
     /// Resolve the update_all flag by enabling all update options
@@ -167,8 +202,8 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn test_code_only_preset() {
-        let scope = RenameScope::code_only();
+    fn test_code_preset() {
+        let scope = RenameScope::code();
         assert!(scope.update_code);
         assert!(scope.update_string_literals);
         assert!(!scope.update_docs);
@@ -177,14 +212,52 @@ mod tests {
     }
 
     #[test]
-    fn test_all_preset() {
-        let scope = RenameScope::all();
+    fn test_project_preset() {
+        let scope = RenameScope::project();
         assert!(scope.update_code);
         assert!(scope.update_string_literals);
         assert!(scope.update_docs);
         assert!(scope.update_configs);
         assert!(!scope.update_comments); // Still opt-in
         assert!(!scope.update_all);
+    }
+
+    #[test]
+    fn test_comments_preset() {
+        let scope = RenameScope::comments();
+        assert!(scope.update_code);
+        assert!(scope.update_string_literals);
+        assert!(scope.update_docs);
+        assert!(scope.update_configs);
+        assert!(scope.update_comments); // This is the key addition
+        assert!(!scope.update_markdown_prose); // Still opt-in
+    }
+
+    #[test]
+    fn test_everything_preset() {
+        let scope = RenameScope::everything();
+        assert!(scope.update_code);
+        assert!(scope.update_string_literals);
+        assert!(scope.update_docs);
+        assert!(scope.update_configs);
+        assert!(scope.update_comments);
+        assert!(scope.update_markdown_prose); // This is the key addition
+    }
+
+    #[test]
+    fn test_deprecated_aliases() {
+        // Verify old names still work
+        #[allow(deprecated)]
+        let code_only = RenameScope::code_only();
+        let code = RenameScope::code();
+        assert_eq!(code_only.update_code, code.update_code);
+        assert_eq!(code_only.update_docs, code.update_docs);
+
+        #[allow(deprecated)]
+        let all = RenameScope::all();
+        let project = RenameScope::project();
+        assert_eq!(all.update_code, project.update_code);
+        assert_eq!(all.update_docs, project.update_docs);
     }
 
     #[test]
@@ -220,7 +293,7 @@ mod tests {
 
     #[test]
     fn test_should_include_file() {
-        let scope = RenameScope::code_only();
+        let scope = RenameScope::code();
 
         assert!(scope.should_include_file(Path::new("src/main.rs")));
         assert!(!scope.should_include_file(Path::new("README.md")));
@@ -248,12 +321,12 @@ mod tests {
 
     #[test]
     fn test_markdown_prose_opt_in() {
-        let default_scope = RenameScope::all();
+        let default_scope = RenameScope::project();
         assert!(!default_scope.update_markdown_prose); // Opt-in by default
 
         let custom_scope = RenameScope {
             update_markdown_prose: true,
-            ..RenameScope::all()
+            ..RenameScope::project()
         };
         assert!(custom_scope.update_markdown_prose);
     }
