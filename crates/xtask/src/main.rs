@@ -10,7 +10,7 @@ mod utils;
 
 #[derive(Parser)]
 #[command(name = "xtask")]
-#[command(about = "Codebuddy build automation tasks", long_about = None)]
+#[command(about = "TypeMill build automation tasks", long_about = None)]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]

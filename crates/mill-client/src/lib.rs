@@ -1,7 +1,7 @@
-//! cb-client: Command-line client implementation for Codebuddy
+//! cb-client: Command-line client implementation for TypeMill
 //!
 //! This crate provides the client-side functionality for interacting with the
-//! Codebuddy server, including WebSocket communication, interactive command
+//! TypeMill server, including WebSocket communication, interactive command
 //! handling, configuration management, and user-friendly output formatting.
 //! It enables developers to leverage all server capabilities through a clean CLI interface.
 
@@ -214,10 +214,10 @@ use commands::status::StatusCommand;
 use commands::{Command, GlobalArgs};
 use std::time::Duration;
 
-/// A powerful, interactive client for the Codebuddy server.
+/// A powerful, interactive client for the TypeMill server.
 #[derive(Parser, Debug)]
 #[command(name = "mill")]
-#[command(about = "Codebuddy Client - Connect to and interact with mill servers", long_about = None)]
+#[command(about = "TypeMill Client - Connect to and interact with mill servers", long_about = None)]
 #[command(version)]
 #[command(propagate_version = true)]
 pub struct CliArgs {
@@ -250,7 +250,7 @@ pub struct CliArgs {
 pub enum Commands {
     /// Run an interactive setup wizard to create a configuration file.
     #[command(
-        long_about = "Guides you through setting up a connection to a Codebuddy server and saves the settings to a configuration file."
+        long_about = "Guides you through setting up a connection to a TypeMill server and saves the settings to a configuration file."
     )]
     Setup,
 

@@ -14,7 +14,7 @@ mod import_support_impl;
 
 use import_support_impl::MarkdownImportSupport;
 
-// Self-register the plugin with the Codebuddy system.
+// Self-register the plugin with the TypeMill system.
 mill_plugin! {
     name: "markdown",
     extensions: ["md", "markdown"],

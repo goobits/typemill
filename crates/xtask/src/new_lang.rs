@@ -107,7 +107,7 @@ fn generate_lib_rs(lang: &str) -> String {
 
     let mut code = String::new();
     code.push_str(&format!(
-        "//! {} language plugin for Codebuddy\n\n",
+        "//! {} language plugin for TypeMill\n\n",
         lang_upper
     ));
     code.push_str("use async_trait::async_trait;\n");

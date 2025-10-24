@@ -17,7 +17,7 @@ impl DoctorCommand {
 
     /// Main execution function for the doctor command.
     async fn execute_inner(&self, _args: &GlobalArgs) -> ClientResult<()> {
-        println!("🩺 Running Codebuddy Doctor...");
+        println!("🩺 Running TypeMill Doctor...");
 
         // 1. Check for and validate the configuration file.
         self.check_config_file();

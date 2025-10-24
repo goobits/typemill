@@ -107,7 +107,7 @@ impl PluginScaffold {
         };
 
         format!(
-            r#"//! {lang} language plugin for Codebuddy
+            r#"//! {lang} language plugin for TypeMill
 //!
 //! Provides AST parsing, symbol extraction, and manifest analysis for {lang}.
 
@@ -298,7 +298,7 @@ repository.workspace = true
 homepage.workspace = true
 
 [dependencies]
-# Codebuddy workspace dependencies
+# TypeMill workspace dependencies
 mill-plugin-api = {{ path = "../../mill-plugin-api" }}
 cb-protocol = {{ path = "../../cb-protocol" }}
 cb-core = {{ path = "../../cb-core" }}
@@ -333,7 +333,7 @@ tempfile = "3.10"
         format!(
             r#"# {lang} Language Plugin
 
-{lang} language support for Codebuddy.
+{lang} language support for TypeMill.
 
 ## Configuration
 

@@ -301,7 +301,7 @@ check-parser-deps:
 # First-time developer setup workflow - THE complete setup command
 first-time-setup:
 	@echo "╔══════════════════════════════════════════════════════════╗"
-	@echo "║  🚀 First-Time Developer Setup for Codebuddy            ║"
+	@echo "║  🚀 First-Time Developer Setup for TypeMill             ║"
 	@echo "║  This will install everything you need (~3-5 minutes)   ║"
 	@echo "╚══════════════════════════════════════════════════════════╝"
 	@echo ""

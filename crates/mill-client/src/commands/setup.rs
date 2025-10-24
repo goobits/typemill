@@ -13,7 +13,7 @@ impl SetupCommand {
     /// Run the setup wizard
     async fn run_wizard(&self, ctx: &mut CommandContext) -> ClientResult<()> {
         ctx.interactive.banner(
-            "🚀 Codebuddy Client Setup",
+            "🚀 TypeMill Client Setup",
             Some("Let's configure your client to connect to the mill server"),
         )?;
 

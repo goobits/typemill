@@ -1,6 +1,6 @@
 //! Foundation Layer - Core types, protocol definitions, and configuration
 //!
-//! This crate provides the foundational building blocks for Codebuddy/TypeMill:
+//! This crate provides the foundational building blocks for TypeMill:
 //! - Core data structures and types (from cb-types)
 //! - MCP protocol definitions (from cb-protocol)
 //! - Configuration and error handling (from mill-core)

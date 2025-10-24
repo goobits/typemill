@@ -18,7 +18,7 @@ impl McpProxyPlugin {
     pub fn new(configs: Vec<ExternalMcpServerConfig>) -> Self {
         Self {
             manager: ExternalMcpManager::new(configs),
-            metadata: PluginMetadata::new("mcp-proxy", "0.1.0", "Codebuddy Team")
+            metadata: PluginMetadata::new("mcp-proxy", "0.1.0", "TypeMill Team")
                 .with_description("Proxy to external MCP servers"),
         }
     }

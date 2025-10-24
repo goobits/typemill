@@ -8,9 +8,9 @@ use std::env;
 use tempfile::TempDir;
 
 fn clean_env() {
-    // Remove all CODEBUDDY environment variables
+    // Remove all TYPEMILL environment variables
     for (key, _) in env::vars() {
-        if key.starts_with("CODEBUDDY") {
+        if key.starts_with("TYPEMILL") {
             env::remove_var(key);
         }
     }

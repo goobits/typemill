@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "mill-playground-python"
 version = "1.0.0"
 description = "Python playground for testing LSP functionality"
-authors = [{name = "Codebuddy", email = "test@example.com"}]
+authors = [{name = "TypeMill", email = "test@example.com"}]
 dependencies = []
 requires-python = ">=3.8"
 

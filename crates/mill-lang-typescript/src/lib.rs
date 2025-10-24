@@ -1,4 +1,4 @@
-//! TypeScript/JavaScript Language Plugin for Codebuddy
+//! TypeScript/JavaScript Language Plugin for TypeMill
 pub mod import_support;
 pub mod imports;
 mod manifest;
@@ -12,7 +12,7 @@ use mill_plugin_api::mill_plugin;
 use mill_plugin_api::{ import_support::{ ImportAdvancedSupport , ImportMoveSupport , ImportMutationSupport , ImportParser , ImportRenameSupport , } , LanguageMetadata , LanguagePlugin , LspConfig , ManifestData , ParsedSource , PluginCapabilities , PluginError , PluginResult , WorkspaceSupport , };
 use std::path::Path;
 
-// Self-register the plugin with the Codebuddy system.
+// Self-register the plugin with the TypeMill system.
 mill_plugin! {
     name: "typescript",
     extensions: ["ts", "tsx", "js", "jsx", "mjs", "cjs"],

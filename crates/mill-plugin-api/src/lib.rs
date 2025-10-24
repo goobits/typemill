@@ -1,7 +1,7 @@
 //! Core Plugin API for Language Support
 //!
 //! This crate defines the foundational traits and types for implementing
-//! language-specific plugins in the Codebuddy system. Each supported programming
+//! language-specific plugins in the TypeMill system. Each supported programming
 //! language should implement the `LanguagePlugin` trait to provide parsing,
 //! analysis, and refactoring capabilities.
 //!

@@ -3,7 +3,7 @@ name = "mill-plugin-system"
 version = "0.2.0"
 edition = "2021"
 license = "MIT"
-description = "Plugin system for Codebuddy - runtime management and static registration"
+description = "Plugin system for TypeMill - runtime management and static registration"
 
 [dependencies]
 mill-plugin-api = { path = "../mill-plugin-api" }

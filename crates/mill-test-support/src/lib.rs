@@ -1,4 +1,4 @@
-//! Test support utilities and fixtures for Codebuddy integration tests
+//! Test support utilities and fixtures for TypeMill integration tests
 
 pub mod harness;
 pub mod helpers;

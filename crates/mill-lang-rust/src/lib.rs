@@ -1,4 +1,4 @@
-//! Rust Language Plugin for Codebuddy
+//! Rust Language Plugin for TypeMill
 //!
 //! This crate provides complete Rust language support, implementing both:
 //! - `LanguagePlugin` - AST parsing and symbol extraction
@@ -37,7 +37,7 @@ use std::path::Path;
 // Import helpers from the imports module
 use imports::{compute_module_path_from_file, find_crate_name_from_cargo_toml};
 
-// Self-register the plugin with the Codebuddy system.
+// Self-register the plugin with the TypeMill system.
 mill_plugin! {
     name: "rust",
     extensions: ["rs"],

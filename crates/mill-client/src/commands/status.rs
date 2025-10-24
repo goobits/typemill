@@ -31,7 +31,7 @@ impl StatusCommand {
 
     /// Run comprehensive status check
     async fn run_status_check(&self, ctx: &CommandContext) -> ClientResult<()> {
-        ctx.formatter.header("🔍 Codebuddy Client Status");
+        ctx.formatter.header("🔍 TypeMill Client Status");
         println!();
 
         // Status tracking

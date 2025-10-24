@@ -1,2 +1,2 @@
-# Codebuddy Python Playground
+# TypeMill Python Playground
 # Testing environment for Python LSP functionality

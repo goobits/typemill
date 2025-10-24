@@ -74,7 +74,7 @@ pub async fn start_stdio_server(
     let stdout = tokio::io::stdout();
     let mut transport = StdioTransport::new(stdin, stdout);
 
-    tracing::info!("Codebuddy Server running on stdio");
+    tracing::info!("TypeMill Server running on stdio");
 
     // For stdio, there is no user context, so we use a default SessionInfo.
     let session_info = SessionInfo::default();

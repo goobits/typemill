@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Codebuddy Installation Script
+# TypeMill Installation Script
 # Downloads and installs the pre-built binary for the current platform.
 #
 # Usage:
@@ -137,7 +137,7 @@ command_exists() {
 main() {
     echo ""
     echo "╔════════════════════════════════════════════╗"
-    echo "║   Codebuddy Quick Install                  ║"
+    echo "║   TypeMill Quick Install                   ║"
     echo "║   Downloads pre-built binary               ║"
     echo "╚════════════════════════════════════════════╝"
     echo ""

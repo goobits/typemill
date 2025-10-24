@@ -262,7 +262,7 @@ pub async fn run() {
             let _lock_guard = match acquire_pid_lock() {
                 Ok(guard) => guard,
                 Err(e) => {
-                    eprintln!("❌ Error: Codebuddy server is already running");
+                    eprintln!("❌ Error: TypeMill server is already running");
                     eprintln!("   Use 'mill stop' to stop the running instance first");
                     eprintln!("   ({})", e);
                     process::exit(1);
@@ -277,7 +277,7 @@ pub async fn run() {
             let _lock_guard = match acquire_pid_lock() {
                 Ok(guard) => guard,
                 Err(e) => {
-                    eprintln!("❌ Error: Codebuddy server is already running");
+                    eprintln!("❌ Error: TypeMill server is already running");
                     eprintln!("   Use 'mill stop' to stop the running instance first");
                     eprintln!("   ({})", e);
                     process::exit(1);
@@ -580,7 +580,7 @@ async fn handle_setup() {
 
 /// Handle the status command
 async fn handle_status() {
-    println!("📊 Codebuddy Status\n");
+    println!("📊 TypeMill Status\n");
 
     // 1. Check server status
     println!("🖥️  Server Status:");
@@ -657,7 +657,7 @@ async fn handle_status() {
     println!();
 
     // 3. Show all running mill processes (helpful for debugging)
-    println!("🔍 Running Codebuddy Processes:");
+    println!("🔍 Running TypeMill Processes:");
     match find_all_mill_processes() {
         Ok(pids) => {
             if pids.is_empty() {
@@ -690,7 +690,7 @@ async fn handle_status() {
 
 /// Handle the doctor command
 async fn handle_doctor() {
-    println!("🩺 Running Codebuddy Doctor...");
+    println!("🩺 Running TypeMill Doctor...");
     println!();
 
     // 1. Check for and validate the configuration file

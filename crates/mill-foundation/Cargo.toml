@@ -2,7 +2,7 @@
 name = "mill-foundation"
 version = "0.1.0"
 edition = "2021"
-description = "Foundation layer: Core types, protocol definitions, and configuration for Codebuddy/TypeMill"
+description = "Foundation layer: Core types, protocol definitions, and configuration for TypeMill"
 license = "MIT"
 
 [dependencies]

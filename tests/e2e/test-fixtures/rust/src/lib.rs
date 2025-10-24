@@ -1,4 +1,4 @@
-//! Codebuddy playground library
+//! TypeMill playground library
 //! Contains Rust code for testing LSP functionality
 
 pub mod processor;
