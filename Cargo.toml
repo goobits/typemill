@@ -31,8 +31,8 @@ resolver = "2"
 version = "0.6.1"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/goobits/codebuddy"
-homepage = "https://github.com/goobits/codebuddy"
+repository = "https://github.com/goobits/typemill"
+homepage = "https://github.com/goobits/typemill"
 
 [workspace.dependencies]
 # Serialization
@@ -73,7 +73,7 @@ futures = "0.3"
 
 # Core API crates
 mill-foundation = { path = "crates/mill-foundation" }
-codebuddy-config = { path = "crates/codebuddy-config" }
+mill-config = { path = "crates/mill-config" }
 mill-plugin-api = { path = "crates/mill-plugin-api" }
 
 # Graph analysis
