@@ -297,23 +297,41 @@ fn rewrite_use_tree_with_segments(
                         "Matched full module path, replacing"
                     );
 
-                    // Build new path tree from NEW segments at this depth onwards + remaining original tree
-                    // This prevents double-prefixing when called recursively
-                    build_new_use_tree(&new_segments[depth..], &path.tree)
+                    // Build new path tree from NEW segments + remaining original tree
+                    // CRITICAL: Check if this is a cross-crate move (first segment changed)
+                    // - Cross-crate (common::utils → new_utils): use ALL new segments
+                    // - Same-crate (self::utils → self::helpers): slice from depth to avoid duplication
+                    let use_segments = if !old_segments.is_empty() && !new_segments.is_empty()
+                        && old_segments[0] != new_segments[0] {
+                        // Cross-crate: first segment changed, use full new path
+                        new_segments
+                    } else {
+                        // Same-crate: first segment unchanged, slice from current depth
+                        &new_segments[depth..]
+                    };
+                    build_new_use_tree(use_segments, &path.tree)
                 } else {
                     // Partial match, continue matching next level
-                    // If the recursion returns a replacement, we need to preserve the current
-                    // path segment and replace only the subtree
+                    // If the recursion returns a replacement, we need to handle it differently
+                    // depending on whether we're at the root (depth=0) or not
                     if let Some(new_subtree) = rewrite_use_tree_with_segments(
                         &path.tree,
                         old_segments,
                         new_segments,
                         depth + 1,
                     ) {
-                        // Preserve the current path segment and replace the subtree
-                        let mut new_path = path.clone();
-                        new_path.tree = Box::new(new_subtree);
-                        Some(UseTree::Path(new_path))
+                        if depth == 0 && !old_segments.is_empty() && !new_segments.is_empty()
+                            && old_segments[0] != new_segments[0] {
+                            // At root level with cross-crate move (first segment changed):
+                            // return replacement as-is (don't wrap with current segment)
+                            // Example: common::utils -> new_utils (common != new_utils)
+                            Some(new_subtree)
+                        } else {
+                            // Not at root: preserve the current path segment and replace only the subtree
+                            let mut new_path = path.clone();
+                            new_path.tree = Box::new(new_subtree);
+                            Some(UseTree::Path(new_path))
+                        }
                     } else {
                         None
                     }

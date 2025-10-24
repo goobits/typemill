@@ -9,6 +9,9 @@
 pub use mill_test_support::{harness, helpers, mocks};
 
 #[cfg(test)]
+pub mod test_helpers;
+
+#[cfg(test)]
 pub mod dry_run_integration;
 
 #[cfg(test)]
@@ -50,6 +53,9 @@ pub mod test_inline_integration;
 
 #[cfg(test)]
 pub mod test_move_integration;
+
+#[cfg(test)]
+pub mod test_move_integration_v2;
 
 #[cfg(test)]
 pub mod test_move_with_imports;

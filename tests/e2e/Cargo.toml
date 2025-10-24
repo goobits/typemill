@@ -11,6 +11,7 @@ mill-plugin-api = { path = "../../crates/mill-plugin-api" }
 mill-server = { path = "../../crates/mill-server", default-features = false, features = ["test-helpers"] }
 tokio = { workspace = true }
 async-trait = { workspace = true }
+anyhow = { workspace = true }
 mockall = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
