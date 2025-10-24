@@ -1,7 +1,7 @@
 # Contributing to Codebuddy
 
 > **📌 New to the project?** This guide is for developers building from source.
-> End users: see [README.md](readme.md) for installation instructions.
+> End users: see [README.md](README.md) for installation instructions.
 
 First off, thank you for considering contributing! It's people like you that make Codebuddy such a great tool.
 
@@ -826,7 +826,7 @@ codebuddy tool workspace.apply_edit "{\"plan\": $PLAN}"
 **Internal Tools (Hidden from MCP):**
 - Legacy tools like `rename_symbol_with_imports` are now internal and hidden from MCP `tools/list`
 - These are used by the workflow system but not exposed to AI agents
-- See [docs/architecture/INTERNAL_TOOLS.md](../docs/architecture/INTERNAL_TOOLS.md) for details
+- See [docs/architecture/internal_tools.md](../docs/architecture/internal_tools.md) for details
 
 ### Understanding the Unified Analysis API
 
