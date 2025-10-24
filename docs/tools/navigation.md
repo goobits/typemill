@@ -734,7 +734,7 @@ Navigate across language boundaries in polyglot codebases:
 **Common errors:**
 
 - **Symbol not found**: LSP server couldn't locate symbol (check spelling, imports)
-- **LSP server not available**: Language server not configured or crashed (check `.codebuddy/config.json`)
+- **LSP server not available**: Language server not configured or crashed (check `.typemill/config.json`)
 - **Invalid position**: Line/character out of bounds (ensure 1-indexed line, 0-indexed character)
 - **No implementations found**: Interface has no implementations or LSP doesn't support (check language server capabilities)
 
@@ -758,7 +758,7 @@ Navigate across language boundaries in polyglot codebases:
 
 ## LSP Server Requirements
 
-All navigation tools require configured LSP servers in `.codebuddy/config.json`:
+All navigation tools require configured LSP servers in `.typemill/config.json`:
 
 ```json
 {

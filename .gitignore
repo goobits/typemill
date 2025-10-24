@@ -72,8 +72,8 @@ mcp/*/storage.json
 .claude/settings.local.json
 
 # Codebuddy runtime files
-.codebuddy/server.pid
-.codebuddy/config.json
+.typemill/server.pid
+.typemill/config.json
 
 # Test playground and artifacts
 examples/playground/

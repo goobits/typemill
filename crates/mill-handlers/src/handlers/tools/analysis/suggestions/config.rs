@@ -74,9 +74,9 @@ impl Default for SuggestionConfig {
 }
 
 impl SuggestionConfig {
-    /// Load from .codebuddy/analysis.toml
+    /// Load from .typemill/analysis.toml
     pub fn load() -> Result<Self> {
-        let config_path = std::path::Path::new(".codebuddy/analysis.toml");
+        let config_path = std::path::Path::new(".typemill/analysis.toml");
         if !config_path.exists() {
             return Ok(Self::default());
         }

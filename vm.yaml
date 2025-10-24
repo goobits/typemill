@@ -7,7 +7,7 @@ tart:
   rosetta: true
 project:
   backup_pattern: '*backup*.sql.gz'
-  hostname: dev.codebuddy.local
+  hostname: dev.typemill.local
   name: codebuddy
   workspace_path: /workspace
 vm:

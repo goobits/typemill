@@ -176,7 +176,7 @@ Update configuration directory paths:
 
 ```bash
 codebuddy tool workspace.find_replace '{
-  "pattern": "\\.codebuddy/([a-z_]+\\.toml)",
+  "pattern": "\\.typemill/([a-z_]+\\.toml)",
   "replacement": ".typemill/$1",
   "mode": "regex"
 }'
@@ -184,8 +184,8 @@ codebuddy tool workspace.find_replace '{
 
 **Before:**
 ```rust
-const CONFIG_PATH: &str = ".codebuddy/config.toml";
-const ANALYSIS_CONFIG: &str = ".codebuddy/analysis.toml";
+const CONFIG_PATH: &str = ".typemill/config.toml";
+const ANALYSIS_CONFIG: &str = ".typemill/analysis.toml";
 ```
 
 **After:**

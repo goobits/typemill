@@ -37,7 +37,7 @@ pub struct DefaultPlanner {
 
 impl DefaultPlanner {
     pub fn new() -> Arc<Self> {
-        Self::from_config_path(PathBuf::from(".codebuddy/workflows.json"))
+        Self::from_config_path(PathBuf::from(".typemill/workflows.json"))
     }
 
     /// Create a planner by loading workflows from a configuration file
@@ -197,7 +197,7 @@ mod tests {
 
     fn create_planner() -> Arc<dyn Planner> {
         // For tests, we'll use a test config with inline data
-        // In production, DefaultPlanner::new() loads from .codebuddy/workflows.json
+        // In production, DefaultPlanner::new() loads from .typemill/workflows.json
         let test_config = r#"
         {
             "workflows": {
@@ -336,7 +336,7 @@ mod tests {
     }
 
     // All recipes are loaded from workflows.json configuration
-    // See .codebuddy/workflows.json for recipe definitions
+    // See .typemill/workflows.json for recipe definitions
 
     #[test]
     fn test_plan_rename_symbol() {
@@ -496,7 +496,7 @@ mod tests {
         // Determine workflow file path relative to workspace root
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let workspace_root = manifest_dir.parent().unwrap().parent().unwrap();
-        let workflows_path = workspace_root.join(".codebuddy").join("workflows.json");
+        let workflows_path = workspace_root.join(".typemill").join("workflows.json");
 
         // Load actual workflows from config file
         let planner = DefaultPlanner::from_config_path(workflows_path);

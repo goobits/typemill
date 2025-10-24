@@ -109,7 +109,7 @@ CODEBUDDY_DISABLE_AST_CACHE=1 codebuddy serve
 
 ## Configuration File
 
-Configure caching in `.codebuddy/config.json`:
+Configure caching in `.typemill/config.json`:
 
 ```json
 {

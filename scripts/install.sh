@@ -703,7 +703,7 @@ install_language_servers() {
 # Setup LSP configuration
 setup_lsp_config() {
     local project_dir="${1:-$(pwd)}"
-    local config_dir="$project_dir/.codebuddy"
+    local config_dir="$project_dir/.typemill"
     local lsp_config="$config_dir/config.json"
 
     log_info "Setting up LSP configuration..."
@@ -984,7 +984,7 @@ main() {
 
         echo "📁 CONFIGURATION FILES:"
         echo "  • MCP: $project_dir/.mcp.json"
-        echo "  • LSP: $project_dir/.codebuddy/config.json"
+        echo "  • LSP: $project_dir/.typemill/config.json"
         echo ""
         echo "🚀 GETTING STARTED:"
         echo "  1. Open Claude Code in this project"

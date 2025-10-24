@@ -46,7 +46,7 @@ pub fn add_preset(preset_id: &str) -> Result<()> {
         })?;
 
         // Load config
-        let config_path = Path::new(".codebuddy/config.json");
+        let config_path = Path::new(".typemill/config.json");
         let mut config = if config_path.exists() {
             AppConfig::load()?
         } else {
@@ -79,7 +79,7 @@ pub fn add_preset(preset_id: &str) -> Result<()> {
         // Save config
         config.save(config_path)?;
 
-        println!("✓ Added {} to .codebuddy/config.json", preset.name);
+        println!("✓ Added {} to .typemill/config.json", preset.name);
 
         Ok(())
     }
@@ -95,9 +95,9 @@ pub fn remove_preset(preset_id: &str) -> Result<()> {
     #[cfg(feature = "mcp-proxy")]
     {
         // Load config
-        let config_path = Path::new(".codebuddy/config.json");
+        let config_path = Path::new(".typemill/config.json");
         if !config_path.exists() {
-            bail!("No configuration file found at .codebuddy/config.json");
+            bail!("No configuration file found at .typemill/config.json");
         }
 
         let mut config = AppConfig::load()?;
@@ -122,7 +122,7 @@ pub fn remove_preset(preset_id: &str) -> Result<()> {
         // Save config
         config.save(config_path)?;
 
-        println!("✓ Removed {} from .codebuddy/config.json", preset_id);
+        println!("✓ Removed {} from .typemill/config.json", preset_id);
 
         Ok(())
     }
@@ -167,7 +167,7 @@ pub fn info_preset(preset_id: &str) -> Result<()> {
         println!();
 
         // Check if installed
-        let config_path = Path::new(".codebuddy/config.json");
+        let config_path = Path::new(".typemill/config.json");
         if config_path.exists() {
             if let Ok(config) = AppConfig::load() {
                 if let Some(external_mcp) = &config.external_mcp {

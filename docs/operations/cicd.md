@@ -51,8 +51,8 @@ jobs:
 
       - name: Configure Codebuddy
         run: |
-          mkdir -p .codebuddy
-          cat > .codebuddy/config.json <<'EOF'
+          mkdir -p .typemill
+          cat > .typemill/config.json <<'EOF'
           {
             "servers": [
               {
@@ -90,7 +90,7 @@ jobs:
 3.  **Cache Dependencies**: Caching is used for `cargo` dependencies to speed up subsequent runs.
 4.  **Install Codebuddy**: Codebuddy is installed non-interactively using `cargo install codebuddy --locked`. The `--locked` flag ensures a reproducible build based on the `Cargo.lock` file.
 5.  **Install Language Servers**: The `typescript-language-server` is installed globally using `npm`. `rust-analyzer` is installed as a rustup component.
-6.  **Configure Codebuddy**: A configuration file is created programmatically at `.codebuddy/config.json`. This avoids any interactive setup prompts.
+6.  **Configure Codebuddy**: A configuration file is created programmatically at `.typemill/config.json`. This avoids any interactive setup prompts.
 7.  **Create a Test File**: A dummy `src/main.ts` file is created to have a target for the Codebuddy tool commands.
 8.  **Verify Installation**: The workflow runs `codebuddy status`, `codebuddy doctor`, and `codebuddy tool get_diagnostics` to confirm that the installation is successful and the language servers are operational.
 

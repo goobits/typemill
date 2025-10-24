@@ -53,7 +53,7 @@ The `post-create.sh` script automatically:
 3. Builds external language parsers (Java, C#, TypeScript)
 4. Runs initial `cargo build` (cached for faster subsequent builds)
 5. Runs quick test suite to verify everything works
-6. Creates default `.codebuddy/config.json`
+6. Creates default `.typemill/config.json`
 
 ## Customization
 

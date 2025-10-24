@@ -180,7 +180,7 @@ services:
 ```
 
 **To disable FUSE:**
-Set `"fuse": null` in `.codebuddy/config.json`
+Set `"fuse": null` in `.typemill/config.json`
 
 ## Troubleshooting
 
@@ -213,7 +213,7 @@ docker-compose down -v
 **LSP server not starting:**
 ```bash
 # Check LSP configuration
-cat .codebuddy/config.json
+cat .typemill/config.json
 
 # View detailed logs
 RUST_LOG=debug docker-compose up

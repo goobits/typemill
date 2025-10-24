@@ -206,7 +206,7 @@ pub async fn initialize(&self) -> ServerResult<()> {
 
 The plugin system uses a sophisticated multi-tiered selection algorithm to choose the best plugin for each tool request.
 
-**Configuration in `.codebuddy/config.json`:**
+**Configuration in `.typemill/config.json`:**
 
 ```json
 {
@@ -574,7 +574,7 @@ The unified refactoring API provides a consistent `plan -> apply` pattern for al
 Configuration is managed through the `cb-core` crate with support for multiple sources:
 
 1. **Default Configuration**: Built-in sensible defaults
-2. **Configuration Files**: JSON/TOML support (`.codebuddy/config.json`)
+2. **Configuration Files**: JSON/TOML support (`.typemill/config.json`)
 3. **Environment Variables**: Runtime overrides
 4. **Command Line**: Highest precedence overrides
 

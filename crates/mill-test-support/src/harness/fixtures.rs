@@ -228,12 +228,12 @@ pub fn create_java_project() -> TestWorkspace {
     workspace.setup_java_project("java-test-project");
 
     // Create Main.java
-    let main_content = r#"package com.codebuddy.example;
+    let main_content = r#"package com.typemill.example;
 
-import com.codebuddy.example.utils.Helper;
-import com.codebuddy.example.utils.StringProcessor;
-import com.codebuddy.example.data.DataItem;
-import com.codebuddy.example.data.DataProcessor;
+import com.typemill.example.utils.Helper;
+import com.typemill.example.utils.StringProcessor;
+import com.typemill.example.data.DataItem;
+import com.typemill.example.data.DataProcessor;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -282,7 +282,7 @@ public class Main {
     );
 
     // Create Helper.java
-    let helper_content = r#"package com.codebuddy.example.utils;
+    let helper_content = r#"package com.typemill.example.utils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -331,7 +331,7 @@ public class Helper {
     );
 
     // Create StringProcessor.java
-    let processor_content = r#"package com.codebuddy.example.utils;
+    let processor_content = r#"package com.typemill.example.utils;
 
 /**
  * String processing utilities
@@ -374,7 +374,7 @@ public class StringProcessor {
     );
 
     // Create DataItem.java
-    let item_content = r#"package com.codebuddy.example.data;
+    let item_content = r#"package com.typemill.example.data;
 
 /**
  * Represents a data item with id, name, and numeric value
@@ -426,9 +426,9 @@ public class DataItem {
     );
 
     // Create DataProcessor.java
-    let data_processor_content = r#"package com.codebuddy.example.data;
+    let data_processor_content = r#"package com.typemill.example.data;
 
-import com.codebuddy.example.utils.Helper;
+import com.typemill.example.utils.Helper;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.stream.Collectors;

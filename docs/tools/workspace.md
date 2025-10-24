@@ -874,7 +874,7 @@ codebuddy tool workspace.apply_edit '{
 
 **Common use cases:**
 - Environment variable prefix changes (CODEBUDDY_* → TYPEMILL_*)
-- Configuration path updates (.codebuddy → .typemill)
+- Configuration path updates (.typemill → .typemill)
 - CLI command updates in documentation (codebuddy → typemill)
 - Dependency renames in manifests
 - API endpoint path changes

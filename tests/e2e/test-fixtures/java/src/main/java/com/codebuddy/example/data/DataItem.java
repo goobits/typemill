@@ -1,4 +1,4 @@
-package com.codebuddy.example.data;
+package com.typemill.example.data;
 
 /**
  * Represents a data item with id, name, and numeric value

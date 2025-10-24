@@ -423,7 +423,7 @@ See **[docs/tools/refactoring.md](docs/tools/refactoring.md#renameplan)** for co
 
 ### Actionable Suggestions Configuration
 
-Configure suggestion generation in `.codebuddy/analysis.toml`:
+Configure suggestion generation in `.typemill/analysis.toml`:
 
 ```toml
 [suggestions]
@@ -553,7 +553,7 @@ For Docker deployment details, see **[docs/operations/docker_deployment.md](docs
   - ⚠️ **EXPERIMENTAL - Development Only**
   - Requires `SYS_ADMIN` capability (disables container security boundaries)
   - Not recommended for production use
-  - To disable: set `"fuse": null` in `.codebuddy/config.json`
+  - To disable: set `"fuse": null` in `.typemill/config.json`
   - Docker: Use `deployment/docker-compose --profile fuse up codebuddy-fuse` to enable
 - **API Interfaces** (`crates/cb-protocol/`) - Service trait definitions
 - **Client Library** (`crates/mill-client/`) - CLI client and WebSocket client
@@ -595,7 +595,7 @@ Supported language servers (configurable):
 
 ## Configuration
 
-The server loads configuration from `.codebuddy/config.json` in the current working directory. If no configuration exists, run `codebuddy setup` to create one.
+The server loads configuration from `.typemill/config.json` in the current working directory. If no configuration exists, run `codebuddy setup` to create one.
 
 ### Smart Setup  
 
@@ -603,7 +603,7 @@ Use `codebuddy setup` to configure LSP servers with auto-detection:
 
 - Scans project for file extensions (respects .gitignore)
 - Presents pre-configured language server options for detected languages
-- Generates `.codebuddy/config.json` configuration file  
+- Generates `.typemill/config.json` configuration file  
 - Tests server availability during setup
 
 Each server config requires:

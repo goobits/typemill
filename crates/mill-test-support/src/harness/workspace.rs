@@ -332,7 +332,7 @@ path = "src/lib.rs"
     /// Create a pom.xml file for a Java Maven project
     pub fn create_pom_xml(&self, name: &str) {
         // Extract artifact ID from name (replace hyphens with nothing for groupId)
-        let group_id = "com.codebuddy";
+        let group_id = "com.typemill";
         let artifact_id = name.to_lowercase().replace("_", "-");
 
         let content = format!(

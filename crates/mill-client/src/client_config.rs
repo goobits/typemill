@@ -142,7 +142,7 @@ impl ClientConfig {
             ClientError::ConfigError("Unable to determine home directory".to_string())
         })?;
 
-        Ok(home.join(".codebuddy").join("config.json"))
+        Ok(home.join(".typemill").join("config.json"))
     }
 
     /// Get the configuration directory path
@@ -151,7 +151,7 @@ impl ClientConfig {
             ClientError::ConfigError("Unable to determine home directory".to_string())
         })?;
 
-        Ok(home.join(".codebuddy"))
+        Ok(home.join(".typemill"))
     }
 
     /// Validate the configuration

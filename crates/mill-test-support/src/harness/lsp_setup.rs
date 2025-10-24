@@ -81,10 +81,10 @@ impl LspSetupHelper {
             .unwrap_or(false)
     }
 
-    /// Create a .codebuddy/config.json file for LSP configuration in test workspace
+    /// Create a .typemill/config.json file for LSP configuration in test workspace
     /// Note: Language support temporarily reduced to TypeScript + Rust
     pub fn setup_lsp_config(workspace: &TestWorkspace) {
-        workspace.create_directory(".codebuddy");
+        workspace.create_directory(".typemill");
 
         // Resolve absolute paths for LSP servers to avoid PATH issues
         let ts_lsp_path = Self::resolve_command_path("typescript-language-server")
@@ -138,7 +138,7 @@ impl LspSetupHelper {
 
         eprintln!("DEBUG: LSP Config being written:\n{}", config_str);
 
-        workspace.create_file(".codebuddy/config.json", &config_str);
+        workspace.create_file(".typemill/config.json", &config_str);
 
         // Only log config details if RUST_LOG=debug
         if std::env::var("RUST_LOG")
@@ -146,7 +146,7 @@ impl LspSetupHelper {
             .to_lowercase()
             .contains("debug")
         {
-            let config_path = workspace.path().join(".codebuddy/config.json");
+            let config_path = workspace.path().join(".typemill/config.json");
             eprintln!("DEBUG: Creating LSP config:\n{}", config_str);
             eprintln!("DEBUG: LSP config created at: {}", config_path.display());
 

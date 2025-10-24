@@ -1,9 +1,9 @@
-package com.codebuddy.example;
+package com.typemill.example;
 
-import com.codebuddy.example.utils.Helper;
-import com.codebuddy.example.utils.StringProcessor;
-import com.codebuddy.example.data.DataItem;
-import com.codebuddy.example.data.DataProcessor;
+import com.typemill.example.utils.Helper;
+import com.typemill.example.utils.StringProcessor;
+import com.typemill.example.data.DataItem;
+import com.typemill.example.data.DataProcessor;
 
 import java.util.List;
 import java.util.ArrayList;

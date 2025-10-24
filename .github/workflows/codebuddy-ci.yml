@@ -42,8 +42,8 @@ jobs:
 
       - name: Configure Codebuddy
         run: |
-          mkdir -p .codebuddy
-          cat > .codebuddy/config.json <<'EOF'
+          mkdir -p .typemill
+          cat > .typemill/config.json <<'EOF'
           {
             "servers": [
               {

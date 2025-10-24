@@ -143,7 +143,7 @@ All refactoring operations follow a safe two-step pattern:
 
 | File | Purpose | Allows |
 |------|---------|--------|
-| `.codebuddy/workflows.json` | Workflow templates | Custom workflows, modify existing, project-specific patterns |
+| `.typemill/workflows.json` | Workflow templates | Custom workflows, modify existing, project-specific patterns |
 
 ## Best Practices
 

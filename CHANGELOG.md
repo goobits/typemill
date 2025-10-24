@@ -120,7 +120,7 @@ The project underwent a complete architectural transformation from TypeScript/No
   - `analyze.documentation` - coverage, quality, style, examples
   - `analyze.tests` - coverage, quality, assertions, organization
   - `analyze.batch` - optimized multi-file analysis with AST caching
-  - Configuration via `.codebuddy/analysis.toml` with 3 presets
+  - Configuration via `.typemill/analysis.toml` with 3 presets
 
 - **Additional Language Plugins** - Markdown, TOML, YAML plugins for comprehensive rename support
 - **Build Automation** - xtask pattern with cross-platform Rust tasks (`cargo xtask install`, `check-all`, etc.)

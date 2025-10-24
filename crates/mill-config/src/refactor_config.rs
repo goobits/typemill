@@ -40,7 +40,7 @@ impl Default for RefactorDefaults {
 
 impl RefactorConfig {
     pub fn load(project_root: &Path) -> Result<Self> {
-        let config_path = project_root.join(".codebuddy/refactor.toml");
+        let config_path = project_root.join(".typemill/refactor.toml");
         if !config_path.exists() {
             return Ok(Self::default());
         }
@@ -53,11 +53,11 @@ impl RefactorConfig {
     /// Apply a preset to RefactorDefaults
     ///
     /// Merges preset values into defaults. Preset values override defaults.
-    /// This allows users to define presets in .codebuddy/refactor.toml.
+    /// This allows users to define presets in .typemill/refactor.toml.
     ///
     /// # Example
     ///
-    /// .codebuddy/refactor.toml:
+    /// .typemill/refactor.toml:
     /// ```toml
     /// [defaults]
     /// dry_run = false

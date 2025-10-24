@@ -165,7 +165,7 @@ All language plugins implement the `LanguagePlugin` trait with capability-based 
 | C          | `clangd`  | Same as C++ |
 | PHP        | `intelephense` | `npm install -g intelephense` |
 
-**Configuration:** Add to `.codebuddy/config.json` after installation. Run `codebuddy setup` for auto-detection.
+**Configuration:** Add to `.typemill/config.json` after installation. Run `codebuddy setup` for auto-detection.
 
 ## Success Metrics
 

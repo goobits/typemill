@@ -5,10 +5,10 @@
 //!
 //! # Configuration File Example
 //!
-//! Create `.codebuddy/analysis.toml` in your workspace root:
+//! Create `.typemill/analysis.toml` in your workspace root:
 //!
 //! ```toml
-//! # .codebuddy/analysis.toml
+//! # .typemill/analysis.toml
 //! preset = "default"
 //!
 //! [overrides.quality]
@@ -63,7 +63,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use thiserror::Error;
 
-/// Analysis configuration loaded from .codebuddy/analysis.toml
+/// Analysis configuration loaded from .typemill/analysis.toml
 ///
 /// This is the root configuration structure that defines how analysis tools
 /// should behave. It supports preset-based configuration and per-category overrides.
@@ -117,7 +117,7 @@ pub struct CategoryConfig {
 }
 
 impl AnalysisConfig {
-    /// Load configuration from .codebuddy/analysis.toml
+    /// Load configuration from .typemill/analysis.toml
     ///
     /// Attempts to load and parse the configuration file from the workspace root.
     /// If the file doesn't exist or can't be parsed, returns an error.
@@ -138,7 +138,7 @@ impl AnalysisConfig {
     ///     .unwrap_or_else(|_| AnalysisConfig::default());
     /// ```
     pub fn load(workspace_root: &Path) -> Result<Self, ConfigError> {
-        let config_path = workspace_root.join(".codebuddy").join("analysis.toml");
+        let config_path = workspace_root.join(".typemill").join("analysis.toml");
 
         // If file doesn't exist, return default config
         if !config_path.exists() {
@@ -788,8 +788,8 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let workspace_root = temp_dir.path();
 
-        // Create .codebuddy directory
-        let config_dir = workspace_root.join(".codebuddy");
+        // Create .typemill directory
+        let config_dir = workspace_root.join(".typemill");
         std::fs::create_dir_all(&config_dir).unwrap();
 
         // Write test config

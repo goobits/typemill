@@ -895,7 +895,7 @@ Analysis handlers are organized by category in `crates/mill-handlers/src/handler
 - `documentation.rs` - Documentation quality (5 kinds)
 - `tests_handler.rs` - Test analysis (4 kinds)
 - `batch.rs` - Batch analysis infrastructure with AST caching
-- `config.rs` - Configuration loading (.codebuddy/analysis.toml)
+- `config.rs` - Configuration loading (.typemill/analysis.toml)
 
 **Adding a new detection kind:**
 

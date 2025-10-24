@@ -143,7 +143,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 **Test Fixtures:**
 - `tests/e2e/test-fixtures/rust/Cargo.toml` - Package: `codebuddy-playground` → `mill-playground`
 - `tests/e2e/test-fixtures/python/pyproject.toml` - Package: `codebuddy-playground-python` → `mill-playground-python`
-- `crates/mill-test-support/src/harness/fixtures.rs` - Java package: `com.codebuddy.example` → `com.mill.example`
+- `crates/mill-test-support/src/harness/fixtures.rs` - Java package: `com.typemill.example` → `com.mill.example`
 
 **Configuration Files:**
 - `codebuddy.toml` → `typemill.toml` (main configuration file)
@@ -153,7 +153,7 @@ This proposal outlines the complete strategy for renaming the project from **Cod
 - `install.sh` - Main installation script
 - `scripts/install.sh` - Script directory installation
 - `scripts/new-lang.sh` - New language plugin scaffolding
-- `.codebuddy/start-with-lsp.sh` - LSP startup script
+- `.typemill/start-with-lsp.sh` - LSP startup script
 - `examples/setup/install.sh` - Example setup
 - Various debug scripts in `.debug/` directory
 
@@ -281,10 +281,10 @@ mill_plugin!(
 ### 4. Configuration and Paths
 
 **Configuration Directory:**
-- `.codebuddy/` → `.typemill/`
-- `.codebuddy/config.json` → `.typemill/config.json`
-- `.codebuddy/analysis.toml` → `.typemill/analysis.toml`
-- `.codebuddy/workflows.json` → `.typemill/workflows.json`
+- `.typemill/` → `.typemill/`
+- `.typemill/config.json` → `.typemill/config.json`
+- `.typemill/analysis.toml` → `.typemill/analysis.toml`
+- `.typemill/workflows.json` → `.typemill/workflows.json`
 
 **Configuration Files:**
 - `codebuddy.toml` → `typemill.toml`
@@ -326,7 +326,7 @@ mill_plugin!(
 
 **Test Support Fixtures:**
 - `crates/mill-test-support/src/harness/fixtures.rs`:
-  - Java package: `com.codebuddy.example` → `com.mill.example`
+  - Java package: `com.typemill.example` → `com.mill.example`
 
 **Impact:** These fixtures are used in integration tests and need updating to prevent test failures.
 
@@ -365,7 +365,7 @@ cargo run --bin mill
 - Binary targets in `Cargo.toml`: `[[bin]] name = "codebuddy"` → `[[bin]] name = "mill"`
 - Error messages and help text
 - Log messages mentioning project name
-- String literals with `.codebuddy` paths → `.typemill`
+- String literals with `.typemill` paths → `.typemill`
 
 **Configuration Examples:**
 - JSON schema references
@@ -409,8 +409,8 @@ codebuddy search_symbols --query "codebuddy"
 # Analyze dependency graph
 codebuddy analyze.dependencies --kind graph --scope workspace
 
-# Find all .codebuddy path references
-rg "\.codebuddy" --files-with-matches
+# Find all .typemill path references
+rg "\.typemill" --files-with-matches
 
 # Find all CODEBUDDY_ environment variables
 rg "CODEBUDDY_" --files-with-matches
@@ -456,12 +456,12 @@ codebuddy workspace.apply_edit --plan <plan>
 ### Phase 5: Configuration Directory Path Updates
 
 ```bash
-# Find all .codebuddy references
-rg "\.codebuddy" --files-with-matches
+# Find all .typemill references
+rg "\.typemill" --files-with-matches
 
 # Manual code edits:
 # - Update path constants
-# - Add dual-path support (.typemill/ with .codebuddy/ fallback)
+# - Add dual-path support (.typemill/ with .typemill/ fallback)
 # - Add migration warnings
 
 # Files to edit:
@@ -506,7 +506,7 @@ sed -i 's/codebuddy-playground/mill-playground/g' tests/e2e/test-fixtures/rust/C
 sed -i 's/codebuddy-playground-python/mill-playground-python/g' tests/e2e/test-fixtures/python/pyproject.toml
 
 # crates/mill-test-support/src/harness/fixtures.rs
-sed -i 's/com.codebuddy.example/com.mill.example/g' crates/mill-test-support/src/harness/fixtures.rs
+sed -i 's/com.typemill.example/com.mill.example/g' crates/mill-test-support/src/harness/fixtures.rs
 ```
 
 ### Phase 8: Environment Variable Updates
@@ -606,7 +606,7 @@ BREAKING CHANGES:
 - Project renamed from CodeBuddy to TypeMill
 - CLI command changed from 'codebuddy' to 'mill'
 - All crates renamed from cb-*/codebuddy-* to mill-*
-- Config directory changed from .codebuddy/ to .typemill/
+- Config directory changed from .typemill/ to .typemill/
 - Environment variables changed from CODEBUDDY_* to TYPEMILL_*
 
 See MIGRATION.md for detailed migration guide.
@@ -662,12 +662,12 @@ git tag v2.0.0
 
 ### Configuration and Path Updates
 
-- [ ] Update `.codebuddy/` path references to `.typemill/`
-- [ ] Implement dual-path support (.typemill/ primary, .codebuddy/ fallback)
+- [ ] Update `.typemill/` path references to `.typemill/`
+- [ ] Implement dual-path support (.typemill/ primary, .typemill/ fallback)
 - [ ] Add migration warnings for legacy paths
 - [ ] Update path constants in code
 - [ ] Update configuration file names (codebuddy.toml → typemill.toml)
-- [ ] Update `.codebuddy/workflows.json` → `.typemill/workflows.json`
+- [ ] Update `.typemill/workflows.json` → `.typemill/workflows.json`
 
 ### Environment Variable Updates
 
@@ -713,7 +713,7 @@ git tag v2.0.0
 - [ ] Check diagnostics: No errors in workspace
 - [ ] Analyze dead code: No unused imports introduced
 - [ ] Analyze dependencies: No circular dependencies introduced
-- [ ] Test migration path: Verify .codebuddy/ → .typemill/ auto-migration works
+- [ ] Test migration path: Verify .typemill/ → .typemill/ auto-migration works
 - [ ] Test environment variable fallback: Legacy CODEBUDDY_* vars still work
 
 ### Release Preparation
@@ -738,10 +738,10 @@ The tool will automatically detect and migrate on first run:
 mill setup
 
 # Output:
-# ℹ️  Detected legacy configuration directory: .codebuddy/
+# ℹ️  Detected legacy configuration directory: .typemill/
 # 🔄 Migrating to .typemill/...
 # ✅ Configuration migrated successfully
-# 💡 Legacy .codebuddy/ directory preserved as backup
+# 💡 Legacy .typemill/ directory preserved as backup
 ```
 
 ### Manual Migration
@@ -750,10 +750,10 @@ Users can manually migrate:
 
 ```bash
 # Backup old config
-cp -r .codebuddy .codebuddy.backup
+cp -r .typemill .typemill.backup
 
 # Rename directory
-mv .codebuddy .typemill
+mv .typemill .typemill
 
 # Update scripts
 sed -i 's/codebuddy/mill/g' scripts/*.sh
@@ -770,7 +770,7 @@ mill env migrate  # Helper command to rewrite .env files
 - Removed in v3.0.0
 
 **Configuration Directory:**
-- `.codebuddy/` fallback supported indefinitely (read-only)
+- `.typemill/` fallback supported indefinitely (read-only)
 - New configurations written to `.typemill/` only
 - Migration prompt shown on first run
 
@@ -791,7 +791,7 @@ mill env migrate  # Helper command to rewrite .env files
    - CI/CD pipelines need updating
 
 2. **Configuration Directory**
-   - `.codebuddy/` → `.typemill/`
+   - `.typemill/` → `.typemill/`
    - Automatic migration provided on first run
    - Legacy directory still read as fallback
 
@@ -878,7 +878,7 @@ mill env migrate  # Helper command to rewrite .env files
 - [ ] No unused imports or dead code introduced
 - [ ] No circular dependencies introduced
 - [ ] CLI commands work with `mill` prefix
-- [ ] Migration path tested: `.codebuddy/` → `.typemill/` works
+- [ ] Migration path tested: `.typemill/` → `.typemill/` works
 - [ ] Environment variable fallback works: `CODEBUDDY_*` → `TYPEMILL_*`
 - [ ] Documentation 100% updated and accurate
 - [ ] Docker builds succeed with new names
@@ -894,7 +894,7 @@ mill env migrate  # Helper command to rewrite .env files
 | **Phase 2**: Discovery | 2-3 hours | ✅ Complete | Run discovery tools, inventory all references |
 | **Phase 3**: Crate Renames | 6-8 hours | ✅ Complete | Rename all 9 crates using CLI |
 | **Phase 4**: Binary Rename | 1 hour | 🔄 Next | Rename ../apps/mill → apps/mill |
-| **Phase 5**: Config Paths | 2-3 hours | Pending | Update .codebuddy → .typemill references |
+| **Phase 5**: Config Paths | 2-3 hours | Pending | Update .typemill → .typemill references |
 | **Phase 6**: Plugin Macro | 1-2 hours | Pending | Rename codebuddy_plugin! → mill_plugin! |
 | **Phase 7**: Test Fixtures | 1 hour | Pending | Update test playground packages |
 | **Phase 8**: Environment Variables | 2-3 hours | Pending | Add dual-prefix support, migration helper |
@@ -963,8 +963,8 @@ mill env migrate  # Helper command to rewrite .env files
 **Configuration:**
 - `codebuddy.toml` → `typemill.toml`
 - `codebuddy.example.toml` → `typemill.example.toml`
-- `.codebuddy/config.json` → `.typemill/config.json`
-- `.codebuddy/analysis.toml` → `.typemill/analysis.toml`
+- `.typemill/config.json` → `.typemill/config.json`
+- `.typemill/analysis.toml` → `.typemill/analysis.toml`
 
 **Infrastructure:**
 - `Dockerfile`
@@ -1055,7 +1055,7 @@ mill setup
 On first run, TypeMill will automatically migrate your configuration:
 ```bash
 mill setup
-# → Detects .codebuddy/ and migrates to .typemill/
+# → Detects .typemill/ and migrates to .typemill/
 ```
 
 ### 3. Update Scripts
@@ -1076,7 +1076,7 @@ mill env migrate
 ## Backward Compatibility
 
 - Legacy `CODEBUDDY_*` environment variables work until v3.0.0
-- `.codebuddy/` directory read as fallback
+- `.typemill/` directory read as fallback
 - Deprecation warnings guide you to update
 
 ## Need Help?
@@ -1100,7 +1100,7 @@ See full documentation at https://typemill.org/docs/migration
 - **CLI command**: `codebuddy` → `mill`
 - **Project name**: CodeBuddy → TypeMill
 - **All crates renamed**: `cb-*` and `codebuddy-*` → `mill-*`
-- **Config directory**: `.codebuddy/` → `.typemill/`
+- **Config directory**: `.typemill/` → `.typemill/`
 - **Environment variables**: `CODEBUDDY_*` → `TYPEMILL_*`
 
 ### Migration
@@ -1113,7 +1113,7 @@ See full documentation at https://typemill.org/docs/migration
 ### Backward Compatibility
 
 - Legacy `CODEBUDDY_*` environment variables supported until v3.0.0
-- `.codebuddy/` configuration directory read as fallback
+- `.typemill/` configuration directory read as fallback
 - Automatic migration on first run
 
 ### Internal Changes
@@ -1189,17 +1189,17 @@ See full documentation at https://typemill.org/docs/migration
 
 - `tests/e2e/test-fixtures/rust/Cargo.toml` - Package: `codebuddy-playground` → `mill-playground`
 - `tests/e2e/test-fixtures/python/pyproject.toml` - Package: `codebuddy-playground-python` → `mill-playground-python`
-- `crates/mill-test-support/src/harness/fixtures.rs` - Java package: `com.codebuddy.example` → `com.mill.example`
+- `crates/mill-test-support/src/harness/fixtures.rs` - Java package: `com.typemill.example` → `com.mill.example`
 
 ---
 
 ### Configuration & Path Renames
 
 **Configuration Directory:**
-- `.codebuddy/` → `.typemill/`
-- `.codebuddy/config.json` → `.typemill/config.json`
-- `.codebuddy/analysis.toml` → `.typemill/analysis.toml`
-- `.codebuddy/workflows.json` → `.typemill/workflows.json`
+- `.typemill/` → `.typemill/`
+- `.typemill/config.json` → `.typemill/config.json`
+- `.typemill/analysis.toml` → `.typemill/analysis.toml`
+- `.typemill/workflows.json` → `.typemill/workflows.json`
 
 **Configuration Files:**
 - `codebuddy.toml` → `typemill.toml`
@@ -1255,7 +1255,7 @@ See full documentation at https://typemill.org/docs/migration
 
 **Scripts (10+ files):**
 - `install.sh`, `scripts/install.sh`, `scripts/new-lang.sh`
-- `.codebuddy/start-with-lsp.sh` → `.typemill/start-with-lsp.sh`
+- `.typemill/start-with-lsp.sh` → `.typemill/start-with-lsp.sh`
 - `examples/setup/install.sh`
 - Debug scripts in `.debug/` directory
 

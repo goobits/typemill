@@ -1,4 +1,4 @@
-package com.codebuddy.example.utils;
+package com.typemill.example.utils;
 
 /**
  * String processing utilities

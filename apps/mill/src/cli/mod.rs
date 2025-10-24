@@ -541,7 +541,7 @@ async fn handle_setup() {
     let config = AppConfig::default();
 
     // Determine config file path
-    let config_path = std::path::Path::new(".codebuddy/config.json");
+    let config_path = std::path::Path::new(".typemill/config.json");
 
     // Check if config already exists
     if config_path.exists() {
@@ -620,7 +620,7 @@ async fn handle_status() {
     println!("⚙️  Configuration:");
     match AppConfig::load() {
         Ok(config) => {
-            let config_path = std::path::Path::new(".codebuddy/config.json");
+            let config_path = std::path::Path::new(".typemill/config.json");
             println!("   ✅ Found at: {}", config_path.display());
             println!("   📋 Log level: {}", config.logging.level);
             println!("   📝 Log format: {:?}", config.logging.format);

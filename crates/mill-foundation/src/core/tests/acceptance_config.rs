@@ -66,8 +66,8 @@ fn test_config_load_from_toml() {
     let original_dir = env::current_dir().unwrap();
     env::set_current_dir(temp_dir.path()).unwrap();
 
-    // Create .codebuddy directory and config file
-    std::fs::create_dir_all(".codebuddy").unwrap();
+    // Create .typemill directory and config file
+    std::fs::create_dir_all(".typemill").unwrap();
     let config_content = r#"
 [server]
 host = "0.0.0.0"
@@ -96,7 +96,7 @@ persistent = true
 cacheDir = "/tmp/cache"
 "#;
 
-    std::fs::write(".codebuddy/config.toml", config_content).unwrap();
+    std::fs::write(".typemill/config.toml", config_content).unwrap();
 
     let config = AppConfig::load().unwrap();
 
@@ -166,7 +166,7 @@ fn test_config_validation_invalid_port() {
     let original_dir = env::current_dir().unwrap();
     env::set_current_dir(temp_dir.path()).unwrap();
 
-    std::fs::create_dir_all(".codebuddy").unwrap();
+    std::fs::create_dir_all(".typemill").unwrap();
     let config_content = r#"
 [server]
 host = "127.0.0.1"
@@ -194,7 +194,7 @@ ttlSeconds = 3600
 persistent = false
 "#;
 
-    std::fs::write(".codebuddy/config.toml", config_content).unwrap();
+    std::fs::write(".typemill/config.toml", config_content).unwrap();
 
     let result = AppConfig::load();
     assert!(result.is_err());
@@ -219,7 +219,7 @@ fn test_config_validation_invalid_log_level() {
     let original_dir = env::current_dir().unwrap();
     env::set_current_dir(temp_dir.path()).unwrap();
 
-    std::fs::create_dir_all(".codebuddy").unwrap();
+    std::fs::create_dir_all(".typemill").unwrap();
     let config_content = r#"
 [server]
 host = "127.0.0.1"
@@ -247,7 +247,7 @@ ttlSeconds = 3600
 persistent = false
 "#;
 
-    std::fs::write(".codebuddy/config.toml", config_content).unwrap();
+    std::fs::write(".typemill/config.toml", config_content).unwrap();
 
     let result = AppConfig::load();
     assert!(result.is_err());
@@ -272,7 +272,7 @@ fn test_config_validation_empty_lsp_servers() {
     let original_dir = env::current_dir().unwrap();
     env::set_current_dir(temp_dir.path()).unwrap();
 
-    std::fs::create_dir_all(".codebuddy").unwrap();
+    std::fs::create_dir_all(".typemill").unwrap();
     let config_content = r#"
 [server]
 host = "127.0.0.1"
@@ -296,7 +296,7 @@ ttlSeconds = 3600
 persistent = false
 "#;
 
-    std::fs::write(".codebuddy/config.toml", config_content).unwrap();
+    std::fs::write(".typemill/config.toml", config_content).unwrap();
 
     let result = AppConfig::load();
     assert!(result.is_err());

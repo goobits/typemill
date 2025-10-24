@@ -1,6 +1,6 @@
-package com.codebuddy.example.data;
+package com.typemill.example.data;
 
-import com.codebuddy.example.utils.Helper;
+import com.typemill.example.utils.Helper;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.stream.Collectors;

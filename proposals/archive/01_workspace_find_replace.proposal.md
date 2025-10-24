@@ -106,7 +106,7 @@ Implement `workspace.find_replace` as a public MCP tool with:
 - Integrates with existing TypeMill workflow
 
 **Use Cases:**
-- Configuration path updates (`.codebuddy` → `.typemill`)
+- Configuration path updates (`.typemill` → `.typemill`)
 - Environment variable prefix changes (`CODEBUDDY_*` → `TYPEMILL_*`)
 - CLI command updates in documentation
 - Project-wide naming conventions

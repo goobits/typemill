@@ -110,7 +110,7 @@ codebuddy tool workspace.find_replace --pattern "oldName" --replacement "newName
 ## ⚙️ Configuration
 ```bash
 # View current configuration
-cat .codebuddy/config.json
+cat .typemill/config.json
 
 # Restart LSP servers (if experiencing issues)
 codebuddy stop && codebuddy start
@@ -149,7 +149,7 @@ which typescript-language-server
 which rust-analyzer
 
 # Review config file
-cat .codebuddy/config.json
+cat .typemill/config.json
 ```
 
 **Tools not working:**

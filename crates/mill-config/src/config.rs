@@ -427,7 +427,7 @@ impl AppConfig {
         let figment = Figment::from(figment::providers::Serialized::defaults(default_value));
 
         // 2. Load codebuddy.toml if it exists (base configuration)
-        let toml_paths = ["codebuddy.toml", ".codebuddy/config.toml"];
+        let toml_paths = ["codebuddy.toml", ".typemill/config.toml"];
 
         let mut figment_with_toml = figment;
         let mut toml_found = false;
