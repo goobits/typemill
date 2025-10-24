@@ -409,6 +409,150 @@ tests/
 └── test-fixtures/         # Static test data
 ```
 
+## Writing Helper-Based E2E Tests
+
+The E2E test suite (tests/e2e/src/) uses **shared helper functions** to eliminate boilerplate and ensure consistency. After migration (completed Week 3), the suite reduced from **~16,226 LOC to 10,940 LOC** (32% reduction, -5,286 lines).
+
+### Core Test Helpers
+
+All helpers are in `tests/e2e/src/test_helpers.rs`:
+
+#### 1. Standard Test Pattern: `run_tool_test`
+```rust
+use crate::test_helpers::*;
+
+#[tokio::test]
+async fn test_rename_file() {
+    run_tool_test(
+        &[("old.rs", "pub fn test() {}")],  // Initial files
+        "rename.plan",                       // Tool name
+        |ws| build_rename_params(ws, "old.rs", "new.rs", "file"),  // Params builder
+        |ws| {                              // Verification closure
+            assert!(ws.file_exists("new.rs"));
+            assert!(!ws.file_exists("old.rs"));
+            Ok(())
+        }
+    ).await.unwrap();
+}
+```
+
+**What it does:**
+- Creates fresh `TestWorkspace` and `TestClient` (auto-cleanup via Drop)
+- Builds params with workspace context (absolute paths)
+- Generates plan → applies plan → runs verifications
+- Ensures test isolation (no state bleed between tests)
+
+#### 2. Plan Validation Pattern: `run_tool_test_with_plan_validation`
+```rust
+#[tokio::test]
+async fn test_rename_with_metadata_check() {
+    run_tool_test_with_plan_validation(
+        &[("file.rs", "content")],
+        "rename.plan",
+        |ws| build_rename_params(ws, "file.rs", "renamed.rs", "file"),
+        |plan| {                            // Plan validator
+            assert_eq!(plan.get("planType").and_then(|v| v.as_str()), Some("renamePlan"));
+            assert!(plan.get("metadata").is_some());
+            Ok(())
+        },
+        |ws| {                              // Result validator
+            assert!(ws.file_exists("renamed.rs"));
+            Ok(())
+        }
+    ).await.unwrap();
+}
+```
+
+**Use when:** You need to inspect the plan structure/metadata before applying.
+
+#### 3. Dry-Run Pattern: `run_dry_run_test`
+```rust
+#[tokio::test]
+async fn test_rename_dry_run() {
+    run_dry_run_test(
+        &[("original.rs", "content")],
+        "rename.plan",
+        |ws| build_rename_params(ws, "original.rs", "renamed.rs", "file"),
+        |ws| {                              // Verify no changes
+            assert!(ws.file_exists("original.rs"), "Original should still exist");
+            assert!(!ws.file_exists("renamed.rs"), "New should NOT exist");
+            Ok(())
+        }
+    ).await.unwrap();
+}
+```
+
+**Use when:** Testing that `dryRun: true` doesn't modify the workspace.
+
+#### 4. Mutation Pattern: `run_tool_test_with_mutation`
+```rust
+#[tokio::test]
+async fn test_checksum_validation() {
+    run_tool_test_with_mutation(
+        &[("file.rs", "original")],
+        "rename.plan",
+        |ws| build_rename_params(ws, "file.rs", "renamed.rs", "file"),
+        |ws, _plan| {                       // Mutation hook (between plan and apply)
+            ws.create_file("file.rs", "MODIFIED");  // Corrupt checksum
+        },
+        |ws| {                              // Verify apply failed
+            assert!(ws.file_exists("file.rs"), "Should fail validation, stay unchanged");
+            Ok(())
+        }
+    ).await.unwrap();
+}
+```
+
+**Use when:** Testing checksum validation or other plan→apply state changes.
+
+### Parameter Builders
+
+Use these helpers to build tool parameters with absolute paths:
+
+```rust
+// Rename operations
+build_rename_params(ws, "old.rs", "new.rs", "file")
+
+// Move operations
+build_move_params(ws, "src/file.rs", "lib/file.rs", "file")
+
+// Delete operations
+build_delete_params(ws, "unused.rs", "file")
+```
+
+**Why closures?** The params builder runs AFTER workspace creation, so paths are always absolute and correct.
+
+### Migration Impact (Week 3 Completion)
+
+**Before (Week 1):** 16,226 LOC
+**After (Week 3):** 10,940 LOC
+**Reduction:** -5,286 lines (32%)
+
+**Affected files:** 36 test files migrated
+- `test_rename_integration.rs`: 357 lines → ~140 lines (61% reduction)
+- `test_move_with_imports.rs`: 314 lines → ~176 lines (44% reduction)
+- `dry_run_integration.rs`: 747 lines → ~195 lines (74% reduction)
+- `test_workspace_apply_integration.rs`: 611 lines → ~195 lines (68% reduction)
+
+**Test performance:**
+- Suite runtime: ~2.0s for 198 tests (100% passing)
+- Parallel execution maintained via fresh instances
+
+### Best Practices
+
+1. **Always use helpers for refactoring tests** - Avoid manual `TestWorkspace::new()` + `TestClient::new()` patterns
+2. **Use closure-based param builders** - Never hardcode paths before workspace creation
+3. **One assertion focus per test** - Keep tests simple and readable
+4. **Leverage fixtures for complex setups** - See `mill-test-support/src/harness/mcp_fixtures.rs`
+5. **Test isolation is automatic** - Each helper creates fresh workspace/client with Drop cleanup
+
+### When NOT to Use Helpers
+
+Some tests intentionally skip helpers:
+- **LSP-dependent tests** (extract, inline, transform) - Require error handling for LSP unavailability
+- **Complex workspace validation** (consolidation) - Need custom Cargo.toml inspection
+- **Analysis tests** - Use different request/response patterns
+
 ## Next Steps
 
 To expand test coverage:
