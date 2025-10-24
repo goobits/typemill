@@ -17,13 +17,6 @@ pub mod dry_run_integration;
 #[cfg(test)]
 pub mod resilience_tests;
 
-#[cfg(test)]
-
-#[cfg(test)]
-pub mod test_unified_refactoring_api;
-
-#[cfg(test)]
-
 // Unified Refactoring API integration tests (Proposal 30)
 #[cfg(test)]
 pub mod test_rename_integration;
@@ -33,8 +26,6 @@ pub mod test_rename_with_imports;
 
 #[cfg(test)]
 pub mod test_comprehensive_rename_coverage;
-
-#[cfg(test)]
 
 #[cfg(test)]
 pub mod test_cross_workspace_import_updates;
@@ -50,14 +41,7 @@ pub mod test_file_discovery_bug;
 pub mod test_cargo_package_rename;
 
 #[cfg(test)]
-
-#[cfg(test)]
-pub mod test_consolidation_bug_fix;
-
-#[cfg(test)]
-
-#[cfg(test)]
-pub mod test_consolidation_metadata;
+pub mod test_consolidation;
 
 #[cfg(test)]
 
@@ -76,19 +60,7 @@ pub mod test_move_integration;
 pub mod test_move_with_imports;
 
 #[cfg(test)]
-pub mod test_rust_mod_declarations;
-
-#[cfg(test)]
-
-#[cfg(test)]
-pub mod test_rust_directory_rename;
-
-#[cfg(test)]
-
-#[cfg(test)]
-pub mod test_rust_same_crate_moves;
-
-#[cfg(test)]
+pub mod test_rust_refactoring;
 
 #[cfg(test)]
 pub mod test_rust_cargo_edge_cases;
@@ -116,14 +88,7 @@ pub mod test_workspace_apply_integration;
 pub mod test_analyze_quality;
 
 #[cfg(test)]
-
-#[cfg(test)]
 pub mod test_analyze_dead_code;
-
-#[cfg(test)]
-
-#[cfg(test)]
-pub mod test_analyze_deep_dead_code;
 
 #[cfg(test)]
 

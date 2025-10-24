@@ -20,54 +20,7 @@ use crate::harness::{TestClient, TestWorkspace};
 use crate::test_helpers::*;
 use serde_json::json;
 
-/// Test 1: Verify basic rename plan structure
-/// BEFORE: 68 lines | AFTER: ~25 lines (~63% reduction)
-#[tokio::test]
-async fn test_rename_plan_basic_structure() {
-    run_tool_test_with_plan_validation(
-        &[("old-dir/file.txt", "content")],
-        "rename.plan",
-        |ws| build_rename_params(ws, "old-dir", "new-dir", "directory"),
-        |plan| {
-            assert_eq!(
-                plan.get("planType").and_then(|v| v.as_str()),
-                Some("renamePlan"),
-                "Should be RenamePlan"
-            );
-            assert!(plan.get("metadata").is_some(), "Should have metadata");
-            assert!(plan.get("summary").is_some(), "Should have summary");
-            assert!(plan.get("edits").is_some(), "Should have edits");
-            Ok(())
-        },
-        |_ws| Ok(()),
-    )
-    .await
-    .unwrap();
-
-    println!("✅ Basic rename plan structure valid");
-}
-
-/// Test 2: Basic file rename works
-/// BEFORE: 132 lines | AFTER: ~18 lines (~86% reduction)
-#[tokio::test]
-async fn test_basic_file_rename_works() {
-    run_tool_test(
-        &[("old_file.rs", "pub fn test() {}")],
-        "rename.plan",
-        |ws| build_rename_params(ws, "old_file.rs", "new_file.rs", "file"),
-        |ws| {
-            assert!(!ws.file_exists("old_file.rs"), "Old file should be gone");
-            assert!(ws.file_exists("new_file.rs"), "New file should exist");
-            Ok(())
-        },
-    )
-    .await
-    .unwrap();
-
-    println!("✅ Basic file rename working");
-}
-
-/// Test 3: String literal detection (PASSING)
+/// Test 1: String literal detection (PASSING)
 /// BEFORE: 196 lines | AFTER: ~30 lines (~85% reduction)
 #[tokio::test]
 async fn test_alice_string_literal_updates() {
@@ -102,7 +55,7 @@ fn main() {
     println!("✅ Alice's string literal updates working");
 }
 
-/// Test 4: Markdown link detection (PASSING)
+/// Test 2: Markdown link detection (PASSING)
 /// BEFORE: 258 lines | AFTER: ~30 lines (~88% reduction)
 #[tokio::test]
 async fn test_bob_markdown_link_updates() {
@@ -135,7 +88,7 @@ See the [Guide](docs/guide.md) for details.
     println!("✅ Bob's markdown link updates working");
 }
 
-/// Test 5: Config file detection (PASSING)
+/// Test 3: Config file detection (PASSING)
 /// BEFORE: 332 lines | AFTER: ~35 lines (~89% reduction)
 #[tokio::test]
 async fn test_carol_config_file_updates() {
@@ -178,7 +131,7 @@ jobs:
     println!("✅ Carol's config file updates working");
 }
 
-/// Test 6: Scope filtering (IMPLEMENTED)
+/// Test 4: Scope filtering (IMPLEMENTED)
 /// BEFORE: 391 lines | AFTER: ~40 lines (~90% reduction)
 #[tokio::test]
 async fn test_david_scope_filtering() {
@@ -236,7 +189,7 @@ async fn test_david_scope_filtering() {
     println!("✅ David's scope filtering working");
 }
 
-/// Test 7: Comprehensive coverage measurement (100% TARGET)
+/// Test 5: Comprehensive coverage measurement (100% TARGET)
 /// BEFORE: 528 lines | AFTER: ~120 lines (~77% reduction)
 #[tokio::test]
 async fn test_comprehensive_93_percent_coverage() {

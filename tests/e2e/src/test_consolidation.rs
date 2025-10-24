@@ -1,24 +1,297 @@
-//! Integration test for consolidation bug fix (MIGRATED VERSION)
+//! Rust crate consolidation tests (CONSOLIDATED VERSION)
 //!
-//! BEFORE: 346 lines with duplicated setup/plan/apply/verify logic
-//! AFTER: Using shared helpers from test_helpers.rs
+//! BEFORE: 2 files with 631 total lines and duplicated setup
+//! AFTER: Single file with shared helpers (~400 lines)
 //!
-//! This test verifies that the consolidation bug has been fixed correctly.
-//! The bug had two symptoms:
-//! 1. Incorrect workspace members (nested modules like "crates/app/src/lib_mod" were added)
-//! 2. Incorrect path dependencies (other crates got path = "../app/src/lib_mod")
+//! Consolidation combines these test scenarios:
+//! - Metadata & Auto-Detection (from test_consolidation_metadata.rs)
+//! - Execution & Bug Fixes (from test_consolidation_bug_fix.rs)
 //!
-//! The fix involves three components:
-//! 1. Auto-detect consolidation moves (paths ending in src/something)
-//! 2. Filter Cargo.toml from generic path updates during consolidation
-//! 3. Remove path attributes from dependencies (force workspace resolution)
+//! Consolidation merges one crate into another's src/ directory:
+//! 1. Moves source-crate/src/* into target-crate/src/module/*
+//! 2. Merges dependencies from source Cargo.toml into target Cargo.toml
+//! 3. Removes source crate from workspace members
+//! 4. Updates all imports across workspace
+//! 5. Deletes the source crate directory
 
 use crate::harness::{TestClient, TestWorkspace};
+use crate::test_helpers::*;
 use serde_json::json;
 
+// ============================================================================
+// Shared Helper Functions
+// ============================================================================
+
+/// Helper to setup standard consolidation test workspace
+fn setup_consolidation_workspace(workspace: &TestWorkspace) {
+    // Create root workspace Cargo.toml
+    workspace.create_file(
+        "Cargo.toml",
+        r#"
+[workspace]
+members = [
+    "crates/app",
+    "crates/lib",
+]
+"#,
+    );
+
+    // Create source crate (to be consolidated)
+    workspace.create_directory("crates/lib/src");
+    workspace.create_file(
+        "crates/lib/Cargo.toml",
+        r#"
+[package]
+name = "lib"
+version = "0.1.0"
+edition = "2021"
+"#,
+    );
+    workspace.create_file("crates/lib/src/lib.rs", "pub fn helper() {}");
+
+    // Create target crate (consolidation target)
+    workspace.create_directory("crates/app/src");
+    workspace.create_file(
+        "crates/app/Cargo.toml",
+        r#"
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lib = { path = "../lib" }
+"#,
+    );
+    workspace.create_file("crates/app/src/lib.rs", "// app crate");
+}
+
+/// Helper to validate consolidation metadata flag and warning
+fn validate_consolidation_metadata(plan: &serde_json::Value, expected_consolidation: bool) -> anyhow::Result<()> {
+    // Verify is_consolidation flag
+    assert_eq!(
+        plan.get("isConsolidation").and_then(|v| v.as_bool()),
+        Some(expected_consolidation),
+        "Plan should have is_consolidation={}",
+        expected_consolidation
+    );
+
+    // Verify consolidation warning presence
+    let warnings = plan
+        .get("warnings")
+        .and_then(|w| w.as_array())
+        .expect("Plan should have warnings array");
+
+    let has_consolidation_warning = warnings.iter().any(|w| {
+        w.get("code")
+            .and_then(|c| c.as_str())
+            .map(|code| code == "CONSOLIDATION_MANUAL_STEP")
+            .unwrap_or(false)
+    });
+
+    if expected_consolidation {
+        assert!(
+            has_consolidation_warning,
+            "Consolidation plan should have CONSOLIDATION_MANUAL_STEP warning"
+        );
+
+        // Verify warning message mentions lib.rs
+        let consolidation_warning = warnings
+            .iter()
+            .find(|w| {
+                w.get("code")
+                    .and_then(|c| c.as_str())
+                    .map(|code| code == "CONSOLIDATION_MANUAL_STEP")
+                    .unwrap_or(false)
+            })
+            .expect("Should find consolidation warning");
+
+        let message = consolidation_warning
+            .get("message")
+            .and_then(|m| m.as_str())
+            .expect("Warning should have message");
+
+        assert!(
+            message.contains("pub mod"),
+            "Warning should mention adding 'pub mod' declaration"
+        );
+        assert!(
+            message.contains("lib.rs"),
+            "Warning should mention lib.rs file"
+        );
+    } else {
+        assert!(
+            !has_consolidation_warning,
+            "Non-consolidation plan should NOT have consolidation warning"
+        );
+    }
+
+    Ok(())
+}
+
+// ============================================================================
+// Section 1: Metadata & Auto-Detection Tests
+// ============================================================================
+
+/// Test that is_consolidation flag is set when explicitly requested
+#[tokio::test]
+async fn test_consolidation_flag_explicit() {
+    let workspace = TestWorkspace::new();
+    setup_consolidation_workspace(&workspace);
+
+    let mut client = TestClient::new(workspace.path());
+
+    // Generate consolidation plan with explicit flag
+    let plan_result = client
+        .call_tool(
+            "rename.plan",
+            json!({
+                "target": {
+                    "kind": "directory",
+                    "path": workspace.absolute_path("crates/lib").to_string_lossy()
+                },
+                "newName": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy(),
+                "options": {
+                    "consolidate": true
+                }
+            }),
+        )
+        .await
+        .expect("rename.plan should succeed");
+
+    let plan = plan_result
+        .get("result")
+        .and_then(|r| r.get("content"))
+        .expect("Plan should exist");
+
+    // Validate consolidation metadata
+    validate_consolidation_metadata(plan, true).unwrap();
+
+    println!("✓ Consolidation flag and warning correctly set with explicit consolidate: true");
+}
+
+/// Test that is_consolidation is auto-detected for typical patterns
+#[tokio::test]
+async fn test_consolidation_auto_detection() {
+    let workspace = TestWorkspace::new();
+    setup_consolidation_workspace(&workspace);
+
+    let mut client = TestClient::new(workspace.path());
+
+    // Generate plan WITHOUT explicit consolidate flag
+    // Auto-detection should kick in: source has Cargo.toml, target is inside another crate's src/
+    let plan_result = client
+        .call_tool(
+            "rename.plan",
+            json!({
+                "target": {
+                    "kind": "directory",
+                    "path": workspace.absolute_path("crates/lib").to_string_lossy()
+                },
+                "newName": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy()
+                // NOTE: No "options.consolidate" specified
+            }),
+        )
+        .await
+        .expect("rename.plan should succeed");
+
+    let plan = plan_result
+        .get("result")
+        .and_then(|r| r.get("content"))
+        .expect("Plan should exist");
+
+    // Verify is_consolidation was auto-detected
+    validate_consolidation_metadata(plan, true).unwrap();
+
+    println!("✓ Consolidation auto-detected correctly (source=crate, target=inside src/)");
+}
+
+/// Test that explicit consolidate: false overrides auto-detection
+#[tokio::test]
+async fn test_consolidation_override_auto_detection() {
+    let workspace = TestWorkspace::new();
+    setup_consolidation_workspace(&workspace);
+
+    let mut client = TestClient::new(workspace.path());
+
+    // Generate plan with explicit consolidate: false to override auto-detection
+    let plan_result = client
+        .call_tool(
+            "rename.plan",
+            json!({
+                "target": {
+                    "kind": "directory",
+                    "path": workspace.absolute_path("crates/lib").to_string_lossy()
+                },
+                "newName": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy(),
+                "options": {
+                    "consolidate": false  // Explicitly disable consolidation
+                }
+            }),
+        )
+        .await
+        .expect("rename.plan should succeed");
+
+    let plan = plan_result
+        .get("result")
+        .and_then(|r| r.get("content"))
+        .expect("Plan should exist");
+
+    // Verify is_consolidation is false (override worked)
+    validate_consolidation_metadata(plan, false).unwrap();
+
+    println!("✓ Explicit consolidate=false correctly overrides auto-detection");
+}
+
+/// Test that is_consolidation is false for non-consolidation renames
+#[tokio::test]
+async fn test_non_consolidation_rename() {
+    run_tool_test_with_plan_validation(
+        &[("src/old_dir/file.rs", "pub fn test() {}")],
+        "rename.plan",
+        |ws| {
+            json!({
+                "target": {
+                    "kind": "directory",
+                    "path": ws.absolute_path("src/old_dir").to_string_lossy()
+                },
+                "newName": ws.absolute_path("src/new_dir").to_string_lossy()
+            })
+        },
+        |plan| {
+            // Verify is_consolidation is false
+            let is_consolidation = plan
+                .get("isConsolidation")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+
+            assert_eq!(
+                is_consolidation, false,
+                "Normal directory rename should have is_consolidation=false"
+            );
+
+            // Verify NO consolidation warning
+            validate_consolidation_metadata(plan, false)?;
+
+            println!("✓ Normal directory rename correctly has is_consolidation=false");
+            Ok(())
+        },
+        |_ws| {
+            // No post-execution verification needed
+            Ok(())
+        }
+    )
+    .await
+    .unwrap();
+}
+
+// ============================================================================
+// Section 2: Execution & Bug Fixes Tests
+// ============================================================================
+
 /// Test consolidation plan generation - verifies Cargo.toml files are NOT in the plan
-/// BEFORE: 178 lines | AFTER: ~90 lines (~49% reduction)
-/// NOTE: Manual approach needed for complex validation of plan structure
+/// This test verifies the bug fix: Cargo.toml updates should NOT appear in generic
+/// path update edits. They're handled separately via semantic updates.
 #[tokio::test]
 async fn test_consolidation_plan_excludes_cargo_toml() {
     let workspace = TestWorkspace::new();
@@ -183,8 +456,9 @@ fn main() {
 }
 
 /// Test consolidation execution - verifies workspace members and dependencies are correct
-/// BEFORE: 168 lines | AFTER: ~130 lines (~23% reduction)
-/// NOTE: Manual approach needed for complex post-execution verification
+/// This test verifies the bug fix worked end-to-end:
+/// - Workspace members should NOT contain nested paths like "crates/app/src/lib_mod"
+/// - App's Cargo.toml should NOT have incorrect path dependencies
 #[tokio::test]
 async fn test_consolidation_execution_correctness() {
     let workspace = TestWorkspace::new();
