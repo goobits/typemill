@@ -2,20 +2,27 @@
 
 > **🐶 DOGFOODING NOTE**: This proposal demonstrates using TypeMill's own CLI commands to perform the rename operation. All file movements, symbol renames, and refactoring operations will be executed using the `mill` CLI (via `rename.plan`, `move.plan`, and `workspace.apply_edit` commands) rather than manual text replacement. This serves as both a practical implementation guide and a validation of TypeMill's LSP-backed refactoring capabilities on a real-world, complex codebase.
 
-**Status**: In Progress (Phase 3 - Language Plugins Complete ✅)
+**Status**: In Progress (Phase 3 Complete ✅ - Moving to Phase 4)
 **Author**: Project Team
 **Date**: 2025-10-20
-**Updated**: 2025-10-22
+**Updated**: 2025-10-23
 **Current Name**: `codebuddy` / `codebuddy` CLI
 **Proposed Name**: `typemill` / `mill` CLI
 
-## Progress Update (2025-10-22)
+## Progress Update (2025-10-23)
 
 **Completed:**
-- ✅ **Phase 3a: Language Plugin Renames** (3/3 crates)
-  - `cb-lang-rust` → `mill-lang-rust` (commit 4f12e96b, fab598ae)
-  - `cb-lang-typescript` → `mill-lang-typescript` (commit 65aca23e)
-  - `cb-lang-yaml` → `mill-lang-yaml` (commit 4f12e96b)
+- ✅ **Phase 3: All Crate Renames Complete** (9/9 crates)
+  - **Language Plugins (3/3):**
+    - `cb-lang-rust` → `mill-lang-rust` (commit 4f12e96b, fab598ae)
+    - `cb-lang-typescript` → `mill-lang-typescript` (commit 65aca23e)
+    - `cb-lang-yaml` → `mill-lang-yaml` (commit 4f12e96b)
+  - **Analysis Crates (5/5):**
+    - `cb-analysis-common` → `mill-analysis-common` ✅
+    - `cb-analysis-dead-code` → `mill-analysis-dead-code` ✅
+    - `cb-analysis-deep-dead-code` → `mill-analysis-deep-dead-code` ✅
+    - `cb-analysis-graph` → `mill-analysis-graph` ✅
+    - `cb-analysis-circular-deps` → `mill-analysis-circular-deps` ✅
   - All workspace members, dependencies, and config files updated
   - Build passes without manual intervention
 
@@ -31,10 +38,15 @@
   - Enabled `update_exact_matches` in default scope
 
 **Next Steps:**
-- Phase 3b: Analysis crate renames (5 remaining: cb-analysis-*)
-- Phase 4: Application binary rename (apps/codebuddy → apps/typemill)
-- Phase 5: String literals and environment variables
-- Phase 6: Documentation and infrastructure
+- **Phase 4**: Application binary rename (apps/codebuddy → apps/mill)
+- **Phase 5**: Configuration directory path updates
+- **Phase 6**: Plugin macro rename
+- **Phase 7**: Test fixture updates
+- **Phase 8**: Environment variable updates
+- **Phase 9**: Documentation and string literals
+- **Phase 10**: Infrastructure files
+- **Phase 11**: Validation
+- **Phase 12**: Release
 
 ---
 
@@ -386,18 +398,6 @@ cargo run --bin mill
 
 This rename operation will dogfood TypeMill's own refactoring capabilities using the CLI interface.
 
-### Phase 1: Preparation & Backup
-
-```bash
-# Create backup and branch
-git checkout -b rename-to-typemill
-git tag pre-typemill-rename
-
-# Ensure mill CLI is available (build current version as codebuddy first)
-cargo build --release
-alias codebuddy="./target/release/codebuddy"
-```
-
 ### Phase 2: Discovery & Analysis
 
 Use TypeMill's own CLI to discover all references:
@@ -420,78 +420,23 @@ rg '"codebuddy"' --type rust
 rg "'codebuddy'" --type rust
 ```
 
-### Phase 3: Crate Renames (9 Crates)
+### Phase 3: Crate Renames (9 Crates) - ✅ COMPLETE
 
-**NOTE:** 18 crates already use `mill-*` prefix and don't need renaming.
+**All 9 crates successfully renamed to `mill-*` prefix!**
 
-Rename remaining crate directories using `rename.plan` + `workspace.apply_edit`:
+- ✅ Language Plugins (3/3):
+  - `cb-lang-rust` → `mill-lang-rust`
+  - `cb-lang-typescript` → `mill-lang-typescript`
+  - `cb-lang-yaml` → `mill-lang-yaml`
 
-```bash
-# Language Plugins (3 crates)
-codebuddy rename.plan \
-  --target directory:../crates/mill-lang-rust \
-  --new-name crates/mill-lang-rust \
-  --dry-run
+- ✅ Analysis Crates (5/5):
+  - `cb-analysis-common` → `mill-analysis-common`
+  - `cb-analysis-dead-code` → `mill-analysis-dead-code`
+  - `cb-analysis-deep-dead-code` → `mill-analysis-deep-dead-code`
+  - `cb-analysis-graph` → `mill-analysis-graph`
+  - `cb-analysis-circular-deps` → `mill-analysis-circular-deps`
 
-codebuddy rename.plan \
-  --target directory:../crates/mill-lang-typescript \
-  --new-name crates/mill-lang-typescript \
-  --dry-run
-
-codebuddy rename.plan \
-  --target directory:../crates/mill-lang-yaml \
-  --new-name crates/mill-lang-yaml \
-  --dry-run
-
-# Analysis Crates (5 crates)
-codebuddy rename.plan \
-  --target directory:../analysis/mill-analysis-common \
-  --new-name analysis/mill-analysis-common \
-  --dry-run
-
-codebuddy rename.plan \
-  --target directory:../analysis/mill-analysis-dead-code \
-  --new-name analysis/mill-analysis-dead-code \
-  --dry-run
-
-codebuddy rename.plan \
-  --target directory:../analysis/mill-analysis-deep-dead-code \
-  --new-name analysis/mill-analysis-deep-dead-code \
-  --dry-run
-
-codebuddy rename.plan \
-  --target directory:../analysis/mill-analysis-graph \
-  --new-name analysis/mill-analysis-graph \
-  --dry-run
-
-codebuddy rename.plan \
-  --target directory:../analysis/mill-analysis-circular-deps \
-  --new-name analysis/mill-analysis-circular-deps \
-  --dry-run
-
-# Review each plan, then apply
-codebuddy workspace.apply_edit --plan <plan-from-above>
-
-# Verify after each rename
-codebuddy get_diagnostics --scope workspace
-```
-
-**OR use batch rename for efficiency:**
-```bash
-codebuddy rename.plan '{
-  "targets": [
-    {"kind": "directory", "path": "../crates/mill-lang-rust", "newName": "crates/mill-lang-rust"},
-    {"kind": "directory", "path": "../crates/mill-lang-typescript", "newName": "crates/mill-lang-typescript"},
-    {"kind": "directory", "path": "../crates/mill-lang-yaml", "newName": "crates/mill-lang-yaml"},
-    {"kind": "directory", "path": "../analysis/mill-analysis-common", "newName": "analysis/mill-analysis-common"},
-    {"kind": "directory", "path": "../analysis/mill-analysis-dead-code", "newName": "analysis/mill-analysis-dead-code"},
-    {"kind": "directory", "path": "../analysis/mill-analysis-deep-dead-code", "newName": "analysis/mill-analysis-deep-dead-code"},
-    {"kind": "directory", "path": "../analysis/mill-analysis-graph", "newName": "analysis/mill-analysis-graph"},
-    {"kind": "directory", "path": "../analysis/mill-analysis-circular-deps", "newName": "analysis/mill-analysis-circular-deps"}
-  ],
-  "options": {"scope": "all"}
-}'
-```
+**NOTE:** 18 crates already used `mill-*` prefix and didn't need renaming.
 
 ### Phase 4: Binary and App Rename
 
@@ -677,30 +622,21 @@ git tag v2.0.0
 
 ## Detailed Checklists
 
-### Pre-Implementation Checklist
-
-- [ ] Create backup: `git checkout -b rename-to-typemill`
-- [ ] Create git tag: `git tag pre-typemill-rename`
-- [ ] Build current version: `cargo build --release`
-- [ ] Run discovery commands to inventory all references
-- [ ] Document all CODEBUDDY_* environment variables in use
-- [ ] Review and approve this proposal with team
-
-### Crate Rename Checklist (9 crates needing rename)
+### Crate Rename Checklist - ✅ COMPLETE
 
 **NOTE:** 18 crates already use `mill-*` prefix ✓
 
 **Language Plugins (3 crates):**
-- [ ] `../crates/mill-lang-rust` → `crates/mill-lang-rust`
-- [ ] `../crates/mill-lang-typescript` → `crates/mill-lang-typescript`
-- [ ] `../crates/mill-lang-yaml` → `crates/mill-lang-yaml`
+- [x] `cb-lang-rust` → `mill-lang-rust` ✅
+- [x] `cb-lang-typescript` → `mill-lang-typescript` ✅
+- [x] `cb-lang-yaml` → `mill-lang-yaml` ✅
 
 **Analysis (5 crates):**
-- [ ] `../analysis/mill-analysis-common` → `analysis/mill-analysis-common`
-- [ ] `../analysis/mill-analysis-dead-code` → `analysis/mill-analysis-dead-code`
-- [ ] `../analysis/mill-analysis-deep-dead-code` → `analysis/mill-analysis-deep-dead-code`
-- [ ] `../analysis/mill-analysis-graph` → `analysis/mill-analysis-graph`
-- [ ] `../analysis/mill-analysis-circular-deps` → `analysis/mill-analysis-circular-deps`
+- [x] `cb-analysis-common` → `mill-analysis-common` ✅
+- [x] `cb-analysis-dead-code` → `mill-analysis-dead-code` ✅
+- [x] `cb-analysis-deep-dead-code` → `mill-analysis-deep-dead-code` ✅
+- [x] `cb-analysis-graph` → `mill-analysis-graph` ✅
+- [x] `cb-analysis-circular-deps` → `mill-analysis-circular-deps` ✅
 
 **Applications:**
 - [ ] `apps/codebuddy` → `apps/mill` (including binary name)
@@ -953,20 +889,23 @@ mill env migrate  # Helper command to rewrite .env files
 
 ## Timeline Estimate
 
-| Phase | Duration | Description |
-|-------|----------|-------------|
-| **Phase 1**: Preparation | 1-2 hours | Backup, branch, build current version |
-| **Phase 2**: Discovery | 2-3 hours | Run discovery tools, inventory all references |
-| **Phase 3**: Crate Renames | 6-8 hours | Rename all 27 crates using CLI (can be scripted) |
-| **Phase 4**: Binary Rename | 1 hour | Rename apps/codebuddy → apps/mill |
-| **Phase 5**: Config Paths | 2-3 hours | Update .codebuddy → .typemill references |
-| **Phase 6**: Environment Variables | 2-3 hours | Add dual-prefix support, migration helper |
-| **Phase 7**: Documentation | 4-6 hours | Update all markdown, TOML, YAML files |
-| **Phase 8**: Infrastructure | 2-3 hours | Docker, CI/CD, scripts |
-| **Phase 9**: Validation | 3-4 hours | Build, test, diagnostics, analysis |
-| **Phase 10**: Release Prep | 2-3 hours | MIGRATION.md, CHANGELOG.md, versioning |
+| Phase | Duration | Status | Description |
+|-------|----------|--------|-------------|
+| **Phase 2**: Discovery | 2-3 hours | ✅ Complete | Run discovery tools, inventory all references |
+| **Phase 3**: Crate Renames | 6-8 hours | ✅ Complete | Rename all 9 crates using CLI |
+| **Phase 4**: Binary Rename | 1 hour | 🔄 Next | Rename apps/codebuddy → apps/mill |
+| **Phase 5**: Config Paths | 2-3 hours | Pending | Update .codebuddy → .typemill references |
+| **Phase 6**: Plugin Macro | 1-2 hours | Pending | Rename codebuddy_plugin! → mill_plugin! |
+| **Phase 7**: Test Fixtures | 1 hour | Pending | Update test playground packages |
+| **Phase 8**: Environment Variables | 2-3 hours | Pending | Add dual-prefix support, migration helper |
+| **Phase 9**: Documentation | 4-6 hours | Pending | Update all markdown, TOML, YAML files |
+| **Phase 10**: Infrastructure | 2-3 hours | Pending | Docker, CI/CD, scripts |
+| **Phase 11**: Validation | 3-4 hours | Pending | Build, test, diagnostics, analysis |
+| **Phase 12**: Release Prep | 2-3 hours | Pending | MIGRATION.md, CHANGELOG.md, versioning |
 
-**Total Estimate**: 25-35 hours (3-5 days of focused work)
+**Total Estimate**: 22-33 hours (3-4 days of focused work)
+**Completed**: ~8-11 hours (Phase 2-3)
+**Remaining**: ~14-22 hours
 
 ---
 
