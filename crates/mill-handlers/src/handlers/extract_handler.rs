@@ -7,7 +7,7 @@
     clippy::manual_clamp
 )]
 
-//! Extract operation handler - implements extract.plan() command
+//! Extract operation handler - implements extract command with dryRun option
 //!
 //! Supports extracting code elements into new functions, variables, constants, or modules.
 //! This handler reuses existing AST refactoring logic from mill-ast and language plugins.
@@ -41,7 +41,7 @@ impl ExtractHandler {
 
         // Deserialize parameters
         let params: ExtractPlanParams = serde_json::from_value(args).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid extract.plan parameters: {}", e))
+            ServerError::InvalidRequest(format!("Invalid extract parameters: {}", e))
         })?;
 
         debug!(

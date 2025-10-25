@@ -7,7 +7,7 @@
     clippy::manual_clamp
 )]
 
-//! Inline operation handler - implements inline.plan() command
+//! Inline operation handler - implements inline command with dryRun option
 //!
 //! Supports inlining variables, functions, and constants by replacing references
 //! with their definitions. This handler reuses existing AST refactoring logic.
@@ -40,7 +40,7 @@ impl InlineHandler {
 
         // Deserialize parameters
         let params: InlinePlanParams = serde_json::from_value(args).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid inline.plan parameters: {}", e))
+            ServerError::InvalidRequest(format!("Invalid inline parameters: {}", e))
         })?;
 
         debug!(

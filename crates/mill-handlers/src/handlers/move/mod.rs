@@ -1,6 +1,6 @@
 //! Move handler for Unified Refactoring API
 //!
-//! Implements `move.plan` command for:
+//! Implements `move` command with dryRun option for:
 //! - Symbol moving (via LSP if available, else AST fallback)
 //! - File moving (via FileService)
 //! - Directory moving (via FileService)
@@ -119,16 +119,16 @@ impl ToolHandler for MoveHandler {
         info!(
             operation_id = %operation_id,
             tool_name = %tool_call.name,
-            "Starting move.plan operation"
+            "Starting move operation"
         );
 
         // Parse parameters
         let args = tool_call.arguments.clone().ok_or_else(|| {
             error!(
                 operation_id = %operation_id,
-                "Missing arguments for move.plan"
+                "Missing arguments for move"
             );
-            ServerError::InvalidRequest("Missing arguments for move.plan".into())
+            ServerError::InvalidRequest("Missing arguments for move".into())
         })?;
 
         let params: MovePlanParams = serde_json::from_value(args.clone()).map_err(|e| {
@@ -136,9 +136,9 @@ impl ToolHandler for MoveHandler {
                 operation_id = %operation_id,
                 error = %e,
                 arguments = ?args,
-                "Failed to parse move.plan parameters"
+                "Failed to parse move parameters"
             );
-            ServerError::InvalidRequest(format!("Invalid move.plan parameters: {}", e))
+            ServerError::InvalidRequest(format!("Invalid move parameters: {}", e))
         })?;
 
         info!(

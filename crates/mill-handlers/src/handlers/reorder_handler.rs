@@ -1,6 +1,6 @@
 //! Reorder handler for Unified Refactoring API
 //!
-//! Implements `reorder.plan` command for:
+//! Implements `reorder` command with dryRun option for:
 //! - Reordering function parameters
 //! - Reordering struct fields
 //! - Reordering imports

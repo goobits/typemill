@@ -1,6 +1,6 @@
 //! Rename handler for Unified Refactoring API
 //!
-//! Implements `rename.plan` command for:
+//! Implements `rename` command with dryRun option for:
 //! - Symbol renaming (via LSP)
 //! - File renaming (via MoveService)
 //! - Directory renaming (via MoveService)
@@ -156,15 +156,15 @@ impl ToolHandler for RenameHandler {
         context: &ToolHandlerContext,
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        info!(tool_name = %tool_call.name, "Handling rename.plan");
+        info!(tool_name = %tool_call.name, "Handling rename");
 
         // Parse parameters
         let args = tool_call.arguments.clone().ok_or_else(|| {
-            ServerError::InvalidRequest("Missing arguments for rename.plan".into())
+            ServerError::InvalidRequest("Missing arguments for rename".into())
         })?;
 
         let params: RenamePlanParams = serde_json::from_value(args).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid rename.plan parameters: {}", e))
+            ServerError::InvalidRequest(format!("Invalid rename parameters: {}", e))
         })?;
 
         // Validate parameters: must have either target or targets, but not both

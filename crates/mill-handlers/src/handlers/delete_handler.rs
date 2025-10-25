@@ -1,6 +1,6 @@
 //! Delete handler for Unified Refactoring API
 //!
-//! Implements `delete.plan` command for:
+//! Implements `delete` command with dryRun option for:
 //! - Symbol deletion (AST-based - placeholder)
 //! - File deletion (via FileService)
 //! - Directory deletion (via FileService)

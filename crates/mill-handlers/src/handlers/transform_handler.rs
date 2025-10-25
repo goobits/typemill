@@ -1,6 +1,6 @@
 //! Transform handler for Unified Refactoring API
 //!
-//! Implements `transform.plan` command for:
+//! Implements `transform` command with dryRun option for:
 //! - Converting between types (e.g., if-else to match)
 //! - Adding/removing async/await
 //! - Converting function to closure

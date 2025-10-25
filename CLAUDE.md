@@ -40,10 +40,14 @@ TypeMill provides comprehensive MCP tools for code intelligence and refactoring.
 - `find_implementations`, `find_type_definition`, `get_symbol_info`
 - `get_diagnostics`, `get_call_hierarchy`
 
-**Editing & Refactoring (15 tools - Unified API)**
-- **Plan Operations (7 tools)**: `rename.plan`, `extract.plan`, `inline.plan`, `move.plan`, `reorder.plan`, `transform.plan`, `delete.plan`
-- **Quick Operations (7 tools)**: `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete` (one-step plan+execute)
-- **Apply**: `workspace.apply_edit` (executes any plan)
+**Editing & Refactoring (7 tools - Unified API with dryRun)**
+- `rename` (symbol, file, directory - with `options.dryRun`)
+- `extract` (function, variable, constant, module - with `options.dryRun`)
+- `inline` (variable, function, constant - with `options.dryRun`)
+- `move` (symbol, file, directory, module - with `options.dryRun`)
+- `reorder` (parameters - with `options.dryRun`)
+- `transform` (code patterns - with `options.dryRun`)
+- `delete` (symbol, file, directory, dead code - with `options.dryRun`)
 
 **Workspace Operations (4 tools)**
 - `workspace.create_package` (create new packages in workspace)
@@ -82,50 +86,61 @@ TypeMill provides comprehensive MCP tools for code intelligence and refactoring.
 }
 ```
 
-### Refactoring Patterns: Two-Step vs One-Step
+### Refactoring Pattern: Unified API with dryRun
 
-The Unified Refactoring API supports both safe two-step and convenient one-step patterns:
+All refactoring tools support a unified `dryRun` option for preview vs execution:
 
-#### Two-Step Pattern (Recommended for Safety)
-- **`*.plan()` commands are always dry runs.** They generate a plan of changes but never write to the filesystem. This is the primary way to preview a refactoring.
-- **`workspace.apply_edit`** can be run with `dryRun: true` in its options for a final preview before execution.
-
-#### One-Step Pattern (Quick Operations)
-For convenience, each refactoring has a "quick" version that combines plan + execute in one call:
-- **Quick tools**: `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete`
-- **Usage**: Same parameters as `*.plan` versions, but automatically applies changes
-- **Safety**: Less safe than two-step pattern - no preview before execution
-- **When to use**: For small, low-risk refactorings when you trust the operation
-
-**Example comparison:**
+**Default Behavior (Safe Preview):**
 ```json
-// Two-step (safer): Preview first, then apply
-{"name": "rename.plan", "arguments": {...}}
-{"name": "workspace.apply_edit", "arguments": {"plan": ...}}
-
-// One-step (faster): Direct execution
-{"name": "rename", "arguments": {...}}
+{
+  "name": "rename",
+  "arguments": {
+    "target": {"kind": "file", "path": "src/old.rs"},
+    "newName": "src/new.rs"
+    // options.dryRun defaults to true - preview only
+  }
+}
 ```
 
+**Execution Mode (Explicit Opt-in):**
+```json
+{
+  "name": "rename",
+  "arguments": {
+    "target": {"kind": "file", "path": "src/old.rs"},
+    "newName": "src/new.rs",
+    "options": {
+      "dryRun": false  // Explicitly execute changes
+    }
+  }
+}
+```
+
+**Key Features:**
+- **Safe default**: `dryRun: true` requires explicit opt-in for execution
+- **Preview mode** (`dryRun: true`): Returns plan, never modifies files
+- **Execute mode** (`dryRun: false`): Applies changes with checksums, rollback, validation
+- **Single tool**: No separate `.plan` suffix - one tool does both
+- **Consistent**: All 7 refactoring tools use identical pattern
+
 **Supported operations:**
-- Refactoring plans: All `*.plan` commands (always dry-run)
-- Workspace execution: `workspace.apply_edit` (supports `dryRun: true`)
+- All refactoring tools: `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete`
 
 **Benefits:**
-- Preview changes before applying them
-- No file system modifications occur
-- Returns detailed preview of what would happen
-- Safe for testing and validation
+- Simpler API (7 tools vs 15 previously)
+- Consistent behavior across all refactorings
+- Safe defaults prevent accidental modifications
+- Preview before execution workflow
 
 ### Rust Crate Consolidation
 
-The `rename.plan` command supports a special **consolidation mode** for merging Rust crates via the `options.consolidate` parameter:
+The `rename` command supports a special **consolidation mode** for merging Rust crates via the `options.consolidate` parameter:
 
 ```json
 {
   "method": "tools/call",
   "params": {
-    "name": "rename.plan",
+    "name": "rename",
     "arguments": {
       "target": {
         "kind": "directory",
@@ -133,7 +148,8 @@ The `rename.plan` command supports a special **consolidation mode** for merging 
       },
       "newName": "crates/target-crate/src/module",
       "options": {
-        "consolidate": true
+        "consolidate": true,
+        "dryRun": false  // Execute the consolidation
       }
     }
   }
@@ -176,7 +192,7 @@ For detailed parameters, return types, and examples, see **[docs/tools/](docs/to
 
 ### Rust File Renames with Automatic Updates
 
-When renaming Rust files using `rename.plan` + `workspace.apply_edit`, mill automatically updates:
+When renaming Rust files using the `rename` command, mill automatically updates:
 
 **1. Module Declarations** - Parent files (lib.rs/mod.rs) get updated:
 ```rust
@@ -223,28 +239,33 @@ pub fn lib_fn() {
 
 **Example workflow:**
 ```json
-// 1. Generate rename plan
+// 1. Preview rename plan
 {
   "method": "tools/call",
   "params": {
-    "name": "rename.plan",
+    "name": "rename",
     "arguments": {
       "target": {
         "kind": "file",
         "path": "src/utils.rs"
       },
       "newName": "src/helpers.rs"
+      // options.dryRun defaults to true - preview only
     }
   }
 }
 
-// 2. Apply the plan (updates mod, use, and qualified paths)
+// 2. Execute the rename (updates mod, use, and qualified paths)
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.apply_edit",
+    "name": "rename",
     "arguments": {
-      "plan": "<plan from step 1>",
+      "target": {
+        "kind": "file",
+        "path": "src/utils.rs"
+      },
+      "newName": "src/helpers.rs",
       "options": { "dryRun": false }
     }
   }
@@ -355,7 +376,7 @@ Smart heuristic only updates strings that look like paths:
 **Implementation Details:**
 - Scans all file types during planning phase (not just at execution)
 - Uses language-specific plugins (Rust, Markdown, TOML, YAML)
-- All edits appear in `rename.plan` dry-run output for review
+- All edits appear in `rename` (with `dryRun: true`) output for review
 - Atomic execution with rollback on any failure
 
 ### Batch Rename (Multiple Items at Once)
@@ -391,12 +412,12 @@ TypeMill supports renaming **multiple files and/or directories** in a single ato
 - ✅ Atomic operation (all succeed or all rollback)
 - ✅ All references updated across all renamed items
 - ✅ Shares same `options` for all targets
-- ✅ Works with both `rename.plan` (preview) and `rename` (quick)
+- ✅ Works with `dryRun` option for preview or execution
 
 **Example - Batch rename with CLI:**
 ```bash
-# Preview batch rename
-mill tool rename.plan '{
+# Preview batch rename (default dryRun: true)
+mill tool rename '{
   "targets": [
     {"kind": "file", "path": "src/utils.rs", "newName": "src/helpers.rs"},
     {"kind": "file", "path": "src/config.rs", "newName": "src/settings.rs"}
@@ -404,12 +425,13 @@ mill tool rename.plan '{
   "options": {"scope": "standard"}
 }'
 
-# Apply immediately (one-step)
+# Execute batch rename (dryRun: false)
 mill tool rename '{
   "targets": [
     {"kind": "directory", "path": "tests/unit", "newName": "tests/unit-tests"},
     {"kind": "directory", "path": "tests/integration", "newName": "tests/e2e"}
-  ]
+  ],
+  "options": {"dryRun": false}
 }'
 ```
 
@@ -504,11 +526,11 @@ cargo nextest run --workspace --features heavy-tests
 
 **Test Categories:**
 - `fast-tests` (default): Mock-based unit and integration tests
-- `lsp-tests`: Tests requiring real LSP servers (TypeScript, Rust)
+- `lsp-tests`: Tests requiring real LSP servers (TypeScript, Rust, Python)
 - `e2e-tests`: End-to-end workflow tests
 - `heavy-tests`: Performance benchmarks and property-based testing
 
-**Note:** Language support temporarily reduced to TypeScript + Rust during unified API refactoring. Multi-language support (Python, Go, Java, Swift, C#) preserved in git tag `pre-language-reduction`.
+**Note:** Language support: TypeScript, Rust, and Python (100% parity). Additional languages (Go, Java, Swift, C#) preserved in git tag `pre-language-reduction` and can be restored using documented migration process (see `.debug/language-plugin-migration/`).
 
 ## Architecture & Configuration
 
@@ -582,8 +604,9 @@ Supported language servers (configurable):
 
 - TypeScript: `typescript-language-server`
 - Rust: `rust-analyzer`
+- Python: `pylsp`
 
-**Note:** Additional language servers (Python/pylsp, Go/gopls, Java/jdtls) can be configured but require language plugins from git tag `pre-language-reduction`.
+**Note:** Additional language servers (Go/gopls, Java/jdtls, Swift/sourcekit-lsp, C#/omnisharp) can be configured but require language plugins from git tag `pre-language-reduction` and documented migration process (see `.debug/language-plugin-migration/`).
 
 ## Configuration
 
@@ -764,9 +787,9 @@ See **[docs/operations/cache_configuration.md](docs/operations/cache_configurati
 - `LanguagePlugin` trait implementation
 - Data types (ParsedSource, Symbol, ManifestData)
 - Plugin registration and testing
-- Reference implementations (Rust, TypeScript)
+- Reference implementations (Rust, TypeScript, Python)
 
-**Note:** Additional language plugin implementations (Python, Go, Java, Swift, C#) available in git tag `pre-language-reduction`.
+**Note:** Additional language plugin implementations (Go, Java, Swift, C#) available in git tag `pre-language-reduction`. Python was successfully restored (2025-10-25) using the migration guide in `.debug/language-plugin-migration/PYTHON_MIGRATION_GUIDE.md`.
 
 ### Capability Trait Pattern
 
