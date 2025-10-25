@@ -126,25 +126,13 @@ clean-cache:
 # Removed: Use 'make first-time-setup' instead (does everything)
 # This provides a complete, one-command setup experience
 
-# Install LSP servers for testing (TypeScript, Rust)
-# Note: Language support temporarily reduced to TS + Rust during unified API refactoring
+# Install LSP servers for language plugin development
+# Installs LSP servers based on which language plugins are present and which tools are available
 install-lsp-servers:
-	@echo "🌐 Installing LSP servers for testing..."
+	@echo "🌐 Installing LSP servers for language plugin development..."
+	@echo "💡 LSP servers are optional - only installing for available language plugins"
 	@echo ""
-	@# TypeScript/JavaScript
-	@if command -v npm >/dev/null 2>&1; then \
-		if command -v typescript-language-server >/dev/null 2>&1; then \
-			echo "  ✅ typescript-language-server already installed"; \
-		else \
-			echo "  → Installing typescript-language-server..."; \
-			npm install -g typescript-language-server typescript && echo "  ✅ typescript-language-server installed" || echo "  ⚠️  Failed to install typescript-language-server"; \
-		fi; \
-	else \
-		echo "  ⚠️  npm not found, skipping TypeScript LSP server"; \
-		echo "     Install Node.js from: https://nodejs.org/"; \
-	fi
-	@echo ""
-	@# Rust
+	@# Rust (core language - always installed)
 	@if command -v rustup >/dev/null 2>&1; then \
 		if command -v rust-analyzer >/dev/null 2>&1; then \
 			echo "  ✅ rust-analyzer already installed"; \
@@ -156,10 +144,58 @@ install-lsp-servers:
 		echo "  ⚠️  rustup not found, skipping Rust LSP server"; \
 	fi
 	@echo ""
+	@# TypeScript/JavaScript (if plugin present or Node.js available)
+	@if [ -d "crates/mill-lang-typescript" ] || command -v npm >/dev/null 2>&1; then \
+		if command -v npm >/dev/null 2>&1; then \
+			if command -v typescript-language-server >/dev/null 2>&1; then \
+				echo "  ✅ typescript-language-server already installed"; \
+			else \
+				echo "  → Installing typescript-language-server..."; \
+				npm install -g typescript-language-server typescript && echo "  ✅ typescript-language-server installed" || echo "  ⚠️  Failed to install typescript-language-server"; \
+			fi; \
+		else \
+			echo "  ⚠️  npm not found - skipping TypeScript LSP server"; \
+			echo "     Install Node.js from: https://nodejs.org/"; \
+		fi; \
+	else \
+		echo "  ⏭  TypeScript plugin not present - skipping"; \
+	fi
+	@echo ""
+	@# Python (if plugin present or Python available)
+	@if [ -d "crates/mill-lang-python" ] || command -v python3 >/dev/null 2>&1; then \
+		if command -v python3 >/dev/null 2>&1; then \
+			if command -v pylsp >/dev/null 2>&1; then \
+				echo "  ✅ pylsp (Python LSP) already installed"; \
+			else \
+				echo "  → Installing pylsp (Python LSP)..."; \
+				python3 -m pip install --user python-lsp-server && echo "  ✅ pylsp installed" || echo "  ⚠️  Failed to install pylsp"; \
+			fi; \
+		else \
+			echo "  ⚠️  python3 not found - skipping Python LSP server"; \
+		fi; \
+	else \
+		echo "  ⏭  Python plugin not present - skipping"; \
+	fi
+	@echo ""
+	@# Go (if plugin present or Go available)
+	@if [ -d "crates/mill-lang-go" ] || command -v go >/dev/null 2>&1; then \
+		if command -v go >/dev/null 2>&1; then \
+			if command -v gopls >/dev/null 2>&1; then \
+				echo "  ✅ gopls (Go LSP) already installed"; \
+			else \
+				echo "  → Installing gopls (Go LSP)..."; \
+				go install golang.org/x/tools/gopls@latest && echo "  ✅ gopls installed" || echo "  ⚠️  Failed to install gopls"; \
+			fi; \
+		else \
+			echo "  ⚠️  go not found - skipping Go LSP server"; \
+		fi; \
+	else \
+		echo "  ⏭  Go plugin not present - skipping"; \
+	fi
+	@echo ""
 	@echo "✅ LSP server installation complete!"
 	@echo ""
 	@echo "💡 Verify installation with: mill status"
-	@echo "📝 Note: Additional LSP servers (Python/pylsp, Go/gopls) available in git tag 'pre-language-reduction'"
 
 # Install optional development tools (quality analysis and debugging)
 dev-extras:
@@ -264,38 +300,93 @@ ci: test-full check
 	@echo "✅ All CI checks passed"
 
 # Build all external language parsers that require a separate build step
+# Language plugins are optional - this target detects and builds only what's available
 build-parsers:
-	@echo "🔨 Building external language parsers..."
-	@if [ -f "crates/mill-lang-java/resources/java-parser/pom.xml" ]; then \
-		echo "  → Building Java parser..."; \
-		(cd crates/mill-lang-java/resources/java-parser && mvn -q package) && echo "  ✅ Java parser built." || echo "  ⚠️  Java parser build failed."; \
+	@echo "🔨 Building available language parsers..."
+	@echo "💡 Language plugins are optional - only building what's present in crates/"
+	@echo ""
+	@# Java parser (requires Maven + Java)
+	@if [ -d "crates/mill-lang-java" ]; then \
+		if [ -f "crates/mill-lang-java/resources/java-parser/pom.xml" ]; then \
+			if command -v mvn >/dev/null 2>&1; then \
+				echo "  → Building Java parser..."; \
+				(cd crates/mill-lang-java/resources/java-parser && mvn -q package) && echo "  ✅ Java parser built." || echo "  ⚠️  Java parser build failed."; \
+			else \
+				echo "  ⚠️  Maven not found - skipping Java parser (install: apt-get install maven)"; \
+			fi; \
+		else \
+			echo "  ⚠️  Java parser source not found (missing pom.xml)"; \
+		fi; \
 	else \
-		echo "  ⏭  Skipping Java parser (not found)."; \
+		echo "  ⏭  Java plugin not present (crates/mill-lang-java)"; \
 	fi
-	@if [ -d "crates/mill-lang-csharp/resources/csharp-parser" ]; then \
-		echo "  → Building C# parser..."; \
-		(cd crates/mill-lang-csharp/resources/csharp-parser && dotnet publish -c Release -r linux-x64 --self-contained > /dev/null) && \
-		cp crates/mill-lang-csharp/resources/csharp-parser/bin/Release/net8.0/linux-x64/publish/csharp-parser crates/mill-lang-csharp/csharp-parser && \
-		echo "  ✅ C# parser built." || echo "  ⚠️  C# parser build failed."; \
+	@echo ""
+	@# C# parser (requires .NET SDK)
+	@if [ -d "crates/mill-lang-csharp" ]; then \
+		if [ -d "crates/mill-lang-csharp/resources/csharp-parser" ]; then \
+			if command -v dotnet >/dev/null 2>&1; then \
+				echo "  → Building C# parser..."; \
+				(cd crates/mill-lang-csharp/resources/csharp-parser && dotnet publish -c Release -r linux-x64 --self-contained > /dev/null) && \
+				cp crates/mill-lang-csharp/resources/csharp-parser/bin/Release/net8.0/linux-x64/publish/csharp-parser crates/mill-lang-csharp/csharp-parser && \
+				echo "  ✅ C# parser built." || echo "  ⚠️  C# parser build failed."; \
+			else \
+				echo "  ⚠️  .NET SDK not found - skipping C# parser (install: https://dotnet.microsoft.com/)"; \
+			fi; \
+		else \
+			echo "  ⚠️  C# parser source not found"; \
+		fi; \
 	else \
-		echo "  ⏭  Skipping C# parser (not found)."; \
+		echo "  ⏭  C# plugin not present (crates/mill-lang-csharp)"; \
 	fi
-	@if [ -f "crates/mill-lang-typescript/resources/package.json" ]; then \
-		echo "  → Installing TypeScript parser dependencies..."; \
-		(cd crates/mill-lang-typescript/resources && npm install > /dev/null 2>&1) && echo "  ✅ TypeScript dependencies installed." || echo "  ⚠️  TypeScript dependencies installation failed."; \
+	@echo ""
+	@# TypeScript parser (requires Node.js)
+	@if [ -d "crates/mill-lang-typescript" ]; then \
+		if [ -f "crates/mill-lang-typescript/resources/package.json" ]; then \
+			if command -v npm >/dev/null 2>&1; then \
+				echo "  → Installing TypeScript parser dependencies..."; \
+				(cd crates/mill-lang-typescript/resources && npm install > /dev/null 2>&1) && echo "  ✅ TypeScript dependencies installed." || echo "  ⚠️  TypeScript dependencies installation failed."; \
+			else \
+				echo "  ⚠️  npm not found - skipping TypeScript parser (install: https://nodejs.org/)"; \
+			fi; \
+		else \
+			echo "  ⚠️  TypeScript parser configuration not found (missing package.json)"; \
+		fi; \
 	else \
-		echo "  ⏭  Skipping TypeScript parser (not found)."; \
+		echo "  ⏭  TypeScript plugin present (no external build needed)"; \
 	fi
+	@echo ""
+	@# Python plugin (no external parser needed)
+	@if [ -d "crates/mill-lang-python" ]; then \
+		echo "  ✅ Python plugin present (no external build needed)"; \
+	else \
+		echo "  ⏭  Python plugin not present (crates/mill-lang-python)"; \
+	fi
+	@echo ""
+	@# Go plugin (no external parser needed)
+	@if [ -d "crates/mill-lang-go" ]; then \
+		echo "  ✅ Go plugin present (no external build needed)"; \
+	else \
+		echo "  ⏭  Go plugin not present (crates/mill-lang-go)"; \
+	fi
+	@echo ""
 	@echo "✨ Parser build complete."
 
 # Check for external dependencies required to build parsers
+# Language plugins are optional - shows what's available vs needed
 check-parser-deps:
 	@echo "🔍 Checking for external parser build dependencies..."
-	@command -v mvn >/dev/null 2>&1 && echo "  ✅ Maven (Java parser)" || echo "  ❌ Maven not found (needed for Java parser)"
-	@command -v java >/dev/null 2>&1 && echo "  ✅ Java" || echo "  ❌ Java not found (needed for Java parser)"
-	@command -v dotnet >/dev/null 2>&1 && echo "  ✅ .NET SDK (C# parser)" || echo "  ❌ .NET SDK not found (needed for C# parser)"
-	@command -v node >/dev/null 2>&1 && echo "  ✅ Node.js (TypeScript parser)" || echo "  ✅ Node.js" || echo "  ❌ Node.js not found (needed for TypeScript parser)"
-	@command -v sourcekitten >/dev/null 2>&1 && echo "  ✅ SourceKitten (Swift parser - optional)" || echo "  ⚠️  SourceKitten not found (optional for Swift)"
+	@echo "💡 All language plugins are optional - install only what you need"
+	@echo ""
+	@echo "Core Requirements:"
+	@command -v cargo >/dev/null 2>&1 && echo "  ✅ Rust toolchain" || echo "  ❌ Rust toolchain not found (REQUIRED)"
+	@echo ""
+	@echo "Language Plugin Dependencies (Optional):"
+	@command -v mvn >/dev/null 2>&1 && echo "  ✅ Maven (for Java plugin)" || echo "  ⚠️  Maven not found (optional - needed for Java plugin)"
+	@command -v java >/dev/null 2>&1 && echo "  ✅ Java (for Java plugin)" || echo "  ⚠️  Java not found (optional - needed for Java plugin)"
+	@command -v dotnet >/dev/null 2>&1 && echo "  ✅ .NET SDK (for C# plugin)" || echo "  ⚠️  .NET SDK not found (optional - needed for C# plugin)"
+	@command -v node >/dev/null 2>&1 && echo "  ✅ Node.js (for TypeScript plugin)" || echo "  ⚠️  Node.js not found (optional - needed for TypeScript plugin)"
+	@command -v npm >/dev/null 2>&1 && echo "  ✅ npm (for TypeScript plugin)" || echo "  ⚠️  npm not found (optional - needed for TypeScript plugin)"
+	@echo ""
 	@echo "✅ Dependency check complete."
 
 # First-time developer setup workflow - THE complete setup command
@@ -351,14 +442,15 @@ first-time-setup:
 	@echo "║  ✅ Setup Complete! Development Environment Ready       ║"
 	@echo "╚══════════════════════════════════════════════════════════╝"
 	@echo ""
-	@echo "🎉 Everything installed:"
+	@echo "🎉 Core tools installed:"
 	@echo "  • cargo-nextest, sccache, cargo-watch, cargo-audit"
 	@echo "  • mold linker (if sudo available)"
 	@echo "  • LSP servers: typescript-language-server, rust-analyzer"
-	@echo "  • TypeScript parser (if Node.js available)"
 	@echo ""
-	@echo "📝 Note: Language support focused on TypeScript + Rust"
-	@echo "   Additional languages available in git tag 'pre-language-reduction'"
+	@echo "🔌 Language plugins:"
+	@echo "  • TypeScript + Rust: Currently available"
+	@echo "  • Python, Go, Java, C#: Optional plugins (add as needed)"
+	@echo "  • Run 'make check-parser-deps' to see what's available"
 	@echo ""
 	@echo "🚀 Ready to develop!"
 	@echo "  make test        - Run fast tests (~10s)"

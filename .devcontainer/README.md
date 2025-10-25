@@ -6,16 +6,8 @@ This directory contains configuration for [VS Code Dev Containers](https://code.
 
 The dev container provides a fully-configured development environment with:
 
+**Core Development (Required):**
 - **Rust toolchain** (latest stable)
-- **Language servers** for testing:
-  - TypeScript/JavaScript (`typescript-language-server`)
-  - Python (`pylsp`)
-  - Go (`gopls`)
-  - Rust (`rust-analyzer`)
-- **Build tools**:
-  - Java 17 + Maven (for Java parser)
-  - .NET 8.0 SDK (for C# parser)
-  - Node.js LTS (for TypeScript parser)
 - **Development utilities**:
   - `cargo-nextest` (fast test runner)
   - `sccache` (build cache)
@@ -25,6 +17,19 @@ The dev container provides a fully-configured development environment with:
   - `even-better-toml` (TOML support)
   - `crates` (Cargo.toml management)
   - `vscode-lldb` (debugging)
+
+**Language Plugin Development (Optional):**
+
+TypeMill's language plugins are optional and maintained in the repository. The devcontainer includes tooling for all plugins so you can work on any of them without additional setup:
+
+- **TypeScript/JavaScript**: Node.js LTS + `typescript-language-server`
+- **Python**: Python 3 + `pylsp` (Python Language Server)
+- **Go**: `gopls` (Go Language Server)
+- **Java**: Java 17 + Maven (for Java AST parser)
+- **C#**: .NET 8.0 SDK (for C# AST parser)
+- **Rust**: `rust-analyzer` (core language)
+
+> **Note:** You only need the tools for plugins you're actively developing. The setup script will build available plugins and skip missing ones.
 
 ## Getting Started
 
@@ -49,11 +54,13 @@ The dev container provides a fully-configured development environment with:
 The `post-create.sh` script automatically:
 
 1. Installs Rust development tools (`cargo-nextest`, `sccache`, `cargo-watch`)
-2. Installs all LSP servers for testing
-3. Builds external language parsers (Java, C#, TypeScript)
+2. Installs LSP servers (rust-analyzer, typescript-language-server)
+3. Builds available language plugin parsers (detects what's present in `crates/`)
 4. Runs initial `cargo build` (cached for faster subsequent builds)
-5. Runs quick test suite to verify everything works
+5. Runs quick test suite to verify core functionality works
 6. Creates default `.typemill/config.json`
+
+> **Smart Detection:** The script only builds language parsers for plugins that exist in the repository. Missing plugins are silently skipped.
 
 ## Customization
 

@@ -2,10 +2,12 @@
 # Post-create script for dev container setup
 set -e
 
-echo "🚀 Setting up Typemill development environment..."
+echo "🚀 Setting up TypeMill development environment..."
 echo ""
 echo "Running: make first-time-setup"
 echo "This will install all tools and build the project (~5-8 minutes)"
+echo ""
+echo "💡 Language plugins are optional - only available plugins will be built"
 echo ""
 
 # Run the complete first-time setup (same as developers use locally)

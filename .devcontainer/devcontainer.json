@@ -3,6 +3,18 @@
   "image": "mcr.microsoft.com/devcontainers/rust:1-bookworm",
 
   "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "upgradePackages": true
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": true
+    },
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.21"
+    },
     "ghcr.io/devcontainers/features/node:1": {
       "version": "lts"
     },
@@ -12,11 +24,6 @@
     },
     "ghcr.io/devcontainers/features/dotnet:1": {
       "version": "8.0"
-    },
-    "ghcr.io/devcontainers/features/common-utils:2": {
-      "installZsh": true,
-      "installOhMyZsh": true,
-      "upgradePackages": true
     }
   },
 
