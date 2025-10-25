@@ -6,10 +6,10 @@
 
 Pure Rust MCP server bridging Language Server Protocol (LSP) to AI coding assistants
 
-Provides 36 MCP tools for code navigation, refactoring, analysis, and batch operations across TypeScript and Rust projects.
+Provides 28 MCP tools for code navigation, refactoring, analysis, and batch operations across TypeScript and Rust projects.
 
 ## ✨ Key Features
-- **🎯 Safe Refactoring** - Two-step plan → apply pattern with automatic rollback on failure
+- **🎯 Safe Refactoring** - Unified dryRun API (default: preview, explicit opt-in to execute) with automatic rollback on failure
 - **🔍 LSP Integration** - Native language server support for precise code intelligence
 - **⚡ Rust Performance** - Zero-cost abstractions, memory safety, async I/O
 - **🔄 Comprehensive Updates** - Automatic import updates, cross-file reference tracking
@@ -84,10 +84,9 @@ mill tool workspace.find_replace --pattern "oldName" --replacement "newName"
 - `find_implementations`, `find_type_definition`, `get_symbol_info`
 - `get_diagnostics`, `get_call_hierarchy`
 
-**✂️ Editing & Refactoring (15 tools)**
-- **Plan Operations**: `rename.plan`, `extract.plan`, `inline.plan`, `move.plan`, `reorder.plan`, `transform.plan`, `delete.plan`
-- **Quick Operations**: `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete`
-- **Apply**: `workspace.apply_edit`
+**✂️ Editing & Refactoring (7 tools with dryRun API)**
+- `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete`
+- Each tool supports `options.dryRun` (default: true for safety, false to execute)
 
 **📊 Analysis (8 tools)**
 - `analyze.quality`, `analyze.dead_code`, `analyze.dependencies`
