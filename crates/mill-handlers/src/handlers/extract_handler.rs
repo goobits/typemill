@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::Path;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 pub struct ExtractHandler;
 
@@ -82,14 +82,54 @@ impl ExtractHandler {
             _ => unreachable!("Already validated kind"),
         };
 
-        // Wrap in RefactorPlan enum for discriminant, then serialize for MCP protocol
+        // Wrap in RefactorPlan enum for discriminant
         let refactor_plan = RefactorPlan::ExtractPlan(plan);
-        let plan_json = serde_json::to_value(&refactor_plan)
-            .map_err(|e| ServerError::Internal(format!("Failed to serialize plan: {}", e)))?;
 
-        Ok(json!({
-            "content": plan_json
-        }))
+        // Check if we should execute or just return plan
+        if params.options.dry_run {
+            // Return plan only (existing behavior - preview mode)
+            let plan_json = serde_json::to_value(&refactor_plan)
+                .map_err(|e| ServerError::Internal(format!("Failed to serialize plan: {}", e)))?;
+
+            info!(
+                operation = "extract",
+                dry_run = true,
+                "Returning extract plan (preview mode)"
+            );
+
+            Ok(json!({
+                "content": plan_json
+            }))
+        } else {
+            // NEW: Execute the plan
+            info!(
+                operation = "extract",
+                dry_run = false,
+                "Executing extract plan"
+            );
+
+            use mill_services::services::{ExecutionOptions, PlanExecutor};
+
+            let executor = PlanExecutor::new(context.app_state.file_service.clone());
+            let result = executor
+                .execute_plan(refactor_plan, ExecutionOptions::default())
+                .await?;
+
+            let result_json = serde_json::to_value(&result).map_err(|e| {
+                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+            })?;
+
+            info!(
+                operation = "extract",
+                success = result.success,
+                applied_files = result.applied_files.len(),
+                "Extract execution completed"
+            );
+
+            Ok(json!({
+                "content": result_json
+            }))
+        }
     }
 
     /// Plan extract function operation
@@ -97,7 +137,7 @@ impl ExtractHandler {
         &self,
         context: &ToolHandlerContext,
         source: &SourceRange,
-        options: &Option<ExtractOptions>,
+        options: &ExtractOptions,
     ) -> ServerResult<ExtractPlan> {
         // Convert LSP Range to CodeRange
         let code_range = CodeRange {
@@ -145,7 +185,7 @@ impl ExtractHandler {
         &self,
         context: &ToolHandlerContext,
         source: &SourceRange,
-        options: &Option<ExtractOptions>,
+        options: &ExtractOptions,
     ) -> ServerResult<ExtractPlan> {
         // For now, extract variable uses similar logic to extract function
         // Language plugins can provide more specialized implementations
@@ -192,7 +232,7 @@ impl ExtractHandler {
         &self,
         context: &ToolHandlerContext,
         source: &SourceRange,
-        options: &Option<ExtractOptions>,
+        options: &ExtractOptions,
     ) -> ServerResult<ExtractPlan> {
         // Constants use similar logic to variables
         let code_range = CodeRange {
@@ -237,7 +277,7 @@ impl ExtractHandler {
         &self,
         _context: &ToolHandlerContext,
         source: &SourceRange,
-        _options: &Option<ExtractOptions>,
+        _options: &ExtractOptions,
     ) -> ServerResult<ExtractPlan> {
         // Module extraction is more complex and typically requires language plugin support
         // For now, return a not implemented error
@@ -254,7 +294,7 @@ impl ExtractHandler {
         file_path: &str,
         kind: &str,
         context: &ToolHandlerContext,
-        _options: &Option<ExtractOptions>,
+        _options: &ExtractOptions,
     ) -> ServerResult<ExtractPlan> {
         // Convert EditPlan edits to LSP WorkspaceEdit
         let workspace_edit = self.convert_to_workspace_edit(&edit_plan)?;
@@ -417,7 +457,7 @@ impl Default for ExtractHandler {
 #[async_trait]
 impl ToolHandler for ExtractHandler {
     fn tool_names(&self) -> &[&str] {
-        &["extract.plan"]
+        &["extract"]
     }
 
     fn is_internal(&self) -> bool {
@@ -447,7 +487,7 @@ struct ExtractPlanParams {
     kind: String,
     source: SourceRange,
     #[serde(default)]
-    options: Option<ExtractOptions>,
+    options: ExtractOptions,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -463,8 +503,15 @@ struct SourceRange {
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 struct ExtractOptions {
+    /// Preview mode - don't actually apply changes (default: true for safety)
+    #[serde(default = "default_true")]
+    dry_run: bool,
     #[serde(default)]
     visibility: Option<String>, // "public" | "private"
     #[serde(default)]
     destination_path: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }

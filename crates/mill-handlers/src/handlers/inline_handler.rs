@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::Path;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 pub struct InlineHandler;
 
@@ -79,14 +79,50 @@ impl InlineHandler {
             _ => unreachable!("Already validated kind"),
         };
 
-        // Wrap in RefactorPlan enum for discriminant, then serialize for MCP protocol
+        // Wrap in RefactorPlan enum for discriminant
         let refactor_plan = RefactorPlan::InlinePlan(plan);
-        let plan_json = serde_json::to_value(&refactor_plan)
-            .map_err(|e| ServerError::Internal(format!("Failed to serialize plan: {}", e)))?;
 
-        Ok(json!({
-            "content": plan_json
-        }))
+        // Check if we should execute or just return plan
+        if params.options.dry_run {
+            // Return plan only (preview mode)
+            let plan_json = serde_json::to_value(&refactor_plan)
+                .map_err(|e| ServerError::Internal(format!("Failed to serialize plan: {}", e)))?;
+
+            info!(
+                operation = "inline",
+                dry_run = true,
+                "Returning inline plan (preview mode)"
+            );
+
+            Ok(json!({"content": plan_json}))
+        } else {
+            // Execute the plan
+            info!(
+                operation = "inline",
+                dry_run = false,
+                "Executing inline plan"
+            );
+
+            use mill_services::services::{ExecutionOptions, PlanExecutor};
+
+            let executor = PlanExecutor::new(context.app_state.file_service.clone());
+            let result = executor
+                .execute_plan(refactor_plan, ExecutionOptions::default())
+                .await?;
+
+            let result_json = serde_json::to_value(&result).map_err(|e| {
+                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+            })?;
+
+            info!(
+                operation = "inline",
+                success = result.success,
+                applied_files = result.applied_files.len(),
+                "Inline execution completed"
+            );
+
+            Ok(json!({"content": result_json}))
+        }
     }
 
     /// Plan inline variable operation
@@ -94,7 +130,7 @@ impl InlineHandler {
         &self,
         context: &ToolHandlerContext,
         target: &InlineTarget,
-        options: &Option<InlineOptions>,
+        options: &InlineOptions,
     ) -> ServerResult<InlinePlan> {
         // Read file content
         let file_path = Path::new(&target.file_path);
@@ -134,7 +170,7 @@ impl InlineHandler {
         &self,
         context: &ToolHandlerContext,
         target: &InlineTarget,
-        options: &Option<InlineOptions>,
+        options: &InlineOptions,
     ) -> ServerResult<InlinePlan> {
         // Function inlining uses similar logic to variable inlining
         // Language plugins can provide more specialized implementations (AST-only approach)
@@ -173,7 +209,7 @@ impl InlineHandler {
         &self,
         context: &ToolHandlerContext,
         target: &InlineTarget,
-        options: &Option<InlineOptions>,
+        options: &InlineOptions,
     ) -> ServerResult<InlinePlan> {
         // Constants use similar logic to variables (AST-only approach)
         let file_path = Path::new(&target.file_path);
@@ -213,7 +249,7 @@ impl InlineHandler {
         file_path: &str,
         kind: &str,
         context: &ToolHandlerContext,
-        _options: &Option<InlineOptions>,
+        _options: &InlineOptions,
     ) -> ServerResult<InlinePlan> {
         // Convert EditPlan edits to LSP WorkspaceEdit
         let workspace_edit = self.convert_to_workspace_edit(&edit_plan)?;
@@ -371,7 +407,7 @@ impl Default for InlineHandler {
 #[async_trait]
 impl ToolHandler for InlineHandler {
     fn tool_names(&self) -> &[&str] {
-        &["inline.plan"]
+        &["inline"]
     }
 
     fn is_internal(&self) -> bool {
@@ -400,7 +436,7 @@ struct InlinePlanParams {
     kind: String,
     target: InlineTarget,
     #[serde(default)]
-    options: Option<InlineOptions>,
+    options: InlineOptions,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -411,6 +447,13 @@ struct InlineTarget {
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 struct InlineOptions {
+    /// Preview mode - don't actually apply changes (default: true for safety)
+    #[serde(default = "default_true")]
+    dry_run: bool,
     #[serde(default)]
     inline_all: Option<bool>, // Default: false - inline all usages vs current only
+}
+
+fn default_true() -> bool {
+    true
 }

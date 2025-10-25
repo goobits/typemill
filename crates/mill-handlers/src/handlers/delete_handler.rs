@@ -58,6 +58,9 @@ struct DeleteSelector {
 
 #[derive(Debug, Deserialize, Default)]
 struct DeleteOptions {
+    /// Preview mode - don't actually apply changes (default: true for safety)
+    #[serde(default = "default_true")]
+    dry_run: bool,
     #[serde(default)]
     cleanup_imports: Option<bool>,
     #[serde(default)]
@@ -67,10 +70,14 @@ struct DeleteOptions {
     force: Option<bool>,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[async_trait]
 impl ToolHandler for DeleteHandler {
     fn tool_names(&self) -> &[&str] {
-        &["delete.plan"]
+        &["delete"]
     }
 
     fn is_internal(&self) -> bool {
@@ -113,15 +120,51 @@ impl ToolHandler for DeleteHandler {
             }
         };
 
-        // Wrap in RefactorPlan enum for discriminant, then serialize for MCP protocol
+        // Wrap in RefactorPlan enum for discriminant
         let refactor_plan = RefactorPlan::DeletePlan(plan);
-        let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
-            ServerError::Internal(format!("Failed to serialize delete plan: {}", e))
-        })?;
 
-        Ok(serde_json::json!({
-            "content": plan_json
-        }))
+        // Check if we should execute or just return plan
+        if params.options.dry_run {
+            // Return plan only (preview mode)
+            let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
+                ServerError::Internal(format!("Failed to serialize delete plan: {}", e))
+            })?;
+
+            info!(
+                operation = "delete",
+                dry_run = true,
+                "Returning delete plan (preview mode)"
+            );
+
+            Ok(serde_json::json!({"content": plan_json}))
+        } else {
+            // Execute the plan
+            info!(
+                operation = "delete",
+                dry_run = false,
+                "Executing delete plan"
+            );
+
+            use mill_services::services::{ExecutionOptions, PlanExecutor};
+
+            let executor = PlanExecutor::new(context.app_state.file_service.clone());
+            let result = executor
+                .execute_plan(refactor_plan, ExecutionOptions::default())
+                .await?;
+
+            let result_json = serde_json::to_value(&result).map_err(|e| {
+                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+            })?;
+
+            info!(
+                operation = "delete",
+                success = result.success,
+                applied_files = result.applied_files.len(),
+                "Delete execution completed"
+            );
+
+            Ok(serde_json::json!({"content": result_json}))
+        }
     }
 }
 

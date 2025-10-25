@@ -85,16 +85,23 @@ struct SymbolSelector {
 #[derive(Debug, Deserialize, Default)]
 #[allow(dead_code)] // Reserved for future configuration
 struct MoveOptions {
+    /// Preview mode - don't actually apply changes (default: true for safety)
+    #[serde(default = "default_true")]
+    dry_run: bool,
     #[serde(default)]
     update_imports: Option<bool>,
     #[serde(default)]
     preserve_formatting: Option<bool>,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[async_trait]
 impl ToolHandler for MoveHandler {
     fn tool_names(&self) -> &[&str] {
-        &["move.plan"]
+        &["move"]
     }
 
     fn is_internal(&self) -> bool {
@@ -169,26 +176,64 @@ impl ToolHandler for MoveHandler {
             "Move plan generated successfully"
         );
 
-        // Wrap in RefactorPlan enum for discriminant, then serialize for MCP protocol
+        // Wrap in RefactorPlan enum for discriminant
         let refactor_plan = RefactorPlan::MovePlan(plan);
-        let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
-            error!(
+
+        // Check if we should execute or just return plan
+        if params.options.dry_run {
+            // Return plan only (preview mode)
+            let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
+                error!(
+                    operation_id = %operation_id,
+                    error = %e,
+                    "Failed to serialize move plan to JSON"
+                );
+                ServerError::Internal(format!("Failed to serialize move plan: {}", e))
+            })?;
+
+            info!(
                 operation_id = %operation_id,
-                error = %e,
-                function = "handle_tool_call",
-                "Failed to serialize move plan to JSON"
+                operation = "move",
+                dry_run = true,
+                "Returning move plan (preview mode)"
             );
-            ServerError::Internal(format!("Failed to serialize move plan: {}", e))
-        })?;
 
-        info!(
-            operation_id = %operation_id,
-            "Move.plan operation completed successfully"
-        );
+            Ok(json!({"content": plan_json}))
+        } else {
+            // Execute the plan
+            info!(
+                operation_id = %operation_id,
+                operation = "move",
+                dry_run = false,
+                "Executing move plan"
+            );
 
-        Ok(json!({
-            "content": plan_json
-        }))
+            use mill_services::services::{ExecutionOptions, PlanExecutor};
+
+            let executor = PlanExecutor::new(context.app_state.file_service.clone());
+            let result = executor
+                .execute_plan(refactor_plan, ExecutionOptions::default())
+                .await?;
+
+            let result_json = serde_json::to_value(&result).map_err(|e| {
+                error!(
+                    operation_id = %operation_id,
+                    error = %e,
+                    "Failed to serialize execution result"
+                );
+                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+            })?;
+
+            info!(
+                operation_id = %operation_id,
+                operation = "move",
+                success = result.success,
+                applied_files = result.applied_files.len(),
+                "Move execution completed"
+            );
+
+            Ok(json!({"content": result_json}))
+        }
     }
 }
 

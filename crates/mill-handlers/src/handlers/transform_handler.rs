@@ -51,16 +51,23 @@ struct Transformation {
 #[derive(Debug, Deserialize, Default)]
 #[allow(dead_code)] // Reserved for future configuration
 struct TransformOptions {
+    /// Preview mode - don't actually apply changes (default: true for safety)
+    #[serde(default = "default_true")]
+    dry_run: bool,
     #[serde(default)]
     preserve_formatting: Option<bool>,
     #[serde(default)]
     preserve_comments: Option<bool>,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[async_trait]
 impl ToolHandler for TransformHandler {
     fn tool_names(&self) -> &[&str] {
-        &["transform.plan"]
+        &["transform"]
     }
 
     fn is_internal(&self) -> bool {
@@ -105,15 +112,51 @@ impl ToolHandler for TransformHandler {
             }
         };
 
-        // Wrap in RefactorPlan enum for discriminant, then serialize for MCP protocol
+        // Wrap in RefactorPlan enum for discriminant
         let refactor_plan = RefactorPlan::TransformPlan(plan);
-        let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
-            ServerError::Internal(format!("Failed to serialize transform plan: {}", e))
-        })?;
 
-        Ok(json!({
-            "content": plan_json
-        }))
+        // Check if we should execute or just return plan
+        if params.options.dry_run {
+            // Return plan only (preview mode)
+            let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
+                ServerError::Internal(format!("Failed to serialize transform plan: {}", e))
+            })?;
+
+            info!(
+                operation = "transform",
+                dry_run = true,
+                "Returning transform plan (preview mode)"
+            );
+
+            Ok(json!({"content": plan_json}))
+        } else {
+            // Execute the plan
+            info!(
+                operation = "transform",
+                dry_run = false,
+                "Executing transform plan"
+            );
+
+            use mill_services::services::{ExecutionOptions, PlanExecutor};
+
+            let executor = PlanExecutor::new(context.app_state.file_service.clone());
+            let result = executor
+                .execute_plan(refactor_plan, ExecutionOptions::default())
+                .await?;
+
+            let result_json = serde_json::to_value(&result).map_err(|e| {
+                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+            })?;
+
+            info!(
+                operation = "transform",
+                success = result.success,
+                applied_files = result.applied_files.len(),
+                "Transform execution completed"
+            );
+
+            Ok(json!({"content": result_json}))
+        }
     }
 }
 

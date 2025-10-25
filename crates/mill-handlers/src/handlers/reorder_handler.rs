@@ -52,16 +52,23 @@ struct ReorderTarget {
 #[derive(Debug, Deserialize, Default)]
 #[allow(dead_code)] // Reserved for future configuration
 struct ReorderOptions {
+    /// Preview mode - don't actually apply changes (default: true for safety)
+    #[serde(default = "default_true")]
+    dry_run: bool,
     #[serde(default)]
     preserve_formatting: Option<bool>,
     #[serde(default)]
     update_call_sites: Option<bool>, // For parameter reordering
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[async_trait]
 impl ToolHandler for ReorderHandler {
     fn tool_names(&self) -> &[&str] {
-        &["reorder.plan"]
+        &["reorder"]
     }
 
     fn is_internal(&self) -> bool {
@@ -104,15 +111,51 @@ impl ToolHandler for ReorderHandler {
             }
         };
 
-        // Wrap in RefactorPlan enum for discriminant, then serialize for MCP protocol
+        // Wrap in RefactorPlan enum for discriminant
         let refactor_plan = RefactorPlan::ReorderPlan(plan);
-        let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
-            ServerError::Internal(format!("Failed to serialize reorder plan: {}", e))
-        })?;
 
-        Ok(json!({
-            "content": plan_json
-        }))
+        // Check if we should execute or just return plan
+        if params.options.dry_run {
+            // Return plan only (preview mode)
+            let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
+                ServerError::Internal(format!("Failed to serialize reorder plan: {}", e))
+            })?;
+
+            info!(
+                operation = "reorder",
+                dry_run = true,
+                "Returning reorder plan (preview mode)"
+            );
+
+            Ok(json!({"content": plan_json}))
+        } else {
+            // Execute the plan
+            info!(
+                operation = "reorder",
+                dry_run = false,
+                "Executing reorder plan"
+            );
+
+            use mill_services::services::{ExecutionOptions, PlanExecutor};
+
+            let executor = PlanExecutor::new(context.app_state.file_service.clone());
+            let result = executor
+                .execute_plan(refactor_plan, ExecutionOptions::default())
+                .await?;
+
+            let result_json = serde_json::to_value(&result).map_err(|e| {
+                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+            })?;
+
+            info!(
+                operation = "reorder",
+                success = result.success,
+                applied_files = result.applied_files.len(),
+                "Reorder execution completed"
+            );
+
+            Ok(json!({"content": result_json}))
+        }
     }
 }
 
