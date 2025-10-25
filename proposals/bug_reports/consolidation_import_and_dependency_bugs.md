@@ -4,7 +4,7 @@
 **Reporter**: Frank (AI Agent)
 **Severity**: High
 **Status**: Identified
-**Affects**: Consolidation mode in `rename.plan` command
+**Affects**: Consolidation mode in `rename (with dryRun option)` command
 
 ## Summary
 

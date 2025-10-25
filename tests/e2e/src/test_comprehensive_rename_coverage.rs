@@ -3,7 +3,7 @@
 //! BEFORE: 636 lines with manual setup/plan/apply logic
 //! AFTER: Using shared helpers from test_helpers.rs
 //!
-//! **Status**: All features implemented and integrated into rename.plan workflow.
+//! **Status**: All features implemented and integrated into rename workflow.
 //!
 //! **Comprehensive Coverage (100%)**:
 //! - ✅ Basic file and directory renames

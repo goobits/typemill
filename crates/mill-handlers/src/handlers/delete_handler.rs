@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use tracing::{debug, error, info};
 
-/// Handler for delete.plan operations
+/// Handler for delete operations
 pub struct DeleteHandler;
 
 impl DeleteHandler {
@@ -89,15 +89,15 @@ impl ToolHandler for DeleteHandler {
         context: &ToolHandlerContext,
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        info!(tool_name = %tool_call.name, "Handling delete.plan");
+        info!(tool_name = %tool_call.name, "Handling delete");
 
         // Parse parameters
         let args = tool_call.arguments.clone().ok_or_else(|| {
-            ServerError::InvalidRequest("Missing arguments for delete.plan".into())
+            ServerError::InvalidRequest("Missing arguments for delete".into())
         })?;
 
         let params: DeletePlanParams = serde_json::from_value(args).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid delete.plan parameters: {}", e))
+            ServerError::InvalidRequest(format!("Invalid delete parameters: {}", e))
         })?;
 
         debug!(

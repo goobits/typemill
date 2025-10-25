@@ -82,7 +82,7 @@ impl ToolHandler for WorkspaceToolsHandler {
 
     fn is_internal(&self) -> bool {
         // These tools are internal - used by backend/workflows but not exposed to AI agents.
-        // - move_directory: Replaced by move.plan with kind="consolidate"
+        // - move_directory: Replaced by move with kind="consolidate"
         // - update_dependencies: Manual package.json/Cargo.toml editing preferred
         // - update_dependency: Manual manifest editing preferred
         true

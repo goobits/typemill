@@ -149,7 +149,7 @@ Available for all categories. Clients may omit `options` entirely or send `{}` t
   "target": { "range": { ... } },
   "estimated_impact": "reduces complexity by ~8 points",
   "refactor_call": {
-    "command": "extract.plan",
+    "command": "extract",
     "arguments": { ... }
   }
 }
@@ -258,7 +258,7 @@ Available for all categories. Clients may omit `options` entirely or send `{}` t
 ```
 - `operation`: `"rename" | "extract" | "inline" | "move" | "reorder" | "transform" | "delete"`.
 - `kind`: operation-specific enumeration.
-- Command name mapping: `rename.plan`, `extract.plan`, etc.
+- Command name mapping: `rename`, `extract`, etc.
 
 ### Plan Response (`PlanBase`)
 ```json
@@ -303,7 +303,7 @@ Additional codes must be documented before release.
 
 ### Operation-Specific Arguments
 
-#### `rename.plan`
+#### `rename`
 - `kind`: `"symbol" | "parameter" | "type" | "file" | "directory"`.
 - `arguments.target`:
   ```json
@@ -322,19 +322,19 @@ Additional codes must be documented before release.
   - `validate_scope` (bool, default true)
   - `workspace_limits` (string array of allowed path prefixes)
 
-#### `extract.plan`
+#### `extract`
 - `kind`: `"function" | "variable" | "module" | "interface" | "class" | "constant" | "type_alias"`.
 - `arguments.source` requires `file_path` and `range`.
 - Optional `destination` path or module.
 - `options.visibility`: `"public" | "private"` (default `"private"`).
 - `options.destination_path`: file path for extracted artifact.
 
-#### `inline.plan`
+#### `inline`
 - `kind`: `"variable" | "function" | "constant" | "type_alias"`.
 - `arguments.target`: `{ "file_path": "...", "position": { ... } }`.
 - `options.inline_all`: boolean (default false).
 
-#### `move.plan`
+#### `move`
 - `kind`: `"symbol" | "to_module" | "to_namespace" | "consolidate"`.
 - For symbol moves:
   ```json
@@ -352,18 +352,18 @@ Additional codes must be documented before release.
   ```
 - `options.merge_dependencies`: boolean (default true) for consolidation.
 
-#### `reorder.plan`
+#### `reorder`
 - `kind`: `"parameters" | "imports" | "members" | "statements"`.
 - `arguments.target`: `file_path` plus either `position` or `range`.
 - `arguments.new_order`: array of zero-based indices; required when no `strategy`.
 - `options.strategy`: `"alphabetical" | "visibility" | "dependency"`; mutually exclusive with `new_order`.
 
-#### `transform.plan`
+#### `transform`
 - `kind`: `"to_arrow_function" | "to_async" | "loop_to_iterator" | "callback_to_promise" | "add_null_check" | "remove_dead_branch"`.
 - `arguments.target`: `file_path` and `position` or `range`.
 - `options.language_specific`: object (`// additional properties allowed`); document accepted keys per language module.
 
-#### `delete.plan`
+#### `delete`
 - `kind`: `"unused_imports" | "dead_code" | "redundant_code" | "file"`.
 - `arguments.target`:
   - For file-based deletions: `file_path`.

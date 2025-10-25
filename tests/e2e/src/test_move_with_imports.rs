@@ -42,7 +42,7 @@ async fn test_move_file_updates_imports_from_fixtures() {
 
         // 2. Generate and apply move plan
         let plan_response = client.call_tool("move", params.clone()).await
-            .expect("move.plan should succeed");
+            .expect("move should succeed");
         let plan = plan_response.get("result").and_then(|r| r.get("content"))
             .expect("Plan should have result.content")
             .clone();
@@ -115,7 +115,7 @@ async fn test_rust_move_file_updates_imports_from_fixtures() {
 
         // 2. Generate and apply move plan
         let plan_response = client.call_tool("move", params.clone()).await
-            .expect("move.plan should succeed");
+            .expect("move should succeed");
         let plan = plan_response.get("result").and_then(|r| r.get("content"))
             .expect("Plan should have result.content")
             .clone();

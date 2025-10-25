@@ -5,7 +5,7 @@
 **Severity**: HIGH (Blocks successful consolidation)
 **Context**: Dogfooding consolidation of `cb-protocol` → `mill-foundation/src/protocol`
 
-> **Resolution Note (Phase 5)**: The two-step API pattern (`rename.plan` + `workspace.apply_edit`) referenced in this report has been replaced by the unified dryRun API. All refactoring tools now use `options.dryRun: true/false` instead of separate plan and apply steps.
+> **Resolution Note (Phase 5)**: The two-step API pattern (`rename (with dryRun option)` + `workspace.apply_edit`) referenced in this report has been replaced by the unified dryRun API. All refactoring tools now use `options.dryRun: true/false` instead of separate plan and apply steps.
 
 ## Summary
 
@@ -15,7 +15,7 @@ Tested the consolidation tools (Proposal 50) by dogfooding them on the actual `c
 
 **Tools Used:**
 - `analyze.module_dependencies` - ✅ Worked correctly
-- `rename.plan` with `consolidate: true` - ✅ Generated plan
+- `rename (with dryRun option)` with `consolidate: true` - ✅ Generated plan
 - `workspace.apply_edit` with `dry_run: false` - ⚠️ Partially worked
 
 **Result**: Consolidation succeeded in updating 171+ Rust files with correct imports (`cb_protocol::` → `mill_foundation::protocol::`), but left the workspace in a broken state requiring 6 categories of manual fixes.

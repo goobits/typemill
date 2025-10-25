@@ -108,7 +108,7 @@ Fast reference for test organization, execution, and best practices.
 | Helper | Purpose | Example Usage |
 |--------|---------|---------------|
 | `TestWorkspace` | Isolated temp workspace | `TestWorkspace::new()` |
-| `TestClient` | MCP tool invocation | `client.call_tool("rename.plan", args)` |
+| `TestClient` | MCP tool invocation | `client.call_tool("rename", args)` |
 | `test_fixtures.rs` | Language-specific test data | See data-driven architecture |
 
 ## Test Organization

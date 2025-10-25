@@ -30,7 +30,7 @@ impl InlineHandler {
         Self
     }
 
-    /// Handle inline.plan() tool call
+    /// Handle inline() tool call
     async fn handle_inline_plan(
         &self,
         context: &ToolHandlerContext,
@@ -420,7 +420,7 @@ impl ToolHandler for InlineHandler {
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
         match tool_call.name.as_str() {
-            "inline.plan" => self.handle_inline_plan(context, tool_call).await,
+            "inline" => self.handle_inline_plan(context, tool_call).await,
             _ => Err(ServerError::Unsupported(format!(
                 "Unknown inline operation: {}",
                 tool_call.name

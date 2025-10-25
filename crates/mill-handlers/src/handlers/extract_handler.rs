@@ -31,7 +31,7 @@ impl ExtractHandler {
         Self
     }
 
-    /// Handle extract.plan() tool call
+    /// Handle extract() tool call
     async fn handle_extract_plan(
         &self,
         context: &ToolHandlerContext,
@@ -470,7 +470,7 @@ impl ToolHandler for ExtractHandler {
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
         match tool_call.name.as_str() {
-            "extract.plan" => self.handle_extract_plan(context, tool_call).await,
+            "extract" => self.handle_extract_plan(context, tool_call).await,
             _ => Err(ServerError::Unsupported(format!(
                 "Unknown extract operation: {}",
                 tool_call.name

@@ -53,7 +53,7 @@ pub enum ImpactLevel {
 /// Refactoring command reference
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RefactorCall {
-    /// Tool name (e.g., "extract.plan", "inline.plan")
+    /// Tool name (e.g., "extract", "inline")
     pub tool: String,
 
     /// Arguments to pass to the tool

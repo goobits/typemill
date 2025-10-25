@@ -281,7 +281,7 @@ fn parse_rename_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
     Ok(result)
 }
 
-/// Parse flags for extract.plan
+/// Parse flags for extract
 ///
 /// Required flags: kind, source, name
 /// Optional flags: visibility
@@ -335,7 +335,7 @@ fn parse_extract_flags(flags: HashMap<String, String>) -> Result<Value, FlagPars
     Ok(result)
 }
 
-/// Parse flags for move.plan
+/// Parse flags for move
 ///
 /// Required flags: source, destination
 /// Optional flags: kind, update_imports
@@ -446,7 +446,7 @@ fn parse_move_flags(flags: HashMap<String, String>) -> Result<Value, FlagParseEr
     Ok(result)
 }
 
-/// Parse flags for inline.plan
+/// Parse flags for inline
 ///
 /// Required flags: target
 /// Optional flags: kind, inline_all
@@ -497,7 +497,7 @@ fn parse_inline_flags(flags: HashMap<String, String>) -> Result<Value, FlagParse
     Ok(result)
 }
 
-/// Parse flags for reorder.plan
+/// Parse flags for reorder
 ///
 /// Required flags: kind, target
 /// Optional flags: strategy, order
@@ -569,7 +569,7 @@ fn parse_reorder_flags(flags: HashMap<String, String>) -> Result<Value, FlagPars
     Ok(result)
 }
 
-/// Parse flags for transform.plan
+/// Parse flags for transform
 ///
 /// Required flags: kind, target
 ///
@@ -611,7 +611,7 @@ fn parse_transform_flags(flags: HashMap<String, String>) -> Result<Value, FlagPa
     Ok(result)
 }
 
-/// Parse flags for delete.plan
+/// Parse flags for delete
 ///
 /// Required flags: kind, target
 ///
@@ -1010,7 +1010,7 @@ mod tests {
     }
 
     // ========================================================================
-    // extract.plan tests
+    // extract tests
     // ========================================================================
 
     #[test]
@@ -1074,7 +1074,7 @@ mod tests {
     }
 
     // ========================================================================
-    // move.plan tests
+    // move tests
     // ========================================================================
 
     #[test]
@@ -1118,7 +1118,7 @@ mod tests {
     }
 
     // ========================================================================
-    // inline.plan tests
+    // inline tests
     // ========================================================================
 
     #[test]
@@ -1163,7 +1163,7 @@ mod tests {
     }
 
     // ========================================================================
-    // reorder.plan tests
+    // reorder tests
     // ========================================================================
 
     #[test]
@@ -1228,7 +1228,7 @@ mod tests {
     }
 
     // ========================================================================
-    // transform.plan tests
+    // transform tests
     // ========================================================================
 
     #[test]
@@ -1264,7 +1264,7 @@ mod tests {
     }
 
     // ========================================================================
-    // delete.plan tests
+    // delete tests
     // ========================================================================
 
     #[test]

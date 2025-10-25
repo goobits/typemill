@@ -11,7 +11,7 @@
 use crate::harness::{TestClient, TestWorkspace};
 use serde_json::json;
 
-/// Helper to build transform.plan parameters
+/// Helper to build transform parameters
 fn build_transform_params(
     workspace: &TestWorkspace,
     file_path: &str,
@@ -62,7 +62,7 @@ async fn test_transform_if_to_match_plan_and_apply() {
         Ok(response) => {
             // Check if response has error field (LSP unavailable)
             if response.get("error").is_some() {
-                eprintln!("INFO: transform.plan requires LSP support, skipping test");
+                eprintln!("INFO: transform requires LSP support, skipping test");
                 return;
             }
 
@@ -70,7 +70,7 @@ async fn test_transform_if_to_match_plan_and_apply() {
 
             // If no plan content, likely LSP not available
             if plan.is_none() {
-                eprintln!("INFO: transform.plan requires LSP support, skipping test");
+                eprintln!("INFO: transform requires LSP support, skipping test");
                 return;
             }
 
@@ -103,7 +103,7 @@ async fn test_transform_if_to_match_plan_and_apply() {
             );
         }
         Err(_) => {
-            eprintln!("INFO: transform.plan requires LSP support, skipping test");
+            eprintln!("INFO: transform requires LSP support, skipping test");
         }
     }
 }

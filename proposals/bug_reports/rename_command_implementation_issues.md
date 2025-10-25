@@ -5,7 +5,7 @@
 **Context:** Implementing one-step rename command and dogfooding it to rename `cb-core → mill-core`
 **Status:** RESOLVED (API updated in Phase 5)
 
-> **Resolution Note (Phase 5)**: The two-step API pattern (`rename.plan` + `workspace.apply_edit`) and CLI piping issues described in this report have been resolved by the unified dryRun API. All refactoring tools now accept `options.dryRun: true/false` directly, eliminating the need for piping between plan and apply steps.
+> **Resolution Note (Phase 5)**: The two-step API pattern (`rename (with dryRun option)` + `workspace.apply_edit`) and CLI piping issues described in this report have been resolved by the unified dryRun API. All refactoring tools now accept `options.dryRun: true/false` directly, eliminating the need for piping between plan and apply steps.
 
 ---
 
@@ -16,11 +16,11 @@
 
 ### Problem
 
-The original goal was to pipe output from `rename.plan` directly to `workspace.apply_edit`:
+The original goal was to pipe output from `rename (with dryRun option)` directly to `workspace.apply_edit`:
 
 ```bash
 # Intended usage (doesn't work):
-./target/debug/mill tool rename.plan '{"target": {...}}' | \
+./target/debug/mill tool rename (with dryRun option) '{"target": {...}}' | \
   ./target/debug/mill tool workspace.apply_edit ???
 ```
 
@@ -35,15 +35,15 @@ The original goal was to pipe output from `rename.plan` directly to `workspace.a
 
 ```bash
 # Attempt 1: Direct pipe (failed)
-tool rename.plan '...' | tool workspace.apply_edit '{"plan": ???}'
+tool rename (with dryRun option) '...' | tool workspace.apply_edit '{"plan": ???}'
 
 # Attempt 2: File intermediate (failed - JSON format issues)
-tool rename.plan '...' > /tmp/plan.json
+tool rename (with dryRun option) '...' > /tmp/plan.json
 tool workspace.apply_edit "$(cat /tmp/plan.json)"
 # Error: "Invalid JSON arguments: expected value at line 1 column 1"
 
 # Attempt 3: jq transformation (failed - complex JSON)
-tool rename.plan '...' | jq '{plan: .content, options: {dry_run: false}}' | tool workspace.apply_edit "$(cat)"
+tool rename (with dryRun option) '...' | jq '{plan: .content, options: {dry_run: false}}' | tool workspace.apply_edit "$(cat)"
 # Error: Same JSON parsing issues
 ```
 
@@ -122,10 +122,10 @@ mill tool workspace.apply_edit '{"plan": @stdin, "options": {...}}'
 
 ### Problem
 
-The `rename.plan` command successfully updated most imports but missed **qualified path references** like:
+The `rename (with dryRun option)` command successfully updated most imports but missed **qualified path references** like:
 
 ```rust
-// These were NOT updated by rename.plan:
+// These were NOT updated by rename (with dryRun option):
 cb_core::config::LspServerConfig
 cb_core::utils::system::command_exists
 cb_core::logging::request_span

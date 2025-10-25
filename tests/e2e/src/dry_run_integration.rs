@@ -28,7 +28,7 @@ async fn test_rename_file_dry_run_does_not_modify_disk() {
 
 /// Test 2: File creation dry-run (CLOSURE-BASED API)
 /// BEFORE: 69 lines | AFTER: ~12 lines (~83% reduction)
-/// Note: Uses delete.plan as proxy for file operation testing
+/// Note: Uses delete as proxy for file operation testing
 #[tokio::test]
 async fn test_create_file_dry_run_does_not_create_file() {
     run_dry_run_test(

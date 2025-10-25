@@ -1304,7 +1304,7 @@ async fn handle_convert_naming(
         }
     };
 
-    // Build rename.plan request with batch targets
+    // Build rename request with batch targets
     let arguments = json!({
         "targets": targets,
         "options": {

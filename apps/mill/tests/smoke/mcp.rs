@@ -164,21 +164,24 @@ async fn test_mcp_protocol_layer() {
         .await;
     println!("   ✓ Navigation tools route correctly (search_symbols)");
 
-    // Test refactoring plan tool
+    // Test refactoring tool (unified dryRun API)
     let _refactor_response = client
         .call_tool(
-            "rename.plan",
+            "rename",
             json!({
                 "target": {
                     "filePath": test_file.to_str().unwrap(),
                     "line": 0,
                     "character": 0
                 },
-                "newName": "test_renamed"
+                "newName": "test_renamed",
+                "options": {
+                    "dryRun": true
+                }
             }),
         )
         .await;
-    println!("   ✓ Refactoring tools route correctly (rename.plan)");
+    println!("   ✓ Refactoring tools route correctly (rename)");
 
     // Test analysis tool
     let _analysis_response = client

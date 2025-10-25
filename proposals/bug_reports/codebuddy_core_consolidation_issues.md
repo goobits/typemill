@@ -13,7 +13,7 @@ During the consolidation of `mill-core` into `mill-foundation/src/core`, multipl
 
 - **Source Crate**: `crates/mill-core`
 - **Target Location**: `../../crates/mill-foundation/src/core`
-- **Consolidation Command**: `rename.plan` with `consolidate: true`
+- **Consolidation Command**: `rename (with dryRun option)` with `consolidate: true`
 - **Affected Files**: 19 Rust files with import references
 
 ## Bugs Discovered

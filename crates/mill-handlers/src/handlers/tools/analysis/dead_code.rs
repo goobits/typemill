@@ -334,7 +334,7 @@ pub fn detect_unused_symbols(
                         confidence: 0.75,
                         reversible: true,
                         refactor_call: Some(mill_foundation::protocol::analysis_result::RefactorCall {
-                            command: "delete.plan".to_string(),
+                            command: "delete".to_string(),
                             arguments: json!({
                                 "kind": "function",
                                 "target": {

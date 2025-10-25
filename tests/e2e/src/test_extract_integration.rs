@@ -69,7 +69,7 @@ async fn test_extract_function_plan_basic_workflow() {
                 "Apply should succeed");
         }
         Err(_) => {
-            eprintln!("INFO: extract.plan requires LSP support, skipping test");
+            eprintln!("INFO: extract requires LSP support, skipping test");
         }
     }
 }

@@ -412,7 +412,7 @@ impl QualityHandler {
                         confidence: 0.75,
                         reversible: true,
                         refactor_call: Some(mill_foundation::protocol::analysis_result::RefactorCall {
-                            command: "extract.plan".to_string(),
+                            command: "extract".to_string(),
                             arguments: json!({
                                 "kind": "function",
                                 "source": {
@@ -542,7 +542,7 @@ pub fn detect_smells(
                     confidence: 0.70,
                     reversible: true,
                     refactor_call: Some(RefactorCall {
-                        command: "extract.plan".to_string(),
+                        command: "extract".to_string(),
                         arguments: json!({
                             "kind": "function",
                             "source": {
@@ -877,7 +877,7 @@ pub fn analyze_readability(
                     confidence: 0.70,
                     reversible: true,
                     refactor_call: Some(RefactorCall {
-                        command: "extract.plan".to_string(),
+                        command: "extract".to_string(),
                         arguments: json!({
                             "kind": "function",
                             "source": {

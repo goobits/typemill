@@ -64,7 +64,7 @@ Implement finding-specific refactoring candidate generators:
 - ❌ **Quality**: Complexity → extract method, simplify boolean - NOT STARTED
 - ✅ **Dead Code**: Unused → delete (COMPLETE - all 6 kinds generate candidates)
   - ✅ `generate_dead_code_refactoring_candidates()` function implemented
-  - ✅ Maps all dead code finding kinds to `delete.plan` refactor_call
+  - ✅ Maps all dead code finding kinds to `delete (with dryRun option)` refactor_call
   - ✅ Integrated for all 6 kinds: imports, symbols, unreachable, parameters, types, variables
 - ❌ **Dependencies**: Circular deps → move/restructure - NOT STARTED
 - ❌ **Structure**: Poor hierarchy → reorganize - NOT STARTED
@@ -258,10 +258,10 @@ fn generate_complexity_candidates(
 - `generate_readability_candidates()` - Rename, format
 
 **Mapping**:
-- Complexity > 10 → `extract.plan` (extract method)
-- Complexity > 15 → `transform.plan` (simplify boolean)
-- Long method → `extract.plan`
-- Deep nesting → `transform.plan` (flatten)
+- Complexity > 10 → `extract (with dryRun option)` (extract method)
+- Complexity > 15 → `transform (with dryRun option)` (simplify boolean)
+- Long method → `extract (with dryRun option)`
+- Deep nesting → `transform (with dryRun option)` (flatten)
 
 ### Dead Code (Agent 1)
 
@@ -272,10 +272,10 @@ fn generate_complexity_candidates(
 - `generate_unreachable_code_candidates()` - Remove unreachable code
 
 **Mapping**:
-- Unused import → `delete.plan` (remove import)
-- Unused variable → `delete.plan` (remove variable)
-- Unused function → `delete.plan` (remove function)
-- Unreachable code → `delete.plan` (remove block)
+- Unused import → `delete (with dryRun option)` (remove import)
+- Unused variable → `delete (with dryRun option)` (remove variable)
+- Unused function → `delete (with dryRun option)` (remove function)
+- Unreachable code → `delete (with dryRun option)` (remove block)
 
 ### Dependencies (Agent 1)
 
@@ -285,8 +285,8 @@ fn generate_complexity_candidates(
 - `generate_low_cohesion_candidates()` - Split module
 
 **Mapping**:
-- Circular dependency → `move.plan` (move to break cycle)
-- High coupling → `extract.plan` (extract interface)
+- Circular dependency → `move (with dryRun option)` (move to break cycle)
+- High coupling → `extract (with dryRun option)` (extract interface)
 - Low cohesion → Split module (may need multiple refactorings)
 
 ### Structure (Agent 2)
@@ -297,9 +297,9 @@ fn generate_complexity_candidates(
 - `generate_module_candidates()` - Reorganize modules
 
 **Mapping**:
-- Deep hierarchy → `move.plan` (flatten hierarchy)
-- Missing interface → `extract.plan` (extract interface)
-- Poor module organization → `move.plan` (reorganize)
+- Deep hierarchy → `move (with dryRun option)` (flatten hierarchy)
+- Missing interface → `extract (with dryRun option)` (extract interface)
+- Poor module organization → `move (with dryRun option)` (reorganize)
 
 ### Documentation (Agent 2)
 
@@ -311,7 +311,7 @@ fn generate_complexity_candidates(
 **Mapping**:
 - Missing docs → Suggest doc template (no refactor_call yet - needs new tool)
 - Outdated docs → Suggest update (no refactor_call yet)
-- Style violation → `transform.plan` (format docs)
+- Style violation → `transform (with dryRun option)` (format docs)
 
 **Note**: Documentation suggestions may need a new `add_documentation` tool in the future.
 
@@ -325,7 +325,7 @@ fn generate_complexity_candidates(
 **Mapping**:
 - Missing test → Suggest test template (no refactor_call yet - needs new tool)
 - Weak assertion → Suggest improvement (no refactor_call yet)
-- Poor organization → `move.plan` (reorganize test files)
+- Poor organization → `move (with dryRun option)` (reorganize test files)
 
 **Note**: Test suggestions may need a new `generate_test` tool in the future.
 
@@ -510,7 +510,7 @@ After merge:
 
 **Dead Code Suggestion Generation - 100% Complete**
 
-All 6 dead code analysis kinds now generate actionable `delete.plan` suggestions:
+All 6 dead code analysis kinds now generate actionable `delete (with dryRun option)` suggestions:
 
 1. ✅ **unused_imports** - Removes entire import statements or unused symbols
 2. ✅ **unused_symbols** - Removes unused functions/classes/variables
@@ -532,7 +532,7 @@ All 6 dead code analysis kinds now generate actionable `delete.plan` suggestions
 **Value Delivered:**
 - AI agents can now automatically fix unused code issues
 - Each suggestion includes:
-  - `refactor_call` with `delete.plan` tool and arguments
+  - `refactor_call` with `delete (with dryRun option)` tool and arguments
   - Safety level (Safe or RequiresReview)
   - Confidence score (0.7-0.9)
   - Reversibility flag

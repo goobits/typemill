@@ -133,7 +133,7 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Supports batch file renaming with convention transformations
   - Standalone utility for naming convention migration
 
-- **Batch Rename Support** - Enhanced rename.plan with batch operations
+- **Batch Rename Support** - Enhanced rename tool with batch operations (originally rename.plan, now using unified dryRun API)
   - Multiple file/directory renames in single operation
   - Coordinated reference updates across batch
   - Optimized for large-scale refactoring projects
@@ -905,7 +905,7 @@ Your contributions help make mill better for everyone! 🙏
 
 - `textDocument/documentSymbol` LSP functionality for comprehensive symbol discovery
 - Automatic symbol matching by name and kind for improved LLM accuracy
-- `rename_symbol_strict` tool for precise position-based renaming when multiple matches exist (legacy tool, later merged into unified `rename.plan` API in Rust implementation)
+- `rename_symbol_strict` tool for precise position-based renaming when multiple matches exist (legacy tool, evolved through unified API phases, now using dryRun option)
 - Symbol kind validation with helpful error messages listing valid options
 - Comprehensive debug logging throughout the symbol resolution pipeline
 - File content analysis for precise symbol position detection in `SymbolInformation`

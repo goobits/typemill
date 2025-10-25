@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use tracing::{debug, error, info};
 
-/// Handler for transform.plan operations
+/// Handler for transform operations
 pub struct TransformHandler;
 
 impl TransformHandler {
@@ -79,15 +79,15 @@ impl ToolHandler for TransformHandler {
         context: &ToolHandlerContext,
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        info!(tool_name = %tool_call.name, "Handling transform.plan");
+        info!(tool_name = %tool_call.name, "Handling transform");
 
         // Parse parameters
         let args = tool_call.arguments.clone().ok_or_else(|| {
-            ServerError::InvalidRequest("Missing arguments for transform.plan".into())
+            ServerError::InvalidRequest("Missing arguments for transform".into())
         })?;
 
         let params: TransformPlanParams = serde_json::from_value(args).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid transform.plan parameters: {}", e))
+            ServerError::InvalidRequest(format!("Invalid transform parameters: {}", e))
         })?;
 
         debug!(

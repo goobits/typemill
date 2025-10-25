@@ -127,7 +127,7 @@ Configuration: `crates/my-crate/Cargo.toml`
             }),
         )
         .await
-        .expect("rename.plan should succeed");
+        .expect("rename should succeed");
 
     let plan = plan_result
         .get("result")

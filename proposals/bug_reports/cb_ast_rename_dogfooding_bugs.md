@@ -1,7 +1,7 @@
 # Bug Report: cb-ast → mill-ast Rename Dogfooding Issues
 
 **Date**: 2025-10-19
-**Context**: Dogfooding mill's rename.plan feature on itself (Phase 3 of Proposal 06)
+**Context**: Dogfooding mill's rename (with dryRun option) feature on itself (Phase 3 of Proposal 06)
 **Severity**: Medium - Rename succeeded but required manual fixes for edge cases
 
 ## Summary

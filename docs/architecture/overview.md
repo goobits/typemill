@@ -262,7 +262,7 @@ Tools are classified by scope to optimize plugin selection:
 ```rust
 pub enum ToolScope {
     /// Tool operates on a specific file (requires file_path)
-    File,        // Example: find_definition, rename.plan
+    File,        // Example: find_definition, rename
     /// Tool operates at workspace level (no file_path required)
     Workspace,   // Example: search_workspace_symbols, list_files
 }
@@ -276,7 +276,7 @@ impl Capabilities {
         match method {
             // File-scoped tools
             | "find_definition"
-            | "rename.plan"
+            | "rename"
             | "format_document" => Some(ToolScope::File),
 
             // Workspace-scoped tools

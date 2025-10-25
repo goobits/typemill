@@ -145,7 +145,7 @@ async fn test_move_module_plan_structure() {
             build_move_params(&workspace, "old_location/module.rs", "new_location/module.rs", "file"),
         )
         .await
-        .expect("move.plan should succeed")
+        .expect("move should succeed")
         .get("result")
         .and_then(|r| r.get("content"))
         .cloned()

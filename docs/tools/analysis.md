@@ -151,7 +151,7 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
             "confidence": 0.85,
             "reversible": true,
             "refactor_call": {
-              "command": "extract.plan",
+              "command": "extract",
               "arguments": {
                 "kind": "function",
                 "source": {
@@ -1047,7 +1047,7 @@ All findings include actionable suggestions:
       "confidence": 0.85,
       "reversible": true,
       "refactor_call": {
-        "command": "extract.plan",
+        "command": "extract",
         "arguments": {...}
       }
     }

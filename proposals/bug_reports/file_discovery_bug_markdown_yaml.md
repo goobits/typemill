@@ -1,7 +1,7 @@
 # Bug Report: Markdown and YAML Files Not Discovered During Rename Operations
 
 **Status**: 🔴 **CRITICAL** - Causes incomplete renames, broken references
-**Affects**: `rename.plan`, `move.plan` - any operation that scans for file references
+**Affects**: `rename (with dryRun option)`, `move (with dryRun option)` - any operation that scans for file references
 **Discovered**: 2025-10-21
 
 ## Summary
@@ -82,7 +82,7 @@ Found files for extension, extension: "markdown", files_found: 0
 ### Test Case 2: Real-world Reproduction
 
 ```bash
-./target/debug/mill tool rename.plan '{
+./target/debug/mill tool rename (with dryRun option) '{
   "target": {"kind": "directory", "path": "../../crates/mill-test-support"},
   "newName": "crates/mill-test-support"
 }'
@@ -251,7 +251,7 @@ After fix, the following should work:
 
 2. **Real-world rename includes all files**:
    ```bash
-   ./target/debug/mill tool rename.plan '{
+   ./target/debug/mill tool rename (with dryRun option) '{
      "target": {"kind": "directory", "path": "../../crates/mill-test-support"},
      "newName": "crates/mill-test-support"
    }'
@@ -263,7 +263,7 @@ After fix, the following should work:
    # All files with references should be in plan
    rg "cb-test-support|cb_test_support" --files-with-matches | wc -l  # 29
    # vs
-   # Files in rename.plan
+   # Files in rename (with dryRun option)
    jq '.content.edits.documentChanges | length' plan.json  # Should also be 29
    ```
 

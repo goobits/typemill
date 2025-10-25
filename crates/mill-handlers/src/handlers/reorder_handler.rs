@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use tracing::{debug, error, info};
 
-/// Handler for reorder.plan operations
+/// Handler for reorder operations
 pub struct ReorderHandler;
 
 impl ReorderHandler {
@@ -80,15 +80,15 @@ impl ToolHandler for ReorderHandler {
         context: &ToolHandlerContext,
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        info!(tool_name = %tool_call.name, "Handling reorder.plan");
+        info!(tool_name = %tool_call.name, "Handling reorder");
 
         // Parse parameters
         let args = tool_call.arguments.clone().ok_or_else(|| {
-            ServerError::InvalidRequest("Missing arguments for reorder.plan".into())
+            ServerError::InvalidRequest("Missing arguments for reorder".into())
         })?;
 
         let params: ReorderPlanParams = serde_json::from_value(args).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid reorder.plan parameters: {}", e))
+            ServerError::InvalidRequest(format!("Invalid reorder parameters: {}", e))
         })?;
 
         debug!(

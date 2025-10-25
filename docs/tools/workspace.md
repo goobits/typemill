@@ -25,7 +25,7 @@ Package management operations for multi-language workspaces. Create new packages
   - [Dependency Audit Before Extraction](#dependency-audit-before-extraction)
   - [Project-Wide Text Replacement](#project-wide-text-replacement)
 - [Integration with Other Tools](#integration-with-other-tools)
-  - [With rename.plan (Crate Consolidation)](#with-renameplan-crate-consolidation)
+  - [With rename (Crate Consolidation)](#with-renameplan-crate-consolidation)
   - [With analyze.module_dependencies](#with-analyzemodule_dependencies)
 
 ---
@@ -856,14 +856,14 @@ mill tool workspace.find_replace '{
 
 ## Integration with Other Tools
 
-### With rename.plan (Crate Consolidation)
+### With rename (Crate Consolidation)
 
-Workspace tools integrate with `rename.plan` for crate consolidation:
+Workspace tools integrate with `rename` for crate consolidation:
 
 ```bash
 # Extract module to new crate, then consolidate back
 # See CLAUDE.md "Rust Crate Consolidation" section
-mill tool rename.plan '{
+mill tool rename '{
   "target": {"kind": "directory", "path": "crates/source-crate"},
   "newName": "crates/target-crate/src/module",
   "options": {"consolidate": true}
@@ -899,6 +899,6 @@ mill tool workspace.extract_dependencies '{
 ---
 
 **Related Documentation:**
-- [Refactoring Tools](refactoring.md) - rename.plan for crate consolidation
+- [Refactoring Tools](refactoring.md) - rename for crate consolidation
 - [Analysis Tools](analysis.md) - analyze.module_dependencies for dependency analysis
 - [Main API Reference](README.md) - Complete API documentation

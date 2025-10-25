@@ -45,7 +45,7 @@ use std::path::Path;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-/// Handler for move.plan operations
+/// Handler for move operations
 pub struct MoveHandler;
 
 impl MoveHandler {

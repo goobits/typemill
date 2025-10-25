@@ -12,7 +12,7 @@
 use crate::harness::{TestClient, TestWorkspace};
 use serde_json::json;
 
-/// Helper to build reorder.plan parameters
+/// Helper to build reorder parameters
 fn build_reorder_params(
     workspace: &TestWorkspace,
     file_path: &str,
@@ -63,7 +63,7 @@ pub fn test() {}
         Ok(response) => {
             // Check if response has error field (LSP unavailable)
             if response.get("error").is_some() {
-                eprintln!("INFO: reorder.plan requires LSP support, skipping test");
+                eprintln!("INFO: reorder requires LSP support, skipping test");
                 return;
             }
 
@@ -71,7 +71,7 @@ pub fn test() {}
 
             // If no plan content, likely LSP not available
             if plan.is_none() {
-                eprintln!("INFO: reorder.plan requires LSP support, skipping test");
+                eprintln!("INFO: reorder requires LSP support, skipping test");
                 return;
             }
 
@@ -104,7 +104,7 @@ pub fn test() {}
             );
         }
         Err(_) => {
-            eprintln!("INFO: reorder.plan requires LSP support, skipping test");
+            eprintln!("INFO: reorder requires LSP support, skipping test");
         }
     }
 }

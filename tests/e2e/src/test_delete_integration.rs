@@ -84,7 +84,7 @@ async fn test_delete_directory_plan_and_apply() {
     let params = build_delete_params(&workspace, "temp_dir", "directory");
 
     let plan = client.call_tool("delete", params).await
-        .expect("delete.plan should succeed")
+        .expect("delete should succeed")
         .get("result").and_then(|r| r.get("content"))
         .cloned().expect("Plan should exist");
 

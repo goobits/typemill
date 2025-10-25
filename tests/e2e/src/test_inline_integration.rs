@@ -11,7 +11,7 @@
 use crate::harness::{TestClient, TestWorkspace};
 use serde_json::json;
 
-/// Helper to build inline.plan parameters
+/// Helper to build inline parameters
 fn build_inline_params(
     workspace: &TestWorkspace,
     file_path: &str,
@@ -86,7 +86,7 @@ async fn test_inline_variable_plan_and_apply() {
             );
         }
         Err(_) => {
-            eprintln!("INFO: inline.plan requires LSP support, skipping test");
+            eprintln!("INFO: inline requires LSP support, skipping test");
         }
     }
 }

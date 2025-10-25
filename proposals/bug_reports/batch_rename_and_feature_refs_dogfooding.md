@@ -2,7 +2,7 @@
 
 **Date:** 2025-10-22
 **Session:** Dogfooding mill-* rename migration
-**Affected Commands:** `rename.plan` (batch mode), `rename` (batch mode)
+**Affected Commands:** `rename (with dryRun option)` (batch mode), `rename` (batch mode)
 **Status:** 🐛 Issue #1 Confirmed - Needs Fix | ✅ Issue #2 False Alarm - Already Working
 
 ---
@@ -24,7 +24,7 @@ One critical issue discovered while dogfooding the rename tool during the mill-*
 Used the batch rename feature (added in commit 15d46fe4) to rename two crates simultaneously:
 
 ```bash
-./target/release/mill tool rename.plan '{
+./target/release/mill tool rename (with dryRun option) '{
   "targets": [
     {
       "kind": "directory",
@@ -218,7 +218,7 @@ No fix needed. This issue can be CLOSED.
 1. Build latest: `cargo build --release --bin mill`
 2. Run batch rename:
    ```bash
-   ./target/release/mill tool rename.plan '{
+   ./target/release/mill tool rename (with dryRun option) '{
      "targets": [
        {"kind": "directory", "path": "crates/A", "newName": "crates/B"},
        {"kind": "directory", "path": "crates/C", "newName": "crates/D"}

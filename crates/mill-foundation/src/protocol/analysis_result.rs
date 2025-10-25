@@ -133,7 +133,7 @@ pub struct SuggestionTarget {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RefactorCall {
-    /// Command name (e.g., "extract.plan", "inline.plan")
+    /// Command name (e.g., "extract", "inline")
     pub command: String,
     /// Arguments to pass to the command
     pub arguments: serde_json::Value,

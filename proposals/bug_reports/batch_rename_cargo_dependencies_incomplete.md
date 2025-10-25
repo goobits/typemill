@@ -3,7 +3,7 @@
 **Date**: 2025-10-22
 **Reporter**: Dogfooding session (Claude Code)
 **Severity**: High
-**Component**: `rename.plan` / `rename` (batch mode with `targets` parameter)
+**Component**: `rename (with dryRun option)` / `rename` (batch mode with `targets` parameter)
 **Affects**: Cargo workspace projects with complex dependency graphs
 
 ## Summary

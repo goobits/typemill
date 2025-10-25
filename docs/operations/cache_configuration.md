@@ -41,7 +41,7 @@ TypeMill uses multiple caching layers to improve performance. This document desc
 **Features:**
 - Stores complete import lists per file
 - File modification time validation
-- Used during `rename.plan` and directory renames
+- Used during `rename` and directory renames
 
 ### 3. LSP Method Translation Cache
 **Purpose:** Cache method name translations between plugin API and LSP protocol
@@ -220,7 +220,7 @@ Cache warming (pre-populating caches on startup) is a planned feature.
 
 **Solution:** Disable import cache to force fresh scans:
 ```bash
-TYPEMILL_DISABLE_IMPORT_CACHE=1 ./target/release/mill tool rename.plan ...
+TYPEMILL_DISABLE_IMPORT_CACHE=1 ./target/release/mill tool rename ...
 ```
 
 ## Best Practices
