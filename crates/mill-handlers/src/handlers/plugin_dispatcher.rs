@@ -206,9 +206,7 @@ impl PluginDispatcher {
                 };
                 use super::tools::analysis::{BatchAnalysisHandler, DeadCodeHandler, DependenciesHandler, DocumentationHandler, ModuleDependenciesHandler, QualityHandler, StructureHandler, TestsHandler};
                 use super::workspace::FindReplaceHandler;
-                use super::{
-                    FileOperationHandler, WorkspaceApplyHandler,
-                };
+                use super::FileOperationHandler;
 
                 let mut registry = self.tool_registry.lock().await;
                 register_handlers_with_logging!(registry, {
@@ -234,113 +232,69 @@ impl PluginDispatcher {
                     WorkspaceExtractDepsHandler => "WorkspaceExtractDepsHandler with 1 tool (workspace.extract_dependencies)",
                     WorkspaceUpdateMembersHandler => "WorkspaceUpdateMembersHandler with 1 tool (workspace.update_members)",
                     FindReplaceHandler => "FindReplaceHandler with 1 tool (workspace.find_replace)",
-                    ModuleDependenciesHandler => "ModuleDependenciesHandler with 1 tool (analyze.module_dependencies)",
-                    WorkspaceApplyHandler => "Unified workspace apply handler"
+                    ModuleDependenciesHandler => "ModuleDependenciesHandler with 1 tool (analyze.module_dependencies)"
                 });
 
                 // Register refactoring handlers (feature-gated)
-                // Each refactoring type has two tools:
-                // 1. *.plan - Generate refactoring plan (preview, dry-run)
-                // 2. quick version - One-step plan + execute
-                use super::QuickRefactoringHandler;
+                // Each handler supports unified API with dryRun option:
+                // - dryRun: true (default) - Preview mode, returns plan
+                // - dryRun: false - Execute mode, applies changes
                 use std::sync::Arc;
 
                 #[cfg(feature = "refactor-rename")]
                 {
                     use super::RenameHandler;
                     let rename_handler = Arc::new(RenameHandler::new());
-                    let quick_rename = Arc::new(QuickRefactoringHandler::new(
-                        "rename",
-                        "rename.plan",
-                        rename_handler.clone(),
-                    ));
                     register_handlers_with_logging!(registry, @arc {
-                        rename_handler => "Unified rename handler (rename.plan)",
-                        quick_rename => "Quick rename (one-step plan + execute)"
+                        rename_handler => "Unified rename handler (supports dryRun)"
                     });
                 }
                 #[cfg(feature = "refactor-extract")]
                 {
                     use super::ExtractHandler;
                     let extract_handler = Arc::new(ExtractHandler::new());
-                    let quick_extract = Arc::new(QuickRefactoringHandler::new(
-                        "extract",
-                        "extract.plan",
-                        extract_handler.clone(),
-                    ));
                     register_handlers_with_logging!(registry, @arc {
-                        extract_handler => "Unified extract handler (extract.plan)",
-                        quick_extract => "Quick extract (one-step plan + execute)"
+                        extract_handler => "Unified extract handler (supports dryRun)"
                     });
                 }
                 #[cfg(feature = "refactor-inline")]
                 {
                     use super::InlineHandler;
                     let inline_handler = Arc::new(InlineHandler::new());
-                    let quick_inline = Arc::new(QuickRefactoringHandler::new(
-                        "inline",
-                        "inline.plan",
-                        inline_handler.clone(),
-                    ));
                     register_handlers_with_logging!(registry, @arc {
-                        inline_handler => "Unified inline handler (inline.plan)",
-                        quick_inline => "Quick inline (one-step plan + execute)"
+                        inline_handler => "Unified inline handler (supports dryRun)"
                     });
                 }
                 #[cfg(feature = "refactor-move")]
                 {
                     use super::MoveHandler;
                     let move_handler = Arc::new(MoveHandler::new());
-                    let quick_move = Arc::new(QuickRefactoringHandler::new(
-                        "move",
-                        "move.plan",
-                        move_handler.clone(),
-                    ));
                     register_handlers_with_logging!(registry, @arc {
-                        move_handler => "Unified move handler (move.plan)",
-                        quick_move => "Quick move (one-step plan + execute)"
+                        move_handler => "Unified move handler (supports dryRun)"
                     });
                 }
                 #[cfg(feature = "refactor-reorder")]
                 {
                     use super::ReorderHandler;
                     let reorder_handler = Arc::new(ReorderHandler::new());
-                    let quick_reorder = Arc::new(QuickRefactoringHandler::new(
-                        "reorder",
-                        "reorder.plan",
-                        reorder_handler.clone(),
-                    ));
                     register_handlers_with_logging!(registry, @arc {
-                        reorder_handler => "Unified reorder handler (reorder.plan)",
-                        quick_reorder => "Quick reorder (one-step plan + execute)"
+                        reorder_handler => "Unified reorder handler (supports dryRun)"
                     });
                 }
                 #[cfg(feature = "refactor-transform")]
                 {
                     use super::TransformHandler;
                     let transform_handler = Arc::new(TransformHandler::new());
-                    let quick_transform = Arc::new(QuickRefactoringHandler::new(
-                        "transform",
-                        "transform.plan",
-                        transform_handler.clone(),
-                    ));
                     register_handlers_with_logging!(registry, @arc {
-                        transform_handler => "Unified transform handler (transform.plan)",
-                        quick_transform => "Quick transform (one-step plan + execute)"
+                        transform_handler => "Unified transform handler (supports dryRun)"
                     });
                 }
                 #[cfg(feature = "refactor-delete")]
                 {
                     use super::DeleteHandler;
                     let delete_handler = Arc::new(DeleteHandler::new());
-                    let quick_delete = Arc::new(QuickRefactoringHandler::new(
-                        "delete",
-                        "delete.plan",
-                        delete_handler.clone(),
-                    ));
                     register_handlers_with_logging!(registry, @arc {
-                        delete_handler => "Unified delete handler (delete.plan)",
-                        quick_delete => "Quick delete (one-step plan + execute)"
+                        delete_handler => "Unified delete handler (supports dryRun)"
                     });
                 }
             }
