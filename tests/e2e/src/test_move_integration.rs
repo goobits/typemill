@@ -1,4 +1,4 @@
-//! Integration tests for move.plan and workspace.apply_edit (MIGRATED VERSION)
+//! Integration tests for unified refactoring API with dryRun (MIGRATED VERSION)
 //!
 //! This file demonstrates the test helper consolidation:
 //! - BEFORE: 336 lines with duplicated setup/plan/apply/verify logic
@@ -36,20 +36,12 @@ async fn test_move_folder_with_imports() {
         // Use build_move_params helper
         let params = build_move_params(&workspace, case.old_file_path, case.new_file_path, "directory");
 
-        let plan = client
-            .call_tool("move", params)
-            .await
-            .expect("move.plan should succeed")
-            .get("result")
-            .and_then(|r| r.get("content"))
-            .cloned()
-            .expect("Plan should exist");
+        // Apply with unified API (dryRun: false)
+        let mut params_exec = params.clone();
+        params_exec["options"] = json!({"dryRun": false, "validateChecksums": true});
 
         client
-            .call_tool(
-                "workspace.apply_edit",
-                json!({"plan": plan, "options": {"dryRun": false, "validateChecksums": true}}),
-            )
+            .call_tool("move", params_exec)
             .await
             .expect("Apply should succeed");
 
@@ -121,14 +113,14 @@ async fn test_move_file_checksum_validation() {
     let mut client = TestClient::new(workspace.path());
     let params = build_move_params(&workspace, "dir1/data.rs", "dir2/data.rs", "file");
 
-    let plan = client.call_tool("move", params).await.unwrap()
-        .get("result").and_then(|r| r.get("content")).cloned().unwrap();
-
-    // Invalidate checksum after plan generated
+    // Invalidate checksum after initial call
     workspace.create_file("dir1/data.rs", "pub const DATA: i32 = 200;\n");
 
-    let apply_result = client.call_tool("workspace.apply_edit",
-        json!({"plan": plan, "options": {"validateChecksums": true}})).await;
+    // Try to apply with unified API and checksum validation
+    let mut params_exec = params.clone();
+    params_exec["options"] = json!({"dryRun": false, "validateChecksums": true});
+
+    let apply_result = client.call_tool("move", params_exec).await;
 
     assert!(apply_result.is_err() || apply_result.unwrap().get("error").is_some(),
         "Apply should fail due to checksum mismatch");

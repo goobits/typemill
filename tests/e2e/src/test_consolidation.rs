@@ -540,24 +540,23 @@ fn main() {
         .await
         .expect("rename.plan should succeed");
 
-    let plan = plan_result
-        .get("result")
-        .and_then(|r| r.get("content"))
-        .expect("Plan should exist");
+    // Apply the plan with unified API (dryRun: false)
+    let mut params_exec = json!({
+        "target": {
+            "kind": "directory",
+            "path": workspace.absolute_path("crates/lib").to_string_lossy()
+        },
+        "newName": workspace.absolute_path("crates/app/src/lib_mod").to_string_lossy(),
+        "options": {
+            "consolidate": true,
+            "dryRun": false
+        }
+    });
 
-    // Apply the plan
     client
-        .call_tool(
-            "workspace.apply_edit",
-            json!({
-                "plan": plan,
-                "options": {
-                    "dryRun": false
-                }
-            }),
-        )
+        .call_tool("rename", params_exec)
         .await
-        .expect("workspace.apply_edit should succeed");
+        .expect("Apply should succeed");
 
     // VERIFICATION 1: Root workspace members should NOT contain nested path
     let root_cargo = workspace.read_file("Cargo.toml");

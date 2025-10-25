@@ -23,17 +23,18 @@ async fn test_rename_file_updates_imports_from_fixtures() {
         let mut client = TestClient::new(workspace.path());
         let params = build_rename_params(&workspace, case.old_file_path, case.new_file_path, "file");
 
-        let plan_response = client.call_tool("rename", params).await
-            .expect("rename.plan should succeed");
-        let plan = plan_response.get("result").and_then(|r| r.get("content"))
-            .expect("Plan should have result.content").clone();
+        let mut params_exec = params.clone();
+        if let Some(options) = params_exec.get_mut("options") {
+            options["dryRun"] = json!(false);
+            options["validateChecksums"] = json!(true);
+        } else {
+            params_exec["options"] = json!({"dryRun": false, "validateChecksums": true});
+        }
 
-        let apply_result = client.call_tool("workspace.apply_edit", json!({
-            "plan": plan, "options": {"dryRun": false, "validateChecksums": true}
-        })).await;
+        let apply_result = client.call_tool("rename", params_exec).await;
 
         if case.expect_success {
-            let response = apply_result.expect("workspace.apply_edit should succeed");
+            let response = apply_result.expect("rename should succeed");
             let result = response.get("result").and_then(|r| r.get("content"))
                 .expect("Apply should have result.content");
 
@@ -72,14 +73,15 @@ async fn test_rename_file_updates_parent_directory_importer() {
     workspace.create_file("app.ts", "import { helper } from './lib/utils';\nconsole.log(helper());\n");
 
     let mut client = TestClient::new(workspace.path());
-    let params = build_rename_params(&workspace, "lib/utils.ts", "lib/helpers.ts", "file");
+    let mut params = build_rename_params(&workspace, "lib/utils.ts", "lib/helpers.ts", "file");
 
-    let plan_response = client.call_tool("rename", params).await.unwrap();
-    let plan = plan_response.get("result").and_then(|r| r.get("content")).unwrap().clone();
+    if let Some(options) = params.get_mut("options") {
+        options["dryRun"] = json!(false);
+    } else {
+        params["options"] = json!({"dryRun": false});
+    }
 
-    client.call_tool("workspace.apply_edit", json!({
-        "plan": plan, "options": {"dryRun": false}
-    })).await.expect("Apply should succeed");
+    client.call_tool("rename", params).await.expect("Apply should succeed");
 
     let content = workspace.read_file("app.ts");
     assert!(content.contains("from './lib/helpers'"),
@@ -100,14 +102,15 @@ async fn test_rename_file_updates_sibling_directory_importer() {
         "import { fetchData } from '../services/api';\nexport function DataView() { fetchData(); }\n");
 
     let mut client = TestClient::new(workspace.path());
-    let params = build_rename_params(&workspace, "services/api.ts", "services/dataService.ts", "file");
+    let mut params = build_rename_params(&workspace, "services/api.ts", "services/dataService.ts", "file");
 
-    let plan_response = client.call_tool("rename", params).await.unwrap();
-    let plan = plan_response.get("result").and_then(|r| r.get("content")).unwrap().clone();
+    if let Some(options) = params.get_mut("options") {
+        options["dryRun"] = json!(false);
+    } else {
+        params["options"] = json!({"dryRun": false});
+    }
 
-    client.call_tool("workspace.apply_edit", json!({
-        "plan": plan, "options": {"dryRun": false}
-    })).await.expect("Apply should succeed");
+    client.call_tool("rename", params).await.expect("Apply should succeed");
 
     let content = workspace.read_file("components/DataView.tsx");
     assert!(content.contains("from '../services/dataService'"),
@@ -124,14 +127,15 @@ async fn test_directory_rename_updates_all_imports() {
     workspace.create_file("app.ts", "import { add } from './old_utils/math';\n");
 
     let mut client = TestClient::new(workspace.path());
-    let params = build_rename_params(&workspace, "old_utils", "new_utils", "directory");
+    let mut params = build_rename_params(&workspace, "old_utils", "new_utils", "directory");
 
-    let plan_response = client.call_tool("rename", params).await.unwrap();
-    let plan = plan_response.get("result").and_then(|r| r.get("content")).unwrap().clone();
+    if let Some(options) = params.get_mut("options") {
+        options["dryRun"] = json!(false);
+    } else {
+        params["options"] = json!({"dryRun": false});
+    }
 
-    client.call_tool("workspace.apply_edit", json!({
-        "plan": plan, "options": {"dryRun": false}
-    })).await.expect("Apply should succeed");
+    client.call_tool("rename", params).await.expect("Apply should succeed");
 
     let content = workspace.read_file("app.ts");
     assert!(content.contains("from './new_utils/math'"),
@@ -149,16 +153,16 @@ async fn test_markdown_file_rename_updates_links() {
         setup_workspace_from_fixture(&workspace, case.initial_files);
 
         let mut client = TestClient::new(workspace.path());
-        let params = build_rename_params(&workspace, case.old_file_path, case.new_file_path, "file");
+        let mut params = build_rename_params(&workspace, case.old_file_path, case.new_file_path, "file");
 
-        let plan_response = client.call_tool("rename", params).await
-            .expect("rename.plan should succeed");
-        let plan = plan_response.get("result").and_then(|r| r.get("content"))
-            .expect("Plan should exist").clone();
+        if let Some(options) = params.get_mut("options") {
+            options["dryRun"] = json!(false);
+        } else {
+            params["options"] = json!({"dryRun": false});
+        }
 
-        client.call_tool("workspace.apply_edit", json!({
-            "plan": plan, "options": {"dryRun": false}
-        })).await.expect("workspace.apply_edit should succeed");
+        client.call_tool("rename", params).await
+            .expect("rename should succeed");
 
         for (file_path, expected_substring) in case.expected_import_updates {
             let content = workspace.read_file(file_path);
@@ -187,14 +191,15 @@ Check [GitHub](https://github.com/user/repo) repo.
 "#);
 
     let mut client = TestClient::new(workspace.path());
-    let params = build_rename_params(&workspace, "docs/guide.md", "docs/user-guide.md", "file");
+    let mut params = build_rename_params(&workspace, "docs/guide.md", "docs/user-guide.md", "file");
 
-    let plan_response = client.call_tool("rename", params).await.unwrap();
-    let plan = plan_response.get("result").and_then(|r| r.get("content")).unwrap().clone();
+    if let Some(options) = params.get_mut("options") {
+        options["dryRun"] = json!(false);
+    } else {
+        params["options"] = json!({"dryRun": false});
+    }
 
-    client.call_tool("workspace.apply_edit", json!({
-        "plan": plan, "options": {"dryRun": false}
-    })).await.expect("Apply should succeed");
+    client.call_tool("rename", params).await.expect("Apply should succeed");
 
     let content = workspace.read_file("README.md");
     assert!(content.contains("[Guide](docs/user-guide.md)"),

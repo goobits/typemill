@@ -1,4 +1,4 @@
-//! Integration tests for delete.plan and workspace.apply_edit (MIGRATED VERSION)
+//! Integration tests for unified refactoring API with dryRun (MIGRATED VERSION)
 //!
 //! BEFORE: 332 lines with duplicated setup/plan/apply logic
 //! AFTER: Using shared helpers from test_helpers.rs
@@ -61,9 +61,10 @@ async fn test_delete_file_checksum_validation() {
     // Modify file to invalidate checksum
     workspace.create_file("file.rs", "pub fn modified() {}\n");
 
-    let apply_result = client.call_tool("workspace.apply_edit", json!({
-        "plan": plan, "options": {"validateChecksums": true}
-    })).await;
+    let mut params_exec = build_delete_params(&workspace, "file.rs", "file");
+    params_exec["options"] = json!({"validateChecksums": true, "dryRun": false});
+
+    let apply_result = client.call_tool("delete", params_exec).await;
 
     assert!(apply_result.is_err() || apply_result.unwrap().get("error").is_some(),
         "Apply should fail due to checksum mismatch");
@@ -90,9 +91,10 @@ async fn test_delete_directory_plan_and_apply() {
     assert_eq!(plan.get("planType").and_then(|v| v.as_str()), Some("deletePlan"),
         "Should be DeletePlan");
 
-    client.call_tool("workspace.apply_edit", json!({
-        "plan": plan, "options": {"dryRun": false}
-    })).await.expect("workspace.apply_edit should succeed");
+    let mut params_exec = build_delete_params(&workspace, "temp_dir", "directory");
+    params_exec["options"] = json!({"dryRun": false});
+
+    client.call_tool("delete", params_exec).await.expect("Delete should succeed");
 
     assert!(!workspace.file_exists("temp_dir"), "Directory should be deleted");
 }

@@ -1,4 +1,4 @@
-//! Integration tests for extract.plan and workspace.apply_edit (MIGRATED VERSION)
+//! Integration tests for unified refactoring API with dryRun (MIGRATED VERSION)
 //!
 //! BEFORE: 318 lines with duplicated setup/plan/apply logic
 //! AFTER: Using shared helpers from test_helpers.rs
@@ -47,9 +47,20 @@ async fn test_extract_function_plan_basic_workflow() {
             assert_eq!(plan.get("planType").and_then(|v| v.as_str()), Some("extractPlan"),
                 "Should be ExtractPlan");
 
-            let apply_result = client.call_tool("workspace.apply_edit", json!({
-                "plan": plan, "options": {"dryRun": false}
-            })).await.expect("Apply should succeed");
+            let mut params_exec = json!({
+                "kind": "function",
+                "source": {
+                    "filePath": file_path.to_string_lossy(),
+                    "range": {
+                        "start": {"line": 1, "character": 4},
+                        "end": {"line": 2, "character": 26}
+                    },
+                    "name": "compute_sum_doubled"
+                },
+                "options": {"dryRun": false}
+            });
+
+            let apply_result = client.call_tool("extract", params_exec).await.expect("Apply should succeed");
 
             let result = apply_result.get("result").and_then(|r| r.get("content"))
                 .expect("Apply result should exist");
@@ -95,9 +106,20 @@ async fn test_extract_variable_dry_run() {
             let plan = response.get("result").and_then(|r| r.get("content"))
                 .expect("Plan should exist");
 
-            let apply_result = client.call_tool("workspace.apply_edit", json!({
-                "plan": plan, "options": {"dryRun": true}
-            })).await.expect("Dry run should succeed");
+            let mut params_exec = json!({
+                "kind": "variable",
+                "source": {
+                    "filePath": file_path.to_string_lossy(),
+                    "range": {
+                        "start": {"line": 1, "character": 17},
+                        "end": {"line": 1, "character": 27}
+                    },
+                    "name": "base_value"
+                },
+                "options": {"dryRun": true}
+            });
+
+            let apply_result = client.call_tool("extract", params_exec).await.expect("Dry run should succeed");
 
             let result = apply_result.get("result").and_then(|r| r.get("content"))
                 .expect("Dry run result should exist");
@@ -152,9 +174,20 @@ async fn test_extract_constant_checksum_validation() {
 }
 "#);
 
-            let apply_result = client.call_tool("workspace.apply_edit", json!({
-                "plan": plan, "options": {"validateChecksums": true}
-            })).await;
+            let mut params_exec = json!({
+                "kind": "constant",
+                "source": {
+                    "filePath": file_path.to_string_lossy(),
+                    "range": {
+                        "start": {"line": 1, "character": 4},
+                        "end": {"line": 1, "character": 6}
+                    },
+                    "name": "MAGIC_NUMBER"
+                },
+                "options": {"validateChecksums": true, "dryRun": false}
+            });
+
+            let apply_result = client.call_tool("extract", params_exec).await;
 
             assert!(apply_result.is_err() || apply_result.unwrap().get("error").is_some(),
                 "Apply should fail due to checksum mismatch");

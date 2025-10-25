@@ -143,7 +143,8 @@ async fn test_david_scope_filtering() {
     let mut client = TestClient::new(workspace.path());
 
     // Test code-only scope
-    let plan = client
+    // Apply with unified API (dryRun: false)
+    client
         .call_tool(
             "rename",
             json!({
@@ -153,24 +154,7 @@ async fn test_david_scope_filtering() {
                 },
                 "newName": workspace.absolute_path("new").to_string_lossy(),
                 "options": {
-                    "scope": "code-only"
-                }
-            }),
-        )
-        .await
-        .expect("rename.plan should succeed")
-        .get("result")
-        .and_then(|r| r.get("content"))
-        .cloned()
-        .expect("Plan should exist");
-
-    // Apply code-only plan
-    client
-        .call_tool(
-            "workspace.apply_edit",
-            json!({
-                "plan": plan,
-                "options": {
+                    "scope": "code-only",
                     "dryRun": false
                 }
             }),
@@ -198,7 +182,8 @@ async fn test_comprehensive_93_percent_coverage() {
 
     let mut client = TestClient::new(workspace.path());
 
-    let plan = client
+    // Apply the comprehensive rename with unified API (dryRun: false)
+    client
         .call_tool(
             "rename",
             json!({
@@ -208,24 +193,7 @@ async fn test_comprehensive_93_percent_coverage() {
                 },
                 "newName": workspace.absolute_path("tests").to_string_lossy(),
                 "options": {
-                    "scope": "all"
-                }
-            }),
-        )
-        .await
-        .expect("rename.plan should succeed")
-        .get("result")
-        .and_then(|r| r.get("content"))
-        .cloned()
-        .expect("Plan should exist");
-
-    // Apply the comprehensive rename
-    client
-        .call_tool(
-            "workspace.apply_edit",
-            json!({
-                "plan": plan,
-                "options": {
+                    "scope": "all",
                     "dryRun": false
                 }
             }),

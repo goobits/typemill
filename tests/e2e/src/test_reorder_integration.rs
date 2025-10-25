@@ -1,4 +1,4 @@
-//! Integration tests for reorder.plan and workspace.apply_edit (MIGRATED VERSION)
+//! Integration tests for unified refactoring API with dryRun (MIGRATED VERSION)
 //!
 //! BEFORE: 363 lines with manual setup/plan/apply logic
 //! AFTER: Using shared helpers from test_helpers.rs
@@ -83,18 +83,12 @@ pub fn test() {}
                 "Should be ReorderPlan"
             );
 
-            // Apply plan
+            // Apply with unified API (dryRun: false)
+            let mut params_exec = params.clone();
+            params_exec["options"] = json!({"dryRun": false, "validateChecksums": true});
+
             let apply_result = client
-                .call_tool(
-                    "workspace.apply_edit",
-                    json!({
-                        "plan": plan,
-                        "options": {
-                            "dryRun": false,
-                            "validateChecksums": true
-                        }
-                    }),
-                )
+                .call_tool("reorder", params_exec)
                 .await
                 .expect("Apply should succeed");
 
@@ -163,17 +157,12 @@ pub fn test() {
 
             let plan = plan.unwrap();
 
-            // Apply with dry_run=true
+            // Apply with unified API (dryRun: true)
+            let mut params_exec = params.clone();
+            params_exec["options"] = json!({"dryRun": true});
+
             let apply_result = client
-                .call_tool(
-                    "workspace.apply_edit",
-                    json!({
-                        "plan": plan,
-                        "options": {
-                            "dryRun": true
-                        }
-                    }),
-                )
+                .call_tool("reorder", params_exec)
                 .await
                 .expect("Dry run should succeed");
 
@@ -259,17 +248,12 @@ async fn test_reorder_fields_checksum_validation() {
 "#,
             );
 
-            // Try to apply with checksum validation
+            // Try to apply with unified API and checksum validation
+            let mut params_exec = params.clone();
+            params_exec["options"] = json!({"dryRun": false, "validateChecksums": true});
+
             let apply_result = client
-                .call_tool(
-                    "workspace.apply_edit",
-                    json!({
-                        "plan": plan,
-                        "options": {
-                            "validateChecksums": true
-                        }
-                    }),
-                )
+                .call_tool("reorder", params_exec)
                 .await;
 
             // Should fail due to checksum mismatch

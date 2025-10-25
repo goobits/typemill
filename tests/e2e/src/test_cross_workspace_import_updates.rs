@@ -131,8 +131,8 @@ resolver = "2"
 
     let mut client = TestClient::new(workspace.path());
 
-    // Generate rename plan
-    let plan = client
+    // Apply rename with unified API (dryRun: false)
+    client
         .call_tool(
             "rename",
             json!({
@@ -140,44 +140,14 @@ resolver = "2"
                     "kind": "directory",
                     "path": workspace.absolute_path("crates/source-crate").to_string_lossy()
                 },
-                "newName": workspace.absolute_path("crates/target-crate").to_string_lossy()
-            }),
-        )
-        .await
-        .expect("rename.plan should succeed")
-        .get("result")
-        .and_then(|r| r.get("content"))
-        .cloned()
-        .expect("Plan should exist");
-
-    // Count how many files are in the plan
-    let files_in_plan = plan
-        .get("edits")
-        .and_then(|e| e.get("documentChanges"))
-        .and_then(|dc| dc.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter(|item| item.get("textDocument").is_some())
-                .count()
-        })
-        .unwrap_or(0);
-
-    println!("\n=== Rename Plan Coverage ===");
-    println!("Files in plan: {}", files_in_plan);
-
-    // Apply the plan
-    client
-        .call_tool(
-            "workspace.apply_edit",
-            json!({
-                "plan": plan,
+                "newName": workspace.absolute_path("crates/target-crate").to_string_lossy(),
                 "options": {
                     "dryRun": false
                 }
             }),
         )
         .await
-        .expect("workspace.apply_edit should succeed");
+        .expect("Apply should succeed");
 
     // CRITICAL ASSERTIONS: Verify ALL import statements are updated
 

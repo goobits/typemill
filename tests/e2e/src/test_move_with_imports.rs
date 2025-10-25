@@ -41,19 +41,19 @@ async fn test_move_file_updates_imports_from_fixtures() {
         let params = build_move_params(&workspace, case.old_file_path, case.new_file_path, "file");
 
         // 2. Generate and apply move plan
-        let plan_response = client.call_tool("move", params).await
+        let plan_response = client.call_tool("move", params.clone()).await
             .expect("move.plan should succeed");
         let plan = plan_response.get("result").and_then(|r| r.get("content"))
             .expect("Plan should have result.content")
             .clone();
 
-        let apply_result = client.call_tool("workspace.apply_edit", json!({
-            "plan": plan,
-            "options": {"dryRun": false, "validateChecksums": true}
-        })).await;
+        let mut params_exec = params;
+        params_exec["options"] = json!({"dryRun": false, "validateChecksums": true});
+
+        let apply_result = client.call_tool("move", params_exec).await;
 
         if case.expect_success {
-            let apply_response = apply_result.expect("workspace.apply_edit should succeed");
+            let apply_response = apply_result.expect("Move should succeed");
             let result = apply_response.get("result").and_then(|r| r.get("content"))
                 .expect("Apply should have result.content");
 
@@ -114,19 +114,19 @@ async fn test_rust_move_file_updates_imports_from_fixtures() {
         let params = build_move_params(&workspace, case.old_file_path, case.new_file_path, "file");
 
         // 2. Generate and apply move plan
-        let plan_response = client.call_tool("move", params).await
+        let plan_response = client.call_tool("move", params.clone()).await
             .expect("move.plan should succeed");
         let plan = plan_response.get("result").and_then(|r| r.get("content"))
             .expect("Plan should have result.content")
             .clone();
 
-        let apply_result = client.call_tool("workspace.apply_edit", json!({
-            "plan": plan,
-            "options": {"dryRun": false, "validateChecksums": true}
-        })).await;
+        let mut params_exec = params;
+        params_exec["options"] = json!({"dryRun": false, "validateChecksums": true});
+
+        let apply_result = client.call_tool("move", params_exec).await;
 
         if case.expect_success {
-            let apply_response = apply_result.expect("workspace.apply_edit should succeed");
+            let apply_response = apply_result.expect("Move should succeed");
             let result = apply_response.get("result").and_then(|r| r.get("content"))
                 .expect("Apply should have result.content");
 

@@ -1,4 +1,4 @@
-//! Integration tests for transform.plan and workspace.apply_edit (MIGRATED VERSION)
+//! Integration tests for unified refactoring API with dryRun (MIGRATED VERSION)
 //!
 //! BEFORE: 381 lines with manual setup/plan/apply logic
 //! AFTER: Using shared helpers from test_helpers.rs
@@ -82,17 +82,12 @@ async fn test_transform_if_to_match_plan_and_apply() {
                 "Should be TransformPlan"
             );
 
-            // Apply plan
+            // Apply with unified API (dryRun: false)
+            let mut params_exec = params.clone();
+            params_exec["options"] = json!({"dryRun": false});
+
             let apply_result = client
-                .call_tool(
-                    "workspace.apply_edit",
-                    json!({
-                        "plan": plan,
-                        "options": {
-                            "dryRun": false
-                        }
-                    }),
-                )
+                .call_tool("transform", params_exec)
                 .await
                 .expect("Apply should succeed");
 
@@ -150,17 +145,12 @@ async fn test_transform_add_async_dry_run() {
 
             let plan = plan.unwrap();
 
-            // Apply with dry_run=true
+            // Apply with unified API (dryRun: true)
+            let mut params_exec = params.clone();
+            params_exec["options"] = json!({"dryRun": true});
+
             let apply_result = client
-                .call_tool(
-                    "workspace.apply_edit",
-                    json!({
-                        "plan": plan,
-                        "options": {
-                            "dryRun": true
-                        }
-                    }),
-                )
+                .call_tool("transform", params_exec)
                 .await
                 .expect("Dry run should succeed");
 
@@ -243,17 +233,12 @@ async fn test_transform_fn_to_closure_checksum_validation() {
 "#,
             );
 
-            // Try to apply with checksum validation
+            // Try to apply with unified API and checksum validation
+            let mut params_exec = params.clone();
+            params_exec["options"] = json!({"dryRun": false, "validateChecksums": true});
+
             let apply_result = client
-                .call_tool(
-                    "workspace.apply_edit",
-                    json!({
-                        "plan": plan,
-                        "options": {
-                            "validateChecksums": true
-                        }
-                    }),
-                )
+                .call_tool("transform", params_exec)
                 .await;
 
             // Should fail due to checksum mismatch

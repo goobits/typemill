@@ -4,7 +4,7 @@
 //! - BEFORE: 747 lines with duplicated dry-run verification logic
 //! - AFTER: ~150 lines using shared `run_dry_run_test()` helper
 //!
-//! Tests ensure workspace.apply_edit with dry_run=true does not modify the file system.
+//! Tests ensure unified API with dryRun: true does not modify the file system.
 //! This is critical for safety and user trust.
 
 use crate::test_helpers::*;

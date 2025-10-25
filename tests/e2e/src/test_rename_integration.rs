@@ -74,9 +74,11 @@ async fn test_rename_checksum_validation_rejects_stale_plan() {
     // Invalidate checksum after plan generated
     workspace.create_file("file.rs", "pub fn modified() {}\n");
 
-    // Try to apply - should fail
-    let apply_result = client.call_tool("workspace.apply_edit",
-        json!({"plan": plan, "options": {"validateChecksums": true}})).await;
+    // Try to apply with unified API - should fail
+    let mut params_exec = params.clone();
+    params_exec["options"] = json!({"dryRun": false, "validateChecksums": true});
+
+    let apply_result = client.call_tool("rename", params_exec).await;
 
     assert!(apply_result.is_err() || apply_result.unwrap().get("error").is_some(),
         "Apply should fail due to checksum mismatch");

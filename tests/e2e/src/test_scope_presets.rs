@@ -45,7 +45,7 @@ old = { path = "src/old.rs" }
     let mut client = TestClient::new(workspace.path());
 
     // Rename with "code" scope
-    let plan = client
+    client
         .call_tool(
             "rename",
             json!({
@@ -55,28 +55,13 @@ old = { path = "src/old.rs" }
                 },
                 "newName": workspace.absolute_path("src/new.rs").to_string_lossy(),
                 "options": {
-                    "scope": "code"
+                    "scope": "code",
+                    "dryRun": false
                 }
             }),
         )
         .await
-        .expect("rename.plan should succeed")
-        .get("result")
-        .and_then(|r| r.get("content"))
-        .cloned()
-        .expect("Plan should exist");
-
-    // Apply the plan
-    client
-        .call_tool(
-            "workspace.apply_edit",
-            json!({
-                "plan": plan,
-                "options": { "dryRun": false }
-            }),
-        )
-        .await
-        .expect("workspace.apply_edit should succeed");
+        .expect("rename should succeed");
 
     // Verify: file renamed
     assert!(workspace.file_exists("src/new.rs"));
@@ -121,7 +106,7 @@ Check out `src/old.rs` for the source code.
     let mut client = TestClient::new(workspace.path());
 
     // Rename with "standard" scope (default)
-    let plan = client
+    client
         .call_tool(
             "rename",
             json!({
@@ -131,24 +116,13 @@ Check out `src/old.rs` for the source code.
                 },
                 "newName": workspace.absolute_path("src/new.rs").to_string_lossy(),
                 "options": {
-                    "scope": "standard"
+                    "scope": "standard",
+                    "dryRun": false
                 }
             }),
         )
         .await
-        .expect("rename.plan should succeed")
-        .get("result")
-        .and_then(|r| r.get("content"))
-        .cloned()
-        .expect("Plan should exist");
-
-    client
-        .call_tool(
-            "workspace.apply_edit",
-            json!({ "plan": plan, "options": { "dryRun": false } }),
-        )
-        .await
-        .expect("workspace.apply_edit should succeed");
+        .expect("rename should succeed");
 
     // Verify: file renamed
     assert!(workspace.file_exists("src/new.rs"));
@@ -198,7 +172,7 @@ pub fn use_old() {
     let mut client = TestClient::new(workspace.path());
 
     // Rename with "comments" scope
-    let plan = client
+    client
         .call_tool(
             "rename",
             json!({
@@ -208,24 +182,13 @@ pub fn use_old() {
                 },
                 "newName": workspace.absolute_path("src/new.rs").to_string_lossy(),
                 "options": {
-                    "scope": "comments"
+                    "scope": "comments",
+                    "dryRun": false
                 }
             }),
         )
         .await
-        .expect("rename.plan should succeed")
-        .get("result")
-        .and_then(|r| r.get("content"))
-        .cloned()
-        .expect("Plan should exist");
-
-    client
-        .call_tool(
-            "workspace.apply_edit",
-            json!({ "plan": plan, "options": { "dryRun": false } }),
-        )
-        .await
-        .expect("workspace.apply_edit should succeed");
+        .expect("rename should succeed");
 
     // Verify: file renamed
     assert!(workspace.file_exists("src/new.rs"));
@@ -274,7 +237,7 @@ use old;
     let mut client = TestClient::new(workspace.path());
 
     // Rename with "everything" scope
-    let plan = client
+    client
         .call_tool(
             "rename",
             json!({
@@ -284,24 +247,13 @@ use old;
                 },
                 "newName": workspace.absolute_path("src/new.rs").to_string_lossy(),
                 "options": {
-                    "scope": "everything"
+                    "scope": "everything",
+                    "dryRun": false
                 }
             }),
         )
         .await
-        .expect("rename.plan should succeed")
-        .get("result")
-        .and_then(|r| r.get("content"))
-        .cloned()
-        .expect("Plan should exist");
-
-    client
-        .call_tool(
-            "workspace.apply_edit",
-            json!({ "plan": plan, "options": { "dryRun": false } }),
-        )
-        .await
-        .expect("workspace.apply_edit should succeed");
+        .expect("rename should succeed");
 
     // Verify: file renamed
     assert!(workspace.file_exists("src/new.rs"));
@@ -336,7 +288,7 @@ async fn test_deprecated_code_only_alias_still_works() {
     let mut client = TestClient::new(workspace.path());
 
     // Use deprecated "code-only" name
-    let plan = client
+    client
         .call_tool(
             "rename",
             json!({
@@ -346,24 +298,13 @@ async fn test_deprecated_code_only_alias_still_works() {
                 },
                 "newName": workspace.absolute_path("src/new.rs").to_string_lossy(),
                 "options": {
-                    "scope": "code-only"  // DEPRECATED NAME
+                    "scope": "code-only",  // DEPRECATED NAME
+                    "dryRun": false
                 }
             }),
         )
         .await
-        .expect("rename.plan should still work with deprecated 'code-only'")
-        .get("result")
-        .and_then(|r| r.get("content"))
-        .cloned()
-        .expect("Plan should exist");
-
-    client
-        .call_tool(
-            "workspace.apply_edit",
-            json!({ "plan": plan, "options": { "dryRun": false } }),
-        )
-        .await
-        .expect("workspace.apply_edit should succeed");
+        .expect("rename should still work with deprecated 'code-only'");
 
     // Verify: behaves same as "code" scope
     assert!(workspace.file_exists("src/new.rs"));
@@ -393,7 +334,7 @@ Source: `src/old.rs`
     let mut client = TestClient::new(workspace.path());
 
     // Use deprecated "all" name
-    let plan = client
+    client
         .call_tool(
             "rename",
             json!({
@@ -403,24 +344,13 @@ Source: `src/old.rs`
                 },
                 "newName": workspace.absolute_path("src/new.rs").to_string_lossy(),
                 "options": {
-                    "scope": "all"  // DEPRECATED NAME
+                    "scope": "all",  // DEPRECATED NAME
+                    "dryRun": false
                 }
             }),
         )
         .await
-        .expect("rename.plan should still work with deprecated 'all'")
-        .get("result")
-        .and_then(|r| r.get("content"))
-        .cloned()
-        .expect("Plan should exist");
-
-    client
-        .call_tool(
-            "workspace.apply_edit",
-            json!({ "plan": plan, "options": { "dryRun": false } }),
-        )
-        .await
-        .expect("workspace.apply_edit should succeed");
+        .expect("rename should still work with deprecated 'all'");
 
     // Verify: behaves same as "standard" scope
     assert!(workspace.file_exists("src/new.rs"));
@@ -449,7 +379,7 @@ async fn test_default_scope_is_standard() {
     let mut client = TestClient::new(workspace.path());
 
     // Don't specify scope - should default to "standard"
-    let plan = client
+    client
         .call_tool(
             "rename",
             json!({
@@ -457,24 +387,15 @@ async fn test_default_scope_is_standard() {
                     "kind": "file",
                     "path": workspace.absolute_path("src/old.rs").to_string_lossy()
                 },
-                "newName": workspace.absolute_path("src/new.rs").to_string_lossy()
-                // NO "options" field - using default scope
+                "newName": workspace.absolute_path("src/new.rs").to_string_lossy(),
+                "options": {
+                    "dryRun": false
+                }
+                // NO "scope" field - using default scope
             }),
         )
         .await
-        .expect("rename.plan should succeed")
-        .get("result")
-        .and_then(|r| r.get("content"))
-        .cloned()
-        .expect("Plan should exist");
-
-    client
-        .call_tool(
-            "workspace.apply_edit",
-            json!({ "plan": plan, "options": { "dryRun": false } }),
-        )
-        .await
-        .expect("workspace.apply_edit should succeed");
+        .expect("rename should succeed");
 
     // Verify: default behaves like "standard" scope
     assert!(workspace.file_exists("src/new.rs"));

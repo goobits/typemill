@@ -1,4 +1,4 @@
-//! Integration tests for inline.plan and workspace.apply_edit (MIGRATED VERSION)
+//! Integration tests for unified refactoring API with dryRun (MIGRATED VERSION)
 //!
 //! BEFORE: 328 lines with manual setup/plan/apply logic
 //! AFTER: Using shared helpers from test_helpers.rs
@@ -62,18 +62,15 @@ async fn test_inline_variable_plan_and_apply() {
                 "Should be InlinePlan"
             );
 
-            // Apply plan
+            // Apply with dryRun=false
+            let mut params_exec = build_inline_params(&workspace, "inline_var.rs", "variable", 1, 8);
+            params_exec["options"] = json!({
+                "dryRun": false,
+                "validateChecksums": true
+            });
+
             let apply_result = client
-                .call_tool(
-                    "workspace.apply_edit",
-                    json!({
-                        "plan": plan,
-                        "options": {
-                            "dryRun": false,
-                            "validateChecksums": true
-                        }
-                    }),
-                )
+                .call_tool("inline", params_exec)
                 .await
                 .expect("Apply should succeed");
 
@@ -136,16 +133,11 @@ pub fn test() -> i32 {
             let plan = plan.unwrap();
 
             // Apply with dry_run=true
+            let mut params_exec = build_inline_params(&workspace, "inline_fn.rs", "function", 0, 3);
+            params_exec["options"] = json!({"dryRun": true});
+
             let apply_result = client
-                .call_tool(
-                    "workspace.apply_edit",
-                    json!({
-                        "plan": plan,
-                        "options": {
-                            "dryRun": true
-                        }
-                    }),
-                )
+                .call_tool("inline", params_exec)
                 .await
                 .expect("Dry run should succeed");
 
@@ -214,16 +206,14 @@ pub fn get_buffer() -> Vec<u8> {
             );
 
             // Try to apply with checksum validation
+            let mut params_exec = build_inline_params(&workspace, "inline_const.rs", "constant", 0, 6);
+            params_exec["options"] = json!({
+                "validateChecksums": true,
+                "dryRun": false
+            });
+
             let apply_result = client
-                .call_tool(
-                    "workspace.apply_edit",
-                    json!({
-                        "plan": plan,
-                        "options": {
-                            "validateChecksums": true
-                        }
-                    }),
-                )
+                .call_tool("inline", params_exec)
                 .await;
 
             // Should fail due to checksum mismatch
