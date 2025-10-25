@@ -899,7 +899,7 @@ Dependency analysis result with:
     "arguments": {
       "target": {
         "kind": "directory",
-        "path": "crates/cb-ast/src"
+        "path": "crates/mill-ast/src"
       },
       "options": {
         "include_workspace_deps": true,
@@ -935,7 +935,7 @@ Dependency analysis result with:
     "workspace_dependencies": [
       "mill-foundation",
       "mill-plugin-api",
-      "cb-types"
+      "mill-types"
     ],
     "std_dependencies": [
       "std::collections",
@@ -951,10 +951,10 @@ Dependency analysis result with:
       "unresolved_imports": []
     },
     "files_analyzed": [
-      "crates/cb-ast/src/lib.rs",
-      "crates/cb-ast/src/parser.rs",
-      "crates/cb-ast/src/complexity/mod.rs",
-      "crates/cb-ast/src/complexity/metrics.rs"
+      "crates/mill-ast/src/lib.rs",
+      "crates/mill-ast/src/parser.rs",
+      "crates/mill-ast/src/complexity/mod.rs",
+      "crates/mill-ast/src/complexity/metrics.rs"
     ]
   }
 }

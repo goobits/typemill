@@ -24,15 +24,15 @@ missing_artifacts=()
 warnings=()
 
 # Check Java parser
-JAVA_PARSER_JAR="crates/cb-lang-java/resources/java-parser/target/java-parser-1.0.0.jar"
-if [ -f "crates/cb-lang-java/resources/java-parser/pom.xml" ]; then
+JAVA_PARSER_JAR="crates/mill-lang-java/resources/java-parser/target/java-parser-1.0.0.jar"
+if [ -f "crates/mill-lang-java/resources/java-parser/pom.xml" ]; then
     if [ ! -f "$JAVA_PARSER_JAR" ]; then
         missing_artifacts+=("Java parser JAR ($JAVA_PARSER_JAR)")
     fi
 fi
 
 # Check C# parser
-CSHARP_PARSER_DIR="crates/cb-lang-csharp/resources/csharp-parser"
+CSHARP_PARSER_DIR="crates/mill-lang-csharp/resources/csharp-parser"
 if [ -d "$CSHARP_PARSER_DIR" ]; then
     # Check for build output (platform-specific)
     if [ ! -d "$CSHARP_PARSER_DIR/bin/Release" ]; then
@@ -41,7 +41,7 @@ if [ -d "$CSHARP_PARSER_DIR" ]; then
 fi
 
 # Check TypeScript/JavaScript dependencies
-TS_PARSER_DIR="crates/cb-lang-typescript/resources"
+TS_PARSER_DIR="crates/mill-lang-typescript/resources"
 if [ -f "$TS_PARSER_DIR/package.json" ]; then
     if [ ! -d "$TS_PARSER_DIR/node_modules" ]; then
         missing_artifacts+=("TypeScript parser dependencies ($TS_PARSER_DIR/node_modules/)")
@@ -51,7 +51,7 @@ fi
 # Check Swift parser (SourceKitten - optional)
 if ! command -v sourcekitten >/dev/null 2>&1; then
     # Only warn if Swift plugin exists
-    if [ -d "crates/cb-lang-swift" ]; then
+    if [ -d "crates/mill-lang-swift" ]; then
         warnings+=("SourceKitten not installed (optional for Swift parser)")
     fi
 fi

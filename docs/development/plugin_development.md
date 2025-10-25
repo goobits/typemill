@@ -8,11 +8,11 @@ Creating a new language plugin involves creating a standard Cargo crate and regi
 
 | Step | Action | Notes |
 |------|--------|-------|
-| 1. Create Crate | `cargo new --lib crates/cb-lang-mynewlang` | Creates the standard plugin structure |
+| 1. Create Crate | `cargo new --lib crates/mill-lang-mynewlang` | Creates the standard plugin structure |
 | 2. Implement Logic | Edit `src/lib.rs` to implement `LanguagePlugin` trait | See reference implementations below |
 | 3. Register Plugin | Add to `mill-plugin-bundle/Cargo.toml` and `lib.rs` | Makes plugin discoverable via auto-discovery |
-| 4. Build Workspace | `cargo build -p cb-lang-mynewlang` | Verify compilation |
-| 5. Run Tests | `cargo nextest run -p cb-lang-mynewlang` | Add tests and verify functionality |
+| 4. Build Workspace | `cargo build -p mill-lang-mynewlang` | Verify compilation |
+| 5. Run Tests | `cargo nextest run -p mill-lang-mynewlang` | Add tests and verify functionality |
 
 ## Plugin Structure
 
@@ -20,7 +20,7 @@ All language plugins are independent crates in the `crates/` directory:
 
 ```
 crates/
-└── cb-lang-{language}/
+└── mill-lang-{language}/
     ├── Cargo.toml              # Dependencies and metadata
     └── src/
         ├── lib.rs              # Main plugin with LanguagePlugin trait
@@ -116,7 +116,7 @@ Edit `../../crates/mill-plugin-bundle/Cargo.toml`:
 
 ```toml
 [dependencies]
-cb-lang-python = { path = "../cb-lang-python" }
+mill-lang-python = { path = "../mill-lang-python" }
 ```
 
 Edit `../../crates/mill-plugin-bundle/src/lib.rs`:
@@ -188,9 +188,9 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 | Simple document plugin | Markdown plugin | `../../crates/mill-lang-markdown/` |
 | Config file plugin | TOML/YAML plugins | `../../crates/mill-lang-toml/`, `../../crates/mill-lang-yaml/` |
 | **Auto-Discovery Pattern** | **All current plugins** | **`src/lib.rs` - `mill_plugin!` macro** |
-| Simple ImportParser only | Markdown plugin | `cb-lang-markdown/src/import_support.rs` |
-| Full import trait suite | Rust plugin | `cb-lang-rust/src/import_support.rs` |
-| WorkspaceSupport | Rust plugin | `cb-lang-rust/src/workspace_support.rs` |
+| Simple ImportParser only | Markdown plugin | `mill-lang-markdown/src/import_support.rs` |
+| Full import trait suite | Rust plugin | `mill-lang-rust/src/import_support.rs` |
+| WorkspaceSupport | Rust plugin | `mill-lang-rust/src/workspace_support.rs` |
 
 ## Plugin Comparison
 
@@ -249,7 +249,7 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 - [ ] Uses `parse_with_fallback()` for resilient parsing
 - [ ] Uses `ErrorBuilder` for rich error context
 - [ ] Minimum 30 tests total
-- [ ] All tests pass: `cargo nextest run -p cb-lang-{language}`
+- [ ] All tests pass: `cargo nextest run -p mill-lang-{language}`
 - [ ] Uses structured logging (key-value format)
 - [ ] Plugin-specific README.md with examples
 
@@ -263,11 +263,11 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 
 | Command | Purpose |
 |---------|---------|
-| `cargo nextest run -p cb-lang-mylanguage` | Single plugin tests |
-| `cargo nextest run -p cb-lang-mylanguage --no-capture` | With output |
-| `cargo nextest run -p cb-lang-mylanguage test_parse_function` | Specific test |
+| `cargo nextest run -p mill-lang-mylanguage` | Single plugin tests |
+| `cargo nextest run -p mill-lang-mylanguage --no-capture` | With output |
+| `cargo nextest run -p mill-lang-mylanguage test_parse_function` | Specific test |
 | `cargo nextest run --workspace --lib` | All language plugin tests |
-| `RUST_LOG=debug cargo nextest run -p cb-lang-mylanguage` | With verbose logging |
+| `RUST_LOG=debug cargo nextest run -p mill-lang-mylanguage` | With verbose logging |
 
 ## Troubleshooting
 
@@ -276,7 +276,7 @@ Essential utilities to reduce boilerplate (~460 lines saved):
 | Plugin not found during build | Not registered | Check `mill_plugin!` macro in src/lib.rs, verify bundle link, check `_force_plugin_linkage()` |
 | Plugin not auto-discovered | Linker optimization | Ensure plugin is in `_force_plugin_linkage()` in bundle's lib.rs |
 | ImportGraph has no imports | Not being called | Verify `parse_imports()` called, check regex patterns, use debug logging |
-| LanguageMetadata constant not found | Build error | Run `cargo clean && cargo build -p cb-lang-yourlang` |
+| LanguageMetadata constant not found | Build error | Run `cargo clean && cargo build -p mill-lang-yourlang` |
 | Import rewriting changes non-imports | Regex too broad | Use AST-based rewriting or specific regex: `^import\s+{}`  |
 | Workspace operations corrupt manifest | String manipulation | Use parser library (`toml_edit`, `serde_json`), validate output |
 | Tests fail with "plugin not found" | Missing from bundle | Add to `mill-plugin-bundle/Cargo.toml` and rebuild |
@@ -494,5 +494,5 @@ capability.method().await?
 
 - [mill-plugin-api/src/lib.rs](../../../crates/mill-plugin-api/src/lib.rs) - Core trait definitions
 - [mill-plugin-bundle/src/lib.rs](../../../crates/mill-plugin-bundle/src/lib.rs) - Bundle implementation
-- [cb-lang-rust/](../../../crates/mill-lang-rust/) - Full reference implementation
+- [mill-lang-rust/](../../../crates/mill-lang-rust/) - Full reference implementation
 - [CLAUDE.md](../CLAUDE.md) - Project documentation including plugin overview

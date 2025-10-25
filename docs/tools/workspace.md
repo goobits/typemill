@@ -731,7 +731,7 @@ mill tool analyze.module_dependencies '{
 
 # 2. Create new package
 mill tool workspace.create_package '{
-  "packagePath": "crates/cb-analysis",
+  "packagePath": "crates/mill-analysis",
   "package_type": "library",
   "options": {
     "addToWorkspace": true,
@@ -742,7 +742,7 @@ mill tool workspace.create_package '{
 # 3. Extract dependencies to new package
 mill tool workspace.extract_dependencies '{
   "source_manifest": "crates/big-crate/Cargo.toml",
-  "target_manifest": "crates/cb-analysis/Cargo.toml",
+  "target_manifest": "crates/mill-analysis/Cargo.toml",
   "dependencies": ["tokio", "serde", "anyhow"],
   "options": {
     "preserve_versions": true,
@@ -756,7 +756,7 @@ mill tool rename.plan '{
     "kind": "directory",
     "path": "crates/big-crate/src/analysis"
   },
-  "newName": "crates/cb-analysis/src"
+  "newName": "crates/mill-analysis/src"
 }'
 
 # 5. Apply the move

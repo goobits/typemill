@@ -46,8 +46,8 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Purpose:** Core data structures, protocol definitions, and configuration
 
 **Crates:**
-- `cb-types` / `mill-types`
-- `cb-protocol` / `mill-protocol`
+- `mill-types` / `mill-types`
+- `mill-protocol` / `mill-protocol`
 - `mill-config`
 - `mill-core` (configuration, logging, errors)
 
@@ -61,7 +61,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 - Stable APIs (changes ripple through entire codebase)
 
 **Planned Consolidation:**
-- **Target:** Merge `cb-types`, `cb-protocol`, `mill-core` → `mill-foundation`
+- **Target:** Merge `mill-types`, `mill-protocol`, `mill-core` → `mill-foundation`
 - **Rationale:** These crates are tightly coupled and rarely modified independently
 
 ---
@@ -89,11 +89,11 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 
 **Crates:**
 - `mill-lang-common` / `mill-lang-common` (shared utilities)
-- `cb-lang-rust` / `mill-lang-rust`
+- `mill-lang-rust` / `mill-lang-rust`
 - `mill-lang-typescript` / `mill-lang-typescript`
-- `cb-lang-markdown` / `mill-lang-markdown`
+- `mill-lang-markdown` / `mill-lang-markdown`
 - `mill-lang-toml` / `mill-lang-toml`
-- `cb-lang-yaml` / `mill-lang-yaml`
+- `mill-lang-yaml` / `mill-lang-yaml`
 
 **Dependencies:**
 - Layer 3: Plugin API
@@ -111,7 +111,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Purpose:** Core business logic, file operations, AST processing, LSP integration
 
 **Crates:**
-- `cb-ast` / `mill-ast` (AST parsing, code analysis)
+- `mill-ast` / `mill-ast` (AST parsing, code analysis)
 - `mill-services` / `mill-services` (file service, lock manager, planner)
 - `mill-lsp` / `mill-lsp` (LSP client management)
 - `mill-plugin-bundle` (plugin registration)
@@ -125,7 +125,7 @@ Layers are organized from foundational (bottom) to application (top). Each layer
 **Constraints:**
 - Services coordinate plugins but don't implement language logic
 - No dependencies on handlers or application layer
-- Services can depend on each other within this layer (mill-services may use cb-ast)
+- Services can depend on each other within this layer (mill-services may use mill-ast)
 
 **Planned Consolidation:**
 - **Target:** Merge plugin-related crates → `mill-plugin-system`

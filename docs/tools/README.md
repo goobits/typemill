@@ -158,7 +158,7 @@ Check server status, LSP server health, memory usage, and active connections. Es
 1. **Handler code:** `crates/mill-handlers/src/{category}_handler.rs`
 2. **Tests:** `tests/e2e/src/test_{category}.rs` or `tests/e2e/{category}_tests.rs`
 3. **Existing docs:** Extract relevant content from existing tool documentation in this directory
-4. **Related code:** Check `crates/mill-protocol/`, `crates/cb-plugins/`
+4. **Related code:** Check `crates/mill-protocol/`, `crates/mill-plugins/`
 
 ### Documentation Requirements
 - **Terse but complete** - No fluff, but cover all parameters and edge cases

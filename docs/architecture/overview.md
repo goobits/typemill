@@ -18,22 +18,22 @@ graph TD
 
     subgraph Core
         B[mill-server]
-        C[cb-core]
-        D[cb-types]
-        E[cb-protocol]
+        C[mill-core]
+        D[mill-types]
+        E[mill-protocol]
     end
 
     subgraph Services
-        F[cb-ast]
-        G[cb-plugins]
+        F[mill-ast]
+        G[mill-plugins]
         H[mill-lsp]
         I[mill-services]
-        J[cb-handlers]
+        J[mill-handlers]
         K[mill-transport]
     end
 
     subgraph LanguagePlugins
-        L[cb-lang-*]
+        L[mill-lang-*]
     end
 
     A --> B
@@ -68,8 +68,8 @@ The codebase follows a strict layered architecture with enforced dependencies:
 7. **Application** - Server, client, transport
 
 **Key crates:**
-- **Foundation**: `cb-types`, `cb-protocol`, `mill-config`, `mill-core`
-- **Services**: `cb-ast`, `mill-services`, `mill-lsp`, `mill-plugin-bundle`
+- **Foundation**: `mill-types`, `mill-protocol`, `mill-config`, `mill-core`
+- **Services**: `mill-ast`, `mill-services`, `mill-lsp`, `mill-plugin-bundle`
 - **Handlers**: `mill-handlers`
 - **Application**: `mill-server`, `mill-client`, `mill-transport`, `../../apps/mill`
 
@@ -221,7 +221,7 @@ The plugin system uses a sophisticated multi-tiered selection algorithm to choos
 }
 ```
 
-**Selection Algorithm (in `crates/cb-plugins/src/registry.rs`):**
+**Selection Algorithm (in `crates/mill-plugins/src/registry.rs`):**
 
 ```rust
 pub fn find_best_plugin(&self, file_path: &Path, method: &str) -> PluginResult<String> {
@@ -268,7 +268,7 @@ pub enum ToolScope {
 }
 ```
 
-**Scope Detection (in `crates/cb-plugins/src/capabilities.rs`):**
+**Scope Detection (in `crates/mill-plugins/src/capabilities.rs`):**
 
 ```rust
 impl Capabilities {
@@ -391,7 +391,7 @@ async fn test_all_42_tools_are_registered() {
 
 This test ensures no tools are accidentally removed during refactoring.
 
-**Plugin Selection Tests (crates/cb-plugins/src/registry.rs):**
+**Plugin Selection Tests (crates/mill-plugins/src/registry.rs):**
 
 - `test_scope_aware_file_tool_selection`: File-scoped tool routing
 - `test_scope_aware_workspace_tool_selection`: Workspace-scoped tool routing
@@ -400,13 +400,13 @@ This test ensures no tools are accidentally removed during refactoring.
 - `test_ambiguous_selection_error`: Ambiguity detection
 - `test_ambiguous_selection_fallback`: Deterministic fallback
 
-**Total: 41 cb-plugins tests, 67 cb-ast tests, 1 integration test - All passing**
+**Total: 41 mill-plugins tests, 67 mill-ast tests, 1 integration test - All passing**
 
 ## Component Interactions
 
 ### Service Architecture
 
-The architecture is built around service traits defined in `cb-api`:
+The architecture is built around service traits defined in `mill-api`:
 
 ```rust
 // Core service traits
@@ -440,11 +440,11 @@ pub struct AppState {
 **Architecture**: Self-registering plugins with link-time discovery.
 
 **Core Design**:
-- **Decoupling**: The core system (`mill-services`, `cb-core`, etc.) has no direct knowledge of specific language plugins.
+- **Decoupling**: The core system (`mill-services`, `mill-core`, etc.) has no direct knowledge of specific language plugins.
 - **Self-Registration**: Each language plugin crate is responsible for registering itself with the system.
 - **Link-Time Discovery**: The main server binary discovers all available plugins at link time, meaning no runtime file scanning or complex configuration is needed. Adding a language is as simple as adding the crate to the workspace.
 
-### The `cb-plugin-registry` Crate
+### The `mill-plugin-registry` Crate
 
 This crate is the heart of the self-registration mechanism. It provides:
 - A `PluginDescriptor` struct that holds all metadata about a language plugin (its name, file extensions, capabilities, and a factory function to create an instance).
@@ -455,7 +455,7 @@ The magic is handled by the `inventory` crate, which collects all the static `Pl
 
 ### How a Plugin Registers Itself
 
-Inside a language plugin crate (e.g., `cb-lang-rust`), registration is a single macro call:
+Inside a language plugin crate (e.g., `mill-lang-rust`), registration is a single macro call:
 
 ```rust
 // In ../../crates/mill-lang-rust/src/lib.rs
@@ -542,7 +542,7 @@ The system provides comprehensive code intelligence through various tool categor
 - **Workspace Edits**: Multi-file atomic editing operations
 
 ### 4. Analysis Tools
-- **Import Analysis**: Dependency graph analysis via `cb-ast`
+- **Import Analysis**: Dependency graph analysis via `mill-ast`
 - **Dead Code Detection**: Unused code identification
 - **Call Hierarchy**: Function call relationships
 - **Type Hierarchy**: Type inheritance relationships
@@ -571,7 +571,7 @@ The unified refactoring API provides a consistent `plan -> apply` pattern for al
 
 ### Hierarchical Configuration
 
-Configuration is managed through the `cb-core` crate with support for multiple sources:
+Configuration is managed through the `mill-core` crate with support for multiple sources:
 
 1. **Default Configuration**: Built-in sensible defaults
 2. **Configuration Files**: JSON/TOML support (`.typemill/config.json`)

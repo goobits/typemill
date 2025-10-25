@@ -148,7 +148,7 @@ The `rename.plan` command supports a special **consolidation mode** for merging 
 Example auto-detected consolidation (no `consolidate: true` needed):
 ```json
 {
-  "target": {"kind": "directory", "path": "crates/cb-types"},
+  "target": {"kind": "directory", "path": "crates/mill-types"},
   "newName": "crates/mill-core/src/types"
 }
 ```
@@ -547,15 +547,15 @@ For Docker deployment details, see **[docs/operations/docker_deployment.md](docs
 
 **Additional Components**
 
-- **Plugin System** (`crates/cb-plugins/`) - Extensible plugin architecture
-- **AST Processing** (`crates/cb-ast/`) - Code parsing and analysis
-- **Virtual Filesystem** (`crates/cb-vfs/`) - FUSE filesystem support (Unix only)
+- **Plugin System** (`crates/mill-plugins/`) - Extensible plugin architecture
+- **AST Processing** (`crates/mill-ast/`) - Code parsing and analysis
+- **Virtual Filesystem** (`crates/mill-vfs/`) - FUSE filesystem support (Unix only)
   - ⚠️ **EXPERIMENTAL - Development Only**
   - Requires `SYS_ADMIN` capability (disables container security boundaries)
   - Not recommended for production use
   - To disable: set `"fuse": null` in `.typemill/config.json`
   - Docker: Use `deployment/docker-compose --profile fuse up mill-fuse` to enable
-- **API Interfaces** (`crates/cb-protocol/`) - Service trait definitions
+- **API Interfaces** (`crates/mill-protocol/`) - Service trait definitions
 - **Client Library** (`crates/mill-client/`) - CLI client and WebSocket client
 
 ### Data Flow
