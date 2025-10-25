@@ -181,7 +181,7 @@ impl PluginRegistry {
     /// # Selection Strategy
     ///
     /// 1. **Tool Scope Detection**: Determines if the tool is File-scoped or Workspace-scoped
-    ///    - File-scoped tools (e.g., `find_definition`, `rename.plan`) require a specific file context
+    ///    - File-scoped tools (e.g., `find_definition`, `rename`) require a specific file context
     ///    - Workspace-scoped tools (e.g., `search_workspace_symbols`, `list_files`) operate globally
     ///
     /// 2. **Candidate Filtering**:
@@ -431,15 +431,14 @@ impl PluginRegistry {
             ("format_range", capabilities.editing.format_range),
             ("get_code_actions", capabilities.editing.code_actions),
             ("organize_imports", capabilities.editing.organize_imports),
-            // Unified Refactoring API - Plan generators
-            ("rename.plan", capabilities.editing.rename),
-            ("extract.plan", capabilities.refactoring.extract_function),
-            ("inline.plan", capabilities.refactoring.inline_variable),
-            ("move.plan", capabilities.refactoring.move_refactor),
-            ("reorder.plan", true),
-            ("transform.plan", true),
-            ("delete.plan", true),
-            ("workspace.apply_edit", true),
+            // Unified Refactoring API (dryRun option)
+            ("rename", capabilities.editing.rename),
+            ("extract", capabilities.refactoring.extract_function),
+            ("inline", capabilities.refactoring.inline_variable),
+            ("move", capabilities.refactoring.move_refactor),
+            ("reorder", true),
+            ("transform", true),
+            ("delete", true),
             // Intelligence methods
             ("get_hover", capabilities.intelligence.hover),
             ("get_completions", capabilities.intelligence.completions),

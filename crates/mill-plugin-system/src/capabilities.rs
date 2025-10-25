@@ -174,15 +174,14 @@ impl Capabilities {
             "get_code_actions" => self.editing.code_actions,
             "organize_imports" => self.editing.organize_imports,
 
-            // Unified Refactoring API - Plan generators
-            "rename.plan" => self.editing.rename,
-            "extract.plan" => self.refactoring.extract_function,
-            "inline.plan" => self.refactoring.inline_variable,
-            "move.plan" => self.refactoring.move_refactor,
-            "reorder.plan" => true,
-            "transform.plan" => true,
-            "delete.plan" => true,
-            "workspace.apply_edit" => true,
+            // Unified Refactoring API (dryRun option)
+            "rename" => self.editing.rename,
+            "extract" => self.refactoring.extract_function,
+            "inline" => self.refactoring.inline_variable,
+            "move" => self.refactoring.move_refactor,
+            "reorder" => true,
+            "transform" => true,
+            "delete" => true,
 
             // Intelligence capabilities
             "get_hover" => self.intelligence.hover,
@@ -222,12 +221,10 @@ impl Capabilities {
                 Some(ToolScope::File)
             }
 
-            // Unified Refactoring API - File-scoped plan generators
-            "rename.plan" | "extract.plan" | "inline.plan" | "move.plan" | "reorder.plan"
-            | "transform.plan" | "delete.plan" => Some(ToolScope::File),
-
-            // Workspace-scoped unified API
-            "workspace.apply_edit" => Some(ToolScope::Workspace),
+            // Unified Refactoring API - File-scoped tools with dryRun option
+            "rename" | "extract" | "inline" | "move" | "reorder" | "transform" | "delete" => {
+                Some(ToolScope::File)
+            }
 
             // File-scoped intelligence tools
             "get_hover" | "get_completions" | "get_signature_help" => Some(ToolScope::File),
@@ -319,9 +316,9 @@ mod tests {
             caps.get_tool_scope("find_definition"),
             Some(ToolScope::File)
         );
-        assert_eq!(caps.get_tool_scope("rename.plan"), Some(ToolScope::File));
+        assert_eq!(caps.get_tool_scope("rename"), Some(ToolScope::File));
         assert_eq!(caps.get_tool_scope("get_hover"), Some(ToolScope::File));
-        assert_eq!(caps.get_tool_scope("extract.plan"), Some(ToolScope::File));
+        assert_eq!(caps.get_tool_scope("extract"), Some(ToolScope::File));
 
         // Test workspace-scoped tools
         assert_eq!(
