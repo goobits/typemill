@@ -532,64 +532,84 @@ Fast reference for workflow automation and refactoring operations.
 
 ## Unified Refactoring API (Recommended)
 
-All refactoring operations follow a safe two-step pattern:
+All refactoring operations use a unified dryRun API with safe defaults:
 
-| Step | Tool | Purpose | Modifies Files? |
-|------|------|---------|-----------------|
-| 1. Plan | `*.plan` | Preview changes | ❌ No |
-| 2. Apply | `workspace.apply_edit` | Execute changes | ✅ Yes |
+| Mode | Default Behavior | Purpose | Modifies Files? |
+|------|------------------|---------|-----------------|
+| Preview | `dryRun: true` (default) | Preview changes | ❌ No |
+| Execute | `dryRun: false` (explicit) | Apply changes | ✅ Yes |
 
 ### Available Refactorings
 
-| Tool | Purpose | Required Parameters |
-|------|---------|---------------------|
-| `rename.plan` | Rename symbol/file/directory | `file_path`, `line`, `character`, `new_name` |
-| `extract.plan` | Extract function/variable | `file_path`, `range`, `new_name` |
-| `inline.plan` | Inline variable | `file_path`, `line`, `character` |
-| `move.plan` | Move code between files | `kind`, `source`, `destination` |
-| `reorder.plan` | Reorder parameters/imports | `kind`, `target`, `options` |
-| `transform.plan` | Transform code (e.g., to async) | `kind`, `target` |
-| `delete.plan` | Delete unused code | `kind`, `target` |
-| `workspace.apply_edit` | Apply any plan | `edit_id` (from plan), `options` (optional) |
+All tools support the same `options.dryRun` parameter:
+
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `rename` | Rename symbol/file/directory | `target`, `newName`, `options.dryRun` |
+| `extract` | Extract function/variable | `kind`, `source`, `options.dryRun` |
+| `inline` | Inline variable/function | `kind`, `target`, `options.dryRun` |
+| `move` | Move code between files | `target`, `destination`, `options.dryRun` |
+| `reorder` | Reorder parameters/imports | `target`, `new_order`, `options.dryRun` |
+| `transform` | Transform code (e.g., to async) | `transformation`, `options.dryRun` |
+| `delete` | Delete unused code/files | `target`, `options.dryRun` |
 
 ### Safety Features
 
 | Feature | How It Works | Benefit |
 |---------|--------------|---------|
-| **Mandatory Preview** | `*.plan` always returns preview | Can't accidentally apply changes |
+| **Safe Defaults** | `dryRun: true` by default | Can't accidentally apply changes |
 | **Detailed Change Preview** | Shows all files, exact changes, counts | Full visibility before commit |
-| **Double Preview** | `workspace.apply_edit` supports `dryRun: true` | Final check before execution |
+| **Explicit Execution** | Requires `dryRun: false` | Intentional opt-in to apply |
+| **Checksum Validation** | Validates files haven't changed | Prevents stale operations |
 | **Atomic Operations** | All files updated or none | Transaction-like behavior |
-| **Edit Caching** | Plans cached 5 minutes | Time for review |
 
 ### Example Usage
 
 ```json
-// Step 1: Plan (preview only)
+// Step 1: Preview (default dryRun: true)
 {
-  "name": "rename.plan",
+  "name": "rename",
   "arguments": {
-    "file_path": "src/api.ts",
-    "line": 10,
-    "character": 5,
+    "target": {
+      "kind": "symbol",
+      "path": "src/api.ts",
+      "selector": {
+        "position": {"line": 10, "character": 5}
+      }
+    },
     "newName": "getData"
   }
 }
 
-// Response
+// Response: RenamePlan with edits, summary, warnings, file_checksums
 {
-  "edit_id": "550e8400-e29b-41d4-a716-446655440000",
-  "changes": { "src/api.ts": [...], "src/client.ts": [...] },
-  "summary": "Rename 'fetchData' to 'getData' (3 files, 12 occurrences)"
+  "plan_type": "RenamePlan",
+  "edits": { "changes": { "src/api.ts": [...], "src/client.ts": [...] } },
+  "summary": { "affected_files": 3, "created_files": 0, "deleted_files": 0 },
+  "file_checksums": { "src/api.ts": "abc123...", "src/client.ts": "def456..." }
 }
 
-// Step 2: Apply
+// Step 2: Execute (explicit dryRun: false)
 {
-  "name": "workspace.apply_edit",
+  "name": "rename",
   "arguments": {
-    "edit_id": "550e8400-e29b-41d4-a716-446655440000",
+    "target": {
+      "kind": "symbol",
+      "path": "src/api.ts",
+      "selector": {
+        "position": {"line": 10, "character": 5}
+      }
+    },
+    "newName": "getData",
     "options": { "dryRun": false }
   }
+}
+
+// Response: ExecutionResult
+{
+  "success": true,
+  "applied_files": ["src/api.ts", "src/client.ts", "src/index.ts"],
+  "warnings": []
 }
 ```
 
@@ -599,10 +619,10 @@ All refactoring operations follow a safe two-step pattern:
 
 | Practice | Rationale |
 |----------|-----------|
-| Use Unified API | Simpler, safer than legacy workflows |
-| Always preview first | Call `*.plan` before applying |
-| Review changes carefully | Examine detailed preview |
-| Use dry run for final check | Extra safety layer |
+| Use dryRun defaults | Safe preview before execution |
+| Review plan output | Examine edits, summary, warnings |
+| Verify checksums | Ensure files haven't changed |
+| Explicit execution | Always set `dryRun: false` intentionally |
 | Leverage atomic operations | All succeed or none applied |
 
 ## Advanced Features
