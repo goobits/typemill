@@ -398,11 +398,7 @@ impl mill_plugin_api::ImportAnalyzer for RustPlugin {
         self.analyze_detailed_imports(&content, Some(file_path))
     }
 
-    fn find_unused_imports(&self, _file_path: &Path) -> mill_plugin_api::PluginResult<Vec<String>> {
-        // TODO: Implement unused import detection
-        // For now, return empty vector
-        Ok(Vec::new())
-    }
+    // Note: Unused import detection delegated to analyze.dead_code tool (uses LSP)
 }
 
 // ============================================================================

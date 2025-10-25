@@ -266,19 +266,15 @@ pub trait ImportAnalyzer: Send + Sync {
     /// Import graph with all imports and their metadata
     fn build_import_graph(&self, file_path: &Path) -> PluginResult<ImportGraph>;
 
-    /// Find unused imports in a file
-    ///
-    /// # Arguments
-    ///
-    /// * `file_path` - Path to the file to analyze
-    ///
-    /// # Returns
-    ///
-    /// Vector of unused import names
-    fn find_unused_imports(&self, _file_path: &Path) -> PluginResult<Vec<String>> {
-        // Default implementation: not supported
-        Err(crate::PluginError::not_supported("find_unused_imports"))
-    }
+    // Note: Unused import detection is handled by analyze.dead_code tool,
+    // which delegates to LSP servers (rust-analyzer, typescript-language-server, pylsp)
+    // for accurate semantic analysis with full type information.
+    //
+    // Language plugins should NOT implement unused import detection themselves.
+    // LSP integration provides:
+    // - Real-time analysis with full type context
+    // - Cross-file usage tracking
+    // - Support for complex patterns (macros, conditional compilation, etc.)
 }
 
 // ============================================================================
