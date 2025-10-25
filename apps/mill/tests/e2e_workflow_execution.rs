@@ -387,7 +387,7 @@ export function func{}() {{
     }
 }
 
-/// Test unified refactoring API: rename.plan → workspace.apply_edit
+/// Test unified refactoring API: rename → workspace.apply_edit
 #[tokio::test]
 async fn test_unified_refactoring_rename() {
     let workspace = TestWorkspace::new();
@@ -415,7 +415,7 @@ export function caller() {
     // Step 1: Generate rename plan
     let plan_response = client
         .call_tool(
-            "rename.plan",
+            "rename",
             json!({
                 "filePath": test_file.to_string_lossy(),
                 "line": 2,
@@ -463,7 +463,7 @@ export function caller() {
         }
     } else {
         eprintln!(
-            "ℹ️  Test 'test_unified_refactoring_rename': rename.plan skipped (requires LSP support)"
+            "ℹ️  Test 'test_unified_refactoring_rename': rename skipped (requires LSP support)"
         );
     }
 }

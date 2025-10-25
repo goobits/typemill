@@ -1313,7 +1313,7 @@ async fn handle_convert_naming(
     });
 
     let params = json!({
-        "name": "rename.plan",
+        "name": "rename",
         "arguments": arguments,
     });
 
@@ -1339,7 +1339,7 @@ async fn handle_convert_naming(
 
                     // Apply the plan
                     let apply_params = json!({
-                        "name": "workspace.apply_edit",
+                        "name": "DELETED_TOOL",
                         "arguments": {
                             "plan": content,
                             "options": {

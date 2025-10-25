@@ -425,7 +425,7 @@ use crate::test_helpers::*;
 async fn test_rename_file() {
     run_tool_test(
         &[("old.rs", "pub fn test() {}")],  // Initial files
-        "rename.plan",                       // Tool name
+        "rename",                       // Tool name
         |ws| build_rename_params(ws, "old.rs", "new.rs", "file"),  // Params builder
         |ws| {                              // Verification closure
             assert!(ws.file_exists("new.rs"));
@@ -448,7 +448,7 @@ async fn test_rename_file() {
 async fn test_rename_with_metadata_check() {
     run_tool_test_with_plan_validation(
         &[("file.rs", "content")],
-        "rename.plan",
+        "rename",
         |ws| build_rename_params(ws, "file.rs", "renamed.rs", "file"),
         |plan| {                            // Plan validator
             assert_eq!(plan.get("planType").and_then(|v| v.as_str()), Some("renamePlan"));
@@ -471,7 +471,7 @@ async fn test_rename_with_metadata_check() {
 async fn test_rename_dry_run() {
     run_dry_run_test(
         &[("original.rs", "content")],
-        "rename.plan",
+        "rename",
         |ws| build_rename_params(ws, "original.rs", "renamed.rs", "file"),
         |ws| {                              // Verify no changes
             assert!(ws.file_exists("original.rs"), "Original should still exist");
@@ -490,7 +490,7 @@ async fn test_rename_dry_run() {
 async fn test_checksum_validation() {
     run_tool_test_with_mutation(
         &[("file.rs", "original")],
-        "rename.plan",
+        "rename",
         |ws| build_rename_params(ws, "file.rs", "renamed.rs", "file"),
         |ws, _plan| {                       // Mutation hook (between plan and apply)
             ws.create_file("file.rs", "MODIFIED");  // Corrupt checksum

@@ -148,7 +148,7 @@ edition = "2021"
     // Step 1: Generate rename plan using public API
     let plan_result = client
         .call_tool(
-            "rename.plan",
+            "rename",
             json!({
                 "target": {
                     "kind": "directory",
@@ -158,7 +158,7 @@ edition = "2021"
             }),
         )
         .await;
-    assert!(plan_result.is_ok(), "rename.plan should succeed");
+    assert!(plan_result.is_ok(), "rename should succeed");
     let plan_response = plan_result.unwrap();
     let plan = &plan_response["result"]["content"];
 

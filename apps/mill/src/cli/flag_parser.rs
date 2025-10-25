@@ -19,7 +19,7 @@
 //! flags.insert("target".to_string(), "file:src/utils.rs".to_string());
 //! flags.insert("new_name".to_string(), "src/helpers.rs".to_string());
 //!
-//! let json = parse_flags_to_json("rename.plan", flags)?;
+//! let json = parse_flags_to_json("rename", flags)?;
 //! // Returns: {"target": {"kind": "file", "path": "src/utils.rs"}, "newName": "src/helpers.rs"}
 //! ```
 
@@ -100,7 +100,7 @@ impl std::error::Error for FlagParseError {}
 ///
 /// # Arguments
 ///
-/// * `tool_name` - Name of the refactoring tool (e.g., "rename.plan")
+/// * `tool_name` - Name of the refactoring tool (e.g., "rename")
 /// * `flags` - HashMap of flag names to values
 ///
 /// # Returns
@@ -114,7 +114,7 @@ impl std::error::Error for FlagParseError {}
 /// flags.insert("target".to_string(), "file:src/app.rs".to_string());
 /// flags.insert("new_name".to_string(), "src/main.rs".to_string());
 ///
-/// let json = parse_flags_to_json("rename.plan", flags)?;
+/// let json = parse_flags_to_json("rename", flags)?;
 /// ```
 pub fn parse_flags_to_json(
     tool_name: &str,
@@ -122,13 +122,13 @@ pub fn parse_flags_to_json(
 ) -> Result<Value, FlagParseError> {
     match tool_name {
         // Plan tools (two-step: plan -> apply)
-        "rename.plan" => parse_rename_flags(flags),
-        "extract.plan" => parse_extract_flags(flags),
-        "move.plan" => parse_move_flags(flags),
-        "inline.plan" => parse_inline_flags(flags),
-        "reorder.plan" => parse_reorder_flags(flags),
-        "transform.plan" => parse_transform_flags(flags),
-        "delete.plan" => parse_delete_flags(flags),
+        "rename" => parse_rename_flags(flags),
+        "extract" => parse_extract_flags(flags),
+        "move" => parse_move_flags(flags),
+        "inline" => parse_inline_flags(flags),
+        "reorder" => parse_reorder_flags(flags),
+        "transform" => parse_transform_flags(flags),
+        "delete" => parse_delete_flags(flags),
         // Quick tools (one-step: plan + apply) - use same flag parsers
         "rename" => parse_rename_flags(flags),
         "extract" => parse_extract_flags(flags),
@@ -148,7 +148,7 @@ pub fn parse_flags_to_json(
 // Tool-Specific Parsers
 // ============================================================================
 
-/// Parse flags for rename.plan
+/// Parse flags for rename
 ///
 /// Required flags: target, new_name
 /// Optional flags: scope, exclude_patterns, strict, validate_scope, update_imports, consolidate
@@ -912,13 +912,13 @@ mod tests {
     }
 
     // ========================================================================
-    // rename.plan tests
+    // rename tests
     // ========================================================================
 
     #[test]
     fn test_rename_basic_file() {
         let result = parse_flags_to_json(
-            "rename.plan",
+            "rename",
             flags(&[("target", "file:src/utils.rs"), ("new_name", "src/helpers.rs")]),
         );
         assert!(result.is_ok());
@@ -931,7 +931,7 @@ mod tests {
     #[test]
     fn test_rename_directory() {
         let result = parse_flags_to_json(
-            "rename.plan",
+            "rename",
             flags(&[("target", "directory:old-dir"), ("new_name", "new-dir")]),
         );
         assert!(result.is_ok());
@@ -943,7 +943,7 @@ mod tests {
     #[test]
     fn test_rename_with_scope() {
         let result = parse_flags_to_json(
-            "rename.plan",
+            "rename",
             flags(&[
                 ("target", "file:src/app.rs"),
                 ("new_name", "src/main.rs"),
@@ -958,7 +958,7 @@ mod tests {
     #[test]
     fn test_rename_with_custom_scope() {
         let result = parse_flags_to_json(
-            "rename.plan",
+            "rename",
             flags(&[
                 ("target", "file:src/app.rs"),
                 ("new_name", "src/main.rs"),
@@ -981,7 +981,7 @@ mod tests {
 
     #[test]
     fn test_rename_missing_required() {
-        let result = parse_flags_to_json("rename.plan", flags(&[("target", "file:src/app.rs")]));
+        let result = parse_flags_to_json("rename", flags(&[("target", "file:src/app.rs")]));
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),
@@ -992,7 +992,7 @@ mod tests {
     #[test]
     fn test_rename_unknown_flag() {
         let result = parse_flags_to_json(
-            "rename.plan",
+            "rename",
             flags(&[
                 ("target", "file:src/app.rs"),
                 ("new_name", "src/main.rs"),
@@ -1006,7 +1006,7 @@ mod tests {
     #[test]
     fn test_rename_invalid_scope() {
         let result = parse_flags_to_json(
-            "rename.plan",
+            "rename",
             flags(&[
                 ("target", "file:src/app.rs"),
                 ("new_name", "src/main.rs"),
@@ -1024,7 +1024,7 @@ mod tests {
     #[test]
     fn test_extract_function() {
         let result = parse_flags_to_json(
-            "extract.plan",
+            "extract",
             flags(&[
                 ("kind", "function"),
                 ("source", "src/app.rs:10:5"),
@@ -1041,7 +1041,7 @@ mod tests {
     #[test]
     fn test_extract_with_visibility() {
         let result = parse_flags_to_json(
-            "extract.plan",
+            "extract",
             flags(&[
                 ("kind", "function"),
                 ("source", "src/app.rs:10:5"),
@@ -1057,7 +1057,7 @@ mod tests {
     #[test]
     fn test_extract_missing_required() {
         let result = parse_flags_to_json(
-            "extract.plan",
+            "extract",
             flags(&[("kind", "function"), ("source", "src/app.rs:10:5")]),
         );
         assert!(result.is_err());
@@ -1070,7 +1070,7 @@ mod tests {
     #[test]
     fn test_extract_invalid_kind() {
         let result = parse_flags_to_json(
-            "extract.plan",
+            "extract",
             flags(&[
                 ("kind", "invalid"),
                 ("source", "src/app.rs:10:5"),
@@ -1088,7 +1088,7 @@ mod tests {
     #[test]
     fn test_move_symbol() {
         let result = parse_flags_to_json(
-            "move.plan",
+            "move",
             flags(&[
                 ("source", "src/app.rs:10:5"),
                 ("destination", "src/utils.rs"),
@@ -1103,7 +1103,7 @@ mod tests {
     #[test]
     fn test_move_with_kind() {
         let result = parse_flags_to_json(
-            "move.plan",
+            "move",
             flags(&[
                 ("kind", "to_module"),
                 ("source", "src/app.rs:10:5"),
@@ -1117,7 +1117,7 @@ mod tests {
 
     #[test]
     fn test_move_missing_required() {
-        let result = parse_flags_to_json("move.plan", flags(&[("source", "src/app.rs:10:5")]));
+        let result = parse_flags_to_json("move", flags(&[("source", "src/app.rs:10:5")]));
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),
@@ -1132,7 +1132,7 @@ mod tests {
     #[test]
     fn test_inline_variable() {
         let result =
-            parse_flags_to_json("inline.plan", flags(&[("target", "src/app.rs:10:5")]));
+            parse_flags_to_json("inline", flags(&[("target", "src/app.rs:10:5")]));
         assert!(result.is_ok());
         let json = result.unwrap();
         assert_eq!(json["target"]["file_path"], "src/app.rs");
@@ -1141,7 +1141,7 @@ mod tests {
     #[test]
     fn test_inline_with_kind() {
         let result = parse_flags_to_json(
-            "inline.plan",
+            "inline",
             flags(&[("kind", "function"), ("target", "src/app.rs:10:5")]),
         );
         assert!(result.is_ok());
@@ -1152,7 +1152,7 @@ mod tests {
     #[test]
     fn test_inline_with_inline_all() {
         let result = parse_flags_to_json(
-            "inline.plan",
+            "inline",
             flags(&[("target", "src/app.rs:10:5"), ("inline_all", "true")]),
         );
         assert!(result.is_ok());
@@ -1162,7 +1162,7 @@ mod tests {
 
     #[test]
     fn test_inline_missing_required() {
-        let result = parse_flags_to_json("inline.plan", flags(&[]));
+        let result = parse_flags_to_json("inline", flags(&[]));
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),
@@ -1177,7 +1177,7 @@ mod tests {
     #[test]
     fn test_reorder_imports() {
         let result = parse_flags_to_json(
-            "reorder.plan",
+            "reorder",
             flags(&[
                 ("kind", "imports"),
                 ("target", "src/app.rs"),
@@ -1193,7 +1193,7 @@ mod tests {
     #[test]
     fn test_reorder_parameters() {
         let result = parse_flags_to_json(
-            "reorder.plan",
+            "reorder",
             flags(&[("kind", "parameters"), ("target", "src/app.rs:10:5")]),
         );
         assert!(result.is_ok());
@@ -1204,7 +1204,7 @@ mod tests {
     #[test]
     fn test_reorder_custom_strategy() {
         let result = parse_flags_to_json(
-            "reorder.plan",
+            "reorder",
             flags(&[
                 ("kind", "imports"),
                 ("target", "src/app.rs"),
@@ -1221,7 +1221,7 @@ mod tests {
     #[test]
     fn test_reorder_custom_without_order() {
         let result = parse_flags_to_json(
-            "reorder.plan",
+            "reorder",
             flags(&[
                 ("kind", "imports"),
                 ("target", "src/app.rs"),
@@ -1242,7 +1242,7 @@ mod tests {
     #[test]
     fn test_transform_to_async() {
         let result = parse_flags_to_json(
-            "transform.plan",
+            "transform",
             flags(&[("kind", "to_async"), ("target", "src/app.rs:10:5")]),
         );
         assert!(result.is_ok());
@@ -1253,7 +1253,7 @@ mod tests {
     #[test]
     fn test_transform_loop() {
         let result = parse_flags_to_json(
-            "transform.plan",
+            "transform",
             flags(&[("kind", "loop_to_iterator"), ("target", "src/app.rs:10:5")]),
         );
         assert!(result.is_ok());
@@ -1264,7 +1264,7 @@ mod tests {
     #[test]
     fn test_transform_invalid_kind() {
         let result = parse_flags_to_json(
-            "transform.plan",
+            "transform",
             flags(&[("kind", "invalid"), ("target", "src/app.rs:10:5")]),
         );
         assert!(result.is_err());
@@ -1278,7 +1278,7 @@ mod tests {
     #[test]
     fn test_delete_unused_imports() {
         let result = parse_flags_to_json(
-            "delete.plan",
+            "delete",
             flags(&[("kind", "unused_imports"), ("target", "file:src/app.rs")]),
         );
         assert!(result.is_ok());
@@ -1290,7 +1290,7 @@ mod tests {
     #[test]
     fn test_delete_dead_code() {
         let result = parse_flags_to_json(
-            "delete.plan",
+            "delete",
             flags(&[("kind", "dead_code"), ("target", "workspace:.")]),
         );
         assert!(result.is_ok());
@@ -1302,7 +1302,7 @@ mod tests {
     #[test]
     fn test_delete_with_scope_and_path() {
         let result = parse_flags_to_json(
-            "delete.plan",
+            "delete",
             flags(&[
                 ("kind", "unused_imports"),
                 ("scope", "file"),
@@ -1317,7 +1317,7 @@ mod tests {
 
     #[test]
     fn test_delete_missing_target() {
-        let result = parse_flags_to_json("delete.plan", flags(&[("kind", "unused_imports")]));
+        let result = parse_flags_to_json("delete", flags(&[("kind", "unused_imports")]));
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),
