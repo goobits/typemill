@@ -68,7 +68,7 @@ async fn test_rename_checksum_validation_rejects_stale_plan() {
     let params = build_rename_params(&workspace, "file.rs", "renamed.rs", "file");
 
     // Generate plan
-    let plan = client.call_tool("rename", params).await.unwrap()
+    let plan = client.call_tool("rename", params.clone()).await.unwrap()
         .get("result").and_then(|r| r.get("content")).cloned().unwrap();
 
     // Invalidate checksum after plan generated

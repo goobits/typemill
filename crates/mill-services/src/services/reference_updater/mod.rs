@@ -1070,6 +1070,7 @@ mod tests {
             update_code: true,
             update_docs: false, // Exclude docs
             update_configs: false,
+            update_gitignore: false,
             update_string_literals: false,
             update_comments: false,
             update_markdown_prose: false,
@@ -1137,6 +1138,7 @@ mod tests {
             update_code: true,
             update_docs: false,
             update_configs: false, // Exclude configs
+            update_gitignore: false,
             update_string_literals: false,
             update_comments: false,
             update_markdown_prose: false,
@@ -1198,6 +1200,7 @@ mod tests {
             update_code: true,
             update_docs: true,
             update_configs: false,
+            update_gitignore: false,
             update_string_literals: false,
             update_comments: false,
             update_markdown_prose: false,
@@ -1270,6 +1273,7 @@ mod tests {
             update_code: true,
             update_docs: true,
             update_configs: true,
+            update_gitignore: true,
             update_string_literals: true,
             update_comments: true,
             update_markdown_prose: true,

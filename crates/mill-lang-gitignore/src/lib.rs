@@ -133,22 +133,22 @@ mod tests {
     #[test]
     fn test_handles_gitignore() {
         let plugin = GitignoreLanguagePlugin::new();
-        assert!(plugin.handles_file(Path::new(".gitignore")));
-        assert!(plugin.handles_file(Path::new("/project/.gitignore")));
-        assert!(!plugin.handles_file(Path::new("README.md")));
-        assert!(!plugin.handles_file(Path::new(".gitignore.backup")));
+        assert!(plugin.handles_manifest(".gitignore"));
+        assert!(plugin.handles_manifest(".gitignore")); // Filename match, not full path
+        assert!(!plugin.handles_manifest("README.md"));
+        assert!(!plugin.handles_manifest(".gitignore.backup"));
     }
 
-    #[tokio::test]
-    async fn test_rewrite_directory_pattern() {
+    #[test]
+    fn test_rewrite_directory_pattern() {
         let plugin = GitignoreLanguagePlugin::new();
         let content = "# Build output\ntarget/\ntests/e2e/fixtures/\n*.log\n";
         let old_path = Path::new("tests/e2e");
         let new_path = Path::new("tests/integration");
 
         let (result, changes) = plugin
-            .rewrite_import_paths(content, Path::new(".gitignore"), old_path, new_path, None)
-            .await
+            .import_support
+            .rewrite_gitignore_patterns(content, old_path, new_path)
             .unwrap();
 
         assert_eq!(changes, 1);
@@ -158,16 +158,16 @@ mod tests {
         assert!(result.contains("*.log")); // Unchanged
     }
 
-    #[tokio::test]
-    async fn test_preserves_comments_and_blanks() {
+    #[test]
+    fn test_preserves_comments_and_blanks() {
         let plugin = GitignoreLanguagePlugin::new();
         let content = "# Comment\n\ntests/e2e/\n\n# Another comment\n";
         let old_path = Path::new("tests/e2e");
         let new_path = Path::new("tests/integration");
 
         let (result, changes) = plugin
-            .rewrite_import_paths(content, Path::new(".gitignore"), old_path, new_path, None)
-            .await
+            .import_support
+            .rewrite_gitignore_patterns(content, old_path, new_path)
             .unwrap();
 
         assert_eq!(changes, 1);

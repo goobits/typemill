@@ -18,7 +18,7 @@ mod tests {
 
         let ast_cache = Arc::new(AstCache::new());
         let lock_manager = Arc::new(LockManager::new());
-        let operation_queue = Arc::new(OperationQueue::new());
+        let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
         let plugin_registry = Arc::new(PluginRegistry::new());
         let config = AppConfig::default();
 

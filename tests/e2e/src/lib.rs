@@ -82,7 +82,7 @@ pub mod test_transform_integration;
 pub mod test_delete_integration;
 
 #[cfg(test)]
-pub mod test_workspace_apply_integration;
+// Removed: test_workspace_apply_integration (workspace.apply_edit tool was removed in Phase 5)
 
 // Unified Analysis API integration tests (Proposal 40)
 #[cfg(test)]
