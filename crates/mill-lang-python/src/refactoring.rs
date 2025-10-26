@@ -13,61 +13,12 @@ use crate::parser::{
 };
 use mill_lang_common::LineExtractor;
 use mill_foundation::protocol::{
-    EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
+    EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use serde::{Deserialize, Serialize};
+pub use mill_lang_common::refactoring::{
+    CodeRange, ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis,
+};
 use std::collections::HashMap;
-/// Range of code for refactoring operations
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct CodeRange {
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-}
-/// Information about a function that can be extracted
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ExtractableFunction {
-    pub selected_range: CodeRange,
-    pub required_parameters: Vec<String>,
-    pub return_variables: Vec<String>,
-    pub suggested_name: String,
-    pub insertion_point: CodeRange,
-    pub contains_return_statements: bool,
-    pub complexity_score: u32,
-}
-/// Analysis result for inline variable refactoring
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct InlineVariableAnalysis {
-    pub variable_name: String,
-    pub declaration_range: CodeRange,
-    pub initializer_expression: String,
-    pub usage_locations: Vec<CodeRange>,
-    pub is_safe_to_inline: bool,
-    pub blocking_reasons: Vec<String>,
-}
-/// Analysis result for extract variable refactoring
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ExtractVariableAnalysis {
-    pub expression: String,
-    pub expression_range: CodeRange,
-    pub can_extract: bool,
-    pub suggested_name: String,
-    pub insertion_point: CodeRange,
-    pub blocking_reasons: Vec<String>,
-    pub scope_type: String,
-}
-/// Convert CodeRange to EditLocation
-impl From<CodeRange> for EditLocation {
-    fn from(range: CodeRange) -> Self {
-        EditLocation {
-            start_line: range.start_line,
-            start_column: range.start_col,
-            end_line: range.end_line,
-            end_column: range.end_col,
-        }
-    }
-}
 /// Error type for refactoring operations
 #[derive(Debug, thiserror::Error)]
 pub enum RefactoringError {
@@ -126,7 +77,7 @@ pub fn analyze_extract_function(
     let contains_return = selected_text.contains("return ");
     let insertion_point = find_insertion_point(source, range.start_line)?;
     Ok(ExtractableFunction {
-        selected_range: range.clone(),
+        selected_range: *range,
         required_parameters,
         return_variables: Vec::new(),
         suggested_name: "extracted_function".to_string(),
@@ -249,7 +200,7 @@ pub fn plan_extract_function(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Insert,
-        location: analysis.insertion_point.clone().into(),
+        location: analysis.insertion_point.into(),
         original_text: String::new(),
         new_text: format!("{}\n\n", function_code),
         priority: 100,
@@ -259,7 +210,7 @@ pub fn plan_extract_function(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Replace,
-        location: analysis.selected_range.clone().into(),
+        location: analysis.selected_range.into(),
         original_text: extract_range_text(source, &analysis.selected_range)?,
         new_text: call_code,
         priority: 90,
@@ -318,7 +269,7 @@ pub fn plan_inline_variable(
         edits.push(TextEdit {
             file_path: None,
             edit_type: EditType::Replace,
-            location: usage_location.clone().into(),
+            location: (*usage_location).into(),
             original_text: analysis.variable_name.clone(),
             new_text: replacement_text,
             priority,
@@ -329,7 +280,7 @@ pub fn plan_inline_variable(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Delete,
-        location: analysis.declaration_range.clone().into(),
+        location: analysis.declaration_range.into(),
         original_text: extract_range_text(source, &analysis.declaration_range)?,
         new_text: String::new(),
         priority: 50,
@@ -382,7 +333,7 @@ pub fn plan_extract_variable(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Insert,
-        location: analysis.insertion_point.clone().into(),
+        location: analysis.insertion_point.into(),
         original_text: String::new(),
         new_text: declaration,
         priority: 100,
@@ -394,7 +345,7 @@ pub fn plan_extract_variable(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Replace,
-        location: analysis.expression_range.clone().into(),
+        location: analysis.expression_range.into(),
         original_text: analysis.expression.clone(),
         new_text: var_name.clone(),
         priority: 90,

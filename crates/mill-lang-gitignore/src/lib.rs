@@ -6,8 +6,8 @@
 use async_trait::async_trait;
 use mill_plugin_api::mill_plugin;
 use mill_plugin_api::{
-    import_support::ImportMoveSupport, LanguageMetadata, LanguagePlugin, ManifestData,
-    ParsedSource, PluginCapabilities, PluginResult,
+    import_support, import_support::ImportMoveSupport, LanguageMetadata, LanguagePlugin,
+    ManifestData, ParsedSource, PluginCapabilities, PluginResult,
 };
 use serde_json::json;
 use std::path::Path;
@@ -87,7 +87,13 @@ impl LanguagePlugin for GitignoreLanguagePlugin {
         })
     }
 
-    async fn analyze_manifest(&self, _path: &Path) -> PluginResult<ManifestData> {
+    async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
+        if !path.exists() {
+            return Err(mill_plugin_api::PluginError::invalid_input(format!(
+                "Manifest file not found: {}",
+                path.display()
+            )));
+        }
         // .gitignore is not a package manifest - return minimal data
         Ok(ManifestData {
             name: ".gitignore".to_string(),

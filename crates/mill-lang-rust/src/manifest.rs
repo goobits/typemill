@@ -223,6 +223,12 @@ pub fn rename_dependency(
 
 /// Load and parse a Cargo.toml file from a path
 pub async fn load_cargo_toml(path: &Path) -> PluginResult<ManifestData> {
+    if !path.exists() {
+        return Err(PluginError::invalid_input(format!(
+            "Manifest file not found: {}",
+            path.display()
+        )));
+    }
     let content = read_manifest(path).await?;
     parse_cargo_toml(&content)
 }

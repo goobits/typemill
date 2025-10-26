@@ -19,27 +19,17 @@ pub mod test_fixtures;
 pub mod workspace_support;
 
 use async_trait::async_trait;
-use mill_plugin_api::mill_plugin;
 use mill_plugin_api::{
     import_support::{
         ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportParser,
         ImportRenameSupport,
     },
-    LanguageMetadata, LanguagePlugin, LspConfig, ManifestData, ParsedSource, PluginCapabilities,
+    LanguageMetadata, LanguagePlugin, ManifestData, ParsedSource, PluginCapabilities,
     PluginResult, WorkspaceSupport,
 };
 use std::path::Path;
 use tracing::{debug, warn};
-
-// Self-register the plugin with the TypeMill system.
-mill_plugin! {
-    name: "python",
-    extensions: ["py"],
-    manifest: "pyproject.toml",
-    capabilities: PythonPlugin::CAPABILITIES,
-    factory: PythonPlugin::new,
-    lsp: Some(LspConfig::new("pylsp", &["pylsp"]))
-}
+use mill_lang_macros::define_language_plugin;
 
 /// Python language plugin implementation
 ///
@@ -48,44 +38,23 @@ mill_plugin! {
 /// - Import statement analysis
 /// - Multiple manifest format handling (requirements.txt, pyproject.toml)
 /// - Code refactoring operations
+#[derive(Default)]
 pub struct PythonPlugin {
     import_support: import_support::PythonImportSupport,
     workspace_support: workspace_support::PythonWorkspaceSupport,
     project_factory: project_factory::PythonProjectFactory,
 }
 
-impl Default for PythonPlugin {
-    fn default() -> Self {
-        Self {
-            import_support: Default::default(),
-            workspace_support: Default::default(),
-            project_factory: Default::default(),
-        }
-    }
-}
-
-impl PythonPlugin {
-    /// Static metadata for the Python language.
-    pub const METADATA: LanguageMetadata = LanguageMetadata {
-        name: "python",
-        extensions: &["py"],
-        manifest_filename: "pyproject.toml",
-        source_dir: ".",
-        entry_point: "__init__.py",
-        module_separator: ".",
-    };
-
-    /// The capabilities of this plugin.
-    pub const CAPABILITIES: PluginCapabilities = PluginCapabilities::none()
-        .with_imports()
-        .with_workspace()
-        .with_project_factory();
-
-    /// Creates a new, boxed instance of the plugin.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> Box<dyn LanguagePlugin> {
-        Box::new(Self::default())
-    }
+define_language_plugin! {
+    plugin_struct = PythonPlugin,
+    name = "python",
+    extensions = ["py"],
+    manifest_filename = "pyproject.toml",
+    source_dir = ".",
+    entry_point = "__init__.py",
+    module_separator = ".",
+    capabilities = { PluginCapabilities::none().with_imports().with_workspace().with_project_factory() },
+    lsp_config = ( "pylsp", &["pylsp"] ),
 }
 
 #[async_trait]
@@ -133,6 +102,13 @@ impl LanguagePlugin for PythonPlugin {
     }
 
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
+        if !path.exists() {
+            return Err(mill_plugin_api::PluginError::invalid_input(format!(
+                "Manifest file not found: {}",
+                path.display()
+            )));
+        }
+
         let filename = path
             .file_name()
             .and_then(|s| s.to_str())
@@ -258,7 +234,7 @@ impl mill_plugin_api::ManifestUpdater for PythonPlugin {
                     version,
                     None, // Use default "dependencies" section
                 )
-                .map_err(|e| mill_plugin_api::PluginError::internal(e))
+                .map_err(mill_plugin_api::PluginError::internal)
             } else {
                 // No version provided, return unchanged
                 std::fs::read_to_string(manifest_path)

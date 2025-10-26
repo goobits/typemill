@@ -9,59 +9,28 @@ pub mod workspace_support;
 
 use async_trait::async_trait;
 use mill_lang_common::read_manifest;
-use mill_plugin_api::mill_plugin;
-use mill_plugin_api::{ import_support::{ ImportAdvancedSupport , ImportMoveSupport , ImportMutationSupport , ImportParser , ImportRenameSupport , } , LanguageMetadata , LanguagePlugin , LspConfig , ManifestData , ParsedSource , PluginCapabilities , PluginError , PluginResult , WorkspaceSupport , };
+use mill_plugin_api::{ import_support::{ ImportAdvancedSupport , ImportMoveSupport , ImportMutationSupport , ImportParser , ImportRenameSupport , } , LanguageMetadata , LanguagePlugin , ManifestData , ParsedSource , PluginCapabilities , PluginError , PluginResult , WorkspaceSupport , };
 use std::path::Path;
-
-// Self-register the plugin with the TypeMill system.
-mill_plugin! {
-    name: "typescript",
-    extensions: ["ts", "tsx", "js", "jsx", "mjs", "cjs"],
-    manifest: "package.json",
-    capabilities: TypeScriptPlugin::CAPABILITIES,
-    factory: TypeScriptPlugin::new,
-    lsp: Some(LspConfig::new("typescript-language-server", &["typescript-language-server", "--stdio"]))
-}
+use mill_lang_macros::define_language_plugin;
 
 /// TypeScript/JavaScript language plugin implementation.
+#[derive(Default)]
 pub struct TypeScriptPlugin {
     import_support: import_support::TypeScriptImportSupport,
     workspace_support: workspace_support::TypeScriptWorkspaceSupport,
     project_factory: project_factory::TypeScriptProjectFactory,
 }
 
-impl Default for TypeScriptPlugin {
-    fn default() -> Self {
-        Self {
-            import_support: Default::default(),
-            workspace_support: Default::default(),
-            project_factory: Default::default(),
-        }
-    }
-}
-
-impl TypeScriptPlugin {
-    /// Static metadata for the TypeScript language.
-    pub const METADATA: LanguageMetadata = LanguageMetadata {
-        name: "typescript",
-        extensions: &["ts", "tsx", "js", "jsx", "mjs", "cjs"],
-        manifest_filename: "package.json",
-        source_dir: "src",
-        entry_point: "index.ts",
-        module_separator: ".",
-    };
-
-    /// The capabilities of this plugin.
-    pub const CAPABILITIES: PluginCapabilities = PluginCapabilities::none()
-        .with_imports()
-        .with_workspace()
-        .with_project_factory();
-
-    /// Creates a new, boxed instance of the plugin.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> Box<dyn LanguagePlugin> {
-        Box::new(Self::default())
-    }
+define_language_plugin! {
+    plugin_struct = TypeScriptPlugin,
+    name = "typescript",
+    extensions = ["ts", "tsx", "js", "jsx", "mjs", "cjs"],
+    manifest_filename = "package.json",
+    source_dir = "src",
+    entry_point = "index.ts",
+    module_separator = ".",
+    capabilities = { PluginCapabilities::none().with_imports().with_workspace().with_project_factory() },
+    lsp_config = ( "typescript-language-server", &["typescript-language-server", "--stdio"] ),
 }
 
 #[async_trait]

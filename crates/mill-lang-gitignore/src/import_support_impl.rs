@@ -36,7 +36,7 @@ impl GitignoreImportSupport {
 
                 // Check if this line contains the old path
                 if Self::should_update_pattern(line, &old_path_str) {
-                    let updated = line.replace(&*old_path_str, &*new_path_str);
+                    let updated = line.replace(&*old_path_str, &new_path_str);
                     if updated != line {
                         changes += 1;
                         return updated;

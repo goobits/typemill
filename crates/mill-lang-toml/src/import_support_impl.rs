@@ -215,7 +215,7 @@ impl TomlImportSupport {
             format!("--package {}", old_crate_name),
         ] {
             if result.contains(&pattern) {
-                let replacement = pattern.replace(&*old_crate_name, &*new_crate_name);
+                let replacement = pattern.replace(&*old_crate_name, &new_crate_name);
                 result = result.replace(&pattern, &replacement);
                 changed = true;
             }

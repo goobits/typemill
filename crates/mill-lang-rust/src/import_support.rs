@@ -370,36 +370,31 @@ impl RustImportSupport {
         let mut current = tree;
         let mut prefix_type = ImportPrefix::Unknown;
 
-        loop {
-            match current {
-                syn::UseTree::Path(path) => {
-                    let ident_str = path.ident.to_string();
-                    match ident_str.as_str() {
-                        "super" => {
-                            count += 1;
-                            prefix_type = ImportPrefix::Super;
-                            current = &*path.tree;
-                        }
-                        "self" => {
-                            count += 1;
-                            prefix_type = ImportPrefix::SelfPath;
-                            current = &*path.tree;
-                        }
-                        "crate" => {
-                            count = 1;
-                            prefix_type = ImportPrefix::Crate;
-                            break;
-                        }
-                        _ => {
-                            // Hit a non-prefix segment
-                            if count == 0 {
-                                prefix_type = ImportPrefix::External;
-                            }
-                            break;
-                        }
-                    }
+        while let syn::UseTree::Path(path) = current {
+            let ident_str = path.ident.to_string();
+            match ident_str.as_str() {
+                "super" => {
+                    count += 1;
+                    prefix_type = ImportPrefix::Super;
+                    current = &*path.tree;
                 }
-                _ => break,
+                "self" => {
+                    count += 1;
+                    prefix_type = ImportPrefix::SelfPath;
+                    current = &*path.tree;
+                }
+                "crate" => {
+                    count = 1;
+                    prefix_type = ImportPrefix::Crate;
+                    break;
+                }
+                _ => {
+                    // Hit a non-prefix segment
+                    if count == 0 {
+                        prefix_type = ImportPrefix::External;
+                    }
+                    break;
+                }
             }
         }
 

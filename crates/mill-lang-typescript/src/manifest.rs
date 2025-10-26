@@ -244,6 +244,12 @@ pub fn generate_manifest(package_name: &str, dependencies: &[String]) -> String 
 
 /// Load and parse a package.json file from a path
 pub async fn load_package_json(path: &Path) -> PluginResult<ManifestData> {
+    if !path.exists() {
+        return Err(PluginError::invalid_input(format!(
+            "Manifest file not found: {}",
+            path.display()
+        )));
+    }
     let content = read_manifest(path).await?;
     parse_package_json(&content)
 }

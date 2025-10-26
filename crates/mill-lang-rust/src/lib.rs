@@ -30,22 +30,12 @@ pub mod reference_detector;
 
 use async_trait::async_trait;
 use mill_lang_common::{ manifest_templates::{ ManifestTemplate , TomlManifestTemplate } , read_manifest , };
-use mill_plugin_api::mill_plugin;
-use mill_plugin_api::{ LanguageMetadata , LanguagePlugin , LspConfig , ManifestData , ParsedSource , PluginCapabilities , PluginResult , };
+use mill_plugin_api::{ LanguageMetadata , LanguagePlugin , ManifestData , ParsedSource , PluginCapabilities , PluginResult , };
 use std::path::Path;
 
 // Import helpers from the imports module
 use imports::{compute_module_path_from_file, find_crate_name_from_cargo_toml};
-
-// Self-register the plugin with the TypeMill system.
-mill_plugin! {
-    name: "rust",
-    extensions: ["rs"],
-    manifest: "Cargo.toml",
-    capabilities: RustPlugin::CAPABILITIES,
-    factory: RustPlugin::new,
-    lsp: Some(LspConfig::new("rust-analyzer", &["rust-analyzer"]))
-}
+use mill_lang_macros::define_language_plugin;
 
 /// Rust language plugin implementation.
 #[derive(Default)]
@@ -56,28 +46,16 @@ pub struct RustPlugin {
     project_factory: project_factory::RustProjectFactory,
 }
 
-impl RustPlugin {
-    /// Static metadata for the Rust language.
-    pub const METADATA: LanguageMetadata = LanguageMetadata {
-        name: "rust",
-        extensions: &["rs"],
-        manifest_filename: "Cargo.toml",
-        source_dir: "src",
-        entry_point: "lib.rs",
-        module_separator: "::",
-    };
-
-    /// The capabilities of this plugin.
-    pub const CAPABILITIES: PluginCapabilities = PluginCapabilities::none()
-        .with_imports()
-        .with_workspace()
-        .with_project_factory();
-
-    /// Creates a new, boxed instance of the plugin.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> Box<dyn LanguagePlugin> {
-        Box::new(Self::default())
-    }
+define_language_plugin! {
+    plugin_struct = RustPlugin,
+    name = "rust",
+    extensions = ["rs"],
+    manifest_filename = "Cargo.toml",
+    source_dir = "src",
+    entry_point = "lib.rs",
+    module_separator = "::",
+    capabilities = { PluginCapabilities::none().with_imports().with_workspace().with_project_factory() },
+    lsp_config = ( "rust-analyzer", &["rust-analyzer"] ),
 }
 
 #[async_trait]
@@ -114,6 +92,13 @@ impl LanguagePlugin for RustPlugin {
     }
 
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
+        if !path.exists() {
+            return Err(mill_plugin_api::PluginError::invalid_input(format!(
+                "Manifest file not found: {}",
+                path.display()
+            )));
+        }
+
         // Verify this is a Cargo.toml file
         if path.file_name().and_then(|s| s.to_str()) != Some("Cargo.toml") {
             return Err(mill_plugin_api::PluginError::invalid_input(format!(

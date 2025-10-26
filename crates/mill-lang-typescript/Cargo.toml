@@ -11,6 +11,7 @@ homepage.workspace = true
 mill-plugin-api = { path = "../mill-plugin-api" }
 mill-foundation = { path = "../mill-foundation" }
 mill-lang-common = { path = "../mill-lang-common" }
+mill-lang-macros = { path = "../mill-lang-macros" }
 
 # Async operations
 async-trait = { workspace = true }
