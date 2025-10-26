@@ -1,5 +1,95 @@
 //! Helper macros for reducing boilerplate in language plugin implementations
 
+/// Comprehensive macro to define a complete language plugin with all scaffolding.
+///
+/// This macro generates:
+/// - Plugin struct definition with fields
+/// - METADATA constant
+/// - CAPABILITIES constant
+/// - new() factory method
+/// - mill_plugin! registration block
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use mill_lang_common::define_language_plugin;
+///
+/// define_language_plugin! {
+///     struct: PythonPlugin,
+///     name: "python",
+///     extensions: ["py"],
+///     manifest: "pyproject.toml",
+///     lsp_command: "pylsp",
+///     lsp_args: ["pylsp"],
+///     source_dir: ".",
+///     entry_point: "__init__.py",
+///     module_separator: ".",
+///     capabilities: [imports, workspace, project_factory],
+///     fields: {
+///         import_support: import_support::PythonImportSupport,
+///         workspace_support: workspace_support::PythonWorkspaceSupport,
+///         project_factory: project_factory::PythonProjectFactory,
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! define_language_plugin {
+    (
+        struct: $struct_name:ident,
+        name: $name:expr,
+        extensions: [$($ext:expr),+ $(,)?],
+        manifest: $manifest:expr,
+        lsp_command: $lsp_cmd:expr,
+        lsp_args: [$($lsp_arg:expr),+ $(,)?],
+        source_dir: $source_dir:expr,
+        entry_point: $entry_point:expr,
+        module_separator: $module_sep:expr,
+        capabilities: [$($cap:ident),+ $(,)?],
+        fields: {
+            $($field_name:ident: $field_type:ty),+ $(,)?
+        }
+        $(, doc: $doc:expr)?
+    ) => {
+        // Generate mill_plugin! registration
+        mill_plugin_api::mill_plugin! {
+            name: $name,
+            extensions: [$($ext),+],
+            manifest: $manifest,
+            capabilities: $struct_name::CAPABILITIES,
+            factory: $struct_name::new,
+            lsp: Some(mill_plugin_api::LspConfig::new($lsp_cmd, &[$($lsp_arg),+]))
+        }
+
+        $(#[doc = $doc])?
+        #[derive(Default)]
+        pub struct $struct_name {
+            $(pub(crate) $field_name: $field_type),+
+        }
+
+        impl $struct_name {
+            /// Static metadata for this language.
+            pub const METADATA: mill_plugin_api::LanguageMetadata = mill_plugin_api::LanguageMetadata {
+                name: $name,
+                extensions: &[$($ext),+],
+                manifest_filename: $manifest,
+                source_dir: $source_dir,
+                entry_point: $entry_point,
+                module_separator: $module_sep,
+            };
+
+            /// The capabilities of this plugin.
+            pub const CAPABILITIES: mill_plugin_api::PluginCapabilities = mill_plugin_api::PluginCapabilities::none()
+                $(.$cap())+;
+
+            /// Creates a new, boxed instance of the plugin.
+            #[allow(clippy::new_ret_no_self)]
+            pub fn new() -> Box<dyn mill_plugin_api::LanguagePlugin> {
+                Box::new(Self::default())
+            }
+        }
+    };
+}
+
 /// Macro to generate capability delegation methods for LanguagePlugin implementations.
 ///
 /// This macro eliminates the repetitive boilerplate of delegating capability trait methods

@@ -137,3 +137,6 @@ pub use io::{file_path_to_module, find_source_files, read_manifest, read_source}
 
 // Re-export macros
 pub use trait_helpers::WorkspaceSupportInternal;
+
+// Re-export plugin helper macros (no items to re-export, just ensure they're accessible)
+// The macros are defined with #[macro_export] so they're automatically available at crate root
