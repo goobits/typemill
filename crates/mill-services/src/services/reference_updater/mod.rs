@@ -85,7 +85,7 @@ impl ReferenceUpdater {
         // Check if scope is comprehensive (e.g., --update-all)
         // In comprehensive mode, use ALL files matching scope instead of reference-based detection
         // This ensures 100% coverage by letting plugins decide what to update
-        let is_comprehensive = rename_scope.map_or(false, |s| s.is_comprehensive());
+        let is_comprehensive = rename_scope.is_some_and(|s| s.is_comprehensive());
 
         let mut affected_files = if is_comprehensive {
             // Comprehensive mode: scan ALL files in scope
@@ -709,7 +709,7 @@ fn merge_rename_info(
         (Some(info), Some(scope)) => {
             // Both exist - merge them
             let mut merged = info.clone();
-            if let Some(scope_json) = serde_json::to_value(scope).ok() {
+            if let Ok(scope_json) = serde_json::to_value(scope) {
                 if let (Some(merged_obj), Some(scope_obj)) = (merged.as_object_mut(), scope_json.as_object()) {
                     // Merge scope fields into the existing rename_info
                     for (key, value) in scope_obj {

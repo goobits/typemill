@@ -105,7 +105,7 @@ async fn test_parsing_contract(plugin: &dyn LanguagePlugin) {
     let meta = plugin.metadata();
 
     // Use language-appropriate minimal valid syntax
-    let valid_minimal_code = match meta.name.as_ref() {
+    let valid_minimal_code = match meta.name {
         "rust" => "fn main() {}",
         "typescript" => "const x = 1;",
         _ => "", // Default to empty for unknown languages

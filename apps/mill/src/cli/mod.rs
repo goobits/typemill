@@ -414,7 +414,7 @@ fn output_pretty_cycles(analysis_result: &AnalysisResult) {
                     for module in cycle_path {
                         println!("  → {}", module.as_str().unwrap_or(""));
                     }
-                    if let Some(first_module) = cycle_path.get(0) {
+                    if let Some(first_module) = cycle_path.first() {
                         println!("  → {}", first_module.as_str().unwrap_or(""));
                     }
                     println!();
