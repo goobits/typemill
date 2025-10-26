@@ -24,21 +24,13 @@ mill_plugin! {
 }
 
 /// TypeScript/JavaScript language plugin implementation.
+#[derive(Default)]
 pub struct TypeScriptPlugin {
     import_support: import_support::TypeScriptImportSupport,
     workspace_support: workspace_support::TypeScriptWorkspaceSupport,
     project_factory: project_factory::TypeScriptProjectFactory,
 }
 
-impl Default for TypeScriptPlugin {
-    fn default() -> Self {
-        Self {
-            import_support: Default::default(),
-            workspace_support: Default::default(),
-            project_factory: Default::default(),
-        }
-    }
-}
 
 impl TypeScriptPlugin {
     /// Static metadata for the TypeScript language.

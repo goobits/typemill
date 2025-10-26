@@ -306,7 +306,7 @@ ENV/
 *.swp
 *.swo
 "#;
-    write_file(&gitignore_path, &gitignore_content)?;
+    write_file(&gitignore_path, gitignore_content)?;
     created.push(gitignore_path.display().to_string());
 
     // tests/test_basic.py
@@ -344,7 +344,7 @@ from setuptools import setup
 
 setup()
 "#;
-    write_file(&setup_path, &setup_content)?;
+    write_file(&setup_path, setup_content)?;
     created.push(setup_path.display().to_string());
 
     Ok(created)

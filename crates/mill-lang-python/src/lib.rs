@@ -48,21 +48,13 @@ mill_plugin! {
 /// - Import statement analysis
 /// - Multiple manifest format handling (requirements.txt, pyproject.toml)
 /// - Code refactoring operations
+#[derive(Default)]
 pub struct PythonPlugin {
     import_support: import_support::PythonImportSupport,
     workspace_support: workspace_support::PythonWorkspaceSupport,
     project_factory: project_factory::PythonProjectFactory,
 }
 
-impl Default for PythonPlugin {
-    fn default() -> Self {
-        Self {
-            import_support: Default::default(),
-            workspace_support: Default::default(),
-            project_factory: Default::default(),
-        }
-    }
-}
 
 impl PythonPlugin {
     /// Static metadata for the Python language.
@@ -258,7 +250,7 @@ impl mill_plugin_api::ManifestUpdater for PythonPlugin {
                     version,
                     None, // Use default "dependencies" section
                 )
-                .map_err(|e| mill_plugin_api::PluginError::internal(e))
+                .map_err(mill_plugin_api::PluginError::internal)
             } else {
                 // No version provided, return unchanged
                 std::fs::read_to_string(manifest_path)
