@@ -6,26 +6,6 @@ use mill_lang_common::LineExtractor;
 use mill_foundation::protocol::{ EditLocation , EditPlan , EditPlanMetadata , EditType , TextEdit , ValidationRule , ValidationType , };
 use std::collections::HashMap;
 
-/// Code range for refactoring operations
-#[derive(Debug, Clone)]
-pub struct CodeRange {
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-}
-
-impl From<CodeRange> for EditLocation {
-    fn from(range: CodeRange) -> Self {
-        EditLocation {
-            start_line: range.start_line,
-            start_column: range.start_col,
-            end_line: range.end_line,
-            end_column: range.end_col,
-        }
-    }
-}
-
 /// Plan extract function refactoring for Rust
 pub fn plan_extract_function(
     source: &str,

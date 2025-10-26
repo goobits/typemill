@@ -1,66 +1,13 @@
 //! TypeScript/JavaScript specific refactoring logic.
 use mill_plugin_api::{ PluginError , PluginResult };
-use mill_foundation::protocol::{ EditLocation , EditPlan , EditPlanMetadata , EditType , TextEdit , ValidationRule , ValidationType , };
-use serde::{Deserialize, Serialize};
+use mill_foundation::protocol::{ EditPlan , EditPlanMetadata , EditType , TextEdit , ValidationRule , ValidationType , };
+use mill_lang_common::{CodeRange, ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use swc_common::{sync::Lrc, FileName, FilePathMapping, SourceMap};
 use swc_ecma_ast::*;
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 use swc_ecma_visit::{Visit, VisitWith};
-
-// Note: These structs are moved from mill-ast/src/refactoring.rs
-// They might be better in a shared crate in the future.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct CodeRange {
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ExtractableFunction {
-    pub selected_range: CodeRange,
-    pub required_parameters: Vec<String>,
-    pub return_variables: Vec<String>,
-    pub suggested_name: String,
-    pub insertion_point: CodeRange,
-    pub contains_return_statements: bool,
-    pub complexity_score: u32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct InlineVariableAnalysis {
-    pub variable_name: String,
-    pub declaration_range: CodeRange,
-    pub initializer_expression: String,
-    pub usage_locations: Vec<CodeRange>,
-    pub is_safe_to_inline: bool,
-    pub blocking_reasons: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ExtractVariableAnalysis {
-    pub expression: String,
-    pub expression_range: CodeRange,
-    pub can_extract: bool,
-    pub suggested_name: String,
-    pub insertion_point: CodeRange,
-    pub blocking_reasons: Vec<String>,
-    pub scope_type: String,
-}
-
-impl From<CodeRange> for EditLocation {
-    fn from(range: CodeRange) -> Self {
-        EditLocation {
-            start_line: range.start_line,
-            start_column: range.start_col,
-            end_line: range.end_line,
-            end_column: range.end_col,
-        }
-    }
-}
 
 // Moved from mill-ast/src/refactoring.rs
 pub fn plan_extract_function(
