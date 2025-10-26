@@ -5,8 +5,7 @@ use serde_json::Value;
 
 // Re-export refactoring types from mill-lang-common for convenience
 pub use mill_lang_common::{
-    CodeRange, ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis,
-    VariableUsage,
+    CodeRange, ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis, VariableUsage,
 };
 
 pub mod common;

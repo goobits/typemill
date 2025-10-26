@@ -11,11 +11,11 @@ use crate::parser::{
     analyze_python_expression_range, extract_python_functions, extract_python_variables,
     find_variable_at_position, get_variable_usages_in_scope,
 };
-use mill_lang_common::{
-    ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis, LineExtractor,
-};
 use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
+};
+use mill_lang_common::{
+    ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis, LineExtractor,
 };
 use std::collections::HashMap;
 

@@ -1,7 +1,11 @@
 //! TypeScript/JavaScript specific refactoring logic.
-use mill_plugin_api::{ PluginError , PluginResult };
-use mill_foundation::protocol::{ EditPlan , EditPlanMetadata , EditType , TextEdit , ValidationRule , ValidationType , };
-use mill_lang_common::{CodeRange, ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis};
+use mill_foundation::protocol::{
+    EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
+};
+use mill_lang_common::{
+    CodeRange, ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis,
+};
+use mill_plugin_api::{PluginError, PluginResult};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use swc_common::{sync::Lrc, FileName, FilePathMapping, SourceMap};
