@@ -998,6 +998,7 @@ async fn handle_tools_command(format: &str) {
 }
 
 /// Handle the tool command - call MCP tool directly
+#[allow(clippy::too_many_arguments)]
 async fn handle_tool_command(
     tool_name: &str,
     args_json: Option<&str>,

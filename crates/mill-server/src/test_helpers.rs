@@ -198,6 +198,7 @@ pub async fn create_test_dispatcher_with_root(
 }
 
 /// Create a test dispatcher with a temporary directory (for backward compatibility)
+#[allow(clippy::expect_used)]
 pub async fn create_test_dispatcher() -> PluginDispatcher {
     let temp_dir = std::env::temp_dir().join(format!("mill-test-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");

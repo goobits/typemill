@@ -279,6 +279,8 @@ impl RenameHandler {
         use lsp_types::{ DocumentChangeOperation , TextDocumentEdit , OptionalVersionedTextDocumentIdentifier };
 
         // Separate edits from other operations (rename/create/delete)
+        // Note: Uri has interior mutability but is effectively immutable in LSP protocol
+        #[allow(clippy::mutable_key_type)]
         let mut edits_by_uri: HashMap<lsp_types::Uri, Vec<lsp_types::TextEdit>> = HashMap::new();
         let mut other_operations = Vec::new();
 
@@ -289,10 +291,10 @@ impl RenameHandler {
                     edits_by_uri
                         .entry(uri)
                         .or_default()
-                        .extend(text_doc_edit.edits.iter().filter_map(|edit_or_annotated| {
+                        .extend(text_doc_edit.edits.iter().map(|edit_or_annotated| {
                             match edit_or_annotated {
-                                lsp_types::OneOf::Left(edit) => Some(edit.clone()),
-                                lsp_types::OneOf::Right(annotated) => Some(annotated.text_edit.clone()),
+                                lsp_types::OneOf::Left(edit) => edit.clone(),
+                                lsp_types::OneOf::Right(annotated) => annotated.text_edit.clone(),
                             }
                         }));
                 }
