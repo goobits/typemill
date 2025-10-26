@@ -796,10 +796,10 @@ mod tests {
         let config_path = config_dir.join("analysis.toml");
         let mut file = std::fs::File::create(&config_path).unwrap();
         writeln!(file, "preset = \"strict\"").unwrap();
-        writeln!(file, "").unwrap();
+        writeln!(file).unwrap();
         writeln!(file, "[overrides.quality]").unwrap();
         writeln!(file, "enabled = [\"complexity\"]").unwrap();
-        writeln!(file, "").unwrap();
+        writeln!(file).unwrap();
         writeln!(file, "[overrides.quality.thresholds]").unwrap();
         writeln!(file, "complexity_threshold = 25.0").unwrap();
 

@@ -10,7 +10,7 @@
 //! - Uses unified refactoring API with dryRun option
 
 use crate::harness::{TestClient, TestWorkspace};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde_json::{json, Value};
 use std::path::Path;
 

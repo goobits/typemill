@@ -10,9 +10,7 @@
 //! - Checksum validation
 //! - Directory rename
 
-use crate::harness::{TestClient, TestWorkspace};
 use crate::test_helpers::*;
-use serde_json::json;
 
 /// Test 1: File rename with plan validation (CLOSURE-BASED API)
 /// BEFORE: 91 lines | AFTER: ~20 lines (~78% reduction)

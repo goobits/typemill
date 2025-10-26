@@ -59,7 +59,7 @@ async fn test_extract_function_plan_basic_workflow() {
                 "Should be ExtractPlan"
             );
 
-            let mut params_exec = json!({
+            let params_exec = json!({
                 "kind": "function",
                 "source": {
                     "filePath": file_path.to_string_lossy(),
@@ -135,7 +135,7 @@ async fn test_extract_variable_dry_run() {
                 .and_then(|r| r.get("content"))
                 .expect("Plan should exist");
 
-            let mut params_exec = json!({
+            let params_exec = json!({
                 "kind": "variable",
                 "source": {
                     "filePath": file_path.to_string_lossy(),

@@ -253,7 +253,7 @@ describe('ArrayOperations', () => {
             .get("organization_score")
             .and_then(|v| v.as_f64())
             .unwrap();
-        assert!(score >= 0.0 && score <= 1.0);
+        assert!((0.0..=1.0).contains(&score));
     }
 
     // Check for test suites

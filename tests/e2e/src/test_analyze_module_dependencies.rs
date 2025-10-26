@@ -309,5 +309,5 @@ pub struct B {
 
     // Verify external dependencies still present
     let external_deps = result["externalDependencies"].as_object().unwrap();
-    assert!(external_deps.len() > 0);
+    assert!(!external_deps.is_empty());
 }

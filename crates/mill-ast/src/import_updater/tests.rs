@@ -61,7 +61,7 @@ async fn test_import_cache_usage() {
     // First call - should populate cache
     let project_files = vec![file_a.clone(), fileb.clone(), file_c.clone()];
     let affected = resolver
-        .find_affected_files(&fileb, &project_files, &vec![])
+        .find_affected_files(&fileb, &project_files, &[])
         .await
         .unwrap();
     assert_eq!(affected.len(), 1);
@@ -74,7 +74,7 @@ async fn test_import_cache_usage() {
 
     // Second call - should use cache (file hasn't been modified)
     let affected2 = resolver
-        .find_affected_files(&fileb, &project_files, &vec![])
+        .find_affected_files(&fileb, &project_files, &[])
         .await
         .unwrap();
     assert_eq!(affected2, affected, "Cached results should match");
@@ -87,7 +87,7 @@ async fn test_import_cache_usage() {
 
     // Third call - cache should be invalidated for fileA
     let affected3 = resolver
-        .find_affected_files(&fileb, &project_files, &vec![])
+        .find_affected_files(&fileb, &project_files, &[])
         .await
         .unwrap();
     assert_eq!(affected3.len(), 1);
@@ -125,7 +125,7 @@ async fn test_cache_stores_all_imports_directory_rename() {
 
     // First check: Does app.ts import api.ts?
     let affected1 = resolver
-        .find_affected_files(&api_file, &project_files, &vec![])
+        .find_affected_files(&api_file, &project_files, &[])
         .await
         .unwrap();
     assert_eq!(affected1.len(), 1);
@@ -134,7 +134,7 @@ async fn test_cache_stores_all_imports_directory_rename() {
     // CRITICAL: Cache should now contain ALL imports from app.ts, not just api.ts
     // Second check: Does app.ts import utils.ts?
     let affected2 = resolver
-        .find_affected_files(&utils_file, &project_files, &vec![])
+        .find_affected_files(&utils_file, &project_files, &[])
         .await
         .unwrap();
 
@@ -205,7 +205,7 @@ async fn test_get_all_imported_files() {
     let project_files = vec![helpers_file.clone(), types_file.clone(), app_file.clone()];
 
     // Get all imported files from app.ts
-    let imports = resolver.get_all_imported_files(content, &app_file, &vec![], &project_files);
+    let imports = resolver.get_all_imported_files(content, &app_file, &[], &project_files);
 
     assert_eq!(imports.len(), 2, "Should find both imports from app.ts");
 

@@ -239,7 +239,7 @@ export interface SimpleInterface {
             .and_then(|v| v.as_array())
             .expect("Should have fat_interfaces array");
 
-        assert!(fat_interfaces.len() > 0);
+        assert!(!fat_interfaces.is_empty());
 
         Ok(())
     })

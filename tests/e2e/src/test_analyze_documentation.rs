@@ -104,7 +104,7 @@ export function undocumented2() {
         .get("coverage_percentage")
         .and_then(|v| v.as_f64())
         .unwrap();
-    assert!(coverage >= 0.0 && coverage <= 100.0);
+    assert!((0.0..=100.0).contains(&coverage));
 
     let undocumented = metrics
         .get("undocumented_count")

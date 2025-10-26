@@ -222,7 +222,7 @@ export function process() {
             .and_then(|v| v.as_f64())
             .expect("Should have instability metric");
 
-        assert!(instability >= 0.0 && instability <= 1.0);
+        assert!((0.0..=1.0).contains(&instability));
 
         Ok(())
     })
@@ -280,7 +280,7 @@ export function fn21() { return 21; }
             .and_then(|v| v.as_f64())
             .expect("Should have lcom_score metric");
 
-        assert!(lcom_score >= 0.0 && lcom_score <= 1.0);
+        assert!((0.0..=1.0).contains(&lcom_score));
 
         Ok(())
     })
@@ -327,7 +327,7 @@ export function deepDependency() {
             .and_then(|v| v.as_array())
             .expect("Should have dependency_chain array");
 
-        assert!(dependency_chain.len() > 0);
+        assert!(!dependency_chain.is_empty());
 
         Ok(())
     })

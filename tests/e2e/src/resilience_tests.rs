@@ -410,7 +410,7 @@ async fn test_find_dead_code_workflow() {
         );
 
         // If we found dead code, it should include our unused items
-        if findings.len() > 0 {
+        if !findings.is_empty() {
             println!(
                 "✅ analyze.dead_code workflow test passed - detected {} dead symbols",
                 findings.len()

@@ -273,8 +273,8 @@ async fn test_non_consolidation_rename() {
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
 
-            assert_eq!(
-                is_consolidation, false,
+            assert!(
+                !is_consolidation,
                 "Normal directory rename should have is_consolidation=false"
             );
 
@@ -550,7 +550,7 @@ fn main() {
         .expect("Rename should succeed");
 
     // Apply the plan with unified API (dryRun: false)
-    let mut params_exec = json!({
+    let params_exec = json!({
         "target": {
             "kind": "directory",
             "path": workspace.absolute_path("crates/lib").to_string_lossy()

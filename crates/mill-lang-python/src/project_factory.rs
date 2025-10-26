@@ -2,13 +2,18 @@
 //!
 //! Handles creation of new Python packages with proper workspace integration.
 
+use mill_lang_common::project_factory::{
+    derive_package_name, find_workspace_manifest, resolve_package_path,
+    update_workspace_manifest, validate_package_path_not_exists, write_project_file,
+    WorkspaceManifestDetector,
+};
 use mill_plugin_api::project_factory::{
     CreatePackageConfig, CreatePackageResult, PackageInfo, PackageType, ProjectFactory, Template,
 };
 use mill_plugin_api::{PluginError, PluginResult, WorkspaceSupport};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{debug, error};
+use tracing::debug;
 
 /// Python project factory implementation
 #[derive(Default)]
@@ -23,29 +28,13 @@ impl ProjectFactory for PythonProjectFactory {
             "Creating Python package"
         );
 
-        // Resolve paths
+        // Resolve and validate paths
         let workspace_root = Path::new(&config.workspace_root);
         let package_path = resolve_package_path(workspace_root, &config.package_path)?;
-
-        // Validate package path doesn't exist
-        if package_path.exists() {
-            return Err(PluginError::invalid_input(format!(
-                "Package already exists at {}",
-                package_path.display()
-            )));
-        }
+        validate_package_path_not_exists(&package_path)?;
 
         // Derive package name
-        let package_name = package_path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .ok_or_else(|| {
-                PluginError::invalid_input(format!(
-                    "Invalid package path: {}",
-                    package_path.display()
-                ))
-            })?
-            .to_string();
+        let package_name = derive_package_name(&package_path)?;
 
         debug!(package_name = %package_name, "Derived package name");
 
@@ -97,59 +86,6 @@ impl ProjectFactory for PythonProjectFactory {
 }
 
 // Helper functions
-
-fn resolve_package_path(workspace_root: &Path, package_path: &str) -> PluginResult<PathBuf> {
-    let path = Path::new(package_path);
-
-    // Reject paths with parent directory components to prevent traversal
-    use std::path::Component;
-    for component in path.components() {
-        if matches!(component, Component::ParentDir) {
-            return Err(PluginError::invalid_input(format!(
-                "Package path cannot contain '..' components: {}",
-                package_path
-            )));
-        }
-    }
-
-    let resolved = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        workspace_root.join(path)
-    };
-
-    // Canonicalize both paths for comparison (handles symlinks, . and .. after join)
-    let canonical_root = workspace_root.canonicalize().map_err(|e| {
-        PluginError::internal(format!("Failed to canonicalize workspace root: {}", e))
-    })?;
-
-    // For the resolved path, we need to canonicalize the parent since the target doesn't exist yet
-    let canonical_resolved = if let Some(parent) = resolved.parent() {
-        if parent.exists() {
-            let canonical_parent = parent.canonicalize().map_err(|e| {
-                PluginError::internal(format!("Failed to canonicalize parent directory: {}", e))
-            })?;
-            resolved
-                .file_name()
-                .map(|name| canonical_parent.join(name))
-                .ok_or_else(|| PluginError::invalid_input("Invalid package path"))?
-        } else {
-            // Parent doesn't exist yet, we'll create it - just verify it would be within workspace
-            resolved.clone()
-        }
-    } else {
-        resolved.clone()
-    };
-
-    if !canonical_resolved.starts_with(&canonical_root) {
-        return Err(PluginError::invalid_input(format!(
-            "Package path {} is outside workspace",
-            package_path
-        )));
-    }
-
-    Ok(resolved)
-}
 
 fn create_directory_structure(package_path: &Path, package_name: &str) -> PluginResult<()> {
     debug!(package_path = %package_path.display(), "Creating directory structure");

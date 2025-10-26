@@ -385,9 +385,8 @@ impl Default for AstCache {
     }
 }
 
-/// Cache statistics for monitoring and debugging
+// Cache statistics for monitoring and debugging
 // CacheStats now comes from cb-api
-
 // CacheStats impl methods now in cb-api
 
 #[cfg(test)]
