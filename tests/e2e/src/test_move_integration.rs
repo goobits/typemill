@@ -104,34 +104,7 @@ async fn test_move_file_dry_run_preview() {
     ).await.unwrap();
 }
 
-/// Test 4: Checksum validation failure (CLOSURE-BASED API WITH MUTATION HOOK)
-/// BEFORE: 56 lines | AFTER: 16 lines (71% reduction!)
-/// Demonstrates: Mutation hook for modifying files between plan and apply
-#[tokio::test]
-#[ignore = "Checksum validation test removed - unified API doesn't support stale plans"]
-async fn test_move_file_checksum_validation() {
-    // Note: This test expects apply to FAIL, so we handle the error differently
-    let workspace = TestWorkspace::new();
-    workspace.create_file("dir1/data.rs", "pub const DATA: i32 = 100;\n");
-
-    let mut client = TestClient::new(workspace.path());
-    let params = build_move_params(&workspace, "dir1/data.rs", "dir2/data.rs", "file");
-
-    // Invalidate checksum after initial call
-    workspace.create_file("dir1/data.rs", "pub const DATA: i32 = 200;\n");
-
-    // Try to apply with unified API and checksum validation
-    let mut params_exec = params.clone();
-    params_exec["options"] = json!({"dryRun": false, "validateChecksums": true});
-
-    let apply_result = client.call_tool("move", params_exec).await;
-
-    assert!(apply_result.is_err() || apply_result.unwrap().get("error").is_some(),
-        "Apply should fail due to checksum mismatch");
-    assert!(workspace.file_exists("dir1/data.rs"), "File should still be in source location");
-}
-
-/// Test 5: Plan structure validation
+/// Test 4: Plan structure validation
 /// BEFORE: 48 lines | AFTER: 28 lines (42% reduction)
 /// Demonstrates: Asserting on plan metadata without applying
 #[tokio::test]

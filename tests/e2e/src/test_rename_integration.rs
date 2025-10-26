@@ -55,17 +55,7 @@ async fn test_rename_file_dry_run_preview() {
     ).await.unwrap();
 }
 
-/// Test 3: Checksum validation (REMOVED - not applicable to unified API)
-/// The unified API generates plans atomically, so there's no concept of "stale plans".
-/// Checksums are validated within each atomic operation, preventing mid-operation file changes.
-#[tokio::test]
-#[ignore = "Checksum validation test removed - unified API doesn't support stale plans"]
-async fn test_rename_checksum_validation_rejects_stale_plan() {
-    // Test removed - unified API generates and executes plans atomically
-    // No way to have a "stale plan" since plans aren't stored separately
-}
-
-/// Test 4: Directory rename with plan validation (CLOSURE-BASED API)
+/// Test 3: Directory rename with plan validation (CLOSURE-BASED API)
 /// BEFORE: 84 lines | AFTER: ~22 lines (~74% reduction)
 /// Demonstrates: Rename entire directory with multiple files
 #[tokio::test]

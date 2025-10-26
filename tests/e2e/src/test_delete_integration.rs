@@ -45,34 +45,7 @@ async fn test_delete_file_dry_run_preview() {
     ).await.unwrap();
 }
 
-/// Test 3: Delete file checksum validation (CLOSURE-BASED API)
-/// BEFORE: 51 lines | AFTER: ~20 lines (~61% reduction)
-#[tokio::test]
-#[ignore = "Checksum validation test removed - unified API doesn't support stale plans"]
-async fn test_delete_file_checksum_validation() {
-    let workspace = TestWorkspace::new();
-    workspace.create_file("file.rs", "pub fn original() {}\n");
-
-    let mut client = TestClient::new(workspace.path());
-    let params = build_delete_params(&workspace, "file.rs", "file");
-
-    let plan = client.call_tool("delete", params).await.unwrap()
-        .get("result").and_then(|r| r.get("content")).cloned().unwrap();
-
-    // Modify file to invalidate checksum
-    workspace.create_file("file.rs", "pub fn modified() {}\n");
-
-    let mut params_exec = build_delete_params(&workspace, "file.rs", "file");
-    params_exec["options"] = json!({"validateChecksums": true, "dryRun": false});
-
-    let apply_result = client.call_tool("delete", params_exec).await;
-
-    assert!(apply_result.is_err() || apply_result.unwrap().get("error").is_some(),
-        "Apply should fail due to checksum mismatch");
-    assert!(workspace.file_exists("file.rs"), "File should still exist");
-}
-
-/// Test 4: Delete directory plan and apply (CLOSURE-BASED API)
+/// Test 3: Delete directory plan and apply (CLOSURE-BASED API)
 /// BEFORE: 67 lines | AFTER: ~25 lines (~63% reduction)
 #[tokio::test]
 async fn test_delete_directory_plan_and_apply() {
@@ -101,7 +74,7 @@ async fn test_delete_directory_plan_and_apply() {
     assert!(!workspace.file_exists("temp_dir"), "Directory should be deleted");
 }
 
-/// Test 5: Delete dead code plan structure (MANUAL - AST analysis required)
+/// Test 4: Delete dead code plan structure (MANUAL - AST analysis required)
 /// BEFORE: 68 lines | AFTER: ~45 lines (~34% reduction)
 #[tokio::test]
 async fn test_delete_dead_code_plan_structure() {

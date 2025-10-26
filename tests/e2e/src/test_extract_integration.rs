@@ -137,70 +137,7 @@ async fn test_extract_variable_dry_run() {
     }
 }
 
-/// Test 3: Extract constant checksum validation (MANUAL - LSP support required)
-/// BEFORE: 74 lines | AFTER: ~45 lines (~39% reduction)
-#[tokio::test]
-#[ignore = "Checksum validation test removed - unified API doesn't support stale plans"]
-async fn test_extract_constant_checksum_validation() {
-    let workspace = TestWorkspace::new();
-    workspace.create_file("constants.rs",
-        r#"pub fn get_magic_number() -> i32 {
-    42
-}
-"#);
-
-    let mut client = TestClient::new(workspace.path());
-    let file_path = workspace.absolute_path("constants.rs");
-
-    let plan_result = client.call_tool("extract", json!({
-        "kind": "constant",
-        "source": {
-            "filePath": file_path.to_string_lossy(),
-            "range": {
-                "start": {"line": 1, "character": 4},
-                "end": {"line": 1, "character": 6}
-            },
-            "name": "MAGIC_NUMBER"
-        }
-    })).await;
-
-    match plan_result {
-        Ok(response) => {
-            let plan = response.get("result").and_then(|r| r.get("content"))
-                .expect("Plan should exist");
-
-            // Modify file to invalidate checksum
-            workspace.create_file("constants.rs",
-                r#"pub fn get_magic_number() -> i32 {
-    99
-}
-"#);
-
-            let mut params_exec = json!({
-                "kind": "constant",
-                "source": {
-                    "filePath": file_path.to_string_lossy(),
-                    "range": {
-                        "start": {"line": 1, "character": 4},
-                        "end": {"line": 1, "character": 6}
-                    },
-                    "name": "MAGIC_NUMBER"
-                },
-                "options": {"validateChecksums": true, "dryRun": false}
-            });
-
-            let apply_result = client.call_tool("extract", params_exec).await;
-
-            assert!(apply_result.is_err() || apply_result.unwrap().get("error").is_some(),
-                "Apply should fail due to checksum mismatch");
-        }
-        Err(_) => {
-            eprintln!("INFO: extract constant requires LSP support, skipping test");
-        }
-    }
-}
-
-/// Test 4: Extract plan metadata structure (MANUAL - LSP support required)
+/// Test 3: Extract plan metadata structure (MANUAL - LSP support required)
 /// BEFORE: 68 lines | AFTER: ~45 lines (~34% reduction)
 #[tokio::test]
 async fn test_extract_plan_metadata_structure() {
