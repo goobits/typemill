@@ -87,9 +87,11 @@ pub struct BatchMetadata {
     pub failed_files: HashMap<String, String>,
 }
 
+use mill_plugin_api::ParsedSource;
+
 #[derive(Debug, Clone)]
 struct CachedAst {
-    symbols: Vec<Symbol>,
+    parsed_source: ParsedSource,
     content: String,
     language: String,
     complexity_report: mill_ast::complexity::ComplexityReport,
@@ -371,7 +373,7 @@ async fn parse_single_file(
     );
 
     Ok(CachedAst {
-        symbols: parsed.symbols,
+        parsed_source: parsed,
         content,
         language,
         complexity_report,
@@ -453,7 +455,7 @@ async fn analyze_file_with_cached_ast(
             "smells" => quality_handler::detect_smells(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -461,7 +463,7 @@ async fn analyze_file_with_cached_ast(
             "maintainability" => quality_handler::analyze_maintainability(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -469,7 +471,7 @@ async fn analyze_file_with_cached_ast(
             "readability" => quality_handler::analyze_readability(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -485,7 +487,7 @@ async fn analyze_file_with_cached_ast(
             "unused_imports" => dead_code_handler::detect_unused_imports(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -493,7 +495,7 @@ async fn analyze_file_with_cached_ast(
             "unused_symbols" => dead_code_handler::detect_unused_symbols(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -501,7 +503,7 @@ async fn analyze_file_with_cached_ast(
             "unreachable_code" => dead_code_handler::detect_unreachable_code(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -509,7 +511,7 @@ async fn analyze_file_with_cached_ast(
             "unused_parameters" => dead_code_handler::detect_unused_parameters(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -517,7 +519,7 @@ async fn analyze_file_with_cached_ast(
             "unused_types" => dead_code_handler::detect_unused_types(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -525,7 +527,7 @@ async fn analyze_file_with_cached_ast(
             "unused_variables" => dead_code_handler::detect_unused_variables(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -541,7 +543,7 @@ async fn analyze_file_with_cached_ast(
             "imports" => dependencies_handler::detect_imports(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -549,7 +551,7 @@ async fn analyze_file_with_cached_ast(
             "graph" => dependencies_handler::detect_graph(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -557,7 +559,7 @@ async fn analyze_file_with_cached_ast(
             "circular" => dependencies_handler::detect_circular(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -565,7 +567,7 @@ async fn analyze_file_with_cached_ast(
             "coupling" => dependencies_handler::detect_coupling(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -573,7 +575,7 @@ async fn analyze_file_with_cached_ast(
             "cohesion" => dependencies_handler::detect_cohesion(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -581,7 +583,7 @@ async fn analyze_file_with_cached_ast(
             "depth" => dependencies_handler::detect_depth(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -597,7 +599,7 @@ async fn analyze_file_with_cached_ast(
             "symbols" => structure_handler::detect_symbols(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -605,7 +607,7 @@ async fn analyze_file_with_cached_ast(
             "hierarchy" => structure_handler::detect_hierarchy(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -613,7 +615,7 @@ async fn analyze_file_with_cached_ast(
             "interfaces" => structure_handler::detect_interfaces(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -621,7 +623,7 @@ async fn analyze_file_with_cached_ast(
             "inheritance" => structure_handler::detect_inheritance(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -629,7 +631,7 @@ async fn analyze_file_with_cached_ast(
             "modules" => structure_handler::detect_modules(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -645,7 +647,7 @@ async fn analyze_file_with_cached_ast(
             "coverage" => documentation_handler::detect_coverage(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -653,7 +655,7 @@ async fn analyze_file_with_cached_ast(
             "quality" => documentation_handler::detect_quality(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -661,7 +663,7 @@ async fn analyze_file_with_cached_ast(
             "style" => documentation_handler::detect_style(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -669,7 +671,7 @@ async fn analyze_file_with_cached_ast(
             "examples" => documentation_handler::detect_examples(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -677,7 +679,7 @@ async fn analyze_file_with_cached_ast(
             "todos" => documentation_handler::detect_todos(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -693,7 +695,7 @@ async fn analyze_file_with_cached_ast(
             "coverage" => tests_handler::detect_coverage(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -701,7 +703,7 @@ async fn analyze_file_with_cached_ast(
             "quality" => tests_handler::detect_quality(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -709,7 +711,7 @@ async fn analyze_file_with_cached_ast(
             "assertions" => tests_handler::detect_assertions(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,
@@ -717,7 +719,7 @@ async fn analyze_file_with_cached_ast(
             "organization" => tests_handler::detect_organization(
                 &cached_ast.complexity_report,
                 &cached_ast.content,
-                &cached_ast.symbols,
+                &cached_ast.parsed_source.symbols,
                 &cached_ast.language,
                 &file_path_str,
                 &context.app_state.language_plugins,

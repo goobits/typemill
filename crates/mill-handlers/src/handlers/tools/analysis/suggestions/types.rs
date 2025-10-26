@@ -111,6 +111,9 @@ pub enum RefactorType {
     Move,
     Rename,
     Transform,
+    ConsolidateParameters,
+    ExtractConstant,
+    SplitClass,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

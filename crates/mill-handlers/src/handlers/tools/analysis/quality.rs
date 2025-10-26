@@ -1,10 +1,18 @@
 #![allow(dead_code, unused_variables)]
 
 use super::super::{ToolHandler, ToolHandlerContext};
+use crate::handlers::tools::analysis::suggestions::{
+    self, AnalysisContext, EvidenceStrength, Location, RefactorType, RefactoringCandidate, Scope,
+    SuggestionGenerator,
+};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::analysis_result::{ AnalysisResult , AnalysisScope , Finding , FindingLocation , Position , Range , RefactorCall , SafetyLevel , Severity , Suggestion , };
-use mill_foundation::protocol::{ ApiError as ServerError , ApiResult as ServerResult };
+use mill_foundation::protocol::analysis_result::{
+    AnalysisResult, AnalysisScope, Finding, FindingLocation, Position, Range, RefactorCall,
+    SafetyLevel, Severity, Suggestion,
+};
+use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_plugin_api::ParsedSource;
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -12,6 +20,59 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::time::Instant;
 use tracing::{debug, info};
+
+fn to_protocol_safety_level(level: suggestions::SafetyLevel) -> SafetyLevel {
+    match level {
+        suggestions::SafetyLevel::Safe => SafetyLevel::Safe,
+        suggestions::SafetyLevel::RequiresReview => SafetyLevel::RequiresReview,
+        suggestions::SafetyLevel::Experimental => SafetyLevel::Experimental,
+    }
+}
+
+fn generate_quality_refactoring_candidates(
+    finding: &Finding,
+    _parsed_source: &ParsedSource,
+) -> Vec<RefactoringCandidate> {
+    let mut candidates = Vec::new();
+
+    let (refactor_type, json_kind) = match finding.kind.as_str() {
+        "complexity_hotspot" | "long_method" | "long_function" => (RefactorType::ExtractMethod, "function"),
+        "deep_nesting" => (RefactorType::Transform, "flatten"),
+        "too_many_parameters" => (RefactorType::ConsolidateParameters, "object"),
+        "magic_number" => (RefactorType::ExtractConstant, "constant"),
+        "god_class" => (RefactorType::SplitClass, "class"),
+        _ => return candidates,
+    };
+
+    if let Some(range) = &finding.location.range {
+        candidates.push(RefactoringCandidate {
+            refactor_type,
+            message: finding.message.clone(),
+            scope: Scope::File,
+            has_side_effects: false,
+            reference_count: Some(0),
+            is_unreachable: false,
+            is_recursive: false,
+            involves_generics: false,
+            involves_macros: false,
+            evidence_strength: EvidenceStrength::Medium,
+            location: Location {
+                file: finding.location.file_path.clone(),
+                line: range.start.line as usize,
+                character: range.start.character as usize,
+            },
+            refactor_call_args: json!({
+                "kind": json_kind,
+                "target": {
+                    "filePath": finding.location.file_path,
+                    "range": range
+                }
+            }),
+        });
+    }
+
+    candidates
+}
 
 #[derive(Deserialize, Debug)]
 struct QualityOptions {
@@ -302,9 +363,9 @@ impl QualityHandler {
         &self,
         report: mill_ast::complexity::ComplexityReport,
         thresholds: &QualityThresholds,
-        include_suggestions: bool,
         scope: AnalysisScope,
         analysis_time_ms: u64,
+        parsed_source: &ParsedSource,
     ) -> AnalysisResult {
         let mut result = AnalysisResult::new("quality", "complexity", scope);
 
@@ -394,82 +455,62 @@ impl QualityHandler {
                 symbol_kind: Some("function".to_string()),
             };
 
-            // Build suggestions if requested
-            let mut suggestions = Vec::new();
-            if include_suggestions {
-                // Suggest extract function for high complexity
-                if func.complexity.cognitive > thresholds.cognitive_complexity {
-                    suggestions.push(Suggestion {
-                        action: "extract_function".to_string(),
-                        description: "Extract nested blocks to separate functions to reduce cognitive complexity".to_string(),
-                        target: None,
-                        estimated_impact: format!(
-                            "Could reduce complexity from {} to ~{}",
-                            func.complexity.cognitive,
-                            func.complexity.cognitive * 2 / 3
-                        ),
-                        safety: SafetyLevel::RequiresReview,
-                        confidence: 0.75,
-                        reversible: true,
-                        refactor_call: Some(mill_foundation::protocol::analysis_result::RefactorCall {
-                            command: "extract".to_string(),
-                            arguments: json!({
-                                "kind": "function",
-                                "source": {
-                                    "filePath": report.file_path,
-                                    "range": {
-                                        "start": { "line": func.line, "character": 0 },
-                                        "end": { "line": func.line + func.metrics.sloc as usize, "character": 0 }
-                                    }
-                                }
-                            }),
-                        }),
-                    });
-                }
-
-                // Suggest reduce nesting
-                if func.complexity.max_nesting_depth > thresholds.nesting_depth {
-                    suggestions.push(Suggestion {
-                        action: "reduce_nesting".to_string(),
-                        description: "Use early returns or guard clauses to reduce nesting depth"
-                            .to_string(),
-                        target: None,
-                        estimated_impact: "Improves readability significantly".to_string(),
-                        safety: SafetyLevel::RequiresReview,
-                        confidence: 0.80,
-                        reversible: true,
-                        refactor_call: None,
-                    });
-                }
-
-                // Suggest consolidate parameters
-                if func.metrics.parameters > thresholds.parameter_count {
-                    suggestions.push(Suggestion {
-                        action: "consolidate_parameters".to_string(),
-                        description: "Group related parameters into a configuration struct/object"
-                            .to_string(),
-                        target: None,
-                        estimated_impact: "Reduces parameter count, improves maintainability"
-                            .to_string(),
-                        safety: SafetyLevel::RequiresReview,
-                        confidence: 0.70,
-                        reversible: false,
-                        refactor_call: None,
-                    });
-                }
-            }
-
-            // Create finding
-            let finding = Finding {
+            // Create a temporary finding to pass to the candidate generator
+            let mut finding = Finding {
                 id: format!("complexity-{}-{}", report.file_path, func.line),
                 kind: "complexity_hotspot".to_string(),
                 severity,
                 location,
                 metrics: Some(metrics),
                 message,
-                suggestions,
+                suggestions: Vec::new(),
             };
 
+            // Generate suggestions using the new infrastructure
+            let suggestion_generator = SuggestionGenerator::new();
+            let candidates = generate_quality_refactoring_candidates(&finding, parsed_source);
+            let context = AnalysisContext {
+                file_path: report.file_path.clone(),
+                has_full_type_info: false,
+                has_partial_type_info: false,
+                ast_parse_errors: 0,
+            };
+
+            let mut suggestions = Vec::new();
+            for candidate in candidates {
+                match suggestion_generator.generate_from_candidate(candidate, &context) {
+                    Ok(actionable) => {
+                        let suggestion = Suggestion {
+                            action: actionable
+                                .refactor_call
+                                .as_ref()
+                                .map(|rc| rc.tool.clone())
+                                .unwrap_or_else(|| "manual_fix".to_string()),
+                            description: actionable.message,
+                            target: None,
+                            estimated_impact: format!("{:?}", actionable.estimated_impact),
+                            safety: to_protocol_safety_level(actionable.safety),
+                            confidence: actionable.confidence,
+                            reversible: actionable.reversible,
+                            refactor_call: actionable.refactor_call.map(|rc| {
+                                mill_foundation::protocol::analysis_result::RefactorCall {
+                                    command: rc.tool,
+                                    arguments: rc.arguments,
+                                }
+                            }),
+                        };
+                        suggestions.push(suggestion);
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            finding_kind = %finding.kind,
+                            "Failed to generate suggestion"
+                        );
+                    }
+                }
+            }
+            finding.suggestions = suggestions;
             result.add_finding(finding);
         }
 
@@ -486,12 +527,19 @@ impl QualityHandler {
 pub fn detect_smells(
     complexity_report: &mill_ast::complexity::ComplexityReport,
     content: &str,
-    _symbols: &[mill_plugin_api::Symbol],
+    parsed_source: &ParsedSource,
     language: &str,
     file_path: &str,
     _registry: &crate::LanguagePluginRegistry,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
+    let suggestion_generator = SuggestionGenerator::new();
+    let context = AnalysisContext {
+        file_path: file_path.to_string(),
+        has_full_type_info: false,
+        has_partial_type_info: false,
+        ast_parse_errors: 0,
+    };
 
     // 1. Long methods (from functions in complexity_report)
     for func in &complexity_report.functions {
@@ -505,7 +553,7 @@ pub fn detect_smells(
             let mut metrics = HashMap::new();
             metrics.insert("sloc".to_string(), json!(func.metrics.sloc));
 
-            findings.push(Finding {
+            let mut finding = Finding {
                 id: format!("long-method-{}-{}", file_path, func.line),
                 kind: "long_method".to_string(),
                 severity,
@@ -529,33 +577,36 @@ pub fn detect_smells(
                     "Function '{}' is too long ({} SLOC, >50 recommended)",
                     func.name, func.metrics.sloc
                 ),
-                suggestions: vec![Suggestion {
-                    action: "extract_function".to_string(),
-                    description: "Break this function into smaller, focused functions".to_string(),
-                    target: None,
-                    estimated_impact: format!(
-                        "Reduces function length from {} to ~{} SLOC",
-                        func.metrics.sloc,
-                        func.metrics.sloc / 2
-                    ),
-                    safety: SafetyLevel::RequiresReview,
-                    confidence: 0.70,
-                    reversible: true,
-                    refactor_call: Some(RefactorCall {
-                        command: "extract".to_string(),
-                        arguments: json!({
-                            "kind": "function",
-                            "source": {
-                                "filePath": file_path,
-                                "range": {
-                                    "start": { "line": func.line, "character": 0 },
-                                    "end": { "line": func.line + func.metrics.sloc as usize, "character": 0 }
-                                }
-                            }
+                suggestions: Vec::new(),
+            };
+
+            let candidates = generate_quality_refactoring_candidates(&finding, parsed_source);
+            let mut suggestions = Vec::new();
+            for candidate in candidates {
+                if let Ok(actionable) =
+                    suggestion_generator.generate_from_candidate(candidate, &context)
+                {
+                    suggestions.push(Suggestion {
+                        action: actionable
+                            .refactor_call
+                            .as_ref()
+                            .map(|rc| rc.tool.clone())
+                            .unwrap_or_else(|| "manual_fix".to_string()),
+                        description: actionable.message,
+                        target: None,
+                        estimated_impact: format!("{:?}", actionable.estimated_impact),
+                        safety: to_protocol_safety_level(actionable.safety),
+                        confidence: actionable.confidence,
+                        reversible: actionable.reversible,
+                        refactor_call: actionable.refactor_call.map(|rc| RefactorCall {
+                            command: rc.tool,
+                            arguments: rc.arguments,
                         }),
-                    }),
-                }],
-            });
+                    });
+                }
+            }
+            finding.suggestions = suggestions;
+            findings.push(finding);
         }
     }
 
@@ -576,7 +627,7 @@ pub fn detect_smells(
                 json!(class.average_complexity),
             );
 
-            findings.push(Finding {
+            let mut finding = Finding {
                 id: format!("god-class-{}-{}", file_path, class.line),
                 kind: "god_class".to_string(),
                 severity: Severity::Medium,
@@ -600,24 +651,44 @@ pub fn detect_smells(
                     "Class/module '{}' has too many methods ({} methods, >20 recommended)",
                     class.name, class.function_count
                 ),
-                suggestions: vec![Suggestion {
-                    action: "split_class".to_string(),
-                    description: "Consider splitting this class into smaller, focused classes with single responsibilities".to_string(),
-                    target: None,
-                    estimated_impact: "Improves maintainability and testability significantly"
-                        .to_string(),
-                    safety: SafetyLevel::RequiresReview,
-                    confidence: 0.65,
-                    reversible: false,
-                    refactor_call: None,
-                }],
-            });
+                suggestions: Vec::new(),
+            };
+
+            let candidates = generate_quality_refactoring_candidates(&finding, parsed_source);
+            let mut suggestions = Vec::new();
+            for candidate in candidates {
+                if let Ok(actionable) =
+                    suggestion_generator.generate_from_candidate(candidate, &context)
+                {
+                    suggestions.push(Suggestion {
+                        action: actionable
+                            .refactor_call
+                            .as_ref()
+                            .map(|rc| rc.tool.clone())
+                            .unwrap_or_else(|| "manual_fix".to_string()),
+                        description: actionable.message,
+                        target: None,
+                        estimated_impact: format!("{:?}", actionable.estimated_impact),
+                        safety: to_protocol_safety_level(actionable.safety),
+                        confidence: actionable.confidence,
+                        reversible: actionable.reversible,
+                        refactor_call: actionable.refactor_call.map(|rc| RefactorCall {
+                            command: rc.tool,
+                            arguments: rc.arguments,
+                        }),
+                    });
+                }
+            }
+            finding.suggestions = suggestions;
+            findings.push(finding);
         }
     }
 
     // 3. Magic numbers (copy logic from code.rs:260-302)
-    let magic_number_findings = detect_magic_numbers_for_smells(content, file_path, language);
+    let magic_number_findings =
+        detect_magic_numbers_for_smells(content, file_path, language, parsed_source);
     findings.extend(magic_number_findings);
+
 
     // 4. Duplicate code patterns
     // TODO: Implement duplicate code detection using token-based similarity analysis
@@ -636,8 +707,20 @@ pub fn detect_smells(
 /// line-level filtering which is effective for MVP but could be refined using
 /// language plugin's Symbol data to distinguish literal vs code contexts.
 /// Estimated effort: ~1-2 days. Priority: Low (current approach is effective).
-fn detect_magic_numbers_for_smells(content: &str, file_path: &str, language: &str) -> Vec<Finding> {
+fn detect_magic_numbers_for_smells(
+    content: &str,
+    file_path: &str,
+    language: &str,
+    parsed_source: &ParsedSource,
+) -> Vec<Finding> {
     let mut findings = Vec::new();
+    let suggestion_generator = SuggestionGenerator::new();
+    let context = AnalysisContext {
+        file_path: file_path.to_string(),
+        has_full_type_info: false,
+        has_partial_type_info: false,
+        ast_parse_errors: 0,
+    };
 
     let number_pattern = match language.to_lowercase().as_str() {
         "rust" | "go" | "java" | "typescript" | "javascript" | "python" => {
@@ -675,7 +758,7 @@ fn detect_magic_numbers_for_smells(content: &str, file_path: &str, language: &st
                 metrics.insert("number".to_string(), json!(number));
                 metrics.insert("occurrences".to_string(), json!(lines.len()));
 
-                findings.push(Finding {
+                let mut finding = Finding {
                     id: format!("magic-number-{}-{}", file_path, lines[0]),
                     kind: "magic_number".to_string(),
                     severity,
@@ -696,21 +779,36 @@ fn detect_magic_numbers_for_smells(content: &str, file_path: &str, language: &st
                     },
                     metrics: Some(metrics),
                     message: format!("Magic number '{}' appears {} times", number, lines.len()),
-                    suggestions: vec![Suggestion {
-                        action: "extract_constant".to_string(),
-                        description: format!(
-                            "Extract '{}' to a named constant for better maintainability",
-                            number
-                        ),
-                        target: None,
-                        estimated_impact: "Improves code readability and maintainability"
-                            .to_string(),
-                        safety: SafetyLevel::Safe,
-                        confidence: 0.90,
-                        reversible: true,
-                        refactor_call: None,
-                    }],
-                });
+                    suggestions: Vec::new(),
+                };
+
+                let candidates = generate_quality_refactoring_candidates(&finding, parsed_source);
+                let mut suggestions = Vec::new();
+                for candidate in candidates {
+                    if let Ok(actionable) =
+                        suggestion_generator.generate_from_candidate(candidate, &context)
+                    {
+                        suggestions.push(Suggestion {
+                            action: actionable
+                                .refactor_call
+                                .as_ref()
+                                .map(|rc| rc.tool.clone())
+                                .unwrap_or_else(|| "manual_fix".to_string()),
+                            description: actionable.message,
+                            target: None,
+                            estimated_impact: format!("{:?}", actionable.estimated_impact),
+                            safety: to_protocol_safety_level(actionable.safety),
+                            confidence: actionable.confidence,
+                            reversible: actionable.reversible,
+                            refactor_call: actionable.refactor_call.map(|rc| RefactorCall {
+                                command: rc.tool,
+                                arguments: rc.arguments,
+                            }),
+                        });
+                    }
+                }
+                finding.suggestions = suggestions;
+                findings.push(finding);
             }
         }
     }
@@ -722,12 +820,19 @@ fn detect_magic_numbers_for_smells(content: &str, file_path: &str, language: &st
 pub fn analyze_readability(
     complexity_report: &mill_ast::complexity::ComplexityReport,
     _content: &str,
-    _symbols: &[mill_plugin_api::Symbol],
+    parsed_source: &ParsedSource,
     _language: &str,
     file_path: &str,
     _registry: &crate::LanguagePluginRegistry,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
+    let suggestion_generator = SuggestionGenerator::new();
+    let context = AnalysisContext {
+        file_path: file_path.to_string(),
+        has_full_type_info: false,
+        has_partial_type_info: false,
+        ast_parse_errors: 0,
+    };
 
     for func in &complexity_report.functions {
         // 1. Deep nesting (>4 levels)
@@ -738,7 +843,7 @@ pub fn analyze_readability(
                 json!(func.complexity.max_nesting_depth),
             );
 
-            findings.push(Finding {
+            let mut finding = Finding {
                 id: format!("deep-nesting-{}-{}", file_path, func.line),
                 kind: "deep_nesting".to_string(),
                 severity: if func.complexity.max_nesting_depth > 6 {
@@ -766,18 +871,36 @@ pub fn analyze_readability(
                     "Function '{}' has deep nesting ({} levels, >4 recommended)",
                     func.name, func.complexity.max_nesting_depth
                 ),
-                suggestions: vec![Suggestion {
-                    action: "reduce_nesting".to_string(),
-                    description: "Use early returns or guard clauses to reduce nesting depth"
-                        .to_string(),
-                    target: None,
-                    estimated_impact: "Significantly improves readability".to_string(),
-                    safety: SafetyLevel::RequiresReview,
-                    confidence: 0.85,
-                    reversible: true,
-                    refactor_call: None,
-                }],
-            });
+                suggestions: Vec::new(),
+            };
+
+            let candidates = generate_quality_refactoring_candidates(&finding, parsed_source);
+            let mut suggestions = Vec::new();
+            for candidate in candidates {
+                if let Ok(actionable) =
+                    suggestion_generator.generate_from_candidate(candidate, &context)
+                {
+                    suggestions.push(Suggestion {
+                        action: actionable
+                            .refactor_call
+                            .as_ref()
+                            .map(|rc| rc.tool.clone())
+                            .unwrap_or_else(|| "manual_fix".to_string()),
+                        description: actionable.message,
+                        target: None,
+                        estimated_impact: format!("{:?}", actionable.estimated_impact),
+                        safety: to_protocol_safety_level(actionable.safety),
+                        confidence: actionable.confidence,
+                        reversible: actionable.reversible,
+                        refactor_call: actionable.refactor_call.map(|rc| RefactorCall {
+                            command: rc.tool,
+                            arguments: rc.arguments,
+                        }),
+                    });
+                }
+            }
+            finding.suggestions = suggestions;
+            findings.push(finding);
         }
 
         // 2. Too many parameters (>5)
@@ -788,7 +911,7 @@ pub fn analyze_readability(
                 json!(func.metrics.parameters),
             );
 
-            findings.push(Finding {
+            let mut finding = Finding {
                 id: format!("too-many-params-{}-{}", file_path, func.line),
                 kind: "too_many_parameters".to_string(),
                 severity: if func.metrics.parameters > 7 {
@@ -816,19 +939,36 @@ pub fn analyze_readability(
                     "Function '{}' has too many parameters ({} params, >5 recommended)",
                     func.name, func.metrics.parameters
                 ),
-                suggestions: vec![Suggestion {
-                    action: "consolidate_parameters".to_string(),
-                    description: "Group related parameters into a configuration struct or object"
-                        .to_string(),
-                    target: None,
-                    estimated_impact: "Improves function signature readability and maintainability"
-                        .to_string(),
-                    safety: SafetyLevel::RequiresReview,
-                    confidence: 0.75,
-                    reversible: false,
-                    refactor_call: None,
-                }],
-            });
+                suggestions: Vec::new(),
+            };
+
+            let candidates = generate_quality_refactoring_candidates(&finding, parsed_source);
+            let mut suggestions = Vec::new();
+            for candidate in candidates {
+                if let Ok(actionable) =
+                    suggestion_generator.generate_from_candidate(candidate, &context)
+                {
+                    suggestions.push(Suggestion {
+                        action: actionable
+                            .refactor_call
+                            .as_ref()
+                            .map(|rc| rc.tool.clone())
+                            .unwrap_or_else(|| "manual_fix".to_string()),
+                        description: actionable.message,
+                        target: None,
+                        estimated_impact: format!("{:?}", actionable.estimated_impact),
+                        safety: to_protocol_safety_level(actionable.safety),
+                        confidence: actionable.confidence,
+                        reversible: actionable.reversible,
+                        refactor_call: actionable.refactor_call.map(|rc| RefactorCall {
+                            command: rc.tool,
+                            arguments: rc.arguments,
+                        }),
+                    });
+                }
+            }
+            finding.suggestions = suggestions;
+            findings.push(finding);
         }
 
         // 3. Long functions (>50 SLOC) - readability perspective
@@ -836,7 +976,7 @@ pub fn analyze_readability(
             let mut metrics = HashMap::new();
             metrics.insert("sloc".to_string(), json!(func.metrics.sloc));
 
-            findings.push(Finding {
+            let mut finding = Finding {
                 id: format!("long-function-{}-{}", file_path, func.line),
                 kind: "long_function".to_string(),
                 severity: if func.metrics.sloc > 100 {
@@ -864,33 +1004,36 @@ pub fn analyze_readability(
                     "Function '{}' is difficult to read due to length ({} SLOC, >50 recommended)",
                     func.name, func.metrics.sloc
                 ),
-                suggestions: vec![Suggestion {
-                    action: "split_function".to_string(),
-                    description: "Split into smaller functions with clear responsibilities".to_string(),
-                    target: None,
-                    estimated_impact: format!(
-                        "Reduces cognitive load from {} to ~{} SLOC per function",
-                        func.metrics.sloc,
-                        func.metrics.sloc / 2
-                    ),
-                    safety: SafetyLevel::RequiresReview,
-                    confidence: 0.70,
-                    reversible: true,
-                    refactor_call: Some(RefactorCall {
-                        command: "extract".to_string(),
-                        arguments: json!({
-                            "kind": "function",
-                            "source": {
-                                "filePath": file_path,
-                                "range": {
-                                    "start": { "line": func.line, "character": 0 },
-                                    "end": { "line": func.line + func.metrics.sloc as usize, "character": 0 }
-                                }
-                            }
+                suggestions: Vec::new(),
+            };
+
+            let candidates = generate_quality_refactoring_candidates(&finding, parsed_source);
+            let mut suggestions = Vec::new();
+            for candidate in candidates {
+                if let Ok(actionable) =
+                    suggestion_generator.generate_from_candidate(candidate, &context)
+                {
+                    suggestions.push(Suggestion {
+                        action: actionable
+                            .refactor_call
+                            .as_ref()
+                            .map(|rc| rc.tool.clone())
+                            .unwrap_or_else(|| "manual_fix".to_string()),
+                        description: actionable.message,
+                        target: None,
+                        estimated_impact: format!("{:?}", actionable.estimated_impact),
+                        safety: to_protocol_safety_level(actionable.safety),
+                        confidence: actionable.confidence,
+                        reversible: actionable.reversible,
+                        refactor_call: actionable.refactor_call.map(|rc| RefactorCall {
+                            command: rc.tool,
+                            arguments: rc.arguments,
                         }),
-                    }),
-                }],
-            });
+                    });
+                }
+            }
+            finding.suggestions = suggestions;
+            findings.push(finding);
         }
 
         // 4. Low comment ratio (<0.1 for functions >20 SLOC)
@@ -902,7 +1045,7 @@ pub fn analyze_readability(
             );
             metrics.insert("sloc".to_string(), json!(func.metrics.sloc));
 
-            findings.push(Finding {
+            let mut finding = Finding {
                 id: format!("low-comments-{}-{}", file_path, func.line),
                 kind: "low_comment_ratio".to_string(),
                 severity: Severity::Low,
@@ -928,19 +1071,36 @@ pub fn analyze_readability(
                     func.metrics.comment_ratio * 100.0,
                     func.metrics.sloc
                 ),
-                suggestions: vec![Suggestion {
-                    action: "add_documentation".to_string(),
-                    description: "Add inline comments or documentation to explain complex logic"
-                        .to_string(),
-                    target: None,
-                    estimated_impact: "Improves code understanding for future maintainers"
-                        .to_string(),
-                    safety: SafetyLevel::Safe,
-                    confidence: 0.95,
-                    reversible: true,
-                    refactor_call: None,
-                }],
-            });
+                suggestions: Vec::new(),
+            };
+
+            let candidates = generate_quality_refactoring_candidates(&finding, parsed_source);
+            let mut suggestions = Vec::new();
+            for candidate in candidates {
+                if let Ok(actionable) =
+                    suggestion_generator.generate_from_candidate(candidate, &context)
+                {
+                    suggestions.push(Suggestion {
+                        action: actionable
+                            .refactor_call
+                            .as_ref()
+                            .map(|rc| rc.tool.clone())
+                            .unwrap_or_else(|| "manual_fix".to_string()),
+                        description: actionable.message,
+                        target: None,
+                        estimated_impact: format!("{:?}", actionable.estimated_impact),
+                        safety: to_protocol_safety_level(actionable.safety),
+                        confidence: actionable.confidence,
+                        reversible: actionable.reversible,
+                        refactor_call: actionable.refactor_call.map(|rc| RefactorCall {
+                            command: rc.tool,
+                            arguments: rc.arguments,
+                        }),
+                    });
+                }
+            }
+            finding.suggestions = suggestions;
+            findings.push(finding);
         }
     }
 
@@ -951,12 +1111,19 @@ pub fn analyze_readability(
 pub fn analyze_maintainability(
     complexity_report: &mill_ast::complexity::ComplexityReport,
     _content: &str,
-    _symbols: &[mill_plugin_api::Symbol],
+    parsed_source: &ParsedSource,
     _language: &str,
     file_path: &str,
     _registry: &crate::LanguagePluginRegistry,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
+    let suggestion_generator = SuggestionGenerator::new();
+    let context = AnalysisContext {
+        file_path: file_path.to_string(),
+        has_full_type_info: false,
+        has_partial_type_info: false,
+        ast_parse_errors: 0,
+    };
 
     // Calculate distribution by rating
     let mut rating_counts: HashMap<String, usize> = HashMap::new();
@@ -1046,75 +1213,7 @@ pub fn analyze_maintainability(
         )
     };
 
-    // Build suggestions for top issues
-    let mut suggestions = Vec::new();
-
-    if needs_attention > 0 {
-        // Get top 3 most complex functions
-        let mut complex_funcs: Vec<_> = complexity_report.functions.iter().collect();
-        complex_funcs.sort_by(|a, b| {
-            b.complexity
-                .cognitive
-                .cmp(&a.complexity.cognitive)
-                .then_with(|| b.complexity.cyclomatic.cmp(&a.complexity.cyclomatic))
-        });
-
-        let top_issues = complex_funcs
-            .iter()
-            .take(3)
-            .filter(|f| {
-                matches!(
-                    f.rating,
-                    mill_ast::complexity::ComplexityRating::Complex
-                        | mill_ast::complexity::ComplexityRating::VeryComplex
-                )
-            })
-            .map(|f| {
-                format!(
-                    "{} (cognitive: {}, cyclomatic: {})",
-                    f.name, f.complexity.cognitive, f.complexity.cyclomatic
-                )
-            })
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        if !top_issues.is_empty() {
-            suggestions.push(Suggestion {
-                action: "refactor_high_complexity".to_string(),
-                description: format!(
-                    "Focus refactoring efforts on these high-complexity functions: {}",
-                    top_issues
-                ),
-                target: None,
-                estimated_impact: format!(
-                    "Could improve overall maintainability by reducing {:.1}% of problem functions",
-                    (3.min(needs_attention) as f64 / needs_attention as f64) * 100.0
-                ),
-                safety: SafetyLevel::RequiresReview,
-                confidence: 0.85,
-                reversible: true,
-                refactor_call: None,
-            });
-        }
-    }
-
-    if complexity_report.average_cognitive_complexity > 10.0 {
-        suggestions.push(Suggestion {
-            action: "reduce_average_complexity".to_string(),
-            description: "Average cognitive complexity is high across the codebase".to_string(),
-            target: None,
-            estimated_impact: format!(
-                "Target: reduce average from {:.1} to <10.0",
-                complexity_report.average_cognitive_complexity
-            ),
-            safety: SafetyLevel::RequiresReview,
-            confidence: 0.80,
-            reversible: true,
-            refactor_call: None,
-        });
-    }
-
-    findings.push(Finding {
+    let mut finding = Finding {
         id: format!("maintainability-summary-{}", file_path),
         kind: "maintainability_summary".to_string(),
         severity,
@@ -1126,8 +1225,34 @@ pub fn analyze_maintainability(
         },
         metrics: Some(metrics),
         message,
-        suggestions,
-    });
+        suggestions: Vec::new(),
+    };
+
+    let candidates = generate_quality_refactoring_candidates(&finding, parsed_source);
+    let mut suggestions = Vec::new();
+    for candidate in candidates {
+        if let Ok(actionable) = suggestion_generator.generate_from_candidate(candidate, &context) {
+            suggestions.push(Suggestion {
+                action: actionable
+                    .refactor_call
+                    .as_ref()
+                    .map(|rc| rc.tool.clone())
+                    .unwrap_or_else(|| "manual_fix".to_string()),
+                description: actionable.message,
+                target: None,
+                estimated_impact: format!("{:?}", actionable.estimated_impact),
+                safety: to_protocol_safety_level(actionable.safety),
+                confidence: actionable.confidence,
+                reversible: actionable.reversible,
+                refactor_call: actionable.refactor_call.map(|rc| RefactorCall {
+                    command: rc.tool,
+                    arguments: rc.arguments,
+                }),
+            });
+        }
+    }
+    finding.suggestions = suggestions;
+    findings.push(finding);
 
     findings
 }
@@ -1260,9 +1385,9 @@ impl ToolHandler for QualityHandler {
                 let mut result = self.transform_complexity_report(
                     complexity_report,
                     &thresholds,
-                    include_suggestions,
                     scope,
                     start_time.elapsed().as_millis() as u64,
+                    &parsed,
                 );
 
                 // Set language in metadata
@@ -1280,40 +1405,92 @@ impl ToolHandler for QualityHandler {
                     ServerError::Internal(format!("Failed to serialize result: {}", e))
                 })
             }
-            "smells" => {
-                super::engine::run_analysis(context, tool_call, "quality", kind, detect_smells)
-                    .await
-            }
-            "maintainability" => {
-                // Check if workspace scope is requested
-                let scope_param = super::engine::parse_scope_param(&args)?;
-                let scope_type = scope_param.scope_type.as_deref().unwrap_or("file");
+            "smells" | "maintainability" | "readability" => {
+                use mill_foundation::protocol::analysis_result::AnalysisResult;
+                use std::path::Path;
+                use std::time::Instant;
+                use tracing::info;
 
-                if scope_type == "workspace" {
-                    // Use workspace aggregation
-                    self.analyze_workspace_maintainability(context, &args, &scope_param)
-                        .await
-                } else {
-                    // Use standard file analysis
-                    super::engine::run_analysis(
-                        context,
-                        tool_call,
-                        "quality",
-                        kind,
-                        analyze_maintainability,
-                    )
+                let start_time = Instant::now();
+                let scope_param = super::engine::parse_scope_param(&args)?;
+                let file_path = super::engine::extract_file_path(&args, &scope_param)?;
+                info!(file_path = %file_path, kind = %kind, "Running quality analysis with suggestions");
+
+                let file_path_obj = Path::new(&file_path);
+                let extension = file_path_obj
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .ok_or_else(|| {
+                        ServerError::InvalidRequest(format!("File has no extension: {}", file_path))
+                    })?;
+                let content = context
+                    .app_state
+                    .file_service
+                    .read_file(file_path_obj)
                     .await
+                    .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+                let plugin = context
+                    .app_state
+                    .language_plugins
+                    .get_plugin(extension)
+                    .ok_or_else(|| {
+                        ServerError::Unsupported(format!(
+                            "No language plugin found for extension: {}",
+                            extension
+                        ))
+                    })?;
+                let parsed_source = plugin
+                    .parse(&content)
+                    .await
+                    .map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
+                let language = plugin.metadata().name;
+                let complexity_report = mill_ast::complexity::analyze_file_complexity(
+                    &file_path,
+                    &content,
+                    &parsed_source.symbols,
+                    language,
+                );
+
+                let analysis_fn: fn(
+                    &mill_ast::complexity::ComplexityReport,
+                    &str,
+                    &ParsedSource,
+                    &str,
+                    &str,
+                    &crate::LanguagePluginRegistry,
+                ) -> Vec<Finding> = match kind {
+                    "smells" => detect_smells,
+                    "maintainability" => analyze_maintainability,
+                    "readability" => analyze_readability,
+                    _ => unreachable!(),
+                };
+
+                let findings = analysis_fn(
+                    &complexity_report,
+                    &content,
+                    &parsed_source,
+                    language,
+                    &file_path,
+                    &context.app_state.language_plugins,
+                );
+
+                let scope = AnalysisScope {
+                    scope_type: scope_param.scope_type.unwrap_or_else(|| "file".to_string()),
+                    path: file_path.clone(),
+                    include: scope_param.include,
+                    exclude: scope_param.exclude,
+                };
+                let mut result = AnalysisResult::new("quality", kind, scope);
+                result.metadata.language = Some(language.to_string());
+                for finding in findings {
+                    result.add_finding(finding);
                 }
-            }
-            "readability" => {
-                super::engine::run_analysis(
-                    context,
-                    tool_call,
-                    "quality",
-                    kind,
-                    analyze_readability,
-                )
-                .await
+                result.summary.files_analyzed = 1;
+                result.summary.symbols_analyzed = Some(complexity_report.total_functions);
+                result.finalize(start_time.elapsed().as_millis() as u64);
+
+                serde_json::to_value(result)
+                    .map_err(|e| ServerError::Internal(format!("Failed to serialize result: {}", e)))
             }
             _ => unreachable!("Kind validated earlier"),
         }
