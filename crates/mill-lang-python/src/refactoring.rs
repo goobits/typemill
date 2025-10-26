@@ -80,7 +80,7 @@ pub fn analyze_extract_function(
     let contains_return = selected_text.contains("return ");
     let insertion_point = find_insertion_point(source, range.start_line)?;
     Ok(ExtractableFunction {
-        selected_range: range.clone(),
+        selected_range: *range,
         required_parameters,
         return_variables: Vec::new(),
         suggested_name: "extracted_function".to_string(),
@@ -203,7 +203,7 @@ pub fn plan_extract_function(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Insert,
-        location: analysis.insertion_point.clone().into(),
+        location: analysis.insertion_point.into(),
         original_text: String::new(),
         new_text: format!("{}\n\n", function_code),
         priority: 100,
@@ -213,7 +213,7 @@ pub fn plan_extract_function(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Replace,
-        location: analysis.selected_range.clone().into(),
+        location: analysis.selected_range.into(),
         original_text: extract_range_text(source, &analysis.selected_range)?,
         new_text: call_code,
         priority: 90,
@@ -272,7 +272,7 @@ pub fn plan_inline_variable(
         edits.push(TextEdit {
             file_path: None,
             edit_type: EditType::Replace,
-            location: usage_location.clone().into(),
+            location: (*usage_location).into(),
             original_text: analysis.variable_name.clone(),
             new_text: replacement_text,
             priority,
@@ -283,7 +283,7 @@ pub fn plan_inline_variable(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Delete,
-        location: analysis.declaration_range.clone().into(),
+        location: analysis.declaration_range.into(),
         original_text: extract_range_text(source, &analysis.declaration_range)?,
         new_text: String::new(),
         priority: 50,
@@ -336,7 +336,7 @@ pub fn plan_extract_variable(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Insert,
-        location: analysis.insertion_point.clone().into(),
+        location: analysis.insertion_point.into(),
         original_text: String::new(),
         new_text: declaration,
         priority: 100,
@@ -348,7 +348,7 @@ pub fn plan_extract_variable(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Replace,
-        location: analysis.expression_range.clone().into(),
+        location: analysis.expression_range.into(),
         original_text: analysis.expression.clone(),
         new_text: var_name.clone(),
         priority: 90,

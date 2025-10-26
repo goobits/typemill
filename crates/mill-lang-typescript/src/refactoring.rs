@@ -65,7 +65,7 @@ fn ast_extract_function_ts_js(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Insert,
-        location: analysis.insertion_point.clone().into(),
+        location: analysis.insertion_point.into(),
         original_text: String::new(),
         new_text: format!("\n{}\n", function_code),
         priority: 100,
@@ -77,7 +77,7 @@ fn ast_extract_function_ts_js(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Replace,
-        location: analysis.selected_range.clone().into(),
+        location: analysis.selected_range.into(),
         original_text: extract_range_text(source, &analysis.selected_range)?,
         new_text: call_code,
         priority: 90,
@@ -142,7 +142,7 @@ fn ast_inline_variable_ts_js(
         edits.push(TextEdit {
             file_path: None,
             edit_type: EditType::Replace,
-            location: usage_location.clone().into(),
+            location: (*usage_location).into(),
             original_text: analysis.variable_name.clone(),
             new_text: replacement_text,
             priority,
@@ -154,7 +154,7 @@ fn ast_inline_variable_ts_js(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Delete,
-        location: analysis.declaration_range.clone().into(),
+        location: analysis.declaration_range.into(),
         original_text: extract_range_text(source, &analysis.declaration_range)?,
         new_text: String::new(),
         priority: 50,
@@ -213,7 +213,7 @@ fn ast_extract_variable_ts_js(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Insert,
-        location: analysis.insertion_point.clone().into(),
+        location: analysis.insertion_point.into(),
         original_text: String::new(),
         new_text: declaration,
         priority: 100,
@@ -226,7 +226,7 @@ fn ast_extract_variable_ts_js(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Replace,
-        location: analysis.expression_range.clone().into(),
+        location: analysis.expression_range.into(),
         original_text: analysis.expression.clone(),
         new_text: var_name.clone(),
         priority: 90,
@@ -265,7 +265,7 @@ pub fn analyze_extract_function(
 ) -> PluginResult<ExtractableFunction> {
     let _cm = create_source_map(source, file_path)?;
     let _module = parse_module(source, file_path)?;
-    let analyzer = ExtractFunctionAnalyzer::new(source, range.clone());
+    let analyzer = ExtractFunctionAnalyzer::new(source, *range);
     analyzer.finalize()
 }
 
@@ -354,7 +354,7 @@ impl ExtractFunctionAnalyzer {
         }
     }
     fn finalize(self) -> PluginResult<ExtractableFunction> {
-        let range_copy = self.selection_range.clone();
+        let range_copy = self.selection_range;
         Ok(ExtractableFunction {
             selected_range: range_copy,
             required_parameters: Vec::new(),

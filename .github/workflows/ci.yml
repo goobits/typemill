@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
+  test:
+    name: Test Suite
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Run tests (fast)
+        run: cargo nextest run --workspace --verbose
+
+      - name: Run doc tests
+        run: cargo test --doc
+
+  test-lsp:
+    name: Test Suite (with LSP servers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install LSP servers
+        run: |
+          # TypeScript
+          npm install -g typescript-language-server typescript
+
+          # Rust analyzer (via rustup)
+          rustup component add rust-analyzer
+
+          # Python
+          pip install python-lsp-server
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Run LSP tests
+        run: cargo nextest run --workspace --features lsp-tests --status-level skip
+
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: mill
+            asset_name: mill-linux-amd64
+
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_name: mill
+            asset_name: mill-linux-arm64
+
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: mill
+            asset_name: mill-macos-amd64
+
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: mill
+            asset_name: mill-macos-arm64
+
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: mill.exe
+            asset_name: mill-windows-amd64.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+  check-all:
+    name: Check All (xtask)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run check-all
+        run: cargo xtask check-all

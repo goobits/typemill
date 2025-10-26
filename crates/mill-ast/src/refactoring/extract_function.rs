@@ -10,7 +10,7 @@ pub fn analyze_extract_function(
     _file_path: &str,
 ) -> AstResult<ExtractableFunction> {
     // Simplified text-based analysis (language plugins should provide AST-based analysis)
-    let analyzer = ExtractFunctionAnalyzer::new(range.clone());
+    let analyzer = ExtractFunctionAnalyzer::new(*range);
     // Note: Using simplified text-based analysis for TypeScript/JavaScript
     // Full AST traversal with scope analysis is planned but not required for basic functionality
     // Python implementation demonstrates this approach works well for common refactoring cases
@@ -185,7 +185,7 @@ impl ExtractFunctionAnalyzer {
         // To improve this: see Python implementation in analyze_extract_function_python()
         // which demonstrates regex-based variable and function detection patterns
 
-        let range_copy = self.selection_range.clone();
+        let range_copy = self.selection_range;
         Ok(ExtractableFunction {
             selected_range: range_copy,
             required_parameters: Vec::new(), // User must verify scope manually
