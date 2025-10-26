@@ -10,8 +10,8 @@
 
 > **API Update Note (Phase 5)**: This proposal has been updated to use the unified dryRun API. Code examples now show single-tool execution with the `options.dryRun` parameter.
 >
-> **Before (two-step)**: `tool.plan()` → get plan → `workspace.apply_edit(plan)`
-> **After (unified)**: Single call with `options.dryRun: true` (preview) or `false` (execute)
+> **Historical Context (Pre-Phase 5, REMOVED)**: Previously used two-step workflow with separate `.plan` tools and `workspace.apply_edit`
+> **Current API (Phase 5+)**: Single tool call with `options.dryRun: true` (preview) or `false` (execute)
 
 ---
 
