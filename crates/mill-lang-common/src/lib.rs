@@ -122,7 +122,10 @@ pub use location::{
 };
 pub use manifest_common::{JsonWorkspace, TomlWorkspace};
 pub use parsing::{parse_with_fallback, parse_with_optional_fallback, try_parsers};
-pub use refactoring::{CodeRange, IndentationDetector, LineExtractor};
+pub use refactoring::{
+    CodeRange, ExtractVariableAnalysis, ExtractableFunction, IndentationDetector,
+    InlineVariableAnalysis, LineExtractor,
+};
 pub use subprocess::{run_ast_tool, run_ast_tool_raw, SubprocessAstTool};
 pub use versioning::{
     detect_dependency_source, extract_version_number, normalize_version, parse_git_url,

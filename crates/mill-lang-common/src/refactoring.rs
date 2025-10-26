@@ -233,6 +233,41 @@ impl LineExtractor {
     }
 }
 
+/// Information about a function that can be extracted
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ExtractableFunction {
+    pub selected_range: CodeRange,
+    pub required_parameters: Vec<String>,
+    pub return_variables: Vec<String>,
+    pub suggested_name: String,
+    pub insertion_point: CodeRange,
+    pub contains_return_statements: bool,
+    pub complexity_score: u32,
+}
+
+/// Analysis result for inline variable refactoring
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct InlineVariableAnalysis {
+    pub variable_name: String,
+    pub declaration_range: CodeRange,
+    pub initializer_expression: String,
+    pub usage_locations: Vec<CodeRange>,
+    pub is_safe_to_inline: bool,
+    pub blocking_reasons: Vec<String>,
+}
+
+/// Analysis result for extract variable refactoring
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ExtractVariableAnalysis {
+    pub expression: String,
+    pub expression_range: CodeRange,
+    pub can_extract: bool,
+    pub suggested_name: String,
+    pub insertion_point: CodeRange,
+    pub blocking_reasons: Vec<String>,
+    pub scope_type: String,
+}
+
 /// Helper for detecting common indentation patterns
 pub struct IndentationDetector;
 
