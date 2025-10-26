@@ -160,7 +160,8 @@ mod tests {
         assert!(result.passed);
         assert_eq!(result.exit_code, 0);
         assert!(result.stdout.contains("success"));
-        assert!(result.duration_ms > 0);
+        // Duration can be 0 on fast systems with simple commands like echo
+        assert!(result.duration_ms < 1000, "Duration should be reasonable (< 1s)");
     }
 
     #[tokio::test]

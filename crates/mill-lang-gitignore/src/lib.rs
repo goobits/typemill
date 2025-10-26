@@ -102,6 +102,10 @@ impl LanguagePlugin for GitignoreLanguagePlugin {
         Self::CAPABILITIES
     }
 
+    fn import_move_support(&self) -> Option<&dyn import_support::ImportMoveSupport> {
+        Some(self)
+    }
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }

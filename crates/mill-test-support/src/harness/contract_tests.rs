@@ -42,10 +42,13 @@ fn test_all_plugins_conform_to_contract() {
 fn test_metadata_contract(plugin: &dyn LanguagePlugin) {
     let meta = plugin.metadata();
     assert!(!meta.name.is_empty(), "Plugin name cannot be empty.");
+
+    // Plugins must handle files either by extension OR by filename (e.g., .gitignore)
     assert!(
-        !meta.extensions.is_empty(),
-        "Plugin must handle at least one file extension."
+        !meta.extensions.is_empty() || !meta.manifest_filename.is_empty(),
+        "Plugin must handle at least one file extension OR have a manifest filename for filename-based matching."
     );
+
     assert!(
         !meta.manifest_filename.is_empty(),
         "Plugin must specify a manifest filename."
