@@ -807,11 +807,20 @@ See **[docs/operations/cache_configuration.md](docs/operations/cache_configurati
 ### Adding New Language Plugins
 
 **See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** for complete guide on implementing language plugins:
+- **NEW: `define_language_plugin!` macro** - Eliminates ~70 lines of boilerplate per plugin
 - Plugin structure and schema requirements
 - `LanguagePlugin` trait implementation
 - Data types (ParsedSource, Symbol, ManifestData)
 - Plugin registration and testing
 - Reference implementations (Rust, TypeScript, Python)
+
+**Plugin Refactoring (2025-10):**
+The plugin system was refactored to eliminate duplication and boilerplate:
+- **Phase 1:** Consolidated refactoring data structures (`CodeRange`, `ExtractableFunction`, etc.) into `mill-lang-common` - eliminated 186 lines of duplication
+- **Phase 2:** Created `define_language_plugin!` macro to generate plugin scaffolding - eliminates ~70 lines per plugin
+- **Phase 3:** Validated with 1086 passing tests, zero clippy warnings
+- **Total impact:** ~272 lines eliminated, future plugins save ~70 lines each
+- See `proposals/01_plugin_refactoring.proposal.md` for complete details
 
 **Note:** Additional language plugin implementations (Go, Java, Swift, C#) available in git tag `pre-language-reduction`. Python was successfully restored (2025-10-25) using the migration guide in `.debug/language-plugin-migration/PYTHON_MIGRATION_GUIDE.md`.
 
