@@ -96,7 +96,7 @@ pub fn find_regex_matches(
 
         // Expand replacement template
         let replacement_text = expand_replacement(replacement_template, &capture)
-            .map_err(|e| RegexError::InvalidReplacement(e))?;
+            .map_err(RegexError::InvalidReplacement)?;
 
         // Calculate line and column
         let (line, column) = byte_offset_to_position(content, start_byte);

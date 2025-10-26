@@ -175,7 +175,7 @@ impl ToolHandler for FindReplaceHandler {
         let mut total_matches = 0;
 
         for file_path in files {
-            match process_file(&file_path, &params, &context).await {
+            match process_file(&file_path, &params, context).await {
                 Ok(file_edits) => {
                     if !file_edits.edits.is_empty() {
                         total_matches += file_edits.edits.len();
@@ -208,7 +208,7 @@ impl ToolHandler for FindReplaceHandler {
             Ok(serde_json::to_value(plan)?)
         } else {
             info!("Executing find/replace (applying changes)");
-            let files_modified = apply_plan(&plan, &context).await?;
+            let files_modified = apply_plan(&plan, context).await?;
 
             let result = ApplyResult {
                 success: true,

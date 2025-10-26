@@ -49,7 +49,7 @@ impl ToolHandler for CircularDependenciesHandler {
                 .unwrap_or_else(|| project_root.clone());
 
             let builder = DependencyGraphBuilder::new(&context.app_state.language_plugins.inner);
-            let graph = builder.build(&path).map_err(|e| ServerError::Internal(e))?;
+            let graph = builder.build(&path).map_err(ServerError::Internal)?;
             let min_size = args
                 .get("min_size")
                 .and_then(|v| v.as_u64())
@@ -87,7 +87,7 @@ impl ToolHandler for CircularDependenciesHandler {
                         kind: "circular_dependency".to_string(),
                         severity: Severity::High,
                         location: FindingLocation {
-                            file_path: cycle.modules.get(0).cloned().unwrap_or_default(),
+                            file_path: cycle.modules.first().cloned().unwrap_or_default(),
                             range: None,
                             symbol: None,
                             symbol_kind: Some("module".to_string()),
@@ -157,7 +157,7 @@ fn generate_cycle_break_suggestions(cycle: &Cycle) -> Vec<Suggestion> {
             action: "extract_interface".to_string(),
             description: format!(
                 "Extract a shared interface or trait between '{}' and '{}'. Move common dependencies to the interface to break the cycle.",
-                cycle.modules.get(0).map(|s| s.as_str()).unwrap_or("module A"),
+                cycle.modules.first().map(|s| s.as_str()).unwrap_or("module A"),
                 cycle.modules.get(1).map(|s| s.as_str()).unwrap_or("module B")
             ),
             target: None,

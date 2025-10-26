@@ -545,9 +545,9 @@ impl RenameHandler {
 
             // Debug: log plan details
             let plan_doc_changes_count = plan.edits.document_changes.as_ref()
-                .and_then(|dc| match dc {
-                    lsp_types::DocumentChanges::Operations(ops) => Some(ops.len()),
-                    lsp_types::DocumentChanges::Edits(edits) => Some(edits.len()),
+                .map(|dc| match dc {
+                    lsp_types::DocumentChanges::Operations(ops) => ops.len(),
+                    lsp_types::DocumentChanges::Edits(edits) => edits.len(),
                 })
                 .unwrap_or(0);
             debug!(
