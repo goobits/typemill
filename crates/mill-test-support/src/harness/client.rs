@@ -7,13 +7,8 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-/// Test client for interacting with the cb-server binary.
+/// Test client for interacting with the mill server binary.
 /// Manages process lifecycle and JSON-RPC communication.
-///
-/// **Important**: This spawns `cb-server` (not `mill`) to avoid PID file lock conflicts
-/// when running tests in parallel. The `mill` binary uses a global lock file at
-/// `/tmp/mill.pid` to prevent multiple instances, which would cause tests to fail.
-/// The `cb-server` binary is automatically built by cargo and doesn't use locks.
 pub struct TestClient {
     pub process: Child,
     pub stdin: ChildStdin,
@@ -24,14 +19,13 @@ pub struct TestClient {
 impl TestClient {
     /// Spawns mill server in stdio mode with the given working directory.
     pub fn new(working_dir: &Path) -> Self {
-        // Determine the path to the cb-server binary by finding the workspace root
-        // Use cb-server instead of mill to avoid PID lock conflicts in parallel tests
+        // Determine the path to the mill binary by finding the workspace root
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
             .expect("CARGO_MANIFEST_DIR not set. Please run tests with `cargo test`.");
         let workspace_root = find_workspace_root(&manifest_dir).expect(
             "Failed to find workspace root. Ensure tests are run within a Cargo workspace.",
         );
-        let server_path = workspace_root.join("target/debug/cb-server");
+        let server_path = workspace_root.join("target/debug/mill");
 
         eprintln!(
             "DEBUG: TestClient using server path: {}",
@@ -84,7 +78,7 @@ impl TestClient {
 
         let mut process = command.spawn().unwrap_or_else(|e| {
             panic!(
-                "Failed to start cb-server binary at {:?}: {}. \n\
+                "Failed to start mill binary at {:?}: {}. \n\
                  Make sure to build the binary first with: cargo build",
                 server_path, e
             )
