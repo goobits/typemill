@@ -119,14 +119,15 @@ async fn test_extract_variable_dry_run() {
                 "options": {"dryRun": true}
             });
 
-            let apply_result = client.call_tool("extract", params_exec).await.expect("Dry run should succeed");
+            let dry_run_result = client.call_tool("extract", params_exec).await.expect("Dry run should succeed");
 
-            let result = apply_result.get("result").and_then(|r| r.get("content"))
-                .expect("Dry run result should exist");
+            let plan_again = dry_run_result.get("result").and_then(|r| r.get("content"))
+                .expect("Dry run should return plan");
 
-            assert_eq!(result.get("success").and_then(|v| v.as_bool()), Some(true),
-                "Dry run should succeed");
+            // Verify it's a plan structure (has planType field)
+            assert!(plan_again.get("planType").is_some(), "Dry run should return plan structure");
 
+            // Most importantly: verify file is unchanged
             assert!(workspace.read_file("vars.rs").contains("let result = (10 + 5) * 2;"),
                 "File should be unchanged after dry run");
         }

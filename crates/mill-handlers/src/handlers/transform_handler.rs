@@ -48,7 +48,7 @@ struct Transformation {
     range: Range,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)] // Reserved for future configuration
 struct TransformOptions {
@@ -59,6 +59,16 @@ struct TransformOptions {
     preserve_formatting: Option<bool>,
     #[serde(default)]
     preserve_comments: Option<bool>,
+}
+
+impl Default for TransformOptions {
+    fn default() -> Self {
+        Self {
+            dry_run: true, // Safe default: preview mode
+            preserve_formatting: None,
+            preserve_comments: None,
+        }
+    }
 }
 
 fn default_true() -> bool {

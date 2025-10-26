@@ -49,7 +49,7 @@ struct ReorderTarget {
     position: Position,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)] // Reserved for future configuration
 struct ReorderOptions {
@@ -60,6 +60,16 @@ struct ReorderOptions {
     preserve_formatting: Option<bool>,
     #[serde(default)]
     update_call_sites: Option<bool>, // For parameter reordering
+}
+
+impl Default for ReorderOptions {
+    fn default() -> Self {
+        Self {
+            dry_run: true, // Safe default: preview mode
+            preserve_formatting: None,
+            update_call_sites: None,
+        }
+    }
 }
 
 fn default_true() -> bool {

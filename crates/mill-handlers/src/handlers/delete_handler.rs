@@ -56,7 +56,7 @@ struct DeleteSelector {
     symbol_name: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct DeleteOptions {
     /// Preview mode - don't actually apply changes (default: true for safety)
@@ -69,6 +69,17 @@ struct DeleteOptions {
     remove_tests: Option<bool>,
     #[serde(default)]
     force: Option<bool>,
+}
+
+impl Default for DeleteOptions {
+    fn default() -> Self {
+        Self {
+            dry_run: true, // Safe default: preview mode
+            cleanup_imports: None,
+            remove_tests: None,
+            force: None,
+        }
+    }
 }
 
 fn default_true() -> bool {

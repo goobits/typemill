@@ -82,7 +82,8 @@ async fn test_delete_directory_plan_and_apply() {
     workspace.create_file("temp_dir/file2.rs", "pub fn b() {}\n");
 
     let mut client = TestClient::new(workspace.path());
-    let params = build_delete_params(&workspace, "temp_dir", "directory");
+    let mut params = build_delete_params(&workspace, "temp_dir", "directory");
+    params["options"] = json!({"dryRun": true});
 
     let plan = client.call_tool("delete", params).await
         .expect("delete should succeed")

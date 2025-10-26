@@ -82,7 +82,7 @@ struct SymbolSelector {
     position: Position,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)] // Reserved for future configuration
 struct MoveOptions {
@@ -93,6 +93,16 @@ struct MoveOptions {
     update_imports: Option<bool>,
     #[serde(default)]
     preserve_formatting: Option<bool>,
+}
+
+impl Default for MoveOptions {
+    fn default() -> Self {
+        Self {
+            dry_run: true, // Safe default: preview mode
+            update_imports: None,
+            preserve_formatting: None,
+        }
+    }
 }
 
 fn default_true() -> bool {

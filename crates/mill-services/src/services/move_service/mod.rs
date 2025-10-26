@@ -335,38 +335,45 @@ impl<'a> MoveService<'a> {
                 ))
             })?
         } else {
-            // Path doesn't exist - canonicalize parent + join component
-            if let Some(parent) = abs_path.parent() {
-                let filename = abs_path.file_name().ok_or_else(|| {
-                    ServerError::InvalidRequest(format!(
-                        "Invalid path: no filename component in {:?}",
-                        abs_path
-                    ))
-                })?;
+            // Path doesn't exist - find first existing ancestor and build from there
+            let mut current = abs_path.clone();
+            let mut components_to_add = Vec::new();
 
-                if !parent.exists() {
+            // Walk up until we find an existing directory
+            while !current.exists() {
+                if let Some(filename) = current.file_name() {
+                    components_to_add.push(filename.to_os_string());
+                    if let Some(parent) = current.parent() {
+                        current = parent.to_path_buf();
+                    } else {
+                        // Reached root without finding existing path
+                        return Err(ServerError::InvalidRequest(format!(
+                            "Cannot validate path: no existing ancestor found for {:?}",
+                            abs_path
+                        )));
+                    }
+                } else {
                     return Err(ServerError::InvalidRequest(format!(
-                        "Parent directory does not exist: {:?}",
-                        parent
+                        "Invalid path: no filename component in {:?}",
+                        current
                     )));
                 }
-
-                let canonical_parent = parent.canonicalize().map_err(|e| {
-                    ServerError::InvalidRequest(format!(
-                        "Parent canonicalization failed for {:?}: {}",
-                        parent, e
-                    ))
-                })?;
-
-                canonical_parent.join(filename)
-            } else {
-                abs_path.canonicalize().map_err(|e| {
-                    ServerError::InvalidRequest(format!(
-                        "Path canonicalization failed for {:?}: {}",
-                        abs_path, e
-                    ))
-                })?
             }
+
+            // Canonicalize the existing ancestor
+            let mut canonical = current.canonicalize().map_err(|e| {
+                ServerError::InvalidRequest(format!(
+                    "Path canonicalization failed for {:?}: {}",
+                    current, e
+                ))
+            })?;
+
+            // Add back the non-existing components
+            for component in components_to_add.iter().rev() {
+                canonical = canonical.join(component);
+            }
+
+            canonical
         };
 
         // Verify containment within project root

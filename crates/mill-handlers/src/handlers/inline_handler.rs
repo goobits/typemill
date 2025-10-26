@@ -445,7 +445,7 @@ struct InlineTarget {
     position: Position, // lsp_types::Position
 }
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InlineOptions {
     /// Preview mode - don't actually apply changes (default: true for safety)
@@ -453,6 +453,15 @@ struct InlineOptions {
     dry_run: bool,
     #[serde(default)]
     inline_all: Option<bool>, // Default: false - inline all usages vs current only
+}
+
+impl Default for InlineOptions {
+    fn default() -> Self {
+        Self {
+            dry_run: true, // Safe default: preview mode
+            inline_all: None,
+        }
+    }
 }
 
 fn default_true() -> bool {
