@@ -822,6 +822,44 @@ The plugin system was refactored to eliminate duplication and boilerplate:
 - **Total impact:** ~272 lines eliminated, future plugins save ~70 lines each
 - See `proposals/01_plugin_refactoring.proposal.md` for complete details
 
+**Language Registry System (2025-10):**
+
+TypeMill uses a centralized language registry (`languages.toml`) to manage feature flags across the workspace. This eliminates manual editing of 7 Cargo.toml files per language.
+
+**Adding a new language (3 steps):**
+
+1. **Create the plugin crate** in `crates/mill-lang-{name}/`
+2. **Register in `languages.toml`:**
+   ```toml
+   [languages.newlang]
+   path = "crates/mill-lang-newlang"
+   plugin_struct = "NewLangPlugin"
+   category = "full"     # or "config" for config-only languages
+   default = false       # true = included in default build
+   ```
+3. **Run code generation:**
+   ```bash
+   cargo xtask sync-languages
+   ```
+
+This automatically generates:
+- Feature flags in 7 crates (apps/mill, mill-server, mill-services, mill-ast, mill-plugin-system, mill-transport, mill-plugin-bundle)
+- Dependency entries with correct optional/workspace flags
+- Plugin linkage code in mill-plugin-bundle/src/lib.rs
+
+**Language categories:**
+- **Full languages** (rust/typescript/python/markdown): Propagate through 5 crates (services, ast, bundle, plugin-system, transport)
+- **Config languages** (toml/yaml/gitignore): Only plugin-bundle (no AST or services)
+
+**Testing:**
+```bash
+# Default build (6 languages)
+cargo build -p mill
+
+# With optional language
+cargo build -p mill --features lang-python
+```
+
 **Note:** Additional language plugin implementations (Go, Java, Swift, C#) available in git tag `pre-language-reduction`. Python was successfully restored (2025-10-25) using the migration guide in `.debug/language-plugin-migration/PYTHON_MIGRATION_GUIDE.md`.
 
 ### Capability Trait Pattern
