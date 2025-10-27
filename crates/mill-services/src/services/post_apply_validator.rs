@@ -54,11 +54,20 @@ impl PostApplyValidator {
         );
 
         // Run command with timeout
+        // Use platform-specific shell (sh on Unix, cmd.exe on Windows)
+        #[cfg(unix)]
+        let mut cmd = Command::new("sh");
+        #[cfg(unix)]
+        cmd.arg("-c");
+
+        #[cfg(windows)]
+        let mut cmd = Command::new("cmd.exe");
+        #[cfg(windows)]
+        cmd.arg("/C");
+
         let output = tokio::time::timeout(
             tokio::time::Duration::from_secs(config.timeout_seconds),
-            Command::new("sh")
-                .arg("-c")
-                .arg(&config.command)
+            cmd.arg(&config.command)
                 .current_dir(working_dir)
                 .output(),
         )

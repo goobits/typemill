@@ -127,7 +127,8 @@ pub struct FuseStatfs {
 impl Default for FuseConfig {
     fn default() -> Self {
         Self {
-            mount_point: PathBuf::from("/tmp/mill"),
+            // Use platform-specific temp directory (e.g., /tmp on Unix, %TEMP% on Windows)
+            mount_point: std::env::temp_dir().join("mill"),
             read_only: true,
             cache_timeout_seconds: 60,
             max_file_size_bytes: 10 * 1024 * 1024, // 10 MB

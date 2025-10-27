@@ -247,7 +247,8 @@ fn is_external_dependency(module_path: &str) -> bool {
     if module_path.starts_with("./") || module_path.starts_with("../") {
         return false;
     }
-    if module_path.starts_with("/") || module_path.starts_with("src/") {
+    // Use Path::is_absolute() to detect absolute paths on both Unix (/) and Windows (C:\)
+    if std::path::Path::new(module_path).is_absolute() || module_path.starts_with("src/") {
         return false;
     }
     if module_path.starts_with("@") {

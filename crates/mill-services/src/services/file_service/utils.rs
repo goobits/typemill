@@ -21,8 +21,18 @@ impl FileService {
         );
 
         // Run validation command in the project root
-        let output = match Command::new("sh")
-            .arg("-c")
+        // Use platform-specific shell (sh on Unix, cmd.exe on Windows)
+        #[cfg(unix)]
+        let mut cmd = Command::new("sh");
+        #[cfg(unix)]
+        cmd.arg("-c");
+
+        #[cfg(windows)]
+        let mut cmd = Command::new("cmd.exe");
+        #[cfg(windows)]
+        cmd.arg("/C");
+
+        let output = match cmd
             .arg(&self.validation_config.command)
             .current_dir(&self.project_root)
             .output()
