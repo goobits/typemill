@@ -21,7 +21,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::protocol::analysis_result::{
-    Finding, FindingLocation, Position, Range, SafetyLevel, Severity, Suggestion,
+    Finding, FindingLocation, Position, Range, Severity, Suggestion,
 };
 use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use regex::Regex;
@@ -855,7 +855,7 @@ fn generate_cycle_break_suggestions(cycle: &Cycle) -> Vec<Suggestion> {
 fn generate_dependency_refactoring_candidates(
     finding: &Finding,
 ) -> Result<Vec<RefactoringCandidate>> {
-    let mut candidates = Vec::new();
+    let candidates = Vec::new();
     let location = finding.location.clone();
     let line = location.range.as_ref().map(|r| r.start.line).unwrap_or(0) as usize;
 

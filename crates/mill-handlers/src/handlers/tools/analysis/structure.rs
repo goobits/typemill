@@ -1152,7 +1152,7 @@ fn categorize_symbols_by_module(
 fn generate_structure_refactoring_candidates(
     finding: &Finding,
 ) -> Result<Vec<RefactoringCandidate>> {
-    let mut candidates = Vec::new();
+    let candidates = Vec::new();
     let location = finding.location.clone();
     let line = location.range.as_ref().map(|r| r.start.line).unwrap_or(0) as usize;
 
