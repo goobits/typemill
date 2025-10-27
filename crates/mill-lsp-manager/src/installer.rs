@@ -47,44 +47,74 @@ pub async fn install_npm_package(package_name: &str, binary_name: &str) -> Resul
 pub async fn install_pip_package(package_name: &str, binary_name: &str) -> Result<PathBuf> {
     info!("Installing pip package: {}", package_name);
 
-    // Try pip3 first, then pip
-    let pip_cmd = if which::which("pip3").is_ok() {
-        "pip3"
-    } else if which::which("pip").is_ok() {
-        "pip"
+    // Try pipx first (handles PEP 668 environments), then fall back to pip
+    if which::which("pipx").is_ok() {
+        debug!("Using pipx for installation (PEP 668 compliant)");
+        let status = tokio::process::Command::new("pipx")
+            .args(&["install", package_name])
+            .status()
+            .await
+            .map_err(|e| LspError::DownloadFailed(format!("Failed to run pipx: {}", e)))?;
+
+        if !status.success() {
+            return Err(LspError::DownloadFailed(format!(
+                "pipx install failed with exit code: {:?}",
+                status.code()
+            )));
+        }
     } else {
-        return Err(LspError::RuntimeNotFound(
-            "pip or pip3 (Python package manager)".to_string(),
-        ));
-    };
+        // Fall back to pip with --user flag
+        let pip_cmd = if which::which("pip3").is_ok() {
+            "pip3"
+        } else if which::which("pip").is_ok() {
+            "pip"
+        } else {
+            return Err(LspError::RuntimeNotFound(
+                "pip, pip3, or pipx (Python package manager)".to_string(),
+            ));
+        };
 
-    // Run pip install --user (avoid requiring sudo)
-    let status = tokio::process::Command::new(pip_cmd)
-        .args(&["install", "--user", package_name])
-        .status()
-        .await
-        .map_err(|e| LspError::DownloadFailed(format!("Failed to run {}: {}", pip_cmd, e)))?;
+        debug!("Using {} with --user flag", pip_cmd);
 
-    if !status.success() {
-        return Err(LspError::DownloadFailed(format!(
-            "{} install failed with exit code: {:?}",
-            pip_cmd,
-            status.code()
-        )));
+        // Try --user first, then with --break-system-packages if that fails (PEP 668)
+        let mut status = tokio::process::Command::new(pip_cmd)
+            .args(&["install", "--user", package_name])
+            .status()
+            .await
+            .map_err(|e| LspError::DownloadFailed(format!("Failed to run {}: {}", pip_cmd, e)))?;
+
+        if !status.success() {
+            tracing::warn!("pip install --user failed, trying with --break-system-packages");
+            status = tokio::process::Command::new(pip_cmd)
+                .args(&["install", "--user", "--break-system-packages", package_name])
+                .status()
+                .await
+                .map_err(|e| LspError::DownloadFailed(format!("Failed to run {}: {}", pip_cmd, e)))?;
+
+            if !status.success() {
+                return Err(LspError::DownloadFailed(
+                    "pip install failed even with --break-system-packages. \
+                     Consider installing pipx: apt install pipx OR pip install --user pipx".to_string(),
+                ));
+            }
+        }
     }
 
-    debug!("{} install completed successfully", pip_cmd);
+    debug!("Python package installation completed");
 
     // Find the installed binary
     let binary_path = which::which(binary_name).map_err(|_| {
         LspError::DownloadFailed(format!(
-            "Binary '{}' not found after pip install. \
-             Ensure Python user bin directory is in PATH (e.g., ~/.local/bin or %APPDATA%\\Python\\Scripts)",
+            "Binary '{}' not found after installation. \
+             Ensure Python bin directory is in PATH:\n\
+             - For pip --user: ~/.local/bin (Linux/Mac) or %APPDATA%\\Python\\Scripts (Windows)\n\
+             - For pipx: ~/.local/bin\n\
+             Add to PATH and try again.",
             binary_name
         ))
     })?;
 
-    info!("✅ Installed {} via pip to {:?}", package_name, binary_path);
+    info!("✅ Installed {} to {:?}", package_name, binary_path);
     Ok(binary_path)
 }
 
