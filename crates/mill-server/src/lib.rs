@@ -155,9 +155,12 @@ impl ServerOptions {
     /// This allows the application layer to control which language plugins are loaded.
     ///
     /// # Example
-    /// ```rust
+    /// ```no_run
+    /// use mill_server::ServerOptions;
     /// use mill_services::services::registry_builder::build_language_plugin_registry;
+    /// use mill_config::AppConfig;
     ///
+    /// # let config = AppConfig::default();
     /// let registry = build_language_plugin_registry();
     /// let options = ServerOptions::from_config(config)
     ///     .with_plugin_registry(registry);

@@ -94,7 +94,7 @@ pub fn detect_project_language(project_path: &Path) -> Option<&'static str> {
 ///
 /// ```
 /// use std::path::Path;
-/// use cb_core::language::detect_package_manager;
+/// use mill_plugin_api::language::detect_package_manager;
 ///
 /// let pm = detect_package_manager(Path::new("."));
 /// println!("Detected package manager: {}", pm.as_str());
