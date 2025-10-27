@@ -135,6 +135,10 @@ pub mod test_workspace_update_members;
 #[cfg(test)]
 pub mod test_workspace_find_replace;
 
+// Cross-platform compatibility tests
+#[cfg(test)]
+pub mod test_cross_platform;
+
 #[cfg(test)]
 pub use harness::{TestClient, TestWorkspace};
 pub use helpers::*;
