@@ -5,6 +5,7 @@
 //! complete coverage of all system functionality including refactoring workflows,
 //! plugin system operations, LSP integration, and performance validation.
 //! The testing framework validates both correctness and performance characteristics.
+#![allow(unused_variables)]
 
 pub use mill_test_support::{harness, helpers, mocks};
 

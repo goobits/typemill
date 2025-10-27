@@ -138,7 +138,7 @@ pub struct TransformPlan {
 pub struct DeletePlan {
     pub deletions: Vec<DeletionTarget>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub edits: Option<WorkspaceEdit>,  // For symbol deletion within files
+    pub edits: Option<WorkspaceEdit>, // For symbol deletion within files
     pub summary: PlanSummary,
     pub warnings: Vec<PlanWarning>,
     pub metadata: PlanMetadata,

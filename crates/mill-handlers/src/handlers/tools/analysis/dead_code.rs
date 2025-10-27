@@ -73,10 +73,10 @@ pub fn detect_unused_imports(
         return findings; // Language not supported
     }
 
-    let mut line_num = 0;  // LSP uses 0-indexed line numbers
+    // LSP uses 0-indexed line numbers
     let lines: Vec<&str> = content.lines().collect();
 
-    for line in &lines {
+    for (line_num, line) in lines.iter().enumerate() {
         // Check if this line contains an import
         for pattern_str in &import_patterns {
             if let Ok(pattern) = Regex::new(pattern_str) {
@@ -236,8 +236,6 @@ pub fn detect_unused_imports(
                 }
             }
         }
-
-        line_num += 1;
     }
 
     findings

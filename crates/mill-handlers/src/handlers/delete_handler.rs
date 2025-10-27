@@ -209,7 +209,12 @@ impl DeleteHandler {
         if identifiers.is_empty() {
             // No identifiers left, delete entire line
             None
-        } else if identifiers.len() == imports_section.split(',').filter(|s| !s.trim().is_empty()).count() {
+        } else if identifiers.len()
+            == imports_section
+                .split(',')
+                .filter(|s| !s.trim().is_empty())
+                .count()
+        {
             // Identifier wasn't found, delete entire line
             None
         } else {
@@ -277,40 +282,42 @@ impl DeleteHandler {
         let symbol_name = selector.symbol_name.as_deref().unwrap_or("");
 
         // Determine the edit based on the line content
-        let (start_pos, end_pos, new_text) = if let Some(new_line) =
-            self.remove_import_identifier(current_line, symbol_name) {
-            // Partial import removal - replace the line
-            (
-                Position {
-                    line: selector.line,
-                    character: 0,
-                },
-                Position {
-                    line: selector.line,
-                    character: current_line.len() as u32,
-                },
-                new_line,
-            )
-        } else {
-            // Full line deletion
-            (
-                Position {
-                    line: selector.line,
-                    character: 0,
-                },
-                Position {
-                    line: selector.line + 1,
-                    character: 0,
-                },
-                String::new(),
-            )
-        };
+        let (start_pos, end_pos, new_text) =
+            if let Some(new_line) = self.remove_import_identifier(current_line, symbol_name) {
+                // Partial import removal - replace the line
+                (
+                    Position {
+                        line: selector.line,
+                        character: 0,
+                    },
+                    Position {
+                        line: selector.line,
+                        character: current_line.len() as u32,
+                    },
+                    new_line,
+                )
+            } else {
+                // Full line deletion
+                (
+                    Position {
+                        line: selector.line,
+                        character: 0,
+                    },
+                    Position {
+                        line: selector.line + 1,
+                        character: 0,
+                    },
+                    String::new(),
+                )
+            };
 
         // Convert file path to file:// URI
-        let canonical_path = file_path.canonicalize()
+        let canonical_path = file_path
+            .canonicalize()
             .map_err(|e| ServerError::Internal(format!("Failed to canonicalize path: {}", e)))?;
         let uri_string = format!("file://{}", canonical_path.display());
-        let uri: Uri = uri_string.parse()
+        let uri: Uri = uri_string
+            .parse()
             .map_err(|e| ServerError::Internal(format!("Invalid URI: {}", e)))?;
 
         let text_edit = TextEdit {
@@ -322,10 +329,7 @@ impl DeleteHandler {
         };
 
         let text_document_edit = TextDocumentEdit {
-            text_document: OptionalVersionedTextDocumentIdentifier {
-                uri,
-                version: None,
-            },
+            text_document: OptionalVersionedTextDocumentIdentifier { uri, version: None },
             edits: vec![lsp_types::OneOf::Left(text_edit)],
         };
 
@@ -468,7 +472,7 @@ impl DeleteHandler {
 
         Ok(DeletePlan {
             deletions,
-            edits: None,  // Symbol deletion will use this field
+            edits: None, // Symbol deletion will use this field
             summary,
             warnings,
             metadata,
@@ -570,7 +574,7 @@ impl DeleteHandler {
 
         Ok(DeletePlan {
             deletions,
-            edits: None,  // Symbol deletion will use this field
+            edits: None, // Symbol deletion will use this field
             summary,
             warnings,
             metadata,
@@ -617,7 +621,7 @@ impl DeleteHandler {
 
         Ok(DeletePlan {
             deletions,
-            edits: None,  // Symbol deletion will use this field
+            edits: None, // Symbol deletion will use this field
             summary,
             warnings,
             metadata,
