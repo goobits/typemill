@@ -20,39 +20,39 @@ API changes require manual edits to 3+ files per change.
 
 ## Checklists
 
-### Phase 1: Consolidate Refactoring Structs
+### Phase 1: Consolidate Refactoring Structs ✅ COMPLETE
 
 **Update mill-lang-common**
-- [ ] Move `ExtractableFunction` from `mill-ast/src/refactoring/mod.rs:61-69` to `mill-lang-common/src/refactoring.rs`
-- [ ] Move `InlineVariableAnalysis` from `mill-ast/src/refactoring/mod.rs:72-80` to `mill-lang-common/src/refactoring.rs`
-- [ ] Move `ExtractVariableAnalysis` from `mill-ast/src/refactoring/mod.rs:83-92` to `mill-lang-common/src/refactoring.rs`
-- [ ] Export in `mill-lang-common/src/lib.rs`: `pub use refactoring::{CodeRange, ExtractableFunction, InlineVariableAnalysis, ExtractVariableAnalysis};`
+- [x] Move `ExtractableFunction` from `mill-ast/src/refactoring/mod.rs:61-69` to `mill-lang-common/src/refactoring.rs` ✅
+- [x] Move `InlineVariableAnalysis` from `mill-ast/src/refactoring/mod.rs:72-80` to `mill-lang-common/src/refactoring.rs` ✅
+- [x] Move `ExtractVariableAnalysis` from `mill-ast/src/refactoring/mod.rs:83-92` to `mill-lang-common/src/refactoring.rs` ✅
+- [x] Export in `mill-lang-common/src/lib.rs`: `pub use refactoring::{CodeRange, ExtractableFunction, InlineVariableAnalysis, ExtractVariableAnalysis};` ✅
 
 **Update mill-lang-python**
-- [ ] Delete `CodeRange` + 3 analysis structs (lines 22-59 in `src/refactoring.rs`)
-- [ ] Add import: `use mill_lang_common::refactoring::{CodeRange, ExtractableFunction, InlineVariableAnalysis, ExtractVariableAnalysis};`
+- [x] Delete `CodeRange` + 3 analysis structs (lines 22-59 in `src/refactoring.rs`) ✅
+- [x] Add import: `use mill_lang_common::refactoring::{CodeRange, ExtractableFunction, InlineVariableAnalysis, ExtractVariableAnalysis};` ✅
 
 **Update mill-lang-typescript**
-- [ ] Delete `CodeRange` + 3 analysis structs (lines 15-52 in `src/refactoring.rs`)
-- [ ] Add import: `use mill_lang_common::refactoring::{CodeRange, ExtractableFunction, InlineVariableAnalysis, ExtractVariableAnalysis};`
+- [x] Delete `CodeRange` + 3 analysis structs (lines 15-52 in `src/refactoring.rs`) ✅
+- [x] Add import: `use mill_lang_common::refactoring::{CodeRange, ExtractableFunction, InlineVariableAnalysis, ExtractVariableAnalysis};` ✅
 
 **Update mill-ast**
-- [ ] Delete duplicate structs (lines 40-92 in `src/refactoring/mod.rs`)
-- [ ] Add import: `use mill_lang_common::refactoring::{CodeRange, ExtractableFunction, InlineVariableAnalysis, ExtractVariableAnalysis};`
+- [x] Delete duplicate structs (lines 40-92 in `src/refactoring/mod.rs`) ✅
+- [x] Add import: `use mill_lang_common::refactoring::{CodeRange, ExtractableFunction, InlineVariableAnalysis, ExtractVariableAnalysis};` ✅
 
 **Test Phase 1**
-- [ ] Run `cargo check --workspace` (zero errors)
-- [ ] Run `cargo nextest run --workspace` (zero failures)
+- [x] Run `cargo check --workspace` (zero errors) ✅
+- [x] Run `cargo nextest run --workspace` (zero failures) ✅
 
-### Phase 2: Plugin Scaffolding Macro
+### Phase 2: Plugin Scaffolding Macro ✅ COMPLETE
 
 **Create Macro Crate**
-- [ ] Create `crates/mill-lang-macros/` with `proc-macro = true` in `Cargo.toml`
-- [ ] Add dependencies: `syn = "2.0"`, `quote = "1.0"`, `proc-macro2 = "1.0"`
-- [ ] Add to workspace members in root `Cargo.toml`
+- [x] Create `crates/mill-lang-macros/` with `proc-macro = true` in `Cargo.toml` ✅
+- [x] Add dependencies: `syn = "2.0"`, `quote = "1.0"`, `proc-macro2 = "1.0"` ✅
+- [x] Add to workspace members in root `Cargo.toml` ✅
 
 **Implement Macro**
-- [ ] Define macro signature:
+- [x] Define macro signature:
   ```rust
   define_language_plugin! {
       name: "python",
@@ -62,24 +62,24 @@ API changes require manual edits to 3+ files per change.
       capabilities: with_imports() | with_workspace() | with_project_factory(),
       lsp: ("pylsp", ["pylsp"])
   }
-  ```
-- [ ] Parse input using `syn::parse_macro_input!`
-- [ ] Generate `Plugin` struct with capability trait fields
-- [ ] Generate `METADATA` const
-- [ ] Generate `CAPABILITIES` const
-- [ ] Generate `Default` trait impl
-- [ ] Generate `LanguagePlugin` trait impl with delegating methods
-- [ ] Generate `mill_plugin!` registration
-- [ ] Add compile-time validation
+  ``` ✅
+- [x] Parse input using `syn::parse_macro_input!` ✅
+- [x] Generate `Plugin` struct with capability trait fields ✅
+- [x] Generate `METADATA` const ✅
+- [x] Generate `CAPABILITIES` const ✅
+- [x] Generate `Default` trait impl ✅
+- [x] Generate `LanguagePlugin` trait impl with delegating methods ✅
+- [x] Generate `mill_plugin!` registration ✅
+- [x] Add compile-time validation ✅
 
 **Refactor Plugins**
-- [ ] Add `mill-lang-macros` dependency to each plugin's `Cargo.toml`
-- [ ] Replace Python boilerplate (lines 51-88) with macro call
-- [ ] Replace TypeScript boilerplate (lines 27-65) with macro call
-- [ ] Replace Rust boilerplate (lines 51-81) with macro call
-- [ ] Run `cargo expand -p mill-lang-python` to verify expansion matches original
-- [ ] Run `cargo expand -p mill-lang-typescript` to verify expansion matches original
-- [ ] Run `cargo expand -p mill-lang-rust` to verify expansion matches original
+- [x] Add `mill-lang-macros` dependency to each plugin's `Cargo.toml` ✅
+- [x] Replace Python boilerplate (lines 51-88) with macro call ✅
+- [x] Replace TypeScript boilerplate (lines 27-65) with macro call ✅
+- [x] Replace Rust boilerplate (lines 51-81) with macro call ✅
+- [x] Run `cargo expand -p mill-lang-python` to verify expansion matches original ✅
+- [x] Run `cargo expand -p mill-lang-typescript` to verify expansion matches original ✅
+- [x] Run `cargo expand -p mill-lang-rust` to verify expansion matches original ✅
 
 **Test Phase 2**
 - [x] Run `cargo check --workspace` (zero errors) ✅
