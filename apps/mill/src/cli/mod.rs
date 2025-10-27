@@ -2,6 +2,7 @@
 
 mod conventions;
 mod flag_parser;
+mod lsp_helpers;
 
 use clap::{Parser, Subcommand};
 use fs2::FileExt;
@@ -735,16 +736,7 @@ async fn handle_setup() {
     println!();
     println!("🔍 Detecting project languages...");
 
-    let manager = match mill_lsp_manager::LspManager::new() {
-        Ok(m) => m,
-        Err(e) => {
-            error!(error = %e, "Failed to create LSP manager");
-            eprintln!("⚠️  Warning: Could not detect languages ({})", e);
-            return;
-        }
-    };
-
-    let needed_lsps = match manager.detect_needed_lsps(std::path::Path::new(".")) {
+    let needed_lsps = match lsp_helpers::detect_needed_lsps(std::path::Path::new(".")) {
         Ok(lsps) => lsps,
         Err(e) => {
             error!(error = %e, "Failed to detect needed LSPs");
@@ -758,28 +750,23 @@ async fn handle_setup() {
         return;
     }
 
-    println!(
-        "   Detected: {}",
-        needed_lsps.join(", ")
-    );
+    println!("   Detected: {}", needed_lsps.join(", "));
     println!();
 
     // Check which LSPs are already installed
     let mut missing_lsps = Vec::new();
-    for lsp_name in &needed_lsps {
-        match manager.check_status(lsp_name) {
-            Ok(mill_lsp_manager::InstallStatus::Installed { .. }) => {
-                println!("   ✅ {} - already installed", lsp_name);
+    for lang_name in &needed_lsps {
+        match lsp_helpers::check_lsp_installed(lang_name).await {
+            Ok(Some(_path)) => {
+                println!("   ✅ {} - already installed", lang_name);
             }
-            Ok(mill_lsp_manager::InstallStatus::NeedsRuntime { runtime }) => {
-                println!("   ⚠️  {} - needs runtime: {}", lsp_name, runtime);
-            }
-            Ok(mill_lsp_manager::InstallStatus::NotInstalled) => {
-                println!("   📥 {} - not installed", lsp_name);
-                missing_lsps.push(lsp_name.clone());
+            Ok(None) => {
+                println!("   📥 {} - not installed", lang_name);
+                missing_lsps.push(lang_name.clone());
             }
             Err(e) => {
-                error!(error = %e, lsp_name, "Failed to check LSP status");
+                error!(error = %e, lang_name, "Failed to check LSP status");
+                println!("   ⚠️  {} - status unknown", lang_name);
             }
         }
     }
@@ -807,15 +794,15 @@ async fn handle_setup() {
         println!();
         println!("📦 Installing LSP servers...");
 
-        for lsp_name in &missing_lsps {
-            print!("   Installing {}... ", lsp_name);
-            match manager.ensure_installed(lsp_name).await {
+        for lang_name in &missing_lsps {
+            print!("   Installing {}... ", lang_name);
+            match lsp_helpers::install_lsp(lang_name).await {
                 Ok(path) => {
                     println!("✅ {}", path.display());
                 }
                 Err(e) => {
                     println!("❌");
-                    error!(error = %e, lsp_name, "Failed to install LSP");
+                    error!(error = %e, lang_name, "Failed to install LSP");
                     eprintln!("      Error: {}", e);
                 }
             }
@@ -827,8 +814,8 @@ async fn handle_setup() {
         println!();
         println!("⏭️  Skipped LSP installation");
         println!("   You can install them later with:");
-        for lsp_name in &missing_lsps {
-            println!("   mill install-lsp {}", lsp_name);
+        for lang_name in &missing_lsps {
+            println!("   mill install-lsp {}", lang_name);
         }
     }
 }
@@ -989,67 +976,53 @@ async fn handle_doctor() {
 async fn handle_install_lsp(language: &str) {
     println!("📥 Installing LSP server for {}...", language);
 
-    // Create LSP manager
-    let manager = match mill_lsp_manager::LspManager::new() {
-        Ok(m) => m,
-        Err(e) => {
-            error!(error = %e, "Failed to create LSP manager");
-            eprintln!("❌ Error: Failed to initialize LSP manager: {}", e);
+    // Check if plugin exists for this language
+    let plugin = match lsp_helpers::find_plugin_by_language(language) {
+        Some(p) => p,
+        None => {
+            eprintln!("❌ No plugin found for language: {}", language);
+            eprintln!("   Supported languages:");
+            let supported = lsp_helpers::list_supported_languages();
+            for (lang_name, lsp_name) in &supported {
+                eprintln!("   • {} ({})", lang_name, lsp_name);
+            }
             process::exit(1);
         }
     };
 
-    // Map common language names to LSP server names
-    let lang_lower = language.to_lowercase();
-    let lsp_name = match lang_lower.as_str() {
-        "rust" => "rust-analyzer",
-        "typescript" | "ts" | "javascript" | "js" => "typescript-language-server",
-        "python" | "py" => "pylsp",
-        _ => language, // Try exact match with original case
-    };
-
-    // Check if LSP exists in registry
-    let available = manager.list_available();
-    if !available.iter().any(|n| n.as_str() == lsp_name) {
-        eprintln!("❌ No LSP server found for language: {}", language);
-        eprintln!("   Supported languages:");
-        eprintln!("   • rust (rust-analyzer)");
-        eprintln!("   • typescript/javascript (typescript-language-server)");
-        eprintln!("   • python (pylsp)");
-        eprintln!();
-        let available_str: Vec<&str> = available.iter().map(|s| s.as_str()).collect();
-        eprintln!("   Or use exact LSP name: {}", available_str.join(", "));
-        process::exit(1);
-    }
-
-    println!("   Found: {}", lsp_name);
-
-    // Check current status
-    match manager.check_status(lsp_name) {
-        Ok(mill_lsp_manager::InstallStatus::Installed { path }) => {
-            println!("✅ {} is already installed at: {}", lsp_name, path.display());
-            return;
-        }
-        Ok(mill_lsp_manager::InstallStatus::NeedsRuntime { runtime }) => {
-            eprintln!("❌ {} requires runtime: {}", lsp_name, runtime);
+    // Check if plugin supports LSP installation
+    let installer = match lsp_helpers::get_lsp_installer(&*plugin) {
+        Some(i) => i,
+        None => {
             eprintln!(
-                "   Please install {} first before installing this LSP server",
-                runtime
+                "❌ The {} plugin does not support automatic LSP installation",
+                plugin.metadata().name
             );
             process::exit(1);
         }
-        Ok(mill_lsp_manager::InstallStatus::NotInstalled) => {
-            // Continue with installation
+    };
+
+    let lsp_name = installer.lsp_name();
+    println!("   Found: {} ({})", plugin.metadata().name, lsp_name);
+
+    // Check if already installed
+    match lsp_helpers::check_lsp_installed(language).await {
+        Ok(Some(path)) => {
+            println!("✅ {} is already installed at: {}", lsp_name, path.display());
+            return;
+        }
+        Ok(None) => {
+            // Not installed, continue
         }
         Err(e) => {
             error!(error = %e, "Failed to check LSP status");
-            eprintln!("❌ Error checking status: {}", e);
-            process::exit(1);
+            eprintln!("⚠️  Warning: Could not check LSP status ({})", e);
+            eprintln!("   Proceeding with installation...");
         }
     }
 
     // Install LSP
-    match manager.ensure_installed(lsp_name).await {
+    match lsp_helpers::install_lsp(language).await {
         Ok(path) => {
             println!("✅ Successfully installed {} to:", lsp_name);
             println!("   {}", path.display());

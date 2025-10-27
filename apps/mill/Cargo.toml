@@ -37,6 +37,8 @@ mill-config = { path = "../../crates/mill-config" }
 mill-ast = { path = "../../crates/mill-ast", default-features = false }
 mill-client = { path = "../../crates/mill-client" }
 mill-lsp-manager = { path = "../../crates/mill-lsp-manager" }
+mill-lang-common = { path = "../../crates/mill-lang-common" }
+walkdir = "2.5"
 
 [dev-dependencies]
 mill-server = { path = "../../crates/mill-server", default-features = false, features = ["test-helpers"] }
