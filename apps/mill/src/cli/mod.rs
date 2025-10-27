@@ -224,6 +224,12 @@ pub struct DeadCode {
     /// The path to analyze
     #[arg(long, default_value = ".")]
     pub path: String,
+    /// Fail if condition matches (e.g., "high_severity > 0", "complexity > 15")
+    #[arg(long)]
+    pub fail_if: Option<String>,
+    /// Output format (pretty, json)
+    #[arg(long, default_value = "pretty", value_parser = ["pretty", "json"])]
+    pub format: String,
 }
 
 /// The cycles command.
@@ -431,6 +437,72 @@ fn output_pretty_cycles(analysis_result: &AnalysisResult) {
     }
 }
 
+/// Evaluate a threshold condition against analysis results
+/// Supported formats:
+/// - "high_severity > 0"
+/// - "total_findings > 10"
+/// - "complexity > 15"
+fn evaluate_threshold(result: &AnalysisResult, condition: &str) -> bool {
+    let parts: Vec<&str> = condition.split_whitespace().collect();
+    if parts.len() != 3 {
+        eprintln!("⚠️  Invalid --fail-if format. Expected: 'metric > value'");
+        eprintln!("   Examples: 'high_severity > 0', 'total_findings > 10'");
+        return false;
+    }
+
+    let metric = parts[0];
+    let operator = parts[1];
+    let threshold_str = parts[2];
+
+    let threshold: i64 = match threshold_str.parse() {
+        Ok(v) => v,
+        Err(_) => {
+            eprintln!("⚠️  Invalid threshold value: {}", threshold_str);
+            return false;
+        }
+    };
+
+    let actual_value: i64 = match metric {
+        "high_severity" => result.summary.by_severity.high as i64,
+        "medium_severity" => result.summary.by_severity.medium as i64,
+        "low_severity" => result.summary.by_severity.low as i64,
+        "total_findings" => result.summary.total_findings as i64,
+        "complexity" => {
+            // Find max complexity from findings
+            result
+                .findings
+                .iter()
+                .filter_map(|f| {
+                    f.metrics.as_ref().and_then(|m| {
+                        m.get("cyclomatic_complexity")
+                            .and_then(|v| v.as_i64())
+                            .or_else(|| m.get("cognitive_complexity").and_then(|v| v.as_i64()))
+                    })
+                })
+                .max()
+                .unwrap_or(0)
+        }
+        _ => {
+            eprintln!("⚠️  Unknown metric: {}", metric);
+            eprintln!("   Supported: high_severity, medium_severity, low_severity, total_findings, complexity");
+            return false;
+        }
+    };
+
+    match operator {
+        ">" => actual_value > threshold,
+        ">=" => actual_value >= threshold,
+        "=" | "==" => actual_value == threshold,
+        "<" => actual_value < threshold,
+        "<=" => actual_value <= threshold,
+        _ => {
+            eprintln!("⚠️  Unknown operator: {}", operator);
+            eprintln!("   Supported: >, >=, =, ==, <, <=");
+            false
+        }
+    }
+}
+
 async fn handle_cycles_command(command: Cycles) {
     let mut args = serde_json::json!({
         "scope": {
@@ -453,7 +525,7 @@ async fn handle_cycles_command(command: Cycles) {
                 e
             ));
             output_error(&error, &command.format);
-            process::exit(1);
+            process::exit(3); // Tool error
         }
     };
 
@@ -486,7 +558,12 @@ async fn handle_cycles_command(command: Cycles) {
 
                     if command.fail_on_cycles && analysis_result.summary.total_findings > 0 {
                         eprintln!("\n❌ Error: Circular dependencies detected.");
-                        process::exit(1);
+                        process::exit(2); // Failures above threshold
+                    }
+
+                    // Exit with warnings code if findings exist (and not failing hard)
+                    if !command.fail_on_cycles && analysis_result.summary.total_findings > 0 {
+                        process::exit(1); // Warnings
                     }
                 } else {
                     output_result(&result, &command.format);
@@ -494,17 +571,17 @@ async fn handle_cycles_command(command: Cycles) {
             } else if let Some(error) = response.error {
                 let api_error = mill_foundation::protocol::ApiError::from(error);
                 output_error(&api_error, &command.format);
-                process::exit(1);
+                process::exit(3); // Tool error
             }
         }
         Ok(_) => {
             eprintln!("Unexpected response type");
-            process::exit(1);
+            process::exit(3); // Tool error
         }
         Err(server_error) => {
             let api_error = mill_foundation::protocol::ApiError::internal(server_error.to_string());
             output_error(&api_error, &command.format);
-            process::exit(1);
+            process::exit(3); // Tool error
         }
     }
 }
@@ -519,24 +596,77 @@ async fn handle_dead_code_command(command: DeadCode) {
         "check_public_exports": command.include_public,
         "symbol_types": command.symbol_types,
     });
-    let args_json = serde_json::to_string(&args).unwrap();
-    handle_tool_command(
-        "analyze.dead_code",
-        Some(&args_json),
-        None,  // input_file
-        None,  // target
-        None,  // source
-        None,  // destination
-        None,  // new_name
-        None,  // name
-        None,  // kind
-        None,  // scope
-        None,  // update_comments
-        None,  // update_markdown_prose
-        false, // update_all
-        "pretty",
-    )
-    .await;
+
+    let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
+        Ok(d) => d,
+        Err(e) => {
+            let error = mill_foundation::protocol::ApiError::internal(format!(
+                "Failed to initialize: {}",
+                e
+            ));
+            output_error(&error, &command.format);
+            process::exit(3);
+        }
+    };
+
+    use mill_foundation::core::model::mcp::{McpMessage, McpRequest};
+    let params = serde_json::json!({
+        "name": "analyze.dead_code",
+        "arguments": args,
+    });
+    let request = McpRequest {
+        jsonrpc: "2.0".to_string(),
+        id: Some(serde_json::json!(1)),
+        method: "tools/call".to_string(),
+        params: Some(params),
+    };
+    let message = McpMessage::Request(request);
+    let session_info = SessionInfo::default();
+
+    match dispatcher.dispatch(message, &session_info).await {
+        Ok(McpMessage::Response(response)) => {
+            if let Some(result) = response.result {
+                if let Ok(analysis_result) =
+                    serde_json::from_value::<AnalysisResult>(result.clone())
+                {
+                    // Output results
+                    if command.format == "json" {
+                        let output = serde_json::to_string_pretty(&analysis_result).unwrap();
+                        println!("{}", output);
+                    } else {
+                        output_result(&result, "pretty");
+                    }
+
+                    // Check thresholds and exit with appropriate code
+                    if let Some(fail_condition) = &command.fail_if {
+                        if evaluate_threshold(&analysis_result, fail_condition) {
+                            process::exit(2); // Failures above threshold
+                        }
+                    }
+
+                    // Exit with warnings code if findings exist
+                    if analysis_result.summary.total_findings > 0 {
+                        process::exit(1); // Warnings
+                    }
+                } else {
+                    output_result(&result, &command.format);
+                }
+            } else if let Some(error) = response.error {
+                let api_error = mill_foundation::protocol::ApiError::from(error);
+                output_error(&api_error, &command.format);
+                process::exit(3);
+            }
+        }
+        Ok(_) => {
+            eprintln!("Unexpected response type");
+            process::exit(3);
+        }
+        Err(server_error) => {
+            let api_error = mill_foundation::protocol::ApiError::internal(server_error.to_string());
+            output_error(&api_error, &command.format);
+            process::exit(3);
+        }
+    }
 }
 
 /// Handle the setup command
