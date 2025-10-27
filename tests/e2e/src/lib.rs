@@ -3,7 +3,6 @@
 //! This crate provides a robust testing infrastructure including test harnesses,
 //! mock implementations, helper utilities, and end-to-end test suites. It ensures
 //! complete coverage of all system functionality including refactoring workflows,
-#![allow(unused_variables)]
 //! plugin system operations, LSP integration, and performance validation.
 //! The testing framework validates both correctness and performance characteristics.
 
@@ -96,6 +95,24 @@ pub mod test_analyze_batch;
 
 #[cfg(test)]
 pub mod test_suggestions_dead_code;
+
+#[cfg(test)]
+pub mod test_suggestions_quality;
+
+#[cfg(test)]
+pub mod test_suggestions_dependencies;
+
+#[cfg(test)]
+pub mod test_suggestions_structure;
+
+#[cfg(test)]
+pub mod test_suggestions_documentation;
+
+#[cfg(test)]
+pub mod test_suggestions_tests;
+
+#[cfg(test)]
+pub mod test_closed_loop_workflow;
 
 // Workspace package creation tests (Proposal 50)
 #[cfg(test)]

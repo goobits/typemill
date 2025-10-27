@@ -307,23 +307,23 @@ ci-local:
 	@echo "🧪 Running GitHub Actions CI checks locally..."
 	@echo ""
 	@echo "1️⃣  Format check (rustfmt)"
-	@cargo fmt --all -- --check || { echo "❌ Format check failed"; exit 1; }
+	@$(CARGO) fmt --all -- --check || { echo "❌ Format check failed"; exit 1; }
 	@echo "✅ Format check passed\n"
 	@echo "2️⃣  Lint check (clippy --all-targets --all-features)"
-	@cargo clippy --all-targets --all-features -- -D warnings || { echo "❌ Clippy failed"; exit 1; }
+	@$(CARGO) clippy --all-targets --all-features -- -D warnings || { echo "❌ Clippy failed"; exit 1; }
 	@echo "✅ Clippy passed\n"
 	@echo "3️⃣  Build check"
-	@cargo build --verbose || { echo "❌ Build failed"; exit 1; }
+	@$(CARGO) build --verbose || { echo "❌ Build failed"; exit 1; }
 	@echo "✅ Build passed\n"
 	@echo "4️⃣  Test suite"
 	@if command -v cargo-nextest >/dev/null 2>&1; then \
-		cargo nextest run --workspace || { echo "❌ Tests failed"; exit 1; }; \
+		$(CARGO) nextest run --workspace || { echo "❌ Tests failed"; exit 1; }; \
 	else \
-		cargo test --workspace || { echo "❌ Tests failed"; exit 1; }; \
+		$(CARGO) test --workspace || { echo "❌ Tests failed"; exit 1; }; \
 	fi
 	@echo "✅ Tests passed\n"
 	@echo "5️⃣  Doc tests"
-	@cargo test --doc || { echo "❌ Doc tests failed"; exit 1; }
+	@$(CARGO) test --doc || { echo "❌ Doc tests failed"; exit 1; }
 	@echo "✅ Doc tests passed\n"
 	@echo ""
 	@echo "✅ All CI checks passed! Safe to push to GitHub."
