@@ -99,6 +99,7 @@ mill-lang-common = { path = "crates/mill-lang-common", default-features = false 
 mill-lang-typescript = { path = "crates/mill-lang-typescript", default-features = false }
 mill-lang-markdown = { path = "crates/mill-lang-markdown", default-features = false }
 mill-lang-rust = { path = "crates/mill-lang-rust", default-features = false }
+mill-lang-python = { path = "crates/mill-lang-python", default-features = false }
 mill-analysis-dead-code = { path = "analysis/mill-analysis-dead-code" }
 mill-analysis-graph = { path = "analysis/mill-analysis-graph" }
 

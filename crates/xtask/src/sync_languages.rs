@@ -251,9 +251,9 @@ fn sync_crate_features(
     }
 
     // Update/add lang-* features
-    for (lang_name, _config) in &applicable_langs {
+    for (lang_name, config) in &applicable_langs {
         let feature_name = format!("lang-{}", lang_name);
-        let feature_deps = generate_feature_dependencies(crate_info, lang_name);
+        let feature_deps = generate_feature_dependencies(crate_info, lang_name, &config.category);
 
         if features_table.contains_key(&feature_name) {
             // Update existing
@@ -292,12 +292,29 @@ fn sync_crate_features(
         for (lang_name, _config) in &applicable_langs {
             let dep_name = format!("mill-lang-{}", lang_name);
 
-            // Only update if it doesn't already exist or needs to be made optional
-            if !deps_table.contains_key(&dep_name) {
+            // Check if dependency exists
+            if let Some(existing_dep) = deps_table.get_mut(&dep_name) {
+                // Update existing dependency to ensure it's optional
+                if let Some(inline_table) = existing_dep.as_inline_table_mut() {
+                    // For mill-services, ensure optional = true
+                    if crate_info.name == "mill-services" {
+                        if !inline_table.contains_key("optional") {
+                            inline_table.insert("optional", Value::Boolean(Formatted::new(true)));
+                            if verbose {
+                                println!("    {} Updated {} to be optional", "✏️ ".yellow(), dep_name);
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Add new dependency
                 let mut dep_table = InlineTable::new();
                 if crate_info.name == "mill-services" {
+                    // mill-services uses workspace deps, but they must be optional
                     dep_table.insert("workspace", Value::Boolean(Formatted::new(true)));
+                    dep_table.insert("optional", Value::Boolean(Formatted::new(true)));
                 } else {
+                    // mill-plugin-bundle uses path deps
                     dep_table.insert(
                         "path",
                         Value::String(Formatted::new(format!("../mill-lang-{}", lang_name))),
@@ -329,40 +346,70 @@ fn sync_crate_features(
     Ok((added, updated))
 }
 
-fn generate_feature_dependencies(crate_info: &CrateInfo, lang_name: &str) -> Array {
+fn generate_feature_dependencies(
+    crate_info: &CrateInfo,
+    lang_name: &str,
+    category: &LanguageCategory,
+) -> Array {
     let mut arr = Array::new();
 
     match crate_info.name {
         "mill-services" => {
+            // Only Full languages reach here (filtered by applicable_langs)
             arr.push(format!("mill-ast/lang-{}", lang_name));
             arr.push(format!("mill-plugin-system/lang-{}", lang_name));
         }
         "mill-ast" => {
             // Empty feature flag (used for conditional compilation)
+            // Only Full languages reach here
         }
         "mill-plugin-system" => {
+            // Only Full languages reach here
             arr.push("runtime");
             arr.push(format!("mill-ast/lang-{}", lang_name));
         }
         "mill-transport" => {
+            // Only Full languages reach here
             arr.push(format!("mill-ast/lang-{}", lang_name));
         }
         "mill-plugin-bundle" => {
+            // Both Full and Config languages
             arr.push(format!("dep:mill-lang-{}", lang_name));
         }
         "mill-server" => {
-            arr.push(format!("mill-services/lang-{}", lang_name));
-            arr.push(format!("mill-ast/lang-{}", lang_name));
-            arr.push(format!("mill-plugin-bundle/lang-{}", lang_name));
-            arr.push(format!("mill-plugin-system/lang-{}", lang_name));
-            arr.push(format!("mill-transport/lang-{}", lang_name));
+            // Both Full and Config languages reach here
+            match category {
+                LanguageCategory::Full => {
+                    // Full languages need the complete dependency chain
+                    arr.push(format!("mill-services/lang-{}", lang_name));
+                    arr.push(format!("mill-ast/lang-{}", lang_name));
+                    arr.push(format!("mill-plugin-bundle/lang-{}", lang_name));
+                    arr.push(format!("mill-plugin-system/lang-{}", lang_name));
+                    arr.push(format!("mill-transport/lang-{}", lang_name));
+                }
+                LanguageCategory::Config => {
+                    // Config languages only need bundle (they don't have AST/services support)
+                    arr.push(format!("mill-plugin-bundle/lang-{}", lang_name));
+                }
+            }
         }
         "mill" => {
-            arr.push(format!("mill-server/lang-{}", lang_name));
-            arr.push(format!("mill-plugin-bundle/lang-{}", lang_name));
-            arr.push(format!("mill-ast/lang-{}", lang_name));
-            arr.push(format!("mill-plugin-system/lang-{}", lang_name));
-            arr.push(format!("mill-transport/lang-{}", lang_name));
+            // Both Full and Config languages reach here
+            match category {
+                LanguageCategory::Full => {
+                    // Full languages need the complete dependency chain
+                    arr.push(format!("mill-server/lang-{}", lang_name));
+                    arr.push(format!("mill-plugin-bundle/lang-{}", lang_name));
+                    arr.push(format!("mill-ast/lang-{}", lang_name));
+                    arr.push(format!("mill-plugin-system/lang-{}", lang_name));
+                    arr.push(format!("mill-transport/lang-{}", lang_name));
+                }
+                LanguageCategory::Config => {
+                    // Config languages only need bundle via server
+                    arr.push(format!("mill-server/lang-{}", lang_name));
+                    arr.push(format!("mill-plugin-bundle/lang-{}", lang_name));
+                }
+            }
         }
         _ => {}
     }

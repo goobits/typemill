@@ -28,8 +28,9 @@ reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-feature
 mill-ast = { path = "../mill-ast", default-features = false }
 
 [features]
-default = ["lang-rust", "lang-typescript", "lang-markdown"]
+default = ["lang-typescript", "lang-rust", "lang-markdown"]
 lang-rust = ["mill-ast/lang-rust"]
 lang-typescript = ["mill-ast/lang-typescript"]
 lang-markdown = ["mill-ast/lang-markdown"]
 mcp-proxy = ["mill-foundation/mcp-proxy", "mill-config/mcp-proxy"]
+lang-python = ["mill-ast/lang-python"]
