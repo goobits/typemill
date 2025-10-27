@@ -12,15 +12,18 @@ ifdef SCCACHE_BIN
     export RUSTC_WRAPPER=$(SCCACHE_BIN)
 endif
 
+# Ensure cargo is in PATH (handles fresh Rust installations)
+CARGO := $(shell command -v cargo 2>/dev/null || echo "$$HOME/.cargo/bin/cargo")
+
 # Default target
 build:
 	@command -v sccache >/dev/null 2>&1 || { echo "⚠️  Warning: sccache not found. Run 'make setup' for faster builds."; echo ""; }
-	cargo build
+	$(CARGO) build
 
 # Optimized release build
 release:
 	@command -v sccache >/dev/null 2>&1 || { echo "⚠️  Warning: sccache not found. Run 'make setup' for faster builds."; echo ""; }
-	cargo build --release
+	$(CARGO) build --release
 
 # Run fast tests (uses cargo-nextest). This is the recommended command for local development.
 test:
@@ -396,22 +399,40 @@ first-time-setup:
 	@echo "║  This will install everything you need (~3-5 minutes)   ║"
 	@echo "╚══════════════════════════════════════════════════════════╝"
 	@echo ""
-	@echo "📋 Step 1/8: Checking parser build dependencies..."
+	@echo "📋 Step 1/9: Checking parser build dependencies..."
 	@make check-parser-deps
 	@echo ""
-	@echo "🔧 Step 2/8: Installing cargo-binstall (fast binary downloads)..."
-	@if ! command -v cargo-binstall >/dev/null 2>&1; then \
+	@echo "🦀 Step 2/9: Ensuring Rust toolchain is installed..."
+	@if ! command -v cargo >/dev/null 2>&1; then \
+		if [ -f "$$HOME/.cargo/env" ]; then \
+			echo "  ℹ️  Rust installed but not in PATH, loading environment..."; \
+			. "$$HOME/.cargo/env" && echo "  ✅ Rust environment loaded"; \
+		else \
+			echo "  → Installing Rust via rustup (this takes ~30 seconds)..."; \
+			curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; \
+			echo "  ✅ Rust installed successfully"; \
+			. "$$HOME/.cargo/env"; \
+			echo "  ✅ Rust environment loaded"; \
+		fi; \
+	else \
+		echo "  ✅ Rust toolchain already installed"; \
+	fi
+	@echo ""
+	@echo "🔧 Step 3/9: Installing cargo-binstall (fast binary downloads)..."
+	@export PATH="$$HOME/.cargo/bin:$$PATH"; \
+	if ! command -v cargo-binstall >/dev/null 2>&1; then \
 		curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash; \
 		echo "  ✅ cargo-binstall installed"; \
 	else \
 		echo "  ✅ cargo-binstall already installed"; \
 	fi
 	@echo ""
-	@echo "🛠️  Step 3/8: Installing Rust development tools (pre-built binaries)..."
-	@cargo binstall --no-confirm cargo-nextest sccache cargo-watch cargo-audit
-	@echo "  ✅ Rust dev tools installed"
+	@echo "🛠️  Step 4/9: Installing Rust development tools (pre-built binaries)..."
+	@export PATH="$$HOME/.cargo/bin:$$PATH"; \
+	cargo binstall --no-confirm cargo-nextest sccache cargo-watch cargo-audit; \
+	echo "  ✅ Rust dev tools installed"
 	@echo ""
-	@echo "🔗 Step 4/8: Installing mold linker (3-10x faster linking)..."
+	@echo "🔗 Step 5/9: Installing mold linker (3-10x faster linking)..."
 	@if command -v mold >/dev/null 2>&1; then \
 		echo "  ✅ mold already installed"; \
 	elif command -v brew >/dev/null 2>&1; then \
@@ -426,16 +447,25 @@ first-time-setup:
 		echo "  ⚠️  No package manager found, skipping mold (optional)"; \
 	fi
 	@echo ""
-	@echo "🔨 Step 5/8: Building external language parsers..."
+	@echo "🔨 Step 6/9: Building external language parsers..."
 	@make build-parsers
 	@echo ""
-	@echo "🏗️  Step 6/8: Building main Rust project (this may take a few minutes)..."
-	@make build
+	@echo "🏗️  Step 7/9: Building main Rust project (this may take a few minutes)..."
+	@echo "  → Populating cargo registry (prevents ARM64 corruption)..."
+	@export PATH="$$HOME/.cargo/bin:$$PATH"; \
+	export CARGO_BUILD_JOBS=6; \
+	export CARGO_INCREMENTAL=0; \
+	cargo fetch --locked || { echo "  ⚠️  cargo fetch failed, trying without --locked"; cargo fetch; }
+	@echo "  → Building project with ARM64-safe settings..."
+	@export PATH="$$HOME/.cargo/bin:$$PATH"; \
+	export CARGO_BUILD_JOBS=6; \
+	export CARGO_INCREMENTAL=0; \
+	cargo build --offline -j 1 || cargo build
 	@echo ""
-	@echo "🌐 Step 7/8: Installing LSP servers (for testing)..."
+	@echo "🌐 Step 8/9: Installing LSP servers (for testing)..."
 	@make install-lsp-servers
 	@echo ""
-	@echo "🔍 Step 8/8: Validating installation..."
+	@echo "🔍 Step 9/9: Validating installation..."
 	@make validate-setup
 	@echo ""
 	@echo "╔══════════════════════════════════════════════════════════╗"
