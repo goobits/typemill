@@ -1,0 +1,71 @@
+# Language Plugin Registry
+#
+# This is the single source of truth for all language plugins in TypeMill.
+# Run `cargo xtask sync-languages` after modifying to regenerate feature flags.
+#
+# Schema:
+#   [languages.<name>]
+#   path = "crates/mill-lang-<name>"      # Path to plugin crate
+#   plugin_struct = "PluginStructName"     # Exported plugin struct
+#   category = "full" | "config"           # Full lang or config-only
+#   default = true | false                 # Include in default build
+#
+# Propagation rules:
+#   - full:   services, ast, plugin-system, transport, plugin-bundle, server, app
+#   - config: plugin-bundle, server, app (skip lower layers)
+
+[languages.rust]
+path = "crates/mill-lang-rust"
+plugin_struct = "RustPlugin"
+category = "full"
+default = true
+
+[languages.typescript]
+path = "crates/mill-lang-typescript"
+plugin_struct = "TypeScriptPlugin"
+category = "full"
+default = true
+
+[languages.python]
+path = "crates/mill-lang-python"
+plugin_struct = "PythonPlugin"
+category = "full"
+default = false  # Optional - enable with --features lang-python
+
+[languages.markdown]
+path = "crates/mill-lang-markdown"
+plugin_struct = "MarkdownPlugin"
+category = "full"  # Has full AST/analysis support
+default = true
+
+[languages.toml]
+path = "crates/mill-lang-toml"
+plugin_struct = "TomlLanguagePlugin"
+category = "config"
+default = true
+
+[languages.yaml]
+path = "crates/mill-lang-yaml"
+plugin_struct = "YamlLanguagePlugin"
+category = "config"
+default = true
+
+[languages.gitignore]
+path = "crates/mill-lang-gitignore"
+plugin_struct = "GitignoreLanguagePlugin"
+category = "config"
+default = true
+
+# Future languages (examples):
+#
+# [languages.go]
+# path = "crates/mill-lang-go"
+# plugin_struct = "GoPlugin"
+# category = "full"
+# default = false
+#
+# [languages.java]
+# path = "crates/mill-lang-java"
+# plugin_struct = "JavaPlugin"
+# category = "full"
+# default = false

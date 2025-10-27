@@ -6,6 +6,7 @@ mod check_duplicates;
 mod check_features;
 mod install;
 mod new_lang;
+mod sync_languages;
 mod utils;
 
 #[derive(Parser)]
@@ -31,6 +32,9 @@ enum Command {
     /// Create a new language plugin scaffold
     NewLang(new_lang::NewLangArgs),
 
+    /// Synchronize language features from languages.toml registry
+    SyncLanguages(sync_languages::SyncLanguagesArgs),
+
     /// Run all checks (fmt, clippy, test, deny)
     CheckAll,
 }
@@ -43,6 +47,7 @@ fn main() -> Result<()> {
         Command::CheckDuplicates(args) => check_duplicates::run(args),
         Command::CheckFeatures(args) => check_features::run(args),
         Command::NewLang(args) => new_lang::run(args),
+        Command::SyncLanguages(args) => sync_languages::run(args),
         Command::CheckAll => run_all_checks(),
     }
 }
