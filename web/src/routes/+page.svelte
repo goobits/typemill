@@ -72,7 +72,8 @@ mill status</code></pre>
 	<p>Ask your AI assistant to:</p>
 	<pre><code>"Find the definition of main in src/main.rs"
 "Show me all references to the Config type"
-"Rename the function oldName to newName"</code></pre>
+"Rename the function oldName to newName"
+"Analyze code quality in src/app.rs and show suggestions"</code></pre>
 </section>
 
 <section>
@@ -99,7 +100,7 @@ mill status</code></pre>
 			<tr>
 				<td><span class="badge">Analysis</span></td>
 				<td>8 tools</td>
-				<td>Quality, dead code, dependencies, structure, documentation, tests</td>
+				<td>Quality, dead code, dependencies with actionable suggestions</td>
 			</tr>
 			<tr>
 				<td><span class="badge">Workspace</span></td>
