@@ -1,9 +1,11 @@
 <script lang="ts">
 	import '../app.css';
+	import { generateNavigation } from '$lib/navigation';
 
 	let { children } = $props();
 
 	let navOpen = $state(false);
+	const navigation = generateNavigation();
 
 	function toggleNav() {
 		navOpen = !navOpen;

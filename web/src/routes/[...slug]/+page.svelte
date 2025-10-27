@@ -1,7 +1,11 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { marked } from 'marked';
+	import { onMount } from 'svelte';
 
 	export let data: PageData;
+
+	let htmlContent = '';
 
 	// Extract title from metadata or generate from slug
 	$: title = data.metadata?.title || formatTitle(data.slug);
@@ -37,6 +41,17 @@
 
 		return crumbs;
 	}
+
+	// Convert markdown to HTML
+	$: {
+		marked.setOptions({
+			gfm: true,
+			breaks: false,
+			headerIds: true,
+			mangle: false
+		});
+		htmlContent = marked.parse(data.content);
+	}
 </script>
 
 <svelte:head>
@@ -61,7 +76,7 @@
 
 	<!-- Markdown Content -->
 	<article class="markdown-content">
-		<svelte:component this={data.component} />
+		{@html htmlContent}
 	</article>
 </div>
 

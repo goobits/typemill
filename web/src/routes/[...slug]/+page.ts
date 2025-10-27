@@ -1,61 +1,49 @@
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 
-interface MarkdownModule {
-	default: any;
-	metadata?: {
-		title?: string;
-		description?: string;
-		[key: string]: any;
-	};
-}
-
-// Import all markdown files from the docs directory
-const markdownFiles = import.meta.glob('/workspace/docs/**/*.md', { eager: false });
-const rootMarkdownFiles = import.meta.glob('/workspace/*.md', { eager: false });
-
-// Combine both glob patterns
-const allMarkdownFiles = { ...markdownFiles, ...rootMarkdownFiles };
-
-export const load: PageLoad = async ({ params }) => {
+export const load: PageLoad = async ({ params, fetch }) => {
 	const { slug } = params;
 
-	// Handle special routes
+	// Determine the file path based on the slug
 	let filePath: string;
 
 	if (!slug || slug === '') {
-		// Home route -> /workspace/README.md
-		filePath = '/workspace/README.md';
+		// Home route
+		filePath = 'README.md';
 	} else if (slug === 'docs') {
-		// /docs -> /workspace/docs/README.md
-		filePath = '/workspace/docs/README.md';
+		filePath = 'docs/README.md';
 	} else if (slug === 'contributing') {
-		// /contributing -> /workspace/contributing.md
-		filePath = '/workspace/contributing.md';
+		filePath = 'contributing.md';
+	} else if (slug === 'DEVELOPMENT') {
+		filePath = 'DEVELOPMENT.md';
 	} else {
-		// Try to find the markdown file in docs directory
-		// Convert URL slug to file path (e.g., "tools/navigation" -> "/workspace/docs/tools/navigation.md")
-		filePath = `/workspace/docs/${slug}.md`;
-	}
-
-	// Check if file exists in our glob
-	if (!allMarkdownFiles[filePath]) {
-		// Also check for README.md in the directory
-		const readmePath = `/workspace/docs/${slug}/README.md`;
-		if (allMarkdownFiles[readmePath]) {
-			filePath = readmePath;
-		} else {
-			throw error(404, `Page not found: ${slug}`);
-		}
+		// Try docs directory first
+		filePath = `docs/${slug}.md`;
 	}
 
 	try {
-		// Dynamically import the markdown file
-		const module = await allMarkdownFiles[filePath]() as MarkdownModule;
+		// Fetch the markdown content from our API route
+		const response = await fetch(`/api/markdown?path=${encodeURIComponent(filePath)}`);
 
+		if (!response.ok) {
+			// Try with README.md appended
+			const readmeResponse = await fetch(`/api/markdown?path=${encodeURIComponent(`docs/${slug}/README.md`)}`);
+			if (!readmeResponse.ok) {
+				throw error(404, `Page not found: ${slug}`);
+			}
+			const data = await readmeResponse.json();
+			return {
+				content: data.content,
+				metadata: data.metadata || {},
+				slug: slug || 'home',
+				filePath: `docs/${slug}/README.md`
+			};
+		}
+
+		const data = await response.json();
 		return {
-			component: module.default,
-			metadata: module.metadata || {},
+			content: data.content,
+			metadata: data.metadata || {},
 			slug: slug || 'home',
 			filePath
 		};
