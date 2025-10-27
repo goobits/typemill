@@ -414,6 +414,7 @@ impl QualityHandler {
             };
 
             if include_suggestions {
+                debug!("include_suggestions is true, generating suggestions");
                 let suggestion_generator = SuggestionGenerator::new();
                 let context = AnalysisContext {
                     file_path: report.file_path.clone(),
@@ -422,15 +423,23 @@ impl QualityHandler {
                     ast_parse_errors: 0,
                 };
 
-                if let Ok(candidates) =
-                    generate_quality_refactoring_candidates(&finding, &report.file_path)
-                {
-                    let suggestions = suggestion_generator.generate_multiple(candidates, &context);
-                    finding.suggestions = suggestions
-                        .into_iter()
-                        .map(|s| s.into())
-                        .collect::<Vec<Suggestion>>();
+                match generate_quality_refactoring_candidates(&finding, &report.file_path) {
+                    Ok(candidates) => {
+                        debug!(candidates_count = candidates.len(), "Got candidates, generating suggestions");
+                        let suggestions = suggestion_generator.generate_multiple(candidates, &context);
+                        debug!(suggestions_count = suggestions.len(), "Generated suggestions");
+                        finding.suggestions = suggestions
+                            .into_iter()
+                            .map(|s| s.into())
+                            .collect::<Vec<Suggestion>>();
+                        debug!(final_suggestions_count = finding.suggestions.len(), "Final suggestions count after mapping");
+                    }
+                    Err(e) => {
+                        debug!(error = %e, "Failed to generate quality refactoring candidates");
+                    }
                 }
+            } else {
+                debug!("include_suggestions is false, skipping suggestions");
             }
 
             result.add_finding(finding);
@@ -942,6 +951,12 @@ fn generate_quality_refactoring_candidates(
     finding: &Finding,
     file_path: &str,
 ) -> Result<Vec<RefactoringCandidate>> {
+    debug!(
+        finding_kind = %finding.kind,
+        file_path = %file_path,
+        "Generating quality refactoring candidates"
+    );
+
     let mut candidates = Vec::new();
     let location = finding.location.clone();
     let line = location.range.as_ref().map(|r| r.start.line).unwrap_or(0) as usize;
@@ -982,6 +997,11 @@ fn generate_quality_refactoring_candidates(
         }
         _ => {}
     }
+
+    debug!(
+        candidates_count = candidates.len(),
+        "Generated quality refactoring candidates"
+    );
 
     Ok(candidates)
 }
