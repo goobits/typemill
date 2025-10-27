@@ -24,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/goobits/mill/main/install.sh | bash
 # Alternative: Build from source
 cargo install mill --locked
 
-# Auto-detect languages and configure
+# Auto-detect languages, configure, and install LSP servers
 mill setup
 
 # Start the server
@@ -33,6 +33,13 @@ mill start
 # Verify it's running
 mill status
 ```
+
+**What `mill setup` does:**
+- 🔍 Scans your project to detect languages (TypeScript, Rust, Python)
+- 📋 Creates `.typemill/config.json` with LSP server configurations
+- 📥 **Auto-downloads missing LSP servers** (with your permission)
+- ✅ Verifies LSP servers are working
+- 💾 Caches LSPs in `~/.mill/lsp/` for reuse across projects
 
 ### Connect Your AI Assistant
 Add to your MCP configuration (e.g., Claude Desktop):
@@ -167,6 +174,43 @@ echo 'TYPEMILL__SERVER__AUTH__JWT_SECRET=dev-secret' > .env
 
 See [CLAUDE.md](CLAUDE.md#environment-variables) for complete environment variable reference and [Docker Deployment](docs/operations/docker_deployment.md) for production setup.
 
+## 📥 LSP Server Management
+
+TypeMill automatically downloads and installs LSP servers during `mill setup`, but you can also manage them manually:
+
+```bash
+# Install LSP for a specific language
+mill install-lsp rust
+mill install-lsp typescript
+mill install-lsp python
+
+# Check what's installed
+mill status  # Shows LSP server status
+
+# LSPs are cached in ~/.mill/lsp/ for reuse across projects
+ls ~/.mill/lsp/
+```
+
+**How it works:**
+- **TypeScript**: Installs `typescript-language-server` via npm (requires Node.js)
+- **Rust**: Downloads `rust-analyzer` binary from GitHub releases
+- **Python**: Installs `python-lsp-server` via pip/pipx (requires Python)
+
+**Manual installation:**
+If you prefer to install LSP servers yourself:
+```bash
+# TypeScript
+npm install -g typescript-language-server typescript
+
+# Rust
+cargo install rust-analyzer
+
+# Python
+pipx install python-lsp-server  # Recommended (PEP 668 compliant)
+# OR
+pip install --user python-lsp-server
+```
+
 ## 🔧 Troubleshooting
 
 **Server won't start:**
@@ -180,6 +224,20 @@ which rust-analyzer
 
 # Review config file
 cat .typemill/config.json
+```
+
+**LSP installation fails:**
+```bash
+# TypeScript: Ensure Node.js/npm is installed
+node --version && npm --version
+
+# Python: Ensure pip or pipx is available
+python3 --version && pip3 --version
+# Or use pipx (recommended for PEP 668 environments)
+pipx --version
+
+# Rust: Downloads from GitHub - check network/firewall
+curl -I https://github.com/rust-lang/rust-analyzer/releases
 ```
 
 **Tools not working:**

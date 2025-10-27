@@ -488,13 +488,18 @@ cargo check
 
 # CLI commands for configuration and management
 ./target/release/mill --version # Show version information
-./target/release/mill setup    # Smart setup with auto-detection
+./target/release/mill setup    # Smart setup with auto-detection and LSP installation
 ./target/release/mill status   # Show what's working right now
 ./target/release/mill start    # Start the MCP server for AI assistants
 ./target/release/mill stop     # Stop the running MCP server
 ./target/release/mill serve    # Start WebSocket server
 ./target/release/mill link     # Link to AI assistants
 ./target/release/mill unlink   # Remove AI from config
+
+# LSP server management
+./target/release/mill install-lsp rust       # Install rust-analyzer
+./target/release/mill install-lsp typescript # Install typescript-language-server
+./target/release/mill install-lsp python     # Install python-lsp-server
 
 # Build automation (xtask pattern - cross-platform Rust tasks)
 cargo xtask install           # Install mill to ~/.local/bin
@@ -636,14 +641,16 @@ See `.debug/language-plugin-migration/COMPLETE_PARITY_ANALYSIS.md` for detailed 
 
 The server loads configuration from `.typemill/config.json` in the current working directory. If no configuration exists, run `mill setup` to create one.
 
-### Smart Setup  
+### Smart Setup
 
-Use `mill setup` to configure LSP servers with auto-detection:
+Use `mill setup` to configure LSP servers with auto-detection and auto-installation:
 
 - Scans project for file extensions (respects .gitignore)
-- Presents pre-configured language server options for detected languages
-- Generates `.typemill/config.json` configuration file  
-- Tests server availability during setup
+- Detects required languages (TypeScript, Rust, Python)
+- Generates `.typemill/config.json` configuration file
+- **Auto-downloads missing LSP servers** (prompts for user permission)
+- Caches LSP binaries in `~/.mill/lsp/` for reuse across projects
+- Verifies LSP servers are working after installation
 
 Each server config requires:
 

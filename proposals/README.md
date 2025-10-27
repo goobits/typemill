@@ -45,10 +45,13 @@ All can run simultaneously:
 Completed proposals moved to `archived/` for reference:
 - `00_rust_move_test_coverage.md` ✅
 - `01_fix_same_crate_moves.md` ✅
+- `01_plugin_refactoring.md` ✅
 - `01a_rust_directory_structure.md` ✅
 - `01b_cargo_deny_integration.md` ✅
+- `02_plugin_helpers_consolidation.md` ✅
 - `02a_extract_rust_imports_module.md` ✅
 - `02b_split_reference_updater.md` ✅
+- `06_auto_download_lsp.md` ✅
 - `09a_refactor_plan_trait.md` ✅
 - `09b_segregate_import_trait.md` ✅
 
