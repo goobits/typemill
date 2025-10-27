@@ -227,8 +227,8 @@ pub struct DeadCode {
     /// Fail if condition matches (e.g., "high_severity > 0", "complexity > 15")
     #[arg(long)]
     pub fail_if: Option<String>,
-    /// Output format (pretty, json)
-    #[arg(long, default_value = "pretty", value_parser = ["pretty", "json"])]
+    /// Output format (pretty, json, junit)
+    #[arg(long, default_value = "pretty", value_parser = ["pretty", "json", "junit"])]
     pub format: String,
 }
 
@@ -244,8 +244,8 @@ pub struct Cycles {
     /// Only report cycles with N or more modules
     #[arg(long, name = "min-size")]
     pub min_size: Option<usize>,
-    /// Output format (pretty, json)
-    #[arg(long, default_value = "pretty", value_parser = ["pretty", "json"])]
+    /// Output format (pretty, json, junit)
+    #[arg(long, default_value = "pretty", value_parser = ["pretty", "json", "junit"])]
     pub format: String,
 }
 
@@ -549,11 +549,22 @@ async fn handle_cycles_command(command: Cycles) {
                 if let Ok(analysis_result) =
                     serde_json::from_value::<AnalysisResult>(result.clone())
                 {
-                    if command.format == "pretty" {
-                        output_pretty_cycles(&analysis_result);
-                    } else {
-                        let output = serde_json::to_string_pretty(&analysis_result).unwrap();
-                        println!("{}", output);
+                    // Output results based on format
+                    match command.format.as_str() {
+                        "pretty" => {
+                            output_pretty_cycles(&analysis_result);
+                        }
+                        "json" => {
+                            let output = serde_json::to_string_pretty(&analysis_result).unwrap();
+                            println!("{}", output);
+                        }
+                        "junit" => {
+                            let xml = to_junit_xml(&analysis_result);
+                            println!("{}", xml);
+                        }
+                        _ => {
+                            output_pretty_cycles(&analysis_result);
+                        }
                     }
 
                     if command.fail_on_cycles && analysis_result.summary.total_findings > 0 {
@@ -629,12 +640,19 @@ async fn handle_dead_code_command(command: DeadCode) {
                 if let Ok(analysis_result) =
                     serde_json::from_value::<AnalysisResult>(result.clone())
                 {
-                    // Output results
-                    if command.format == "json" {
-                        let output = serde_json::to_string_pretty(&analysis_result).unwrap();
-                        println!("{}", output);
-                    } else {
-                        output_result(&result, "pretty");
+                    // Output results based on format
+                    match command.format.as_str() {
+                        "json" => {
+                            let output = serde_json::to_string_pretty(&analysis_result).unwrap();
+                            println!("{}", output);
+                        }
+                        "junit" => {
+                            let xml = to_junit_xml(&analysis_result);
+                            println!("{}", xml);
+                        }
+                        _ => {
+                            output_result(&result, "pretty");
+                        }
                     }
 
                     // Check thresholds and exit with appropriate code
@@ -1731,6 +1749,96 @@ async fn handle_convert_naming(
             process::exit(1);
         }
     }
+}
+
+/// Convert AnalysisResult to JUnit XML format
+fn to_junit_xml(result: &AnalysisResult) -> String {
+    let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+    xml.push_str("<testsuites>\n");
+
+    // Create a testsuite for this analysis
+    let suite_name = result.metadata.category.clone();
+    let total_tests = result.summary.files_analyzed.max(1); // At least 1 test
+    let failures = result.summary.total_findings;
+
+    xml.push_str(&format!(
+        "  <testsuite name=\"{}\" tests=\"{}\" failures=\"{}\" errors=\"0\" skipped=\"0\">\n",
+        escape_xml(&suite_name),
+        total_tests,
+        failures
+    ));
+
+    // Group findings by file
+    let mut findings_by_file: std::collections::HashMap<String, Vec<&mill_foundation::protocol::analysis_result::Finding>> = std::collections::HashMap::new();
+    for finding in &result.findings {
+        let file = finding.location.file_path.clone();
+        findings_by_file.entry(file).or_insert_with(Vec::new).push(finding);
+    }
+
+    // If no findings, create a passing testcase
+    if findings_by_file.is_empty() {
+        xml.push_str(&format!(
+            "    <testcase name=\"{}\" classname=\"{}\">\n",
+            escape_xml(&result.metadata.scope.path),
+            escape_xml(&suite_name)
+        ));
+        xml.push_str("    </testcase>\n");
+    } else {
+        // Create a testcase for each file with findings
+        for (file, file_findings) in findings_by_file {
+            let testcase_name = file.clone();
+            xml.push_str(&format!(
+                "    <testcase name=\"{}\" classname=\"{}\">\n",
+                escape_xml(&testcase_name),
+                escape_xml(&suite_name)
+            ));
+
+            // Add failure if there are findings
+            if !file_findings.is_empty() {
+                let failure_count = file_findings.len();
+                let mut failure_message = format!("{} issue(s) found", failure_count);
+
+                xml.push_str(&format!(
+                    "      <failure message=\"{}\" type=\"{}\">\n",
+                    escape_xml(&failure_message),
+                    escape_xml(&suite_name)
+                ));
+
+                // List all findings
+                for finding in file_findings {
+                    let line_info = if let Some(ref range) = finding.location.range {
+                        format!("Line {}", range.start.line)
+                    } else {
+                        "File".to_string()
+                    };
+                    let severity = format!("{:?}", finding.severity);
+                    xml.push_str(&format!(
+                        "{}: [{}] {}\n",
+                        line_info,
+                        severity,
+                        escape_xml(&finding.message)
+                    ));
+                }
+
+                xml.push_str("      </failure>\n");
+            }
+
+            xml.push_str("    </testcase>\n");
+        }
+    }
+
+    xml.push_str("  </testsuite>\n");
+    xml.push_str("</testsuites>\n");
+    xml
+}
+
+/// Escape XML special characters
+fn escape_xml(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
 }
 
 /// Output result to stdout based on format
