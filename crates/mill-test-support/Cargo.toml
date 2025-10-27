@@ -30,7 +30,7 @@ mill-ast = { path = "../mill-ast", default-features = false }
 mill-handlers = { path = "../mill-handlers", default-features = false, features = ["refactor-all"] }
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+criterion = { version = "0.7", features = ["html_reports", "async_tokio"] }
 
 # Plugin bundle - provides all language plugins via auto-discovery
 # Linked via extern crate declaration in test modules
