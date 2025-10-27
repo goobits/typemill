@@ -32,7 +32,7 @@ mill-config = { path = "../mill-config" }
 [features]
 # Language features are preserved for backward compatibility but do not enable dependencies
 # mill-ast now uses capability traits from mill-plugin-api instead of direct plugin dependencies
-default = ["lang-typescript", "lang-rust", "lang-markdown"]
+default = ["lang-markdown", "lang-rust", "lang-typescript"]
 lang-rust = []
 lang-typescript = []
 lang-markdown = []

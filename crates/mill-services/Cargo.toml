@@ -34,12 +34,12 @@ mill-lang-rust = { workspace = true , optional = true }
 mill-lang-markdown = { workspace = true , optional = true }
 
 [features]
-default = ["lang-typescript", "lang-rust", "lang-markdown"]
-lang-rust = ["mill-ast/lang-rust", "mill-plugin-system/lang-rust"]
-lang-typescript = ["mill-ast/lang-typescript", "mill-plugin-system/lang-typescript"]
-lang-markdown = ["mill-ast/lang-markdown", "mill-plugin-system/lang-markdown"]
+default = ["lang-markdown", "lang-rust", "lang-typescript"]
+lang-rust = ["dep:mill-lang-rust", "mill-ast/lang-rust", "mill-plugin-system/lang-rust"]
+lang-typescript = ["dep:mill-lang-typescript", "mill-ast/lang-typescript", "mill-plugin-system/lang-typescript"]
+lang-markdown = ["dep:mill-lang-markdown", "mill-ast/lang-markdown", "mill-plugin-system/lang-markdown"]
 mcp-proxy = ["mill-foundation/mcp-proxy", "mill-config/mcp-proxy", "mill-plugin-system/mcp-proxy"]
-lang-python = ["mill-ast/lang-python", "mill-plugin-system/lang-python"]
+lang-python = ["dep:mill-lang-python", "mill-ast/lang-python", "mill-plugin-system/lang-python"]
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

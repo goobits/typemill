@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml_edit::{Array, DocumentMut, Formatted, InlineTable, Item, Value};
@@ -32,7 +32,7 @@ pub struct SyncLanguagesArgs {
 /// Language configuration from languages.toml
 #[derive(Debug, Deserialize)]
 struct LanguageRegistry {
-    languages: HashMap<String, LanguageConfig>,
+    languages: BTreeMap<String, LanguageConfig>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -219,7 +219,7 @@ fn sync_crate_features(
         .context("No [features] section found")?;
 
     // Track which lang-* features should exist
-    let mut expected_features: HashSet<String> = applicable_langs
+    let expected_features: HashSet<String> = applicable_langs
         .iter()
         .map(|(name, _)| format!("lang-{}", name))
         .collect();
@@ -264,14 +264,12 @@ fn sync_crate_features(
             features_table.insert(&feature_name, Item::Value(Value::Array(feature_deps)));
             added += 1;
         }
-
-        expected_features.remove(&feature_name);
     }
 
     // Remove lang-* features that shouldn't exist (cleaned up languages)
     let mut to_remove: Vec<String> = Vec::new();
     for (key, _) in features_table.iter() {
-        if key.starts_with("lang-") && expected_features.contains(key) {
+        if key.starts_with("lang-") && !expected_features.contains(key) {
             to_remove.push(key.to_string());
         }
     }
@@ -288,6 +286,12 @@ fn sync_crate_features(
             .get_mut("dependencies")
             .and_then(|item| item.as_table_mut())
             .context("No [dependencies] section found")?;
+
+        // Track expected dependencies
+        let expected_deps: HashSet<String> = applicable_langs
+            .iter()
+            .map(|(name, _)| format!("mill-lang-{}", name))
+            .collect();
 
         for (lang_name, _config) in &applicable_langs {
             let dep_name = format!("mill-lang-{}", lang_name);
@@ -333,6 +337,20 @@ fn sync_crate_features(
                 }
             }
         }
+
+        // Remove obsolete mill-lang-* dependencies
+        let mut deps_to_remove: Vec<String> = Vec::new();
+        for (key, _) in deps_table.iter() {
+            if key.starts_with("mill-lang-") && !expected_deps.contains(key) {
+                deps_to_remove.push(key.to_string());
+            }
+        }
+        for key in deps_to_remove {
+            deps_table.remove(&key);
+            if verbose {
+                println!("    {} Removed obsolete dependency: {}", "🗑".yellow(), key);
+            }
+        }
     }
 
     // Write back
@@ -356,6 +374,7 @@ fn generate_feature_dependencies(
     match crate_info.name {
         "mill-services" => {
             // Only Full languages reach here (filtered by applicable_langs)
+            arr.push(format!("dep:mill-lang-{}", lang_name));
             arr.push(format!("mill-ast/lang-{}", lang_name));
             arr.push(format!("mill-plugin-system/lang-{}", lang_name));
         }
