@@ -78,12 +78,20 @@ pub struct SuggestionMetadata {
 
 impl From<ActionableSuggestion> for Suggestion {
     fn from(val: ActionableSuggestion) -> Self {
+        use mill_foundation::protocol::analysis_result::SafetyLevel as ProtocolSafety;
+
+        let protocol_safety = match val.safety {
+            SafetyLevel::Safe => ProtocolSafety::Safe,
+            SafetyLevel::RequiresReview => ProtocolSafety::RequiresReview,
+            SafetyLevel::Experimental => ProtocolSafety::Experimental,
+        };
+
         Suggestion {
             action: val.message,
             description: val.metadata.map(|m| m.rationale).unwrap_or_default(),
             target: None,
             estimated_impact: format!("{:?}", val.estimated_impact),
-            safety: val.safety,
+            safety: protocol_safety,
             confidence: val.confidence,
             reversible: val.reversible,
             refactor_call: val.refactor_call.map(|c| ProtocolRefactorCall {

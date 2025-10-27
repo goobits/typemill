@@ -2,18 +2,17 @@
 
 use super::super::{ToolHandler, ToolHandlerContext};
 use super::suggestions::{
-    ActionableSuggestion, AnalysisContext, EvidenceStrength, Location, RefactoringCandidate,
+    AnalysisContext, EvidenceStrength, Location, RefactoringCandidate,
     Scope, SuggestionGenerator, RefactorType,
 };
 use anyhow::Result;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::protocol::analysis_result::{
-    AnalysisResult, AnalysisScope, Finding, FindingLocation, Position, Range, RefactorCall,
+    AnalysisResult, AnalysisScope, Finding, FindingLocation, Position, Range,
     SafetyLevel, Severity, Suggestion,
 };
 use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
-use mill_plugin_api::Node;
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::{json, Value};

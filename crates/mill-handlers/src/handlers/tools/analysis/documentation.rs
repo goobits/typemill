@@ -14,8 +14,7 @@
 
 use super::super::{ToolHandler, ToolHandlerContext};
 use super::suggestions::{
-    ActionableSuggestion, AnalysisContext, EvidenceStrength, Location, RefactoringCandidate,
-    Scope, SuggestionGenerator, RefactorType,
+    AnalysisContext, RefactoringCandidate, SuggestionGenerator,
 };
 use anyhow::Result;
 use async_trait::async_trait;
