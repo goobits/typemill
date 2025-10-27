@@ -70,7 +70,7 @@ pub fn initialize(config: &AppConfig) {
 /// # Example
 ///
 /// ```rust
-/// use cb_core::logging::request_span;
+/// use mill_config::logging::request_span;
 ///
 /// let request_id = "req-12345";
 /// let span = request_span(request_id, "websocket");

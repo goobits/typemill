@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use mill_foundation::core::model::mcp::{McpError, McpRequest, McpResponse};
+use mill_foundation::model::mcp::{McpError, McpRequest, McpResponse};
 use serde_json::json;
 
 fn create_simple_request() -> McpRequest {
@@ -38,6 +38,7 @@ fn create_complex_request() -> McpRequest {
 
 fn create_simple_response() -> McpResponse {
     McpResponse {
+        jsonrpc: "2.0".to_string(),
         id: Some(json!("bench-123")),
         result: Some(json!({
             "project": "mill",
@@ -60,6 +61,7 @@ fn create_complex_response() -> McpResponse {
     }
 
     McpResponse {
+        jsonrpc: "2.0".to_string(),
         id: Some(json!("bench-456")),
         result: Some(json!({
             "references": locations,
@@ -72,6 +74,7 @@ fn create_complex_response() -> McpResponse {
 
 fn create_error_response() -> McpResponse {
     McpResponse {
+        jsonrpc: "2.0".to_string(),
         id: Some(json!("bench-789")),
         result: None,
         error: Some(McpError {
