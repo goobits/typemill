@@ -69,3 +69,9 @@ default = true
 # plugin_struct = "JavaPlugin"
 # category = "full"
 # default = false
+
+[languages.c]
+path = "crates/mill-lang-c"
+plugin_struct = "CPlugin"
+category = "full"
+default = false

@@ -10,6 +10,7 @@ Package management operations for multi-language workspaces. Create new packages
 - **[Rust/Cargo](workspace-rust.md)** - Cargo.toml, crate structure, Rust conventions
 - **[TypeScript](workspace-typescript.md)** - package.json, tsconfig.json, npm/yarn/pnpm workspaces
 - **[Python](workspace-python.md)** - pyproject.toml, src layout, PDM/Poetry/Hatch
+- **[C](workspace-c.md)** - Makefile, clangd integration
 
 ## Table of Contents
 

@@ -84,6 +84,7 @@ mcp-proxy = ["mill-server/mcp-proxy", "mill-client/mcp-proxy", "mill-foundation/
 heavy-tests = []
 lang-python = ["mill-server/lang-python", "mill-plugin-bundle/lang-python", "mill-ast/lang-python", "mill-plugin-system/lang-python", "mill-transport/lang-python"]
 lang-gitignore = ["mill-server/lang-gitignore", "mill-plugin-bundle/lang-gitignore"]
+lang-c = ["mill-server/lang-c", "mill-plugin-bundle/lang-c", "mill-ast/lang-c", "mill-plugin-system/lang-c", "mill-transport/lang-c"]
 
 # Platform-specific dependencies for process management
 [target.'cfg(unix)'.dependencies]

@@ -1,0 +1,27 @@
+[package]
+name = "mill-lang-c"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+mill-plugin-api = { path = "../mill-plugin-api" }
+mill-foundation = { path = "../mill-foundation" }
+mill-lang-common = { path = "../mill-lang-common" }
+
+async-trait = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+tree-sitter = "0.22"
+tree-sitter-c = "0.21"
+regex = "1.5"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3.3"
