@@ -74,6 +74,8 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 - `"smells"` - Code smell detection: long methods, god classes, magic numbers
 - `"maintainability"` - Overall maintainability metrics
 - `"readability"` - Readability issues: nesting, parameter count, length
+- `"markdown_structure"` - Markdown structural issues: heading hierarchy, duplicates, empty sections
+- `"markdown_formatting"` - Markdown formatting issues: missing alt text, bare URLs, table consistency
 
 **Scope Types:**
 - `"file"` - Analyze single file
