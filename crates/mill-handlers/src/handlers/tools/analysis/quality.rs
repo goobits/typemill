@@ -1206,6 +1206,251 @@ pub fn analyze_maintainability(
     findings
 }
 
+/// Detects structural issues in Markdown files.
+pub fn detect_markdown_structure(
+    content: &str,
+    symbols: &[mill_plugin_api::Symbol],
+    _language: &str,
+    file_path: &str,
+    _registry: &crate::LanguagePluginRegistry,
+) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let mut last_level = 0;
+    let mut heading_counts = HashMap::new();
+
+    // Filter for headings and sort by line number
+    let mut headings: Vec<_> = symbols
+        .iter()
+        .filter(|s| s.kind == mill_plugin_api::SymbolKind::Other)
+        .collect();
+    headings.sort_by_key(|s| s.location.line);
+
+    for (i, heading) in headings.iter().enumerate() {
+        // TODO: This is a hack to get the heading level. The markdown plugin should provide this.
+        let level = heading.name.chars().take_while(|c| *c == '#').count();
+        let line_num = heading.location.line as u32;
+
+        // 1. Heading hierarchy validation
+        if level > last_level + 1 {
+            findings.push(Finding {
+                id: format!("heading-skip-{}:{}", file_path, line_num),
+                kind: "heading_level_skip".to_string(),
+                severity: Severity::Medium,
+                location: FindingLocation {
+                    file_path: file_path.to_string(),
+                    range: Some(Range {
+                        start: Position {
+                            line: line_num,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num,
+                            character: 0,
+                        },
+                    }),
+                    symbol: Some(heading.name.clone()),
+                    symbol_kind: Some("heading".to_string()),
+                },
+                message: format!(
+                    "Heading level skipped: from level {} to {}. Use sequential heading levels.",
+                    last_level, level
+                ),
+                metrics: None,
+                suggestions: vec![],
+            });
+        }
+        last_level = level;
+
+        // 2. Duplicate heading detection
+        let count = heading_counts.entry(heading.name.clone()).or_insert(0);
+        *count += 1;
+        if *count > 1 {
+            findings.push(Finding {
+                id: format!("duplicate-heading-{}:{}", file_path, line_num),
+                kind: "duplicate_heading".to_string(),
+                severity: Severity::Low,
+                location: FindingLocation {
+                    file_path: file_path.to_string(),
+                    range: Some(Range {
+                        start: Position {
+                            line: line_num,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num,
+                            character: 0,
+                        },
+                    }),
+                    symbol: Some(heading.name.clone()),
+                    symbol_kind: Some("heading".to_string()),
+                },
+                message: format!(
+                    "Duplicate heading found: '{}'. Consider revising to avoid confusion.",
+                    heading.name
+                ),
+                metrics: None,
+                suggestions: vec![],
+            });
+        }
+
+        // 3. Empty section detection
+        let next_heading_line = if i + 1 < headings.len() {
+            headings[i + 1].location.line as u32
+        } else {
+            content.lines().count() as u32
+        };
+
+        let section_content = content
+            .lines()
+            .skip(heading.location.line as usize)
+            .take((next_heading_line - heading.location.line as u32) as usize)
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        if section_content.trim().is_empty() {
+            findings.push(Finding {
+                id: format!("empty-section-{}:{}", file_path, line_num),
+                kind: "empty_section".to_string(),
+                severity: Severity::Low,
+                location: FindingLocation {
+                    file_path: file_path.to_string(),
+                    range: Some(Range {
+                        start: Position {
+                            line: line_num,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num,
+                            character: 0,
+                        },
+                    }),
+                    symbol: Some(heading.name.clone()),
+                    symbol_kind: Some("heading".to_string()),
+                },
+                message: format!("Empty section under heading '{}'.", heading.name),
+                metrics: None,
+                suggestions: vec![],
+            });
+        }
+    }
+
+    findings
+}
+
+/// Detects formatting issues in Markdown files.
+pub fn detect_markdown_formatting(
+    content: &str,
+    _symbols: &[mill_plugin_api::Symbol],
+    _language: &str,
+    file_path: &str,
+    _registry: &crate::LanguagePluginRegistry,
+) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    // Regex for various checks
+    let img_alt_text_re = Regex::new(r"!\[\]\((.*?)\)").unwrap();
+    let bare_url_re = Regex::new(r"\bhttps?://\S+").unwrap();
+    let table_re = Regex::new(r"\|.*\|").unwrap();
+
+    for (i, line) in content.lines().enumerate() {
+        let line_num = (i + 1) as u32;
+
+        // 1. Images without alt text
+        if let Some(cap) = img_alt_text_re.captures(line) {
+            let range = Range {
+                start: Position {
+                    line: line_num,
+                    character: cap.get(0).unwrap().start() as u32,
+                },
+                end: Position {
+                    line: line_num,
+                    character: cap.get(0).unwrap().end() as u32,
+                },
+            };
+            findings.push(Finding {
+                id: format!("missing-alt-text-{}:{}", file_path, line_num),
+                kind: "missing_image_alt_text".to_string(),
+                severity: Severity::Medium,
+                location: FindingLocation {
+                    file_path: file_path.to_string(),
+                    range: Some(range),
+                    symbol: None,
+                    symbol_kind: None,
+                },
+                message: "Image is missing alternative text, which is crucial for accessibility."
+                    .to_string(),
+                metrics: None,
+                suggestions: vec![],
+            });
+        }
+
+        // 2. Bare URLs
+        if bare_url_re.is_match(line) {
+            findings.push(Finding {
+                id: format!("bare-url-{}:{}", file_path, line_num),
+                kind: "bare_url".to_string(),
+                severity: Severity::Low,
+                location: FindingLocation {
+                    file_path: file_path.to_string(),
+                    range: Some(Range {
+                        start: Position {
+                            line: line_num,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num,
+                            character: 0,
+                        },
+                    }),
+                    symbol: None,
+                    symbol_kind: None,
+                },
+                message: "Bare URL found. Consider using descriptive link text for clarity."
+                    .to_string(),
+                metrics: None,
+                suggestions: vec![],
+            });
+        }
+
+        // 3. Table column consistency
+        if table_re.is_match(line) {
+            let mut column_counts = Vec::new();
+            for table_line in content.lines().skip(i).take_while(|l| table_re.is_match(l)) {
+                column_counts.push(table_line.matches('|').count());
+            }
+            if column_counts.windows(2).any(|w| w[0] != w[1]) {
+                findings.push(Finding {
+                    id: format!("table-inconsistency-{}:{}", file_path, line_num),
+                    kind: "table_column_inconsistency".to_string(),
+                    severity: Severity::Medium,
+                    location: FindingLocation {
+                        file_path: file_path.to_string(),
+                        range: Some(Range {
+                            start: Position {
+                                line: line_num,
+                                character: 0,
+                            },
+                            end: Position {
+                                line: line_num,
+                                character: 0,
+                            },
+                        }),
+                        symbol: None,
+                        symbol_kind: None,
+                    },
+                    message:
+                        "Table rows have an inconsistent number of columns. Check table formatting."
+                            .to_string(),
+                    metrics: None,
+                    suggestions: vec![],
+                });
+            }
+        }
+    }
+
+    findings
+}
+
 #[async_trait]
 impl ToolHandler for QualityHandler {
     fn tool_names(&self) -> &[&str] {
@@ -1232,10 +1477,15 @@ impl ToolHandler for QualityHandler {
         // Validate kind
         if !matches!(
             kind,
-            "complexity" | "smells" | "maintainability" | "readability"
+            "complexity"
+                | "smells"
+                | "maintainability"
+                | "readability"
+                | "markdown_structure"
+                | "markdown_formatting"
         ) {
             return Err(ServerError::InvalidRequest(format!(
-                "Unsupported kind '{}'. Supported: 'complexity', 'smells', 'maintainability', 'readability'",
+                "Unsupported kind '{}'. Supported: 'complexity', 'smells', 'maintainability', 'readability', 'markdown_structure', 'markdown_formatting'",
                 kind
             )));
         }
@@ -1386,6 +1636,26 @@ impl ToolHandler for QualityHandler {
                     "quality",
                     kind,
                     analyze_readability,
+                )
+                .await
+            }
+            "markdown_structure" => {
+                super::engine::run_markdown_analysis(
+                    context,
+                    tool_call,
+                    "quality",
+                    kind,
+                    detect_markdown_structure,
+                )
+                .await
+            }
+            "markdown_formatting" => {
+                super::engine::run_markdown_analysis(
+                    context,
+                    tool_call,
+                    "quality",
+                    kind,
+                    detect_markdown_formatting,
                 )
                 .await
             }

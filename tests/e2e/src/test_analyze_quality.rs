@@ -149,6 +149,88 @@ export function processOrder(
 }
 
 #[tokio::test]
+async fn test_analyze_quality_markdown_structure() {
+    let markdown_content = r#"
+# Title
+
+## Section 1
+
+### Subsection 1.1
+
+## Section 2
+
+#### Subsection 2.1 - SKIPPED
+
+This is a paragraph.
+
+### Subsection 2.2 - DUPLICATE
+
+### Subsection 2.2 - DUPLICATE
+
+## Empty Section
+
+"#;
+
+    run_analysis_test(
+        "test.md",
+        markdown_content,
+        "markdown_structure",
+        None,
+        |result| {
+            assert_eq!(result.metadata.category, "quality");
+            assert_eq!(result.metadata.kind, "markdown_structure");
+            assert!(!result.findings.is_empty());
+
+            let kinds: Vec<_> = result.findings.iter().map(|f| f.kind.as_str()).collect();
+            assert!(kinds.contains(&"heading_level_skip"));
+            assert!(kinds.contains(&"duplicate_heading"));
+            assert!(kinds.contains(&"empty_section"));
+
+            Ok(())
+        },
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn test_analyze_quality_markdown_formatting() {
+    let markdown_content = r#"
+# Formatting Issues
+
+![](no-alt-text.jpg)
+
+A bare URL: https://example.com
+
+| Header 1 | Header 2 |
+|---|---|
+| Cell 1 | Cell 2 | Cell 3 |
+
+"#;
+
+    run_analysis_test(
+        "test.md",
+        markdown_content,
+        "markdown_formatting",
+        None,
+        |result| {
+            assert_eq!(result.metadata.category, "quality");
+            assert_eq!(result.metadata.kind, "markdown_formatting");
+            assert!(!result.findings.is_empty());
+
+            let kinds: Vec<_> = result.findings.iter().map(|f| f.kind.as_str()).collect();
+            assert!(kinds.contains(&"missing_image_alt_text"));
+            assert!(kinds.contains(&"bare_url"));
+            assert!(kinds.contains(&"table_column_inconsistency"));
+
+            Ok(())
+        },
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
 async fn test_analyze_quality_unsupported_kind() {
     let workspace = TestWorkspace::new();
     workspace.create_file("test.ts", "export function simple() { return 1; }");
