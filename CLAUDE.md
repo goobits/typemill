@@ -360,7 +360,7 @@ Use the `options.scope` parameter to control what gets updated:
 **Coverage Example:**
 
 See `tests/e2e/src/test_comprehensive_rename_coverage.rs` for validated test cases covering:
-- ✅ Rust files (imports + string literals in code)
+- ✅ Rust files (imports + string literal in code)
 - ✅ Cargo.toml files (workspace members, package names)
 - ✅ Markdown files (inline and reference-style links)
 - ✅ Config files (TOML, YAML path values)
@@ -535,7 +535,7 @@ cargo nextest run --workspace --features heavy-tests
 - `e2e-tests`: End-to-end workflow tests
 - `heavy-tests`: Performance benchmarks and property-based testing
 
-**Note:** Language support: TypeScript, Rust, and Python (100% parity). Additional languages (Go, Java, Swift, C#) preserved in git tag `pre-language-reduction` and can be restored using documented migration process (see `.debug/language-plugin-migration/`).
+**Note:** Language support: TypeScript, Rust, Python, and Swift (100% parity). Additional languages (Go, Java, C#) preserved in git tag `pre-language-reduction` and can be restored using documented migration process (see `.debug/language-plugin-migration/`).
 
 ## Architecture & Configuration
 
@@ -610,23 +610,24 @@ Supported language servers (configurable):
 - TypeScript: `typescript-language-server`
 - Rust: `rust-analyzer`
 - Python: `pylsp`
+- Swift: `sourcekit-lsp`
 
-**Note:** Additional language servers (Go/gopls, Java/jdtls, Swift/sourcekit-lsp, C#/omnisharp) can be configured but require language plugins from git tag `pre-language-reduction` and documented migration process (see `.debug/language-plugin-migration/`).
+**Note:** Additional language servers (Go/gopls, Java/jdtls, C#/omnisharp) can be configured but require language plugins from git tag `pre-language-reduction` and documented migration process (see `.debug/language-plugin-migration/`).
 
 
 ### Language Plugin Parity Status
 
-TypeMill now has **100% feature parity** across TypeScript, Rust, and Python for all common capabilities:
+TypeMill now has **100% feature parity** across TypeScript, Rust, Python, and Swift for all common capabilities:
 
-| Capability | TypeScript | Rust | Python |
-|-----------|-----------|------|--------|
-| Core LanguagePlugin | ✅ | ✅ | ✅ |
-| Import Support (5 traits) | ✅ | ✅ | ✅ |
-| Workspace Operations | ✅ | ✅ | ✅ |
-| Refactoring (3 operations) | ✅ | ✅ | ✅ |
-| Analysis (2 traits) | ✅ | ✅ | ✅ |
-| Manifest Management | ✅ | ✅ | ✅ |
-| **Project Creation** | ✅ | ✅ | ✅ |
+| Capability | TypeScript | Rust | Python | Swift |
+|-----------|-----------|------|--------|-------|
+| Core LanguagePlugin | ✅ | ✅ | ✅ | ✅ |
+| Import Support (5 traits) | ✅ | ✅ | ✅ | ✅ |
+| Workspace Operations | ✅ | ✅ | ✅ | ✅ |
+| Refactoring (3 operations) | ✅ | ✅ | ✅ | ✅ |
+| Analysis (2 traits) | ✅ | ✅ | ✅ | ✅ |
+| Manifest Management | ✅ | ✅ | ✅ | ✅ |
+| **Project Creation** | ✅ | ✅ | ✅ | ✅ |
 
 **Rust-specific features** (not applicable to other languages):
 - ReferenceDetector
@@ -634,6 +635,7 @@ TypeMill now has **100% feature parity** across TypeScript, Rust, and Python for
 - ModuleLocator (Rust module file structure)
 
 **Python restored**: 2025-10-25 with full parity implementation.
+**Swift restored**: 2025-10-28 with full parity implementation.
 
 See `.debug/language-plugin-migration/COMPLETE_PARITY_ANALYSIS.md` for detailed comparison.
 
