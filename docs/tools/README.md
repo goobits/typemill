@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-**Complete API reference for all 28 TypeMill MCP tools**
+**Complete API reference for all 29 TypeMill MCP tools**
 
 This directory contains focused documentation for each tool category. Each category file follows a consistent structure with terse but complete documentation, real examples from the codebase, and common patterns.
 
@@ -29,10 +29,11 @@ This directory contains focused documentation for each tool category. Each categ
 | `reorder` | Refactoring | Reorder params/imports (dryRun option) | [refactoring.md](refactoring.md#reorder) |
 | `transform` | Refactoring | Code transformations (dryRun option) | [refactoring.md](refactoring.md#transform) |
 | `delete` | Refactoring | Delete symbols/files/directories (dryRun option) | [refactoring.md](refactoring.md#delete) |
-| **Analysis (8 tools)** ||||
+| **Analysis (9 tools)** ||||
 | `analyze.quality` | Analysis | Code quality analysis | [analysis.md](analysis.md#analyzequality) |
 | `analyze.dead_code` | Analysis | Unused code detection | [analysis.md](analysis.md#analyzedead_code) |
 | `analyze.dependencies` | Analysis | Dependency analysis | [analysis.md](analysis.md#analyzedependencies) |
+| `analyze.cycles` | Analysis | Circular dependency detection | [analysis.md](analysis.md#analyzecycles) |
 | `analyze.structure` | Analysis | Code structure analysis | [analysis.md](analysis.md#analyzestructure) |
 | `analyze.documentation` | Analysis | Documentation quality | [analysis.md](analysis.md#analyzedocumentation) |
 | `analyze.tests` | Analysis | Test analysis | [analysis.md](analysis.md#analyzetests) |
@@ -61,7 +62,7 @@ Navigate codebases with precision using language server protocol integration. Fi
 All refactoring operations use a single tool with `options.dryRun` parameter: default `true` generates a preview plan without modifying files, explicit `false` applies changes immediately with validation and rollback support.
 
 ### [Analysis](analysis.md)
-**8 unified analysis tools** with consistent kind/scope API.
+**9 unified analysis tools** with consistent kind/scope API.
 
 Comprehensive code analysis covering quality, dead code, dependencies, structure, documentation, and tests. All tools follow the same parameter pattern for easy adoption.
 

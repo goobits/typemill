@@ -14,7 +14,7 @@
 |--------------|-----------|-------------|
 | 🎯 Get started from scratch | [user-guide/getting-started](user-guide/getting-started.md) | `mill docs user-guide/getting-started` |
 | 📋 See common commands | [user-guide/cheatsheet](user-guide/cheatsheet.md) | `mill docs user-guide/cheatsheet` |
-| 🛠️ Browse all 28 tools | [tools/](tools/) | `mill docs tools` |
+| 🛠️ Browse all 29 tools | [tools/](tools/) | `mill docs tools` |
 | 🔍 Search documentation | - | `mill docs --search "keyword"` |
 
 **For GitHub users:** See [../README.md](https://github.com/goobits/typemill#readme) for project overview
@@ -30,7 +30,7 @@
 2. **[user-guide/cheatsheet.md](user-guide/cheatsheet.md)** - Quick command reference
 3. **[user-guide/configuration.md](user-guide/configuration.md)** - Configuration reference
 4. **[user-guide/troubleshooting.md](user-guide/troubleshooting.md)** - Common issues and solutions
-5. **[tools/README.md](tools/README.md)** - Complete tool catalog (28 tools, see **[architecture/tools_visibility_spec.md](architecture/tools_visibility_spec.md)** for full specification)
+5. **[tools/README.md](tools/README.md)** - Complete tool catalog (29 tools, see **[architecture/tools_visibility_spec.md](architecture/tools_visibility_spec.md)** for full specification)
 
 **Tool categories:**
 - **[Navigation Tools](tools/navigation.md)** - Find definitions, references, symbols (8 tools)

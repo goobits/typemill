@@ -364,7 +364,7 @@ mill setup
 ### Explore Tools
 
 ```bash
-mill tools              # List all 28 tools
+mill tools              # List all 29 tools
 mill docs tools         # View tool documentation
 ```
 

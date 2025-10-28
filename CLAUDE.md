@@ -55,10 +55,11 @@ TypeMill provides comprehensive MCP tools for code intelligence and refactoring.
 - `workspace.update_members` (update workspace member list)
 - `workspace.find_replace` (find and replace text across workspace)
 
-**Analysis (8 tools - Unified Analysis API)**
+**Analysis (9 tools - Unified Analysis API)**
 - `analyze.quality` (complexity, smells, maintainability, readability)
 - `analyze.dead_code` (unused imports, symbols, parameters, variables, types, unreachable code)
 - `analyze.dependencies` (imports, graph, circular dependencies, coupling, cohesion, depth)
+- `analyze.cycles` (dedicated circular dependency detection with cycle paths)
 - `analyze.structure` (symbols, hierarchy, interfaces, inheritance, modules)
 - `analyze.documentation` (coverage, quality, style, examples, todos)
 - `analyze.tests` (coverage, quality, assertions, organization)
