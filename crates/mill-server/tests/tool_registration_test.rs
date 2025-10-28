@@ -8,7 +8,7 @@ async fn test_all_28_public_tools_are_registered() {
     let registry = dispatcher.tool_registry.lock().await;
     let registered_tools = registry.list_tools();
 
-    const EXPECTED_TOOLS: [&str; 28] = [
+    const EXPECTED_TOOLS: [&str; 29] = [
         // Navigation (8) - get_document_symbols moved to internal
         "find_definition",
         "find_references",
@@ -42,6 +42,7 @@ async fn test_all_28_public_tools_are_registered() {
         "analyze.tests",
         "analyze.batch",
         "analyze.module_dependencies",
+        "analyze.cycles",
     ];
 
     fn find_missing<'a>(expected: &'a [&str], actual: &[String]) -> Vec<&'a str> {

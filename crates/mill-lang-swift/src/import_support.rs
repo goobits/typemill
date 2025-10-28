@@ -79,3 +79,54 @@ impl ImportMutationSupport for SwiftImportSupport {
 
 #[async_trait]
 impl ImportAdvancedSupport for SwiftImportSupport {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_swift_imports() {
+        let support = SwiftImportSupport;
+        let content = r#"
+import Foundation
+import SwiftUI
+"#;
+        let imports = support.parse_imports(content);
+        assert_eq!(imports, vec!["Foundation", "SwiftUI"]);
+    }
+
+    #[test]
+    fn test_add_swift_import() {
+        let support = SwiftImportSupport;
+        let content = r#"import Foundation
+
+class MyClass {}"#;
+        let new_content = support.add_import(content, "SwiftUI");
+        assert!(new_content.contains("import SwiftUI\n"));
+        assert!(new_content.contains("import Foundation"));
+    }
+
+    #[test]
+    fn test_remove_swift_import() {
+        let support = SwiftImportSupport;
+        let content = r#"
+import Foundation
+import SwiftUI
+import UIKit
+"#;
+        let new_content = support.remove_import(content, "SwiftUI");
+        assert!(new_content.contains("import Foundation"));
+        assert!(!new_content.contains("import SwiftUI"));
+        assert!(new_content.contains("import UIKit"));
+    }
+
+    #[test]
+    fn test_rename_swift_import() {
+        let support = SwiftImportSupport;
+        let content = "import OldModule";
+        let (new_content, count) =
+            support.rewrite_imports_for_rename(content, "OldModule", "NewModule");
+        assert_eq!(count, 1);
+        assert_eq!(new_content, "import NewModule");
+    }
+}

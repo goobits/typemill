@@ -2,12 +2,13 @@
 
 pub mod import_support;
 pub mod project_factory;
+pub mod refactoring;
 
 use async_trait::async_trait;
 use mill_lang_common::{
     define_language_plugin, impl_capability_delegations, impl_language_plugin_basics,
 };
-use mill_plugin_api::{LanguagePlugin, PluginResult, ParsedSource, ManifestData};
+use mill_plugin_api::{LanguagePlugin, PluginResult, ParsedSource, ManifestData, PluginError};
 use std::path::Path;
 
 define_language_plugin! {
@@ -71,7 +72,7 @@ impl LanguagePlugin for SwiftPlugin {
 
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
         let content = std::fs::read_to_string(path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))?;
+            .map_err(|e| PluginError::internal(e.to_string()))?;
         let name_re = regex::Regex::new(r#"name:\s*"([^"]+)""#).unwrap();
         let version_re = regex::Regex::new(r#"swift-tools-version:([0-9.]+)"#).unwrap();
         let dep_re = regex::Regex::new(r#"\.package\(\s*name:\s*"([^"]+)"[^)]+\)"#).unwrap();
@@ -122,6 +123,7 @@ impl LanguagePlugin for SwiftPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mill_plugin_api::{ProjectFactory};
 
     #[tokio::test]
     async fn test_swift_plugin_basic() {
@@ -130,20 +132,6 @@ mod tests {
         assert_eq!(plugin.metadata().extensions, &["swift"]);
         assert!(plugin.handles_extension("swift"));
         assert!(!plugin.handles_extension("rs"));
-    }
-
-    use mill_plugin_api::{ImportParser, ProjectFactory};
-
-    #[tokio::test]
-    async fn test_parse_imports() {
-        let plugin = SwiftPlugin::new();
-        let swift_plugin = plugin.as_any().downcast_ref::<SwiftPlugin>().unwrap();
-        let source = r#"
-import Foundation
-import UIKit
-"#;
-        let imports = swift_plugin.import_support.parse_imports(source);
-        assert_eq!(imports, vec!["Foundation", "UIKit"]);
     }
 
     #[tokio::test]

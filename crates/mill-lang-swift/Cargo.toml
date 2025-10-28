@@ -7,6 +7,7 @@ repository.workspace = true
 homepage.workspace = true
 
 [dependencies]
+chrono = { workspace = true, features = ["serde"] }
 # Core plugin API
 mill-plugin-api = { path = "../mill-plugin-api" }
 mill-foundation = { path = "../mill-foundation" }
