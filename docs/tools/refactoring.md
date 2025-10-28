@@ -44,16 +44,21 @@ All refactoring operations support checksum validation, rollback on error, and p
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `target` | `object` | Yes | Target to rename (see target structure below) |
-| `target.kind` | `string` | Yes | Type of target: `"symbol"`, `"file"`, or `"directory"` |
-| `target.path` | `string` | Yes | Absolute path to file/directory, or file path for symbol |
-| `target.line` | `number` | Conditional | Line number (0-indexed) - required for symbol renames |
-| `target.character` | `number` | Conditional | Column position (0-indexed) - required for symbol renames |
-| `new_name` | `string` | Yes | New name or path |
+| `target` | `object` | Yes* | Single target to rename (mutually exclusive with `targets`) |
+| `targets` | `array` | Yes* | Array of targets for batch rename (mutually exclusive with `target`) |
+| `target.kind` | `string` | **Yes** | Type of target: `"symbol"` \| `"file"` \| `"directory"` |
+| `target.path` | `string` | **Yes** | Absolute path to file/directory, or file path for symbol |
+| `target.line` | `number` | Conditional | Line number (0-indexed) - **required for symbol renames** |
+| `target.character` | `number` | Conditional | Column position (0-indexed) - **required for symbol renames** |
+| `newName` | `string` | Yes** | New name or path (required for single `target`, optional for `targets`) |
+| `destination` | `string` | No | Alternative to `newName` for file/directory moves |
 | `options` | `object` | No | Rename options (see options below) |
-| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (default: true) |
+| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (**default: true**) |
 | `options.consolidate` | `boolean` | No | Enable Rust crate consolidation mode (auto-detected if not specified) |
-| `options.scope` | `string` | No | Update scope: `"standard"` (default), `"code"`, `"comments"`, `"everything"`, or `"custom"` |
+| `options.scope` | `string` | No | Update scope (**default: "standard"**) - see Scope Values below |
+
+\* Either `target` or `targets` required, not both
+\*\* `newName` required when using `target`, optional for batch `targets` (each target can have its own `newName`)
 
 **Returns:**
 
@@ -171,6 +176,86 @@ All refactoring operations support checksum validation, rollback on error, and p
 }
 ```
 
+**Parameter Details:**
+
+**Target Types (`target.kind`):**
+- `"symbol"` - Rename variable, function, class, interface, type, etc.
+  - **Requires:** `line` and `character` to identify symbol location
+  - **Updates:** All references across workspace via LSP
+- `"file"` - Rename a single file
+  - **Requires:** Current file path in `path`, new path in `newName`
+  - **Updates:** Imports, module declarations, string paths, docs, configs
+- `"directory"` - Rename a directory
+  - **Requires:** Current directory path in `path`, new path in `newName`
+  - **Updates:** All references in code, docs, configs (comprehensive)
+
+**Options - dryRun (Preview vs Execute):**
+- `true` (default) - **Preview mode**: Generate plan, don't modify files
+  - Returns `RenamePlan` with edits, summary, warnings, checksums
+  - **Safe by default** - forces review before applying
+  - No files modified on disk
+- `false` - **Execution mode**: Apply changes immediately
+  - Returns `ExecutionResult` with success status, modified files
+  - Includes checksum validation to prevent applying stale plans
+  - Supports automatic rollback on failure
+
+**Common Pitfall:** Forgetting `dryRun: false`!
+```json
+// This does nothing (just returns a preview):
+{
+  "target": {"kind": "file", "path": "src/old.ts"},
+  "newName": "src/new.ts"
+  // options.dryRun defaults to true
+}
+
+// This actually applies the change:
+{
+  "target": {"kind": "file", "path": "src/old.ts"},
+  "newName": "src/new.ts",
+  "options": {"dryRun": false}  // Don't forget this!
+}
+```
+
+**Options - scope (Update Coverage):**
+
+| Scope | Code | Docs | Configs | Comments | Prose | Use Case |
+|-------|------|------|---------|----------|-------|----------|
+| `"code"` | ✓ | ✗ | ✗ | ✗ | ✗ | Code-only rename |
+| `"standard"` (default) | ✓ | ✓ | ✓ | ✗ | ✗ | Recommended for most renames |
+| `"comments"` | ✓ | ✓ | ✓ | ✓ | ✗ | Include code comments |
+| `"everything"` | ✓ | ✓ | ✓ | ✓ | ✓ | Include markdown prose text |
+| `"custom"` | Custom | Custom | Custom | Custom | Custom | Fine-grained control with patterns |
+
+**What each scope updates:**
+- **Code**: Imports, module declarations, qualified paths, string literal paths
+- **Docs**: Markdown links, inline code references in .md files
+- **Configs**: Path values in .toml, .yaml, .json, Cargo.toml workspace members
+- **Comments**: Code comments mentioning the old name
+- **Prose**: Natural language text in markdown files
+
+**Example - Scope control:**
+```json
+{
+  "target": {"kind": "directory", "path": "old-module"},
+  "newName": "new-module",
+  "options": {
+    "scope": "code",      // Only update code, skip docs/configs
+    "dryRun": false
+  }
+}
+```
+
+**Batch Rename:**
+```json
+{
+  "targets": [
+    {"kind": "file", "path": "src/a.rs", "newName": "src/a2.rs"},
+    {"kind": "file", "path": "src/b.rs", "newName": "src/b2.rs"}
+  ],
+  "options": {"dryRun": false}
+}
+```
+
 **Notes:**
 - **Rust file renames** automatically update module declarations (`pub mod utils;` → `pub mod helpers;`), import statements (`use utils::*`), and qualified paths (`utils::helper()`)
 - **Directory renames** update all string literal paths, markdown links, config file paths, and Cargo.toml entries (100% coverage with `scope: "standard"`)
@@ -188,18 +273,29 @@ All refactoring operations support checksum validation, rollback on error, and p
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `kind` | `string` | Yes | Extraction type: `"function"`, `"variable"`, `"constant"`, or `"module"` |
-| `source` | `object` | Yes | Source code selection (see source structure) |
-| `source.file_path` | `string` | Yes | Absolute path to source file |
-| `source.range` | `object` | Yes | LSP range of code to extract |
-| `source.range.start` | `object` | Yes | Start position: `{line: number, character: number}` |
-| `source.range.end` | `object` | Yes | End position: `{line: number, character: number}` |
-| `source.name` | `string` | Yes | Name for extracted element |
+| `kind` | `string` | **Yes** | Extraction type: `"function"` \| `"variable"` \| `"constant"` \| `"module"` |
+| `source` | `object` | **Yes** | Source code selection (see source structure) |
+| `source.file_path` | `string` | **Yes** | Absolute path to source file |
+| `source.range` | `object` | **Yes** | LSP range of code to extract |
+| `source.range.start` | `object` | **Yes** | Start position: `{line: number, character: number}` (0-indexed) |
+| `source.range.end` | `object` | **Yes** | End position: `{line: number, character: number}` (0-indexed) |
+| `source.name` | `string` | **Yes** | Name for extracted element |
 | `source.destination` | `string` | No | Destination file path (for module extraction) |
 | `options` | `object` | No | Extract options (see options below) |
-| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (default: true) |
-| `options.visibility` | `string` | No | Visibility modifier: `"public"` or `"private"` |
+| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (**default: true**) |
+| `options.visibility` | `string` | No | Visibility modifier: `"public"` \| `"private"` (default: `"private"`) |
 | `options.destination_path` | `string` | No | Override destination path |
+
+**Extraction Types:**
+- `"function"` - Extract code block into a new function (most common)
+- `"variable"` - Extract expression into a variable
+- `"constant"` - Extract literal/expression into a constant
+- `"module"` - Extract code into a separate module file
+
+**Error Messages:**
+- Missing `kind`: "Invalid request: Missing 'kind' parameter"
+- Invalid `kind`: "Unsupported kind 'invalid'. Valid: function, variable, constant, module"
+- Invalid range: "Range must have valid start and end positions"
 
 **Returns:**
 
@@ -293,13 +389,23 @@ All refactoring operations support checksum validation, rollback on error, and p
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `kind` | `string` | Yes | Inline type: `"variable"`, `"function"`, or `"constant"` |
-| `target` | `object` | Yes | Target to inline (see target structure) |
-| `target.file_path` | `string` | Yes | Absolute path to file containing definition |
-| `target.position` | `object` | Yes | Position of definition: `{line: number, character: number}` |
+| `kind` | `string` | **Yes** | Inline type: `"variable"` \| `"function"` \| `"constant"` |
+| `target` | `object` | **Yes** | Target to inline (see target structure) |
+| `target.file_path` | `string` | **Yes** | Absolute path to file containing definition |
+| `target.position` | `object` | **Yes** | Position of definition: `{line: number, character: number}` (0-indexed) |
 | `options` | `object` | No | Inline options (see options below) |
-| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (default: true) |
-| `options.inline_all` | `boolean` | No | Inline all usages (true) or current only (false, default) |
+| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (**default: true**) |
+| `options.inline_all` | `boolean` | No | Inline all usages (true) or current only (**default: false**) |
+
+**Inline Types:**
+- `"variable"` - Inline a variable by replacing references with its value
+- `"function"` - Inline a function by replacing calls with function body
+- `"constant"` - Inline a constant by replacing references with its value
+
+**Error Messages:**
+- Missing `kind`: "Invalid request: Missing 'kind' parameter"
+- Invalid `kind`: "Unsupported kind 'invalid'. Valid: variable, function, constant"
+- Missing position: "Target must include 'position' with line and character"
 
 **Returns:**
 
@@ -389,16 +495,31 @@ All refactoring operations support checksum validation, rollback on error, and p
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `target` | `object` | Yes | Target to move (see target structure) |
-| `target.kind` | `string` | Yes | Move type: `"symbol"`, `"file"`, `"directory"`, or `"module"` |
-| `target.path` | `string` | Yes | Absolute path to source |
-| `target.selector` | `object` | Conditional | Symbol selector - required for symbol moves |
-| `target.selector.position` | `object` | Conditional | Position: `{line: number, character: number}` |
-| `destination` | `string` | Yes | Destination file path or directory |
+| `target` | `object` | **Yes** | Target to move (see target structure) |
+| `target.kind` | `string` | **Yes** | Move type: `"symbol"` \| `"file"` \| `"directory"` \| `"module"` |
+| `target.path` | `string` | **Yes** | Absolute path to source |
+| `target.selector` | `object` | Conditional | Symbol selector - **required for symbol moves** |
+| `target.selector.position` | `object` | Conditional | Position: `{line: number, character: number}` (0-indexed) |
+| `destination` | `string` | **Yes** | Destination file path or directory |
 | `options` | `object` | No | Move options (see options below) |
-| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (default: true) |
-| `options.update_imports` | `boolean` | No | Update import statements (default: true) |
-| `options.preserve_formatting` | `boolean` | No | Preserve code formatting (default: true) |
+| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (**default: true**) |
+| `options.update_imports` | `boolean` | No | Update import statements (**default: true**) |
+| `options.preserve_formatting` | `boolean` | No | Preserve code formatting (**default: true**) |
+
+**Move Types:**
+- `"symbol"` - Move function, class, variable, etc. to different file
+  - **Requires:** `selector.position` to identify symbol
+  - **Updates:** Imports and references automatically
+- `"file"` - Move entire file to different location
+  - Similar to rename but explicitly for moves
+- `"directory"` - Move directory to different location
+  - Updates all references comprehensively
+- `"module"` - Move module with dependency updates
+
+**Error Messages:**
+- Missing `destination`: "Invalid request: Missing 'destination' parameter"
+- Invalid `target.kind`: "Unsupported kind 'invalid'. Valid: symbol, file, directory, module"
+- Symbol without position: "Symbol moves require 'selector.position'"
 
 **Returns:**
 
@@ -443,15 +564,37 @@ All refactoring operations support checksum validation, rollback on error, and p
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `target` | `object` | Yes | Target to reorder (see target structure) |
-| `target.kind` | `string` | Yes | Reorder type: `"parameters"`, `"fields"`, `"imports"`, or `"statements"` |
-| `target.file_path` | `string` | Yes | Absolute path to file |
-| `target.position` | `object` | Yes | Position: `{line: number, character: number}` |
-| `new_order` | `array` | Yes | Array of strings specifying new order |
+| `target` | `object` | **Yes** | Target to reorder (see target structure) |
+| `target.kind` | `string` | **Yes** | Reorder type: `"parameters"` \| `"fields"` \| `"imports"` \| `"statements"` |
+| `target.file_path` | `string` | **Yes** | Absolute path to file |
+| `target.position` | `object` | **Yes** | Position: `{line: number, character: number}` (0-indexed) |
+| `new_order` | `array` | **Yes** | Array of strings specifying new order (parameter/field names) |
 | `options` | `object` | No | Reorder options (see options below) |
-| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (default: true) |
-| `options.preserve_formatting` | `boolean` | No | Preserve code formatting (default: true) |
-| `options.update_call_sites` | `boolean` | No | Update all call sites for parameter reordering (default: true) |
+| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (**default: true**) |
+| `options.preserve_formatting` | `boolean` | No | Preserve code formatting (**default: true**) |
+| `options.update_call_sites` | `boolean` | No | Update all call sites for parameter reordering (**default: true**) |
+
+**Reorder Types:**
+- `"parameters"` - Reorder function/method parameters
+  - **Important:** Updates all call sites across workspace when `update_call_sites: true`
+  - **Requires:** `new_order` array with parameter names in desired order
+- `"fields"` - Reorder struct/class fields
+  - Preserves field values, just changes declaration order
+- `"imports"` - Reorder import statements
+  - Can use LSP "organize imports" feature
+- `"statements"` - Reorder statements within a block
+
+**Example `new_order` for parameters:**
+```json
+{
+  "new_order": ["endpoint", "method", "headers", "body"]
+}
+```
+
+**Error Messages:**
+- Missing `new_order`: "Invalid request: Missing 'new_order' parameter"
+- Invalid `target.kind`: "Unsupported kind 'invalid'. Valid: parameters, fields, imports, statements"
+- Invalid order: "new_order must contain all existing parameter names"
 
 **Returns:**
 
@@ -496,14 +639,34 @@ All refactoring operations support checksum validation, rollback on error, and p
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `transformation` | `object` | Yes | Transformation specification (see structure below) |
-| `transformation.kind` | `string` | Yes | Type: `"if_to_match"`, `"match_to_if"`, `"add_async"`, `"remove_async"`, `"fn_to_closure"`, `"closure_to_fn"` |
-| `transformation.file_path` | `string` | Yes | Absolute path to file |
-| `transformation.range` | `object` | Yes | LSP range to transform |
+| `transformation` | `object` | **Yes** | Transformation specification (see structure below) |
+| `transformation.kind` | `string` | **Yes** | Transformation type (see Transformation Types below) |
+| `transformation.file_path` | `string` | **Yes** | Absolute path to file |
+| `transformation.range` | `object` | **Yes** | LSP range to transform |
+| `transformation.range.start` | `object` | **Yes** | Start position: `{line: number, character: number}` (0-indexed) |
+| `transformation.range.end` | `object` | **Yes** | End position: `{line: number, character: number}` (0-indexed) |
 | `options` | `object` | No | Transform options (see options below) |
-| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (default: true) |
-| `options.preserve_formatting` | `boolean` | No | Preserve code formatting (default: true) |
-| `options.preserve_comments` | `boolean` | No | Preserve comments (default: true) |
+| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (**default: true**) |
+| `options.preserve_formatting` | `boolean` | No | Preserve code formatting (**default: true**) |
+| `options.preserve_comments` | `boolean` | No | Preserve comments (**default: true**) |
+
+**Transformation Types:**
+- `"if_to_match"` - Convert if/else chain to match expression (Rust)
+- `"match_to_if"` - Convert match expression to if/else chain
+- `"add_async"` - Make function async
+- `"remove_async"` - Remove async from function
+- `"fn_to_closure"` - Convert function to closure
+- `"closure_to_fn"` - Convert closure to function
+
+**Language Support:**
+- Rust: All transformation types
+- TypeScript/JavaScript: `add_async`, `remove_async`
+- Other languages: Limited support
+
+**Error Messages:**
+- Missing `transformation.kind`: "Invalid request: Missing 'kind' parameter"
+- Invalid `kind`: "Unsupported transformation 'invalid'. Valid: if_to_match, match_to_if, add_async, remove_async, fn_to_closure, closure_to_fn"
+- Invalid range: "Range must specify valid start and end positions"
 
 **Returns:**
 
@@ -552,18 +715,41 @@ All refactoring operations support checksum validation, rollback on error, and p
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `target` | `object` | Yes | Target to delete (see target structure) |
-| `target.kind` | `string` | Yes | Delete type: `"symbol"`, `"file"`, `"directory"`, or `"dead_code"` |
-| `target.path` | `string` | Yes | Absolute path to file/directory, or file for symbol |
-| `target.selector` | `object` | Conditional | Symbol selector - required for symbol deletes |
+| `target` | `object` | **Yes** | Target to delete (see target structure) |
+| `target.kind` | `string` | **Yes** | Delete type: `"symbol"` \| `"file"` \| `"directory"` \| `"dead_code"` |
+| `target.path` | `string` | **Yes** | Absolute path to file/directory, or file containing symbol |
+| `target.selector` | `object` | Conditional | Symbol selector - **required for symbol deletes** |
 | `target.selector.line` | `number` | Conditional | Line number (0-indexed) |
 | `target.selector.character` | `number` | Conditional | Column position (0-indexed) |
-| `target.selector.symbol_name` | `string` | No | Optional symbol name hint |
+| `target.selector.symbol_name` | `string` | No | Optional symbol name hint for validation |
 | `options` | `object` | No | Delete options (see options below) |
-| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (default: true) |
-| `options.cleanup_imports` | `boolean` | No | Remove unused imports (default: true) |
-| `options.remove_tests` | `boolean` | No | Also delete associated tests (default: false) |
-| `options.force` | `boolean` | No | Force delete without safety checks (default: false) |
+| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (**default: true**) |
+| `options.cleanup_imports` | `boolean` | No | Remove unused imports (**default: true**) |
+| `options.remove_tests` | `boolean` | No | Also delete associated tests (**default: false**) |
+| `options.force` | `boolean` | No | Force delete without safety checks (**default: false**) |
+
+**Delete Types:**
+- `"symbol"` - Delete function, class, variable, etc.
+  - **Status:** Placeholder (requires AST support)
+  - **Requires:** `selector` with line/character position
+- `"file"` - Delete a file
+  - **Status:** Fully implemented
+  - **Updates:** Removes imports, updates references
+- `"directory"` - Delete a directory recursively
+  - **Status:** Fully implemented
+  - **Warning:** Deletes all files in directory!
+- `"dead_code"` - Automatically detect and delete unused code
+  - **Status:** Placeholder (requires analysis integration)
+
+**Safety Features:**
+- `cleanup_imports: true` - Automatically removes imports after deletion
+- `force: false` - Requires confirmation for destructive operations
+- `dryRun: true` - Preview deletions before applying
+
+**Error Messages:**
+- Missing `target`: "Invalid request: Missing 'target' parameter"
+- Invalid `target.kind`: "Unsupported kind 'invalid'. Valid: symbol, file, directory, dead_code"
+- Symbol without selector: "Symbol deletes require 'selector' with line and character"
 
 **Returns:**
 
@@ -635,6 +821,44 @@ All refactoring operations support checksum validation, rollback on error, and p
 - Cleanup imports automatically when deleting files
 - DeletePlan uses `deletions` field instead of LSP `WorkspaceEdit`
 - Preview mode is the safe default
+
+---
+
+## CLI vs MCP Tool Interfaces
+
+Refactoring tools are primarily accessed via the MCP tool interface, but some operations have CLI shortcuts:
+
+**Via MCP tool** (primary interface - required JSON):
+```bash
+# Rename file
+mill tool rename '{
+  "target": {"kind": "file", "path": "src/old.rs"},
+  "newName": "src/new.rs",
+  "options": {"dryRun": false}
+}'
+
+# Extract function
+mill tool extract '{
+  "kind": "function",
+  "source": {
+    "file_path": "src/calc.rs",
+    "range": {"start": {"line": 1, "character": 4}, "end": {"line": 2, "character": 26}},
+    "name": "compute_sum"
+  }
+}'
+```
+
+**Via CLI flags** (limited operations):
+```bash
+# Not available for most refactoring operations
+# Use MCP tool interface instead
+```
+
+**Why MCP tool interface?**
+- Refactoring requires complex structured data (ranges, positions, options)
+- JSON format prevents ambiguity and parsing errors
+- Consistent with analysis tools and other MCP operations
+- Enables programmatic/AI agent use
 
 ---
 

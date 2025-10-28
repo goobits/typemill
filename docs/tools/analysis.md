@@ -59,9 +59,15 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| kind | string | Yes | Analysis type: `"complexity"` \| `"smells"` \| `"maintainability"` \| `"readability"` |
-| scope | object | Yes | Analysis scope (see Scope Types below) |
-| options | object | No | Configuration: thresholds, severity_filter, limit, include_suggestions |
+| kind | string | **Yes** | Analysis type: `"complexity"` \| `"smells"` \| `"maintainability"` \| `"readability"` |
+| scope | object | **Yes** | Analysis scope (see Scope Types below) |
+| scope.type | string | **Yes** | Scope granularity: `"file"` \| `"directory"` \| `"workspace"` \| `"symbol"` |
+| scope.path | string | **Yes** | Absolute path to file, directory, or symbol location |
+| options | object | No | Optional configuration (see Options below) |
+| options.thresholds | object | No | Custom complexity thresholds (see Default Thresholds below) |
+| options.severity_filter | string | No | Filter by severity: `"high"` \| `"medium"` \| `"low"` \| `null` (default: null = all) |
+| options.limit | number | No | Maximum number of findings to return (default: 1000) |
+| options.include_suggestions | boolean | No | Include actionable refactoring suggestions (default: true) |
 
 **Supported Kinds:**
 - `"complexity"` - Cyclomatic and cognitive complexity analysis (MVP available)
@@ -70,10 +76,26 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 - `"readability"` - Readability issues: nesting, parameter count, length
 
 **Scope Types:**
-- `file` - Analyze single file
-- `directory` - Analyze all files in directory (recursive)
-- `workspace` - Analyze entire workspace
-- `symbol` - Analyze specific symbol (requires symbol name in path)
+- `"file"` - Analyze single file
+- `"directory"` - Analyze all files in directory (recursive)
+- `"workspace"` - Analyze entire workspace
+- `"symbol"` - Analyze specific symbol (requires symbol name in path)
+
+**Default Thresholds:**
+```json
+{
+  "cyclomatic_complexity": 15,
+  "cognitive_complexity": 10,
+  "nesting_depth": 4,
+  "parameter_count": 5,
+  "line_count": 50
+}
+```
+
+**CLI Alternative:**
+```bash
+mill analyze complexity --path src/handlers.rs --threshold 20
+```
 
 **Returns:**
 
@@ -209,9 +231,14 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| kind | string | Yes | Detection type: `"unused_imports"` \| `"unused_symbols"` \| `"unused_parameters"` \| `"unused_variables"` \| `"unused_types"` \| `"unreachable"` |
-| scope | object | Yes | Analysis scope (see Scope Types below) |
-| options | object | No | Configuration: severity_filter, limit, include_suggestions |
+| kind | string | **Yes** | Detection type: `"unused_imports"` \| `"unused_symbols"` \| `"unused_parameters"` \| `"unused_variables"` \| `"unused_types"` \| `"unreachable"` |
+| scope | object | **Yes** | Analysis scope (see Scope Types below) |
+| scope.type | string | **Yes** | Scope granularity: `"file"` \| `"directory"` \| `"workspace"` |
+| scope.path | string | **Yes** | Absolute path to file, directory, or workspace root |
+| options | object | No | Optional configuration |
+| options.severity_filter | string | No | Filter by severity: `"high"` \| `"medium"` \| `"low"` \| `null` (default: null = all) |
+| options.limit | number | No | Maximum number of findings to return (default: 1000) |
+| options.include_suggestions | boolean | No | Include removal suggestions (default: true) |
 
 **Supported Kinds:**
 - `"unused_imports"` - Imports declared but never referenced
@@ -222,9 +249,18 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 - `"unreachable"` - Unreachable code after return/break/continue
 
 **Scope Types:**
-- `file` - Analyze single file
-- `directory` - Analyze all files in directory (recursive)
-- `workspace` - Analyze entire workspace
+- `"file"` - Analyze single file
+- `"directory"` - Analyze all files in directory (recursive)
+- `"workspace"` - Analyze entire workspace
+
+**CLI Alternative:**
+```bash
+mill analyze dead-code --kind unused_imports --path src
+```
+
+**Error Messages:**
+- Missing `kind`: "Invalid request: Missing 'kind' parameter"
+- Invalid `kind`: "Unsupported kind 'invalid'. Valid: unused_imports, unused_symbols, unused_parameters, unused_variables, unused_types, unreachable"
 
 **Returns:**
 
@@ -319,9 +355,14 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| kind | string | Yes | Analysis type: `"imports"` \| `"graph"` \| `"circular"` \| `"coupling"` \| `"cohesion"` \| `"depth"` |
-| scope | object | Yes | Analysis scope (see Scope Types below) |
-| options | object | No | Configuration: severity_filter, limit, include_suggestions |
+| kind | string | **Yes** | Analysis type: `"imports"` \| `"graph"` \| `"circular"` \| `"coupling"` \| `"cohesion"` \| `"depth"` |
+| scope | object | **Yes** | Analysis scope (see Scope Types below) |
+| scope.type | string | **Yes** | Scope granularity: `"file"` \| `"directory"` \| `"workspace"` |
+| scope.path | string | **Yes** | Absolute path to file, directory, or workspace root |
+| options | object | No | Optional configuration |
+| options.severity_filter | string | No | Filter by severity: `"high"` \| `"medium"` \| `"low"` \| `null` (default: null = all) |
+| options.limit | number | No | Maximum number of findings to return (default: 1000) |
+| options.include_suggestions | boolean | No | Include refactoring suggestions (default: true) |
 
 **Supported Kinds:**
 - `"imports"` - Categorize all import statements (external, internal, relative)
@@ -332,9 +373,19 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 - `"depth"` - Dependency depth and chain analysis
 
 **Scope Types:**
-- `file` - Analyze single file dependencies
-- `directory` - Analyze directory dependency structure
-- `workspace` - Analyze workspace-wide dependencies
+- `"file"` - Analyze single file dependencies
+- `"directory"` - Analyze directory dependency structure
+- `"workspace"` - Analyze workspace-wide dependencies
+
+**CLI Alternative:**
+```bash
+mill analyze cycles --path . --fail-on-cycles
+mill analyze deps --path src/service.ts
+```
+
+**Error Messages:**
+- Missing `kind`: "Invalid request: Missing 'kind' parameter"
+- Invalid `kind`: "Unsupported kind 'invalid'. Valid: imports, graph, circular, coupling, cohesion, depth"
 
 **Returns:**
 
@@ -440,9 +491,14 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| kind | string | Yes | Analysis type: `"symbols"` \| `"hierarchy"` \| `"interfaces"` \| `"inheritance"` \| `"modules"` |
-| scope | object | Yes | Analysis scope (see Scope Types below) |
-| options | object | No | Configuration: severity_filter, limit, include_suggestions |
+| kind | string | **Yes** | Analysis type: `"symbols"` \| `"hierarchy"` \| `"interfaces"` \| `"inheritance"` \| `"modules"` |
+| scope | object | **Yes** | Analysis scope (see Scope Types below) |
+| scope.type | string | **Yes** | Scope granularity: `"file"` \| `"directory"` \| `"workspace"` |
+| scope.path | string | **Yes** | Absolute path to file, directory, or workspace root |
+| options | object | No | Optional configuration |
+| options.severity_filter | string | No | Filter by severity: `"high"` \| `"medium"` \| `"low"` \| `null` (default: null = all) |
+| options.limit | number | No | Maximum number of findings to return (default: 1000) |
+| options.include_suggestions | boolean | No | Include refactoring suggestions (default: true) |
 
 **Supported Kinds:**
 - `"symbols"` - Extract and categorize all symbols by kind (functions, classes, etc.)
@@ -452,9 +508,21 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 - `"modules"` - Analyze module organization patterns
 
 **Scope Types:**
-- `file` - Analyze single file structure
-- `directory` - Analyze directory structure
-- `workspace` - Analyze workspace structure
+- `"file"` - Analyze single file structure
+- `"directory"` - Analyze directory structure
+- `"workspace"` - Analyze workspace structure
+
+**CLI Alternative:**
+```bash
+mill tool analyze.structure '{
+  "kind": "symbols",
+  "scope": {"type": "file", "path": "src/models.ts"}
+}'
+```
+
+**Error Messages:**
+- Missing `kind`: "Invalid request: Missing 'kind' parameter"
+- Invalid `kind`: "Unsupported kind 'invalid'. Valid: symbols, hierarchy, interfaces, inheritance, modules"
 
 **Returns:**
 
@@ -543,9 +611,14 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| kind | string | Yes | Analysis type: `"coverage"` \| `"quality"` \| `"style"` \| `"examples"` \| `"todos"` |
-| scope | object | Yes | Analysis scope (see Scope Types below) |
-| options | object | No | Configuration: thresholds, severity_filter, limit |
+| kind | string | **Yes** | Analysis type: `"coverage"` \| `"quality"` \| `"style"` \| `"examples"` \| `"todos"` |
+| scope | object | **Yes** | Analysis scope (see Scope Types below) |
+| scope.type | string | **Yes** | Scope granularity: `"file"` \| `"directory"` \| `"workspace"` |
+| scope.path | string | **Yes** | Absolute path to file, directory, or workspace root |
+| options | object | No | Optional configuration |
+| options.thresholds | object | No | Coverage thresholds (default: see below) |
+| options.severity_filter | string | No | Filter by severity: `"high"` \| `"medium"` \| `"low"` \| `null` (default: null = all) |
+| options.limit | number | No | Maximum number of findings to return (default: 1000) |
 
 **Supported Kinds:**
 - `"coverage"` - Documentation coverage percentage (documented vs undocumented)
@@ -555,9 +628,26 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 - `"todos"` - TODO/FIXME/HACK comments tracking
 
 **Scope Types:**
-- `file` - Analyze single file documentation
-- `directory` - Analyze directory documentation
-- `workspace` - Analyze workspace documentation
+- `"file"` - Analyze single file documentation
+- `"directory"` - Analyze directory documentation
+- `"workspace"` - Analyze workspace documentation
+
+**Default Coverage Thresholds:**
+- < 50% = high severity (poor documentation)
+- 50-80% = medium severity (needs improvement)
+- > 80% = low severity (good documentation)
+
+**CLI Alternative:**
+```bash
+mill tool analyze.documentation '{
+  "kind": "coverage",
+  "scope": {"type": "file", "path": "src/api.ts"}
+}'
+```
+
+**Error Messages:**
+- Missing `kind`: "Invalid request: Missing 'kind' parameter"
+- Invalid `kind`: "Unsupported kind 'invalid'. Valid: coverage, quality, style, examples, todos"
 
 **Returns:**
 
@@ -648,9 +738,14 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| kind | string | Yes | Analysis type: `"coverage"` \| `"quality"` \| `"assertions"` \| `"organization"` |
-| scope | object | Yes | Analysis scope (see Scope Types below) |
-| options | object | No | Configuration: thresholds, severity_filter, limit |
+| kind | string | **Yes** | Analysis type: `"coverage"` \| `"quality"` \| `"assertions"` \| `"organization"` |
+| scope | object | **Yes** | Analysis scope (see Scope Types below) |
+| scope.type | string | **Yes** | Scope granularity: `"file"` \| `"directory"` \| `"workspace"` |
+| scope.path | string | **Yes** | Absolute path to file, directory, or workspace root |
+| options | object | No | Optional configuration |
+| options.thresholds | object | No | Coverage ratio thresholds (default: see below) |
+| options.severity_filter | string | No | Filter by severity: `"high"` \| `"medium"` \| `"low"` \| `null` (default: null = all) |
+| options.limit | number | No | Maximum number of findings to return (default: 1000) |
 
 **Supported Kinds:**
 - `"coverage"` - Test coverage ratio (tests to functions ratio)
@@ -659,9 +754,28 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 - `"organization"` - Test file organization and naming
 
 **Scope Types:**
-- `file` - Analyze single file tests
-- `directory` - Analyze directory test coverage
-- `workspace` - Analyze workspace test coverage
+- `"file"` - Analyze single file tests
+- `"directory"` - Analyze directory test coverage
+- `"workspace"` - Analyze workspace test coverage
+
+**Default Coverage Ratio Thresholds:**
+- < 0.5 (50%) = high severity (insufficient tests)
+- 0.5-0.8 (50-80%) = medium severity (needs more tests)
+- > 0.8 (80%) = low severity (good coverage)
+
+**Note:** This analyzes test-to-function ratio, not line coverage. For line coverage, use `cargo tarpaulin` or similar tools.
+
+**CLI Alternative:**
+```bash
+mill tool analyze.tests '{
+  "kind": "coverage",
+  "scope": {"type": "file", "path": "src/calculator.ts"}
+}'
+```
+
+**Error Messages:**
+- Missing `kind`: "Invalid request: Missing 'kind' parameter"
+- Invalid `kind`: "Unsupported kind 'invalid'. Valid: coverage, quality, assertions, organization"
 
 **Returns:**
 
@@ -752,12 +866,22 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| queries | array | Yes | Array of analysis query objects (command, kind, scope) |
+| queries | array | **Yes** | Array of analysis query objects (see structure below) |
 
 **Query Object Structure:**
-- `command` - Analysis command name (e.g., "analyze.quality")
-- `kind` - Specific kind of analysis (e.g., "complexity")
-- `scope` - Analysis scope object (type, path)
+
+Each query in the array must have:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| command | string | **Yes** | Analysis command: `"analyze.quality"` \| `"analyze.dead_code"` \| `"analyze.dependencies"` \| `"analyze.structure"` \| `"analyze.documentation"` \| `"analyze.tests"` |
+| kind | string | **Yes** | Specific analysis kind (depends on command - see individual tool docs) |
+| scope | object | **Yes** | Analysis scope object |
+| scope.type | string | **Yes** | Scope type: `"file"` \| `"directory"` \| `"workspace"` |
+| scope.path | string | **Yes** | Absolute path to analyze |
+| options | object | No | Optional configuration (command-specific) |
+
+**Performance Tip:** Use the same `scope.path` for all queries to maximize AST cache reuse!
 
 **Returns:**
 
@@ -867,17 +991,46 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| target | object | Yes | Target specification (kind: "file" \| "directory", path: string) |
-| options | object | No | Configuration: include_dev_dependencies, include_workspace_deps, resolve_features |
+| target | object | **Yes** | Target specification (see structure below) |
+| target.kind | string | **Yes** | Target type: `"file"` \| `"directory"` |
+| target.path | string | **Yes** | Absolute path to Rust file or directory |
+| options | object | No | Optional configuration (see options below) |
+| options.include_dev_dependencies | boolean | No | Include dev dependencies (default: false) |
+| options.include_workspace_deps | boolean | No | Include workspace dependencies (default: true) |
+| options.resolve_features | boolean | No | Resolve cargo features (default: true) |
 
 **Target Kinds:**
-- `file` - Analyze single Rust file dependencies
-- `directory` - Analyze all .rs files in directory (recursive)
+- `"file"` - Analyze single Rust file dependencies
+- `"directory"` - Analyze all .rs files in directory (recursive)
 
-**Options:**
-- `include_dev_dependencies` - Include dev dependencies (default: false)
-- `include_workspace_deps` - Include workspace dependencies (default: true)
-- `resolve_features` - Resolve cargo features (default: true)
+**Options Defaults:**
+```json
+{
+  "include_dev_dependencies": false,
+  "include_workspace_deps": true,
+  "resolve_features": true
+}
+```
+
+**Language Support:** Rust only (.rs files)
+
+**CLI Alternative:**
+```bash
+mill tool analyze.module_dependencies '{
+  "target": {
+    "kind": "directory",
+    "path": "crates/mill-ast/src"
+  },
+  "options": {
+    "include_workspace_deps": true
+  }
+}'
+```
+
+**Error Messages:**
+- Missing `target`: "Invalid request: Missing 'target' parameter"
+- Invalid `target.kind`: "Unsupported kind 'invalid'. Valid: file, directory"
+- Non-Rust path: "Path does not contain any Rust (.rs) files"
 
 **Returns:**
 
@@ -968,6 +1121,49 @@ Dependency analysis result with:
 - Essential for `workspace.extract_dependencies` tool
 - Reports unresolved imports for manual investigation
 - Use cases: pre-extraction analysis, dependency auditing, Cargo.toml generation
+
+---
+
+## CLI vs MCP Tool Interfaces
+
+Some analysis tools can be invoked two different ways:
+
+**Via CLI subcommand** (supports flags):
+```bash
+# Complexity analysis
+mill analyze complexity --path src/handlers.rs --threshold 20
+
+# Circular dependency detection
+mill analyze cycles --path . --fail-on-cycles
+
+# Dead code detection
+mill analyze dead-code --kind unused_imports --path src
+
+# Dependency analysis
+mill analyze deps --path src/service.ts
+```
+
+**Via MCP tool** (requires JSON):
+```bash
+# Same complexity analysis via MCP tool interface
+mill tool analyze.quality '{
+  "kind": "complexity",
+  "scope": {"type": "file", "path": "src/handlers.rs"},
+  "options": {"thresholds": {"cyclomatic_complexity": 20}}
+}'
+
+# Same circular dependency detection
+mill tool analyze.dependencies '{
+  "kind": "circular",
+  "scope": {"type": "workspace", "path": "."}
+}'
+```
+
+**When to use each:**
+- **CLI subcommands**: Faster for manual/interactive use, supports flags, better error messages
+- **MCP tool interface**: Required for programmatic/AI agent use, more flexible, consistent with other tools
+
+Both interfaces call the same underlying analysis tools and return the same results.
 
 ---
 
