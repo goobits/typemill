@@ -30,7 +30,7 @@ default = true
 path = "crates/mill-lang-python"
 plugin_struct = "PythonPlugin"
 category = "full"
-default = false  # Optional - enable with --features lang-python
+default = true
 
 [languages.markdown]
 path = "crates/mill-lang-markdown"

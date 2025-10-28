@@ -20,7 +20,7 @@ mill-lang-python = { path = "../mill-lang-python", optional = true, default-feat
 mill-lang-gitignore = { path = "../mill-lang-gitignore", optional = true, default-features = false }
 
 [features]
-default = ["lang-gitignore", "lang-markdown", "lang-rust", "lang-toml", "lang-typescript", "lang-yaml"]
+default = ["lang-gitignore", "lang-markdown", "lang-python", "lang-rust", "lang-toml", "lang-typescript", "lang-yaml"]
 lang-rust = ["dep:mill-lang-rust"]
 lang-typescript = ["dep:mill-lang-typescript"]
 lang-markdown = ["dep:mill-lang-markdown"]

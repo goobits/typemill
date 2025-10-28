@@ -34,7 +34,7 @@ mill-lang-rust = { workspace = true , optional = true }
 mill-lang-markdown = { workspace = true , optional = true }
 
 [features]
-default = ["lang-markdown", "lang-rust", "lang-typescript"]
+default = ["lang-markdown", "lang-python", "lang-rust", "lang-typescript"]
 lang-rust = ["dep:mill-lang-rust", "mill-ast/lang-rust", "mill-plugin-system/lang-rust"]
 lang-typescript = ["dep:mill-lang-typescript", "mill-ast/lang-typescript", "mill-plugin-system/lang-typescript"]
 lang-markdown = ["dep:mill-lang-markdown", "mill-ast/lang-markdown", "mill-plugin-system/lang-markdown"]
