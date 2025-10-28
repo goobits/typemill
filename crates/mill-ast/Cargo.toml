@@ -42,3 +42,4 @@ lang-cpp = []
 [dev-dependencies]
 tempfile = "3.0"
 mill-lang-rust = { path = "../mill-lang-rust", default-features = false }
+mill-lang-typescript = { path = "../mill-lang-typescript", default-features = false }

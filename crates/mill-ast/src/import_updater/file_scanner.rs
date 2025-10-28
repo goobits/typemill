@@ -178,6 +178,7 @@ impl ImportPathResolver {
     /// Resolve an import specifier (like './utils' or '../api') to an absolute file path
     ///
     /// Handles:
+    /// - Path aliases (e.g., TypeScript's $lib/*, @/*, ~/*)
     /// - Relative paths (./foo, ../foo)
     /// - Absolute paths (/foo)
     /// - Bare specifiers for markdown links (API_REFERENCE.md, docs/file.md)
@@ -188,7 +189,19 @@ impl ImportPathResolver {
         importing_file: &Path,
         project_files: &[PathBuf],
     ) -> Option<PathBuf> {
-        // Try explicit relative/absolute paths first (./foo, ../foo, /foo)
+        // NEW: Try path alias resolution FIRST (before relative/bare specifier logic)
+        // This ensures path aliases like $lib/*, @/*, ~/* are checked for all specifiers
+        if let Some(resolved) = self.try_resolve_path_alias(specifier, importing_file) {
+            // Recursively resolve the aliased path (might be relative)
+            debug!(
+                original_specifier = %specifier,
+                resolved_specifier = %resolved,
+                "Path alias resolved, recursing to resolve actual path"
+            );
+            return self.resolve_import_to_file(&resolved, importing_file, project_files);
+        }
+
+        // Try explicit relative/absolute paths (./foo, ../foo, /foo)
         if specifier.starts_with("./") || specifier.starts_with("../") || specifier.starts_with('/')
         {
             let importing_dir = importing_file.parent()?;

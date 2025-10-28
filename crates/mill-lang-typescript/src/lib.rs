@@ -4,8 +4,10 @@ pub mod imports;
 pub mod lsp_installer;
 mod manifest;
 pub mod parser;
+mod path_alias_resolver;
 mod project_factory;
 pub mod refactoring;
+mod tsconfig;
 pub mod workspace_support;
 
 use async_trait::async_trait;
@@ -32,6 +34,7 @@ define_language_plugin! {
         workspace_support: workspace_support::TypeScriptWorkspaceSupport,
         project_factory: project_factory::TypeScriptProjectFactory,
         lsp_installer: lsp_installer::TypeScriptLspInstaller,
+        path_alias_resolver: path_alias_resolver::TypeScriptPathAliasResolver,
     },
     doc: "TypeScript/JavaScript language plugin implementation"
 }
@@ -85,6 +88,9 @@ impl LanguagePlugin for TypeScriptPlugin {
         },
         lsp_installer => {
             lsp_installer: LspInstaller,
+        },
+        path_alias_resolver => {
+            path_alias_resolver: PathAliasResolver,
         },
     }
 
