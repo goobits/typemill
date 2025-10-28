@@ -4,8 +4,8 @@
 //! path mappings used for import resolution.
 
 use anyhow::{Context, Result};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 /// Represents a parsed tsconfig.json file
@@ -25,7 +25,10 @@ pub struct CompilerOptions {
 
     /// Path mappings for module resolution
     /// Example: { "$lib/*": ["src/lib/*"], "@/*": ["src/*"] }
-    pub paths: Option<HashMap<String, Vec<String>>>,
+    ///
+    /// Uses IndexMap to preserve insertion order, which matches TypeScript's
+    /// pattern matching behavior (first matching pattern wins).
+    pub paths: Option<IndexMap<String, Vec<String>>>,
 }
 
 impl TsConfig {
@@ -96,7 +99,7 @@ impl TsConfig {
 ///
 /// TypeScript's tsconfig.json allows JavaScript-style comments (//, /* */),
 /// but standard JSON parsers don't support them. This function removes
-/// line comments to enable parsing.
+/// both line comments and block comments.
 ///
 /// # Arguments
 ///
@@ -104,23 +107,93 @@ impl TsConfig {
 ///
 /// # Returns
 ///
-/// JSON content with line comments removed
+/// JSON content with all comments removed
 ///
-/// # Note
+/// # Supported Comment Styles
 ///
-/// This is a simple implementation that only handles // line comments.
-/// For production use, consider using the `json5` or `strip-json-comments` crate
-/// to handle block comments (/* */) and more complex cases.
+/// - Line comments: `// comment` (entire line or inline)
+/// - Block comments: `/* comment */` (single-line or multi-line)
+///
+/// # Implementation
+///
+/// This is a state-machine-based parser that correctly handles:
+/// - Inline comments: `"key": "value" // comment`
+/// - Block comments: `/* comment */`
+/// - Multi-line block comments
+/// - Comments inside strings (preserved)
 fn strip_json_comments(content: &str) -> String {
-    content
-        .lines()
-        .filter(|line| {
-            let trimmed = line.trim();
-            // Keep lines that don't start with //
-            !trimmed.starts_with("//")
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    let mut result = String::with_capacity(content.len());
+    let mut chars = content.chars().peekable();
+    let mut in_string = false;
+    let mut in_line_comment = false;
+    let mut in_block_comment = false;
+    let mut escape_next = false;
+
+    while let Some(ch) = chars.next() {
+        // Handle string boundaries (don't process comments inside strings)
+        if !in_line_comment && !in_block_comment {
+            if ch == '"' && !escape_next {
+                in_string = !in_string;
+                result.push(ch);
+                escape_next = false;
+                continue;
+            }
+
+            if in_string {
+                result.push(ch);
+                escape_next = ch == '\\' && !escape_next;
+                continue;
+            }
+        }
+
+        // Handle escape sequences
+        if in_string && escape_next {
+            escape_next = false;
+        }
+
+        // Check for comment start
+        if !in_string && !in_line_comment && !in_block_comment && ch == '/' {
+            if let Some(&next_ch) = chars.peek() {
+                if next_ch == '/' {
+                    // Start of line comment
+                    in_line_comment = true;
+                    chars.next(); // consume second /
+                    continue;
+                } else if next_ch == '*' {
+                    // Start of block comment
+                    in_block_comment = true;
+                    chars.next(); // consume *
+                    continue;
+                }
+            }
+        }
+
+        // Handle line comment end (newline)
+        if in_line_comment && ch == '\n' {
+            in_line_comment = false;
+            result.push(ch); // preserve newline
+            continue;
+        }
+
+        // Handle block comment end (*/)
+        if in_block_comment && ch == '*' {
+            if let Some(&next_ch) = chars.peek() {
+                if next_ch == '/' {
+                    // End of block comment
+                    in_block_comment = false;
+                    chars.next(); // consume /
+                    continue;
+                }
+            }
+        }
+
+        // Add character to result if not in a comment
+        if !in_line_comment && !in_block_comment {
+            result.push(ch);
+        }
+    }
+
+    result
 }
 
 #[cfg(test)]
@@ -278,5 +351,144 @@ mod tests {
         // Should still contain JSON content
         assert!(output.contains(r#""key": "value""#));
         assert!(output.contains(r#""key2": "value2""#));
+    }
+
+    #[test]
+    fn test_strip_inline_comments() {
+        let input = r#"{
+            "compilerOptions": { // TypeScript options
+                "baseUrl": ".", // Base path
+                "paths": { // Path mappings
+                    "$lib/*": ["src/lib/*"] // SvelteKit alias
+                }
+            }
+        }"#;
+
+        let output = strip_json_comments(input);
+
+        // Should not contain inline comments
+        assert!(!output.contains("// TypeScript options"));
+        assert!(!output.contains("// Base path"));
+        assert!(!output.contains("// Path mappings"));
+        assert!(!output.contains("// SvelteKit alias"));
+
+        // Should still contain JSON content
+        assert!(output.contains(r#""compilerOptions""#));
+        assert!(output.contains(r#""baseUrl": ".""#));
+        assert!(output.contains(r#""$lib/*""#));
+
+        // Should parse as valid JSON
+        let parsed: serde_json::Value = serde_json::from_str(&output)
+            .expect("Output should be valid JSON");
+        assert!(parsed.is_object());
+    }
+
+    #[test]
+    fn test_strip_block_comments() {
+        let input = r#"{
+            /* This is a block comment */
+            "compilerOptions": {
+                "baseUrl": ".", /* inline block */
+                "paths": {
+                    "$lib/*": ["src/lib/*"]
+                }
+            }
+        }"#;
+
+        let output = strip_json_comments(input);
+
+        // Should not contain block comments
+        assert!(!output.contains("/* This is a block comment */"));
+        assert!(!output.contains("/* inline block */"));
+
+        // Should still contain JSON content
+        assert!(output.contains(r#""compilerOptions""#));
+        assert!(output.contains(r#""baseUrl": ".""#));
+
+        // Should parse as valid JSON
+        let parsed: serde_json::Value = serde_json::from_str(&output)
+            .expect("Output should be valid JSON");
+        assert!(parsed.is_object());
+    }
+
+    #[test]
+    fn test_strip_multiline_block_comments() {
+        let input = r#"{
+            /*
+             * Multi-line block comment
+             * with multiple lines
+             */
+            "compilerOptions": {
+                "baseUrl": ".",
+                "paths": {
+                    "$lib/*": ["src/lib/*"]
+                }
+            }
+        }"#;
+
+        let output = strip_json_comments(input);
+
+        // Should not contain any part of block comment
+        assert!(!output.contains("Multi-line block comment"));
+        assert!(!output.contains("with multiple lines"));
+
+        // Should parse as valid JSON
+        let parsed: serde_json::Value = serde_json::from_str(&output)
+            .expect("Output should be valid JSON");
+        assert!(parsed.is_object());
+    }
+
+    #[test]
+    fn test_preserve_comments_in_strings() {
+        let input = r#"{
+            "description": "This // is not a comment",
+            "note": "Neither /* is */ this"
+        }"#;
+
+        let output = strip_json_comments(input);
+
+        // Should preserve "comments" that are inside strings
+        assert!(output.contains("This // is not a comment"));
+        assert!(output.contains("Neither /* is */ this"));
+
+        // Should parse as valid JSON
+        let parsed: serde_json::Value = serde_json::from_str(&output)
+            .expect("Output should be valid JSON");
+        assert_eq!(parsed["description"], "This // is not a comment");
+        assert_eq!(parsed["note"], "Neither /* is */ this");
+    }
+
+    #[test]
+    fn test_parse_tsconfig_with_inline_and_block_comments() {
+        // Real-world tsconfig.json with various comment styles
+        let config_json = r#"{
+            /* TypeScript Configuration */
+            "compilerOptions": {
+                "baseUrl": ".", // Project root
+                "paths": { // Path mappings for module resolution
+                    "$lib/*": ["src/lib/*"], // SvelteKit alias
+                    "@/*": ["src/*"] /* Common Next.js pattern */
+                }
+            }
+        }"#;
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(config_json.as_bytes()).unwrap();
+        temp_file.flush().unwrap();
+
+        // Should parse successfully
+        let config = TsConfig::from_file(temp_file.path())
+            .expect("Should parse tsconfig with comments");
+
+        assert!(config.compiler_options.is_some());
+        let compiler_options = config.compiler_options.as_ref().unwrap();
+
+        assert_eq!(compiler_options.base_url.as_deref(), Some("."));
+        assert!(compiler_options.paths.is_some());
+
+        let paths = compiler_options.paths.as_ref().unwrap();
+        assert_eq!(paths.len(), 2);
+        assert_eq!(paths.get("$lib/*").unwrap(), &vec!["src/lib/*"]);
+        assert_eq!(paths.get("@/*").unwrap(), &vec!["src/*"]);
     }
 }

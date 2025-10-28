@@ -118,12 +118,27 @@ impl ImportPathResolver {
         if original_import.starts_with("./") || original_import.starts_with("../") {
             // Relative import - calculate new relative path
             self.calculate_relative_import(importing_file, new_target_path)
-        } else if original_import.starts_with("@/") || original_import.starts_with("~/") {
-            // Alias import - update the path after the alias
+        } else if self.is_path_alias(original_import, importing_file) {
+            // Path alias import (e.g., $lib/*, @/*, ~/*) - delegate to language plugin
+            // For now, use generic alias update logic
             self.update_alias_import(original_import, old_target_path, new_target_path)
         } else {
             // Absolute or package import - might not need updating
             Ok(original_import.to_string())
+        }
+    }
+
+    /// Check if an import specifier is a path alias using language plugins
+    fn is_path_alias(&self, specifier: &str, importing_file: &Path) -> bool {
+        // Try to get path alias resolver from plugin
+        if let Some(resolver) = self.get_path_alias_resolver_for_file(importing_file) {
+            resolver.is_potential_alias(specifier)
+        } else {
+            // Fallback: Check common alias patterns if no plugin available
+            // This is a temporary measure - ideally all alias detection should be via plugins
+            specifier.starts_with('@')
+                || specifier.starts_with('$')
+                || specifier.starts_with('~')
         }
     }
 

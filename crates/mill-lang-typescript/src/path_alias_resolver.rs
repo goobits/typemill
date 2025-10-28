@@ -7,6 +7,7 @@
 //! - Vite: `~/*` → `./*`
 
 use crate::tsconfig::TsConfig;
+use indexmap::IndexMap;
 use mill_plugin_api::path_alias_resolver::PathAliasResolver;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -62,18 +63,28 @@ impl TypeScriptPathAliasResolver {
     /// # Arguments
     ///
     /// * `specifier` - Import specifier (e.g., "$lib/utils")
-    /// * `paths` - Path mappings from tsconfig.json
+    /// * `paths` - Path mappings from tsconfig.json (IndexMap preserves order)
     /// * `base_url` - Base URL directory for resolving paths
     ///
     /// # Returns
     ///
     /// Resolved path if match found, None otherwise
+    ///
+    /// # Pattern Matching Order
+    ///
+    /// Patterns are matched in declaration order (IndexMap preserves insertion order).
+    /// This matches TypeScript's behavior: the first matching pattern wins.
+    /// This is critical for overlapping patterns like:
+    /// - "@api/models/*" → "src/api/models/*"  (more specific)
+    /// - "@api/*" → "src/api-v2/*"             (less specific)
     fn match_path_alias(
         &self,
         specifier: &str,
-        paths: &HashMap<String, Vec<String>>,
+        paths: &IndexMap<String, Vec<String>>,
         base_url: &Path,
     ) -> Option<String> {
+        // IndexMap iteration preserves insertion order, so patterns are tried
+        // in the order they appear in tsconfig.json
         for (pattern, replacements) in paths {
             if let Some(resolved) = self.try_match_pattern(specifier, pattern, replacements, base_url) {
                 return Some(resolved);
@@ -180,28 +191,37 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_test_tsconfig(dir: &Path, base_url: &str, paths: &[(&str, &[&str])]) -> PathBuf {
-        let mut paths_map = serde_json::Map::new();
-        for (pattern, replacements) in paths {
-            let replacements_json: Vec<serde_json::Value> = replacements
+        // Manually construct JSON to preserve insertion order
+        // (serde_json::Map uses HashMap which doesn't preserve order)
+        let mut paths_json = String::from("{\n");
+        for (i, (pattern, replacements)) in paths.iter().enumerate() {
+            let replacements_json = replacements
                 .iter()
-                .map(|r| serde_json::Value::String(r.to_string()))
-                .collect();
-            paths_map.insert(
-                pattern.to_string(),
-                serde_json::Value::Array(replacements_json),
-            );
+                .map(|r| format!("\"{}\"", r))
+                .collect::<Vec<_>>()
+                .join(", ");
+            paths_json.push_str(&format!(
+                "      \"{}\": [{}]{}",
+                pattern,
+                replacements_json,
+                if i < paths.len() - 1 { ",\n" } else { "\n" }
+            ));
         }
+        paths_json.push_str("    }");
 
-        let config_json = serde_json::json!({
-            "compilerOptions": {
-                "baseUrl": base_url,
-                "paths": paths_map
-            }
-        });
+        let config_json = format!(
+            r#"{{
+  "compilerOptions": {{
+    "baseUrl": "{}",
+    "paths": {}
+  }}
+}}"#,
+            base_url, paths_json
+        );
 
         let tsconfig_path = dir.join("tsconfig.json");
         let mut file = std::fs::File::create(&tsconfig_path).unwrap();
-        file.write_all(config_json.to_string().as_bytes()).unwrap();
+        file.write_all(config_json.as_bytes()).unwrap();
         file.flush().unwrap();
 
         tsconfig_path
@@ -421,5 +441,139 @@ mod tests {
             resolved_path.contains("src/lib/server/core/orchestrator")
                 || resolved_path.ends_with("src/lib/server/core/orchestrator")
         );
+    }
+
+    #[test]
+    fn test_overlapping_aliases_preserves_order() {
+        // This test verifies the fix for the HashMap ordering bug
+        // When multiple patterns overlap, TypeScript uses the FIRST matching pattern
+        // IndexMap preserves insertion order, so patterns are matched in declaration order
+
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        // Create tsconfig with overlapping patterns
+        // "@api/models/*" is more specific and should match first
+        // "@api/*" is less specific and should only match if "@api/models/*" doesn't
+        create_test_tsconfig(
+            project_root,
+            ".",
+            &[
+                ("@api/models/*", &["src/api/models/*"]),  // More specific (first)
+                ("@api/*", &["src/api-v2/*"]),              // Less specific (second)
+            ],
+        );
+
+        let test_file = project_root.join("src").join("test.ts");
+        std::fs::create_dir_all(test_file.parent().unwrap()).unwrap();
+        std::fs::write(&test_file, "").unwrap();
+
+        let resolver = TypeScriptPathAliasResolver::new();
+
+        // Test 1: "@api/models/User" should match first pattern
+        let resolved = resolver.resolve_alias("@api/models/User", &test_file, project_root);
+        assert!(resolved.is_some());
+        let resolved_path = resolved.unwrap();
+
+        // Should resolve to src/api/models/User, NOT src/api-v2/models/User
+        assert!(
+            resolved_path.contains("src/api/models/User")
+                || resolved_path.ends_with("src/api/models/User"),
+            "Expected 'src/api/models/User' but got: {}",
+            resolved_path
+        );
+        assert!(
+            !resolved_path.contains("api-v2"),
+            "Should not match second pattern for @api/models/*: {}",
+            resolved_path
+        );
+
+        // Test 2: "@api/other" should match second pattern
+        let resolved = resolver.resolve_alias("@api/other", &test_file, project_root);
+        assert!(resolved.is_some());
+        let resolved_path = resolved.unwrap();
+
+        // Should resolve to src/api-v2/other
+        assert!(
+            resolved_path.contains("src/api-v2/other")
+                || resolved_path.ends_with("src/api-v2/other"),
+            "Expected 'src/api-v2/other' but got: {}",
+            resolved_path
+        );
+    }
+
+    #[test]
+    fn test_specific_pattern_wins_over_generic() {
+        // Another test for overlapping patterns with different specificity
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        // Patterns ordered from specific to generic (TypeScript convention)
+        create_test_tsconfig(
+            project_root,
+            ".",
+            &[
+                ("@lib/server/core/*", &["src/lib/server/core/*"]),  // Most specific
+                ("@lib/server/*", &["src/lib/server/*"]),             // Medium specific
+                ("@lib/*", &["src/lib/*"]),                           // Least specific
+            ],
+        );
+
+        let test_file = project_root.join("src").join("test.ts");
+        std::fs::create_dir_all(test_file.parent().unwrap()).unwrap();
+        std::fs::write(&test_file, "").unwrap();
+
+        let resolver = TypeScriptPathAliasResolver::new();
+
+        // Test 1: "@lib/server/core/orchestrator" should match first (most specific)
+        let resolved = resolver.resolve_alias("@lib/server/core/orchestrator", &test_file, project_root);
+        assert!(resolved.is_some());
+        assert!(resolved.unwrap().contains("src/lib/server/core/orchestrator"));
+
+        // Test 2: "@lib/server/providers" should match second pattern
+        let resolved = resolver.resolve_alias("@lib/server/providers", &test_file, project_root);
+        assert!(resolved.is_some());
+        assert!(resolved.unwrap().contains("src/lib/server/providers"));
+
+        // Test 3: "@lib/components" should match third pattern
+        let resolved = resolver.resolve_alias("@lib/components", &test_file, project_root);
+        assert!(resolved.is_some());
+        assert!(resolved.unwrap().contains("src/lib/components"));
+    }
+
+    #[test]
+    fn test_overlapping_with_different_targets() {
+        // Test when overlapping patterns map to completely different directories
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        create_test_tsconfig(
+            project_root,
+            ".",
+            &[
+                ("@legacy/auth/*", &["old/auth-system/*"]),  // Specific legacy path
+                ("@legacy/*", &["legacy/*"]),                 // Generic legacy path
+                ("@/*", &["src/*"]),                          // Current code
+            ],
+        );
+
+        let test_file = project_root.join("src").join("test.ts");
+        std::fs::create_dir_all(test_file.parent().unwrap()).unwrap();
+        std::fs::write(&test_file, "").unwrap();
+
+        let resolver = TypeScriptPathAliasResolver::new();
+
+        // Each pattern should resolve to its own distinct directory
+        let auth_resolved = resolver.resolve_alias("@legacy/auth/login", &test_file, project_root);
+        assert!(auth_resolved.is_some());
+        assert!(auth_resolved.unwrap().contains("old/auth-system/login"));
+
+        let legacy_resolved = resolver.resolve_alias("@legacy/utils", &test_file, project_root);
+        assert!(legacy_resolved.is_some());
+        assert!(legacy_resolved.unwrap().contains("legacy/utils"));
+
+        let current_resolved = resolver.resolve_alias("@/components", &test_file, project_root);
+        assert!(current_resolved.is_some());
+        assert!(current_resolved.unwrap().contains("src/components"));
     }
 }
