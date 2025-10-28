@@ -32,14 +32,16 @@ mill-lang-python = { workspace = true , optional = true }
 mill-lang-typescript = { workspace = true , optional = true }
 mill-lang-rust = { workspace = true , optional = true }
 mill-lang-markdown = { workspace = true , optional = true }
+mill-lang-php = { workspace = true, optional = true }
 
 [features]
-default = ["lang-markdown", "lang-python", "lang-rust", "lang-typescript"]
+default = ["lang-markdown", "lang-php", "lang-python", "lang-rust", "lang-typescript"]
 lang-rust = ["dep:mill-lang-rust", "mill-ast/lang-rust", "mill-plugin-system/lang-rust"]
 lang-typescript = ["dep:mill-lang-typescript", "mill-ast/lang-typescript", "mill-plugin-system/lang-typescript"]
 lang-markdown = ["dep:mill-lang-markdown", "mill-ast/lang-markdown", "mill-plugin-system/lang-markdown"]
 mcp-proxy = ["mill-foundation/mcp-proxy", "mill-config/mcp-proxy", "mill-plugin-system/mcp-proxy"]
 lang-python = ["dep:mill-lang-python", "mill-ast/lang-python", "mill-plugin-system/lang-python"]
+lang-php = ["dep:mill-lang-php", "mill-ast/lang-php", "mill-plugin-system/lang-php"]
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

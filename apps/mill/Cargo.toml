@@ -72,7 +72,7 @@ mill-test-support = { path = "../../crates/mill-test-support" }
 mill-handlers = { path = "../../crates/mill-handlers", default-features = false, features = ["refactor-all"] }
 
 [features]
-default = ["lang-gitignore", "lang-markdown", "lang-python", "lang-rust", "lang-toml", "lang-typescript", "lang-yaml"]
+default = ["lang-gitignore", "lang-markdown", "lang-php", "lang-python", "lang-rust", "lang-toml", "lang-typescript", "lang-yaml"]
 lang-rust = ["mill-server/lang-rust", "mill-plugin-bundle/lang-rust", "mill-ast/lang-rust", "mill-plugin-system/lang-rust", "mill-transport/lang-rust"]
 lang-typescript = ["mill-server/lang-typescript", "mill-plugin-bundle/lang-typescript", "mill-ast/lang-typescript", "mill-plugin-system/lang-typescript", "mill-transport/lang-typescript"]
 lang-markdown = ["mill-server/lang-markdown", "mill-plugin-bundle/lang-markdown", "mill-ast/lang-markdown", "mill-plugin-system/lang-markdown", "mill-transport/lang-markdown"]
@@ -84,6 +84,7 @@ mcp-proxy = ["mill-server/mcp-proxy", "mill-client/mcp-proxy", "mill-foundation/
 heavy-tests = []
 lang-python = ["mill-server/lang-python", "mill-plugin-bundle/lang-python", "mill-ast/lang-python", "mill-plugin-system/lang-python", "mill-transport/lang-python"]
 lang-gitignore = ["mill-server/lang-gitignore", "mill-plugin-bundle/lang-gitignore"]
+lang-php = ["mill-server/lang-php", "mill-plugin-bundle/lang-php", "mill-ast/lang-php", "mill-plugin-system/lang-php", "mill-transport/lang-php"]
 
 # Platform-specific dependencies for process management
 [target.'cfg(unix)'.dependencies]

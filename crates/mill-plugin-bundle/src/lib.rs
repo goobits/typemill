@@ -17,6 +17,8 @@ use std::sync::Arc;
 use mill_lang_gitignore::GitignoreLanguagePlugin;
 #[cfg(feature = "lang-markdown")]
 use mill_lang_markdown::MarkdownPlugin;
+#[cfg(feature = "lang-php")]
+use mill_lang_php::PhpPlugin;
 #[cfg(feature = "lang-python")]
 use mill_lang_python::PythonPlugin;
 #[cfg(feature = "lang-rust")]
@@ -37,6 +39,8 @@ fn _force_plugin_linkage() {
     let _: Option<GitignoreLanguagePlugin> = None;
     #[cfg(feature = "lang-markdown")]
     let _: Option<MarkdownPlugin> = None;
+    #[cfg(feature = "lang-php")]
+    let _: Option<PhpPlugin> = None;
     #[cfg(feature = "lang-python")]
     let _: Option<PythonPlugin> = None;
     #[cfg(feature = "lang-rust")]
@@ -87,6 +91,8 @@ mod tests {
     extern crate mill_lang_gitignore;
     #[cfg(all(test, feature = "lang-markdown"))]
     extern crate mill_lang_markdown;
+    #[cfg(all(test, feature = "lang-php"))]
+    extern crate mill_lang_php;
     #[cfg(all(test, feature = "lang-python"))]
     extern crate mill_lang_python;
     #[cfg(all(test, feature = "lang-rust"))]

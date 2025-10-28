@@ -56,6 +56,12 @@ plugin_struct = "GitignoreLanguagePlugin"
 category = "config"
 default = true
 
+[languages.php]
+path = "crates/mill-lang-php"
+plugin_struct = "PhpPlugin"
+category = "full"
+default = true
+
 # Future languages (examples):
 #
 # [languages.go]

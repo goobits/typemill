@@ -44,7 +44,7 @@ mill-ast = { path = "../mill-ast", default-features = false }
 mill-handlers = { path = "../mill-handlers", default-features = false, features = ["analysis-deep-dead-code", "refactor-all"] }
 
 [features]
-default = ["lang-gitignore", "lang-markdown", "lang-python", "lang-rust", "lang-toml", "lang-typescript", "lang-yaml"]
+default = ["lang-gitignore", "lang-markdown", "lang-php", "lang-python", "lang-rust", "lang-toml", "lang-typescript", "lang-yaml"]
 # NOTE: mill-handlers no longer has language features - it uses dependency injection
 lang-rust = ["mill-services/lang-rust", "mill-ast/lang-rust", "mill-plugin-bundle/lang-rust", "mill-plugin-system/lang-rust", "mill-transport/lang-rust"]
 lang-typescript = ["mill-services/lang-typescript", "mill-ast/lang-typescript", "mill-plugin-bundle/lang-typescript", "mill-plugin-system/lang-typescript", "mill-transport/lang-typescript"]
@@ -55,6 +55,7 @@ mcp-proxy = ["mill-foundation/mcp-proxy", "mill-config/mcp-proxy", "mill-service
 test-helpers = []
 lang-python = ["mill-services/lang-python", "mill-ast/lang-python", "mill-plugin-bundle/lang-python", "mill-plugin-system/lang-python", "mill-transport/lang-python"]
 lang-gitignore = ["mill-plugin-bundle/lang-gitignore"]
+lang-php = ["mill-services/lang-php", "mill-ast/lang-php", "mill-plugin-bundle/lang-php", "mill-plugin-system/lang-php", "mill-transport/lang-php"]
 
 [dev-dependencies]
 tempfile = "3.0"
