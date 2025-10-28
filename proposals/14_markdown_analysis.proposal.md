@@ -1,94 +1,98 @@
-# Proposal 14: Markdown Analysis Extensions
+# Proposal 14: Markdown Structure & Formatting Analysis
 
 ## Problem
 
-Markdown plugin supports link tracking for renames but lacks quality analysis:
-- No broken link detection (404s, invalid anchors)
-- No structure validation (heading hierarchy, duplicates)
-- No formatting checks (missing alt text, code language tags)
-- No documentation completeness analysis (README sections)
-- Analysis handlers don't leverage markdown plugin's link parsing capabilities
+Markdown plugin supports link tracking but lacks quality analysis within current architecture constraints:
+- No structure validation (heading hierarchy, duplicates, empty sections)
+- No formatting checks (missing alt text, code language tags, table consistency)
+- Current analysis engine only supports sync detection functions (cannot read other files)
+- Markdown import parser drops anchor fragments (cannot validate `#heading` links)
+- `analyze.documentation` has no "completeness" kind yet
 
-Current `analyze.quality` and `analyze.documentation` don't have markdown-specific detection functions.
+Link validation requires architectural changes (async detection or prefetch) - deferred to separate proposal.
 
 ## Solution
 
-Extend analysis handlers with markdown-specific detection functions that use the markdown plugin's existing capabilities (symbol parsing for headers, import parsing for links).
+Add markdown-specific sync detection functions for structure and formatting analysis within current architecture.
 
-### Architecture
-- Analysis handlers call `language_plugins.get_plugin_for_file()` to get markdown plugin
-- Use `plugin.parse()` to get headers as symbols
-- Use `plugin.import_parser()` to get links
-- Add new `kind` values to `analyze.quality` and `analyze.documentation`
+### Architecture Constraints
+- Detection functions are sync callbacks receiving pre-parsed data (content, symbols, file_path)
+- Cannot read other files (async file_service.exists())
+- Cannot parse other files (async plugin.parse())
+- Registry only exposes `get_plugin(extension)`, not `get_plugin_for_file(path)`
+
+### What Can Be Analyzed (Sync)
+- Current file heading structure (using pre-parsed symbols)
+- Current file formatting (regex on content string)
+- Code blocks without language tags
+- Images without alt text
+- Table column consistency
+- Duplicate headings
+
+### What Cannot Be Analyzed (Needs Async)
+- Broken file links (requires file_service.exists())
+- Anchor validation in other files (requires read + parse target)
+- Remote URL validation (requires network)
 
 ### New Analysis Kinds
 
 **`analyze.quality`:**
-- `kind: "link_validity"` - Broken links, invalid anchors, circular dependencies
 - `kind: "markdown_structure"` - Heading hierarchy, duplicate headings, empty sections
 - `kind: "markdown_formatting"` - Code block language tags, image alt text, table consistency
 
-**`analyze.documentation`:**
-- `kind: "completeness"` (enhanced) - README required sections, cross-references
-
 ## Checklists
 
-### Phase 1: Link Validity (Priority 1)
-- [ ] Add `detect_broken_links()` function in `crates/mill-handlers/src/handlers/tools/analysis/quality.rs`
-- [ ] Implement file existence checking for markdown links
-- [ ] Implement anchor validation (check `#heading` exists in target file)
-- [ ] Add `link_validity` kind to quality handler dispatcher
-- [ ] Test with broken links, invalid anchors, relative paths
-- [ ] Document `link_validity` kind in `docs/tools/analysis.md`
+### Phase 1: Structure Validation
+- [ ] Add `detect_markdown_structure()` function in `crates/mill-handlers/src/handlers/tools/analysis/quality.rs`
+- [ ] Implement heading hierarchy validation (no skipped levels: # → ### without ##)
+- [ ] Use pre-parsed symbols (headers already parsed by engine)
+- [ ] Implement duplicate heading detection (same title at same level)
+- [ ] Implement empty section detection (headers with no content before next header)
+- [ ] Add `markdown_structure` to quality handler kind validation and dispatcher
+- [ ] Test with heading hierarchy violations, duplicates, empty sections
+- [ ] Document `markdown_structure` kind in `docs/tools/analysis.md`
 
-### Phase 2: Structure Validation (Priority 2)
-- [ ] Add `detect_structure_issues()` function in quality.rs
-- [ ] Implement heading hierarchy validation (no skipped levels)
-- [ ] Implement duplicate heading detection
-- [ ] Implement empty section detection
-- [ ] Add `markdown_structure` kind to quality handler dispatcher
-- [ ] Test with various heading structures
-- [ ] Document `markdown_structure` kind in docs
-
-### Phase 3: Formatting Checks (Priority 3)
-- [ ] Add `detect_formatting_issues()` function in quality.rs
-- [ ] Implement code block language tag checking
-- [ ] Implement image alt text checking
-- [ ] Implement table column consistency checking
-- [ ] Implement list bullet style consistency
-- [ ] Add `markdown_formatting` kind to quality handler dispatcher
-- [ ] Test with various markdown formatting patterns
+### Phase 2: Formatting Checks
+- [ ] Add `detect_markdown_formatting()` function in quality.rs
+- [ ] Implement code block language tag checking (```rust vs bare ```)
+- [ ] Implement image alt text checking (![](path) vs ![alt](path))
+- [ ] Implement table column consistency checking (same number of | per row)
+- [ ] Implement trailing whitespace detection
+- [ ] Add `markdown_formatting` to quality handler dispatcher
+- [ ] Test with missing language tags, missing alt text, malformed tables
 - [ ] Document `markdown_formatting` kind in docs
 
-### Phase 4: Documentation Completeness (Priority 4)
-- [ ] Add `detect_documentation_completeness()` in `documentation.rs`
-- [ ] Implement README section detection (Installation, Usage, Examples, Contributing, License)
-- [ ] Enhance existing `completeness` kind with markdown-specific checks
-- [ ] Test with READMEs missing sections
-- [ ] Update docs with markdown completeness criteria
-
 ### Integration
-- [ ] Update `docs/tools/analysis.md` with all new markdown analysis kinds
-- [ ] Add markdown analysis examples to cheatsheet
-- [ ] Add integration tests for markdown analysis in `tests/e2e/`
+- [ ] Update `docs/tools/analysis.md` with markdown structure and formatting kinds
+- [ ] Add markdown analysis examples to `docs/user-guide/cheatsheet.md`
+- [ ] Add integration tests in `tests/e2e/src/test_analysis.rs`
 - [ ] Update CLAUDE.md with markdown analysis capabilities
 
 ## Success Criteria
 
-- `analyze.quality` supports `link_validity`, `markdown_structure`, and `markdown_formatting` kinds for markdown files
-- Link validation detects broken file links and invalid heading anchors
-- Structure validation catches heading hierarchy issues and duplicates
-- Formatting validation identifies missing alt text and code language tags
-- `analyze.documentation` completeness check identifies missing README sections
-- All analysis functions use language plugin architecture (no hardcoded markdown assumptions)
-- Documentation updated with markdown analysis examples
-- Integration tests pass for all new analysis kinds
+- `analyze.quality` supports `markdown_structure` and `markdown_formatting` kinds for markdown files
+- Structure validation catches heading hierarchy violations (# → ### without ##)
+- Structure validation detects duplicate headings at same level
+- Formatting validation identifies missing code block language tags
+- Formatting validation detects missing image alt text
+- Formatting validation catches table column count inconsistencies
+- Detection functions work within sync architecture (no async calls)
+- Documentation updated with usage examples
+- Integration tests pass for both new kinds
 
 ## Benefits
 
-- **Documentation Quality**: Catch broken links before users encounter them
-- **Consistency**: Enforce markdown formatting standards across projects
+- **Structure Quality**: Maintain proper document hierarchy and organization
+- **Formatting Consistency**: Enforce markdown standards across projects
 - **Accessibility**: Detect missing alt text for images
-- **Structure**: Maintain proper document hierarchy
-- **Maintenance**: Identify documentation gaps in READMEs
-- **Architecture**: Demonstrates proper plugin integration for language-specific analysis
+- **Code Quality**: Ensure code blocks have language tags for proper highlighting
+- **Maintainability**: Sync implementation works within existing architecture
+- **Foundation**: Establishes pattern for language-specific analysis extensions
+
+## Future Work (Requires Architectural Changes)
+
+Link validation deferred to separate proposal requiring:
+- Async detection function support OR prefetch mechanism in engine
+- Enhanced import parser that preserves anchor fragments
+- Heading ID generation (GitHub-style slugs) in markdown plugin
+- Network access strategy for remote URL validation
