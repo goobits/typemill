@@ -62,6 +62,12 @@ plugin_struct = "GitignoreLanguagePlugin"
 category = "config"
 default = true
 
+[languages.swift]
+path = "crates/mill-lang-swift"
+plugin_struct = "SwiftPlugin"
+category = "full"
+default = false
+
 # Future languages (examples):
 #
 # [languages.go]
