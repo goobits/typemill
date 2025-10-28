@@ -359,8 +359,8 @@ With sccache and mold installed:
 ### Documentation
 
 - **[docs/README.md](docs/README.md)** - Documentation index and navigation hub
-- **[docs/quickstart.md](docs/quickstart.md)** - 5-minute setup for end users
-- **[docs/cheatsheet.md](docs/cheatsheet.md)** - Quick command reference
+- **[docs/user-guide/getting-started.md](docs/user-guide/getting-started.md)** - Complete setup guide
+- **[docs/user-guide/cheatsheet.md](docs/user-guide/cheatsheet.md)** - Quick command reference
 - **[docs/development/overview.md](docs/development/overview.md)** - Complete contributor quickstart
 - **[docs/architecture/overview.md](docs/architecture/overview.md)** - System architecture
 

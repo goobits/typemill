@@ -12,8 +12,8 @@
 
 | I want to... | Read this | CLI Command |
 |--------------|-----------|-------------|
-| 🎯 Get running in 5 minutes | [quickstart](quickstart.md) | `mill docs quickstart` |
-| 📋 See common commands | [cheatsheet](cheatsheet.md) | `mill docs cheatsheet` |
+| 🎯 Get started from scratch | [user-guide/getting-started](user-guide/getting-started.md) | `mill docs user-guide/getting-started` |
+| 📋 See common commands | [user-guide/cheatsheet](user-guide/cheatsheet.md) | `mill docs user-guide/cheatsheet` |
 | 🛠️ Browse all 28 tools | [tools/](tools/) | `mill docs tools` |
 | 🔍 Search documentation | - | `mill docs --search "keyword"` |
 
@@ -26,9 +26,11 @@
 ### 👤 End Users
 
 **Getting started:**
-1. **[quickstart.md](quickstart.md)** - 5-minute setup tutorial
-2. **[cheatsheet.md](cheatsheet.md)** - Quick command reference
-3. **[tools/README.md](tools/README.md)** - Complete tool catalog (28 tools)
+1. **[user-guide/getting-started.md](user-guide/getting-started.md)** - Complete setup guide (installation → team setup)
+2. **[user-guide/cheatsheet.md](user-guide/cheatsheet.md)** - Quick command reference
+3. **[user-guide/configuration.md](user-guide/configuration.md)** - Configuration reference
+4. **[user-guide/troubleshooting.md](user-guide/troubleshooting.md)** - Common issues and solutions
+5. **[tools/README.md](tools/README.md)** - Complete tool catalog (28 tools, see **[architecture/tools_visibility_spec.md](architecture/tools_visibility_spec.md)** for full specification)
 
 **Tool categories:**
 - **[Navigation Tools](tools/navigation.md)** - Find definitions, references, symbols (8 tools)
@@ -86,11 +88,14 @@
 ## 📖 Complete Documentation Index
 
 ### User Guides
-- **[quickstart.md](quickstart.md)** - 5-minute setup guide
-- **[cheatsheet.md](cheatsheet.md)** - Command quick reference
+- **[user-guide/getting-started.md](user-guide/getting-started.md)** - Complete setup guide
+- **[user-guide/configuration.md](user-guide/configuration.md)** - Configuration reference
+- **[user-guide/cheatsheet.md](user-guide/cheatsheet.md)** - Command quick reference
+- **[user-guide/troubleshooting.md](user-guide/troubleshooting.md)** - Troubleshooting guide
 
-### Tool Reference (28 tools)
+### Tool Reference (28 Public Tools)
 - **[tools/README.md](tools/README.md)** - Complete tool catalog
+  _For authoritative specification including internal tools, see **[architecture/tools_visibility_spec.md](architecture/tools_visibility_spec.md)**_
 - **[tools/navigation.md](tools/navigation.md)** - Navigation & intelligence (8 tools)
 - **[tools/refactoring.md](tools/refactoring.md)** - Editing & refactoring (7 tools)
 - **[tools/analysis.md](tools/analysis.md)** - Code analysis (8 tools)
@@ -151,10 +156,10 @@ mill docs <topic> --raw                # View raw markdown
 
 | Document | Purpose | Audience | CLI Command |
 |----------|---------|----------|-------------|
-| **[quickstart](quickstart.md)** | 5-min setup | New users | `mill docs quickstart` |
-| **[cheatsheet](cheatsheet.md)** | Command reference | All users | `mill docs cheatsheet` |
+| **[user-guide/getting-started](user-guide/getting-started.md)** | Complete setup | New users | `mill docs user-guide/getting-started` |
+| **[user-guide/cheatsheet](user-guide/cheatsheet.md)** | Command reference | All users | `mill docs user-guide/cheatsheet` |
 | **[tools/](tools/)** | Tool API reference | Integrators | `mill docs tools` |
-| **[DEVELOPMENT](DEVELOPMENT.md)** | Plugin development | Contributors | `mill docs DEVELOPMENT` |
+| **[development/overview](development/overview.md)** | Plugin development | Contributors | `mill docs development/overview` |
 | **[architecture/overview](architecture/overview.md)** | System design | Architects | `mill docs architecture/overview` |
 | **[operations/docker_deployment](operations/docker_deployment.md)** | Deployment | Operators | `mill docs operations/docker_deployment` |
 

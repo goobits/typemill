@@ -9,8 +9,8 @@
 **Before working with this codebase, read these docs:**
 
 1. **[docs/tools/](docs/tools/)** - Complete MCP tools API reference (28 tools)
-2. **[docs/quickstart.md](docs/quickstart.md)** - 5-minute setup guide
-3. **[docs/cheatsheet.md](docs/cheatsheet.md)** - Command quick reference
+2. **[docs/user-guide/getting-started.md](docs/user-guide/getting-started.md)** - Complete setup guide
+3. **[docs/user-guide/cheatsheet.md](docs/user-guide/cheatsheet.md)** - Command quick reference
 
 **For contributors:**
 - **[contributing.md](contributing.md)** - Setup, workflow, PR process
@@ -247,7 +247,7 @@ Auto-detects languages, generates `.typemill/config.json`, and installs LSP serv
 
 ### Environment Variables
 
-Override any config value with `TYPEMILL__` prefix:
+Override any config value with `TYPEMILL__` prefix (double underscores):
 
 ```bash
 # Server configuration
@@ -259,13 +259,13 @@ export TYPEMILL__SERVER__AUTH__JWT_SECRET="your-secret-key"
 
 # Cache control
 export TYPEMILL__CACHE__ENABLED=true
-export TYPEMILL__CACHE__TTL_SECONDS=3600
+export TYPEMILL_DISABLE_CACHE=1  # Master switch to disable all caches
 
 # Logging
 export TYPEMILL__LOGGING__LEVEL="info"
 ```
 
-**Full configuration guide**: See **[docs/operations/cache_configuration.md](docs/operations/cache_configuration.md)**
+**Full configuration guide**: See **[docs/configuration.md](docs/configuration.md)**
 
 ---
 

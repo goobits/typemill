@@ -172,7 +172,7 @@ echo 'TYPEMILL__SERVER__AUTH__JWT_SECRET=dev-secret' > .env
 - ✅ Enable TLS when binding to non-loopback addresses for production
 - ✅ Use secret management services (Vault, AWS Secrets Manager) in production
 
-See [CLAUDE.md](CLAUDE.md#environment-variables) for complete environment variable reference and [Docker Deployment](docs/operations/docker_deployment.md) for production setup.
+See [docs/configuration.md](docs/configuration.md) for complete configuration reference including environment variables, and [Docker Deployment](docs/operations/docker_deployment.md) for production setup.
 
 ## 📥 LSP Server Management
 
@@ -251,6 +251,8 @@ curl -I https://github.com/rust-lang/rust-analyzer/releases
 - Check system resources (LSP servers can be memory-intensive)
 
 ## 📖 Documentation
+- **[Getting Started](docs/user-guide/getting-started.md)** - Complete setup guide
+- **[Configuration Reference](docs/user-guide/configuration.md)** - Configuration options
 - **[Tool Reference](docs/tools/)** - Complete API for all 28 tools
 - **[Architecture Overview](docs/architecture/overview.md)** - System design and components
 - **[Contributing Guide](contributing.md)** - Development setup and workflow

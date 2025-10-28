@@ -4,6 +4,8 @@
 
 This directory contains focused documentation for each tool category. Each category file follows a consistent structure with terse but complete documentation, real examples from the codebase, and common patterns.
 
+> **📋 For the authoritative tool catalog** including internal tools, see **[architecture/tools_visibility_spec.md](../architecture/tools_visibility_spec.md)**
+
 ---
 
 ## Quick Catalog

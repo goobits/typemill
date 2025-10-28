@@ -67,12 +67,7 @@ echo 'export PATH="$HOME/.nvm/versions/node/vXX.X.X/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-**Option 3: Use absolute path in config**
-```json
-{
-  "command": ["/full/path/to/typescript-language-server", "--stdio"]
-}
-```
+**Option 3: Use absolute path in config** (see **[configuration.md](configuration.md#lsp-server-configuration)** for details)
 
 ---
 
@@ -97,18 +92,10 @@ mill setup --update  # Detects and sets rootDir automatically
 **Manual fix:**
 1. Find your TypeScript project root:
 ```bash
-# Look for package.json or tsconfig.json
 find . -name "tsconfig.json" -o -name "package.json"
 ```
 
-2. Update config:
-```json
-{
-  "extensions": ["ts", "tsx", "js", "jsx"],
-  "command": ["typescript-language-server", "--stdio"],
-  "rootDir": "web"  // ← Add this (relative path to TS project)
-}
-```
+2. Update config to include `rootDir` (see **[configuration.md](configuration.md#language-specific-configuration)** for details)
 
 3. Restart Mill:
 ```bash
@@ -278,21 +265,12 @@ mill tool search_symbols --input-file args.json
 Enable detailed logging:
 
 ```bash
-# Option 1: Environment variable
+# Option 1: Environment variable (recommended)
 export TYPEMILL__LOGGING__LEVEL=debug
 mill start
 
 # Option 2: Edit config
-```
-
-Edit `.typemill/config.json`:
-```json
-{
-  "logging": {
-    "level": "debug",
-    "format": "pretty"
-  }
-}
+# See configuration.md for logging configuration details
 ```
 
 View logs:
@@ -303,6 +281,8 @@ mill start 2> debug.log
 # Or follow in real-time
 mill start 2>&1 | tee debug.log
 ```
+
+**For complete logging configuration,** see **[configuration.md](configuration.md#logging-configuration)**
 
 ---
 
@@ -338,6 +318,7 @@ Report at: https://github.com/goobits/typemill/issues
 
 ## 📚 Related Documentation
 
-- **[setup-guide.md](setup-guide.md)** - Complete setup guide
+- **[configuration.md](configuration.md)** - Complete configuration reference
+- **[setup-guide.md](setup-guide.md)** - Team setup strategies
 - **[cheatsheet.md](cheatsheet.md)** - Quick command reference
 - **[tools/README.md](tools/README.md)** - All 28 tools
