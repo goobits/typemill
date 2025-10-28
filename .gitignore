@@ -75,6 +75,9 @@ mcp/*/storage.json
 .typemill/server.pid
 .typemill/config.json
 
+# Spacebase local database
+.spacebase/
+
 # Test playground and artifacts
 examples/playground/
 
