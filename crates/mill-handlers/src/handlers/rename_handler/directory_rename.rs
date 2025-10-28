@@ -84,16 +84,16 @@ impl RenameHandler {
         // The semantic Cargo.toml changes (merging dependencies, updating workspace members)
         // are handled during execution, not in the plan
         if is_consolidation {
-            if let Some(ref mut scope) = rename_scope {
-                scope.exclude_patterns.push("**/Cargo.toml".to_string());
-            }
+            rename_scope
+                .exclude_patterns
+                .push("**/Cargo.toml".to_string());
         }
 
         // Get the EditPlan with import updates (call MoveService directly)
         let edit_plan = context
             .app_state
             .move_service()
-            .plan_directory_move_with_scope(&old_path, &new_path, rename_scope.as_ref())
+            .plan_directory_move_with_scope(&old_path, &new_path, Some(&rename_scope))
             .await?;
 
         debug!(
