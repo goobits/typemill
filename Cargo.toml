@@ -27,6 +27,7 @@ members = [
     "crates/mill-auth",
     "crates/xtask", "crates/mill-ast", "crates/mill-client", "crates/mill-test-support", "crates/mill-handlers", "crates/mill-config", "crates/mill-foundation",
     "crates/mill-lang-cpp",
+    "crates/mill-lang-go",
     "crates/mill-lang-swift",
 ]
 resolver = "2"
@@ -61,6 +62,7 @@ async-trait = "0.1"
 anyhow = "1.0"
 thiserror = "2.0"
 jsonwebtoken = { version = "10", features = ["rust_crypto"] }
+chrono = { version = "0.4", features = ["serde"] }
 
 # Logging
 tracing = "0.1"
