@@ -149,6 +149,99 @@ export function processOrder(
 }
 
 #[tokio::test]
+async fn test_analyze_quality_markdown_structure() {
+    let markdown_content = r#"
+# Title
+# Another H1
+## Section 1
+### Subsection 1.1
+## Section 2
+#### Subsection 2.1 - SKIPPED
+This is a paragraph.
+### Subsection 2.2 - DUPLICATE
+### Subsection 2.2 - DUPLICATE
+## Empty Section
+#Malformed
+"#;
+
+    run_analysis_test(
+        "test.md",
+        markdown_content,
+        "markdown_structure",
+        None,
+        |result| {
+            assert_eq!(result.metadata.category, "quality");
+            assert_eq!(result.metadata.kind, "markdown_structure");
+            assert!(!result.findings.is_empty());
+
+            let kinds: Vec<_> = result.findings.iter().map(|f| f.kind.as_str()).collect();
+            assert!(kinds.contains(&"heading_level_skip"));
+            assert!(kinds.contains(&"duplicate_heading"));
+            assert!(kinds.contains(&"empty_section"));
+            assert!(kinds.contains(&"multiple_h1_headings"));
+            assert!(kinds.contains(&"malformed_heading"));
+
+            Ok(())
+        },
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn test_analyze_quality_markdown_formatting() {
+    let markdown_content = r#"
+# Formatting Issues
+
+This line has trailing whitespace.
+
+![](no-alt-text.jpg)
+
+A bare URL: https://example.com
+
+```
+echo "This code block has no language tag"
+```
+
+| Header 1 | Header 2 |
+|---|---|
+| Cell 1 | Cell 2 | Cell 3 |
+
+[good link](good.com)
+[malformed]()
+(reversed)[link]
+```
+unclosed
+"#;
+
+    run_analysis_test(
+        "test.md",
+        markdown_content,
+        "markdown_formatting",
+        None,
+        |result| {
+            assert_eq!(result.metadata.category, "quality");
+            assert_eq!(result.metadata.kind, "markdown_formatting");
+            assert!(!result.findings.is_empty());
+
+            let kinds: Vec<_> = result.findings.iter().map(|f| f.kind.as_str()).collect();
+            assert!(kinds.contains(&"missing_image_alt_text"));
+            assert!(kinds.contains(&"bare_url"));
+            assert!(kinds.contains(&"table_column_inconsistency"));
+            assert!(kinds.contains(&"missing_code_language_tag"));
+            assert!(kinds.contains(&"trailing_whitespace"));
+            assert!(kinds.contains(&"malformed_link"));
+            assert!(kinds.contains(&"unclosed_code_fence"));
+            assert!(kinds.contains(&"reversed_link_syntax"));
+
+            Ok(())
+        },
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
 async fn test_analyze_quality_unsupported_kind() {
     let workspace = TestWorkspace::new();
     workspace.create_file("test.ts", "export function simple() { return 1; }");

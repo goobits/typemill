@@ -171,6 +171,15 @@ mill tool analyze.dependencies '{"kind": "circular", "scope": "workspace"}'
 mill tool analyze.batch '{"scope": "workspace", "analyzers": ["complexity", "dead_code"]}'
 ```
 
+### Markdown Analysis
+```bash
+# Check for structural issues like heading hierarchy
+mill tool analyze.quality '{"kind": "markdown_structure", "scope": "file:README.md"}'
+
+# Check for formatting issues like missing alt text
+mill tool analyze.quality '{"kind": "markdown_formatting", "scope": "file:docs/user-guide.md"}'
+```
+
 ---
 
 ## Workspace Tools
