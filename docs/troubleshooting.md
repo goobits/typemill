@@ -1,0 +1,343 @@
+# Mill Troubleshooting Guide
+
+**Solutions to common Mill setup and usage issues**
+
+---
+
+## 🛠️ Setup Issues
+
+### "Configuration file already exists"
+
+**Problem:**
+```bash
+$ mill setup
+⚠️  Configuration file already exists at: .typemill/config.json
+   To recreate configuration, please delete the existing file first.
+```
+
+**Solution:**
+```bash
+# Option 1: Update existing config
+mill setup --update
+
+# Option 2: Interactive update
+mill setup --update --interactive
+
+# Option 3: Start fresh (deletes existing config)
+rm -rf .typemill
+mill setup
+```
+
+---
+
+### "LSP server not found in PATH"
+
+**Problem:**
+```bash
+$ mill doctor
+Checking for 'typescript-language-server'... [✗] Not found in PATH.
+```
+
+**Diagnosis:**
+The LSP binary isn't in your system PATH.
+
+**Solutions:**
+
+**Option 1: Install the LSP server**
+```bash
+# TypeScript
+npm install -g typescript-language-server typescript
+
+# Rust
+rustup component add rust-analyzer
+
+# Python
+pip install python-lsp-server
+```
+
+**Option 2: Add to PATH**
+```bash
+# Find where it's installed
+which typescript-language-server
+# or
+npm list -g | grep typescript-language-server
+
+# Add to PATH (bash/zsh)
+echo 'export PATH="$HOME/.nvm/versions/node/vXX.X.X/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Option 3: Use absolute path in config**
+```json
+{
+  "command": ["/full/path/to/typescript-language-server", "--stdio"]
+}
+```
+
+---
+
+### "Could not find a valid TypeScript installation"
+
+**Problem:**
+LSP logs show:
+```
+Could not find a valid TypeScript installation.
+Please ensure that the "typescript" dependency is installed in the workspace.
+```
+
+**Root cause:** `rootDir` is not set, so LSP can't find `node_modules/typescript`.
+
+**Solution:**
+
+**Auto-detect:**
+```bash
+mill setup --update  # Detects and sets rootDir automatically
+```
+
+**Manual fix:**
+1. Find your TypeScript project root:
+```bash
+# Look for package.json or tsconfig.json
+find . -name "tsconfig.json" -o -name "package.json"
+```
+
+2. Update config:
+```json
+{
+  "extensions": ["ts", "tsx", "js", "jsx"],
+  "command": ["typescript-language-server", "--stdio"],
+  "rootDir": "web"  // ← Add this (relative path to TS project)
+}
+```
+
+3. Restart Mill:
+```bash
+mill stop
+mill start
+```
+
+---
+
+## 🔌 LSP Issues
+
+### TypeScript LSP can't find `node_modules`
+
+**Symptoms:**
+- "Cannot find module" errors
+- Imports not resolving
+- No autocomplete
+
+**Solution:**
+Ensure `rootDir` points to the directory containing `node_modules`:
+```json
+{
+  "rootDir": "web"  // Directory with web/node_modules/
+}
+```
+
+---
+
+### Rust Analyzer crashes on startup
+
+**Symptoms:**
+```bash
+$ mill status
+Rust LSP: ❌ Crashed
+```
+
+**Common causes:**
+1. **Large workspace:** Increase restart interval
+```json
+{
+  "extensions": ["rs"],
+  "command": ["rust-analyzer"],
+  "restartInterval": 20  // ← Increase from default 15
+}
+```
+
+2. **Corrupted cache:** Clear rust-analyzer cache
+```bash
+rm -rf ~/.cache/rust-analyzer
+mill stop
+mill start
+```
+
+3. **Old version:** Update rust-analyzer
+```bash
+rustup update
+rustup component add rust-analyzer --force
+```
+
+---
+
+### Python LSP not responding
+
+**Symptoms:**
+- Long startup time
+- No responses to queries
+
+**Solutions:**
+
+1. **Check if `pylsp` is installed:**
+```bash
+which pylsp
+pylsp --version
+```
+
+2. **Virtual environment issues:**
+```bash
+# Ensure pylsp is in the active venv
+source venv/bin/activate
+pip install python-lsp-server
+```
+
+3. **Set rootDir to project root:**
+```json
+{
+  "extensions": ["py"],
+  "command": ["pylsp"],
+  "rootDir": "."  // ← Project root
+}
+```
+
+---
+
+## 🛠️ Tool Usage Issues
+
+### "Tool does not support flag-based arguments"
+
+**Problem:**
+```bash
+$ mill tool find_definition --target file:src/app.rs:10:5
+Error: Tool 'find_definition' does not support flag-based arguments
+```
+
+**Explanation:**
+Navigation and analysis tools require JSON arguments, not flags.
+
+**Solution:**
+```bash
+# Use JSON arguments
+mill tool find_definition '{
+  "file_path": "src/app.rs",
+  "line": 10,
+  "character": 5
+}'
+```
+
+**Which tools need JSON:**
+- Navigation: `find_definition`, `find_references`, `search_symbols`, etc.
+- Analysis: `get_diagnostics`, `analyze.*`
+- Use `mill tools` to see all tools and their argument types
+
+---
+
+### "Required arguments were not provided: <ARGS>"
+
+**Problem:**
+```bash
+$ mill tool health_check
+Error: required arguments were not provided: <ARGS>
+```
+
+**Solution:**
+```bash
+# health_check takes an empty JSON object
+mill tool health_check '{}'
+```
+
+---
+
+### "Invalid JSON arguments"
+
+**Problem:**
+```bash
+$ mill tool search_symbols {"query":"test"}
+Error: Invalid JSON arguments: expected value at line 1 column 2
+```
+
+**Cause:** Shell is interpreting the JSON.
+
+**Solution:** Use single quotes around JSON:
+```bash
+# ✅ Correct
+mill tool search_symbols '{"query":"test","limit":10}'
+
+# ❌ Wrong (shell interprets {})
+mill tool search_symbols {"query":"test"}
+
+# Alternative: Use a file
+echo '{"query":"test","limit":10}' > args.json
+mill tool search_symbols --input-file args.json
+```
+
+---
+
+## 🐛 Debug Mode
+
+Enable detailed logging:
+
+```bash
+# Option 1: Environment variable
+export TYPEMILL__LOGGING__LEVEL=debug
+mill start
+
+# Option 2: Edit config
+```
+
+Edit `.typemill/config.json`:
+```json
+{
+  "logging": {
+    "level": "debug",
+    "format": "pretty"
+  }
+}
+```
+
+View logs:
+```bash
+# Logs go to stderr
+mill start 2> debug.log
+
+# Or follow in real-time
+mill start 2>&1 | tee debug.log
+```
+
+---
+
+## 💡 Still Stuck?
+
+1. **Check configuration:**
+```bash
+mill doctor
+cat .typemill/config.json
+```
+
+2. **Check server status:**
+```bash
+mill status
+```
+
+3. **Review documentation:**
+```bash
+mill docs setup-guide
+mill docs tools
+```
+
+4. **File an issue:**
+Include:
+- `mill doctor` output
+- `.typemill/config.json` (redact sensitive paths)
+- Error messages
+- OS and Mill version (`mill --version`)
+
+Report at: https://github.com/goobits/typemill/issues
+
+---
+
+## 📚 Related Documentation
+
+- **[setup-guide.md](setup-guide.md)** - Complete setup guide
+- **[cheatsheet.md](cheatsheet.md)** - Quick command reference
+- **[tools/README.md](tools/README.md)** - All 28 tools

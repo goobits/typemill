@@ -59,6 +59,13 @@ pub enum FlagParseError {
         reason: String,
         example: String,
     },
+    /// Tool requires JSON arguments, not flags
+    JsonOnly {
+        tool: String,
+        example: String,
+    },
+    /// Unknown tool name
+    UnknownTool(String),
 }
 
 impl fmt::Display for FlagParseError {
@@ -101,6 +108,24 @@ impl fmt::Display for FlagParseError {
                     current_tool, reason, suggested_tool, example
                 )
             }
+            FlagParseError::JsonOnly { tool, example } => {
+                write!(
+                    f,
+                    "Tool '{}' requires JSON arguments (not flags).\n\n\
+                    Example usage:\n  {}\n\n\
+                    For all tools: mill tools",
+                    tool, example
+                )
+            }
+            FlagParseError::UnknownTool(name) => {
+                write!(
+                    f,
+                    "Unknown tool: '{}'\n\n\
+                    List all tools: mill tools\n\
+                    Tool documentation: mill docs tools",
+                    name
+                )
+            }
         }
     }
 }
@@ -139,7 +164,7 @@ pub fn parse_flags_to_json(
     flags: HashMap<String, String>,
 ) -> Result<Value, FlagParseError> {
     match tool_name {
-        // Refactoring tools (unified dryRun API)
+        // Existing refactoring tools that support flags
         "rename" => parse_rename_flags(flags),
         "extract" => parse_extract_flags(flags),
         "move" => parse_move_flags(flags),
@@ -147,10 +172,37 @@ pub fn parse_flags_to_json(
         "reorder" => parse_reorder_flags(flags),
         "transform" => parse_transform_flags(flags),
         "delete" => parse_delete_flags(flags),
-        _ => Err(FlagParseError::UnknownFlag(format!(
-            "Tool '{}' does not support flag-based arguments",
-            tool_name
-        ))),
+
+        // Navigation tools - require JSON
+        "find_definition" | "find_references" | "find_implementations"
+        | "find_type_definition" | "get_symbol_info" => {
+            Err(FlagParseError::JsonOnly {
+                tool: tool_name.to_string(),
+                example: get_example_for_tool(tool_name),
+            })
+        }
+
+        // Analysis tools - require JSON
+        "search_symbols" | "get_diagnostics" | "get_call_hierarchy" => {
+            Err(FlagParseError::JsonOnly {
+                tool: tool_name.to_string(),
+                example: get_example_for_tool(tool_name),
+            })
+        }
+
+        // Health check - takes empty object
+        "health_check" => {
+            if !flags.is_empty() {
+                Err(FlagParseError::UnknownFlag(format!(
+                    "health_check takes no arguments. Use: mill tool health_check '{{}}'"
+                )))
+            } else {
+                Ok(json!({}))
+            }
+        }
+
+        // Unknown tool
+        _ => Err(FlagParseError::UnknownTool(tool_name.to_string())),
     }
 }
 
@@ -773,6 +825,29 @@ fn parse_delete_target_convention(s: &str) -> Result<Value, FlagParseError> {
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/// Get example usage for a tool that requires JSON
+fn get_example_for_tool(tool: &str) -> String {
+    match tool {
+        "find_definition" =>
+            "mill tool find_definition '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+        "find_references" =>
+            "mill tool find_references '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+        "find_implementations" =>
+            "mill tool find_implementations '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+        "find_type_definition" =>
+            "mill tool find_type_definition '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+        "get_symbol_info" =>
+            "mill tool get_symbol_info '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+        "search_symbols" =>
+            "mill tool search_symbols '{\"query\":\"MyClass\",\"limit\":10}'".to_string(),
+        "get_diagnostics" =>
+            "mill tool get_diagnostics '{\"file_path\":\"src/app.rs\"}'".to_string(),
+        "get_call_hierarchy" =>
+            "mill tool get_call_hierarchy '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+        _ => format!("mill tool {} '<JSON arguments>'", tool),
+    }
+}
 
 /// Validate that only expected flags are present
 fn validate_flags(flags: &HashMap<String, String>, allowed: &[&str]) -> Result<(), FlagParseError> {
@@ -1444,12 +1519,79 @@ mod tests {
     // ========================================================================
 
     #[test]
-    fn test_unknown_tool() {
+    fn test_unknown_tool_old() {
         let result = parse_flags_to_json("unknown.plan", flags(&[]));
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),
-            FlagParseError::UnknownFlag(_)
+            FlagParseError::UnknownTool(_)
         ));
+    }
+
+    // ========================================================================
+    // Phase 3: JSON-only tools tests
+    // ========================================================================
+
+    #[test]
+    fn test_json_only_tools() {
+        let result = parse_flags_to_json(
+            "find_definition",
+            HashMap::from([("target".to_string(), "test".to_string())])
+        );
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            FlagParseError::JsonOnly { tool, example } => {
+                assert_eq!(tool, "find_definition");
+                assert!(example.contains("file_path"));
+            }
+            _ => panic!("Wrong error type"),
+        }
+    }
+
+    #[test]
+    fn test_health_check_empty() {
+        let result = parse_flags_to_json("health_check", HashMap::new());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), json!({}));
+    }
+
+    #[test]
+    fn test_health_check_with_flags_error() {
+        let result = parse_flags_to_json(
+            "health_check",
+            HashMap::from([("foo".to_string(), "bar".to_string())])
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unknown_tool() {
+        let result = parse_flags_to_json("nonexistent_tool", HashMap::new());
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            FlagParseError::UnknownTool(name) => {
+                assert_eq!(name, "nonexistent_tool");
+            }
+            _ => panic!("Wrong error type"),
+        }
+    }
+
+    #[test]
+    fn test_error_display_json_only() {
+        let err = FlagParseError::JsonOnly {
+            tool: "find_definition".to_string(),
+            example: "mill tool find_definition '{}'".to_string(),
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("requires JSON"));
+        assert!(msg.contains("find_definition"));
+    }
+
+    #[test]
+    fn test_error_display_unknown_tool() {
+        let err = FlagParseError::UnknownTool("foo".to_string());
+        let msg = err.to_string();
+        assert!(msg.contains("Unknown tool"));
+        assert!(msg.contains("foo"));
     }
 }

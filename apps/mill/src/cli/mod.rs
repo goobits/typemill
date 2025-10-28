@@ -4,6 +4,7 @@ mod conventions;
 mod docs;
 mod flag_parser;
 mod lsp_helpers;
+mod user_input;
 
 use clap::{Parser, Subcommand};
 use fs2::FileExt;
@@ -56,7 +57,15 @@ pub enum Commands {
     /// Show status
     Status,
     /// Setup configuration
-    Setup,
+    Setup {
+        /// Update existing config (don't fail if it exists)
+        #[arg(long)]
+        update: bool,
+
+        /// Interactive mode - prompt for choices
+        #[arg(long)]
+        interactive: bool,
+    },
     /// Stop the running server
     Stop,
     /// Link to AI assistants
@@ -321,8 +330,8 @@ pub async fn run() {
         Commands::Status => {
             handle_status().await;
         }
-        Commands::Setup => {
-            handle_setup().await;
+        Commands::Setup { update, interactive } => {
+            handle_setup(update, interactive).await;
         }
         Commands::Stop => {
             handle_stop().await;
@@ -712,46 +721,35 @@ async fn handle_dead_code_command(command: DeadCode) {
 }
 
 /// Handle the setup command
-async fn handle_setup() {
+async fn handle_setup(update: bool, interactive: bool) {
     println!("🚀 Setting up mill configuration...");
 
-    // Create default configuration
-    let config = AppConfig::default();
-
-    // Determine config file path
     let config_path = std::path::Path::new(".typemill/config.json");
 
-    // Check if config already exists
-    if config_path.exists() {
-        println!(
-            "⚠️  Configuration file already exists at: {}",
-            config_path.display()
-        );
-        println!("   To recreate configuration, please delete the existing file first.");
-        return;
-    }
-
-    // Save default configuration
-    match config.save(config_path) {
-        Ok(()) => {
-            println!("✅ Configuration saved to: {}", config_path.display());
-            println!();
-            println!("📝 Supported languages:");
-            println!("   • TypeScript/JavaScript (LSP: typescript-language-server)");
-            println!("   • Rust (LSP: rust-analyzer)");
-            println!("   • Python (LSP: python-lsp-server)");
-            println!("   • Markdown, TOML, YAML, Gitignore");
-            println!();
+    // Load existing config or create new one
+    let mut config = if config_path.exists() {
+        if !update {
             println!(
-                "💡 Edit {} to customize LSP servers and settings.",
+                "⚠️  Configuration file already exists at: {}",
                 config_path.display()
             );
+            println!("   Use `mill setup --update` to update it, or delete it to start fresh.");
+            return;
         }
-        Err(e) => {
-            error!(error = %e, "Failed to save configuration");
-            process::exit(1);
+
+        println!("📝 Updating existing configuration...");
+        match AppConfig::load() {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                error!(error = %e, "Failed to load config");
+                eprintln!("❌ Failed to load config: {}", e);
+                process::exit(1);
+            }
         }
-    }
+    } else {
+        println!("📝 Creating new configuration...");
+        AppConfig::default()
+    };
 
     // Auto-detect and offer to install LSPs
     println!();
@@ -762,82 +760,139 @@ async fn handle_setup() {
         Err(e) => {
             error!(error = %e, "Failed to detect needed LSPs");
             eprintln!("⚠️  Warning: Could not detect languages ({})", e);
-            return;
+            vec![]
         }
     };
 
     if needed_lsps.is_empty() {
         println!("   No project languages detected in current directory");
-        return;
+    } else {
+        println!("   Detected: {}", needed_lsps.join(", "));
     }
 
-    println!("   Detected: {}", needed_lsps.join(", "));
-    println!();
+    // Detect TypeScript root directory if TypeScript is needed
+    if needed_lsps.contains(&"typescript".to_string()) {
+        println!();
+        println!("🔍 Detecting TypeScript project root...");
+        if let Some(ts_root) = lsp_helpers::detect_typescript_root(std::path::Path::new(".")) {
+            println!("   Found: {}/", ts_root.display());
+
+            // Update the TypeScript server config with rootDir
+            if let Some(server) = config.lsp.servers.iter_mut()
+                .find(|s| s.extensions.contains(&"ts".to_string()))
+            {
+                server.root_dir = Some(ts_root);
+                println!("   ✅ Set rootDir for TypeScript LSP");
+            }
+        } else {
+            println!("   ⚠️  No TypeScript project found (no tsconfig.json or package.json)");
+        }
+    }
+
+    // Save configuration
+    match config.save(config_path) {
+        Ok(()) => {
+            println!();
+            println!("✅ Configuration saved to: {}", config_path.display());
+        }
+        Err(e) => {
+            error!(error = %e, "Failed to save configuration");
+            eprintln!("❌ Failed to save configuration: {}", e);
+            process::exit(1);
+        }
+    }
 
     // Check which LSPs are already installed
-    let mut missing_lsps = Vec::new();
-    for lang_name in &needed_lsps {
-        match lsp_helpers::check_lsp_installed(lang_name).await {
-            Ok(Some(_path)) => {
-                println!("   ✅ {} - already installed", lang_name);
-            }
-            Ok(None) => {
-                println!("   📥 {} - not installed", lang_name);
-                missing_lsps.push(lang_name.clone());
-            }
-            Err(e) => {
-                error!(error = %e, lang_name, "Failed to check LSP status");
-                println!("   ⚠️  {} - status unknown", lang_name);
-            }
-        }
-    }
-
-    if missing_lsps.is_empty() {
+    if !needed_lsps.is_empty() {
         println!();
-        println!("✅ All required LSP servers are already installed!");
-        return;
-    }
+        println!("🔍 Checking installed LSP servers...");
 
-    // Offer to install missing LSPs
-    println!();
-    println!(
-        "📥 Would you like to install {} missing LSP server(s)? [Y/n]",
-        missing_lsps.len()
-    );
-
-    use std::io::{self, BufRead};
-    let stdin = io::stdin();
-    let mut response = String::new();
-    let _ = stdin.lock().read_line(&mut response);
-    let response = response.trim().to_lowercase();
-
-    if response.is_empty() || response == "y" || response == "yes" {
-        println!();
-        println!("📦 Installing LSP servers...");
-
-        for lang_name in &missing_lsps {
-            print!("   Installing {}... ", lang_name);
-            match lsp_helpers::install_lsp(lang_name).await {
-                Ok(path) => {
-                    println!("✅ {}", path.display());
+        let mut missing_lsps = Vec::new();
+        for lang_name in &needed_lsps {
+            match lsp_helpers::check_lsp_installed(lang_name).await {
+                Ok(Some(_path)) => {
+                    println!("   ✅ {} - already installed", lang_name);
+                }
+                Ok(None) => {
+                    println!("   📥 {} - not installed", lang_name);
+                    missing_lsps.push(lang_name.clone());
                 }
                 Err(e) => {
-                    println!("❌");
-                    error!(error = %e, lang_name, "Failed to install LSP");
-                    eprintln!("      Error: {}", e);
+                    error!(error = %e, lang_name, "Failed to check LSP status");
+                    println!("   ⚠️  {} - status unknown", lang_name);
                 }
             }
         }
 
-        println!();
-        println!("✅ LSP installation complete!");
-    } else {
-        println!();
-        println!("⏭️  Skipped LSP installation");
-        println!("   You can install them later with:");
-        for lang_name in &missing_lsps {
-            println!("   mill install-lsp {}", lang_name);
+        // Offer to install missing LSPs if interactive
+        if !missing_lsps.is_empty() {
+            if interactive && !mill_foundation::core::utils::system::is_ci() {
+                println!();
+                match user_input::read_yes_no(
+                    &format!("📥 Install {} missing LSP server(s)? [Y/n]", missing_lsps.len()),
+                    true
+                ) {
+                    Ok(true) => {
+                        println!();
+                        println!("📦 Installing LSP servers...");
+
+                        for lang_name in &missing_lsps {
+                            print!("   Installing {}... ", lang_name);
+                            match lsp_helpers::install_lsp(lang_name).await {
+                                Ok(path) => {
+                                    println!("✅ {}", path.display());
+
+                                    // Update config after install
+                                    if let Err(e) = lsp_helpers::update_config_after_install(
+                                        lang_name,
+                                        &path,
+                                        interactive
+                                    ).await {
+                                        eprintln!("      ⚠️  Config update failed: {}", e);
+                                    }
+                                }
+                                Err(e) => {
+                                    println!("❌");
+                                    error!(error = %e, lang_name, "Failed to install LSP");
+                                    eprintln!("      Error: {}", e);
+                                }
+                            }
+                        }
+
+                        println!();
+                        println!("✅ LSP installation complete!");
+                    }
+                    Ok(false) => {
+                        println!();
+                        println!("⏭️  Skipped LSP installation");
+                        print_install_commands(&missing_lsps);
+                    }
+                    Err(e) => {
+                        error!(error = %e, "Failed to read input");
+                        print_install_commands(&missing_lsps);
+                    }
+                }
+            } else {
+                println!();
+                if mill_foundation::core::utils::system::is_ci() {
+                    println!("ℹ️  CI detected - skipping interactive installation");
+                }
+                print_install_commands(&missing_lsps);
+            }
         }
+    }
+
+    println!();
+    println!("✨ Setup complete!");
+    println!("   Run `mill doctor` to verify configuration");
+    println!("   Run `mill start` to start the server");
+}
+
+/// Print install commands for missing LSPs
+fn print_install_commands(missing_lsps: &[String]) {
+    println!("   You can install them later with:");
+    for lang_name in missing_lsps {
+        println!("   mill install-lsp {}", lang_name);
     }
 }
 
@@ -953,6 +1008,8 @@ async fn handle_status() {
 
 /// Handle the doctor command
 async fn handle_doctor() {
+    use mill_foundation::core::utils::system;
+
     println!("🩺 Running TypeMill Doctor...");
     println!();
 
@@ -963,23 +1020,46 @@ async fn handle_doctor() {
             println!("[✓] Found and parsed successfully.");
             println!();
 
-            // 2. Check language servers
+            // 2. Check language servers with actual testing
             println!("Checking language servers:");
             for server in &config.lsp.servers {
                 let cmd = &server.command[0];
-                print!(
-                    "  - Checking for '{}' (for {})... ",
+                let exts = server.extensions.join(", ");
+                print!("  - {} (for {})... ", cmd, exts);
+
+                // Test if command actually works
+                let (works, info) = system::test_command_with_version(
                     cmd,
-                    server.extensions.join(", ")
+                    &server.command[1..].iter().map(|s| s.as_str()).collect::<Vec<_>>()
                 );
-                if command_exists(cmd) {
-                    println!("[✓] Found in PATH.");
+
+                if works {
+                    // Show version info
+                    let version = if info.is_empty() { "unknown version" } else { &info };
+                    println!("[✓] {}", version);
+
+                    // Additional checks for TypeScript
+                    if server.extensions.contains(&"ts".to_string()) {
+                        if server.root_dir.is_none() {
+                            println!("    ⚠️  Warning: rootDir not set");
+                            println!("       TypeScript LSP may not find dependencies");
+
+                            // Suggest rootDir
+                            if let Some(detected) = lsp_helpers::detect_typescript_root(std::path::Path::new(".")) {
+                                println!("       Suggestion: Set rootDir to '{}'", detected.display());
+                                println!("       Run: mill setup --update");
+                            }
+                        }
+                    }
                 } else {
-                    println!("[✗] Not found in PATH.");
-                    println!(
-                        "    > Please install '{}' and ensure it is available in your system's PATH.",
-                        cmd
-                    );
+                    // Command doesn't work
+                    if std::path::Path::new(cmd).is_absolute() {
+                        println!("[✗] Absolute path not found");
+                        println!("       File doesn't exist: {}", cmd);
+                    } else {
+                        println!("[✗] Not found in PATH");
+                        println!("       Install via: mill install-lsp {}", server.extensions[0]);
+                    }
                 }
             }
         }
@@ -1047,6 +1127,20 @@ async fn handle_install_lsp(language: &str) {
         Ok(path) => {
             println!("✅ Successfully installed {} to:", lsp_name);
             println!("   {}", path.display());
+
+            // Update config after install
+            let interactive = user_input::is_interactive();
+            match lsp_helpers::update_config_after_install(language, &path, interactive).await {
+                Ok(()) => {
+                    // Config updated successfully (messages already printed by the function)
+                }
+                Err(e) => {
+                    error!(error = %e, "Failed to update config");
+                    eprintln!();
+                    eprintln!("⚠️  Config update failed: {}", e);
+                    eprintln!("   You may need to manually update .typemill/config.json");
+                }
+            }
         }
         Err(e) => {
             error!(error = %e, lsp_name, "Failed to install LSP");
@@ -1790,7 +1884,7 @@ fn to_junit_xml(result: &AnalysisResult) -> String {
             // Add failure if there are findings
             if !file_findings.is_empty() {
                 let failure_count = file_findings.len();
-                let mut failure_message = format!("{} issue(s) found", failure_count);
+                let failure_message = format!("{} issue(s) found", failure_count);
 
                 xml.push_str(&format!(
                     "      <failure message=\"{}\" type=\"{}\">\n",
