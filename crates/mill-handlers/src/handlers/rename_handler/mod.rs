@@ -111,28 +111,29 @@ fn default_true() -> bool {
 impl RenameOptions {
     /// Build RenameScope from options
     /// Resolves update_all flag if present in custom_scope
-    pub fn to_rename_scope(&self) -> Option<mill_foundation::core::rename_scope::RenameScope> {
+    pub fn to_rename_scope(&self) -> mill_foundation::core::rename_scope::RenameScope {
         let scope = match self.scope.as_deref() {
             // New names (preferred)
-            Some("code") => Some(mill_foundation::core::rename_scope::RenameScope::code()),
-            Some("standard") | None => {
-                Some(mill_foundation::core::rename_scope::RenameScope::standard())
-            }
-            Some("comments") => Some(mill_foundation::core::rename_scope::RenameScope::comments()),
-            Some("everything") => {
-                Some(mill_foundation::core::rename_scope::RenameScope::everything())
-            }
+            Some("code") => mill_foundation::core::rename_scope::RenameScope::code(),
+            Some("standard") | None => mill_foundation::core::rename_scope::RenameScope::standard(),
+            Some("comments") => mill_foundation::core::rename_scope::RenameScope::comments(),
+            Some("everything") => mill_foundation::core::rename_scope::RenameScope::everything(),
 
             // Deprecated aliases (still work)
-            Some("code-only") => Some(mill_foundation::core::rename_scope::RenameScope::code()),
-            Some("all") => Some(mill_foundation::core::rename_scope::RenameScope::standard()),
+            Some("code-only") => mill_foundation::core::rename_scope::RenameScope::code(),
+            Some("all") => mill_foundation::core::rename_scope::RenameScope::standard(),
 
-            Some("custom") => self.custom_scope.clone(),
-            _ => None,
+            Some("custom") => self
+                .custom_scope
+                .clone()
+                .unwrap_or_else(mill_foundation::core::rename_scope::RenameScope::standard),
+            // BUG FIX: This was returning `None`, causing file discovery to fail for .md, .yml.
+            // By returning a standard scope, we ensure all files are discovered by default.
+            _ => mill_foundation::core::rename_scope::RenameScope::standard(),
         };
 
         // Resolve update_all flag if present
-        scope.map(|s| s.resolve_update_all())
+        scope.resolve_update_all()
     }
 }
 

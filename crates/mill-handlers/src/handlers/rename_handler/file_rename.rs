@@ -42,7 +42,7 @@ impl RenameHandler {
         let edit_plan = context
             .app_state
             .move_service()
-            .plan_file_move_with_scope(&abs_old, &abs_new, rename_scope.as_ref())
+            .plan_file_move_with_scope(&abs_old, &abs_new, Some(&rename_scope))
             .await?;
 
         debug!(
