@@ -51,9 +51,9 @@ mod verifier;
 pub use error::{LspError, Result};
 pub use types::{InstallStatus, Platform};
 
-use types::LspRegistry;
 use std::path::{Path, PathBuf};
 use tracing::info;
+use types::LspRegistry;
 
 /// LSP manager for auto-downloading and managing LSP servers
 ///
@@ -151,13 +151,14 @@ impl LspManager {
 
         let temp_download = temp_dir.join("download");
 
-        info!(
-            "Downloading {} from {}",
-            lsp_name, platform_config.url
-        );
+        info!("Downloading {} from {}", lsp_name, platform_config.url);
 
-        downloader::download_file(&platform_config.url, &temp_download, &platform_config.sha256)
-            .await?;
+        downloader::download_file(
+            &platform_config.url,
+            &temp_download,
+            &platform_config.sha256,
+        )
+        .await?;
 
         // Decompress if needed
         let final_path = cache::lsp_binary_path(lsp_name)?;

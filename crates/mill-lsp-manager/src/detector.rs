@@ -13,9 +13,7 @@ pub fn detect_languages(project_path: &Path) -> Vec<String> {
         languages.push("rust".to_string());
     }
 
-    if project_path.join("package.json").exists()
-        || project_path.join("tsconfig.json").exists()
-    {
+    if project_path.join("package.json").exists() || project_path.join("tsconfig.json").exists() {
         languages.push("typescript".to_string());
     }
 

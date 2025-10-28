@@ -80,7 +80,8 @@ fn extract_description(content: &str) -> String {
         let trimmed = line.trim();
         if trimmed.starts_with("# ") {
             return trimmed.trim_start_matches("# ").to_string();
-        } else if !trimmed.is_empty() && !trimmed.starts_with("<!--") && !trimmed.starts_with("---") {
+        } else if !trimmed.is_empty() && !trimmed.starts_with("<!--") && !trimmed.starts_with("---")
+        {
             // First non-empty, non-comment line
             let desc = trimmed.chars().take(60).collect::<String>();
             if trimmed.len() > 60 {
@@ -168,7 +169,12 @@ fn search_docs(query: &str) {
 }
 
 /// Recursively search documentation
-fn search_in_dir(dir: &Dir, prefix: &str, query: &str, results: &mut Vec<(String, Vec<(usize, String)>)>) {
+fn search_in_dir(
+    dir: &Dir,
+    prefix: &str,
+    query: &str,
+    results: &mut Vec<(String, Vec<(usize, String)>)>,
+) {
     for entry in dir.entries() {
         let name = entry.path().file_name().unwrap().to_str().unwrap();
 

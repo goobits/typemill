@@ -20,9 +20,7 @@ pub fn verify_checksum(file_path: &Path, expected_checksum: &str) -> Result<()> 
         tracing::warn!(
             "⚠️  CHECKSUM VERIFICATION DISABLED via TYPEMILL_SKIP_CHECKSUM_VERIFICATION"
         );
-        tracing::warn!(
-            "   This should ONLY be used for development/testing, never in production!"
-        );
+        tracing::warn!("   This should ONLY be used for development/testing, never in production!");
         return Ok(());
     }
 
@@ -33,10 +31,7 @@ pub fn verify_checksum(file_path: &Path, expected_checksum: &str) -> Result<()> 
 
     // Skip verification if checksum is placeholder (development mode)
     if expected_checksum.starts_with("placeholder") {
-        tracing::warn!(
-            "⚠️  Using placeholder checksum for {}",
-            file_path.display()
-        );
+        tracing::warn!("⚠️  Using placeholder checksum for {}", file_path.display());
         tracing::warn!(
             "   This file is NOT verified for integrity! Update lsp-registry.toml with real checksums."
         );
@@ -61,14 +56,10 @@ pub fn validate_url(url: &str) -> Result<()> {
     }
 
     // Additional validation: only allow known-good hosts
-    let allowed_hosts = [
-        "github.com",
-        "registry.npmjs.org",
-        "files.pythonhosted.org",
-    ];
+    let allowed_hosts = ["github.com", "registry.npmjs.org", "files.pythonhosted.org"];
 
-    let url_parsed = url::Url::parse(url)
-        .map_err(|e| LspError::InsecureUrl(format!("Invalid URL: {}", e)))?;
+    let url_parsed =
+        url::Url::parse(url).map_err(|e| LspError::InsecureUrl(format!("Invalid URL: {}", e)))?;
 
     let host = url_parsed
         .host_str()
@@ -124,7 +115,10 @@ mod tests {
 
     #[test]
     fn test_allowed_hosts() {
-        assert!(validate_url("https://github.com/rust-lang/rust-analyzer/releases/download/file").is_ok());
+        assert!(
+            validate_url("https://github.com/rust-lang/rust-analyzer/releases/download/file")
+                .is_ok()
+        );
         assert!(validate_url("https://registry.npmjs.org/package").is_ok());
         assert!(validate_url("https://evil.com/malware").is_err());
     }

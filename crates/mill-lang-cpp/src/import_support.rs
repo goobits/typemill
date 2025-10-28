@@ -30,7 +30,8 @@ impl ImportParser for CppImportSupport {
                     let range = c.node.range();
                     let text = source[range.start_byte..range.end_byte].to_string();
                     // Trim quotes and angle brackets
-                    text.trim_matches(|c| c == '"' || c == '<' || c == '>').to_string()
+                    text.trim_matches(|c| c == '"' || c == '<' || c == '>')
+                        .to_string()
                 })
             })
             .collect()

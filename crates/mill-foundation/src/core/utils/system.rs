@@ -138,7 +138,14 @@ mod tests {
     #[test]
     fn test_is_ci_without_ci_env() {
         // Ensure no CI vars are set for this test
-        let vars = ["CI", "GITHUB_ACTIONS", "GITLAB_CI", "CIRCLECI", "JENKINS_URL", "TRAVIS"];
+        let vars = [
+            "CI",
+            "GITHUB_ACTIONS",
+            "GITLAB_CI",
+            "CIRCLECI",
+            "JENKINS_URL",
+            "TRAVIS",
+        ];
         let saved: Vec<_> = vars.iter().map(|v| (*v, std::env::var(v).ok())).collect();
 
         // Remove all CI vars
@@ -187,11 +194,11 @@ mod tests {
     #[test]
     fn test_test_command_with_version_missing() {
         // Test with non-existent command
-        let (success, _output) = test_command_with_version("this-command-does-not-exist-12345", &[]);
+        let (success, _output) =
+            test_command_with_version("this-command-does-not-exist-12345", &[]);
         assert!(!success, "Non-existent command should fail");
     }
 
     // Note: Full testing of test_command_with_version with LSP servers
     // requires those servers to be installed, so we test with rustc here
 }
-

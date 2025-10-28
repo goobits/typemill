@@ -39,7 +39,8 @@ pub async fn check_lsp_installed(language: &str) -> Result<Option<PathBuf>, Stri
     let installer = get_lsp_installer(&*plugin)
         .ok_or_else(|| format!("Plugin for {} does not support LSP installation", language))?;
 
-    installer.check_installed()
+    installer
+        .check_installed()
         .map_err(|e| format!("Failed to check LSP status: {}", e))
 }
 
@@ -54,7 +55,8 @@ pub async fn install_lsp(language: &str) -> Result<PathBuf, String> {
     let cache_dir = get_cache_dir();
     info!(language, lsp_name = installer.lsp_name(), "Installing LSP");
 
-    installer.ensure_installed(&cache_dir)
+    installer
+        .ensure_installed(&cache_dir)
         .await
         .map_err(|e| format!("Installation failed: {}", e))
 }
@@ -121,7 +123,9 @@ pub fn detect_needed_lsps(project_root: &Path) -> Result<Vec<String>, String> {
 
     for desc in iter_plugins() {
         // Check if descriptor handles any detected extension
-        let handles_extension = desc.extensions.iter()
+        let handles_extension = desc
+            .extensions
+            .iter()
             .any(|ext| detected_extensions.contains(*ext));
 
         if !handles_extension {
@@ -265,14 +269,13 @@ pub async fn update_config_after_install(
     installed_path: &Path,
     interactive: bool,
 ) -> Result<(), String> {
-    use mill_config::config::AppConfig;
     use super::user_input;
+    use mill_config::config::AppConfig;
 
     info!(language, path = ?installed_path, "Updating config after LSP install");
 
     // Load current config
-    let mut config = AppConfig::load()
-        .map_err(|e| format!("Failed to load config: {}", e))?;
+    let mut config = AppConfig::load().map_err(|e| format!("Failed to load config: {}", e))?;
 
     // Get extension for this language
     let extension = match language {
@@ -294,12 +297,14 @@ pub async fn update_config_after_install(
             "\nChoice:",
             &["Relative path", "Absolute path", "Skip"],
             0, // Default to relative
-        ).map_err(|e| format!("Failed to read choice: {}", e))?;
+        )
+        .map_err(|e| format!("Failed to read choice: {}", e))?;
 
         match choice {
             0 => {
                 // Relative path
-                let bin_name = installed_path.file_name()
+                let bin_name = installed_path
+                    .file_name()
                     .ok_or("Invalid path")?
                     .to_string_lossy()
                     .to_string();
@@ -318,7 +323,8 @@ pub async fn update_config_after_install(
         }
     } else {
         // Non-interactive: use relative path by default
-        let bin_name = installed_path.file_name()
+        let bin_name = installed_path
+            .file_name()
             .ok_or("Invalid path")?
             .to_string_lossy()
             .to_string();
@@ -339,11 +345,13 @@ pub async fn update_config_after_install(
     }
 
     // Update config
-    config.update_lsp_command(language, full_command.clone(), root_dir.clone())
+    config
+        .update_lsp_command(language, full_command.clone(), root_dir.clone())
         .map_err(|e| format!("Failed to update config: {}", e))?;
 
     // Save config
-    config.save(std::path::Path::new(".typemill/config.json"))
+    config
+        .save(std::path::Path::new(".typemill/config.json"))
         .map_err(|e| format!("Failed to save config: {}", e))?;
 
     println!("✅ Updated .typemill/config.json");
@@ -403,8 +411,8 @@ mod tests {
 
     #[test]
     fn test_detect_typescript_root() {
-        use tempfile::TempDir;
         use std::fs;
+        use tempfile::TempDir;
 
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
@@ -434,8 +442,8 @@ mod tests {
 
     #[test]
     fn test_detect_all_typescript_roots() {
-        use tempfile::TempDir;
         use std::fs;
+        use tempfile::TempDir;
 
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();

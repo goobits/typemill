@@ -1,7 +1,6 @@
 /// Integration test for LSP manager
 /// Run with: cargo run -p mill-lsp-manager --example test_install
-
-use mill_lsp_manager::{LspManager, InstallStatus};
+use mill_lsp_manager::{InstallStatus, LspManager};
 use std::path::Path;
 
 #[tokio::main]

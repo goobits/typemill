@@ -244,7 +244,10 @@ mod tests {
         );
 
         let unc_path2 = Path::new("\\\\?\\C:\\path");
-        assert!(unc_path2.is_absolute(), "Extended UNC paths should be absolute");
+        assert!(
+            unc_path2.is_absolute(),
+            "Extended UNC paths should be absolute"
+        );
     }
 
     /// Test that drive letter paths are correctly identified on Windows

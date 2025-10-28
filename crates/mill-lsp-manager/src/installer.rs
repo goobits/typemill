@@ -89,12 +89,15 @@ pub async fn install_pip_package(package_name: &str, binary_name: &str) -> Resul
                 .args(&["install", "--user", "--break-system-packages", package_name])
                 .status()
                 .await
-                .map_err(|e| LspError::DownloadFailed(format!("Failed to run {}: {}", pip_cmd, e)))?;
+                .map_err(|e| {
+                    LspError::DownloadFailed(format!("Failed to run {}: {}", pip_cmd, e))
+                })?;
 
             if !status.success() {
                 return Err(LspError::DownloadFailed(
                     "pip install failed even with --break-system-packages. \
-                     Consider installing pipx: apt install pipx OR pip install --user pipx".to_string(),
+                     Consider installing pipx: apt install pipx OR pip install --user pipx"
+                        .to_string(),
                 ));
             }
         }
@@ -144,7 +147,10 @@ mod tests {
 
     #[test]
     fn test_package_name_mapping() {
-        assert_eq!(get_npm_package_name("typescript-language-server"), "typescript-language-server");
+        assert_eq!(
+            get_npm_package_name("typescript-language-server"),
+            "typescript-language-server"
+        );
         assert_eq!(get_pip_package_name("pylsp"), "python-lsp-server");
     }
 

@@ -330,7 +330,10 @@ pub async fn run() {
         Commands::Status => {
             handle_status().await;
         }
-        Commands::Setup { update, interactive } => {
+        Commands::Setup {
+            update,
+            interactive,
+        } => {
             handle_setup(update, interactive).await;
         }
         Commands::Stop => {
@@ -778,7 +781,10 @@ async fn handle_setup(update: bool, interactive: bool) {
             println!("   Found: {}/", ts_root.display());
 
             // Update the TypeScript server config with rootDir
-            if let Some(server) = config.lsp.servers.iter_mut()
+            if let Some(server) = config
+                .lsp
+                .servers
+                .iter_mut()
                 .find(|s| s.extensions.contains(&"ts".to_string()))
             {
                 server.root_dir = Some(ts_root);
@@ -829,8 +835,11 @@ async fn handle_setup(update: bool, interactive: bool) {
             if interactive && !mill_foundation::core::utils::system::is_ci() {
                 println!();
                 match user_input::read_yes_no(
-                    &format!("📥 Install {} missing LSP server(s)? [Y/n]", missing_lsps.len()),
-                    true
+                    &format!(
+                        "📥 Install {} missing LSP server(s)? [Y/n]",
+                        missing_lsps.len()
+                    ),
+                    true,
                 ) {
                     Ok(true) => {
                         println!();
@@ -846,8 +855,10 @@ async fn handle_setup(update: bool, interactive: bool) {
                                     if let Err(e) = lsp_helpers::update_config_after_install(
                                         lang_name,
                                         &path,
-                                        interactive
-                                    ).await {
+                                        interactive,
+                                    )
+                                    .await
+                                    {
                                         eprintln!("      ⚠️  Config update failed: {}", e);
                                     }
                                 }
@@ -1030,12 +1041,19 @@ async fn handle_doctor() {
                 // Test if command actually works
                 let (works, info) = system::test_command_with_version(
                     cmd,
-                    &server.command[1..].iter().map(|s| s.as_str()).collect::<Vec<_>>()
+                    &server.command[1..]
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>(),
                 );
 
                 if works {
                     // Show version info
-                    let version = if info.is_empty() { "unknown version" } else { &info };
+                    let version = if info.is_empty() {
+                        "unknown version"
+                    } else {
+                        &info
+                    };
                     println!("[✓] {}", version);
 
                     // Additional checks for TypeScript
@@ -1045,8 +1063,13 @@ async fn handle_doctor() {
                             println!("       TypeScript LSP may not find dependencies");
 
                             // Suggest rootDir
-                            if let Some(detected) = lsp_helpers::detect_typescript_root(std::path::Path::new(".")) {
-                                println!("       Suggestion: Set rootDir to '{}'", detected.display());
+                            if let Some(detected) =
+                                lsp_helpers::detect_typescript_root(std::path::Path::new("."))
+                            {
+                                println!(
+                                    "       Suggestion: Set rootDir to '{}'",
+                                    detected.display()
+                                );
                                 println!("       Run: mill setup --update");
                             }
                         }
@@ -1058,7 +1081,10 @@ async fn handle_doctor() {
                         println!("       File doesn't exist: {}", cmd);
                     } else {
                         println!("[✗] Not found in PATH");
-                        println!("       Install via: mill install-lsp {}", server.extensions[0]);
+                        println!(
+                            "       Install via: mill install-lsp {}",
+                            server.extensions[0]
+                        );
                     }
                 }
             }
@@ -1109,7 +1135,11 @@ async fn handle_install_lsp(language: &str) {
     // Check if already installed
     match lsp_helpers::check_lsp_installed(language).await {
         Ok(Some(path)) => {
-            println!("✅ {} is already installed at: {}", lsp_name, path.display());
+            println!(
+                "✅ {} is already installed at: {}",
+                lsp_name,
+                path.display()
+            );
             return;
         }
         Ok(None) => {
@@ -1857,10 +1887,16 @@ fn to_junit_xml(result: &AnalysisResult) -> String {
     ));
 
     // Group findings by file
-    let mut findings_by_file: std::collections::HashMap<String, Vec<&mill_foundation::protocol::analysis_result::Finding>> = std::collections::HashMap::new();
+    let mut findings_by_file: std::collections::HashMap<
+        String,
+        Vec<&mill_foundation::protocol::analysis_result::Finding>,
+    > = std::collections::HashMap::new();
     for finding in &result.findings {
         let file = finding.location.file_path.clone();
-        findings_by_file.entry(file).or_insert_with(Vec::new).push(finding);
+        findings_by_file
+            .entry(file)
+            .or_insert_with(Vec::new)
+            .push(finding);
     }
 
     // If no findings, create a passing testcase

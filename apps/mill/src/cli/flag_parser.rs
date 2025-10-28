@@ -60,10 +60,7 @@ pub enum FlagParseError {
         example: String,
     },
     /// Tool requires JSON arguments, not flags
-    JsonOnly {
-        tool: String,
-        example: String,
-    },
+    JsonOnly { tool: String, example: String },
     /// Unknown tool name
     UnknownTool(String),
 }
@@ -178,24 +175,30 @@ pub fn parse_flags_to_json(
         "delete" => parse_delete_flags(flags),
 
         // Navigation tools - require JSON
-        "find_definition" | "find_references" | "find_implementations"
-        | "find_type_definition" | "get_symbol_info" => {
-            Err(FlagParseError::JsonOnly {
-                tool: tool_name.to_string(),
-                example: get_example_for_tool(tool_name),
-            })
-        }
+        "find_definition"
+        | "find_references"
+        | "find_implementations"
+        | "find_type_definition"
+        | "get_symbol_info" => Err(FlagParseError::JsonOnly {
+            tool: tool_name.to_string(),
+            example: get_example_for_tool(tool_name),
+        }),
 
         // Analysis tools - require JSON
-        "search_symbols" | "get_diagnostics" | "get_call_hierarchy"
-        | "analyze.structure" | "analyze.dependencies" | "analyze.quality"
-        | "analyze.dead_code" | "analyze.documentation" | "analyze.tests"
-        | "analyze.batch" | "analyze.module_dependencies" => {
-            Err(FlagParseError::JsonOnly {
-                tool: tool_name.to_string(),
-                example: get_example_for_tool(tool_name),
-            })
-        }
+        "search_symbols"
+        | "get_diagnostics"
+        | "get_call_hierarchy"
+        | "analyze.structure"
+        | "analyze.dependencies"
+        | "analyze.quality"
+        | "analyze.dead_code"
+        | "analyze.documentation"
+        | "analyze.tests"
+        | "analyze.batch"
+        | "analyze.module_dependencies" => Err(FlagParseError::JsonOnly {
+            tool: tool_name.to_string(),
+            example: get_example_for_tool(tool_name),
+        }),
 
         // Health check - takes empty object
         "health_check" => {
@@ -1559,7 +1562,7 @@ mod tests {
     fn test_json_only_tools() {
         let result = parse_flags_to_json(
             "find_definition",
-            HashMap::from([("target".to_string(), "test".to_string())])
+            HashMap::from([("target".to_string(), "test".to_string())]),
         );
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -1582,7 +1585,7 @@ mod tests {
     fn test_health_check_with_flags_error() {
         let result = parse_flags_to_json(
             "health_check",
-            HashMap::from([("foo".to_string(), "bar".to_string())])
+            HashMap::from([("foo".to_string(), "bar".to_string())]),
         );
         assert!(result.is_err());
     }

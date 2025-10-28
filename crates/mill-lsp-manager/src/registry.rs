@@ -9,13 +9,10 @@ pub fn load_registry() -> Result<LspRegistry> {
     // Registry is embedded at compile time
     const REGISTRY_TOML: &str = include_str!("../lsp-registry.toml");
 
-    let registry: LspRegistry = toml::from_str(REGISTRY_TOML)
-        .map_err(|e| LspError::RegistryLoadFailed(e.to_string()))?;
+    let registry: LspRegistry =
+        toml::from_str(REGISTRY_TOML).map_err(|e| LspError::RegistryLoadFailed(e.to_string()))?;
 
-    debug!(
-        "Loaded registry with {} LSP servers",
-        registry.lsp.len()
-    );
+    debug!("Loaded registry with {} LSP servers", registry.lsp.len());
 
     Ok(registry)
 }

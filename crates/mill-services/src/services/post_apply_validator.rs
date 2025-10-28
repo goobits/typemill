@@ -67,9 +67,7 @@ impl PostApplyValidator {
 
         let output = tokio::time::timeout(
             tokio::time::Duration::from_secs(config.timeout_seconds),
-            cmd.arg(&config.command)
-                .current_dir(working_dir)
-                .output(),
+            cmd.arg(&config.command).current_dir(working_dir).output(),
         )
         .await
         .map_err(|_| {

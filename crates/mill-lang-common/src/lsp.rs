@@ -144,8 +144,7 @@ pub async fn download_file(url: &str, dest: &Path) -> LspResult<()> {
     if byte_len > MAX_SIZE {
         return Err(LspError::DownloadFailed(format!(
             "File too large: {} bytes (max: {})",
-            byte_len,
-            MAX_SIZE
+            byte_len, MAX_SIZE
         )));
     }
 
@@ -339,7 +338,9 @@ pub async fn install_pip_package(package_name: &str, binary_name: &str) -> LspRe
                 .args(&["install", "--user", "--break-system-packages", package_name])
                 .status()
                 .await
-                .map_err(|e| LspError::DownloadFailed(format!("Failed to run {}: {}", pip_cmd, e)))?;
+                .map_err(|e| {
+                    LspError::DownloadFailed(format!("Failed to run {}: {}", pip_cmd, e))
+                })?;
 
             if !status.success() {
                 return Err(LspError::DownloadFailed(

@@ -4,7 +4,7 @@ mod import_support;
 
 use async_trait::async_trait;
 use mill_plugin_api::{
-    import_support::ImportParser, mill_plugin, LanguagePlugin, LanguageMetadata, LspConfig,
+    import_support::ImportParser, mill_plugin, LanguageMetadata, LanguagePlugin, LspConfig,
     ManifestData, ParsedSource, PluginCapabilities, PluginResult,
 };
 use std::path::Path;

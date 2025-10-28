@@ -162,9 +162,17 @@ pub fn run(args: SyncLanguagesArgs) -> Result<()> {
     // 4. Summary
     println!();
     if args.dry_run {
-        println!("{}", "🔍 Dry run complete (no files modified)".yellow().bold());
+        println!(
+            "{}",
+            "🔍 Dry run complete (no files modified)".yellow().bold()
+        );
     } else {
-        println!("{}", "✅ Language feature synchronization complete!".green().bold());
+        println!(
+            "{}",
+            "✅ Language feature synchronization complete!"
+                .green()
+                .bold()
+        );
     }
 
     println!("   Features added: {}", total_features_added);
@@ -228,11 +236,7 @@ fn sync_crate_features(
     if let Some(default_item) = features_table.get_mut("default") {
         if let Some(default_array) = default_item.as_array_mut() {
             // Remove all lang-* from default
-            default_array.retain(|v| {
-                !v.as_str()
-                    .map(|s| s.starts_with("lang-"))
-                    .unwrap_or(false)
-            });
+            default_array.retain(|v| !v.as_str().map(|s| s.starts_with("lang-")).unwrap_or(false));
 
             // Add default languages
             for (name, config) in &applicable_langs {
@@ -305,7 +309,11 @@ fn sync_crate_features(
                         if !inline_table.contains_key("optional") {
                             inline_table.insert("optional", Value::Boolean(Formatted::new(true)));
                             if verbose {
-                                println!("    {} Updated {} to be optional", "✏️ ".yellow(), dep_name);
+                                println!(
+                                    "    {} Updated {} to be optional",
+                                    "✏️ ".yellow(),
+                                    dep_name
+                                );
                             }
                         }
                     }
@@ -324,10 +332,7 @@ fn sync_crate_features(
                         Value::String(Formatted::new(format!("../mill-lang-{}", lang_name))),
                     );
                     dep_table.insert("optional", Value::Boolean(Formatted::new(true)));
-                    dep_table.insert(
-                        "default-features",
-                        Value::Boolean(Formatted::new(false)),
-                    );
+                    dep_table.insert("default-features", Value::Boolean(Formatted::new(false)));
                 }
 
                 deps_table.insert(&dep_name, Item::Value(Value::InlineTable(dep_table)));
@@ -462,14 +467,13 @@ fn generate_plugin_bundle_code(
 
     // Imports for each language
     code.push_str("// Force linker to include language plugins by actively using them.\n");
-    code.push_str("// This prevents linker dead code elimination from stripping the inventory submissions.\n");
+    code.push_str(
+        "// This prevents linker dead code elimination from stripping the inventory submissions.\n",
+    );
     code.push_str("// We reference each plugin's public type to ensure the crate is linked.\n");
 
     for (lang_name, config) in &langs {
-        code.push_str(&format!(
-            "#[cfg(feature = \"lang-{}\")]\n",
-            lang_name
-        ));
+        code.push_str(&format!("#[cfg(feature = \"lang-{}\")]\n", lang_name));
         code.push_str(&format!(
             "use mill_lang_{}::{};\n",
             lang_name, config.plugin_struct
@@ -479,17 +483,16 @@ fn generate_plugin_bundle_code(
     code.push_str("\n");
 
     // Linkage function
-    code.push_str("// This function is never called but ensures the linker includes all plugin crates\n");
+    code.push_str(
+        "// This function is never called but ensures the linker includes all plugin crates\n",
+    );
     code.push_str("#[allow(dead_code)]\n");
     code.push_str("fn _force_plugin_linkage() {\n");
     code.push_str("    // These type references ensure the plugin crates are linked\n");
     code.push_str("    // The actual plugin instances will be discovered via inventory\n");
 
     for (lang_name, config) in &langs {
-        code.push_str(&format!(
-            "    #[cfg(feature = \"lang-{}\")]\n",
-            lang_name
-        ));
+        code.push_str(&format!("    #[cfg(feature = \"lang-{}\")]\n", lang_name));
         code.push_str(&format!(
             "    let _: Option<{}> = None;\n",
             config.plugin_struct
@@ -502,7 +505,9 @@ fn generate_plugin_bundle_code(
     code.push_str("/// Returns all language plugins available in this bundle.\n");
     code.push_str("///\n");
     code.push_str("/// This function uses the plugin registry's auto-discovery mechanism\n");
-    code.push_str("/// to find all plugins that have self-registered using the `mill_plugin!` macro.\n");
+    code.push_str(
+        "/// to find all plugins that have self-registered using the `mill_plugin!` macro.\n",
+    );
     code.push_str("pub fn all_plugins() -> Vec<Arc<dyn LanguagePlugin>> {\n");
     code.push_str("    let plugins: Vec<_> = iter_plugins()\n");
     code.push_str("        .map(|descriptor| {\n");
@@ -531,7 +536,9 @@ fn generate_plugin_bundle_code(
     code.push_str("    use super::*;\n\n");
 
     // Force linkage in tests
-    code.push_str("    // Force linker to include language plugins for inventory collection in tests\n");
+    code.push_str(
+        "    // Force linker to include language plugins for inventory collection in tests\n",
+    );
     for (lang_name, _) in &langs {
         code.push_str(&format!(
             "    #[cfg(all(test, feature = \"lang-{}\"))]\n",
@@ -546,7 +553,9 @@ fn generate_plugin_bundle_code(
     code.push_str("        let plugins = all_plugins();\n");
     code.push_str("        assert!(\n");
     code.push_str("            plugins.len() >= 3,\n");
-    code.push_str("            \"Expected at least 3 plugins (Rust, TypeScript, Markdown), found {}\",\n");
+    code.push_str(
+        "            \"Expected at least 3 plugins (Rust, TypeScript, Markdown), found {}\",\n",
+    );
     code.push_str("            plugins.len()\n");
     code.push_str("        );\n");
     code.push_str("    }\n\n");
@@ -557,7 +566,9 @@ fn generate_plugin_bundle_code(
     code.push_str("        let mut names = std::collections::HashSet::new();\n");
     code.push_str("        for plugin in plugins {\n");
     code.push_str("            let name = plugin.metadata().name;\n");
-    code.push_str("            assert!(names.insert(name), \"Duplicate plugin name found: {}\", name);\n");
+    code.push_str(
+        "            assert!(names.insert(name), \"Duplicate plugin name found: {}\", name);\n",
+    );
     code.push_str("        }\n");
     code.push_str("    }\n");
     code.push_str("}\n");

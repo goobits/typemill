@@ -1,6 +1,5 @@
 /// Dogfood test - Actually install LSPs
 /// Run with: cargo run -p mill-lsp-manager --example dogfood_install
-
 use mill_lsp_manager::LspManager;
 use std::env;
 
@@ -30,7 +29,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   ✅ Ready\n");
 
     // Warn user
-    println!("⚠️  WARNING: This will actually install {} on your system!", lsp_name);
+    println!(
+        "⚠️  WARNING: This will actually install {} on your system!",
+        lsp_name
+    );
     println!("   Press Ctrl+C within 3 seconds to cancel...");
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     println!();
