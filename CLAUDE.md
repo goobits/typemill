@@ -596,22 +596,22 @@ Supported language servers (configurable):
 - Swift: `sourcekit-lsp`
 - C#: `csharp-ls`
 
-**Note:** Additional language servers (Go/gopls, Java/jdtls) can be configured but require language plugins from git tag `pre-language-reduction` and documented migration process (see `.debug/language-plugin-migration/`).
+**Note:** Additional language server (Go/gopls) can be configured but requires language plugin from git tag `pre-language-reduction` and documented migration process (see `.debug/language-plugin-migration/`).
 
 
 ### Language Plugin Parity Status
 
-TypeMill now has **100% feature parity** across TypeScript, Rust, Python, Swift, and C# for all common capabilities:
+TypeMill now has **100% feature parity** across TypeScript, Rust, Python, Swift, C#, and Java for all common capabilities:
 
-| Capability | TypeScript | Rust | Python | Swift | C# |
-|-----------|-----------|------|--------|-------|-----|
-| Core LanguagePlugin | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Import Support (5 traits) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Workspace Operations | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Refactoring (3 operations) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Analysis (2 traits) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Manifest Management | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Project Creation** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Capability | TypeScript | Rust | Python | Swift | C# | Java |
+|-----------|-----------|------|--------|-------|-----|------|
+| Core LanguagePlugin | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Import Support (5 traits) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Workspace Operations | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Refactoring (3 operations) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Analysis (2 traits) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Manifest Management | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Project Creation** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **Rust-specific features** (not applicable to other languages):
 - ReferenceDetector
@@ -621,6 +621,7 @@ TypeMill now has **100% feature parity** across TypeScript, Rust, Python, Swift,
 **Python restored**: 2025-10-25 with full parity implementation.
 **Swift restored**: 2025-10-28 with full parity implementation.
 **C# restored**: 2025-10-28 with full parity implementation.
+**Java restored**: 2025-10-29 with full parity implementation.
 
 See `.debug/language-plugin-migration/COMPLETE_PARITY_ANALYSIS.md` for detailed comparison.
 
