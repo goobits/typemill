@@ -24,6 +24,7 @@ mill-lang-csharp = { path = "../mill-lang-csharp", optional = true, default-feat
 mill-lang-c = { path = "../mill-lang-c", optional = true, default-features = false }
 mill-lang-go = { path = "../mill-lang-go", optional = true, default-features = false }
 mill-lang-java = { path = "../mill-lang-java", optional = true, default-features = false }
+mill-lang-php = { path = "../mill-lang-php", optional = true, default-features = false }
 
 [features]
 default = ["lang-gitignore", "lang-markdown", "lang-python", "lang-rust", "lang-toml", "lang-typescript", "lang-yaml"]
@@ -40,3 +41,4 @@ lang-csharp = ["dep:mill-lang-csharp"]
 lang-c = ["dep:mill-lang-c"]
 lang-go = ["dep:mill-lang-go"]
 lang-java = ["dep:mill-lang-java"]
+lang-php = ["dep:mill-lang-php"]

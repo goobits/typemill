@@ -32,6 +32,7 @@ members = [
     "crates/mill-lang-c",
     "crates/mill-lang-java",
     "crates/mill-lang-go",
+    "crates/mill-lang-php",
 ]
 resolver = "2"
 
@@ -118,6 +119,7 @@ mill-lang-csharp = { path = "crates/mill-lang-csharp", default-features = false 
 mill-lang-c = { path = "crates/mill-lang-c", default-features = false }
 mill-lang-go = { path = "crates/mill-lang-go", default-features = false }
 mill-lang-java = { path = "crates/mill-lang-java", default-features = false }
+mill-lang-php = { path = "crates/mill-lang-php", default-features = false }
 mill-analysis-dead-code = { path = "analysis/mill-analysis-dead-code" }
 mill-analysis-graph = { path = "analysis/mill-analysis-graph" }
 

@@ -99,3 +99,9 @@ path = "crates/mill-lang-java"
 plugin_struct = "JavaPlugin"
 category = "full"
 default = false
+
+[languages.php]
+path = "crates/mill-lang-php"
+plugin_struct = "PhpPlugin"
+category = "full"
+default = false

@@ -95,6 +95,7 @@ lang-csharp = ["mill-server/lang-csharp", "mill-plugin-bundle/lang-csharp", "mil
 lang-c = ["mill-server/lang-c", "mill-plugin-bundle/lang-c", "mill-ast/lang-c", "mill-plugin-system/lang-c", "mill-transport/lang-c"]
 lang-go = ["mill-server/lang-go", "mill-plugin-bundle/lang-go", "mill-ast/lang-go", "mill-plugin-system/lang-go", "mill-transport/lang-go"]
 lang-java = ["mill-server/lang-java", "mill-plugin-bundle/lang-java", "mill-ast/lang-java", "mill-plugin-system/lang-java", "mill-transport/lang-java"]
+lang-php = ["mill-server/lang-php", "mill-plugin-bundle/lang-php", "mill-ast/lang-php", "mill-plugin-system/lang-php", "mill-transport/lang-php"]
 
 # Platform-specific dependencies for process management
 [target.'cfg(unix)'.dependencies]
