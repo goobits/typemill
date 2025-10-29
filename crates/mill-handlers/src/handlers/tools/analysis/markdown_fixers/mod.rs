@@ -188,6 +188,7 @@ pub fn generate_unified_diff(
 
 /// Apply edits to content
 /// Bug 3 fix: Apply edits to progressively updated buffer to avoid losing edits
+/// Uses byte offsets to preserve trailing newlines and blank lines
 pub fn apply_edits(content: &str, edits: &[TextEdit]) -> String {
     if edits.is_empty() {
         return content.to_string();
@@ -196,7 +197,7 @@ pub fn apply_edits(content: &str, edits: &[TextEdit]) -> String {
     let mut result = content.to_string();
 
     // Sort edits in reverse order (by line descending, then character descending)
-    // This ensures we apply from end to start, preserving line numbers
+    // This ensures we apply from end to start, preserving byte offsets
     let mut sorted_edits = edits.to_vec();
     sorted_edits.sort_by(|a, b| {
         b.range.start.line.cmp(&a.range.start.line)
@@ -206,35 +207,37 @@ pub fn apply_edits(content: &str, edits: &[TextEdit]) -> String {
     // Apply each edit to the progressively updated result
     for edit in sorted_edits {
         let start_line = edit.range.start.line as usize;
+        let start_char = edit.range.start.character as usize;
         let end_line = edit.range.end.line as usize;
+        let end_char = edit.range.end.character as usize;
 
-        // Get current lines from progressively updated result
-        let lines: Vec<&str> = result.lines().collect();
+        // Build line start offsets for current result
+        let mut line_offsets = vec![0];
+        for (idx, ch) in result.char_indices() {
+            if ch == '\n' {
+                line_offsets.push(idx + 1); // Byte offset after newline
+            }
+        }
+        line_offsets.push(result.len()); // EOF offset
 
-        if start_line >= lines.len() {
-            continue;
+        if start_line >= line_offsets.len() - 1 {
+            continue; // Line doesn't exist
         }
 
-        // Build new content with this edit applied
-        let before: String = lines[..start_line].join("\n");
-        let after: String = if end_line + 1 < lines.len() {
-            lines[end_line + 1..].join("\n")
+        // Calculate byte offsets (preserves exact spacing and newlines)
+        let start_offset = line_offsets[start_line] + start_char;
+        let end_offset = if end_line < line_offsets.len() - 1 {
+            line_offsets[end_line] + end_char
         } else {
-            String::new()
+            result.len()
         };
 
-        let mut new_content = before;
-        if !new_content.is_empty() {
-            new_content.push('\n');
-        }
-        new_content.push_str(&edit.new_text);
-        if !after.is_empty() {
-            new_content.push('\n');
-            new_content.push_str(&after);
-        }
+        // Clamp to valid range
+        let start_offset = start_offset.min(result.len());
+        let end_offset = end_offset.min(result.len()).max(start_offset);
 
-        // Update result for next iteration
-        result = new_content;
+        // Apply edit using byte slices (preserves all whitespace)
+        result.replace_range(start_offset..end_offset, &edit.new_text);
     }
 
     result
