@@ -1,48 +1,24 @@
-# C# Language Plugin
+# C# Language Plugin for TypeMill
 
-Provides C# language support for Codebuddy.
+This crate provides C# language support for TypeMill, including AST parsing, symbol extraction, and manifest analysis.
 
 ## Features
 
-- AST parsing with a fallback to regex for robustness.
-- `.csproj` manifest analysis for dependency extraction.
-- Symbol extraction for classes, interfaces, methods, and properties.
+- **AST Parsing**: Parses C# source code into an AST using `tree-sitter-c-sharp`.
+- **Symbol Extraction**: Extracts symbols (classes, methods, etc.) from the AST.
+- **Manifest Parsing**: Parses `.csproj` files to extract project metadata like package name and dependencies.
+- **Import Rewriting**: Supports updating `using` statements for file moves and renames.
+- **Refactoring**: Provides capabilities for `extract_function`, `extract_variable`, and `inline_variable`.
+- **Project Creation**: Implements the `ProjectFactory` trait to create new C# projects using `dotnet` templates.
 
-## External Dependencies
+## LSP Configuration
 
-This plugin relies on an external parser utility written in C#. To build this utility, you must have the **.NET SDK (6.0 or newer)** installed on your system.
+The plugin is configured to use `csharp-ls` as the Language Server Protocol (LSP) server. Ensure that `csharp-ls` is installed and available in your system's `PATH`.
 
-You can check for all required parser dependencies by running:
-```bash
-make check-parser-deps
-```text
-## Build Process
+## `.csproj` Parsing
 
-1.  **Build the external parser:**
-    The C# parser is not built by the standard `cargo build` command. You must first build it using the following command from the repository root:
-    ```bash
-    make build-parsers
-    ```
-    This command will compile the C# parser and place the executable in the correct location for the Rust plugin to find at runtime.
+The plugin includes a basic parser for `.csproj` (MSBuild XML) files. It extracts the following information:
+- **Package Name**: From the `<AssemblyName>` or `<PackageId>` tags. If not present, it falls back to the project file name.
+- **Dependencies**: From `<PackageReference>` tags.
 
-2.  **Build the plugin:**
-    Once the parser is built, you can compile the workspace as usual:
-    ```bash
-    cargo build --features lang-csharp
-    ```
-
-## Testing
-
-To run the tests specifically for this plugin, use the following command:
-
-```bash
-cargo test -p cb-lang-csharp
-```text
-## Supported Operations
-
-- ✅ Parse C# source code using Roslyn (via external utility).
-- ✅ Extract symbols (classes, interfaces, methods, properties).
-- ✅ Analyze `.csproj` manifests.
-- ✅ Extract `PackageReference` and `ProjectReference` dependencies.
-- ⏳ Import rewriting (planned for a future release).
-- ⏳ Workspace operations (planned for a future release).
+The parser is designed to be resilient to variations in `.csproj` file structure.

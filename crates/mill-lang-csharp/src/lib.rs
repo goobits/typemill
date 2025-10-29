@@ -143,7 +143,6 @@ impl RefactoringProvider for CsharpPlugin {
 mod tests {
     use super::*;
     use mill_plugin_api::{CreatePackageConfig, PackageType, Template};
-    use std::path::PathBuf;
     use tempfile::tempdir;
 
     #[tokio::test]

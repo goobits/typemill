@@ -486,6 +486,37 @@ class Program
     }
 
     #[test]
+    fn test_extract_multiline_csharp_method() {
+        let source = r#"
+class Program
+{
+    static void Main(string[] args)
+    {
+        var a = 1;
+        var b = 2;
+        Console.WriteLine(a + b);
+    }
+}"#;
+        let range = CodeRange {
+            start_line: 5,
+            start_col: 8,
+            end_line: 7,
+            end_col: 35,
+        };
+        let plan = plan_extract_function(source, &range, "AddAndPrint", "test.cs").unwrap();
+        assert_eq!(plan.edits.len(), 2);
+
+        let insert_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Insert).unwrap();
+        assert!(insert_edit.new_text.contains("private void AddAndPrint()"));
+        assert!(insert_edit.new_text.contains("var a = 1;"));
+        assert!(insert_edit.new_text.contains("var b = 2;"));
+        assert!(insert_edit.new_text.contains("Console.WriteLine(a + b);"));
+
+        let replace_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Replace).unwrap();
+        assert_eq!(replace_edit.new_text, "AddAndPrint();");
+    }
+
+    #[test]
     fn test_inline_csharp_variable() {
         let source = r#"
 class Program
@@ -513,5 +544,30 @@ class Program
             .find(|e| e.edit_type == EditType::Delete)
             .unwrap();
         assert!(delete_edit.edit_type == EditType::Delete);
+    }
+
+    #[test]
+    fn test_inline_csharp_variable_multiple_usages() {
+        let source = r#"
+class Program
+{
+    static void Main(string[] args)
+    {
+        var name = "World";
+        Console.WriteLine("Hello, " + name);
+        Console.WriteLine("Goodbye, " + name);
+    }
+}"#;
+        let plan = plan_inline_variable(source, 5, 12, "test.cs").unwrap();
+        assert_eq!(plan.edits.len(), 3); // 2 replacements + 1 deletion
+
+        let replacement_edits: Vec<_> = plan.edits.iter().filter(|e| e.edit_type == EditType::Replace).collect();
+        assert_eq!(replacement_edits.len(), 2);
+        for edit in replacement_edits {
+            assert_eq!(edit.new_text, r#""World""#);
+        }
+
+        let delete_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Delete).unwrap();
+        assert!(delete_edit.original_text.contains(r#"var name = "World";"#));
     }
 }

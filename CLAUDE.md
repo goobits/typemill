@@ -601,17 +601,17 @@ Supported language servers (configurable):
 
 ### Language Plugin Parity Status
 
-TypeMill now has **100% feature parity** across TypeScript, Rust, Python, and Swift for all common capabilities:
+TypeMill now has **100% feature parity** across TypeScript, Rust, Python, C#, and Swift for all common capabilities:
 
-| Capability | TypeScript | Rust | Python | Swift |
-|-----------|-----------|------|--------|-------|
-| Core LanguagePlugin | ✅ | ✅ | ✅ | ✅ |
-| Import Support (5 traits) | ✅ | ✅ | ✅ | ✅ |
-| Workspace Operations | ✅ | ✅ | ✅ | ✅ |
-| Refactoring (3 operations) | ✅ | ✅ | ✅ | ✅ |
-| Analysis (2 traits) | ✅ | ✅ | ✅ | ✅ |
-| Manifest Management | ✅ | ✅ | ✅ | ✅ |
-| **Project Creation** | ✅ | ✅ | ✅ | ✅ |
+| Capability | TypeScript | Rust | Python | Swift | C# |
+|-----------|-----------|------|--------|-------|----|
+| Core LanguagePlugin | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Import Support (5 traits) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Workspace Operations | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Refactoring (3 operations) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Analysis (2 traits) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Manifest Management | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Project Creation** | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **Rust-specific features** (not applicable to other languages):
 - ReferenceDetector
@@ -620,6 +620,7 @@ TypeMill now has **100% feature parity** across TypeScript, Rust, Python, and Sw
 
 **Python restored**: 2025-10-25 with full parity implementation.
 **Swift restored**: 2025-10-28 with full parity implementation.
+**C# restored**: 2025-10-28 with full parity implementation.
 
 See `.debug/language-plugin-migration/COMPLETE_PARITY_ANALYSIS.md` for detailed comparison.
 
