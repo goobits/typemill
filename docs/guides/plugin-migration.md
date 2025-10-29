@@ -35,7 +35,7 @@ pub struct VariableUsage {
 }
 
 // Similar duplicates for ExtractableFunction, InlineVariableAnalysis, etc.
-```text
+```
 ### After (New Pattern)
 ```rust
 // In your plugin's refactoring.rs
@@ -48,7 +48,7 @@ use mill_lang_common::{
 pub use mill_lang_common::CodeRange;
 
 // Your refactoring logic using the imported types
-```text
+```
 ### Migration Steps
 1. **Remove local definitions** of `CodeRange`, `VariableUsage`, `ExtractableFunction`, `InlineVariableAnalysis`, `ExtractVariableAnalysis`
 2. **Add imports** from `mill_lang_common`
@@ -126,7 +126,7 @@ impl LanguagePlugin for MyLanguagePlugin {
 
     // ... more delegation methods ...
 }
-```text
+```
 ### After (New Pattern - ~20 lines)
 ```rust
 use mill_lang_common::{
@@ -171,7 +171,7 @@ impl LanguagePlugin for MyLanguagePlugin {
         },
     }
 }
-```text
+```
 ### Migration Steps
 
 1. **Update imports:**

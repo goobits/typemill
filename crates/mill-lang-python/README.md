@@ -69,7 +69,7 @@ use cb_plugin_api::LanguagePlugin;
 
 let plugin = PythonPlugin::new();
 let parsed = plugin.parse(source_code).await?;
-```text
+```
 Registered in the central plugin registry via `build_language_plugin_registry()`.
 
 ## Usage
@@ -90,7 +90,7 @@ def hello():
 
 let result = plugin.parse(source).await?;
 // Access symbols, imports, and AST data
-```text
+```
 ### Refactoring
 
 ```rust
@@ -106,7 +106,7 @@ let range = CodeRange {
 
 let plan = plan_extract_function(source, &range, "my_function", "file.py")?;
 // Apply the edit plan to perform the refactoring
-```text
+```
 ## API Reference
 
 ### Public Functions
@@ -119,7 +119,7 @@ pub fn plan_extract_function(
     new_function_name: &str,
     file_path: &str,
 ) -> RefactoringResult<EditPlan>
-```text
+```
 #### `refactoring::plan_inline_variable`
 ```rust
 pub fn plan_inline_variable(
@@ -128,7 +128,7 @@ pub fn plan_inline_variable(
     variable_col: u32,
     file_path: &str,
 ) -> RefactoringResult<EditPlan>
-```text
+```
 #### `refactoring::plan_extract_variable`
 ```rust
 pub fn plan_extract_variable(
@@ -140,7 +140,7 @@ pub fn plan_extract_variable(
     variable_name: Option<String>,
     file_path: &str,
 ) -> RefactoringResult<EditPlan>
-```text
+```
 ### Analysis Functions
 
 - `analyze_extract_function` - Analyze code for function extraction
@@ -158,7 +158,7 @@ cargo test -p cb-lang-python refactoring
 
 # Run with output
 cargo test -p cb-lang-python -- --nocapture
-```text
+```
 **Test Coverage:**
 The plugin is well-tested, with comprehensive coverage for refactoring operations, the parser, plugin integration, and manifest handling. All tests are passing.
 

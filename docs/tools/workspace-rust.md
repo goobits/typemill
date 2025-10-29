@@ -40,7 +40,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-```text
+```
 **Binary:**
 ```toml
 [package]
@@ -53,7 +53,7 @@ name = "my-cli"
 path = "src/main.rs"
 
 [dependencies]
-```text
+```
 ## Naming Conventions
 
 - **Package path:** `crates/my-lib` (kebab-case recommended)
@@ -97,7 +97,7 @@ mill tool workspace.create_package '{
 }'
 
 # Creates minimal files + examples/basic.rs
-```text
+```
 ## Notes
 
 - Edition defaults to "2021" (current stable)

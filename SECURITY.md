@@ -65,7 +65,7 @@ cargo audit --deny warnings
 
 # Update advisory database
 cargo audit --update-only
-```text
+```
 **Recommendation**: Run `cargo audit` before each release and monthly for production deployments.
 
 ### Interpreting Results
@@ -105,7 +105,7 @@ cargo audit --update-only
 cargo audit
 cargo clippy -- -D warnings
 cargo test --all-features
-```text
+```
 ### Pre-commit Hooks
 ```bash
 # Setup
@@ -115,7 +115,7 @@ git config core.hooksPath .git/hooks
 # !/bin/bash
 cargo audit --deny warnings || exit 1
 cargo clippy -- -D warnings || exit 1
-```text
+```
 ## Security Updates
 
 Subscribe to security advisories:

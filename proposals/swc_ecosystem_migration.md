@@ -48,7 +48,7 @@ match item {
     ModuleItem::Stmt(stmt) => { /* ... */ }
     _ => { /* handle unknown variants */ }
 }
-```text
+```
 **Files affected:**
 - `crates/mill-lang-typescript/src/imports.rs` (7 pattern matches)
 - `crates/mill-lang-typescript/src/refactoring.rs` (visitor patterns)
@@ -95,7 +95,7 @@ Add wildcard `_ => {}` arms to all enum matches on SWC AST types.
 use swc_common::{sync::Lrc, FileName, FilePathMapping, SourceMap};
 use swc_ecma_ast::{ImportSpecifier, Module, ModuleDecl, ModuleItem};
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
-```text
+```
 ✅ **No changes required** - Parser API unchanged
 
 **2. AST Manipulation (imports.rs:44-86)**
@@ -106,7 +106,7 @@ let new_items: Vec<ModuleItem> = module.body.into_iter().filter_map(|item| {
     }
     Some(item)
 }).collect();
-```text
+```
 ⚠️ **Needs wildcard arm**
 
 **3. Code Generation (imports.rs:98-122)**
@@ -117,7 +117,7 @@ let mut emitter = Emitter {
     comments: None,
     wr: JsWriter::new(cm.clone(), "\n", &mut buf, None),
 };
-```text
+```
 ✅ **No changes required** - Emitter API unchanged
 
 **4. Visitor Pattern (refactoring.rs:399)**
@@ -125,7 +125,7 @@ let mut emitter = Emitter {
 impl Visit for InlineVariableAnalyzer {
     // Simplified visit implementation
 }
-```text
+```
 ✅ **No changes required** - Visit trait unchanged
 
 ---
@@ -152,11 +152,11 @@ swc_ecma_ast = "17"
 swc_ecma_codegen = "19"
 swc_ecma_parser = "26"
 swc_ecma_visit = "17"
-```text
+```
 **Verification:**
 ```bash
 cargo check -p mill-lang-typescript
-```text
+```
 **Expected result:** Compilation errors showing missing wildcard patterns
 
 ---
@@ -213,7 +213,7 @@ let new_items: Vec<ModuleItem> = module
         Some(item)
     })
     .collect();
-```text
+```
 **Line 177-186: `update_import_reference_ast()`**
 
 ```diff
@@ -225,7 +225,7 @@ let new_items = module.body.into_iter().map(|item| {
 +   // Keep other module items unchanged
     item
 }).collect();
-```text
+```
 **Estimated effort:** 15 minutes (2 locations, straightforward changes)
 
 ---
@@ -258,7 +258,7 @@ let new_items = module.body.into_iter().map(|item| {
 
 ```bash
 cargo nextest run -p mill-handlers -E 'test(typescript)'
-```text
+```
 **Scenarios:**
 - Extract function from TypeScript file
 - Inline variable in TypeScript
@@ -271,7 +271,7 @@ cargo nextest run -p mill-handlers -E 'test(typescript)'
 
 ```bash
 cargo nextest run -p e2e -E 'test(typescript)'
-```text
+```
 **Validation:**
 - Parse real TypeScript files (with JSX, decorators, etc.)
 - Generate valid TypeScript output
@@ -322,7 +322,7 @@ cargo nextest run -p e2e -E 'test(typescript)'
 cargo nextest run -p mill-lang-typescript > /tmp/pre-migration-tests.log
 cargo nextest run -p mill-handlers -E 'test(typescript)' > /tmp/pre-handlers-tests.log
 cargo nextest run -p e2e -E 'test(typescript)' > /tmp/pre-e2e-tests.log
-```text
+```
 ### Post-Migration Validation (30 minutes)
 
 ```bash
@@ -335,7 +335,7 @@ cargo nextest run --workspace --features lang-typescript
 
 # Performance benchmark (if available)
 cargo bench -p mill-lang-typescript
-```text
+```
 ### Manual Testing Checklist
 
 - [ ] Parse TypeScript file with imports

@@ -64,7 +64,7 @@ impl ToolHandler for MyHandler {
         // Implementation
     }
 }
-```text
+```
 ### Documentation Requirements
 
 When marking a tool as internal, you **must**:
@@ -130,7 +130,7 @@ pub trait ToolHandler: Send + Sync {
         tool_call: &ToolCall,
     ) -> ServerResult<Value>;
 }
-```text
+```
 ### ToolRegistry Behavior
 
 - `list_tools()` - Returns **only public tools** (for MCP)
@@ -166,7 +166,7 @@ $ mill tools
 
 Public tools: 28 across handlers
 (Internal tools hidden - backend-only tools not shown)
-```text
+```
 **To see internal tools programmatically**, use the Rust API:
 ```rust
 let registry = dispatcher.tool_registry.lock().await;
@@ -175,7 +175,7 @@ let internal_tools = registry.list_internal_tools();
 
 let all_tools = registry.list_tools_with_handlers();
 // Returns all 44 tools (public + internal) with handler names
-```text
+```
 ## Testing
 
 ### Public Tool Tests
@@ -183,7 +183,7 @@ Test that tools are **listed** in MCP responses:
 ```rust
 let tools = registry.list_tools();
 assert!(tools.contains(&"find_definition".to_string()));
-```text
+```
 ### Internal Tool Tests
 Test that internal tools are:
 1. **Not listed** in public listings
@@ -205,7 +205,7 @@ let result = registry.handle_tool(
     &context,
 ).await;
 assert!(result.is_ok());
-```text
+```
 ## Migration Guide
 
 ### Making an Existing Tool Internal

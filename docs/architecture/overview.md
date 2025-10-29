@@ -52,7 +52,7 @@ graph TD
     G --> L
     J --> I
     I --> F
-```text
+```
 ## Architectural Layers
 
 The codebase follows a strict layered architecture with enforced dependencies:
@@ -138,7 +138,7 @@ pub trait ToolHandler: Send + Sync {
         tool_call: &ToolCall,
     ) -> ServerResult<Value>;
 }
-```text
+```
 **Key Design Principles:**
 
 1. **Single Responsibility**: Each handler focuses on a specific category of tools
@@ -154,7 +154,7 @@ pub struct ToolHandlerContext {
     pub plugin_manager: Arc<PluginManager>,
     pub lsp_adapter: Arc<Mutex<Option<Arc<DirectLspAdapter>>>>,
 }
-```text
+```
 This provides handlers with access to:
 - **AppState**: File service, lock manager, operation queue
 - **PluginManager**: Language-specific plugin dispatch
@@ -174,7 +174,7 @@ register_handlers_with_logging!(registry, {
     FileOpsHandler => "FileOpsHandler with 6 tools: read_file, write_file, ...",
     WorkspaceHandler => "WorkspaceHandler with 7 tools: list_files, analyze.dead_code, ...",
 });
-```text
+```
 **Benefits:**
 
 - **Declarative**: Clear intent, no boilerplate
@@ -196,7 +196,7 @@ pub async fn initialize(&self) -> ServerResult<()> {
 
     Ok(())
 }
-```text
+```
 ### Priority-Based Plugin Selection
 
 The plugin system uses a sophisticated multi-tiered selection algorithm to choose the best plugin for each tool request.
@@ -214,7 +214,7 @@ The plugin system uses a sophisticated multi-tiered selection algorithm to choos
     "error_on_ambiguity": false
   }
 }
-```text
+```
 **Selection Algorithm (in `crates/mill-plugins/src/registry.rs`):**
 
 ```rust
@@ -241,7 +241,7 @@ pub fn find_best_plugin(&self, file_path: &Path, method: &str) -> PluginResult<S
     // Ties broken by lexicographic order (deterministic)
     self.select_by_priority(&candidates, method)
 }
-```text
+```
 **Priority Tiers:**
 
 1. **Config Overrides** (highest): User-defined priorities in config file
@@ -259,7 +259,7 @@ pub enum ToolScope {
     /// Tool operates at workspace level (no file_path required)
     Workspace,   // Example: search_workspace_symbols, list_files
 }
-```text
+```
 **Scope Detection (in `crates/mill-plugins/src/capabilities.rs`):**
 
 ```rust
@@ -280,7 +280,7 @@ impl Capabilities {
         }
     }
 }
-```text
+```
 **Performance Characteristics:**
 
 - **Plugin Selection**: 141ns (1 plugin) to 1.7µs (20 plugins)
@@ -297,7 +297,7 @@ PluginError::AmbiguousPluginSelection {
     plugins: vec!["plugin-a", "plugin-b"],
     priority: 50,
 }
-```text
+```
 When `error_on_ambiguity: false` (default):
 - Automatically selects first plugin by lexicographic order
 - Logs warning with candidates for debugging
@@ -338,7 +338,7 @@ graph TD
     M --> O[Result]
     N --> O
     O --> P[MCP Response]
-```text
+```
 **Key Optimizations:**
 
 1. **Single Lookup**: Tool name → Handler (O(1) hash map)
@@ -354,7 +354,7 @@ The architecture maintains full backward compatibility through the `compat` modu
 // ../../crates/mill-server/src/handlers/compat.rs
 pub use crate::handlers::tools::ToolHandler as LegacyToolHandler;
 pub use crate::handlers::tools::ToolHandlerContext as ToolContext;
-```text
+```
 Legacy handlers can be gradually migrated without breaking existing functionality.
 
 ### Testing Strategy
@@ -375,7 +375,7 @@ async fn test_all_42_tools_are_registered() {
     assert!(registered_tools.contains(&"find_definition".to_string()));
     // ... validate all tools
 }
-```text
+```
 This test ensures no tools are accidentally removed during refactoring.
 
 **Plugin Selection Tests (crates/mill-plugins/src/registry.rs):**
@@ -406,7 +406,7 @@ pub trait LspService: Send + Sync {
     async fn request(&self, message: Message) -> ApiResult<Message>;
     async fn notify_file_opened(&self, file_path: &Path) -> ApiResult<()>;
 }
-```text
+```
 ### AppState Service Container
 
 The `AppState` acts as a dependency injection container:
@@ -419,7 +419,7 @@ pub struct AppState {
     pub lock_manager: Arc<LockManager>,
     pub operation_queue: Arc<OperationQueue>,
 }
-```text
+```
 ## Language Plugin System
 
 ### Currently Supported (100% Parity)
@@ -595,7 +595,7 @@ mill_plugin! {
     factory: RustPlugin::new,
     lsp: Some(LspConfig::new("rust-analyzer", &["rust-analyzer"]))
 }
-```text
+```
 This macro expands into a static `PluginDescriptor` that `inventory` picks up.
 
 ### How the Server Discovers Plugins
@@ -612,7 +612,7 @@ pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
     }
     Arc::new(registry)
 }
-```text
+```
 **Benefits**:
 - **True Modularity**: Adding or removing a language plugin requires no changes to core crates.
 - **Simplicity**: No more `languages.toml`, build scripts, or feature flags for managing languages.
@@ -641,7 +641,7 @@ impl LanguagePlugin for SystemToolsPlugin {
         }
     }
 }
-```text
+```
 ## Tool Categories
 
 The system provides comprehensive code intelligence through various tool categories:
@@ -715,7 +715,7 @@ pub struct AppConfig {
     pub logging: LoggingConfig,  // Logging configuration
     pub cache: CacheConfig,     // Caching settings
 }
-```text
+```
 ### LSP Server Configuration
 
 Each language server is configured with:
@@ -728,7 +728,7 @@ pub struct LspServerConfig {
     pub root_dir: Option<PathBuf>,      // Working directory
     pub restart_interval: Option<u64>,  // Auto-restart interval
 }
-```text
+```
 ## Error Handling Strategy
 
 ### Error Types Hierarchy
@@ -737,7 +737,7 @@ The system uses a layered error handling approach:
 
 ```rust
 ApiError ← CoreError ← ServerError ← Transport-specific errors
-```text
+```
 ### Error Propagation
 
 - **Service Errors**: Propagated through `ApiResult<T>` from service traits
@@ -865,7 +865,7 @@ This section defines the external and internal contracts for the MCP server impl
     }
   }
 }
-```text
+```
 #### Standard MCP Response
 ```json
 {
@@ -877,7 +877,7 @@ This section defines the external and internal contracts for the MCP server impl
     }
   }
 }
-```text
+```
 #### Error Response Contract
 ```json
 {
@@ -889,7 +889,7 @@ This section defines the external and internal contracts for the MCP server impl
     "data": null
   }
 }
-```text
+```
 ### Performance Contracts
 
 - **Bootstrap Time**: < 500ms (server initialization)

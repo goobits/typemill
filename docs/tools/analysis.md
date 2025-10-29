@@ -21,7 +21,7 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
     "include_suggestions": true
   }
 }
-```text
+```
 **Benefits:**
 - Consistent result format across all analysis types
 - Actionable suggestions with safety metadata
@@ -94,11 +94,11 @@ All analysis tools follow a consistent `analyze.<category>(kind, scope, options)
   "parameter_count": 5,
   "line_count": 50
 }
-```text
+```
 **CLI Alternative:**
 ```bash
 mill analyze complexity --path src/handlers.rs --threshold 20
-```text
+```
 **Returns:**
 
 `AnalysisResult` structure with:
@@ -214,7 +214,7 @@ mill analyze complexity --path src/handlers.rs --threshold 20
     }
   }
 }
-```text
+```
 **Notes:**
 - Reuses proven complexity analysis from `mill-ast::complexity`
 - Suggestions include safety metadata (`safe` | `requires_review` | `experimental`)
@@ -379,7 +379,7 @@ See [Markdown Auto-Fixes](../features/markdown-auto-fixes.md) for complete fixer
 **CLI Alternative:**
 ```bash
 mill analyze dead-code --kind unused_imports --path src
-```text
+```
 **Error Messages:**
 - Missing `kind`: "Invalid request: Missing 'kind' parameter"
 - Invalid `kind`: "Unsupported kind 'invalid'. Valid: unused_imports, unused_symbols, unused_parameters, unused_variables, unused_types, unreachable"
@@ -458,7 +458,7 @@ mill analyze dead-code --kind unused_imports --path src
     }
   }
 }
-```text
+```
 **Notes:**
 - Uses heuristic: symbol appearing once = declaration, >1 = usage
 - Conservative approach avoids false negatives
@@ -502,7 +502,7 @@ mill analyze dead-code --kind unused_imports --path src
 ```bash
 mill analyze cycles --path . --fail-on-cycles
 mill analyze deps --path src/service.ts
-```text
+```
 **Error Messages:**
 - Missing `kind`: "Invalid request: Missing 'kind' parameter"
 - Invalid `kind`: "Unsupported kind 'invalid'. Valid: imports, graph, circular, coupling, cohesion, depth"
@@ -592,7 +592,7 @@ mill analyze deps --path src/service.ts
     }
   }
 }
-```text
+```
 **Notes:**
 - Import categorization: external (packages), internal (project), relative (./...)
 - Plugin-based parsing for accurate AST extraction
@@ -637,7 +637,7 @@ mill tool analyze.structure '{
   "kind": "symbols",
   "scope": {"type": "file", "path": "src/models.ts"}
 }'
-```text
+```
 **Error Messages:**
 - Missing `kind`: "Invalid request: Missing 'kind' parameter"
 - Invalid `kind`: "Unsupported kind 'invalid'. Valid: symbols, hierarchy, interfaces, inheritance, modules"
@@ -710,7 +710,7 @@ mill tool analyze.structure '{
     }
   }
 }
-```text
+```
 **Notes:**
 - Uses language plugin SymbolKind enum for categorization
 - Visibility detection based on naming conventions (MVP)
@@ -760,7 +760,7 @@ mill tool analyze.documentation '{
   "kind": "coverage",
   "scope": {"type": "file", "path": "src/api.ts"}
 }'
-```text
+```
 **Error Messages:**
 - Missing `kind`: "Invalid request: Missing 'kind' parameter"
 - Invalid `kind`: "Unsupported kind 'invalid'. Valid: coverage, quality, style, examples, todos"
@@ -835,7 +835,7 @@ mill tool analyze.documentation '{
     }
   }
 }
-```text
+```
 **Notes:**
 - Coverage: percentage of documented functions/classes/modules
 - Quality: checks doc length, clarity, parameter descriptions
@@ -886,7 +886,7 @@ mill tool analyze.tests '{
   "kind": "coverage",
   "scope": {"type": "file", "path": "src/calculator.ts"}
 }'
-```text
+```
 **Error Messages:**
 - Missing `kind`: "Invalid request: Missing 'kind' parameter"
 - Invalid `kind`: "Unsupported kind 'invalid'. Valid: coverage, quality, assertions, organization"
@@ -961,7 +961,7 @@ mill tool analyze.tests '{
     }
   }
 }
-```text
+```
 **Notes:**
 - Coverage: test-to-function ratio (not line coverage)
 - Quality: detects empty tests, trivial assertions, missing assertions
@@ -1084,7 +1084,7 @@ Each query in the array must have:
     }
   }
 }
-```text
+```
 **Notes:**
 - Shared AST parsing: parses each file once, reuses for all queries
 - Significant performance improvement for multi-category analysis
@@ -1122,7 +1122,7 @@ Each query in the array must have:
   "include_workspace_deps": true,
   "resolve_features": true
 }
-```text
+```
 **Language Support:** Rust only (.rs files)
 
 **CLI Alternative:**
@@ -1136,7 +1136,7 @@ mill tool analyze.module_dependencies '{
     "include_workspace_deps": true
   }
 }'
-```text
+```
 **Error Messages:**
 - Missing `target`: "Invalid request: Missing 'target' parameter"
 - Invalid `target.kind`: "Unsupported kind 'invalid'. Valid: file, directory"
@@ -1221,7 +1221,7 @@ Dependency analysis result with:
     ]
   }
 }
-```text
+```
 **Notes:**
 - Rust-specific: parses `use` statements from .rs files
 - Cross-references with workspace Cargo.toml for versions
@@ -1250,7 +1250,7 @@ mill analyze dead-code --kind unused_imports --path src
 
 # Dependency analysis
 mill analyze deps --path src/service.ts
-```text
+```
 **Via MCP tool** (requires JSON):
 ```bash
 # Same complexity analysis via MCP tool interface
@@ -1265,7 +1265,7 @@ mill tool analyze.dependencies '{
   "kind": "circular",
   "scope": {"type": "workspace", "path": "."}
 }'
-```text
+```
 **When to use each:**
 - **CLI subcommands**: Faster for manual/interactive use, supports flags, better error messages
 - **MCP tool interface**: Required for programmatic/AI agent use, more flexible, consistent with other tools
@@ -1294,7 +1294,7 @@ All analysis tools follow the same parameter pattern:
     "include_suggestions": true
   }
 }
-```text
+```
 **Scope Types:**
 - `file` - Single file analysis
 - `directory` - Recursive directory analysis
@@ -1326,7 +1326,7 @@ Use `analyze.batch` for multi-category analysis:
     }
   ]
 }
-```text
+```
 **Performance optimization:**
 - AST parsed once per file
 - Shared across all queries in batch
@@ -1354,7 +1354,7 @@ All findings include actionable suggestions:
     }
   ]
 }
-```text
+```
 **Safety levels:**
 - `safe` - No logic changes, preserves semantics
 - `requires_review` - Logic changes, needs verification

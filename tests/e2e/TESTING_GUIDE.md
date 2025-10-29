@@ -62,7 +62,7 @@ pub const GO_TO_DEFINITION_TESTS: &[GoToDefinitionTestCase] = &[
         expected_location: ("helper/helper.go", 2, 5),
     },
 ];
-```text
+```
 **That's it!** The test infrastructure will automatically:
 - Run the new test case for Go
 - Use the same test logic as TypeScript and Python
@@ -81,7 +81,7 @@ cargo nextest run --test lsp_features test_go_to_definition_mock --no-capture
 # Running mock go-to-definition test 1/3 for language: ts
 # Running mock go-to-definition test 2/3 for language: py
 # Running mock go-to-definition test 3/3 for language: go  ← New!
-```text
+```
 ## Adding a New LSP Feature
 
 To add tests for a new LSP feature (e.g., "call hierarchy"):
@@ -107,7 +107,7 @@ pub const CALL_HIERARCHY_TESTS: &[CallHierarchyTestCase] = &[
         expected_calls: 1,
     },
 ];
-```text
+```
 ### Step 2: Implement Runner Function
 
 Add to `../../apps/mill/tests/lsp_feature_runners.rs`:
@@ -119,7 +119,7 @@ pub async fn run_call_hierarchy_test(case: &CallHierarchyTestCase, use_real_lsp:
     // - Send LSP request
     // - Verify response
 }
-```text
+```
 ### Step 3: Declare Tests
 
 Add to `../../apps/mill/tests/lsp_features.rs`:
@@ -143,7 +143,7 @@ async fn test_call_hierarchy_real() {
         run_call_hierarchy_test(case, true).await;
     }
 }
-```text
+```
 ## Benefits
 
 ### 1. Extremely DRY
@@ -185,7 +185,7 @@ test test_rename_mock
 test test_rename_real (ignored)
 test test_workspace_symbols_mock
 test test_workspace_symbols_real (ignored)
-```text
+```
 Each test runs for multiple languages automatically!
 
 ## Running Tests
@@ -202,7 +202,7 @@ cargo nextest run --test lsp_features test_go_to_definition_mock
 
 # Run real LSP tests (requires LSP servers installed)
 cargo nextest run --features lsp-tests --test lsp_features --status-level skip --test-threads=1
-```text
+```
 ## Test Feature Flags
 
 The test suite uses Cargo feature flags to categorize tests, allowing you to run subsets of the test suite for faster iteration.
@@ -223,7 +223,7 @@ cargo nextest run --workspace --features lsp-tests
 
 # Run the full test suite, including all categories
 cargo nextest run --workspace --all-features --status-level skip
-```text
+```
 ## Testing Workflow Execution
 
 The `e2e_workflow_execution.rs` test suite verifies the workflow executor and planner, which orchestrate complex multi-step operations.
@@ -263,7 +263,7 @@ async fn test_my_workflow() {
     assert!(response.is_ok());
     // Add specific assertions
 }
-```text
+```
 ### Running Workflow Tests
 
 ```bash
@@ -275,7 +275,7 @@ cargo nextest run --test e2e_workflow_execution test_execute_simple_workflow
 
 # Run with output
 cargo nextest run --test e2e_workflow_execution --no-capture
-```text
+```
 ## Testing Code Analysis Tools
 
 The `e2e_analysis_features.rs` test suite now includes tests for:
@@ -310,7 +310,7 @@ async fn test_analyze_quality_typescript() {
     let result = response.unwrap();
     assert!(result["result"]["files"].as_array().unwrap().len() >= 2);
 }
-```text
+```
 ## Current Test Coverage
 
 ### LSP Feature Tests (Data-Driven)
@@ -346,7 +346,7 @@ cargo nextest run --no-capture
 
 # Run ignored tests (real LSP servers)
 cargo nextest run --status-level skip --test-threads=1
-```text
+```
 ## Test Infrastructure: TestClient and Binaries
 
 ### Binary Architecture
@@ -378,7 +378,7 @@ If you see test failures about "server already running", it means the test is in
 
 ## Test Organization
 
-```text
+```
 tests/
 ├── src/
 │   └── harness/           # Test infrastructure
@@ -395,7 +395,7 @@ tests/
 │   ├── e2e_workspace_operations.rs
 │   └── ...
 └── test-fixtures/         # Static test data
-```text
+```
 ## Writing Helper-Based E2E Tests
 
 The E2E test suite (tests/e2e/src/) uses **shared helper functions** to eliminate boilerplate and ensure consistency. After migration (completed Week 3), the suite reduced from **~16,226 LOC to 10,940 LOC** (32% reduction, -5,286 lines).
@@ -421,7 +421,7 @@ async fn test_rename_file() {
         }
     ).await.unwrap();
 }
-```text
+```
 **What it does:**
 - Creates fresh `TestWorkspace` and `TestClient` (auto-cleanup via Drop)
 - Builds params with workspace context (absolute paths)
@@ -447,7 +447,7 @@ async fn test_rename_with_metadata_check() {
         }
     ).await.unwrap();
 }
-```text
+```
 **Use when:** You need to inspect the plan structure/metadata before applying.
 
 #### 3. Dry-Run Pattern: `run_dry_run_test`
@@ -465,7 +465,7 @@ async fn test_rename_dry_run() {
         }
     ).await.unwrap();
 }
-```text
+```
 **Use when:** Testing that `dryRun: true` doesn't modify the workspace.
 
 #### 4. Mutation Pattern: `run_tool_test_with_mutation`
@@ -485,7 +485,7 @@ async fn test_checksum_validation() {
         }
     ).await.unwrap();
 }
-```text
+```
 **Use when:** Testing checksum validation or other plan→apply state changes.
 
 ### Parameter Builders
@@ -501,7 +501,7 @@ build_move_params(ws, "src/file.rs", "lib/file.rs", "file")
 
 // Delete operations
 build_delete_params(ws, "unused.rs", "file")
-```text
+```
 **Why closures?** The params builder runs AFTER workspace creation, so paths are always absolute and correct.
 
 ### Migration Impact (Week 3 Completion)

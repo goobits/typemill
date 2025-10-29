@@ -51,7 +51,7 @@ Minimal template + extras:
     "typescript": "^5.0.0"
   }
 }
-```text
+```
 **Binary:**
 ```json
 {
@@ -71,7 +71,7 @@ Minimal template + extras:
     "@types/node": "^20.0.0"
   }
 }
-```text
+```
 ## tsconfig.json
 
 ```json
@@ -87,7 +87,7 @@ Minimal template + extras:
     "sourceMap": true
   }
 }
-```text
+```
 ## Workspace Integration
 
 ### npm/Yarn Workspaces
@@ -138,7 +138,7 @@ mill tool workspace.create_package '{
 }'
 
 # Creates minimal files + .eslintrc.json
-```text
+```
 ## Notes
 
 - Package names support scopes: `@myorg/package-name`

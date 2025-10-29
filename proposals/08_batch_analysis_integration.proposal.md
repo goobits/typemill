@@ -34,7 +34,7 @@ pub struct FileAnalysisResult {
     pub findings: Vec<AnalysisFinding>,
     pub suggestions: Vec<ActionableSuggestion>,  // NEW
 }
-```text
+```
 ### 2. Cross-File Suggestion Deduplication
 
 Avoid duplicate suggestions across files:
@@ -47,7 +47,7 @@ pub fn deduplicate_suggestions(
     // Keep highest confidence version
     // Merge affected files list
 }
-```text
+```
 ### 3. Workspace-Level Suggestions
 
 Generate suggestions for workspace-wide patterns:
@@ -62,7 +62,7 @@ pub fn generate_workspace_suggestions(
     // Pattern: Unused imports in multiple files
     // Suggestion: Workspace-wide cleanup
 }
-```text
+```
 ### 4. Optimized Caching Strategy
 
 Cache AST and analysis results:
@@ -72,7 +72,7 @@ pub struct BatchAnalysisCache {
     ast_cache: HashMap<PathBuf, ParsedSource>,
     analysis_cache: HashMap<PathBuf, Vec<AnalysisFinding>>,
 }
-```text
+```
 ### 5. Suggestion Ranking
 
 Prioritize suggestions across files:
@@ -85,7 +85,7 @@ pub fn rank_suggestions(
     // Group by category
     // Limit to top N per category
 }
-```text
+```
 ## Checklists
 
 ### Data Structures

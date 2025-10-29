@@ -53,7 +53,7 @@ where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
-```text
+```
 **Binary:**
 ```toml
 [project]
@@ -75,7 +75,7 @@ where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
-```text
+```
 ## Naming Conventions
 
 - **Package path:** `packages/my-lib` (kebab-case or snake_case)
@@ -91,17 +91,17 @@ When `addToWorkspace: true`:
 ```toml
 [tool.pdm.workspace]
 members = ["packages/*", "packages/my-lib"]
-```text
+```
 **Poetry:**
 ```toml
 [tool.poetry.workspace]
 members = ["packages/*", "packages/my-lib"]
-```text
+```
 **Hatch:**
 ```toml
 [tool.hatch.workspace]
 members = ["packages/*", "packages/my-lib"]
-```text
+```
 **Cross-platform:** Paths normalized to forward slashes on Windows.
 
 ## Example Usage
@@ -134,7 +134,7 @@ mill tool workspace.create_package '{
 }'
 
 # Creates minimal files + setup.py
-```text
+```
 ## Notes
 
 - Uses `src/` layout (best practice for avoiding import shadowing)
