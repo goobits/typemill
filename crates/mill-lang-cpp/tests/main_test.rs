@@ -265,6 +265,39 @@ async fn test_analyze_conan_manifest() {
         .any(|d| d.name == "gtest"));
 }
 
+#[tokio::test]
+async fn test_analyze_vcpkg_manifest() {
+    let plugin = CppPlugin::default();
+    let content = r#"
+{
+    "name": "my-project",
+    "version-string": "1.0.0",
+    "dependencies": [
+        "fmt",
+        "gtest"
+    ]
+}
+"#;
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let path = temp_dir.path().join("vcpkg.json");
+    std::fs::write(&path, content).unwrap();
+
+    let manifest_data = plugin.analyze_manifest(&path).await.unwrap();
+
+    assert_eq!(manifest_data.name, "my-project");
+    assert_eq!(manifest_data.version, "1.0.0");
+    assert_eq!(manifest_data.dependencies.len(), 2);
+    assert!(manifest_data
+        .dependencies
+        .iter()
+        .any(|d| d.name == "fmt"));
+    assert!(manifest_data
+        .dependencies
+        .iter()
+        .any(|d| d.name == "gtest"));
+}
+
 use mill_plugin_api::project_factory::{PackageType, Template};
 
 #[test]
@@ -297,4 +330,60 @@ fn test_project_factory() {
 
     assert_eq!(result.package_info.name, "my-cpp-project");
     assert!(result.created_files.len() >= 2);
+}
+
+#[tokio::test]
+async fn test_analyze_cmake_manifest_with_sources() {
+    let plugin = CppPlugin::default();
+    let manifest_content = r#"
+        cmake_minimum_required(VERSION 3.10)
+        project(MyProject)
+
+        add_executable(my_app src/main.cpp src/other.cpp)
+        add_library(my_lib src/lib.cpp)
+    "#;
+
+    let dir = tempfile::tempdir().unwrap();
+    let manifest_path = dir.path().join("CMakeLists.txt");
+    std::fs::write(&manifest_path, manifest_content).unwrap();
+
+    let manifest_data = plugin.analyze_manifest(&manifest_path).await.unwrap();
+    let source_files = manifest_data.raw_data["source_files"].as_array().unwrap();
+
+    assert_eq!(source_files.len(), 3);
+    assert!(source_files.contains(&"src/main.cpp".into()));
+    assert!(source_files.contains(&"src/other.cpp".into()));
+    assert!(source_files.contains(&"src/lib.cpp".into()));
+}
+
+#[tokio::test]
+async fn test_analyze_conanfile_py() {
+    let plugin = CppPlugin::default();
+    let content = r#"
+from conan import ConanFile
+
+class MyProject(ConanFile):
+    name = "my_project"
+    version = "1.0"
+    requires = [
+        "fmt/10.2.1",
+        "gtest/1.14.0"
+    ]
+"#;
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let path = temp_dir.path().join("conanfile.py");
+    std::fs::write(&path, content).unwrap();
+
+    let manifest_data = plugin.analyze_manifest(&path).await.unwrap();
+
+    assert_eq!(manifest_data.dependencies.len(), 2);
+    assert!(manifest_data
+        .dependencies
+        .iter()
+        .any(|d| d.name == "fmt"));
+    assert!(manifest_data
+        .dependencies
+        .iter()
+        .any(|d| d.name == "gtest"));
 }

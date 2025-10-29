@@ -11,6 +11,13 @@ fn get_cpp_imports_query() -> &'static str {
         path: (string_literal) @path)
     (preproc_include
         path: (system_lib_string) @path)
+    (import_declaration
+        name: (module_name) @path)
+    (import_declaration
+        header: [
+            (string_literal)
+            (system_lib_string)
+        ] @path)
     "#
 }
 

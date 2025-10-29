@@ -5,6 +5,7 @@ mod cmake_parser;
 mod conan_parser;
 mod import_support;
 mod project_factory;
+mod vcpkg_parser;
 
 use async_trait::async_trait;
 use mill_plugin_api::{
@@ -50,8 +51,12 @@ impl LanguagePlugin for CppPlugin {
         let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or_default();
         if filename.starts_with("CMakeLists") {
             cmake_parser::analyze_cmake_manifest(path)
-        } else if filename == "conanfile.txt" {
+        } else if filename == "conanfile.txt" || filename == "conanfile.py" {
             conan_parser::analyze_conan_manifest(path)
+        } else if filename == "vcpkg.json" {
+            let content = std::fs::read_to_string(path)
+                .map_err(|e| mill_plugin_api::PluginError::manifest(format!("Failed to read manifest: {}", e)))?;
+            vcpkg_parser::analyze_vcpkg_manifest(&content)
         } else {
             Err(mill_plugin_api::PluginError::not_supported(
                 "Manifest analysis for this file type",

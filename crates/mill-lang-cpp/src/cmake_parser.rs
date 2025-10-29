@@ -16,11 +16,28 @@ pub fn analyze_cmake_manifest(path: &Path) -> PluginResult<ManifestData> {
         .map(|m| m.as_str().to_string())
         .unwrap_or_else(|| "Unknown".to_string());
 
-    let lib_re = Regex::new(r#"(?i)add_library\s*\(\s*(\w+)"#).unwrap();
-    let libraries: Vec<_> = lib_re.captures_iter(&content).map(|caps| caps[1].to_string()).collect();
+    let mut libraries = vec![];
+    let mut executables = vec![];
+    let mut source_files = vec![];
 
-    let exe_re = Regex::new(r#"(?i)add_executable\s*\(\s*(\w+)"#).unwrap();
-    let executables: Vec<_> = exe_re.captures_iter(&content).map(|caps| caps[1].to_string()).collect();
+    let target_re =
+        Regex::new(r#"(?i)(add_library|add_executable)\s*\(([\w\s./]+)\)"#).unwrap();
+
+    for caps in target_re.captures_iter(&content) {
+        let command = caps.get(1).unwrap().as_str();
+        let args_str = caps.get(2).unwrap().as_str();
+        let mut args = args_str.split_whitespace();
+
+        if let Some(target_name) = args.next() {
+            let sources: Vec<String> = args.map(|s| s.to_string()).collect();
+            if command.eq_ignore_ascii_case("add_library") {
+                libraries.push(target_name.to_string());
+            } else {
+                executables.push(target_name.to_string());
+            }
+            source_files.extend(sources);
+        }
+    }
 
     // NOTE: This is a best-effort regex-based parser. It does not handle
     // complex CMake syntax like variables, generator expressions, or multi-line
@@ -56,6 +73,7 @@ pub fn analyze_cmake_manifest(path: &Path) -> PluginResult<ManifestData> {
             "libraries": libraries,
             "executables": executables,
             "linked_libraries": linked_libraries,
+            "source_files": source_files,
         }),
     })
 }
