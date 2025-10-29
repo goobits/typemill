@@ -33,21 +33,3 @@ pub static ES6_IMPORT_LINE_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"^import\s+.*?from\s+['"]([^'"]+)['"]"#)
         .expect("ES6 import line regex should be valid")
 });
-
-/// Create a regex pattern to check if a module is imported
-///
-/// # Arguments
-///
-/// * `module` - Module specifier (will be escaped)
-///
-/// # Returns
-///
-/// Tuple of (es6_pattern, require_pattern, dynamic_pattern)
-pub fn module_import_patterns(module: &str) -> (String, String, String) {
-    let escaped = regex::escape(module);
-    (
-        format!(r#"from\s+['"]{escaped}['"]"#),
-        format!(r#"require\s*\(\s*['"]{escaped}['"]\s*\)"#),
-        format!(r#"import\s*\(\s*['"]{escaped}['"]\s*\)"#),
-    )
-}

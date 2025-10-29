@@ -55,28 +55,36 @@ impl ImportParser for TypeScriptImportSupport {
     }
 
     fn contains_import(&self, content: &str, module: &str) -> bool {
-        // Fast path: Simple string checks avoid regex compilation entirely
-        // Check for common import patterns with proper quote handling
+        use crate::regex_patterns::{DYNAMIC_IMPORT_RE, ES6_IMPORT_RE, REQUIRE_RE};
 
-        // ES6 imports: from 'module' or from "module"
-        if content.contains(&format!("from '{}'", module))
-            || content.contains(&format!("from \"{}\"", module))
-        {
-            return true;
+        // Use shared lazy regexes to parse all imports, then check if module is present
+        // This is whitespace-tolerant (handles require( 'module' ), etc.)
+
+        // Check ES6 imports: import ... from 'module'
+        for caps in ES6_IMPORT_RE.captures_iter(content) {
+            if let Some(imported_module) = caps.get(1) {
+                if imported_module.as_str() == module {
+                    return true;
+                }
+            }
         }
 
-        // CommonJS: require('module') or require("module")
-        if content.contains(&format!("require('{}')", module))
-            || content.contains(&format!("require(\"{}\")", module))
-        {
-            return true;
+        // Check CommonJS: require('module')
+        for caps in REQUIRE_RE.captures_iter(content) {
+            if let Some(imported_module) = caps.get(1) {
+                if imported_module.as_str() == module {
+                    return true;
+                }
+            }
         }
 
-        // Dynamic import: import('module') or import("module")
-        if content.contains(&format!("import('{}')", module))
-            || content.contains(&format!("import(\"{}\")", module))
-        {
-            return true;
+        // Check dynamic imports: import('module')
+        for caps in DYNAMIC_IMPORT_RE.captures_iter(content) {
+            if let Some(imported_module) = caps.get(1) {
+                if imported_module.as_str() == module {
+                    return true;
+                }
+            }
         }
 
         false
