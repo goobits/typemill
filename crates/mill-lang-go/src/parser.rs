@@ -1,8 +1,8 @@
-//! Go import parsing and symbol extraction logic for the cb-lang-go plugin.
+//! Go import parsing and symbol extraction logic for the mill-lang-go plugin.
 
 use mill_lang_common::{parse_with_fallback, run_ast_tool, ImportGraphBuilder, SubprocessAstTool};
-use mill_plugin_api::{PluginError, PluginResult, Symbol, SymbolKind};
-use mill_foundation::protocol::{ImportGraph, ImportInfo, ImportType, SourceLocation};
+use mill_plugin_api::{PluginError, PluginResult, Symbol, SymbolKind, SourceLocation};
+use mill_foundation::protocol::{ImportGraph, ImportInfo, ImportType};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -121,7 +121,7 @@ fn parse_go_single_import(line: &str, line_num: u32) -> PluginResult<Option<Impo
                     )
                 },
                 type_only: false,
-                location: SourceLocation {
+                location: mill_foundation::protocol::SourceLocation {
                     start_line: line_num,
                     start_column: 0,
                     end_line: line_num,
@@ -172,7 +172,7 @@ fn parse_go_block_import(line: &str, line_num: u32) -> PluginResult<Option<Impor
                     )
                 },
                 type_only: false,
-                location: SourceLocation {
+                location: mill_foundation::protocol::SourceLocation {
                     start_line: line_num,
                     start_column: 0,
                     end_line: line_num,
@@ -262,7 +262,7 @@ fn extract_symbols_ast(source: &str) -> Result<Vec<Symbol>, PluginError> {
                 "variable" => SymbolKind::Variable,
                 _ => SymbolKind::Other,
             },
-            location: mill_plugin_api::SourceLocation {
+            location: SourceLocation {
                 line: s.location.start_line,
                 column: s.location.start_column,
             },

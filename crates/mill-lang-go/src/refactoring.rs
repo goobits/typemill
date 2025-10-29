@@ -6,27 +6,8 @@ use mill_lang_common::LineExtractor;
 use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
+use mill_plugin_api::{PluginError, PluginResult};
 use std::collections::HashMap;
-
-/// Code range for refactoring operations
-#[derive(Debug, Clone)]
-pub struct CodeRange {
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-}
-
-impl From<CodeRange> for EditLocation {
-    fn from(range: CodeRange) -> Self {
-        EditLocation {
-            start_line: range.start_line,
-            start_column: range.start_col,
-            end_line: range.end_line,
-            end_column: range.end_col,
-        }
-    }
-}
 
 /// Plan extract function refactoring for Go
 pub fn plan_extract_function(
@@ -35,11 +16,11 @@ pub fn plan_extract_function(
     end_line: u32,
     function_name: &str,
     file_path: &str,
-) -> Result<EditPlan, Box<dyn std::error::Error>> {
+) -> PluginResult<EditPlan> {
     let lines: Vec<&str> = source.lines().collect();
 
     if start_line as usize >= lines.len() || end_line as usize >= lines.len() {
-        return Err("Line range out of bounds".into());
+        return Err(PluginError::invalid_input("Line range out of bounds"));
     }
 
     // Extract the selected lines
@@ -124,11 +105,11 @@ pub fn plan_extract_variable(
     end_col: u32,
     variable_name: Option<String>,
     file_path: &str,
-) -> Result<EditPlan, Box<dyn std::error::Error>> {
+) -> PluginResult<EditPlan> {
     let lines: Vec<&str> = source.lines().collect();
 
     if start_line as usize >= lines.len() || end_line as usize >= lines.len() {
-        return Err("Line range out of bounds".into());
+        return Err(PluginError::invalid_input("Line range out of bounds"));
     }
 
     // Extract the expression
@@ -220,20 +201,21 @@ pub fn plan_extract_variable(
 pub fn plan_inline_variable(
     source: &str,
     variable_line: u32,
-    variable_col: u32,
+    _variable_col: u32,
     file_path: &str,
-) -> Result<EditPlan, Box<dyn std::error::Error>> {
+) -> PluginResult<EditPlan> {
     let lines: Vec<&str> = source.lines().collect();
 
     if variable_line as usize >= lines.len() {
-        return Err("Line number out of bounds".into());
+        return Err(PluginError::invalid_input("Line number out of bounds"));
     }
 
     let line_text = lines[variable_line as usize];
 
     // Simple pattern matching for variable declarations
     // Supports: var x = ..., x := ...
-    let var_pattern = regex::Regex::new(r"(?:var\s+)?(\w+)\s*:?=\s*(.+?)(?:$)")?;
+    let var_pattern = regex::Regex::new(r"(?:var\s+)?(\w+)\s*:?=\s*(.+?)(?:$)")
+        .map_err(|e| PluginError::internal(e.to_string()))?;
 
     if let Some(captures) = var_pattern.captures(line_text) {
         let var_name = captures.get(1).unwrap().as_str();
@@ -241,7 +223,8 @@ pub fn plan_inline_variable(
 
         // Find all usages of this variable in the rest of the source
         let mut edits = Vec::new();
-        let var_regex = regex::Regex::new(&format!(r"\b{}\b", regex::escape(var_name)))?;
+        let var_regex = regex::Regex::new(&format!(r"\b{}\b", regex::escape(var_name)))
+            .map_err(|e| PluginError::internal(e.to_string()))?;
 
         // Replace all usages (except the declaration itself)
         for (idx, line) in lines.iter().enumerate() {
@@ -304,14 +287,13 @@ pub fn plan_inline_variable(
                 created_at: chrono::Utc::now(),
                 complexity: 3,
                 impact_areas: vec!["variable_inlining".to_string()],
-            consolidation: None,
+                consolidation: None,
             },
         })
     } else {
-        Err(format!(
-            "Could not find variable declaration at {}:{}",
-            variable_line, variable_col
-        )
-        .into())
+        Err(PluginError::internal(format!(
+            "Could not find variable declaration at line {}",
+            variable_line
+        )))
     }
 }
