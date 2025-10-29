@@ -114,44 +114,99 @@ impl TypeScriptPathAliasResolver {
         replacements: &[String],
         base_url: &Path,
     ) -> Option<String> {
-        // Handle wildcard patterns (e.g., "$lib/*" -> "src/lib/*")
-        if pattern.ends_with("/*") {
-            let prefix = pattern.trim_end_matches("/*");
+        // Check if pattern contains a wildcard
+        if let Some(star_idx) = pattern.find('*') {
+            // Split pattern into prefix and suffix around the wildcard
+            let prefix = &pattern[..star_idx];
+            let suffix = &pattern[star_idx + 1..];
 
-            // Check if specifier starts with the pattern prefix
-            if let Some(suffix) = specifier.strip_prefix(prefix) {
-                // CRITICAL: Verify there's an actual '/' after the prefix
-                // Without this, "@api/models/*" would incorrectly match "@apiModels"
-                // TypeScript requires the separator to be present
-                if suffix.is_empty() || !suffix.starts_with('/') {
-                    return None;
-                }
+            // Check if specifier matches the pattern
+            if specifier.starts_with(prefix) && specifier.ends_with(suffix) {
+                // Extract the matched portion (what the wildcard captures)
+                let captured = &specifier[prefix.len()..specifier.len() - suffix.len()];
 
-                // Remove the leading '/' from suffix
-                let suffix = suffix.trim_start_matches('/');
+                // Note: The prefix/suffix matching already handles separator requirements
+                // E.g., "@api/models/*" has prefix "@api/models/" which won't match "@apiModels"
 
                 // Try each replacement path in order (TypeScript behavior)
                 // TypeScript tries replacements sequentially until one resolves
-                for replacement in replacements {
-                    let replacement_base = replacement.trim_end_matches("/*");
-                    let resolved = base_url.join(replacement_base).join(suffix);
 
-                    // Return the first resolved path
-                    // Note: In a full implementation, we could check if the file exists
-                    // using project_files or filesystem, but for now we trust the first match
+                // If multiple replacements, try to find one that exists (fallback behavior)
+                if replacements.len() > 1 {
+                    for replacement in replacements {
+                        let resolved_path = replacement.replace('*', captured);
+                        let resolved = base_url.join(&resolved_path);
+
+                        // Check if this path exists
+                        if self.path_exists_with_extensions(&resolved) {
+                            return Some(resolved.to_string_lossy().to_string());
+                        }
+                    }
+                }
+
+                // If only one replacement or none existed, use the first one
+                // (backward compatibility and fallback)
+                if let Some(replacement) = replacements.first() {
+                    let resolved_path = replacement.replace('*', captured);
+                    let resolved = base_url.join(&resolved_path);
                     return Some(resolved.to_string_lossy().to_string());
                 }
             }
         } else if pattern == specifier {
             // Exact match (no wildcard)
-            // Try replacements in order
-            for replacement in replacements {
+
+            // If multiple replacements, try to find one that exists (fallback behavior)
+            if replacements.len() > 1 {
+                for replacement in replacements {
+                    let resolved = base_url.join(replacement);
+
+                    if self.path_exists_with_extensions(&resolved) {
+                        return Some(resolved.to_string_lossy().to_string());
+                    }
+                }
+            }
+
+            // If only one replacement or none existed, use the first one
+            if let Some(replacement) = replacements.first() {
                 let resolved = base_url.join(replacement);
                 return Some(resolved.to_string_lossy().to_string());
             }
         }
 
         None
+    }
+
+    /// Check if a path exists, trying various TypeScript/JavaScript extensions
+    fn path_exists_with_extensions(&self, base_path: &Path) -> bool {
+        // Try the path as-is first
+        if base_path.exists() {
+            return true;
+        }
+
+        // Try with common TypeScript/JavaScript extensions
+        let extensions = ["", ".ts", ".tsx", ".js", ".jsx", ".d.ts"];
+        for ext in &extensions {
+            let path_with_ext = if ext.is_empty() {
+                base_path.to_path_buf()
+            } else {
+                base_path.with_extension(ext.trim_start_matches('.'))
+            };
+
+            if path_with_ext.exists() {
+                return true;
+            }
+        }
+
+        // Try as a directory with index files
+        let index_files = ["index.ts", "index.tsx", "index.js", "index.jsx", "index.d.ts"];
+        for index in &index_files {
+            let index_path = base_path.join(index);
+            if index_path.exists() {
+                return true;
+            }
+        }
+
+        false
     }
 }
 
@@ -746,5 +801,169 @@ mod tests {
         let resolved = resolver.resolve_alias("utils/format", &test_file, project_root);
         assert!(resolved.is_some());
         assert!(resolved.unwrap().contains("src/utilities/v2/format"));
+    }
+
+    #[test]
+    fn test_wildcard_in_middle_of_pattern() {
+        // This test verifies wildcards can appear anywhere in the pattern
+        // TypeScript supports patterns like "libs/*/src" or "packages/*/index"
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        // Create directory structure
+        std::fs::create_dir_all(project_root.join("libs/mylib/src")).unwrap();
+        std::fs::write(project_root.join("libs/mylib/src/index.ts"), "export {}").unwrap();
+
+        create_test_tsconfig(
+            project_root,
+            ".",
+            &[("libs/*/src", &["libs/*/src"])],  // Wildcard in middle
+        );
+
+        let test_file = project_root.join("app.ts");
+        std::fs::write(&test_file, "").unwrap();
+
+        let resolver = TypeScriptPathAliasResolver::new();
+
+        // "libs/mylib/src" should match pattern and substitute wildcard
+        let resolved = resolver.resolve_alias("libs/mylib/src", &test_file, project_root);
+        assert!(resolved.is_some());
+        let resolved_path = resolved.unwrap();
+        assert!(
+            resolved_path.contains("libs/mylib/src"),
+            "Should substitute wildcard in middle: {}",
+            resolved_path
+        );
+    }
+
+    #[test]
+    fn test_multiple_replacements_with_fallback() {
+        // This test verifies that we try all replacements until one exists
+        // TypeScript tries each replacement in order until it finds a file
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        // Create only the fallback paths (not the first)
+        std::fs::create_dir_all(project_root.join("shared")).unwrap();
+        std::fs::write(project_root.join("shared/utils.ts"), "export {}").unwrap();
+
+        create_test_tsconfig(
+            project_root,
+            ".",
+            &[(
+                "@shared/*",
+                &[
+                    "platform/web/*",    // First - doesn't exist
+                    "platform/mobile/*", // Second - doesn't exist
+                    "shared/*"           // Third - exists!
+                ],
+            )],
+        );
+
+        let test_file = project_root.join("app.ts");
+        std::fs::write(&test_file, "").unwrap();
+
+        let resolver = TypeScriptPathAliasResolver::new();
+
+        // Should fall back to third replacement (shared/*)
+        let resolved = resolver.resolve_alias("@shared/utils", &test_file, project_root);
+        assert!(resolved.is_some());
+        let resolved_path = resolved.unwrap();
+        assert!(
+            resolved_path.contains("shared/utils"),
+            "Should fallback to third replacement: {}",
+            resolved_path
+        );
+        assert!(
+            !resolved_path.contains("platform/web"),
+            "Should not use first non-existent path: {}",
+            resolved_path
+        );
+    }
+
+    #[test]
+    fn test_file_existence_checking_with_extensions() {
+        // Verify that we check for files with various extensions
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        // Create file with .ts extension only
+        std::fs::create_dir_all(project_root.join("src/lib")).unwrap();
+        std::fs::write(project_root.join("src/lib/utils.ts"), "export {}").unwrap();
+
+        create_test_tsconfig(
+            project_root,
+            ".",
+            &[("$lib/*", &["src/lib/*"])],
+        );
+
+        let test_file = project_root.join("app.ts");
+        std::fs::write(&test_file, "").unwrap();
+
+        let resolver = TypeScriptPathAliasResolver::new();
+
+        // Should find utils.ts even though specifier doesn't include extension
+        let resolved = resolver.resolve_alias("$lib/utils", &test_file, project_root);
+        assert!(resolved.is_some());
+        assert!(resolved.unwrap().contains("src/lib/utils"));
+    }
+
+    #[test]
+    fn test_wildcard_substitution_in_replacement() {
+        // Test that wildcards in replacement paths are correctly substituted
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        // Create package structure
+        std::fs::create_dir_all(project_root.join("packages/foo/src")).unwrap();
+        std::fs::write(project_root.join("packages/foo/src/index.ts"), "export {}").unwrap();
+
+        create_test_tsconfig(
+            project_root,
+            ".",
+            &[("@packages/*", &["packages/*/src"])],  // Wildcard in replacement
+        );
+
+        let test_file = project_root.join("app.ts");
+        std::fs::write(&test_file, "").unwrap();
+
+        let resolver = TypeScriptPathAliasResolver::new();
+
+        // "@packages/foo" should resolve to "packages/foo/src"
+        let resolved = resolver.resolve_alias("@packages/foo", &test_file, project_root);
+        assert!(resolved.is_some());
+        let resolved_path = resolved.unwrap();
+        assert!(
+            resolved_path.contains("packages/foo/src"),
+            "Should substitute wildcard in replacement: {}",
+            resolved_path
+        );
+    }
+
+    #[test]
+    fn test_index_file_resolution() {
+        // Verify that directory/index.ts is found when importing directory
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        // Create directory with index.ts
+        std::fs::create_dir_all(project_root.join("src/lib/components")).unwrap();
+        std::fs::write(project_root.join("src/lib/components/index.ts"), "export {}").unwrap();
+
+        create_test_tsconfig(
+            project_root,
+            ".",
+            &[("$lib/*", &["src/lib/*"])],
+        );
+
+        let test_file = project_root.join("app.ts");
+        std::fs::write(&test_file, "").unwrap();
+
+        let resolver = TypeScriptPathAliasResolver::new();
+
+        // Should find components/index.ts when importing "components"
+        let resolved = resolver.resolve_alias("$lib/components", &test_file, project_root);
+        assert!(resolved.is_some());
+        assert!(resolved.unwrap().contains("src/lib/components"));
     }
 }

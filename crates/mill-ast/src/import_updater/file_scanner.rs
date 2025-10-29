@@ -201,11 +201,24 @@ impl ImportPathResolver {
             return self.resolve_import_to_file(&resolved, importing_file, project_files);
         }
 
-        // Try explicit relative/absolute paths (./foo, ../foo, /foo)
-        if specifier.starts_with("./") || specifier.starts_with("../") || specifier.starts_with('/')
-        {
-            let importing_dir = importing_file.parent()?;
-            let candidate = importing_dir.join(specifier);
+        // Try explicit relative/absolute paths (./foo, ../foo, /foo, C:\foo on Windows)
+        // CRITICAL: Use Path::is_absolute() to handle Windows paths (C:\..., D:\..., etc.)
+        // Without this, Windows absolute paths from alias resolution are missed
+        let is_absolute_or_relative = specifier.starts_with("./")
+            || specifier.starts_with("../")
+            || specifier.starts_with('/')
+            || Path::new(specifier).is_absolute();
+
+        if is_absolute_or_relative {
+            let candidate = if Path::new(specifier).is_absolute() {
+                // Already absolute path (e.g., from Windows path alias resolution)
+                PathBuf::from(specifier)
+            } else {
+                // Relative path - join with importing directory
+                let importing_dir = importing_file.parent()?;
+                importing_dir.join(specifier)
+            };
+
             let extensions = ["", ".ts", ".tsx", ".js", ".jsx", ".rs"];
             for ext in extensions {
                 let candidate_with_ext = if ext.is_empty() {
