@@ -613,22 +613,22 @@ Supported language servers (configurable):
 - Python: `pylsp`
 - Swift: `sourcekit-lsp`
 
-**Note:** Additional language servers (Go/gopls, Java/jdtls, C#/omnisharp) can be configured but require language plugins from git tag `pre-language-reduction` and documented migration process (see `.debug/language-plugin-migration/`).
+**Note:** Additional language servers (Go/gopls, C#/omnisharp) can be configured but require language plugins from git tag `pre-language-reduction` and documented migration process (see `.debug/language-plugin-migration/`).
 
 
 ### Language Plugin Parity Status
 
 TypeMill now has **100% feature parity** across TypeScript, Rust, Python, and Swift for all common capabilities:
 
-| Capability | TypeScript | Rust | Python | Swift |
-|-----------|-----------|------|--------|-------|
-| Core LanguagePlugin | ✅ | ✅ | ✅ | ✅ |
-| Import Support (5 traits) | ✅ | ✅ | ✅ | ✅ |
-| Workspace Operations | ✅ | ✅ | ✅ | ✅ |
-| Refactoring (3 operations) | ✅ | ✅ | ✅ | ✅ |
-| Analysis (2 traits) | ✅ | ✅ | ✅ | ✅ |
-| Manifest Management | ✅ | ✅ | ✅ | ✅ |
-| **Project Creation** | ✅ | ✅ | ✅ | ✅ |
+| Capability | TypeScript | Rust | Python | Swift | Java |
+|-----------|-----------|------|--------|-------|------|
+| Core LanguagePlugin | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Import Support (5 traits) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Workspace Operations | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Refactoring (3 operations) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Analysis (2 traits) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Manifest Management | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Project Creation** | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **Rust-specific features** (not applicable to other languages):
 - ReferenceDetector

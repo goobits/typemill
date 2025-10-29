@@ -28,6 +28,7 @@ members = [
     "crates/xtask", "crates/mill-ast", "crates/mill-client", "crates/mill-test-support", "crates/mill-handlers", "crates/mill-config", "crates/mill-foundation",
     "crates/mill-lang-cpp",
     "crates/mill-lang-swift",
+    "crates/mill-lang-java",
 ]
 resolver = "2"
 
@@ -90,6 +91,9 @@ syn = { version = "2.0.106", features = ["full"] }
 id-arena = "2.2"
 bincode = "1.3"
 walkdir = "2.5"
+tree-sitter = "0.20"
+tree-sitter-java = "0.20"
+lsp-types = { version = "0.97", features = ["proposed"] }
 
 # Analysis crates
 mill-analysis-common = { path = "analysis/mill-analysis-common" }
