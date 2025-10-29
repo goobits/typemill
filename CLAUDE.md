@@ -595,33 +595,41 @@ Supported language servers (configurable):
 - Python: `pylsp`
 - Swift: `sourcekit-lsp`
 - C#: `csharp-ls`
+- C/C++: `clangd`
+- Java: `jdtls` (Eclipse JDT Language Server)
+- Go: `gopls`
 
 
 
 ### Language Plugin Parity Status
 
-TypeMill now has **100% feature parity** across TypeScript, Rust, Python, Swift, C#, Java, and Go for all common capabilities:
+TypeMill now has **100% feature parity** across TypeScript, Rust, Python, Swift, C#, Java, and Go for all common capabilities. C and C++ plugins provide basic support with limited import/workspace features:
 
-| Capability | TypeScript | Rust | Python | Swift | C# | Java | Go |
-|-----------|-----------|------|--------|-------|-----|------|----|
-| Core LanguagePlugin | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Import Support (5 traits) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Workspace Operations | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Refactoring (3 operations) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Analysis (2 traits) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Manifest Management | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Project Creation** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Capability | TypeScript | Rust | Python | Swift | C# | Java | Go | C | C++ |
+|-----------|-----------|------|--------|-------|-----|------|----|---|-----|
+| Core LanguagePlugin | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Import Support (5 traits) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ |
+| Workspace Operations | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ |
+| Refactoring (3 operations) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+| Analysis (2 traits) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ |
+| Manifest Management | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ |
+| **Project Creation** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 
 **Rust-specific features** (not applicable to other languages):
 - ReferenceDetector
 - ModuleDeclarationSupport (Rust `mod` declarations)
 - ModuleLocator (Rust module file structure)
 
-**Python restored**: 2025-10-25 with full parity implementation.
-**Swift restored**: 2025-10-28 with full parity implementation.
-**C# restored**: 2025-10-28 with full parity implementation.
-**Java restored**: 2025-10-29 with full parity implementation.
-**Go restored**: 2025-10-29 with full parity implementation.
+**Full Parity Languages (Production Ready):**
+- **Python restored**: 2025-10-25 with full parity implementation
+- **Swift restored**: 2025-10-28 with full parity implementation
+- **C# restored**: 2025-10-28 with full parity implementation
+- **Java restored**: 2025-10-29 with full parity implementation (requires Maven/Java for parser JAR build)
+- **Go restored**: 2025-10-29 with full parity implementation
+
+**Partial Support Languages (Experimental):**
+- **C added**: 2025-10-29 with basic parsing and limited refactoring support
+- **C++ added**: 2025-10-29 with basic parsing (tree-sitter-cpp integration, C compiler warnings expected)
 
 See `.debug/language-plugin-migration/COMPLETE_PARITY_ANALYSIS.md` for detailed comparison.
 

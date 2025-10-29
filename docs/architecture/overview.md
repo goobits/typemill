@@ -428,7 +428,14 @@ pub struct AppState {
 - **TypeScript/JavaScript** (full parity with Rust common features)
 - **Python** (restored 2025-10-25, full parity achieved)
 - **Swift** (restored 2025-10-28, full parity achieved)
-- **Go** (restored 2025-10-28, full parity achieved)
+- **C#** (restored 2025-10-29, full parity achieved)
+- **Java** (restored 2025-10-29, full parity achieved - requires Maven/Java for parser JAR)
+- **Go** (restored 2025-10-29, full parity achieved)
+
+### Partial Support (Experimental)
+
+- **C** (added 2025-10-29, basic parsing and limited refactoring)
+- **C++** (added 2025-10-29, basic parsing via tree-sitter-cpp)
 
 #### Language Plugin Parity Matrix
 
@@ -480,13 +487,16 @@ All supported languages implement the complete set of capability traits:
 - C++20 module parsing (`import my_module;`) is temporarily disabled due to a build issue with the `tree-sitter-cpp` grammar.
 - Most advanced features (refactoring, workspace operations, analysis) are stubs pending full implementation.
 
-**Swift Support Notes**:
-- Swift plugin fully restored with 100% feature parity (2025-10-28).
-- All 15 common capability traits fully implemented.
+**Full Parity Language Notes**:
+- **Swift** plugin fully restored with 100% feature parity (2025-10-28)
+- **Go** plugin fully restored with 100% feature parity (2025-10-29)
+- **C#** plugin fully restored with 100% feature parity (2025-10-29)
+- **Java** plugin fully restored with 100% feature parity (2025-10-29, requires Maven/Java for parser JAR)
+- All 15 common capability traits fully implemented in these languages
 
-**Go Support Notes**:
-- Go plugin fully restored with 100% feature parity (2025-10-28).
-- All 15 common capability traits fully implemented.
+**Experimental Language Notes**:
+- **C** plugin added with basic support (2025-10-29, partial trait implementation)
+- **C++** plugin added with basic support (2025-10-29, tree-sitter-cpp integration with C compiler warnings)
 
 #### Detailed Capability Breakdown
 
@@ -530,15 +540,16 @@ All supported languages implement the complete set of capability traits:
    - Minimal and Full templates (README, tests, config files)
    - Automatic workspace integration
 
-**Python Restoration**: Successfully restored 2025-10-25 with full parity using documented migration process. See `.debug/language-plugin-migration/COMPLETE_PARITY_ANALYSIS.md` for detailed comparison.
+**Language Restoration History**: All previously paused languages have been successfully restored:
+- Python (2025-10-25) - Full parity
+- Swift (2025-10-28) - Full parity
+- C# (2025-10-29) - Full parity
+- Java (2025-10-29) - Full parity (requires Maven/Java runtime for parser JAR build)
+- Go (2025-10-29) - Full parity
+- C (2025-10-29) - Partial support (experimental)
+- C++ (2025-10-29) - Partial support (experimental)
 
-### Paused Languages (Restorable)
-
-The following languages were implemented and can be restored using the documented migration process:
-- Java
-- C#
-
-See `.debug/language-plugin-migration/PYTHON_MIGRATION_GUIDE.md` for restoration process (~30 minutes per language).
+See `.debug/language-plugin-migration/COMPLETE_PARITY_ANALYSIS.md` for detailed comparison and `.debug/language-plugin-migration/PYTHON_MIGRATION_GUIDE.md` for the restoration process that was used.
 
 ### Plugin Architecture
 
