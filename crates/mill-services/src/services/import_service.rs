@@ -99,10 +99,7 @@ impl ImportService {
 
     /// Find all files that would be affected by a rename
     pub async fn find_affected_files(&self, file_path: &Path) -> ServerResult<Vec<PathBuf>> {
-        let resolver = ImportPathResolver::with_plugins(
-            &self.project_root,
-            self.plugin_registry.all().to_vec(),
-        );
+        let resolver = ImportPathResolver::new(&self.project_root);
 
         // Get all project files using adapters
         let project_files = find_project_files(&self.project_root, self.plugin_registry.all())

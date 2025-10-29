@@ -15,8 +15,6 @@ use std::sync::Arc;
 // We reference each plugin's public type to ensure the crate is linked.
 #[cfg(feature = "lang-cpp")]
 use mill_lang_cpp::CppPlugin;
-#[cfg(feature = "lang-csharp")]
-use mill_lang_csharp::CsharpPlugin;
 #[cfg(feature = "lang-gitignore")]
 use mill_lang_gitignore::GitignoreLanguagePlugin;
 #[cfg(feature = "lang-markdown")]
@@ -25,8 +23,6 @@ use mill_lang_markdown::MarkdownPlugin;
 use mill_lang_python::PythonPlugin;
 #[cfg(feature = "lang-rust")]
 use mill_lang_rust::RustPlugin;
-#[cfg(feature = "lang-swift")]
-use mill_lang_swift::SwiftPlugin;
 #[cfg(feature = "lang-toml")]
 use mill_lang_toml::TomlLanguagePlugin;
 #[cfg(feature = "lang-typescript")]
@@ -41,8 +37,6 @@ fn _force_plugin_linkage() {
     // The actual plugin instances will be discovered via inventory
     #[cfg(feature = "lang-cpp")]
     let _: Option<CppPlugin> = None;
-    #[cfg(feature = "lang-csharp")]
-    let _: Option<CsharpPlugin> = None;
     #[cfg(feature = "lang-gitignore")]
     let _: Option<GitignoreLanguagePlugin> = None;
     #[cfg(feature = "lang-markdown")]
@@ -51,8 +45,6 @@ fn _force_plugin_linkage() {
     let _: Option<PythonPlugin> = None;
     #[cfg(feature = "lang-rust")]
     let _: Option<RustPlugin> = None;
-    #[cfg(feature = "lang-swift")]
-    let _: Option<SwiftPlugin> = None;
     #[cfg(feature = "lang-toml")]
     let _: Option<TomlLanguagePlugin> = None;
     #[cfg(feature = "lang-typescript")]
@@ -97,8 +89,6 @@ mod tests {
     // Force linker to include language plugins for inventory collection in tests
     #[cfg(all(test, feature = "lang-cpp"))]
     extern crate mill_lang_cpp;
-    #[cfg(all(test, feature = "lang-csharp"))]
-    extern crate mill_lang_csharp;
     #[cfg(all(test, feature = "lang-gitignore"))]
     extern crate mill_lang_gitignore;
     #[cfg(all(test, feature = "lang-markdown"))]
@@ -107,8 +97,6 @@ mod tests {
     extern crate mill_lang_python;
     #[cfg(all(test, feature = "lang-rust"))]
     extern crate mill_lang_rust;
-    #[cfg(all(test, feature = "lang-swift"))]
-    extern crate mill_lang_swift;
     #[cfg(all(test, feature = "lang-toml"))]
     extern crate mill_lang_toml;
     #[cfg(all(test, feature = "lang-typescript"))]

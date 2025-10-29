@@ -1,24 +1,33 @@
 [package]
-name = "mill-lang-csharp"
-version.workspace = true
+name = "mill-lang-go"
+version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[build-dependencies]
+cc = "1.0"
+tree-sitter = "0.22.6"
+
 [dependencies]
-# Mill workspace dependencies
+# Core plugin API
 mill-plugin-api = { path = "../mill-plugin-api" }
 mill-foundation = { path = "../mill-foundation" }
 mill-lang-common = { path = "../mill-lang-common" }
+
+# Tree-sitter for parsing
+tree-sitter-go = "0.21.0"
 
 # Async operations
 async-trait = { workspace = true }
 tokio = { workspace = true }
 
-# Serialization/Deserialization
+# Serialization/Deserialization & Other Utilities
 serde = { workspace = true }
 serde_json = { workspace = true }
+regex = "1.10"
+pathdiff = "0.2"
 
 # Error handling
 thiserror = { workspace = true }
@@ -26,17 +35,7 @@ thiserror = { workspace = true }
 # Logging
 tracing = { workspace = true }
 
-# LSP
-lsp-types = { workspace = true, features = ["proposed"] }
-
-# Parsing
-tree-sitter = "0.20"
-tree-sitter-c-sharp = "0.20"
-
-# Utilities
-chrono = { version = "0.4", features = ["serde"] }
-regex = "1.10"
-quick-xml = { version = "0.31", features = ["serialize"] }
+chrono = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }

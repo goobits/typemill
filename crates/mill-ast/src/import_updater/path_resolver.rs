@@ -1,5 +1,4 @@
 use crate::error::{AstError, AstResult};
-use mill_plugin_api::LanguagePlugin;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -21,8 +20,6 @@ pub struct ImportPathResolver {
     /// Cache of file import information for performance
     /// Maps file path -> (imports, last_modified_time)
     pub(crate) import_cache: Arc<Mutex<HashMap<PathBuf, FileImportInfo>>>,
-    /// Language plugins for path alias resolution
-    plugins: Vec<Arc<dyn LanguagePlugin>>,
 }
 
 impl ImportPathResolver {
@@ -31,19 +28,6 @@ impl ImportPathResolver {
         Self {
             project_root: project_root.as_ref().to_path_buf(),
             import_cache: Arc::new(Mutex::new(HashMap::new())),
-            plugins: Vec::new(),
-        }
-    }
-
-    /// Create a new import path resolver with language plugins
-    pub fn with_plugins(
-        project_root: impl AsRef<Path>,
-        plugins: Vec<Arc<dyn LanguagePlugin>>,
-    ) -> Self {
-        Self {
-            project_root: project_root.as_ref().to_path_buf(),
-            import_cache: Arc::new(Mutex::new(HashMap::new())),
-            plugins,
         }
     }
 
@@ -60,20 +44,6 @@ impl ImportPathResolver {
         Self {
             project_root: project_root.as_ref().to_path_buf(),
             import_cache: cache,
-            plugins: Vec::new(),
-        }
-    }
-
-    /// Create a new resolver with both cache and plugins
-    pub fn with_cache_and_plugins(
-        project_root: impl AsRef<Path>,
-        cache: Arc<Mutex<HashMap<PathBuf, FileImportInfo>>>,
-        plugins: Vec<Arc<dyn LanguagePlugin>>,
-    ) -> Self {
-        Self {
-            project_root: project_root.as_ref().to_path_buf(),
-            import_cache: cache,
-            plugins,
         }
     }
 
@@ -118,27 +88,12 @@ impl ImportPathResolver {
         if original_import.starts_with("./") || original_import.starts_with("../") {
             // Relative import - calculate new relative path
             self.calculate_relative_import(importing_file, new_target_path)
-        } else if self.is_path_alias(original_import, importing_file) {
-            // Path alias import (e.g., $lib/*, @/*, ~/*) - delegate to language plugin
-            // For now, use generic alias update logic
+        } else if original_import.starts_with("@/") || original_import.starts_with("~/") {
+            // Alias import - update the path after the alias
             self.update_alias_import(original_import, old_target_path, new_target_path)
         } else {
             // Absolute or package import - might not need updating
             Ok(original_import.to_string())
-        }
-    }
-
-    /// Check if an import specifier is a path alias using language plugins
-    fn is_path_alias(&self, specifier: &str, importing_file: &Path) -> bool {
-        // Try to get path alias resolver from plugin
-        if let Some(resolver) = self.get_path_alias_resolver_for_file(importing_file) {
-            resolver.is_potential_alias(specifier)
-        } else {
-            // Fallback: Check common alias patterns if no plugin available
-            // This is a temporary measure - ideally all alias detection should be via plugins
-            specifier.starts_with('@')
-                || specifier.starts_with('$')
-                || specifier.starts_with('~')
         }
     }
 
@@ -203,76 +158,5 @@ impl ImportPathResolver {
         } else {
             Ok(original_import.to_string())
         }
-    }
-
-    /// Try to resolve a specifier as a path alias using language plugins
-    ///
-    /// This method checks if the specifier matches any configured path aliases
-    /// (e.g., TypeScript's `$lib/*` or `@/*` patterns) and returns the resolved path.
-    ///
-    /// # Arguments
-    ///
-    /// * `specifier` - The import specifier (e.g., "$lib/utils", "@/components")
-    /// * `importing_file` - The file containing the import
-    ///
-    /// # Returns
-    ///
-    /// * `Some(resolved_path)` if the specifier is an alias that was successfully resolved
-    /// * `None` if no plugin can resolve this alias or it's not an alias
-    pub(crate) fn try_resolve_path_alias(&self, specifier: &str, importing_file: &Path) -> Option<String> {
-
-        // Get the file extension to find the right plugin
-        let extension = importing_file.extension()?.to_str()?;
-
-        // Find a plugin that handles this file extension
-        for plugin in &self.plugins {
-            if !plugin.handles_extension(extension) {
-                continue;
-            }
-
-            // Check if this plugin supports path alias resolution
-            if let Some(resolver) = plugin.path_alias_resolver() {
-                // Quick check if this could be an alias (optimization)
-                if !resolver.is_potential_alias(specifier) {
-                    continue;
-                }
-
-                // Try to resolve the alias
-                if let Some(resolved) =
-                    resolver.resolve_alias(specifier, importing_file, &self.project_root)
-                {
-                    debug!(
-                        specifier = %specifier,
-                        resolved = %resolved,
-                        plugin = %plugin.metadata().name,
-                        "Resolved path alias"
-                    );
-                    return Some(resolved);
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Get a language plugin that can handle path alias resolution for a given file
-    ///
-    /// This is a helper method to check if path alias resolution is available for a file.
-    #[allow(dead_code)]
-    fn get_path_alias_resolver_for_file(
-        &self,
-        file_path: &Path,
-    ) -> Option<&dyn mill_plugin_api::PathAliasResolver> {
-        let extension = file_path.extension()?.to_str()?;
-
-        for plugin in &self.plugins {
-            if plugin.handles_extension(extension) {
-                if let Some(resolver) = plugin.path_alias_resolver() {
-                    return Some(resolver);
-                }
-            }
-        }
-
-        None
     }
 }

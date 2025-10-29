@@ -43,18 +43,6 @@ pub type AnalysisFn = fn(
     &crate::LanguagePluginRegistry,
 ) -> Vec<Finding>;
 
-/// Markdown analysis function signature - simplified for non-code analysis
-///
-/// This function is tailored for analyses like Markdown that don't rely on
-/// complexity metrics. It receives the raw content and parsed symbols directly.
-pub type MarkdownAnalysisFn = fn(
-    &str,
-    &[mill_plugin_api::Symbol],
-    &str,
-    &str,
-    &crate::LanguagePluginRegistry,
-) -> Vec<Finding>;
-
 /// Scope parameter structure for analysis requests
 ///
 /// This matches the structure expected by MCP clients when specifying
@@ -405,119 +393,6 @@ pub async fn run_analysis_with_config(
     );
 
     // Step 10: Serialize to JSON and return
-    serde_json::to_value(result)
-        .map_err(|e| ServerError::Internal(format!("Failed to serialize result: {}", e)))
-}
-
-/// Orchestrates a simplified analysis workflow for Markdown files
-///
-/// This function is a variant of `run_analysis` specifically for Markdown.
-/// It skips the code-specific complexity analysis step, making it more
-/// efficient for non-code content.
-///
-/// # Workflow
-/// 1. Parse and validate arguments
-/// 2. Read file and get language plugin
-/// 3. Parse file with language plugin
-/// 4. Execute the custom `MarkdownAnalysisFn`
-/// 5. Build and return AnalysisResult
-pub async fn run_markdown_analysis(
-    context: &ToolHandlerContext,
-    tool_call: &ToolCall,
-    category: &str,
-    kind: &str,
-    analysis_fn: MarkdownAnalysisFn,
-) -> ServerResult<Value> {
-    let start_time = Instant::now();
-    let args = tool_call.arguments.clone().unwrap_or(serde_json::json!({}));
-
-    debug!(
-        category = %category,
-        kind = %kind,
-        "Starting markdown analysis workflow"
-    );
-
-    // Step 1: Parse scope and file path
-    let scope_param = parse_scope_param(&args)?;
-    let file_path = extract_file_path(&args, &scope_param)?;
-    let scope_type = scope_param
-        .scope_type
-        .clone()
-        .unwrap_or_else(|| "file".to_string());
-
-    info!(
-        file_path = %file_path,
-        category = %category,
-        kind = %kind,
-        "Running markdown analysis"
-    );
-
-    // Step 2: Read file and get plugin
-    let file_path_obj = Path::new(&file_path);
-    let extension = file_path_obj
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .ok_or_else(|| {
-            ServerError::InvalidRequest(format!("File has no extension: {}", file_path))
-        })?;
-
-    let content = context
-        .app_state
-        .file_service
-        .read_file(file_path_obj)
-        .await
-        .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
-
-    let plugin = context
-        .app_state
-        .language_plugins
-        .get_plugin(extension)
-        .ok_or_else(|| {
-            ServerError::Unsupported(format!(
-                "No language plugin found for extension: {}",
-                extension
-            ))
-        })?;
-
-    // Step 3: Parse file
-    let parsed = plugin
-        .parse(&content)
-        .await
-        .map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
-    let language = plugin.metadata().name;
-
-    // Step 4: Execute the custom analysis function (no complexity report)
-    let findings = analysis_fn(
-        &content,
-        &parsed.symbols,
-        language,
-        &file_path,
-        &context.app_state.language_plugins,
-    );
-
-    // Step 5: Build AnalysisResult
-    let scope = AnalysisScope {
-        scope_type,
-        path: file_path.clone(),
-        include: scope_param.include,
-        exclude: scope_param.exclude,
-    };
-    let mut result = AnalysisResult::new(category, kind, scope);
-    result.metadata.language = Some(language.to_string());
-    for finding in findings {
-        result.add_finding(finding);
-    }
-    result.summary.files_analyzed = 1;
-    result.summary.symbols_analyzed = Some(parsed.symbols.len());
-    result.finalize(start_time.elapsed().as_millis() as u64);
-
-    info!(
-        file_path = %file_path,
-        findings_count = result.summary.total_findings,
-        analysis_time_ms = result.summary.analysis_time_ms,
-        "Markdown analysis complete"
-    );
-
     serde_json::to_value(result)
         .map_err(|e| ServerError::Internal(format!("Failed to serialize result: {}", e)))
 }

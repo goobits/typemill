@@ -137,7 +137,6 @@ pub fn get_all_imported_files(
                             current_file,
                             project_files,
                             project_root,
-                            plugins,
                         ) {
                             imported_files.push(resolved);
                         }
@@ -152,7 +151,7 @@ pub fn get_all_imported_files(
     for line in content.lines() {
         if let Some(specifier) = extract_import_path(line) {
             if let Some(resolved) =
-                resolve_import_to_file(&specifier, current_file, project_files, project_root, plugins)
+                resolve_import_to_file(&specifier, current_file, project_files, project_root)
             {
                 imported_files.push(resolved);
             }
@@ -165,18 +164,13 @@ pub fn get_all_imported_files(
 /// Resolve an import specifier to a file path
 ///
 /// Delegates to ImportPathResolver for consistent resolution logic.
-/// Now includes path alias resolution via language plugins.
 fn resolve_import_to_file(
     specifier: &str,
     importing_file: &Path,
     project_files: &[PathBuf],
     project_root: &Path,
-    plugins: &[std::sync::Arc<dyn mill_plugin_api::LanguagePlugin>],
 ) -> Option<PathBuf> {
-    let resolver = mill_ast::ImportPathResolver::with_plugins(
-        project_root,
-        plugins.to_vec(),
-    );
+    let resolver = mill_ast::ImportPathResolver::new(project_root);
     resolver.resolve_import_to_file(specifier, importing_file, project_files)
 }
 

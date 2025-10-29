@@ -62,12 +62,6 @@ plugin_struct = "GitignoreLanguagePlugin"
 category = "config"
 default = true
 
-[languages.swift]
-path = "crates/mill-lang-swift"
-plugin_struct = "SwiftPlugin"
-category = "full"
-default = false
-
 # Future languages (examples):
 #
 # [languages.go]
@@ -76,12 +70,6 @@ default = false
 # category = "full"
 # default = false
 #
-[languages.csharp]
-path = "crates/mill-lang-csharp"
-plugin_struct = "CsharpPlugin"
-category = "full"
-default = false
-
 # [languages.java]
 # path = "crates/mill-lang-java"
 # plugin_struct = "JavaPlugin"

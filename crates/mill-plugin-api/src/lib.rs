@@ -29,7 +29,6 @@ pub mod import_support;
 pub mod language;
 pub mod lsp_installer;
 pub mod metadata;
-pub mod path_alias_resolver;
 pub mod plugin_registry;
 pub mod project_factory;
 pub mod reference_detector;
@@ -48,7 +47,6 @@ pub use import_support::{
 };
 pub use lsp_installer::LspInstaller;
 pub use metadata::LanguageMetadata;
-pub use path_alias_resolver::PathAliasResolver;
 pub use plugin_registry::{iter_plugins, PluginDescriptor};
 pub use project_factory::{
     CreatePackageConfig, CreatePackageResult, PackageInfo, PackageType, ProjectFactory, Template,
@@ -238,8 +236,6 @@ pub struct PluginCapabilities {
     pub workspace: bool,
     /// Supports project/package creation
     pub project_factory: bool,
-    /// Supports path alias resolution (e.g., TypeScript path mappings)
-    pub path_alias_resolver: bool,
 }
 
 impl PluginCapabilities {
@@ -251,7 +247,6 @@ impl PluginCapabilities {
             imports: false,
             workspace: false,
             project_factory: false,
-            path_alias_resolver: false,
         }
     }
 
@@ -261,7 +256,6 @@ impl PluginCapabilities {
             imports: true,
             workspace: true,
             project_factory: true,
-            path_alias_resolver: true,
         }
     }
 
@@ -280,12 +274,6 @@ impl PluginCapabilities {
     /// Enable project factory support
     pub const fn with_project_factory(mut self) -> Self {
         self.project_factory = true;
-        self
-    }
-
-    /// Enable path alias resolver support
-    pub const fn with_path_alias_resolver(mut self) -> Self {
-        self.path_alias_resolver = true;
         self
     }
 }
@@ -512,11 +500,6 @@ pub trait LanguagePlugin: Send + Sync {
 
     /// Get LSP installer if available
     fn lsp_installer(&self) -> Option<&dyn LspInstaller> {
-        None
-    }
-
-    /// Get path alias resolver if available
-    fn path_alias_resolver(&self) -> Option<&dyn PathAliasResolver> {
         None
     }
 

@@ -17,7 +17,7 @@ pub(crate) async fn build_import_update_plan(
     dry_run: bool,
     scan_scope: Option<mill_plugin_api::ScanScope>,
 ) -> AstResult<mill_foundation::protocol::EditPlan> {
-    let resolver = ImportPathResolver::with_plugins(project_root, plugins.to_vec());
+    let resolver = ImportPathResolver::new(project_root);
 
     debug!(
         plugins_count = plugins.len(),
