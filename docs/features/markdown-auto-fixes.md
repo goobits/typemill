@@ -23,6 +23,9 @@ TypeMill provides automatic fixes for common markdown issues through a trait-bas
 
 ## Overview
 
+**Current Status:**
+TypeMill currently provides **5 core fixers** for markdown auto-fixes (as of commit 8c189b24). Additional fixers are planned for future releases.
+
 **Key Features:**
 - **Safe defaults**: Preview mode is the default (no file modifications)
 - **Conflict detection**: SHA-256 optimistic locking prevents overwriting concurrent edits

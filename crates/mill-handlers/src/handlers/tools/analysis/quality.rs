@@ -340,46 +340,59 @@ impl QualityHandler {
     ) -> ServerResult<Value> {
         let start_time = Instant::now();
 
-        // Extract directory path from scope.path
-        let directory_path = scope_param.path.as_ref().ok_or_else(|| {
+        // Extract path from scope.path
+        let path_str = scope_param.path.as_ref().ok_or_else(|| {
             ServerError::InvalidRequest(
-                "Missing path for workspace scope. Specify scope.path with directory".into(),
+                "Missing path for scope. Specify scope.path".into(),
             )
         })?;
 
-        let dir_path = std::path::Path::new(directory_path);
+        let path = std::path::Path::new(path_str);
+        let scope_type = scope_param.scope_type.as_deref().unwrap_or("file");
 
         info!(
-            directory_path = %directory_path,
+            path = %path_str,
+            scope_type = %scope_type,
             kind = %kind,
-            "Starting workspace markdown analysis"
+            "Starting markdown analysis with fixer support"
         );
 
-        // List all files in directory
-        let files = context
-            .app_state
-            .file_service
-            .list_files(dir_path, true)
-            .await?;
+        // Determine files to analyze based on scope type
+        let md_files: Vec<std::path::PathBuf> = if scope_type == "file" {
+            // Bug 2 fix: Handle single file scope
+            if path.extension().and_then(|e| e.to_str()).map(|e| e == "md" || e == "markdown").unwrap_or(false) {
+                vec![path.to_path_buf()]
+            } else {
+                return Err(ServerError::InvalidRequest(
+                    format!("File {} is not a markdown file", path_str)
+                ));
+            }
+        } else {
+            // Directory or workspace scope - list all markdown files
+            let files = context
+                .app_state
+                .file_service
+                .list_files(path, true)
+                .await?;
 
-        // Filter to markdown files only
-        let md_files: Vec<_> = files
-            .iter()
-            .filter_map(|file| {
-                let path = if file.starts_with('/') {
-                    std::path::PathBuf::from(file)
-                } else {
-                    dir_path.join(file)
-                };
+            files
+                .iter()
+                .filter_map(|file| {
+                    let file_path = if file.starts_with('/') {
+                        std::path::PathBuf::from(file)
+                    } else {
+                        path.join(file)
+                    };
 
-                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    if ext == "md" || ext == "markdown" {
-                        return Some(path);
+                    if let Some(ext) = file_path.extension().and_then(|e| e.to_str()) {
+                        if ext == "md" || ext == "markdown" {
+                            return Some(file_path);
+                        }
                     }
-                }
-                None
-            })
-            .collect();
+                    None
+                })
+                .collect()
+        };
 
         info!(
             md_files_count = md_files.len(),
@@ -457,8 +470,8 @@ impl QualityHandler {
 
         // Build scope for result
         let scope = AnalysisScope {
-            scope_type: "workspace".to_string(),
-            path: directory_path.clone(),
+            scope_type: scope_type.to_string(),
+            path: path_str.clone(),
             include: scope_param.include.clone(),
             exclude: scope_param.exclude.clone(),
         };
@@ -477,11 +490,12 @@ impl QualityHandler {
         result.finalize(start_time.elapsed().as_millis() as u64);
 
         info!(
-            directory_path = %directory_path,
+            path = %path_str,
+            scope_type = %scope_type,
             files_analyzed = files_analyzed,
             total_findings = result.summary.total_findings,
             analysis_time_ms = result.summary.analysis_time_ms,
-            "Workspace markdown analysis complete"
+            "Markdown analysis complete"
         );
 
         // Auto-fix phase (if requested)
@@ -627,6 +641,18 @@ impl QualityHandler {
                 "applied": options.apply,
                 "files_modified": if options.apply { files_fixed } else { 0 },
                 "previews": fix_previews,
+            });
+
+            // Wire fix_actions into result.summary (Bug 1 fix)
+            use mill_foundation::protocol::analysis_result::FixActions;
+            let total_edits: usize = fixes_by_kind.values().sum();
+            result.summary.fix_actions = Some(FixActions {
+                preview_only: !options.apply,
+                applied: options.apply,
+                previews: fix_previews.len(),
+                files_modified: if options.apply { files_fixed } else { 0 },
+                total_edits: Some(total_edits),
+                diffs: None, // Could populate from fix_previews if needed
             });
         }
 
@@ -2285,96 +2311,71 @@ impl ToolHandler for QualityHandler {
                 .await
             }
             "markdown_structure" => {
-                // Check if workspace scope is requested
+                // Check scope type
                 let scope_param = super::engine::parse_scope_param(&args)?;
                 let scope_type = scope_param.scope_type.as_deref().unwrap_or("file");
 
-                if scope_type == "workspace" || scope_type == "directory" {
-                    // Parse options for workspace analysis (includes fix parameters)
-                    let options: QualityOptions = args
-                        .get("options")
-                        .map(|v| serde_json::from_value(v.clone()))
-                        .transpose()
-                        .map_err(|e| ServerError::InvalidRequest(format!("Invalid options: {}", e)))?
-                        .unwrap_or_else(|| QualityOptions {
-                            thresholds: None,
-                            severity_filter: None,
-                            limit: default_limit(),
-                            offset: 0,
-                            format: default_format(),
-                            include_suggestions: default_include_suggestions(),
-                            fix: vec![],
-                            apply: false,
-                            fix_options: HashMap::new(),
-                        });
+                // Parse options (includes fix parameters)
+                let options: QualityOptions = args
+                    .get("options")
+                    .map(|v| serde_json::from_value(v.clone()))
+                    .transpose()
+                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid options: {}", e)))?
+                    .unwrap_or_else(|| QualityOptions {
+                        thresholds: None,
+                        severity_filter: None,
+                        limit: default_limit(),
+                        offset: 0,
+                        format: default_format(),
+                        include_suggestions: default_include_suggestions(),
+                        fix: vec![],
+                        apply: false,
+                        fix_options: HashMap::new(),
+                    });
 
-                    // Use workspace analysis
-                    self.analyze_workspace_markdown(
-                        context,
-                        &scope_param,
-                        "quality",
-                        kind,
-                        detect_markdown_structure,
-                        &options,
-                    )
-                    .await
-                } else {
-                    // Use standard file analysis
-                    super::engine::run_markdown_analysis(
-                        context,
-                        tool_call,
-                        "quality",
-                        kind,
-                        detect_markdown_structure,
-                    )
-                    .await
-                }
+                // Bug 2 fix: All scope types go through fixer pipeline
+                self.analyze_workspace_markdown(
+                    context,
+                    &scope_param,
+                    "quality",
+                    kind,
+                    detect_markdown_structure,
+                    &options,
+                )
+                .await
             }
             "markdown_formatting" => {
-                // Check if workspace scope is requested
+                // Check scope type
                 let scope_param = super::engine::parse_scope_param(&args)?;
-                let scope_type = scope_param.scope_type.as_deref().unwrap_or("file");
 
-                if scope_type == "workspace" || scope_type == "directory" {
-                    // Parse options for workspace analysis (includes fix parameters)
-                    let options: QualityOptions = args
-                        .get("options")
-                        .map(|v| serde_json::from_value(v.clone()))
-                        .transpose()
-                        .map_err(|e| ServerError::InvalidRequest(format!("Invalid options: {}", e)))?
-                        .unwrap_or_else(|| QualityOptions {
-                            thresholds: None,
-                            severity_filter: None,
-                            limit: default_limit(),
-                            offset: 0,
-                            format: default_format(),
-                            include_suggestions: default_include_suggestions(),
-                            fix: vec![],
-                            apply: false,
-                            fix_options: HashMap::new(),
-                        });
+                // Parse options (includes fix parameters)
+                let options: QualityOptions = args
+                    .get("options")
+                    .map(|v| serde_json::from_value(v.clone()))
+                    .transpose()
+                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid options: {}", e)))?
+                    .unwrap_or_else(|| QualityOptions {
+                        thresholds: None,
+                        severity_filter: None,
+                        limit: default_limit(),
+                        offset: 0,
+                        format: default_format(),
+                        include_suggestions: default_include_suggestions(),
+                        fix: vec![],
+                        apply: false,
+                        fix_options: HashMap::new(),
+                    });
 
-                    // Use workspace analysis
-                    self.analyze_workspace_markdown(
-                        context,
-                        &scope_param,
-                        "quality",
-                        kind,
-                        detect_markdown_formatting,
-                        &options,
-                    )
-                    .await
-                } else {
-                    // Use standard file analysis
-                    super::engine::run_markdown_analysis(
-                        context,
-                        tool_call,
-                        "quality",
-                        kind,
-                        detect_markdown_formatting,
-                    )
-                    .await
-                }
+                // Bug 2 fix: All scope types go through fixer pipeline
+                self.analyze_workspace_markdown(
+                    context,
+                    &scope_param,
+                    "quality",
+                    kind,
+                    detect_markdown_formatting,
+                    &options,
+                )
+                .await
             }
             _ => unreachable!("Kind validated earlier"),
         }

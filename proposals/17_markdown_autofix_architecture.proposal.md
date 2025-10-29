@@ -114,9 +114,16 @@ struct MarkdownContext {
 - Can run single fix on single file: `mill tool analyze.quality --kind markdown_structure --scope file:README.md --fix auto_toc --apply true`
 - Documentation covers core 5 fixers with CLI examples (dry-run and apply)
 
-**Optional follow-up (6 additional fixers):**
-- bare_url, table_columns, list_markers, blank_lines, emphasis fixers implemented
-- All 11 fixers registered and tested
+**Core 5 fixers implemented (as of commit 8c189b24):**
+1. `trailing_whitespace` - Remove trailing spaces/tabs from line endings
+2. `missing_code_language_tag` - Add language tags to code blocks
+3. `malformed_heading` - Fix heading formatting issues
+4. `reversed_link_syntax` - Fix reversed markdown link syntax
+5. `auto_toc` - Generate/update table of contents
+
+**Future work (6 additional fixers planned):**
+- bare_url, table_columns, list_markers, blank_lines, emphasis fixers
+- Note: These 6 fixers are not yet implemented
 
 ## Benefits
 

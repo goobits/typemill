@@ -187,26 +187,35 @@ pub fn generate_unified_diff(
 }
 
 /// Apply edits to content
+/// Bug 3 fix: Apply edits to progressively updated buffer to avoid losing edits
 pub fn apply_edits(content: &str, edits: &[TextEdit]) -> String {
-    let lines: Vec<&str> = content.lines().collect();
+    if edits.is_empty() {
+        return content.to_string();
+    }
+
     let mut result = content.to_string();
 
-    // Apply edits in reverse order to preserve line numbers
+    // Sort edits in reverse order (by line descending, then character descending)
+    // This ensures we apply from end to start, preserving line numbers
     let mut sorted_edits = edits.to_vec();
     sorted_edits.sort_by(|a, b| {
         b.range.start.line.cmp(&a.range.start.line)
             .then_with(|| b.range.start.character.cmp(&a.range.start.character))
     });
 
+    // Apply each edit to the progressively updated result
     for edit in sorted_edits {
         let start_line = edit.range.start.line as usize;
         let end_line = edit.range.end.line as usize;
+
+        // Get current lines from progressively updated result
+        let lines: Vec<&str> = result.lines().collect();
 
         if start_line >= lines.len() {
             continue;
         }
 
-        // Simple line-level replacement
+        // Build new content with this edit applied
         let before: String = lines[..start_line].join("\n");
         let after: String = if end_line + 1 < lines.len() {
             lines[end_line + 1..].join("\n")
@@ -224,6 +233,7 @@ pub fn apply_edits(content: &str, edits: &[TextEdit]) -> String {
             new_content.push_str(&after);
         }
 
+        // Update result for next iteration
         result = new_content;
     }
 
