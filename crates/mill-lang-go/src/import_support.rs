@@ -4,7 +4,7 @@
 
 use mill_lang_common::import_helpers::{insert_line_at, remove_lines_matching, replace_in_lines};
 use mill_plugin_api::{
-    ImportParser, ImportRenameSupport, ImportMoveSupport, ImportMutationSupport, ImportAdvancedSupport
+    ImportParser, ImportMoveSupport, ImportMutationSupport, ImportRenameSupport,
 };
 use std::path::Path;
 
@@ -173,8 +173,6 @@ impl ImportMutationSupport for GoImportSupport {
         result
     }
 }
-
-impl ImportAdvancedSupport for GoImportSupport {}
 
 #[cfg(test)]
 mod tests {
