@@ -8,9 +8,13 @@ use serde::Deserialize;
 use std::path::Path;
 use tracing::{debug, warn};
 
-/// Embedded JavaParser JAR
+/// Embedded JavaParser JAR (optional - empty if Maven not available during build)
+#[cfg(java_parser_jar_exists)]
 const JAVA_PARSER_JAR: &[u8] =
     include_bytes!("../resources/java-parser/target/java-parser-1.0.0.jar");
+
+#[cfg(not(java_parser_jar_exists))]
+const JAVA_PARSER_JAR: &[u8] = &[];
 
 /// Java import support implementation using AST parsing
 #[derive(Default)]

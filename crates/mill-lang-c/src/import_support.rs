@@ -1,4 +1,6 @@
-use mill_foundation::protocol::DependencyUpdate;
+use mill_foundation::protocol::{
+    DependencyUpdate, ImportGraph, ImportGraphMetadata, ImportInfo, ImportType, SourceLocation,
+};
 use mill_plugin_api::{
     import_support::{
         ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportParser,
@@ -6,12 +8,12 @@ use mill_plugin_api::{
     },
     PluginResult,
 };
+use regex::Regex;
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy)]
 pub struct CImportSupport;
 
-use regex::Regex;
 impl ImportParser for CImportSupport {
     fn parse_imports(&self, content: &str) -> Vec<String> {
         let re = Regex::new(r#"#include\s*[<"](.+)[>"]"#).unwrap();
@@ -23,6 +25,73 @@ impl ImportParser for CImportSupport {
     fn contains_import(&self, content: &str, module: &str) -> bool {
         let imports = self.parse_imports(content);
         imports.contains(&module.to_string())
+    }
+}
+
+impl CImportSupport {
+    /// Analyze detailed imports from C source code, returning full ImportGraph
+    pub fn analyze_detailed_imports(
+        &self,
+        source: &str,
+        file_path: Option<&Path>,
+    ) -> PluginResult<ImportGraph> {
+        use chrono::Utc;
+
+        let mut imports = Vec::new();
+        let mut external_dependencies = Vec::new();
+
+        // Regex to match #include statements with system or local headers
+        let re = Regex::new(r#"#include\s*([<"])(.+?)([>"])"#).unwrap();
+
+        for (line_num, line) in source.lines().enumerate() {
+            if let Some(captures) = re.captures(line) {
+                let open_delim = &captures[1];
+                let header = captures[2].to_string();
+                let _close_delim = &captures[3];
+
+                // Determine if this is a system or local include
+                let is_external = open_delim == "<";
+
+                // Find column position
+                let start_col = line.find("#include").unwrap_or(0) as u32;
+                let end_col = (start_col as usize + line[start_col as usize..].find('>').or_else(|| line[start_col as usize..].find('"')).unwrap_or(line.len()) + 1) as u32;
+
+                let import_info = ImportInfo {
+                    module_path: header.clone(),
+                    import_type: ImportType::CInclude,
+                    named_imports: vec![],  // C doesn't have named imports
+                    default_import: None,   // C doesn't have default imports
+                    namespace_import: None, // C doesn't have namespace imports
+                    type_only: false,       // Not applicable to C
+                    location: SourceLocation {
+                        start_line: line_num as u32,
+                        start_column: start_col,
+                        end_line: line_num as u32,
+                        end_column: end_col,
+                    },
+                };
+
+                imports.push(import_info);
+
+                // Track external dependencies (system headers)
+                if is_external && !external_dependencies.contains(&header) {
+                    external_dependencies.push(header);
+                }
+            }
+        }
+
+        Ok(ImportGraph {
+            source_file: file_path.map(|p| p.display().to_string()).unwrap_or_default(),
+            imports,
+            importers: vec![],  // C doesn't have a reverse import mechanism like some languages
+            metadata: ImportGraphMetadata {
+                language: "C".to_string(),
+                parsed_at: Utc::now(),
+                parser_version: env!("CARGO_PKG_VERSION").to_string(),
+                circular_dependencies: vec![],  // Header guards prevent circular includes
+                external_dependencies,
+            },
+        })
     }
 }
 

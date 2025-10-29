@@ -1,5 +1,5 @@
 use mill_plugin_api::{ParsedSource, SourceLocation, Symbol, SymbolKind};
-use tree_sitter::{Node, Parser, Query, QueryCursor, Range};
+use tree_sitter::{Node, Parser, Query, QueryCursor};
 
 fn get_symbol_query() -> &'static str {
     r#"

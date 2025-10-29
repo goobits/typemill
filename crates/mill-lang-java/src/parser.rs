@@ -5,9 +5,15 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 use tempfile::Builder;
 
-// Embed the pre-compiled Java parser JAR into the binary
+// Embed the pre-compiled Java parser JAR into the binary if it exists
+// If the JAR file doesn't exist (e.g., Maven not available), we'll use an empty slice
+// and the parser will gracefully fall back to returning no symbols
+#[cfg(java_parser_jar_exists)]
 const JAVA_PARSER_JAR: &[u8] =
     include_bytes!("../resources/java-parser/target/java-parser-1.0.0.jar");
+
+#[cfg(not(java_parser_jar_exists))]
+const JAVA_PARSER_JAR: &[u8] = &[];
 
 /// Represents a symbol extracted by the Java parser tool.
 #[derive(Debug, Deserialize)]

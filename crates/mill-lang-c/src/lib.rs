@@ -4,6 +4,7 @@ mod ast_parser;
 mod cmake_parser;
 mod import_support;
 mod makefile_parser;
+mod refactoring;
 
 use async_trait::async_trait;
 use mill_plugin_api::{
@@ -62,6 +63,14 @@ impl LanguagePlugin for CPlugin {
         PluginCapabilities::none().with_imports()
     }
 
+    fn analyze_detailed_imports(
+        &self,
+        source: &str,
+        file_path: Option<&Path>,
+    ) -> PluginResult<mill_foundation::protocol::ImportGraph> {
+        import_support::CImportSupport.analyze_detailed_imports(source, file_path)
+    }
+
     fn import_parser(&self) -> Option<&dyn ImportParser> {
         Some(&import_support::CImportSupport)
     }
@@ -82,8 +91,70 @@ impl LanguagePlugin for CPlugin {
         Some(&import_support::CImportSupport)
     }
 
+    fn refactoring_provider(&self) -> Option<&dyn mill_plugin_api::RefactoringProvider> {
+        Some(self)
+    }
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+// Implement RefactoringProvider trait for CPlugin
+#[async_trait]
+impl mill_plugin_api::RefactoringProvider for CPlugin {
+    fn supports_inline_variable(&self) -> bool {
+        false // Stub implementation - not yet supported
+    }
+
+    async fn plan_inline_variable(
+        &self,
+        source: &str,
+        variable_line: u32,
+        variable_col: u32,
+        file_path: &str,
+    ) -> PluginResult<mill_foundation::protocol::EditPlan> {
+        refactoring::plan_inline_variable(source, variable_line, variable_col, file_path)
+    }
+
+    fn supports_extract_function(&self) -> bool {
+        false // Stub implementation - not yet supported
+    }
+
+    async fn plan_extract_function(
+        &self,
+        source: &str,
+        start_line: u32,
+        end_line: u32,
+        function_name: &str,
+        file_path: &str,
+    ) -> PluginResult<mill_foundation::protocol::EditPlan> {
+        refactoring::plan_extract_function(source, start_line, end_line, function_name, file_path)
+    }
+
+    fn supports_extract_variable(&self) -> bool {
+        false // Stub implementation - not yet supported
+    }
+
+    async fn plan_extract_variable(
+        &self,
+        source: &str,
+        start_line: u32,
+        start_col: u32,
+        end_line: u32,
+        end_col: u32,
+        variable_name: Option<String>,
+        file_path: &str,
+    ) -> PluginResult<mill_foundation::protocol::EditPlan> {
+        refactoring::plan_extract_variable(
+            source,
+            start_line,
+            start_col,
+            end_line,
+            end_col,
+            variable_name,
+            file_path,
+        )
     }
 }
 

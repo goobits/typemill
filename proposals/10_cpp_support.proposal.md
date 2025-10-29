@@ -1,8 +1,8 @@
 # C++ Language Support
 
-**Status**: 🚧 In Progress (50% complete) - Basic plugin structure, import parsing, ProjectFactory, vcpkg support, and C++20 imports implemented
+**Status**: 🚧 In Progress (65% complete) - Basic plugin structure, import parsing, ProjectFactory, vcpkg support, C++20 imports, and capability trait stubs implemented
 
-**Last Updated**: 2025-10-29 (after merging `feat/cpp-manifest-parsing` branch)
+**Last Updated**: 2025-10-29 (after implementing capability trait stubs)
 
 ## Problem
 
@@ -29,19 +29,26 @@ Implement full C++ support with `clangd` LSP integration and `mill-lang-cpp` plu
 - ✅ Import rewriting for rename operations
 - ✅ Import rewriting for move operations
 - ✅ Import mutation support (add/remove imports)
+- ✅ WorkspaceSupport trait (stub implementation)
+- ✅ RefactoringProvider trait (stub implementation)
+- ✅ ModuleReferenceScanner trait (stub implementation)
+- ✅ ImportAnalyzer trait (stub implementation)
 - ✅ All unit tests passing (20+ tests)
 - ✅ Compiles without errors
 
 **Partially Implemented:**
 - ⚠️ Import support traits (basic implementation, not all edge cases)
 - ⚠️ CMake parsing (basic functionality, missing some advanced features)
-- ⚠️ Conan support (basic parsing only, no vcpkg yet)
+- ⚠️ Conan support (basic parsing only)
+- ⚠️ Workspace operations (stub only, multi-package not implemented)
+- ⚠️ Refactoring operations (stubs return not-implemented errors)
+- ⚠️ Analysis capabilities (stubs return not-implemented errors)
 
 **Not Yet Implemented:**
 - ❌ Complete Conan conanfile.py parsing (Python DSL)
-- ❌ Workspace operations (multi-package)
-- ❌ Refactoring operations (extract function, inline variable)
-- ❌ Analysis capabilities (dependency graph, complexity)
+- ❌ Full workspace operations (CMake add_subdirectory parsing)
+- ❌ Full refactoring operations (extract function, inline variable, extract variable)
+- ❌ Full analysis capabilities (dependency graph, complexity analysis)
 - ❌ Full LSP integration testing with clangd
 
 ### Technical Approach
@@ -126,11 +133,28 @@ Implement full C++ support with `clangd` LSP integration and `mill-lang-cpp` plu
 - [ ] Implement manifest update capabilities
 
 ### Advanced Features
-- [ ] Implement `WorkspaceSupport` trait
+- [x] Implement `WorkspaceSupport` trait (stub implementation)
+  - [x] Basic trait methods defined
+  - [x] Returns not-implemented for complex operations
+  - [ ] Full CMake add_subdirectory parsing
+  - [ ] Full workspace member management
 - [ ] Implement `ManifestUpdater` trait
-- [ ] Implement `RefactoringProvider` trait (extract function, inline variable)
-- [ ] Implement `ModuleReferenceScanner` trait
-- [ ] Implement `ImportAnalyzer` trait
+- [x] Implement `RefactoringProvider` trait (stub implementation)
+  - [x] Basic trait methods defined
+  - [x] Returns not-implemented errors
+  - [ ] Full extract function implementation
+  - [ ] Full inline variable implementation
+  - [ ] Full extract variable implementation
+- [x] Implement `ModuleReferenceScanner` trait (stub implementation)
+  - [x] Basic trait methods defined
+  - [x] Returns empty results
+  - [ ] Full #include reference scanning
+  - [ ] Full C++20 import reference scanning
+- [x] Implement `ImportAnalyzer` trait (stub implementation)
+  - [x] Basic trait methods defined
+  - [x] Returns not-implemented errors
+  - [ ] Full import graph building
+  - [ ] Full dependency analysis
 - [x] Implement `ProjectFactory` trait for creating new C++ projects
   - [x] CMake project template
   - [x] Directory structure (include/, src/, tests/)
@@ -175,7 +199,7 @@ Implement full C++ support with `clangd` LSP integration and `mill-lang-cpp` plu
 - [x] Plugin structure follows TypeMill conventions
 - [x] `define_language_plugin!` macro registration works
 
-### Phase 2: Core Features (Current State - 70% Complete)
+### Phase 2: Core Features (Current State - 85% Complete)
 - [x] Import rewriting actually modifies source (functional)
 - [x] Advanced CMakeLists.txt parsing (dependencies, targets, variables)
 - [x] All 5 import support traits implemented (basic functionality)
@@ -183,17 +207,19 @@ Implement full C++ support with `clangd` LSP integration and `mill-lang-cpp` plu
 - [x] Conan package manager support (basic parsing)
 - [x] vcpkg package manager support (vcpkg.json parsing)
 - [x] C++20 import statement parsing
+- [x] All capability trait stubs implemented (WorkspaceSupport, RefactoringProvider, ModuleReferenceScanner, ImportAnalyzer)
 - [ ] LSP integration works with `clangd`
 - [ ] Can navigate C++ codebases (find definition, references)
 
-### Phase 3: Full Parity (Target - 0% Complete)
-- [ ] All 15 common capabilities implemented (currently ~8/15)
-- [ ] Advanced package manager support (vcpkg, full Conan)
+### Phase 3: Full Parity (Target - 20% Complete)
+- [x] All capability trait interfaces implemented (8/15 with stubs, 4/15 partially functional)
+- [ ] Full refactoring operations (extract function, inline variable, extract variable)
+- [ ] Full workspace operations (multi-package, CMake add_subdirectory)
+- [ ] Full analysis capabilities (dependency graph, complexity analysis)
+- [ ] Advanced package manager support (full Conan conanfile.py)
 - [ ] Integration tests pass with real C++ projects
-- [ ] Handles C++20 modules syntax
+- [ ] Handles C++20 modules syntax fully
 - [ ] Feature parity with TypeScript/Rust/Python/Swift
-- [ ] Refactoring operations (extract function, inline variable)
-- [ ] Workspace operations (multi-package)
 
 ## Benefits
 

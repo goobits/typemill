@@ -1,11 +1,14 @@
 //! CPP language plugin for TypeMill
 
+mod analysis;
 mod ast_parser;
 mod cmake_parser;
 mod conan_parser;
 mod import_support;
 mod project_factory;
+mod refactoring;
 mod vcpkg_parser;
+mod workspace_support;
 
 use async_trait::async_trait;
 use mill_plugin_api::{
@@ -14,7 +17,7 @@ use mill_plugin_api::{
         ImportRenameSupport,
     },
     mill_plugin, LanguagePlugin, LanguageMetadata, LspConfig, ManifestData, ParsedSource,
-    PluginCapabilities, PluginResult, Symbol, SymbolKind,
+    PluginCapabilities, PluginResult,
 };
 use std::path::Path;
 
@@ -65,7 +68,9 @@ impl LanguagePlugin for CppPlugin {
     }
 
     fn capabilities(&self) -> PluginCapabilities {
-        PluginCapabilities::none().with_imports()
+        PluginCapabilities::none()
+            .with_imports()
+            .with_workspace()
     }
 
     fn import_parser(&self) -> Option<&dyn ImportParser> {
@@ -94,6 +99,22 @@ impl LanguagePlugin for CppPlugin {
 
     fn project_factory(&self) -> Option<&dyn mill_plugin_api::ProjectFactory> {
         Some(&project_factory::CppProjectFactory)
+    }
+
+    fn workspace_support(&self) -> Option<&dyn mill_plugin_api::WorkspaceSupport> {
+        Some(&workspace_support::CppWorkspaceSupport)
+    }
+
+    fn refactoring_provider(&self) -> Option<&dyn mill_plugin_api::RefactoringProvider> {
+        Some(&refactoring::CppRefactoringProvider)
+    }
+
+    fn module_reference_scanner(&self) -> Option<&dyn mill_plugin_api::ModuleReferenceScanner> {
+        Some(&analysis::CppAnalysisProvider)
+    }
+
+    fn import_analyzer(&self) -> Option<&dyn mill_plugin_api::ImportAnalyzer> {
+        Some(&analysis::CppAnalysisProvider)
     }
 }
 

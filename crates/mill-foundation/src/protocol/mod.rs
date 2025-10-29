@@ -92,6 +92,8 @@ pub enum ImportType {
     PythonImport,
     /// Python from...import statement
     PythonFromImport,
+    /// C/C++ #include directive
+    CInclude,
 }
 
 /// Source location information

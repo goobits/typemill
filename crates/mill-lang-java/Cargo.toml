@@ -27,8 +27,8 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 # Parsing
-tree-sitter = { workspace = true }
-tree-sitter-java = { workspace = true }
+tree-sitter = "0.20"
+tree-sitter-java = "0.20"
 lsp-types = { workspace = true }
 
 # Utilities (uncomment as needed)
