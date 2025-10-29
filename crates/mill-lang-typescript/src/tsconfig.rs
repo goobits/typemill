@@ -61,6 +61,12 @@ impl TsConfig {
     /// # Returns
     ///
     /// Path to nearest tsconfig.json, or None if not found
+    ///
+    /// # Note
+    ///
+    /// This is a public API method. Internally, TypeScriptPathAliasResolver uses
+    /// a cached version (find_nearest_tsconfig) for better performance.
+    #[allow(dead_code)]
     pub fn find_nearest(start_path: &Path) -> Option<PathBuf> {
         let mut current = start_path.parent()?;
 
