@@ -83,6 +83,7 @@ regex = "1.10"
 lsp-types = { version = "0.97.0", features = ["proposed"] }
 tree-sitter = "0.25.4"
 cc = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
 
 # Core API crates
 mill-foundation = { path = "crates/mill-foundation" }

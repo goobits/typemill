@@ -1,8 +1,8 @@
 # C++ Language Support
 
-**Status**: 🚧 In Progress (65% complete) - Basic plugin structure, import parsing, ProjectFactory, vcpkg support, C++20 imports, and capability trait stubs implemented
+**Status**: 🚧 In Progress (75% complete) - Core refactoring operations implemented (Phase 1 Complete)
 
-**Last Updated**: 2025-10-29 (after implementing capability trait stubs)
+**Last Updated**: 2025-10-29 (after implementing core refactoring: extract function, extract variable, inline variable)
 
 ## Problem
 
@@ -30,10 +30,13 @@ Implement full C++ support with `clangd` LSP integration and `mill-lang-cpp` plu
 - ✅ Import rewriting for move operations
 - ✅ Import mutation support (add/remove imports)
 - ✅ WorkspaceSupport trait (stub implementation)
-- ✅ RefactoringProvider trait (stub implementation)
+- ✅ **RefactoringProvider trait (FULL implementation - Phase 1 Complete)**
+  - ✅ Extract function (simple cases without templates/macros)
+  - ✅ Extract variable (using C++ `auto` for type deduction)
+  - ✅ Inline variable (with reference finding and replacement)
 - ✅ ModuleReferenceScanner trait (stub implementation)
 - ✅ ImportAnalyzer trait (stub implementation)
-- ✅ All unit tests passing (20+ tests)
+- ✅ All unit tests passing (23 tests, +3 new refactoring tests)
 - ✅ Compiles without errors
 
 **Partially Implemented:**
@@ -41,13 +44,12 @@ Implement full C++ support with `clangd` LSP integration and `mill-lang-cpp` plu
 - ⚠️ CMake parsing (basic functionality, missing some advanced features)
 - ⚠️ Conan support (basic parsing only)
 - ⚠️ Workspace operations (stub only, multi-package not implemented)
-- ⚠️ Refactoring operations (stubs return not-implemented errors)
 - ⚠️ Analysis capabilities (stubs return not-implemented errors)
 
 **Not Yet Implemented:**
 - ❌ Complete Conan conanfile.py parsing (Python DSL)
 - ❌ Full workspace operations (CMake add_subdirectory parsing)
-- ❌ Full refactoring operations (extract function, inline variable, extract variable)
+- ❌ Advanced refactoring features (template extraction, parameter detection, return type inference)
 - ❌ Full analysis capabilities (dependency graph, complexity analysis)
 - ❌ Full LSP integration testing with clangd
 
@@ -139,12 +141,12 @@ Implement full C++ support with `clangd` LSP integration and `mill-lang-cpp` plu
   - [ ] Full CMake add_subdirectory parsing
   - [ ] Full workspace member management
 - [ ] Implement `ManifestUpdater` trait
-- [x] Implement `RefactoringProvider` trait (stub implementation)
-  - [x] Basic trait methods defined
-  - [x] Returns not-implemented errors
-  - [ ] Full extract function implementation
-  - [ ] Full inline variable implementation
-  - [ ] Full extract variable implementation
+- [x] Implement `RefactoringProvider` trait (**COMPLETE - Phase 1**)
+  - [x] Extract function (simple cases without templates/macros)
+  - [x] Extract variable (using C++ `auto` keyword)
+  - [x] Inline variable (with reference finding and replacement)
+  - [x] 3 comprehensive tests added and passing
+  - [ ] Advanced features (template extraction, parameter detection, return type inference)
 - [x] Implement `ModuleReferenceScanner` trait (stub implementation)
   - [x] Basic trait methods defined
   - [x] Returns empty results
@@ -172,7 +174,8 @@ Implement full C++ support with `clangd` LSP integration and `mill-lang-cpp` plu
 - [x] Unit tests for import mutation - 5 tests in `import_mutation_tests` module
 - [x] Unit tests for ProjectFactory - `test_project_factory`
 - [x] Unit tests for C++20 `import` parsing - `test_parse_cpp20_imports`
-- [x] All 20+ unit tests passing
+- [x] Unit tests for refactoring operations - `test_extract_cpp_function`, `test_extract_cpp_variable`, `test_inline_cpp_variable`
+- [x] All 23 unit tests passing
 - [ ] Integration tests with CMake projects
 - [ ] Integration tests with Makefile projects
 - [ ] LSP integration tests with `clangd`
@@ -211,9 +214,10 @@ Implement full C++ support with `clangd` LSP integration and `mill-lang-cpp` plu
 - [ ] LSP integration works with `clangd`
 - [ ] Can navigate C++ codebases (find definition, references)
 
-### Phase 3: Full Parity (Target - 20% Complete)
-- [x] All capability trait interfaces implemented (8/15 with stubs, 4/15 partially functional)
-- [ ] Full refactoring operations (extract function, inline variable, extract variable)
+### Phase 3: Full Parity (Target - 40% Complete)
+- [x] All capability trait interfaces implemented (8/15 with stubs, 5/15 fully functional)
+- [x] Core refactoring operations (extract function, inline variable, extract variable)
+- [ ] Advanced refactoring features (template extraction, parameter detection)
 - [ ] Full workspace operations (multi-package, CMake add_subdirectory)
 - [ ] Full analysis capabilities (dependency graph, complexity analysis)
 - [ ] Advanced package manager support (full Conan conanfile.py)
