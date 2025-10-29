@@ -20,6 +20,7 @@ mill-lang-python = { path = "../mill-lang-python", optional = true, default-feat
 mill-lang-gitignore = { path = "../mill-lang-gitignore", optional = true, default-features = false }
 mill-lang-cpp = { path = "../mill-lang-cpp", optional = true, default-features = false }
 mill-lang-swift = { path = "../mill-lang-swift", optional = true, default-features = false }
+mill-lang-csharp = { path = "../mill-lang-csharp", optional = true, default-features = false }
 
 [features]
 default = ["lang-gitignore", "lang-markdown", "lang-python", "lang-rust", "lang-toml", "lang-typescript", "lang-yaml"]
@@ -32,3 +33,4 @@ lang-python = ["dep:mill-lang-python"]
 lang-gitignore = ["dep:mill-lang-gitignore"]
 lang-cpp = ["dep:mill-lang-cpp"]
 lang-swift = ["dep:mill-lang-swift"]
+lang-csharp = ["dep:mill-lang-csharp"]
