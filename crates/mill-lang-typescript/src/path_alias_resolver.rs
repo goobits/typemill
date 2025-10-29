@@ -46,29 +46,58 @@ impl TypeScriptPathAliasResolver {
     /// # Returns
     ///
     /// Path to nearest tsconfig.json if found
+    ///
+    /// # Caching Strategy
+    ///
+    /// Caches ALL ancestor directories encountered during the walk, not just
+    /// the starting directory. This prevents re-walking the same tree for
+    /// sibling files in deep directory structures.
     fn find_nearest_tsconfig(&self, importing_file: &Path) -> Option<PathBuf> {
-        // Use parent directory as cache key
-        let dir = importing_file.parent()?;
+        let mut current = importing_file.parent()?;
+        let mut ancestors_to_cache: Vec<PathBuf> = Vec::new();
 
-        // Check cache first
-        {
-            let cache = self.tsconfig_path_cache.lock().ok()?;
-            if let Some(cached_result) = cache.get(dir) {
-                return cached_result.clone();
+        // Walk up the directory tree
+        loop {
+            // Check cache first for this level
+            {
+                let cache = self.tsconfig_path_cache.lock().ok()?;
+                if let Some(cached_result) = cache.get(current) {
+                    // Cache hit! Clone the result before dropping lock
+                    let result = cached_result.clone();
+                    drop(cache); // Release read lock
+
+                    // Cache all ancestors we collected with this result
+                    if !ancestors_to_cache.is_empty() {
+                        if let Ok(mut cache) = self.tsconfig_path_cache.lock() {
+                            for ancestor in &ancestors_to_cache {
+                                cache.insert(ancestor.clone(), result.clone());
+                            }
+                        }
+                    }
+                    return result;
+                }
             }
-        }
 
-        // Not cached - perform filesystem walk
-        let result = TsConfig::find_nearest(importing_file);
-
-        // Cache result (including None results to avoid repeated failed lookups)
-        {
-            if let Ok(mut cache) = self.tsconfig_path_cache.lock() {
-                cache.insert(dir.to_path_buf(), result.clone());
+            // Not in cache - check if tsconfig.json exists at this level
+            let candidate = current.join("tsconfig.json");
+            if candidate.exists() {
+                // Found it! Cache this result for current directory AND all ancestors
+                let result = Some(candidate);
+                if let Ok(mut cache) = self.tsconfig_path_cache.lock() {
+                    cache.insert(current.to_path_buf(), result.clone());
+                    for ancestor in &ancestors_to_cache {
+                        cache.insert(ancestor.clone(), result.clone());
+                    }
+                }
+                return result;
             }
-        }
 
-        result
+            // Remember this directory for caching later
+            ancestors_to_cache.push(current.to_path_buf());
+
+            // Move up one directory
+            current = current.parent()?;
+        }
     }
 
     /// Load tsconfig.json with caching
@@ -174,7 +203,23 @@ impl TypeScriptPathAliasResolver {
                 // TypeScript tries replacements sequentially until one resolves
                 // CRITICAL: Always loop through ALL replacements, not just when len > 1
                 for replacement in replacements {
-                    let resolved_path = replacement.replace('*', captured);
+                    // Optimize: Only allocate if replacement actually contains a wildcard
+                    let resolved_path = if replacement.contains('*') {
+                        // Pre-allocate with correct capacity to avoid reallocation
+                        let mut result = String::with_capacity(replacement.len() + captured.len());
+                        if let Some(star_idx) = replacement.find('*') {
+                            result.push_str(&replacement[..star_idx]);
+                            result.push_str(captured);
+                            result.push_str(&replacement[star_idx + 1..]);
+                        } else {
+                            result = replacement.clone();
+                        }
+                        result
+                    } else {
+                        // No wildcard - use replacement as-is (rare but possible)
+                        replacement.clone()
+                    };
+
                     let resolved = base_url.join(&resolved_path);
 
                     // Return first replacement that exists on disk
@@ -186,7 +231,21 @@ impl TypeScriptPathAliasResolver {
                 // If none of the replacements exist, fall back to the first one
                 // This allows resolution to continue downstream (e.g., for dry-run scenarios)
                 if let Some(replacement) = replacements.first() {
-                    let resolved_path = replacement.replace('*', captured);
+                    // Same optimization as above
+                    let resolved_path = if replacement.contains('*') {
+                        let mut result = String::with_capacity(replacement.len() + captured.len());
+                        if let Some(star_idx) = replacement.find('*') {
+                            result.push_str(&replacement[..star_idx]);
+                            result.push_str(captured);
+                            result.push_str(&replacement[star_idx + 1..]);
+                        } else {
+                            result = replacement.clone();
+                        }
+                        result
+                    } else {
+                        replacement.clone()
+                    };
+
                     let resolved = base_url.join(&resolved_path);
                     return Some(resolved.to_string_lossy().to_string());
                 }
