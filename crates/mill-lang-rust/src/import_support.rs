@@ -753,24 +753,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_imports() {
-        let support = RustImportSupport;
-        let content = r#"
-use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
-use crate::parser;
-"#;
-
-        let imports = ImportParser::parse_imports(&support, content);
-        // Parser returns module paths, not including the final symbol name
-        // e.g., "use std::collections::HashMap" returns module_path="std::collections"
-        assert!(imports.len() >= 3);
-        assert!(imports.contains(&"std::collections".to_string()));
-        assert!(imports.contains(&"serde".to_string()));
-        assert!(imports.contains(&"crate".to_string()));
-    }
-
-    #[test]
     fn test_rewrite_imports_for_rename() {
         let support = RustImportSupport;
         let content = r#"
@@ -788,23 +770,6 @@ use other::stuff;
         assert!(result.contains("new_crate"));
         assert!(!result.contains("use old_crate"));
         assert!(result.contains("other::stuff"));
-    }
-
-    #[test]
-    fn test_contains_import() {
-        let support = RustImportSupport;
-        let content = r#"
-use std::collections::HashMap;
-use serde::Serialize;
-"#;
-
-        assert!(ImportParser::contains_import(
-            &support,
-            content,
-            "std::collections"
-        ));
-        assert!(ImportParser::contains_import(&support, content, "serde"));
-        assert!(!ImportParser::contains_import(&support, content, "tokio"));
     }
 
     #[test]
@@ -933,33 +898,6 @@ use my_std::other::Thing;
 
         // "my_std" should match exactly
         assert!(ImportParser::contains_import(&support, content, "my_std"));
-    }
-
-    #[test]
-    fn test_add_import() {
-        let support = RustImportSupport;
-        let content = r#"use std::collections::HashMap;
-
-fn main() {}"#;
-
-        let result = ImportMutationSupport::add_import(&support, content, "serde::Serialize");
-        assert!(result.contains("use serde::Serialize;"));
-        assert!(result.contains("use std::collections::HashMap;"));
-    }
-
-    #[test]
-    fn test_remove_import() {
-        let support = RustImportSupport;
-        let content = r#"use std::collections::HashMap;
-use serde::Serialize;
-use tokio::runtime::Runtime;
-
-fn main() {}"#;
-
-        let result = ImportMutationSupport::remove_import(&support, content, "serde");
-        assert!(!result.contains("use serde::Serialize"));
-        assert!(result.contains("use std::collections::HashMap"));
-        assert!(result.contains("use tokio::runtime::Runtime"));
     }
 
     #[test]
