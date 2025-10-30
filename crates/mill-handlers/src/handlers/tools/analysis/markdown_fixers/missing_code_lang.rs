@@ -6,53 +6,178 @@ use serde_json::Value;
 pub struct MissingCodeLangFixer;
 
 impl MissingCodeLangFixer {
-    /// Check if block content looks like something that shouldn't get a `text` tag
-    /// Returns true if we should skip adding a language tag
-    fn should_skip_block(block_content: &str) -> bool {
-        // Empty blocks - skip
-        if block_content.trim().is_empty() {
+    /// Detect the programming language of a code block
+    /// Returns Some(language_tag) if confident, None if unsure
+    fn detect_language(content: &str) -> Option<&'static str> {
+        if content.trim().is_empty() {
+            return None;
+        }
+
+        // Skip non-code patterns
+        if Self::is_non_code_pattern(content) {
+            return None;
+        }
+
+        // Calculate scores for each language
+        let rust_score = Self::rust_score(content);
+        let js_score = Self::javascript_score(content);
+        let python_score = Self::python_score(content);
+        let json_score = Self::json_score(content);
+        let bash_score = Self::bash_score(content);
+        let toml_score = Self::toml_score(content);
+
+        // Find the language with highest score
+        let max_score = rust_score.max(js_score).max(python_score).max(json_score).max(bash_score).max(toml_score);
+
+        // Only suggest if confidence is high enough (score >= 2)
+        // Score of 2 means at least one strong language-specific pattern
+        if max_score < 2 {
+            return None;
+        }
+
+        // Return the language with highest score
+        if rust_score == max_score {
+            Some("rust")
+        } else if js_score == max_score {
+            Some("javascript")
+        } else if python_score == max_score {
+            Some("python")
+        } else if json_score == max_score {
+            Some("json")
+        } else if bash_score == max_score {
+            Some("bash")
+        } else if toml_score == max_score {
+            Some("toml")
+        } else {
+            None
+        }
+    }
+
+    /// Check if content is a non-code pattern (directory tree, ASCII art, CLI output, quoted strings)
+    fn is_non_code_pattern(content: &str) -> bool {
+        let trimmed = content.trim();
+
+        // Quoted strings (user instructions, not code)
+        // Check if all non-empty lines start and end with quotes
+        let non_empty_lines: Vec<&str> = trimmed.lines().filter(|l| !l.trim().is_empty()).collect();
+        if !non_empty_lines.is_empty() &&
+           non_empty_lines.iter().all(|line| {
+               let l = line.trim();
+               l.starts_with('"') && l.ends_with('"')
+           }) {
             return true;
         }
 
         // Directory tree patterns
-        if block_content.contains("├")
-            || block_content.contains("│")
-            || block_content.contains("└")
-            || block_content.contains("─") {
+        if content.contains("├") || content.contains("│") || content.contains("└") || content.contains("─") {
             return true;
         }
 
-        // ASCII art / box drawing characters
-        if block_content.contains("┌")
-            || block_content.contains("┐")
-            || block_content.contains("└")
-            || block_content.contains("┘")
-            || block_content.contains("┬")
-            || block_content.contains("┴")
-            || block_content.contains("├")
-            || block_content.contains("┤") {
+        // ASCII art / box drawing
+        if content.contains("┌") || content.contains("┐") || content.contains("┘")
+            || content.contains("┬") || content.contains("┴") || content.contains("┤") {
             return true;
         }
 
-        // CLI output patterns (common shell prompts)
-        let first_line = block_content.lines().next().unwrap_or("");
-        let trimmed = first_line.trim();
-        if trimmed.starts_with('$')
-            || trimmed.starts_with('#')
-            || trimmed.starts_with('>')
-            || trimmed.starts_with('%')
-            || trimmed.starts_with("λ") {
-            return true;
+        // CLI output with prompts (but not shebangs)
+        let first_line = content.lines().next().unwrap_or("").trim();
+        if first_line.starts_with("#!/") {
+            // Shebang - not CLI output, likely bash/shell script
+            return false;
         }
-
-        // Common CLI output patterns
-        if block_content.contains("$ ")
-            || block_content.contains("# ")
-            || trimmed.contains(" → ") {
+        if first_line.starts_with('$') || first_line.starts_with('#')
+            || first_line.starts_with('>') || first_line.starts_with('%')
+            || first_line.starts_with("λ") {
             return true;
         }
 
         false
+    }
+
+    /// Score content for Rust patterns
+    fn rust_score(content: &str) -> usize {
+        let mut score = 0;
+        if content.contains("fn ") { score += 2; }
+        if content.contains("impl ") { score += 2; }
+        if content.contains("pub ") { score += 1; }
+        if content.contains("use ") { score += 1; }
+        if content.contains("::") { score += 1; }
+        if content.contains("->") { score += 1; }
+        if content.contains("let ") { score += 1; }
+        if content.contains("struct ") { score += 1; }
+        if content.contains("enum ") { score += 1; }
+        if content.contains("mod ") { score += 1; }
+        score
+    }
+
+    /// Score content for JavaScript/TypeScript patterns
+    fn javascript_score(content: &str) -> usize {
+        let mut score = 0;
+        if content.contains("function ") { score += 2; }
+        if content.contains("const ") { score += 1; }
+        if content.contains("let ") { score += 1; }
+        if content.contains("var ") { score += 1; }
+        if content.contains(" => ") { score += 2; }
+        if content.contains("interface ") { score += 1; }
+        if content.contains("type ") { score += 1; }
+        if content.contains("import ") { score += 1; }
+        if content.contains("export ") { score += 1; }
+        if content.contains("console.log") { score += 2; }
+        score
+    }
+
+    /// Score content for Python patterns
+    fn python_score(content: &str) -> usize {
+        let mut score = 0;
+        if content.contains("def ") { score += 2; }
+        if content.contains("class ") { score += 1; }
+        if content.contains("import ") { score += 1; }
+        if content.contains("from ") && content.contains(" import ") { score += 2; }
+        if content.contains("    ") { score += 1; } // Indentation
+        if content.contains("self.") { score += 1; }
+        if content.contains("print(") { score += 1; }
+        score
+    }
+
+    /// Score content for JSON patterns
+    fn json_score(content: &str) -> usize {
+        let trimmed = content.trim();
+        if !trimmed.starts_with('{') && !trimmed.starts_with('[') {
+            return 0;
+        }
+
+        let mut score = 0;
+        if trimmed.starts_with('{') && trimmed.ends_with('}') { score += 2; }
+        if trimmed.starts_with('[') && trimmed.ends_with(']') { score += 2; }
+        if content.contains("\"") && content.contains(":") { score += 2; }
+
+        // Try parsing as JSON
+        if serde_json::from_str::<Value>(content).is_ok() {
+            score += 5; // Very confident if valid JSON
+        }
+        score
+    }
+
+    /// Score content for Bash/Shell patterns
+    fn bash_score(content: &str) -> usize {
+        let mut score = 0;
+        if content.contains("#!/bin/bash") || content.contains("#!/bin/sh") { score += 3; }
+        if content.contains("cargo ") { score += 1; }
+        if content.contains("npm ") { score += 1; }
+        if content.contains("git ") { score += 1; }
+        if content.contains(" && ") { score += 1; }
+        if content.contains("export ") { score += 1; }
+        if content.contains("echo ") { score += 1; }
+        score
+    }
+
+    /// Score content for TOML patterns
+    fn toml_score(content: &str) -> usize {
+        let mut score = 0;
+        if content.contains("[") && content.contains("]") { score += 1; }
+        if content.contains(" = ") { score += 2; }
+        if Regex::new(r"^\[[\w\.-]+\]").unwrap().is_match(content) { score += 2; }
+        score
     }
 
     /// Extract the content of a code block starting at the given line
@@ -87,11 +212,11 @@ impl MarkdownFixer for MissingCodeLangFixer {
                 if !in_code_block {
                     // Opening fence
                     if re.is_match(line) {
-                        // Found code fence without language tag - check if we should skip it
+                        // Found code fence without language tag - try to detect the language
                         let block_content = Self::extract_block_content(&lines, line_num);
 
-                        if !Self::should_skip_block(&block_content) {
-                            // Only add text tag if it's not a special pattern
+                        if let Some(detected_lang) = Self::detect_language(&block_content) {
+                            // Detected a language - suggest the appropriate tag
                             edits.push(TextEdit {
                                 range: Range {
                                     start: Position {
@@ -104,9 +229,10 @@ impl MarkdownFixer for MissingCodeLangFixer {
                                     },
                                 },
                                 old_text: line.to_string(),
-                                new_text: "```text".to_string(),
+                                new_text: format!("```{}", detected_lang),
                             });
                         }
+                        // If no language detected, skip (don't add anything)
                     }
                     in_code_block = true;
                 } else {
@@ -147,16 +273,52 @@ mod tests {
     }
 
     #[test]
-    fn test_missing_code_lang_fixer_adds_text_tag() {
-        let content = "```\ncode here\n```".to_string();
+    fn test_missing_code_lang_fixer_detects_rust() {
+        let content = "```\nfn main() {\n    println!(\"hello\");\n}\n```".to_string();
         let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
         let fixer = MissingCodeLangFixer;
 
         let outcome = fixer.apply(&ctx, &Value::Null);
 
         assert_eq!(outcome.edits.len(), 1);
-        assert_eq!(outcome.edits[0].new_text, "```text");
+        assert_eq!(outcome.edits[0].new_text, "```rust");
         assert!(outcome.preview.is_some());
+    }
+
+    #[test]
+    fn test_missing_code_lang_fixer_detects_javascript() {
+        let content = "```\nfunction hello() {\n  console.log(\"world\");\n}\n```".to_string();
+        let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
+        let fixer = MissingCodeLangFixer;
+
+        let outcome = fixer.apply(&ctx, &Value::Null);
+
+        assert_eq!(outcome.edits.len(), 1);
+        assert_eq!(outcome.edits[0].new_text, "```javascript");
+    }
+
+    #[test]
+    fn test_missing_code_lang_fixer_detects_json() {
+        let content = "```\n{\n  \"name\": \"test\",\n  \"version\": \"1.0.0\"\n}\n```".to_string();
+        let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
+        let fixer = MissingCodeLangFixer;
+
+        let outcome = fixer.apply(&ctx, &Value::Null);
+
+        assert_eq!(outcome.edits.len(), 1);
+        assert_eq!(outcome.edits[0].new_text, "```json");
+    }
+
+    #[test]
+    fn test_missing_code_lang_fixer_detects_bash() {
+        let content = "```\n#!/bin/bash\necho \"hello\"\ncargo build\n```".to_string();
+        let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
+        let fixer = MissingCodeLangFixer;
+
+        let outcome = fixer.apply(&ctx, &Value::Null);
+
+        assert_eq!(outcome.edits.len(), 1);
+        assert_eq!(outcome.edits[0].new_text, "```bash");
     }
 
     #[test]
@@ -173,18 +335,21 @@ mod tests {
 
     #[test]
     fn test_missing_code_lang_fixer_handles_multiple_blocks() {
-        let content = "```\nblock1\n```\n\nSome text\n\n```javascript\nblock2\n```\n\n```\nblock3\n```".to_string();
+        let content = "```\nfn test1() {}\n```\n\nSome text\n\n```javascript\nblock2\n```\n\n```\nfn test3() {}\n```".to_string();
         let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
         let fixer = MissingCodeLangFixer;
 
         let outcome = fixer.apply(&ctx, &Value::Null);
 
-        assert_eq!(outcome.edits.len(), 2); // block1 and block3
+        // Should detect rust for both untagged blocks
+        assert_eq!(outcome.edits.len(), 2);
+        assert_eq!(outcome.edits[0].new_text, "```rust");
+        assert_eq!(outcome.edits[1].new_text, "```rust");
     }
 
     #[test]
     fn test_missing_code_lang_fixer_preview_mode() {
-        let content = "```\ncode\n```".to_string();
+        let content = "```\nfn example() {}\n```".to_string();
         let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
         let fixer = MissingCodeLangFixer;
 
@@ -194,7 +359,7 @@ mod tests {
         let preview = outcome.preview.unwrap();
         assert!(preview.contains("--- a/test.md"));
         assert!(preview.contains("-```"));
-        assert!(preview.contains("+```text"));
+        assert!(preview.contains("+```rust"));
     }
 
     #[test]
@@ -246,29 +411,30 @@ mod tests {
     }
 
     #[test]
-    fn test_missing_code_lang_fixer_adds_text_to_prose() {
-        let content = "```\nThis is some regular text content.\nIt should get a text tag.\n```".to_string();
+    fn test_missing_code_lang_fixer_skips_undetectable_prose() {
+        let content = "```\nThis is some regular text content.\nIt doesn't match any language pattern.\n```".to_string();
         let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
         let fixer = MissingCodeLangFixer;
 
         let outcome = fixer.apply(&ctx, &Value::Null);
 
-        assert_eq!(outcome.edits.len(), 1, "Should add text tag to prose");
-        assert_eq!(outcome.edits[0].new_text, "```text");
+        // Should skip since we can't confidently detect a language
+        assert_eq!(outcome.edits.len(), 0, "Should skip prose without clear language");
+        assert!(outcome.preview.is_none());
     }
 
     #[test]
     fn test_missing_code_lang_fixer_mixed_blocks() {
         let content = concat!(
             "```\n",
-            "Regular prose here\n",
+            "fn rust_code() {}\n",
             "```\n\n",
             "```\n",
             "├── src/\n",
             "└── test/\n",
             "```\n\n",
             "```\n",
-            "More prose\n",
+            "console.log(\"js code\");\n",
             "```"
         ).to_string();
         let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
@@ -276,7 +442,9 @@ mod tests {
 
         let outcome = fixer.apply(&ctx, &Value::Null);
 
-        // Should only add text to the 2 prose blocks, skip the directory tree
-        assert_eq!(outcome.edits.len(), 2, "Should add text to prose blocks only");
+        // Should detect rust and js, skip the directory tree
+        assert_eq!(outcome.edits.len(), 2, "Should detect languages in code blocks");
+        assert_eq!(outcome.edits[0].new_text, "```rust");
+        assert_eq!(outcome.edits[1].new_text, "```javascript");
     }
 }
