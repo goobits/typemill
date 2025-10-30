@@ -14,6 +14,7 @@ pub mod test_fixtures;
 pub mod test_helpers;
 pub mod test_lsp_service;
 pub mod workspace;
+pub mod workspace_harness;
 
 pub use client::TestClient;
 pub use complexity_harness::*;
@@ -28,3 +29,4 @@ pub use test_builder::{LspTestBuilder, LspTestMode};
 pub use test_helpers::*;
 pub use test_lsp_service::MockLspService;
 pub use workspace::TestWorkspace;
+pub use workspace_harness::*;
