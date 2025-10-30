@@ -256,7 +256,7 @@ fn _force_plugin_linkage() {
 | Use Case | Best Reference | Location |
 |----------|---------------|----------|
 | Native Rust parsing | Rust plugin | `crates/mill-lang-rust/` |
-| Simple document plugin | Markdown plugin | `crates/mill-lang-markdown/` |
+| Simple document plugin | Markdown plugin | `languages/mill-lang-markdown/` |
 | Config file plugin | TOML/YAML plugins | `crates/mill-lang-toml/`, `crates/mill-lang-yaml/` |
 | **Auto-Discovery Pattern** | **All current plugins** | **`src/lib.rs` - `mill_plugin!` macro** |
 | Simple ImportParser only | Markdown plugin | `mill-lang-markdown/src/import_support.rs` |
@@ -708,7 +708,7 @@ All tools support the same `options.dryRun` parameter:
 
 - **Rust Plugin**: `crates/mill-lang-rust/` - Full-featured reference
 - **TypeScript Plugin**: `crates/mill-lang-typescript/` - Subprocess parser pattern
-- **Markdown Plugin**: `crates/mill-lang-markdown/` - Simple document plugin
+- **Markdown Plugin**: `languages/mill-lang-markdown/` - Simple document plugin
 - **TOML/YAML Plugins**: `crates/mill-lang-toml/`, `crates/mill-lang-yaml/` - Config files
 
 ## Key Principles

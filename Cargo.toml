@@ -11,7 +11,7 @@ members = [
     "crates/mill-lang-rust",
     "crates/mill-lang-typescript",
     "crates/mill-lang-python",
-    "crates/mill-lang-markdown",
+    "languages/mill-lang-markdown",
     "crates/mill-lang-toml",
     "crates/mill-lang-yaml",
     "crates/mill-lang-gitignore",
@@ -110,7 +110,6 @@ mill-analysis-common = { path = "analysis/mill-analysis-common" }
 # Language plugins (temporarily reduced to TS + Rust during unified API refactoring)
 mill-lang-common = { path = "crates/mill-lang-common", default-features = false }
 mill-lang-typescript = { path = "crates/mill-lang-typescript", default-features = false }
-mill-lang-markdown = { path = "crates/mill-lang-markdown", default-features = false }
 mill-lang-rust = { path = "crates/mill-lang-rust", default-features = false }
 mill-lang-python = { path = "crates/mill-lang-python", default-features = false }
 mill-lang-cpp = { path = "crates/mill-lang-cpp", default-features = false }
@@ -121,6 +120,7 @@ mill-lang-go = { path = "crates/mill-lang-go", default-features = false }
 mill-lang-java = { path = "crates/mill-lang-java", default-features = false }
 mill-analysis-dead-code = { path = "analysis/mill-analysis-dead-code" }
 mill-analysis-graph = { path = "analysis/mill-analysis-graph" }
+mill-lang-markdown = { path = "languages/mill-lang-markdown", default-features = false }
 
 # Optimize build times for dev dependencies
 [profile.dev.build-override]

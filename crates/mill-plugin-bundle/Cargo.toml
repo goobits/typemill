@@ -13,7 +13,6 @@ mill-lang-toml = { path = "../mill-lang-toml", optional = true, default-features
 
 # Logging
 tracing = { workspace = true }
-mill-lang-markdown = { path = "../mill-lang-markdown", optional = true, default-features = false }
 mill-lang-yaml = { path = "../mill-lang-yaml", optional = true, default-features = false }
 mill-lang-rust = { path = "../mill-lang-rust", optional = true, default-features = false }
 mill-lang-python = { path = "../mill-lang-python", optional = true, default-features = false }
@@ -24,6 +23,7 @@ mill-lang-csharp = { path = "../mill-lang-csharp", optional = true, default-feat
 mill-lang-c = { path = "../mill-lang-c", optional = true, default-features = false }
 mill-lang-go = { path = "../mill-lang-go", optional = true, default-features = false }
 mill-lang-java = { path = "../mill-lang-java", optional = true, default-features = false }
+mill-lang-markdown = { path = "../../languages/mill-lang-markdown", optional = true, default-features = false }
 
 [features]
 default = ["lang-gitignore", "lang-markdown", "lang-python", "lang-rust", "lang-toml", "lang-typescript", "lang-yaml"]
