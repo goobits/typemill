@@ -1,12 +1,23 @@
 //! Integration tests for cross-language workspace harness
 //!
 //! These tests verify that the workspace harness scenarios work with actual language plugins.
-//! Each test runs against TypeScript, Rust, Python, Java, and C++ plugins to ensure consistent behavior.
+//! Each test runs against TypeScript, Rust, Python, Java, and Go plugins to ensure consistent behavior.
 
 use mill_test_support::harness::{WorkspaceScenarios, WorkspaceExpectedBehavior, WorkspaceOperation, get_test_registry};
 
 // Force linker to include plugin-bundle for inventory collection in tests
 extern crate mill_plugin_bundle;
+
+// Force linker to include each language plugin crate
+// This is required for inventory system - without these declarations,
+// the linker performs dead code elimination and plugins aren't discovered
+// Note: These are unconditional because mill-plugin-bundle enables these features
+extern crate mill_lang_go;
+extern crate mill_lang_java;
+extern crate mill_lang_python;
+extern crate mill_lang_rust;
+extern crate mill_lang_swift;
+extern crate mill_lang_typescript;
 
 #[cfg(test)]
 mod workspace_harness_tests {

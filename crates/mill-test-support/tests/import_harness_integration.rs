@@ -8,6 +8,19 @@ use mill_test_support::harness::{ImportScenarios, ImportExpectedBehavior, Import
 // Force linker to include plugin-bundle for inventory collection in tests
 extern crate mill_plugin_bundle;
 
+// Force linker to include each language plugin crate
+// This is required for inventory system - without these declarations,
+// the linker performs dead code elimination and plugins aren't discovered
+// Note: These are unconditional because mill-plugin-bundle enables these features
+extern crate mill_lang_c;
+extern crate mill_lang_cpp;
+extern crate mill_lang_go;
+extern crate mill_lang_java;
+extern crate mill_lang_python;
+extern crate mill_lang_rust;
+extern crate mill_lang_swift;
+extern crate mill_lang_typescript;
+
 #[cfg(test)]
 mod import_harness_tests {
     use super::*;

@@ -40,37 +40,38 @@ use mill_lang_typescript::TypeScriptPlugin;
 #[cfg(feature = "lang-yaml")]
 use mill_lang_yaml::YamlLanguagePlugin;
 
-// This function is never called but ensures the linker includes all plugin crates
-#[allow(dead_code)]
+// This function ensures the linker includes all plugin crates
+// Called from all_plugins() to force linkage before inventory discovery
+#[inline(never)]
 fn _force_plugin_linkage() {
-    // These type references ensure the plugin crates are linked
-    // The actual plugin instances will be discovered via inventory
+    // Use black_box to prevent compiler from optimizing away type references
+    // This ensures plugin crates are linked even in release builds
     #[cfg(feature = "lang-c")]
-    let _: Option<CPlugin> = None;
+    std::hint::black_box(std::any::type_name::<CPlugin>());
     #[cfg(feature = "lang-cpp")]
-    let _: Option<CppPlugin> = None;
+    std::hint::black_box(std::any::type_name::<CppPlugin>());
     #[cfg(feature = "lang-csharp")]
-    let _: Option<CsharpPlugin> = None;
+    std::hint::black_box(std::any::type_name::<CsharpPlugin>());
     #[cfg(feature = "lang-gitignore")]
-    let _: Option<GitignoreLanguagePlugin> = None;
+    std::hint::black_box(std::any::type_name::<GitignoreLanguagePlugin>());
     #[cfg(feature = "lang-go")]
-    let _: Option<GoPlugin> = None;
+    std::hint::black_box(std::any::type_name::<GoPlugin>());
     #[cfg(feature = "lang-java")]
-    let _: Option<JavaPlugin> = None;
+    std::hint::black_box(std::any::type_name::<JavaPlugin>());
     #[cfg(feature = "lang-markdown")]
-    let _: Option<MarkdownPlugin> = None;
+    std::hint::black_box(std::any::type_name::<MarkdownPlugin>());
     #[cfg(feature = "lang-python")]
-    let _: Option<PythonPlugin> = None;
+    std::hint::black_box(std::any::type_name::<PythonPlugin>());
     #[cfg(feature = "lang-rust")]
-    let _: Option<RustPlugin> = None;
+    std::hint::black_box(std::any::type_name::<RustPlugin>());
     #[cfg(feature = "lang-swift")]
-    let _: Option<SwiftPlugin> = None;
+    std::hint::black_box(std::any::type_name::<SwiftPlugin>());
     #[cfg(feature = "lang-toml")]
-    let _: Option<TomlLanguagePlugin> = None;
+    std::hint::black_box(std::any::type_name::<TomlLanguagePlugin>());
     #[cfg(feature = "lang-typescript")]
-    let _: Option<TypeScriptPlugin> = None;
+    std::hint::black_box(std::any::type_name::<TypeScriptPlugin>());
     #[cfg(feature = "lang-yaml")]
-    let _: Option<YamlLanguagePlugin> = None;
+    std::hint::black_box(std::any::type_name::<YamlLanguagePlugin>());
 }
 
 /// Returns all language plugins available in this bundle.
@@ -78,6 +79,10 @@ fn _force_plugin_linkage() {
 /// This function uses the plugin registry's auto-discovery mechanism
 /// to find all plugins that have self-registered using the `mill_plugin!` macro.
 pub fn all_plugins() -> Vec<Arc<dyn LanguagePlugin>> {
+    // Force linker to include all plugin crates before inventory discovery
+    // This ensures plugins are available for inventory to find
+    _force_plugin_linkage();
+
     let plugins: Vec<_> = iter_plugins()
         .map(|descriptor| {
             tracing::debug!(

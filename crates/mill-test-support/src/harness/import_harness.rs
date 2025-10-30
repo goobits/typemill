@@ -39,21 +39,14 @@ pub use super::refactoring_harness::Language;
 // Extend Language enum with import-specific helper
 impl Language {
     pub fn all_with_import_support() -> Vec<Language> {
-        // Currently testing: TypeScript, Rust, Python (3/9 languages)
-        //
-        // Fixtures are defined for all 9 languages in the scenario methods below,
-        // but plugin registration blockers prevent testing the other 6:
-        //
-        // BLOCKERS:
-        // - Java, Go, Swift, C, C++: Plugin not found (registration issue in mill-plugin-bundle)
-        // - CSharp: tree-sitter version conflict (0.20 vs 0.25)
-        //
-        // TODO: Resolve plugin registration to enable all 9 languages
-        // TODO: Migrate CSharp to tree-sitter 0.25
+        // 6 languages with full import support (C/C++ lack mutation, C# tree-sitter conflict)
         vec![
             Language::TypeScript,
             Language::Rust,
             Language::Python,
+            Language::Java,
+            Language::Go,
+            Language::Swift,
         ]
     }
 }
