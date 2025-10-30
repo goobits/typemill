@@ -6,7 +6,7 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         State,
     },
-    response::IntoResponse,
+    response::{Html, IntoResponse},
     routing::get,
     Router,
 };
@@ -188,6 +188,63 @@ pub async fn run_websocket_server() {
     run_websocket_server_with_port(3000).await;
 }
 
+/// Handler for the homepage
+async fn homepage_handler() -> impl IntoResponse {
+    Html(r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TypeMill MCP Server</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 { color: #2c3e50; }
+        .status { color: #27ae60; font-weight: bold; }
+        .endpoint {
+            background: #f4f4f4;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #3498db;
+            font-family: 'Courier New', monospace;
+        }
+        .section { margin: 30px 0; }
+        a { color: #3498db; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>TypeMill MCP Server</h1>
+    <p class="status">✓ Server is running</p>
+
+    <div class="section">
+        <h2>WebSocket Endpoint</h2>
+        <div class="endpoint">ws://YOUR_HOST_IP:3040/ws</div>
+        <p>Connect your MCP-compatible AI assistant to this endpoint.</p>
+    </div>
+
+    <div class="section">
+        <h2>Admin API (Port 4040)</h2>
+        <div class="endpoint">GET /health - Health check</div>
+        <div class="endpoint">GET /workspaces - List workspaces</div>
+        <div class="endpoint">POST /workspaces/register - Register workspace</div>
+        <p><a href="http://localhost:4040/health">View Health Status</a></p>
+    </div>
+
+    <div class="section">
+        <h2>Documentation</h2>
+        <p>For complete API documentation and tools reference, see the project README.</p>
+    </div>
+</body>
+</html>"#)
+}
+
 /// Runs the application in websocket mode on a specific port.
 ///
 /// This mode is used when the application is run as a server. It listens for
@@ -267,10 +324,11 @@ pub async fn run_websocket_server_with_port(port: u16) {
     });
 
     let app = Router::new()
+        .route("/", get(homepage_handler))
         .route("/ws", get(ws_handler))
         .with_state(dispatcher);
 
-    let bind_addr = format!("127.0.0.1:{}", port);
+    let bind_addr = format!("{}:{}", config.server.host, port);
     let listener = match tokio::net::TcpListener::bind(&bind_addr).await {
         Ok(listener) => listener,
         Err(e) => {
