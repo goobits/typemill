@@ -28,22 +28,45 @@ use serde_json::json;
 use std::collections::HashMap;
 
 /// Supported programming languages
-/// Note: Language support temporarily reduced to TypeScript + Rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Language {
     TypeScript,
     Rust,
+    Python,
+    Java,
+    Go,
+    CSharp,
+    Swift,
+    C,
+    Cpp,
 }
 
 impl Language {
     pub fn all() -> Vec<Language> {
-        vec![Language::TypeScript, Language::Rust]
+        vec![
+            Language::TypeScript,
+            Language::Rust,
+            Language::Python,
+            Language::Java,
+            Language::Go,
+            Language::CSharp,
+            Language::Swift,
+            Language::C,
+            Language::Cpp,
+        ]
     }
 
     pub fn file_extension(&self) -> &'static str {
         match self {
             Language::TypeScript => "ts",
             Language::Rust => "rs",
+            Language::Python => "py",
+            Language::Java => "java",
+            Language::Go => "go",
+            Language::CSharp => "cs",
+            Language::Swift => "swift",
+            Language::C => "c",
+            Language::Cpp => "cpp",
         }
     }
 
@@ -51,6 +74,18 @@ impl Language {
         // All languages have AST-based stub implementations
         // LSP is tried first, with AST fallback
         true
+    }
+
+    pub fn supports_imports(&self) -> bool {
+        // All languages support imports
+        true
+    }
+
+    pub fn supports_workspace(&self) -> bool {
+        match self {
+            Language::TypeScript | Language::Rust | Language::Python | Language::Java | Language::Go => true,
+            Language::CSharp | Language::Swift | Language::C | Language::Cpp => false,
+        }
     }
 }
 
@@ -208,6 +243,18 @@ impl RefactoringScenarios {
                     // AST fallback stub now exists (will be fully implemented later)
                     ExpectedBehavior::Success,
                 ),
+                // Other languages not yet implemented in harness
+                _ => (
+                    "",
+                    RefactoringOperation::ExtractVariable {
+                        variable_name: String::new(),
+                        start_line: 0,
+                        start_char: 0,
+                        end_line: 0,
+                        end_char: 0,
+                    },
+                    ExpectedBehavior::NotSupported,
+                ),
             };
 
             (
@@ -249,6 +296,18 @@ impl RefactoringScenarios {
                     // Now uses AST first (reliable), LSP as fallback
                     ExpectedBehavior::Success
                 ),
+                // Other languages not yet implemented in harness
+                _ => (
+                    "",
+                    RefactoringOperation::ExtractFunction {
+                        new_name: String::new(),
+                        start_line: 0,
+                        start_char: 0,
+                        end_line: 0,
+                        end_char: 0,
+                    },
+                    ExpectedBehavior::NotSupported,
+                ),
             };
 
             (
@@ -283,6 +342,15 @@ impl RefactoringScenarios {
                     },
                     // AST fallback stub now exists (will be fully implemented later)
                     ExpectedBehavior::Success
+                ),
+                // Other languages not yet implemented in harness
+                _ => (
+                    "",
+                    RefactoringOperation::InlineVariable {
+                        line: 0,
+                        character: 0,
+                    },
+                    ExpectedBehavior::NotSupported,
                 ),
             };
 

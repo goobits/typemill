@@ -87,6 +87,17 @@ impl ComplexityScenarios {
                         min_nesting_depth: 0,
                     },
                 ),
+                _ => (
+                    "",
+                    "temp",
+                    ComplexityExpectation {
+                        min_cyclomatic: 0,
+                        max_cyclomatic: 0,
+                        min_cognitive: 0,
+                        max_cognitive: 0,
+                        min_nesting_depth: 0,
+                    },
+                ),
             };
 
             (
@@ -124,6 +135,17 @@ impl ComplexityScenarios {
                         min_cognitive: 2,
                         max_cognitive: 5,
                         min_nesting_depth: 1,
+                    },
+                ),
+                _ => (
+                    "",
+                    "temp",
+                    ComplexityExpectation {
+                        min_cyclomatic: 0,
+                        max_cyclomatic: 0,
+                        min_cognitive: 0,
+                        max_cognitive: 0,
+                        min_nesting_depth: 0,
                     },
                 ),
             };
@@ -165,6 +187,17 @@ impl ComplexityScenarios {
                         min_nesting_depth: 3,
                     },
                 ),
+                _ => (
+                    "",
+                    "temp",
+                    ComplexityExpectation {
+                        min_cyclomatic: 0,
+                        max_cyclomatic: 0,
+                        min_cognitive: 0,
+                        max_cognitive: 0,
+                        min_nesting_depth: 0,
+                    },
+                ),
             };
 
             (
@@ -202,6 +235,17 @@ impl ComplexityScenarios {
                         min_cognitive: 3,
                         max_cognitive: 8,
                         min_nesting_depth: 1,
+                    },
+                ),
+                _ => (
+                    "",
+                    "temp",
+                    ComplexityExpectation {
+                        min_cyclomatic: 0,
+                        max_cyclomatic: 0,
+                        min_cognitive: 0,
+                        max_cognitive: 0,
+                        min_nesting_depth: 0,
                     },
                 ),
             };
