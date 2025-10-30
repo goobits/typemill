@@ -39,8 +39,17 @@ pub use super::refactoring_harness::Language;
 // Extend Language enum with import-specific helper
 impl Language {
     pub fn all_with_import_support() -> Vec<Language> {
-        // Start with TypeScript, Rust, Python (fully implemented)
-        // Will expand to all 9 languages as we add fixtures
+        // Currently testing: TypeScript, Rust, Python (3/9 languages)
+        //
+        // Fixtures are defined for all 9 languages in the scenario methods below,
+        // but plugin registration blockers prevent testing the other 6:
+        //
+        // BLOCKERS:
+        // - Java, Go, Swift, C, C++: Plugin not found (registration issue in mill-plugin-bundle)
+        // - CSharp: tree-sitter version conflict (0.20 vs 0.25)
+        //
+        // TODO: Resolve plugin registration to enable all 9 languages
+        // TODO: Migrate CSharp to tree-sitter 0.25
         vec![
             Language::TypeScript,
             Language::Rust,
@@ -152,7 +161,30 @@ impl ImportScenarios {
                     "import os\nfrom typing import List\n",
                     vec!["os".to_string(), "typing".to_string()],
                 ),
-                _ => unreachable!("Language not yet implemented"),
+                Language::Java => (
+                    "package com.example;\n\nimport java.util.List;\nimport java.util.ArrayList;\n",
+                    vec!["java.util.List".to_string(), "java.util.ArrayList".to_string()],
+                ),
+                Language::Go => (
+                    "package main\n\nimport \"fmt\"\nimport \"os\"\n",
+                    vec!["fmt".to_string(), "os".to_string()],
+                ),
+                Language::CSharp => (
+                    "using System;\nusing System.Collections.Generic;\n",
+                    vec!["System".to_string(), "System.Collections.Generic".to_string()],
+                ),
+                Language::Swift => (
+                    "import Foundation\nimport UIKit\n",
+                    vec!["Foundation".to_string(), "UIKit".to_string()],
+                ),
+                Language::C => (
+                    "#include <stdio.h>\n#include <stdlib.h>\n",
+                    vec!["stdio.h".to_string(), "stdlib.h".to_string()],
+                ),
+                Language::Cpp => (
+                    "#include <iostream>\n#include <vector>\n",
+                    vec!["iostream".to_string(), "vector".to_string()],
+                ),
             };
 
             ImportFixture {
@@ -180,7 +212,30 @@ impl ImportScenarios {
                     "import os\nfrom typing import List\n",
                     "os",
                 ),
-                _ => unreachable!("Language not yet implemented"),
+                Language::Java => (
+                    "package com.example;\n\nimport java.util.List;\nimport java.util.ArrayList;\n",
+                    "java.util.List",
+                ),
+                Language::Go => (
+                    "package main\n\nimport \"fmt\"\nimport \"os\"\n",
+                    "fmt",
+                ),
+                Language::CSharp => (
+                    "using System;\nusing System.Collections.Generic;\n",
+                    "System",
+                ),
+                Language::Swift => (
+                    "import Foundation\nimport UIKit\n",
+                    "Foundation",
+                ),
+                Language::C => (
+                    "#include <stdio.h>\n#include <stdlib.h>\n",
+                    "stdio.h",
+                ),
+                Language::Cpp => (
+                    "#include <iostream>\n#include <vector>\n",
+                    "iostream",
+                ),
             };
 
             ImportFixture {
@@ -210,7 +265,30 @@ impl ImportScenarios {
                     "import os\nfrom typing import List\n",
                     "json",
                 ),
-                _ => unreachable!("Language not yet implemented"),
+                Language::Java => (
+                    "package com.example;\n\nimport java.util.List;\nimport java.util.ArrayList;\n",
+                    "java.io.File",
+                ),
+                Language::Go => (
+                    "package main\n\nimport \"fmt\"\nimport \"os\"\n",
+                    "net",
+                ),
+                Language::CSharp => (
+                    "using System;\nusing System.Collections.Generic;\n",
+                    "System.IO",
+                ),
+                Language::Swift => (
+                    "import Foundation\nimport UIKit\n",
+                    "SwiftUI",
+                ),
+                Language::C => (
+                    "#include <stdio.h>\n#include <stdlib.h>\n",
+                    "string.h",
+                ),
+                Language::Cpp => (
+                    "#include <iostream>\n#include <vector>\n",
+                    "string",
+                ),
             };
 
             ImportFixture {
@@ -240,7 +318,30 @@ impl ImportScenarios {
                     "import os\n\ndef main():\n    pass\n",
                     "sys",
                 ),
-                _ => unreachable!("Language not yet implemented"),
+                Language::Java => (
+                    "package com.example;\n\nimport java.util.List;\n\nclass Main {}\n",
+                    "java.util.Map",
+                ),
+                Language::Go => (
+                    "package main\n\nimport \"fmt\"\n\nfunc main() {}\n",
+                    "os",
+                ),
+                Language::CSharp => (
+                    "using System;\n\nclass Program {}\n",
+                    "System.IO",
+                ),
+                Language::Swift => (
+                    "import Foundation\n\nfunc main() {}\n",
+                    "UIKit",
+                ),
+                Language::C => (
+                    "#include <stdio.h>\n\nint main() {}\n",
+                    "stdlib.h",
+                ),
+                Language::Cpp => (
+                    "#include <iostream>\n\nint main() {}\n",
+                    "vector",
+                ),
             };
 
             ImportFixture {
@@ -261,7 +362,12 @@ impl ImportScenarios {
                 Language::TypeScript => ("", "./utils"),
                 Language::Rust => ("", "serde"),  // Creates "use serde;" with module_path "serde" (exact match)
                 Language::Python => ("", "os"),
-                _ => unreachable!("Language not yet implemented"),
+                Language::Java => ("", "java.util.List"),
+                Language::Go => ("", "fmt"),
+                Language::CSharp => ("", "System"),
+                Language::Swift => ("", "Foundation"),
+                Language::C => ("", "stdio.h"),
+                Language::Cpp => ("", "iostream"),
             };
 
             ImportFixture {
@@ -291,7 +397,30 @@ impl ImportScenarios {
                     "import os\nfrom typing import List\n",
                     "os",
                 ),
-                _ => unreachable!("Language not yet implemented"),
+                Language::Java => (
+                    "package com.example;\n\nimport java.util.List;\nimport java.util.ArrayList;\n",
+                    "java.util.List",
+                ),
+                Language::Go => (
+                    "package main\n\nimport \"fmt\"\nimport \"os\"\n",
+                    "fmt",
+                ),
+                Language::CSharp => (
+                    "using System;\nusing System.Collections.Generic;\n",
+                    "System",
+                ),
+                Language::Swift => (
+                    "import Foundation\nimport UIKit\n",
+                    "Foundation",
+                ),
+                Language::C => (
+                    "#include <stdio.h>\n#include <stdlib.h>\n",
+                    "stdio.h",
+                ),
+                Language::Cpp => (
+                    "#include <iostream>\n#include <vector>\n",
+                    "iostream",
+                ),
             };
 
             ImportFixture {
@@ -331,7 +460,42 @@ impl ImportScenarios {
                     "helpers",
                     1usize,
                 ),
-                _ => unreachable!("Language not yet implemented"),
+                Language::Java => (
+                    "package com.example;\n\nimport com.example.utils.Helper;\nimport java.util.List;\n",
+                    "com.example.utils",
+                    "com.example.helpers",
+                    1usize,
+                ),
+                Language::Go => (
+                    "package main\n\nimport \"myproject/utils\"\nimport \"fmt\"\n",
+                    "myproject/utils",
+                    "myproject/helpers",
+                    1usize,
+                ),
+                Language::CSharp => (
+                    "using MyProject.Utils;\nusing System;\n",
+                    "MyProject.Utils",
+                    "MyProject.Helpers",
+                    1usize,
+                ),
+                Language::Swift => (
+                    "import Utils\nimport Foundation\n",
+                    "Utils",
+                    "Helpers",
+                    1usize,
+                ),
+                Language::C => (
+                    "#include \"utils.h\"\n#include <stdio.h>\n",
+                    "utils.h",
+                    "helpers.h",
+                    1usize,
+                ),
+                Language::Cpp => (
+                    "#include \"utils.hpp\"\n#include <iostream>\n",
+                    "utils.hpp",
+                    "helpers.hpp",
+                    1usize,
+                ),
             };
 
             ImportFixture {

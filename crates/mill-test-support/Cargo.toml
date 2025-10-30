@@ -33,7 +33,8 @@ criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
 
 # Plugin bundle - provides all language plugins via auto-discovery
 # Linked via extern crate declaration in test modules
-mill-plugin-bundle = { path = "../mill-plugin-bundle", features = ["lang-rust", "lang-typescript", "lang-markdown", "lang-toml", "lang-yaml"] }
+# Note: lang-csharp temporarily excluded due to tree-sitter 0.20 vs 0.25 version conflict
+mill-plugin-bundle = { path = "../mill-plugin-bundle", features = ["lang-rust", "lang-typescript", "lang-python", "lang-java", "lang-go", "lang-swift", "lang-c", "lang-cpp"] }
 
 # Benchmarks
 [[bench]]
