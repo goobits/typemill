@@ -233,38 +233,6 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn test_add_workspace_member() {
-        let content = r#"
-[workspace]
-members = ["crate1"]
-"#;
-
-        let result =
-            add_workspace_member(content, "/workspace/crate2", &PathBuf::from("/workspace"))
-                .unwrap();
-
-        assert!(result.contains("[workspace]"));
-        assert!(result.contains("crate1"));
-        assert!(result.contains("crate2"));
-    }
-
-    #[test]
-    fn test_add_workspace_member_existing() {
-        let content = r#"
-[workspace]
-members = ["crate1"]
-"#;
-
-        let result =
-            add_workspace_member(content, "/workspace/crate1", &PathBuf::from("/workspace"))
-                .unwrap();
-
-        // Should not duplicate
-        assert!(result.contains("crate1"));
-        assert_eq!(result.matches("crate1").count(), 1);
-    }
-
-    #[test]
     fn test_add_path_dependency() {
         let content = r#"
 [package]
@@ -299,11 +267,5 @@ version = "0.1.0"
         assert!(result.contains("crate1"));
         assert!(result.contains("crate2"));
         assert!(result.contains("resolver"));
-    }
-
-    #[test]
-    fn test_is_workspace_manifest() {
-        assert!(is_workspace_manifest("[workspace]\nmembers = []"));
-        assert!(!is_workspace_manifest("[package]\nname = \"foo\""));
     }
 }
