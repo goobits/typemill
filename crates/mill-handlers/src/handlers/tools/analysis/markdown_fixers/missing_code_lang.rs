@@ -79,6 +79,21 @@ impl MissingCodeLangFixer {
             return true;
         }
 
+        // Test assertion patterns (contain code but aren't actual code)
+        if trimmed.contains("should contain") || trimmed.contains("Should contain")
+            || trimmed.contains("Actual:") || trimmed.contains("Expected:")
+            || trimmed.contains("should be") || trimmed.contains("Should be") {
+            return true;
+        }
+
+        // Relative path imports (JavaScript/TypeScript, not Python)
+        // Python uses module paths like "foo.bar", not "./foo" or "../bar"
+        if (trimmed.contains("from './") || trimmed.contains("from \"./")
+            || trimmed.contains("from '../") || trimmed.contains("from \"../"))
+            && trimmed.contains("import") {
+            return true;
+        }
+
         // Numbered prose (1., 2., 3. or 1), 2), 3))
         let has_numbered_prose = lines.iter().filter(|l| {
             let t = l.trim();
