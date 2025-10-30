@@ -6,6 +6,7 @@ use mill_foundation::protocol::{
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use tokio::fs;
+use tracing::debug;
 
 /// Check if a directory is a Cargo package (contains Cargo.toml with [package] section)
 pub async fn is_cargo_package(dir_path: &Path) -> ServerResult<bool> {
@@ -778,8 +779,20 @@ pub async fn plan_workspace_manifest_updates_for_batch(
                     // Update members array
                     if let Some(members) = doc["workspace"]["members"].as_array_mut() {
                         let index_opt = members.iter().position(|m| m.as_str().map(|s| s.trim()) == Some(old_path_str.trim()));
+
+                        debug!(
+                            old_path_str = %old_path_str,
+                            new_path_str = %new_path_str,
+                            found_index = ?index_opt,
+                            members_count = members.len(),
+                            "Batch workspace member update"
+                        );
+
                         if let Some(index) = index_opt {
                             members.replace(index, new_path_str.as_str());
+                            debug!(index = index, "Replaced member in workspace array");
+                        } else {
+                            debug!(old_path_str = %old_path_str, "Member not found in workspace array");
                         }
                     }
 

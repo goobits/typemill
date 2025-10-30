@@ -533,21 +533,15 @@ impl RenameHandler {
         let mut all_file_checksums = HashMap::new();
         let mut total_affected_files = HashSet::new();
 
-        if !dir_moves.is_empty() {
-            use mill_lang_rust::workspace::cargo_util;
-            if let Ok(updates) = cargo_util::plan_workspace_manifest_updates_for_batch(&dir_moves, std::path::Path::new(&context.project_root)).await {
-                if !updates.is_empty() {
-                    let edits = cargo_util::convert_manifest_updates_to_edits(updates, &dir_moves[0].0, &dir_moves[0].1);
-                    for text_edit in edits {
-                        if let Some(file_path) = &text_edit.file_path {
-                            let uri = lsp_types::Url::from_file_path(file_path).map_err(|_| ServerError::Internal(format!("Invalid file path: {}", file_path)))?;
-                            let lsp_edit = lsp_types::TextEdit { range: lsp_types::Range { start: lsp_types::Position { line: text_edit.location.start_line, character: text_edit.location.start_column }, end: lsp_types::Position { line: text_edit.location.end_line, character: text_edit.location.end_column } }, new_text: text_edit.new_text.clone() };
-                            all_document_changes.push(lsp_types::DocumentChangeOperation::Edit(lsp_types::TextDocumentEdit { text_document: lsp_types::OptionalVersionedTextDocumentIdentifier { uri, version: None }, edits: vec![lsp_types::OneOf::Left(lsp_edit)] }));
-                        }
-                    }
-                }
-            }
-        }
+        // TODO: Batch workspace manifest updates should be handled by MoveService via PluginRegistry
+        // Current implementation has bugs:
+        // - mill-lang-rust not in dependencies
+        // - Direct language-specific calls break handler abstraction
+        // - Workspace updates already handled by individual directory_rename calls
+        //
+        // For now, workspace manifest updates happen per-target in plan_directory_rename
+        // which calls MoveService. This works but may create duplicate edits that get filtered.
+        let _dir_moves_unused = dir_moves; // Silence unused warning
 
         for target in targets {
             let new_name = target.new_name.as_ref().unwrap();

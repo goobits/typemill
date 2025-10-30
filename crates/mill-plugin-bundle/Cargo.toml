@@ -14,7 +14,7 @@ mill-lang-typescript = { path = "../mill-lang-typescript", optional = true, defa
 tracing = { workspace = true }
 mill-lang-rust = { path = "../mill-lang-rust", optional = true, default-features = false }
 mill-lang-python = { path = "../mill-lang-python", optional = true, default-features = false }
-mill-lang-gitignore = { path = "../mill-lang-gitignore", optional = true, default-features = false }
+mill-lang-gitignore = { path = "../../languages/mill-lang-gitignore", optional = true, default-features = false }
 mill-lang-swift = { path = "../mill-lang-swift", optional = true, default-features = false }
 mill-lang-csharp = { path = "../mill-lang-csharp", optional = true, default-features = false }
 mill-lang-c = { path = "../mill-lang-c", optional = true, default-features = false }

@@ -33,31 +33,31 @@ category = "full"
 default = true
 
 [languages.markdown]
-path = "crates/mill-lang-markdown"
+path = "languages/mill-lang-markdown"
 plugin_struct = "MarkdownPlugin"
 category = "full"  # Has full AST/analysis support
 default = true
 
 [languages.toml]
-path = "crates/mill-lang-toml"
+path = "languages/mill-lang-toml"
 plugin_struct = "TomlLanguagePlugin"
 category = "config"
 default = true
 
 [languages.yaml]
-path = "crates/mill-lang-yaml"
+path = "languages/mill-lang-yaml"
 plugin_struct = "YamlLanguagePlugin"
 category = "config"
 default = true
 
 [languages.cpp]
-path = "crates/mill-lang-cpp"
+path = "languages/mill-lang-cpp"
 plugin_struct = "CppPlugin"
 category = "full"
 default = false
 
 [languages.gitignore]
-path = "crates/mill-lang-gitignore"
+path = "languages/mill-lang-gitignore"
 plugin_struct = "GitignoreLanguagePlugin"
 category = "config"
 default = true

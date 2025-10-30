@@ -14,7 +14,7 @@ members = [
     "languages/mill-lang-markdown",
     "languages/mill-lang-toml",
     "languages/mill-lang-yaml",
-    "crates/mill-lang-gitignore",
+    "languages/mill-lang-gitignore",
     "crates/mill-plugin-bundle",
     "apps/mill",
     "analysis/mill-analysis-common",
