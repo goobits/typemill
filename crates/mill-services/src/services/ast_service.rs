@@ -113,30 +113,18 @@ fn build_import_graph_with_plugin(
         .and_then(|ext| ext.to_str())
         .ok_or_else(|| mill_foundation::protocol::ApiError::internal("File has no extension"))?;
 
-    // For languages without plugins, fall back to mill-ast
-    // Note: Only Rust and TypeScript supported after language reduction
-    if !matches!(
-        extension,
-        "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "rs"
-    ) {
-        // Fallback to mill-ast parser for other languages (if any remain)
-        return mill_ast::parser::build_import_graph(source, path).map_err(|e| {
-            mill_foundation::protocol::ApiError::internal(format!("AST parsing failed: {}", e))
-        });
+    // Try to find appropriate plugin from registry - works for all languages with plugins
+    if let Some(plugin) = registry.find_by_extension(extension) {
+        // Use the plugin's detailed import analysis
+        return plugin
+            .analyze_detailed_imports(source, Some(path))
+            .map_err(|e| {
+                mill_foundation::protocol::ApiError::internal(format!("Failed to parse imports: {}", e))
+            });
     }
 
-    // Find appropriate plugin from injected registry
-    let plugin = registry.find_by_extension(extension).ok_or_else(|| {
-        mill_foundation::protocol::ApiError::internal(format!(
-            "No plugin found for .{} files",
-            extension
-        ))
-    })?;
-
-    // Use the trait method for detailed import analysis
-    plugin
-        .analyze_detailed_imports(source, Some(path))
-        .map_err(|e| {
-            mill_foundation::protocol::ApiError::internal(format!("Failed to parse imports: {}", e))
-        })
+    // Fallback to mill-ast parser for languages without plugins
+    mill_ast::parser::build_import_graph(source, path).map_err(|e| {
+        mill_foundation::protocol::ApiError::internal(format!("AST parsing failed: {}", e))
+    })
 }

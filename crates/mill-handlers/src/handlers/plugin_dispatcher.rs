@@ -152,24 +152,15 @@ impl PluginDispatcher {
 
                 let lsp_adapter = unified_lsp_adapter.clone();
                 let primary_extension = &server_config.extensions[0];
-                let (plugin_name, plugin) = match primary_extension.as_str() {
-                    "ts" | "tsx" | "js" | "jsx" => {
-                        ("typescript".to_string(), Arc::new(LspAdapterPlugin::typescript(lsp_adapter)))
-                    }
-                    "py" | "pyi" => {
-                        ("python".to_string(), Arc::new(LspAdapterPlugin::python(lsp_adapter)))
-                    }
-                    "go" => ("go".to_string(), Arc::new(LspAdapterPlugin::go(lsp_adapter))),
-                    "rs" => ("rust".to_string(), Arc::new(LspAdapterPlugin::rust(lsp_adapter))),
-                    _ => {
-                        let generic_name = format!("{}-generic", primary_extension);
-                        (generic_name.clone(), Arc::new(LspAdapterPlugin::new(
-                            generic_name,
-                            server_config.extensions.clone(),
-                            lsp_adapter,
-                        )))
-                    }
-                };
+
+                // Use generic LSP adapter for all languages - no hardcoded routing needed
+                // The plugin name is derived from the primary extension
+                let plugin_name = format!("{}-lsp", primary_extension);
+                let plugin = Arc::new(LspAdapterPlugin::new(
+                    plugin_name.clone(),
+                    server_config.extensions.clone(),
+                    lsp_adapter,
+                ));
 
                 self.plugin_manager
                     .register_plugin(&plugin_name, plugin)
