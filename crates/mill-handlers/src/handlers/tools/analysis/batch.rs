@@ -167,7 +167,8 @@ pub async fn run_batch_analysis(
     let mut query_results = Vec::new();
     let mut failed_files_map = HashMap::new();
     let mut all_categories = HashSet::new();
-    let mut all_file_results = HashMap::new();
+    // Cache key: (file_path, category, kind) to allow same file analyzed with different queries
+    let mut all_file_results: HashMap<(PathBuf, String, String), FileAnalysisResult> = HashMap::new();
 
     for query in &request.queries {
         let category = query
@@ -185,7 +186,8 @@ pub async fn run_batch_analysis(
         let files_for_query = resolve_scope_to_files(&query.scope).await?;
         for file_path in &files_for_query {
             if let Some(cached_ast) = ast_cache.get(file_path) {
-                if !all_file_results.contains_key(file_path) {
+                let cache_key = (file_path.clone(), category.clone(), query.kind.clone());
+                if !all_file_results.contains_key(&cache_key) {
                     let config = request.config.as_ref().unwrap_or(&context.analysis_config);
                     match analyze_file_with_cached_ast(
                         file_path,
@@ -199,7 +201,7 @@ pub async fn run_batch_analysis(
                     .await
                     {
                         Ok(result_for_file) => {
-                            all_file_results.insert(file_path.clone(), result_for_file);
+                            all_file_results.insert(cache_key, result_for_file);
                         }
                         Err(e) => {
                             let file_path_str = file_path.display().to_string();
@@ -218,15 +220,19 @@ pub async fn run_batch_analysis(
 
         let files_for_query_set: HashSet<_> = files_for_query.iter().collect();
         let all_findings_for_query: Vec<Finding> = all_file_results
-            .values()
-            .filter(|r| files_for_query_set.contains(&r.file_path))
-            .flat_map(|r| r.findings.clone())
+            .iter()
+            .filter(|((path, cat, kind), _)| {
+                files_for_query_set.contains(path) && cat == &category && kind == &query.kind
+            })
+            .flat_map(|(_, r)| r.findings.clone())
             .collect();
 
         let symbols_analyzed_for_query: usize = all_file_results
-            .values()
-            .filter(|r| files_for_query_set.contains(&r.file_path))
-            .filter_map(|r| ast_cache.get(&r.file_path))
+            .iter()
+            .filter(|((path, cat, kind), _)| {
+                files_for_query_set.contains(path) && cat == &category && kind == &query.kind
+            })
+            .filter_map(|((path, _, _), _)| ast_cache.get(path))
             .map(|ast| ast.symbols.len())
             .sum();
 
@@ -251,10 +257,14 @@ pub async fn run_batch_analysis(
         });
     }
 
-    let mut all_suggestions: Vec<ActionableSuggestion> = all_file_results
-        .values()
-        .flat_map(|r| r.suggestions.clone())
-        .collect();
+    let mut all_suggestions: Vec<ActionableSuggestion> = if request.no_suggestions {
+        Vec::new()
+    } else {
+        all_file_results
+            .values()
+            .flat_map(|r| r.suggestions.clone())
+            .collect()
+    };
 
     if !request.no_suggestions {
         // 4. Generate workspace-level suggestions
@@ -829,6 +839,7 @@ async fn analyze_file_with_cached_ast(
         .iter()
         .flat_map(finding_to_candidate)
         .collect::<Vec<_>>();
+
     let suggestions = _suggestion_generator.generate_multiple(candidates, &context);
 
     let result = FileAnalysisResult {
@@ -844,7 +855,7 @@ fn finding_to_candidate(finding: &Finding) -> Option<RefactoringCandidate> {
     let (refactor_type, scope) = match finding.kind.as_str() {
         "long_method" => (RefactorType::ExtractMethod, Scope::Function),
         "complexity_hotspot" => (RefactorType::ExtractMethod, Scope::Function),
-        "unused_imports" => (RefactorType::RemoveUnusedImport, Scope::File),
+        "unused_import" | "unused_imports" => (RefactorType::RemoveUnusedImport, Scope::File),
         "unused_symbols" => (RefactorType::RemoveDeadCode, Scope::File),
         _ => return None,
     };

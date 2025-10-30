@@ -43,7 +43,7 @@ pub struct SuggestionFilters {
 }
 
 fn default_min_confidence() -> f64 {
-    0.7
+    0.6
 }
 
 fn default_safety_levels() -> HashSet<SafetyLevel> {
