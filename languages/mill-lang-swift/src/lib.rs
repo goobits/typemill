@@ -1,5 +1,6 @@
 // Swift Language Plugin for TypeMill
 
+mod constants;
 pub mod import_support;
 pub mod lsp_installer;
 pub mod project_factory;
@@ -15,8 +16,8 @@ use mill_plugin_api::{
     ModuleReferenceScanner, ParsedSource, PluginError, PluginResult, RefactoringProvider,
     ScanScope,
 };
+use regex::Regex;
 use std::path::Path;
-use lazy_static::lazy_static;
 
 define_language_plugin! {
     struct: SwiftPlugin,
@@ -38,28 +39,12 @@ define_language_plugin! {
     doc: "Swift language plugin implementation"
 }
 
-lazy_static! {
-    static ref SYMBOL_REGEX: Regex =
-        Regex::new(r"(?m)^\s*(func|class|struct|enum|protocol|extension)\s+([a-zA-Z0-9_]+)")
-            .expect("Invalid regex for Swift symbol parsing");
-    static ref MANIFEST_NAME_REGEX: Regex =
-        Regex::new(r#"name:\s*"([^"]+)""#).expect("Invalid regex for Swift manifest name");
-    static ref MANIFEST_VERSION_REGEX: Regex =
-        Regex::new(r#"swift-tools-version:([0-9.]+)"#)
-            .expect("Invalid regex for Swift manifest version");
-    static ref MANIFEST_DEP_REGEX: Regex =
-        Regex::new(r#"\.package\(\s*name:\s*"([^"]+)"[^)]+\)"#)
-            .expect("Invalid regex for Swift manifest dependency");
-    static ref IMPORT_REGEX: Regex =
-        Regex::new(r"^\s*import\s+([a-zA-Z0-9_]+)").expect("Invalid regex for Swift import parsing");
-}
-
 #[async_trait]
 impl LanguagePlugin for SwiftPlugin {
     impl_language_plugin_basics!();
 
     async fn parse(&self, source: &str) -> PluginResult<ParsedSource> {
-        let symbols = SYMBOL_REGEX
+        let symbols = constants::SYMBOL_REGEX
             .captures_iter(source)
             .map(|cap| {
                 let kind_str = &cap[1];
@@ -95,19 +80,19 @@ impl LanguagePlugin for SwiftPlugin {
         let content = std::fs::read_to_string(path)
             .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))?;
 
-        let name = MANIFEST_NAME_REGEX
+        let name = constants::MANIFEST_NAME_REGEX
             .captures(&content)
             .and_then(|caps| caps.get(1))
             .map(|m| m.as_str().to_string())
             .unwrap_or_default();
 
-        let version = MANIFEST_VERSION_REGEX
+        let version = constants::MANIFEST_VERSION_REGEX
             .captures(&content)
             .and_then(|caps| caps.get(1))
             .map(|m| m.as_str().to_string())
             .unwrap_or_default();
 
-        let dependencies = MANIFEST_DEP_REGEX
+        let dependencies = constants::MANIFEST_DEP_REGEX
             .captures_iter(&content)
             .map(|caps| mill_plugin_api::Dependency {
                 name: caps[1].to_string(),
@@ -207,8 +192,6 @@ impl RefactoringProvider for SwiftPlugin {
     }
 }
 
-use regex::Regex;
-
 impl ModuleReferenceScanner for SwiftPlugin {
     fn scan_references(
         &self,
@@ -217,18 +200,27 @@ impl ModuleReferenceScanner for SwiftPlugin {
         scope: ScanScope,
     ) -> PluginResult<Vec<ModuleReference>> {
         let mut references = Vec::new();
-        let import_pattern = format!(r"\bimport\s+{}\b", module_name);
-        let import_re = Regex::new(&import_pattern)
-            .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
-        let qualified_pattern = format!(r"{}\.", module_name);
-        let qualified_re = Regex::new(&qualified_pattern)
-            .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
+        let import_re = (constants::IMPORT_WITH_BOUNDARY_PATTERN)(module_name);
+        let qualified_re = (constants::QUALIFIED_PATH_PATTERN)(module_name);
 
         for (line_idx, line) in content.lines().enumerate() {
             let line_num = line_idx + 1;
 
-            if scope == ScanScope::TopLevelOnly || scope == ScanScope::AllUseStatements || scope == ScanScope::All {
-                for mat in import_re.find_iter(line) {
+            // Skip comment lines
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") {
+                continue;
+            }
+
+            // Strip inline comments before processing
+            let code_only = line.split("//").next().unwrap_or(line);
+
+            // Scan for import statements with support for qualified imports
+            if scope == ScanScope::TopLevelOnly
+                || scope == ScanScope::AllUseStatements
+                || scope == ScanScope::All
+            {
+                for mat in import_re.find_iter(code_only) {
                     references.push(ModuleReference {
                         line: line_num,
                         column: mat.start(),
@@ -239,8 +231,9 @@ impl ModuleReferenceScanner for SwiftPlugin {
                 }
             }
 
+            // Scan for qualified paths (e.g., Foundation.URL)
             if scope == ScanScope::All || scope == ScanScope::QualifiedPaths {
-                for mat in qualified_re.find_iter(line) {
+                for mat in qualified_re.find_iter(code_only) {
                     references.push(ModuleReference {
                         line: line_num,
                         column: mat.start(),
@@ -263,7 +256,7 @@ impl ImportAnalyzer for SwiftPlugin {
         let content = std::fs::read_to_string(file_path)
             .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))?;
 
-        let imports = IMPORT_REGEX
+        let imports = constants::IMPORT_REGEX
             .captures_iter(&content)
             .map(|cap| {
                 let line_number = content[..cap.get(0).map_or(0, |m| m.start())]
@@ -293,7 +286,7 @@ impl ImportAnalyzer for SwiftPlugin {
             metadata: ImportGraphMetadata {
                 language: "swift".to_string(),
                 parsed_at: chrono::Utc::now(),
-                parser_version: "0.1.0".to_string(),
+                parser_version: constants::PARSER_VERSION.to_string(),
                 circular_dependencies: vec![],
                 external_dependencies: vec![],
             },

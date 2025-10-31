@@ -2,6 +2,7 @@
 //!
 //! Provides AST parsing, symbol extraction, and manifest analysis for C#.
 
+mod constants;
 pub mod import_support;
 pub mod lsp_installer;
 pub mod manifest;
@@ -170,27 +171,41 @@ impl ModuleReferenceScanner for CsharpPlugin {
         for (line_idx, line) in content.lines().enumerate() {
             let line_num = line_idx + 1;
 
-            // Scan for `using module_name;`
+            // Skip lines that are comments
+            if constants::is_in_multiline_comment(line) {
+                continue;
+            }
+
+            // Strip inline comments before processing
+            let code_only = constants::strip_single_line_comments(line);
+
+            // Scan for `using module_name;` with word boundaries
             if scope != ScanScope::QualifiedPaths {
-                let pattern = format!("using {};", module_name);
-                if let Some(col) = line.find(&pattern) {
-                    references.push(ModuleReference {
-                        line: line_num,
-                        column: col + 6, // After "using "
-                        length: module_name.len(),
-                        text: module_name.to_string(),
-                        kind: ReferenceKind::Declaration,
-                    });
+                let using_re = (constants::USING_STATEMENT_PATTERN)(module_name);
+                if let Some(mat) = using_re.find(code_only) {
+                    // Skip if this is a using alias (contains '=')
+                    if !code_only[mat.start()..].contains('=') {
+                        references.push(ModuleReference {
+                            line: line_num,
+                            column: mat.start() + 6, // After "using "
+                            length: module_name.len(),
+                            text: module_name.to_string(),
+                            kind: ReferenceKind::Declaration,
+                        });
+                    }
                 }
             }
 
             // Scan for qualified paths like `module_name.Class`
             if scope == ScanScope::QualifiedPaths || scope == ScanScope::All {
-                let pattern = format!("{}.", module_name);
-                for (idx, _) in line.match_indices(&pattern) {
+                let qualified_pattern = (constants::QUALIFIED_PATH_PATTERN)(module_name);
+                let qualified_re = regex::Regex::new(&qualified_pattern)
+                    .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
+
+                for mat in qualified_re.find_iter(code_only) {
                     references.push(ModuleReference {
                         line: line_num,
-                        column: idx,
+                        column: mat.start(),
                         length: module_name.len(),
                         text: module_name.to_string(),
                         kind: ReferenceKind::QualifiedPath,
@@ -200,10 +215,11 @@ impl ModuleReferenceScanner for CsharpPlugin {
 
             // Scan for string literals (e.g., for reflection)
             if scope == ScanScope::All {
-                if let Some(col) = line.find(&format!("\"{}\"", module_name)) {
+                let string_pattern = (constants::STRING_LITERAL_PATTERN)(module_name);
+                if let Some(col) = code_only.find(&string_pattern) {
                     references.push(ModuleReference {
                         line: line_num,
-                        column: col + 1,
+                        column: col + 1, // Skip opening quote
                         length: module_name.len(),
                         text: module_name.to_string(),
                         kind: ReferenceKind::StringLiteral,
@@ -218,9 +234,6 @@ impl ModuleReferenceScanner for CsharpPlugin {
 
 use chrono::Utc;
 use mill_foundation::protocol::{ImportGraphMetadata, ImportInfo, ImportType};
-
-/// tree-sitter-c-sharp parser version
-const CSHARP_PARSER_VERSION: &str = "0.20.0";
 
 impl ImportAnalyzer for CsharpPlugin {
     fn build_import_graph(
@@ -266,7 +279,7 @@ impl ImportAnalyzer for CsharpPlugin {
             metadata: ImportGraphMetadata {
                 language: self.metadata().name.to_string(),
                 parsed_at: Utc::now(),
-                parser_version: CSHARP_PARSER_VERSION.to_string(),
+                parser_version: constants::CSHARP_PARSER_VERSION.to_string(),
                 circular_dependencies: vec![],
                 external_dependencies: vec![],
             },
