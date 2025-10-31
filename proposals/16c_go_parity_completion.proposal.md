@@ -1,5 +1,12 @@
 # Proposal 16c: Go Language Plugin Parity Completion
 
+**✅ STATUS: IMPLEMENTED AND MERGED**
+- **Merged**: 2025-10-31
+- **Branch**: `feat/go-plugin-parity`
+- **Tests**: 30/30 passing
+- **Merge Commit**: See main branch history
+- **Critical Fixes**: False capability claims fixed, refactoring.rs wired up
+
 ## Problem
 
 The Go language plugin (`mill-lang-go`) is currently **42% complete (5/12 traits)** and has **misleading capability claims**. The plugin claims to support features it doesn't implement (workspace support, advanced imports) and has existing refactoring code that isn't wired up. This incomplete and inconsistent implementation blocks Go developers from using TypeMill for Go module workspaces.

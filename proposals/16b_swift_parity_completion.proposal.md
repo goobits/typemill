@@ -1,5 +1,11 @@
 # Proposal 16b: Swift Language Plugin Parity Completion
 
+**✅ STATUS: IMPLEMENTED AND MERGED**
+- **Merged**: 2025-10-31
+- **Branch**: `feat/swift-parity-completion`
+- **Tests**: 9/9 passing
+- **Merge Commit**: See main branch history
+
 ## Problem
 
 The Swift language plugin (`mill-lang-swift`) is currently **42% complete (5/12 traits)**, missing critical capabilities including refactoring operations, workspace management, and dependency analysis. This incomplete implementation blocks Swift developers from using TypeMill for iOS/macOS projects and Swift Package Manager workspaces.
