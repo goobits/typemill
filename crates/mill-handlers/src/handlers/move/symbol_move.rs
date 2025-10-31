@@ -14,7 +14,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::handlers::tools::ToolHandlerContext;
 
-use super::validation::{analyze_workspace_edit, estimate_impact, extension_to_language};
+use super::validation::{analyze_workspace_edit, estimate_impact};
 
 /// Generate plan for symbol move using LSP or AST fallback
 pub async fn plan_symbol_move(
@@ -384,8 +384,13 @@ async fn try_lsp_symbol_move(
         "Analyzed WorkspaceEdit successfully"
     );
 
-    // Determine language from extension
-    let language = extension_to_language(extension);
+    // Determine language from extension via plugin registry
+    let language = context
+        .app_state
+        .language_plugins
+        .get_plugin(extension)
+        .map(|p| p.metadata().name.to_string())
+        .unwrap_or_else(|| "unknown".to_string());
 
     // Build metadata
     let metadata = PlanMetadata {

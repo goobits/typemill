@@ -318,8 +318,13 @@ impl ReorderHandler {
 
         let warnings = Vec::new();
 
-        // Determine language from extension
-        let language = self.extension_to_language(extension);
+        // Determine language from extension via plugin registry
+        let language = context
+            .app_state
+            .language_plugins
+            .get_plugin(extension)
+            .map(|p| p.metadata().name.to_string())
+            .unwrap_or_else(|| "unknown".to_string());
 
         // Build metadata
         let metadata = PlanMetadata {
@@ -490,8 +495,13 @@ impl ReorderHandler {
 
         let warnings = Vec::new();
 
-        // Determine language from extension
-        let language = self.extension_to_language(extension);
+        // Determine language from extension via plugin registry
+        let language = context
+            .app_state
+            .language_plugins
+            .get_plugin(extension)
+            .map(|p| p.metadata().name.to_string())
+            .unwrap_or_else(|| "unknown".to_string());
 
         // Build metadata
         let metadata = PlanMetadata {
@@ -511,21 +521,8 @@ impl ReorderHandler {
         })
     }
 
-    /// Map file extension to language name
-    fn extension_to_language(&self, extension: &str) -> String {
-        match extension {
-            "rs" => "rust",
-            "ts" | "tsx" => "typescript",
-            "js" | "jsx" => "javascript",
-            "py" | "pyi" => "python",
-            "go" => "go",
-            "java" => "java",
-            "swift" => "swift",
-            "cs" => "csharp",
-            _ => "unknown",
-        }
-        .to_string()
-    }
+    // Removed extension_to_language() - use plugin registry instead:
+    // context.app_state.language_plugins.get_plugin(ext)?.metadata().name
 }
 
 /// Calculate SHA-256 checksum of file content

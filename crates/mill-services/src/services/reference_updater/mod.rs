@@ -82,8 +82,12 @@ impl ReferenceUpdater {
             "Found project files"
         );
 
-        // Check if this is a Rust crate rename (directory with Cargo.toml)
-        let is_rust_crate_rename = is_directory_rename && old_path.join("Cargo.toml").exists();
+        // Check if this is a package rename (directory with any plugin's manifest file)
+        let is_package_rename = is_directory_rename
+            && plugins.iter().any(|p| {
+                let manifest_file = p.metadata().manifest_filename;
+                old_path.join(manifest_file).exists()
+            });
 
         // Check if scope is comprehensive (e.g., --update-all)
         // In comprehensive mode, use ALL files matching scope instead of reference-based detection
@@ -98,13 +102,13 @@ impl ReferenceUpdater {
                 "Using comprehensive scope - scanning all files matching scope filters"
             );
             project_files.clone()
-        } else if is_rust_crate_rename {
-            // For Rust crate renames, call the detector ONCE with the directory paths
-            // This allows the detector to scan for crate-level imports
+        } else if is_package_rename {
+            // For package renames, call the detector ONCE with the directory paths
+            // This allows the detector to scan for package-level imports
             tracing::info!(
                 old_path = %old_path.display(),
                 new_path = %new_path.display(),
-                "Detected Rust crate rename, using crate-level detection"
+                "Detected package rename, using package-level detection"
             );
             self.find_affected_files_for_rename(
                 old_path,
@@ -201,7 +205,7 @@ impl ReferenceUpdater {
         // For directory renames, exclude files inside the renamed directory UNLESS it's a Rust crate rename
         // For Rust crate renames, we need to process files inside the crate to update self-referencing imports
         if is_directory_rename {
-            if is_rust_crate_rename {
+            if is_package_rename {
                 // For Rust crate renames, INCLUDE files inside the crate for self-reference updates
                 // Add all Rust files inside the renamed crate to affected_files
                 tracing::info!(
@@ -262,7 +266,7 @@ impl ReferenceUpdater {
                 Err(_) => continue,
             };
 
-            if is_rust_crate_rename {
+            if is_package_rename {
                 // For Rust crate renames, use simple file rename logic with rename_info
                 // The rename_info contains old_crate_name and new_crate_name which the plugin uses
                 tracing::debug!(
@@ -554,34 +558,49 @@ impl ReferenceUpdater {
         plugins: &[std::sync::Arc<dyn mill_plugin_api::LanguagePlugin>],
         rename_info: Option<&serde_json::Value>,
     ) -> ServerResult<Vec<PathBuf>> {
-        // Rust-specific cross-crate move detection
-        // Rust uses crate-qualified imports (e.g., "use common::utils::foo") which the generic
-        // ImportPathResolver cannot resolve. We need special handling for cross-crate moves.
-
-        // Check if this is a Rust file OR a Rust crate directory (contains Cargo.toml)
-        let is_rust_file = old_path.extension().and_then(|e| e.to_str()) == Some("rs");
-        let is_rust_crate = old_path.is_dir() && old_path.join("Cargo.toml").exists();
+        // Language-specific cross-package move detection
+        // Some languages (e.g., Rust) use package-qualified imports which the generic
+        // ImportPathResolver cannot resolve. We need special handling for cross-package moves.
 
         let mut all_affected = Vec::new();
 
-        if is_rust_file || is_rust_crate {
-            // Call Rust plugin's reference detector via plugin registry
-            if let Some(rust_plugin) = plugins.iter().find(|p| p.handles_extension("rs")) {
-                if let Some(detector) = rust_plugin.reference_detector() {
-                    let rust_affected = detector
-                        .find_affected_files(old_path, new_path, &self.project_root, project_files)
-                        .await;
+        // Find plugin that owns this path (by file extension or manifest file)
+        let owning_plugin = if old_path.is_dir() {
+            // Check for package directory by manifest file
+            plugins.iter().find(|p| {
+                let manifest_file = p.metadata().manifest_filename;
+                old_path.join(manifest_file).exists()
+            })
+        } else {
+            // Check for file by extension
+            old_path
+                .extension()
+                .and_then(|e| e.to_str())
+                .and_then(|ext| plugins.iter().find(|p| p.handles_extension(ext)))
+        };
 
-                    // Add Rust files to the affected list
-                    all_affected.extend(rust_affected);
-                }
+        if let Some(plugin) = owning_plugin {
+            // Call plugin's reference detector if available
+            if let Some(detector) = plugin.reference_detector() {
+                let plugin_affected = detector
+                    .find_affected_files(old_path, new_path, &self.project_root, project_files)
+                    .await;
+
+                // Add plugin-specific files to the affected list
+                all_affected.extend(plugin_affected);
             }
 
-            // ALSO run generic detection to find non-Rust files (markdown/TOML/YAML)
-            // Filter out .rs files since they're already handled by Rust detector
-            let non_rust_files: Vec<PathBuf> = project_files
+            // ALSO run generic detection to find non-plugin files (markdown/TOML/YAML)
+            // Filter out files with this plugin's extensions since they're already handled
+            let plugin_extensions: Vec<&str> = plugin.metadata().extensions.to_vec();
+            let non_plugin_files: Vec<PathBuf> = project_files
                 .iter()
-                .filter(|f| f.extension().and_then(|e| e.to_str()) != Some("rs"))
+                .filter(|f| {
+                    f.extension()
+                        .and_then(|e| e.to_str())
+                        .map(|ext| !plugin_extensions.contains(&ext))
+                        .unwrap_or(true)
+                })
                 .cloned()
                 .collect();
 
@@ -589,14 +608,14 @@ impl ReferenceUpdater {
                 old_path,
                 new_path,
                 &self.project_root,
-                &non_rust_files,
+                &non_plugin_files,
                 plugins,
                 rename_info,
             );
 
             all_affected.extend(generic_affected);
         } else {
-            // Not a Rust file/crate - use generic detection for everything
+            // No specific plugin with reference detector - use generic detection for everything
             let generic_affected = detectors::find_generic_affected_files(
                 old_path,
                 new_path,

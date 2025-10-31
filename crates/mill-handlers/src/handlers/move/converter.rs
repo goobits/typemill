@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use tracing::{debug, info};
 
-use super::validation::{estimate_impact, extension_to_language};
+use super::validation::estimate_impact;
 use crate::handlers::common::calculate_checksums_for_edits;
 use crate::handlers::tools::ToolHandlerContext;
 
@@ -66,7 +66,12 @@ pub async fn editplan_to_moveplan(
         .extension()
         .and_then(|ext| ext.to_str())
         .unwrap_or("unknown");
-    let language = extension_to_language(extension);
+    let language = context
+        .app_state
+        .language_plugins
+        .get_plugin(extension)
+        .map(|p| p.metadata().name.to_string())
+        .unwrap_or_else(|| "unknown".to_string());
     let impact = estimate_impact(summary.affected_files);
 
     let metadata = PlanMetadata {

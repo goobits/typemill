@@ -7,22 +7,8 @@ pub(crate) fn calculate_checksum(content: &str) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-/// Map file extension to language name
-pub(crate) fn extension_to_language(extension: &str) -> String {
-    match extension {
-        "rs" => "rust",
-        "ts" | "tsx" => "typescript",
-        "js" | "jsx" => "javascript",
-        "py" | "pyi" => "python",
-        "go" => "go",
-        "java" => "java",
-        "swift" => "swift",
-        "cs" => "csharp",
-        "md" | "markdown" => "markdown",
-        _ => "unknown",
-    }
-    .to_string()
-}
+// Removed extension_to_language() - use plugin registry instead:
+// context.app_state.language_plugins.get_plugin(ext)?.metadata().name
 
 /// Estimate impact based on number of affected files
 pub(crate) fn estimate_impact(affected_files: usize) -> String {

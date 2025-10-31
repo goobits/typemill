@@ -115,12 +115,17 @@ impl RenameHandler {
         // No warnings for simple file rename
         let warnings = Vec::new();
 
-        // Determine language from extension
+        // Determine language from extension via plugin registry
         let extension = old_path
             .extension()
             .and_then(|ext| ext.to_str())
             .unwrap_or("unknown");
-        let language = super::utils::extension_to_language(extension);
+        let language = context
+            .app_state
+            .language_plugins
+            .get_plugin(extension)
+            .map(|p| p.metadata().name.to_string())
+            .unwrap_or_else(|| "unknown".to_string());
 
         // Build metadata
         let metadata = PlanMetadata {

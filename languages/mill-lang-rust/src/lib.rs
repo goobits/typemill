@@ -35,7 +35,10 @@ use mill_lang_common::{
     manifest_templates::{ManifestTemplate, TomlManifestTemplate},
     read_manifest,
 };
-use mill_plugin_api::{LanguagePlugin, ManifestData, ParsedSource, PluginResult};
+use mill_plugin_api::{
+    AnalysisMetadata, DocCommentStyle, LanguagePlugin, ManifestData, ParsedSource, PluginResult,
+};
+use regex::Regex;
 use std::path::Path;
 
 // Import helpers from the imports module
@@ -251,11 +254,59 @@ impl LanguagePlugin for RustPlugin {
 
         final_result.ok()
     }
+
+    fn analysis_metadata(&self) -> Option<&dyn AnalysisMetadata> {
+        Some(self)
+    }
 }
 
 // ============================================================================
 // Capability Trait Implementations
 // ============================================================================
+
+impl AnalysisMetadata for RustPlugin {
+    fn test_patterns(&self) -> Vec<Regex> {
+        vec![
+            Regex::new(r"#\[test\]").unwrap(),
+            Regex::new(r"#\[tokio::test\]").unwrap(),
+            Regex::new(r"#\[async_std::test\]").unwrap(),
+            Regex::new(r"#\[actix_rt::test\]").unwrap(),
+        ]
+    }
+
+    fn assertion_patterns(&self) -> Vec<Regex> {
+        vec![
+            Regex::new(r"\bassert!\(").unwrap(),
+            Regex::new(r"\bassert_eq!\(").unwrap(),
+            Regex::new(r"\bassert_ne!\(").unwrap(),
+            Regex::new(r"\bdebug_assert!\(").unwrap(),
+            Regex::new(r"\bdebug_assert_eq!\(").unwrap(),
+            Regex::new(r"\bdebug_assert_ne!\(").unwrap(),
+        ]
+    }
+
+    fn doc_comment_style(&self) -> DocCommentStyle {
+        DocCommentStyle::TripleSlash
+    }
+
+    fn visibility_keywords(&self) -> Vec<&'static str> {
+        vec!["pub", "pub(crate)", "pub(super)", "pub(in"]
+    }
+
+    fn interface_keywords(&self) -> Vec<&'static str> {
+        vec!["trait", "impl"]
+    }
+
+    fn complexity_keywords(&self) -> Vec<&'static str> {
+        vec![
+            "if", "else", "match", "for", "while", "loop", "?", "&&", "||", "unwrap", "expect",
+        ]
+    }
+
+    fn nesting_penalty(&self) -> f32 {
+        1.5
+    }
+}
 
 impl mill_plugin_api::ModuleReferenceScanner for RustPlugin {
     fn scan_references(

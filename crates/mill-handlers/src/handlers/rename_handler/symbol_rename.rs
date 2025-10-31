@@ -89,8 +89,13 @@ impl RenameHandler {
             .analyze_workspace_edit(&workspace_edit, context)
             .await?;
 
-        // Determine language from extension
-        let language = super::utils::extension_to_language(extension);
+        // Determine language from extension via plugin registry
+        let language = context
+            .app_state
+            .language_plugins
+            .get_plugin(extension)
+            .map(|p| p.metadata().name.to_string())
+            .unwrap_or_else(|| "unknown".to_string());
 
         // Build metadata
         let metadata = PlanMetadata {

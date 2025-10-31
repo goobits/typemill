@@ -12,6 +12,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["io-util", "io-std"] }
 tracing = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
+regex = { workspace = true }
 
 # Inventory for static plugin registration (Layer 0 - no upward dependencies)
 inventory = "0.3"
