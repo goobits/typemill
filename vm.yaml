@@ -62,12 +62,6 @@ apt_packages:
   - nano
   - sox
   - pipx
-npm_packages:
-  - '@anthropic-ai/claude-code'
-  - '@google/gemini-cli'
-  - npm-check-updates
-  - prettier
-  - eslint
 pip_packages:
   - claudeflow
 terminal:
@@ -91,6 +85,9 @@ npm_packages:
   - '@anthropic-ai/claude-code'
   - '@google/gemini-cli'
   - '@openai/codex'
+  - npm-check-updates
+  - prettier
+  - eslint
 ports:
   _range: [3240, 3249]
 networking:
