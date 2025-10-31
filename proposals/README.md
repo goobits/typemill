@@ -1,63 +1,26 @@
 # Proposals
 
-Task-focused proposals showing **what** needs to be done and execution dependencies.
+Task-focused proposals for significant changes to the codebase.
 
-## Numbering Schema
+## Purpose
 
-- `00_name.md` - Standalone (in-progress work, no blockers)
-- `01_name.md` - Sequential (must complete before Phase 2)
-- `02a_name.md, 02b_name.md, ...` - Parallel execution (can run simultaneously)
-- `03_name.md` - Sequential (waits for Phase 2)
-- `05_name.md` - Major changes (requires planning)
+This directory contains formal proposals for:
+- Major refactorings or architectural changes
+- New features requiring cross-cutting changes
+- Complex bug fixes that need design discussion
 
-## Active Proposals
+## File Naming
 
-### Phase 0: In Progress
-- `00_actionable_suggestions_integration.md` - ⚠️ PARTIAL (2/6 complete, 5 tests failing)
+Proposals use numbered prefixes to indicate dependencies:
+- `00_name.md` - Standalone work, no blockers
+- `01_name.md` - Sequential work (must complete before dependent work)
+- `02a_name.md, 02b_name.md` - Parallel work (can run simultaneously)
+- `NN_name.proposal.md` - Larger proposals with detailed implementation plans
 
-### Phase 1: Build System
-- `01_xtask_pattern_adoption.md` - Replace shell scripts with Rust automation
+## Bug Reports
 
-### Phase 2: Code Quality (Parallel)
-All can run simultaneously:
-- `02a_split_move_handler.md` - Split 720-line handler into modules
-- `02b_markdown_link_detection.md` - Add markdown link path extraction
-- `02c_split_workspace_apply_handler.md` - Split 870-line handler
-- `02d_fix_lsp_zombie_processes.md` - Fix 2,500+ process leak
-- `02e_lsp_progress_notifications.md` - LSP $/progress support
-- `02f_comprehensive_rename_updates.md` - 9% → 93% rename coverage
+The `bug_reports/` subdirectory tracks known issues requiring investigation or complex fixes.
 
-### Phase 3: Language Features
-- `03_single_language_builds.md` - Capability traits for optional languages
-  - ⚠️ **Prerequisite for Phase 4**
+## Completed Work
 
-### Phase 4: Language Expansion
-- `04_language_expansion.md` - Add C++, C, PHP support
-  - ⚠️ **PAUSED** - Awaiting unified API completion
-  - Depends on: Phase 3 completion
-
-### Phase 5: Major Breaking Changes
-- `05_rename_to_typemill.md` - Rename project mill → typemill
-  - ⚠️ **DISRUPTIVE** - Requires team consensus
-
-## Completed Proposals
-
-Recent completions:
-- `15_language_plugins_directory.proposal.md` ✅ (2025-10-30)
-- `17_batch_rename_fix.proposal.md` ✅ (2025-10-30)
-- `18_comprehensive_path_dependency_updates.proposal.md` ✅ (2025-10-30)
-
-## Execution Guide
-
-**Immediate priorities:**
-1. Complete `00_actionable_suggestions_integration` (4 remaining kinds)
-2. Execute `01_xtask_pattern_adoption`
-3. Run Phase 2 proposals in parallel (6 independent tasks)
-
-**Sequential dependencies:**
-- Phase 3 must complete before Phase 4
-- Phase 5 requires separate planning/approval
-
-**Parallelization:**
-- All `02x_` proposals can run simultaneously
-- No blockers between Phase 2 tasks
+When proposals are completed, they are removed from this directory. The git history preserves the proposal details if needed for reference.
