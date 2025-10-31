@@ -1,6 +1,11 @@
 # Proposal 19a: Critical Safety Fixes for Language Plugins
 
 **Status**: Ready for Implementation
+
+**Status**: ✅ IMPLEMENTED AND MERGED
+**Branch**: fix/critical-safety-unwrap
+**Tests**: 64/64 passing (100%)
+**Clippy**: Zero unwrap() calls in production code
 **Scope**: C#, Go, Swift - Eliminate panic-prone error handling
 **Priority**: CRITICAL
 
@@ -45,118 +50,118 @@ Replace all 119 `.unwrap()` calls with proper error handling using `lazy_static!
 ### C# Plugin Safety Fixes (38 unwraps)
 
 #### lib.rs
-- [ ] Replace `file_path.to_str().unwrap_or("")` with proper error (line 250)
-- [ ] Fix `plan_extract_function` line length calculation with bounds check (lines 104-107)
-- [ ] Add proper error handling for `nth()` access on lines iterator
-- [ ] Replace any remaining `.unwrap()` with `?` or proper error messages
+- [x] Replace `file_path.to_str().unwrap_or("")` with proper error (line 250)
+- [x] Fix `plan_extract_function` line length calculation with bounds check (lines 104-107)
+- [x] Add proper error handling for `nth()` access on lines iterator
+- [x] Replace any remaining `.unwrap()` with `?` or proper error messages
 
 #### manifest.rs (18 unwraps)
-- [ ] Convert all regex compilations to `lazy_static!` declarations
-- [ ] Replace XML parsing `.unwrap()` with `map_err()` conversions
-- [ ] Add error propagation for file operations
-- [ ] Handle missing XML elements gracefully
+- [x] Convert all regex compilations to `lazy_static!` declarations
+- [x] Replace XML parsing `.unwrap()` with `map_err()` conversions
+- [x] Add error propagation for file operations
+- [x] Handle missing XML elements gracefully
 
 #### refactoring.rs (12 unwraps)
-- [ ] Convert static regexes to `lazy_static!`
-- [ ] Replace string manipulation `.unwrap()` with proper bounds checks
-- [ ] Add validation for line/column ranges before access
-- [ ] Propagate errors instead of panicking
+- [x] Convert static regexes to `lazy_static!`
+- [x] Replace string manipulation `.unwrap()` with proper bounds checks
+- [x] Add validation for line/column ranges before access
+- [x] Propagate errors instead of panicking
 
 #### workspace_support.rs (5 unwraps)
-- [ ] Replace `.sln` parsing `.unwrap()` calls
-- [ ] Add error handling for GUID extraction
-- [ ] Handle malformed solution files gracefully
+- [x] Replace `.sln` parsing `.unwrap()` calls
+- [x] Add error handling for GUID extraction
+- [x] Handle malformed solution files gracefully
 
 #### Verification
-- [ ] Run `cargo clippy -- -D clippy::unwrap_used -p mill-lang-csharp`
-- [ ] Verify all 25 tests still pass
-- [ ] Test with malformed .csproj files
-- [ ] Test with invalid UTF-8 input
+- [x] Run `cargo clippy -- -D clippy::unwrap_used -p mill-lang-csharp`
+- [x] Verify all 25 tests still pass
+- [x] Test with malformed .csproj files
+- [x] Test with invalid UTF-8 input
 
 ### Go Plugin Safety Fixes (42 unwraps)
 
 #### lib.rs (regex unwraps)
-- [ ] Convert import_pattern regex to safe compilation (line 166)
-- [ ] Convert qualified_pattern regex to safe compilation (line 183)
-- [ ] Add error propagation in `scan_references`
-- [ ] Fix file read error handling in `build_import_graph` (line 152)
+- [x] Convert import_pattern regex to safe compilation (line 166)
+- [x] Convert qualified_pattern regex to safe compilation (line 183)
+- [x] Add error propagation in `scan_references`
+- [x] Fix file read error handling in `build_import_graph` (line 152)
 
 #### parser.rs (20 unwraps)
-- [ ] Convert all static regexes to `lazy_static!`
-- [ ] Replace `.unwrap()` in symbol extraction with `?`
-- [ ] Add bounds checking for line/column calculations
-- [ ] Handle empty files and edge cases
+- [x] Convert all static regexes to `lazy_static!`
+- [x] Replace `.unwrap()` in symbol extraction with `?`
+- [x] Add bounds checking for line/column calculations
+- [x] Handle empty files and edge cases
 
 #### manifest.rs (12 unwraps)
-- [ ] Replace go.mod parsing `.unwrap()` calls
-- [ ] Add error handling for malformed module directives
-- [ ] Handle missing version information gracefully
-- [ ] Validate go.mod structure before parsing
+- [x] Replace go.mod parsing `.unwrap()` calls
+- [x] Add error handling for malformed module directives
+- [x] Handle missing version information gracefully
+- [x] Validate go.mod structure before parsing
 
 #### refactoring.rs (7 unwraps)
-- [ ] Convert regexes to `lazy_static!`
-- [ ] Add bounds checking for code range access
-- [ ] Validate refactoring parameters before use
+- [x] Convert regexes to `lazy_static!`
+- [x] Add bounds checking for code range access
+- [x] Validate refactoring parameters before use
 
 #### Verification
-- [ ] Run `cargo clippy -- -D clippy::unwrap_used -p mill-lang-go`
-- [ ] Verify all 30 tests still pass
-- [ ] Test with malformed go.mod files
-- [ ] Test with Unicode in module names
+- [x] Run `cargo clippy -- -D clippy::unwrap_used -p mill-lang-go`
+- [x] Verify all 30 tests still pass
+- [x] Test with malformed go.mod files
+- [x] Test with Unicode in module names
 
 ### Swift Plugin Safety Fixes (39 unwraps)
 
 #### lib.rs (compile-time regexes)
-- [ ] Convert symbol regex to `lazy_static!` (line 44)
-- [ ] Convert name_re to `lazy_static!` (line 83)
-- [ ] Convert version_re to `lazy_static!` (line 84)
-- [ ] Convert dep_re to `lazy_static!` (line 85)
-- [ ] Convert import_re to `lazy_static!` (line 210)
-- [ ] Convert qualified_re to `lazy_static!` (line 212)
-- [ ] Convert import analyzer regex to `lazy_static!` (line 253)
+- [x] Convert symbol regex to `lazy_static!` (line 44)
+- [x] Convert name_re to `lazy_static!` (line 83)
+- [x] Convert version_re to `lazy_static!` (line 84)
+- [x] Convert dep_re to `lazy_static!` (line 85)
+- [x] Convert import_re to `lazy_static!` (line 210)
+- [x] Convert qualified_re to `lazy_static!` (line 212)
+- [x] Convert import analyzer regex to `lazy_static!` (line 253)
 
 #### lib.rs (runtime operations)
-- [ ] Fix `cap.get(0).unwrap()` in parse method (lines 59, 257)
-- [ ] Add bounds checking for line/column calculations
-- [ ] Replace `to_str().unwrap()` with proper error handling (line 408)
-- [ ] Fix regex pattern `.unwrap()` in manifest updater (line 303, 322)
+- [x] Fix `cap.get(0).unwrap()` in parse method (lines 59, 257)
+- [x] Add bounds checking for line/column calculations
+- [x] Replace `to_str().unwrap()` with proper error handling (line 408)
+- [x] Fix regex pattern `.unwrap()` in manifest updater (line 303, 322)
 
 #### refactoring.rs (15 unwraps)
-- [ ] Convert all regexes to `lazy_static!`
-- [ ] Add parameter validation before refactoring
-- [ ] Replace string manipulation `.unwrap()` with safe alternatives
+- [x] Convert all regexes to `lazy_static!`
+- [x] Add parameter validation before refactoring
+- [x] Replace string manipulation `.unwrap()` with safe alternatives
 
 #### workspace_support.rs (4 unwraps)
-- [ ] Replace Package.swift parsing `.unwrap()` calls
-- [ ] Add error handling for malformed package definitions
+- [x] Replace Package.swift parsing `.unwrap()` calls
+- [x] Add error handling for malformed package definitions
 
 #### Test files (several unwraps - acceptable in tests)
-- [ ] Review test `.unwrap()` calls - keep only where assertions are appropriate
-- [ ] Replace test setup `.unwrap()` with `.expect("test setup failed")`
+- [x] Review test `.unwrap()` calls - keep only where assertions are appropriate
+- [x] Replace test setup `.unwrap()` with `.expect("test setup failed")`
 
 #### Verification
-- [ ] Run `cargo clippy -- -D clippy::unwrap_used -p mill-lang-swift`
-- [ ] Verify all 9 tests still pass
-- [ ] Test with invalid Package.swift files
-- [ ] Test with Unicode identifiers
+- [x] Run `cargo clippy -- -D clippy::unwrap_used -p mill-lang-swift`
+- [x] Verify all 9 tests still pass
+- [x] Test with invalid Package.swift files
+- [x] Test with Unicode identifiers
 
 ### Cross-Plugin Validation
 
-- [ ] Run `cargo clippy --all-targets -- -D warnings` for all three plugins
-- [ ] Verify no new `.unwrap()` calls added
-- [ ] Run full test suite: `cargo nextest run -p mill-lang-csharp -p mill-lang-go -p mill-lang-swift`
-- [ ] Verify all 64 tests still pass (25 C# + 30 Go + 9 Swift)
-- [ ] Manual testing with edge cases (empty files, huge files, invalid UTF-8)
-- [ ] Document any remaining intentional `.unwrap()` calls in tests with `.expect()`
+- [x] Run `cargo clippy --all-targets -- -D warnings` for all three plugins
+- [x] Verify no new `.unwrap()` calls added
+- [x] Run full test suite: `cargo nextest run -p mill-lang-csharp -p mill-lang-go -p mill-lang-swift`
+- [x] Verify all 64 tests still pass (25 C# + 30 Go + 9 Swift)
+- [x] Manual testing with edge cases (empty files, huge files, invalid UTF-8)
+- [x] Document any remaining intentional `.unwrap()` calls in tests with `.expect()`
 
 ## Success Criteria
 
-- [ ] Zero `.unwrap()` in production code (src/ directories)
-- [ ] Test `.unwrap()` replaced with `.expect("descriptive message")`
-- [ ] `cargo clippy -- -D clippy::unwrap_used` passes for all three plugins
-- [ ] All 64 existing tests continue to pass
-- [ ] No panics on malformed input (tested manually)
-- [ ] Performance unchanged (within 5%)
+- [x] Zero `.unwrap()` in production code (src/ directories)
+- [x] Test `.unwrap()` replaced with `.expect("descriptive message")`
+- [x] `cargo clippy -- -D clippy::unwrap_used` passes for all three plugins
+- [x] All 64 existing tests continue to pass
+- [x] No panics on malformed input (tested manually)
+- [x] Performance unchanged (within 5%)
 
 ## Benefits
 
