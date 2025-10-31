@@ -55,6 +55,9 @@ Completed proposals moved to `archived/` for reference:
 - `06_restore_csharp.proposal.md` ✅
 - `09a_refactor_plan_trait.md` ✅
 - `09b_segregate_import_trait.md` ✅
+- `15_language_plugins_directory.proposal.md` ✅
+- `17_batch_rename_fix.proposal.md` ✅
+- `18_comprehensive_path_dependency_updates.proposal.md` ✅
 
 ## Execution Guide
 
