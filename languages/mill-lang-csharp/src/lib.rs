@@ -3,10 +3,12 @@
 //! Provides AST parsing, symbol extraction, and manifest analysis for C#.
 
 pub mod import_support;
+pub mod lsp_installer;
 pub mod manifest;
 pub mod parser;
 pub mod project_factory;
 pub mod refactoring;
+pub mod workspace_support;
 
 use async_trait::async_trait;
 use mill_foundation::protocol::EditPlan;
@@ -14,8 +16,8 @@ use mill_lang_common::{
     define_language_plugin, impl_capability_delegations, impl_language_plugin_basics, CodeRange,
 };
 use mill_plugin_api::{
-    LanguagePlugin, ManifestData, ParsedSource, PluginResult,
-    RefactoringProvider,
+    ImportAnalyzer, LanguagePlugin, ManifestData, ManifestUpdater, ModuleReferenceScanner,
+    ParsedSource, PluginResult, RefactoringProvider,
 };
 use std::path::Path;
 
@@ -30,10 +32,12 @@ define_language_plugin! {
     source_dir: ".",
     entry_point: "Program.cs",
     module_separator: ".",
-    capabilities: [with_imports, with_project_factory],
+    capabilities: [with_imports, with_project_factory, with_workspace],
     fields: {
         import_support: import_support::CsharpImportSupport,
         project_factory: project_factory::CsharpProjectFactory,
+        workspace_support: workspace_support::CsharpWorkspaceSupport,
+        lsp_installer: lsp_installer::CsharpLspInstaller,
     },
     doc: "C# language plugin implementation providing comprehensive C# language support"
 }
@@ -54,6 +58,9 @@ impl LanguagePlugin for CsharpPlugin {
     impl_capability_delegations! {
         this => {
             refactoring_provider: RefactoringProvider,
+            module_reference_scanner: ModuleReferenceScanner,
+            import_analyzer: ImportAnalyzer,
+            manifest_updater: ManifestUpdater,
         },
         import_support => {
             import_parser: ImportParser,
@@ -64,6 +71,12 @@ impl LanguagePlugin for CsharpPlugin {
         },
         project_factory => {
             project_factory: ProjectFactory,
+        },
+        workspace_support => {
+            workspace_support: WorkspaceSupport,
+        },
+        lsp_installer => {
+            lsp_installer: LspInstaller,
         }
     }
 }
@@ -139,11 +152,141 @@ impl RefactoringProvider for CsharpPlugin {
     }
 }
 
+impl ModuleReferenceScanner for CsharpPlugin {
+    fn scan_references(
+        &self,
+        content: &str,
+        module_name: &str,
+        scope: mill_plugin_api::ScanScope,
+    ) -> PluginResult<Vec<mill_plugin_api::ModuleReference>> {
+        use mill_plugin_api::{ModuleReference, ReferenceKind, ScanScope};
+        let mut references = Vec::new();
+
+        for (line_idx, line) in content.lines().enumerate() {
+            let line_num = line_idx + 1;
+
+            // Scan for `using module_name;`
+            if scope != ScanScope::QualifiedPaths {
+                let pattern = format!("using {};", module_name);
+                if let Some(col) = line.find(&pattern) {
+                    references.push(ModuleReference {
+                        line: line_num,
+                        column: col + 6, // After "using "
+                        length: module_name.len(),
+                        text: module_name.to_string(),
+                        kind: ReferenceKind::Declaration,
+                    });
+                }
+            }
+
+            // Scan for qualified paths like `module_name.Class`
+            if scope == ScanScope::QualifiedPaths || scope == ScanScope::All {
+                let pattern = format!("{}.", module_name);
+                for (idx, _) in line.match_indices(&pattern) {
+                    references.push(ModuleReference {
+                        line: line_num,
+                        column: idx,
+                        length: module_name.len(),
+                        text: module_name.to_string(),
+                        kind: ReferenceKind::QualifiedPath,
+                    });
+                }
+            }
+
+            // Scan for string literals (e.g., for reflection)
+            if scope == ScanScope::All {
+                if let Some(col) = line.find(&format!("\"{}\"", module_name)) {
+                    references.push(ModuleReference {
+                        line: line_num,
+                        column: col + 1,
+                        length: module_name.len(),
+                        text: module_name.to_string(),
+                        kind: ReferenceKind::StringLiteral,
+                    });
+                }
+            }
+        }
+
+        Ok(references)
+    }
+}
+
+use chrono::Utc;
+use mill_foundation::protocol::{ImportGraphMetadata, ImportInfo, ImportType};
+
+impl ImportAnalyzer for CsharpPlugin {
+    fn build_import_graph(
+        &self,
+        file_path: &Path,
+    ) -> PluginResult<mill_foundation::protocol::ImportGraph> {
+        let content = std::fs::read_to_string(file_path)
+            .map_err(|e| mill_plugin_api::PluginError::internal(format!("Failed to read file: {}", e)))?;
+
+        let imports = parser::parse_source(&content)?
+            .symbols
+            .into_iter()
+            .filter(|s| s.kind == mill_plugin_api::SymbolKind::Module)
+            .map(|s| {
+                let api_loc = s.location;
+                let protocol_loc = mill_foundation::protocol::SourceLocation {
+                    start_line: api_loc.line as u32,
+                    start_column: api_loc.column as u32,
+                    end_line: api_loc.line as u32,
+                    end_column: api_loc.column as u32,
+                };
+                ImportInfo {
+                    module_path: s.name,
+                    import_type: ImportType::EsModule,
+                    named_imports: vec![],
+                    default_import: None,
+                    namespace_import: None,
+                    type_only: false,
+                    location: protocol_loc,
+                }
+            })
+            .collect();
+
+        Ok(mill_foundation::protocol::ImportGraph {
+            source_file: file_path.to_str().unwrap_or("").to_string(),
+            imports,
+            importers: vec![], // This would be populated by a workspace-wide analysis
+            metadata: ImportGraphMetadata {
+                language: self.metadata().name.to_string(),
+                parsed_at: Utc::now(),
+                parser_version: "0.20.0".to_string(), // tree-sitter-c-sharp version
+                circular_dependencies: vec![],
+                external_dependencies: vec![],
+            },
+        })
+    }
+}
+
+#[async_trait]
+impl ManifestUpdater for CsharpPlugin {
+    async fn update_dependency(
+        &self,
+        manifest_path: &Path,
+        old_name: &str,
+        new_name: &str,
+        new_version: Option<&str>,
+    ) -> PluginResult<String> {
+        let content = tokio::fs::read_to_string(manifest_path).await
+            .map_err(|e| mill_plugin_api::PluginError::internal(format!("Failed to read manifest: {}", e)))?;
+
+        manifest::update_package_reference(&content, old_name, new_name, new_version)
+    }
+
+    fn generate_manifest(&self, package_name: &str, dependencies: &[String]) -> String {
+        manifest::generate_csproj(package_name, dependencies)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mill_plugin_api::{CreatePackageConfig, PackageType, Template};
-    use tempfile::tempdir;
+    use mill_plugin_api::{CreatePackageConfig, PackageType, ScanScope, Template};
+    use std::io::Write;
+    use tempfile::{tempdir, NamedTempFile};
 
     #[tokio::test]
     async fn test_csharp_plugin_basic() {
@@ -167,7 +310,12 @@ mod tests {
         let caps = plugin.capabilities();
         assert!(caps.imports);
         assert!(caps.project_factory);
+        assert!(caps.workspace);
         assert!(plugin.refactoring_provider().is_some());
+        assert!(plugin.module_reference_scanner().is_some());
+        assert!(plugin.import_analyzer().is_some());
+        assert!(plugin.manifest_updater().is_some());
+        assert!(plugin.lsp_installer().is_some());
     }
 
     #[tokio::test]
@@ -197,8 +345,115 @@ mod tests {
         let manifest_path = pkg.package_info.manifest_path;
         assert!(Path::new(&manifest_path).exists());
         assert_eq!(
-            Path::new(&manifest_path).file_name().unwrap().to_str().unwrap(),
+            Path::new(&manifest_path)
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap(),
             "MyTestCsharpApp.csproj"
         );
+    }
+
+    #[test]
+    fn test_workspace_support() {
+        let plugin = CsharpPlugin::new();
+        let support = plugin.workspace_support().unwrap();
+        let sln_content = r#"
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyWebApp", "MyWebApp\MyWebApp.csproj", "{GUID1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{GUID1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+	EndGlobalSection
+EndGlobal
+"#;
+        let members = support.list_workspace_members(sln_content);
+        assert_eq!(members, vec!["MyWebApp\\MyWebApp.csproj"]);
+
+        let new_sln = support.add_workspace_member(sln_content, "NewApp\\NewApp.csproj");
+        assert!(new_sln.contains("NewApp"));
+
+        let final_sln = support.remove_workspace_member(&new_sln, "MyWebApp\\MyWebApp.csproj");
+        assert!(!final_sln.contains("MyWebApp"));
+    }
+
+    #[test]
+    fn test_module_reference_scanner() {
+        let plugin = CsharpPlugin::new();
+        let scanner = plugin.module_reference_scanner().unwrap();
+        let content = r#"
+using System;
+using System.Collections.Generic;
+
+namespace MyNamespace
+{
+    public class MyClass
+    {
+        public void DoSomething()
+        {
+            var list = new System.Collections.Generic.List<int>();
+            var type = "System.Text";
+        }
+    }
+}
+"#;
+        let refs = scanner
+            .scan_references(content, "System.Collections.Generic", ScanScope::All)
+            .unwrap();
+        assert_eq!(refs.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_import_analyzer() {
+        let plugin = CsharpPlugin::new();
+        let analyzer = plugin.import_analyzer().unwrap();
+        let mut temp_file = NamedTempFile::new().unwrap();
+        writeln!(temp_file, "using System;\nusing System.Text;").unwrap();
+
+        let graph = analyzer.build_import_graph(temp_file.path()).unwrap();
+        assert_eq!(graph.imports.len(), 2);
+        assert!(graph
+            .imports
+            .iter()
+            .any(|i| i.module_path == "System"));
+    }
+
+    #[tokio::test]
+    async fn test_manifest_updater() {
+        let plugin = CsharpPlugin::new();
+        let updater = plugin.manifest_updater().unwrap();
+        let csproj_content = r#"
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+  </ItemGroup>
+</Project>
+"#;
+        let mut temp_file = NamedTempFile::new().unwrap();
+        write!(temp_file, "{}", csproj_content).unwrap();
+
+        let updated_content = updater
+            .update_dependency(
+                temp_file.path(),
+                "Newtonsoft.Json",
+                "Newtonsoft.Json",
+                Some("13.0.2"),
+            )
+            .await
+            .unwrap();
+
+        assert!(updated_content.contains("13.0.2"));
+    }
+
+    #[test]
+    fn test_lsp_installer() {
+        let plugin = CsharpPlugin::new();
+        let installer = plugin.lsp_installer().unwrap();
+        assert_eq!(installer.lsp_name(), "csharp-ls");
+        // We can't easily test the installation itself, but we can check the name
     }
 }

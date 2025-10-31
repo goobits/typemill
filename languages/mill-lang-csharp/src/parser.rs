@@ -36,6 +36,7 @@ impl From<JsonSymbol> for Symbol {
             "Enum" => SymbolKind::Enum,
             "Method" => SymbolKind::Method,
             "Property" | "Field" => SymbolKind::Field,
+            "Using" => SymbolKind::Module,
             _ => SymbolKind::Variable, // Fallback
         };
 
@@ -103,7 +104,7 @@ fn parse_with_ast(source: &str) -> PluginResult<Vec<Symbol>> {
 /// Fallback parser using regex to extract basic symbols.
 fn parse_with_regex(source: &str) -> PluginResult<Vec<Symbol>> {
     let mut symbols = Vec::new();
-    let re = Regex::new(r"(?m)^\s*(public|private|internal)?\s*(class|interface|struct|enum)\s+(\w+)")
+    let re = Regex::new(r"(?m)^\s*(public|private|internal)?\s*(class|interface|struct|enum|using)\s+([\w\.]+)")
         .unwrap();
     for cap in re.captures_iter(source) {
         let kind_str = &cap[2];
@@ -113,6 +114,7 @@ fn parse_with_regex(source: &str) -> PluginResult<Vec<Symbol>> {
             "interface" => SymbolKind::Interface,
             "struct" => SymbolKind::Struct,
             "enum" => SymbolKind::Enum,
+            "using" => SymbolKind::Module,
             _ => continue,
         };
         let start = cap.get(0).unwrap().start();
@@ -204,7 +206,8 @@ namespace MyNamespace
         let result = parse_with_regex(SAMPLE_CODE);
         assert!(result.is_ok());
         let symbols = result.unwrap();
-        assert_eq!(symbols.len(), 2);
+        assert_eq!(symbols.len(), 3);
+        assert!(symbols.iter().any(|s| s.name == "System" && s.kind == SymbolKind::Module));
         assert!(symbols.iter().any(|s| s.name == "MyClass" && s.kind == SymbolKind::Class));
         assert!(symbols.iter().any(|s| s.name == "IMyInterface" && s.kind == SymbolKind::Interface));
     }

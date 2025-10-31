@@ -105,6 +105,47 @@ pub async fn analyze_manifest(path: &Path) -> PluginResult<ManifestData> {
     })
 }
 
+pub fn update_package_reference(
+    content: &str,
+    old_name: &str,
+    new_name: &str,
+    new_version: Option<&str>,
+) -> PluginResult<String> {
+    let old_line = format!(r#"<PackageReference Include="{}""#, old_name);
+    let new_line = if let Some(version) = new_version {
+        format!(r#"<PackageReference Include="{}" Version="{}" />"#, new_name, version)
+    } else {
+        format!(r#"<PackageReference Include="{}" Version="*" />"#, new_name)
+    };
+    Ok(content.replace(&old_line, &new_line))
+}
+
+pub fn generate_csproj(package_name: &str, dependencies: &[String]) -> String {
+    let deps = dependencies
+        .iter()
+        .map(|dep| format!(r#"    <PackageReference Include="{}" Version="*" />"#, dep))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    format!(
+r#"<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>{}</AssemblyName>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+{}
+  </ItemGroup>
+
+</Project>"#,
+        package_name, deps
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
