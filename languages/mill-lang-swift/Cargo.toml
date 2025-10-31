@@ -19,13 +19,20 @@ tokio = { workspace = true }
 # Serialization/Deserialization & Other Utilities
 serde = { workspace = true }
 serde_json = { workspace = true }
-regex = "1.10"
+regex = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
+anyhow = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
+
+# Date and time
+chrono = { workspace = true, features = ["serde"] }
+
+# System utilities
+which = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
