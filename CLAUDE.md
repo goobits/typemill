@@ -615,17 +615,17 @@ TypeMill now has **100% feature parity** across TypeScript, Rust, Python, Swift,
 | Manifest Management | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ |
 | **Project Creation** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 
+**Full Parity Languages (Production Ready):**
+- **Python restored**: 2025-10-25 with full parity implementation
+- **Swift restored**: 2025-10-31 with full parity implementation
+- **C# restored**: 2025-10-28 with full parity implementation
+- **Java restored**: 2025-10-29 with full parity implementation (requires Maven/Java for parser JAR build)
+- **Go restored**: 2025-10-29 with full parity implementation
+
 **Rust-specific features** (not applicable to other languages):
 - ReferenceDetector
 - ModuleDeclarationSupport (Rust `mod` declarations)
 - ModuleLocator (Rust module file structure)
-
-**Full Parity Languages (Production Ready):**
-- **Python restored**: 2025-10-25 with full parity implementation
-- **Swift restored**: 2025-10-28 with full parity implementation
-- **C# restored**: 2025-10-28 with full parity implementation
-- **Java restored**: 2025-10-29 with full parity implementation (requires Maven/Java for parser JAR build)
-- **Go restored**: 2025-10-29 with full parity implementation
 
 **Partial Support Languages (Experimental):**
 - **C added**: 2025-10-29 with basic parsing and limited refactoring support
