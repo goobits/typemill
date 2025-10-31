@@ -623,7 +623,7 @@ TypeMill now has **100% feature parity** across TypeScript, Rust, Python, Swift,
 **Full Parity Languages (Production Ready):**
 - **Python restored**: 2025-10-25 with full parity implementation
 - **Swift restored**: 2025-10-28 with full parity implementation
-- **C# restored**: 2025-10-28 with full parity implementation
+- **C# restored**: 2025-10-31 with full parity implementation
 - **Java restored**: 2025-10-29 with full parity implementation (requires Maven/Java for parser JAR build)
 - **Go restored**: 2025-10-29 with full parity implementation
 
