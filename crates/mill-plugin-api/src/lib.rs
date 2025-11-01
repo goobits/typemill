@@ -612,31 +612,36 @@ pub trait LanguagePlugin: Send + Sync {
 }
 
 // ============================================================================
-// Plugin Registry
+// Plugin Discovery
 // ============================================================================
 
-/// A registry for managing language plugins
+/// A lightweight, dependency-free mechanism for discovering available plugins.
 ///
-/// This will be used by the main server to register and look up plugins
-/// based on file extensions.
-pub struct PluginRegistry {
+/// This struct acts as a simple container for `LanguagePlugin` instances,
+/// allowing core services to query for plugins without depending on the full
+/// runtime plugin system. It is the first layer of the two-layer plugin
+/// management architecture.
+///
+/// For runtime features like caching, priority-based selection, and capability
+/// mapping, use the `RuntimePluginManager` from the `mill-plugin-system` crate.
+pub struct PluginDiscovery {
     plugins: Vec<std::sync::Arc<dyn LanguagePlugin>>,
 }
 
-impl PluginRegistry {
-    /// Create a new empty plugin registry
+impl PluginDiscovery {
+    /// Create a new empty plugin discovery collection.
     pub fn new() -> Self {
         Self {
             plugins: Vec::new(),
         }
     }
 
-    /// Register a new language plugin
+    /// Register a new language plugin for discovery.
     pub fn register(&mut self, plugin: std::sync::Arc<dyn LanguagePlugin>) {
         self.plugins.push(plugin);
     }
 
-    /// Find a plugin that handles the given file extension
+    /// Find a plugin that handles the given file extension.
     pub fn find_by_extension(&self, extension: &str) -> Option<&dyn LanguagePlugin> {
         self.plugins
             .iter()
@@ -644,7 +649,7 @@ impl PluginRegistry {
             .map(|arc| arc.as_ref())
     }
 
-    /// Get all registered plugins
+    /// Get all discovered plugins.
     pub fn all(&self) -> &[std::sync::Arc<dyn LanguagePlugin>] {
         &self.plugins
     }
@@ -678,7 +683,7 @@ impl PluginRegistry {
     }
 }
 
-impl Default for PluginRegistry {
+impl Default for PluginDiscovery {
     fn default() -> Self {
         Self::new()
     }
@@ -745,11 +750,11 @@ mod tests {
     }
 
     #[test]
-    fn test_plugin_registry() {
-        let mut registry = PluginRegistry::new();
-        registry.register(Arc::new(MockPlugin::new()));
+    fn test_plugin_discovery() {
+        let mut discovery = PluginDiscovery::new();
+        discovery.register(Arc::new(MockPlugin::new()));
 
-        let plugin = registry.find_by_extension("mock");
+        let plugin = discovery.find_by_extension("mock");
         assert!(plugin.is_some());
         assert_eq!(plugin.unwrap().metadata().name, "Mock");
     }
@@ -841,31 +846,31 @@ mod tests {
         impl RefactoringProvider for TypeScriptMockPlugin {}
 
         // Register both plugins
-        let mut registry = PluginRegistry::new();
-        registry.register(Arc::new(RustMockPlugin));
-        registry.register(Arc::new(TypeScriptMockPlugin));
+        let mut discovery = PluginDiscovery::new();
+        discovery.register(Arc::new(RustMockPlugin));
+        discovery.register(Arc::new(TypeScriptMockPlugin));
 
         // Test file-extension routing
-        let rust_provider = registry.refactoring_provider_for_file("src/main.rs");
+        let rust_provider = discovery.refactoring_provider_for_file("src/main.rs");
         assert!(
             rust_provider.is_some(),
             "Should find Rust provider for .rs file"
         );
 
-        let ts_provider = registry.refactoring_provider_for_file("src/app.ts");
+        let ts_provider = discovery.refactoring_provider_for_file("src/app.ts");
         assert!(
             ts_provider.is_some(),
             "Should find TypeScript provider for .ts file"
         );
 
-        let tsx_provider = registry.refactoring_provider_for_file("src/Component.tsx");
+        let tsx_provider = discovery.refactoring_provider_for_file("src/Component.tsx");
         assert!(
             tsx_provider.is_some(),
             "Should find TypeScript provider for .tsx file"
         );
 
         // Test that non-existent extension returns None
-        let unknown_provider = registry.refactoring_provider_for_file("file.unknown");
+        let unknown_provider = discovery.refactoring_provider_for_file("file.unknown");
         assert!(
             unknown_provider.is_none(),
             "Should return None for unknown extension"
@@ -953,11 +958,11 @@ mod tests {
         #[async_trait]
         impl RefactoringProvider for FullFeaturedPlugin {}
 
-        let mut registry = PluginRegistry::new();
-        registry.register(Arc::new(FullFeaturedPlugin));
+        let mut discovery = PluginDiscovery::new();
+        discovery.register(Arc::new(FullFeaturedPlugin));
 
         // Verify all capabilities are discoverable
-        let plugin = registry.find_by_extension("full").unwrap();
+        let plugin = discovery.find_by_extension("full").unwrap();
 
         assert!(
             plugin.manifest_updater().is_some(),
@@ -973,7 +978,7 @@ mod tests {
         );
 
         // Verify file-based lookup works
-        let refactoring = registry.refactoring_provider_for_file("test.full");
+        let refactoring = discovery.refactoring_provider_for_file("test.full");
         assert!(refactoring.is_some(), "Should find via file extension");
     }
 
@@ -1037,10 +1042,10 @@ mod tests {
             }
         }
 
-        let mut registry = PluginRegistry::new();
-        registry.register(Arc::new(MinimalPlugin));
+        let mut discovery = PluginDiscovery::new();
+        discovery.register(Arc::new(MinimalPlugin));
 
-        let plugin = registry.find_by_extension("min").unwrap();
+        let plugin = discovery.find_by_extension("min").unwrap();
 
         // Has ManifestUpdater
         assert!(
@@ -1059,7 +1064,7 @@ mod tests {
         );
 
         // File-based lookup returns None for missing capability
-        let refactoring = registry.refactoring_provider_for_file("test.min");
+        let refactoring = discovery.refactoring_provider_for_file("test.min");
         assert!(
             refactoring.is_none(),
             "Should return None when capability not present"

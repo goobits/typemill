@@ -9,46 +9,46 @@
 //! injected via `from_registry()`. This eliminates compile-time coupling between
 //! the handler layer and specific language implementations.
 
-use mill_plugin_api::{LanguagePlugin, PluginRegistry};
+use mill_plugin_api::{LanguagePlugin, PluginDiscovery};
 use std::sync::Arc;
 use tracing::debug;
 
 /// Language plugin registry for the handler layer
 ///
-/// This registry wraps the core `PluginRegistry` from `mill-plugin-api` and
+/// This registry wraps the core `PluginDiscovery` from `mill-plugin-api` and
 /// provides additional functionality for integration with the handler system.
 ///
 /// **IMPORTANT**: This registry requires dependency injection. Create it using
-/// `from_registry()` with a pre-built PluginRegistry. Never auto-build plugins
-/// at this layer - that defeats the purpose of dependency injection.
+/// `from_discovery()` with a pre-built PluginDiscovery collection. Never auto-build
+/// plugins at this layer - that defeats the purpose of dependency injection.
 #[derive(Clone)]
 pub struct LanguagePluginRegistry {
-    pub inner: Arc<PluginRegistry>,
+    pub inner: Arc<PluginDiscovery>,
 }
 
 impl LanguagePluginRegistry {
-    /// Create a registry from an existing PluginRegistry (RECOMMENDED)
+    /// Create a registry from an existing PluginDiscovery collection (RECOMMENDED)
     ///
-    /// This is the primary way to create a LanguagePluginRegistry. The PluginRegistry
-    /// should be built at the application layer (e.g., in apps/mill/src/main.rs)
+    /// This is the primary way to create a LanguagePluginRegistry. The PluginDiscovery
+    /// collection should be built at the application layer (e.g., in `apps/mill/src/main.rs`)
     /// using `mill_services::services::registry_builder::build_language_plugin_registry()`,
     /// then injected here.
     ///
     /// # Example
     /// ```rust
     /// use mill_handlers::language_plugin_registry::LanguagePluginRegistry;
-    /// use mill_plugin_api::PluginRegistry;
+    /// use mill_plugin_api::PluginDiscovery;
     /// use mill_services::services::registry_builder::build_language_plugin_registry;
     /// use std::sync::Arc;
     ///
     /// // At application layer (apps/mill/src/main.rs)
-    /// let registry = build_language_plugin_registry();
+    /// let discovery = build_language_plugin_registry();
     ///
     /// // Inject into handler layer
-    /// let handler_registry = LanguagePluginRegistry::from_registry(registry);
+    /// let handler_registry = LanguagePluginRegistry::from_discovery(discovery);
     /// ```
-    pub fn from_registry(registry: Arc<PluginRegistry>) -> Self {
-        Self { inner: registry }
+    pub fn from_discovery(discovery: Arc<PluginDiscovery>) -> Self {
+        Self { inner: discovery }
     }
 
     /// Get a plugin for a given file extension
@@ -107,4 +107,4 @@ impl LanguagePluginRegistry {
 }
 
 // NOTE: No Default impl - this would bypass dependency injection.
-// Always use from_registry() to create LanguagePluginRegistry with an injected PluginRegistry.
+// Always use from_discovery() to create LanguagePluginRegistry with an injected PluginDiscovery.

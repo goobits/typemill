@@ -2,18 +2,18 @@
 
 use ignore::WalkBuilder;
 use mill_analysis_graph::dependency::{Dependency, DependencyGraph, DependencyKind};
-use mill_plugin_api::{import_support::ImportParser, PluginRegistry};
+use mill_plugin_api::{import_support::ImportParser, PluginDiscovery};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
 
 pub struct DependencyGraphBuilder<'a> {
-    plugin_registry: &'a PluginRegistry,
+    plugin_discovery: &'a PluginDiscovery,
 }
 
 impl<'a> DependencyGraphBuilder<'a> {
-    pub fn new(plugin_registry: &'a PluginRegistry) -> Self {
-        Self { plugin_registry }
+    pub fn new(plugin_discovery: &'a PluginDiscovery) -> Self {
+        Self { plugin_discovery }
     }
 
     pub fn build(&self, project_root: &Path) -> Result<DependencyGraph, String> {
@@ -31,7 +31,7 @@ impl<'a> DependencyGraphBuilder<'a> {
                 .map_err(|e| format!("Failed to read {:?}: {}", file_path, e))?;
 
             let extension = file_path.extension().and_then(|s| s.to_str()).unwrap_or("");
-            if let Some(plugin) = self.plugin_registry.find_by_extension(extension) {
+            if let Some(plugin) = self.plugin_discovery.find_by_extension(extension) {
                 if let Some(import_parser) = plugin.import_parser() {
                     let imports = ImportParser::parse_imports(import_parser, &content);
                     for import_path in imports {
@@ -82,7 +82,7 @@ impl<'a> DependencyGraphBuilder<'a> {
                 Ok(entry) => {
                     if entry.file_type().is_some_and(|ft| ft.is_file()) {
                         if let Some(ext) = entry.path().extension().and_then(|s| s.to_str()) {
-                            if self.plugin_registry.find_by_extension(ext).is_some() {
+                            if self.plugin_discovery.find_by_extension(ext).is_some() {
                                 files.push(entry.path().to_path_buf());
                             }
                         }

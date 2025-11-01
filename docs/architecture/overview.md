@@ -215,7 +215,7 @@ The plugin system uses a sophisticated multi-tiered selection algorithm to choos
   }
 }
 ```
-**Selection Algorithm (in `crates/mill-plugins/src/registry.rs`):**
+**Selection Algorithm (in `crates/mill-plugin-system/src/registry.rs`):**
 
 ```rust
 pub fn find_best_plugin(&self, file_path: &Path, method: &str) -> PluginResult<String> {
@@ -600,17 +600,17 @@ This macro expands into a static `PluginDescriptor` that `inventory` picks up.
 
 ### How the Server Discovers Plugins
 
-At startup, the `PluginRegistry` is built by simply iterating over the discovered plugins:
+At startup, the `PluginDiscovery` collection is built by simply iterating over the discovered plugins:
 
 ```rust
 // In ../../crates/mill-services/src/services/registry_builder.rs
-pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
-    let mut registry = PluginRegistry::new();
-    for descriptor in cb_plugin_registry::iter_plugins() {
+pub fn build_language_plugin_registry() -> Arc<PluginDiscovery> {
+    let mut discovery = PluginDiscovery::new();
+    for descriptor in mill_plugin_api::iter_plugins() {
         let plugin = (descriptor.factory)();
-        registry.register(plugin);
+        discovery.register(plugin);
     }
-    Arc::new(registry)
+    Arc::new(discovery)
 }
 ```
 **Benefits**:

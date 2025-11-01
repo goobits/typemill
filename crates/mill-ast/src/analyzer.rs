@@ -10,12 +10,12 @@ use std::collections::HashMap;
 // Edit plan types now come from cb-api
 
 /// Plan a refactoring operation based on an intent
-use mill_plugin_api::PluginRegistry;
+use mill_plugin_api::PluginDiscovery;
 
 pub fn plan_refactor(
     intent: &IntentSpec,
     source: &str,
-    plugin_registry: &PluginRegistry,
+    plugin_discovery: &PluginDiscovery,
 ) -> AstResult<EditPlan> {
     match intent.name() {
         // Unified Refactoring API intent names (dryRun option)
@@ -24,7 +24,7 @@ pub fn plan_refactor(
         "inline" => plan_inline_function(intent, source),
         // Import-related operations (still used internally)
         "add_import" => plan_add_import(intent, source),
-        "remove_import" => plan_remove_import(intent, source, plugin_registry),
+        "remove_import" => plan_remove_import(intent, source, plugin_discovery),
         "update_import_path" => plan_update_import_path(intent, source),
         _ => Err(AstError::unsupported_syntax(format!(
             "Intent: {}",
@@ -225,7 +225,7 @@ fn find_import_insertion_point(source: &str) -> AstResult<EditLocation> {
 fn plan_remove_import(
     intent: &IntentSpec,
     source: &str,
-    plugin_registry: &PluginRegistry,
+    plugin_discovery: &PluginDiscovery,
 ) -> AstResult<EditPlan> {
     let module_path = intent
         .arguments()
@@ -251,7 +251,7 @@ fn plan_remove_import(
         .and_then(std::ffi::OsStr::to_str)
         .unwrap_or("");
 
-    let plugin = plugin_registry.find_by_extension(extension);
+    let plugin = plugin_discovery.find_by_extension(extension);
     let import_mutation = plugin.and_then(|p| p.import_mutation_support());
 
     // Find import statements to remove

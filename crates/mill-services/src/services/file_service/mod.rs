@@ -31,8 +31,8 @@ use tracing::debug;
 pub struct FileService {
     /// Reference updater for handling import updates
     pub reference_updater: ReferenceUpdater,
-    /// Language plugin registry
-    pub plugin_registry: Arc<mill_plugin_api::PluginRegistry>,
+    /// Language plugin discovery mechanism
+    pub plugin_discovery: Arc<mill_plugin_api::PluginDiscovery>,
     /// Project root directory
     pub(super) project_root: PathBuf,
     /// Canonicalized project root (cached for performance)
@@ -60,7 +60,7 @@ impl FileService {
         lock_manager: Arc<LockManager>,
         operation_queue: Arc<OperationQueue>,
         config: &AppConfig,
-        plugin_registry: Arc<mill_plugin_api::PluginRegistry>,
+        plugin_discovery: Arc<mill_plugin_api::PluginDiscovery>,
     ) -> Self {
         let project_root = project_root.as_ref().to_path_buf();
 
@@ -87,12 +87,12 @@ impl FileService {
             git_enabled_in_config = config.git.enabled,
             is_git_repo,
             use_git,
-            "Initializing FileService with git support and injected plugin registry"
+            "Initializing FileService with git support and injected plugin discovery"
         );
 
         Self {
             reference_updater: ReferenceUpdater::new(&project_root),
-            plugin_registry,
+            plugin_discovery,
             project_root,
             canonical_project_root,
             ast_cache,
@@ -110,7 +110,7 @@ impl FileService {
     pub fn move_service(&self) -> MoveService<'_> {
         MoveService::new(
             &self.reference_updater,
-            &self.plugin_registry,
+            &self.plugin_discovery,
             &self.project_root,
         )
     }

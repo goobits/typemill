@@ -37,10 +37,10 @@ pub struct ExtractModuleToPackageParams {
 /// # Arguments
 ///
 /// * `params` - Extraction parameters
-/// * `plugin_registry` - Registry of language plugins
-pub async fn plan_extract_module_to_package_with_registry(
+/// * `plugin_discovery` - Collection of language plugins
+pub async fn plan_extract_module_to_package_with_discovery(
     params: ExtractModuleToPackageParams,
-    plugin_registry: &mill_plugin_api::PluginRegistry,
+    plugin_discovery: &mill_plugin_api::PluginDiscovery,
 ) -> AstResult<EditPlan> {
-    planner::plan_extract_module_to_package(params, plugin_registry).await
+    planner::plan_extract_module_to_package(params, plugin_discovery).await
 }

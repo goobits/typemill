@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use mill_ast::AstCache;
 use mill_foundation::protocol::{ApiResult, CacheStats, ImportGraph};
-use mill_plugin_api::PluginRegistry;
+use mill_plugin_api::PluginDiscovery;
 use tracing::{debug, trace};
 
 use mill_foundation::protocol::AstService;
@@ -15,17 +15,17 @@ use mill_foundation::protocol::AstService;
 pub struct DefaultAstService {
     /// Shared AST cache for performance optimization
     cache: Arc<AstCache>,
-    /// Language plugin registry for import parsing
-    plugin_registry: Arc<PluginRegistry>,
+    /// Language plugin discovery for import parsing
+    plugin_discovery: Arc<PluginDiscovery>,
 }
 
 impl DefaultAstService {
-    /// Create a new DefaultAstService with the provided cache and plugin registry
-    pub fn new(cache: Arc<AstCache>, plugin_registry: Arc<PluginRegistry>) -> Self {
-        debug!("DefaultAstService created with shared cache and plugin registry");
+    /// Create a new DefaultAstService with the provided cache and plugin discovery collection
+    pub fn new(cache: Arc<AstCache>, plugin_discovery: Arc<PluginDiscovery>) -> Self {
+        debug!("DefaultAstService created with shared cache and plugin discovery");
         Self {
             cache,
-            plugin_registry,
+            plugin_discovery,
         }
     }
 
@@ -75,7 +75,7 @@ impl AstService for DefaultAstService {
 
         // Use plugin-based parsing for languages with plugins
         let import_graph =
-            build_import_graph_with_plugin(&content, file, self.plugin_registry.clone())?;
+            build_import_graph_with_plugin(&content, file, self.plugin_discovery.clone())?;
 
         // Cache the result for future use
         if let Err(e) = self
@@ -105,7 +105,7 @@ impl AstService for DefaultAstService {
 fn build_import_graph_with_plugin(
     source: &str,
     path: &Path,
-    registry: Arc<PluginRegistry>,
+    discovery: Arc<PluginDiscovery>,
 ) -> Result<mill_foundation::protocol::ImportGraph, mill_foundation::protocol::ApiError> {
     // Determine file extension
     let extension = path
@@ -113,8 +113,8 @@ fn build_import_graph_with_plugin(
         .and_then(|ext| ext.to_str())
         .ok_or_else(|| mill_foundation::protocol::ApiError::internal("File has no extension"))?;
 
-    // Try to find appropriate plugin from registry - works for all languages with plugins
-    if let Some(plugin) = registry.find_by_extension(extension) {
+    // Try to find appropriate plugin from discovery collection
+    if let Some(plugin) = discovery.find_by_extension(extension) {
         // Use the plugin's detailed import analysis
         return plugin
             .analyze_detailed_imports(source, Some(path))

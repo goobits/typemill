@@ -37,9 +37,9 @@ pub struct ServerOptions {
     pub config: AppConfig,
     /// Enable debug mode
     pub debug: bool,
-    /// Optional pre-built language plugin registry (for dependency injection)
-    /// If None, will build registry automatically using all available plugins
-    pub plugin_registry: Option<Arc<mill_plugin_api::PluginRegistry>>,
+    /// Optional pre-built language plugin discovery (for dependency injection)
+    /// If None, will build discovery automatically using all available plugins
+    pub plugin_discovery: Option<Arc<mill_plugin_api::PluginDiscovery>>,
 }
 
 impl std::fmt::Debug for ServerOptions {
@@ -48,8 +48,8 @@ impl std::fmt::Debug for ServerOptions {
             .field("config", &self.config)
             .field("debug", &self.debug)
             .field(
-                "plugin_registry",
-                &self.plugin_registry.as_ref().map(|_| "<PluginRegistry>"),
+                "plugin_discovery",
+                &self.plugin_discovery.as_ref().map(|_| "<PluginDiscovery>"),
             )
             .finish()
     }
@@ -91,9 +91,9 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
     #[cfg(feature = "mcp-proxy")]
     register_mcp_proxy_if_enabled(&plugin_manager, options.config.external_mcp.as_ref()).await?;
 
-    // Use injected plugin registry or build one
-    let plugin_registry = options.plugin_registry.unwrap_or_else(|| {
-        tracing::debug!("No plugin registry injected, building default registry");
+    // Use injected plugin discovery or build one
+    let plugin_discovery = options.plugin_discovery.unwrap_or_else(|| {
+        tracing::debug!("No plugin discovery injected, building default discovery");
         mill_services::services::registry_builder::build_language_plugin_registry()
     });
 
@@ -102,7 +102,7 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
         cache_settings,
         plugin_manager.clone(),
         &options.config,
-        plugin_registry.clone(),
+        plugin_discovery.clone(),
     )
     .await;
 
@@ -119,7 +119,7 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
         operation_queue: services.operation_queue,
         start_time: std::time::Instant::now(),
         workspace_manager,
-        language_plugins: mill_handlers::LanguagePluginRegistry::from_registry(plugin_registry),
+        language_plugins: mill_handlers::LanguagePluginRegistry::from_discovery(plugin_discovery),
     });
 
     // Create dispatcher
@@ -140,17 +140,17 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
 impl ServerOptions {
     /// Create server options from app config
     ///
-    /// By default, this does not inject a plugin registry - the server will build
-    /// one automatically. For dependency injection, use `with_plugin_registry()`.
+    /// By default, this does not inject a plugin discovery - the server will build
+    /// one automatically. For dependency injection, use `with_plugin_discovery()`.
     pub fn from_config(config: AppConfig) -> Self {
         Self {
             config,
             debug: false,
-            plugin_registry: None,
+            plugin_discovery: None,
         }
     }
 
-    /// Set a pre-built plugin registry (for dependency injection)
+    /// Set a pre-built plugin discovery (for dependency injection)
     ///
     /// This allows the application layer to control which language plugins are loaded.
     ///
@@ -161,12 +161,12 @@ impl ServerOptions {
     /// use mill_config::AppConfig;
     ///
     /// # let config = AppConfig::default();
-    /// let registry = build_language_plugin_registry();
+    /// let discovery = build_language_plugin_registry();
     /// let options = ServerOptions::from_config(config)
-    ///     .with_plugin_registry(registry);
+    ///     .with_plugin_discovery(discovery);
     /// ```
-    pub fn with_plugin_registry(mut self, registry: Arc<mill_plugin_api::PluginRegistry>) -> Self {
-        self.plugin_registry = Some(registry);
+    pub fn with_plugin_discovery(mut self, discovery: Arc<mill_plugin_api::PluginDiscovery>) -> Self {
+        self.plugin_discovery = Some(discovery);
         self
     }
 
@@ -184,7 +184,7 @@ impl ServerOptions {
 pub async fn create_dispatcher_with_workspace(
     config: Arc<AppConfig>,
     workspace_manager: Arc<mill_workspaces::WorkspaceManager>,
-    plugin_registry: Arc<mill_plugin_api::PluginRegistry>,
+    plugin_discovery: Arc<mill_plugin_api::PluginDiscovery>,
 ) -> ServerResult<Arc<PluginDispatcher>> {
     // Get project root
     let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -211,7 +211,7 @@ pub async fn create_dispatcher_with_workspace(
         cache_settings,
         plugin_manager.clone(),
         &config,
-        plugin_registry.clone(),
+        plugin_discovery.clone(),
     )
     .await;
 
@@ -335,7 +335,7 @@ pub async fn create_dispatcher_with_workspace(
         operation_queue: services.operation_queue,
         start_time: std::time::Instant::now(),
         workspace_manager,
-        language_plugins: mill_handlers::LanguagePluginRegistry::from_registry(plugin_registry),
+        language_plugins: mill_handlers::LanguagePluginRegistry::from_discovery(plugin_discovery),
     });
 
     // Create and return dispatcher

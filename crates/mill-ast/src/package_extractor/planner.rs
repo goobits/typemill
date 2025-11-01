@@ -8,7 +8,7 @@ use tracing::{debug, info};
 
 pub(crate) async fn plan_extract_module_to_package(
     params: ExtractModuleToPackageParams,
-    plugin_registry: &mill_plugin_api::PluginRegistry,
+    plugin_discovery: &mill_plugin_api::PluginDiscovery,
 ) -> AstResult<EditPlan> {
     info!(
         source_package = %params.source_package,
@@ -28,7 +28,7 @@ pub(crate) async fn plan_extract_module_to_package(
     debug!(language = %detected_language_name, "Detected project language");
 
     // Step 2: Look up appropriate language plugin from registry
-    let plugin = plugin_registry
+    let plugin = plugin_discovery
         .all()
         .iter()
         .find(|p| p.metadata().name == detected_language_name)

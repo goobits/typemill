@@ -363,7 +363,7 @@ impl FileService {
             use std::path::Path;
 
             // Get the Rust plugin from registry
-            if let Some(rust_plugin) = self.plugin_registry.find_by_extension("rs") {
+            if let Some(rust_plugin) = self.plugin_discovery.find_by_extension("rs") {
                 if let Some(workspace_support) = rust_plugin.workspace_support() {
                     workspace_support
                         .execute_consolidation_post_processing(
@@ -829,7 +829,7 @@ impl FileService {
     ) -> ServerResult<bool> {
         // Delegate the dependency update to the import service, which handles AST transformations.
         self.reference_updater
-            .update_import_reference(file_path, update, self.plugin_registry.all())
+            .update_import_reference(file_path, update, self.plugin_discovery.all())
             .await
             .map_err(|e| {
                 error!(

@@ -5,15 +5,15 @@
 //! plugin testing where adding a new language plugin automatically
 //! includes it in the test suite.
 
-use mill_plugin_api::{LanguagePlugin, LanguageTestFixtures, PluginRegistry};
+use mill_plugin_api::{LanguagePlugin, LanguageTestFixtures, PluginDiscovery};
 use mill_services::services::registry_builder::build_language_plugin_registry;
 use std::sync::{Arc, OnceLock};
 
 // Create a single, static instance of the plugin registry.
 // This is initialized once and lives for the entire test run.
-static REGISTRY: OnceLock<Arc<PluginRegistry>> = OnceLock::new();
+static REGISTRY: OnceLock<Arc<PluginDiscovery>> = OnceLock::new();
 
-fn get_or_init_registry() -> &'static Arc<PluginRegistry> {
+fn get_or_init_registry() -> &'static Arc<PluginDiscovery> {
     REGISTRY.get_or_init(|| {
         // Force link of plugin-bundle by calling it
         // This ensures all plugins are available via inventory
@@ -64,6 +64,6 @@ pub fn plugin_file_extension(plugin: &dyn LanguagePlugin) -> &str {
 }
 
 /// Returns a reference to the global plugin registry for tests.
-pub fn get_test_registry() -> &'static Arc<PluginRegistry> {
+pub fn get_test_registry() -> &'static Arc<PluginDiscovery> {
     get_or_init_registry()
 }

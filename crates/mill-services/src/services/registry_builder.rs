@@ -9,10 +9,10 @@
 //! The registry builder discovers all available language plugins at runtime
 //! using the `cb-plugin-registry` crate. Plugins self-register using the
 //! `mill_plugin!` macro, and this builder collects them into the
-//! `PluginRegistry`.
+//! `PluginDiscovery`.
 
 use mill_plugin_api::iter_plugins;
-use mill_plugin_api::PluginRegistry;
+use mill_plugin_api::PluginDiscovery;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::{debug, warn};
@@ -27,8 +27,8 @@ use tracing::{debug, warn};
 /// - Validates that plugin names are unique
 /// - Validates that file extensions don't conflict between plugins
 /// - Logs warnings for any conflicts detected
-pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
-    let mut registry = PluginRegistry::new();
+pub fn build_language_plugin_registry() -> Arc<PluginDiscovery> {
+    let mut discovery = PluginDiscovery::new();
     let mut plugin_count = 0;
 
     debug!("Plugin discovery started");
@@ -78,7 +78,7 @@ pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
         }
 
         let plugin = (descriptor.factory)();
-        registry.register(plugin.into());
+        discovery.register(plugin.into());
         plugin_count += 1;
     }
 
@@ -89,13 +89,13 @@ pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
     }
 
     // Validate required plugins
-    if registry.find_by_extension("rs").is_none() {
+    if discovery.find_by_extension("rs").is_none() {
         warn!("RustPlugin not found in registry");
     } else {
         debug!("RustPlugin found in registry");
     }
 
-    if registry.find_by_extension("ts").is_none() {
+    if discovery.find_by_extension("ts").is_none() {
         warn!("TypeScriptPlugin not found in registry");
     } else {
         debug!("TypeScriptPlugin found in registry");
@@ -106,7 +106,7 @@ pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
         "Built language plugin registry from discovered plugins"
     );
 
-    Arc::new(registry)
+    Arc::new(discovery)
 }
 
 #[cfg(test)]

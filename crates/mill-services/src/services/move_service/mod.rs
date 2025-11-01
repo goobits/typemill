@@ -20,7 +20,7 @@ mod planner;
 
 use crate::services::reference_updater::ReferenceUpdater;
 use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult, EditPlan};
-use mill_plugin_api::{PluginRegistry, ScanScope};
+use mill_plugin_api::{PluginDiscovery, ScanScope};
 use std::path::{Path, PathBuf};
 use tracing::info;
 
@@ -28,8 +28,8 @@ use tracing::info;
 pub struct MoveService<'a> {
     /// Reference updater for import analysis
     reference_updater: &'a ReferenceUpdater,
-    /// Language plugin registry
-    plugin_registry: &'a PluginRegistry,
+    /// Language plugin discovery mechanism
+    plugin_discovery: &'a PluginDiscovery,
     /// Project root directory
     project_root: &'a Path,
 }
@@ -38,12 +38,12 @@ impl<'a> MoveService<'a> {
     /// Create a new MoveService
     pub fn new(
         reference_updater: &'a ReferenceUpdater,
-        plugin_registry: &'a PluginRegistry,
+        plugin_discovery: &'a PluginDiscovery,
         project_root: &'a Path,
     ) -> Self {
         Self {
             reference_updater,
-            plugin_registry,
+            plugin_discovery,
             project_root,
         }
     }
@@ -82,7 +82,7 @@ impl<'a> MoveService<'a> {
             &old_abs,
             &new_abs,
             self.reference_updater,
-            self.plugin_registry,
+            self.plugin_discovery,
             scan_scope,
             None, // No RenameScope - use default behavior
         )
@@ -132,7 +132,7 @@ impl<'a> MoveService<'a> {
             &old_abs,
             &new_abs,
             self.reference_updater,
-            self.plugin_registry,
+            self.plugin_discovery,
             self.project_root,
             scan_scope,
             None, // No RenameScope - use default behavior
@@ -184,7 +184,7 @@ impl<'a> MoveService<'a> {
             &old_abs,
             &new_abs,
             self.reference_updater,
-            self.plugin_registry,
+            self.plugin_discovery,
             scan_scope,
             rename_scope,
         )
@@ -266,7 +266,7 @@ impl<'a> MoveService<'a> {
             &old_abs,
             &new_abs,
             self.reference_updater,
-            self.plugin_registry,
+            self.plugin_discovery,
             self.project_root,
             scan_scope,
             rename_scope,
@@ -324,7 +324,7 @@ impl<'a> MoveService<'a> {
         );
 
         // Iterate through plugins to find one with workspace support
-        for plugin in self.plugin_registry.all() {
+        for plugin in self.plugin_discovery.all() {
             if let Some(workspace_support) = plugin.workspace_support() {
                 let updates = workspace_support
                     .plan_batch_workspace_updates(moves, self.project_root)
@@ -446,10 +446,10 @@ mod tests {
     #[test]
     fn test_to_absolute_path() {
         let project_root = PathBuf::from("/project");
-        let plugin_registry = PluginRegistry::new();
+        let plugin_discovery = PluginDiscovery::new();
         let reference_updater = ReferenceUpdater::new(&project_root);
 
-        let service = MoveService::new(&reference_updater, &plugin_registry, &project_root);
+        let service = MoveService::new(&reference_updater, &plugin_discovery, &project_root);
 
         // Relative path
         let rel = service.to_absolute_path(Path::new("src/main.rs"));

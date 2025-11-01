@@ -2,7 +2,7 @@
 //!
 //! Eliminates duplication across CLI, stdio, WebSocket entry points
 
-use mill_plugin_api::PluginRegistry;
+use mill_plugin_api::PluginDiscovery;
 use mill_server::handlers::plugin_dispatcher::PluginDispatcher;
 use mill_server::workspaces::WorkspaceManager;
 use std::sync::Arc;
@@ -21,19 +21,19 @@ pub async fn create_initialized_dispatcher_with_workspace(
     let config =
         mill_config::config::AppConfig::load().map_err(|e| std::io::Error::other(e.to_string()))?;
 
-    // Build plugin registry from the plugin bundle
+    // Build plugin discovery from the plugin bundle
     let plugins = mill_plugin_bundle::all_plugins();
-    let mut plugin_registry = PluginRegistry::new();
+    let mut plugin_discovery = PluginDiscovery::new();
     for plugin in plugins {
-        plugin_registry.register(plugin);
+        plugin_discovery.register(plugin);
     }
-    let plugin_registry = Arc::new(plugin_registry);
+    let plugin_discovery = Arc::new(plugin_discovery);
 
     // Create dispatcher using shared library function (reduces duplication)
     let dispatcher = mill_server::create_dispatcher_with_workspace(
         Arc::new(config),
         workspace_manager,
-        plugin_registry,
+        plugin_discovery,
     )
     .await
     .map_err(|e| std::io::Error::other(e.to_string()))?;

@@ -150,13 +150,13 @@ fn spawn_test_worker(queue: Arc<OperationQueue>) {
 pub async fn create_test_dispatcher_with_root(
     project_root: std::path::PathBuf,
 ) -> PluginDispatcher {
-    // Build language plugin registry (centralized)
-    let plugin_registry = mill_services::services::build_language_plugin_registry();
+    // Build language plugin discovery (centralized)
+    let plugin_discovery = mill_services::services::build_language_plugin_registry();
 
     let ast_cache = Arc::new(AstCache::new());
     let ast_service = Arc::new(DefaultAstService::new(
         ast_cache.clone(),
-        plugin_registry.clone(),
+        plugin_discovery.clone(),
     ));
     let lock_manager = Arc::new(LockManager::new());
     let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
@@ -173,7 +173,7 @@ pub async fn create_test_dispatcher_with_root(
         lock_manager.clone(),
         operation_queue.clone(),
         &config,
-        plugin_registry.clone(),
+        plugin_discovery.clone(),
     ));
     let planner = crate::services::planner::DefaultPlanner::new();
     let plugin_manager = Arc::new(PluginManager::new());
@@ -191,7 +191,7 @@ pub async fn create_test_dispatcher_with_root(
         operation_queue,
         start_time: std::time::Instant::now(),
         workspace_manager,
-        language_plugins: mill_handlers::LanguagePluginRegistry::from_registry(plugin_registry),
+        language_plugins: mill_handlers::LanguagePluginRegistry::from_discovery(plugin_discovery),
     });
 
     PluginDispatcher::new(app_state, plugin_manager)

@@ -3,7 +3,7 @@
 use mill_ast::{find_project_files, update_imports_for_rename, ImportPathResolver};
 use mill_foundation::protocol::DependencyUpdate;
 use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
-use mill_plugin_api::PluginRegistry;
+use mill_plugin_api::PluginDiscovery;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
@@ -13,21 +13,21 @@ use tracing::{debug, info};
 pub struct ImportService {
     /// Project root directory
     project_root: PathBuf,
-    /// Language plugin registry for multi-language support
-    plugin_registry: Arc<PluginRegistry>,
+    /// Language plugin discovery for multi-language support
+    plugin_discovery: Arc<PluginDiscovery>,
 }
 
 impl ImportService {
-    /// Create a new import service with a custom plugin registry
+    /// Create a new import service with a custom plugin discovery collection
     ///
     /// # Arguments
     ///
     /// * `project_root` - Root directory of the project
-    /// * `plugin_registry` - Registry of language plugins to use
-    pub fn new(project_root: impl AsRef<Path>, plugin_registry: Arc<PluginRegistry>) -> Self {
+    /// * `plugin_discovery` - Collection of language plugins to use
+    pub fn new(project_root: impl AsRef<Path>, plugin_discovery: Arc<PluginDiscovery>) -> Self {
         Self {
             project_root: project_root.as_ref().to_path_buf(),
-            plugin_registry,
+            plugin_discovery,
         }
     }
 
@@ -75,7 +75,7 @@ impl ImportService {
             &old_abs,
             &new_abs,
             &self.project_root,
-            self.plugin_registry.all(),
+            self.plugin_discovery.all(),
             rename_info,
             dry_run,
             scan_scope,
@@ -101,17 +101,17 @@ impl ImportService {
     pub async fn find_affected_files(&self, file_path: &Path) -> ServerResult<Vec<PathBuf>> {
         let resolver = ImportPathResolver::with_plugins(
             &self.project_root,
-            self.plugin_registry.all().to_vec(),
+            self.plugin_discovery.all().to_vec(),
         );
 
         // Get all project files using adapters
-        let project_files = find_project_files(&self.project_root, self.plugin_registry.all())
+        let project_files = find_project_files(&self.project_root, self.plugin_discovery.all())
             .await
             .map_err(|e| ServerError::Internal(format!("Failed to find project files: {}", e)))?;
 
         // Find files importing the target (pass plugins for plugin-aware detection)
         let affected = resolver
-            .find_affected_files(file_path, &project_files, self.plugin_registry.all())
+            .find_affected_files(file_path, &project_files, self.plugin_discovery.all())
             .await
             .map_err(|e| ServerError::Internal(format!("Failed to find affected files: {}", e)))?;
 
@@ -149,7 +149,7 @@ impl ImportService {
             None => return Ok(false), // No extension, cannot determine language
         };
 
-        let plugin = match self.plugin_registry.find_by_extension(extension) {
+        let plugin = match self.plugin_discovery.find_by_extension(extension) {
             Some(p) => p,
             None => {
                 debug!("No plugin found for extension: {}", extension);
@@ -229,8 +229,8 @@ mod tests {
     #[tokio::test]
     async fn test_import_service_creation() {
         let temp_dir = TempDir::new().unwrap();
-        let registry = Arc::new(PluginRegistry::new());
-        let service = ImportService::new(temp_dir.path(), registry);
+        let discovery = Arc::new(PluginDiscovery::new());
+        let service = ImportService::new(temp_dir.path(), discovery);
 
         assert_eq!(service.project_root, temp_dir.path());
     }

@@ -42,17 +42,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         discovered_plugins_count = all_plugins.len(),
         "Discovered language plugins from bundle"
     );
-    let mut plugin_registry = mill_plugin_api::PluginRegistry::new();
+    let mut plugin_discovery = mill_plugin_api::PluginDiscovery::new();
     for plugin in all_plugins {
-        plugin_registry.register(plugin);
+        plugin_discovery.register(plugin);
     }
-    let plugin_registry = Arc::new(plugin_registry);
+    let plugin_discovery = Arc::new(plugin_discovery);
 
     // Create dispatcher using shared library function (reduces duplication)
     let dispatcher = mill_server::create_dispatcher_with_workspace(
         config.clone(),
         workspace_manager,
-        plugin_registry,
+        plugin_discovery,
     )
     .await
     .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;

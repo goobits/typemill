@@ -2,8 +2,8 @@
 
 use crate::registry::RegistryStatistics;
 use crate::{
-    Capabilities, LanguagePlugin, PluginError, PluginMetadata, PluginRegistry, PluginRequest,
-    PluginResponse, PluginResult,
+    Capabilities, LanguagePlugin, PluginError, PluginMetadata, PluginRequest, PluginResponse,
+    PluginResult, RuntimePluginManager,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -16,7 +16,7 @@ use tracing::{debug, error, info, instrument, warn};
 /// Main plugin manager that orchestrates all plugin operations
 pub struct PluginManager {
     /// Plugin registry
-    registry: Arc<RwLock<PluginRegistry>>,
+    registry: Arc<RwLock<RuntimePluginManager>>,
     /// Plugin configurations
     configurations: Arc<RwLock<HashMap<String, Value>>>,
     /// Performance metrics
@@ -44,7 +44,7 @@ impl PluginManager {
     /// Create a new plugin manager
     pub fn new() -> Self {
         Self {
-            registry: Arc::new(RwLock::new(PluginRegistry::new())),
+            registry: Arc::new(RwLock::new(RuntimePluginManager::new())),
             configurations: Arc::new(RwLock::new(HashMap::new())),
             metrics: Arc::new(RwLock::new(PluginMetrics::default())),
         }

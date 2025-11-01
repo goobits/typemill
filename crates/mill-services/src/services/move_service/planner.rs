@@ -2,7 +2,7 @@
 
 use crate::services::reference_updater::ReferenceUpdater;
 use mill_foundation::protocol::{ApiResult as ServerResult, EditPlan};
-use mill_plugin_api::{PluginRegistry, ScanScope};
+use mill_plugin_api::{PluginDiscovery, ScanScope};
 use std::path::Path;
 use tracing::{info, warn};
 
@@ -11,7 +11,7 @@ pub async fn plan_file_move(
     old_abs: &Path,
     new_abs: &Path,
     reference_updater: &ReferenceUpdater,
-    plugin_registry: &PluginRegistry,
+    plugin_discovery: &PluginDiscovery,
     scan_scope: Option<ScanScope>,
     rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
 ) -> ServerResult<EditPlan> {
@@ -27,7 +27,7 @@ pub async fn plan_file_move(
         .update_references(
             old_abs,
             new_abs,
-            plugin_registry.all(),
+            plugin_discovery.all(),
             None, // No rename_info for simple file moves
             true, // dry_run = true
             scan_scope,
@@ -69,7 +69,7 @@ pub async fn plan_directory_move(
     old_abs: &Path,
     new_abs: &Path,
     reference_updater: &ReferenceUpdater,
-    plugin_registry: &PluginRegistry,
+    plugin_discovery: &PluginDiscovery,
     project_root: &Path,
     scan_scope: Option<ScanScope>,
     rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
@@ -85,7 +85,7 @@ pub async fn plan_directory_move(
     let mut rename_info = None;
     let mut is_package = false;
 
-    for plugin in plugin_registry.all() {
+    for plugin in plugin_discovery.all() {
         // Check if plugin has workspace support
         if let Some(workspace_support) = plugin.workspace_support() {
             // Check if this is a package for this language
@@ -126,7 +126,7 @@ pub async fn plan_directory_move(
         .update_references(
             old_abs,
             new_abs,
-            plugin_registry.all(),
+            plugin_discovery.all(),
             rename_info.as_ref(),
             true, // dry_run = true
             effective_scan_scope,
@@ -141,7 +141,7 @@ pub async fn plan_directory_move(
         let edits_before = edit_plan.edits.len();
 
         // Ask each plugin with workspace support to contribute manifest edits
-        for plugin in plugin_registry.all() {
+        for plugin in plugin_discovery.all() {
             if let Some(workspace_support) = plugin.workspace_support() {
                 if let Some(plan) = workspace_support
                     .plan_directory_move(old_abs, new_abs, project_root)
@@ -176,7 +176,7 @@ pub async fn plan_directory_move(
     match plan_documentation_and_config_edits(
         old_abs,
         new_abs,
-        plugin_registry,
+        plugin_discovery,
         project_root,
         rename_scope,
     )
@@ -226,7 +226,7 @@ pub async fn plan_directory_move(
 async fn plan_documentation_and_config_edits(
     old_path: &Path,
     new_path: &Path,
-    plugin_registry: &PluginRegistry,
+    plugin_discovery: &PluginDiscovery,
     project_root: &Path,
     rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
 ) -> ServerResult<Vec<mill_foundation::protocol::TextEdit>> {
@@ -262,7 +262,7 @@ async fn plan_documentation_and_config_edits(
     for ext in &file_extensions {
         info!(extension = ext, "Looking for plugin for extension");
 
-        if let Some(plugin) = plugin_registry.find_by_extension(ext) {
+        if let Some(plugin) = plugin_discovery.find_by_extension(ext) {
             info!(
                 extension = ext,
                 plugin_name = plugin.metadata().name,

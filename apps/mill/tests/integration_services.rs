@@ -133,10 +133,10 @@ export { main, oldName };
 /// Create application state for testing with the given project root
 async fn create_test_app_state(project_root: PathBuf) -> Arc<AppState> {
     let ast_cache = Arc::new(AstCache::new());
-    let plugin_registry = mill_server::services::registry_builder::build_language_plugin_registry();
+    let plugin_discovery = mill_server::services::registry_builder::build_language_plugin_registry();
     let ast_service: Arc<dyn AstService> = Arc::new(DefaultAstService::new(
         ast_cache.clone(),
-        plugin_registry.clone(),
+        plugin_discovery.clone(),
     ));
     let lock_manager = Arc::new(LockManager::new());
     let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
@@ -147,7 +147,7 @@ async fn create_test_app_state(project_root: PathBuf) -> Arc<AppState> {
         lock_manager.clone(),
         operation_queue.clone(),
         &config,
-        plugin_registry.clone(),
+        plugin_discovery.clone(),
     ));
     let planner = mill_server::services::planner::DefaultPlanner::new();
     let plugin_manager = Arc::new(PluginManager::new());
@@ -166,7 +166,7 @@ async fn create_test_app_state(project_root: PathBuf) -> Arc<AppState> {
         operation_queue,
         start_time: Instant::now(),
         workspace_manager,
-        language_plugins: mill_handlers::LanguagePluginRegistry::from_registry(plugin_registry),
+        language_plugins: mill_handlers::LanguagePluginRegistry::from_discovery(plugin_discovery),
     })
 }
 

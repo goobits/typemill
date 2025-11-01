@@ -20,8 +20,8 @@ use tracing::{debug, warn};
 pub struct SystemToolsPlugin {
     metadata: PluginMetadata,
     capabilities: Capabilities,
-    /// Language plugin registry for AST operations
-    plugin_registry: Arc<mill_plugin_api::PluginRegistry>,
+    /// Language plugin discovery for AST operations
+    plugin_discovery: Arc<mill_plugin_api::PluginDiscovery>,
 }
 
 impl SystemToolsPlugin {
@@ -38,12 +38,12 @@ impl SystemToolsPlugin {
     ///
     /// # Arguments
     ///
-    /// * `plugin_registry` - Shared language plugin registry for AST operations
+    /// * `plugin_discovery` - Shared language plugin discovery for AST operations
     ///
     /// # Returns
     ///
     /// A new `SystemToolsPlugin` instance with all capabilities registered
-    pub fn new(plugin_registry: Arc<mill_plugin_api::PluginRegistry>) -> Self {
+    pub fn new(plugin_discovery: Arc<mill_plugin_api::PluginDiscovery>) -> Self {
         let mut capabilities = Capabilities::default();
 
         // Add custom capabilities for system tools
@@ -66,7 +66,7 @@ impl SystemToolsPlugin {
             .insert("system.extract_variable".to_string(), json!(true));
 
         // Add extract_module_to_package only if Rust plugin is available
-        let has_rust_plugin = plugin_registry
+        let has_rust_plugin = plugin_discovery
             .all()
             .iter()
             .any(|p| p.metadata().name == "rust");
@@ -87,7 +87,7 @@ impl SystemToolsPlugin {
                 priority: 50, // Default priority
             },
             capabilities,
-            plugin_registry,
+            plugin_discovery,
         }
     }
 
@@ -332,7 +332,7 @@ impl SystemToolsPlugin {
     async fn handle_extract_module_to_package(&self, params: Value) -> PluginResult<Value> {
         // Check if Rust plugin is available at runtime
         let has_rust = self
-            .plugin_registry
+            .plugin_discovery
             .all()
             .iter()
             .any(|p| p.metadata().name == "rust");
@@ -362,9 +362,9 @@ impl SystemToolsPlugin {
 
         // Call the planning function from mill-ast with injected registry
         // mill-ast is now language-agnostic and uses capability-based dispatch
-        let edit_plan = mill_ast::package_extractor::plan_extract_module_to_package_with_registry(
+        let edit_plan = mill_ast::package_extractor::plan_extract_module_to_package_with_discovery(
             parsed,
-            &self.plugin_registry,
+            &self.plugin_discovery,
         )
         .await
         .map_err(|e| PluginError::PluginRequestFailed {
@@ -782,7 +782,7 @@ impl LanguagePlugin for SystemToolsPlugin {
 
         // Conditionally add Rust-specific tools based on runtime plugin availability
         let has_rust_plugin = self
-            .plugin_registry
+            .plugin_discovery
             .all()
             .iter()
             .any(|p| p.metadata().name == "rust");

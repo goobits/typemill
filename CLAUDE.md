@@ -542,6 +542,12 @@ MCP   CLI-JSON  CLI-Flags  CLI-Helpers
 
 **Zero duplication**: Business logic lives only in handlers, CLI/MCP are thin adapters.
 
+**Note on Plugin Registries**: The system uses a two-layer plugin management architecture:
+1.  **`PluginDiscovery`** (`mill-plugin-api`): A lightweight, dependency-free collection for discovering plugins at the core services layer.
+2.  **`RuntimePluginManager`** (`mill-plugin-system`): A full-featured runtime manager that handles caching, priority-based selection, and dynamic registration for the application layer.
+
+This separation ensures that core services remain decoupled from the complexities of the runtime environment.
+
 For detailed system architecture, see **[docs/architecture/overview.md](docs/architecture/overview.md)**.
 
 For Docker deployment details, see **[docs/operations/docker_deployment.md](docs/operations/docker_deployment.md)**. For CLI usage, see the CLI Commands section above.

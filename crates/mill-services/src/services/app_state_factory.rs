@@ -27,14 +27,14 @@ pub async fn create_services_bundle(
     cache_settings: mill_ast::CacheSettings,
     plugin_manager: Arc<mill_plugin_system::PluginManager>,
     config: &mill_config::AppConfig,
-    plugin_registry: Arc<mill_plugin_api::PluginRegistry>,
+    plugin_discovery: Arc<mill_plugin_api::PluginDiscovery>,
 ) -> ServicesBundle {
-    // Plugin registry is now injected by the caller (dependency injection)
+    // Plugin discovery is now injected by the caller (dependency injection)
 
     let ast_cache = Arc::new(AstCache::with_settings(cache_settings));
     let ast_service = Arc::new(DefaultAstService::new(
         ast_cache.clone(),
-        plugin_registry.clone(),
+        plugin_discovery.clone(),
     ));
     let lock_manager = Arc::new(LockManager::new());
     let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
@@ -48,7 +48,7 @@ pub async fn create_services_bundle(
         lock_manager.clone(),
         operation_queue.clone(),
         config,
-        plugin_registry,
+        plugin_discovery,
     ));
     let planner = planner::DefaultPlanner::new();
     let workflow_executor = workflow_executor::DefaultWorkflowExecutor::new(plugin_manager);

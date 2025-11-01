@@ -15,8 +15,8 @@ pub async fn create_test_app_state() -> (Arc<AppState>, TempDir) {
     let plugin_manager = Arc::new(PluginManager::new());
     let config = mill_config::AppConfig::default();
 
-    // Build plugin registry for tests
-    let plugin_registry =
+    // Build plugin discovery for tests
+    let plugin_discovery =
         mill_services::services::registry_builder::build_language_plugin_registry();
 
     let services = create_services_bundle(
@@ -24,7 +24,7 @@ pub async fn create_test_app_state() -> (Arc<AppState>, TempDir) {
         cache_settings,
         plugin_manager.clone(),
         &config,
-        plugin_registry.clone(),
+        plugin_discovery.clone(),
     )
     .await;
     let workspace_manager = Arc::new(WorkspaceManager::new());
@@ -39,7 +39,7 @@ pub async fn create_test_app_state() -> (Arc<AppState>, TempDir) {
         operation_queue: services.operation_queue,
         start_time: std::time::Instant::now(),
         workspace_manager,
-        language_plugins: mill_handlers::LanguagePluginRegistry::from_registry(plugin_registry),
+        language_plugins: mill_handlers::LanguagePluginRegistry::from_discovery(plugin_discovery),
     });
 
     (app_state, temp_dir)

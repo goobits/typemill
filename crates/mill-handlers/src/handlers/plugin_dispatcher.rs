@@ -551,7 +551,7 @@ pub async fn create_test_dispatcher() -> PluginDispatcher {
         operation_queue: services.operation_queue,
         start_time: std::time::Instant::now(),
         workspace_manager,
-        language_plugins: crate::LanguagePluginRegistry::from_registry(plugin_registry),
+        language_plugins: crate::LanguagePluginRegistry::from_discovery(plugin_registry),
     });
 
     PluginDispatcher::new(app_state, plugin_manager)
@@ -566,9 +566,9 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
 
         // Build plugin registry for tests
-        let plugin_registry =
+        let plugin_discovery =
             mill_services::services::registry_builder::build_language_plugin_registry();
-        let language_plugins = crate::LanguagePluginRegistry::from_registry(plugin_registry);
+        let language_plugins = crate::LanguagePluginRegistry::from_discovery(plugin_discovery.clone());
         let ast_cache = Arc::new(mill_ast::AstCache::new());
         let ast_service = Arc::new(mill_services::services::DefaultAstService::new(
             ast_cache.clone(),

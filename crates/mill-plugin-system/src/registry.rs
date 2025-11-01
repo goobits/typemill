@@ -6,8 +6,19 @@ use std::path::Path;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
-/// Registry for managing loaded language plugins
-pub struct PluginRegistry {
+/// Manages the lifecycle and routing of language plugins at runtime.
+///
+/// This struct is the second layer of the two-layer plugin management
+/// architecture. It provides advanced features for a running application,
+/// including:
+/// - Caching of plugin metadata and capabilities.
+/// - Priority-based plugin selection for handling overlapping file extensions.
+/// - Scope-aware routing (file-scoped vs. workspace-scoped tools).
+/// - Dynamic registration and unregistration of plugins.
+///
+/// For simple, dependency-free plugin discovery at the core services layer,
+/// use `PluginDiscovery` from the `mill-plugin-api` crate.
+pub struct RuntimePluginManager {
     /// Map of plugin name to plugin instance
     plugins: HashMap<String, Arc<dyn LanguagePlugin>>,
     /// Map of file extension to supporting plugins
@@ -22,8 +33,8 @@ pub struct PluginRegistry {
     error_on_ambiguity: bool,
 }
 
-impl PluginRegistry {
-    /// Create a new plugin registry
+impl RuntimePluginManager {
+    /// Create a new plugin manager.
     pub fn new() -> Self {
         Self {
             plugins: HashMap::new(),
@@ -470,7 +481,7 @@ impl PluginRegistry {
     }
 }
 
-impl Default for PluginRegistry {
+impl Default for RuntimePluginManager {
     fn default() -> Self {
         Self::new()
     }
@@ -535,7 +546,7 @@ mod tests {
 
     #[test]
     fn test_plugin_registration() {
-        let mut registry = PluginRegistry::new();
+        let mut manager = RuntimePluginManager::new();
 
         let mut capabilities = Capabilities::default();
         capabilities.navigation.go_to_definition = true;
@@ -547,14 +558,14 @@ mod tests {
             metadata: None,
         });
 
-        assert!(registry.register_plugin("test-plugin", plugin).is_ok());
-        assert!(registry.get_plugin("test-plugin").is_some());
-        assert_eq!(registry.get_plugin_names(), vec!["test-plugin"]);
+        assert!(manager.register_plugin("test-plugin", plugin).is_ok());
+        assert!(manager.get_plugin("test-plugin").is_some());
+        assert_eq!(manager.get_plugin_names(), vec!["test-plugin"]);
     }
 
     #[test]
     fn test_plugin_discovery() {
-        let mut registry = PluginRegistry::new();
+        let mut manager = RuntimePluginManager::new();
 
         let mut capabilities = Capabilities::default();
         capabilities.navigation.go_to_definition = true;
@@ -566,16 +577,16 @@ mod tests {
             metadata: None,
         });
 
-        registry.register_plugin("test-plugin", plugin).unwrap();
+        manager.register_plugin("test-plugin", plugin).unwrap();
 
         let file_path = PathBuf::from("example.test");
-        let plugins = registry.find_plugins_for_file(&file_path);
+        let plugins = manager.find_plugins_for_file(&file_path);
         assert_eq!(plugins, vec!["test-plugin"]);
 
-        let method_plugins = registry.find_plugins_for_method("find_definition");
+        let method_plugins = manager.find_plugins_for_method("find_definition");
         assert_eq!(method_plugins, vec!["test-plugin"]);
 
-        let best_plugin = registry
+        let best_plugin = manager
             .find_best_plugin(&file_path, "find_definition")
             .unwrap();
         assert_eq!(best_plugin, "test-plugin");
@@ -583,7 +594,7 @@ mod tests {
 
     #[test]
     fn test_plugin_unregistration() {
-        let mut registry = PluginRegistry::new();
+        let mut manager = RuntimePluginManager::new();
 
         let plugin = Arc::new(TestPlugin {
             name: "test-plugin".to_string(),
@@ -592,17 +603,17 @@ mod tests {
             metadata: None,
         });
 
-        registry.register_plugin("test-plugin", plugin).unwrap();
-        assert!(registry.get_plugin("test-plugin").is_some());
+        manager.register_plugin("test-plugin", plugin).unwrap();
+        assert!(manager.get_plugin("test-plugin").is_some());
 
-        assert!(registry.unregister_plugin("test-plugin").is_ok());
-        assert!(registry.get_plugin("test-plugin").is_none());
-        assert!(registry.get_plugin_names().is_empty());
+        assert!(manager.unregister_plugin("test-plugin").is_ok());
+        assert!(manager.get_plugin("test-plugin").is_none());
+        assert!(manager.get_plugin_names().is_empty());
     }
 
     #[test]
     fn test_method_support_checking() {
-        let mut registry = PluginRegistry::new();
+        let mut manager = RuntimePluginManager::new();
 
         let mut capabilities = Capabilities::default();
         capabilities.navigation.go_to_definition = true;
@@ -614,16 +625,16 @@ mod tests {
             metadata: None,
         });
 
-        registry.register_plugin("test-plugin", plugin).unwrap();
+        manager.register_plugin("test-plugin", plugin).unwrap();
 
         let file_path = PathBuf::from("example.test");
-        assert!(registry.is_method_supported(&file_path, "find_definition"));
-        assert!(!registry.is_method_supported(&file_path, "find_references"));
+        assert!(manager.is_method_supported(&file_path, "find_definition"));
+        assert!(!manager.is_method_supported(&file_path, "find_references"));
     }
 
     #[test]
     fn test_registry_statistics() {
-        let mut registry = PluginRegistry::new();
+        let mut manager = RuntimePluginManager::new();
 
         let mut capabilities = Capabilities::default();
         capabilities.navigation.go_to_definition = true;
@@ -636,9 +647,9 @@ mod tests {
             metadata: None,
         });
 
-        registry.register_plugin("test-plugin", plugin).unwrap();
+        manager.register_plugin("test-plugin", plugin).unwrap();
 
-        let stats = registry.get_statistics();
+        let stats = manager.get_statistics();
         assert_eq!(stats.total_plugins, 1);
         assert_eq!(stats.supported_extensions, 2);
         // Methods count depends on capabilities - just verify it's reasonable
@@ -659,7 +670,7 @@ mod tests {
     #[test]
     fn test_scope_aware_file_tool_selection() {
         // Test that file-scoped tools require both file extension AND method match
-        let mut registry = PluginRegistry::new();
+        let mut manager = RuntimePluginManager::new();
 
         // Plugin 1: Supports TypeScript files + find_definition (file-scoped)
         let mut caps1 = Capabilities::default();
@@ -681,18 +692,18 @@ mod tests {
             metadata: None,
         });
 
-        registry.register_plugin("ts-plugin", plugin1).unwrap();
-        registry.register_plugin("generic-plugin", plugin2).unwrap();
+        manager.register_plugin("ts-plugin", plugin1).unwrap();
+        manager.register_plugin("generic-plugin", plugin2).unwrap();
 
         // File-scoped tool should only match plugin with matching file extension
         let ts_file = PathBuf::from("example.ts");
-        let best = registry
+        let best = manager
             .find_best_plugin(&ts_file, "find_definition")
             .unwrap();
         assert_eq!(best, "ts-plugin");
 
         let js_file = PathBuf::from("example.js");
-        let best = registry
+        let best = manager
             .find_best_plugin(&js_file, "find_definition")
             .unwrap();
         assert_eq!(best, "generic-plugin");
@@ -701,7 +712,7 @@ mod tests {
     #[test]
     fn test_scope_aware_workspace_tool_selection() {
         // Test that workspace-scoped tools only need method match
-        let mut registry = PluginRegistry::new();
+        let mut manager = RuntimePluginManager::new();
 
         // Plugin supports workspace-scoped tool (search_workspace_symbols)
         let mut caps = Capabilities::default();
@@ -713,19 +724,19 @@ mod tests {
             metadata: None,
         });
 
-        registry
+        manager
             .register_plugin("workspace-plugin", plugin)
             .unwrap();
 
         // Workspace tool should work regardless of file extension
         let ts_file = PathBuf::from("example.ts");
-        let best = registry
+        let best = manager
             .find_best_plugin(&ts_file, "search_workspace_symbols")
             .unwrap();
         assert_eq!(best, "workspace-plugin");
 
         let py_file = PathBuf::from("example.py");
-        let best = registry
+        let best = manager
             .find_best_plugin(&py_file, "search_workspace_symbols")
             .unwrap();
         assert_eq!(best, "workspace-plugin");
@@ -734,7 +745,7 @@ mod tests {
     #[test]
     fn test_priority_based_selection() {
         // Test that priority-based selection works correctly
-        let mut registry = PluginRegistry::new();
+        let mut manager = RuntimePluginManager::new();
 
         // Plugin 1: Priority 40
         let mut caps1 = Capabilities::default();
@@ -762,12 +773,12 @@ mod tests {
             metadata: Some(meta2),
         });
 
-        registry.register_plugin("low-priority", plugin1).unwrap();
-        registry.register_plugin("high-priority", plugin2).unwrap();
+        manager.register_plugin("low-priority", plugin1).unwrap();
+        manager.register_plugin("high-priority", plugin2).unwrap();
 
         // High priority plugin should be selected
         let ts_file = PathBuf::from("example.ts");
-        let best = registry
+        let best = manager
             .find_best_plugin(&ts_file, "find_definition")
             .unwrap();
         assert_eq!(best, "high-priority");
@@ -776,7 +787,7 @@ mod tests {
     #[test]
     fn test_priority_override() {
         // Test that priority overrides work correctly
-        let mut registry = PluginRegistry::new();
+        let mut manager = RuntimePluginManager::new();
 
         // Plugin 1: Default priority 50
         let mut caps1 = Capabilities::default();
@@ -798,16 +809,16 @@ mod tests {
             metadata: None,
         });
 
-        registry.register_plugin("plugin1", plugin1).unwrap();
-        registry.register_plugin("plugin2", plugin2).unwrap();
+        manager.register_plugin("plugin1", plugin1).unwrap();
+        manager.register_plugin("plugin2", plugin2).unwrap();
 
         // Set priority override for plugin1
         let mut overrides = HashMap::new();
         overrides.insert("plugin1".to_string(), 100);
-        registry.set_priority_overrides(overrides);
+        manager.set_priority_overrides(overrides);
 
         let ts_file = PathBuf::from("example.ts");
-        let best = registry
+        let best = manager
             .find_best_plugin(&ts_file, "find_definition")
             .unwrap();
         assert_eq!(best, "plugin1");
@@ -816,8 +827,8 @@ mod tests {
     #[test]
     fn test_ambiguous_selection_error() {
         // Test that ambiguous selection is detected when error_on_ambiguity is true
-        let mut registry = PluginRegistry::new();
-        registry.set_error_on_ambiguity(true);
+        let mut manager = RuntimePluginManager::new();
+        manager.set_error_on_ambiguity(true);
 
         // Two plugins with same priority
         let mut caps1 = Capabilities::default();
@@ -838,11 +849,11 @@ mod tests {
             metadata: None,
         });
 
-        registry.register_plugin("plugin1", plugin1).unwrap();
-        registry.register_plugin("plugin2", plugin2).unwrap();
+        manager.register_plugin("plugin1", plugin1).unwrap();
+        manager.register_plugin("plugin2", plugin2).unwrap();
 
         let ts_file = PathBuf::from("example.ts");
-        let result = registry.find_best_plugin(&ts_file, "find_definition");
+        let result = manager.find_best_plugin(&ts_file, "find_definition");
 
         assert!(result.is_err());
         assert!(matches!(
@@ -854,8 +865,8 @@ mod tests {
     #[test]
     fn test_ambiguous_selection_fallback() {
         // Test that lexicographic fallback works when error_on_ambiguity is false
-        let mut registry = PluginRegistry::new();
-        registry.set_error_on_ambiguity(false);
+        let mut manager = RuntimePluginManager::new();
+        manager.set_error_on_ambiguity(false);
 
         // Two plugins with same priority
         let mut caps1 = Capabilities::default();
@@ -876,11 +887,11 @@ mod tests {
             metadata: None,
         });
 
-        registry.register_plugin("zebra-plugin", plugin1).unwrap();
-        registry.register_plugin("alpha-plugin", plugin2).unwrap();
+        manager.register_plugin("zebra-plugin", plugin1).unwrap();
+        manager.register_plugin("alpha-plugin", plugin2).unwrap();
 
         let ts_file = PathBuf::from("example.ts");
-        let best = registry
+        let best = manager
             .find_best_plugin(&ts_file, "find_definition")
             .unwrap();
 
