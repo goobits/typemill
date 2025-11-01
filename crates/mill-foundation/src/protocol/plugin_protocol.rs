@@ -6,7 +6,7 @@ use serde_json::Value;
 
 /// A request sent from the core to a language plugin.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PluginRequest {
+pub(crate) struct PluginRequest {
     /// A unique identifier for the request.
     pub id: u64,
     /// The method to be invoked on the plugin (e.g., "parse").
@@ -17,7 +17,7 @@ pub struct PluginRequest {
 
 /// A response sent from a language plugin to the core.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PluginResponse {
+pub(crate) struct PluginResponse {
     /// The identifier of the request this response corresponds to.
     pub id: u64,
     /// The successful result of the method invocation, if any.
@@ -30,7 +30,7 @@ pub struct PluginResponse {
 
 /// An error that occurred within a plugin.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PluginError {
+pub(crate) struct PluginError {
     /// An error code.
     pub code: i32,
     /// A human-readable error message.

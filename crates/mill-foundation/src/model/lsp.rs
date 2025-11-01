@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// LSP request message
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspRequest {
+pub(crate) struct LspRequest {
     pub jsonrpc: String,
     pub id: serde_json::Value,
     pub method: String,
@@ -16,7 +16,7 @@ pub struct LspRequest {
 /// LSP response message
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspResponse {
+pub(crate) struct LspResponse {
     pub jsonrpc: String,
     pub id: serde_json::Value,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -28,7 +28,7 @@ pub struct LspResponse {
 /// LSP notification message
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspNotification {
+pub(crate) struct LspNotification {
     pub jsonrpc: String,
     pub method: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -38,7 +38,7 @@ pub struct LspNotification {
 /// LSP error object
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspError {
+pub(crate) struct LspError {
     pub code: i32,
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -48,7 +48,7 @@ pub struct LspError {
 /// LSP position in a document
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspPosition {
+pub(crate) struct LspPosition {
     /// Line position (0-based)
     pub line: u32,
     /// Character position (0-based, UTF-16 code units)
@@ -58,7 +58,7 @@ pub struct LspPosition {
 /// LSP range in a document
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspRange {
+pub(crate) struct LspRange {
     /// The range's start position
     pub start: LspPosition,
     /// The range's end position
@@ -68,7 +68,7 @@ pub struct LspRange {
 /// LSP location reference
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspLocation {
+pub(crate) struct LspLocation {
     /// The location's URI
     pub uri: String,
     /// The location's range
@@ -78,7 +78,7 @@ pub struct LspLocation {
 /// LSP text document identifier
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspTextDocumentIdentifier {
+pub(crate) struct LspTextDocumentIdentifier {
     /// The text document's URI
     pub uri: String,
 }
@@ -86,7 +86,7 @@ pub struct LspTextDocumentIdentifier {
 /// LSP versioned text document identifier
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspVersionedTextDocumentIdentifier {
+pub(crate) struct LspVersionedTextDocumentIdentifier {
     /// The text document's URI
     pub uri: String,
     /// The version number of this document
@@ -96,7 +96,7 @@ pub struct LspVersionedTextDocumentIdentifier {
 /// LSP text document position params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspTextDocumentPositionParams {
+pub(crate) struct LspTextDocumentPositionParams {
     /// The text document
     pub text_document: LspTextDocumentIdentifier,
     /// The position inside the text document
@@ -106,7 +106,7 @@ pub struct LspTextDocumentPositionParams {
 /// LSP definition params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspDefinitionParams {
+pub(crate) struct LspDefinitionParams {
     #[serde(flatten)]
     pub text_document_position_params: LspTextDocumentPositionParams,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -118,7 +118,7 @@ pub struct LspDefinitionParams {
 /// LSP references params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspReferencesParams {
+pub(crate) struct LspReferencesParams {
     #[serde(flatten)]
     pub text_document_position_params: LspTextDocumentPositionParams,
     pub context: LspReferenceContext,
@@ -131,7 +131,7 @@ pub struct LspReferencesParams {
 /// LSP reference context
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspReferenceContext {
+pub(crate) struct LspReferenceContext {
     /// Include the declaration of the current symbol
     pub include_declaration: bool,
 }
@@ -139,7 +139,7 @@ pub struct LspReferenceContext {
 /// LSP hover params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspHoverParams {
+pub(crate) struct LspHoverParams {
     #[serde(flatten)]
     pub text_document_position_params: LspTextDocumentPositionParams,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -149,7 +149,7 @@ pub struct LspHoverParams {
 /// LSP hover result
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspHover {
+pub(crate) struct LspHover {
     /// The hover's content
     pub contents: LspMarkupContent,
     /// An optional range
@@ -160,7 +160,7 @@ pub struct LspHover {
 /// LSP markup content
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspMarkupContent {
+pub(crate) struct LspMarkupContent {
     /// The type of the markup
     pub kind: String, // "plaintext" or "markdown"
     /// The content itself
@@ -170,7 +170,7 @@ pub struct LspMarkupContent {
 /// LSP completion params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspCompletionParams {
+pub(crate) struct LspCompletionParams {
     #[serde(flatten)]
     pub text_document_position_params: LspTextDocumentPositionParams,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -184,7 +184,7 @@ pub struct LspCompletionParams {
 /// LSP completion context
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspCompletionContext {
+pub(crate) struct LspCompletionContext {
     /// How the completion was triggered
     pub trigger_kind: u32,
     /// The trigger character (if any)
@@ -195,7 +195,7 @@ pub struct LspCompletionContext {
 /// LSP completion item
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspCompletionItem {
+pub(crate) struct LspCompletionItem {
     /// The label of this completion item
     pub label: String,
     /// The kind of this completion item
@@ -243,7 +243,7 @@ pub struct LspCompletionItem {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 #[non_exhaustive]
-pub enum LspDocumentation {
+pub(crate) enum LspDocumentation {
     String(String),
     MarkupContent(LspMarkupContent),
 }
@@ -251,7 +251,7 @@ pub enum LspDocumentation {
 /// LSP text edit
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspTextEdit {
+pub(crate) struct LspTextEdit {
     /// The range of the text document to be manipulated
     pub range: LspRange,
     /// The string to be inserted
@@ -261,7 +261,7 @@ pub struct LspTextEdit {
 /// LSP command
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspCommand {
+pub(crate) struct LspCommand {
     /// Title of the command
     pub title: String,
     /// The identifier of the actual command handler
@@ -274,7 +274,7 @@ pub struct LspCommand {
 /// LSP work done progress params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspWorkDoneProgressParams {
+pub(crate) struct LspWorkDoneProgressParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub work_done_token: Option<serde_json::Value>,
 }
@@ -282,7 +282,7 @@ pub struct LspWorkDoneProgressParams {
 /// LSP partial result params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspPartialResultParams {
+pub(crate) struct LspPartialResultParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub partial_result_token: Option<serde_json::Value>,
 }
@@ -290,7 +290,7 @@ pub struct LspPartialResultParams {
 /// LSP diagnostic
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspDiagnostic {
+pub(crate) struct LspDiagnostic {
     /// The range at which the message applies
     pub range: LspRange,
     /// The diagnostic's severity
@@ -321,7 +321,7 @@ pub struct LspDiagnostic {
 /// LSP code description
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspCodeDescription {
+pub(crate) struct LspCodeDescription {
     /// An URI to open with more information about the diagnostic error
     pub href: String,
 }
@@ -329,7 +329,7 @@ pub struct LspCodeDescription {
 /// LSP diagnostic related information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct LspDiagnosticRelatedInformation {
+pub(crate) struct LspDiagnosticRelatedInformation {
     /// The location of this related diagnostic information
     pub location: LspLocation,
     /// The message of this related diagnostic information

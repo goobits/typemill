@@ -6,7 +6,7 @@ use std::collections::HashMap;
 /// Intent specification for automated workflows
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct IntentSpec {
+pub(crate) struct IntentSpec {
     /// Intent name/identifier
     pub name: String,
     /// Intent arguments as JSON value
@@ -19,7 +19,7 @@ pub struct IntentSpec {
 /// Metadata for intent specifications
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct IntentMetadata {
+pub(crate) struct IntentMetadata {
     /// Source of the intent (e.g., "user", "automated", "system")
     pub source: String,
     /// Optional correlation ID for tracking
@@ -39,7 +39,7 @@ pub struct IntentMetadata {
 /// Intent execution result
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct IntentResult {
+pub(crate) struct IntentResult {
     /// Success status
     pub success: bool,
     /// Result message
@@ -59,7 +59,7 @@ pub struct IntentResult {
 /// Intent execution error
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct IntentError {
+pub(crate) struct IntentError {
     /// Error code
     pub code: String,
     /// Error message
@@ -75,7 +75,7 @@ pub struct IntentError {
 /// Retry information for failed intents
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct IntentRetryInfo {
+pub(crate) struct IntentRetryInfo {
     /// Number of retry attempts made
     pub attempts: u32,
     /// Maximum number of retries allowed
@@ -91,7 +91,7 @@ pub struct IntentRetryInfo {
 /// Intent execution metrics
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct IntentMetrics {
+pub(crate) struct IntentMetrics {
     /// Execution start time
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Execution end time
@@ -108,7 +108,7 @@ pub struct IntentMetrics {
 /// Resource usage metrics for intent execution
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct IntentResourceUsage {
+pub(crate) struct IntentResourceUsage {
     /// CPU time used in milliseconds
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cpu_time_ms: Option<u64>,
@@ -127,7 +127,7 @@ pub struct IntentResourceUsage {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub enum IntentStatus {
+pub(crate) enum IntentStatus {
     /// Intent is pending execution
     Pending,
     /// Intent is currently being executed
@@ -147,7 +147,7 @@ pub enum IntentStatus {
 /// Intent execution context
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct IntentContext {
+pub(crate) struct IntentContext {
     /// Unique execution ID
     pub execution_id: String,
     /// Intent specification

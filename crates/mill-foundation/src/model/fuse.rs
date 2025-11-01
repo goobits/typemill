@@ -6,7 +6,7 @@ use std::path::PathBuf;
 /// FUSE filesystem configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct FuseConfig {
+pub(crate) struct FuseConfig {
     /// Mount point for the FUSE filesystem
     pub mount_point: PathBuf,
     /// Enable read-only mode
@@ -26,7 +26,7 @@ pub struct FuseConfig {
 /// FUSE operation result
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
-pub enum FuseResult<T> {
+pub(crate) enum FuseResult<T> {
     Ok(T),
     Err(FuseError),
 }
@@ -34,7 +34,7 @@ pub enum FuseResult<T> {
 /// FUSE operation errors
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
-pub enum FuseError {
+pub(crate) enum FuseError {
     /// File or directory not found
     NotFound,
     /// Permission denied
@@ -63,7 +63,7 @@ pub enum FuseError {
 
 /// File attributes for FUSE operations
 #[derive(Debug, Clone, PartialEq)]
-pub struct FuseFileAttr {
+pub(crate) struct FuseFileAttr {
     /// File size in bytes
     pub size: u64,
     /// Number of blocks
@@ -94,7 +94,7 @@ pub struct FuseFileAttr {
 
 /// Directory entry for FUSE operations
 #[derive(Debug, Clone, PartialEq)]
-pub struct FuseDirEntry {
+pub(crate) struct FuseDirEntry {
     /// File name
     pub name: String,
     /// File attributes
@@ -105,7 +105,7 @@ pub struct FuseDirEntry {
 
 /// FUSE filesystem statistics
 #[derive(Debug, Clone, PartialEq)]
-pub struct FuseStatfs {
+pub(crate) struct FuseStatfs {
     /// Total blocks in filesystem
     pub blocks: u64,
     /// Free blocks in filesystem

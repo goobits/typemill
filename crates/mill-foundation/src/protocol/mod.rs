@@ -20,7 +20,7 @@ use std::path::Path;
 /// Generic message type for protocol communication
 /// This will be mapped to specific protocol types (MCP, LSP) in other crates
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Message {
+pub(crate) struct Message {
     pub id: Option<String>,
     pub method: String,
     pub params: serde_json::Value,
@@ -29,7 +29,7 @@ pub struct Message {
 /// Import graph representation - concrete implementation from mill-ast
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportGraph {
+pub(crate) struct ImportGraph {
     /// Source file path
     pub source_file: String,
     /// Direct imports from this file
@@ -43,7 +43,7 @@ pub struct ImportGraph {
 /// Information about a single import
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportInfo {
+pub(crate) struct ImportInfo {
     /// The imported module path/name
     pub module_path: String,
     /// Import type (ES module, CommonJS, etc.)
@@ -63,7 +63,7 @@ pub struct ImportInfo {
 /// Named import information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct NamedImport {
+pub(crate) struct NamedImport {
     /// Original name in the module
     pub name: String,
     /// Local alias (if renamed)
@@ -76,7 +76,7 @@ pub struct NamedImport {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub enum ImportType {
+pub(crate) enum ImportType {
     /// ES module import (import/export)
     EsModule,
     /// CommonJS require
@@ -100,7 +100,7 @@ pub enum ImportType {
 /// Source location information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct SourceLocation {
+pub(crate) struct SourceLocation {
     /// Start line (0-based)
     pub start_line: u32,
     /// Start column (0-based)
@@ -114,7 +114,7 @@ pub struct SourceLocation {
 /// Import graph metadata
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportGraphMetadata {
+pub(crate) struct ImportGraphMetadata {
     /// File extension/language
     pub language: String,
     /// Parsing timestamp
@@ -130,7 +130,7 @@ pub struct ImportGraphMetadata {
 
 /// Cache statistics for monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CacheStats {
+pub(crate) struct CacheStats {
     /// Number of cache hits
     pub hits: u64,
     /// Number of cache misses
@@ -214,7 +214,7 @@ pub trait MessageDispatcher: Send + Sync {
 
 /// Parameters for rename_directory operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RenameDirectoryParams {
+pub(crate) struct RenameDirectoryParams {
     /// Old directory path
     pub old_path: std::path::PathBuf,
     /// New directory path
