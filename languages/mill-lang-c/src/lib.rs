@@ -1,4 +1,13 @@
 //! C language plugin for TypeMill
+//!
+//! Provides comprehensive C language support including:
+//! - AST parsing using tree-sitter
+//! - Import/include management (#include directives)
+//! - Refactoring operations (extract function/variable, inline variable)
+//! - Workspace operations (Makefile-based projects)
+//! - CMake and Makefile manifest analysis
+//!
+//! This plugin supports C99 and C11 standards with `clangd` as the LSP server.
 
 mod ast_parser;
 mod cmake_parser;
@@ -50,14 +59,52 @@ define_language_plugin! {
 impl LanguagePlugin for CPlugin {
     impl_language_plugin_basics!();
 
+    /// Parse C source code into an AST representation
+    ///
+    /// Uses tree-sitter to parse C source and extract symbols (functions, structs, etc.)
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - The C source code to parse
+    ///
+    /// # Returns
+    ///
+    /// A `ParsedSource` containing extracted symbols with location information
     async fn parse(&self, source: &str) -> PluginResult<ParsedSource> {
         Ok(ast_parser::parse_source(source))
     }
 
+    /// List all function names in C source code
+    ///
+    /// Extracts function declarations and definitions using tree-sitter AST traversal
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - The C source code to analyze
+    ///
+    /// # Returns
+    ///
+    /// A vector of function names found in the source
     async fn list_functions(&self, source: &str) -> PluginResult<Vec<String>> {
         Ok(ast_parser::list_functions(source))
     }
 
+    /// Analyze C project manifest files (Makefile or CMakeLists.txt)
+    ///
+    /// Parses either CMake or Make-based build configurations to extract
+    /// dependencies, targets, and project structure
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to the manifest file (Makefile or CMakeLists.txt)
+    ///
+    /// # Returns
+    ///
+    /// Structured manifest data containing dependencies and configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file type is not supported
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
         let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or_default();
         if filename.starts_with("CMakeLists") {

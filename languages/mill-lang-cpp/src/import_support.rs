@@ -1,3 +1,14 @@
+//! Import support for C++ #include and import directives
+//!
+//! This module provides comprehensive import/include management for C++ source code,
+//! supporting both traditional `#include` directives and modern C++20 `import` statements.
+//!
+//! Functionality includes:
+//! - Parsing #include directives (both system <> and local "")
+//! - Parsing C++20 module imports
+//! - Building import graphs with dependency information
+//! - Renaming, moving, and mutating includes during refactoring
+
 use mill_plugin_api::import_support::{
     ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportParser,
     ImportRenameSupport,
@@ -7,6 +18,9 @@ use std::path::Path;
 use crate::ast_parser::get_cpp_language;
 use crate::constants::CPP20_IMPORT_PATTERN;
 
+/// Get tree-sitter query for extracting #include directives
+///
+/// Returns a query string that matches both system and local includes
 fn get_cpp_imports_query() -> &'static str {
     r#"
     (preproc_include
@@ -16,6 +30,9 @@ fn get_cpp_imports_query() -> &'static str {
     "#
 }
 
+/// C++ language import support implementation
+///
+/// Handles parsing and manipulation of #include and import directives in C++ source code
 #[derive(Debug, Clone, Copy, Default)]
 pub struct CppImportSupport;
 

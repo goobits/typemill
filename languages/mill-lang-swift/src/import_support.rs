@@ -1,3 +1,12 @@
+//! Import support for Swift import statements
+//!
+//! Handles parsing and manipulation of Swift import declarations including:
+//! - Module imports (`import Foundation`)
+//! - Submodule imports (`import UIKit.UIView`)
+//! - Import with attributes (`@testable import MyModule`)
+//!
+//! Provides functionality for renaming, moving, and analyzing import dependencies.
+
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use mill_plugin_api::{
@@ -7,6 +16,7 @@ use mill_plugin_api::{
 use regex::Regex;
 use std::path::Path;
 
+/// Swift import support implementation
 #[derive(Default)]
 pub struct SwiftImportSupport;
 

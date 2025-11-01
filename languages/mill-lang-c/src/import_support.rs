@@ -1,3 +1,14 @@
+//! Import support for C #include directives
+//!
+//! This module provides comprehensive import/include management for C source code,
+//! supporting both system includes (`#include <header.h>`) and local includes
+//! (`#include "header.h"`).
+//!
+//! Functionality includes:
+//! - Parsing #include directives from source code
+//! - Building import graphs with dependency information
+//! - Renaming, moving, and mutating includes during refactoring
+
 use mill_foundation::protocol::{
     DependencyUpdate, ImportGraph, ImportGraphMetadata, ImportInfo, ImportType, SourceLocation,
 };
@@ -12,6 +23,9 @@ use std::path::Path;
 
 use crate::constants::{INCLUDE_PATTERN, INCLUDE_PATH_PATTERN};
 
+/// C language import support implementation
+///
+/// Handles parsing and manipulation of #include directives in C source code
 #[derive(Debug, Clone, Copy, Default)]
 pub struct CImportSupport;
 

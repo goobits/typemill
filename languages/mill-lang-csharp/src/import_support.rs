@@ -1,4 +1,11 @@
-//! Placeholder for C# import support.
+//! Import support for C# using directives
+//!
+//! Handles parsing and manipulation of C# using statements including:
+//! - Namespace imports (`using System;`)
+//! - Static imports (`using static System.Math;`)
+//! - Alias imports (`using MyAlias = System.Collections.Generic;`)
+//!
+//! Provides functionality for renaming, moving, and analyzing using dependencies.
 use async_trait::async_trait;
 use mill_plugin_api::{
     ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportParser,

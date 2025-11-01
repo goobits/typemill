@@ -1,7 +1,13 @@
+//! Workspace support for Swift Package Manager projects
+//!
+//! Handles Swift Package Manager workspace operations through Package.swift manipulation,
+//! including adding/removing dependencies and managing multi-package workspaces.
+
 use lazy_static::lazy_static;
 use mill_plugin_api::WorkspaceSupport;
 use regex::Regex;
 
+/// Swift workspace support implementation for Package.swift manifests
 #[derive(Default, Clone)]
 pub struct SwiftWorkspaceSupport;
 

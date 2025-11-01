@@ -1,4 +1,13 @@
-//! CPP language plugin for TypeMill
+//! C++ language plugin for TypeMill
+//!
+//! Provides comprehensive C++ language support including:
+//! - AST parsing using tree-sitter with C++11-C++20 support
+//! - Import/include management (#include and C++20 import statements)
+//! - Refactoring operations (extract function/variable, inline variable)
+//! - Workspace operations (CMake, Conan, vcpkg projects)
+//! - Multi-package manager support (CMake, Conan, vcpkg)
+//!
+//! This plugin supports C++11 through C++20 standards with `clangd` as the LSP server.
 
 mod analysis;
 mod ast_parser;

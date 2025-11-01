@@ -1,6 +1,14 @@
 //! Java language plugin for TypeMill
 //!
-//! Provides AST parsing, symbol extraction, and manifest analysis for Java.
+//! Provides comprehensive Java language support including:
+//! - AST parsing using embedded Java parser (requires JVM runtime)
+//! - Import management (import statements, package declarations)
+//! - Refactoring operations (extract method/variable, inline variable)
+//! - Workspace operations (Maven pom.xml-based projects)
+//! - Maven manifest analysis and dependency management
+//!
+//! This plugin supports Java 11+ with Eclipse JDT Language Server (jdtls) as the LSP server.
+//! The parser uses an embedded Java JAR that requires a Java runtime to be available.
 
 pub mod constants;
 pub mod import_analyzer;

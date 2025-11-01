@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tracing::debug;
 
-/// Check if a directory is a Cargo package (contains Cargo.toml with [package] section)
+/// Check if a directory is a Cargo package (contains Cargo.toml with `[package]` section)
 pub async fn is_cargo_package(dir_path: &Path) -> ServerResult<bool> {
     let cargo_toml = dir_path.join("Cargo.toml");
     if !cargo_toml.exists() {

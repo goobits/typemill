@@ -1,6 +1,15 @@
+//! AST parsing for C source code using tree-sitter
+//!
+//! This module provides functionality to parse C source code into an Abstract Syntax Tree (AST)
+//! and extract symbols such as function definitions. It uses the tree-sitter-c grammar for
+//! accurate parsing of C99 and C11 code.
+
 use mill_plugin_api::{ParsedSource, Symbol, SymbolKind, SourceLocation};
 use tree_sitter::{Node, Parser, Tree};
 
+/// Get the tree-sitter C language grammar
+///
+/// Loads the compiled C grammar for tree-sitter parsing
 fn get_language() -> tree_sitter::Language {
     extern "C" {
         fn tree_sitter_c() -> tree_sitter::Language;
@@ -8,6 +17,21 @@ fn get_language() -> tree_sitter::Language {
     unsafe { tree_sitter_c() }
 }
 
+/// Parse C source code into a ParsedSource with extracted symbols
+///
+/// Uses tree-sitter to parse the source and traverse the AST to extract function definitions
+///
+/// # Arguments
+///
+/// * `source` - The C source code to parse
+///
+/// # Returns
+///
+/// A `ParsedSource` containing all extracted symbols with their locations
+///
+/// # Panics
+///
+/// Panics if the tree-sitter C grammar fails to load or parsing fails
 pub fn parse_source(source: &str) -> ParsedSource {
     let mut parser = Parser::new();
     parser
@@ -35,10 +59,16 @@ pub fn list_functions(source: &str) -> Vec<String> {
         .collect()
 }
 
+/// Traverse the entire syntax tree to extract symbols
+///
+/// Walks the tree-sitter AST starting from the root node
 fn traverse_tree(tree: &Tree, symbols: &mut Vec<Symbol>, source: &str) {
     visit_node(&tree.root_node(), symbols, source);
 }
 
+/// Recursively visit AST nodes to extract symbols
+///
+/// Identifies function definitions and extracts them as symbols
 fn visit_node(node: &Node, symbols: &mut Vec<Symbol>, source: &str) {
     if node.kind() == "function_definition" {
         if let Some(symbol) = extract_function_symbol(node, source) {
@@ -51,6 +81,9 @@ fn visit_node(node: &Node, symbols: &mut Vec<Symbol>, source: &str) {
     }
 }
 
+/// Extract a Symbol from a function_definition node
+///
+/// Parses the function declarator to get the function name and location
 fn extract_function_symbol(node: &Node, source: &str) -> Option<Symbol> {
     let declarator = node.child_by_field_name("declarator")?;
 

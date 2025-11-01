@@ -1,6 +1,20 @@
+//! AST parsing for C++ source code using tree-sitter
+//!
+//! This module provides functionality to parse C++ source code into an Abstract Syntax Tree (AST)
+//! and extract symbols such as classes, functions, namespaces, and structs. It uses the
+//! tree-sitter-cpp grammar with support for C++11 through C++20 features.
+
 use mill_plugin_api::{ParsedSource, SourceLocation, Symbol, SymbolKind};
 use tree_sitter::{Node, Parser, Query, QueryCursor, StreamingIterator};
 
+/// Get the tree-sitter C++ language grammar
+///
+/// Loads the compiled C++ grammar for tree-sitter parsing. The grammar is built
+/// during compilation via build.rs.
+///
+/// # Returns
+///
+/// The tree-sitter Language object for C++
 pub fn get_cpp_language() -> tree_sitter::Language {
     // The tree-sitter-cpp grammar is compiled via build.rs and linked
     // This extern function is provided by the compiled C code
@@ -11,6 +25,10 @@ pub fn get_cpp_language() -> tree_sitter::Language {
     unsafe { tree_sitter::Language::from_raw(tree_sitter_cpp()) }
 }
 
+/// Get the tree-sitter query for extracting symbols
+///
+/// Returns a query string that matches classes, structs, unions, namespaces,
+/// and function definitions in C++ code
 fn get_symbol_query() -> &'static str {
     r#"
     (class_specifier name: (_) @name) @node
@@ -21,6 +39,9 @@ fn get_symbol_query() -> &'static str {
     "#
 }
 
+/// Convert a tree-sitter node type to a SymbolKind
+///
+/// Maps C++ AST node kinds to TypeMill symbol kinds
 fn node_to_symbol_kind(node: &Node) -> SymbolKind {
     match node.kind() {
         "class_specifier" => SymbolKind::Class,
@@ -32,6 +53,22 @@ fn node_to_symbol_kind(node: &Node) -> SymbolKind {
     }
 }
 
+/// Parse C++ source code into a ParsedSource with extracted symbols
+///
+/// Uses tree-sitter to parse the source and run queries to extract classes,
+/// structs, namespaces, and functions
+///
+/// # Arguments
+///
+/// * `source` - The C++ source code to parse
+///
+/// # Returns
+///
+/// A `ParsedSource` containing all extracted symbols with their locations
+///
+/// # Panics
+///
+/// Panics if the tree-sitter C++ grammar fails to load or parsing fails
 pub fn parse_source(source: &str) -> ParsedSource {
     let mut parser = Parser::new();
     parser

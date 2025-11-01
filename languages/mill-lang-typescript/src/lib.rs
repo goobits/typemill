@@ -1,4 +1,14 @@
 //! TypeScript/JavaScript Language Plugin for TypeMill
+//!
+//! Provides comprehensive TypeScript and JavaScript language support including:
+//! - AST parsing using tree-sitter (TypeScript, TSX, JavaScript, JSX)
+//! - Import management (ES6 imports, CommonJS require, dynamic imports)
+//! - Refactoring operations (extract function/variable, inline variable)
+//! - Workspace operations (npm, yarn, pnpm package managers)
+//! - package.json and tsconfig.json manifest analysis
+//! - Path alias resolution (@alias/path support)
+//!
+//! This plugin supports TypeScript and JavaScript with typescript-language-server as the LSP server.
 mod constants;
 pub mod import_support;
 pub mod imports;

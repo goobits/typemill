@@ -214,7 +214,7 @@ pub fn generate_workspace_manifest(
 
 /// Check if content represents a workspace manifest
 ///
-/// For Rust, this checks for the presence of [workspace] section
+/// For Rust, this checks for the presence of `[workspace]` section
 ///
 /// # Arguments
 ///

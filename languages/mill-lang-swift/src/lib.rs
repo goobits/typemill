@@ -1,4 +1,13 @@
-// Swift Language Plugin for TypeMill
+//! Swift Language Plugin for TypeMill
+//!
+//! Provides comprehensive Swift language support including:
+//! - AST parsing using tree-sitter
+//! - Import management (import statements, module dependencies)
+//! - Refactoring operations (extract function/variable, inline variable)
+//! - Workspace operations (Swift Package Manager-based projects)
+//! - Package.swift manifest analysis and dependency management
+//!
+//! This plugin supports Swift 5+ with SourceKit-LSP as the LSP server.
 
 mod constants;
 pub mod import_support;
