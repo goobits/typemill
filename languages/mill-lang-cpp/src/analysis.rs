@@ -24,7 +24,13 @@ impl ModuleReferenceScanner for CppAnalysisProvider {
         let references = re.captures_iter(content).map(|caps| {
             let m = caps.get(0).unwrap();
             let line = content[..m.start()].lines().count();
-            let column = m.start() - content.lines().take(line - 1).map(|l| l.len() + 1).sum::<usize>();
+            // Calculate column safely: if line is 0, sum is 0
+            let line_start_offset = if line == 0 {
+                0
+            } else {
+                content.lines().take(line.saturating_sub(1)).map(|l| l.len() + 1).sum::<usize>()
+            };
+            let column = m.start().saturating_sub(line_start_offset);
             ModuleReference {
                 line,
                 column,

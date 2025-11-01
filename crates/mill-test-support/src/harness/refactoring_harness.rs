@@ -395,11 +395,13 @@ mod tests {
     #[test]
     fn test_scenario_has_all_languages() {
         let scenario = RefactoringScenarios::extract_simple_expression();
-        assert_eq!(scenario.fixtures.len(), 2);
+        let all_languages = Language::all();
+        assert_eq!(scenario.fixtures.len(), all_languages.len());
 
         let languages: Vec<Language> = scenario.fixtures.iter().map(|f| f.language).collect();
-        assert!(languages.contains(&Language::TypeScript));
-        assert!(languages.contains(&Language::Rust));
+        for lang in all_languages {
+            assert!(languages.contains(&lang), "Missing language: {:?}", lang);
+        }
     }
 
     #[test]
