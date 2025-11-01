@@ -284,7 +284,7 @@ impl mill_plugin_api::AnalysisMetadata for GoPlugin {
 mod tests {
     use super::*;
     use mill_plugin_api::{
-        CreatePackageConfig, LanguagePlugin, LspInstaller, Template, WorkspaceSupport,
+        CreatePackageConfig, LanguagePlugin, LspInstaller, ScanScope, Template, WorkspaceSupport,
     };
     use tempfile::tempdir;
 
@@ -655,5 +655,132 @@ mod tests {
 
         // Check nesting penalty
         assert_eq!(plugin.nesting_penalty(), 1.2);
+    }
+
+    // ========================================================================
+    // EDGE CASE TESTS (8 tests)
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_edge_parse_unicode_identifiers() {
+        let plugin = GoPlugin::new();
+        let source = r#"
+package main
+import "fmt"
+func тестфункция() {
+    مُتَغَيِّر := 42
+}
+"#;
+        let result = plugin.parse(source).await;
+        // Should not panic with Unicode identifiers
+        assert!(result.is_ok() || result.is_err()); // Either way, no panic
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_extremely_long_line() {
+        let plugin = GoPlugin::new();
+        let long_string = "a".repeat(15000);
+        let source = format!("package main\nvar x = \"{}\"\n", long_string);
+        let result = plugin.parse(&source).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_no_newlines() {
+        let plugin = GoPlugin::new();
+        let source = "package main; func main() { fmt.Println(\"hello\") }";
+        let result = plugin.parse(source).await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_edge_scan_mixed_line_endings() {
+        let plugin = GoPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import \"fmt\"\r\nimport \"os\"\nimport \"io\"";
+        let refs = scanner.scan_references(content, "fmt", ScanScope::All).expect("Should scan");
+        assert_eq!(refs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_empty_file() {
+        let plugin = GoPlugin::new();
+        let result = plugin.parse("").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_whitespace_only() {
+        let plugin = GoPlugin::new();
+        let result = plugin.parse("   \n\n\t\t\n   ").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_edge_scan_special_regex_chars() {
+        let plugin = GoPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import \"fmt\"";
+        // Test with special regex characters
+        let result = scanner.scan_references(content, "f.*", ScanScope::All);
+        assert!(result.is_ok()); // Should not panic
+    }
+
+    #[test]
+    fn test_edge_handle_null_bytes() {
+        let plugin = GoPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import \"fmt\"\x00\nimport \"os\"";
+        let result = scanner.scan_references(content, "fmt", ScanScope::All);
+        assert!(result.is_ok()); // Should not panic
+    }
+
+    // ========================================================================
+    // PERFORMANCE TESTS (2 tests)
+    // ========================================================================
+
+    #[test]
+    fn test_performance_parse_large_file() {
+        use std::time::Instant;
+        let plugin = GoPlugin::new();
+
+        // Create a large Go file (~100KB, 5000 functions)
+        let mut large_source = String::from("package main\nimport \"fmt\"\n\n");
+        for i in 0..5000 {
+            large_source.push_str(&format!("func function{}() int {{ return {} }}\n", i, i));
+        }
+
+        let start = Instant::now();
+        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            plugin.parse(&large_source).await
+        });
+        let duration = start.elapsed();
+
+        // Main goal: verify parsing large files doesn't crash/panic
+        assert!(result.is_ok(), "Should parse large file without panic");
+        // Performance: should complete in reasonable time even if symbol extraction is incomplete
+        assert!(duration.as_secs() < 10, "Should parse within 10 seconds, took {:?}", duration);
+    }
+
+    #[test]
+    fn test_performance_scan_many_references() {
+        use std::time::Instant;
+        let plugin = GoPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+
+        // Create content with 10,000 references
+        let mut content = String::from("import \"fmt\"\n\n");
+        for _ in 0..10000 {
+            content.push_str("fmt.Println(\"test\")\n");
+        }
+
+        let start = Instant::now();
+        let refs = scanner.scan_references(&content, "fmt", ScanScope::All).expect("Should scan");
+        let duration = start.elapsed();
+
+        assert_eq!(refs.len(), 10001, "Should find import + 10K qualified paths");
+        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
     }
 }

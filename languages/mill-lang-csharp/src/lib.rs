@@ -581,4 +581,133 @@ namespace MyNamespace
         // Check nesting penalty
         assert_eq!(plugin.nesting_penalty(), 1.3);
     }
+
+    // ========================================================================
+    // EDGE CASE TESTS (8 tests)
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_edge_parse_unicode_identifiers() {
+        let plugin = CsharpPlugin::new();
+        let source = r#"
+using System.Collections.Generic;
+class Main {
+    void тестфункция() {
+        int مُتَغَيِّر = 42;
+    }
+}
+"#;
+        let result = plugin.parse(source).await;
+        // Should not panic with Unicode identifiers
+        assert!(result.is_ok() || result.is_err()); // Either way, no panic
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_extremely_long_line() {
+        let plugin = CsharpPlugin::new();
+        let long_string = "a".repeat(15000);
+        let source = format!("class Main {{ string x = \"{}\"; }}\n", long_string);
+        let result = plugin.parse(&source).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_no_newlines() {
+        let plugin = CsharpPlugin::new();
+        let source = "class Main { static void Main() { Console.WriteLine(\"hello\"); } }";
+        let result = plugin.parse(source).await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_edge_scan_mixed_line_endings() {
+        let plugin = CsharpPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "using System.Collections.Generic;\r\nusing System.Linq;\nusing System.IO;";
+        let refs = scanner.scan_references(content, "System.Collections.Generic", ScanScope::All).expect("Should scan");
+        assert_eq!(refs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_empty_file() {
+        let plugin = CsharpPlugin::new();
+        let result = plugin.parse("").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_whitespace_only() {
+        let plugin = CsharpPlugin::new();
+        let result = plugin.parse("   \n\n\t\t\n   ").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_edge_scan_special_regex_chars() {
+        let plugin = CsharpPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "using System.Collections.Generic;";
+        // Test with special regex characters
+        let result = scanner.scan_references(content, "System.*", ScanScope::All);
+        assert!(result.is_ok()); // Should not panic
+    }
+
+    #[test]
+    fn test_edge_handle_null_bytes() {
+        let plugin = CsharpPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "using System.Collections.Generic;\x00\nusing System.Linq;";
+        let result = scanner.scan_references(content, "System.Collections.Generic", ScanScope::All);
+        assert!(result.is_ok()); // Should not panic
+    }
+
+    // ========================================================================
+    // PERFORMANCE TESTS (2 tests)
+    // ========================================================================
+
+    #[test]
+    fn test_performance_parse_large_file() {
+        use std::time::Instant;
+        let plugin = CsharpPlugin::new();
+
+        // Create a large C# file (~100KB, 5000 methods)
+        let mut large_source = String::from("using System.Collections.Generic;\n\nclass Large {\n");
+        for i in 0..5000 {
+            large_source.push_str(&format!("    public int Method{}() {{ return {}; }}\n", i, i));
+        }
+        large_source.push_str("}\n");
+
+        let start = Instant::now();
+        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            plugin.parse(&large_source).await
+        });
+        let duration = start.elapsed();
+
+        assert!(result.is_ok(), "Should parse large file");
+        let symbols = result.unwrap().symbols;
+        assert!(symbols.len() >= 5000, "Should find at least 5000 methods");
+        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+    }
+
+    #[test]
+    fn test_performance_scan_many_references() {
+        use std::time::Instant;
+        let plugin = CsharpPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+
+        // Create content with 10,000 references
+        let mut content = String::from("using System.Collections.Generic;\n\n");
+        for _ in 0..10000 {
+            content.push_str("System.Collections.Generic.List<int> list = new System.Collections.Generic.List<int>();\n");
+        }
+
+        let start = Instant::now();
+        let refs = scanner.scan_references(&content, "System.Collections.Generic", ScanScope::All).expect("Should scan");
+        let duration = start.elapsed();
+
+        assert!(refs.len() >= 10001, "Should find using + qualified paths");
+        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
+    }
 }

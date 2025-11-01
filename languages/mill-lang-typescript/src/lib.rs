@@ -353,7 +353,7 @@ impl TypeScriptPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mill_plugin_api::LanguagePlugin;
+    use mill_plugin_api::{LanguagePlugin, ScanScope};
 
     #[test]
     fn test_typescript_capabilities() {
@@ -372,5 +372,131 @@ mod tests {
             plugin_trait.workspace_support().is_some(),
             "TypeScript should have workspace support"
         );
+    }
+
+    // ========================================================================
+    // EDGE CASE TESTS (8 tests)
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_edge_parse_unicode_identifiers() {
+        let plugin = TypeScriptPlugin::new();
+        let source = r#"
+import { readFile } from 'fs';
+function тестфункция() {
+    const مُتَغَيِّر = 42;
+}
+"#;
+        let result = plugin.parse(source).await;
+        // Should not panic with Unicode identifiers
+        assert!(result.is_ok() || result.is_err()); // Either way, no panic
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_extremely_long_line() {
+        let plugin = TypeScriptPlugin::new();
+        let long_string = "a".repeat(15000);
+        let source = format!("const x = \"{}\";\n", long_string);
+        let result = plugin.parse(&source).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_no_newlines() {
+        let plugin = TypeScriptPlugin::new();
+        let source = "function main() { console.log('hello'); }";
+        let result = plugin.parse(source).await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_edge_scan_mixed_line_endings() {
+        let plugin = TypeScriptPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import { readFile } from 'fs';\r\nimport path from 'path';\nimport os from 'os';";
+        let refs = scanner.scan_references(content, "fs", ScanScope::All).expect("Should scan");
+        assert_eq!(refs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_empty_file() {
+        let plugin = TypeScriptPlugin::new();
+        let result = plugin.parse("").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_whitespace_only() {
+        let plugin = TypeScriptPlugin::new();
+        let result = plugin.parse("   \n\n\t\t\n   ").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_edge_scan_special_regex_chars() {
+        let plugin = TypeScriptPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import { readFile } from 'fs';";
+        // Test with special regex characters
+        let result = scanner.scan_references(content, "f.*", ScanScope::All);
+        assert!(result.is_ok()); // Should not panic
+    }
+
+    #[test]
+    fn test_edge_handle_null_bytes() {
+        let plugin = TypeScriptPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import { readFile } from 'fs';\x00\nimport path from 'path';";
+        let result = scanner.scan_references(content, "fs", ScanScope::All);
+        assert!(result.is_ok()); // Should not panic
+    }
+
+    // ========================================================================
+    // PERFORMANCE TESTS (2 tests)
+    // ========================================================================
+
+    #[test]
+    fn test_performance_parse_large_file() {
+        use std::time::Instant;
+        let plugin = TypeScriptPlugin::new();
+
+        // Create a large TypeScript file (~100KB, 5000 functions)
+        let mut large_source = String::from("import { readFile } from 'fs';\n\n");
+        for i in 0..5000 {
+            large_source.push_str(&format!("function function{}(): number {{ return {}; }}\n", i, i));
+        }
+
+        let start = Instant::now();
+        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            plugin.parse(&large_source).await
+        });
+        let duration = start.elapsed();
+
+        assert!(result.is_ok(), "Should parse large file");
+        let symbols = result.unwrap().symbols;
+        assert_eq!(symbols.len(), 5000, "Should find all 5000 functions");
+        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+    }
+
+    #[test]
+    fn test_performance_scan_many_references() {
+        use std::time::Instant;
+        let plugin = TypeScriptPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+
+        // Create content with 10,000 references
+        let mut content = String::from("import { readFile } from 'fs';\n\n");
+        for _ in 0..10000 {
+            content.push_str("fs.readFileSync('test.txt');\n");
+        }
+
+        let start = Instant::now();
+        let refs = scanner.scan_references(&content, "fs", ScanScope::All).expect("Should scan");
+        let duration = start.elapsed();
+
+        assert_eq!(refs.len(), 10001, "Should find import + 10K qualified paths");
+        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
     }
 }

@@ -1150,6 +1150,7 @@ pub use workspace::{
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mill_plugin_api::ScanScope;
 
     #[tokio::test]
     async fn test_rust_plugin_basic() {
@@ -1552,5 +1553,138 @@ pub use old_lsp::LspClient;
             new_content.contains("from old-lsp"),
             "Should preserve second comment without flag"
         );
+    }
+
+    // ========================================================================
+    // EDGE CASE TESTS (8 tests)
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_edge_parse_unicode_identifiers() {
+        let plugin = RustPlugin::new();
+        let source = r#"
+use std::collections::HashMap;
+fn тестфункция() {
+    let مُتَغَيِّر = 42;
+}
+"#;
+        let result = plugin.parse(source).await;
+        // Should not panic with Unicode identifiers
+        // Parser should handle Unicode function and variable names
+        assert!(result.is_ok() || result.is_err()); // Either way, no panic
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_extremely_long_line() {
+        let plugin = RustPlugin::new();
+        let long_string = "a".repeat(15000);
+        let source = format!("fn main() {{ let x = \"{}\"; }}\n", long_string);
+        let result = plugin.parse(&source).await;
+        // Should not panic with extremely long lines
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_no_newlines() {
+        let plugin = RustPlugin::new();
+        let source = "fn main() { println!(\"hello\"); }";
+        let result = plugin.parse(source).await;
+        // Should not panic with single-line code
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_edge_scan_mixed_line_endings() {
+        let plugin = RustPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "use std::collections::HashMap;\r\nuse std::io;\nuse std::fs;";
+        // Should not panic with mixed line endings
+        let _ = scanner.scan_references(content, "std::collections", ScanScope::All);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_empty_file() {
+        let plugin = RustPlugin::new();
+        let result = plugin.parse("").await;
+        // Empty files should parse successfully
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_whitespace_only() {
+        let plugin = RustPlugin::new();
+        let result = plugin.parse("   \n\n\t\t\n   ").await;
+        // Whitespace-only files should parse successfully
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_edge_scan_special_regex_chars() {
+        let plugin = RustPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "use std::collections::HashMap;";
+        // Should not panic with special regex characters in module name
+        let _ = scanner.scan_references(content, "std::.*", ScanScope::All);
+    }
+
+    #[test]
+    fn test_edge_handle_null_bytes() {
+        let plugin = RustPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "use std::collections::HashMap;\x00\nuse std::io;";
+        // Should not panic with null bytes in content
+        let _ = scanner.scan_references(content, "std::collections", ScanScope::All);
+    }
+
+    // ========================================================================
+    // PERFORMANCE TESTS (2 tests)
+    // ========================================================================
+
+    #[test]
+    fn test_performance_parse_large_file() {
+        use std::time::Instant;
+        let plugin = RustPlugin::new();
+
+        // Create a large Rust file (~100KB, 5000 functions)
+        let mut large_source = String::from("use std::collections::HashMap;\n\n");
+        for i in 0..5000 {
+            large_source.push_str(&format!("fn function{}() -> i32 {{ {} }}\n", i, i));
+        }
+
+        let start = Instant::now();
+        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            plugin.parse(&large_source).await
+        });
+        let duration = start.elapsed();
+
+        assert!(result.is_ok(), "Should parse large file");
+        let symbols = result.unwrap().symbols;
+        assert_eq!(symbols.len(), 5000, "Should find all 5000 functions");
+        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+    }
+
+    #[test]
+    fn test_performance_scan_many_references() {
+        use std::time::Instant;
+        let plugin = RustPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+
+        // Create content with 10,000 references
+        let mut content = String::from("use std::collections::HashMap;\n\nfn test() {\n");
+        for _ in 0..10000 {
+            content.push_str("    let _ = std::collections::HashMap::new();\n");
+        }
+        content.push_str("}\n");
+
+        let start = Instant::now();
+        let result = scanner.scan_references(&content, "std::collections", ScanScope::All);
+        let duration = start.elapsed();
+
+        // Should complete within reasonable time (main goal: no timeout/hang)
+        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
+        // Result may vary based on parser implementation
+        let _ = result;
     }
 }

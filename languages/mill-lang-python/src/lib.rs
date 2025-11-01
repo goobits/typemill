@@ -432,6 +432,7 @@ impl mill_plugin_api::AnalysisMetadata for PythonPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mill_plugin_api::ScanScope;
 
     #[tokio::test]
     async fn test_python_plugin_basic() {
@@ -601,5 +602,130 @@ class MyClass:
 
         // Check nesting penalty
         assert_eq!(plugin.nesting_penalty(), 1.3);
+    }
+
+    // ========================================================================
+    // EDGE CASE TESTS (8 tests)
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_edge_parse_unicode_identifiers() {
+        let plugin = PythonPlugin::new();
+        let source = r#"
+import os
+def тестфункция():
+    مُتَغَيِّر = 42
+"#;
+        let result = plugin.parse(source).await;
+        // Should not panic with Unicode identifiers
+        assert!(result.is_ok() || result.is_err()); // Either way, no panic
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_extremely_long_line() {
+        let plugin = PythonPlugin::new();
+        let long_string = "a".repeat(15000);
+        let source = format!("x = \"{}\"\n", long_string);
+        let result = plugin.parse(&source).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_no_newlines() {
+        let plugin = PythonPlugin::new();
+        let source = "def main(): print('hello')";
+        let result = plugin.parse(source).await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_edge_scan_mixed_line_endings() {
+        let plugin = PythonPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import os\r\nimport sys\nfrom pathlib import Path";
+        let refs = scanner.scan_references(content, "os", ScanScope::All).expect("Should scan");
+        assert_eq!(refs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_empty_file() {
+        let plugin = PythonPlugin::new();
+        let result = plugin.parse("").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_whitespace_only() {
+        let plugin = PythonPlugin::new();
+        let result = plugin.parse("   \n\n\t\t\n   ").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_edge_scan_special_regex_chars() {
+        let plugin = PythonPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import os";
+        // Test with special regex characters
+        let result = scanner.scan_references(content, "o.*", ScanScope::All);
+        assert!(result.is_ok()); // Should not panic
+    }
+
+    #[test]
+    fn test_edge_handle_null_bytes() {
+        let plugin = PythonPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import os\x00\nimport sys";
+        let result = scanner.scan_references(content, "os", ScanScope::All);
+        assert!(result.is_ok()); // Should not panic
+    }
+
+    // ========================================================================
+    // PERFORMANCE TESTS (2 tests)
+    // ========================================================================
+
+    #[test]
+    fn test_performance_parse_large_file() {
+        use std::time::Instant;
+        let plugin = PythonPlugin::new();
+
+        // Create a large Python file (~100KB, 5000 functions)
+        let mut large_source = String::from("import os\n\n");
+        for i in 0..5000 {
+            large_source.push_str(&format!("def function{}():\n    return {}\n\n", i, i));
+        }
+
+        let start = Instant::now();
+        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            plugin.parse(&large_source).await
+        });
+        let duration = start.elapsed();
+
+        assert!(result.is_ok(), "Should parse large file");
+        let symbols = result.unwrap().symbols;
+        assert_eq!(symbols.len(), 5000, "Should find all 5000 functions");
+        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+    }
+
+    #[test]
+    fn test_performance_scan_many_references() {
+        use std::time::Instant;
+        let plugin = PythonPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+
+        // Create content with 10,000 references
+        let mut content = String::from("import os\n\n");
+        for _ in 0..10000 {
+            content.push_str("os.path.exists('test.txt')\n");
+        }
+
+        let start = Instant::now();
+        let refs = scanner.scan_references(&content, "os", ScanScope::All).expect("Should scan");
+        let duration = start.elapsed();
+
+        assert_eq!(refs.len(), 10001, "Should find import + 10K qualified paths");
+        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
     }
 }

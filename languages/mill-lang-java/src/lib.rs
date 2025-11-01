@@ -188,6 +188,7 @@ impl mill_plugin_api::AnalysisMetadata for JavaPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mill_plugin_api::ScanScope;
 
     #[test]
     fn test_plugin_creation() {
@@ -291,5 +292,134 @@ mod tests {
 
         // Check nesting penalty
         assert_eq!(plugin.nesting_penalty(), 1.3);
+    }
+
+    // ========================================================================
+    // EDGE CASE TESTS (8 tests)
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_edge_parse_unicode_identifiers() {
+        let plugin = JavaPlugin::new();
+        let source = r#"
+import java.util.List;
+public class Main {
+    public void тестфункция() {
+        int مُتَغَيِّر = 42;
+    }
+}
+"#;
+        let result = plugin.parse(source).await;
+        // Should not panic with Unicode identifiers
+        assert!(result.is_ok() || result.is_err()); // Either way, no panic
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_extremely_long_line() {
+        let plugin = JavaPlugin::new();
+        let long_string = "a".repeat(15000);
+        let source = format!("public class Main {{ String x = \"{}\"; }}\n", long_string);
+        let result = plugin.parse(&source).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_no_newlines() {
+        let plugin = JavaPlugin::new();
+        let source = "public class Main { public static void main(String[] args) { System.out.println(\"hello\"); } }";
+        let result = plugin.parse(source).await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_edge_scan_mixed_line_endings() {
+        let plugin = JavaPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import java.util.List;\r\nimport java.util.Map;\nimport java.io.File;";
+        let refs = scanner.scan_references(content, "java.util", ScanScope::All).expect("Should scan");
+        assert_eq!(refs.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_empty_file() {
+        let plugin = JavaPlugin::new();
+        let result = plugin.parse("").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_edge_parse_whitespace_only() {
+        let plugin = JavaPlugin::new();
+        let result = plugin.parse("   \n\n\t\t\n   ").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_edge_scan_special_regex_chars() {
+        let plugin = JavaPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import java.util.List;";
+        // Test with special regex characters
+        let result = scanner.scan_references(content, "java.*", ScanScope::All);
+        assert!(result.is_ok()); // Should not panic
+    }
+
+    #[test]
+    fn test_edge_handle_null_bytes() {
+        let plugin = JavaPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let content = "import java.util.List;\x00\nimport java.io.File;";
+        let result = scanner.scan_references(content, "java.util", ScanScope::All);
+        assert!(result.is_ok()); // Should not panic
+    }
+
+    // ========================================================================
+    // PERFORMANCE TESTS (2 tests)
+    // ========================================================================
+
+    #[test]
+    fn test_performance_parse_large_file() {
+        use std::time::Instant;
+        let plugin = JavaPlugin::new();
+
+        // Create a large Java file (~100KB, 5000 methods)
+        let mut large_source = String::from("import java.util.List;\n\npublic class Large {\n");
+        for i in 0..5000 {
+            large_source.push_str(&format!("    public int method{}() {{ return {}; }}\n", i, i));
+        }
+        large_source.push_str("}\n");
+
+        let start = Instant::now();
+        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            plugin.parse(&large_source).await
+        });
+        let duration = start.elapsed();
+
+        assert!(result.is_ok(), "Should parse large file");
+        let symbols = result.unwrap().symbols;
+        assert!(symbols.len() >= 5000, "Should find at least 5000 methods");
+        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+    }
+
+    #[test]
+    fn test_performance_scan_many_references() {
+        use std::time::Instant;
+        let plugin = JavaPlugin::new();
+        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+
+        // Create content with 10,000 references
+        let mut content = String::from("import java.util.List;\n\n");
+        for _ in 0..10000 {
+            content.push_str("java.util.List list = new java.util.ArrayList();\n");
+        }
+
+        let start = Instant::now();
+        let refs = scanner.scan_references(&content, "java.util", ScanScope::All).expect("Should scan");
+        let duration = start.elapsed();
+
+        assert!(refs.len() >= 10001, "Should find import + qualified paths");
+        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
     }
 }
