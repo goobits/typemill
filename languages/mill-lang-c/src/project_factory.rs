@@ -2,6 +2,7 @@ use mill_plugin_api::{CreatePackageConfig, CreatePackageResult, PackageInfo, Pro
 use std::fs;
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Copy, Default)]
 pub struct CProjectFactory;
 
 impl ProjectFactory for CProjectFactory {

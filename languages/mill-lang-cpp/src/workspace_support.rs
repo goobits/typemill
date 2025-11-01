@@ -10,6 +10,7 @@ use std::path::Path;
 
 use crate::constants::CMAKE_PROJECT_PATTERN;
 
+#[derive(Debug, Clone, Copy, Default)]
 pub struct CppWorkspaceSupport;
 
 #[async_trait]

@@ -12,7 +12,7 @@ use std::path::Path;
 
 use crate::constants::{INCLUDE_PATTERN, INCLUDE_PATH_PATTERN};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct CImportSupport;
 
 impl ImportParser for CImportSupport {

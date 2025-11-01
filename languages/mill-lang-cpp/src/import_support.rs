@@ -16,6 +16,7 @@ fn get_cpp_imports_query() -> &'static str {
     "#
 }
 
+#[derive(Debug, Clone, Copy, Default)]
 pub struct CppImportSupport;
 
 impl ImportParser for CppImportSupport {

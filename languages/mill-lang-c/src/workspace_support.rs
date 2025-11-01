@@ -2,6 +2,7 @@ use mill_plugin_api::WorkspaceSupport;
 
 use crate::constants::SUBDIRS_PATTERN;
 
+#[derive(Debug, Clone, Copy, Default)]
 pub struct CWorkspaceSupport;
 
 impl WorkspaceSupport for CWorkspaceSupport {

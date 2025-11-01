@@ -14,7 +14,7 @@ mod lsp_installer_test;
 #[cfg(test)]
 mod analysis_metadata_tests {
     use crate::CPlugin;
-    use mill_plugin_api::{AnalysisMetadata, ScanScope};
+    use mill_plugin_api::{AnalysisMetadata, LanguagePlugin, ScanScope};
 
     #[test]
     fn test_analysis_metadata_test_patterns() {

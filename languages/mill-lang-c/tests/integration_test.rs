@@ -5,7 +5,7 @@ use mill_plugin_api::LanguagePlugin;
 async fn test_plugin_metadata() {
     let plugin = CPlugin::default();
     let metadata = plugin.metadata();
-    assert_eq!(metadata.name, "C");
+    assert_eq!(metadata.name, "c");
     assert_eq!(metadata.extensions, &["c", "h"]);
 }
 

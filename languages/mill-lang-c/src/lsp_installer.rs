@@ -2,6 +2,7 @@ use mill_plugin_api::{LspInstaller, PluginError, PluginResult};
 use async_trait::async_trait;
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone, Copy, Default)]
 pub struct CLspInstaller;
 
 #[async_trait]
