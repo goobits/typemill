@@ -588,34 +588,47 @@ impl ReferenceUpdater {
 
                 // Add plugin-specific files to the affected list
                 all_affected.extend(plugin_affected);
+
+                // ALSO run generic detection to find non-plugin files (markdown/TOML/YAML)
+                // Filter out files with this plugin's extensions since they're already handled by detector
+                let plugin_extensions: Vec<&str> = plugin.metadata().extensions.to_vec();
+                let non_plugin_files: Vec<PathBuf> = project_files
+                    .iter()
+                    .filter(|f| {
+                        f.extension()
+                            .and_then(|e| e.to_str())
+                            .map(|ext| !plugin_extensions.contains(&ext))
+                            .unwrap_or(true)
+                    })
+                    .cloned()
+                    .collect();
+
+                let generic_affected = detectors::find_generic_affected_files(
+                    old_path,
+                    new_path,
+                    &self.project_root,
+                    &non_plugin_files,
+                    plugins,
+                    rename_info,
+                );
+
+                all_affected.extend(generic_affected);
+            } else {
+                // Plugin found but no reference detector - use generic detection for ALL files
+                // (This handles TypeScript, Python, etc. which rely on generic import detection)
+                let generic_affected = detectors::find_generic_affected_files(
+                    old_path,
+                    new_path,
+                    &self.project_root,
+                    project_files,
+                    plugins,
+                    rename_info,
+                );
+
+                all_affected.extend(generic_affected);
             }
-
-            // ALSO run generic detection to find non-plugin files (markdown/TOML/YAML)
-            // Filter out files with this plugin's extensions since they're already handled
-            let plugin_extensions: Vec<&str> = plugin.metadata().extensions.to_vec();
-            let non_plugin_files: Vec<PathBuf> = project_files
-                .iter()
-                .filter(|f| {
-                    f.extension()
-                        .and_then(|e| e.to_str())
-                        .map(|ext| !plugin_extensions.contains(&ext))
-                        .unwrap_or(true)
-                })
-                .cloned()
-                .collect();
-
-            let generic_affected = detectors::find_generic_affected_files(
-                old_path,
-                new_path,
-                &self.project_root,
-                &non_plugin_files,
-                plugins,
-                rename_info,
-            );
-
-            all_affected.extend(generic_affected);
         } else {
-            // No specific plugin with reference detector - use generic detection for everything
+            // No specific plugin found - use generic detection for everything
             let generic_affected = detectors::find_generic_affected_files(
                 old_path,
                 new_path,
