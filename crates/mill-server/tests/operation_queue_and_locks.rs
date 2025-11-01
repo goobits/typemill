@@ -3,7 +3,7 @@
 
 mod common;
 
-use mill_server::services::operation_queue::OperationTransaction;
+use mill_server::services::coordination::operation_queue::OperationTransaction;
 use mill_server::services::{FileOperation, OperationType};
 use serde_json::json;
 use std::path::PathBuf;
