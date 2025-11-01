@@ -3,7 +3,7 @@
 //! Extracted from WorkspaceApplyHandler to provide reusable execution logic
 //! for all refactoring handlers (rename, extract, inline, move, etc.)
 
-use crate::services::file_service::EditPlanResult;
+use crate::services::filesystem::file_service::EditPlanResult;
 use crate::{ChecksumValidator, PlanConverter, PostApplyValidator};
 use mill_foundation::protocol::{
     ApiError, ApiResult as ServerResult, EditPlan, EditType, RefactorPlan, RefactorPlanExt,

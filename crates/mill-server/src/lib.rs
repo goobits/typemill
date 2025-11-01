@@ -219,7 +219,7 @@ pub async fn create_dispatcher_with_workspace(
     {
         let queue = services.operation_queue.clone();
         tokio::spawn(async move {
-            use mill_services::services::operation_queue::OperationType;
+            use mill_services::services::OperationType;
             use serde_json::Value;
             use std::path::Path;
             use tokio::fs;

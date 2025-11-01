@@ -10,7 +10,7 @@ use sha2::{Digest, Sha256};
 use std::path::Path;
 use tracing::{debug, info, warn};
 
-use super::FileService;
+use crate::services::filesystem::file_service::FileService;
 
 /// Service for validating file checksums against refactoring plan checksums
 ///

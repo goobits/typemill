@@ -1,7 +1,7 @@
 //! Test helpers for integration tests
 
 use crate::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
-use crate::services::operation_queue::OperationType;
+use crate::services::OperationType;
 use crate::services::{DefaultAstService, FileService, LockManager, OperationQueue};
 use crate::workspaces::WorkspaceManager;
 use mill_ast::AstCache;

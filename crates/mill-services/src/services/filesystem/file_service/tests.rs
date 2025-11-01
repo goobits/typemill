@@ -1,9 +1,9 @@
 #[cfg(test)]
 #[allow(clippy::module_inception)]
 mod tests {
-    use crate::services::file_service::FileService;
-    use crate::services::lock_manager::LockManager;
-    use crate::services::operation_queue::{OperationQueue, OperationType};
+    use crate::services::coordination::lock_manager::LockManager;
+    use crate::services::coordination::operation_queue::{OperationQueue, OperationType};
+    use crate::services::filesystem::file_service::FileService;
     use mill_ast::AstCache;
     use mill_foundation::protocol::{
         ApiError, DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit,
@@ -519,9 +519,9 @@ mod tests {
 
 #[cfg(test)]
 mod workspace_tests {
-    use crate::services::file_service::FileService;
-    use crate::services::lock_manager::LockManager;
-    use crate::services::operation_queue::OperationQueue;
+    use crate::services::coordination::lock_manager::LockManager;
+    use crate::services::coordination::operation_queue::OperationQueue;
+    use crate::services::filesystem::file_service::FileService;
     use mill_ast::AstCache;
     use std::sync::Arc;
     use tempfile::TempDir;
