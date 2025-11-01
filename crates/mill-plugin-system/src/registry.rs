@@ -490,7 +490,7 @@ impl Default for RuntimePluginManager {
 
 /// Statistics about the plugin registry
 #[derive(Debug, Clone)]
-pub struct RegistryStatistics {
+pub(crate) struct RegistryStatistics {
     /// Total number of registered plugins
     pub total_plugins: usize,
     /// Number of supported file extensions

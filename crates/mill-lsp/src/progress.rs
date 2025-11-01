@@ -61,7 +61,7 @@ impl std::fmt::Display for ProgressToken {
 /// From LSP spec: `export type WorkDoneProgressValue = WorkDoneProgressBegin | WorkDoneProgressReport | WorkDoneProgressEnd`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-pub enum WorkDoneProgressValue {
+pub(crate) enum WorkDoneProgressValue {
     /// Progress has started
     #[serde(rename = "begin")]
     Begin {
@@ -101,7 +101,7 @@ pub enum WorkDoneProgressValue {
 
 /// Parameters for `$/progress` notification
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProgressParams {
+pub(crate) struct ProgressParams {
     /// The progress token provided by the server
     pub token: ProgressToken,
     /// The progress value
@@ -110,7 +110,7 @@ pub struct ProgressParams {
 
 /// Internal progress state tracked by ProgressManager
 #[derive(Debug, Clone)]
-pub enum ProgressState {
+pub(crate) enum ProgressState {
     /// Task is in progress
     InProgress {
         title: String,

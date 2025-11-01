@@ -21,7 +21,7 @@ const PLUGIN_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Represents a connection to a single, running external plugin process.
 #[derive(Clone)]
-pub struct PluginProcess {
+pub(crate) struct PluginProcess {
     name: String,
     #[allow(dead_code)] // Kept for future process lifecycle management
     child: Arc<Mutex<Child>>,

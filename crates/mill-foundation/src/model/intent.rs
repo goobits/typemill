@@ -6,7 +6,7 @@ use std::collections::HashMap;
 /// Intent specification for automated workflows
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct IntentSpec {
+pub struct IntentSpec {
     /// Intent name/identifier
     pub name: String,
     /// Intent arguments as JSON value

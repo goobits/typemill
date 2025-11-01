@@ -186,7 +186,7 @@ pub enum EditType {
 /// Location of an edit in the source file
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct EditLocation {
+pub struct EditLocation {
     /// Start line (0-based)
     pub start_line: u32,
     /// Start column (0-based)
@@ -227,7 +227,7 @@ pub enum DependencyUpdateType {
 /// Validation rule to check after editing
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ValidationRule {
+pub struct ValidationRule {
     /// Rule type
     pub rule_type: ValidationType,
     /// Rule description
@@ -240,7 +240,7 @@ pub(crate) struct ValidationRule {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub(crate) enum ValidationType {
+pub enum ValidationType {
     /// Check syntax is valid
     SyntaxCheck,
     /// Check imports resolve
@@ -256,7 +256,7 @@ pub(crate) enum ValidationType {
 /// Edit plan metadata
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct EditPlanMetadata {
+pub struct EditPlanMetadata {
     /// Intent that generated this plan
     pub intent_name: String,
     /// Intent arguments used
@@ -275,7 +275,7 @@ pub(crate) struct EditPlanMetadata {
 /// Metadata for Rust crate consolidation operations
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ConsolidationMetadata {
+pub struct ConsolidationMetadata {
     /// Whether this is a consolidation operation
     pub is_consolidation: bool,
     /// The crate being consolidated (source)

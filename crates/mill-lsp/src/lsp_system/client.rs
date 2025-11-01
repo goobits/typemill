@@ -21,7 +21,7 @@ const LSP_INIT_TIMEOUT: Duration = Duration::from_secs(60); // Increased signifi
 const CHANNEL_BUFFER_SIZE: usize = 1000;
 
 /// Type alias for pending request responses
-type PendingRequests = Arc<Mutex<HashMap<i64, oneshot::Sender<Result<Value, String>>>>>;
+pub(crate) type PendingRequests = Arc<Mutex<HashMap<i64, oneshot::Sender<Result<Value, String>>>>>;
 
 /// LSP client for communicating with a single LSP server process
 pub struct LspClient {
@@ -43,7 +43,7 @@ pub struct LspClient {
 
 /// Internal message types for LSP communication
 #[derive(Debug)]
-enum LspMessage {
+pub(crate) enum LspMessage {
     Request {
         id: i64,
         method: String,

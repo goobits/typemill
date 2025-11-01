@@ -11,7 +11,7 @@ use std::thread;
 use std::time::Duration;
 
 /// Message sent to the zombie reaper thread
-enum ReaperMessage {
+pub(crate) enum ReaperMessage {
     Register(i32),
 }
 

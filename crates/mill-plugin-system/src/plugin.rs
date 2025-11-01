@@ -83,7 +83,7 @@ pub struct PluginMetadata {
     pub priority: u32,
 }
 
-fn default_priority() -> u32 {
+pub(crate) fn default_priority() -> u32 {
     50
 }
 

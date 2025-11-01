@@ -25,7 +25,7 @@ pub struct PluginManager {
 
 /// Performance metrics for plugin operations
 #[derive(Debug, Clone, Default)]
-pub struct PluginMetrics {
+pub(crate) struct PluginMetrics {
     /// Total number of requests processed
     pub total_requests: u64,
     /// Number of successful requests

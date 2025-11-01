@@ -29,7 +29,7 @@ pub(crate) struct Message {
 /// Import graph representation - concrete implementation from mill-ast
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ImportGraph {
+pub struct ImportGraph {
     /// Source file path
     pub source_file: String,
     /// Direct imports from this file
@@ -43,7 +43,7 @@ pub(crate) struct ImportGraph {
 /// Information about a single import
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ImportInfo {
+pub struct ImportInfo {
     /// The imported module path/name
     pub module_path: String,
     /// Import type (ES module, CommonJS, etc.)
@@ -63,7 +63,7 @@ pub(crate) struct ImportInfo {
 /// Named import information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct NamedImport {
+pub struct NamedImport {
     /// Original name in the module
     pub name: String,
     /// Local alias (if renamed)
@@ -76,7 +76,7 @@ pub(crate) struct NamedImport {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub(crate) enum ImportType {
+pub enum ImportType {
     /// ES module import (import/export)
     EsModule,
     /// CommonJS require
@@ -100,7 +100,7 @@ pub(crate) enum ImportType {
 /// Source location information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct SourceLocation {
+pub struct SourceLocation {
     /// Start line (0-based)
     pub start_line: u32,
     /// Start column (0-based)
@@ -114,7 +114,7 @@ pub(crate) struct SourceLocation {
 /// Import graph metadata
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ImportGraphMetadata {
+pub struct ImportGraphMetadata {
     /// File extension/language
     pub language: String,
     /// Parsing timestamp
@@ -130,7 +130,7 @@ pub(crate) struct ImportGraphMetadata {
 
 /// Cache statistics for monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct CacheStats {
+pub struct CacheStats {
     /// Number of cache hits
     pub hits: u64,
     /// Number of cache misses
