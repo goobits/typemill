@@ -18,12 +18,13 @@
 //! Initial implementation will focus on simple, safe transformations only.
 
 use mill_plugin_api::PluginResult;
-use regex::Regex;
 
 use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit,
 };
 use serde_json::json;
+
+use crate::constants::INT_VAR_DECL_PATTERN;
 
 /// Analyze code selection for function extraction (C)
 pub fn plan_extract_function(
@@ -122,9 +123,8 @@ pub fn plan_inline_variable(
     }
 
     let line = lines[line_index];
-    let re = Regex::new(r"int\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*([^;]+);").unwrap();
 
-    if let Some(caps) = re.captures(line) {
+    if let Some(caps) = INT_VAR_DECL_PATTERN.captures(line) {
         let var_name = caps.get(1).unwrap().as_str();
         let var_value = caps.get(2).unwrap().as_str().trim();
 

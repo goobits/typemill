@@ -2,6 +2,7 @@
 
 mod ast_parser;
 mod cmake_parser;
+pub mod constants;
 mod import_support;
 mod makefile_parser;
 mod lsp_installer;
@@ -29,7 +30,8 @@ use mill_plugin_api::{
     ImportAnalyzer, LspInstaller, ManifestUpdater, ModuleReference, ModuleReferenceScanner,
     ProjectFactory, ReferenceKind, ScanScope, WorkspaceSupport,
 };
-use regex::Regex;
+
+use crate::constants::{assertion_patterns, test_patterns, INCLUDE_PATTERN, LIBS_PATTERN};
 
 pub struct CPlugin {
     metadata: LanguageMetadata,
@@ -157,8 +159,7 @@ impl ManifestUpdater for CPlugin {
         _new_version: Option<&str>,
     ) -> PluginResult<String> {
         let content = std::fs::read_to_string(manifest_path).unwrap();
-        let re = Regex::new(r"LIBS\s*=\s*(.*)").unwrap();
-        if let Some(caps) = re.captures(&content) {
+        if let Some(caps) = LIBS_PATTERN.captures(&content) {
             let existing_libs = caps.get(1).unwrap().as_str();
             let new_libs = format!("{} -l{}", existing_libs, new_name);
             Ok(content.replace(existing_libs, &new_libs))
@@ -184,11 +185,10 @@ impl ManifestUpdater for CPlugin {
 impl ImportAnalyzer for CPlugin {
     fn build_import_graph(&self, file_path: &Path) -> PluginResult<ImportGraph> {
         let content = std::fs::read_to_string(file_path).unwrap();
-        let re = Regex::new(r#"#include\s*([<"])([^>"]+)([>"])"#).unwrap();
         let mut imports = Vec::new();
 
         for (i, line) in content.lines().enumerate() {
-            for cap in re.captures_iter(line) {
+            for cap in INCLUDE_PATTERN.captures_iter(line) {
                 imports.push(ImportInfo {
                     module_path: cap.get(2).unwrap().as_str().to_string(),
                     import_type: ImportType::CInclude,
@@ -230,14 +230,13 @@ impl ModuleReferenceScanner for CPlugin {
         scope: ScanScope,
     ) -> PluginResult<Vec<ModuleReference>> {
         let mut references = Vec::new();
-        let re = Regex::new(r#"#include\s*([<"])([^>"]+)([>"])"#).unwrap();
 
         for (i, line) in content.lines().enumerate() {
             if scope == ScanScope::AllUseStatements && (line.trim().starts_with("//") || line.trim().starts_with("/*")) {
                 continue;
             }
 
-            for cap in re.captures_iter(line) {
+            for cap in INCLUDE_PATTERN.captures_iter(line) {
                 references.push(ModuleReference {
                     text: cap.get(2).unwrap().as_str().to_string(),
                     line: i + 1,
@@ -312,18 +311,11 @@ impl mill_plugin_api::RefactoringProvider for CPlugin {
 
 impl mill_plugin_api::AnalysisMetadata for CPlugin {
     fn test_patterns(&self) -> Vec<regex::Regex> {
-        vec![
-            regex::Regex::new(r"void\s+test_").unwrap(),
-            regex::Regex::new(r"TEST\(").unwrap(),
-        ]
+        test_patterns()
     }
 
     fn assertion_patterns(&self) -> Vec<regex::Regex> {
-        vec![
-            regex::Regex::new(r"assert\(").unwrap(),
-            regex::Regex::new(r"CU_ASSERT").unwrap(),
-            regex::Regex::new(r"TEST_ASSERT").unwrap(),
-        ]
+        assertion_patterns()
     }
 
     fn doc_comment_style(&self) -> mill_plugin_api::DocCommentStyle {

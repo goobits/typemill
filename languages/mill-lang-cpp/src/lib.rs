@@ -4,6 +4,7 @@ mod analysis;
 mod ast_parser;
 mod cmake_parser;
 mod conan_parser;
+pub mod constants;
 mod import_support;
 mod project_factory;
 mod refactoring;
@@ -24,6 +25,8 @@ use mill_plugin_api::{
     ParsedSource, PluginCapabilities, PluginResult,
 };
 use std::path::Path;
+
+use crate::constants::{assertion_patterns, test_patterns};
 
 pub struct CppPlugin {
     metadata: LanguageMetadata,
@@ -134,21 +137,11 @@ impl LanguagePlugin for CppPlugin {
 
 impl mill_plugin_api::AnalysisMetadata for CppPlugin {
     fn test_patterns(&self) -> Vec<regex::Regex> {
-        vec![
-            regex::Regex::new(r"TEST\(").unwrap(),
-            regex::Regex::new(r"TEST_F\(").unwrap(),
-            regex::Regex::new(r"BOOST_AUTO_TEST_CASE").unwrap(),
-            regex::Regex::new(r"CATCH_TEST_CASE").unwrap(),
-        ]
+        test_patterns()
     }
 
     fn assertion_patterns(&self) -> Vec<regex::Regex> {
-        vec![
-            regex::Regex::new(r"EXPECT_").unwrap(),
-            regex::Regex::new(r"ASSERT_").unwrap(),
-            regex::Regex::new(r"CHECK").unwrap(),
-            regex::Regex::new(r"REQUIRE").unwrap(),
-        ]
+        assertion_patterns()
     }
 
     fn doc_comment_style(&self) -> mill_plugin_api::DocCommentStyle {

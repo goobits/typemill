@@ -32,6 +32,7 @@ lsp-types = { workspace = true }
 
 # Utilities (uncomment as needed)
 regex = { workspace = true }
+once_cell = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 quick-xml = { version = "0.31", features = ["serialize"] }
 tempfile = { workspace = true }

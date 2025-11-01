@@ -7,8 +7,9 @@ use mill_plugin_api::{
     capabilities::{ImportAnalyzer, ModuleReferenceScanner},
     ModuleReference, PluginResult, ScanScope, ReferenceKind,
 };
-use regex::Regex;
 use std::path::Path;
+
+use crate::constants::{INCLUDE_PATTERN, module_include_pattern};
 
 pub struct CppAnalysisProvider;
 
@@ -19,7 +20,7 @@ impl ModuleReferenceScanner for CppAnalysisProvider {
         module_name: &str,
         _scope: ScanScope,
     ) -> PluginResult<Vec<ModuleReference>> {
-        let re = Regex::new(&format!("#include\\s*[<\"]({}[^>\"]*)[>\"]", regex::escape(module_name))).unwrap();
+        let re = module_include_pattern(module_name);
         let references = re.captures_iter(content).map(|caps| {
             let m = caps.get(0).unwrap();
             let line = content[..m.start()].lines().count();
@@ -39,8 +40,7 @@ impl ModuleReferenceScanner for CppAnalysisProvider {
 impl ImportAnalyzer for CppAnalysisProvider {
     fn build_import_graph(&self, file_path: &Path) -> PluginResult<ImportGraph> {
         let content = std::fs::read_to_string(file_path).map_err(|e| mill_plugin_api::PluginError::internal(format!("Failed to read file: {}", e)))?;
-        let re = Regex::new(r#"#include\s*[<"]([^>"]+)[>"]"#).unwrap();
-        let imports = re.captures_iter(&content).map(|caps| {
+        let imports = INCLUDE_PATTERN.captures_iter(&content).map(|caps| {
             let m = caps.get(0).unwrap();
             let start_byte = m.start();
             let mut line_number = 0;

@@ -8,16 +8,16 @@ use mill_plugin_api::{
     },
     PluginResult,
 };
-use regex::Regex;
 use std::path::Path;
+
+use crate::constants::{INCLUDE_PATTERN, INCLUDE_PATH_PATTERN};
 
 #[derive(Debug, Clone, Copy)]
 pub struct CImportSupport;
 
 impl ImportParser for CImportSupport {
     fn parse_imports(&self, content: &str) -> Vec<String> {
-        let re = Regex::new(r#"#include\s*[<"](.+)[>"]"#).unwrap();
-        re.captures_iter(content)
+        INCLUDE_PATH_PATTERN.captures_iter(content)
             .map(|cap| cap[1].to_string())
             .collect()
     }
@@ -40,11 +40,8 @@ impl CImportSupport {
         let mut imports = Vec::new();
         let mut external_dependencies = Vec::new();
 
-        // Regex to match #include statements with system or local headers
-        let re = Regex::new(r#"#include\s*([<"])(.+?)([>"])"#).unwrap();
-
         for (line_num, line) in source.lines().enumerate() {
-            if let Some(captures) = re.captures(line) {
+            if let Some(captures) = INCLUDE_PATTERN.captures(line) {
                 let open_delim = &captures[1];
                 let header = captures[2].to_string();
                 let _close_delim = &captures[3];

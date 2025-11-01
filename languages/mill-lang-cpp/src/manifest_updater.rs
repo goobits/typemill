@@ -1,7 +1,8 @@
 use mill_plugin_api::{capabilities::ManifestUpdater, PluginResult};
 use async_trait::async_trait;
 use std::path::Path;
-use regex::Regex;
+
+use crate::constants::CMAKE_EXECUTABLE_PATTERN;
 
 pub struct CppManifestUpdater;
 
@@ -14,8 +15,7 @@ impl ManifestUpdater for CppManifestUpdater {
         dependency_name: &str,
         _version: Option<&str>,
     ) -> PluginResult<String> {
-        let executable_re = Regex::new(r"add_executable\(([^)\s]+)").unwrap();
-        let target = match executable_re.captures(content) {
+        let target = match CMAKE_EXECUTABLE_PATTERN.captures(content) {
             Some(caps) => caps.get(1).map_or("my_app", |m| m.as_str()).to_string(),
             None => "my_app".to_string(),
         };

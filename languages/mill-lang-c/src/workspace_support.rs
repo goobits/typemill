@@ -1,12 +1,12 @@
 use mill_plugin_api::WorkspaceSupport;
-use regex::Regex;
+
+use crate::constants::SUBDIRS_PATTERN;
 
 pub struct CWorkspaceSupport;
 
 impl WorkspaceSupport for CWorkspaceSupport {
     fn add_workspace_member(&self, manifest_content: &str, member_path: &str) -> String {
-        let re = Regex::new(r"SUBDIRS\s*=\s*(.*)").unwrap();
-        if let Some(caps) = re.captures(manifest_content) {
+        if let Some(caps) = SUBDIRS_PATTERN.captures(manifest_content) {
             let existing_subdirs = caps.get(1).unwrap().as_str();
             let new_subdirs = format!("{} {}", existing_subdirs, member_path);
             manifest_content.replace(existing_subdirs, &new_subdirs)
@@ -20,8 +20,7 @@ impl WorkspaceSupport for CWorkspaceSupport {
         manifest_content: &str,
         member_path: &str,
     ) -> String {
-        let re = Regex::new(r"SUBDIRS\s*=\s*(.*)").unwrap();
-        if let Some(caps) = re.captures(manifest_content) {
+        if let Some(caps) = SUBDIRS_PATTERN.captures(manifest_content) {
             let existing_subdirs = caps.get(1).unwrap().as_str();
             let new_subdirs: String = existing_subdirs
                 .split_whitespace()
@@ -35,8 +34,7 @@ impl WorkspaceSupport for CWorkspaceSupport {
     }
 
     fn list_workspace_members(&self, manifest_content: &str) -> Vec<String> {
-        let re = Regex::new(r"SUBDIRS\s*=\s*(.*)").unwrap();
-        if let Some(caps) = re.captures(manifest_content) {
+        if let Some(caps) = SUBDIRS_PATTERN.captures(manifest_content) {
             let subdirs = caps.get(1).unwrap().as_str();
             subdirs.split_whitespace().map(String::from).collect()
         } else {

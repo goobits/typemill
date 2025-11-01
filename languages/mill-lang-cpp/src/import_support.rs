@@ -5,6 +5,7 @@ use mill_plugin_api::import_support::{
 use tree_sitter::{Parser, Query, QueryCursor, StreamingIterator};
 use std::path::Path;
 use crate::ast_parser::get_cpp_language;
+use crate::constants::CPP20_IMPORT_PATTERN;
 
 fn get_cpp_imports_query() -> &'static str {
     r#"
@@ -48,9 +49,7 @@ impl ImportParser for CppImportSupport {
         imports.extend(ts_imports);
 
         // Parse C++20 import statements using regex (fallback)
-        use regex::Regex;
-        let import_re = Regex::new(r#"import\s+([a-zA-Z_][\w.]*|\s*"([^"]+)")\s*;"#).unwrap();
-        for cap in import_re.captures_iter(source) {
+        for cap in CPP20_IMPORT_PATTERN.captures_iter(source) {
             if let Some(quoted) = cap.get(2) {
                 imports.push(quoted.as_str().to_string());
             } else if let Some(module) = cap.get(1) {

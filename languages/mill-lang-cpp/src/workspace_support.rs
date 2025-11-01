@@ -8,6 +8,8 @@ use async_trait::async_trait;
 use mill_plugin_api::workspace_support::{MoveManifestPlan, WorkspaceSupport};
 use std::path::Path;
 
+use crate::constants::CMAKE_PROJECT_PATTERN;
+
 pub struct CppWorkspaceSupport;
 
 #[async_trait]
@@ -36,8 +38,7 @@ impl WorkspaceSupport for CppWorkspaceSupport {
     fn update_package_name(&self, content: &str, new_name: &str) -> String {
         // Update project() declaration in CMakeLists.txt
         // Simple regex-based replacement
-        let re = regex::Regex::new(r"project\s*\(\s*(\w+)").unwrap();
-        re.replace(content, format!("project({})", new_name))
+        CMAKE_PROJECT_PATTERN.replace(content, format!("project({}", new_name))
             .to_string()
     }
 
