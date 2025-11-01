@@ -310,6 +310,43 @@ impl mill_plugin_api::RefactoringProvider for CPlugin {
     }
 }
 
+impl mill_plugin_api::AnalysisMetadata for CPlugin {
+    fn test_patterns(&self) -> Vec<regex::Regex> {
+        vec![
+            regex::Regex::new(r"void\s+test_").unwrap(),
+            regex::Regex::new(r"TEST\(").unwrap(),
+        ]
+    }
+
+    fn assertion_patterns(&self) -> Vec<regex::Regex> {
+        vec![
+            regex::Regex::new(r"assert\(").unwrap(),
+            regex::Regex::new(r"CU_ASSERT").unwrap(),
+            regex::Regex::new(r"TEST_ASSERT").unwrap(),
+        ]
+    }
+
+    fn doc_comment_style(&self) -> mill_plugin_api::DocCommentStyle {
+        mill_plugin_api::DocCommentStyle::JavaDoc
+    }
+
+    fn visibility_keywords(&self) -> Vec<&'static str> {
+        vec!["static", "extern"]
+    }
+
+    fn interface_keywords(&self) -> Vec<&'static str> {
+        vec!["struct", "enum", "typedef"]
+    }
+
+    fn complexity_keywords(&self) -> Vec<&'static str> {
+        vec!["if", "else", "switch", "case", "for", "while", "do", "&&", "||"]
+    }
+
+    fn nesting_penalty(&self) -> f32 {
+        1.3
+    }
+}
+
 mill_plugin! {
     name: "C",
     extensions: ["c", "h"],

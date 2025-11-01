@@ -241,6 +241,44 @@ impl RefactoringProvider for GoPlugin {
     }
 }
 
+impl mill_plugin_api::AnalysisMetadata for GoPlugin {
+    fn test_patterns(&self) -> Vec<regex::Regex> {
+        vec![
+            regex::Regex::new(r"func\s+Test").unwrap(),
+            regex::Regex::new(r"func\s+Benchmark").unwrap(),
+            regex::Regex::new(r"func\s+Example").unwrap(),
+        ]
+    }
+
+    fn assertion_patterns(&self) -> Vec<regex::Regex> {
+        vec![
+            regex::Regex::new(r"t\.Error").unwrap(),
+            regex::Regex::new(r"t\.Fail").unwrap(),
+            regex::Regex::new(r"assert\.").unwrap(),
+            regex::Regex::new(r"require\.").unwrap(),
+        ]
+    }
+
+    fn doc_comment_style(&self) -> mill_plugin_api::DocCommentStyle {
+        mill_plugin_api::DocCommentStyle::GoDoc
+    }
+
+    fn visibility_keywords(&self) -> Vec<&'static str> {
+        vec![] // Go uses capitalization, not keywords
+    }
+
+    fn interface_keywords(&self) -> Vec<&'static str> {
+        vec!["interface", "struct", "type"]
+    }
+
+    fn complexity_keywords(&self) -> Vec<&'static str> {
+        vec!["if", "for", "switch", "case", "select", "&&", "||"]
+    }
+
+    fn nesting_penalty(&self) -> f32 {
+        1.2
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -556,5 +594,66 @@ mod tests {
         let result = scanner.scan_references(content, "fmt", ScanScope::All);
         // Should not panic, may or may not find the import
         assert!(result.is_ok(), "Should handle null bytes gracefully");
+    }
+
+    #[test]
+    fn test_analysis_metadata_test_patterns() {
+        use mill_plugin_api::AnalysisMetadata;
+        let plugin = GoPlugin::default();
+        let patterns = plugin.test_patterns();
+
+        // Should match Go test functions
+        let test_sample = "func TestSomething(t *testing.T) {}";
+        assert!(patterns.iter().any(|p| p.is_match(test_sample)));
+
+        // Should match Go benchmark functions
+        let bench_sample = "func BenchmarkOperation(b *testing.B) {}";
+        assert!(patterns.iter().any(|p| p.is_match(bench_sample)));
+
+        // Should match Go example functions
+        let example_sample = "func ExampleFunction() {}";
+        assert!(patterns.iter().any(|p| p.is_match(example_sample)));
+    }
+
+    #[test]
+    fn test_analysis_metadata_assertion_patterns() {
+        use mill_plugin_api::AnalysisMetadata;
+        let plugin = GoPlugin::default();
+        let patterns = plugin.assertion_patterns();
+
+        // Should match testing.T.Error
+        let error_sample = "t.Error(\"error message\")";
+        assert!(patterns.iter().any(|p| p.is_match(error_sample)));
+
+        // Should match testing.T.Fail
+        let fail_sample = "t.Fail()";
+        assert!(patterns.iter().any(|p| p.is_match(fail_sample)));
+
+        // Should match testify/assert
+        let assert_sample = "assert.Equal(t, expected, actual)";
+        assert!(patterns.iter().any(|p| p.is_match(assert_sample)));
+
+        // Should match testify/require
+        let require_sample = "require.NoError(t, err)";
+        assert!(patterns.iter().any(|p| p.is_match(require_sample)));
+    }
+
+    #[test]
+    fn test_analysis_metadata_complexity_keywords() {
+        use mill_plugin_api::AnalysisMetadata;
+        let plugin = GoPlugin::default();
+        let keywords = plugin.complexity_keywords();
+
+        // Should include Go control flow keywords
+        assert!(keywords.contains(&"if"));
+        assert!(keywords.contains(&"for"));
+        assert!(keywords.contains(&"switch"));
+        assert!(keywords.contains(&"case"));
+        assert!(keywords.contains(&"select"));
+        assert!(keywords.contains(&"&&"));
+        assert!(keywords.contains(&"||"));
+
+        // Check nesting penalty
+        assert_eq!(plugin.nesting_penalty(), 1.2);
     }
 }

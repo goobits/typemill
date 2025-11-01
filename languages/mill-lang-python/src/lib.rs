@@ -387,6 +387,47 @@ impl mill_plugin_api::ModuleReferenceScanner for PythonPlugin {
     }
 }
 
+impl mill_plugin_api::AnalysisMetadata for PythonPlugin {
+    fn test_patterns(&self) -> Vec<regex::Regex> {
+        vec![
+            regex::Regex::new(r"def\s+test_").unwrap(),
+            regex::Regex::new(r"class\s+Test").unwrap(),
+            regex::Regex::new(r"@pytest\.mark\.").unwrap(),
+            regex::Regex::new(r"@unittest\.").unwrap(),
+        ]
+    }
+
+    fn assertion_patterns(&self) -> Vec<regex::Regex> {
+        vec![
+            regex::Regex::new(r"\bassert\s+").unwrap(),
+            regex::Regex::new(r"self\.assert").unwrap(),
+            regex::Regex::new(r"self\.assertEqual").unwrap(),
+            regex::Regex::new(r"self\.assertTrue").unwrap(),
+            regex::Regex::new(r"pytest\.raises").unwrap(),
+        ]
+    }
+
+    fn doc_comment_style(&self) -> mill_plugin_api::DocCommentStyle {
+        mill_plugin_api::DocCommentStyle::Hash
+    }
+
+    fn visibility_keywords(&self) -> Vec<&'static str> {
+        vec![] // Python has no visibility keywords
+    }
+
+    fn interface_keywords(&self) -> Vec<&'static str> {
+        vec!["class", "Protocol"]
+    }
+
+    fn complexity_keywords(&self) -> Vec<&'static str> {
+        vec!["if", "elif", "for", "while", "try", "except", "with", "and", "or"]
+    }
+
+    fn nesting_penalty(&self) -> f32 {
+        1.3
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -501,5 +542,63 @@ class MyClass:
             plugin.workspace_support().is_some(),
             "Python should have workspace support"
         );
+    }
+
+    #[test]
+    fn test_analysis_metadata_test_patterns() {
+        use mill_plugin_api::AnalysisMetadata;
+        let plugin = PythonPlugin::default();
+        let patterns = plugin.test_patterns();
+
+        // Should match pytest test functions
+        let sample = "def test_something():\n    pass";
+        assert!(patterns.iter().any(|p| p.is_match(sample)));
+
+        // Should match unittest test classes
+        let class_sample = "class TestMyFeature:\n    pass";
+        assert!(patterns.iter().any(|p| p.is_match(class_sample)));
+
+        // Should match pytest markers
+        let marker_sample = "@pytest.mark.parametrize";
+        assert!(patterns.iter().any(|p| p.is_match(marker_sample)));
+    }
+
+    #[test]
+    fn test_analysis_metadata_assertion_patterns() {
+        use mill_plugin_api::AnalysisMetadata;
+        let plugin = PythonPlugin::default();
+        let patterns = plugin.assertion_patterns();
+
+        // Should match Python assert statement
+        let assert_sample = "assert x == 5";
+        assert!(patterns.iter().any(|p| p.is_match(assert_sample)));
+
+        // Should match unittest assertions
+        let unittest_sample = "self.assertEqual(x, y)";
+        assert!(patterns.iter().any(|p| p.is_match(unittest_sample)));
+
+        // Should match pytest.raises
+        let pytest_sample = "with pytest.raises(ValueError):";
+        assert!(patterns.iter().any(|p| p.is_match(pytest_sample)));
+    }
+
+    #[test]
+    fn test_analysis_metadata_complexity_keywords() {
+        use mill_plugin_api::AnalysisMetadata;
+        let plugin = PythonPlugin::default();
+        let keywords = plugin.complexity_keywords();
+
+        // Should include Python control flow keywords
+        assert!(keywords.contains(&"if"));
+        assert!(keywords.contains(&"elif"));
+        assert!(keywords.contains(&"for"));
+        assert!(keywords.contains(&"while"));
+        assert!(keywords.contains(&"try"));
+        assert!(keywords.contains(&"except"));
+        assert!(keywords.contains(&"and"));
+        assert!(keywords.contains(&"or"));
+
+        // Check nesting penalty
+        assert_eq!(plugin.nesting_penalty(), 1.3);
     }
 }

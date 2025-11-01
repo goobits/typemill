@@ -31,7 +31,7 @@ tree-sitter = { workspace = true }
 lsp-types = { workspace = true }
 
 # Utilities (uncomment as needed)
-# regex = "1.10"
+regex = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 quick-xml = { version = "0.31", features = ["serialize"] }
 tempfile = { workspace = true }

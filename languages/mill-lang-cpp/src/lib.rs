@@ -132,6 +132,46 @@ impl LanguagePlugin for CppPlugin {
     }
 }
 
+impl mill_plugin_api::AnalysisMetadata for CppPlugin {
+    fn test_patterns(&self) -> Vec<regex::Regex> {
+        vec![
+            regex::Regex::new(r"TEST\(").unwrap(),
+            regex::Regex::new(r"TEST_F\(").unwrap(),
+            regex::Regex::new(r"BOOST_AUTO_TEST_CASE").unwrap(),
+            regex::Regex::new(r"CATCH_TEST_CASE").unwrap(),
+        ]
+    }
+
+    fn assertion_patterns(&self) -> Vec<regex::Regex> {
+        vec![
+            regex::Regex::new(r"EXPECT_").unwrap(),
+            regex::Regex::new(r"ASSERT_").unwrap(),
+            regex::Regex::new(r"CHECK").unwrap(),
+            regex::Regex::new(r"REQUIRE").unwrap(),
+        ]
+    }
+
+    fn doc_comment_style(&self) -> mill_plugin_api::DocCommentStyle {
+        mill_plugin_api::DocCommentStyle::TripleSlash
+    }
+
+    fn visibility_keywords(&self) -> Vec<&'static str> {
+        vec!["public", "private", "protected"]
+    }
+
+    fn interface_keywords(&self) -> Vec<&'static str> {
+        vec!["class", "struct", "interface"]
+    }
+
+    fn complexity_keywords(&self) -> Vec<&'static str> {
+        vec!["if", "else", "switch", "case", "for", "while", "catch", "&&", "||"]
+    }
+
+    fn nesting_penalty(&self) -> f32 {
+        1.4
+    }
+}
+
 mill_plugin! {
     name: "C++",
     extensions: ["cpp", "cc", "cxx", "h", "hpp"],
@@ -149,5 +189,72 @@ mod tests {
     fn test_cpp_plugin_creation() {
         let plugin = CppPlugin::default();
         assert_eq!(plugin.metadata().name, "C++");
+    }
+
+    #[test]
+    fn test_analysis_metadata_test_patterns() {
+        use mill_plugin_api::AnalysisMetadata;
+        let plugin = CppPlugin::default();
+        let patterns = plugin.test_patterns();
+
+        // Should match Google Test
+        let gtest_sample = "TEST(MySuite, MyTest) {}";
+        assert!(patterns.iter().any(|p| p.is_match(gtest_sample)));
+
+        // Should match Google Test fixtures
+        let fixture_sample = "TEST_F(MyFixture, MyTest) {}";
+        assert!(patterns.iter().any(|p| p.is_match(fixture_sample)));
+
+        // Should match Boost.Test
+        let boost_sample = "BOOST_AUTO_TEST_CASE(test_name) {}";
+        assert!(patterns.iter().any(|p| p.is_match(boost_sample)));
+
+        // Should match Catch2
+        let catch_sample = "CATCH_TEST_CASE(\"description\") {}";
+        assert!(patterns.iter().any(|p| p.is_match(catch_sample)));
+    }
+
+    #[test]
+    fn test_analysis_metadata_assertion_patterns() {
+        use mill_plugin_api::AnalysisMetadata;
+        let plugin = CppPlugin::default();
+        let patterns = plugin.assertion_patterns();
+
+        // Should match Google Test expectations
+        let expect_sample = "EXPECT_EQ(expected, actual);";
+        assert!(patterns.iter().any(|p| p.is_match(expect_sample)));
+
+        // Should match Google Test assertions
+        let assert_sample = "ASSERT_TRUE(condition);";
+        assert!(patterns.iter().any(|p| p.is_match(assert_sample)));
+
+        // Should match Catch2 checks
+        let check_sample = "CHECK(value == expected);";
+        assert!(patterns.iter().any(|p| p.is_match(check_sample)));
+
+        // Should match Catch2 requirements
+        let require_sample = "REQUIRE(ptr != nullptr);";
+        assert!(patterns.iter().any(|p| p.is_match(require_sample)));
+    }
+
+    #[test]
+    fn test_analysis_metadata_complexity_keywords() {
+        use mill_plugin_api::AnalysisMetadata;
+        let plugin = CppPlugin::default();
+        let keywords = plugin.complexity_keywords();
+
+        // Should include C++ control flow keywords
+        assert!(keywords.contains(&"if"));
+        assert!(keywords.contains(&"else"));
+        assert!(keywords.contains(&"switch"));
+        assert!(keywords.contains(&"case"));
+        assert!(keywords.contains(&"for"));
+        assert!(keywords.contains(&"while"));
+        assert!(keywords.contains(&"catch"));
+        assert!(keywords.contains(&"&&"));
+        assert!(keywords.contains(&"||"));
+
+        // Check nesting penalty
+        assert_eq!(plugin.nesting_penalty(), 1.4);
     }
 }
