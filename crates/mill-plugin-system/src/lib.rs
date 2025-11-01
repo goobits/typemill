@@ -22,7 +22,7 @@ pub use manager::PluginManager;
 pub use plugin::{LanguagePlugin, PluginMetadata};
 pub use process_manager::PluginProcessManager;
 pub use protocol::{PluginRequest, PluginResponse, Position, Range};
-pub use registry::PluginRegistry;
+pub use registry::RuntimePluginManager;
 
 /// Plugin system version for compatibility checking
 pub const PLUGIN_SYSTEM_VERSION: &str = env!("CARGO_PKG_VERSION");

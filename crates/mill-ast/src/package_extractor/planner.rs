@@ -8,7 +8,7 @@ use tracing::{debug, info};
 
 pub(crate) async fn plan_extract_module_to_package(
     params: ExtractModuleToPackageParams,
-    plugin_registry: &mill_plugin_api::PluginRegistry,
+    plugin_registry: &mill_plugin_api::PluginDiscovery,
 ) -> AstResult<EditPlan> {
     info!(
         source_package = %params.source_package,

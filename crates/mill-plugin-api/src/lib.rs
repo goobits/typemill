@@ -617,13 +617,20 @@ pub trait LanguagePlugin: Send + Sync {
 
 /// A registry for managing language plugins
 ///
+/// Lightweight plugin discovery registry for simple plugin lookups.
+///
+/// This is a minimal, dependency-free registry used in the plugin API layer
+/// for basic plugin discovery by file extension. For runtime plugin management
+/// with caching, priorities, and advanced features, see `RuntimePluginManager`
+/// in the `mill-plugin-system` crate.
+///
 /// This will be used by the main server to register and look up plugins
 /// based on file extensions.
-pub struct PluginRegistry {
+pub struct PluginDiscovery {
     plugins: Vec<std::sync::Arc<dyn LanguagePlugin>>,
 }
 
-impl PluginRegistry {
+impl PluginDiscovery {
     /// Create a new empty plugin registry
     pub fn new() -> Self {
         Self {
@@ -678,7 +685,7 @@ impl PluginRegistry {
     }
 }
 
-impl Default for PluginRegistry {
+impl Default for PluginDiscovery {
     fn default() -> Self {
         Self::new()
     }
@@ -746,7 +753,7 @@ mod tests {
 
     #[test]
     fn test_plugin_registry() {
-        let mut registry = PluginRegistry::new();
+        let mut registry = PluginDiscovery::new();
         registry.register(Arc::new(MockPlugin::new()));
 
         let plugin = registry.find_by_extension("mock");
@@ -841,7 +848,7 @@ mod tests {
         impl RefactoringProvider for TypeScriptMockPlugin {}
 
         // Register both plugins
-        let mut registry = PluginRegistry::new();
+        let mut registry = PluginDiscovery::new();
         registry.register(Arc::new(RustMockPlugin));
         registry.register(Arc::new(TypeScriptMockPlugin));
 
@@ -953,7 +960,7 @@ mod tests {
         #[async_trait]
         impl RefactoringProvider for FullFeaturedPlugin {}
 
-        let mut registry = PluginRegistry::new();
+        let mut registry = PluginDiscovery::new();
         registry.register(Arc::new(FullFeaturedPlugin));
 
         // Verify all capabilities are discoverable
@@ -1037,7 +1044,7 @@ mod tests {
             }
         }
 
-        let mut registry = PluginRegistry::new();
+        let mut registry = PluginDiscovery::new();
         registry.register(Arc::new(MinimalPlugin));
 
         let plugin = registry.find_by_extension("min").unwrap();

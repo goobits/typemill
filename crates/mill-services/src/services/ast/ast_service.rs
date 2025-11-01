@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use mill_ast::AstCache;
 use mill_foundation::protocol::{ApiResult, CacheStats, ImportGraph};
-use mill_plugin_api::PluginRegistry;
+use mill_plugin_api::PluginDiscovery;
 use tracing::{debug, trace};
 
 use mill_foundation::protocol::AstService;
@@ -16,12 +16,12 @@ pub struct DefaultAstService {
     /// Shared AST cache for performance optimization
     cache: Arc<AstCache>,
     /// Language plugin registry for import parsing
-    plugin_registry: Arc<PluginRegistry>,
+    plugin_registry: Arc<PluginDiscovery>,
 }
 
 impl DefaultAstService {
     /// Create a new DefaultAstService with the provided cache and plugin registry
-    pub fn new(cache: Arc<AstCache>, plugin_registry: Arc<PluginRegistry>) -> Self {
+    pub fn new(cache: Arc<AstCache>, plugin_registry: Arc<PluginDiscovery>) -> Self {
         debug!("DefaultAstService created with shared cache and plugin registry");
         Self {
             cache,
@@ -105,7 +105,7 @@ impl AstService for DefaultAstService {
 fn build_import_graph_with_plugin(
     source: &str,
     path: &Path,
-    registry: Arc<PluginRegistry>,
+    registry: Arc<PluginDiscovery>,
 ) -> Result<mill_foundation::protocol::ImportGraph, mill_foundation::protocol::ApiError> {
     // Determine file extension
     let extension = path

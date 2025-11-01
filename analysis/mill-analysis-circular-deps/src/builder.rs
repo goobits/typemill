@@ -2,17 +2,17 @@
 
 use ignore::WalkBuilder;
 use mill_analysis_graph::dependency::{Dependency, DependencyGraph, DependencyKind};
-use mill_plugin_api::{import_support::ImportParser, PluginRegistry};
+use mill_plugin_api::{import_support::ImportParser, PluginDiscovery};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
 
 pub struct DependencyGraphBuilder<'a> {
-    plugin_registry: &'a PluginRegistry,
+    plugin_registry: &'a PluginDiscovery,
 }
 
 impl<'a> DependencyGraphBuilder<'a> {
-    pub fn new(plugin_registry: &'a PluginRegistry) -> Self {
+    pub fn new(plugin_registry: &'a PluginDiscovery) -> Self {
         Self { plugin_registry }
     }
 

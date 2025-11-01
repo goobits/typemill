@@ -10,12 +10,12 @@ use std::collections::HashMap;
 // Edit plan types now come from cb-api
 
 /// Plan a refactoring operation based on an intent
-use mill_plugin_api::PluginRegistry;
+use mill_plugin_api::PluginDiscovery;
 
 pub fn plan_refactor(
     intent: &IntentSpec,
     source: &str,
-    plugin_registry: &PluginRegistry,
+    plugin_registry: &PluginDiscovery,
 ) -> AstResult<EditPlan> {
     match intent.name() {
         // Unified Refactoring API intent names (dryRun option)
@@ -225,7 +225,7 @@ fn find_import_insertion_point(source: &str) -> AstResult<EditLocation> {
 fn plan_remove_import(
     intent: &IntentSpec,
     source: &str,
-    plugin_registry: &PluginRegistry,
+    plugin_registry: &PluginDiscovery,
 ) -> AstResult<EditPlan> {
     let module_path = intent
         .arguments()

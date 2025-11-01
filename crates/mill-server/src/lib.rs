@@ -39,7 +39,7 @@ pub struct ServerOptions {
     pub debug: bool,
     /// Optional pre-built language plugin registry (for dependency injection)
     /// If None, will build registry automatically using all available plugins
-    pub plugin_registry: Option<Arc<mill_plugin_api::PluginRegistry>>,
+    pub plugin_registry: Option<Arc<mill_plugin_api::PluginDiscovery>>,
 }
 
 impl std::fmt::Debug for ServerOptions {
@@ -49,7 +49,7 @@ impl std::fmt::Debug for ServerOptions {
             .field("debug", &self.debug)
             .field(
                 "plugin_registry",
-                &self.plugin_registry.as_ref().map(|_| "<PluginRegistry>"),
+                &self.plugin_registry.as_ref().map(|_| "<PluginDiscovery>"),
             )
             .finish()
     }
@@ -165,7 +165,7 @@ impl ServerOptions {
     /// let options = ServerOptions::from_config(config)
     ///     .with_plugin_registry(registry);
     /// ```
-    pub fn with_plugin_registry(mut self, registry: Arc<mill_plugin_api::PluginRegistry>) -> Self {
+    pub fn with_plugin_registry(mut self, registry: Arc<mill_plugin_api::PluginDiscovery>) -> Self {
         self.plugin_registry = Some(registry);
         self
     }
@@ -184,7 +184,7 @@ impl ServerOptions {
 pub async fn create_dispatcher_with_workspace(
     config: Arc<AppConfig>,
     workspace_manager: Arc<mill_workspaces::WorkspaceManager>,
-    plugin_registry: Arc<mill_plugin_api::PluginRegistry>,
+    plugin_registry: Arc<mill_plugin_api::PluginDiscovery>,
 ) -> ServerResult<Arc<PluginDispatcher>> {
     // Get project root
     let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));

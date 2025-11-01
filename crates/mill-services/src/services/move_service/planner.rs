@@ -2,7 +2,7 @@
 
 use crate::services::reference_updater::ReferenceUpdater;
 use mill_foundation::protocol::{ApiResult as ServerResult, EditPlan};
-use mill_plugin_api::{PluginRegistry, ScanScope};
+use mill_plugin_api::{PluginDiscovery, ScanScope};
 use std::path::Path;
 use tracing::{info, warn};
 
@@ -11,7 +11,7 @@ pub async fn plan_file_move(
     old_abs: &Path,
     new_abs: &Path,
     reference_updater: &ReferenceUpdater,
-    plugin_registry: &PluginRegistry,
+    plugin_registry: &PluginDiscovery,
     scan_scope: Option<ScanScope>,
     rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
 ) -> ServerResult<EditPlan> {
@@ -69,7 +69,7 @@ pub async fn plan_directory_move(
     old_abs: &Path,
     new_abs: &Path,
     reference_updater: &ReferenceUpdater,
-    plugin_registry: &PluginRegistry,
+    plugin_registry: &PluginDiscovery,
     project_root: &Path,
     scan_scope: Option<ScanScope>,
     rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
@@ -226,7 +226,7 @@ pub async fn plan_directory_move(
 async fn plan_documentation_and_config_edits(
     old_path: &Path,
     new_path: &Path,
-    plugin_registry: &PluginRegistry,
+    plugin_registry: &PluginDiscovery,
     project_root: &Path,
     rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
 ) -> ServerResult<Vec<mill_foundation::protocol::TextEdit>> {

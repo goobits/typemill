@@ -3,7 +3,7 @@
 use mill_ast::{find_project_files, update_imports_for_rename, ImportPathResolver};
 use mill_foundation::protocol::DependencyUpdate;
 use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
-use mill_plugin_api::PluginRegistry;
+use mill_plugin_api::PluginDiscovery;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
@@ -14,7 +14,7 @@ pub struct ImportService {
     /// Project root directory
     project_root: PathBuf,
     /// Language plugin registry for multi-language support
-    plugin_registry: Arc<PluginRegistry>,
+    plugin_registry: Arc<PluginDiscovery>,
 }
 
 impl ImportService {
@@ -24,7 +24,7 @@ impl ImportService {
     ///
     /// * `project_root` - Root directory of the project
     /// * `plugin_registry` - Registry of language plugins to use
-    pub fn new(project_root: impl AsRef<Path>, plugin_registry: Arc<PluginRegistry>) -> Self {
+    pub fn new(project_root: impl AsRef<Path>, plugin_registry: Arc<PluginDiscovery>) -> Self {
         Self {
             project_root: project_root.as_ref().to_path_buf(),
             plugin_registry,
@@ -229,7 +229,7 @@ mod tests {
     #[tokio::test]
     async fn test_import_service_creation() {
         let temp_dir = TempDir::new().unwrap();
-        let registry = Arc::new(PluginRegistry::new());
+        let registry = Arc::new(PluginDiscovery::new());
         let service = ImportService::new(temp_dir.path(), registry);
 
         assert_eq!(service.project_root, temp_dir.path());

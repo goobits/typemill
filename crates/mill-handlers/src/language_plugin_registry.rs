@@ -9,7 +9,7 @@
 //! injected via `from_registry()`. This eliminates compile-time coupling between
 //! the handler layer and specific language implementations.
 
-use mill_plugin_api::{LanguagePlugin, PluginRegistry};
+use mill_plugin_api::{LanguagePlugin, PluginDiscovery};
 use std::sync::Arc;
 use tracing::debug;
 
@@ -23,7 +23,7 @@ use tracing::debug;
 /// at this layer - that defeats the purpose of dependency injection.
 #[derive(Clone)]
 pub struct LanguagePluginRegistry {
-    pub inner: Arc<PluginRegistry>,
+    pub inner: Arc<PluginDiscovery>,
 }
 
 impl LanguagePluginRegistry {
@@ -37,7 +37,7 @@ impl LanguagePluginRegistry {
     /// # Example
     /// ```rust
     /// use mill_handlers::language_plugin_registry::LanguagePluginRegistry;
-    /// use mill_plugin_api::PluginRegistry;
+    /// use mill_plugin_api::PluginDiscovery;
     /// use mill_services::services::registry_builder::build_language_plugin_registry;
     /// use std::sync::Arc;
     ///
@@ -47,7 +47,7 @@ impl LanguagePluginRegistry {
     /// // Inject into handler layer
     /// let handler_registry = LanguagePluginRegistry::from_registry(registry);
     /// ```
-    pub fn from_registry(registry: Arc<PluginRegistry>) -> Self {
+    pub fn from_registry(registry: Arc<PluginDiscovery>) -> Self {
         Self { inner: registry }
     }
 

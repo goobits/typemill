@@ -7,7 +7,7 @@ mod tests {
     use crate::services::filesystem::file_service::FileService;
     use mill_ast::AstCache;
     use mill_config::config::AppConfig;
-    use mill_plugin_api::PluginRegistry;
+    use mill_plugin_api::PluginDiscovery;
     use std::path::Path;
     use std::sync::Arc;
     use tempfile::TempDir;
@@ -19,7 +19,7 @@ mod tests {
         let ast_cache = Arc::new(AstCache::new());
         let lock_manager = Arc::new(LockManager::new());
         let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
-        let plugin_registry = Arc::new(PluginRegistry::new());
+        let plugin_registry = Arc::new(PluginDiscovery::new());
         let config = AppConfig::default();
 
         let service = FileService::new(

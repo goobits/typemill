@@ -2,7 +2,7 @@
 //!
 //! Eliminates duplication across CLI, stdio, WebSocket entry points
 
-use mill_plugin_api::PluginRegistry;
+use mill_plugin_api::PluginDiscovery;
 use mill_server::handlers::plugin_dispatcher::PluginDispatcher;
 use mill_server::workspaces::WorkspaceManager;
 use std::sync::Arc;
@@ -23,7 +23,7 @@ pub async fn create_initialized_dispatcher_with_workspace(
 
     // Build plugin registry from the plugin bundle
     let plugins = mill_plugin_bundle::all_plugins();
-    let mut plugin_registry = PluginRegistry::new();
+    let mut plugin_registry = PluginDiscovery::new();
     for plugin in plugins {
         plugin_registry.register(plugin);
     }

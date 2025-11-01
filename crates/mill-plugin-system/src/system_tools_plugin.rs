@@ -21,7 +21,7 @@ pub struct SystemToolsPlugin {
     metadata: PluginMetadata,
     capabilities: Capabilities,
     /// Language plugin registry for AST operations
-    plugin_registry: Arc<mill_plugin_api::PluginRegistry>,
+    plugin_registry: Arc<mill_plugin_api::PluginDiscovery>,
 }
 
 impl SystemToolsPlugin {
@@ -43,7 +43,7 @@ impl SystemToolsPlugin {
     /// # Returns
     ///
     /// A new `SystemToolsPlugin` instance with all capabilities registered
-    pub fn new(plugin_registry: Arc<mill_plugin_api::PluginRegistry>) -> Self {
+    pub fn new(plugin_registry: Arc<mill_plugin_api::PluginDiscovery>) -> Self {
         let mut capabilities = Capabilities::default();
 
         // Add custom capabilities for system tools

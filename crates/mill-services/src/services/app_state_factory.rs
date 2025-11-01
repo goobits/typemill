@@ -29,7 +29,7 @@ pub async fn create_services_bundle(
     cache_settings: mill_ast::CacheSettings,
     plugin_manager: Arc<mill_plugin_system::PluginManager>,
     config: &mill_config::AppConfig,
-    plugin_registry: Arc<mill_plugin_api::PluginRegistry>,
+    plugin_registry: Arc<mill_plugin_api::PluginDiscovery>,
 ) -> ServicesBundle {
     // Plugin registry is now injected by the caller (dependency injection)
 

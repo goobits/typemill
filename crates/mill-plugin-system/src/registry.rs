@@ -6,8 +6,20 @@ use std::path::Path;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
+/// Runtime plugin manager with advanced features.
+///
+/// This is a full-featured plugin management system used at runtime with:
+/// - HashMap-based lookups for fast access
+/// - Priority-based plugin selection
+/// - Metadata caching
+/// - Method and extension mapping
+/// - Ambiguity detection
+///
+/// For simple, lightweight plugin discovery, see `PluginDiscovery` in the
+/// `mill-plugin-api` crate.
+///
 /// Registry for managing loaded language plugins
-pub struct PluginRegistry {
+pub struct RuntimePluginManager {
     /// Map of plugin name to plugin instance
     plugins: HashMap<String, Arc<dyn LanguagePlugin>>,
     /// Map of file extension to supporting plugins
@@ -22,7 +34,7 @@ pub struct PluginRegistry {
     error_on_ambiguity: bool,
 }
 
-impl PluginRegistry {
+impl RuntimePluginManager {
     /// Create a new plugin registry
     pub fn new() -> Self {
         Self {
@@ -470,7 +482,7 @@ impl PluginRegistry {
     }
 }
 
-impl Default for PluginRegistry {
+impl Default for RuntimePluginManager {
     fn default() -> Self {
         Self::new()
     }
@@ -535,7 +547,7 @@ mod tests {
 
     #[test]
     fn test_plugin_registration() {
-        let mut registry = PluginRegistry::new();
+        let mut registry = RuntimePluginManager::new();
 
         let mut capabilities = Capabilities::default();
         capabilities.navigation.go_to_definition = true;
@@ -554,7 +566,7 @@ mod tests {
 
     #[test]
     fn test_plugin_discovery() {
-        let mut registry = PluginRegistry::new();
+        let mut registry = RuntimePluginManager::new();
 
         let mut capabilities = Capabilities::default();
         capabilities.navigation.go_to_definition = true;
@@ -583,7 +595,7 @@ mod tests {
 
     #[test]
     fn test_plugin_unregistration() {
-        let mut registry = PluginRegistry::new();
+        let mut registry = RuntimePluginManager::new();
 
         let plugin = Arc::new(TestPlugin {
             name: "test-plugin".to_string(),
@@ -602,7 +614,7 @@ mod tests {
 
     #[test]
     fn test_method_support_checking() {
-        let mut registry = PluginRegistry::new();
+        let mut registry = RuntimePluginManager::new();
 
         let mut capabilities = Capabilities::default();
         capabilities.navigation.go_to_definition = true;
@@ -623,7 +635,7 @@ mod tests {
 
     #[test]
     fn test_registry_statistics() {
-        let mut registry = PluginRegistry::new();
+        let mut registry = RuntimePluginManager::new();
 
         let mut capabilities = Capabilities::default();
         capabilities.navigation.go_to_definition = true;
@@ -659,7 +671,7 @@ mod tests {
     #[test]
     fn test_scope_aware_file_tool_selection() {
         // Test that file-scoped tools require both file extension AND method match
-        let mut registry = PluginRegistry::new();
+        let mut registry = RuntimePluginManager::new();
 
         // Plugin 1: Supports TypeScript files + find_definition (file-scoped)
         let mut caps1 = Capabilities::default();
@@ -701,7 +713,7 @@ mod tests {
     #[test]
     fn test_scope_aware_workspace_tool_selection() {
         // Test that workspace-scoped tools only need method match
-        let mut registry = PluginRegistry::new();
+        let mut registry = RuntimePluginManager::new();
 
         // Plugin supports workspace-scoped tool (search_workspace_symbols)
         let mut caps = Capabilities::default();
@@ -734,7 +746,7 @@ mod tests {
     #[test]
     fn test_priority_based_selection() {
         // Test that priority-based selection works correctly
-        let mut registry = PluginRegistry::new();
+        let mut registry = RuntimePluginManager::new();
 
         // Plugin 1: Priority 40
         let mut caps1 = Capabilities::default();
@@ -776,7 +788,7 @@ mod tests {
     #[test]
     fn test_priority_override() {
         // Test that priority overrides work correctly
-        let mut registry = PluginRegistry::new();
+        let mut registry = RuntimePluginManager::new();
 
         // Plugin 1: Default priority 50
         let mut caps1 = Capabilities::default();
@@ -816,7 +828,7 @@ mod tests {
     #[test]
     fn test_ambiguous_selection_error() {
         // Test that ambiguous selection is detected when error_on_ambiguity is true
-        let mut registry = PluginRegistry::new();
+        let mut registry = RuntimePluginManager::new();
         registry.set_error_on_ambiguity(true);
 
         // Two plugins with same priority
@@ -854,7 +866,7 @@ mod tests {
     #[test]
     fn test_ambiguous_selection_fallback() {
         // Test that lexicographic fallback works when error_on_ambiguity is false
-        let mut registry = PluginRegistry::new();
+        let mut registry = RuntimePluginManager::new();
         registry.set_error_on_ambiguity(false);
 
         // Two plugins with same priority

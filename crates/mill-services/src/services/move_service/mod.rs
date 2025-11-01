@@ -20,7 +20,7 @@ mod planner;
 
 use crate::services::reference_updater::ReferenceUpdater;
 use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult, EditPlan};
-use mill_plugin_api::{PluginRegistry, ScanScope};
+use mill_plugin_api::{PluginDiscovery, ScanScope};
 use std::path::{Path, PathBuf};
 use tracing::info;
 
@@ -29,7 +29,7 @@ pub struct MoveService<'a> {
     /// Reference updater for import analysis
     reference_updater: &'a ReferenceUpdater,
     /// Language plugin registry
-    plugin_registry: &'a PluginRegistry,
+    plugin_registry: &'a PluginDiscovery,
     /// Project root directory
     project_root: &'a Path,
 }
@@ -38,7 +38,7 @@ impl<'a> MoveService<'a> {
     /// Create a new MoveService
     pub fn new(
         reference_updater: &'a ReferenceUpdater,
-        plugin_registry: &'a PluginRegistry,
+        plugin_registry: &'a PluginDiscovery,
         project_root: &'a Path,
     ) -> Self {
         Self {
@@ -446,7 +446,7 @@ mod tests {
     #[test]
     fn test_to_absolute_path() {
         let project_root = PathBuf::from("/project");
-        let plugin_registry = PluginRegistry::new();
+        let plugin_registry = PluginDiscovery::new();
         let reference_updater = ReferenceUpdater::new(&project_root);
 
         let service = MoveService::new(&reference_updater, &plugin_registry, &project_root);

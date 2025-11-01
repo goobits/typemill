@@ -12,7 +12,7 @@
 //! `PluginRegistry`.
 
 use mill_plugin_api::iter_plugins;
-use mill_plugin_api::PluginRegistry;
+use mill_plugin_api::PluginDiscovery;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::{debug, warn};
@@ -27,8 +27,8 @@ use tracing::{debug, warn};
 /// - Validates that plugin names are unique
 /// - Validates that file extensions don't conflict between plugins
 /// - Logs warnings for any conflicts detected
-pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
-    let mut registry = PluginRegistry::new();
+pub fn build_language_plugin_registry() -> Arc<PluginDiscovery> {
+    let mut registry = PluginDiscovery::new();
     let mut plugin_count = 0;
 
     debug!("Plugin discovery started");
