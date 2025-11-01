@@ -2,6 +2,7 @@
 //!
 //! Handles creation of new TypeScript/JavaScript packages with proper workspace integration.
 
+use crate::constants;
 use mill_lang_common::project_factory::{
     derive_package_name, resolve_package_path, update_workspace_manifest,
     validate_package_path_not_exists, write_project_file, WorkspaceManifestDetector,
@@ -150,11 +151,11 @@ fn generate_package_json(package_name: &str, package_type: PackageType) -> Strin
   "author": "",
   "license": "ISC",
   "devDependencies": {{
-    "typescript": "^5.0.0"
+    "typescript": "{}"
   }}
 }}
 "#,
-            package_name
+            package_name, constants::DEFAULT_TS_VERSION
         ),
         PackageType::Binary => format!(
             r#"{{
@@ -174,12 +175,12 @@ fn generate_package_json(package_name: &str, package_type: PackageType) -> Strin
   "author": "",
   "license": "ISC",
   "devDependencies": {{
-    "typescript": "^5.0.0",
+    "typescript": "{}",
     "@types/node": "^20.0.0"
   }}
 }}
 "#,
-            package_name, package_name
+            package_name, package_name, constants::DEFAULT_TS_VERSION
         ),
     }
 }

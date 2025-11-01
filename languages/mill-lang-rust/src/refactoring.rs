@@ -2,6 +2,7 @@
 //!
 //! This module provides AST-based refactoring capabilities for Rust code.
 
+use crate::constants;
 use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
@@ -226,8 +227,7 @@ pub fn plan_inline_variable(
 
     // Pattern matching for variable declarations and constants
     // Supports: let x = ..., let mut x = ..., const X: Type = ...
-    let var_pattern =
-        regex::Regex::new(r"(?:let\s+(?:mut\s+)?|const\s+)(\w+)(?::\s*[^=]+)?\s*=\s*(.+?)(?:;|$)")?;
+    let var_pattern = constants::variable_decl_pattern();
 
     if let Some(captures) = var_pattern.captures(line_text) {
         let var_name = captures.get(1).unwrap().as_str();
@@ -235,7 +235,7 @@ pub fn plan_inline_variable(
 
         // Find all usages of this variable in the rest of the source
         let mut edits = Vec::new();
-        let var_regex = regex::Regex::new(&format!(r"\b{}\b", regex::escape(var_name)))?;
+        let var_regex = constants::word_boundary_pattern(var_name)?;
 
         // Replace all usages (except the declaration itself)
         for (idx, line) in lines.iter().enumerate() {

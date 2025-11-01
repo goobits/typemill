@@ -3,6 +3,7 @@
 //! This module implements the segregated import traits for Rust, providing
 //! synchronous methods for parsing, analyzing, and rewriting import statements.
 
+use crate::constants;
 use mill_lang_common::import_helpers::{
     find_last_matching_line, insert_line_at, remove_lines_matching,
 };
@@ -225,11 +226,10 @@ impl ImportRenameSupport for RustImportSupport {
         // Build regex pattern with word boundary to avoid false positives
         // Pattern: \b + old_rust_ident + \s*::
         // This matches "cb_ast::" but not "my_cb_ast::"
-        let pattern = format!(r"\b{}\s*::", regex::escape(&old_rust_ident));
-        let re = match regex::Regex::new(&pattern) {
+        let re = match constants::qualified_path_pattern(&old_rust_ident) {
             Ok(r) => r,
             Err(e) => {
-                tracing::warn!(error = %e, pattern = %pattern, "Failed to compile regex for qualified paths");
+                tracing::warn!(error = %e, "Failed to compile regex for qualified paths");
                 return (result, changes_count);
             }
         };
@@ -647,9 +647,8 @@ impl RustImportSupport {
             // Apply regex replacement directly since AST rewrite would break escaping
             let old_rust_ident = old_name.replace('-', "_");
             let new_rust_ident = new_name.replace('-', "_");
-            let pattern = format!(r"\b{}\s*::", regex::escape(&old_rust_ident));
 
-            if let Ok(re) = regex::Regex::new(&pattern) {
+            if let Ok(re) = constants::qualified_path_pattern(&old_rust_ident) {
                 let new_content = re.replace_all(trimmed, |_caps: &regex::Captures| {
                     format!("{}::", new_rust_ident)
                 });

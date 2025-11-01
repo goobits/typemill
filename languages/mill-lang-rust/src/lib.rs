@@ -4,6 +4,7 @@
 //! - `LanguagePlugin` - AST parsing and symbol extraction
 //! - Import and workspace support traits
 
+mod constants;
 mod manifest;
 pub mod parser;
 pub mod refactoring;
@@ -218,10 +219,7 @@ impl LanguagePlugin for RustPlugin {
                     // Smart boundary matching: NOT preceded/followed by alphanumeric
                     // Allows: "mill-lsp", "mill-lsp-style", "// mill-lsp"
                     // Blocks: "mymill-lsp", "mill-lspsystem"
-                    let pattern = format!(
-                        r"(?<![a-zA-Z0-9]){}(?![a-zA-Z0-9])",
-                        fancy_regex::escape(old_basename)
-                    );
+                    let pattern = constants::smart_boundary_pattern(old_basename);
 
                     if let Ok(regex) = fancy_regex::Regex::new(&pattern) {
                         let comment_result = regex.replace_all(&modified_content, new_basename);
@@ -266,23 +264,11 @@ impl LanguagePlugin for RustPlugin {
 
 impl AnalysisMetadata for RustPlugin {
     fn test_patterns(&self) -> Vec<Regex> {
-        vec![
-            Regex::new(r"#\[test\]").unwrap(),
-            Regex::new(r"#\[tokio::test\]").unwrap(),
-            Regex::new(r"#\[async_std::test\]").unwrap(),
-            Regex::new(r"#\[actix_rt::test\]").unwrap(),
-        ]
+        constants::test_patterns()
     }
 
     fn assertion_patterns(&self) -> Vec<Regex> {
-        vec![
-            Regex::new(r"\bassert!\(").unwrap(),
-            Regex::new(r"\bassert_eq!\(").unwrap(),
-            Regex::new(r"\bassert_ne!\(").unwrap(),
-            Regex::new(r"\bdebug_assert!\(").unwrap(),
-            Regex::new(r"\bdebug_assert_eq!\(").unwrap(),
-            Regex::new(r"\bdebug_assert_ne!\(").unwrap(),
-        ]
+        constants::assertion_patterns()
     }
 
     fn doc_comment_style(&self) -> DocCommentStyle {

@@ -2,6 +2,7 @@
 //!
 //! Handles creation of new Rust crates with proper workspace integration.
 
+use crate::constants;
 use mill_lang_common::project_factory::{
     derive_package_name, resolve_package_path, update_workspace_manifest,
     validate_package_path_not_exists, write_project_file, WorkspaceManifestDetector,
@@ -128,17 +129,17 @@ fn generate_cargo_toml(package_name: &str, package_type: PackageType) -> String 
             r#"[package]
 name = "{}"
 version = "0.1.0"
-edition = "2021"
+edition = "{}"
 
 [dependencies]
 "#,
-            package_name
+            package_name, constants::DEFAULT_EDITION
         ),
         PackageType::Binary => format!(
             r#"[package]
 name = "{}"
 version = "0.1.0"
-edition = "2021"
+edition = "{}"
 
 [[bin]]
 name = "{}"
@@ -146,7 +147,7 @@ path = "src/main.rs"
 
 [dependencies]
 "#,
-            package_name, package_name
+            package_name, constants::DEFAULT_EDITION, package_name
         ),
     }
 }

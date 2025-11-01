@@ -1,4 +1,5 @@
 //! TypeScript/JavaScript Language Plugin for TypeMill
+mod constants;
 pub mod import_support;
 pub mod imports;
 pub mod lsp_installer;
@@ -7,7 +8,7 @@ pub mod parser;
 mod path_alias_resolver;
 mod project_factory;
 pub mod refactoring;
-mod regex_patterns;
+mod regex_patterns; // Re-exports from constants for backward compatibility
 mod tsconfig;
 pub mod workspace_support;
 

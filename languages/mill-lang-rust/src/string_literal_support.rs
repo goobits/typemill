@@ -4,7 +4,7 @@
 //! in Rust source code during rename operations. This extends coverage for file/directory
 //! renames by catching hardcoded paths that aren't part of the import system.
 
-use regex::Regex;
+use crate::constants;
 use std::path::Path;
 
 /// Check if a string literal looks like a path that should be updated
@@ -70,7 +70,7 @@ pub fn rewrite_string_literals(
 
     // Pattern 1: Regular strings "..." (but not raw strings r"...")
     // Use negative lookbehind alternative: check preceding character is not 'r' or '#'
-    let string_regex = Regex::new(r#""([^"\\]*(\\.[^"\\]*)*)""#)?;
+    let string_regex = constants::string_literal_pattern();
     for cap in string_regex.captures_iter(source) {
         let full_match = cap.get(0).unwrap().as_str();
         let match_start = source.find(full_match).unwrap();
@@ -153,17 +153,10 @@ pub fn rewrite_string_literals(
     // We need separate regexes since the regex crate doesn't support backreferences
     // Cover common cases: r"...", r#"..."#, r##"..."##, r###"..."###, r####"..."####, r#####"..."#####
     // Note: For hashed raw strings (r#"..."#), the content can contain quotes
-    let raw_patterns = vec![
-        (Regex::new(r#"r"([^"]*)""#)?, 0),   // r"..." (no quotes inside)
-        (Regex::new(r##"r#"(.*?)"#"##)?, 1), // r#"..."# (can contain quotes)
-        (Regex::new(r###"r##"(.*?)"##"###)?, 2), // r##"..."##
-        (Regex::new(r####"r###"(.*?)"###"####)?, 3), // r###"..."###
-        (Regex::new(r#####"r####"(.*?)"####"#####)?, 4), // r####"..."####
-        (Regex::new(r######"r#####"(.*?)"#####"######)?, 5), // r#####"..."#####
-    ];
+    let raw_patterns = constants::raw_string_patterns();
 
     for (raw_regex, hash_count) in raw_patterns {
-        let hash_marks = "#".repeat(hash_count);
+        let hash_marks = "#".repeat(*hash_count);
         for cap in raw_regex.captures_iter(source) {
             let full_match = cap.get(0).unwrap().as_str();
             let string_content = cap.get(1).unwrap().as_str();

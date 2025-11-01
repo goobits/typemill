@@ -9,6 +9,7 @@
 //! Implements dual-mode parsing:
 //! 1. Python native AST via subprocess (high accuracy, requires python3)
 //! 2. Regex-based fallback parsing (always available, good for common cases)
+use crate::constants::{FROM_IMPORT_PATTERN, IMPORT_PATTERN, PARSER_VERSION};
 use mill_foundation::protocol::{ImportGraph, ImportInfo, ImportType, NamedImport, SourceLocation};
 use mill_lang_common::{
     parse_import_alias, parse_with_fallback, run_ast_tool, ImportGraphBuilder, SubprocessAstTool,
@@ -39,7 +40,7 @@ pub fn analyze_imports(source: &str, file_path: Option<&Path>) -> PluginResult<I
         .with_source_file(file_path)
         .with_imports(imports)
         .extract_external_dependencies(|path| !path.starts_with('.'))
-        .with_parser_version("0.1.0-plugin")
+        .with_parser_version(PARSER_VERSION)
         .build())
 }
 /// Parse Python imports using regex-based parsing
@@ -48,13 +49,9 @@ pub fn analyze_imports(source: &str, file_path: Option<&Path>) -> PluginResult<I
 /// This is a fast, reliable parser for common import patterns.
 pub fn parse_python_imports(source: &str) -> PluginResult<Vec<ImportInfo>> {
     let mut imports = Vec::new();
-    let import_re = Regex::new(r"^import\s+([\w.]+)(?:\s+as\s+(\w+))?")
-        .expect("Python import regex pattern should be valid");
-    let from_import_re = Regex::new(r"^from\s+([\w.]+)\s+import\s+(.+)")
-        .expect("Python from-import regex pattern should be valid");
     for (line_num, line) in source.lines().enumerate() {
         let line = line.trim();
-        if let Some(captures) = import_re.captures(line) {
+        if let Some(captures) = IMPORT_PATTERN.captures(line) {
             let module_name = captures
                 .get(1)
                 .expect("Python import regex should always capture module name at index 1")
@@ -74,7 +71,7 @@ pub fn parse_python_imports(source: &str) -> PluginResult<Vec<ImportInfo>> {
                     end_column: line.len() as u32,
                 },
             });
-        } else if let Some(captures) = from_import_re.captures(line) {
+        } else if let Some(captures) = FROM_IMPORT_PATTERN.captures(line) {
             let module_name = captures
                 .get(1)
                 .expect("Python from-import regex should always capture module name at index 1")
