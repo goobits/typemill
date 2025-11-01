@@ -90,6 +90,8 @@ impl ImportParser for JavaImportSupport {
         imports.iter().any(|imp| {
             // Exact match
             imp == module ||
+            // Package prefix match (e.g., "com.example.utils.Helper" contains "com.example.utils")
+            imp.starts_with(&format!("{}.", module)) ||
             // Subpackage match
             imp.ends_with(&format!(".{}", module)) ||
             // Wildcard match
