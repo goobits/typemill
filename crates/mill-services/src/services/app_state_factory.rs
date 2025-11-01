@@ -4,6 +4,8 @@
 #![allow(unexpected_cfgs)]
 
 use super::*;
+use crate::services::coordination::workflow_executor;
+use crate::services::planning::planner;
 use mill_ast::AstCache;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -65,10 +67,9 @@ pub async fn create_services_bundle(
 
 /// Spawn background worker to process file operations from the queue
 fn spawn_operation_worker(
-    queue: Arc<super::operation_queue::OperationQueue>,
+    queue: Arc<OperationQueue>,
     plugin_manager: Arc<mill_plugin_system::PluginManager>,
 ) {
-    use super::operation_queue::OperationType;
     use tokio::fs;
 
     tokio::spawn(async move {

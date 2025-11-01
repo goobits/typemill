@@ -16,10 +16,10 @@ mod path_safety_tests;
 pub use self::edit_plan::EditPlanResult;
 pub use self::utils::DocumentationUpdateReport;
 
-use crate::services::git_service::GitService;
-use crate::services::lock_manager::LockManager;
+use crate::services::coordination::lock_manager::LockManager;
+use crate::services::coordination::operation_queue::OperationQueue;
+use crate::services::filesystem::git_service::GitService;
 use crate::services::move_service::MoveService;
-use crate::services::operation_queue::OperationQueue;
 use crate::services::reference_updater::ReferenceUpdater;
 use mill_ast::AstCache;
 use mill_config::config::AppConfig;

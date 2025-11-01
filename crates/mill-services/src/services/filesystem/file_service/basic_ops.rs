@@ -1,5 +1,7 @@
 use super::FileService;
-use crate::services::operation_queue::{FileOperation, OperationTransaction, OperationType};
+use crate::services::coordination::operation_queue::{
+    FileOperation, OperationTransaction, OperationType,
+};
 use crate::services::reference_updater::find_project_files;
 use mill_foundation::core::dry_run::DryRunnable;
 use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
