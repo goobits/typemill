@@ -2,8 +2,12 @@
 //!
 //! Provides AST parsing, symbol extraction, and manifest analysis for Java.
 
+pub mod import_analyzer;
 pub mod import_support;
+pub mod lsp_installer;
 mod manifest;
+pub mod manifest_updater;
+pub mod module_reference_scanner;
 mod parser;
 pub mod project_factory;
 pub mod refactoring;
@@ -32,6 +36,10 @@ define_language_plugin! {
         import_support: import_support::JavaImportSupport,
         workspace_support: workspace_support::JavaWorkspaceSupport,
         project_factory: project_factory::JavaProjectFactory,
+        manifest_updater: manifest_updater::JavaManifestUpdater,
+        module_reference_scanner: module_reference_scanner::JavaModuleReferenceScanner,
+        import_analyzer: import_analyzer::JavaImportAnalyzer,
+        lsp_installer: lsp_installer::JavaLspInstaller,
     },
     doc: "Java language plugin implementation providing comprehensive Java language support"
 }
@@ -61,6 +69,18 @@ impl LanguagePlugin for JavaPlugin {
         },
         project_factory => {
             project_factory: ProjectFactory,
+        },
+        manifest_updater => {
+            manifest_updater: ManifestUpdater,
+        },
+        module_reference_scanner => {
+            module_reference_scanner: ModuleReferenceScanner,
+        },
+        import_analyzer => {
+            import_analyzer: ImportAnalyzer,
+        },
+        lsp_installer => {
+            lsp_installer: LspInstaller,
         },
     }
 }
