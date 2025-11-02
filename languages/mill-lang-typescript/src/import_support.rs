@@ -431,11 +431,11 @@ fn calculate_relative_import(importing_file: &Path, target_file: &Path) -> Strin
     let from_dir = importing_file.parent().unwrap_or(Path::new(""));
     let to_file = target_file;
 
-    // Try to compute relative path
-    let relative = if let (Ok(from), Ok(to)) = (from_dir.canonicalize(), to_file.canonicalize()) {
-        pathdiff::diff_paths(to, from).unwrap_or_else(|| to_file.to_path_buf())
-    } else {
-        // Fallback: manually compute relative path
+    // FIXED: Use pathdiff::diff_paths directly on raw paths first
+    // This works correctly even when target_file doesn't exist yet (during planning)
+    // and avoids macOS /private vs /var canonicalization mismatches
+    let relative = pathdiff::diff_paths(to_file, from_dir).unwrap_or_else(|| {
+        // Fallback: manually compute relative path only if diff_paths fails
         let from_components: Vec<_> = from_dir.components().collect();
         let to_components: Vec<_> = to_file.components().collect();
 
@@ -467,7 +467,7 @@ fn calculate_relative_import(importing_file: &Path, target_file: &Path) -> Strin
         } else {
             result
         }
-    };
+    });
 
     // Convert to string and remove file extension
     let mut import_str = relative.to_string_lossy().to_string();
