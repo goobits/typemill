@@ -1,96 +1,47 @@
-version: "2.0"
+version: '2.0'
 provider: docker
 os: auto
-tart:
-  disk_size: 50
-  install_docker: false
-  rosetta: true
 project:
-  backup_pattern: '*backup*.sql.gz'
   hostname: dev.typemill.local
-  name: mill
+  name: typemill
   workspace_path: /workspace
 vm:
-  cpus: unlimited
+  box: @vibe-base
+  cpus: 6
   gui: false
-  memory: unlimited
+  memory: 8192
   port_binding: 127.0.0.1
-  timezone: America/Los_Angeles
+  swap: 2048
+  swappiness: 60
+  timezone: auto
   user: developer
 versions:
   node: '22'
-  nvm: v0.40.3
-  pnpm: 10.12.3
   python: '3.11'
-services:
-  audio:
-    driver: pulse
-    enabled: false
-    share_microphone: false
-  docker:
-    buildx: true
-    enabled: false
-  gpu:
-    enabled: false
-    memory_mb: 256
-    type: auto
-  headless_browser:
-    display: :99
-    enabled: false
-    executable_path: /usr/bin/chromium-browser
-  mongodb:
-    enabled: false
-    port: 27017
-  mysql:
-    enabled: false
-    password: mysql
-    port: 3306
-    user: root
-  postgresql:
-    enabled: false
-    password: postgres
-    port: 5432
-    user: postgres
-  redis:
-    enabled: false
-    port: 6379
+ports:
+  _range: [3360, 3369]
 apt_packages:
-  - htop
   - tree
-  - ncdu
   - ripgrep
-  - nano
-  - sox
-  - pipx
+  - unzip
+  - htop
+npm_packages:
+  - '@anthropic-ai/claude-code'
+  - '@google/gemini-cli'
+  - '@openai/codex'
 pip_packages:
-  - claudeflow
+  - anthropic
 terminal:
   emoji: 🚀
   show_git_branch: true
   show_timestamp: false
   theme: dracula
-  username: mill-dev
+  username: typemill-dev
 aliases:
   claudeyolo: claude --dangerously-skip-permissions
   codexyolo: codex --dangerously-bypass-approvals-and-sandbox
   geminiyolo: GEMINI_API_KEY=${GEMINI_API_KEY:-} gemini --approval-mode=yolo
 host_sync:
   git_config: true
-  ai_tools: true
-  package_links:
-    npm: true
-    pip: true
-    cargo: false
-npm_packages:
-  - '@anthropic-ai/claude-code'
-  - '@google/gemini-cli'
-  - '@openai/codex'
-  - npm-check-updates
-  - prettier
-  - eslint
-ports:
-  _range: [3240, 3249]
-networking:
-  networks:
-  - jules
-  - spacebase
+  ai_tools: false
+networking: {}
