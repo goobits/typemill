@@ -514,6 +514,7 @@ pub type MillResult<T> = Result<T, MillError>;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
 
     #[test]
     fn test_mill_error_creation() {
