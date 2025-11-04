@@ -48,6 +48,7 @@ pub(crate) fn filter_analyzable_files(
 /// let avg = weighted_average(values.into_iter());
 /// assert!(avg > 0.0);
 /// ```
+#[allow(dead_code)]
 pub(crate) fn weighted_average<I>(values: I) -> f64
 where
     I: Iterator<Item = (f64, usize)>,
@@ -99,6 +100,7 @@ impl AggregateStats {
         self.average = self.sum / self.count as f64;
     }
 
+    #[allow(dead_code)]
     pub fn merge(&mut self, other: &AggregateStats) {
         if other.count == 0 {
             return;
@@ -126,12 +128,14 @@ impl AggregateStats {
 }
 
 /// Workspace analysis context for multi-file operations (internal to mill-handlers)
+#[allow(dead_code)]
 pub(crate) struct WorkspaceAnalysisContext {
     pub base_path: PathBuf,
     pub supported_extensions: Vec<String>,
     pub files: Vec<PathBuf>,
 }
 
+#[allow(dead_code)]
 impl WorkspaceAnalysisContext {
     pub fn new(base_path: impl AsRef<Path>, supported_extensions: Vec<String>) -> Self {
         Self {

@@ -19,7 +19,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::protocol::analysis_result::{
-    Finding, FindingLocation, Position, Range, SafetyLevel, Severity, Suggestion,
+    Finding, FindingLocation, Position, Range, Severity, Suggestion,
 };
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use regex::Regex;

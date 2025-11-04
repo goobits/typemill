@@ -35,20 +35,21 @@ fn get_analysis_config(context: &ToolHandlerContext) -> Result<&AnalysisConfig, 
 // --- New Data Structures for Multi-Query Batching ---
 
 #[derive(Debug, Deserialize, Clone)]
-/// Analysis query for batch operations (internal to mill-handlers)
+/// Analysis query for batch operations
 #[serde(rename_all = "camelCase")]
-pub(crate) struct AnalysisQuery {
+pub struct AnalysisQuery {
     pub command: String,
     pub kind: String,
     pub scope: QueryScope,
     #[serde(default)]
+    #[allow(dead_code)]
     pub options: Option<Value>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-/// Scope for analysis queries (internal to mill-handlers)
+/// Scope for analysis queries
 #[serde(rename_all = "camelCase")]
-pub(crate) struct QueryScope {
+pub struct QueryScope {
     #[serde(rename = "type")]
     pub scope_type: String,
     pub path: Option<String>,
@@ -58,26 +59,26 @@ pub(crate) struct QueryScope {
     pub exclude: Vec<String>,
 }
 
-/// Request for batch analysis operations (internal to mill-handlers)
+/// Request for batch analysis operations
 #[derive(Debug, Clone)]
-pub(crate) struct BatchAnalysisRequest {
+pub struct BatchAnalysisRequest {
     pub queries: Vec<AnalysisQuery>,
     pub config: Option<AnalysisConfig>,
     pub no_suggestions: bool,
     pub max_suggestions: Option<usize>,
 }
 
-/// Result from a single query in batch (internal to mill-handlers)
+/// Result from a single query in batch
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct SingleQueryResult {
+pub struct SingleQueryResult {
     pub command: String,
     pub kind: String,
     pub result: AnalysisResult,
 }
 
-/// Batch analysis result (internal to mill-handlers)
+/// Batch analysis result
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct BatchAnalysisResult {
+pub struct BatchAnalysisResult {
     pub results: Vec<SingleQueryResult>,
     pub summary: BatchSummary,
     pub metadata: BatchMetadata,
@@ -95,9 +96,9 @@ pub(crate) struct FileAnalysisResult {
 // --- Shared Data Structures (mostly unchanged) ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-/// Summary of batch analysis (internal to mill-handlers)
+/// Summary of batch analysis
 #[serde(rename_all = "camelCase")]
-pub(crate) struct BatchSummary {
+pub struct BatchSummary {
     pub total_queries: usize,
     pub total_files_scanned: usize,
     pub files_analyzed: usize,
@@ -110,9 +111,9 @@ pub(crate) struct BatchSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-/// Batch analysis metadata (internal to mill-handlers)
+/// Batch analysis metadata
 #[serde(rename_all = "camelCase")]
-pub(crate) struct BatchMetadata {
+pub struct BatchMetadata {
     pub started_at: String,
     pub completed_at: String,
     pub categories_analyzed: Vec<String>,

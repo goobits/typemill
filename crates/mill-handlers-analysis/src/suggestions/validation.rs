@@ -3,6 +3,7 @@ use mill_foundation::protocol::analysis_result::{RefactorCall, SafetyLevel, Sugg
 use serde_json::Value;
 
 /// Validates that a suggestion has all required metadata
+#[allow(dead_code)]
 pub(crate) fn validate_suggestion(suggestion: &Suggestion) -> Result<()> {
     // Check required fields
     if suggestion.description.is_empty() {
@@ -33,6 +34,7 @@ pub(crate) fn validate_suggestion(suggestion: &Suggestion) -> Result<()> {
 }
 
 /// Validates refactor_call structure
+#[allow(dead_code)]
 fn validate_refactor_call(refactor_call: &RefactorCall) -> Result<()> {
     // Valid tool names (commands) - unified dryRun API
     let valid_commands = [
@@ -66,6 +68,7 @@ fn validate_refactor_call(refactor_call: &RefactorCall) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn validate_delete_args(args: &Value) -> Result<()> {
     if args.get("filePath").is_none() {
         bail!("delete missing file_path");
@@ -76,6 +79,7 @@ fn validate_delete_args(args: &Value) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn validate_extract_args(args: &Value) -> Result<()> {
     if args.get("filePath").is_none() {
         bail!("extract missing file_path");
@@ -86,6 +90,7 @@ fn validate_extract_args(args: &Value) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn validate_inline_args(args: &Value) -> Result<()> {
     if args.get("filePath").is_none() {
         bail!("inline missing file_path");

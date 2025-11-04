@@ -58,6 +58,7 @@ impl Default for AutoTocOptions {
 struct Heading {
     level: usize,
     text: String,
+    #[allow(dead_code)]
     line: usize,
 }
 
