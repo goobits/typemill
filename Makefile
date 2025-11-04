@@ -477,18 +477,13 @@ first-time-setup:
 	@make build-parsers
 	@echo ""
 	@echo "🏗️  Step 7/9: Building main Rust project (this may take a few minutes)..."
-	@echo "  → Populating cargo registry (prevents ARM64 corruption)..."
+	@echo "  → Fetching dependencies..."
 	@export PATH="$$HOME/.cargo/bin:$$PATH"; \
-	# Known cargo parallel build race (getrandom crate) requires single-job builds for now.
-	export CARGO_BUILD_JOBS=1; \
-	export CARGO_INCREMENTAL=0; \
 	cargo fetch --locked || { echo "  ⚠️  cargo fetch failed, trying without --locked"; cargo fetch; }
-	@echo "  → Building project with ARM64-safe settings..."
+	@echo "  → Building project (using parallel compilation for speed)..."
 	@export PATH="$$HOME/.cargo/bin:$$PATH"; \
-	# Keep single-job builds until getrandom resolver issue is fixed.
-	export CARGO_BUILD_JOBS=1; \
-	export CARGO_INCREMENTAL=0; \
-	cargo build --offline -j 1 || cargo build
+	cargo build --offline || cargo build
+	@echo "  💡 Tip: If build fails with missing dependencies, run: cargo clean && cargo fetch"
 	@echo ""
 	@echo "🌐 Step 8/9: Installing LSP servers (for testing)..."
 	@make install-lsp-servers
