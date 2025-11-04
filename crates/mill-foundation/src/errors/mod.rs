@@ -7,7 +7,6 @@ mod response;
 pub use codes::error_codes;
 pub use response::ErrorResponse;
 
-use serde_json::Value;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

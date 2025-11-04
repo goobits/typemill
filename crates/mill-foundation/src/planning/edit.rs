@@ -1,5 +1,5 @@
 //! Contains all edit plan types.
-use crate::protocol::{ApiError, ApiResult};
+use crate::protocol::ApiResult;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

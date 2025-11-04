@@ -2,7 +2,6 @@
 //! `LanguagePlugin` trait.
 
 use crate::process_manager::PluginProcess;
-use crate::PluginSystemError;
 use async_trait::async_trait;
 use mill_plugin_api::{
     LanguageMetadata, LanguagePlugin, ManifestData, ParsedSource, PluginApiError,
