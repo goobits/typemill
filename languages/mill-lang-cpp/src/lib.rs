@@ -15,21 +15,20 @@ mod cmake_parser;
 mod conan_parser;
 pub mod constants;
 mod import_support;
+mod lsp_installer;
+mod manifest_updater;
 mod project_factory;
 mod refactoring;
 mod vcpkg_parser;
 mod workspace_support;
-mod manifest_updater;
-mod lsp_installer;
 
 use async_trait::async_trait;
 use mill_lang_common::{
     define_language_plugin, impl_capability_delegations, impl_language_plugin_basics,
 };
 use mill_plugin_api::{
-    ImportAnalyzer, LanguagePlugin, ManifestData, ManifestUpdater,
-    ModuleReferenceScanner, ParsedSource, PluginResult, ProjectFactory,
-    RefactoringProvider,
+    ImportAnalyzer, LanguagePlugin, ManifestData, ManifestUpdater, ModuleReferenceScanner,
+    ParsedSource, PluginResult, ProjectFactory, RefactoringProvider,
 };
 use std::path::Path;
 
@@ -68,17 +67,21 @@ impl LanguagePlugin for CppPlugin {
     }
 
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
-        let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or_default();
+        let filename = path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
         if filename.starts_with("CMakeLists") {
             cmake_parser::analyze_cmake_manifest(path)
         } else if filename == "conanfile.txt" || filename == "conanfile.py" {
             conan_parser::analyze_conan_manifest(path)
         } else if filename == "vcpkg.json" {
-            let content = std::fs::read_to_string(path)
-                .map_err(|e| mill_plugin_api::PluginError::manifest(format!("Failed to read manifest: {}", e)))?;
+            let content = std::fs::read_to_string(path).map_err(|e| {
+                mill_plugin_api::PluginApiError::manifest(format!("Failed to read manifest: {}", e))
+            })?;
             vcpkg_parser::analyze_vcpkg_manifest(&content)
         } else {
-            Err(mill_plugin_api::PluginError::not_supported(
+            Err(mill_plugin_api::PluginApiError::not_supported(
                 "Manifest analysis for this file type",
             ))
         }
@@ -145,7 +148,9 @@ impl mill_plugin_api::AnalysisMetadata for CppPlugin {
     }
 
     fn complexity_keywords(&self) -> Vec<&'static str> {
-        vec!["if", "else", "switch", "case", "for", "while", "catch", "&&", "||"]
+        vec![
+            "if", "else", "switch", "case", "for", "while", "catch", "&&", "||",
+        ]
     }
 
     fn nesting_penalty(&self) -> f32 {
@@ -269,9 +274,13 @@ void тестфункция() {
     #[test]
     fn test_edge_scan_mixed_line_endings() {
         let plugin = CppPlugin::default();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "#include <iostream>\r\n#include <vector>\n#include <string>";
-        let refs = scanner.scan_references(content, "iostream", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(content, "iostream", ScanScope::All)
+            .expect("Should scan");
         assert_eq!(refs.len(), 1);
     }
 
@@ -294,7 +303,9 @@ void тестфункция() {
     #[test]
     fn test_edge_scan_special_regex_chars() {
         let plugin = CppPlugin::default();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "#include <iostream>";
         // Test with special regex characters
         let result = scanner.scan_references(content, "io.*", ScanScope::All);
@@ -304,7 +315,9 @@ void тестфункция() {
     #[test]
     fn test_edge_handle_null_bytes() {
         let plugin = CppPlugin::default();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "#include <iostream>\x00\n#include <vector>";
         let result = scanner.scan_references(content, "iostream", ScanScope::All);
         assert!(result.is_ok()); // Should not panic
@@ -326,22 +339,28 @@ void тестфункция() {
         }
 
         let start = Instant::now();
-        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            plugin.parse(&large_source).await
-        });
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { plugin.parse(&large_source).await });
         let duration = start.elapsed();
 
         assert!(result.is_ok(), "Should parse large file");
         let symbols = result.unwrap().symbols;
         assert_eq!(symbols.len(), 5000, "Should find all 5000 functions");
-        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 5,
+            "Should parse within 5 seconds, took {:?}",
+            duration
+        );
     }
 
     #[test]
     fn test_performance_scan_many_references() {
         use std::time::Instant;
         let plugin = CppPlugin::default();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
 
         // Create content with 10,000 references
         let mut content = String::from("#include <iostream>\n\n");
@@ -350,10 +369,20 @@ void тестфункция() {
         }
 
         let start = Instant::now();
-        let refs = scanner.scan_references(&content, "iostream", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(&content, "iostream", ScanScope::All)
+            .expect("Should scan");
         let duration = start.elapsed();
 
-        assert_eq!(refs.len(), 1, "Should find include (C++ doesn't have qualified paths in scanner)");
-        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
+        assert_eq!(
+            refs.len(),
+            1,
+            "Should find include (C++ doesn't have qualified paths in scanner)"
+        );
+        assert!(
+            duration.as_secs() < 10,
+            "Should scan within 10 seconds, took {:?}",
+            duration
+        );
     }
 }

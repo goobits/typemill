@@ -6,7 +6,7 @@
 //! - setup.py (legacy setuptools)
 //! - Pipfile (Pipenv)
 use mill_lang_common::read_manifest;
-use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginError, PluginResult};
+use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginApiError, PluginResult};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
@@ -80,7 +80,7 @@ fn parse_requirement_line(line: &str) -> Option<(String, String)> {
 pub async fn parse_pyproject_toml(path: &Path) -> PluginResult<ManifestData> {
     let content = read_manifest(path).await?;
     let toml: PyProjectToml = toml::from_str(&content)
-        .map_err(|e| PluginError::parse(format!("Failed to parse pyproject.toml: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to parse pyproject.toml: {}", e)))?;
     let name = toml
         .project
         .as_ref()
@@ -242,7 +242,7 @@ fn extract_list_from_setup(content: &str, key: &str) -> Option<Vec<String>> {
 pub async fn parse_pipfile(path: &Path) -> PluginResult<ManifestData> {
     let content = read_manifest(path).await?;
     let pipfile: PipfileFormat = toml::from_str(&content)
-        .map_err(|e| PluginError::parse(format!("Failed to parse Pipfile: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to parse Pipfile: {}", e)))?;
     let name = path
         .parent()
         .and_then(|p| p.file_name())
@@ -338,7 +338,7 @@ pub async fn update_pyproject_toml(
 ) -> PluginResult<String> {
     let content = read_manifest(path).await?;
     let mut toml: toml::Value = toml::from_str(&content)
-        .map_err(|e| PluginError::parse(format!("Failed to parse pyproject.toml: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to parse pyproject.toml: {}", e)))?;
     let mut updated = false;
     if let Some(tool) = toml.get_mut("tool") {
         if let Some(poetry) = tool.get_mut("poetry") {
@@ -401,7 +401,7 @@ pub async fn update_pyproject_toml(
         );
     }
     toml::to_string(&toml)
-        .map_err(|e| PluginError::internal(format!("Failed to serialize pyproject.toml: {}", e)))
+        .map_err(|e| PluginApiError::internal(format!("Failed to serialize pyproject.toml: {}", e)))
 }
 
 /// Update a dependency in pyproject.toml

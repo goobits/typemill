@@ -2,7 +2,7 @@
 
 use super::client::ExternalMcpClient;
 use super::error::{McpProxyError, McpProxyResult};
-use crate::{PluginSystemError, PluginError, PluginRequest, PluginResponse, PluginResult};
+use crate::{PluginRequest, PluginResponse, PluginResult, PluginSystemError};
 use mill_config::config::ExternalMcpServerConfig;
 use serde_json::Value;
 use std::collections::HashMap;

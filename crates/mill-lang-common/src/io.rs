@@ -3,7 +3,7 @@
 //! Provides standardized async file operations with consistent error handling
 //! for language plugin implementations.
 
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_plugin_api::{PluginApiError, PluginResult};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use tracing::debug;
@@ -21,7 +21,7 @@ pub async fn read_manifest(path: &Path) -> PluginResult<String> {
     debug!(path = %path.display(), "Reading manifest file");
 
     fs::read_to_string(path).await.map_err(|e| {
-        PluginError::manifest(format!("Failed to read manifest {}: {}", path.display(), e))
+        PluginApiError::manifest(format!("Failed to read manifest {}: {}", path.display(), e))
     })
 }
 
@@ -30,7 +30,7 @@ pub async fn read_source(path: &Path) -> PluginResult<String> {
     debug!(path = %path.display(), "Reading source file");
 
     fs::read_to_string(path).await.map_err(|e| {
-        PluginError::internal(format!("Failed to read file {}: {}", path.display(), e))
+        PluginApiError::internal(format!("Failed to read file {}: {}", path.display(), e))
     })
 }
 
@@ -59,7 +59,7 @@ pub async fn find_source_files(dir: &Path, extensions: &[&str]) -> PluginResult<
 
     while let Some(current_dir) = queue.pop() {
         let mut entries = fs::read_dir(&current_dir).await.map_err(|e| {
-            PluginError::internal(format!(
+            PluginApiError::internal(format!(
                 "Failed to read directory {}: {}",
                 current_dir.display(),
                 e
@@ -69,13 +69,13 @@ pub async fn find_source_files(dir: &Path, extensions: &[&str]) -> PluginResult<
         while let Some(entry) = entries
             .next_entry()
             .await
-            .map_err(|e| PluginError::internal(format!("Failed to read entry: {}", e)))?
+            .map_err(|e| PluginApiError::internal(format!("Failed to read entry: {}", e)))?
         {
             let path = entry.path();
             let metadata = entry
                 .metadata()
                 .await
-                .map_err(|e| PluginError::internal(format!("Failed to get metadata: {}", e)))?;
+                .map_err(|e| PluginApiError::internal(format!("Failed to get metadata: {}", e)))?;
 
             if metadata.is_dir() {
                 queue.push(path);
@@ -108,7 +108,7 @@ pub async fn dir_exists(path: &Path) -> bool {
 pub async fn ensure_dir(path: &Path) -> PluginResult<()> {
     if !dir_exists(path).await {
         fs::create_dir_all(path).await.map_err(|e| {
-            PluginError::internal(format!(
+            PluginApiError::internal(format!(
                 "Failed to create directory {}: {}",
                 path.display(),
                 e

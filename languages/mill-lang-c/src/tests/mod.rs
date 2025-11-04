@@ -1,14 +1,14 @@
 mod ast_parser_test;
-mod import_support_test;
-mod makefile_parser_test;
 mod cmake_parser_test;
-mod refactoring_test;
-mod project_factory_test;
-mod workspace_support_test;
-mod module_reference_scanner_test;
 mod import_analyzer_test;
-mod manifest_updater_test;
+mod import_support_test;
 mod lsp_installer_test;
+mod makefile_parser_test;
+mod manifest_updater_test;
+mod module_reference_scanner_test;
+mod project_factory_test;
+mod refactoring_test;
+mod workspace_support_test;
 
 // Analysis metadata tests
 #[cfg(test)]
@@ -106,17 +106,23 @@ void тестфункция() {
     #[test]
     fn test_edge_scan_mixed_line_endings() {
         let plugin = CPlugin::default();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "#include <stdio.h>\r\n#include <stdlib.h>\n#include <string.h>";
-        let refs = scanner.scan_references(content, "stdio", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(content, "stdio", ScanScope::All)
+            .expect("Should scan");
 
         // Debug output
         eprintln!("\n=== DEBUG: Mixed line endings test ===");
         eprintln!("Content bytes: {:?}", content.as_bytes());
         eprintln!("Number of references found: {}", refs.len());
         for (i, r) in refs.iter().enumerate() {
-            eprintln!("  Ref {}: text={:?}, line={}, column={}, length={}",
-                i, r.text, r.line, r.column, r.length);
+            eprintln!(
+                "  Ref {}: text={:?}, line={}, column={}, length={}",
+                i, r.text, r.line, r.column, r.length
+            );
         }
         eprintln!("=== END DEBUG ===\n");
 
@@ -142,7 +148,9 @@ void тестфункция() {
     #[test]
     fn test_edge_scan_special_regex_chars() {
         let plugin = CPlugin::default();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "#include <stdio.h>";
         // Test with special regex characters
         let result = scanner.scan_references(content, "std.*", ScanScope::All);
@@ -152,7 +160,9 @@ void тестфункция() {
     #[test]
     fn test_edge_handle_null_bytes() {
         let plugin = CPlugin::default();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "#include <stdio.h>\x00\n#include <stdlib.h>";
         let result = scanner.scan_references(content, "stdio", ScanScope::All);
         assert!(result.is_ok()); // Should not panic
@@ -174,22 +184,28 @@ void тестфункция() {
         }
 
         let start = Instant::now();
-        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            plugin.parse(&large_source).await
-        });
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { plugin.parse(&large_source).await });
         let duration = start.elapsed();
 
         assert!(result.is_ok(), "Should parse large file");
         let symbols = result.unwrap().symbols;
         assert_eq!(symbols.len(), 5000, "Should find all 5000 functions");
-        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 5,
+            "Should parse within 5 seconds, took {:?}",
+            duration
+        );
     }
 
     #[test]
     fn test_performance_scan_many_references() {
         use std::time::Instant;
         let plugin = CPlugin::default();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
 
         // Create content with 10,000 references
         let mut content = String::from("#include <stdio.h>\n\n");
@@ -198,10 +214,20 @@ void тестфункция() {
         }
 
         let start = Instant::now();
-        let refs = scanner.scan_references(&content, "stdio", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(&content, "stdio", ScanScope::All)
+            .expect("Should scan");
         let duration = start.elapsed();
 
-        assert_eq!(refs.len(), 1, "Should find include (C doesn't have qualified paths like other languages)");
-        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
+        assert_eq!(
+            refs.len(),
+            1,
+            "Should find include (C doesn't have qualified paths like other languages)"
+        );
+        assert!(
+            duration.as_secs() < 10,
+            "Should scan within 10 seconds, took {:?}",
+            duration
+        );
     }
 }

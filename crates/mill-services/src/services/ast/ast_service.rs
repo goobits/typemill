@@ -119,7 +119,10 @@ fn build_import_graph_with_plugin(
         return plugin
             .analyze_detailed_imports(source, Some(path))
             .map_err(|e| {
-                mill_foundation::protocol::ApiError::internal(format!("Failed to parse imports: {}", e))
+                mill_foundation::protocol::ApiError::internal(format!(
+                    "Failed to parse imports: {}",
+                    e
+                ))
             });
     }
 

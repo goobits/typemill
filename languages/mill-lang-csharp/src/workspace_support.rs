@@ -37,7 +37,10 @@ impl WorkspaceSupport for CsharpWorkspaceSupport {
         let project_guid = Uuid::new_v4().to_string().to_uppercase();
 
         // Check if the project already exists
-        if list_workspace_members_impl(content).iter().any(|p| p == member_path) {
+        if list_workspace_members_impl(content)
+            .iter()
+            .any(|p| p == member_path)
+        {
             warn!(member = %member_path, "Project already exists in solution.");
             return content.to_string();
         }
@@ -65,12 +68,27 @@ impl WorkspaceSupport for CsharpWorkspaceSupport {
             new_lines.push("EndProject".to_string());
         }
 
-        if let Some(config_section_start) = new_lines.iter().position(|l| l.trim() == "GlobalSection(ProjectConfigurationPlatforms) = postSolution") {
+        if let Some(config_section_start) = new_lines
+            .iter()
+            .position(|l| l.trim() == "GlobalSection(ProjectConfigurationPlatforms) = postSolution")
+        {
             let new_configs = vec![
-                format!("\t\t{{{}}}.Debug|Any CPU.ActiveCfg = Debug|Any CPU", project_guid),
-                format!("\t\t{{{}}}.Debug|Any CPU.Build.0 = Debug|Any CPU", project_guid),
-                format!("\t\t{{{}}}.Release|Any CPU.ActiveCfg = Release|Any CPU", project_guid),
-                format!("\t\t{{{}}}.Release|Any CPU.Build.0 = Release|Any CPU", project_guid),
+                format!(
+                    "\t\t{{{}}}.Debug|Any CPU.ActiveCfg = Debug|Any CPU",
+                    project_guid
+                ),
+                format!(
+                    "\t\t{{{}}}.Debug|Any CPU.Build.0 = Debug|Any CPU",
+                    project_guid
+                ),
+                format!(
+                    "\t\t{{{}}}.Release|Any CPU.ActiveCfg = Release|Any CPU",
+                    project_guid
+                ),
+                format!(
+                    "\t\t{{{}}}.Release|Any CPU.Build.0 = Release|Any CPU",
+                    project_guid
+                ),
             ];
             for (i, config) in new_configs.into_iter().enumerate() {
                 new_lines.insert(config_section_start + 1 + i, config);
@@ -123,7 +141,9 @@ impl WorkspaceSupport for CsharpWorkspaceSupport {
     }
 
     fn is_workspace_manifest(&self, content: &str) -> bool {
-        content.trim().starts_with("Microsoft Visual Studio Solution File")
+        content
+            .trim()
+            .starts_with("Microsoft Visual Studio Solution File")
     }
 
     fn update_package_name(&self, content: &str, _new_name: &str) -> String {
@@ -185,7 +205,8 @@ EndGlobal
     #[test]
     fn test_add_workspace_member() {
         let support = CsharpWorkspaceSupport::new();
-        let new_content = support.add_workspace_member(SLN_CONTENT, "NewProject\\NewProject.csproj");
+        let new_content =
+            support.add_workspace_member(SLN_CONTENT, "NewProject\\NewProject.csproj");
 
         let members = support.list_workspace_members(&new_content);
         assert_eq!(members.len(), 3);

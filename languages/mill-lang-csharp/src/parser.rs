@@ -1,7 +1,9 @@
 //! Csharp source code parsing and symbol extraction
-use mill_lang_common::parse_with_fallback;
-use mill_plugin_api::{ParsedSource, PluginError, PluginResult, SourceLocation, Symbol, SymbolKind};
 use lazy_static::lazy_static;
+use mill_lang_common::parse_with_fallback;
+use mill_plugin_api::{
+    ParsedSource, PluginApiError, PluginResult, SourceLocation, Symbol, SymbolKind,
+};
 use regex::Regex;
 use serde::Deserialize;
 use std::io::Write;
@@ -58,7 +60,7 @@ fn parse_with_ast(source: &str) -> PluginResult<Vec<Symbol>> {
     let parser_path = Path::new("crates/mill-lang-csharp/csharp-parser");
 
     if !parser_path.exists() {
-        return Err(PluginError::internal(
+        return Err(PluginApiError::internal(
             "C# parser executable not found at 'crates/mill-lang-csharp/csharp-parser'. Please run 'make build-parsers' in the project root.",
         ));
     }
@@ -69,7 +71,7 @@ fn parse_with_ast(source: &str) -> PluginResult<Vec<Symbol>> {
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| {
-            PluginError::internal(format!(
+            PluginApiError::internal(format!(
                 "Failed to spawn C# parser subprocess. Is it executable? Error: {}",
                 e
             ))
@@ -78,29 +80,28 @@ fn parse_with_ast(source: &str) -> PluginResult<Vec<Symbol>> {
     if let Some(mut stdin) = child.stdin.take() {
         stdin
             .write_all(source.as_bytes())
-            .map_err(|e| PluginError::internal(format!("Failed to write to stdin: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("Failed to write to stdin: {}", e)))?;
     }
 
     let output = child
         .wait_with_output()
-        .map_err(|e| PluginError::internal(format!("Failed to wait for subprocess: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to wait for subprocess: {}", e)))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(PluginError::parse(format!(
+        return Err(PluginApiError::parse(format!(
             "C# parser failed: {}",
             stderr
         )));
     }
 
     let json_symbols: Vec<JsonSymbol> = serde_json::from_slice(&output.stdout).map_err(|e| {
-        PluginError::parse(format!("Failed to parse JSON from C# parser: {}", e))
+        PluginApiError::parse(format!("Failed to parse JSON from C# parser: {}", e))
     })?;
 
     let symbols = json_symbols.into_iter().map(Symbol::from).collect();
     Ok(symbols)
 }
-
 
 lazy_static! {
     static ref SYMBOL_REGEX: Regex = Regex::new(
@@ -163,7 +164,8 @@ pub fn parse_source(source: &str) -> PluginResult<ParsedSource> {
 /// Uses the same fallback mechanism as parse_source.
 pub fn list_functions(source: &str) -> PluginResult<Vec<String>> {
     let parsed = parse_source(source)?;
-    Ok(parsed.symbols
+    Ok(parsed
+        .symbols
         .into_iter()
         .filter(|s| s.kind == SymbolKind::Method)
         .map(|s| s.name)
@@ -218,7 +220,7 @@ namespace MyNamespace
             let err = result.unwrap_err();
             assert!(err.to_string().contains("executable not found"));
         } else {
-             // If the parser *is* present, we expect it to succeed or fail gracefully.
+            // If the parser *is* present, we expect it to succeed or fail gracefully.
             assert!(result.is_ok() || result.is_err());
         }
     }
@@ -228,9 +230,15 @@ namespace MyNamespace
         assert!(result.is_ok());
         let symbols = result.unwrap();
         assert_eq!(symbols.len(), 3);
-        assert!(symbols.iter().any(|s| s.name == "System" && s.kind == SymbolKind::Module));
-        assert!(symbols.iter().any(|s| s.name == "MyClass" && s.kind == SymbolKind::Class));
-        assert!(symbols.iter().any(|s| s.name == "IMyInterface" && s.kind == SymbolKind::Interface));
+        assert!(symbols
+            .iter()
+            .any(|s| s.name == "System" && s.kind == SymbolKind::Module));
+        assert!(symbols
+            .iter()
+            .any(|s| s.name == "MyClass" && s.kind == SymbolKind::Class));
+        assert!(symbols
+            .iter()
+            .any(|s| s.name == "IMyInterface" && s.kind == SymbolKind::Interface));
     }
     #[test]
     fn test_parse_empty_source() {

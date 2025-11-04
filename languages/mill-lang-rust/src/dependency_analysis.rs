@@ -7,7 +7,7 @@
 //! This module provides functionality to detect circular dependencies
 //! that would be created by consolidating one crate into another.
 
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_plugin_api::{PluginApiError, PluginResult};
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::Dfs;
 use serde::{Deserialize, Serialize};
@@ -221,7 +221,7 @@ async fn build_workspace_dependency_graph(project_root: &Path) -> PluginResult<D
     let metadata = cargo_metadata::MetadataCommand::new()
         .current_dir(project_root)
         .exec()
-        .map_err(|e| PluginError::internal(format!("Failed to run cargo metadata: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to run cargo metadata: {}", e)))?;
 
     let mut graph = DependencyGraph::new();
 
@@ -282,8 +282,8 @@ async fn find_problematic_modules(
         .build();
 
     for entry in walker {
-        let entry =
-            entry.map_err(|e| PluginError::internal(format!("Failed to walk directory: {}", e)))?;
+        let entry = entry
+            .map_err(|e| PluginApiError::internal(format!("Failed to walk directory: {}", e)))?;
 
         if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
             continue;
@@ -297,7 +297,7 @@ async fn find_problematic_modules(
         // Read file content
         let content = tokio::fs::read_to_string(path)
             .await
-            .map_err(|e| PluginError::internal(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("Failed to read file: {}", e)))?;
 
         // Extract imports
         let imports = extract_rust_imports(&content);
@@ -381,17 +381,17 @@ async fn get_crate_name(crate_path: &Path) -> PluginResult<String> {
 
     let content = tokio::fs::read_to_string(&cargo_toml)
         .await
-        .map_err(|e| PluginError::internal(format!("Failed to read Cargo.toml: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to read Cargo.toml: {}", e)))?;
 
     let doc = content
         .parse::<toml_edit::DocumentMut>()
-        .map_err(|e| PluginError::internal(format!("Failed to parse Cargo.toml: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to parse Cargo.toml: {}", e)))?;
 
     let name = doc
         .get("package")
         .and_then(|p| p.get("name"))
         .and_then(|n| n.as_str())
-        .ok_or_else(|| PluginError::internal("Cargo.toml missing package.name".to_string()))?;
+        .ok_or_else(|| PluginApiError::internal("Cargo.toml missing package.name".to_string()))?;
 
     Ok(name.to_string())
 }

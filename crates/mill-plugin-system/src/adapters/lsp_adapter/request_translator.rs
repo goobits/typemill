@@ -1,4 +1,4 @@
-use super::{LspAdapterPlugin, PluginError, PluginRequest, PluginResult, PluginSystemError};
+use super::{LspAdapterPlugin, PluginRequest, PluginResult, PluginSystemError};
 use serde_json::{json, Value};
 use url::Url;
 

@@ -1,5 +1,7 @@
 //! Java source code parsing and symbol extraction
-use mill_plugin_api::{ParsedSource, PluginError, PluginResult, Symbol, SymbolKind, SourceLocation};
+use mill_plugin_api::{
+    ParsedSource, PluginApiError, PluginResult, SourceLocation, Symbol, SymbolKind,
+};
 use serde::Deserialize;
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -49,7 +51,8 @@ pub(crate) fn parse_source(source: &str) -> PluginResult<ParsedSource> {
 /// Falls back to empty list if AST parsing fails.
 pub(crate) fn list_functions(source: &str) -> PluginResult<Vec<String>> {
     let parsed = parse_source(source)?;
-    Ok(parsed.symbols
+    Ok(parsed
+        .symbols
         .into_iter()
         .filter(|s| matches!(s.kind, SymbolKind::Method | SymbolKind::Function))
         .map(|s| s.name)
@@ -57,15 +60,16 @@ pub(crate) fn list_functions(source: &str) -> PluginResult<Vec<String>> {
 }
 
 /// Spawns the embedded Java parser JAR to extract symbols from source code.
-fn extract_symbols_ast(source: &str) -> Result<Vec<Symbol>, PluginError> {
+fn extract_symbols_ast(source: &str) -> Result<Vec<Symbol>, PluginApiError> {
     // Create a temporary directory to write the JAR to
     let tmp_dir = Builder::new()
         .prefix("mill-java-parser")
         .tempdir()
-        .map_err(|e| PluginError::internal(format!("Failed to create temp dir: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to create temp dir: {}", e)))?;
     let jar_path = tmp_dir.path().join("java-parser.jar");
-    std::fs::write(&jar_path, JAVA_PARSER_JAR)
-        .map_err(|e| PluginError::internal(format!("Failed to write JAR to temp file: {}", e)))?;
+    std::fs::write(&jar_path, JAVA_PARSER_JAR).map_err(|e| {
+        PluginApiError::internal(format!("Failed to write JAR to temp file: {}", e))
+    })?;
 
     // Spawn the Java process
     let mut child = Command::new("java")
@@ -77,7 +81,7 @@ fn extract_symbols_ast(source: &str) -> Result<Vec<Symbol>, PluginError> {
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| {
-            PluginError::parse(format!(
+            PluginApiError::parse(format!(
                 "Failed to spawn Java parser tool. Is Java installed and in your PATH? Error: {}",
                 e
             ))
@@ -86,18 +90,18 @@ fn extract_symbols_ast(source: &str) -> Result<Vec<Symbol>, PluginError> {
     // Write the source code to the process's stdin
     if let Some(mut stdin) = child.stdin.take() {
         stdin.write_all(source.as_bytes()).map_err(|e| {
-            PluginError::parse(format!("Failed to write to Java parser stdin: {}", e))
+            PluginApiError::parse(format!("Failed to write to Java parser stdin: {}", e))
         })?;
     }
 
     // Wait for the process to complete and get the output
     let output = child.wait_with_output().map_err(|e| {
-        PluginError::parse(format!("Failed to wait for Java parser process: {}", e))
+        PluginApiError::parse(format!("Failed to wait for Java parser process: {}", e))
     })?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(PluginError::parse(format!(
+        return Err(PluginApiError::parse(format!(
             "Java parser tool failed: {}",
             stderr
         )));
@@ -106,7 +110,7 @@ fn extract_symbols_ast(source: &str) -> Result<Vec<Symbol>, PluginError> {
     // Deserialize the JSON output from stdout
     let java_symbols: Vec<JavaSymbolInfo> =
         serde_json::from_slice(&output.stdout).map_err(|e| {
-            PluginError::parse(format!(
+            PluginApiError::parse(format!(
                 "Failed to parse JSON output from Java parser: {}",
                 e
             ))

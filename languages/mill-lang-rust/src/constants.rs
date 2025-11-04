@@ -59,12 +59,31 @@ static RAW_STRING_PATTERNS: OnceLock<Vec<(Regex, usize)>> = OnceLock::new();
 pub fn raw_string_patterns() -> &'static Vec<(Regex, usize)> {
     RAW_STRING_PATTERNS.get_or_init(|| {
         vec![
-            (Regex::new(r#"r"([^"]*)""#).expect("Valid raw string regex"), 0),
-            (Regex::new(r##"r#"(.*?)"#"##).expect("Valid raw string r# regex"), 1),
-            (Regex::new(r###"r##"(.*?)"##"###).expect("Valid raw string r## regex"), 2),
-            (Regex::new(r####"r###"(.*?)"###"####).expect("Valid raw string r### regex"), 3),
-            (Regex::new(r#####"r####"(.*?)"####"#####).expect("Valid raw string r#### regex"), 4),
-            (Regex::new(r######"r#####"(.*?)"#####"######).expect("Valid raw string r##### regex"), 5),
+            (
+                Regex::new(r#"r"([^"]*)""#).expect("Valid raw string regex"),
+                0,
+            ),
+            (
+                Regex::new(r##"r#"(.*?)"#"##).expect("Valid raw string r# regex"),
+                1,
+            ),
+            (
+                Regex::new(r###"r##"(.*?)"##"###).expect("Valid raw string r## regex"),
+                2,
+            ),
+            (
+                Regex::new(r####"r###"(.*?)"###"####).expect("Valid raw string r### regex"),
+                3,
+            ),
+            (
+                Regex::new(r#####"r####"(.*?)"####"#####).expect("Valid raw string r#### regex"),
+                4,
+            ),
+            (
+                Regex::new(r######"r#####"(.*?)"#####"######)
+                    .expect("Valid raw string r##### regex"),
+                5,
+            ),
         ]
     })
 }

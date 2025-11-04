@@ -35,7 +35,7 @@ use std::path::{Path, PathBuf};
 ///     async fn install_lsp(&self, _cache_dir: &Path) -> PluginResult<PathBuf> {
 ///         install_npm_package("typescript-language-server", "typescript-language-server")
 ///             .await
-///             .map_err(|e| PluginError::internal(e.to_string()))
+///             .map_err(|e| PluginApiError::internal(e.to_string()))
 ///     }
 /// }
 /// ```

@@ -20,7 +20,7 @@ pub use capabilities::{
     Capabilities, DiagnosticCapabilities, EditingCapabilities, IntelligenceCapabilities,
     NavigationCapabilities, RefactoringCapabilities, ToolScope,
 };
-pub use error::{PluginError, PluginResult, PluginSystemError};
+pub use error::{PluginResult, PluginSystemError};
 pub use manager::PluginManager;
 pub use plugin::{LanguagePlugin, PluginMetadata};
 pub use process_manager::PluginProcessManager;

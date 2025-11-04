@@ -14,7 +14,7 @@ use mill_foundation::protocol::{ImportGraph, ImportInfo, ImportType, NamedImport
 use mill_lang_common::{
     parse_import_alias, parse_with_fallback, run_ast_tool, ImportGraphBuilder, SubprocessAstTool,
 };
-use mill_plugin_api::{PluginError, PluginResult, Symbol, SymbolKind};
+use mill_plugin_api::{PluginApiError, PluginResult, Symbol, SymbolKind};
 use regex::Regex;
 use std::path::Path;
 use tracing::debug;
@@ -296,11 +296,14 @@ pub(crate) fn extract_symbols(source: &str) -> PluginResult<Vec<Symbol>> {
     Ok(symbols)
 }
 /// Find the end line of a Python function
-pub(crate) fn find_python_function_end(source: &str, function_start_line: u32) -> PluginResult<u32> {
+pub(crate) fn find_python_function_end(
+    source: &str,
+    function_start_line: u32,
+) -> PluginResult<u32> {
     let lines: Vec<&str> = source.lines().collect();
     let start_line = function_start_line as usize;
     if start_line >= lines.len() {
-        return Err(PluginError::parse("Invalid function start line"));
+        return Err(PluginApiError::parse("Invalid function start line"));
     }
     let func_line = lines[start_line];
     let func_indent = func_line.chars().take_while(|c| c.is_whitespace()).count();
@@ -343,7 +346,7 @@ pub(crate) fn analyze_python_expression_range(
     if start_line == end_line {
         let line = lines
             .get(start_line as usize)
-            .ok_or_else(|| PluginError::parse("Invalid line number"))?;
+            .ok_or_else(|| PluginApiError::parse("Invalid line number"))?;
         Ok(line[start_col as usize..end_col as usize].to_string())
     } else {
         let mut result = String::new();
@@ -375,7 +378,7 @@ pub(crate) fn find_variable_at_position(
             let line_text = source
                 .lines()
                 .nth(line as usize)
-                .ok_or_else(|| PluginError::parse("Invalid line number"))?;
+                .ok_or_else(|| PluginApiError::parse("Invalid line number"))?;
             if let Some(var_pos) = line_text.find(&var.name) {
                 let var_end = var_pos + var.name.len();
                 if col >= var_pos as u32 && col <= var_end as u32 {

@@ -5,7 +5,7 @@ use mill_foundation::protocol::{
 use mill_lang_common::{
     CodeRange, ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis,
 };
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_plugin_api::{PluginApiError, PluginResult};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use swc_common::{sync::Lrc, FileName, FilePathMapping, SourceMap};
@@ -123,7 +123,7 @@ fn ast_inline_variable_ts_js(
     analysis: &InlineVariableAnalysis,
 ) -> PluginResult<EditPlan> {
     if !analysis.is_safe_to_inline {
-        return Err(PluginError::internal(format!(
+        return Err(PluginApiError::internal(format!(
             "Cannot safely inline variable '{}': {}",
             analysis.variable_name,
             analysis.blocking_reasons.join(", ")
@@ -194,7 +194,7 @@ fn ast_extract_variable_ts_js(
     file_path: &str,
 ) -> PluginResult<EditPlan> {
     if !analysis.can_extract {
-        return Err(PluginError::internal(format!(
+        return Err(PluginApiError::internal(format!(
             "Cannot extract expression: {}",
             analysis.blocking_reasons.join(", ")
         )));
@@ -337,7 +337,10 @@ pub fn analyze_extract_variable(
                 scope_type: "function".to_string(),
             })
         }
-        Err(e) => Err(PluginError::parse(format!("Failed to parse file: {:?}", e))),
+        Err(e) => Err(PluginApiError::parse(format!(
+            "Failed to parse file: {:?}",
+            e
+        ))),
     }
 }
 
@@ -391,7 +394,7 @@ impl InlineVariableAnalyzer {
     }
     fn finalize(self) -> PluginResult<InlineVariableAnalysis> {
         self.variable_info.ok_or_else(|| {
-            PluginError::internal("Could not find variable declaration at specified location")
+            PluginApiError::internal("Could not find variable declaration at specified location")
         })
     }
 }
@@ -449,7 +452,7 @@ fn parse_module(source: &str, file_path: &str) -> PluginResult<Module> {
     let mut parser = Parser::new_from(lexer);
     parser
         .parse_module()
-        .map_err(|e| PluginError::parse(format!("Failed to parse module: {:?}", e)))
+        .map_err(|e| PluginApiError::parse(format!("Failed to parse module: {:?}", e)))
 }
 
 fn extract_range_text(source: &str, range: &CodeRange) -> PluginResult<String> {
@@ -457,7 +460,7 @@ fn extract_range_text(source: &str, range: &CodeRange) -> PluginResult<String> {
     if range.start_line == range.end_line {
         let line = lines
             .get(range.start_line as usize)
-            .ok_or_else(|| PluginError::internal("Invalid line number"))?;
+            .ok_or_else(|| PluginApiError::internal("Invalid line number"))?;
         Ok(line[range.start_col as usize..range.end_col as usize].to_string())
     } else {
         let mut result = String::new();

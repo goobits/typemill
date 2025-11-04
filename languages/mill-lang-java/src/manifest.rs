@@ -3,7 +3,7 @@
 //! Handles manifest files for Java projects, including Maven (`pom.xml`) and
 //! Gradle (`build.gradle`, `build.gradle.kts`).
 
-use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginError, PluginResult};
+use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginApiError, PluginResult};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -53,12 +53,12 @@ pub async fn analyze_manifest(path: &Path) -> PluginResult<ManifestData> {
 
     let content = tokio::fs::read_to_string(path)
         .await
-        .map_err(|e| PluginError::manifest(format!("Failed to read manifest: {}", e)))?;
+        .map_err(|e| PluginApiError::manifest(format!("Failed to read manifest: {}", e)))?;
 
     match filename {
         "pom.xml" => parse_pom_xml(&content),
         "build.gradle" | "build.gradle.kts" => parse_gradle_build(&content),
-        _ => Err(PluginError::not_supported(format!(
+        _ => Err(PluginApiError::not_supported(format!(
             "Unsupported manifest file: {}",
             filename
         ))),
@@ -68,7 +68,7 @@ pub async fn analyze_manifest(path: &Path) -> PluginResult<ManifestData> {
 /// Parses a `pom.xml` file content.
 fn parse_pom_xml(content: &str) -> PluginResult<ManifestData> {
     let project: PomProject = quick_xml::de::from_str(content)
-        .map_err(|e| PluginError::manifest(format!("Failed to parse pom.xml: {}", e)))?;
+        .map_err(|e| PluginApiError::manifest(format!("Failed to parse pom.xml: {}", e)))?;
 
     // Serialize the project to JSON first, before moving fields out of it.
     let raw_data = serde_json::to_value(&project)

@@ -44,7 +44,9 @@ pub fn plan_extract_function(
     let end_point = Point::new(range.end_line as usize, range.end_col as usize);
 
     let start_node = find_node_at_point(root, start_point).ok_or_else(|| {
-        RefactoringError::Analysis("Could not find a node at the start of the selection.".to_string())
+        RefactoringError::Analysis(
+            "Could not find a node at the start of the selection.".to_string(),
+        )
     })?;
     let end_node = find_node_at_point(root, end_point).ok_or_else(|| {
         RefactoringError::Analysis("Could not find a node at the end of the selection.".to_string())
@@ -52,8 +54,10 @@ pub fn plan_extract_function(
 
     let selected_text = &source[start_node.start_byte()..end_node.end_byte()];
 
-    let enclosing_method = find_ancestor_of_kind(start_node, "method_declaration")
-        .ok_or_else(|| RefactoringError::Analysis("Selection is not inside a method.".to_string()))?;
+    let enclosing_method =
+        find_ancestor_of_kind(start_node, "method_declaration").ok_or_else(|| {
+            RefactoringError::Analysis("Selection is not inside a method.".to_string())
+        })?;
 
     let indent = get_indentation(source, enclosing_method.start_position().row);
     let method_indent = format!("{}    ", indent);
@@ -235,8 +239,10 @@ pub fn plan_inline_variable(
 
     let (var_name, var_value, declaration_node) = extract_csharp_var_info(var_ident_node, source)?;
 
-    let scope_node = find_ancestor_of_kind(declaration_node, "method_declaration")
-        .ok_or_else(|| RefactoringError::Analysis("Variable is not inside a method.".to_string()))?;
+    let scope_node =
+        find_ancestor_of_kind(declaration_node, "method_declaration").ok_or_else(|| {
+            RefactoringError::Analysis("Variable is not inside a method.".to_string())
+        })?;
 
     let mut edits = Vec::new();
     let query_str = format!(r#"((identifier) @ref (#eq? @ref "{}"))"#, var_name);
@@ -391,7 +397,9 @@ fn extract_csharp_var_info<'a>(
         .children(&mut cursor_decl)
         .find(|n| n.kind() == "variable_declarator")
         .ok_or_else(|| {
-            RefactoringError::Analysis("Invalid declaration: missing variable_declarator".to_string())
+            RefactoringError::Analysis(
+                "Invalid declaration: missing variable_declarator".to_string(),
+            )
         })?;
 
     // Get the identifier (variable name) from declarator
@@ -449,9 +457,8 @@ class Program
         // "10 + 20" is on line 5.
         // `var x = 10 + 20;`
         // The expression `10 + 20` starts at column 16.
-        let plan =
-            plan_extract_variable(source, 5, 16, 5, 23, Some("sum".to_string()), "test.cs")
-                .unwrap();
+        let plan = plan_extract_variable(source, 5, 16, 5, 23, Some("sum".to_string()), "test.cs")
+            .unwrap();
         assert_eq!(plan.edits.len(), 2);
         let insert_edit = plan
             .edits

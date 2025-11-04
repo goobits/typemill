@@ -4,7 +4,7 @@
 //! and extract symbols such as function definitions. It uses the tree-sitter-c grammar for
 //! accurate parsing of C99 and C11 code.
 
-use mill_plugin_api::{ParsedSource, Symbol, SymbolKind, SourceLocation};
+use mill_plugin_api::{ParsedSource, SourceLocation, Symbol, SymbolKind};
 use tree_sitter::{Node, Parser, Tree};
 
 /// Get the tree-sitter C language grammar
@@ -52,7 +52,8 @@ pub(crate) fn parse_source(source: &str) -> ParsedSource {
 /// Extracts function names using tree-sitter AST parsing.
 pub(crate) fn list_functions(source: &str) -> Vec<String> {
     let parsed = parse_source(source);
-    parsed.symbols
+    parsed
+        .symbols
         .into_iter()
         .filter(|s| s.kind == mill_plugin_api::SymbolKind::Function)
         .map(|s| s.name)

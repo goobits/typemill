@@ -7,7 +7,7 @@ pub mod result;
 // Re-export edit types
 pub use edit::{
     ConsolidationMetadata, DependencyUpdate, DependencyUpdateType, EditLocation, EditPlan,
-    EditPlanMetadata, EditType, TextEdit, ValidationType, ValidationRule,
+    EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 // Re-export refactor types
 pub use refactor::{

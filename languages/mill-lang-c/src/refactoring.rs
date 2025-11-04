@@ -19,9 +19,7 @@
 
 use mill_plugin_api::PluginResult;
 
-use mill_foundation::protocol::{
-    EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit,
-};
+use mill_foundation::protocol::{EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit};
 use serde_json::json;
 
 use crate::constants::INT_VAR_DECL_PATTERN;
@@ -36,7 +34,7 @@ pub fn plan_extract_function(
 ) -> PluginResult<EditPlan> {
     let lines: Vec<&str> = source.lines().collect();
     if start_line > end_line || end_line as usize >= lines.len() {
-        return Err(mill_plugin_api::PluginError::not_supported(
+        return Err(mill_plugin_api::PluginApiError::not_supported(
             "Invalid line range",
         ));
     }
@@ -76,9 +74,9 @@ pub fn plan_extract_function(
         file_path: Some(file_path.to_string()),
         edit_type: EditType::Replace,
         location: EditLocation {
-            start_line: start_line -1,
+            start_line: start_line - 1,
             start_column: 0,
-            end_line: end_line -1,
+            end_line: end_line - 1,
             end_column: lines[end_index].len() as u32,
         },
         original_text: lines[start_index..=end_index].join("\n"),
@@ -119,7 +117,9 @@ pub fn plan_inline_variable(
     let line_index = variable_line as usize;
 
     if line_index >= lines.len() {
-        return Err(mill_plugin_api::PluginError::not_supported("Invalid line number"));
+        return Err(mill_plugin_api::PluginApiError::not_supported(
+            "Invalid line number",
+        ));
     }
 
     let line = lines[line_index];
@@ -135,7 +135,7 @@ pub fn plan_inline_variable(
             file_path: Some(file_path.to_string()),
             edit_type: EditType::Delete,
             location: EditLocation {
-                start_line: variable_line -1,
+                start_line: variable_line - 1,
                 start_column: 0,
                 end_line: variable_line - 1,
                 end_column: line.len() as u32,
@@ -186,7 +186,7 @@ pub fn plan_inline_variable(
             },
         })
     } else {
-        Err(mill_plugin_api::PluginError::not_supported(
+        Err(mill_plugin_api::PluginApiError::not_supported(
             "Could not find a simple integer variable declaration to inline.",
         ))
     }
@@ -208,15 +208,21 @@ pub fn plan_extract_variable(
     let end_line_index = end_line as usize;
 
     if start_line_index >= lines.len() || end_line_index >= lines.len() {
-        return Err(mill_plugin_api::PluginError::not_supported("Invalid line number"));
+        return Err(mill_plugin_api::PluginApiError::not_supported(
+            "Invalid line number",
+        ));
     }
 
     let extracted_text = if start_line_index == end_line_index {
         let line = lines[start_line_index];
-        line.get(start_col as usize..end_col as usize).unwrap_or("").to_string()
+        line.get(start_col as usize..end_col as usize)
+            .unwrap_or("")
+            .to_string()
     } else {
         // Multi-line extraction not supported in this basic implementation
-        return Err(mill_plugin_api::PluginError::not_supported("Multi-line variable extraction is not supported."));
+        return Err(mill_plugin_api::PluginApiError::not_supported(
+            "Multi-line variable extraction is not supported.",
+        ));
     };
 
     let new_variable_declaration = format!("int {} = {};", var_name, extracted_text);
@@ -243,9 +249,9 @@ pub fn plan_extract_variable(
         file_path: Some(file_path.to_string()),
         edit_type: EditType::Replace,
         location: EditLocation {
-            start_line: start_line -1,
+            start_line: start_line - 1,
             start_column: 0,
-            end_line: end_line-1,
+            end_line: end_line - 1,
             end_column: line_to_edit.len() as u32,
         },
         original_text: line_to_edit.to_string(),

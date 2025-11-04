@@ -25,7 +25,7 @@ pub enum McpProxyError {
     ToolNotFound(String, String),
 
     #[error("Plugin error: {0}")]
-    PluginError(String),
+    PluginSystemError(String),
 }
 
 impl McpProxyError {

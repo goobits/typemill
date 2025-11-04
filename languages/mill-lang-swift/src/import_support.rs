@@ -125,10 +125,7 @@ impl ImportMoveSupport for SwiftImportSupport {
             .unwrap_or("")
             .to_string();
 
-        let old_module = _old_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
+        let old_module = _old_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
         self.rewrite_imports_for_rename(source, old_module, &new_module)
     }
 }
@@ -191,7 +188,11 @@ mod tests {
         println!("1000 contains_import calls: {:?}", duration);
         // With caching: should be <50ms (cache hit after first call)
         // Without caching: would be >100ms (regex compilation every time)
-        assert!(duration.as_millis() < 100, "Import caching too slow: {:?}", duration);
+        assert!(
+            duration.as_millis() < 100,
+            "Import caching too slow: {:?}",
+            duration
+        );
     }
 
     #[test]
@@ -209,7 +210,11 @@ mod tests {
         let duration = start.elapsed();
 
         println!("1000 rewrite_imports_for_rename calls: {:?}", duration);
-        assert!(duration.as_millis() < 100, "Rename caching too slow: {:?}", duration);
+        assert!(
+            duration.as_millis() < 100,
+            "Rename caching too slow: {:?}",
+            duration
+        );
     }
 
     #[test]
@@ -228,7 +233,11 @@ mod tests {
 
         println!("1000 remove_import calls: {:?}", duration);
         // Remove import is more complex (multiline regex + replacement), allow 150ms
-        assert!(duration.as_millis() < 150, "Remove import caching too slow: {:?}", duration);
+        assert!(
+            duration.as_millis() < 150,
+            "Remove import caching too slow: {:?}",
+            duration
+        );
     }
 
     #[test]

@@ -90,7 +90,7 @@ impl LanguagePlugin for GitignoreLanguagePlugin {
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
         // Verify the file exists
         if !path.exists() {
-            return Err(mill_plugin_api::PluginError::invalid_input(format!(
+            return Err(mill_plugin_api::PluginApiError::invalid_input(format!(
                 "File does not exist: {:?}",
                 path
             )));
@@ -98,7 +98,7 @@ impl LanguagePlugin for GitignoreLanguagePlugin {
 
         // Verify this is a .gitignore file
         if path.file_name().and_then(|s| s.to_str()) != Some(".gitignore") {
-            return Err(mill_plugin_api::PluginError::invalid_input(format!(
+            return Err(mill_plugin_api::PluginApiError::invalid_input(format!(
                 "Expected .gitignore, got: {:?}",
                 path.file_name()
             )));

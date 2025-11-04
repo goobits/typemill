@@ -1,7 +1,5 @@
 use mill_plugin_api::{
-    project_factory::{
-        CreatePackageConfig, CreatePackageResult, PackageInfo, ProjectFactory,
-    },
+    project_factory::{CreatePackageConfig, CreatePackageResult, PackageInfo, ProjectFactory},
     PluginResult,
 };
 use std::fs;
@@ -18,10 +16,13 @@ impl ProjectFactory for CppProjectFactory {
             .unwrap();
         let project_path = Path::new(&config.workspace_root).join(&config.package_path);
         fs::create_dir_all(project_path.join("src")).map_err(|e| {
-            mill_plugin_api::PluginError::internal(format!("Failed to create src dir: {}", e))
+            mill_plugin_api::PluginApiError::internal(format!("Failed to create src dir: {}", e))
         })?;
         fs::create_dir_all(project_path.join("include")).map_err(|e| {
-            mill_plugin_api::PluginError::internal(format!("Failed to create include dir: {}", e))
+            mill_plugin_api::PluginApiError::internal(format!(
+                "Failed to create include dir: {}",
+                e
+            ))
         })?;
 
         let main_cpp_path = project_path.join("src/main.cpp");
@@ -35,7 +36,7 @@ int main() {
 }
 "#;
         fs::write(&main_cpp_path, main_cpp_content).map_err(|e| {
-            mill_plugin_api::PluginError::internal(format!("Failed to write main.cpp: {}", e))
+            mill_plugin_api::PluginApiError::internal(format!("Failed to write main.cpp: {}", e))
         })?;
 
         let cmake_content = format!(
@@ -47,7 +48,10 @@ add_executable(${{PROJECT_NAME}} src/main.cpp)
             package_name
         );
         fs::write(&cmake_path, cmake_content).map_err(|e| {
-            mill_plugin_api::PluginError::internal(format!("Failed to write CMakeLists.txt: {}", e))
+            mill_plugin_api::PluginApiError::internal(format!(
+                "Failed to write CMakeLists.txt: {}",
+                e
+            ))
         })?;
 
         Ok(CreatePackageResult {

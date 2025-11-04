@@ -18,9 +18,8 @@ lazy_static! {
         Regex::new(r#"\.package\s*\(\s*path:"#).expect("Invalid regex for workspace manifest");
     static ref PKG_NAME_REGEX: Regex =
         Regex::new(r#"(name:\s*")([^"]+)""#).expect("Invalid regex for package name");
-    static ref LIST_MEMBERS_REGEX: Regex =
-        Regex::new(r#"\.package\s*\(\s*path:\s*"([^"]+)"\s*\)"#)
-            .expect("Invalid regex for list members");
+    static ref LIST_MEMBERS_REGEX: Regex = Regex::new(r#"\.package\s*\(\s*path:\s*"([^"]+)"\s*\)"#)
+        .expect("Invalid regex for list members");
 }
 
 impl SwiftWorkspaceSupport {

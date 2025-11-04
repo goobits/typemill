@@ -51,16 +51,24 @@ impl EditPlan {
 
                 if let Some(edit_array) = file_edits.as_array() {
                     for (idx, lsp_edit) in edit_array.iter().enumerate() {
-                        let range = lsp_edit.get("range").ok_or_else(|| crate::protocol::ApiError::Parse {
-                            message: "LSP edit missing range".to_string(),
+                        let range = lsp_edit.get("range").ok_or_else(|| {
+                            crate::protocol::ApiError::Parse {
+                                message: "LSP edit missing range".to_string(),
+                            }
                         })?;
 
-                        let start = range.get("start").ok_or_else(|| crate::protocol::ApiError::Parse {
-                            message: "LSP range missing start".to_string(),
-                        })?;
-                        let end = range.get("end").ok_or_else(|| crate::protocol::ApiError::Parse {
-                            message: "LSP range missing end".to_string(),
-                        })?;
+                        let start =
+                            range
+                                .get("start")
+                                .ok_or_else(|| crate::protocol::ApiError::Parse {
+                                    message: "LSP range missing start".to_string(),
+                                })?;
+                        let end =
+                            range
+                                .get("end")
+                                .ok_or_else(|| crate::protocol::ApiError::Parse {
+                                    message: "LSP range missing end".to_string(),
+                                })?;
 
                         let start_line =
                             start.get("line").and_then(|v| v.as_u64()).ok_or_else(|| {

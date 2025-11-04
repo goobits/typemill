@@ -384,8 +384,8 @@ mod tests {
         assert!(output.contains(r#""$lib/*""#));
 
         // Should parse as valid JSON
-        let parsed: serde_json::Value = serde_json::from_str(&output)
-            .expect("Output should be valid JSON");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&output).expect("Output should be valid JSON");
         assert!(parsed.is_object());
     }
 
@@ -412,8 +412,8 @@ mod tests {
         assert!(output.contains(r#""baseUrl": ".""#));
 
         // Should parse as valid JSON
-        let parsed: serde_json::Value = serde_json::from_str(&output)
-            .expect("Output should be valid JSON");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&output).expect("Output should be valid JSON");
         assert!(parsed.is_object());
     }
 
@@ -439,8 +439,8 @@ mod tests {
         assert!(!output.contains("with multiple lines"));
 
         // Should parse as valid JSON
-        let parsed: serde_json::Value = serde_json::from_str(&output)
-            .expect("Output should be valid JSON");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&output).expect("Output should be valid JSON");
         assert!(parsed.is_object());
     }
 
@@ -458,8 +458,8 @@ mod tests {
         assert!(output.contains("Neither /* is */ this"));
 
         // Should parse as valid JSON
-        let parsed: serde_json::Value = serde_json::from_str(&output)
-            .expect("Output should be valid JSON");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&output).expect("Output should be valid JSON");
         assert_eq!(parsed["description"], "This // is not a comment");
         assert_eq!(parsed["note"], "Neither /* is */ this");
     }
@@ -483,8 +483,8 @@ mod tests {
         temp_file.flush().unwrap();
 
         // Should parse successfully
-        let config = TsConfig::from_file(temp_file.path())
-            .expect("Should parse tsconfig with comments");
+        let config =
+            TsConfig::from_file(temp_file.path()).expect("Should parse tsconfig with comments");
 
         assert!(config.compiler_options.is_some());
         let compiler_options = config.compiler_options.as_ref().unwrap();

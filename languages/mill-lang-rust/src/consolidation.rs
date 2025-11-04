@@ -12,7 +12,7 @@
 
 use crate::cargo_helpers::merge_cargo_dependencies;
 use mill_foundation::protocol::ConsolidationMetadata;
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_plugin_api::{PluginApiError, PluginResult};
 use std::path::Path;
 use tokio::fs;
 use tracing::{info, warn};
@@ -135,11 +135,11 @@ async fn cleanup_workspace_cargo_toml(
     let content = fs::read_to_string(&workspace_toml_path)
         .await
         .map_err(|e| {
-            PluginError::internal(format!("Failed to read workspace Cargo.toml: {}", e))
+            PluginApiError::internal(format!("Failed to read workspace Cargo.toml: {}", e))
         })?;
 
     let mut doc = content.parse::<toml_edit::DocumentMut>().map_err(|e| {
-        PluginError::internal(format!("Failed to parse workspace Cargo.toml: {}", e))
+        PluginApiError::internal(format!("Failed to parse workspace Cargo.toml: {}", e))
     })?;
 
     let mut modified = false;
@@ -213,7 +213,7 @@ async fn cleanup_workspace_cargo_toml(
         fs::write(&workspace_toml_path, doc.to_string())
             .await
             .map_err(|e| {
-                PluginError::internal(format!("Failed to write workspace Cargo.toml: {}", e))
+                PluginApiError::internal(format!("Failed to write workspace Cargo.toml: {}", e))
             })?;
 
         info!("Workspace Cargo.toml cleanup complete");
@@ -242,13 +242,13 @@ async fn remove_source_dependency_from_target(
         return Ok(());
     }
 
-    let content = fs::read_to_string(&target_cargo_toml)
-        .await
-        .map_err(|e| PluginError::internal(format!("Failed to read target Cargo.toml: {}", e)))?;
+    let content = fs::read_to_string(&target_cargo_toml).await.map_err(|e| {
+        PluginApiError::internal(format!("Failed to read target Cargo.toml: {}", e))
+    })?;
 
-    let mut doc = content
-        .parse::<toml_edit::DocumentMut>()
-        .map_err(|e| PluginError::internal(format!("Failed to parse target Cargo.toml: {}", e)))?;
+    let mut doc = content.parse::<toml_edit::DocumentMut>().map_err(|e| {
+        PluginApiError::internal(format!("Failed to parse target Cargo.toml: {}", e))
+    })?;
 
     let mut modified = false;
 
@@ -272,7 +272,7 @@ async fn remove_source_dependency_from_target(
         fs::write(&target_cargo_toml, doc.to_string())
             .await
             .map_err(|e| {
-                PluginError::internal(format!("Failed to write target Cargo.toml: {}", e))
+                PluginApiError::internal(format!("Failed to write target Cargo.toml: {}", e))
             })?;
 
         info!("Target Cargo.toml dependency cleanup complete");
@@ -294,8 +294,8 @@ async fn remove_duplicate_dependencies_in_workspace(project_root: &Path) -> Plug
     let walker = ignore::WalkBuilder::new(project_root).hidden(false).build();
 
     for entry in walker {
-        let entry =
-            entry.map_err(|e| PluginError::internal(format!("Failed to walk workspace: {}", e)))?;
+        let entry = entry
+            .map_err(|e| PluginApiError::internal(format!("Failed to walk workspace: {}", e)))?;
 
         // Only process Cargo.toml files
         if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false)
@@ -322,9 +322,9 @@ async fn remove_duplicate_dependencies_in_workspace(project_root: &Path) -> Plug
         let fixed_content = fixed_content_result.unwrap();
 
         if content != fixed_content {
-            fs::write(path, &fixed_content)
-                .await
-                .map_err(|e| PluginError::internal(format!("Failed to write Cargo.toml: {}", e)))?;
+            fs::write(path, &fixed_content).await.map_err(|e| {
+                PluginApiError::internal(format!("Failed to write Cargo.toml: {}", e))
+            })?;
 
             fixed_count += 1;
             info!(
@@ -347,7 +347,7 @@ async fn remove_duplicate_dependencies_in_workspace(project_root: &Path) -> Plug
 fn remove_duplicate_dependencies(content: &str) -> PluginResult<String> {
     let mut doc = content
         .parse::<toml_edit::DocumentMut>()
-        .map_err(|e| PluginError::internal(format!("Failed to parse Cargo.toml: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to parse Cargo.toml: {}", e)))?;
 
     // Process [dependencies]
     if let Some(deps) = doc
@@ -416,19 +416,19 @@ async fn flatten_nested_src_directory(module_path: &str) -> PluginResult<()> {
     // Move all files from protocol/src/* to protocol/*
     let mut entries = fs::read_dir(&nested_src)
         .await
-        .map_err(|e| PluginError::internal(format!("Failed to read nested src/: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to read nested src/: {}", e)))?;
 
     while let Some(entry) = entries
         .next_entry()
         .await
-        .map_err(|e| PluginError::internal(format!("Failed to iterate src/ entries: {}", e)))?
+        .map_err(|e| PluginApiError::internal(format!("Failed to iterate src/ entries: {}", e)))?
     {
         let file_name = entry.file_name();
         let source = entry.path();
         let target = module_dir.join(&file_name);
 
         fs::rename(&source, &target).await.map_err(|e| {
-            PluginError::internal(format!(
+            PluginApiError::internal(format!(
                 "Failed to move {} to {}: {}",
                 source.display(),
                 target.display(),
@@ -445,14 +445,14 @@ async fn flatten_nested_src_directory(module_path: &str) -> PluginResult<()> {
     // Remove empty src/ directory
     fs::remove_dir(&nested_src)
         .await
-        .map_err(|e| PluginError::internal(format!("Failed to remove empty src/: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to remove empty src/: {}", e)))?;
 
     // Remove Cargo.toml if it exists (should be merged already)
     let cargo_toml = module_dir.join("Cargo.toml");
     if cargo_toml.exists() {
         fs::remove_file(&cargo_toml)
             .await
-            .map_err(|e| PluginError::internal(format!("Failed to remove Cargo.toml: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("Failed to remove Cargo.toml: {}", e)))?;
         info!("Removed leftover Cargo.toml from module directory");
     }
 
@@ -480,9 +480,9 @@ async fn rename_lib_rs_to_mod_rs(module_path: &str) -> PluginResult<()> {
         return Ok(());
     }
 
-    fs::rename(&lib_rs, &mod_rs)
-        .await
-        .map_err(|e| PluginError::internal(format!("Failed to rename lib.rs to mod.rs: {}", e)))?;
+    fs::rename(&lib_rs, &mod_rs).await.map_err(|e| {
+        PluginApiError::internal(format!("Failed to rename lib.rs to mod.rs: {}", e))
+    })?;
 
     info!(
         old_path = %lib_rs.display(),
@@ -510,7 +510,7 @@ async fn add_module_declaration_to_target_lib_rs(
 
     let content = fs::read_to_string(&lib_rs_path)
         .await
-        .map_err(|e| PluginError::internal(format!("Failed to read lib.rs: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to read lib.rs: {}", e)))?;
 
     // Check if declaration already exists
     let declaration = format!("pub mod {};", module_name);
@@ -552,7 +552,7 @@ async fn add_module_declaration_to_target_lib_rs(
 
     fs::write(&lib_rs_path, final_content)
         .await
-        .map_err(|e| PluginError::internal(format!("Failed to write lib.rs: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to write lib.rs: {}", e)))?;
 
     info!(
         lib_rs = %lib_rs_path.display(),
@@ -619,13 +619,13 @@ async fn fix_self_imports_in_directory(
     replacements_made: &mut usize,
 ) -> PluginResult<()> {
     let mut entries = fs::read_dir(dir).await.map_err(|e| {
-        PluginError::internal(format!("Failed to read directory {}: {}", dir.display(), e))
+        PluginApiError::internal(format!("Failed to read directory {}: {}", dir.display(), e))
     })?;
 
     while let Some(entry) = entries
         .next_entry()
         .await
-        .map_err(|e| PluginError::internal(format!("Failed to iterate directory: {}", e)))?
+        .map_err(|e| PluginApiError::internal(format!("Failed to iterate directory: {}", e)))?
     {
         let path = entry.path();
 
@@ -660,7 +660,7 @@ async fn fix_self_imports_in_file(
     replacements_made: &mut usize,
 ) -> PluginResult<()> {
     let content = fs::read_to_string(file_path).await.map_err(|e| {
-        PluginError::internal(format!("Failed to read {}: {}", file_path.display(), e))
+        PluginApiError::internal(format!("Failed to read {}: {}", file_path.display(), e))
     })?;
 
     let mut new_content = content.clone();
@@ -724,7 +724,7 @@ async fn fix_self_imports_in_file(
     // Only write if changes were made
     if file_replacements > 0 {
         fs::write(file_path, new_content).await.map_err(|e| {
-            PluginError::internal(format!("Failed to write {}: {}", file_path.display(), e))
+            PluginApiError::internal(format!("Failed to write {}: {}", file_path.display(), e))
         })?;
 
         *files_fixed += 1;
@@ -818,7 +818,7 @@ async fn update_imports_in_workspace_directory(
     while let Some(entry) = entries
         .next_entry()
         .await
-        .map_err(|e| PluginError::internal(format!("Failed to iterate directory: {}", e)))?
+        .map_err(|e| PluginApiError::internal(format!("Failed to iterate directory: {}", e)))?
     {
         let path = entry.path();
 
@@ -938,7 +938,7 @@ async fn update_imports_in_single_file(
     // Only write if changes were made
     if file_replacements > 0 {
         fs::write(file_path, new_content).await.map_err(|e| {
-            PluginError::internal(format!("Failed to write {}: {}", file_path.display(), e))
+            PluginApiError::internal(format!("Failed to write {}: {}", file_path.display(), e))
         })?;
 
         *files_updated += 1;

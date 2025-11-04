@@ -26,8 +26,7 @@ pub const PARSER_VERSION: &str = "0.1.0";
 /// - `#include "myheader.hpp"`
 /// - Both system (<>) and local ("") includes
 pub static INCLUDE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"#include\s*[<"]([^>"]+)[>"]"#)
-        .expect("Valid include pattern regex")
+    Regex::new(r#"#include\s*[<"]([^>"]+)[>"]"#).expect("Valid include pattern regex")
 });
 
 /// Pattern for detecting C++20 import statements
@@ -49,8 +48,7 @@ pub static CPP20_IMPORT_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `using namespace boost::asio;`
 /// - Namespace import statements
 pub static NAMESPACE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"using\s+namespace\s+([\w:]+)\s*;")
-        .expect("Valid namespace pattern regex")
+    Regex::new(r"using\s+namespace\s+([\w:]+)\s*;").expect("Valid namespace pattern regex")
 });
 
 /// Pattern for detecting using declarations
@@ -60,8 +58,7 @@ pub static NAMESPACE_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `using boost::shared_ptr;`
 /// - Specific symbol imports
 pub static USING_DECLARATION_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"using\s+([\w:]+)\s*;")
-        .expect("Valid using declaration pattern regex")
+    Regex::new(r"using\s+([\w:]+)\s*;").expect("Valid using declaration pattern regex")
 });
 
 /// Pattern for detecting function and method definitions
@@ -105,8 +102,7 @@ pub static STRUCT_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `namespace boost::asio {`
 /// - Namespace block declarations
 pub static NAMESPACE_BLOCK_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?m)^\s*namespace\s+([\w:]+)\s*\{")
-        .expect("Valid namespace block pattern regex")
+    Regex::new(r"(?m)^\s*namespace\s+([\w:]+)\s*\{").expect("Valid namespace block pattern regex")
 });
 
 /// Pattern for detecting template declarations
@@ -115,50 +111,40 @@ pub static NAMESPACE_BLOCK_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `template<typename T>`
 /// - `template<class T, int N>`
 /// - Template parameter declarations
-pub static TEMPLATE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"template\s*<([^>]+)>")
-        .expect("Valid template pattern regex")
-});
+pub static TEMPLATE_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"template\s*<([^>]+)>").expect("Valid template pattern regex"));
 
 /// Pattern for detecting TEST macros (Google Test)
 ///
 /// Matches:
 /// - `TEST(TestSuite, TestName)`
 /// - Google Test test case declarations
-pub static TEST_MACRO_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"TEST\(")
-        .expect("Valid TEST macro pattern regex")
-});
+pub static TEST_MACRO_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"TEST\(").expect("Valid TEST macro pattern regex"));
 
 /// Pattern for detecting TEST_F macros (Google Test fixtures)
 ///
 /// Matches:
 /// - `TEST_F(FixtureName, TestName)`
 /// - Google Test fixture test declarations
-pub static TEST_F_MACRO_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"TEST_F\(")
-        .expect("Valid TEST_F macro pattern regex")
-});
+pub static TEST_F_MACRO_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"TEST_F\(").expect("Valid TEST_F macro pattern regex"));
 
 /// Pattern for detecting Boost test cases
 ///
 /// Matches:
 /// - `BOOST_AUTO_TEST_CASE(test_name)`
 /// - Boost.Test test case declarations
-pub static BOOST_TEST_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"BOOST_AUTO_TEST_CASE")
-        .expect("Valid Boost test pattern regex")
-});
+pub static BOOST_TEST_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"BOOST_AUTO_TEST_CASE").expect("Valid Boost test pattern regex"));
 
 /// Pattern for detecting Catch2 test cases
 ///
 /// Matches:
 /// - `CATCH_TEST_CASE("test name", "[tag]")`
 /// - Catch2 test case declarations
-pub static CATCH_TEST_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"CATCH_TEST_CASE")
-        .expect("Valid Catch test pattern regex")
-});
+pub static CATCH_TEST_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"CATCH_TEST_CASE").expect("Valid Catch test pattern regex"));
 
 /// Pattern for detecting EXPECT assertions (Google Test)
 ///
@@ -166,10 +152,8 @@ pub static CATCH_TEST_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `EXPECT_EQ(a, b)`
 /// - `EXPECT_TRUE(condition)`
 /// - Google Test expectation assertions
-pub static EXPECT_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"EXPECT_")
-        .expect("Valid EXPECT pattern regex")
-});
+pub static EXPECT_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"EXPECT_").expect("Valid EXPECT pattern regex"));
 
 /// Pattern for detecting ASSERT assertions (Google Test)
 ///
@@ -177,30 +161,24 @@ pub static EXPECT_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `ASSERT_EQ(a, b)`
 /// - `ASSERT_TRUE(condition)`
 /// - Google Test assertion macros
-pub static ASSERT_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"ASSERT_")
-        .expect("Valid ASSERT pattern regex")
-});
+pub static ASSERT_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"ASSERT_").expect("Valid ASSERT pattern regex"));
 
 /// Pattern for detecting CHECK assertions (Catch2)
 ///
 /// Matches:
 /// - `CHECK(condition)`
 /// - Catch2 check macros
-pub static CHECK_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"CHECK")
-        .expect("Valid CHECK pattern regex")
-});
+pub static CHECK_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"CHECK").expect("Valid CHECK pattern regex"));
 
 /// Pattern for detecting REQUIRE assertions (Catch2)
 ///
 /// Matches:
 /// - `REQUIRE(condition)`
 /// - Catch2 require macros
-pub static REQUIRE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"REQUIRE")
-        .expect("Valid REQUIRE pattern regex")
-});
+pub static REQUIRE_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"REQUIRE").expect("Valid REQUIRE pattern regex"));
 
 /// Pattern for CMake project() command
 ///
@@ -209,8 +187,7 @@ pub static REQUIRE_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `project(MyProject VERSION 1.0)`
 /// - CMake project declarations
 pub static CMAKE_PROJECT_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(?i)project\s*\(\s*(\w+)"#)
-        .expect("Valid CMake project pattern regex")
+    Regex::new(r#"(?i)project\s*\(\s*(\w+)"#).expect("Valid CMake project pattern regex")
 });
 
 /// Pattern for CMake add_library/add_executable
@@ -230,8 +207,10 @@ pub static CMAKE_TARGET_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `target_link_libraries(myapp PUBLIC lib1 lib2)`
 /// - CMake library linkage
 pub static CMAKE_LINK_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(?i)target_link_libraries\s*\(\s*(\w+)\s+(?:(PUBLIC|PRIVATE|INTERFACE)\s+)?([\w\s]+)\)"#)
-        .expect("Valid CMake link pattern regex")
+    Regex::new(
+        r#"(?i)target_link_libraries\s*\(\s*(\w+)\s+(?:(PUBLIC|PRIVATE|INTERFACE)\s+)?([\w\s]+)\)"#,
+    )
+    .expect("Valid CMake link pattern regex")
 });
 
 /// Pattern for CMake add_subdirectory
@@ -250,8 +229,7 @@ pub static CMAKE_SUBDIR_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `add_executable(app_name ...)`
 /// - Extracts executable name
 pub static CMAKE_EXECUTABLE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"add_executable\(([^)\s]+)")
-        .expect("Valid CMake executable pattern regex")
+    Regex::new(r"add_executable\(([^)\s]+)").expect("Valid CMake executable pattern regex")
 });
 
 /// Pattern for Conan dependencies (conanfile.txt)
@@ -259,10 +237,8 @@ pub static CMAKE_EXECUTABLE_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// Matches:
 /// - `boost/1.76.0`
 /// - Conan package/version pairs
-pub static CONAN_DEP_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(\w+)/(\S+)"#)
-        .expect("Valid Conan dependency pattern regex")
-});
+pub static CONAN_DEP_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(\w+)/(\S+)"#).expect("Valid Conan dependency pattern regex"));
 
 // === Helper Functions ===
 
@@ -294,8 +270,11 @@ pub fn assertion_patterns() -> Vec<Regex> {
 ///
 /// Creates a regex to match #include statements for a specific module
 pub fn module_include_pattern(module_name: &str) -> Regex {
-    Regex::new(&format!("#include\\s*[<\"]({}[^>\"]*)[>\"]", regex::escape(module_name)))
-        .expect("Valid module include pattern")
+    Regex::new(&format!(
+        "#include\\s*[<\"]({}[^>\"]*)[>\"]",
+        regex::escape(module_name)
+    ))
+    .expect("Valid module include pattern")
 }
 
 #[cfg(test)]

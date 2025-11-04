@@ -191,7 +191,8 @@ This is a paragraph.
 #[tokio::test]
 async fn test_analyze_quality_markdown_formatting() {
     // Build content with explicit trailing whitespace on line 3
-    let markdown_content = format!(r#"# Formatting Issues
+    let markdown_content = format!(
+        r#"# Formatting Issues
 
 This line has trailing whitespace.{}
 
@@ -212,7 +213,9 @@ echo "This code block has no language tag"
 (reversed)[link]
 ```
 unclosed
-"#, "   ");  // Trailing whitespace
+"#,
+        "   "
+    ); // Trailing whitespace
 
     run_analysis_test(
         "test.md",

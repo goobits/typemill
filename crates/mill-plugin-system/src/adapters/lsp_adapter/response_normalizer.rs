@@ -1,4 +1,6 @@
-use super::{LspAdapterPlugin, PluginError, PluginRequest, PluginResponse, PluginResult, PluginSystemError};
+use super::{
+    LspAdapterPlugin, PluginRequest, PluginResponse, PluginResult, PluginSystemError,
+};
 use serde_json::{json, Value};
 
 impl LspAdapterPlugin {

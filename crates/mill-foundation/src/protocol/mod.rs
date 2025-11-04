@@ -21,8 +21,8 @@ pub use crate::planning::{
     ChangeCategory, ConsolidationMetadata, DeletePlan, DeletionTarget, DependencyUpdate,
     DependencyUpdateType, EditLocation, EditPlan, EditPlanMetadata, EditPlanResult, EditType,
     ExtractPlan, InlinePlan, MovePlan, PlanMetadata, PlanSummary, PlanWarning, RefactorPlan,
-    RefactorPlanExt, RenamePlan, ReorderPlan, TextEdit, TransformPlan, ValidationType,
-    ValidationRule,
+    RefactorPlanExt, RenamePlan, ReorderPlan, TextEdit, TransformPlan, ValidationRule,
+    ValidationType,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -138,7 +138,6 @@ pub struct ImportGraphMetadata {
     /// External dependencies (not in project)
     pub external_dependencies: Vec<String>,
 }
-
 
 /// Cache statistics for monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]

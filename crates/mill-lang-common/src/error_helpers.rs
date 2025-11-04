@@ -1,6 +1,6 @@
 //! Error construction utilities and helpers
 //!
-//! This module provides ergonomic builders and macros for creating `PluginError` instances
+//! This module provides ergonomic builders and macros for creating `PluginApiError` instances
 //! with rich context. Reduces boilerplate from repetitive error construction patterns.
 
 use mill_plugin_api::PluginApiError;

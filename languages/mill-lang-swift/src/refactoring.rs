@@ -1,8 +1,8 @@
+use lazy_static::lazy_static;
 use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use lazy_static::lazy_static;
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_plugin_api::{PluginApiError, PluginResult};
 use regex::Regex;
 
 pub fn plan_extract_function(
@@ -14,21 +14,21 @@ pub fn plan_extract_function(
 ) -> PluginResult<EditPlan> {
     let lines: Vec<&str> = source.lines().collect();
     if start_line > end_line || end_line as usize >= lines.len() {
-        return Err(PluginError::invalid_input("Invalid line range"));
+        return Err(PluginApiError::invalid_input("Invalid line range"));
     }
 
     let selected_lines = &lines[start_line as usize..=end_line as usize];
     let selected_text = selected_lines.join("\n");
 
     // Find the indentation of the first line of the selection
-    let indent = selected_lines[0].chars().take_while(|c| c.is_whitespace()).collect::<String>();
+    let indent = selected_lines[0]
+        .chars()
+        .take_while(|c| c.is_whitespace())
+        .collect::<String>();
 
     let new_function_text = format!(
         "\n\n{}private func {}() {{\n{}\n{}}}\n",
-        indent,
-        function_name,
-        selected_text,
-        indent
+        indent, function_name, selected_text, indent
     );
 
     // Find a place to insert the new function. For simplicity, we'll insert it after the current function.
@@ -86,9 +86,8 @@ pub fn plan_extract_function(
 }
 
 lazy_static! {
-    static ref VAR_DECL_REGEX: Regex =
-        Regex::new(r"^\s*(?:let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(.*)")
-            .expect("Invalid regex for Swift variable declaration");
+    static ref VAR_DECL_REGEX: Regex = Regex::new(r"^\s*(?:let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(.*)")
+        .expect("Invalid regex for Swift variable declaration");
 }
 
 pub fn plan_inline_variable(
@@ -99,20 +98,20 @@ pub fn plan_inline_variable(
 ) -> PluginResult<EditPlan> {
     let lines: Vec<&str> = source.lines().collect();
     if variable_line as usize >= lines.len() {
-        return Err(PluginError::invalid_input("Invalid line number"));
+        return Err(PluginApiError::invalid_input("Invalid line number"));
     }
 
     let line_content = lines[variable_line as usize];
     let caps = VAR_DECL_REGEX
         .captures(line_content)
-        .ok_or_else(|| PluginError::invalid_input("Line is not a variable declaration"))?;
+        .ok_or_else(|| PluginApiError::invalid_input("Line is not a variable declaration"))?;
     let var_name = &caps[1];
     let var_value = caps[2].trim().trim_end_matches(';').to_string();
 
     let mut edits = Vec::new();
     let search_pattern = format!(r"\b{}\b", var_name);
     let search_re = Regex::new(&search_pattern)
-        .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Invalid regex: {}", e)))?;
 
     for (i, line) in lines.iter().enumerate() {
         if i as u32 != variable_line {
@@ -181,7 +180,7 @@ pub fn plan_extract_variable(
 ) -> PluginResult<EditPlan> {
     let lines: Vec<&str> = source.lines().collect();
     if start_line > end_line || end_line as usize >= lines.len() {
-        return Err(PluginError::invalid_input("Invalid line range"));
+        return Err(PluginApiError::invalid_input("Invalid line range"));
     }
 
     let expression_text = if start_line == end_line {
@@ -190,7 +189,11 @@ pub fn plan_extract_variable(
         // A rough approximation for multi-line expressions
         let mut text = String::new();
         text.push_str(&lines[start_line as usize][start_col as usize..]);
-        for line in lines.iter().take(end_line as usize).skip((start_line + 1) as usize) {
+        for line in lines
+            .iter()
+            .take(end_line as usize)
+            .skip((start_line + 1) as usize)
+        {
             text.push_str(line);
         }
         text.push_str(&lines[end_line as usize][..end_col as usize]);
@@ -201,7 +204,10 @@ pub fn plan_extract_variable(
     let declaration_text = format!("let {} = {}", var_name, expression_text);
 
     // Find indentation
-    let indent = lines[start_line as usize].chars().take_while(|c| c.is_whitespace()).collect::<String>();
+    let indent = lines[start_line as usize]
+        .chars()
+        .take_while(|c| c.is_whitespace())
+        .collect::<String>();
 
     let insert_edit = TextEdit {
         file_path: Some(file_path.to_string()),

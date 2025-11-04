@@ -644,7 +644,7 @@ impl ImportMutationSupport for MarkdownImportSupport {
 
     fn remove_named_import(&self, _line: &str, _import_name: &str) -> PluginResult<String> {
         // Markdown doesn't have the concept of "named imports"
-        Err(mill_plugin_api::PluginError::not_supported(
+        Err(mill_plugin_api::PluginApiError::not_supported(
             "Markdown does not support named imports",
         ))
     }

@@ -11,7 +11,6 @@ use tracing::{debug, error, info, warn};
 // Import the transformer for delegating text edit application
 use mill_ast::transformer;
 
-
 impl FileService {
     /// Apply an edit plan to the filesystem atomically
     pub async fn apply_edit_plan(&self, plan: &EditPlan) -> ServerResult<EditPlanResult> {

@@ -37,11 +37,7 @@ impl WorkspaceSupport for CWorkspaceSupport {
         }
     }
 
-    fn remove_workspace_member(
-        &self,
-        manifest_content: &str,
-        member_path: &str,
-    ) -> String {
+    fn remove_workspace_member(&self, manifest_content: &str, member_path: &str) -> String {
         if let Some(caps) = SUBDIRS_PATTERN.captures(manifest_content) {
             let existing_subdirs = caps.get(1).unwrap().as_str();
             let new_subdirs: String = existing_subdirs

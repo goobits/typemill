@@ -24,9 +24,8 @@ pub const PARSER_VERSION: &str = "0.1.0";
 /// Matches:
 /// - `@Test`
 /// - Standard JUnit 5 test marker
-pub static TEST_ANNOTATION: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"@Test").expect("Valid @Test annotation regex")
-});
+pub static TEST_ANNOTATION: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"@Test").expect("Valid @Test annotation regex"));
 
 /// Pattern for detecting parameterized test annotations
 ///
@@ -42,45 +41,40 @@ pub static PARAMETERIZED_TEST_ANNOTATION: Lazy<Regex> = Lazy::new(|| {
 /// Matches:
 /// - `@RepeatedTest`
 /// - JUnit 5 repeated test marker
-pub static REPEATED_TEST_ANNOTATION: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"@RepeatedTest").expect("Valid @RepeatedTest annotation regex")
-});
+pub static REPEATED_TEST_ANNOTATION: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"@RepeatedTest").expect("Valid @RepeatedTest annotation regex"));
 
 /// Pattern for detecting assert statements
 ///
 /// Matches:
 /// - `assert condition;`
 /// - Java built-in assertion keyword
-pub static ASSERT_KEYWORD: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\bassert\b").expect("Valid assert keyword regex")
-});
+pub static ASSERT_KEYWORD: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bassert\b").expect("Valid assert keyword regex"));
 
 /// Pattern for detecting assertEquals calls
 ///
 /// Matches:
 /// - `assertEquals(expected, actual)`
 /// - JUnit assertion method
-pub static ASSERT_EQUALS: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"assertEquals").expect("Valid assertEquals regex")
-});
+pub static ASSERT_EQUALS: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"assertEquals").expect("Valid assertEquals regex"));
 
 /// Pattern for detecting assertTrue calls
 ///
 /// Matches:
 /// - `assertTrue(condition)`
 /// - JUnit assertion method
-pub static ASSERT_TRUE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"assertTrue").expect("Valid assertTrue regex")
-});
+pub static ASSERT_TRUE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"assertTrue").expect("Valid assertTrue regex"));
 
 /// Pattern for detecting assertThat calls
 ///
 /// Matches:
 /// - `assertThat(actual, matcher)`
 /// - AssertJ/Hamcrest assertion method
-pub static ASSERT_THAT: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"assertThat").expect("Valid assertThat regex")
-});
+pub static ASSERT_THAT: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"assertThat").expect("Valid assertThat regex"));
 
 /// Pattern for detecting method definitions
 ///
@@ -89,8 +83,10 @@ pub static ASSERT_THAT: Lazy<Regex> = Lazy::new(|| {
 /// - `private static int calculate(int x)`
 /// - Method declarations with visibility, modifiers, return type, and name
 pub static METHOD_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?m)^\s*(?:public|private|protected)?\s*(?:static)?\s*(?:final)?\s*\w+\s+(\w+)\s*\(")
-        .expect("Valid method pattern regex")
+    Regex::new(
+        r"(?m)^\s*(?:public|private|protected)?\s*(?:static)?\s*(?:final)?\s*\w+\s+(\w+)\s*\(",
+    )
+    .expect("Valid method pattern regex")
 });
 
 /// Pattern for detecting class definitions
@@ -132,10 +128,8 @@ pub static ENUM_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `package com.example;`
 /// - `package org.test.util;`
 /// - Package declaration statements
-pub static PACKAGE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^\s*package\s+([\w.]+)\s*;")
-        .expect("Valid package pattern regex")
-});
+pub static PACKAGE_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\s*package\s+([\w.]+)\s*;").expect("Valid package pattern regex"));
 
 /// Pattern for detecting import statements
 ///
@@ -154,8 +148,7 @@ pub static IMPORT_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `import java.util.*;`
 /// - Import statements with wildcard (*)
 pub static WILDCARD_IMPORT_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^\s*import\s+([\w.]+)\.\*\s*;")
-        .expect("Valid wildcard import pattern regex")
+    Regex::new(r"^\s*import\s+([\w.]+)\.\*\s*;").expect("Valid wildcard import pattern regex")
 });
 
 /// Pattern for detecting static import statements

@@ -21,7 +21,7 @@ use mill_plugin_api::{
 };
 use std::path::Path;
 
-use crate::constants::{INCLUDE_PATTERN, INCLUDE_PATH_PATTERN};
+use crate::constants::{INCLUDE_PATH_PATTERN, INCLUDE_PATTERN};
 
 /// C language import support implementation
 ///
@@ -31,7 +31,8 @@ pub struct CImportSupport;
 
 impl ImportParser for CImportSupport {
     fn parse_imports(&self, content: &str) -> Vec<String> {
-        INCLUDE_PATH_PATTERN.captures_iter(content)
+        INCLUDE_PATH_PATTERN
+            .captures_iter(content)
             .map(|cap| cap[1].to_string())
             .collect()
     }
@@ -65,7 +66,12 @@ impl CImportSupport {
 
                 // Find column position
                 let start_col = line.find("#include").unwrap_or(0) as u32;
-                let end_col = (start_col as usize + line[start_col as usize..].find('>').or_else(|| line[start_col as usize..].find('"')).unwrap_or(line.len()) + 1) as u32;
+                let end_col = (start_col as usize
+                    + line[start_col as usize..]
+                        .find('>')
+                        .or_else(|| line[start_col as usize..].find('"'))
+                        .unwrap_or(line.len())
+                    + 1) as u32;
 
                 let import_info = ImportInfo {
                     module_path: header.clone(),
@@ -92,14 +98,16 @@ impl CImportSupport {
         }
 
         Ok(ImportGraph {
-            source_file: file_path.map(|p| p.display().to_string()).unwrap_or_default(),
+            source_file: file_path
+                .map(|p| p.display().to_string())
+                .unwrap_or_default(),
             imports,
-            importers: vec![],  // C doesn't have a reverse import mechanism like some languages
+            importers: vec![], // C doesn't have a reverse import mechanism like some languages
             metadata: ImportGraphMetadata {
                 language: "C".to_string(),
                 parsed_at: Utc::now(),
                 parser_version: env!("CARGO_PKG_VERSION").to_string(),
-                circular_dependencies: vec![],  // Header guards prevent circular includes
+                circular_dependencies: vec![], // Header guards prevent circular includes
                 external_dependencies,
             },
         })

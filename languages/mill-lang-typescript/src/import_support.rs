@@ -292,13 +292,16 @@ pub(crate) fn rewrite_imports_for_move_with_context(
                     }
 
                     // Try to resolve the alias to an absolute path
-                    if let Some(resolved_path_str) = resolver.resolve_alias(specifier, importing_file, root)
+                    if let Some(resolved_path_str) =
+                        resolver.resolve_alias(specifier, importing_file, root)
                     {
                         let resolved_path = Path::new(&resolved_path_str);
 
                         // Check if the resolved path is inside the old_path directory
                         // (for directory moves) or equals old_path (for file moves)
-                        let is_affected = if old_path.is_dir() || old_path.to_string_lossy().contains("src/") {
+                        let is_affected = if old_path.is_dir()
+                            || old_path.to_string_lossy().contains("src/")
+                        {
                             // Directory move: check if resolved path is inside old directory
                             resolved_path.starts_with(old_path)
                         } else {
@@ -312,26 +315,30 @@ pub(crate) fn rewrite_imports_for_move_with_context(
                         }
 
                         // Calculate the new path after the move
-                        let new_resolved_path = if old_path.is_dir() || old_path.to_string_lossy().contains("src/") {
-                            // For directory moves, preserve the relative structure within
-                            if let Ok(relative) = resolved_path.strip_prefix(old_path) {
-                                new_path.join(relative)
+                        let new_resolved_path =
+                            if old_path.is_dir() || old_path.to_string_lossy().contains("src/") {
+                                // For directory moves, preserve the relative structure within
+                                if let Ok(relative) = resolved_path.strip_prefix(old_path) {
+                                    new_path.join(relative)
+                                } else {
+                                    continue;
+                                }
                             } else {
-                                continue;
-                            }
-                        } else {
-                            // For file moves, use the new path directly
-                            new_path.to_path_buf()
-                        };
+                                // For file moves, use the new path directly
+                                new_path.to_path_buf()
+                            };
 
                         // Try to convert the new path back to an alias
-                        if let Some(new_alias) = resolver.path_to_alias(&new_resolved_path, importing_file, root)
+                        if let Some(new_alias) =
+                            resolver.path_to_alias(&new_resolved_path, importing_file, root)
                         {
                             // Replace the import in all forms (ES6, CommonJS, dynamic)
                             for quote_char in &['\'', '"'] {
                                 // ES6 imports: from 'old_alias'
-                                let old_str = format!("from {}{}{}", quote_char, specifier, quote_char);
-                                let new_str = format!("from {}{}{}", quote_char, new_alias, quote_char);
+                                let old_str =
+                                    format!("from {}{}{}", quote_char, specifier, quote_char);
+                                let new_str =
+                                    format!("from {}{}{}", quote_char, new_alias, quote_char);
                                 if new_content.contains(&old_str) {
                                     new_content = new_content.replace(&old_str, &new_str);
                                     changes += 1;
@@ -343,16 +350,20 @@ pub(crate) fn rewrite_imports_for_move_with_context(
                                 }
 
                                 // CommonJS: require('old_alias')
-                                let old_str = format!("require({}{}{})", quote_char, specifier, quote_char);
-                                let new_str = format!("require({}{}{})", quote_char, new_alias, quote_char);
+                                let old_str =
+                                    format!("require({}{}{})", quote_char, specifier, quote_char);
+                                let new_str =
+                                    format!("require({}{}{})", quote_char, new_alias, quote_char);
                                 if new_content.contains(&old_str) {
                                     new_content = new_content.replace(&old_str, &new_str);
                                     changes += 1;
                                 }
 
                                 // Dynamic import: import('old_alias')
-                                let old_str = format!("import({}{}{})", quote_char, specifier, quote_char);
-                                let new_str = format!("import({}{}{})", quote_char, new_alias, quote_char);
+                                let old_str =
+                                    format!("import({}{}{})", quote_char, specifier, quote_char);
+                                let new_str =
+                                    format!("import({}{}{})", quote_char, new_alias, quote_char);
                                 if new_content.contains(&old_str) {
                                     new_content = new_content.replace(&old_str, &new_str);
                                     changes += 1;
@@ -360,10 +371,13 @@ pub(crate) fn rewrite_imports_for_move_with_context(
                             }
                         } else {
                             // Cannot convert to alias - fall back to relative path
-                            let new_relative = calculate_relative_import(importing_file, &new_resolved_path);
+                            let new_relative =
+                                calculate_relative_import(importing_file, &new_resolved_path);
                             for quote_char in &['\'', '"'] {
-                                let old_str = format!("from {}{}{}", quote_char, specifier, quote_char);
-                                let new_str = format!("from {}{}{}", quote_char, new_relative, quote_char);
+                                let old_str =
+                                    format!("from {}{}{}", quote_char, specifier, quote_char);
+                                let new_str =
+                                    format!("from {}{}{}", quote_char, new_relative, quote_char);
                                 if new_content.contains(&old_str) {
                                     new_content = new_content.replace(&old_str, &new_str);
                                     changes += 1;
@@ -530,8 +544,14 @@ import('./old/path');
         let new_path = workspace.join("new").join("path.ts");
         let importing_file = workspace.join("main.ts");
 
-        let (updated, changes) =
-            rewrite_imports_for_move_with_context(source, &old_path, &new_path, &importing_file, None, None);
+        let (updated, changes) = rewrite_imports_for_move_with_context(
+            source,
+            &old_path,
+            &new_path,
+            &importing_file,
+            None,
+            None,
+        );
         assert!(
             updated.contains("from './new/path'"),
             "Expected single quotes preserved, got: {}",
@@ -725,7 +745,10 @@ import { Input } from "@/components/Input";
             updated.contains("@/ui/Button") || updated.contains("@/ui"),
             "Should update to @/ui path"
         );
-        assert!(!updated.contains("@/components"), "Should not contain old @/components");
+        assert!(
+            !updated.contains("@/components"),
+            "Should not contain old @/components"
+        );
     }
 
     #[test]
@@ -775,8 +798,14 @@ import { helper } from "./helper";
 
         // Should only update the $lib import
         assert_eq!(changes, 1, "Should only update one import");
-        assert!(updated.contains("from \"react\""), "Should preserve bare specifier");
-        assert!(updated.contains("from \"./helper\""), "Should preserve relative import");
+        assert!(
+            updated.contains("from \"react\""),
+            "Should preserve bare specifier"
+        );
+        assert!(
+            updated.contains("from \"./helper\""),
+            "Should preserve relative import"
+        );
         assert!(
             updated.contains("$lib/helpers") || !updated.contains("$lib/utils"),
             "Should update $lib import"

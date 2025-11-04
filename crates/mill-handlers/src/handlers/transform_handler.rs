@@ -10,7 +10,7 @@ use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use lsp_types::{Range, WorkspaceEdit};
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::planning::{PlanMetadata, PlanSummary, TransformPlan, RefactorPlan};
+use mill_foundation::planning::{PlanMetadata, PlanSummary, RefactorPlan, TransformPlan};
 use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
 use serde::Deserialize;
 use serde_json::{json, Value};

@@ -2,7 +2,8 @@
 
 use mill_lang_common::subprocess::{run_ast_tool_raw, SubprocessAstTool};
 use mill_plugin_api::{
-    ImportParser, ImportRenameSupport, ImportMoveSupport, ImportMutationSupport, ImportAdvancedSupport
+    ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportParser,
+    ImportRenameSupport,
 };
 use serde::Deserialize;
 use std::path::Path;

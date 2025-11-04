@@ -21,8 +21,9 @@ impl ImportAnalyzer for JavaImportAnalyzer {
         );
 
         // Read the file content
-        let content = std::fs::read_to_string(file_path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(format!("Failed to read file: {}", e)))?;
+        let content = std::fs::read_to_string(file_path).map_err(|e| {
+            mill_plugin_api::PluginApiError::internal(format!("Failed to read file: {}", e))
+        })?;
 
         // Parse imports from the content
         let (imports, external_deps) = parse_imports(&content)?;
@@ -61,12 +62,15 @@ fn parse_imports(content: &str) -> PluginResult<(Vec<ImportInfo>, Vec<String>)> 
         let trimmed = line.trim();
 
         // Skip comments and non-import lines
-        if trimmed.starts_with("//") || trimmed.starts_with("/*") || !trimmed.starts_with("import ") {
+        if trimmed.starts_with("//") || trimmed.starts_with("/*") || !trimmed.starts_with("import ")
+        {
             continue;
         }
 
         // Parse the import statement
-        if let Some((import_info, is_external)) = parse_import_statement(trimmed, line_number, &current_package) {
+        if let Some((import_info, is_external)) =
+            parse_import_statement(trimmed, line_number, &current_package)
+        {
             // Check if it's an external dependency
             if is_external {
                 // Extract the top-level package (e.g., "org.junit" from "org.junit.jupiter.api.Test")
@@ -112,7 +116,10 @@ fn parse_import_statement(
 
     // Check if it's a static import
     let _is_static = import_part.starts_with("static ");
-    let import_part = import_part.strip_prefix("static ").unwrap_or(import_part).trim();
+    let import_part = import_part
+        .strip_prefix("static ")
+        .unwrap_or(import_part)
+        .trim();
 
     // Remove trailing semicolon
     let import_path = import_part.strip_suffix(';')?.trim();
@@ -251,14 +258,20 @@ import java.util.List;
 
     #[test]
     fn test_is_external_import_same_package() {
-        assert!(!is_external_import("com.example.utils.Helper", "com.example"));
+        assert!(!is_external_import(
+            "com.example.utils.Helper",
+            "com.example"
+        ));
         assert!(!is_external_import("com.example.Model", "com.example"));
     }
 
     #[test]
     fn test_is_external_import_external() {
         assert!(is_external_import("org.junit.Test", "com.example"));
-        assert!(is_external_import("com.google.common.collect.Lists", "com.example"));
+        assert!(is_external_import(
+            "com.google.common.collect.Lists",
+            "com.example"
+        ));
     }
 
     #[test]
@@ -271,7 +284,10 @@ import java.util.List;
             extract_top_level_package("com.google.common.collect.Lists"),
             Some("com.google".to_string())
         );
-        assert_eq!(extract_top_level_package("java.util"), Some("java.util".to_string()));
+        assert_eq!(
+            extract_top_level_package("java.util"),
+            Some("java.util".to_string())
+        );
         assert_eq!(extract_top_level_package("Test"), None);
     }
 

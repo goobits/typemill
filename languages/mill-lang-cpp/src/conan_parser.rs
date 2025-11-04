@@ -4,13 +4,14 @@ use serde_json::json;
 use std::path::Path;
 
 pub(crate) fn analyze_conan_manifest(path: &Path) -> PluginResult<ManifestData> {
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| mill_plugin_api::PluginError::manifest(format!("Failed to read manifest: {}", e)))?;
+    let content = std::fs::read_to_string(path).map_err(|e| {
+        mill_plugin_api::PluginApiError::manifest(format!("Failed to read manifest: {}", e))
+    })?;
 
     match path.extension().and_then(|s| s.to_str()) {
         Some("txt") => parse_conanfile_txt(&content),
         Some("py") => parse_conanfile_py(&content),
-        _ => Err(mill_plugin_api::PluginError::manifest(
+        _ => Err(mill_plugin_api::PluginApiError::manifest(
             "Unsupported conan manifest file type".to_string(),
         )),
     }

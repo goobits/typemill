@@ -26,8 +26,7 @@ pub const PARSER_VERSION: &str = "0.1.0";
 /// - `#include "myheader.h"`
 /// - Both system (<>) and local ("") includes
 pub static INCLUDE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"#include\s*([<"])(.+?)([>"])"#)
-        .expect("Valid include pattern regex")
+    Regex::new(r#"#include\s*([<"])(.+?)([>"])"#).expect("Valid include pattern regex")
 });
 
 /// Pattern for detecting simple include statements (path only)
@@ -37,8 +36,7 @@ pub static INCLUDE_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `#include "file.h"`
 /// - Extracts just the file path
 pub static INCLUDE_PATH_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"#include\s*[<"](.+)[>"]"#)
-        .expect("Valid include path pattern regex")
+    Regex::new(r#"#include\s*[<"](.+)[>"]"#).expect("Valid include path pattern regex")
 });
 
 /// Pattern for detecting system includes
@@ -47,8 +45,7 @@ pub static INCLUDE_PATH_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `#include <stdio.h>`
 /// - System headers with angle brackets
 pub static SYSTEM_INCLUDE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"#include\s*<([^>]+)>"#)
-        .expect("Valid system include pattern regex")
+    Regex::new(r#"#include\s*<([^>]+)>"#).expect("Valid system include pattern regex")
 });
 
 /// Pattern for detecting local includes
@@ -56,10 +53,8 @@ pub static SYSTEM_INCLUDE_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// Matches:
 /// - `#include "myheader.h"`
 /// - Local headers with quotes
-pub static LOCAL_INCLUDE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"#include\s*"([^"]+)""#)
-        .expect("Valid local include pattern regex")
-});
+pub static LOCAL_INCLUDE_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"#include\s*"([^"]+)""#).expect("Valid local include pattern regex"));
 
 /// Pattern for detecting header guards
 ///
@@ -68,8 +63,7 @@ pub static LOCAL_INCLUDE_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `#ifndef _MYHEADER_H_`
 /// - Header guard definitions
 pub static HEADER_GUARD_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^\s*#ifndef\s+([A-Z_][A-Z0-9_]*)\s*$")
-        .expect("Valid header guard pattern regex")
+    Regex::new(r"^\s*#ifndef\s+([A-Z_][A-Z0-9_]*)\s*$").expect("Valid header guard pattern regex")
 });
 
 /// Pattern for detecting function definitions
@@ -90,8 +84,7 @@ pub static FUNCTION_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `typedef struct { ... } Name;`
 /// - Struct declarations
 pub static STRUCT_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?m)^\s*(?:typedef\s+)?struct\s+(\w+)?\s*\{")
-        .expect("Valid struct pattern regex")
+    Regex::new(r"(?m)^\s*(?:typedef\s+)?struct\s+(\w+)?\s*\{").expect("Valid struct pattern regex")
 });
 
 /// Pattern for detecting typedef statements
@@ -101,8 +94,7 @@ pub static STRUCT_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `typedef struct { ... } Name;`
 /// - Type alias declarations
 pub static TYPEDEF_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?m)^\s*typedef\s+.+\s+(\w+)\s*;")
-        .expect("Valid typedef pattern regex")
+    Regex::new(r"(?m)^\s*typedef\s+.+\s+(\w+)\s*;").expect("Valid typedef pattern regex")
 });
 
 /// Pattern for detecting enum definitions
@@ -112,8 +104,7 @@ pub static TYPEDEF_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `typedef enum { ... } Status;`
 /// - Enum declarations
 pub static ENUM_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?m)^\s*(?:typedef\s+)?enum\s+(\w+)?\s*\{")
-        .expect("Valid enum pattern regex")
+    Regex::new(r"(?m)^\s*(?:typedef\s+)?enum\s+(\w+)?\s*\{").expect("Valid enum pattern regex")
 });
 
 /// Pattern for detecting test functions
@@ -122,30 +113,24 @@ pub static ENUM_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `void test_something()`
 /// - `TEST(`
 /// - Common C test patterns
-pub static TEST_FUNCTION_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"void\s+test_")
-        .expect("Valid test function pattern regex")
-});
+pub static TEST_FUNCTION_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"void\s+test_").expect("Valid test function pattern regex"));
 
 /// Pattern for detecting TEST macros
 ///
 /// Matches:
 /// - `TEST(TestSuite, TestName)`
 /// - Google Test style test macros
-pub static TEST_MACRO_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"TEST\(")
-        .expect("Valid TEST macro pattern regex")
-});
+pub static TEST_MACRO_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"TEST\(").expect("Valid TEST macro pattern regex"));
 
 /// Pattern for detecting assert statements
 ///
 /// Matches:
 /// - `assert(condition)`
 /// - Standard C assert macro
-pub static ASSERT_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"assert\(")
-        .expect("Valid assert pattern regex")
-});
+pub static ASSERT_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"assert\(").expect("Valid assert pattern regex"));
 
 /// Pattern for detecting CUnit assertions
 ///
@@ -153,10 +138,8 @@ pub static ASSERT_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `CU_ASSERT`
 /// - `CU_ASSERT_EQUAL`
 /// - CUnit test framework assertions
-pub static CU_ASSERT_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"CU_ASSERT")
-        .expect("Valid CU_ASSERT pattern regex")
-});
+pub static CU_ASSERT_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"CU_ASSERT").expect("Valid CU_ASSERT pattern regex"));
 
 /// Pattern for detecting Unity test assertions
 ///
@@ -164,30 +147,24 @@ pub static CU_ASSERT_PATTERN: Lazy<Regex> = Lazy::new(|| {
 /// - `TEST_ASSERT`
 /// - `TEST_ASSERT_EQUAL`
 /// - Unity test framework assertions
-pub static TEST_ASSERT_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"TEST_ASSERT")
-        .expect("Valid TEST_ASSERT pattern regex")
-});
+pub static TEST_ASSERT_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"TEST_ASSERT").expect("Valid TEST_ASSERT pattern regex"));
 
 /// Pattern for LIBS variable in Makefile
 ///
 /// Matches:
 /// - `LIBS = -lm -lpthread`
 /// - Makefile library variable
-pub static LIBS_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"LIBS\s*=\s*(.*)")
-        .expect("Valid LIBS pattern regex")
-});
+pub static LIBS_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"LIBS\s*=\s*(.*)").expect("Valid LIBS pattern regex"));
 
 /// Pattern for SUBDIRS variable in Makefile
 ///
 /// Matches:
 /// - `SUBDIRS = dir1 dir2 dir3`
 /// - Makefile subdirectory variable
-pub static SUBDIRS_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"SUBDIRS\s*=\s*(.*)")
-        .expect("Valid SUBDIRS pattern regex")
-});
+pub static SUBDIRS_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"SUBDIRS\s*=\s*(.*)").expect("Valid SUBDIRS pattern regex"));
 
 /// Pattern for int variable declarations
 ///
@@ -205,10 +182,7 @@ pub static INT_VAR_DECL_PATTERN: Lazy<Regex> = Lazy::new(|| {
 ///
 /// Returns a vector of regex patterns for identifying test functions
 pub fn test_patterns() -> Vec<Regex> {
-    vec![
-        TEST_FUNCTION_PATTERN.clone(),
-        TEST_MACRO_PATTERN.clone(),
-    ]
+    vec![TEST_FUNCTION_PATTERN.clone(), TEST_MACRO_PATTERN.clone()]
 }
 
 /// Get all assertion patterns

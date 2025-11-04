@@ -26,7 +26,9 @@ use async_trait::async_trait;
 use mill_lang_common::{
     define_language_plugin, impl_capability_delegations, impl_language_plugin_basics,
 };
-use mill_plugin_api::{LanguagePlugin, ManifestData, ParsedSource, PluginResult, RefactoringProvider};
+use mill_plugin_api::{
+    LanguagePlugin, ManifestData, ParsedSource, PluginResult, RefactoringProvider,
+};
 use regex::Regex;
 use std::path::Path;
 
@@ -122,7 +124,7 @@ impl RefactoringProvider for JavaPlugin {
             end_col: 0,
         };
         refactoring::plan_extract_function(source, &range, function_name, file_path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))
+            .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
     }
 
     fn supports_extract_variable(&self) -> bool {
@@ -148,7 +150,7 @@ impl RefactoringProvider for JavaPlugin {
             variable_name,
             file_path,
         )
-        .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))
+        .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
     }
 
     fn supports_inline_variable(&self) -> bool {
@@ -163,7 +165,7 @@ impl RefactoringProvider for JavaPlugin {
         file_path: &str,
     ) -> PluginResult<mill_foundation::protocol::EditPlan> {
         refactoring::plan_inline_variable(source, variable_line, variable_col, file_path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))
+            .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
     }
 }
 
@@ -189,7 +191,9 @@ impl mill_plugin_api::AnalysisMetadata for JavaPlugin {
     }
 
     fn complexity_keywords(&self) -> Vec<&'static str> {
-        vec!["if", "else", "switch", "case", "for", "while", "catch", "&&", "||"]
+        vec![
+            "if", "else", "switch", "case", "for", "while", "catch", "&&", "||",
+        ]
     }
 
     fn nesting_penalty(&self) -> f32 {
@@ -346,9 +350,13 @@ public class Main {
     #[test]
     fn test_edge_scan_mixed_line_endings() {
         let plugin = JavaPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import java.util.List;\r\nimport java.util.Map;\nimport java.io.File;";
-        let refs = scanner.scan_references(content, "java.util", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(content, "java.util", ScanScope::All)
+            .expect("Should scan");
 
         // Debug output
         eprintln!("\n=== DEBUG: Java mixed line endings test ===");
@@ -356,8 +364,10 @@ public class Main {
         eprintln!("Searching for: 'java.util'");
         eprintln!("Number of references found: {}", refs.len());
         for (i, r) in refs.iter().enumerate() {
-            eprintln!("  Ref {}: text={:?}, line={}, column={}, length={}, kind={:?}",
-                i, r.text, r.line, r.column, r.length, r.kind);
+            eprintln!(
+                "  Ref {}: text={:?}, line={}, column={}, length={}, kind={:?}",
+                i, r.text, r.line, r.column, r.length, r.kind
+            );
         }
         eprintln!("=== END DEBUG ===\n");
 
@@ -383,7 +393,9 @@ public class Main {
     #[test]
     fn test_edge_scan_special_regex_chars() {
         let plugin = JavaPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import java.util.List;";
         // Test with special regex characters
         let result = scanner.scan_references(content, "java.*", ScanScope::All);
@@ -393,7 +405,9 @@ public class Main {
     #[test]
     fn test_edge_handle_null_bytes() {
         let plugin = JavaPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import java.util.List;\x00\nimport java.io.File;";
         let result = scanner.scan_references(content, "java.util", ScanScope::All);
         assert!(result.is_ok()); // Should not panic
@@ -411,27 +425,36 @@ public class Main {
         // Create a large Java file (~100KB, 5000 methods)
         let mut large_source = String::from("import java.util.List;\n\npublic class Large {\n");
         for i in 0..5000 {
-            large_source.push_str(&format!("    public int method{}() {{ return {}; }}\n", i, i));
+            large_source.push_str(&format!(
+                "    public int method{}() {{ return {}; }}\n",
+                i, i
+            ));
         }
         large_source.push_str("}\n");
 
         let start = Instant::now();
-        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            plugin.parse(&large_source).await
-        });
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { plugin.parse(&large_source).await });
         let duration = start.elapsed();
 
         assert!(result.is_ok(), "Should parse large file");
         let symbols = result.unwrap().symbols;
         assert!(symbols.len() >= 5000, "Should find at least 5000 methods");
-        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 5,
+            "Should parse within 5 seconds, took {:?}",
+            duration
+        );
     }
 
     #[test]
     fn test_performance_scan_many_references() {
         use std::time::Instant;
         let plugin = JavaPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
 
         // Create content with 10,000 references
         let mut content = String::from("import java.util.List;\n\n");
@@ -440,10 +463,16 @@ public class Main {
         }
 
         let start = Instant::now();
-        let refs = scanner.scan_references(&content, "java.util", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(&content, "java.util", ScanScope::All)
+            .expect("Should scan");
         let duration = start.elapsed();
 
         assert!(refs.len() >= 10001, "Should find import + qualified paths");
-        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 10,
+            "Should scan within 10 seconds, took {:?}",
+            duration
+        );
     }
 }

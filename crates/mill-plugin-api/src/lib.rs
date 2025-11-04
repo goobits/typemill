@@ -169,7 +169,9 @@ impl From<PluginApiError> for ApiError {
                 E1007_NOT_SUPPORTED,
                 format!("Operation not supported: {}", operation),
             ),
-            PluginApiError::InvalidInput { message } => ApiError::new(E1001_INVALID_REQUEST, message),
+            PluginApiError::InvalidInput { message } => {
+                ApiError::new(E1001_INVALID_REQUEST, message)
+            }
             PluginApiError::Internal { message } => {
                 ApiError::new(E1000_INTERNAL_SERVER_ERROR, message)
             }

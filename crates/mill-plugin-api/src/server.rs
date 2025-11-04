@@ -71,7 +71,7 @@ impl<P: LanguagePlugin + 'static> PluginServer<P> {
         let result = match self.dispatch(req.method.as_str(), req.params).await {
             Ok(value) => value,
             Err(e) => {
-                // `PluginError` has a `From` impl for `ApiError`, which can be converted
+                // `PluginApiError` has a `From` impl for `ApiError`, which can be converted
                 // to the JSON-RPC error format.
                 let api_error: mill_foundation::error::ApiError = e.into();
                 // JSON-RPC error code: -32603 = Internal error

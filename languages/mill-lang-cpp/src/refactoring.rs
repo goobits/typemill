@@ -9,15 +9,15 @@
 //! Complex cases involving templates, macros, or advanced C++ features
 //! may require manual intervention or LSP-based refactoring (clangd).
 
+use crate::ast_parser::get_cpp_language;
 use async_trait::async_trait;
 use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
-use mill_plugin_api::{PluginError, PluginResult, RefactoringProvider};
+use mill_plugin_api::{PluginApiError, PluginResult, RefactoringProvider};
 use std::collections::HashMap;
 use tree_sitter::{Node, Parser, Point};
-use crate::ast_parser::get_cpp_language;
 
 pub struct CppRefactoringProvider;
 
@@ -35,7 +35,7 @@ impl RefactoringProvider for CppRefactoringProvider {
         file_path: &str,
     ) -> PluginResult<EditPlan> {
         plan_inline_variable_impl(source, variable_line, variable_col, file_path)
-            .map_err(|e| PluginError::invalid_input(format!("Inline variable failed: {}", e)))
+            .map_err(|e| PluginApiError::invalid_input(format!("Inline variable failed: {}", e)))
     }
 
     fn supports_extract_function(&self) -> bool {
@@ -57,7 +57,7 @@ impl RefactoringProvider for CppRefactoringProvider {
             end_col: 0,
         };
         plan_extract_function_impl(source, &range, function_name, file_path)
-            .map_err(|e| PluginError::invalid_input(format!("Extract function failed: {}", e)))
+            .map_err(|e| PluginApiError::invalid_input(format!("Extract function failed: {}", e)))
     }
 
     fn supports_extract_variable(&self) -> bool {
@@ -83,7 +83,7 @@ impl RefactoringProvider for CppRefactoringProvider {
             variable_name,
             file_path,
         )
-        .map_err(|e| PluginError::invalid_input(format!("Extract variable failed: {}", e)))
+        .map_err(|e| PluginApiError::invalid_input(format!("Extract variable failed: {}", e)))
     }
 }
 
@@ -117,7 +117,8 @@ fn plan_extract_function_impl(
     let start_point = Point::new(range.start_line as usize - 1, range.start_col as usize);
     let end_point = Point::new(range.end_line as usize - 1, range.end_col as usize);
 
-    let selected_node = root.named_descendant_for_point_range(start_point, end_point)
+    let selected_node = root
+        .named_descendant_for_point_range(start_point, end_point)
         .ok_or_else(|| "Could not find a node for the selection".to_string())?;
 
     let selected_text = selected_node
@@ -213,10 +214,21 @@ fn plan_extract_variable_impl(
         .ok_or_else(|| "Failed to parse C++ source".to_string())?;
     let root = tree.root_node();
 
-    let start_byte = source.lines().take(start_line as usize - 1).map(|l| l.len() + 1).sum::<usize>() + start_col as usize;
-    let end_byte = source.lines().take(end_line as usize - 1).map(|l| l.len() + 1).sum::<usize>() + end_col as usize;
+    let start_byte = source
+        .lines()
+        .take(start_line as usize - 1)
+        .map(|l| l.len() + 1)
+        .sum::<usize>()
+        + start_col as usize;
+    let end_byte = source
+        .lines()
+        .take(end_line as usize - 1)
+        .map(|l| l.len() + 1)
+        .sum::<usize>()
+        + end_col as usize;
 
-    let selected_node = root.descendant_for_byte_range(start_byte, end_byte)
+    let selected_node = root
+        .descendant_for_byte_range(start_byte, end_byte)
         .ok_or_else(|| "Could not find a node for the selection".to_string())?;
 
     let expression_text = selected_node
@@ -558,7 +570,8 @@ void process() {
             end_line: 3,
             end_col: 44,
         };
-        let plan = plan_extract_function_impl(source, &range, "log_message", "process.cpp").unwrap();
+        let plan =
+            plan_extract_function_impl(source, &range, "log_message", "process.cpp").unwrap();
         assert_eq!(plan.edits.len(), 2);
         assert!(plan.edits[0].new_text.contains("void log_message()"));
         assert_eq!(plan.edits[1].new_text, "log_message();");
@@ -633,7 +646,9 @@ void process() {
             plan_extract_variable_impl(source, 3, 17, 3, 36, Some("msg".to_string()), "proc.cpp")
                 .unwrap();
         assert_eq!(plan.edits.len(), 2);
-        assert!(plan.edits[0].new_text.contains("auto msg = std::string(\"hello\");"));
+        assert!(plan.edits[0]
+            .new_text
+            .contains("auto msg = std::string(\"hello\");"));
     }
 
     #[test]
@@ -644,11 +659,20 @@ int compute() {
     return result;
 }
 "#;
-        let plan =
-            plan_extract_variable_impl(source, 3, 18, 3, 31, Some("doubled".to_string()), "comp.cpp")
-                .unwrap();
+        let plan = plan_extract_variable_impl(
+            source,
+            3,
+            18,
+            3,
+            31,
+            Some("doubled".to_string()),
+            "comp.cpp",
+        )
+        .unwrap();
         assert_eq!(plan.edits.len(), 2);
-        assert!(plan.edits[0].new_text.contains("auto doubled = (x * 2) + (y * 3);"));
+        assert!(plan.edits[0]
+            .new_text
+            .contains("auto doubled = (x * 2) + (y * 3);"));
     }
 
     #[test]
@@ -659,9 +683,7 @@ int main() {
     return x;
 }
 "#;
-        let plan =
-            plan_extract_variable_impl(source, 3, 12, 3, 17, None, "main.cpp")
-                .unwrap();
+        let plan = plan_extract_variable_impl(source, 3, 12, 3, 17, None, "main.cpp").unwrap();
         assert_eq!(plan.edits.len(), 2);
         assert!(plan.edits[0].new_text.contains("auto extracted = 5 * 3;"));
     }
@@ -729,7 +751,9 @@ void process() {
         assert!(plan.edits.len() >= 2);
 
         // Check for replacement edits
-        let replace_edits: Vec<_> = plan.edits.iter()
+        let replace_edits: Vec<_> = plan
+            .edits
+            .iter()
             .filter(|e| e.edit_type == EditType::Replace)
             .collect();
         assert!(!replace_edits.is_empty());
@@ -748,8 +772,7 @@ int compute() {
         assert!(plan.edits.len() >= 1);
 
         // Verify declaration is removed
-        let delete_edit = plan.edits.iter()
-            .find(|e| e.edit_type == EditType::Delete);
+        let delete_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Delete);
         assert!(delete_edit.is_some());
     }
 
@@ -768,7 +791,9 @@ void display() {
         // Should have 3 replace edits + 1 delete edit = 4 total
         assert!(plan.edits.len() >= 3);
 
-        let replace_edits: Vec<_> = plan.edits.iter()
+        let replace_edits: Vec<_> = plan
+            .edits
+            .iter()
             .filter(|e| e.edit_type == EditType::Replace)
             .collect();
         assert!(replace_edits.len() >= 2);
@@ -784,7 +809,7 @@ int main() {
 }
 "#;
         let range = CodeRange {
-            start_line: 10,  // Invalid line number
+            start_line: 10, // Invalid line number
             start_col: 0,
             end_line: 15,
             end_col: 0,
@@ -801,7 +826,8 @@ int main() {
 }
 "#;
         // Try to extract from whitespace
-        let result = plan_extract_variable_impl(source, 2, 0, 2, 3, Some("var".to_string()), "test.cpp");
+        let result =
+            plan_extract_variable_impl(source, 2, 0, 2, 3, Some("var".to_string()), "test.cpp");
         assert!(result.is_err());
     }
 

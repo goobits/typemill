@@ -77,7 +77,7 @@ impl LanguagePlugin for RustPlugin {
 
         // Parse the source into a syn AST and serialize it as JSON
         let ast: syn::File = syn::parse_file(source).map_err(|e| {
-            mill_plugin_api::PluginError::parse(format!("Failed to parse Rust code: {}", e))
+            mill_plugin_api::PluginApiError::parse(format!("Failed to parse Rust code: {}", e))
         })?;
 
         // Serialize the AST to JSON using quote
@@ -97,7 +97,7 @@ impl LanguagePlugin for RustPlugin {
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
         // Verify this is a Cargo.toml file
         if path.file_name().and_then(|s| s.to_str()) != Some("Cargo.toml") {
-            return Err(mill_plugin_api::PluginError::invalid_input(format!(
+            return Err(mill_plugin_api::PluginApiError::invalid_input(format!(
                 "Expected Cargo.toml, got: {:?}",
                 path.file_name()
             )));
@@ -319,7 +319,7 @@ impl mill_plugin_api::RefactoringProvider for RustPlugin {
         file_path: &str,
     ) -> mill_plugin_api::PluginResult<mill_foundation::protocol::EditPlan> {
         refactoring::plan_inline_variable(source, variable_line, variable_col, file_path).map_err(
-            |e| mill_plugin_api::PluginError::internal(format!("Rust refactoring error: {}", e)),
+            |e| mill_plugin_api::PluginApiError::internal(format!("Rust refactoring error: {}", e)),
         )
     }
 
@@ -337,7 +337,7 @@ impl mill_plugin_api::RefactoringProvider for RustPlugin {
     ) -> mill_plugin_api::PluginResult<mill_foundation::protocol::EditPlan> {
         refactoring::plan_extract_function(source, start_line, end_line, function_name, file_path)
             .map_err(|e| {
-                mill_plugin_api::PluginError::internal(format!("Rust refactoring error: {}", e))
+                mill_plugin_api::PluginApiError::internal(format!("Rust refactoring error: {}", e))
             })
     }
 
@@ -365,7 +365,7 @@ impl mill_plugin_api::RefactoringProvider for RustPlugin {
             file_path,
         )
         .map_err(|e| {
-            mill_plugin_api::PluginError::internal(format!("Rust refactoring error: {}", e))
+            mill_plugin_api::PluginApiError::internal(format!("Rust refactoring error: {}", e))
         })
     }
 }
@@ -377,7 +377,7 @@ impl mill_plugin_api::ImportAnalyzer for RustPlugin {
     ) -> mill_plugin_api::PluginResult<mill_foundation::protocol::ImportGraph> {
         // Read the file content
         let content = std::fs::read_to_string(file_path).map_err(|e| {
-            mill_plugin_api::PluginError::internal(format!("Failed to read file: {}", e))
+            mill_plugin_api::PluginApiError::internal(format!("Failed to read file: {}", e))
         })?;
 
         // Use the existing analyze_detailed_imports method
@@ -502,7 +502,7 @@ impl RustPlugin {
     ) -> PluginResult<Vec<std::path::PathBuf>> {
         // Handle empty module path
         if module_path.is_empty() {
-            return Err(mill_plugin_api::PluginError::invalid_input(
+            return Err(mill_plugin_api::PluginApiError::invalid_input(
                 "Module path cannot be empty",
             ));
         }
@@ -514,7 +514,7 @@ impl RustPlugin {
         // Start from src/ directory
         let src_dir = package_path.join("src");
         if !src_dir.exists() {
-            return Err(mill_plugin_api::PluginError::internal(format!(
+            return Err(mill_plugin_api::PluginApiError::internal(format!(
                 "Source directory not found: {}",
                 src_dir.display()
             )));
@@ -537,7 +537,7 @@ impl RustPlugin {
                 } else if mod_dir.exists() {
                     result_files.push(mod_dir);
                 } else {
-                    return Err(mill_plugin_api::PluginError::invalid_input(format!(
+                    return Err(mill_plugin_api::PluginApiError::invalid_input(format!(
                         "Module not found: {}",
                         module_path
                     )));
@@ -546,7 +546,7 @@ impl RustPlugin {
                 // Navigate to subdirectory
                 current_path = current_path.join(part);
                 if !current_path.exists() {
-                    return Err(mill_plugin_api::PluginError::invalid_input(format!(
+                    return Err(mill_plugin_api::PluginApiError::invalid_input(format!(
                         "Module path not found: {}",
                         current_path.display()
                     )));
@@ -596,7 +596,7 @@ impl RustPlugin {
 
         // Parse the source file
         let ast: File = syn::parse_file(source).map_err(|e| {
-            mill_plugin_api::PluginError::parse(format!("Failed to parse Rust code: {}", e))
+            mill_plugin_api::PluginApiError::parse(format!("Failed to parse Rust code: {}", e))
         })?;
 
         // Filter out module declarations matching the name
@@ -745,7 +745,7 @@ impl RustPlugin {
 
         while let Some(current_dir) = queue.pop() {
             let mut entries = fs::read_dir(&current_dir).await.map_err(|e| {
-                mill_plugin_api::PluginError::internal(format!(
+                mill_plugin_api::PluginApiError::internal(format!(
                     "Failed to read directory {}: {}",
                     current_dir.display(),
                     e
@@ -753,11 +753,14 @@ impl RustPlugin {
             })?;
 
             while let Some(entry) = entries.next_entry().await.map_err(|e| {
-                mill_plugin_api::PluginError::internal(format!("Failed to read entry: {}", e))
+                mill_plugin_api::PluginApiError::internal(format!("Failed to read entry: {}", e))
             })? {
                 let path = entry.path();
                 let metadata = entry.metadata().await.map_err(|e| {
-                    mill_plugin_api::PluginError::internal(format!("Failed to get metadata: {}", e))
+                    mill_plugin_api::PluginApiError::internal(format!(
+                        "Failed to get metadata: {}",
+                        e
+                    ))
                 })?;
 
                 if metadata.is_dir() {
@@ -795,7 +798,7 @@ impl RustPlugin {
         use syn::{File, Item};
 
         let ast: File = syn::parse_file(content).map_err(|e| {
-            mill_plugin_api::PluginError::parse(format!("Failed to parse Rust code: {}", e))
+            mill_plugin_api::PluginApiError::parse(format!("Failed to parse Rust code: {}", e))
         })?;
 
         let mut references = Vec::new();
@@ -1596,7 +1599,9 @@ fn тестфункция() {
     #[test]
     fn test_edge_scan_mixed_line_endings() {
         let plugin = RustPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "use std::collections::HashMap;\r\nuse std::io;\nuse std::fs;";
         // Should not panic with mixed line endings
         let _ = scanner.scan_references(content, "std::collections", ScanScope::All);
@@ -1623,7 +1628,9 @@ fn тестфункция() {
     #[test]
     fn test_edge_scan_special_regex_chars() {
         let plugin = RustPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "use std::collections::HashMap;";
         // Should not panic with special regex characters in module name
         let _ = scanner.scan_references(content, "std::.*", ScanScope::All);
@@ -1632,7 +1639,9 @@ fn тестфункция() {
     #[test]
     fn test_edge_handle_null_bytes() {
         let plugin = RustPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "use std::collections::HashMap;\x00\nuse std::io;";
         // Should not panic with null bytes in content
         let _ = scanner.scan_references(content, "std::collections", ScanScope::All);
@@ -1654,22 +1663,28 @@ fn тестфункция() {
         }
 
         let start = Instant::now();
-        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            plugin.parse(&large_source).await
-        });
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { plugin.parse(&large_source).await });
         let duration = start.elapsed();
 
         assert!(result.is_ok(), "Should parse large file");
         let symbols = result.unwrap().symbols;
         assert_eq!(symbols.len(), 5000, "Should find all 5000 functions");
-        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 5,
+            "Should parse within 5 seconds, took {:?}",
+            duration
+        );
     }
 
     #[test]
     fn test_performance_scan_many_references() {
         use std::time::Instant;
         let plugin = RustPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
 
         // Create content with 10,000 references
         let mut content = String::from("use std::collections::HashMap;\n\nfn test() {\n");
@@ -1683,7 +1698,11 @@ fn тестфункция() {
         let duration = start.elapsed();
 
         // Should complete within reasonable time (main goal: no timeout/hang)
-        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 10,
+            "Should scan within 10 seconds, took {:?}",
+            duration
+        );
         // Result may vary based on parser implementation
         let _ = result;
     }

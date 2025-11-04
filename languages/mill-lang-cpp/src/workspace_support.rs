@@ -20,7 +20,11 @@ impl WorkspaceSupport for CppWorkspaceSupport {
     }
 
     fn remove_workspace_member(&self, content: &str, member: &str) -> String {
-        let re = regex::Regex::new(&format!(r"\n?add_subdirectory\({}\)", regex::escape(member))).unwrap();
+        let re = regex::Regex::new(&format!(
+            r"\n?add_subdirectory\({}\)",
+            regex::escape(member)
+        ))
+        .unwrap();
         re.replace_all(content, "").to_string()
     }
 
@@ -39,7 +43,8 @@ impl WorkspaceSupport for CppWorkspaceSupport {
     fn update_package_name(&self, content: &str, new_name: &str) -> String {
         // Update project() declaration in CMakeLists.txt
         // Simple regex-based replacement
-        CMAKE_PROJECT_PATTERN.replace(content, format!("project({}", new_name))
+        CMAKE_PROJECT_PATTERN
+            .replace(content, format!("project({}", new_name))
             .to_string()
     }
 

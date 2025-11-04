@@ -2,7 +2,7 @@
 
 use crate::capabilities::Capabilities;
 use crate::{
-    error::{PluginError, PluginSystemError},
+    error::PluginSystemError,
     plugin::{LanguagePlugin, PluginMetadata},
     protocol::{PluginRequest, PluginResponse, ResponseMetadata},
     PluginResult,
@@ -304,9 +304,10 @@ impl SystemToolsPlugin {
         debug!(url = %args.url, "Fetching URL content");
 
         // Use reqwest to fetch the URL content
-        let response = reqwest::blocking::get(&args.url).map_err(|e| PluginSystemError::IoError {
-            message: format!("Failed to fetch URL: {}", e),
-        })?;
+        let response =
+            reqwest::blocking::get(&args.url).map_err(|e| PluginSystemError::IoError {
+                message: format!("Failed to fetch URL: {}", e),
+            })?;
 
         let html_content = response.text().map_err(|e| PluginSystemError::IoError {
             message: format!("Failed to read response text: {}", e),

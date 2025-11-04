@@ -1,9 +1,9 @@
 //! Plugin manager for orchestrating plugin operations
 
 use crate::registry::RegistryStatistics;
-use crate::{PluginSystemError, 
-    Capabilities, LanguagePlugin, PluginError, PluginMetadata, RuntimePluginManager, PluginRequest,
-    PluginResponse, PluginResult,
+use crate::{
+    Capabilities, LanguagePlugin, PluginMetadata, PluginRequest, PluginResponse, PluginResult,
+    PluginSystemError, RuntimePluginManager,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -500,7 +500,7 @@ impl Default for PluginManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{PluginSystemError, Capabilities, PluginMetadata, PluginRequest, PluginResponse};
+    use crate::{Capabilities, PluginMetadata, PluginRequest, PluginResponse, PluginSystemError};
     use async_trait::async_trait;
     use std::path::PathBuf;
 
@@ -531,7 +531,10 @@ mod tests {
 
         async fn handle_request(&self, request: PluginRequest) -> PluginResult<PluginResponse> {
             if self.should_fail {
-                Err(PluginSystemError::request_failed(&self.name, "test failure"))
+                Err(PluginSystemError::request_failed(
+                    &self.name,
+                    "test failure",
+                ))
             } else {
                 Ok(PluginResponse::success(
                     serde_json::json!({"method": request.method}),

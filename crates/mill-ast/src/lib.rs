@@ -32,11 +32,10 @@ pub use parser::{build_dependency_graph, build_import_graph, DependencyGraph};
 
 // Refactoring
 pub use refactoring::{
-    common, extract_function, extract_variable, inline_variable, CodeRange, ExtractVariableAnalysis,
-    ExtractableFunction, InlineVariableAnalysis, LspRefactoringService, VariableUsage,
+    common, extract_function, extract_variable, inline_variable, CodeRange,
+    ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis, LspRefactoringService,
+    VariableUsage,
 };
 
 // Transformer
-pub use transformer::{
-    apply_edit_plan, SkippedEdit, TransformResult, TransformStatistics,
-};
+pub use transformer::{apply_edit_plan, SkippedEdit, TransformResult, TransformStatistics};

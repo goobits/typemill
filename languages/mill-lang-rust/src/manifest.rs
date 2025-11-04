@@ -4,7 +4,7 @@
 //! manifest files, extracting dependency information, and updating dependencies.
 
 use mill_lang_common::read_manifest;
-use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginError, PluginResult};
+use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginApiError, PluginResult};
 use std::path::Path;
 use toml_edit::{value, DocumentMut, Item};
 
@@ -12,24 +12,24 @@ use toml_edit::{value, DocumentMut, Item};
 pub fn parse_cargo_toml(content: &str) -> PluginResult<ManifestData> {
     let doc = content
         .parse::<DocumentMut>()
-        .map_err(|e| PluginError::manifest(format!("Failed to parse Cargo.toml: {}", e)))?;
+        .map_err(|e| PluginApiError::manifest(format!("Failed to parse Cargo.toml: {}", e)))?;
 
     // Extract package information
     let package_table = doc
         .get("package")
         .and_then(|i| i.as_table())
-        .ok_or_else(|| PluginError::manifest("Missing [package] section in Cargo.toml"))?;
+        .ok_or_else(|| PluginApiError::manifest("Missing [package] section in Cargo.toml"))?;
 
     let name = package_table
         .get("name")
         .and_then(|i| i.as_str())
-        .ok_or_else(|| PluginError::manifest("Missing 'name' field in [package]"))?
+        .ok_or_else(|| PluginApiError::manifest("Missing 'name' field in [package]"))?
         .to_string();
 
     let version = package_table
         .get("version")
         .and_then(|i| i.as_str())
-        .ok_or_else(|| PluginError::manifest("Missing 'version' field in [package]"))?
+        .ok_or_else(|| PluginApiError::manifest("Missing 'version' field in [package]"))?
         .to_string();
 
     // Extract dependencies
@@ -41,8 +41,9 @@ pub fn parse_cargo_toml(content: &str) -> PluginResult<ManifestData> {
         version,
         dependencies,
         dev_dependencies,
-        raw_data: serde_json::to_value(doc.to_string())
-            .map_err(|e| PluginError::internal(format!("Failed to serialize manifest: {}", e)))?,
+        raw_data: serde_json::to_value(doc.to_string()).map_err(|e| {
+            PluginApiError::internal(format!("Failed to serialize manifest: {}", e))
+        })?,
     })
 }
 
@@ -114,7 +115,7 @@ pub fn rename_dependency(
 ) -> PluginResult<String> {
     let mut doc = content
         .parse::<DocumentMut>()
-        .map_err(|e| PluginError::manifest(format!("Failed to parse Cargo.toml: {}", e)))?;
+        .map_err(|e| PluginApiError::manifest(format!("Failed to parse Cargo.toml: {}", e)))?;
 
     // Helper function to preserve metadata when renaming
     fn rename_in_table(

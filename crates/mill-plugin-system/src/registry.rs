@@ -1,6 +1,8 @@
 //! Plugin registry for managing loaded plugins
 
-use crate::{PluginSystemError, Capabilities, LanguagePlugin, PluginError, PluginMetadata, PluginResult};
+use crate::{
+    Capabilities, LanguagePlugin, PluginMetadata, PluginResult, PluginSystemError,
+};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -504,7 +506,7 @@ pub(crate) struct RegistryStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{PluginSystemError, PluginMetadata, PluginRequest, PluginResponse};
+    use crate::{PluginMetadata, PluginRequest, PluginResponse, PluginSystemError};
     use async_trait::async_trait;
     use serde_json::Value;
     use std::path::PathBuf;

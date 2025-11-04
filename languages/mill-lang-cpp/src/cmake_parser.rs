@@ -2,12 +2,13 @@ use mill_plugin_api::{ManifestData, PluginResult};
 use serde_json::json;
 use std::path::Path;
 
+use crate::constants::{CMAKE_LINK_PATTERN, CMAKE_PROJECT_PATTERN, CMAKE_TARGET_PATTERN};
 use mill_plugin_api::{Dependency, DependencySource};
-use crate::constants::{CMAKE_PROJECT_PATTERN, CMAKE_TARGET_PATTERN, CMAKE_LINK_PATTERN};
 
 pub fn analyze_cmake_manifest(path: &Path) -> PluginResult<ManifestData> {
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| mill_plugin_api::PluginError::manifest(format!("Failed to read manifest: {}", e)))?;
+    let content = std::fs::read_to_string(path).map_err(|e| {
+        mill_plugin_api::PluginApiError::manifest(format!("Failed to read manifest: {}", e))
+    })?;
 
     let name = CMAKE_PROJECT_PATTERN
         .captures(&content)

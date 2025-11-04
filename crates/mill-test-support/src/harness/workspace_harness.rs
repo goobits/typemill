@@ -17,7 +17,7 @@ impl Language {
             Language::TypeScript,
             Language::Rust,
             Language::Python,
-            Language::Java,      // Maven/Gradle multi-module projects
+            Language::Java, // Maven/Gradle multi-module projects
         ]
     }
 }
@@ -37,9 +37,9 @@ pub enum WorkspaceOperation {
 pub enum WorkspaceExpectedBehavior {
     IsWorkspace(bool),
     MembersList(Vec<String>),
-    Added,  // Verify member was added by checking list contains it
-    Removed,  // Verify member was removed by checking list doesn't contain it
-    NameUpdated(String),  // Verify name matches expected
+    Added,               // Verify member was added by checking list contains it
+    Removed,             // Verify member was removed by checking list doesn't contain it
+    NameUpdated(String), // Verify name matches expected
     NotSupported,
 }
 

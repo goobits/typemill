@@ -5,7 +5,7 @@ use mill_lang_common::lsp::{
     check_binary_in_path, decompress_gzip, download_file, get_cache_dir, make_executable,
     verify_checksum, Platform,
 };
-use mill_plugin_api::{LspInstaller, PluginError, PluginResult};
+use mill_plugin_api::{LspInstaller, PluginApiError, PluginResult};
 use std::path::{Path, PathBuf};
 use tracing::{debug, info};
 
@@ -28,7 +28,7 @@ impl RustLspInstaller {
             ("macos", "x86_64") => "rust-analyzer-x86_64-apple-darwin.gz",
             ("macos", "aarch64") => "rust-analyzer-aarch64-apple-darwin.gz",
             (os, arch) => {
-                return Err(PluginError::not_supported(format!(
+                return Err(PluginApiError::not_supported(format!(
                     "rust-analyzer download not available for {}-{}",
                     os, arch
                 )))
@@ -54,7 +54,7 @@ impl RustLspInstaller {
                 "e2baa9d70672d4b58cb36d35f2975b7316814b7bcc1ded2eabbb59053be152a0"
             }
             (os, arch) => {
-                return Err(PluginError::not_supported(format!(
+                return Err(PluginApiError::not_supported(format!(
                     "rust-analyzer checksum not available for {}-{}",
                     os, arch
                 )))
@@ -101,20 +101,21 @@ impl LspInstaller for RustLspInstaller {
         let download_path = cache_dir.join("rust-analyzer.gz");
         download_file(&url, &download_path)
             .await
-            .map_err(|e| PluginError::internal(format!("Download failed: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("Download failed: {}", e)))?;
 
         // Verify checksum
-        verify_checksum(&download_path, &checksum)
-            .map_err(|e| PluginError::internal(format!("Checksum verification failed: {}", e)))?;
+        verify_checksum(&download_path, &checksum).map_err(|e| {
+            PluginApiError::internal(format!("Checksum verification failed: {}", e))
+        })?;
 
         // Decompress
         let binary_path = cache_dir.join("rust-analyzer");
         decompress_gzip(&download_path, &binary_path)
-            .map_err(|e| PluginError::internal(format!("Decompression failed: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("Decompression failed: {}", e)))?;
 
         // Make executable
         make_executable(&binary_path)
-            .map_err(|e| PluginError::internal(format!("Failed to make executable: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("Failed to make executable: {}", e)))?;
 
         // Clean up compressed file
         std::fs::remove_file(&download_path).ok();

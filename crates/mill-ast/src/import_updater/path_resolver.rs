@@ -136,9 +136,7 @@ impl ImportPathResolver {
         } else {
             // Fallback: Check common alias patterns if no plugin available
             // This is a temporary measure - ideally all alias detection should be via plugins
-            specifier.starts_with('@')
-                || specifier.starts_with('$')
-                || specifier.starts_with('~')
+            specifier.starts_with('@') || specifier.starts_with('$') || specifier.starts_with('~')
         }
     }
 
@@ -219,8 +217,11 @@ impl ImportPathResolver {
     ///
     /// * `Some(resolved_path)` if the specifier is an alias that was successfully resolved
     /// * `None` if no plugin can resolve this alias or it's not an alias
-    pub(crate) fn try_resolve_path_alias(&self, specifier: &str, importing_file: &Path) -> Option<String> {
-
+    pub(crate) fn try_resolve_path_alias(
+        &self,
+        specifier: &str,
+        importing_file: &Path,
+    ) -> Option<String> {
         // Get the file extension to find the right plugin
         let extension = importing_file.extension()?.to_str()?;
 

@@ -6,7 +6,7 @@
 
 pub mod cargo_util;
 
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_plugin_api::{PluginApiError, PluginResult};
 use std::path::Path;
 use toml_edit::DocumentMut;
 use tracing::debug;
@@ -44,13 +44,13 @@ pub fn add_workspace_member(
     workspace_root: &Path,
 ) -> PluginResult<String> {
     let mut doc = workspace_content.parse::<DocumentMut>().map_err(|e| {
-        PluginError::manifest(format!("Failed to parse workspace Cargo.toml: {}", e))
+        PluginApiError::manifest(format!("Failed to parse workspace Cargo.toml: {}", e))
     })?;
 
     // Calculate relative path from workspace root to new member
     let target_path = Path::new(new_member_path);
     let relative_path = pathdiff::diff_paths(target_path, workspace_root).ok_or_else(|| {
-        PluginError::internal("Failed to calculate relative path for workspace member")
+        PluginApiError::internal("Failed to calculate relative path for workspace member")
     })?;
 
     // Ensure [workspace.members] exists
@@ -60,7 +60,7 @@ pub fn add_workspace_member(
 
     let workspace = doc["workspace"]
         .as_table_mut()
-        .ok_or_else(|| PluginError::manifest("[workspace] is not a table"))?;
+        .ok_or_else(|| PluginApiError::manifest("[workspace] is not a table"))?;
 
     if !workspace.contains_key("members") {
         workspace["members"] = toml_edit::value(toml_edit::Array::new());
@@ -68,7 +68,7 @@ pub fn add_workspace_member(
 
     let members = workspace["members"]
         .as_array_mut()
-        .ok_or_else(|| PluginError::manifest("[workspace.members] is not an array"))?;
+        .ok_or_else(|| PluginApiError::manifest("[workspace.members] is not an array"))?;
 
     // Add new member if not already present
     let member_str = relative_path.to_string_lossy();
@@ -129,13 +129,14 @@ pub fn add_path_dependency(
 ) -> PluginResult<String> {
     let mut doc = cargo_content
         .parse::<DocumentMut>()
-        .map_err(|e| PluginError::manifest(format!("Failed to parse Cargo.toml: {}", e)))?;
+        .map_err(|e| PluginApiError::manifest(format!("Failed to parse Cargo.toml: {}", e)))?;
 
     // Calculate relative path from source to target
     let source_cargo_dir = source_path;
     let target_path = Path::new(dep_path);
-    let relative_path = pathdiff::diff_paths(target_path, source_cargo_dir)
-        .ok_or_else(|| PluginError::internal("Failed to calculate relative path for dependency"))?;
+    let relative_path = pathdiff::diff_paths(target_path, source_cargo_dir).ok_or_else(|| {
+        PluginApiError::internal("Failed to calculate relative path for dependency")
+    })?;
 
     // Add dependency to [dependencies] section
     if !doc.contains_key("dependencies") {
@@ -144,7 +145,7 @@ pub fn add_path_dependency(
 
     let deps = doc["dependencies"]
         .as_table_mut()
-        .ok_or_else(|| PluginError::manifest("[dependencies] is not a table"))?;
+        .ok_or_else(|| PluginApiError::manifest("[dependencies] is not a table"))?;
 
     // Create inline table for path dependency
     let mut dep_table = toml_edit::InlineTable::new();
@@ -195,8 +196,9 @@ pub fn generate_workspace_manifest(
 
     for member_path in member_paths {
         let target_path = Path::new(member_path);
-        let relative_path = pathdiff::diff_paths(target_path, workspace_root)
-            .ok_or_else(|| PluginError::internal("Failed to calculate relative path for member"))?;
+        let relative_path = pathdiff::diff_paths(target_path, workspace_root).ok_or_else(|| {
+            PluginApiError::internal("Failed to calculate relative path for member")
+        })?;
         members_relative.push(relative_path.to_string_lossy().to_string());
     }
 

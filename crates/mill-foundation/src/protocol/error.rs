@@ -229,7 +229,10 @@ macro_rules! log_error {
 }
 
 /// Helper function to serialize std::io::Error as a string
-pub(crate) fn serialize_io_error<S>(error: &std::io::Error, serializer: S) -> Result<S::Ok, S::Error>
+pub(crate) fn serialize_io_error<S>(
+    error: &std::io::Error,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
@@ -237,7 +240,10 @@ where
 }
 
 /// Helper function to serialize serde_json::Error as a string
-pub(crate) fn serialize_json_error<S>(error: &serde_json::Error, serializer: S) -> Result<S::Ok, S::Error>
+pub(crate) fn serialize_json_error<S>(
+    error: &serde_json::Error,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {

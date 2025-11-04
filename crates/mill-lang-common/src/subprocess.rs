@@ -18,7 +18,7 @@
 //! let functions: Vec<String> = run_ast_tool(tool, source)?;
 //! ```
 
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_plugin_api::{PluginApiError, PluginResult};
 use serde::de::DeserializeOwned;
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -109,12 +109,12 @@ fn execute_subprocess(tool: SubprocessAstTool, source: &str) -> PluginResult<Vec
     let tmp_dir = Builder::new()
         .prefix(&tool.temp_prefix)
         .tempdir()
-        .map_err(|e| PluginError::internal(format!("Failed to create temp dir: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to create temp dir: {}", e)))?;
 
     // Write embedded tool to temporary file
     let tool_path = tmp_dir.path().join(&tool.temp_filename);
     std::fs::write(&tool_path, &tool.embedded_source).map_err(|e| {
-        PluginError::internal(format!(
+        PluginApiError::internal(format!(
             "Failed to write {} to temp file: {}",
             tool.temp_filename, e
         ))
@@ -150,7 +150,7 @@ fn execute_subprocess(tool: SubprocessAstTool, source: &str) -> PluginResult<Vec
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| {
-            PluginError::parse(format!(
+            PluginApiError::parse(format!(
                 "Failed to spawn {} subprocess. Is {} installed and in PATH? Error: {}",
                 tool.runtime, tool.runtime, e
             ))
@@ -159,7 +159,7 @@ fn execute_subprocess(tool: SubprocessAstTool, source: &str) -> PluginResult<Vec
     // Write source code to stdin
     if let Some(mut stdin) = child.stdin.take() {
         stdin.write_all(source.as_bytes()).map_err(|e| {
-            PluginError::parse(format!(
+            PluginApiError::parse(format!(
                 "Failed to write to {} subprocess stdin: {}",
                 tool.runtime, e
             ))
@@ -168,7 +168,7 @@ fn execute_subprocess(tool: SubprocessAstTool, source: &str) -> PluginResult<Vec
 
     // Wait for subprocess to complete
     let output = child.wait_with_output().map_err(|e| {
-        PluginError::parse(format!(
+        PluginApiError::parse(format!(
             "Failed to wait for {} subprocess: {}",
             tool.runtime, e
         ))
@@ -182,7 +182,7 @@ fn execute_subprocess(tool: SubprocessAstTool, source: &str) -> PluginResult<Vec
             stderr = %stderr,
             "Subprocess failed"
         );
-        return Err(PluginError::parse(format!(
+        return Err(PluginApiError::parse(format!(
             "{} AST tool failed: {}",
             tool.runtime, stderr
         )));
@@ -204,7 +204,7 @@ fn execute_subprocess(tool: SubprocessAstTool, source: &str) -> PluginResult<Vec
 ///
 /// # Errors
 ///
-/// Returns `PluginError` if:
+/// Returns `PluginApiError` if:
 /// - Failed to create temporary directory or file
 /// - Failed to spawn subprocess
 /// - Subprocess returned non-zero exit code
@@ -220,7 +220,7 @@ pub fn run_ast_tool<T: DeserializeOwned>(tool: SubprocessAstTool, source: &str) 
             stdout_preview = %stdout_preview.chars().take(200).collect::<String>(),
             "Failed to parse JSON output"
         );
-        PluginError::parse(format!("Failed to parse JSON from AST tool: {}", e))
+        PluginApiError::parse(format!("Failed to parse JSON from AST tool: {}", e))
     })
 }
 

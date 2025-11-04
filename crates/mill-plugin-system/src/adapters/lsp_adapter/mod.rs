@@ -13,8 +13,8 @@ mod tests;
 
 use crate::{
     Capabilities, DiagnosticCapabilities, EditingCapabilities, IntelligenceCapabilities,
-    LanguagePlugin, NavigationCapabilities, PluginError, PluginMetadata, PluginRequest,
-    PluginResponse, PluginResult, PluginSystemError, RefactoringCapabilities,
+    LanguagePlugin, NavigationCapabilities, PluginMetadata, PluginRequest, PluginResponse,
+    PluginResult, PluginSystemError, RefactoringCapabilities,
 };
 use async_trait::async_trait;
 use serde_json::Value;

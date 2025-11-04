@@ -1,4 +1,6 @@
-use super::{FixOutcome, MarkdownContext, MarkdownFixer, TextEdit, generate_unified_diff, apply_edits};
+use super::{
+    apply_edits, generate_unified_diff, FixOutcome, MarkdownContext, MarkdownFixer, TextEdit,
+};
 use mill_foundation::protocol::analysis_result::{Position, Range};
 use serde_json::Value;
 

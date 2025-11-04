@@ -54,7 +54,7 @@ impl From<MillError> for ErrorResponse {
             code: err.error_code().to_string(),
             message: err.to_string(),
             category: err.category().to_string(),
-            details: None, // Can be enhanced later
+            details: None,    // Can be enhanced later
             suggestion: None, // Can be enhanced later
         }
     }

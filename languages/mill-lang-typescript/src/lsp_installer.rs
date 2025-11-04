@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use mill_lang_common::lsp::{check_binary_in_path, install_npm_package};
-use mill_plugin_api::{LspInstaller, PluginError, PluginResult};
+use mill_plugin_api::{LspInstaller, PluginApiError, PluginResult};
 use std::path::{Path, PathBuf};
 use tracing::debug;
 
@@ -32,7 +32,7 @@ impl LspInstaller for TypeScriptLspInstaller {
 
         install_npm_package("typescript-language-server", "typescript-language-server")
             .await
-            .map_err(|e| PluginError::internal(format!("npm install failed: {}", e)))
+            .map_err(|e| PluginApiError::internal(format!("npm install failed: {}", e)))
     }
 }
 

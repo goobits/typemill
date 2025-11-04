@@ -4,7 +4,7 @@
 //! extracting symbols, and analyzing imports.
 use mill_foundation::protocol::{ImportGraph, ImportInfo, ImportType, NamedImport};
 use mill_lang_common::ImportGraphBuilder;
-use mill_plugin_api::{PluginError, PluginResult, SourceLocation, Symbol, SymbolKind};
+use mill_plugin_api::{PluginApiError, PluginResult, SourceLocation, Symbol, SymbolKind};
 use syn::{visit::Visit, File, Item, ItemUse, UseTree};
 /// A visitor that walks the AST and collects function names
 struct FunctionVisitor {
@@ -143,7 +143,7 @@ fn extract_doc_comments(attrs: &[syn::Attribute]) -> Option<String> {
 /// Parses Rust source code and returns a list of all function and method names
 pub fn list_functions(source: &str) -> PluginResult<Vec<String>> {
     let ast: File = syn::parse_file(source)
-        .map_err(|e| PluginError::parse(format!("Failed to parse Rust code: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to parse Rust code: {}", e)))?;
     let mut visitor = FunctionVisitor {
         functions: Vec::new(),
     };
@@ -153,7 +153,7 @@ pub fn list_functions(source: &str) -> PluginResult<Vec<String>> {
 /// Parses Rust source code and extracts all symbols
 pub fn extract_symbols(source: &str) -> PluginResult<Vec<Symbol>> {
     let ast: File = syn::parse_file(source)
-        .map_err(|e| PluginError::parse(format!("Failed to parse Rust code: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to parse Rust code: {}", e)))?;
     let mut visitor = SymbolVisitor {
         symbols: Vec::new(),
         current_line: 0,
@@ -164,7 +164,7 @@ pub fn extract_symbols(source: &str) -> PluginResult<Vec<Symbol>> {
 /// Parse Rust imports using AST analysis with syn
 pub fn parse_imports(source: &str) -> PluginResult<Vec<ImportInfo>> {
     let syntax_tree: File = syn::parse_str(source)
-        .map_err(|e| PluginError::parse(format!("Failed to parse Rust source: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to parse Rust source: {}", e)))?;
     struct ImportVisitor {
         imports: Vec<ImportInfo>,
         current_line: u32,

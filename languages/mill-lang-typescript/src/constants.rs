@@ -23,16 +23,14 @@ pub const NODE_COMMAND: &str = "node";
 ///
 /// Matches: `import { foo } from "module"`, `import * as bar from './path'`
 pub static ES6_IMPORT_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"import\s+.*?from\s+['"]([^'"]+)['"]"#)
-        .expect("ES6 import regex should be valid")
+    Regex::new(r#"import\s+.*?from\s+['"]([^'"]+)['"]"#).expect("ES6 import regex should be valid")
 });
 
 /// CommonJS require pattern: require('module')
 ///
 /// Matches: `const foo = require("module")`, `require('./path')`
 pub static REQUIRE_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"require\s*\(\s*['"]([^'"]+)['"]\s*\)"#)
-        .expect("require regex should be valid")
+    Regex::new(r#"require\s*\(\s*['"]([^'"]+)['"]\s*\)"#).expect("require regex should be valid")
 });
 
 /// Dynamic import pattern: import('module')

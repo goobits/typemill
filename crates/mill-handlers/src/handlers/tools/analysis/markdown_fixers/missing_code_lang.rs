@@ -1,4 +1,6 @@
-use super::{FixOutcome, MarkdownContext, MarkdownFixer, TextEdit, generate_unified_diff, apply_edits};
+use super::{
+    apply_edits, generate_unified_diff, FixOutcome, MarkdownContext, MarkdownFixer, TextEdit,
+};
 use mill_foundation::protocol::analysis_result::{Position, Range};
 use regex::Regex;
 use serde_json::Value;
@@ -27,7 +29,12 @@ impl MissingCodeLangFixer {
         let toml_score = Self::toml_score(content);
 
         // Find the language with highest score
-        let max_score = rust_score.max(js_score).max(python_score).max(json_score).max(bash_score).max(toml_score);
+        let max_score = rust_score
+            .max(js_score)
+            .max(python_score)
+            .max(json_score)
+            .max(bash_score)
+            .max(toml_score);
 
         // Only suggest if confidence is high enough (score >= 3)
         // Score of 3 means multiple strong signals, reducing false positives
@@ -61,11 +68,17 @@ impl MissingCodeLangFixer {
         // Numbered lists like [0], [1], [2] (not TOML sections)
         let lines: Vec<&str> = trimmed.lines().collect();
         if lines.len() >= 2 {
-            let has_numbered_brackets = lines.iter().filter(|l| {
-                let t = l.trim();
-                // Match [0], [1], [2] etc. at start of line
-                t.starts_with('[') && t.len() >= 3 && t.chars().nth(1).map_or(false, |c| c.is_ascii_digit())
-            }).count() >= 2;
+            let has_numbered_brackets = lines
+                .iter()
+                .filter(|l| {
+                    let t = l.trim();
+                    // Match [0], [1], [2] etc. at start of line
+                    t.starts_with('[')
+                        && t.len() >= 3
+                        && t.chars().nth(1).map_or(false, |c| c.is_ascii_digit())
+                })
+                .count()
+                >= 2;
             if has_numbered_brackets {
                 return true;
             }
@@ -73,35 +86,56 @@ impl MissingCodeLangFixer {
 
         // Error messages (often contain keywords but aren't code)
         // Common patterns: "error:", "Error:", "ERROR:", "failed to"
-        if trimmed.starts_with("error:") || trimmed.starts_with("Error:") || trimmed.starts_with("ERROR:")
-            || trimmed.contains("failed to") || trimmed.contains("Failed to")
-            || trimmed.contains("error[E") { // Rust error codes
+        if trimmed.starts_with("error:")
+            || trimmed.starts_with("Error:")
+            || trimmed.starts_with("ERROR:")
+            || trimmed.contains("failed to")
+            || trimmed.contains("Failed to")
+            || trimmed.contains("error[E")
+        {
+            // Rust error codes
             return true;
         }
 
         // Test assertion patterns (contain code but aren't actual code)
-        if trimmed.contains("should contain") || trimmed.contains("Should contain")
-            || trimmed.contains("Actual:") || trimmed.contains("Expected:")
-            || trimmed.contains("should be") || trimmed.contains("Should be") {
+        if trimmed.contains("should contain")
+            || trimmed.contains("Should contain")
+            || trimmed.contains("Actual:")
+            || trimmed.contains("Expected:")
+            || trimmed.contains("should be")
+            || trimmed.contains("Should be")
+        {
             return true;
         }
 
         // Relative path imports (JavaScript/TypeScript, not Python)
         // Python uses module paths like "foo.bar", not "./foo" or "../bar"
-        if (trimmed.contains("from './") || trimmed.contains("from \"./")
-            || trimmed.contains("from '../") || trimmed.contains("from \"../"))
-            && trimmed.contains("import") {
+        if (trimmed.contains("from './")
+            || trimmed.contains("from \"./")
+            || trimmed.contains("from '../")
+            || trimmed.contains("from \"../"))
+            && trimmed.contains("import")
+        {
             return true;
         }
 
         // Numbered prose (1., 2., 3. or 1), 2), 3))
-        let has_numbered_prose = lines.iter().filter(|l| {
-            let t = l.trim();
-            // Match "1. ", "2. ", or "1) ", "2) "
-            (t.starts_with("1.") || t.starts_with("2.") || t.starts_with("3.") ||
-             t.starts_with("1)") || t.starts_with("2)") || t.starts_with("3)")) &&
-            t.len() > 2 && t.chars().nth(2) == Some(' ')
-        }).count() >= 2;
+        let has_numbered_prose = lines
+            .iter()
+            .filter(|l| {
+                let t = l.trim();
+                // Match "1. ", "2. ", or "1) ", "2) "
+                (t.starts_with("1.")
+                    || t.starts_with("2.")
+                    || t.starts_with("3.")
+                    || t.starts_with("1)")
+                    || t.starts_with("2)")
+                    || t.starts_with("3)"))
+                    && t.len() > 2
+                    && t.chars().nth(2) == Some(' ')
+            })
+            .count()
+            >= 2;
         if has_numbered_prose {
             return true;
         }
@@ -109,22 +143,32 @@ impl MissingCodeLangFixer {
         // Quoted strings (user instructions, not code)
         // Check if all non-empty lines start and end with quotes
         let non_empty_lines: Vec<&str> = trimmed.lines().filter(|l| !l.trim().is_empty()).collect();
-        if !non_empty_lines.is_empty() &&
-           non_empty_lines.iter().all(|line| {
-               let l = line.trim();
-               l.starts_with('"') && l.ends_with('"')
-           }) {
+        if !non_empty_lines.is_empty()
+            && non_empty_lines.iter().all(|line| {
+                let l = line.trim();
+                l.starts_with('"') && l.ends_with('"')
+            })
+        {
             return true;
         }
 
         // Directory tree patterns
-        if content.contains("├") || content.contains("│") || content.contains("└") || content.contains("─") {
+        if content.contains("├")
+            || content.contains("│")
+            || content.contains("└")
+            || content.contains("─")
+        {
             return true;
         }
 
         // ASCII art / box drawing
-        if content.contains("┌") || content.contains("┐") || content.contains("┘")
-            || content.contains("┬") || content.contains("┴") || content.contains("┤") {
+        if content.contains("┌")
+            || content.contains("┐")
+            || content.contains("┘")
+            || content.contains("┬")
+            || content.contains("┴")
+            || content.contains("┤")
+        {
             return true;
         }
 
@@ -134,9 +178,12 @@ impl MissingCodeLangFixer {
             // Shebang - not CLI output, likely bash/shell script
             return false;
         }
-        if first_line.starts_with('$') || first_line.starts_with('#')
-            || first_line.starts_with('>') || first_line.starts_with('%')
-            || first_line.starts_with("λ") {
+        if first_line.starts_with('$')
+            || first_line.starts_with('#')
+            || first_line.starts_with('>')
+            || first_line.starts_with('%')
+            || first_line.starts_with("λ")
+        {
             return true;
         }
 
@@ -146,48 +193,104 @@ impl MissingCodeLangFixer {
     /// Score content for Rust patterns
     fn rust_score(content: &str) -> usize {
         let mut score = 0;
-        if content.contains("fn ") { score += 2; }
-        if content.contains("impl ") { score += 2; }
-        if content.contains("pub ") { score += 1; }
-        if content.contains("use ") { score += 1; }
-        if content.contains("::") { score += 1; }
-        if content.contains("->") { score += 1; }
-        if content.contains("let ") { score += 1; }
-        if content.contains("struct ") { score += 1; }
-        if content.contains("enum ") { score += 1; }
-        if content.contains("mod ") { score += 1; }
+        if content.contains("fn ") {
+            score += 2;
+        }
+        if content.contains("impl ") {
+            score += 2;
+        }
+        if content.contains("pub ") {
+            score += 1;
+        }
+        if content.contains("use ") {
+            score += 1;
+        }
+        if content.contains("::") {
+            score += 1;
+        }
+        if content.contains("->") {
+            score += 1;
+        }
+        if content.contains("let ") {
+            score += 1;
+        }
+        if content.contains("struct ") {
+            score += 1;
+        }
+        if content.contains("enum ") {
+            score += 1;
+        }
+        if content.contains("mod ") {
+            score += 1;
+        }
         score
     }
 
     /// Score content for JavaScript/TypeScript patterns
     fn javascript_score(content: &str) -> usize {
         let mut score = 0;
-        if content.contains("function ") { score += 2; }
-        if content.contains("const ") { score += 1; }
-        if content.contains("let ") { score += 1; }
-        if content.contains("var ") { score += 1; }
-        if content.contains(" => ") { score += 2; }
-        if content.contains("interface ") { score += 1; }
-        if content.contains("type ") { score += 1; }
-        if content.contains("import ") { score += 1; }
-        if content.contains("export ") { score += 1; }
-        if content.contains("console.log") { score += 2; }
+        if content.contains("function ") {
+            score += 2;
+        }
+        if content.contains("const ") {
+            score += 1;
+        }
+        if content.contains("let ") {
+            score += 1;
+        }
+        if content.contains("var ") {
+            score += 1;
+        }
+        if content.contains(" => ") {
+            score += 2;
+        }
+        if content.contains("interface ") {
+            score += 1;
+        }
+        if content.contains("type ") {
+            score += 1;
+        }
+        if content.contains("import ") {
+            score += 1;
+        }
+        if content.contains("export ") {
+            score += 1;
+        }
+        if content.contains("console.log") {
+            score += 2;
+        }
         score
     }
 
     /// Score content for Python patterns
     fn python_score(content: &str) -> usize {
         let mut score = 0;
-        if content.contains("def ") { score += 2; }
-        if content.contains("class ") { score += 1; }
+        if content.contains("def ") {
+            score += 2;
+        }
+        if content.contains("class ") {
+            score += 1;
+        }
         // Be conservative with "import" and "from" - common in prose
         // Only count if followed by actual module patterns
-        if content.contains("import ") && (content.contains(".") || content.contains(" as ")) { score += 1; }
-        if content.contains("from ") && content.contains(" import ") && content.contains(".") { score += 2; }
-        if content.contains("    ") { score += 1; } // Indentation
-        if content.contains("self.") { score += 1; }
-        if content.contains("print(") { score += 1; }
-        if content.contains("__init__") { score += 2; }
+        if content.contains("import ") && (content.contains(".") || content.contains(" as ")) {
+            score += 1;
+        }
+        if content.contains("from ") && content.contains(" import ") && content.contains(".") {
+            score += 2;
+        }
+        if content.contains("    ") {
+            score += 1;
+        } // Indentation
+        if content.contains("self.") {
+            score += 1;
+        }
+        if content.contains("print(") {
+            score += 1;
+        }
+        if content.contains("__init__") {
+            score += 2;
+        }
         score
     }
 
@@ -199,9 +302,15 @@ impl MissingCodeLangFixer {
         }
 
         let mut score = 0;
-        if trimmed.starts_with('{') && trimmed.ends_with('}') { score += 2; }
-        if trimmed.starts_with('[') && trimmed.ends_with(']') { score += 2; }
-        if content.contains("\"") && content.contains(":") { score += 2; }
+        if trimmed.starts_with('{') && trimmed.ends_with('}') {
+            score += 2;
+        }
+        if trimmed.starts_with('[') && trimmed.ends_with(']') {
+            score += 2;
+        }
+        if content.contains("\"") && content.contains(":") {
+            score += 2;
+        }
 
         // Try parsing as JSON
         if serde_json::from_str::<Value>(content).is_ok() {
@@ -213,13 +322,27 @@ impl MissingCodeLangFixer {
     /// Score content for Bash/Shell patterns
     fn bash_score(content: &str) -> usize {
         let mut score = 0;
-        if content.contains("#!/bin/bash") || content.contains("#!/bin/sh") { score += 3; }
-        if content.contains("cargo ") { score += 1; }
-        if content.contains("npm ") { score += 1; }
-        if content.contains("git ") { score += 1; }
-        if content.contains(" && ") { score += 1; }
-        if content.contains("export ") { score += 1; }
-        if content.contains("echo ") { score += 1; }
+        if content.contains("#!/bin/bash") || content.contains("#!/bin/sh") {
+            score += 3;
+        }
+        if content.contains("cargo ") {
+            score += 1;
+        }
+        if content.contains("npm ") {
+            score += 1;
+        }
+        if content.contains("git ") {
+            score += 1;
+        }
+        if content.contains(" && ") {
+            score += 1;
+        }
+        if content.contains("export ") {
+            score += 1;
+        }
+        if content.contains("echo ") {
+            score += 1;
+        }
         score
     }
 
@@ -237,7 +360,9 @@ impl MissingCodeLangFixer {
             }
         }
         // TOML key-value: key = value
-        if content.contains(" = ") && !content.contains("==") { score += 2; }
+        if content.contains(" = ") && !content.contains("==") {
+            score += 2;
+        }
         score
     }
 
@@ -335,7 +460,8 @@ mod tests {
 
     #[test]
     fn test_missing_code_lang_fixer_detects_rust() {
-        let content = "```\npub fn main() {\n    let x = 42;\n    println!(\"hello\");\n}\n```".to_string();
+        let content =
+            "```\npub fn main() {\n    let x = 42;\n    println!(\"hello\");\n}\n```".to_string();
         let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
         let fixer = MissingCodeLangFixer;
 
@@ -473,14 +599,20 @@ mod tests {
 
     #[test]
     fn test_missing_code_lang_fixer_skips_undetectable_prose() {
-        let content = "```\nThis is some regular text content.\nIt doesn't match any language pattern.\n```".to_string();
+        let content =
+            "```\nThis is some regular text content.\nIt doesn't match any language pattern.\n```"
+                .to_string();
         let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
         let fixer = MissingCodeLangFixer;
 
         let outcome = fixer.apply(&ctx, &Value::Null);
 
         // Should skip since we can't confidently detect a language
-        assert_eq!(outcome.edits.len(), 0, "Should skip prose without clear language");
+        assert_eq!(
+            outcome.edits.len(),
+            0,
+            "Should skip prose without clear language"
+        );
         assert!(outcome.preview.is_none());
     }
 
@@ -501,14 +633,19 @@ mod tests {
             "  console.log(\"hello\");\n",
             "}\n",
             "```"
-        ).to_string();
+        )
+        .to_string();
         let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
         let fixer = MissingCodeLangFixer;
 
         let outcome = fixer.apply(&ctx, &Value::Null);
 
         // Should detect rust and js, skip the directory tree
-        assert_eq!(outcome.edits.len(), 2, "Should detect languages in code blocks");
+        assert_eq!(
+            outcome.edits.len(),
+            2,
+            "Should detect languages in code blocks"
+        );
         assert_eq!(outcome.edits[0].new_text, "```rust");
         assert_eq!(outcome.edits[1].new_text, "```javascript");
     }

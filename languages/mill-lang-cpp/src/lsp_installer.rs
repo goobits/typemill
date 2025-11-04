@@ -1,5 +1,5 @@
-use mill_plugin_api::{lsp_installer::LspInstaller, PluginResult, PluginError};
 use async_trait::async_trait;
+use mill_plugin_api::{lsp_installer::LspInstaller, PluginApiError, PluginResult};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -26,6 +26,8 @@ impl LspInstaller for CppLspInstaller {
         println!("  - Arch: sudo pacman -S clangd");
         println!("  - macOS: brew install llvm");
         // This is not a real installation, so we just return an error.
-        Err(PluginError::not_supported("Automatic installation of clangd"))
+        Err(PluginApiError::not_supported(
+            "Automatic installation of clangd",
+        ))
     }
 }

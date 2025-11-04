@@ -4,7 +4,9 @@
 //! to find references to specific modules/packages in import statements
 //! and qualified paths.
 
-use mill_plugin_api::{ModuleReference, ModuleReferenceScanner, PluginResult, ReferenceKind, ScanScope};
+use mill_plugin_api::{
+    ModuleReference, ModuleReferenceScanner, PluginResult, ReferenceKind, ScanScope,
+};
 use tracing::debug;
 
 /// Java module reference scanner
@@ -44,7 +46,9 @@ impl ModuleReferenceScanner for JavaModuleReferenceScanner {
 
             // Look for import statements
             if is_import_line {
-                if let Some(module_ref) = scan_import_statement(&line_no_strings, module_name, line_number) {
+                if let Some(module_ref) =
+                    scan_import_statement(&line_no_strings, module_name, line_number)
+                {
                     references.push(module_ref);
                 }
             }
@@ -52,7 +56,11 @@ impl ModuleReferenceScanner for JavaModuleReferenceScanner {
             // Look for qualified paths in code (if scope allows)
             // Skip qualified path scanning for import lines to avoid duplicates
             if !is_import_line && matches!(scope, ScanScope::QualifiedPaths | ScanScope::All) {
-                references.extend(scan_qualified_paths(&line_no_strings, module_name, line_number));
+                references.extend(scan_qualified_paths(
+                    &line_no_strings,
+                    module_name,
+                    line_number,
+                ));
             }
         }
 
@@ -119,14 +127,21 @@ fn remove_string_literals(line: &str) -> String {
 }
 
 /// Scan an import statement for module references
-fn scan_import_statement(line: &str, module_name: &str, line_number: usize) -> Option<ModuleReference> {
+fn scan_import_statement(
+    line: &str,
+    module_name: &str,
+    line_number: usize,
+) -> Option<ModuleReference> {
     let trimmed = line.trim();
 
     // Remove "import " prefix
     let import_part = trimmed.strip_prefix("import ")?.trim();
 
     // Remove "static " if present
-    let import_part = import_part.strip_prefix("static ").unwrap_or(import_part).trim();
+    let import_part = import_part
+        .strip_prefix("static ")
+        .unwrap_or(import_part)
+        .trim();
 
     // Remove trailing semicolon
     let import_path = import_part.strip_suffix(';').unwrap_or(import_part).trim();
@@ -166,7 +181,9 @@ fn scan_qualified_paths(line: &str, module_name: &str, line_number: usize) -> Ve
         let next_pos = absolute_pos + module_name.len();
         if next_pos < line.len() {
             let next_char = line.chars().nth(next_pos);
-            if next_char == Some('.') || (next_pos + 1 < line.len() && &line[next_pos..next_pos + 2] == "::") {
+            if next_char == Some('.')
+                || (next_pos + 1 < line.len() && &line[next_pos..next_pos + 2] == "::")
+            {
                 // Make sure it's not part of a string or comment
                 // (already handled by remove_string_literals, but double-check)
                 references.push(ModuleReference {
@@ -198,7 +215,9 @@ import com.example.utils.Helper;
 import java.util.List;
 "#;
         let scanner = JavaModuleReferenceScanner;
-        let refs = scanner.scan_references(source, "utils", ScanScope::TopLevelOnly).unwrap();
+        let refs = scanner
+            .scan_references(source, "utils", ScanScope::TopLevelOnly)
+            .unwrap();
 
         assert_eq!(refs.len(), 1);
         assert_eq!(refs[0].line, 4);
@@ -212,7 +231,9 @@ import java.util.List;
 import com.example.utils.*;
 "#;
         let scanner = JavaModuleReferenceScanner;
-        let refs = scanner.scan_references(source, "utils", ScanScope::TopLevelOnly).unwrap();
+        let refs = scanner
+            .scan_references(source, "utils", ScanScope::TopLevelOnly)
+            .unwrap();
 
         assert_eq!(refs.len(), 1);
         assert_eq!(refs[0].line, 2);
@@ -225,7 +246,9 @@ import com.example.utils.*;
 import static com.example.Helper.doSomething;
 "#;
         let scanner = JavaModuleReferenceScanner;
-        let refs = scanner.scan_references(source, "Helper", ScanScope::TopLevelOnly).unwrap();
+        let refs = scanner
+            .scan_references(source, "Helper", ScanScope::TopLevelOnly)
+            .unwrap();
 
         assert_eq!(refs.len(), 1);
         assert_eq!(refs[0].line, 2);
@@ -240,7 +263,9 @@ import static com.example.Helper.doSomething;
 import java.util.List;
 "#;
         let scanner = JavaModuleReferenceScanner;
-        let refs = scanner.scan_references(source, "utils", ScanScope::TopLevelOnly).unwrap();
+        let refs = scanner
+            .scan_references(source, "utils", ScanScope::TopLevelOnly)
+            .unwrap();
 
         assert_eq!(refs.len(), 0, "Comments should be ignored");
     }
@@ -252,7 +277,9 @@ import java.util.List;
 String path = "com.example.utils.Helper";
 "#;
         let scanner = JavaModuleReferenceScanner;
-        let refs = scanner.scan_references(source, "utils", ScanScope::TopLevelOnly).unwrap();
+        let refs = scanner
+            .scan_references(source, "utils", ScanScope::TopLevelOnly)
+            .unwrap();
 
         assert_eq!(refs.len(), 0, "String literals should be ignored");
     }
@@ -269,7 +296,9 @@ public class Main {
 }
 "#;
         let scanner = JavaModuleReferenceScanner;
-        let refs = scanner.scan_references(source, "Helper", ScanScope::QualifiedPaths).unwrap();
+        let refs = scanner
+            .scan_references(source, "Helper", ScanScope::QualifiedPaths)
+            .unwrap();
 
         assert_eq!(refs.len(), 2); // import + qualified path
         assert_eq!(refs[0].kind, ReferenceKind::Declaration);
@@ -285,7 +314,9 @@ import com.example.utils.Another;
 import java.util.List;
 "#;
         let scanner = JavaModuleReferenceScanner;
-        let refs = scanner.scan_references(source, "utils", ScanScope::TopLevelOnly).unwrap();
+        let refs = scanner
+            .scan_references(source, "utils", ScanScope::TopLevelOnly)
+            .unwrap();
 
         assert_eq!(refs.len(), 2);
         assert_eq!(refs[0].line, 2);
@@ -299,7 +330,9 @@ import java.util.List;
 import java.io.File;
 "#;
         let scanner = JavaModuleReferenceScanner;
-        let refs = scanner.scan_references(source, "utils", ScanScope::TopLevelOnly).unwrap();
+        let refs = scanner
+            .scan_references(source, "utils", ScanScope::TopLevelOnly)
+            .unwrap();
 
         assert_eq!(refs.len(), 0);
     }

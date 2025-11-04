@@ -13,8 +13,8 @@ mod tests;
 mod path_safety_tests;
 
 // Re-export public types
-pub use mill_foundation::protocol::EditPlanResult;
 pub use self::utils::DocumentationUpdateReport;
+pub use mill_foundation::protocol::EditPlanResult;
 
 use crate::services::coordination::lock_manager::LockManager;
 use crate::services::coordination::operation_queue::OperationQueue;

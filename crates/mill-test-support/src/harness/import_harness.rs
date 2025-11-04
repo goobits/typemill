@@ -156,7 +156,10 @@ impl ImportScenarios {
                 ),
                 Language::Java => (
                     "package com.example;\n\nimport java.util.List;\nimport java.util.ArrayList;\n",
-                    vec!["java.util.List".to_string(), "java.util.ArrayList".to_string()],
+                    vec![
+                        "java.util.List".to_string(),
+                        "java.util.ArrayList".to_string(),
+                    ],
                 ),
                 Language::Go => (
                     "package main\n\nimport \"fmt\"\nimport \"os\"\n",
@@ -164,7 +167,10 @@ impl ImportScenarios {
                 ),
                 Language::CSharp => (
                     "using System;\nusing System.Collections.Generic;\n",
-                    vec!["System".to_string(), "System.Collections.Generic".to_string()],
+                    vec![
+                        "System".to_string(),
+                        "System.Collections.Generic".to_string(),
+                    ],
                 ),
                 Language::Swift => (
                     "import Foundation\nimport UIKit\n",
@@ -199,36 +205,21 @@ impl ImportScenarios {
                 ),
                 Language::Rust => (
                     "use std::collections::HashMap;\nuse crate::utils::helper;\n",
-                    "std::collections",  // Rust uses module paths
+                    "std::collections", // Rust uses module paths
                 ),
-                Language::Python => (
-                    "import os\nfrom typing import List\n",
-                    "os",
-                ),
+                Language::Python => ("import os\nfrom typing import List\n", "os"),
                 Language::Java => (
                     "package com.example;\n\nimport java.util.List;\nimport java.util.ArrayList;\n",
                     "java.util.List",
                 ),
-                Language::Go => (
-                    "package main\n\nimport \"fmt\"\nimport \"os\"\n",
-                    "fmt",
-                ),
+                Language::Go => ("package main\n\nimport \"fmt\"\nimport \"os\"\n", "fmt"),
                 Language::CSharp => (
                     "using System;\nusing System.Collections.Generic;\n",
                     "System",
                 ),
-                Language::Swift => (
-                    "import Foundation\nimport UIKit\n",
-                    "Foundation",
-                ),
-                Language::C => (
-                    "#include <stdio.h>\n#include <stdlib.h>\n",
-                    "stdio.h",
-                ),
-                Language::Cpp => (
-                    "#include <iostream>\n#include <vector>\n",
-                    "iostream",
-                ),
+                Language::Swift => ("import Foundation\nimport UIKit\n", "Foundation"),
+                Language::C => ("#include <stdio.h>\n#include <stdlib.h>\n", "stdio.h"),
+                Language::Cpp => ("#include <iostream>\n#include <vector>\n", "iostream"),
             };
 
             ImportFixture {
@@ -254,34 +245,19 @@ impl ImportScenarios {
                     "use std::collections::HashMap;\nuse crate::utils::helper;\n",
                     "std::fs",
                 ),
-                Language::Python => (
-                    "import os\nfrom typing import List\n",
-                    "json",
-                ),
+                Language::Python => ("import os\nfrom typing import List\n", "json"),
                 Language::Java => (
                     "package com.example;\n\nimport java.util.List;\nimport java.util.ArrayList;\n",
                     "java.io.File",
                 ),
-                Language::Go => (
-                    "package main\n\nimport \"fmt\"\nimport \"os\"\n",
-                    "net",
-                ),
+                Language::Go => ("package main\n\nimport \"fmt\"\nimport \"os\"\n", "net"),
                 Language::CSharp => (
                     "using System;\nusing System.Collections.Generic;\n",
                     "System.IO",
                 ),
-                Language::Swift => (
-                    "import Foundation\nimport UIKit\n",
-                    "SwiftUI",
-                ),
-                Language::C => (
-                    "#include <stdio.h>\n#include <stdlib.h>\n",
-                    "string.h",
-                ),
-                Language::Cpp => (
-                    "#include <iostream>\n#include <vector>\n",
-                    "string",
-                ),
+                Language::Swift => ("import Foundation\nimport UIKit\n", "SwiftUI"),
+                Language::C => ("#include <stdio.h>\n#include <stdlib.h>\n", "string.h"),
+                Language::Cpp => ("#include <iostream>\n#include <vector>\n", "string"),
             };
 
             ImportFixture {
@@ -305,36 +281,18 @@ impl ImportScenarios {
                 ),
                 Language::Rust => (
                     "use std::collections::HashMap;\n\nfn main() {}\n",
-                    "serde",  // This creates "use serde;" with module_path "serde" (exact match)
+                    "serde", // This creates "use serde;" with module_path "serde" (exact match)
                 ),
-                Language::Python => (
-                    "import os\n\ndef main():\n    pass\n",
-                    "sys",
-                ),
+                Language::Python => ("import os\n\ndef main():\n    pass\n", "sys"),
                 Language::Java => (
                     "package com.example;\n\nimport java.util.List;\n\nclass Main {}\n",
                     "java.util.Map",
                 ),
-                Language::Go => (
-                    "package main\n\nimport \"fmt\"\n\nfunc main() {}\n",
-                    "os",
-                ),
-                Language::CSharp => (
-                    "using System;\n\nclass Program {}\n",
-                    "System.IO",
-                ),
-                Language::Swift => (
-                    "import Foundation\n\nfunc main() {}\n",
-                    "UIKit",
-                ),
-                Language::C => (
-                    "#include <stdio.h>\n\nint main() {}\n",
-                    "stdlib.h",
-                ),
-                Language::Cpp => (
-                    "#include <iostream>\n\nint main() {}\n",
-                    "vector",
-                ),
+                Language::Go => ("package main\n\nimport \"fmt\"\n\nfunc main() {}\n", "os"),
+                Language::CSharp => ("using System;\n\nclass Program {}\n", "System.IO"),
+                Language::Swift => ("import Foundation\n\nfunc main() {}\n", "UIKit"),
+                Language::C => ("#include <stdio.h>\n\nint main() {}\n", "stdlib.h"),
+                Language::Cpp => ("#include <iostream>\n\nint main() {}\n", "vector"),
             };
 
             ImportFixture {
@@ -353,7 +311,7 @@ impl ImportScenarios {
         ImportTestCase::new("add_import_to_empty").with_all_languages(|lang| {
             let (source, module_to_add) = match lang {
                 Language::TypeScript => ("", "./utils"),
-                Language::Rust => ("", "serde"),  // Creates "use serde;" with module_path "serde" (exact match)
+                Language::Rust => ("", "serde"), // Creates "use serde;" with module_path "serde" (exact match)
                 Language::Python => ("", "os"),
                 Language::Java => ("", "java.util.List"),
                 Language::Go => ("", "fmt"),
@@ -384,36 +342,21 @@ impl ImportScenarios {
                 ),
                 Language::Rust => (
                     "use std::collections::HashMap;\nuse serde::Serialize;\n",
-                    "serde",  // Single segment matches both "serde" and "serde :: Serialize" in quote! output
+                    "serde", // Single segment matches both "serde" and "serde :: Serialize" in quote! output
                 ),
-                Language::Python => (
-                    "import os\nfrom typing import List\n",
-                    "os",
-                ),
+                Language::Python => ("import os\nfrom typing import List\n", "os"),
                 Language::Java => (
                     "package com.example;\n\nimport java.util.List;\nimport java.util.ArrayList;\n",
                     "java.util.List",
                 ),
-                Language::Go => (
-                    "package main\n\nimport \"fmt\"\nimport \"os\"\n",
-                    "fmt",
-                ),
+                Language::Go => ("package main\n\nimport \"fmt\"\nimport \"os\"\n", "fmt"),
                 Language::CSharp => (
                     "using System;\nusing System.Collections.Generic;\n",
                     "System",
                 ),
-                Language::Swift => (
-                    "import Foundation\nimport UIKit\n",
-                    "Foundation",
-                ),
-                Language::C => (
-                    "#include <stdio.h>\n#include <stdlib.h>\n",
-                    "stdio.h",
-                ),
-                Language::Cpp => (
-                    "#include <iostream>\n#include <vector>\n",
-                    "iostream",
-                ),
+                Language::Swift => ("import Foundation\nimport UIKit\n", "Foundation"),
+                Language::C => ("#include <stdio.h>\n#include <stdlib.h>\n", "stdio.h"),
+                Language::Cpp => ("#include <iostream>\n#include <vector>\n", "iostream"),
             };
 
             ImportFixture {

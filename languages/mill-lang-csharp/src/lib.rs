@@ -18,7 +18,7 @@ use mill_lang_common::{
 };
 use mill_plugin_api::{
     ImportAnalyzer, LanguagePlugin, ManifestData, ManifestUpdater, ModuleReferenceScanner,
-    ParsedSource, PluginError, PluginResult, RefactoringProvider,
+    ParsedSource, PluginApiError, PluginResult, RefactoringProvider,
 };
 use std::path::Path;
 
@@ -107,7 +107,7 @@ impl RefactoringProvider for CsharpPlugin {
             .nth(end_line as usize)
             .map(|l| l.len() as u32)
             .ok_or_else(|| {
-                PluginError::invalid_input(format!("Line {} exceeds source length", end_line))
+                PluginApiError::invalid_input(format!("Line {} exceeds source length", end_line))
             })?;
 
         let range = CodeRange {
@@ -117,7 +117,7 @@ impl RefactoringProvider for CsharpPlugin {
             end_col,
         };
         self::refactoring::plan_extract_function(source, &range, function_name, file_path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))
+            .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
     }
 
     fn supports_extract_variable(&self) -> bool {
@@ -143,7 +143,7 @@ impl RefactoringProvider for CsharpPlugin {
             variable_name,
             file_path,
         )
-        .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))
+        .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
     }
 
     fn supports_inline_variable(&self) -> bool {
@@ -158,7 +158,7 @@ impl RefactoringProvider for CsharpPlugin {
         file_path: &str,
     ) -> PluginResult<EditPlan> {
         self::refactoring::plan_inline_variable(source, variable_line, variable_col, file_path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))
+            .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
     }
 }
 
@@ -182,8 +182,10 @@ impl ModuleReferenceScanner for CsharpPlugin {
         // Compile qualified path regex once outside the loop for performance
         let qualified_re = if scope == ScanScope::QualifiedPaths || scope == ScanScope::All {
             let qualified_pattern = (constants::QUALIFIED_PATH_PATTERN)(module_name);
-            Some(regex::Regex::new(&qualified_pattern)
-                .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?)
+            Some(
+                regex::Regex::new(&qualified_pattern)
+                    .map_err(|e| PluginApiError::internal(format!("Invalid regex: {}", e)))?,
+            )
         } else {
             None
         };
@@ -255,8 +257,9 @@ impl ImportAnalyzer for CsharpPlugin {
         &self,
         file_path: &Path,
     ) -> PluginResult<mill_foundation::protocol::ImportGraph> {
-        let content = std::fs::read_to_string(file_path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(format!("Failed to read file: {}", e)))?;
+        let content = std::fs::read_to_string(file_path).map_err(|e| {
+            mill_plugin_api::PluginApiError::internal(format!("Failed to read file: {}", e))
+        })?;
 
         let imports = parser::parse_source(&content)?
             .symbols
@@ -286,7 +289,7 @@ impl ImportAnalyzer for CsharpPlugin {
             source_file: file_path
                 .to_str()
                 .ok_or_else(|| {
-                    PluginError::internal(format!("Invalid file path: {:?}", file_path))
+                    PluginApiError::internal(format!("Invalid file path: {:?}", file_path))
                 })?
                 .to_string(),
             imports,
@@ -311,8 +314,11 @@ impl ManifestUpdater for CsharpPlugin {
         new_name: &str,
         new_version: Option<&str>,
     ) -> PluginResult<String> {
-        let content = tokio::fs::read_to_string(manifest_path).await
-            .map_err(|e| mill_plugin_api::PluginError::internal(format!("Failed to read manifest: {}", e)))?;
+        let content = tokio::fs::read_to_string(manifest_path)
+            .await
+            .map_err(|e| {
+                mill_plugin_api::PluginApiError::internal(format!("Failed to read manifest: {}", e))
+            })?;
 
         manifest::update_package_reference(&content, old_name, new_name, new_version)
     }
@@ -346,7 +352,14 @@ impl mill_plugin_api::AnalysisMetadata for CsharpPlugin {
     }
 
     fn visibility_keywords(&self) -> Vec<&'static str> {
-        vec!["public", "private", "protected", "internal", "protected internal", "private protected"]
+        vec![
+            "public",
+            "private",
+            "protected",
+            "internal",
+            "protected internal",
+            "private protected",
+        ]
     }
 
     fn interface_keywords(&self) -> Vec<&'static str> {
@@ -354,7 +367,9 @@ impl mill_plugin_api::AnalysisMetadata for CsharpPlugin {
     }
 
     fn complexity_keywords(&self) -> Vec<&'static str> {
-        vec!["if", "else", "switch", "case", "for", "foreach", "while", "catch", "&&", "||", "??"]
+        vec![
+            "if", "else", "switch", "case", "for", "foreach", "while", "catch", "&&", "||", "??",
+        ]
     }
 
     fn nesting_penalty(&self) -> f32 {
@@ -497,10 +512,7 @@ namespace MyNamespace
 
         let graph = analyzer.build_import_graph(temp_file.path()).unwrap();
         assert_eq!(graph.imports.len(), 2);
-        assert!(graph
-            .imports
-            .iter()
-            .any(|i| i.module_path == "System"));
+        assert!(graph.imports.iter().any(|i| i.module_path == "System"));
     }
 
     #[tokio::test]
@@ -637,9 +649,13 @@ class Main {
     #[test]
     fn test_edge_scan_mixed_line_endings() {
         let plugin = CsharpPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "using System.Collections.Generic;\r\nusing System.Linq;\nusing System.IO;";
-        let refs = scanner.scan_references(content, "System.Collections.Generic", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(content, "System.Collections.Generic", ScanScope::All)
+            .expect("Should scan");
         assert_eq!(refs.len(), 1);
     }
 
@@ -662,7 +678,9 @@ class Main {
     #[test]
     fn test_edge_scan_special_regex_chars() {
         let plugin = CsharpPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "using System.Collections.Generic;";
         // Test with special regex characters
         let result = scanner.scan_references(content, "System.*", ScanScope::All);
@@ -672,7 +690,9 @@ class Main {
     #[test]
     fn test_edge_handle_null_bytes() {
         let plugin = CsharpPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "using System.Collections.Generic;\x00\nusing System.Linq;";
         let result = scanner.scan_references(content, "System.Collections.Generic", ScanScope::All);
         assert!(result.is_ok()); // Should not panic
@@ -689,16 +709,18 @@ class Main {
 
         // Skip test if .NET SDK is not available (check with small parse)
         let check_source = "class Test { public void Method() {} }";
-        let check_result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            plugin.parse(check_source).await
-        });
+        let check_result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { plugin.parse(check_source).await });
 
         match check_result {
             Ok(parsed) if parsed.symbols.len() >= 2 => {
                 // .NET available (found class + method)
             }
             _ => {
-                eprintln!("Skipping test: .NET SDK not available (parser fallback only finds 2 symbols)");
+                eprintln!(
+                    "Skipping test: .NET SDK not available (parser fallback only finds 2 symbols)"
+                );
                 return;
             }
         }
@@ -706,27 +728,40 @@ class Main {
         // Create a large C# file (~100KB, 5000 methods)
         let mut large_source = String::from("using System.Collections.Generic;\n\nclass Large {\n");
         for i in 0..5000 {
-            large_source.push_str(&format!("    public int Method{}() {{ return {}; }}\n", i, i));
+            large_source.push_str(&format!(
+                "    public int Method{}() {{ return {}; }}\n",
+                i, i
+            ));
         }
         large_source.push_str("}\n");
 
         let start = Instant::now();
-        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            plugin.parse(&large_source).await
-        });
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { plugin.parse(&large_source).await });
         let duration = start.elapsed();
 
         assert!(result.is_ok(), "Should parse large file");
         let symbols = result.unwrap().symbols;
-        assert!(symbols.len() >= 5000, "Should find at least 5000 methods, found {}", symbols.len());
-        assert!(duration.as_secs() < 15, "Should parse within 15 seconds, took {:?}", duration);
+        assert!(
+            symbols.len() >= 5000,
+            "Should find at least 5000 methods, found {}",
+            symbols.len()
+        );
+        assert!(
+            duration.as_secs() < 15,
+            "Should parse within 15 seconds, took {:?}",
+            duration
+        );
     }
 
     #[test]
     fn test_performance_scan_many_references() {
         use std::time::Instant;
         let plugin = CsharpPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
 
         // Create content with 10,000 references
         let mut content = String::from("using System.Collections.Generic;\n\n");
@@ -735,11 +770,17 @@ class Main {
         }
 
         let start = Instant::now();
-        let refs = scanner.scan_references(&content, "System.Collections.Generic", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(&content, "System.Collections.Generic", ScanScope::All)
+            .expect("Should scan");
         let duration = start.elapsed();
 
         assert!(refs.len() >= 10001, "Should find using + qualified paths");
         // Large file scanning is acceptable at ~13s for 10,000+ references with complex regex
-        assert!(duration.as_secs() < 15, "Should scan within 15 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 15,
+            "Should scan within 15 seconds, took {:?}",
+            duration
+        );
     }
 }

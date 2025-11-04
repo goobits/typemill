@@ -17,7 +17,9 @@ fn test_scan_references_all() {
     let plugin = CPlugin::default();
     let scanner = plugin.module_reference_scanner().unwrap();
 
-    let references = scanner.scan_references(SAMPLE_CODE, "", ScanScope::All).unwrap();
+    let references = scanner
+        .scan_references(SAMPLE_CODE, "", ScanScope::All)
+        .unwrap();
 
     assert_eq!(references.len(), 3);
     assert_eq!(references[0].text, "stdio.h");
@@ -33,7 +35,9 @@ fn test_scan_references_code_only() {
     let plugin = CPlugin::default();
     let scanner = plugin.module_reference_scanner().unwrap();
 
-    let references = scanner.scan_references(SAMPLE_CODE, "", ScanScope::AllUseStatements).unwrap();
+    let references = scanner
+        .scan_references(SAMPLE_CODE, "", ScanScope::AllUseStatements)
+        .unwrap();
 
     assert_eq!(references.len(), 2);
     assert_eq!(references[0].text, "stdio.h");

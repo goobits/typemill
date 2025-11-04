@@ -88,10 +88,9 @@ impl LanguagePlugin for PythonPlugin {
     }
 
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
-        let filename = path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .ok_or_else(|| mill_plugin_api::PluginError::invalid_input("Invalid manifest path"))?;
+        let filename = path.file_name().and_then(|s| s.to_str()).ok_or_else(|| {
+            mill_plugin_api::PluginApiError::invalid_input("Invalid manifest path")
+        })?;
 
         debug!(filename = %filename, path = ?path, "Analyzing Python manifest");
 
@@ -100,7 +99,7 @@ impl LanguagePlugin for PythonPlugin {
             "pyproject.toml" => manifest::parse_pyproject_toml(path).await,
             "setup.py" => manifest::parse_setup_py(path).await,
             "Pipfile" => manifest::parse_pipfile(path).await,
-            _ => Err(mill_plugin_api::PluginError::not_supported(format!(
+            _ => Err(mill_plugin_api::PluginApiError::not_supported(format!(
                 "Unsupported Python manifest file: {}",
                 filename
             ))),
@@ -190,11 +189,11 @@ impl mill_plugin_api::ManifestUpdater for PythonPlugin {
                     version,
                     None, // Use default "dependencies" section
                 )
-                .map_err(mill_plugin_api::PluginError::internal)
+                .map_err(mill_plugin_api::PluginApiError::internal)
             } else {
                 // No version provided, return unchanged
                 std::fs::read_to_string(manifest_path).map_err(|e| {
-                    mill_plugin_api::PluginError::internal(format!(
+                    mill_plugin_api::PluginApiError::internal(format!(
                         "Failed to read manifest: {}",
                         e
                     ))
@@ -228,7 +227,7 @@ impl mill_plugin_api::RefactoringProvider for PythonPlugin {
         file_path: &str,
     ) -> mill_plugin_api::PluginResult<mill_foundation::protocol::EditPlan> {
         refactoring::plan_inline_variable(source, variable_line, variable_col, file_path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))
+            .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
     }
 
     fn supports_extract_function(&self) -> bool {
@@ -256,7 +255,7 @@ impl mill_plugin_api::RefactoringProvider for PythonPlugin {
         };
 
         refactoring::plan_extract_function(source, &range, function_name, file_path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))
+            .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
     }
 
     fn supports_extract_variable(&self) -> bool {
@@ -282,7 +281,7 @@ impl mill_plugin_api::RefactoringProvider for PythonPlugin {
             variable_name,
             file_path,
         )
-        .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))
+        .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
     }
 }
 
@@ -293,7 +292,7 @@ impl mill_plugin_api::ImportAnalyzer for PythonPlugin {
     ) -> mill_plugin_api::PluginResult<mill_foundation::protocol::ImportGraph> {
         // Read the file content
         let content = std::fs::read_to_string(file_path).map_err(|e| {
-            mill_plugin_api::PluginError::internal(format!("Failed to read file: {}", e))
+            mill_plugin_api::PluginApiError::internal(format!("Failed to read file: {}", e))
         })?;
 
         // Use the existing parser::analyze_imports method
@@ -421,7 +420,9 @@ impl mill_plugin_api::AnalysisMetadata for PythonPlugin {
     }
 
     fn complexity_keywords(&self) -> Vec<&'static str> {
-        vec!["if", "elif", "for", "while", "try", "except", "with", "and", "or"]
+        vec![
+            "if", "elif", "for", "while", "try", "except", "with", "and", "or",
+        ]
     }
 
     fn nesting_penalty(&self) -> f32 {
@@ -641,9 +642,13 @@ def тестфункция():
     #[test]
     fn test_edge_scan_mixed_line_endings() {
         let plugin = PythonPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import os\r\nimport sys\nfrom pathlib import Path";
-        let refs = scanner.scan_references(content, "os", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(content, "os", ScanScope::All)
+            .expect("Should scan");
         assert_eq!(refs.len(), 1);
     }
 
@@ -666,7 +671,9 @@ def тестфункция():
     #[test]
     fn test_edge_scan_special_regex_chars() {
         let plugin = PythonPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import os";
         // Test with special regex characters
         let result = scanner.scan_references(content, "o.*", ScanScope::All);
@@ -676,7 +683,9 @@ def тестфункция():
     #[test]
     fn test_edge_handle_null_bytes() {
         let plugin = PythonPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import os\x00\nimport sys";
         let result = scanner.scan_references(content, "os", ScanScope::All);
         assert!(result.is_ok()); // Should not panic
@@ -698,22 +707,28 @@ def тестфункция():
         }
 
         let start = Instant::now();
-        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            plugin.parse(&large_source).await
-        });
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { plugin.parse(&large_source).await });
         let duration = start.elapsed();
 
         assert!(result.is_ok(), "Should parse large file");
         let symbols = result.unwrap().symbols;
         assert_eq!(symbols.len(), 5000, "Should find all 5000 functions");
-        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 5,
+            "Should parse within 5 seconds, took {:?}",
+            duration
+        );
     }
 
     #[test]
     fn test_performance_scan_many_references() {
         use std::time::Instant;
         let plugin = PythonPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
 
         // Create content with 10,000 references
         let mut content = String::from("import os\n\n");
@@ -722,10 +737,20 @@ def тестфункция():
         }
 
         let start = Instant::now();
-        let refs = scanner.scan_references(&content, "os", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(&content, "os", ScanScope::All)
+            .expect("Should scan");
         let duration = start.elapsed();
 
-        assert_eq!(refs.len(), 10001, "Should find import + 10K qualified paths");
-        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
+        assert_eq!(
+            refs.len(),
+            10001,
+            "Should find import + 10K qualified paths"
+        );
+        assert!(
+            duration.as_secs() < 10,
+            "Should scan within 10 seconds, took {:?}",
+            duration
+        );
     }
 }

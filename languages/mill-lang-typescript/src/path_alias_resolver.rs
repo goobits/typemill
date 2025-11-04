@@ -157,7 +157,9 @@ impl TypeScriptPathAliasResolver {
         // IndexMap iteration preserves insertion order, so patterns are tried
         // in the order they appear in tsconfig.json
         for (pattern, replacements) in paths {
-            if let Some(resolved) = self.try_match_pattern(specifier, pattern, replacements, base_url) {
+            if let Some(resolved) =
+                self.try_match_pattern(specifier, pattern, replacements, base_url)
+            {
                 return Some(resolved);
             }
         }
@@ -294,7 +296,13 @@ impl TypeScriptPathAliasResolver {
         }
 
         // Try as a directory with index files
-        let index_files = ["index.ts", "index.tsx", "index.js", "index.jsx", "index.d.ts"];
+        let index_files = [
+            "index.ts",
+            "index.tsx",
+            "index.js",
+            "index.jsx",
+            "index.d.ts",
+        ];
         for index in &index_files {
             let index_path = base_path.join(index);
             if index_path.exists() {
@@ -570,7 +578,9 @@ mod tests {
         assert!(resolved.is_some());
 
         let resolved_path = resolved.unwrap();
-        assert!(resolved_path.contains("src/lib/utils") || resolved_path.ends_with("src/lib/utils"));
+        assert!(
+            resolved_path.contains("src/lib/utils") || resolved_path.ends_with("src/lib/utils")
+        );
     }
 
     #[test]
@@ -616,7 +626,9 @@ mod tests {
 
         let resolved_path = resolved.unwrap();
         // Should resolve relative to baseUrl (src)
-        assert!(resolved_path.contains("src/lib/helpers") || resolved_path.ends_with("src/lib/helpers"));
+        assert!(
+            resolved_path.contains("src/lib/helpers") || resolved_path.ends_with("src/lib/helpers")
+        );
     }
 
     #[test]
@@ -738,7 +750,9 @@ mod tests {
 
         // Should use first replacement (Phase 1 behavior)
         let resolved_path = resolved.unwrap();
-        assert!(resolved_path.contains("src/lib/utils") || resolved_path.ends_with("src/lib/utils"));
+        assert!(
+            resolved_path.contains("src/lib/utils") || resolved_path.ends_with("src/lib/utils")
+        );
     }
 
     #[test]
@@ -755,7 +769,8 @@ mod tests {
         let resolver = TypeScriptPathAliasResolver::new();
 
         // Should still find tsconfig.json by walking up
-        let resolved = resolver.resolve_alias("$lib/server/core/orchestrator", &test_file, project_root);
+        let resolved =
+            resolver.resolve_alias("$lib/server/core/orchestrator", &test_file, project_root);
         assert!(resolved.is_some());
 
         let resolved_path = resolved.unwrap();
@@ -781,8 +796,8 @@ mod tests {
             project_root,
             ".",
             &[
-                ("@api/models/*", &["src/api/models/*"]),  // More specific (first)
-                ("@api/*", &["src/api-v2/*"]),              // Less specific (second)
+                ("@api/models/*", &["src/api/models/*"]), // More specific (first)
+                ("@api/*", &["src/api-v2/*"]),            // Less specific (second)
             ],
         );
 
@@ -835,9 +850,9 @@ mod tests {
             project_root,
             ".",
             &[
-                ("@lib/server/core/*", &["src/lib/server/core/*"]),  // Most specific
-                ("@lib/server/*", &["src/lib/server/*"]),             // Medium specific
-                ("@lib/*", &["src/lib/*"]),                           // Least specific
+                ("@lib/server/core/*", &["src/lib/server/core/*"]), // Most specific
+                ("@lib/server/*", &["src/lib/server/*"]),           // Medium specific
+                ("@lib/*", &["src/lib/*"]),                         // Least specific
             ],
         );
 
@@ -848,9 +863,12 @@ mod tests {
         let resolver = TypeScriptPathAliasResolver::new();
 
         // Test 1: "@lib/server/core/orchestrator" should match first (most specific)
-        let resolved = resolver.resolve_alias("@lib/server/core/orchestrator", &test_file, project_root);
+        let resolved =
+            resolver.resolve_alias("@lib/server/core/orchestrator", &test_file, project_root);
         assert!(resolved.is_some());
-        assert!(resolved.unwrap().contains("src/lib/server/core/orchestrator"));
+        assert!(resolved
+            .unwrap()
+            .contains("src/lib/server/core/orchestrator"));
 
         // Test 2: "@lib/server/providers" should match second pattern
         let resolved = resolver.resolve_alias("@lib/server/providers", &test_file, project_root);
@@ -873,9 +891,9 @@ mod tests {
             project_root,
             ".",
             &[
-                ("@legacy/auth/*", &["old/auth-system/*"]),  // Specific legacy path
-                ("@legacy/*", &["legacy/*"]),                 // Generic legacy path
-                ("@/*", &["src/*"]),                          // Current code
+                ("@legacy/auth/*", &["old/auth-system/*"]), // Specific legacy path
+                ("@legacy/*", &["legacy/*"]),               // Generic legacy path
+                ("@/*", &["src/*"]),                        // Current code
             ],
         );
 
@@ -913,7 +931,7 @@ mod tests {
             ".",
             &[
                 ("@api/models/*", &["src/api/models/*"]),
-                ("@apiModels", &["src/api-models-package"]),  // Exact match for package
+                ("@apiModels", &["src/api-models-package"]), // Exact match for package
             ],
         );
 
@@ -954,11 +972,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let project_root = temp_dir.path();
 
-        create_test_tsconfig(
-            project_root,
-            ".",
-            &[("$lib/*", &["src/lib/*"])],
-        );
+        create_test_tsconfig(project_root, ".", &[("$lib/*", &["src/lib/*"])]);
 
         let test_file = project_root.join("src").join("test.ts");
         std::fs::create_dir_all(test_file.parent().unwrap()).unwrap();
@@ -967,20 +981,30 @@ mod tests {
         let resolver = TypeScriptPathAliasResolver::new();
 
         // Valid: has separator
-        assert!(resolver.resolve_alias("$lib/utils", &test_file, project_root).is_some());
-        assert!(resolver.resolve_alias("$lib/server/core", &test_file, project_root).is_some());
+        assert!(resolver
+            .resolve_alias("$lib/utils", &test_file, project_root)
+            .is_some());
+        assert!(resolver
+            .resolve_alias("$lib/server/core", &test_file, project_root)
+            .is_some());
 
         // Invalid: no separator after prefix
         assert!(
-            resolver.resolve_alias("$library", &test_file, project_root).is_none(),
+            resolver
+                .resolve_alias("$library", &test_file, project_root)
+                .is_none(),
             "$library should not match $lib/* (no separator)"
         );
         assert!(
-            resolver.resolve_alias("$lib", &test_file, project_root).is_none(),
+            resolver
+                .resolve_alias("$lib", &test_file, project_root)
+                .is_none(),
             "$lib should not match $lib/* (no suffix)"
         );
         assert!(
-            resolver.resolve_alias("$libextra", &test_file, project_root).is_none(),
+            resolver
+                .resolve_alias("$libextra", &test_file, project_root)
+                .is_none(),
             "$libextra should not match $lib/* (no separator)"
         );
     }
@@ -1000,9 +1024,9 @@ mod tests {
             &[(
                 "@shared/*",
                 &[
-                    "platform/web/*",      // First candidate (web-specific)
-                    "platform/mobile/*",   // Second candidate (mobile fallback)
-                    "shared/*"             // Third candidate (common code)
+                    "platform/web/*",    // First candidate (web-specific)
+                    "platform/mobile/*", // Second candidate (mobile fallback)
+                    "shared/*",          // Third candidate (common code)
                 ],
             )],
         );
@@ -1037,8 +1061,8 @@ mod tests {
             project_root,
             ".",
             &[
-                ("utils", &["src/utilities"]),         // Exact match (no wildcard)
-                ("utils/*", &["src/utilities/v2/*"]),  // Wildcard pattern
+                ("utils", &["src/utilities"]),        // Exact match (no wildcard)
+                ("utils/*", &["src/utilities/v2/*"]), // Wildcard pattern
             ],
         );
 
@@ -1073,7 +1097,7 @@ mod tests {
         create_test_tsconfig(
             project_root,
             ".",
-            &[("libs/*/src", &["libs/*/src"])],  // Wildcard in middle
+            &[("libs/*/src", &["libs/*/src"])], // Wildcard in middle
         );
 
         let test_file = project_root.join("app.ts");
@@ -1111,7 +1135,7 @@ mod tests {
                 &[
                     "platform/web/*",    // First - doesn't exist
                     "platform/mobile/*", // Second - doesn't exist
-                    "shared/*"           // Third - exists!
+                    "shared/*",          // Third - exists!
                 ],
             )],
         );
@@ -1147,11 +1171,7 @@ mod tests {
         std::fs::create_dir_all(project_root.join("src/lib")).unwrap();
         std::fs::write(project_root.join("src/lib/utils.ts"), "export {}").unwrap();
 
-        create_test_tsconfig(
-            project_root,
-            ".",
-            &[("$lib/*", &["src/lib/*"])],
-        );
+        create_test_tsconfig(project_root, ".", &[("$lib/*", &["src/lib/*"])]);
 
         let test_file = project_root.join("app.ts");
         std::fs::write(&test_file, "").unwrap();
@@ -1177,7 +1197,7 @@ mod tests {
         create_test_tsconfig(
             project_root,
             ".",
-            &[("@packages/*", &["packages/*/src"])],  // Wildcard in replacement
+            &[("@packages/*", &["packages/*/src"])], // Wildcard in replacement
         );
 
         let test_file = project_root.join("app.ts");
@@ -1204,13 +1224,13 @@ mod tests {
 
         // Create directory with index.ts
         std::fs::create_dir_all(project_root.join("src/lib/components")).unwrap();
-        std::fs::write(project_root.join("src/lib/components/index.ts"), "export {}").unwrap();
+        std::fs::write(
+            project_root.join("src/lib/components/index.ts"),
+            "export {}",
+        )
+        .unwrap();
 
-        create_test_tsconfig(
-            project_root,
-            ".",
-            &[("$lib/*", &["src/lib/*"])],
-        );
+        create_test_tsconfig(project_root, ".", &[("$lib/*", &["src/lib/*"])]);
 
         let test_file = project_root.join("app.ts");
         std::fs::write(&test_file, "").unwrap();
@@ -1239,9 +1259,9 @@ mod tests {
             &[(
                 "@shared/*",
                 &[
-                    "platform/web/*",     // First - doesn't exist
-                    "platform/mobile/*",  // Second - exists!
-                    "shared/*"            // Third - doesn't exist
+                    "platform/web/*",    // First - doesn't exist
+                    "platform/mobile/*", // Second - exists!
+                    "shared/*",          // Third - doesn't exist
                 ],
             )],
         );
@@ -1284,9 +1304,9 @@ mod tests {
             &[(
                 "@shared/*",
                 &[
-                    "platform/web/*",     // First - doesn't exist
-                    "platform/mobile/*",  // Second - doesn't exist
-                    "shared/*"            // Third - exists!
+                    "platform/web/*",    // First - doesn't exist
+                    "platform/mobile/*", // Second - doesn't exist
+                    "shared/*",          // Third - exists!
                 ],
             )],
         );
@@ -1323,7 +1343,7 @@ mod tests {
         create_test_tsconfig(
             project_root,
             ".",
-            &[("libs/*/src", &["libs/*/src"])],  // Wildcard in middle
+            &[("libs/*/src", &["libs/*/src"])], // Wildcard in middle
         );
 
         let test_file = project_root.join("app.ts");
@@ -1472,7 +1492,10 @@ mod tests {
         let non_lib_path = project_root.join("src/routes/other.ts");
         let alias = resolver.path_to_alias(&non_lib_path, &test_file, project_root);
 
-        assert!(alias.is_none(), "Should return None for paths that don't match any alias");
+        assert!(
+            alias.is_none(),
+            "Should return None for paths that don't match any alias"
+        );
     }
 
     #[test]

@@ -204,11 +204,8 @@ impl WorkspaceSupport for RustWorkspaceSupport {
                 info!("Planning moved crate's own path dependency updates");
 
                 // Convert to TextEdits
-                let own_deps_edits = cargo_util::convert_manifest_updates_to_edits(
-                    vec![update],
-                    old_path,
-                    new_path,
-                );
+                let own_deps_edits =
+                    cargo_util::convert_manifest_updates_to_edits(vec![update], old_path, new_path);
 
                 all_edits.extend(own_deps_edits);
             }
@@ -295,7 +292,10 @@ impl WorkspaceSupport for RustWorkspaceSupport {
         .await
         {
             Ok(updates) => {
-                debug!(updates_count = updates.len(), "Batch workspace updates planned");
+                debug!(
+                    updates_count = updates.len(),
+                    "Batch workspace updates planned"
+                );
                 updates
             }
             Err(e) => {

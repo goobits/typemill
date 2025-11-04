@@ -186,7 +186,15 @@ pub async fn run_analysis(
     kind: &str,
     analysis_fn: AnalysisFn,
 ) -> ServerResult<Value> {
-    run_analysis_with_config(context, tool_call, category, kind, analysis_fn, &context.analysis_config).await
+    run_analysis_with_config(
+        context,
+        tool_call,
+        category,
+        kind,
+        analysis_fn,
+        &context.analysis_config,
+    )
+    .await
 }
 
 /// Orchestrates the entire analysis workflow with configuration

@@ -13,8 +13,8 @@ mod ast_parser;
 mod cmake_parser;
 pub mod constants;
 mod import_support;
-mod makefile_parser;
 mod lsp_installer;
+mod makefile_parser;
 mod project_factory;
 mod refactoring;
 mod workspace_support;
@@ -24,9 +24,8 @@ use mill_lang_common::{
     define_language_plugin, impl_capability_delegations, impl_language_plugin_basics,
 };
 use mill_plugin_api::{
-    ImportAnalyzer, LanguagePlugin, ManifestData, ManifestUpdater,
-    ModuleReference, ModuleReferenceScanner, ParsedSource, PluginResult,
-    ReferenceKind, ScanScope,
+    ImportAnalyzer, LanguagePlugin, ManifestData, ManifestUpdater, ModuleReference,
+    ModuleReferenceScanner, ParsedSource, PluginResult, ReferenceKind, ScanScope,
 };
 use std::path::Path;
 
@@ -106,13 +105,16 @@ impl LanguagePlugin for CPlugin {
     ///
     /// Returns an error if the file type is not supported
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
-        let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or_default();
+        let filename = path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
         if filename.starts_with("CMakeLists") {
             cmake_parser::analyze_cmake_manifest(path)
         } else if filename == "Makefile" {
             makefile_parser::analyze_makefile_manifest(path)
         } else {
-            Err(mill_plugin_api::PluginError::not_supported(
+            Err(mill_plugin_api::PluginApiError::not_supported(
                 "Manifest analysis for this file type",
             ))
         }
@@ -228,7 +230,9 @@ impl ModuleReferenceScanner for CPlugin {
         let mut references = Vec::new();
 
         for (i, line) in content.lines().enumerate() {
-            if scope == ScanScope::AllUseStatements && (line.trim().starts_with("//") || line.trim().starts_with("/*")) {
+            if scope == ScanScope::AllUseStatements
+                && (line.trim().starts_with("//") || line.trim().starts_with("/*"))
+            {
                 continue;
             }
 
@@ -332,7 +336,9 @@ impl mill_plugin_api::AnalysisMetadata for CPlugin {
     }
 
     fn complexity_keywords(&self) -> Vec<&'static str> {
-        vec!["if", "else", "switch", "case", "for", "while", "do", "&&", "||"]
+        vec![
+            "if", "else", "switch", "case", "for", "while", "do", "&&", "||",
+        ]
     }
 
     fn nesting_penalty(&self) -> f32 {

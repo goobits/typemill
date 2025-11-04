@@ -3,7 +3,7 @@
 //! This module provides shared functionality for working with different
 //! manifest formats (TOML, JSON, YAML, XML) across language plugins.
 
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_plugin_api::{PluginApiError, PluginResult};
 use serde_json::Value as JsonValue;
 use toml_edit::{value, Array, DocumentMut, Item};
 use tracing::debug;
@@ -61,7 +61,7 @@ impl TomlWorkspace {
     pub fn add_member(content: &str, member: &str) -> PluginResult<String> {
         let mut doc = content
             .parse::<DocumentMut>()
-            .map_err(|e| PluginError::parse(format!("Failed to parse TOML: {}", e)))?;
+            .map_err(|e| PluginApiError::parse(format!("Failed to parse TOML: {}", e)))?;
 
         if Self::add_cargo_member(&mut doc, member) {
             return Ok(doc.to_string());
@@ -108,7 +108,7 @@ impl TomlWorkspace {
     pub fn remove_member(content: &str, member: &str) -> PluginResult<String> {
         let mut doc = content
             .parse::<DocumentMut>()
-            .map_err(|e| PluginError::parse(format!("Failed to parse TOML: {}", e)))?;
+            .map_err(|e| PluginApiError::parse(format!("Failed to parse TOML: {}", e)))?;
 
         let modified = Self::remove_cargo_member(&mut doc, member)
             || Self::remove_poetry_member(&mut doc, member);
@@ -147,7 +147,7 @@ impl TomlWorkspace {
     pub fn list_members(content: &str) -> PluginResult<Vec<String>> {
         let doc = content
             .parse::<DocumentMut>()
-            .map_err(|e| PluginError::parse(format!("Failed to parse TOML: {}", e)))?;
+            .map_err(|e| PluginApiError::parse(format!("Failed to parse TOML: {}", e)))?;
 
         if let Some(members) = Self::list_cargo_members(&doc) {
             return Ok(members);
@@ -171,7 +171,7 @@ impl TomlWorkspace {
     pub fn update_package_name(content: &str, new_name: &str) -> PluginResult<String> {
         let mut doc = content
             .parse::<DocumentMut>()
-            .map_err(|e| PluginError::parse(format!("Failed to parse TOML: {}", e)))?;
+            .map_err(|e| PluginApiError::parse(format!("Failed to parse TOML: {}", e)))?;
 
         // Update [package.name] (Cargo)
         if let Some(package) = doc.get_mut("package") {
@@ -200,11 +200,11 @@ impl TomlWorkspace {
     pub fn merge_dependencies(base: &str, source: &str) -> PluginResult<String> {
         let mut base_doc = base
             .parse::<DocumentMut>()
-            .map_err(|e| PluginError::parse(format!("Failed to parse base TOML: {}", e)))?;
+            .map_err(|e| PluginApiError::parse(format!("Failed to parse base TOML: {}", e)))?;
 
         let source_doc = source
             .parse::<DocumentMut>()
-            .map_err(|e| PluginError::parse(format!("Failed to parse source TOML: {}", e)))?;
+            .map_err(|e| PluginApiError::parse(format!("Failed to parse source TOML: {}", e)))?;
 
         // Merge [dependencies] section (Cargo-style)
         if let Some(source_deps) = source_doc.get("dependencies") {
@@ -260,7 +260,7 @@ impl JsonWorkspace {
     /// Add a member to a JSON workspace (npm/yarn/pnpm workspaces)
     pub fn add_member(content: &str, member: &str) -> PluginResult<String> {
         let mut json: JsonValue = serde_json::from_str(content)
-            .map_err(|e| PluginError::parse(format!("Failed to parse JSON: {}", e)))?;
+            .map_err(|e| PluginApiError::parse(format!("Failed to parse JSON: {}", e)))?;
 
         if let Some(workspaces) = Self::get_workspaces_mut(&mut json) {
             if !workspaces.iter().any(|v| v.as_str() == Some(member)) {
@@ -269,20 +269,20 @@ impl JsonWorkspace {
         }
 
         serde_json::to_string_pretty(&json)
-            .map_err(|e| PluginError::parse(format!("Failed to serialize JSON: {}", e)))
+            .map_err(|e| PluginApiError::parse(format!("Failed to serialize JSON: {}", e)))
     }
 
     /// Remove a member from a JSON workspace
     pub fn remove_member(content: &str, member: &str) -> PluginResult<String> {
         let mut json: JsonValue = serde_json::from_str(content)
-            .map_err(|e| PluginError::parse(format!("Failed to parse JSON: {}", e)))?;
+            .map_err(|e| PluginApiError::parse(format!("Failed to parse JSON: {}", e)))?;
 
         if let Some(workspaces) = Self::get_workspaces_mut(&mut json) {
             workspaces.retain(|v| v.as_str() != Some(member));
         }
 
         serde_json::to_string_pretty(&json)
-            .map_err(|e| PluginError::parse(format!("Failed to serialize JSON: {}", e)))
+            .map_err(|e| PluginApiError::parse(format!("Failed to serialize JSON: {}", e)))
     }
 
     fn get_workspaces(json: &JsonValue) -> Option<&Vec<JsonValue>> {
@@ -296,7 +296,7 @@ impl JsonWorkspace {
     /// List all workspace members from JSON
     pub fn list_members(content: &str) -> PluginResult<Vec<String>> {
         let json: JsonValue = serde_json::from_str(content)
-            .map_err(|e| PluginError::parse(format!("Failed to parse JSON: {}", e)))?;
+            .map_err(|e| PluginApiError::parse(format!("Failed to parse JSON: {}", e)))?;
 
         if let Some(workspaces) = Self::get_workspaces(&json) {
             let members = workspaces
@@ -323,14 +323,13 @@ impl JsonWorkspace {
     /// Update package name in JSON manifest
     pub fn update_package_name(content: &str, new_name: &str) -> PluginResult<String> {
         let mut json: JsonValue = serde_json::from_str(content)
-            .map_err(|e| PluginError::parse(format!("Failed to parse JSON: {}", e)))?;
+            .map_err(|e| PluginApiError::parse(format!("Failed to parse JSON: {}", e)))?;
 
         if let Some(obj) = json.as_object_mut() {
             obj.insert("name".to_string(), JsonValue::String(new_name.to_string()));
         }
 
         serde_json::to_string_pretty(&json)
-            .map_err(|e| PluginError::parse(format!("Failed to serialize JSON: {}", e)))
+            .map_err(|e| PluginApiError::parse(format!("Failed to serialize JSON: {}", e)))
     }
 }
-

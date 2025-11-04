@@ -284,5 +284,8 @@ async fn test_analyze_batch_max_suggestions() {
         .get("suggestions")
         .and_then(|s| s.as_array())
         .expect("Should have suggestions array");
-    assert!(!suggestions.is_empty(), "Should have at least one suggestion");
+    assert!(
+        !suggestions.is_empty(),
+        "Should have at least one suggestion"
+    );
 }

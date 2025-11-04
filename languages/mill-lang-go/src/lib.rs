@@ -20,8 +20,8 @@ use mill_lang_common::{
 };
 use mill_plugin_api::{
     ImportAnalyzer, LanguagePlugin, ManifestData, ManifestUpdater, ModuleReference,
-    ModuleReferenceScanner, ParsedSource, PluginError, PluginResult, ReferenceKind,
-    RefactoringProvider, ScanScope,
+    ModuleReferenceScanner, ParsedSource, PluginApiError, PluginResult, RefactoringProvider,
+    ReferenceKind, ScanScope,
 };
 use std::path::Path;
 
@@ -108,7 +108,7 @@ impl ManifestUpdater for GoPlugin {
     ) -> PluginResult<String> {
         let content = tokio::fs::read_to_string(manifest_path)
             .await
-            .map_err(|e| PluginError::internal(e.to_string()))?;
+            .map_err(|e| PluginApiError::internal(e.to_string()))?;
         manifest::update_dependency(&content, old_name, new_name, new_version)
     }
 
@@ -119,8 +119,8 @@ impl ManifestUpdater for GoPlugin {
 
 impl ImportAnalyzer for GoPlugin {
     fn build_import_graph(&self, file_path: &Path) -> PluginResult<ImportGraph> {
-        let content =
-            std::fs::read_to_string(file_path).map_err(|e| PluginError::internal(e.to_string()))?;
+        let content = std::fs::read_to_string(file_path)
+            .map_err(|e| PluginApiError::internal(e.to_string()))?;
         parser::analyze_imports(&content, Some(file_path))
     }
 }
@@ -135,13 +135,15 @@ impl ModuleReferenceScanner for GoPlugin {
         let mut references = Vec::new();
         let import_pattern = (constants::MODULE_IN_IMPORT_PATTERN)(module_name);
         let import_re = regex::Regex::new(&import_pattern)
-            .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("Invalid regex: {}", e)))?;
 
         // Compile qualified path regex once outside the loop for performance
         let qualified_re = if scope == ScanScope::All || scope == ScanScope::QualifiedPaths {
             let qualified_pattern = (constants::QUALIFIED_PATH_PATTERN)(module_name);
-            Some(regex::Regex::new(&qualified_pattern)
-                .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?)
+            Some(
+                regex::Regex::new(&qualified_pattern)
+                    .map_err(|e| PluginApiError::internal(format!("Invalid regex: {}", e)))?,
+            )
         } else {
             None
         };
@@ -417,8 +419,11 @@ mod tests {
         let updater = plugin.manifest_updater().unwrap();
         let tmp_dir = tempdir().unwrap();
         let file_path = tmp_dir.path().join("go.mod");
-        std::fs::write(&file_path, "module my-go-app\n\nrequire example.com/pkg v1.2.3")
-            .unwrap();
+        std::fs::write(
+            &file_path,
+            "module my-go-app\n\nrequire example.com/pkg v1.2.3",
+        )
+        .unwrap();
         let updated = updater
             .update_dependency(
                 &file_path,
@@ -449,13 +454,18 @@ mod tests {
         let plugin = GoPlugin::default();
         // Malformed Go code should still parse symbols gracefully
         let result = plugin.parse("this is not valid go code {{{").await;
-        assert!(result.is_ok(), "Parser should handle invalid source gracefully");
+        assert!(
+            result.is_ok(),
+            "Parser should handle invalid source gracefully"
+        );
     }
 
     #[tokio::test]
     async fn test_analyze_nonexistent_manifest() {
         let plugin = GoPlugin::default();
-        let result = plugin.analyze_manifest(Path::new("/nonexistent/go.mod")).await;
+        let result = plugin
+            .analyze_manifest(Path::new("/nonexistent/go.mod"))
+            .await;
         assert!(result.is_err(), "Should error on nonexistent manifest");
     }
 
@@ -487,9 +497,14 @@ mod tests {
         let plugin = GoPlugin::default();
         let scanner = plugin.module_reference_scanner().unwrap();
         let content = "package main\n\nimport \"日本語/パッケージ\"\n\n日本語.Function()";
-        let refs = scanner.scan_references(content, "日本語", ScanScope::All).unwrap();
+        let refs = scanner
+            .scan_references(content, "日本語", ScanScope::All)
+            .unwrap();
         // Should find at least the qualified path (even if import detection is limited)
-        assert!(!refs.is_empty(), "Should find Unicode module names in qualified paths");
+        assert!(
+            !refs.is_empty(),
+            "Should find Unicode module names in qualified paths"
+        );
     }
 
     #[tokio::test]
@@ -516,7 +531,9 @@ mod tests {
         let scanner = plugin.module_reference_scanner().unwrap();
         // Mix CRLF and LF
         let content = "package main\r\nimport \"fmt\"\nimport \"strings\"";
-        let refs = scanner.scan_references(content, "fmt", ScanScope::All).unwrap();
+        let refs = scanner
+            .scan_references(content, "fmt", ScanScope::All)
+            .unwrap();
         assert_eq!(refs.len(), 1, "Should handle mixed line endings");
     }
 
@@ -525,9 +542,15 @@ mod tests {
         let plugin = GoPlugin::default();
         let scanner = plugin.module_reference_scanner().unwrap();
         let content = "// fmt.Println should not match\n/* fmt.Println */\nfmt.Println(\"real\")";
-        let refs = scanner.scan_references(content, "fmt", ScanScope::QualifiedPaths).unwrap();
+        let refs = scanner
+            .scan_references(content, "fmt", ScanScope::QualifiedPaths)
+            .unwrap();
         // Should only find the non-comment reference
-        assert_eq!(refs.len(), 1, "Should exclude comments from qualified path matching");
+        assert_eq!(
+            refs.len(),
+            1,
+            "Should exclude comments from qualified path matching"
+        );
     }
 
     // ========================================================================
@@ -546,13 +569,17 @@ mod tests {
         }
 
         let start = Instant::now();
-        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            plugin.parse(&large_source).await
-        });
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { plugin.parse(&large_source).await });
         let duration = start.elapsed();
 
         assert!(result.is_ok(), "Should parse large file");
-        assert!(duration.as_secs() < 5, "Should parse large file within 5 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 5,
+            "Should parse large file within 5 seconds, took {:?}",
+            duration
+        );
     }
 
     #[test]
@@ -568,12 +595,18 @@ mod tests {
         }
 
         let start = Instant::now();
-        let refs = scanner.scan_references(&content, "fmt", ScanScope::All).unwrap();
+        let refs = scanner
+            .scan_references(&content, "fmt", ScanScope::All)
+            .unwrap();
         let duration = start.elapsed();
 
         assert_eq!(refs.len(), 10000, "Should find all references");
         // Relaxed timing for CI environments (10s threshold)
-        assert!(duration.as_secs() < 10, "Should scan 10K references within 10 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 10,
+            "Should scan 10K references within 10 seconds, took {:?}",
+            duration
+        );
     }
 
     // ========================================================================
@@ -585,7 +618,11 @@ mod tests {
         let plugin = GoPlugin::default();
         let result = plugin.parse("").await;
         assert!(result.is_ok(), "Should handle empty source");
-        assert_eq!(result.unwrap().symbols.len(), 0, "Empty source should have no symbols");
+        assert_eq!(
+            result.unwrap().symbols.len(),
+            0,
+            "Empty source should have no symbols"
+        );
     }
 
     #[tokio::test]
@@ -705,9 +742,13 @@ func тестфункция() {
     #[test]
     fn test_edge_scan_mixed_line_endings() {
         let plugin = GoPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import \"fmt\"\r\nimport \"os\"\nimport \"io\"";
-        let refs = scanner.scan_references(content, "fmt", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(content, "fmt", ScanScope::All)
+            .expect("Should scan");
         assert_eq!(refs.len(), 1);
     }
 
@@ -730,7 +771,9 @@ func тестфункция() {
     #[test]
     fn test_edge_scan_special_regex_chars() {
         let plugin = GoPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import \"fmt\"";
         // Test with special regex characters
         let result = scanner.scan_references(content, "f.*", ScanScope::All);
@@ -740,7 +783,9 @@ func тестфункция() {
     #[test]
     fn test_edge_handle_null_bytes() {
         let plugin = GoPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import \"fmt\"\x00\nimport \"os\"";
         let result = scanner.scan_references(content, "fmt", ScanScope::All);
         assert!(result.is_ok()); // Should not panic
@@ -762,22 +807,28 @@ func тестфункция() {
         }
 
         let start = Instant::now();
-        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            plugin.parse(&large_source).await
-        });
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { plugin.parse(&large_source).await });
         let duration = start.elapsed();
 
         // Main goal: verify parsing large files doesn't crash/panic
         assert!(result.is_ok(), "Should parse large file without panic");
         // Performance: should complete in reasonable time even if symbol extraction is incomplete
-        assert!(duration.as_secs() < 10, "Should parse within 10 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 10,
+            "Should parse within 10 seconds, took {:?}",
+            duration
+        );
     }
 
     #[test]
     fn test_performance_scan_many_references() {
         use std::time::Instant;
         let plugin = GoPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
 
         // Create content with 10,000 references
         let mut content = String::from("import \"fmt\"\n\n");
@@ -786,10 +837,20 @@ func тестфункция() {
         }
 
         let start = Instant::now();
-        let refs = scanner.scan_references(&content, "fmt", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(&content, "fmt", ScanScope::All)
+            .expect("Should scan");
         let duration = start.elapsed();
 
-        assert_eq!(refs.len(), 10001, "Should find import + 10K qualified paths");
-        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
+        assert_eq!(
+            refs.len(),
+            10001,
+            "Should find import + 10K qualified paths"
+        );
+        assert!(
+            duration.as_secs() < 10,
+            "Should scan within 10 seconds, took {:?}",
+            duration
+        );
     }
 }

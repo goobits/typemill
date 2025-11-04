@@ -1,4 +1,4 @@
-use crate::{CPlugin};
+use crate::CPlugin;
 use mill_plugin_api::RefactoringProvider;
 
 const SIMPLE_SAMPLE_CODE: &str = r#"
@@ -21,7 +21,11 @@ async fn test_refactoring_extract_function() {
         .plan_extract_function(SIMPLE_SAMPLE_CODE, 4, 4, "say_hello", "main.c")
         .await;
 
-    assert!(result.is_ok(), "plan_extract_function failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "plan_extract_function failed: {:?}",
+        result.err()
+    );
     let plan = result.unwrap();
 
     assert_eq!(plan.edits.len(), 2);
@@ -30,7 +34,9 @@ async fn test_refactoring_extract_function() {
     let replacement_edit = &plan.edits[1];
 
     assert!(new_function_edit.new_text.contains("void say_hello()"));
-    assert!(new_function_edit.new_text.contains("printf(\"Hello from extracted function!\\n\");"));
+    assert!(new_function_edit
+        .new_text
+        .contains("printf(\"Hello from extracted function!\\n\");"));
     assert!(replacement_edit.new_text.contains("say_hello();"));
 }
 
@@ -46,7 +52,6 @@ int main() {
 }
 "#;
 
-
 #[tokio::test]
 async fn test_refactoring_inline_variable() {
     let plugin = CPlugin::default();
@@ -54,7 +59,11 @@ async fn test_refactoring_inline_variable() {
         .plan_inline_variable(SAMPLE_CODE, 4, 8, "main.c")
         .await;
 
-    assert!(result.is_ok(), "plan_inline_variable failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "plan_inline_variable failed: {:?}",
+        result.err()
+    );
     let plan = result.unwrap();
 
     assert_eq!(plan.edits.len(), 2);
@@ -73,7 +82,11 @@ async fn test_refactoring_extract_variable() {
         .plan_extract_variable(SAMPLE_CODE, 6, 12, 6, 17, Some("sum".to_string()), "main.c")
         .await;
 
-    assert!(result.is_ok(), "plan_extract_variable failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "plan_extract_variable failed: {:?}",
+        result.err()
+    );
     let plan = result.unwrap();
 
     println!("Generated new variable text: {}", plan.edits[0].new_text);

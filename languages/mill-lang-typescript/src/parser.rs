@@ -1,7 +1,7 @@
 //! TypeScript/JavaScript import parsing and symbol extraction logic.
 use mill_foundation::protocol::{ImportGraph, ImportInfo, ImportType, SourceLocation};
 use mill_lang_common::{parse_with_fallback, run_ast_tool, ImportGraphBuilder, SubprocessAstTool};
-use mill_plugin_api::{PluginError, PluginResult, Symbol, SymbolKind};
+use mill_plugin_api::{PluginApiError, PluginResult, Symbol, SymbolKind};
 use serde::Deserialize;
 use std::path::Path;
 /// Analyzes TypeScript/JavaScript source code to produce an import graph.
@@ -44,7 +44,7 @@ pub(crate) struct TsLocation {
     end_column: usize,
 }
 /// Spawns the bundled `ast_tool.js` script to parse imports from source.
-fn parse_imports_ast(source: &str) -> Result<Vec<ImportInfo>, PluginError> {
+fn parse_imports_ast(source: &str) -> Result<Vec<ImportInfo>, PluginApiError> {
     const AST_TOOL_JS: &str = include_str!("../resources/ast_tool.js");
     let tool = SubprocessAstTool::new("node")
         .with_embedded_str(AST_TOOL_JS)
@@ -213,7 +213,7 @@ pub(crate) fn list_functions(source: &str) -> PluginResult<Vec<String>> {
         .collect())
 }
 /// Spawns the bundled `ast_tool.js` script to extract symbols from source.
-fn extract_symbols_ast(source: &str) -> Result<Vec<Symbol>, PluginError> {
+fn extract_symbols_ast(source: &str) -> Result<Vec<Symbol>, PluginApiError> {
     const AST_TOOL_JS: &str = include_str!("../resources/ast_tool.js");
     let tool = SubprocessAstTool::new("node")
         .with_embedded_str(AST_TOOL_JS)

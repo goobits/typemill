@@ -1,9 +1,15 @@
+use mill_foundation::protocol::{DependencyUpdate, DependencyUpdateType};
 use mill_lang_cpp::CppPlugin;
-use mill_plugin_api::{capabilities::{ImportAnalyzer, ModuleReferenceScanner, RefactoringProvider}, import_support::{ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportRenameSupport}, LanguagePlugin, ManifestUpdater, WorkspaceSupport, ScanScope};
-use tempfile::Builder;
+use mill_plugin_api::{
+    capabilities::{ImportAnalyzer, ModuleReferenceScanner, RefactoringProvider},
+    import_support::{
+        ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportRenameSupport,
+    },
+    LanguagePlugin, ManifestUpdater, ScanScope, WorkspaceSupport,
+};
 use std::io::Write;
 use std::path::Path;
-use mill_foundation::protocol::{DependencyUpdate, DependencyUpdateType};
+use tempfile::Builder;
 
 #[test]
 fn test_update_import_reference() {
@@ -75,7 +81,11 @@ fn test_rewrite_imports_for_rename() {
     let plugin = CppPlugin::default();
     let rename_support = plugin.import_rename_support().unwrap();
     let source = r#"#include "old/path/to/header.h""#;
-    let (new_source, changes) = rename_support.rewrite_imports_for_rename(source, "old/path/to/header.h", "new/path/to/header.h");
+    let (new_source, changes) = rename_support.rewrite_imports_for_rename(
+        source,
+        "old/path/to/header.h",
+        "new/path/to/header.h",
+    );
     assert_eq!(changes, 1);
     assert_eq!(new_source, r#"#include "new/path/to/header.h""#);
 }
@@ -176,11 +186,18 @@ int main() {
     let parsed_source = plugin.parse(source).await.unwrap();
     let symbols = parsed_source.symbols;
 
-    println!("Found symbols: {:?}", symbols.iter().map(|s| &s.name).collect::<Vec<_>>());
+    println!(
+        "Found symbols: {:?}",
+        symbols.iter().map(|s| &s.name).collect::<Vec<_>>()
+    );
 
     // TODO: Improve symbol parsing to correctly handle nested symbols.
     // The current implementation only finds top-level symbols.
-    assert_eq!(symbols.len(), 4, "Should find namespace, class, method, and main function");
+    assert_eq!(
+        symbols.len(),
+        4,
+        "Should find namespace, class, method, and main function"
+    );
     let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
     assert!(names.contains(&"MyNamespace"));
     assert!(names.contains(&"MyClass"));
@@ -255,14 +272,8 @@ async fn test_analyze_conan_manifest() {
     let manifest_data = plugin.analyze_manifest(&path).await.unwrap();
 
     assert_eq!(manifest_data.dependencies.len(), 2);
-    assert!(manifest_data
-        .dependencies
-        .iter()
-        .any(|d| d.name == "fmt"));
-    assert!(manifest_data
-        .dependencies
-        .iter()
-        .any(|d| d.name == "gtest"));
+    assert!(manifest_data.dependencies.iter().any(|d| d.name == "fmt"));
+    assert!(manifest_data.dependencies.iter().any(|d| d.name == "gtest"));
 }
 
 #[tokio::test]
@@ -273,7 +284,10 @@ async fn test_manifest_updater() {
     let initial_content = "project(TestProject)\nadd_executable(app main.cpp)";
 
     // Add a dependency
-    let updated_content = updater.update_dependency(Path::new(""), initial_content, "fmt", Some("10.2.1")).await.unwrap();
+    let updated_content = updater
+        .update_dependency(Path::new(""), initial_content, "fmt", Some("10.2.1"))
+        .await
+        .unwrap();
     assert!(updated_content.contains("target_link_libraries(app PRIVATE fmt)"));
 
     // Generate a manifest
@@ -302,7 +316,8 @@ fn test_workspace_support() {
     assert!(content_after_add.contains("add_subdirectory(my_lib)"));
 
     // Remove a workspace member
-    let content_after_remove = workspace_support.remove_workspace_member(&content_after_add, "my_lib");
+    let content_after_remove =
+        workspace_support.remove_workspace_member(&content_after_add, "my_lib");
     assert!(!content_after_remove.contains("add_subdirectory(my_lib)"));
 }
 
@@ -311,7 +326,9 @@ async fn test_refactoring_extract_function() {
     let plugin = CppPlugin::default();
     let refactoring_provider = plugin.refactoring_provider().unwrap();
     let source = "void foo() {\n  int x = 1;\n  int y = 2;\n}";
-    let plan = refactoring_provider.plan_extract_function(source, 1, 2, "new_function", "dummy.cpp").await;
+    let plan = refactoring_provider
+        .plan_extract_function(source, 1, 2, "new_function", "dummy.cpp")
+        .await;
     assert!(plan.is_ok());
     assert!(!plan.unwrap().edits.is_empty());
 }
@@ -321,7 +338,9 @@ async fn test_refactoring_inline_variable() {
     let plugin = CppPlugin::default();
     let refactoring_provider = plugin.refactoring_provider().unwrap();
     let source = "void foo() {\n  int x = 1;\n  int y = x;\n}";
-    let plan = refactoring_provider.plan_inline_variable(source, 2, 10, "dummy.cpp").await;
+    let plan = refactoring_provider
+        .plan_inline_variable(source, 2, 10, "dummy.cpp")
+        .await;
     assert!(plan.is_ok());
     assert!(!plan.unwrap().edits.is_empty());
 }
@@ -332,11 +351,16 @@ async fn test_refactoring_extract_variable() {
     let refactoring_provider = plugin.refactoring_provider().unwrap();
     let source = "int main() {\n  int x = 1 + 2;\n  return x;\n}";
     // Extract "1 + 2" from line 2, columns 10-15 (1-indexed)
-    let plan = refactoring_provider.plan_extract_variable(source, 2, 10, 2, 15, Some("y".to_string()), "dummy.cpp").await;
+    let plan = refactoring_provider
+        .plan_extract_variable(source, 2, 10, 2, 15, Some("y".to_string()), "dummy.cpp")
+        .await;
     assert!(plan.is_ok(), "Failed to create extract variable plan");
     let unwrapped_plan = plan.unwrap();
     assert!(!unwrapped_plan.edits.is_empty());
-    assert!(unwrapped_plan.edits.iter().any(|e| e.new_text.contains("auto y = 1 + 2;")));
+    assert!(unwrapped_plan
+        .edits
+        .iter()
+        .any(|e| e.new_text.contains("auto y = 1 + 2;")));
 }
 
 #[test]
@@ -344,7 +368,9 @@ fn test_module_reference_scanner() {
     let plugin = CppPlugin::default();
     let scanner = plugin.module_reference_scanner().unwrap();
     let source = "#include <iostream>\n#include \"my_header.h\"";
-    let references = scanner.scan_references(source, "my_header.h", ScanScope::All).unwrap();
+    let references = scanner
+        .scan_references(source, "my_header.h", ScanScope::All)
+        .unwrap();
     assert_eq!(references.len(), 1);
     assert_eq!(references[0].text, "my_header.h");
 }
@@ -386,14 +412,8 @@ async fn test_analyze_vcpkg_manifest() {
     assert_eq!(manifest_data.name, "my-project");
     assert_eq!(manifest_data.version, "1.0.0");
     assert_eq!(manifest_data.dependencies.len(), 2);
-    assert!(manifest_data
-        .dependencies
-        .iter()
-        .any(|d| d.name == "fmt"));
-    assert!(manifest_data
-        .dependencies
-        .iter()
-        .any(|d| d.name == "gtest"));
+    assert!(manifest_data.dependencies.iter().any(|d| d.name == "fmt"));
+    assert!(manifest_data.dependencies.iter().any(|d| d.name == "gtest"));
 }
 
 use mill_plugin_api::project_factory::{PackageType, Template};
@@ -476,12 +496,6 @@ class MyProject(ConanFile):
     let manifest_data = plugin.analyze_manifest(&path).await.unwrap();
 
     assert_eq!(manifest_data.dependencies.len(), 2);
-    assert!(manifest_data
-        .dependencies
-        .iter()
-        .any(|d| d.name == "fmt"));
-    assert!(manifest_data
-        .dependencies
-        .iter()
-        .any(|d| d.name == "gtest"));
+    assert!(manifest_data.dependencies.iter().any(|d| d.name == "fmt"));
+    assert!(manifest_data.dependencies.iter().any(|d| d.name == "gtest"));
 }

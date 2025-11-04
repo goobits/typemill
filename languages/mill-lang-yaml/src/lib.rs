@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use mill_plugin_api::mill_plugin;
 use mill_plugin_api::{
     import_support::ImportRenameSupport, LanguageMetadata, LanguagePlugin, ManifestData,
-    ParsedSource, PluginCapabilities, PluginError, PluginResult,
+    ParsedSource, PluginApiError, PluginCapabilities, PluginResult,
 };
 use std::path::Path;
 use tracing::debug;
@@ -88,7 +88,7 @@ impl LanguagePlugin for YamlLanguagePlugin {
 
     async fn analyze_manifest(&self, _path: &Path) -> PluginResult<ManifestData> {
         // YAML files don't have manifest data
-        Err(PluginError::not_supported(
+        Err(PluginApiError::not_supported(
             "YAML plugin does not analyze manifest data",
         ))
     }

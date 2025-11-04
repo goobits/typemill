@@ -83,7 +83,11 @@ impl Language {
 
     pub fn supports_workspace(&self) -> bool {
         match self {
-            Language::TypeScript | Language::Rust | Language::Python | Language::Java | Language::Go => true,
+            Language::TypeScript
+            | Language::Rust
+            | Language::Python
+            | Language::Java
+            | Language::Go => true,
             Language::CSharp | Language::Swift | Language::C | Language::Cpp => false,
         }
     }

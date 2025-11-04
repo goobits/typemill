@@ -20,7 +20,7 @@ impl TomlImportSupport {
         update_exact_matches: bool,
     ) -> PluginResult<(String, usize)> {
         let mut doc: DocumentMut = content.parse().map_err(|e| {
-            mill_plugin_api::PluginError::parse(format!("Failed to parse TOML: {}", e))
+            mill_plugin_api::PluginApiError::parse(format!("Failed to parse TOML: {}", e))
         })?;
         let mut changes = 0;
 

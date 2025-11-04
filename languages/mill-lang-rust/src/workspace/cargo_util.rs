@@ -538,9 +538,10 @@ pub async fn plan_moved_crate_own_path_dependencies(
 
     // Helper to update path dependencies in a dependency table
     let update_paths_in_table = |table: &mut dyn toml_edit::TableLike,
-                                   old_dir: &Path,
-                                   new_dir: &Path,
-                                   updated: &mut bool| -> ServerResult<()> {
+                                 old_dir: &Path,
+                                 new_dir: &Path,
+                                 updated: &mut bool|
+     -> ServerResult<()> {
         for (_dep_name, dep_value) in table.iter_mut() {
             // Handle inline table: { path = "...", version = "..." }
             if let Some(dep_table) = dep_value.as_inline_table_mut() {
@@ -558,10 +559,7 @@ pub async fn plan_moved_crate_own_path_dependencies(
                         if let Some(new_rel_path) = pathdiff::diff_paths(&abs_dep_path, new_dir) {
                             let new_rel_path_str = new_rel_path.to_string_lossy().to_string();
                             if new_rel_path_str != old_rel_path_str {
-                                dep_table.insert(
-                                    "path",
-                                    toml_edit::Value::from(new_rel_path_str)
-                                );
+                                dep_table.insert("path", toml_edit::Value::from(new_rel_path_str));
                                 *updated = true;
                             }
                         }
@@ -584,10 +582,7 @@ pub async fn plan_moved_crate_own_path_dependencies(
                         if let Some(new_rel_path) = pathdiff::diff_paths(&abs_dep_path, new_dir) {
                             let new_rel_path_str = new_rel_path.to_string_lossy().to_string();
                             if new_rel_path_str != old_rel_path_str {
-                                dep_table.insert(
-                                    "path",
-                                    toml_edit::value(new_rel_path_str)
-                                );
+                                dep_table.insert("path", toml_edit::value(new_rel_path_str));
                                 *updated = true;
                             }
                         }
@@ -604,21 +599,23 @@ pub async fn plan_moved_crate_own_path_dependencies(
     }
 
     // Update path dependencies in [dev-dependencies]
-    if let Some(dev_deps) = doc.get_mut("dev-dependencies").and_then(|d| d.as_table_mut()) {
+    if let Some(dev_deps) = doc
+        .get_mut("dev-dependencies")
+        .and_then(|d| d.as_table_mut())
+    {
         update_paths_in_table(dev_deps, old_crate_path, new_crate_path, &mut updated)?;
     }
 
     // Update path dependencies in [build-dependencies]
-    if let Some(build_deps) = doc.get_mut("build-dependencies").and_then(|d| d.as_table_mut()) {
+    if let Some(build_deps) = doc
+        .get_mut("build-dependencies")
+        .and_then(|d| d.as_table_mut())
+    {
         update_paths_in_table(build_deps, old_crate_path, new_crate_path, &mut updated)?;
     }
 
     if updated {
-        Ok(Some((
-            cargo_toml.to_path_buf(),
-            content,
-            doc.to_string(),
-        )))
+        Ok(Some((cargo_toml.to_path_buf(), content, doc.to_string())))
     } else {
         Ok(None)
     }
@@ -756,9 +753,11 @@ pub async fn plan_workspace_manifest_updates_for_batch(
     while let Some(path) = current_path {
         let workspace_toml_path = path.join("Cargo.toml");
         if workspace_toml_path.exists() {
-            let content = fs::read_to_string(&workspace_toml_path).await.map_err(|e| {
-                ServerError::Internal(format!("Failed to read workspace Cargo.toml: {}", e))
-            })?;
+            let content = fs::read_to_string(&workspace_toml_path)
+                .await
+                .map_err(|e| {
+                    ServerError::Internal(format!("Failed to read workspace Cargo.toml: {}", e))
+                })?;
 
             if content.contains("[workspace]") {
                 let mut doc = content.parse::<toml_edit::DocumentMut>().map_err(|e| {
@@ -778,7 +777,9 @@ pub async fn plan_workspace_manifest_updates_for_batch(
 
                     // Update members array
                     if let Some(members) = doc["workspace"]["members"].as_array_mut() {
-                        let index_opt = members.iter().position(|m| m.as_str().map(|s| s.trim()) == Some(old_path_str.trim()));
+                        let index_opt = members.iter().position(|m| {
+                            m.as_str().map(|s| s.trim()) == Some(old_path_str.trim())
+                        });
 
                         debug!(
                             old_path_str = %old_path_str,
@@ -797,10 +798,22 @@ pub async fn plan_workspace_manifest_updates_for_batch(
                     }
 
                     // Update workspace dependencies (separate borrow)
-                    let old_crate_name = old_package_path.file_name().and_then(|n| n.to_str()).map(|s| s.replace('_', "-")).unwrap_or_default();
-                    let new_crate_name = new_package_path.file_name().and_then(|n| n.to_str()).map(|s| s.replace('_', "-")).unwrap_or_default();
+                    let old_crate_name = old_package_path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|s| s.replace('_', "-"))
+                        .unwrap_or_default();
+                    let new_crate_name = new_package_path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|s| s.replace('_', "-"))
+                        .unwrap_or_default();
 
-                    if let Some(deps) = doc.get_mut("workspace").and_then(|w| w.get_mut("dependencies")).and_then(|d| d.as_table_mut()) {
+                    if let Some(deps) = doc
+                        .get_mut("workspace")
+                        .and_then(|w| w.get_mut("dependencies"))
+                        .and_then(|d| d.as_table_mut())
+                    {
                         if let Some(dep_value) = deps.remove(&old_crate_name) {
                             let mut updated_dep = dep_value;
                             if let Some(dep_table) = updated_dep.as_inline_table_mut() {
@@ -827,8 +840,12 @@ pub async fn plan_workspace_manifest_updates_for_batch(
 
     // Also plan dependent crate path updates (once per dependent Cargo.toml, aggregating all moves)
     debug!("Calling plan_dependent_crate_path_updates_for_batch");
-    let mut dependent_updates = plan_dependent_crate_path_updates_for_batch(moves, project_root).await?;
-    debug!(dependent_updates_count = dependent_updates.len(), "Received dependent crate updates");
+    let mut dependent_updates =
+        plan_dependent_crate_path_updates_for_batch(moves, project_root).await?;
+    debug!(
+        dependent_updates_count = dependent_updates.len(),
+        "Received dependent crate updates"
+    );
     planned_updates.append(&mut dependent_updates);
 
     Ok(planned_updates)
@@ -897,7 +914,9 @@ async fn plan_dependent_crate_path_updates_for_batch(
     }
 
     // Walk workspace and find all Cargo.toml files
-    let walker = ignore::WalkBuilder::new(&abs_project_root).hidden(false).build();
+    let walker = ignore::WalkBuilder::new(&abs_project_root)
+        .hidden(false)
+        .build();
 
     for entry in walker.flatten() {
         let path = entry.path();
@@ -912,9 +931,9 @@ async fn plan_dependent_crate_path_updates_for_batch(
             None => continue,
         };
 
-        let is_moved_crate = normalized_moves.iter().any(|(old, new)| {
-            parent == old.as_path() || parent == new.as_path()
-        });
+        let is_moved_crate = normalized_moves
+            .iter()
+            .any(|(old, new)| parent == old.as_path() || parent == new.as_path());
         if is_moved_crate {
             debug!(cargo_toml = ?path, "Skipping moved crate's own Cargo.toml");
             continue;
@@ -959,8 +978,11 @@ async fn plan_dependent_crate_path_updates_for_batch(
                             if let Some(old_path_value) = dep_table.get("path") {
                                 // Calculate new relative path from this Cargo.toml to new location
                                 // parent is absolute, new_abs_path is absolute, so diff_paths should succeed
-                                if let Some(new_rel_path) = pathdiff::diff_paths(new_abs_path, parent) {
-                                    let new_rel_path_str = new_rel_path.to_string_lossy().to_string();
+                                if let Some(new_rel_path) =
+                                    pathdiff::diff_paths(new_abs_path, parent)
+                                {
+                                    let new_rel_path_str =
+                                        new_rel_path.to_string_lossy().to_string();
                                     debug!(
                                         dep_name = %dep_name,
                                         old_path = %old_path_value,
@@ -968,7 +990,8 @@ async fn plan_dependent_crate_path_updates_for_batch(
                                         section = %section_name,
                                         "Updating inline table path dependency"
                                     );
-                                    dep_table.insert("path", toml_edit::Value::from(new_rel_path_str));
+                                    dep_table
+                                        .insert("path", toml_edit::Value::from(new_rel_path_str));
                                     updated = true;
                                 } else {
                                     debug!(
@@ -982,8 +1005,11 @@ async fn plan_dependent_crate_path_updates_for_batch(
                         } else if let Some(dep_table) = dep_value.as_table_mut() {
                             if let Some(old_path_value) = dep_table.get("path") {
                                 // Calculate new relative path
-                                if let Some(new_rel_path) = pathdiff::diff_paths(new_abs_path, parent) {
-                                    let new_rel_path_str = new_rel_path.to_string_lossy().to_string();
+                                if let Some(new_rel_path) =
+                                    pathdiff::diff_paths(new_abs_path, parent)
+                                {
+                                    let new_rel_path_str =
+                                        new_rel_path.to_string_lossy().to_string();
                                     debug!(
                                         dep_name = %dep_name,
                                         old_path = %old_path_value,
@@ -991,7 +1017,12 @@ async fn plan_dependent_crate_path_updates_for_batch(
                                         section = %section_name,
                                         "Updating table path dependency"
                                     );
-                                    dep_table.insert("path", toml_edit::Item::Value(toml_edit::Value::from(new_rel_path_str)));
+                                    dep_table.insert(
+                                        "path",
+                                        toml_edit::Item::Value(toml_edit::Value::from(
+                                            new_rel_path_str,
+                                        )),
+                                    );
                                     updated = true;
                                 } else {
                                     debug!(
@@ -1021,7 +1052,10 @@ async fn plan_dependent_crate_path_updates_for_batch(
         }
     }
 
-    debug!(planned_updates_count = planned_updates.len(), "Exiting plan_dependent_crate_path_updates_for_batch");
+    debug!(
+        planned_updates_count = planned_updates.len(),
+        "Exiting plan_dependent_crate_path_updates_for_batch"
+    );
     Ok(planned_updates)
 }
 

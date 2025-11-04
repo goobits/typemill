@@ -1,5 +1,5 @@
-use mill_plugin_api::{capabilities::ManifestUpdater, PluginResult};
 use async_trait::async_trait;
+use mill_plugin_api::{capabilities::ManifestUpdater, PluginResult};
 use std::path::Path;
 
 use crate::constants::CMAKE_EXECUTABLE_PATTERN;
@@ -19,7 +19,10 @@ impl ManifestUpdater for CppManifestUpdater {
             Some(caps) => caps.get(1).map_or("my_app", |m| m.as_str()).to_string(),
             None => "my_app".to_string(),
         };
-        Ok(format!("{}\ntarget_link_libraries({} PRIVATE {})", content, target, dependency_name))
+        Ok(format!(
+            "{}\ntarget_link_libraries({} PRIVATE {})",
+            content, target, dependency_name
+        ))
     }
 
     fn generate_manifest(&self, project_name: &str, _dependencies: &[String]) -> String {

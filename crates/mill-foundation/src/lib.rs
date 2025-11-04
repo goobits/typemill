@@ -32,6 +32,6 @@ pub use errors::{error_codes, ErrorResponse, MillError, MillResult};
 pub use model::{
     Intent, IntentSpec, McpContentItem, McpError, McpLoggingCapability, McpMessage,
     McpNotification, McpPromptsCapability, McpRequest, McpResource, McpResourcesCapability,
-    McpResponse, McpServerCapabilities, McpTool, McpToolResult, McpToolsCapability, Step,
-    ToolCall, Workflow, WorkflowMetadata, MCP_PROTOCOL_VERSION,
+    McpResponse, McpServerCapabilities, McpTool, McpToolResult, McpToolsCapability, Step, ToolCall,
+    Workflow, WorkflowMetadata, MCP_PROTOCOL_VERSION,
 };

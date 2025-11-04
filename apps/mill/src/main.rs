@@ -190,7 +190,8 @@ pub async fn run_websocket_server() {
 
 /// Handler for the homepage
 async fn homepage_handler() -> impl IntoResponse {
-    Html(r#"<!DOCTYPE html>
+    Html(
+        r#"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -242,7 +243,8 @@ async fn homepage_handler() -> impl IntoResponse {
         <p>For complete API documentation and tools reference, see the project README.</p>
     </div>
 </body>
-</html>"#)
+</html>"#,
+    )
 }
 
 /// Runs the application in websocket mode on a specific port.

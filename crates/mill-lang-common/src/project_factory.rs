@@ -8,7 +8,7 @@
 //!
 //! Language-specific logic (template generation, manifest format) remains in each plugin.
 
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_plugin_api::{PluginApiError, PluginResult};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, error};
@@ -62,7 +62,7 @@ pub fn resolve_package_path(workspace_root: &Path, package_path: &str) -> Plugin
     use std::path::Component;
     for component in path.components() {
         if matches!(component, Component::ParentDir) {
-            return Err(PluginError::invalid_input(format!(
+            return Err(PluginApiError::invalid_input(format!(
                 "Package path cannot contain '..' components: {}",
                 package_path
             )));
@@ -78,19 +78,19 @@ pub fn resolve_package_path(workspace_root: &Path, package_path: &str) -> Plugin
 
     // Canonicalize workspace root for boundary checking
     let canonical_root = workspace_root.canonicalize().map_err(|e| {
-        PluginError::internal(format!("Failed to canonicalize workspace root: {}", e))
+        PluginApiError::internal(format!("Failed to canonicalize workspace root: {}", e))
     })?;
 
     // For the resolved path, canonicalize parent if it exists (target doesn't exist yet)
     let canonical_resolved = if let Some(parent) = resolved.parent() {
         if parent.exists() {
             let canonical_parent = parent.canonicalize().map_err(|e| {
-                PluginError::internal(format!("Failed to canonicalize parent directory: {}", e))
+                PluginApiError::internal(format!("Failed to canonicalize parent directory: {}", e))
             })?;
             resolved
                 .file_name()
                 .map(|name| canonical_parent.join(name))
-                .ok_or_else(|| PluginError::invalid_input("Invalid package path"))?
+                .ok_or_else(|| PluginApiError::invalid_input("Invalid package path"))?
         } else {
             // Parent doesn't exist yet - we'll create it later
             resolved.clone()
@@ -101,7 +101,7 @@ pub fn resolve_package_path(workspace_root: &Path, package_path: &str) -> Plugin
 
     // Verify path is within workspace boundary
     if !canonical_resolved.starts_with(&canonical_root) {
-        return Err(PluginError::invalid_input(format!(
+        return Err(PluginApiError::invalid_input(format!(
             "Package path {} is outside workspace",
             package_path
         )));
@@ -121,7 +121,7 @@ pub fn resolve_package_path(workspace_root: &Path, package_path: &str) -> Plugin
 /// Ok(()) if the path does not exist, or an error if it already exists
 pub fn validate_package_path_not_exists(package_path: &Path) -> PluginResult<()> {
     if package_path.exists() {
-        return Err(PluginError::invalid_input(format!(
+        return Err(PluginApiError::invalid_input(format!(
             "Package already exists at {}",
             package_path.display()
         )));
@@ -156,7 +156,10 @@ pub fn derive_package_name(package_path: &Path) -> PluginResult<String> {
         .file_name()
         .and_then(|n| n.to_str())
         .ok_or_else(|| {
-            PluginError::invalid_input(format!("Invalid package path: {}", package_path.display()))
+            PluginApiError::invalid_input(format!(
+                "Invalid package path: {}",
+                package_path.display()
+            ))
         })
         .map(|s| s.to_string())
 }
@@ -187,7 +190,7 @@ pub fn write_project_file(path: &Path, content: &str) -> PluginResult<()> {
     debug!(path = %path.display(), "Writing project file");
     fs::write(path, content).map_err(|e| {
         error!(error = %e, path = %path.display(), "Failed to write file");
-        PluginError::internal(format!("Failed to write file: {}", e))
+        PluginApiError::internal(format!("Failed to write file: {}", e))
     })
 }
 
@@ -238,7 +241,7 @@ pub fn find_workspace_manifest(
 
         if manifest.exists() {
             let content = fs::read_to_string(&manifest).map_err(|e| {
-                PluginError::internal(format!("Failed to read {}: {}", manifest_filename, e))
+                PluginApiError::internal(format!("Failed to read {}: {}", manifest_filename, e))
             })?;
 
             if detector.is_workspace_manifest(&content) {
@@ -250,7 +253,7 @@ pub fn find_workspace_manifest(
         current = current
             .parent()
             .ok_or_else(|| {
-                PluginError::invalid_input(format!(
+                PluginApiError::invalid_input(format!(
                     "No workspace {} found in hierarchy",
                     manifest_filename
                 ))
@@ -263,7 +266,7 @@ pub fn find_workspace_manifest(
         }
     }
 
-    Err(PluginError::invalid_input(format!(
+    Err(PluginApiError::invalid_input(format!(
         "No workspace {} found",
         manifest_filename
     )))
@@ -340,7 +343,7 @@ where
             workspace_manifest = %workspace_manifest.display(),
             "Failed to read workspace manifest"
         );
-        PluginError::internal(format!(
+        PluginApiError::internal(format!(
             "Failed to read workspace {}: {}",
             manifest_filename, e
         ))
@@ -349,10 +352,10 @@ where
     // Calculate relative path from manifest directory to package
     let workspace_dir = workspace_manifest
         .parent()
-        .ok_or_else(|| PluginError::internal("Invalid workspace manifest path"))?;
+        .ok_or_else(|| PluginApiError::internal("Invalid workspace manifest path"))?;
 
     let relative_path = pathdiff::diff_paths(package_path, workspace_dir)
-        .ok_or_else(|| PluginError::internal("Failed to calculate relative path"))?;
+        .ok_or_else(|| PluginApiError::internal("Failed to calculate relative path"))?;
 
     // Normalize to forward slashes for cross-platform compatibility
     let member_str = relative_path.to_string_lossy().replace('\\', "/");
@@ -370,7 +373,7 @@ where
                 workspace_manifest = %workspace_manifest.display(),
                 "Failed to write workspace manifest"
             );
-            PluginError::internal(format!(
+            PluginApiError::internal(format!(
                 "Failed to write workspace {}: {}",
                 manifest_filename, e
             ))

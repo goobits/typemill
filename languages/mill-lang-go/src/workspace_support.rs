@@ -57,7 +57,7 @@ impl WorkspaceSupport for GoWorkspaceSupport {
                     members.push(path.to_string());
                 }
             } else if trimmed.starts_with("use ") {
-                 // Single line use outside of a block
+                // Single line use outside of a block
                 if let Some(path_str) = trimmed.split_whitespace().nth(1) {
                     if let Some(path) = path_str.strip_prefix("./") {
                         members.push(path.to_string());

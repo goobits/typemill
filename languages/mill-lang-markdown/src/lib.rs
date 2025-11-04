@@ -10,8 +10,8 @@ use mill_plugin_api::{
         ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportParser,
         ImportRenameSupport,
     },
-    LanguageMetadata, LanguagePlugin, ManifestData, ParsedSource, PluginCapabilities, PluginError,
-    PluginResult, SourceLocation, Symbol, SymbolKind,
+    LanguageMetadata, LanguagePlugin, ManifestData, ParsedSource, PluginApiError,
+    PluginCapabilities, PluginResult, SourceLocation, Symbol, SymbolKind,
 };
 use regex::Regex;
 use std::path::Path;
@@ -98,7 +98,7 @@ impl LanguagePlugin for MarkdownPlugin {
 
     async fn analyze_manifest(&self, _path: &Path) -> PluginResult<ManifestData> {
         // Markdown files don't have a manifest
-        Err(PluginError::not_supported(
+        Err(PluginApiError::not_supported(
             "Markdown does not have a manifest file",
         ))
     }

@@ -119,17 +119,23 @@ mod dispatch {
 
         // Execute the operation with the plugin
         operation(plugin, content).await.map_err(|e| {
-            // Convert PluginError to ApiError
+            // Convert PluginApiError to ApiError
             match e {
-                mill_plugin_api::PluginApiError::Parse { message, .. } => ApiError::Parse { message },
-                mill_plugin_api::PluginApiError::Manifest { message } => ApiError::Parse { message },
+                mill_plugin_api::PluginApiError::Parse { message, .. } => {
+                    ApiError::Parse { message }
+                }
+                mill_plugin_api::PluginApiError::Manifest { message } => {
+                    ApiError::Parse { message }
+                }
                 mill_plugin_api::PluginApiError::NotSupported { operation } => {
                     ApiError::Unsupported(operation)
                 }
                 mill_plugin_api::PluginApiError::InvalidInput { message } => {
                     ApiError::InvalidRequest(message)
                 }
-                mill_plugin_api::PluginApiError::Internal { message } => ApiError::Internal(message),
+                mill_plugin_api::PluginApiError::Internal { message } => {
+                    ApiError::Internal(message)
+                }
             }
         })
     }

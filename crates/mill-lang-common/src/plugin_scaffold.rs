@@ -231,7 +231,7 @@ mod tests {{
 //!
 //! Handles {manifest_file} files for {lang} projects.
 
-use mill_plugin_api::{{ ManifestData , PluginError , PluginResult }};
+use mill_plugin_api::{{ ManifestData , PluginApiError , PluginResult }};
 use std::path::Path;
 
 /// Analyze {lang} manifest file
@@ -245,7 +245,7 @@ pub async fn analyze_manifest(path: &Path) -> PluginResult<ManifestData> {{
 
     let content = tokio::fs::read_to_string(path)
         .await
-        .map_err(|e| PluginError::manifest(format!("Failed to read manifest: {{}}", e)))?;
+        .map_err(|e| PluginApiError::manifest(format!("Failed to read manifest: {{}}", e)))?;
 
     Ok(ManifestData {{
         name: path

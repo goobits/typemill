@@ -2,12 +2,12 @@
 //!
 //! This module provides AST-based refactoring capabilities for Go code.
 
-use mill_lang_common::LineExtractor;
+use lazy_static::lazy_static;
 use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use lazy_static::lazy_static;
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_lang_common::LineExtractor;
+use mill_plugin_api::{PluginApiError, PluginResult};
 use std::collections::HashMap;
 
 /// Plan extract function refactoring for Go
@@ -21,7 +21,7 @@ pub fn plan_extract_function(
     let lines: Vec<&str> = source.lines().collect();
 
     if start_line as usize >= lines.len() || end_line as usize >= lines.len() {
-        return Err(PluginError::invalid_input("Line range out of bounds"));
+        return Err(PluginApiError::invalid_input("Line range out of bounds"));
     }
 
     // Extract the selected lines
@@ -110,7 +110,7 @@ pub fn plan_extract_variable(
     let lines: Vec<&str> = source.lines().collect();
 
     if start_line as usize >= lines.len() || end_line as usize >= lines.len() {
-        return Err(PluginError::invalid_input("Line range out of bounds"));
+        return Err(PluginApiError::invalid_input("Line range out of bounds"));
     }
 
     // Extract the expression
@@ -214,7 +214,7 @@ pub fn plan_inline_variable(
     let lines: Vec<&str> = source.lines().collect();
 
     if variable_line as usize >= lines.len() {
-        return Err(PluginError::invalid_input("Line number out of bounds"));
+        return Err(PluginApiError::invalid_input("Line number out of bounds"));
     }
 
     let line_text = lines[variable_line as usize];
@@ -224,7 +224,7 @@ pub fn plan_inline_variable(
         let initializer = captures.get(2).map_or("", |m| m.as_str()).trim();
 
         if var_name.is_empty() {
-            return Err(PluginError::internal(
+            return Err(PluginApiError::internal(
                 "Could not extract variable name".to_string(),
             ));
         }
@@ -232,7 +232,7 @@ pub fn plan_inline_variable(
         // Find all usages of this variable in the rest of the source
         let mut edits = Vec::new();
         let var_regex = regex::Regex::new(&format!(r"\b{}\b", regex::escape(var_name)))
-            .map_err(|e| PluginError::internal(e.to_string()))?;
+            .map_err(|e| PluginApiError::internal(e.to_string()))?;
 
         // Replace all usages (except the declaration itself)
         for (idx, line) in lines.iter().enumerate() {
@@ -299,7 +299,7 @@ pub fn plan_inline_variable(
             },
         })
     } else {
-        Err(PluginError::internal(format!(
+        Err(PluginApiError::internal(format!(
             "Could not find variable declaration at line {}",
             variable_line
         )))

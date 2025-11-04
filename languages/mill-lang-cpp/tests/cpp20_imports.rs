@@ -1,5 +1,5 @@
 use mill_lang_cpp::CppPlugin;
-use mill_plugin_api::{LanguagePlugin, import_support::ImportParser};
+use mill_plugin_api::{import_support::ImportParser, LanguagePlugin};
 
 #[tokio::test]
 async fn test_parse_cpp20_imports() {

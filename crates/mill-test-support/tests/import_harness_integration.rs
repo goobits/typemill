@@ -3,7 +3,9 @@
 //! These tests verify that the import harness scenarios work with actual language plugins.
 //! Each test runs against TypeScript, Rust, and Python plugins to ensure consistent behavior.
 
-use mill_test_support::harness::{ImportScenarios, ImportExpectedBehavior, ImportOperation, get_test_registry};
+use mill_test_support::harness::{
+    get_test_registry, ImportExpectedBehavior, ImportOperation, ImportScenarios,
+};
 
 // Force linker to include plugin-bundle for inventory collection in tests
 extern crate mill_plugin_bundle;
@@ -130,9 +132,10 @@ mod import_harness_tests {
                 .find_by_extension(fixture.language.file_extension())
                 .expect(&format!("Plugin not found for {:?}", fixture.language));
 
-            let mutation = plugin
-                .import_mutation_support()
-                .expect(&format!("{:?} should have import mutation support", fixture.language));
+            let mutation = plugin.import_mutation_support().expect(&format!(
+                "{:?} should have import mutation support",
+                fixture.language
+            ));
 
             if let ImportOperation::AddImport { module_name } = &fixture.operation {
                 let result = mutation.add_import(fixture.source_code, module_name);
@@ -162,9 +165,10 @@ mod import_harness_tests {
                 .find_by_extension(fixture.language.file_extension())
                 .expect(&format!("Plugin not found for {:?}", fixture.language));
 
-            let mutation = plugin
-                .import_mutation_support()
-                .expect(&format!("{:?} should have import mutation support", fixture.language));
+            let mutation = plugin.import_mutation_support().expect(&format!(
+                "{:?} should have import mutation support",
+                fixture.language
+            ));
 
             if let ImportOperation::AddImport { module_name } = &fixture.operation {
                 let result = mutation.add_import(fixture.source_code, module_name);
@@ -194,9 +198,10 @@ mod import_harness_tests {
                 .find_by_extension(fixture.language.file_extension())
                 .expect(&format!("Plugin not found for {:?}", fixture.language));
 
-            let mutation = plugin
-                .import_mutation_support()
-                .expect(&format!("{:?} should have import mutation support", fixture.language));
+            let mutation = plugin.import_mutation_support().expect(&format!(
+                "{:?} should have import mutation support",
+                fixture.language
+            ));
 
             if let ImportOperation::RemoveImport { module_name } = &fixture.operation {
                 let result = mutation.remove_import(fixture.source_code, module_name);
@@ -226,9 +231,10 @@ mod import_harness_tests {
                 .find_by_extension(fixture.language.file_extension())
                 .expect(&format!("Plugin not found for {:?}", fixture.language));
 
-            let rename_support = plugin
-                .import_rename_support()
-                .expect(&format!("{:?} should have import rename support", fixture.language));
+            let rename_support = plugin.import_rename_support().expect(&format!(
+                "{:?} should have import rename support",
+                fixture.language
+            ));
 
             if let ImportOperation::RewriteForRename { old_name, new_name } = &fixture.operation {
                 let (result, changes) = rename_support.rewrite_imports_for_rename(
@@ -251,8 +257,16 @@ mod import_harness_tests {
                         let contains_new = parser.contains_import(&result, new_name);
 
                         if *expected_count > 0 {
-                            assert!(!contains_old, "Should not contain old import after rename for {:?}", fixture.language);
-                            assert!(contains_new, "Should contain new import after rename for {:?}", fixture.language);
+                            assert!(
+                                !contains_old,
+                                "Should not contain old import after rename for {:?}",
+                                fixture.language
+                            );
+                            assert!(
+                                contains_new,
+                                "Should contain new import after rename for {:?}",
+                                fixture.language
+                            );
                         }
                     }
                     _ => panic!("Wrong expected behavior for rewrite_for_rename test"),

@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use mill_lang_common::lsp::{check_binary_in_path, install_pip_package};
-use mill_plugin_api::{LspInstaller, PluginError, PluginResult};
+use mill_plugin_api::{LspInstaller, PluginApiError, PluginResult};
 use std::path::{Path, PathBuf};
 use tracing::debug;
 
@@ -32,7 +32,7 @@ impl LspInstaller for PythonLspInstaller {
 
         install_pip_package("python-lsp-server", "pylsp")
             .await
-            .map_err(|e| PluginError::internal(format!("pip install failed: {}", e)))
+            .map_err(|e| PluginApiError::internal(format!("pip install failed: {}", e)))
     }
 }
 

@@ -27,7 +27,7 @@ use mill_lang_common::{
     define_language_plugin, impl_capability_delegations, impl_language_plugin_basics, read_manifest,
 };
 use mill_plugin_api::{
-    AnalysisMetadata, DocCommentStyle, LanguagePlugin, ManifestData, ParsedSource, PluginError,
+    AnalysisMetadata, DocCommentStyle, LanguagePlugin, ManifestData, ParsedSource, PluginApiError,
     PluginResult,
 };
 use regex::Regex;
@@ -262,7 +262,7 @@ impl mill_plugin_api::ImportAnalyzer for TypeScriptPlugin {
     ) -> mill_plugin_api::PluginResult<mill_foundation::protocol::ImportGraph> {
         // Read the file content
         let content = std::fs::read_to_string(file_path).map_err(|e| {
-            mill_plugin_api::PluginError::internal(format!("Failed to read file: {}", e))
+            mill_plugin_api::PluginApiError::internal(format!("Failed to read file: {}", e))
         })?;
 
         // Use the existing analyze_detailed_imports method
@@ -310,7 +310,7 @@ impl TypeScriptPlugin {
     ) -> PluginResult<String> {
         let content = read_manifest(manifest_path).await?;
         let version = new_version.ok_or_else(|| {
-            PluginError::invalid_input("Version required for package.json dependency updates")
+            PluginApiError::invalid_input("Version required for package.json dependency updates")
         })?;
         manifest::update_dependency(&content, new_name, version)
     }
@@ -334,7 +334,9 @@ impl TypeScriptPlugin {
 
             // Find import statements: "import ... from 'module'" or "import module"
             if scope != ScanScope::QualifiedPaths {
-                if (line.contains("import") || line.contains("from")) && line.contains(module_to_find) {
+                if (line.contains("import") || line.contains("from"))
+                    && line.contains(module_to_find)
+                {
                     references.push(ModuleReference {
                         line: line_idx,
                         column: 0,
@@ -455,9 +457,14 @@ function тестфункция() {
     #[test]
     fn test_edge_scan_mixed_line_endings() {
         let plugin = TypeScriptPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
-        let content = "import { readFile } from 'fs';\r\nimport path from 'path';\nimport os from 'os';";
-        let refs = scanner.scan_references(content, "fs", ScanScope::All).expect("Should scan");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
+        let content =
+            "import { readFile } from 'fs';\r\nimport path from 'path';\nimport os from 'os';";
+        let refs = scanner
+            .scan_references(content, "fs", ScanScope::All)
+            .expect("Should scan");
         assert_eq!(refs.len(), 1);
     }
 
@@ -480,7 +487,9 @@ function тестфункция() {
     #[test]
     fn test_edge_scan_special_regex_chars() {
         let plugin = TypeScriptPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import { readFile } from 'fs';";
         // Test with special regex characters
         let result = scanner.scan_references(content, "f.*", ScanScope::All);
@@ -490,7 +499,9 @@ function тестфункция() {
     #[test]
     fn test_edge_handle_null_bytes() {
         let plugin = TypeScriptPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import { readFile } from 'fs';\x00\nimport path from 'path';";
         let result = scanner.scan_references(content, "fs", ScanScope::All);
         assert!(result.is_ok()); // Should not panic
@@ -508,26 +519,35 @@ function тестфункция() {
         // Create a large TypeScript file (~100KB, 5000 functions)
         let mut large_source = String::from("import { readFile } from 'fs';\n\n");
         for i in 0..5000 {
-            large_source.push_str(&format!("function function{}(): number {{ return {}; }}\n", i, i));
+            large_source.push_str(&format!(
+                "function function{}(): number {{ return {}; }}\n",
+                i, i
+            ));
         }
 
         let start = Instant::now();
-        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            plugin.parse(&large_source).await
-        });
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { plugin.parse(&large_source).await });
         let duration = start.elapsed();
 
         assert!(result.is_ok(), "Should parse large file");
         let symbols = result.unwrap().symbols;
         assert_eq!(symbols.len(), 5000, "Should find all 5000 functions");
-        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 5,
+            "Should parse within 5 seconds, took {:?}",
+            duration
+        );
     }
 
     #[test]
     fn test_performance_scan_many_references() {
         use std::time::Instant;
         let plugin = TypeScriptPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
 
         // Create content with 10,000 references
         let mut content = String::from("import { readFile } from 'fs';\n\n");
@@ -536,10 +556,20 @@ function тестфункция() {
         }
 
         let start = Instant::now();
-        let refs = scanner.scan_references(&content, "fs", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(&content, "fs", ScanScope::All)
+            .expect("Should scan");
         let duration = start.elapsed();
 
-        assert_eq!(refs.len(), 10001, "Should find import + 10K qualified paths");
-        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
+        assert_eq!(
+            refs.len(),
+            10001,
+            "Should find import + 10K qualified paths"
+        );
+        assert!(
+            duration.as_secs() < 10,
+            "Should scan within 10 seconds, took {:?}",
+            duration
+        );
     }
 }

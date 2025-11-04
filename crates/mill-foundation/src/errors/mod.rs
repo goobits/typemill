@@ -562,7 +562,10 @@ mod tests {
         let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
         let mill_err: MillError = io_err.into();
         assert!(matches!(mill_err, MillError::Io { .. }));
-        assert_eq!(mill_err.error_code(), error_codes::E1000_INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            mill_err.error_code(),
+            error_codes::E1000_INTERNAL_SERVER_ERROR
+        );
     }
 
     #[test]
@@ -577,34 +580,93 @@ mod tests {
     fn test_error_code_mapping() {
         // Test all variants have correct error codes
         let tests = vec![
-            (MillError::config("test"), error_codes::E1001_INVALID_REQUEST),
-            (MillError::bootstrap("test"), error_codes::E1019_BOOTSTRAP_ERROR),
-            (MillError::not_found("test"), error_codes::E1006_RESOURCE_NOT_FOUND),
-            (MillError::already_exists("test"), error_codes::E1022_ALREADY_EXISTS),
+            (
+                MillError::config("test"),
+                error_codes::E1001_INVALID_REQUEST,
+            ),
+            (
+                MillError::bootstrap("test"),
+                error_codes::E1019_BOOTSTRAP_ERROR,
+            ),
+            (
+                MillError::not_found("test"),
+                error_codes::E1006_RESOURCE_NOT_FOUND,
+            ),
+            (
+                MillError::already_exists("test"),
+                error_codes::E1022_ALREADY_EXISTS,
+            ),
             (MillError::parse("test"), error_codes::E1009_PARSE_ERROR),
-            (MillError::invalid_data("test"), error_codes::E1008_INVALID_DATA),
-            (MillError::validation("test"), error_codes::E1010_VALIDATION_ERROR),
-            (MillError::not_supported("test"), error_codes::E1007_NOT_SUPPORTED),
-            (MillError::permission_denied("test"), error_codes::E1005_PERMISSION_DENIED),
+            (
+                MillError::invalid_data("test"),
+                error_codes::E1008_INVALID_DATA,
+            ),
+            (
+                MillError::validation("test"),
+                error_codes::E1010_VALIDATION_ERROR,
+            ),
+            (
+                MillError::not_supported("test"),
+                error_codes::E1007_NOT_SUPPORTED,
+            ),
+            (
+                MillError::permission_denied("test"),
+                error_codes::E1005_PERMISSION_DENIED,
+            ),
             (MillError::timeout("test"), error_codes::E1004_TIMEOUT),
             (MillError::lsp("test"), error_codes::E1003_LSP_ERROR),
             (MillError::ast("test"), error_codes::E1016_AST_ERROR),
-            (MillError::unsupported_syntax("test"), error_codes::E1021_UNSUPPORTED_SYNTAX),
-            (MillError::plugin_not_found("test"), error_codes::E1024_PLUGIN_NOT_FOUND),
-            (MillError::plugin("test", "msg"), error_codes::E1014_PLUGIN_ERROR),
-            (MillError::manifest("test"), error_codes::E1015_MANIFEST_ERROR),
-            (MillError::connection("test"), error_codes::E1012_CONNECTION_ERROR),
-            (MillError::transport("test"), error_codes::E1023_TRANSPORT_ERROR),
+            (
+                MillError::unsupported_syntax("test"),
+                error_codes::E1021_UNSUPPORTED_SYNTAX,
+            ),
+            (
+                MillError::plugin_not_found("test"),
+                error_codes::E1024_PLUGIN_NOT_FOUND,
+            ),
+            (
+                MillError::plugin("test", "msg"),
+                error_codes::E1014_PLUGIN_ERROR,
+            ),
+            (
+                MillError::manifest("test"),
+                error_codes::E1015_MANIFEST_ERROR,
+            ),
+            (
+                MillError::connection("test"),
+                error_codes::E1012_CONNECTION_ERROR,
+            ),
+            (
+                MillError::transport("test"),
+                error_codes::E1023_TRANSPORT_ERROR,
+            ),
             (MillError::auth("test"), error_codes::E1013_AUTH_ERROR),
-            (MillError::invalid_request("test"), error_codes::E1001_INVALID_REQUEST),
-            (MillError::analysis("test"), error_codes::E1017_ANALYSIS_ERROR),
-            (MillError::transformation("test"), error_codes::E1018_TRANSFORMATION_ERROR),
+            (
+                MillError::invalid_request("test"),
+                error_codes::E1001_INVALID_REQUEST,
+            ),
+            (
+                MillError::analysis("test"),
+                error_codes::E1017_ANALYSIS_ERROR,
+            ),
+            (
+                MillError::transformation("test"),
+                error_codes::E1018_TRANSFORMATION_ERROR,
+            ),
             (MillError::runtime("test"), error_codes::E1020_RUNTIME_ERROR),
-            (MillError::internal("test"), error_codes::E1000_INTERNAL_SERVER_ERROR),
+            (
+                MillError::internal("test"),
+                error_codes::E1000_INTERNAL_SERVER_ERROR,
+            ),
         ];
 
         for (err, expected_code) in tests {
-            assert_eq!(err.error_code(), expected_code, "Error code mismatch for {:?}", err);
+            assert_eq!(
+                err.error_code(),
+                expected_code,
+                "Error code mismatch for {:?}",
+                err
+            );
         }
     }
 

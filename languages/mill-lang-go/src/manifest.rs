@@ -4,7 +4,7 @@
 //! manifest files, extracting dependency information, and updating dependencies.
 
 use mill_lang_common::read_manifest;
-use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginError, PluginResult};
+use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginApiError, PluginResult};
 use serde::Serialize;
 use std::path::Path;
 use tracing::debug;
@@ -115,7 +115,9 @@ fn parse_go_mod_internal(content: &str) -> PluginResult<GoMod> {
         }
     }
     if module.is_empty() {
-        return Err(PluginError::manifest("Missing module directive in go.mod"));
+        return Err(PluginApiError::manifest(
+            "Missing module directive in go.mod",
+        ));
     }
     Ok(GoMod {
         module,
@@ -130,7 +132,7 @@ fn parse_go_mod_internal(content: &str) -> PluginResult<GoMod> {
 fn parse_module_directive(line: &str) -> PluginResult<String> {
     let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() < 2 {
-        return Err(PluginError::manifest("Invalid module directive"));
+        return Err(PluginApiError::manifest("Invalid module directive"));
     }
     Ok(parts[1].to_string())
 }
@@ -139,7 +141,7 @@ fn parse_module_directive(line: &str) -> PluginResult<String> {
 fn parse_go_directive(line: &str) -> PluginResult<String> {
     let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() < 2 {
-        return Err(PluginError::manifest("Invalid go directive"));
+        return Err(PluginApiError::manifest("Invalid go directive"));
     }
     Ok(parts[1].to_string())
 }
@@ -154,7 +156,7 @@ fn parse_require_line(line: &str) -> PluginResult<GoRequire> {
 fn parse_require_entry(entry: &str) -> PluginResult<GoRequire> {
     let parts: Vec<&str> = entry.split_whitespace().collect();
     if parts.len() < 2 {
-        return Err(PluginError::manifest(format!(
+        return Err(PluginApiError::manifest(format!(
             "Invalid require entry: {}",
             entry
         )));
@@ -201,7 +203,7 @@ fn parse_replace_line(line: &str) -> PluginResult<GoReplace> {
 fn parse_replace_entry(entry: &str) -> PluginResult<GoReplace> {
     let parts: Vec<&str> = entry.split("=>").collect();
     if parts.len() != 2 {
-        return Err(PluginError::manifest(format!(
+        return Err(PluginApiError::manifest(format!(
             "Invalid replace entry: {}",
             entry
         )));
@@ -209,7 +211,7 @@ fn parse_replace_entry(entry: &str) -> PluginResult<GoReplace> {
     let old_parts: Vec<&str> = parts[0].split_whitespace().collect();
     let new_parts: Vec<&str> = parts[1].split_whitespace().collect();
     if old_parts.is_empty() || new_parts.is_empty() {
-        return Err(PluginError::manifest(format!(
+        return Err(PluginApiError::manifest(format!(
             "Invalid replace entry: {}",
             entry
         )));
@@ -254,7 +256,7 @@ fn parse_exclude_line(line: &str) -> PluginResult<GoExclude> {
 fn parse_exclude_entry(entry: &str) -> PluginResult<GoExclude> {
     let parts: Vec<&str> = entry.split_whitespace().collect();
     if parts.len() < 2 {
-        return Err(PluginError::manifest(format!(
+        return Err(PluginApiError::manifest(format!(
             "Invalid exclude entry: {}",
             entry
         )));
@@ -329,7 +331,7 @@ pub(crate) fn update_dependency(
     new_version: Option<&str>,
 ) -> PluginResult<String> {
     let pattern = format!(r"({})\s+v?[\d\.]+", regex::escape(old_name));
-    let re = regex::Regex::new(&pattern).map_err(|e| PluginError::internal(e.to_string()))?;
+    let re = regex::Regex::new(&pattern).map_err(|e| PluginApiError::internal(e.to_string()))?;
 
     let replacement = if let Some(version) = new_version {
         format!("{} {}", new_name, version)
@@ -405,7 +407,6 @@ require (
         assert_eq!(manifest.dependencies[0].name, "example.com/direct");
         assert_eq!(manifest.dev_dependencies[0].name, "example.com/indirect");
     }
-
 
     #[test]
     fn test_generate_manifest() {

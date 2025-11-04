@@ -5,8 +5,8 @@ use super::{
     documentation as documentation_handler, quality as quality_handler,
     structure as structure_handler,
     suggestions::{
-        ActionableSuggestion, AnalysisContext, EvidenceStrength, Location, RefactoringCandidate,
-        RefactorType, Scope, SuggestionConfig, SuggestionGenerator,
+        ActionableSuggestion, AnalysisContext, EvidenceStrength, Location, RefactorType,
+        RefactoringCandidate, Scope, SuggestionConfig, SuggestionGenerator,
     },
     tests_handler, AnalysisConfig,
 };
@@ -176,7 +176,8 @@ pub async fn run_batch_analysis(
     let mut failed_files_map = HashMap::new();
     let mut all_categories = HashSet::new();
     // Cache key: (file_path, category, kind) to allow same file analyzed with different queries
-    let mut all_file_results: HashMap<(PathBuf, String, String), FileAnalysisResult> = HashMap::new();
+    let mut all_file_results: HashMap<(PathBuf, String, String), FileAnalysisResult> =
+        HashMap::new();
 
     for query in &request.queries {
         let category = query

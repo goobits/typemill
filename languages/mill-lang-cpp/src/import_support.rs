@@ -9,14 +9,14 @@
 //! - Building import graphs with dependency information
 //! - Renaming, moving, and mutating includes during refactoring
 
+use crate::ast_parser::get_cpp_language;
+use crate::constants::CPP20_IMPORT_PATTERN;
 use mill_plugin_api::import_support::{
     ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportParser,
     ImportRenameSupport,
 };
-use tree_sitter::{Parser, Query, QueryCursor, StreamingIterator};
 use std::path::Path;
-use crate::ast_parser::get_cpp_language;
-use crate::constants::CPP20_IMPORT_PATTERN;
+use tree_sitter::{Parser, Query, QueryCursor, StreamingIterator};
 
 /// Get tree-sitter query for extracting #include directives
 ///
@@ -47,7 +47,7 @@ impl ImportParser for CppImportSupport {
             .expect("Error loading C++ grammar");
 
         let tree = parser.parse(source, None).unwrap();
-        let query = Query::new(&get_cpp_language(),get_cpp_imports_query()).unwrap();
+        let query = Query::new(&get_cpp_language(), get_cpp_imports_query()).unwrap();
 
         let mut query_cursor = QueryCursor::new();
         let mut ts_imports: Vec<String> = Vec::new();
@@ -58,7 +58,8 @@ impl ImportParser for CppImportSupport {
                     let range = c.node.range();
                     let text = source[range.start_byte..range.end_byte].to_string();
                     // Trim quotes and angle brackets
-                    let trimmed = text.trim_matches(|c| c == '"' || c == '<' || c == '>')
+                    let trimmed = text
+                        .trim_matches(|c| c == '"' || c == '<' || c == '>')
                         .to_string();
                     ts_imports.push(trimmed);
                 }
@@ -106,13 +107,14 @@ impl ImportRenameSupport for CppImportSupport {
 
         let tree = parser.parse(source, None).unwrap();
         let query_text = get_cpp_imports_query();
-        let query = Query::new(&get_cpp_language(),query_text).unwrap();
+        let query = Query::new(&get_cpp_language(), query_text).unwrap();
         let path_capture_index = query.capture_index_for_name("path").unwrap();
 
         let mut query_cursor = QueryCursor::new();
         let mut edits = vec![];
 
-        query_cursor.matches(&query, tree.root_node(), source.as_bytes())
+        query_cursor
+            .matches(&query, tree.root_node(), source.as_bytes())
             .for_each(|match_| {
                 let path_node = match_
                     .nodes_for_capture_index(path_capture_index)
@@ -136,7 +138,11 @@ impl ImportRenameSupport for CppImportSupport {
             let changes = edits.len();
             let mut new_source = source.to_string();
             // Sort edits by start byte in reverse order to apply them without invalidating ranges.
-            edits.sort_by(|a, b| b.range_to_replace.start_byte.cmp(&a.range_to_replace.start_byte));
+            edits.sort_by(|a, b| {
+                b.range_to_replace
+                    .start_byte
+                    .cmp(&a.range_to_replace.start_byte)
+            });
 
             for edit in edits {
                 new_source.replace_range(
@@ -172,7 +178,7 @@ impl ImportMoveSupport for CppImportSupport {
 
         let tree = parser.parse(source, None).unwrap();
         let query_text = get_cpp_imports_query();
-        let query = Query::new(&get_cpp_language(),query_text).unwrap();
+        let query = Query::new(&get_cpp_language(), query_text).unwrap();
         let path_capture_index = query.capture_index_for_name("path").unwrap();
 
         let mut query_cursor = QueryCursor::new();
@@ -188,7 +194,8 @@ impl ImportMoveSupport for CppImportSupport {
             None => return (source.to_string(), 0), // Should not happen if from_dir exists.
         };
 
-        query_cursor.matches(&query, tree.root_node(), source.as_bytes())
+        query_cursor
+            .matches(&query, tree.root_node(), source.as_bytes())
             .for_each(|match_| {
                 let path_node = match_
                     .nodes_for_capture_index(path_capture_index)
@@ -218,7 +225,11 @@ impl ImportMoveSupport for CppImportSupport {
         if !edits.is_empty() {
             let changes = edits.len();
             let mut new_source = source.to_string();
-            edits.sort_by(|a, b| b.range_to_replace.start_byte.cmp(&a.range_to_replace.start_byte));
+            edits.sort_by(|a, b| {
+                b.range_to_replace
+                    .start_byte
+                    .cmp(&a.range_to_replace.start_byte)
+            });
 
             for edit in edits {
                 new_source.replace_range(
@@ -272,7 +283,7 @@ impl ImportMutationSupport for CppImportSupport {
 
         let tree = parser.parse(source, None).unwrap();
         let query_text = get_cpp_imports_query();
-        let query = Query::new(&get_cpp_language(),query_text).unwrap();
+        let query = Query::new(&get_cpp_language(), query_text).unwrap();
         let path_capture_index = query.capture_index_for_name("path").unwrap();
 
         let mut query_cursor = QueryCursor::new();
@@ -285,9 +296,7 @@ impl ImportMutationSupport for CppImportSupport {
                     return; // Already found, skip remaining matches
                 }
 
-                let path_node = match match_
-                    .nodes_for_capture_index(path_capture_index)
-                    .next() {
+                let path_node = match match_.nodes_for_capture_index(path_capture_index).next() {
                     Some(n) => n,
                     None => return,
                 };
@@ -295,7 +304,8 @@ impl ImportMutationSupport for CppImportSupport {
                 let import_path = match path_node
                     .utf8_text(source.as_bytes())
                     .ok()
-                    .map(|s| s.trim_matches(|c| c == '"' || c == '<' || c == '>')) {
+                    .map(|s| s.trim_matches(|c| c == '"' || c == '<' || c == '>'))
+                {
                     Some(p) => p,
                     None => return,
                 };
@@ -324,7 +334,7 @@ impl ImportMutationSupport for CppImportSupport {
 }
 
 use mill_foundation::protocol::{DependencyUpdate, DependencyUpdateType};
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_plugin_api::{PluginApiError, PluginResult};
 
 impl ImportAdvancedSupport for CppImportSupport {
     fn update_import_reference(
@@ -335,15 +345,18 @@ impl ImportAdvancedSupport for CppImportSupport {
     ) -> PluginResult<String> {
         match update.update_type {
             DependencyUpdateType::ImportPath => {
-                let (new_content, changes) =
-                    self.rewrite_imports_for_rename(content, &update.old_reference, &update.new_reference);
+                let (new_content, changes) = self.rewrite_imports_for_rename(
+                    content,
+                    &update.old_reference,
+                    &update.new_reference,
+                );
                 if changes > 0 {
                     Ok(new_content)
                 } else {
                     Ok(content.to_string())
                 }
             }
-            _ => Err(PluginError::not_supported(
+            _ => Err(PluginApiError::not_supported(
                 "Only ImportPath updates are supported for C++ includes.",
             )),
         }

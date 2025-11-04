@@ -1,7 +1,7 @@
 //! LSP installer for the Go language plugin.
 
 use async_trait::async_trait;
-use mill_plugin_api::{LspInstaller, PluginResult, PluginError};
+use mill_plugin_api::{LspInstaller, PluginApiError, PluginResult};
 use std::path::{Path, PathBuf};
 use tokio::process::Command;
 
@@ -18,7 +18,7 @@ impl LspInstaller for GoLspInstaller {
         match which::which("gopls") {
             Ok(path) => Ok(Some(path)),
             Err(which::Error::CannotFindBinaryPath) => Ok(None),
-            Err(e) => Err(PluginError::internal(format!(
+            Err(e) => Err(PluginApiError::internal(format!(
                 "Failed to check for gopls: {}",
                 e
             ))),
@@ -31,18 +31,17 @@ impl LspInstaller for GoLspInstaller {
             .arg("golang.org/x/tools/gopls@latest")
             .status()
             .await
-            .map_err(|e| PluginError::internal(format!("Failed to execute go install: {}", e)))?;
+            .map_err(|e| {
+                PluginApiError::internal(format!("Failed to execute go install: {}", e))
+            })?;
 
         if status.success() {
             // After installation, find the path
             which::which("gopls").map_err(|e| {
-                PluginError::internal(format!(
-                    "gopls installed but not found in PATH: {}",
-                    e
-                ))
+                PluginApiError::internal(format!("gopls installed but not found in PATH: {}", e))
             })
         } else {
-            Err(PluginError::internal(
+            Err(PluginApiError::internal(
                 "Failed to install gopls. Make sure you have Go installed and in your PATH."
                     .to_string(),
             ))

@@ -320,7 +320,11 @@ pub(crate) fn get_relaxed_preset() -> AnalysisConfig {
         preset: Some("relaxed".to_string()),
         suggestions: SuggestionConfig {
             min_confidence: 0.5,
-            include_safety_levels: vec!["safe".to_string(), "requires_review".to_string(), "unsafe".to_string()],
+            include_safety_levels: vec![
+                "safe".to_string(),
+                "requires_review".to_string(),
+                "unsafe".to_string(),
+            ],
             max_per_finding: 10,
             generate_refactor_calls: false,
         },
@@ -345,7 +349,7 @@ pub(crate) fn get_ci_preset() -> AnalysisConfig {
         suggestions: SuggestionConfig {
             min_confidence: 0.8,
             include_safety_levels: vec!["safe".to_string(), "requires_review".to_string()],
-            max_per_finding: 100, // Report more issues in CI
+            max_per_finding: 100,           // Report more issues in CI
             generate_refactor_calls: false, // Not needed for CI reports
         },
         thresholds: ThresholdConfig {

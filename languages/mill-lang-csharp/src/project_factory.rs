@@ -1,20 +1,17 @@
 //! C# project creation using the `dotnet` CLI.
 use async_trait::async_trait;
 use mill_plugin_api::{
-    CreatePackageConfig, CreatePackageResult, PackageInfo, ProjectFactory, PluginResult,
+    CreatePackageConfig, CreatePackageResult, PackageInfo, PluginResult, ProjectFactory,
 };
-use std::process::Command;
 use std::path::Path;
+use std::process::Command;
 
 #[derive(Default)]
 pub struct CsharpProjectFactory;
 
 #[async_trait]
 impl ProjectFactory for CsharpProjectFactory {
-    fn create_package(
-        &self,
-        config: &CreatePackageConfig,
-    ) -> PluginResult<CreatePackageResult> {
+    fn create_package(&self, config: &CreatePackageConfig) -> PluginResult<CreatePackageResult> {
         let package_name = Path::new(&config.package_path)
             .file_name()
             .unwrap_or_default()
@@ -23,7 +20,7 @@ impl ProjectFactory for CsharpProjectFactory {
         let project_path = Path::new(&config.workspace_root).join(&config.package_path);
 
         if project_path.exists() {
-            return Err(mill_plugin_api::PluginError::internal(format!(
+            return Err(mill_plugin_api::PluginApiError::internal(format!(
                 "Directory '{}' already exists.",
                 project_path.display()
             )));
@@ -39,14 +36,14 @@ impl ProjectFactory for CsharpProjectFactory {
             .arg(&project_path)
             .output()
             .map_err(|e| {
-                mill_plugin_api::PluginError::internal(format!(
+                mill_plugin_api::PluginApiError::internal(format!(
                     "Failed to execute 'dotnet new': {}",
                     e
                 ))
             })?;
 
         if !output.status.success() {
-            return Err(mill_plugin_api::PluginError::internal(format!(
+            return Err(mill_plugin_api::PluginApiError::internal(format!(
                 "Failed to create C# project: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));

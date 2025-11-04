@@ -145,7 +145,8 @@ impl ToolHandler for CircularDependenciesHandler {
         {
             let _ = (context, args);
             Err(ServerError::Unsupported(
-                "The 'analyze.cycles' tool requires the 'analysis-circular-deps' feature.".to_string()
+                "The 'analyze.cycles' tool requires the 'analysis-circular-deps' feature."
+                    .to_string(),
             ))
         }
     }

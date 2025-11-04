@@ -29,7 +29,7 @@
 //! ```
 
 use mill_lang_common::read_manifest;
-use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginError, PluginResult};
+use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginApiError, PluginResult};
 use serde_json::{Map, Value};
 use std::path::Path;
 use tracing::{debug, warn};
@@ -39,17 +39,17 @@ pub fn parse_package_json(content: &str) -> PluginResult<ManifestData> {
     debug!("Parsing package.json content");
 
     let json: Value = serde_json::from_str(content)
-        .map_err(|e| PluginError::manifest(format!("Failed to parse package.json: {}", e)))?;
+        .map_err(|e| PluginApiError::manifest(format!("Failed to parse package.json: {}", e)))?;
 
     let obj = json
         .as_object()
-        .ok_or_else(|| PluginError::manifest("package.json root must be an object"))?;
+        .ok_or_else(|| PluginApiError::manifest("package.json root must be an object"))?;
 
     // Extract package information
     let name = obj
         .get("name")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| PluginError::manifest("Missing 'name' field in package.json"))?
+        .ok_or_else(|| PluginApiError::manifest("Missing 'name' field in package.json"))?
         .to_string();
 
     let version = obj
@@ -156,11 +156,11 @@ pub fn update_dependency(content: &str, dep_name: &str, new_version: &str) -> Pl
     );
 
     let mut json: Value = serde_json::from_str(content)
-        .map_err(|e| PluginError::manifest(format!("Failed to parse package.json: {}", e)))?;
+        .map_err(|e| PluginApiError::manifest(format!("Failed to parse package.json: {}", e)))?;
 
     let obj = json
         .as_object_mut()
-        .ok_or_else(|| PluginError::manifest("package.json root must be an object"))?;
+        .ok_or_else(|| PluginApiError::manifest("package.json root must be an object"))?;
 
     let mut found = false;
 
@@ -207,7 +207,7 @@ pub fn update_dependency(content: &str, dep_name: &str, new_version: &str) -> Pl
 
     if !found {
         warn!(dependency = %dep_name, "Dependency not found in package.json");
-        return Err(PluginError::manifest(format!(
+        return Err(PluginApiError::manifest(format!(
             "Dependency {} not found in package.json",
             dep_name
         )));
@@ -216,7 +216,7 @@ pub fn update_dependency(content: &str, dep_name: &str, new_version: &str) -> Pl
     // Serialize with pretty formatting (2 spaces, like npm)
     serde_json::to_string_pretty(&json)
         .map(|s| s + "\n") // Add trailing newline like npm
-        .map_err(|e| PluginError::manifest(format!("Failed to serialize package.json: {}", e)))
+        .map_err(|e| PluginApiError::manifest(format!("Failed to serialize package.json: {}", e)))
 }
 
 /// Generate a new package.json file

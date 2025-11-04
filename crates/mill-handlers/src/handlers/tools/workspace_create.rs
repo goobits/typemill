@@ -160,7 +160,7 @@ async fn handle_create_package(
     // Delegate to plugin
     let result = project_factory.create_package(&config).map_err(|e| {
         error!(error = ?e, "Failed to create package");
-        // Convert PluginError to ApiError
+        // Convert PluginApiError to ApiError
         match e {
             mill_plugin_api::PluginApiError::Parse { message, .. } => ApiError::Parse { message },
             mill_plugin_api::PluginApiError::Manifest { message } => ApiError::Parse { message },

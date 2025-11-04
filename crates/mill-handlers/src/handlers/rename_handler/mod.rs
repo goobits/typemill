@@ -320,13 +320,9 @@ impl RenameHandler {
         // Add merged text edits (SORTED in reverse order for LSP compliance)
         for (uri, mut edits) in edits_by_uri {
             // Sort edits in reverse order (bottom to top) to prevent position shifts
-            edits.sort_by(|a, b| {
-                match b.range.start.line.cmp(&a.range.start.line) {
-                    std::cmp::Ordering::Equal => {
-                        b.range.start.character.cmp(&a.range.start.character)
-                    }
-                    other => other,
-                }
+            edits.sort_by(|a, b| match b.range.start.line.cmp(&a.range.start.line) {
+                std::cmp::Ordering::Equal => b.range.start.character.cmp(&a.range.start.character),
+                other => other,
             });
 
             result.push(DocumentChangeOperation::Edit(TextDocumentEdit {
@@ -695,19 +691,30 @@ impl RenameHandler {
 
         // Filter duplicate full-file edits (keep first=batch version)
         let mut seen_full_file_edits: HashSet<lsp_types::Uri> = HashSet::new();
-        let filtered_changes: Vec<_> = all_document_changes.into_iter().filter(|change| {
-            if let lsp_types::DocumentChangeOperation::Edit(edit) = change {
-                let is_full_file = edit.edits.iter().any(|e| {
-                    let text_edit = match e { lsp_types::OneOf::Left(te) => te, lsp_types::OneOf::Right(ae) => &ae.text_edit };
-                    text_edit.range.start.line == 0 && text_edit.range.start.character == 0
-                });
-                if is_full_file {
-                    let uri = &edit.text_document.uri;
-                    if seen_full_file_edits.contains(uri) { return false; } else { seen_full_file_edits.insert(uri.clone()); return true; }
+        let filtered_changes: Vec<_> = all_document_changes
+            .into_iter()
+            .filter(|change| {
+                if let lsp_types::DocumentChangeOperation::Edit(edit) = change {
+                    let is_full_file = edit.edits.iter().any(|e| {
+                        let text_edit = match e {
+                            lsp_types::OneOf::Left(te) => te,
+                            lsp_types::OneOf::Right(ae) => &ae.text_edit,
+                        };
+                        text_edit.range.start.line == 0 && text_edit.range.start.character == 0
+                    });
+                    if is_full_file {
+                        let uri = &edit.text_document.uri;
+                        if seen_full_file_edits.contains(uri) {
+                            return false;
+                        } else {
+                            seen_full_file_edits.insert(uri.clone());
+                            return true;
+                        }
+                    }
                 }
-            }
-            true
-        }).collect();
+                true
+            })
+            .collect();
 
         // Deduplicate and merge text edits for the same file
         // This prevents "last edit wins" when multiple targets modify the same config file

@@ -4,7 +4,7 @@
 //! the Eclipse JDT Language Server for Java language support.
 
 use async_trait::async_trait;
-use mill_plugin_api::{LspInstaller, PluginError, PluginResult};
+use mill_plugin_api::{LspInstaller, PluginApiError, PluginResult};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tracing::debug;
@@ -48,8 +48,9 @@ impl LspInstaller for JavaLspInstaller {
 
         // Create installation directory
         let install_dir = cache_dir.join("jdtls");
-        std::fs::create_dir_all(&install_dir)
-            .map_err(|e| PluginError::internal(format!("Failed to create install directory: {}", e)))?;
+        std::fs::create_dir_all(&install_dir).map_err(|e| {
+            PluginApiError::internal(format!("Failed to create install directory: {}", e))
+        })?;
 
         // For now, return instructions for manual installation
         // Automatic installation would require downloading from GitHub releases
@@ -78,7 +79,7 @@ After installation, jdtls should be available in your PATH."#,
             install_dir.display()
         );
 
-        Err(PluginError::not_supported(instructions))
+        Err(PluginApiError::not_supported(instructions))
     }
 }
 
@@ -116,8 +117,7 @@ fn check_in_path() -> Option<PathBuf> {
 fn check_mason_installation() -> Option<PathBuf> {
     // Mason.nvim typically installs to ~/.local/share/nvim/mason/bin/jdtls
     if let Some(home) = std::env::var_os("HOME") {
-        let mason_path = PathBuf::from(home)
-            .join(".local/share/nvim/mason/bin/jdtls");
+        let mason_path = PathBuf::from(home).join(".local/share/nvim/mason/bin/jdtls");
         if mason_path.exists() {
             return Some(mason_path);
         }
@@ -153,7 +153,9 @@ fn check_system_installation() -> Option<PathBuf> {
         PathBuf::from("/opt/jdtls/bin/jdtls"),
     ];
 
-    system_locations.into_iter().find(|location| location.exists())
+    system_locations
+        .into_iter()
+        .find(|location| location.exists())
 }
 
 #[cfg(test)]

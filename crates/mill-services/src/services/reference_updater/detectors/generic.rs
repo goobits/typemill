@@ -151,9 +151,13 @@ pub(crate) fn get_all_imported_files(
     // Fallback: use regex-based extraction
     for line in content.lines() {
         if let Some(specifier) = extract_import_path(line) {
-            if let Some(resolved) =
-                resolve_import_to_file(&specifier, current_file, project_files, project_root, plugins)
-            {
+            if let Some(resolved) = resolve_import_to_file(
+                &specifier,
+                current_file,
+                project_files,
+                project_root,
+                plugins,
+            ) {
                 imported_files.push(resolved);
             }
         }
@@ -173,10 +177,7 @@ fn resolve_import_to_file(
     project_root: &Path,
     plugins: &[std::sync::Arc<dyn mill_plugin_api::LanguagePlugin>],
 ) -> Option<PathBuf> {
-    let resolver = mill_ast::ImportPathResolver::with_plugins(
-        project_root,
-        plugins.to_vec(),
-    );
+    let resolver = mill_ast::ImportPathResolver::with_plugins(project_root, plugins.to_vec());
     resolver.resolve_import_to_file(specifier, importing_file, project_files)
 }
 

@@ -3,17 +3,17 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 
-pub mod trailing_whitespace;
-pub mod missing_code_lang;
-pub mod malformed_heading;
-pub mod reversed_link;
 pub mod auto_toc;
+pub mod malformed_heading;
+pub mod missing_code_lang;
+pub mod reversed_link;
+pub mod trailing_whitespace;
 
-pub use trailing_whitespace::TrailingWhitespaceFixer;
-pub use missing_code_lang::MissingCodeLangFixer;
-pub use malformed_heading::MalformedHeadingFixer;
-pub use reversed_link::ReversedLinkFixer;
 pub use auto_toc::AutoTocFixer;
+pub use malformed_heading::MalformedHeadingFixer;
+pub use missing_code_lang::MissingCodeLangFixer;
+pub use reversed_link::ReversedLinkFixer;
+pub use trailing_whitespace::TrailingWhitespaceFixer;
 
 /// Text edit for a single replacement
 #[derive(Debug, Clone)]
@@ -123,7 +123,10 @@ pub(crate) fn generate_unified_diff(
 
         // Scan ahead to find where they resync
         while old_end < old_lines.len() || new_end < new_lines.len() {
-            if old_end < old_lines.len() && new_end < new_lines.len() && old_lines[old_end] == new_lines[new_end] {
+            if old_end < old_lines.len()
+                && new_end < new_lines.len()
+                && old_lines[old_end] == new_lines[new_end]
+            {
                 break; // Found resync point
             }
             if old_end < old_lines.len() {
@@ -136,8 +139,12 @@ pub(crate) fn generate_unified_diff(
 
         // Generate hunk header with 3 lines of context
         let context_lines = 3;
-        let hunk_old_start = i.saturating_sub(context_lines).max(same_start.saturating_sub(context_lines));
-        let hunk_new_start = j.saturating_sub(context_lines).max(same_start.saturating_sub(context_lines));
+        let hunk_old_start = i
+            .saturating_sub(context_lines)
+            .max(same_start.saturating_sub(context_lines));
+        let hunk_new_start = j
+            .saturating_sub(context_lines)
+            .max(same_start.saturating_sub(context_lines));
 
         let hunk_old_end = (old_end + context_lines).min(old_lines.len());
         let hunk_new_end = (new_end + context_lines).min(new_lines.len());
@@ -200,7 +207,10 @@ pub(crate) fn apply_edits(content: &str, edits: &[TextEdit]) -> String {
     // This ensures we apply from end to start, preserving byte offsets
     let mut sorted_edits = edits.to_vec();
     sorted_edits.sort_by(|a, b| {
-        b.range.start.line.cmp(&a.range.start.line)
+        b.range
+            .start
+            .line
+            .cmp(&a.range.start.line)
             .then_with(|| b.range.start.character.cmp(&a.range.start.character))
     });
 

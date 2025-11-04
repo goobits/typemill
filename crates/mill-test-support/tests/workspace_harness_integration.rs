@@ -3,7 +3,9 @@
 //! These tests verify that the workspace harness scenarios work with actual language plugins.
 //! Each test runs against TypeScript, Rust, Python, Java, and Go plugins to ensure consistent behavior.
 
-use mill_test_support::harness::{WorkspaceScenarios, WorkspaceExpectedBehavior, WorkspaceOperation, get_test_registry};
+use mill_test_support::harness::{
+    get_test_registry, WorkspaceExpectedBehavior, WorkspaceOperation, WorkspaceScenarios,
+};
 
 // Force linker to include plugin-bundle for inventory collection in tests
 extern crate mill_plugin_bundle;
@@ -33,9 +35,10 @@ mod workspace_harness_tests {
                 .find_by_extension(fixture.language.file_extension())
                 .expect(&format!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin
-                .workspace_support()
-                .expect(&format!("{:?} should have workspace support", fixture.language));
+            let workspace_support = plugin.workspace_support().expect(&format!(
+                "{:?} should have workspace support",
+                fixture.language
+            ));
 
             let is_workspace = workspace_support.is_workspace_manifest(fixture.manifest_content);
 
@@ -62,9 +65,10 @@ mod workspace_harness_tests {
                 .find_by_extension(fixture.language.file_extension())
                 .expect(&format!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin
-                .workspace_support()
-                .expect(&format!("{:?} should have workspace support", fixture.language));
+            let workspace_support = plugin.workspace_support().expect(&format!(
+                "{:?} should have workspace support",
+                fixture.language
+            ));
 
             let is_workspace = workspace_support.is_workspace_manifest(fixture.manifest_content);
 
@@ -91,9 +95,10 @@ mod workspace_harness_tests {
                 .find_by_extension(fixture.language.file_extension())
                 .expect(&format!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin
-                .workspace_support()
-                .expect(&format!("{:?} should have workspace support", fixture.language));
+            let workspace_support = plugin.workspace_support().expect(&format!(
+                "{:?} should have workspace support",
+                fixture.language
+            ));
 
             let members = workspace_support.list_workspace_members(fixture.manifest_content);
 
@@ -120,12 +125,14 @@ mod workspace_harness_tests {
                 .find_by_extension(fixture.language.file_extension())
                 .expect(&format!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin
-                .workspace_support()
-                .expect(&format!("{:?} should have workspace support", fixture.language));
+            let workspace_support = plugin.workspace_support().expect(&format!(
+                "{:?} should have workspace support",
+                fixture.language
+            ));
 
             if let WorkspaceOperation::AddWorkspaceMember { member } = &fixture.operation {
-                let result = workspace_support.add_workspace_member(fixture.manifest_content, member);
+                let result =
+                    workspace_support.add_workspace_member(fixture.manifest_content, member);
 
                 // Verify the member was added by checking the list contains it
                 let members = workspace_support.list_workspace_members(&result);
@@ -152,12 +159,14 @@ mod workspace_harness_tests {
                 .find_by_extension(fixture.language.file_extension())
                 .expect(&format!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin
-                .workspace_support()
-                .expect(&format!("{:?} should have workspace support", fixture.language));
+            let workspace_support = plugin.workspace_support().expect(&format!(
+                "{:?} should have workspace support",
+                fixture.language
+            ));
 
             if let WorkspaceOperation::AddWorkspaceMember { member } = &fixture.operation {
-                let result = workspace_support.add_workspace_member(fixture.manifest_content, member);
+                let result =
+                    workspace_support.add_workspace_member(fixture.manifest_content, member);
 
                 // Verify it's still idempotent - member should exist exactly once
                 let members = workspace_support.list_workspace_members(&result);
@@ -184,12 +193,14 @@ mod workspace_harness_tests {
                 .find_by_extension(fixture.language.file_extension())
                 .expect(&format!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin
-                .workspace_support()
-                .expect(&format!("{:?} should have workspace support", fixture.language));
+            let workspace_support = plugin.workspace_support().expect(&format!(
+                "{:?} should have workspace support",
+                fixture.language
+            ));
 
             if let WorkspaceOperation::RemoveWorkspaceMember { member } = &fixture.operation {
-                let result = workspace_support.remove_workspace_member(fixture.manifest_content, member);
+                let result =
+                    workspace_support.remove_workspace_member(fixture.manifest_content, member);
 
                 // Verify the member was removed by checking the list doesn't contain it
                 let members = workspace_support.list_workspace_members(&result);
@@ -216,12 +227,14 @@ mod workspace_harness_tests {
                 .find_by_extension(fixture.language.file_extension())
                 .expect(&format!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin
-                .workspace_support()
-                .expect(&format!("{:?} should have workspace support", fixture.language));
+            let workspace_support = plugin.workspace_support().expect(&format!(
+                "{:?} should have workspace support",
+                fixture.language
+            ));
 
             if let WorkspaceOperation::UpdatePackageName { new_name } = &fixture.operation {
-                let result = workspace_support.update_package_name(fixture.manifest_content, new_name);
+                let result =
+                    workspace_support.update_package_name(fixture.manifest_content, new_name);
 
                 match &fixture.expected {
                     WorkspaceExpectedBehavior::NameUpdated(expected_name) => {

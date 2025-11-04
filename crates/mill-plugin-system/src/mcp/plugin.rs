@@ -1,9 +1,9 @@
 //! MCP Proxy as a LanguagePlugin
 
 use super::manager::ExternalMcpManager;
-use crate::{PluginSystemError, 
-    Capabilities, LanguagePlugin, PluginError, PluginMetadata, PluginRequest, PluginResponse,
-    PluginResult,
+use crate::{
+    Capabilities, LanguagePlugin, PluginMetadata, PluginRequest, PluginResponse, PluginResult,
+    PluginSystemError,
 };
 use async_trait::async_trait;
 use mill_config::config::ExternalMcpServerConfig;

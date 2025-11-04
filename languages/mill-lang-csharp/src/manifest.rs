@@ -1,7 +1,7 @@
 //! Csharp manifest file parsing
 //!
 //! Handles *.csproj files for Csharp projects.
-use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginError, PluginResult};
+use mill_plugin_api::{Dependency, DependencySource, ManifestData, PluginApiError, PluginResult};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tokio::fs;
@@ -55,9 +55,10 @@ struct ProjectReference {
 pub async fn analyze_manifest(path: &Path) -> PluginResult<ManifestData> {
     let content = fs::read_to_string(path)
         .await
-        .map_err(|e| PluginError::internal(format!("Failed to read manifest file: {}", e)))?;
-    let project: Project = quick_xml::de::from_str(&content)
-        .map_err(|e| PluginError::invalid_input(format!("Invalid XML in .csproj file: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("Failed to read manifest file: {}", e)))?;
+    let project: Project = quick_xml::de::from_str(&content).map_err(|e| {
+        PluginApiError::invalid_input(format!("Invalid XML in .csproj file: {}", e))
+    })?;
 
     let name = project
         .property_groups
@@ -70,7 +71,9 @@ pub async fn analyze_manifest(path: &Path) -> PluginResult<ManifestData> {
                 .map(|s| s.to_string())
         })
         .ok_or_else(|| {
-            PluginError::invalid_input("Could not determine project name from manifest or file path")
+            PluginApiError::invalid_input(
+                "Could not determine project name from manifest or file path",
+            )
         })?;
 
     let version = project
@@ -102,8 +105,9 @@ pub async fn analyze_manifest(path: &Path) -> PluginResult<ManifestData> {
         version,
         dependencies,
         dev_dependencies: vec![], // .csproj doesn't have a standard concept of dev dependencies
-        raw_data: serde_json::to_value(&project)
-            .map_err(|e| PluginError::internal(format!("Failed to serialize manifest data: {}", e)))?,
+        raw_data: serde_json::to_value(&project).map_err(|e| {
+            PluginApiError::internal(format!("Failed to serialize manifest data: {}", e))
+        })?,
     })
 }
 
@@ -115,7 +119,10 @@ pub fn update_package_reference(
 ) -> PluginResult<String> {
     let old_line = format!(r#"<PackageReference Include="{}""#, old_name);
     let new_line = if let Some(version) = new_version {
-        format!(r#"<PackageReference Include="{}" Version="{}" />"#, new_name, version)
+        format!(
+            r#"<PackageReference Include="{}" Version="{}" />"#,
+            new_name, version
+        )
     } else {
         format!(r#"<PackageReference Include="{}" Version="*" />"#, new_name)
     };
@@ -130,7 +137,7 @@ pub fn generate_csproj(package_name: &str, dependencies: &[String]) -> String {
         .join("\n");
 
     format!(
-r#"<Project Sdk="Microsoft.NET.Sdk">
+        r#"<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <AssemblyName>{}</AssemblyName>

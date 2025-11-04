@@ -9,7 +9,7 @@ use mill_lang_common::project_factory::{
 use mill_plugin_api::project_factory::{
     CreatePackageConfig, CreatePackageResult, PackageInfo, PackageType, ProjectFactory, Template,
 };
-use mill_plugin_api::{PluginError, PluginResult, WorkspaceSupport};
+use mill_plugin_api::{PluginApiError, PluginResult, WorkspaceSupport};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, error};
@@ -108,14 +108,14 @@ fn create_directory_structure(package_path: &Path, package_name: &str) -> Plugin
     // Create package root
     fs::create_dir_all(package_path).map_err(|e| {
         error!(error = %e, package_path = %package_path.display(), "Failed to create package directory");
-        PluginError::internal(format!("Failed to create directory: {}", e))
+        PluginApiError::internal(format!("Failed to create directory: {}", e))
     })?;
 
     // Create src/<package_name> directory
     let src_dir = package_path.join("src").join(package_name);
     fs::create_dir_all(&src_dir).map_err(|e| {
         error!(error = %e, src_dir = %src_dir.display(), "Failed to create src directory");
-        PluginError::internal(format!("Failed to create src directory: {}", e))
+        PluginApiError::internal(format!("Failed to create src directory: {}", e))
     })?;
 
     Ok(())
@@ -255,8 +255,9 @@ ENV/
 
     // tests/test_basic.py
     let tests_dir = package_path.join("tests");
-    fs::create_dir_all(&tests_dir)
-        .map_err(|e| PluginError::internal(format!("Failed to create tests directory: {}", e)))?;
+    fs::create_dir_all(&tests_dir).map_err(|e| {
+        PluginApiError::internal(format!("Failed to create tests directory: {}", e))
+    })?;
 
     let test_path = tests_dir.join("test_basic.py");
     let test_content = format!(

@@ -1,4 +1,6 @@
-use super::{apply_edits, generate_unified_diff, FixOutcome, MarkdownContext, MarkdownFixer, TextEdit};
+use super::{
+    apply_edits, generate_unified_diff, FixOutcome, MarkdownContext, MarkdownFixer, TextEdit,
+};
 use mill_foundation::protocol::analysis_result::{Position, Range};
 use serde::Deserialize;
 use serde_json::Value;
@@ -283,8 +285,14 @@ mod tests {
     #[test]
     fn test_generate_anchor_basic() {
         let mut counts = HashMap::new();
-        assert_eq!(AutoTocFixer::generate_anchor("Hello World", &mut counts), "hello-world");
-        assert_eq!(AutoTocFixer::generate_anchor("Test 123", &mut counts), "test-123");
+        assert_eq!(
+            AutoTocFixer::generate_anchor("Hello World", &mut counts),
+            "hello-world"
+        );
+        assert_eq!(
+            AutoTocFixer::generate_anchor("Test 123", &mut counts),
+            "test-123"
+        );
     }
 
     #[test]
@@ -385,9 +393,21 @@ mod tests {
     #[test]
     fn test_generate_toc_basic() {
         let headings = vec![
-            Heading { level: 2, text: "Section 1".to_string(), line: 0 },
-            Heading { level: 3, text: "Subsection".to_string(), line: 1 },
-            Heading { level: 2, text: "Section 2".to_string(), line: 2 },
+            Heading {
+                level: 2,
+                text: "Section 1".to_string(),
+                line: 0,
+            },
+            Heading {
+                level: 3,
+                text: "Subsection".to_string(),
+                line: 1,
+            },
+            Heading {
+                level: 2,
+                text: "Section 2".to_string(),
+                line: 2,
+            },
         ];
         let toc = AutoTocFixer::generate_toc(&headings, "## Table of Contents");
 
@@ -399,7 +419,9 @@ mod tests {
 
     #[test]
     fn test_auto_toc_fixer_preview_mode() {
-        let content = "# Title\n\n## Table of Contents\n\nOld content\n\n## Section 1\n### Subsection".to_string();
+        let content =
+            "# Title\n\n## Table of Contents\n\nOld content\n\n## Section 1\n### Subsection"
+                .to_string();
         let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
         let fixer = AutoTocFixer;
         let config = serde_json::json!({});
@@ -432,7 +454,8 @@ mod tests {
 
     #[test]
     fn test_auto_toc_fixer_custom_options() {
-        let content = "# Title\n\n## Contents\n\nOld TOC\n\n## Section 1\n### Sub\n#### Deep".to_string();
+        let content =
+            "# Title\n\n## Contents\n\nOld TOC\n\n## Section 1\n### Sub\n#### Deep".to_string();
         let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
         let fixer = AutoTocFixer;
         let config = serde_json::json!({
@@ -449,7 +472,8 @@ mod tests {
 
     #[test]
     fn test_auto_toc_fixer_heading_with_special_chars() {
-        let content = "## Table of Contents\n\nOld\n\n## Test & Example\n## Hello, World!".to_string();
+        let content =
+            "## Table of Contents\n\nOld\n\n## Test & Example\n## Hello, World!".to_string();
         let ctx = MarkdownContext::new(content, PathBuf::from("test.md"));
         let fixer = AutoTocFixer;
         let config = serde_json::json!({});

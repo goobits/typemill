@@ -4,7 +4,7 @@
 //! including adding/removing dependencies and updating project metadata.
 
 use async_trait::async_trait;
-use mill_plugin_api::{ManifestUpdater, PluginError, PluginResult};
+use mill_plugin_api::{ManifestUpdater, PluginApiError, PluginResult};
 use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::{Reader, Writer};
 use std::io::Cursor;
@@ -27,7 +27,7 @@ impl ManifestUpdater for JavaManifestUpdater {
         // Read the manifest file
         let content = tokio::fs::read_to_string(manifest_path)
             .await
-            .map_err(|e| PluginError::internal(format!("Failed to read manifest: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("Failed to read manifest: {}", e)))?;
         debug!(
             manifest_path = %manifest_path.display(),
             old_name = %old_name,
@@ -121,7 +121,11 @@ fn parse_dependency(dep: &str) -> (String, String, String) {
             parts[1].to_string(),
             parts[2].to_string(),
         ),
-        2 => (parts[0].to_string(), parts[1].to_string(), "1.0.0".to_string()),
+        2 => (
+            parts[0].to_string(),
+            parts[1].to_string(),
+            "1.0.0".to_string(),
+        ),
         _ => (
             "com.example".to_string(),
             dep.to_string(),
@@ -163,7 +167,7 @@ fn update_dependency_in_pom(
                 }
                 writer
                     .write_event(Event::Start(e))
-                    .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+                    .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
             }
             Ok(Event::End(e)) => {
                 let name = e.name();
@@ -176,11 +180,11 @@ fn update_dependency_in_pom(
                 }
                 writer
                     .write_event(Event::End(e))
-                    .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+                    .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
             }
             Ok(Event::Text(e)) => {
                 let text = e.unescape().map_err(|e| {
-                    PluginError::manifest(format!("Failed to unescape XML text: {}", e))
+                    PluginApiError::manifest(format!("Failed to unescape XML text: {}", e))
                 })?;
 
                 if in_artifact_id {
@@ -190,37 +194,44 @@ fn update_dependency_in_pom(
                         // Replace artifactId
                         writer
                             .write_event(Event::Text(BytesText::new(new_artifact_id)))
-                            .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+                            .map_err(|e| {
+                                PluginApiError::internal(format!("XML write error: {}", e))
+                            })?;
                     } else {
-                        writer
-                            .write_event(Event::Text(e))
-                            .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+                        writer.write_event(Event::Text(e)).map_err(|e| {
+                            PluginApiError::internal(format!("XML write error: {}", e))
+                        })?;
                     }
                 } else if in_version && found_target_dep {
                     if let Some(new_ver) = new_version {
                         // Replace version
                         writer
                             .write_event(Event::Text(BytesText::new(new_ver)))
-                            .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+                            .map_err(|e| {
+                                PluginApiError::internal(format!("XML write error: {}", e))
+                            })?;
                     } else {
-                        writer
-                            .write_event(Event::Text(e))
-                            .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+                        writer.write_event(Event::Text(e)).map_err(|e| {
+                            PluginApiError::internal(format!("XML write error: {}", e))
+                        })?;
                     }
                 } else {
                     writer
                         .write_event(Event::Text(e))
-                        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+                        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
                 }
             }
             Ok(Event::Eof) => break,
             Ok(e) => {
                 writer
                     .write_event(e)
-                    .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+                    .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
             }
             Err(e) => {
-                return Err(PluginError::manifest(format!("Failed to parse pom.xml: {}", e)));
+                return Err(PluginApiError::manifest(format!(
+                    "Failed to parse pom.xml: {}",
+                    e
+                )));
             }
         }
         buf.clear();
@@ -228,7 +239,7 @@ fn update_dependency_in_pom(
 
     let result = writer.into_inner().into_inner();
     String::from_utf8(result)
-        .map_err(|e| PluginError::internal(format!("Invalid UTF-8 in pom.xml: {}", e)))
+        .map_err(|e| PluginApiError::internal(format!("Invalid UTF-8 in pom.xml: {}", e)))
 }
 
 /// Add a dependency to pom.xml content
@@ -256,7 +267,7 @@ pub(crate) fn add_dependency_to_pom(
                 }
                 writer
                     .write_event(Event::Start(e))
-                    .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+                    .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
             }
             Ok(Event::End(e)) => {
                 let name = e.name();
@@ -267,30 +278,33 @@ pub(crate) fn add_dependency_to_pom(
                 }
                 writer
                     .write_event(Event::End(e))
-                    .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+                    .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
             }
             Ok(Event::Eof) => break,
             Ok(e) => {
                 writer
                     .write_event(e)
-                    .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+                    .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
             }
             Err(e) => {
-                return Err(PluginError::manifest(format!("Failed to parse pom.xml: {}", e)));
+                return Err(PluginApiError::manifest(format!(
+                    "Failed to parse pom.xml: {}",
+                    e
+                )));
             }
         }
         buf.clear();
     }
 
     if !dependencies_found {
-        return Err(PluginError::manifest(
+        return Err(PluginApiError::manifest(
             "No <dependencies> section found in pom.xml",
         ));
     }
 
     let result = writer.into_inner().into_inner();
     String::from_utf8(result)
-        .map_err(|e| PluginError::internal(format!("Invalid UTF-8 in pom.xml: {}", e)))
+        .map_err(|e| PluginApiError::internal(format!("Invalid UTF-8 in pom.xml: {}", e)))
 }
 
 /// Write a dependency element to XML writer
@@ -303,60 +317,60 @@ fn write_dependency<W: std::io::Write>(
     // Write dependency element with proper indentation
     writer
         .write_event(Event::Text(BytesText::new("\n        ")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
     writer
         .write_event(Event::Start(BytesStart::new("dependency")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
 
     // groupId
     writer
         .write_event(Event::Text(BytesText::new("\n            ")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
     writer
         .write_event(Event::Start(BytesStart::new("groupId")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
     writer
         .write_event(Event::Text(BytesText::new(group_id)))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
     writer
         .write_event(Event::End(BytesEnd::new("groupId")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
 
     // artifactId
     writer
         .write_event(Event::Text(BytesText::new("\n            ")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
     writer
         .write_event(Event::Start(BytesStart::new("artifactId")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
     writer
         .write_event(Event::Text(BytesText::new(artifact_id)))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
     writer
         .write_event(Event::End(BytesEnd::new("artifactId")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
 
     // version
     writer
         .write_event(Event::Text(BytesText::new("\n            ")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
     writer
         .write_event(Event::Start(BytesStart::new("version")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
     writer
         .write_event(Event::Text(BytesText::new(version)))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
     writer
         .write_event(Event::End(BytesEnd::new("version")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
 
     // Close dependency
     writer
         .write_event(Event::Text(BytesText::new("\n        ")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
     writer
         .write_event(Event::End(BytesEnd::new("dependency")))
-        .map_err(|e| PluginError::internal(format!("XML write error: {}", e)))?;
+        .map_err(|e| PluginApiError::internal(format!("XML write error: {}", e)))?;
 
     Ok(())
 }

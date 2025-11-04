@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use mill_plugin_api::{LspInstaller, PluginError, PluginResult};
+use mill_plugin_api::{LspInstaller, PluginApiError, PluginResult};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -18,7 +18,7 @@ impl LspInstaller for SwiftLspInstaller {
             let output = Command::new("xcrun")
                 .args(["--find", "sourcekit-lsp"])
                 .output()
-                .map_err(|e| PluginError::internal(e.to_string()))?;
+                .map_err(|e| PluginApiError::internal(e.to_string()))?;
 
             if output.status.success() {
                 let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -42,6 +42,6 @@ impl LspInstaller for SwiftLspInstaller {
             "Unsupported OS for automatic sourcekit-lsp installation."
         };
 
-        Err(PluginError::not_supported(instructions.to_string()))
+        Err(PluginApiError::not_supported(instructions.to_string()))
     }
 }

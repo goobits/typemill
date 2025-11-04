@@ -5,13 +5,13 @@
 //! - Extract variable
 //! - Inline variable
 
-use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
+use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 use serde::{Deserialize, Serialize};
-use tree_sitter::{Node, Parser, Point, Query, QueryCursor, StreamingIterator};
 use std::collections::HashMap;
+use tree_sitter::{Node, Parser, Point, Query, QueryCursor, StreamingIterator};
 
 fn get_language() -> tree_sitter::Language {
     // The tree-sitter-java grammar is compiled via build.rs and linked
@@ -56,29 +56,51 @@ pub(crate) fn plan_extract_function(
     parser
         .set_language(&get_language())
         .map_err(|e| RefactoringError::Parse(format!("Failed to load Java grammar: {}", e)))?;
-    let tree = parser.parse(source, None).ok_or_else(|| RefactoringError::Parse("Failed to parse Java source".to_string()))?;
+    let tree = parser
+        .parse(source, None)
+        .ok_or_else(|| RefactoringError::Parse("Failed to parse Java source".to_string()))?;
     let root = tree.root_node();
 
     let start_point = Point::new(range.start_line as usize - 1, range.start_col as usize);
     let end_point = Point::new(range.end_line as usize - 1, range.end_col as usize);
 
     let selected_node = find_smallest_node_containing_range(root, start_point, end_point)
-        .ok_or_else(|| RefactoringError::Analysis("Could not find a node for the selection.".to_string()))?;
+        .ok_or_else(|| {
+            RefactoringError::Analysis("Could not find a node for the selection.".to_string())
+        })?;
 
-    let selected_text = selected_node.utf8_text(source.as_bytes()).unwrap().to_string();
+    let selected_text = selected_node
+        .utf8_text(source.as_bytes())
+        .unwrap()
+        .to_string();
 
-    let enclosing_method = find_ancestor_of_kind(selected_node, "method_declaration")
-        .ok_or_else(|| RefactoringError::Analysis("Selection is not inside a method.".to_string()))?;
+    let enclosing_method =
+        find_ancestor_of_kind(selected_node, "method_declaration").ok_or_else(|| {
+            RefactoringError::Analysis("Selection is not inside a method.".to_string())
+        })?;
 
     let indent = get_indentation(source, enclosing_method.start_position().row);
     let method_indent = format!("{}    ", indent);
 
-    let new_method_text = format!("\n\n{}private void {}() {{\n{}{}\n{}}}\n", indent, function_name, method_indent, selected_text.trim(), indent);
+    let new_method_text = format!(
+        "\n\n{}private void {}() {{\n{}{}\n{}}}\n",
+        indent,
+        function_name,
+        method_indent,
+        selected_text.trim(),
+        indent
+    );
 
     let insert_edit = TextEdit {
         file_path: None,
         edit_type: EditType::Insert,
-        location: CommonCodeRange::new(enclosing_method.end_position().row as u32, 0, enclosing_method.end_position().row as u32, 0).into(),
+        location: CommonCodeRange::new(
+            enclosing_method.end_position().row as u32,
+            0,
+            enclosing_method.end_position().row as u32,
+            0,
+        )
+        .into(),
         original_text: String::new(),
         new_text: new_method_text,
         priority: 100,
@@ -129,20 +151,29 @@ pub(crate) fn plan_extract_variable(
     parser
         .set_language(&get_language())
         .map_err(|e| RefactoringError::Parse(format!("Failed to load Java grammar: {}", e)))?;
-    let tree = parser.parse(source, None).ok_or_else(|| RefactoringError::Parse("Failed to parse Java source".to_string()))?;
+    let tree = parser
+        .parse(source, None)
+        .ok_or_else(|| RefactoringError::Parse("Failed to parse Java source".to_string()))?;
     let root = tree.root_node();
 
     let start_point = Point::new(start_line as usize - 1, start_col as usize);
     let end_point = Point::new(end_line as usize - 1, end_col as usize);
 
     let selected_node = find_smallest_node_containing_range(root, start_point, end_point)
-        .ok_or_else(|| RefactoringError::Analysis("Could not find a node for the selection.".to_string()))?;
+        .ok_or_else(|| {
+            RefactoringError::Analysis("Could not find a node for the selection.".to_string())
+        })?;
 
-    let expression_text = selected_node.utf8_text(source.as_bytes()).unwrap().to_string();
+    let expression_text = selected_node
+        .utf8_text(source.as_bytes())
+        .unwrap()
+        .to_string();
 
     let insertion_node = find_ancestor_of_kind(selected_node, "statement")
         .or_else(|| find_ancestor_of_kind(selected_node, "local_variable_declaration"))
-        .ok_or_else(|| RefactoringError::Analysis("Could not find statement to insert before.".to_string()))?;
+        .ok_or_else(|| {
+            RefactoringError::Analysis("Could not find statement to insert before.".to_string())
+        })?;
 
     let indent = get_indentation(source, insertion_node.start_position().row);
     let var_name = variable_name.unwrap_or_else(|| "extracted".to_string());
@@ -160,7 +191,13 @@ pub(crate) fn plan_extract_variable(
     let insert_edit = TextEdit {
         file_path: None,
         edit_type: EditType::Insert,
-        location: CommonCodeRange::new(insertion_node.start_position().row as u32 + 1, 0, insertion_node.start_position().row as u32 + 1, 0).into(),
+        location: CommonCodeRange::new(
+            insertion_node.start_position().row as u32 + 1,
+            0,
+            insertion_node.start_position().row as u32 + 1,
+            0,
+        )
+        .into(),
         original_text: String::new(),
         new_text: format!("{}{}", indent, declaration_text),
         priority: 100,
@@ -211,45 +248,56 @@ pub(crate) fn plan_inline_variable(
     parser
         .set_language(&get_language())
         .map_err(|e| RefactoringError::Parse(format!("Failed to load Java grammar: {}", e)))?;
-    let tree = parser.parse(source, None).ok_or_else(|| RefactoringError::Parse("Failed to parse Java source".to_string()))?;
+    let tree = parser
+        .parse(source, None)
+        .ok_or_else(|| RefactoringError::Parse("Failed to parse Java source".to_string()))?;
     let root = tree.root_node();
     let point = Point::new(variable_line as usize - 1, variable_col as usize);
 
-    let var_ident_node = find_node_at_point(root, point)
-        .ok_or_else(|| RefactoringError::Analysis("Could not find variable at specified location.".to_string()))?;
+    let var_ident_node = find_node_at_point(root, point).ok_or_else(|| {
+        RefactoringError::Analysis("Could not find variable at specified location.".to_string())
+    })?;
 
     let (var_name, var_value, declaration_node) = extract_java_var_info(var_ident_node, source)?;
 
-    let scope_node = find_ancestor_of_kind(declaration_node, "method_declaration")
-        .ok_or_else(|| RefactoringError::Analysis("Variable is not inside a method.".to_string()))?;
+    let scope_node =
+        find_ancestor_of_kind(declaration_node, "method_declaration").ok_or_else(|| {
+            RefactoringError::Analysis("Variable is not inside a method.".to_string())
+        })?;
 
     let mut edits = Vec::new();
     let query_str = format!(r#"((identifier) @ref (#eq? @ref "{}"))"#, var_name);
-    let query = Query::new(&get_language(), &query_str).map_err(|e| RefactoringError::Query(e.to_string()))?;
+    let query = Query::new(&get_language(), &query_str)
+        .map_err(|e| RefactoringError::Query(e.to_string()))?;
     let mut cursor = QueryCursor::new();
 
-    cursor.matches(&query, scope_node, source.as_bytes()).for_each(|match_| {
-        for capture in match_.captures {
-            let reference_node = capture.node;
-            if reference_node.id() != var_ident_node.id() {
-                edits.push(TextEdit {
-                    file_path: None,
-                    edit_type: EditType::Replace,
-                    location: node_to_location(reference_node).into(),
-                    original_text: var_name.clone(),
-                    new_text: var_value.clone(),
-                    priority: 90,
-                    description: format!("Inline variable '{}'", var_name),
-                });
+    cursor
+        .matches(&query, scope_node, source.as_bytes())
+        .for_each(|match_| {
+            for capture in match_.captures {
+                let reference_node = capture.node;
+                if reference_node.id() != var_ident_node.id() {
+                    edits.push(TextEdit {
+                        file_path: None,
+                        edit_type: EditType::Replace,
+                        location: node_to_location(reference_node).into(),
+                        original_text: var_name.clone(),
+                        new_text: var_value.clone(),
+                        priority: 90,
+                        description: format!("Inline variable '{}'", var_name),
+                    });
+                }
             }
-        }
-    });
+        });
 
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Delete,
         location: node_to_location(declaration_node).into(),
-        original_text: declaration_node.utf8_text(source.as_bytes()).unwrap().to_string(),
+        original_text: declaration_node
+            .utf8_text(source.as_bytes())
+            .unwrap()
+            .to_string(),
         new_text: String::new(),
         priority: 100,
         description: format!("Remove declaration of '{}'", var_name),
@@ -286,7 +334,9 @@ fn find_smallest_node_containing_range<'a>(
     }
 
     for child in node.children(&mut node.walk()) {
-        if let Some(containing_child) = find_smallest_node_containing_range(child, start_point, end_point) {
+        if let Some(containing_child) =
+            find_smallest_node_containing_range(child, start_point, end_point)
+        {
             return Some(containing_child);
         }
     }
@@ -310,32 +360,54 @@ fn find_ancestor_of_kind<'a>(node: Node<'a>, kind: &str) -> Option<Node<'a>> {
 }
 
 fn get_indentation(source: &str, line: usize) -> String {
-    source.lines().nth(line).map(|l| l.chars().take_while(|c| c.is_whitespace()).collect()).unwrap_or_default()
+    source
+        .lines()
+        .nth(line)
+        .map(|l| l.chars().take_while(|c| c.is_whitespace()).collect())
+        .unwrap_or_default()
 }
 
 fn node_to_location(node: Node) -> CommonCodeRange {
     let range = node.range();
-    CommonCodeRange::new(range.start_point.row as u32 + 1, range.start_point.column as u32, range.end_point.row as u32 + 1, range.end_point.column as u32)
+    CommonCodeRange::new(
+        range.start_point.row as u32 + 1,
+        range.start_point.column as u32,
+        range.end_point.row as u32 + 1,
+        range.end_point.column as u32,
+    )
 }
 
-fn extract_java_var_info<'a>(node: Node<'a>, source: &str) -> RefactoringResult<(String, String, Node<'a>)> {
-    let declaration_node = find_ancestor_of_kind(node, "local_variable_declaration")
-        .ok_or_else(|| RefactoringError::Analysis("Not a local variable declaration".to_string()))?;
+fn extract_java_var_info<'a>(
+    node: Node<'a>,
+    source: &str,
+) -> RefactoringResult<(String, String, Node<'a>)> {
+    let declaration_node =
+        find_ancestor_of_kind(node, "local_variable_declaration").ok_or_else(|| {
+            RefactoringError::Analysis("Not a local variable declaration".to_string())
+        })?;
 
     let declarator = declaration_node
         .children_by_field_name("declarator", &mut declaration_node.walk())
-        .find(|d| d.range().start_byte <= node.range().start_byte && d.range().end_byte >= node.range().end_byte)
-        .ok_or_else(|| RefactoringError::Analysis("Could not find variable declarator".to_string()))?;
+        .find(|d| {
+            d.range().start_byte <= node.range().start_byte
+                && d.range().end_byte >= node.range().end_byte
+        })
+        .ok_or_else(|| {
+            RefactoringError::Analysis("Could not find variable declarator".to_string())
+        })?;
 
-    let name_node = declarator.child_by_field_name("name").ok_or_else(|| RefactoringError::Analysis("Could not find variable name".to_string()))?;
-    let value_node = declarator.child_by_field_name("value").ok_or_else(|| RefactoringError::Analysis("Could not find variable value".to_string()))?;
+    let name_node = declarator
+        .child_by_field_name("name")
+        .ok_or_else(|| RefactoringError::Analysis("Could not find variable name".to_string()))?;
+    let value_node = declarator
+        .child_by_field_name("value")
+        .ok_or_else(|| RefactoringError::Analysis("Could not find variable value".to_string()))?;
 
     let name = name_node.utf8_text(source.as_bytes()).unwrap().to_string();
     let value = value_node.utf8_text(source.as_bytes()).unwrap().to_string();
 
     Ok((name, value, declaration_node))
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -350,7 +422,9 @@ class Main {
         System.out.println(x);
     }
 }"#;
-        let plan = plan_extract_variable(source, 4, 16, 4, 23, Some("sum".to_string()), "Main.java").unwrap();
+        let plan =
+            plan_extract_variable(source, 4, 16, 4, 23, Some("sum".to_string()), "Main.java")
+                .unwrap();
         assert_eq!(plan.edits.len(), 2);
         let insert_edit = &plan.edits[0];
         // The expected text includes the indentation of the line where the insertion happens.
@@ -367,7 +441,12 @@ class Main {
         System.out.println("Hello, World!");
     }
 }"#;
-        let range = CodeRange { start_line: 4, start_col: 8, end_line: 4, end_col: 42 };
+        let range = CodeRange {
+            start_line: 4,
+            start_col: 8,
+            end_line: 4,
+            end_col: 42,
+        };
         let plan = plan_extract_function(source, &range, "greet", "Main.java").unwrap();
         assert_eq!(plan.edits.len(), 2);
         let insert_edit = &plan.edits[0];
@@ -388,10 +467,18 @@ class Main {
         let plan = plan_inline_variable(source, 4, 15, "Main.java").unwrap();
         assert_eq!(plan.edits.len(), 2);
 
-        let inline_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Replace).unwrap();
+        let inline_edit = plan
+            .edits
+            .iter()
+            .find(|e| e.edit_type == EditType::Replace)
+            .unwrap();
         assert_eq!(inline_edit.new_text, r#""Hello""#);
 
-        let delete_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Delete).unwrap();
+        let delete_edit = plan
+            .edits
+            .iter()
+            .find(|e| e.edit_type == EditType::Delete)
+            .unwrap();
         assert!(delete_edit.edit_type == EditType::Delete);
     }
 }

@@ -299,9 +299,7 @@ impl QualityHandler {
 
         // Extract path from scope.path
         let path_str = scope_param.path.as_ref().ok_or_else(|| {
-            ServerError::InvalidRequest(
-                "Missing path for scope. Specify scope.path".into(),
-            )
+            ServerError::InvalidRequest("Missing path for scope. Specify scope.path".into())
         })?;
 
         let path = std::path::Path::new(path_str);
@@ -317,12 +315,18 @@ impl QualityHandler {
         // Determine files to analyze based on scope type
         let md_files: Vec<std::path::PathBuf> = if scope_type == "file" {
             // Bug 2 fix: Handle single file scope
-            if path.extension().and_then(|e| e.to_str()).map(|e| e == "md" || e == "markdown").unwrap_or(false) {
+            if path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| e == "md" || e == "markdown")
+                .unwrap_or(false)
+            {
                 vec![path.to_path_buf()]
             } else {
-                return Err(ServerError::InvalidRequest(
-                    format!("File {} is not a markdown file", path_str)
-                ));
+                return Err(ServerError::InvalidRequest(format!(
+                    "File {} is not a markdown file",
+                    path_str
+                )));
             }
         } else {
             // Directory or workspace scope - list all markdown files
@@ -473,7 +477,8 @@ impl QualityHandler {
         if !options.fix.is_empty() {
             let all_fixers = get_markdown_fixers();
             let mut files_fixed = 0;
-            let mut fixes_by_kind: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+            let mut fixes_by_kind: std::collections::HashMap<String, usize> =
+                std::collections::HashMap::new();
             let mut files_affected = Vec::new();
 
             info!(
@@ -497,10 +502,7 @@ impl QualityHandler {
                 };
 
                 // Create context with SHA-256 hash
-                let ctx = markdown_fixers::MarkdownContext::new(
-                    content.clone(),
-                    file_path.clone(),
-                );
+                let ctx = markdown_fixers::MarkdownContext::new(content.clone(), file_path.clone());
 
                 let mut file_has_changes = false;
                 let mut combined_content = content.clone();
@@ -510,7 +512,8 @@ impl QualityHandler {
                     // Find matching fixer
                     if let Some(fixer) = all_fixers.iter().find(|f| f.id() == fix_kind.as_str()) {
                         // Get fixer-specific config
-                        let fixer_config = options.fix_options
+                        let fixer_config = options
+                            .fix_options
                             .get(fix_kind)
                             .cloned()
                             .unwrap_or(Value::Null);
@@ -527,10 +530,12 @@ impl QualityHandler {
                             file_has_changes = true;
 
                             // Count fixes by kind
-                            *fixes_by_kind.entry(fix_kind.clone()).or_insert(0) += outcome.edits.len();
+                            *fixes_by_kind.entry(fix_kind.clone()).or_insert(0) +=
+                                outcome.edits.len();
 
                             // Apply edits to get new content
-                            combined_content = markdown_fixers::apply_edits(&combined_content, &outcome.edits);
+                            combined_content =
+                                markdown_fixers::apply_edits(&combined_content, &outcome.edits);
 
                             // Store preview for this fix
                             if let Some(preview) = outcome.preview {
@@ -553,16 +558,17 @@ impl QualityHandler {
                     // Write fixed content if apply=true
                     if options.apply {
                         // Verify hash hasn't changed (optimistic locking)
-                        let current_content = match context.app_state.file_service.read_file(file_path).await {
-                            Ok(c) => c,
-                            Err(e) => {
-                                all_errors.push(json!({
-                                    "file": file_path.display().to_string(),
-                                    "error": format!("Re-read error before write: {}", e)
-                                }));
-                                continue;
-                            }
-                        };
+                        let current_content =
+                            match context.app_state.file_service.read_file(file_path).await {
+                                Ok(c) => c,
+                                Err(e) => {
+                                    all_errors.push(json!({
+                                        "file": file_path.display().to_string(),
+                                        "error": format!("Re-read error before write: {}", e)
+                                    }));
+                                    continue;
+                                }
+                            };
 
                         if !ctx.verify_hash(&current_content) {
                             all_errors.push(json!({
@@ -666,7 +672,10 @@ impl QualityHandler {
             "cognitive_complexity".to_string(),
             json!(thresholds.max_complexity),
         );
-        threshold_map.insert("nesting_depth".to_string(), json!(thresholds.max_nesting_depth));
+        threshold_map.insert(
+            "nesting_depth".to_string(),
+            json!(thresholds.max_nesting_depth),
+        );
         threshold_map.insert(
             "parameter_count".to_string(),
             json!(thresholds.max_parameters),
@@ -1068,7 +1077,8 @@ pub(crate) fn analyze_readability(
             let mut finding = Finding {
                 id: format!("deep-nesting-{}-{}", file_path, func.line),
                 kind: "deep_nesting".to_string(),
-                severity: if func.complexity.max_nesting_depth > (thresholds.max_nesting_depth + 2) as u32
+                severity: if func.complexity.max_nesting_depth
+                    > (thresholds.max_nesting_depth + 2) as u32
                 {
                     Severity::High
                 } else {
@@ -1092,9 +1102,7 @@ pub(crate) fn analyze_readability(
                 metrics: Some(metrics),
                 message: format!(
                     "Function '{}' has deep nesting ({} levels, >{} recommended)",
-                    func.name,
-                    func.complexity.max_nesting_depth,
-                    thresholds.max_nesting_depth
+                    func.name, func.complexity.max_nesting_depth, thresholds.max_nesting_depth
                 ),
                 suggestions: vec![],
             };
@@ -1572,13 +1580,15 @@ fn detect_markdown_structure(
     // Extract headings from symbols (markdown plugin maps # → Module, ## → Class, ### → Function, ####+ → Other)
     let headings: Vec<_> = symbols
         .iter()
-        .filter(|s| matches!(
-            s.kind,
-            mill_plugin_api::SymbolKind::Module
-            | mill_plugin_api::SymbolKind::Class
-            | mill_plugin_api::SymbolKind::Function
-            | mill_plugin_api::SymbolKind::Other  // Include level 4+ headings
-        ))
+        .filter(|s| {
+            matches!(
+                s.kind,
+                mill_plugin_api::SymbolKind::Module
+                    | mill_plugin_api::SymbolKind::Class
+                    | mill_plugin_api::SymbolKind::Function
+                    | mill_plugin_api::SymbolKind::Other // Include level 4+ headings
+            )
+        })
         .collect();
 
     // Track heading levels for hierarchy checking
@@ -1593,8 +1603,8 @@ fn detect_markdown_structure(
 
         // Determine level based on SymbolKind mapping or by counting # characters for Other
         let level = match symbol.kind {
-            mill_plugin_api::SymbolKind::Module => 1,  // # → Module
-            mill_plugin_api::SymbolKind::Class => 2,   // ## → Class
+            mill_plugin_api::SymbolKind::Module => 1,   // # → Module
+            mill_plugin_api::SymbolKind::Class => 2,    // ## → Class
             mill_plugin_api::SymbolKind::Function => 3, // ### → Function
             mill_plugin_api::SymbolKind::Other => {
                 // Level 4+ headings - count # characters in the line
@@ -1619,8 +1629,14 @@ fn detect_markdown_structure(
                 location: FindingLocation {
                     file_path: file_path.to_string(),
                     range: Some(Range {
-                        start: Position { line: line_num as u32, character: 0 },
-                        end: Position { line: line_num as u32, character: line.len() as u32 },
+                        start: Position {
+                            line: line_num as u32,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num as u32,
+                            character: line.len() as u32,
+                        },
                     }),
                     symbol: Some(symbol.name.clone()),
                     symbol_kind: Some("heading".to_string()),
@@ -1650,8 +1666,14 @@ fn detect_markdown_structure(
                 location: FindingLocation {
                     file_path: file_path.to_string(),
                     range: Some(Range {
-                        start: Position { line: line_num as u32, character: 0 },
-                        end: Position { line: line_num as u32, character: line.len() as u32 },
+                        start: Position {
+                            line: line_num as u32,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num as u32,
+                            character: line.len() as u32,
+                        },
                     }),
                     symbol: Some(symbol.name.clone()),
                     symbol_kind: Some("heading".to_string()),
@@ -1685,8 +1707,14 @@ fn detect_markdown_structure(
                     location: FindingLocation {
                         file_path: file_path.to_string(),
                         range: Some(Range {
-                            start: Position { line: line_num as u32, character: 0 },
-                            end: Position { line: line_num as u32, character: line.len() as u32 },
+                            start: Position {
+                                line: line_num as u32,
+                                character: 0,
+                            },
+                            end: Position {
+                                line: line_num as u32,
+                                character: line.len() as u32,
+                            },
                         }),
                         symbol: Some(symbol.name.clone()),
                         symbol_kind: Some("heading".to_string()),
@@ -1704,7 +1732,10 @@ fn detect_markdown_structure(
             id: format!("multiple-h1-{}", file_path),
             kind: "multiple_h1_headings".to_string(),
             severity: Severity::Medium,
-            message: format!("Document has {} top-level headings (H1), should have only one", h1_count),
+            message: format!(
+                "Document has {} top-level headings (H1), should have only one",
+                h1_count
+            ),
             location: FindingLocation {
                 file_path: file_path.to_string(),
                 range: None,
@@ -1723,12 +1754,23 @@ fn detect_markdown_structure(
                 id: format!("duplicate-heading-{}-{}-{}", file_path, level, line_nums[1]),
                 kind: "duplicate_heading".to_string(),
                 severity: Severity::Low,
-                message: format!("Duplicate heading '{}' at level {} appears {} times", name, level, line_nums.len()),
+                message: format!(
+                    "Duplicate heading '{}' at level {} appears {} times",
+                    name,
+                    level,
+                    line_nums.len()
+                ),
                 location: FindingLocation {
                     file_path: file_path.to_string(),
                     range: Some(Range {
-                        start: Position { line: line_nums[1] as u32, character: 0 },
-                        end: Position { line: line_nums[1] as u32, character: lines[line_nums[1]].len() as u32 },
+                        start: Position {
+                            line: line_nums[1] as u32,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_nums[1] as u32,
+                            character: lines[line_nums[1]].len() as u32,
+                        },
                     }),
                     symbol: Some(name),
                     symbol_kind: Some("heading".to_string()),
@@ -1750,12 +1792,21 @@ fn detect_markdown_structure(
                 id: format!("malformed-heading-raw-{}-{}", file_path, line_num),
                 kind: "malformed_heading".to_string(),
                 severity: Severity::Medium,
-                message: format!("Heading should have space after '#': {}{}", hashes, next_char),
+                message: format!(
+                    "Heading should have space after '#': {}{}",
+                    hashes, next_char
+                ),
                 location: FindingLocation {
                     file_path: file_path.to_string(),
                     range: Some(Range {
-                        start: Position { line: line_num as u32, character: 0 },
-                        end: Position { line: line_num as u32, character: line.len() as u32 },
+                        start: Position {
+                            line: line_num as u32,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num as u32,
+                            character: line.len() as u32,
+                        },
                     }),
                     symbol: None,
                     symbol_kind: Some("heading".to_string()),
@@ -1786,7 +1837,10 @@ fn detect_markdown_structure(
 
             // If there are edits, TOC is out of sync
             if !outcome.edits.is_empty() {
-                let marker_line = lines.iter().position(|line| line.trim() == *marker).unwrap_or(0);
+                let marker_line = lines
+                    .iter()
+                    .position(|line| line.trim() == *marker)
+                    .unwrap_or(0);
                 findings.push(Finding {
                     id: format!("toc-out-of-sync-{}", file_path),
                     kind: "toc_out_of_sync".to_string(),
@@ -1795,8 +1849,14 @@ fn detect_markdown_structure(
                     location: FindingLocation {
                         file_path: file_path.to_string(),
                         range: Some(Range {
-                            start: Position { line: marker_line as u32, character: 0 },
-                            end: Position { line: marker_line as u32, character: marker.len() as u32 },
+                            start: Position {
+                                line: marker_line as u32,
+                                character: 0,
+                            },
+                            end: Position {
+                                line: marker_line as u32,
+                                character: marker.len() as u32,
+                            },
                         }),
                         symbol: Some(marker.to_string()),
                         symbol_kind: Some("toc".to_string()),
@@ -1858,8 +1918,14 @@ fn detect_markdown_formatting(
                 location: FindingLocation {
                     file_path: file_path.to_string(),
                     range: Some(Range {
-                        start: Position { line: line_num as u32, character: 0 },
-                        end: Position { line: line_num as u32, character: line.len() as u32 },
+                        start: Position {
+                            line: line_num as u32,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num as u32,
+                            character: line.len() as u32,
+                        },
                     }),
                     symbol: None,
                     symbol_kind: None,
@@ -1887,12 +1953,19 @@ fn detect_markdown_formatting(
                         id: format!("missing-lang-tag-{}-{}", file_path, line_num),
                         kind: "missing_code_language_tag".to_string(),
                         severity: Severity::Low,
-                        message: "Code block is missing language tag for syntax highlighting".to_string(),
+                        message: "Code block is missing language tag for syntax highlighting"
+                            .to_string(),
                         location: FindingLocation {
                             file_path: file_path.to_string(),
                             range: Some(Range {
-                                start: Position { line: line_num as u32, character: 0 },
-                                end: Position { line: line_num as u32, character: line.len() as u32 },
+                                start: Position {
+                                    line: line_num as u32,
+                                    character: 0,
+                                },
+                                end: Position {
+                                    line: line_num as u32,
+                                    character: line.len() as u32,
+                                },
                             }),
                             symbol: None,
                             symbol_kind: None,
@@ -1924,12 +1997,19 @@ fn detect_markdown_formatting(
                 id: format!("bare-url-{}-{}", file_path, line_num),
                 kind: "bare_url".to_string(),
                 severity: Severity::Low,
-                message: "Bare URL should be wrapped in <> or use link syntax [text](url)".to_string(),
+                message: "Bare URL should be wrapped in <> or use link syntax [text](url)"
+                    .to_string(),
                 location: FindingLocation {
                     file_path: file_path.to_string(),
                     range: Some(Range {
-                        start: Position { line: line_num as u32, character: 0 },
-                        end: Position { line: line_num as u32, character: line.len() as u32 },
+                        start: Position {
+                            line: line_num as u32,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num as u32,
+                            character: line.len() as u32,
+                        },
                     }),
                     symbol: None,
                     symbol_kind: None,
@@ -1949,8 +2029,14 @@ fn detect_markdown_formatting(
                 location: FindingLocation {
                     file_path: file_path.to_string(),
                     range: Some(Range {
-                        start: Position { line: line_num as u32, character: 0 },
-                        end: Position { line: line_num as u32, character: line.len() as u32 },
+                        start: Position {
+                            line: line_num as u32,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num as u32,
+                            character: line.len() as u32,
+                        },
                     }),
                     symbol: None,
                     symbol_kind: None,
@@ -1970,8 +2056,14 @@ fn detect_markdown_formatting(
                 location: FindingLocation {
                     file_path: file_path.to_string(),
                     range: Some(Range {
-                        start: Position { line: line_num as u32, character: 0 },
-                        end: Position { line: line_num as u32, character: line.len() as u32 },
+                        start: Position {
+                            line: line_num as u32,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num as u32,
+                            character: line.len() as u32,
+                        },
                     }),
                     symbol: None,
                     symbol_kind: None,
@@ -1987,12 +2079,19 @@ fn detect_markdown_formatting(
                 id: format!("reversed-link-{}-{}", file_path, line_num),
                 kind: "reversed_link_syntax".to_string(),
                 severity: Severity::High,
-                message: "Link syntax is reversed, should be [text](url) not (text)[url]".to_string(),
+                message: "Link syntax is reversed, should be [text](url) not (text)[url]"
+                    .to_string(),
                 location: FindingLocation {
                     file_path: file_path.to_string(),
                     range: Some(Range {
-                        start: Position { line: line_num as u32, character: 0 },
-                        end: Position { line: line_num as u32, character: line.len() as u32 },
+                        start: Position {
+                            line: line_num as u32,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: line_num as u32,
+                            character: line.len() as u32,
+                        },
                     }),
                     symbol: None,
                     symbol_kind: None,
@@ -2029,8 +2128,14 @@ fn detect_markdown_formatting(
                 location: FindingLocation {
                     file_path: file_path.to_string(),
                     range: Some(Range {
-                        start: Position { line: start_line as u32, character: 0 },
-                        end: Position { line: start_line as u32, character: lines[start_line].len() as u32 },
+                        start: Position {
+                            line: start_line as u32,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: start_line as u32,
+                            character: lines[start_line].len() as u32,
+                        },
                     }),
                     symbol: None,
                     symbol_kind: None,
@@ -2082,12 +2187,21 @@ fn detect_markdown_formatting(
                         id: format!("table-inconsistency-{}-{}", file_path, line_num),
                         kind: "table_column_inconsistency".to_string(),
                         severity: Severity::Medium,
-                        message: format!("Table row has {} columns but header has {}", count, first_count),
+                        message: format!(
+                            "Table row has {} columns but header has {}",
+                            count, first_count
+                        ),
                         location: FindingLocation {
                             file_path: file_path.to_string(),
                             range: Some(Range {
-                                start: Position { line: line_num as u32, character: 0 },
-                                end: Position { line: line_num as u32, character: lines[line_num].len() as u32 },
+                                start: Position {
+                                    line: line_num as u32,
+                                    character: 0,
+                                },
+                                end: Position {
+                                    line: line_num as u32,
+                                    character: lines[line_num].len() as u32,
+                                },
                             }),
                             symbol: None,
                             symbol_kind: None,
@@ -2129,7 +2243,12 @@ impl ToolHandler for QualityHandler {
         // Validate kind
         if !matches!(
             kind,
-            "complexity" | "smells" | "maintainability" | "readability" | "markdown_structure" | "markdown_formatting"
+            "complexity"
+                | "smells"
+                | "maintainability"
+                | "readability"
+                | "markdown_structure"
+                | "markdown_formatting"
         ) {
             return Err(ServerError::InvalidRequest(format!(
                 "Unsupported kind '{}'. Supported: 'complexity', 'smells', 'maintainability', 'readability', 'markdown_structure', 'markdown_formatting'",

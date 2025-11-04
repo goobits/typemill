@@ -182,7 +182,9 @@ pub trait RefactoringProvider: Send + Sync {
         _function_name: &str,
         _file_path: &str,
     ) -> PluginResult<mill_foundation::protocol::EditPlan> {
-        Err(crate::PluginApiError::not_supported("plan_extract_function"))
+        Err(crate::PluginApiError::not_supported(
+            "plan_extract_function",
+        ))
     }
 
     /// Check if extract variable refactoring is supported
@@ -214,7 +216,9 @@ pub trait RefactoringProvider: Send + Sync {
         _variable_name: Option<String>,
         _file_path: &str,
     ) -> PluginResult<mill_foundation::protocol::EditPlan> {
-        Err(crate::PluginApiError::not_supported("plan_extract_variable"))
+        Err(crate::PluginApiError::not_supported(
+            "plan_extract_variable",
+        ))
     }
 
     // ============================================================================
@@ -520,6 +524,8 @@ pub trait ModuleDeclarationSupport: Send + Sync {
         _module_name: &str,
         _public: bool,
     ) -> PluginResult<String> {
-        Err(crate::PluginApiError::not_supported("add_module_declaration"))
+        Err(crate::PluginApiError::not_supported(
+            "add_module_declaration",
+        ))
     }
 }

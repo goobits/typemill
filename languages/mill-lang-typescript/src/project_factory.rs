@@ -10,7 +10,7 @@ use mill_lang_common::project_factory::{
 use mill_plugin_api::project_factory::{
     CreatePackageConfig, CreatePackageResult, PackageInfo, PackageType, ProjectFactory, Template,
 };
-use mill_plugin_api::{PluginError, PluginResult, WorkspaceSupport};
+use mill_plugin_api::{PluginApiError, PluginResult, WorkspaceSupport};
 use std::fs;
 use std::path::Path;
 use tracing::{debug, error};
@@ -114,13 +114,13 @@ fn create_directory_structure(package_path: &Path) -> PluginResult<()> {
 
     fs::create_dir_all(package_path).map_err(|e| {
         error!(error = %e, package_path = %package_path.display(), "Failed to create package directory");
-        PluginError::internal(format!("Failed to create directory: {}", e))
+        PluginApiError::internal(format!("Failed to create directory: {}", e))
     })?;
 
     let src_dir = package_path.join("src");
     fs::create_dir_all(&src_dir).map_err(|e| {
         error!(error = %e, src_dir = %src_dir.display(), "Failed to create src directory");
-        PluginError::internal(format!("Failed to create src directory: {}", e))
+        PluginApiError::internal(format!("Failed to create src directory: {}", e))
     })?;
 
     Ok(())
@@ -155,7 +155,8 @@ fn generate_package_json(package_name: &str, package_type: PackageType) -> Strin
   }}
 }}
 "#,
-            package_name, constants::DEFAULT_TS_VERSION
+            package_name,
+            constants::DEFAULT_TS_VERSION
         ),
         PackageType::Binary => format!(
             r#"{{
@@ -180,7 +181,9 @@ fn generate_package_json(package_name: &str, package_type: PackageType) -> Strin
   }}
 }}
 "#,
-            package_name, package_name, constants::DEFAULT_TS_VERSION
+            package_name,
+            package_name,
+            constants::DEFAULT_TS_VERSION
         ),
     }
 }
@@ -278,8 +281,9 @@ yarn-error.log*
 
     // tests/index.test.ts
     let tests_dir = package_path.join("tests");
-    fs::create_dir_all(&tests_dir)
-        .map_err(|e| PluginError::internal(format!("Failed to create tests directory: {}", e)))?;
+    fs::create_dir_all(&tests_dir).map_err(|e| {
+        PluginApiError::internal(format!("Failed to create tests directory: {}", e))
+    })?;
 
     let test_path = tests_dir.join("index.test.ts");
     let test_content = format!(

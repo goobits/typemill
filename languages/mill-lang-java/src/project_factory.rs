@@ -1,4 +1,7 @@
-use mill_plugin_api::{CreatePackageConfig, CreatePackageResult, PluginError, PluginResult, ProjectFactory, PackageInfo, PackageType};
+use mill_plugin_api::{
+    CreatePackageConfig, CreatePackageResult, PackageInfo, PackageType, PluginApiError,
+    PluginResult, ProjectFactory,
+};
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -13,21 +16,19 @@ impl JavaProjectFactory {
 }
 
 impl ProjectFactory for JavaProjectFactory {
-    fn create_package(
-        &self,
-        config: &CreatePackageConfig,
-    ) -> PluginResult<CreatePackageResult> {
+    fn create_package(&self, config: &CreatePackageConfig) -> PluginResult<CreatePackageResult> {
         let package_dir = Path::new(&config.package_path);
-        fs::create_dir_all(package_dir)
-            .map_err(|e| PluginError::internal(format!("Failed to create package directory: {}", e)))?;
+        fs::create_dir_all(package_dir).map_err(|e| {
+            PluginApiError::internal(format!("Failed to create package directory: {}", e))
+        })?;
 
         let manifest_content;
         let manifest_filename;
         let package_name = package_dir
             .file_name()
-            .ok_or_else(|| PluginError::invalid_input("Invalid package path"))?
+            .ok_or_else(|| PluginApiError::invalid_input("Invalid package path"))?
             .to_str()
-            .ok_or_else(|| PluginError::invalid_input("Invalid package path"))?;
+            .ok_or_else(|| PluginApiError::invalid_input("Invalid package path"))?;
 
         match config.package_type {
             PackageType::Library => {
@@ -41,16 +42,22 @@ impl ProjectFactory for JavaProjectFactory {
         }
 
         let manifest_path = package_dir.join(manifest_filename);
-        let mut file = fs::File::create(&manifest_path)
-            .map_err(|e| PluginError::internal(format!("Failed to create manifest file: {}", e)))?;
-        file.write_all(manifest_content.as_bytes())
-            .map_err(|e| PluginError::internal(format!("Failed to write to manifest file: {}", e)))?;
+        let mut file = fs::File::create(&manifest_path).map_err(|e| {
+            PluginApiError::internal(format!("Failed to create manifest file: {}", e))
+        })?;
+        file.write_all(manifest_content.as_bytes()).map_err(|e| {
+            PluginApiError::internal(format!("Failed to write to manifest file: {}", e))
+        })?;
 
         // Create standard directory structure
         let src_main_java = package_dir.join("src/main/java");
         let src_test_java = package_dir.join("src/test/java");
-        fs::create_dir_all(&src_main_java).map_err(|e| PluginError::internal(format!("Failed to create src/main/java: {}", e)))?;
-        fs::create_dir_all(&src_test_java).map_err(|e| PluginError::internal(format!("Failed to create src/test/java: {}", e)))?;
+        fs::create_dir_all(&src_main_java).map_err(|e| {
+            PluginApiError::internal(format!("Failed to create src/main/java: {}", e))
+        })?;
+        fs::create_dir_all(&src_test_java).map_err(|e| {
+            PluginApiError::internal(format!("Failed to create src/test/java: {}", e))
+        })?;
 
         Ok(CreatePackageResult {
             created_files: vec![manifest_path.to_string_lossy().into_owned()],
@@ -117,5 +124,6 @@ application {
 tasks.named('test') {
     useJUnitPlatform()
 }
-"#.to_string()
+"#
+    .to_string()
 }

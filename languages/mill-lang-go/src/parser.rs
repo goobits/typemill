@@ -1,8 +1,8 @@
 //! Go import parsing and symbol extraction logic for the mill-lang-go plugin.
 
-use mill_lang_common::{parse_with_fallback, run_ast_tool, ImportGraphBuilder, SubprocessAstTool};
-use mill_plugin_api::{PluginError, PluginResult, Symbol, SymbolKind, SourceLocation};
 use mill_foundation::protocol::{ImportGraph, ImportInfo, ImportType};
+use mill_lang_common::{parse_with_fallback, run_ast_tool, ImportGraphBuilder, SubprocessAstTool};
+use mill_plugin_api::{PluginApiError, PluginResult, SourceLocation, Symbol, SymbolKind};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -24,7 +24,7 @@ pub(crate) fn analyze_imports(source: &str, file_path: Option<&Path>) -> PluginR
 }
 
 /// Spawns the bundled `ast_tool.go` script to parse imports from source.
-fn parse_go_imports_ast(source: &str) -> Result<Vec<ImportInfo>, PluginError> {
+fn parse_go_imports_ast(source: &str) -> Result<Vec<ImportInfo>, PluginApiError> {
     const AST_TOOL_GO: &str = include_str!("../resources/ast_tool.go");
 
     let tool = SubprocessAstTool::new("go")
@@ -247,7 +247,7 @@ pub(crate) fn list_functions(source: &str) -> PluginResult<Vec<String>> {
 }
 
 /// Spawns the bundled `ast_tool.go` script to extract symbols from source.
-fn extract_symbols_ast(source: &str) -> Result<Vec<Symbol>, PluginError> {
+fn extract_symbols_ast(source: &str) -> Result<Vec<Symbol>, PluginApiError> {
     const AST_TOOL_GO: &str = include_str!("../resources/ast_tool.go");
 
     let tool = SubprocessAstTool::new("go")

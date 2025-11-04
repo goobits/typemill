@@ -1,4 +1,6 @@
-use mill_plugin_api::{CreatePackageConfig, CreatePackageResult, PackageInfo, ProjectFactory, PluginResult};
+use mill_plugin_api::{
+    CreatePackageConfig, CreatePackageResult, PackageInfo, PluginResult, ProjectFactory,
+};
 use std::fs;
 use std::path::PathBuf;
 
@@ -6,10 +8,7 @@ use std::path::PathBuf;
 pub struct CProjectFactory;
 
 impl ProjectFactory for CProjectFactory {
-    fn create_package(
-        &self,
-        config: &CreatePackageConfig,
-    ) -> PluginResult<CreatePackageResult> {
+    fn create_package(&self, config: &CreatePackageConfig) -> PluginResult<CreatePackageResult> {
         let package_path = PathBuf::from(&config.package_path);
         let src_path = package_path.join("src");
         fs::create_dir_all(&src_path).unwrap();
@@ -47,7 +46,12 @@ clean:
             ],
             workspace_updated: false,
             package_info: PackageInfo {
-                name: package_path.file_name().unwrap().to_str().unwrap().to_string(),
+                name: package_path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
                 version: "0.1.0".to_string(),
                 manifest_path: makefile_path.to_str().unwrap().to_string(),
             },

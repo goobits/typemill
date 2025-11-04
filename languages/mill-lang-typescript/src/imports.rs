@@ -1,5 +1,5 @@
 use mill_foundation::protocol::DependencyUpdate;
-use mill_plugin_api::{PluginError, PluginResult};
+use mill_plugin_api::{PluginApiError, PluginResult};
 use std::path::Path;
 use swc_common::{sync::Lrc, FileName, FilePathMapping, SourceMap};
 use swc_ecma_ast::{ImportSpecifier, Module, ModuleDecl, ModuleItem};
@@ -163,7 +163,7 @@ pub fn update_import_reference_ast(
     let module = match parser.parse_module() {
         Ok(module) => module,
         Err(e) => {
-            return Err(PluginError::parse(format!(
+            return Err(PluginApiError::parse(format!(
                 "Failed to parse file for import update: {:?}",
                 e
             )));
@@ -217,12 +217,12 @@ pub fn update_import_reference_ast(
             wr: JsWriter::new(cm.clone(), "\n", &mut buf, None),
         };
 
-        emitter
-            .emit_module(&new_module)
-            .map_err(|e| PluginError::internal(format!("Failed to emit updated code: {:?}", e)))?;
+        emitter.emit_module(&new_module).map_err(|e| {
+            PluginApiError::internal(format!("Failed to emit updated code: {:?}", e))
+        })?;
     }
 
     String::from_utf8(buf).map_err(|e| {
-        PluginError::internal(format!("Failed to convert emitted code to string: {}", e))
+        PluginApiError::internal(format!("Failed to convert emitted code to string: {}", e))
     })
 }

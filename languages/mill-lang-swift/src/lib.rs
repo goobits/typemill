@@ -22,7 +22,7 @@ use mill_lang_common::{
 };
 use mill_plugin_api::{
     ImportAnalyzer, LanguagePlugin, ManifestData, ManifestUpdater, ModuleReference,
-    ModuleReferenceScanner, ParsedSource, PluginError, PluginResult, RefactoringProvider,
+    ModuleReferenceScanner, ParsedSource, PluginApiError, PluginResult, RefactoringProvider,
     ScanScope,
 };
 use regex::Regex;
@@ -66,7 +66,7 @@ impl LanguagePlugin for SwiftPlugin {
 
     async fn analyze_manifest(&self, path: &Path) -> PluginResult<ManifestData> {
         let content = std::fs::read_to_string(path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))?;
+            .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))?;
 
         let name = constants::MANIFEST_NAME_REGEX
             .captures(&content)
@@ -189,9 +189,9 @@ impl ModuleReferenceScanner for SwiftPlugin {
     ) -> PluginResult<Vec<ModuleReference>> {
         let mut references = Vec::new();
         let import_re = constants::import_pattern_for_module(module_name)
-            .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("Invalid regex: {}", e)))?;
         let qualified_re = constants::qualified_path_pattern(module_name)
-            .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("Invalid regex: {}", e)))?;
 
         for (line_idx, line) in content.lines().enumerate() {
             let line_num = line_idx + 1;
@@ -244,7 +244,7 @@ use mill_foundation::protocol::{ImportGraph, ImportGraphMetadata, ImportInfo, Im
 impl ImportAnalyzer for SwiftPlugin {
     fn build_import_graph(&self, file_path: &Path) -> PluginResult<ImportGraph> {
         let content = std::fs::read_to_string(file_path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))?;
+            .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))?;
 
         let imports = constants::IMPORT_REGEX
             .captures_iter(&content)
@@ -294,11 +294,11 @@ impl ManifestUpdater for SwiftPlugin {
         new_version: Option<&str>,
     ) -> PluginResult<String> {
         let content = std::fs::read_to_string(manifest_path)
-            .map_err(|e| mill_plugin_api::PluginError::internal(e.to_string()))?;
+            .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))?;
 
         let pattern = format!(r#"(\.package\(\s*name:\s*"{}"[^)]*\))"#, old_name);
         let re = Regex::new(&pattern)
-            .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("Invalid regex: {}", e)))?;
 
         if !re.is_match(&content) {
             return Ok(content);
@@ -311,17 +311,19 @@ impl ManifestUpdater for SwiftPlugin {
                 // different versioning styles (.exact, .branch, etc.) and update existing ones.
                 new_package_line.push_str(&format!(r#", .upToNextMajor(from: "{}"))"#, version));
             } else {
-                 // Try to preserve existing versioning if possible, or just close the call
+                // Try to preserve existing versioning if possible, or just close the call
                 if let Some(existing) = caps.get(0) {
-                     if !existing.as_str().contains("version") && !existing.as_str().contains("from:") {
-                         new_package_line.push(')');
-                     } else {
+                    if !existing.as_str().contains("version")
+                        && !existing.as_str().contains("from:")
+                    {
+                        new_package_line.push(')');
+                    } else {
                         // In a real scenario, you'd parse this part. For now, we just copy it.
                         if let Some(match_group) = caps.get(1) {
                             let rest = &existing.as_str()[match_group.end()..];
                             new_package_line.push_str(rest);
                         }
-                     }
+                    }
                 } else {
                     new_package_line.push(')');
                 }
@@ -367,7 +369,13 @@ let package = Package(
     ]
 )
 "#,
-            package_name, package_name, package_name, deps_str, package_name, package_name, package_name
+            package_name,
+            package_name,
+            package_name,
+            deps_str,
+            package_name,
+            package_name,
+            package_name
         )
     }
 }
@@ -403,7 +411,9 @@ impl mill_plugin_api::AnalysisMetadata for SwiftPlugin {
     }
 
     fn complexity_keywords(&self) -> Vec<&'static str> {
-        vec!["if", "guard", "switch", "case", "for", "while", "catch", "&&", "||", "??"]
+        vec![
+            "if", "guard", "switch", "case", "for", "while", "catch", "&&", "||", "??",
+        ]
     }
 
     fn nesting_penalty(&self) -> f32 {
@@ -495,7 +505,10 @@ import UIKit
         let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
         let path = temp_dir.path().to_path_buf();
         let config = mill_plugin_api::CreatePackageConfig {
-            package_path: path.to_str().expect("Path should be valid UTF-8").to_string(),
+            package_path: path
+                .to_str()
+                .expect("Path should be valid UTF-8")
+                .to_string(),
             package_type: mill_plugin_api::PackageType::Library,
             template: mill_plugin_api::Template::Minimal,
             add_to_workspace: false,
@@ -559,7 +572,15 @@ let package = Package(
         // Test extract variable
         let source = "func myFunc() {\n    print(10 + 20)\n}";
         let result = provider
-            .plan_extract_variable(source, 1, 10, 1, 17, Some("myVar".to_string()), "test.swift")
+            .plan_extract_variable(
+                source,
+                1,
+                10,
+                1,
+                17,
+                Some("myVar".to_string()),
+                "test.swift",
+            )
             .await;
         assert!(result.is_ok());
         let plan = result.expect("plan_extract_variable should succeed");
@@ -692,9 +713,12 @@ import SwiftUI
     #[test]
     fn test_import_rename_simple() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_rename_support().expect("Should have rename support");
+        let support = plugin
+            .import_rename_support()
+            .expect("Should have rename support");
         let source = "import OldModule\nlet x = OldModule.foo()";
-        let (new_source, changes) = support.rewrite_imports_for_rename(source, "OldModule", "NewModule");
+        let (new_source, changes) =
+            support.rewrite_imports_for_rename(source, "OldModule", "NewModule");
         assert_eq!(changes, 1);
         assert!(new_source.contains("import NewModule"));
         assert!(!new_source.contains("import OldModule"));
@@ -703,7 +727,9 @@ import SwiftUI
     #[test]
     fn test_import_rename_qualified() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_rename_support().expect("Should have rename support");
+        let support = plugin
+            .import_rename_support()
+            .expect("Should have rename support");
         let source = "import class OldKit.ViewController";
         let (new_source, _changes) = support.rewrite_imports_for_rename(source, "OldKit", "NewKit");
         // The regex \bimport\s+OldKit\b might not match "import class OldKit"
@@ -716,9 +742,12 @@ import SwiftUI
     #[test]
     fn test_import_rename_preserve_testable() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_rename_support().expect("Should have rename support");
+        let support = plugin
+            .import_rename_support()
+            .expect("Should have rename support");
         let source = "@testable import MyOldModule";
-        let (new_source, changes) = support.rewrite_imports_for_rename(source, "MyOldModule", "MyNewModule");
+        let (new_source, changes) =
+            support.rewrite_imports_for_rename(source, "MyOldModule", "MyNewModule");
         assert_eq!(changes, 1);
         assert!(new_source.contains("@testable"));
         assert!(new_source.contains("MyNewModule"));
@@ -727,9 +756,12 @@ import SwiftUI
     #[test]
     fn test_import_rename_multiple_occurrences() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_rename_support().expect("Should have rename support");
+        let support = plugin
+            .import_rename_support()
+            .expect("Should have rename support");
         let source = "import OldModule\nimport OldModule.SubModule";
-        let (new_source, changes) = support.rewrite_imports_for_rename(source, "OldModule", "NewModule");
+        let (new_source, changes) =
+            support.rewrite_imports_for_rename(source, "OldModule", "NewModule");
         assert_eq!(changes, 2);
         assert!(new_source.contains("NewModule"));
         assert!(!new_source.contains("import OldModule\n"));
@@ -738,10 +770,13 @@ import SwiftUI
     #[test]
     fn test_import_rename_invalid_format() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_rename_support().expect("Should have rename support");
+        let support = plugin
+            .import_rename_support()
+            .expect("Should have rename support");
         let source = "import ValidModule";
         // Try to rename with invalid characters (should still work via regex)
-        let (new_source, changes) = support.rewrite_imports_for_rename(source, "ValidModule", "New-Module");
+        let (new_source, changes) =
+            support.rewrite_imports_for_rename(source, "ValidModule", "New-Module");
         assert_eq!(changes, 1);
         assert!(new_source.contains("New-Module"));
     }
@@ -750,7 +785,9 @@ import SwiftUI
     #[test]
     fn test_import_move_between_modules() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_move_support().expect("Should have move support");
+        let support = plugin
+            .import_move_support()
+            .expect("Should have move support");
         let old_path = Path::new("/project/Sources/OldModule/File.swift");
         let new_path = Path::new("/project/Sources/NewModule/File.swift");
         let source = "import OldModule";
@@ -764,7 +801,9 @@ import SwiftUI
     #[test]
     fn test_import_move_update_nested_paths() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_move_support().expect("Should have move support");
+        let support = plugin
+            .import_move_support()
+            .expect("Should have move support");
         let old_path = Path::new("/old/path/MyModule.swift");
         let new_path = Path::new("/new/path/MyRenamedModule.swift");
         let source = "import MyModule";
@@ -775,7 +814,9 @@ import SwiftUI
     #[test]
     fn test_import_move_cross_module_refs() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_move_support().expect("Should have move support");
+        let support = plugin
+            .import_move_support()
+            .expect("Should have move support");
         let old_path = Path::new("/src/ModuleA/File.swift");
         let new_path = Path::new("/src/ModuleB/File.swift");
         let source = "import ModuleA\nimport Foundation";
@@ -787,7 +828,9 @@ import SwiftUI
     #[test]
     fn test_import_move_preserve_qualifiers() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_move_support().expect("Should have move support");
+        let support = plugin
+            .import_move_support()
+            .expect("Should have move support");
         let old_path = Path::new("/project/OldName.swift");
         let new_path = Path::new("/project/NewName.swift");
         let source = "@testable import OldName";
@@ -798,7 +841,9 @@ import SwiftUI
     #[test]
     fn test_import_move_no_update_needed() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_move_support().expect("Should have move support");
+        let support = plugin
+            .import_move_support()
+            .expect("Should have move support");
         let old_path = Path::new("/project/File.swift");
         let new_path = Path::new("/project/subdirectory/File.swift");
         let source = "import Foundation"; // External module, shouldn't change
@@ -811,7 +856,9 @@ import SwiftUI
     #[test]
     fn test_import_mutation_add_import() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_mutation_support().expect("Should have mutation support");
+        let support = plugin
+            .import_mutation_support()
+            .expect("Should have mutation support");
         let source = "func myFunc() {}";
         let new_source = support.add_import(source, "Foundation");
         assert!(new_source.contains("import Foundation"));
@@ -821,7 +868,9 @@ import SwiftUI
     #[test]
     fn test_import_mutation_remove_import() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_mutation_support().expect("Should have mutation support");
+        let support = plugin
+            .import_mutation_support()
+            .expect("Should have mutation support");
         let source = "import Foundation\nimport UIKit\nfunc myFunc() {}";
         let new_source = support.remove_import(source, "Foundation");
         assert!(!new_source.contains("import Foundation"));
@@ -835,22 +884,32 @@ import SwiftUI
         let parser = plugin.import_parser().expect("Should have import parser");
         // Test with single import on own line (regex needs (?m) for multiline)
         let source1 = "import Foundation";
-        assert!(parser.contains_import(source1, "Foundation"), "Should find Foundation import");
+        assert!(
+            parser.contains_import(source1, "Foundation"),
+            "Should find Foundation import"
+        );
 
         // Test missing import
         let source2 = "import UIKit";
-        assert!(!parser.contains_import(source2, "Combine"), "Should not find Combine import");
+        assert!(
+            !parser.contains_import(source2, "Combine"),
+            "Should not find Combine import"
+        );
     }
 
     // ImportAdvancedSupport Tests (2 tests)
     #[test]
     fn test_import_advanced_analyze_dependencies() {
         let plugin = SwiftPlugin::new();
-        let analyzer = plugin.import_analyzer().expect("Should have import analyzer");
+        let analyzer = plugin
+            .import_analyzer()
+            .expect("Should have import analyzer");
         let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
         let file_path = temp_dir.path().join("Test.swift");
         std::fs::write(&file_path, "import Foundation\nimport UIKit").expect("Failed to write");
-        let graph = analyzer.build_import_graph(&file_path).expect("Should build graph");
+        let graph = analyzer
+            .build_import_graph(&file_path)
+            .expect("Should build graph");
         // The IMPORT_REGEX uses ^ without (?m), so it only matches first line
         assert!(graph.imports.len() >= 1, "Should find at least one import");
         assert_eq!(graph.metadata.language, "swift");
@@ -859,12 +918,16 @@ import SwiftUI
     #[test]
     fn test_import_advanced_circular_detection() {
         let plugin = SwiftPlugin::new();
-        let analyzer = plugin.import_analyzer().expect("Should have import analyzer");
+        let analyzer = plugin
+            .import_analyzer()
+            .expect("Should have import analyzer");
         let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
         let file_path = temp_dir.path().join("Test.swift");
         // Swift doesn't have circular imports at module level, but we test the analyzer works
         std::fs::write(&file_path, "import ModuleA").expect("Failed to write");
-        let graph = analyzer.build_import_graph(&file_path).expect("Should build graph");
+        let graph = analyzer
+            .build_import_graph(&file_path)
+            .expect("Should build graph");
         assert!(graph.metadata.circular_dependencies.is_empty());
     }
 
@@ -876,10 +939,14 @@ import SwiftUI
     #[test]
     fn test_refactor_extract_function_simple() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "func main() {\n    print(\"hello\")\n    print(\"world\")\n}";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_extract_function(source, 1, 2, "greet", "test.swift").await
+            provider
+                .plan_extract_function(source, 1, 2, "greet", "test.swift")
+                .await
         });
         assert!(result.is_ok());
         let plan = result.unwrap();
@@ -890,10 +957,14 @@ import SwiftUI
     #[test]
     fn test_refactor_extract_function_with_params() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "func main() {\n    let x = 5\n    print(x + 10)\n}";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_extract_function(source, 2, 2, "calculate", "test.swift").await
+            provider
+                .plan_extract_function(source, 2, 2, "calculate", "test.swift")
+                .await
         });
         assert!(result.is_ok());
         let plan = result.unwrap();
@@ -903,10 +974,14 @@ import SwiftUI
     #[test]
     fn test_refactor_extract_function_with_return() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "func main() {\n    let result = 10 + 20\n    return result\n}";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_extract_function(source, 1, 2, "compute", "test.swift").await
+            provider
+                .plan_extract_function(source, 1, 2, "compute", "test.swift")
+                .await
         });
         assert!(result.is_ok());
     }
@@ -914,10 +989,14 @@ import SwiftUI
     #[test]
     fn test_refactor_extract_function_from_closure() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "let closure = { () -> Void in\n    print(\"test\")\n}";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_extract_function(source, 1, 1, "extracted", "test.swift").await
+            provider
+                .plan_extract_function(source, 1, 1, "extracted", "test.swift")
+                .await
         });
         assert!(result.is_ok());
     }
@@ -925,10 +1004,14 @@ import SwiftUI
     #[test]
     fn test_refactor_extract_function_method_from_class() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "class MyClass {\n    func method() {\n        print(\"hello\")\n    }\n}";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_extract_function(source, 2, 2, "helper", "test.swift").await
+            provider
+                .plan_extract_function(source, 2, 2, "helper", "test.swift")
+                .await
         });
         assert!(result.is_ok());
     }
@@ -937,10 +1020,14 @@ import SwiftUI
     #[test]
     fn test_refactor_inline_variable_simple() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "func test() {\n    let x = 5\n    print(x)\n}";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_inline_variable(source, 1, 0, "test.swift").await
+            provider
+                .plan_inline_variable(source, 1, 0, "test.swift")
+                .await
         });
         assert!(result.is_ok());
         let plan = result.unwrap();
@@ -950,10 +1037,14 @@ import SwiftUI
     #[test]
     fn test_refactor_inline_variable_multiple_usages() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "func test() {\n    let value = 42\n    print(value)\n    return value\n}";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_inline_variable(source, 1, 0, "test.swift").await
+            provider
+                .plan_inline_variable(source, 1, 0, "test.swift")
+                .await
         });
         assert!(result.is_ok());
         let plan = result.unwrap();
@@ -964,10 +1055,14 @@ import SwiftUI
     #[test]
     fn test_refactor_inline_constant() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "let constant = 3.14\nlet area = constant * r * r";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_inline_variable(source, 0, 0, "test.swift").await
+            provider
+                .plan_inline_variable(source, 0, 0, "test.swift")
+                .await
         });
         assert!(result.is_ok());
     }
@@ -975,11 +1070,15 @@ import SwiftUI
     #[test]
     fn test_refactor_inline_var_multiple_assignments_error() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         // Swift uses 'var' for mutable variables
         let source = "var counter = 0\ncounter += 1\ncounter += 1";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_inline_variable(source, 0, 0, "test.swift").await
+            provider
+                .plan_inline_variable(source, 0, 0, "test.swift")
+                .await
         });
         // Current implementation will inline it anyway - in production, should check for reassignments
         assert!(result.is_ok() || result.is_err());
@@ -988,10 +1087,14 @@ import SwiftUI
     #[test]
     fn test_refactor_inline_closure_variable() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "let closure = { print(\"test\") }\nclosure()";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_inline_variable(source, 0, 0, "test.swift").await
+            provider
+                .plan_inline_variable(source, 0, 0, "test.swift")
+                .await
         });
         assert!(result.is_ok());
     }
@@ -1000,10 +1103,14 @@ import SwiftUI
     #[test]
     fn test_refactor_extract_variable_arithmetic() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "let result = 10 + 20 + 30";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_extract_variable(source, 0, 13, 0, 23, Some("sum".to_string()), "test.swift").await
+            provider
+                .plan_extract_variable(source, 0, 13, 0, 23, Some("sum".to_string()), "test.swift")
+                .await
         });
         assert!(result.is_ok());
         let plan = result.unwrap();
@@ -1013,10 +1120,14 @@ import SwiftUI
     #[test]
     fn test_refactor_extract_variable_function_call() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "print(calculateValue())";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_extract_variable(source, 0, 6, 0, 22, Some("value".to_string()), "test.swift").await
+            provider
+                .plan_extract_variable(source, 0, 6, 0, 22, Some("value".to_string()), "test.swift")
+                .await
         });
         assert!(result.is_ok());
     }
@@ -1024,24 +1135,43 @@ import SwiftUI
     #[test]
     fn test_refactor_extract_variable_type_inference() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "let x = [1, 2, 3].map { $0 * 2 }";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_extract_variable(source, 0, 8, 0, 32, None, "test.swift").await
+            provider
+                .plan_extract_variable(source, 0, 8, 0, 32, None, "test.swift")
+                .await
         });
         assert!(result.is_ok());
         let plan = result.unwrap();
         // Should use default name "extractedVar"
-        assert!(plan.edits.iter().any(|e| e.new_text.contains("extractedVar")));
+        assert!(plan
+            .edits
+            .iter()
+            .any(|e| e.new_text.contains("extractedVar")));
     }
 
     #[test]
     fn test_refactor_extract_variable_optional_chaining() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "let length = name?.count ?? 0";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_extract_variable(source, 0, 13, 0, 24, Some("optCount".to_string()), "test.swift").await
+            provider
+                .plan_extract_variable(
+                    source,
+                    0,
+                    13,
+                    0,
+                    24,
+                    Some("optCount".to_string()),
+                    "test.swift",
+                )
+                .await
         });
         assert!(result.is_ok());
     }
@@ -1049,10 +1179,14 @@ import SwiftUI
     #[test]
     fn test_refactor_extract_variable_complex_expression() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "let result = (a + b) * (c - d) / 2";
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            provider.plan_extract_variable(source, 0, 13, 0, 30, Some("calc".to_string()), "test.swift").await
+            provider
+                .plan_extract_variable(source, 0, 13, 0, 30, Some("calc".to_string()), "test.swift")
+                .await
         });
         assert!(result.is_ok());
     }
@@ -1065,7 +1199,9 @@ import SwiftUI
     #[test]
     fn test_workspace_detection_valid_manifest() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.workspace_support().expect("Should have workspace support");
+        let support = plugin
+            .workspace_support()
+            .expect("Should have workspace support");
         let content = r#"
 let package = Package(
     dependencies: [
@@ -1079,7 +1215,9 @@ let package = Package(
     #[test]
     fn test_workspace_detection_non_workspace() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.workspace_support().expect("Should have workspace support");
+        let support = plugin
+            .workspace_support()
+            .expect("Should have workspace support");
         let content = "import Foundation\nfunc main() {}";
         assert!(!support.is_workspace_manifest(content));
     }
@@ -1087,7 +1225,9 @@ let package = Package(
     #[test]
     fn test_workspace_detection_invalid_manifest() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.workspace_support().expect("Should have workspace support");
+        let support = plugin
+            .workspace_support()
+            .expect("Should have workspace support");
         let content = "let package = Package(dependencies: [])"; // No .package(path:)
         assert!(!support.is_workspace_manifest(content));
     }
@@ -1096,7 +1236,9 @@ let package = Package(
     #[test]
     fn test_workspace_list_members() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.workspace_support().expect("Should have workspace support");
+        let support = plugin
+            .workspace_support()
+            .expect("Should have workspace support");
         let content = r#"
 dependencies: [
     .package(path: "../Package1"),
@@ -1112,7 +1254,9 @@ dependencies: [
     #[test]
     fn test_workspace_add_member() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.workspace_support().expect("Should have workspace support");
+        let support = plugin
+            .workspace_support()
+            .expect("Should have workspace support");
         let content = r#"
 let package = Package(
     dependencies: [
@@ -1127,7 +1271,9 @@ let package = Package(
     #[test]
     fn test_workspace_remove_member() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.workspace_support().expect("Should have workspace support");
+        let support = plugin
+            .workspace_support()
+            .expect("Should have workspace support");
         let content = r#"
 dependencies: [
     .package(path: "../Package1"),
@@ -1142,7 +1288,9 @@ dependencies: [
     #[test]
     fn test_workspace_add_duplicate_member() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.workspace_support().expect("Should have workspace support");
+        let support = plugin
+            .workspace_support()
+            .expect("Should have workspace support");
         let content = r#"
 dependencies: [
     .package(path: "../Package1")
@@ -1158,7 +1306,9 @@ dependencies: [
     #[test]
     fn test_workspace_update_package_name() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.workspace_support().expect("Should have workspace support");
+        let support = plugin
+            .workspace_support()
+            .expect("Should have workspace support");
         let content = r#"
 let package = Package(
     name: "OldName",
@@ -1173,8 +1323,11 @@ let package = Package(
     #[test]
     fn test_workspace_add_dependency() {
         let plugin = SwiftPlugin::new();
-        let updater = plugin.manifest_updater().expect("Should have manifest updater");
-        let manifest = updater.generate_manifest("MyPackage", &["https://github.com/vapor/vapor".to_string()]);
+        let updater = plugin
+            .manifest_updater()
+            .expect("Should have manifest updater");
+        let manifest =
+            updater.generate_manifest("MyPackage", &["https://github.com/vapor/vapor".to_string()]);
         assert!(manifest.contains(r#"name: "MyPackage""#));
         assert!(manifest.contains(r#"https://github.com/vapor/vapor"#));
     }
@@ -1182,7 +1335,9 @@ let package = Package(
     #[test]
     fn test_workspace_remove_dependency() {
         let plugin = SwiftPlugin::new();
-        let updater = plugin.manifest_updater().expect("Should have manifest updater");
+        let updater = plugin
+            .manifest_updater()
+            .expect("Should have manifest updater");
         let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
         let manifest_path = temp_dir.path().join("Package.swift");
         let content = r#"
@@ -1194,11 +1349,16 @@ dependencies: [
         std::fs::write(&manifest_path, content).expect("Failed to write manifest");
         let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
             // Provide a version to avoid the buggy code path in update_dependency
-            updater.update_dependency(&manifest_path, "Vapor", "VaporKit", Some("4.0.0")).await
+            updater
+                .update_dependency(&manifest_path, "Vapor", "VaporKit", Some("4.0.0"))
+                .await
         });
         assert!(result.is_ok());
         let new_content = result.unwrap();
-        assert!(new_content.contains("VaporKit"), "Should contain renamed dependency");
+        assert!(
+            new_content.contains("VaporKit"),
+            "Should contain renamed dependency"
+        );
     }
 
     // ========================================================================
@@ -1239,9 +1399,12 @@ dependencies: [
     #[test]
     fn test_error_rewrite_import_invalid_module() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_rename_support().expect("Should have rename support");
+        let support = plugin
+            .import_rename_support()
+            .expect("Should have rename support");
         let source = "import Foundation";
-        let (new_source, changes) = support.rewrite_imports_for_rename(source, "NonExistent", "NewModule");
+        let (new_source, changes) =
+            support.rewrite_imports_for_rename(source, "NonExistent", "NewModule");
         assert_eq!(changes, 0);
         assert_eq!(new_source, source);
     }
@@ -1249,7 +1412,9 @@ dependencies: [
     #[test]
     fn test_error_add_import_malformed_source() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_mutation_support().expect("Should have mutation support");
+        let support = plugin
+            .import_mutation_support()
+            .expect("Should have mutation support");
         let malformed = "{ { { broken code";
         let new_source = support.add_import(malformed, "Foundation");
         assert!(new_source.contains("import Foundation"));
@@ -1258,9 +1423,13 @@ dependencies: [
     #[test]
     fn test_error_import_in_comment() {
         let plugin = SwiftPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "// import Foundation\n/* import UIKit */\nimport Combine";
-        let refs = scanner.scan_references(content, "Foundation", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(content, "Foundation", ScanScope::All)
+            .expect("Should scan");
         // Should not match imports in comments
         assert_eq!(refs.len(), 0);
     }
@@ -1269,18 +1438,26 @@ dependencies: [
     #[tokio::test]
     async fn test_error_extract_invalid_range() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "func test() {\n    print(\"hello\")\n}";
-        let result = provider.plan_extract_function(source, 5, 10, "extracted", "test.swift").await;
+        let result = provider
+            .plan_extract_function(source, 5, 10, "extracted", "test.swift")
+            .await;
         assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_error_inline_variable_not_in_scope() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
         let source = "func test() {\n    print(\"hello\")\n}";
-        let result = provider.plan_inline_variable(source, 1, 0, "test.swift").await;
+        let result = provider
+            .plan_inline_variable(source, 1, 0, "test.swift")
+            .await;
         // Should error because line 1 doesn't have a variable declaration
         assert!(result.is_err());
     }
@@ -1289,7 +1466,9 @@ dependencies: [
     #[tokio::test]
     async fn test_error_analyze_nonexistent_manifest() {
         let plugin = SwiftPlugin::new();
-        let result = plugin.analyze_manifest(Path::new("/nonexistent/Package.swift")).await;
+        let result = plugin
+            .analyze_manifest(Path::new("/nonexistent/Package.swift"))
+            .await;
         assert!(result.is_err());
     }
 
@@ -1343,9 +1522,13 @@ let مُتَغَيِّر = 42
     #[test]
     fn test_edge_scan_mixed_line_endings() {
         let plugin = SwiftPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import Foundation\r\nimport UIKit\nimport Combine";
-        let refs = scanner.scan_references(content, "Foundation", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(content, "Foundation", ScanScope::All)
+            .expect("Should scan");
         assert_eq!(refs.len(), 1);
     }
 
@@ -1368,7 +1551,9 @@ let مُتَغَيِّر = 42
     #[test]
     fn test_edge_scan_special_regex_chars() {
         let plugin = SwiftPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import Foundation";
         // Test with special regex characters
         let result = scanner.scan_references(content, "Found.*", ScanScope::All);
@@ -1378,7 +1563,9 @@ let مُتَغَيِّر = 42
     #[test]
     fn test_edge_handle_null_bytes() {
         let plugin = SwiftPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
         let content = "import Foundation\x00\nimport UIKit";
         let result = scanner.scan_references(content, "Foundation", ScanScope::All);
         assert!(result.is_ok()); // Should not panic
@@ -1400,22 +1587,28 @@ let مُتَغَيِّر = 42
         }
 
         let start = Instant::now();
-        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            plugin.parse(&large_source).await
-        });
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { plugin.parse(&large_source).await });
         let duration = start.elapsed();
 
         assert!(result.is_ok(), "Should parse large file");
         let symbols = result.unwrap().symbols;
         assert_eq!(symbols.len(), 5000, "Should find all 5000 functions");
-        assert!(duration.as_secs() < 5, "Should parse within 5 seconds, took {:?}", duration);
+        assert!(
+            duration.as_secs() < 5,
+            "Should parse within 5 seconds, took {:?}",
+            duration
+        );
     }
 
     #[test]
     fn test_performance_scan_many_references() {
         use std::time::Instant;
         let plugin = SwiftPlugin::new();
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
 
         // Create content with 10,000 references
         let mut content = String::from("import Foundation\n\n");
@@ -1424,11 +1617,21 @@ let مُتَغَيِّر = 42
         }
 
         let start = Instant::now();
-        let refs = scanner.scan_references(&content, "Foundation", ScanScope::All).expect("Should scan");
+        let refs = scanner
+            .scan_references(&content, "Foundation", ScanScope::All)
+            .expect("Should scan");
         let duration = start.elapsed();
 
-        assert_eq!(refs.len(), 10001, "Should find import + 10K qualified paths");
-        assert!(duration.as_secs() < 10, "Should scan within 10 seconds, took {:?}", duration);
+        assert_eq!(
+            refs.len(),
+            10001,
+            "Should find import + 10K qualified paths"
+        );
+        assert!(
+            duration.as_secs() < 10,
+            "Should scan within 10 seconds, took {:?}",
+            duration
+        );
     }
 
     // ========================================================================
@@ -1438,7 +1641,9 @@ let مُتَغَيِّر = 42
     #[test]
     fn test_integration_create_package_add_dependency_scan() {
         let plugin = SwiftPlugin::new();
-        let factory = plugin.project_factory().expect("Should have project factory");
+        let factory = plugin
+            .project_factory()
+            .expect("Should have project factory");
         let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
         let package_path = temp_dir.path().join("MyPackage");
 
@@ -1450,21 +1655,26 @@ let مُتَغَيِّر = 42
             add_to_workspace: false,
             workspace_root: "".to_string(),
         };
-        factory.create_package(&config).expect("Should create package");
+        factory
+            .create_package(&config)
+            .expect("Should create package");
         assert!(package_path.join("Package.swift").exists());
 
         // Add dependency to manifest
         let manifest_path = package_path.join("Package.swift");
         let _content = std::fs::read_to_string(&manifest_path).expect("Should read manifest");
         let updater = plugin.manifest_updater().expect("Should have updater");
-        let new_manifest = updater.generate_manifest("MyPackage", &["https://github.com/vapor/vapor".to_string()]);
+        let new_manifest =
+            updater.generate_manifest("MyPackage", &["https://github.com/vapor/vapor".to_string()]);
         std::fs::write(&manifest_path, new_manifest).expect("Should write manifest");
 
         // Scan imports
         let analyzer = plugin.import_analyzer().expect("Should have analyzer");
         let source_file = package_path.join("Sources").join("MyPackage.swift");
         if source_file.exists() {
-            let graph = analyzer.build_import_graph(&source_file).expect("Should build graph");
+            let graph = analyzer
+                .build_import_graph(&source_file)
+                .expect("Should build graph");
             assert_eq!(graph.metadata.language, "swift");
         }
     }
@@ -1472,26 +1682,35 @@ let مُتَغَيِّر = 42
     #[test]
     fn test_integration_rename_module_update_imports() {
         let plugin = SwiftPlugin::new();
-        let support = plugin.import_rename_support().expect("Should have rename support");
+        let support = plugin
+            .import_rename_support()
+            .expect("Should have rename support");
 
         // Original source with import
         let source = "import OldModule\n\nlet x = OldModule.value";
 
         // Rename the module
-        let (new_source, changes) = support.rewrite_imports_for_rename(source, "OldModule", "NewModule");
+        let (new_source, changes) =
+            support.rewrite_imports_for_rename(source, "OldModule", "NewModule");
         assert!(changes > 0);
         assert!(new_source.contains("import NewModule"));
 
         // Verify references
-        let scanner = plugin.module_reference_scanner().expect("Should have scanner");
-        let refs = scanner.scan_references(&new_source, "NewModule", ScanScope::All).expect("Should scan");
+        let scanner = plugin
+            .module_reference_scanner()
+            .expect("Should have scanner");
+        let refs = scanner
+            .scan_references(&new_source, "NewModule", ScanScope::All)
+            .expect("Should scan");
         assert!(refs.len() >= 1); // Should find at least the import
     }
 
     #[tokio::test]
     async fn test_integration_extract_inline_roundtrip() {
         let plugin = SwiftPlugin::new();
-        let provider = plugin.refactoring_provider().expect("Should have refactoring");
+        let provider = plugin
+            .refactoring_provider()
+            .expect("Should have refactoring");
 
         // Original source
         let source = "func test() {\n    print(10 + 20)\n}";

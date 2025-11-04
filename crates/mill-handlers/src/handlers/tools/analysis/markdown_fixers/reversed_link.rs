@@ -1,4 +1,6 @@
-use super::{FixOutcome, MarkdownContext, MarkdownFixer, TextEdit, generate_unified_diff, apply_edits};
+use super::{
+    apply_edits, generate_unified_diff, FixOutcome, MarkdownContext, MarkdownFixer, TextEdit,
+};
 use mill_foundation::protocol::analysis_result::{Position, Range};
 use regex::Regex;
 use serde_json::Value;
@@ -76,7 +78,10 @@ mod tests {
         let outcome = fixer.apply(&ctx, &Value::Null);
 
         assert_eq!(outcome.edits.len(), 1);
-        assert_eq!(outcome.edits[0].new_text, "Check out [this link](https://example.com)");
+        assert_eq!(
+            outcome.edits[0].new_text,
+            "Check out [this link](https://example.com)"
+        );
         assert!(outcome.preview.is_some());
     }
 

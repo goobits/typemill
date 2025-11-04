@@ -1,5 +1,5 @@
 use super::*;
-use crate::{PluginError, PluginRequest};
+use crate::{PluginRequest, PluginSystemError};
 use async_trait::async_trait;
 use serde_json::json;
 use std::path::PathBuf;

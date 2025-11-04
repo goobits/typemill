@@ -31,8 +31,8 @@ pub enum RefactoringError {
     Parse(String),
 }
 pub type RefactoringResult<T> = Result<T, RefactoringError>;
-impl From<mill_plugin_api::PluginError> for RefactoringError {
-    fn from(err: mill_plugin_api::PluginError) -> Self {
+impl From<mill_plugin_api::PluginApiError> for RefactoringError {
+    fn from(err: mill_plugin_api::PluginApiError) -> Self {
         RefactoringError::Parse(err.to_string())
     }
 }
