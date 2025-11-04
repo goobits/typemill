@@ -8,10 +8,22 @@ pub mod analysis_result;
 pub mod error;
 pub mod plugin_protocol;
 
-pub use analysis_result::*;
+// Re-export analysis result types
+pub use analysis_result::{
+    AnalysisMetadata, AnalysisResult, AnalysisScope, AnalysisSummary, Finding, FindingLocation,
+    FixActions, Position, Range, RefactorCall, SafetyLevel, Severity, SeverityBreakdown,
+    Suggestion, SuggestionTarget,
+};
 pub use error::{ApiError, ApiResult};
 
-pub use crate::planning::*;
+// Re-export planning types (from crate root)
+pub use crate::planning::{
+    ChangeCategory, ConsolidationMetadata, DeletePlan, DeletionTarget, DependencyUpdate,
+    DependencyUpdateType, EditLocation, EditPlan, EditPlanMetadata, EditPlanResult, EditType,
+    ExtractPlan, InlinePlan, MovePlan, PlanMetadata, PlanSummary, PlanWarning, RefactorPlan,
+    RefactorPlanExt, RenamePlan, ReorderPlan, TextEdit, TransformPlan, ValidationType,
+    ValidationRule,
+};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

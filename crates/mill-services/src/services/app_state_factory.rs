@@ -4,6 +4,7 @@
 #![allow(unexpected_cfgs)]
 
 use super::*;
+use crate::services::coordination::operation_queue::{OperationQueue, OperationType};
 use crate::services::coordination::workflow_executor;
 use crate::services::planning::planner;
 use mill_ast::AstCache;

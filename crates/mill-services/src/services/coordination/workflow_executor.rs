@@ -11,9 +11,9 @@ use std::sync::Arc;
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
-/// State of a paused workflow waiting for user confirmation.
+/// State of a paused workflow waiting for user confirmation (internal to mill-services).
 #[derive(Debug, Clone)]
-pub struct PausedWorkflowState {
+pub(crate) struct PausedWorkflowState {
     /// The workflow being executed
     pub workflow: Workflow,
     /// The index of the step that requires confirmation

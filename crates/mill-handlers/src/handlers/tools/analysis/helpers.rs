@@ -125,8 +125,8 @@ impl AggregateStats {
     }
 }
 
-/// Workspace analysis context for multi-file operations
-pub struct WorkspaceAnalysisContext {
+/// Workspace analysis context for multi-file operations (internal to mill-handlers)
+pub(crate) struct WorkspaceAnalysisContext {
     pub base_path: PathBuf,
     pub supported_extensions: Vec<String>,
     pub files: Vec<PathBuf>,

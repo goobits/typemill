@@ -13,7 +13,7 @@ pub mod structure;
 pub mod suggestions;
 pub mod tests_handler;
 
-pub use batch::{BatchAnalysisRequest, BatchAnalysisResult, BatchError};
+pub use batch::BatchError;
 pub use batch_handler::BatchAnalysisHandler;
 pub use circular_dependencies::CircularDependenciesHandler;
 pub use config::{AnalysisConfig, ConfigError};

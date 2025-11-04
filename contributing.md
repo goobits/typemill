@@ -112,6 +112,44 @@ debug!("Processing tool call {} for file {}", tool_call.name, path);
 ```
 See **[docs/development/logging_guidelines.md](docs/development/logging_guidelines.md)** for complete logging standards.
 
+### Visibility Guidelines
+
+Use appropriate visibility modifiers to maintain clean API boundaries:
+
+```rust
+// ✅ Good - public API type (exported from lib.rs)
+pub struct AnalysisResult {
+    pub findings: Vec<Finding>,
+}
+
+// ✅ Good - internal helper (not re-exported, crate-only use)
+pub(crate) struct QueryScope {
+    pub(crate) scope_type: String,
+}
+
+// ✅ Good - module-local helper
+struct InternalState {
+    counter: usize,
+}
+```
+
+**Guidelines:**
+- **`pub`** - Use for types exposed in the crate's public API (re-exported from `lib.rs`)
+- **`pub(crate)`** - Use for internal types shared between modules but not exposed outside the crate
+- **No modifier (private)** - Use for types local to a single module
+
+**When to use `pub(crate)`:**
+- Internal service implementations (e.g., `DefaultWorkflowExecutor` if not re-exported)
+- Request/response types used only within handlers
+- Helper structs for batch operations
+- Internal protocol types (e.g., progress tracking internals)
+- Analysis query types not part of the public API
+
+**PR Review Checklist:**
+- [ ] New `pub` types are intentionally part of the public API
+- [ ] Internal helper types use `pub(crate)` instead of `pub`
+- [ ] No unnecessary public exposure of implementation details
+
 ---
 
 ## 🛠️ Build Automation (xtask)

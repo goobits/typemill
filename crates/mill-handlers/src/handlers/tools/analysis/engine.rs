@@ -62,8 +62,9 @@ pub type MarkdownAnalysisFn = fn(
 ///
 /// This matches the structure expected by MCP clients when specifying
 /// the scope of an analysis operation.
+/// Scope parameter for analysis (internal to mill-handlers)
 #[derive(Deserialize, Debug)]
-pub struct ScopeParam {
+pub(crate) struct ScopeParam {
     /// The type of scope (e.g., "file", "workspace", "directory")
     #[serde(rename = "type")]
     pub scope_type: Option<String>,

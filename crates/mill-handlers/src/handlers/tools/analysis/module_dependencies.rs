@@ -33,8 +33,9 @@ use tracing::{debug, error, info};
 
 /// Parameters for module dependency analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Parameters for module dependencies analysis (internal to mill-handlers)
 #[serde(rename_all = "camelCase")]
-pub struct ModuleDependenciesParams {
+pub(crate) struct ModuleDependenciesParams {
     /// Target to analyze (file or directory)
     pub target: TargetSpec,
 
@@ -45,8 +46,9 @@ pub struct ModuleDependenciesParams {
 
 /// Target specification for analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Target specification for analysis (internal to mill-handlers)
 #[serde(rename_all = "camelCase")]
-pub struct TargetSpec {
+pub(crate) struct TargetSpec {
     /// Kind of target (file or directory)
     pub kind: TargetKind,
 
@@ -67,8 +69,9 @@ pub enum TargetKind {
 
 /// Options for dependency analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Options for module dependencies analysis (internal to mill-handlers)
 #[serde(rename_all = "camelCase")]
-pub struct ModuleDependenciesOptions {
+pub(crate) struct ModuleDependenciesOptions {
     /// Include development dependencies (default: false)
     #[serde(default)]
     pub include_dev_dependencies: bool,
@@ -98,8 +101,9 @@ impl Default for ModuleDependenciesOptions {
 
 /// Result of module dependency analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of module dependencies analysis (internal to mill-handlers)
 #[serde(rename_all = "camelCase")]
-pub struct ModuleDependenciesResult {
+pub(crate) struct ModuleDependenciesResult {
     /// External dependencies (from crates.io)
     pub external_dependencies: HashMap<String, DependencySpec>,
 
@@ -118,8 +122,9 @@ pub struct ModuleDependenciesResult {
 
 /// Dependency specification
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Dependency specification (internal to mill-handlers)
 #[serde(rename_all = "camelCase")]
-pub struct DependencySpec {
+pub(crate) struct DependencySpec {
     /// Version requirement
     pub version: String,
 
@@ -138,8 +143,9 @@ pub struct DependencySpec {
 
 /// Import analysis summary
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Import analysis summary (internal to mill-handlers)
 #[serde(rename_all = "camelCase")]
-pub struct ImportAnalysisSummary {
+pub(crate) struct ImportAnalysisSummary {
     /// Total imports found
     pub total_imports: usize,
 

@@ -21,8 +21,13 @@ pub mod protocol;
 pub mod validation;
 
 // Re-export commonly used types for convenience
-// Error types - keep wildcard for now (many types)
-pub use error::*;
+// Error types
+pub use error::{ApiError, CoreError, CoreResult};
 
-// Model types - keep wildcard for now (complex hierarchy)
-pub use model::*;
+// Model types
+pub use model::{
+    Intent, IntentSpec, McpContentItem, McpError, McpLoggingCapability, McpMessage,
+    McpNotification, McpPromptsCapability, McpRequest, McpResource, McpResourcesCapability,
+    McpResponse, McpServerCapabilities, McpTool, McpToolResult, McpToolsCapability, Step,
+    ToolCall, Workflow, WorkflowMetadata, MCP_PROTOCOL_VERSION,
+};

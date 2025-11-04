@@ -16,7 +16,10 @@ pub mod rpc_adapter;
 pub mod system_tools_plugin;
 
 pub use adapters::lsp_adapter::{LspAdapterPlugin, LspService};
-pub use capabilities::*;
+pub use capabilities::{
+    Capabilities, DiagnosticCapabilities, EditingCapabilities, IntelligenceCapabilities,
+    NavigationCapabilities, RefactoringCapabilities, ToolScope,
+};
 pub use error::{PluginError, PluginResult};
 pub use manager::PluginManager;
 pub use plugin::{LanguagePlugin, PluginMetadata};

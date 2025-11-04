@@ -9,6 +9,7 @@
 
 use super::*;
 
+/// Ranks suggestions by priority
 pub struct SuggestionRanker;
 
 impl SuggestionRanker {

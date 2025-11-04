@@ -59,6 +59,8 @@ impl std::fmt::Display for ProgressToken {
 /// Work done progress value from LSP `$/progress` notification
 ///
 /// From LSP spec: `export type WorkDoneProgressValue = WorkDoneProgressBegin | WorkDoneProgressReport | WorkDoneProgressEnd`
+///
+/// Internal implementation detail for progress tracking.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub(crate) enum WorkDoneProgressValue {
@@ -100,6 +102,8 @@ pub(crate) enum WorkDoneProgressValue {
 }
 
 /// Parameters for `$/progress` notification
+///
+/// Internal implementation detail for progress tracking.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct ProgressParams {
     /// The progress token provided by the server

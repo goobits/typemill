@@ -205,9 +205,9 @@ impl ImportService {
     }
 }
 
-/// Report of import update operations
+/// Report of import update operations (internal to mill-services)
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct ImportUpdateReport {
+pub(crate) struct ImportUpdateReport {
     /// Number of files that were updated
     pub files_updated: usize,
     /// Total number of import statements updated
