@@ -10,7 +10,7 @@ use super::lsp_adapter::DirectLspAdapter;
 use super::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
@@ -78,7 +78,7 @@ impl ToolHandler for SystemHandler {
                     .await
             }
 
-            _ => Err(ServerError::Unsupported(format!(
+            _ => Err(ServerError::not_supported(format!(
                 "Unknown system operation: {}",
                 tool_call.name
             ))),
@@ -139,7 +139,7 @@ impl SystemHandler {
         let file_path_str = args
             .get("filePath")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'file_path' parameter"))?;
 
         let file_path = PathBuf::from(file_path_str);
 
@@ -161,7 +161,7 @@ impl SystemHandler {
 
         // Load LSP config to create a temporary DirectLspAdapter for notification
         let app_config = mill_config::config::AppConfig::load()
-            .map_err(|e| ServerError::Internal(format!("Failed to load app config: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to load app config: {}", e)))?;
         let lsp_config = app_config.lsp;
 
         // Find the server config for this extension
@@ -196,9 +196,7 @@ impl SystemHandler {
                             error = %e,
                             "Failed to notify LSP server about file"
                         );
-                        Err(ServerError::Runtime {
-                            message: format!("Failed to notify LSP server: {}", e),
-                        })
+                        Err(ServerError::runtime(format!("Failed to notify LSP server: {}", e)))
                     }
                 },
                 Err(e) => {
@@ -207,9 +205,7 @@ impl SystemHandler {
                         error = %e,
                         "Failed to get LSP client for extension"
                     );
-                    Err(ServerError::Runtime {
-                        message: format!("Failed to get LSP client: {}", e),
-                    })
+                    Err(ServerError::runtime(format!("Failed to get LSP client: {}", e)))
                 }
             }
         } else {
@@ -232,7 +228,7 @@ impl SystemHandler {
         let file_path_str = args
             .get("filePath")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'file_path' parameter"))?;
 
         let file_path = PathBuf::from(file_path_str);
 
@@ -271,7 +267,7 @@ impl SystemHandler {
         let file_path_str = args
             .get("filePath")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'file_path' parameter"))?;
 
         let file_path = PathBuf::from(file_path_str);
 

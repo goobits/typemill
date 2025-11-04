@@ -8,7 +8,7 @@
 use super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
@@ -38,7 +38,7 @@ impl ToolHandler for WorkspaceUpdateMembersHandler {
     ) -> ServerResult<Value> {
         match tool_call.name.as_str() {
             "workspace.update_members" => handle_update_members(context, tool_call).await,
-            _ => Err(ApiError::InvalidRequest(format!(
+            _ => Err(ServerError::invalid_request(format!(
                 "Unknown workspace update members tool: {}",
                 tool_call.name
             ))),
@@ -102,10 +102,10 @@ async fn handle_update_members(
         tool_call
             .arguments
             .as_ref()
-            .ok_or_else(|| ApiError::InvalidRequest("Missing arguments".to_string()))?
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments".to_string()))?
             .clone(),
     )
-    .map_err(|e| ApiError::InvalidRequest(format!("Invalid arguments: {}", e)))?;
+    .map_err(|e| ServerError::invalid_request(format!("Invalid arguments: {}", e)))?;
 
     debug!(
         workspace_manifest = %params.workspace_manifest,
@@ -121,7 +121,7 @@ async fn handle_update_members(
 
     // Validate file exists
     if !manifest_path.exists() {
-        return Err(ApiError::InvalidRequest(format!(
+        return Err(ServerError::invalid_request(format!(
             "Workspace manifest not found: {}",
             manifest_path.display()
         )));
@@ -130,7 +130,7 @@ async fn handle_update_members(
     // Read manifest
     let manifest_content = fs::read_to_string(&manifest_path).map_err(|e| {
         error!(error = %e, manifest_path = %manifest_path.display(), "Failed to read workspace manifest");
-        ApiError::Internal(format!("Failed to read workspace manifest: {}", e))
+        ServerError::internal(format!("Failed to read workspace manifest: {}", e))
     })?;
 
     // Execute the action
@@ -150,7 +150,7 @@ async fn handle_update_members(
         let updated = action_result.updated_content.as_ref().unwrap();
         fs::write(&manifest_path, updated).map_err(|e| {
             error!(error = %e, manifest_path = %manifest_path.display(), "Failed to write workspace manifest");
-            ApiError::Internal(format!("Failed to write workspace manifest: {}", e))
+            ServerError::internal(format!("Failed to write workspace manifest: {}", e))
         })?;
         debug!(manifest_path = %manifest_path.display(), "Wrote updated workspace manifest");
         true
@@ -187,9 +187,7 @@ fn list_members(content: &str) -> ServerResult<ActionResult> {
 
     let doc = content.parse::<DocumentMut>().map_err(|e| {
         error!(error = %e, "Failed to parse workspace manifest");
-        ApiError::Parse {
-            message: format!("Failed to parse Cargo.toml: {}", e),
-        }
+        ServerError::parse(format!("Failed to parse Cargo.toml: {}", e))
     })?;
 
     let members = extract_members(&doc);
@@ -217,9 +215,7 @@ fn add_members(
 
     let mut doc = content.parse::<DocumentMut>().map_err(|e| {
         error!(error = %e, "Failed to parse workspace manifest");
-        ApiError::Parse {
-            message: format!("Failed to parse Cargo.toml: {}", e),
-        }
+        ServerError::parse(format!("Failed to parse Cargo.toml: {}", e))
     })?;
 
     let members_before = extract_members(&doc);
@@ -230,7 +226,7 @@ fn add_members(
             debug!("Creating [workspace] section");
             doc["workspace"] = Item::Table(toml_edit::Table::new());
         } else {
-            return Err(ApiError::InvalidRequest(
+            return Err(ServerError::invalid_request(
                 "Manifest does not contain [workspace] section".to_string(),
             ));
         }
@@ -238,9 +234,7 @@ fn add_members(
 
     let workspace = doc["workspace"]
         .as_table_mut()
-        .ok_or_else(|| ApiError::Parse {
-            message: "[workspace] is not a table".to_string(),
-        })?;
+        .ok_or_else(|| ServerError::parse("[workspace] is not a table"))?;
 
     // Ensure members array exists
     if !workspace.contains_key("members") {
@@ -248,7 +242,7 @@ fn add_members(
             debug!("Creating [workspace.members] array");
             workspace["members"] = Item::Value(toml_edit::Value::Array(toml_edit::Array::new()));
         } else {
-            return Err(ApiError::InvalidRequest(
+            return Err(ServerError::invalid_request(
                 "Manifest does not contain [workspace.members] section".to_string(),
             ));
         }
@@ -256,9 +250,7 @@ fn add_members(
 
     let members_array = workspace["members"]
         .as_array_mut()
-        .ok_or_else(|| ApiError::Parse {
-            message: "[workspace.members] is not an array".to_string(),
-        })?;
+        .ok_or_else(|| ServerError::parse("[workspace.members] is not an array"))?;
 
     let mut changes_made = 0;
 
@@ -311,9 +303,7 @@ fn remove_members(content: &str, members_to_remove: &[String]) -> ServerResult<A
 
     let mut doc = content.parse::<DocumentMut>().map_err(|e| {
         error!(error = %e, "Failed to parse workspace manifest");
-        ApiError::Parse {
-            message: format!("Failed to parse Cargo.toml: {}", e),
-        }
+        ServerError::parse(format!("Failed to parse Cargo.toml: {}", e))
     })?;
 
     let members_before = extract_members(&doc);

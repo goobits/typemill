@@ -1,8 +1,11 @@
 //! Cargo package detection and manifest handling for directory moves
 
-use mill_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, EditLocation, EditType, TextEdit,
+use mill_foundation::{
+    errors::MillError as ServerError,
+    protocol::{EditLocation, EditType, TextEdit},
 };
+
+type ServerResult<T> = Result<T, ServerError>;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -17,7 +20,7 @@ pub async fn is_cargo_package(dir_path: &Path) -> ServerResult<bool> {
 
     let content = fs::read_to_string(&cargo_toml)
         .await
-        .map_err(|e| ServerError::Internal(format!("Failed to read Cargo.toml: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to read Cargo.toml: {}", e)))?;
 
     // Check if it has a [package] section (distinguishes packages from workspaces)
     Ok(content.contains("[package]"))
@@ -28,7 +31,7 @@ pub async fn extract_cargo_rename_info(old_dir: &Path, new_dir: &Path) -> Server
     let cargo_toml = old_dir.join("Cargo.toml");
     let content = fs::read_to_string(&cargo_toml)
         .await
-        .map_err(|e| ServerError::Internal(format!("Failed to read Cargo.toml: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to read Cargo.toml: {}", e)))?;
 
     // Parse package name from Cargo.toml
     let old_package_name = extract_package_name(&content)?;
@@ -37,7 +40,7 @@ pub async fn extract_cargo_rename_info(old_dir: &Path, new_dir: &Path) -> Server
     let new_package_name = new_dir
         .file_name()
         .and_then(|n| n.to_str())
-        .ok_or_else(|| ServerError::Internal("Invalid new directory name".to_string()))?
+        .ok_or_else(|| ServerError::internal("Invalid new directory name".to_string()))?
         .to_string();
 
     // Convert to snake_case for use in import paths
@@ -67,7 +70,7 @@ pub async fn extract_consolidation_rename_info(
     let old_cargo_toml = old_package_path.join("Cargo.toml");
     let old_content = fs::read_to_string(&old_cargo_toml)
         .await
-        .map_err(|e| ServerError::Internal(format!("Failed to read old Cargo.toml: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to read old Cargo.toml: {}", e)))?;
 
     let old_crate_name = extract_package_name(&old_content)?.replace('-', "_");
 
@@ -92,7 +95,7 @@ pub async fn extract_consolidation_rename_info(
     }
 
     if target_crate_name.is_empty() {
-        return Err(ServerError::Internal(
+        return Err(ServerError::internal(
             "Could not find target crate Cargo.toml".to_string(),
         ));
     }
@@ -102,7 +105,7 @@ pub async fn extract_consolidation_rename_info(
     let submodule_name = new_package_path
         .file_name()
         .and_then(|n| n.to_str())
-        .ok_or_else(|| ServerError::Internal("Invalid new directory path".to_string()))?
+        .ok_or_else(|| ServerError::internal("Invalid new directory path".to_string()))?
         .to_string();
 
     // Build the new import prefix
@@ -141,7 +144,7 @@ fn extract_package_name(content: &str) -> ServerResult<String> {
             }
         }
     }
-    Err(ServerError::Internal(
+    Err(ServerError::internal(
         "Could not find package name in Cargo.toml".to_string(),
     ))
 }
@@ -268,26 +271,26 @@ pub async fn plan_workspace_manifest_updates(
             let content = fs::read_to_string(&workspace_toml_path)
                 .await
                 .map_err(|e| {
-                    ServerError::Internal(format!("Failed to read workspace Cargo.toml: {}", e))
+                    ServerError::internal(format!("Failed to read workspace Cargo.toml: {}", e))
                 })?;
 
             if content.contains("[workspace]") {
                 let mut doc = content.parse::<toml_edit::DocumentMut>().map_err(|e| {
-                    ServerError::Internal(format!("Failed to parse workspace Cargo.toml: {}", e))
+                    ServerError::internal(format!("Failed to parse workspace Cargo.toml: {}", e))
                 })?;
 
                 let old_rel_path = old_package_path.strip_prefix(path).map_err(|_| {
-                    ServerError::Internal("Failed to calculate old relative path".to_string())
+                    ServerError::internal("Failed to calculate old relative path".to_string())
                 })?;
                 let new_rel_path = new_package_path.strip_prefix(path).map_err(|_| {
-                    ServerError::Internal("Failed to calculate new relative path".to_string())
+                    ServerError::internal("Failed to calculate new relative path".to_string())
                 })?;
 
                 let old_path_str = old_rel_path.to_string_lossy().to_string();
                 let new_path_str = new_rel_path.to_string_lossy().to_string();
 
                 let members = doc["workspace"]["members"].as_array_mut().ok_or_else(|| {
-                    ServerError::Internal("`[workspace.members]` is not a valid array".to_string())
+                    ServerError::internal("`[workspace.members]` is not a valid array".to_string())
                 })?;
 
                 // Normalize comparison: trim whitespace from both sides to handle formatting quirks
@@ -383,11 +386,11 @@ async fn plan_package_manifest_update(
 ) -> ServerResult<(PathBuf, String, String)> {
     let content = fs::read_to_string(package_cargo_toml)
         .await
-        .map_err(|e| ServerError::Internal(format!("Failed to read package Cargo.toml: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to read package Cargo.toml: {}", e)))?;
 
     let mut doc = content
         .parse::<toml_edit::DocumentMut>()
-        .map_err(|e| ServerError::Internal(format!("Failed to parse package Cargo.toml: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to parse package Cargo.toml: {}", e)))?;
 
     let mut updated = false;
 
@@ -455,7 +458,7 @@ async fn plan_package_manifest_update(
         // The handler will calculate checksums from files at their current (old) locations.
         Ok((package_cargo_toml.to_path_buf(), content, doc.to_string()))
     } else {
-        Err(ServerError::Internal("No updates needed".to_string()))
+        Err(ServerError::internal("No updates needed".to_string()))
     }
 }
 
@@ -528,11 +531,11 @@ pub async fn plan_moved_crate_own_path_dependencies(
     // Read current Cargo.toml content
     let content = fs::read_to_string(&cargo_toml)
         .await
-        .map_err(|e| ServerError::Internal(format!("Failed to read Cargo.toml: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to read Cargo.toml: {}", e)))?;
 
     let mut doc = content
         .parse::<toml_edit::DocumentMut>()
-        .map_err(|e| ServerError::Internal(format!("Failed to parse Cargo.toml: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to parse Cargo.toml: {}", e)))?;
 
     let mut updated = false;
 
@@ -633,11 +636,11 @@ async fn plan_single_cargo_toml_dependency_update(
 ) -> ServerResult<Option<(PathBuf, String, String)>> {
     let mut doc = content
         .parse::<toml_edit::DocumentMut>()
-        .map_err(|e| ServerError::Internal(format!("Failed to parse Cargo.toml: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to parse Cargo.toml: {}", e)))?;
 
     let mut updated = false;
     let cargo_toml_dir = cargo_toml_path.parent().ok_or_else(|| {
-        ServerError::Internal(format!(
+        ServerError::internal(format!(
             "Cannot get parent directory of Cargo.toml: {}",
             cargo_toml_path.display()
         ))
@@ -651,7 +654,7 @@ async fn plan_single_cargo_toml_dependency_update(
                 if dep_table.contains_key("path") {
                     let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
                         .ok_or_else(|| {
-                            ServerError::Internal("Failed to calculate relative path".to_string())
+                            ServerError::internal("Failed to calculate relative path".to_string())
                         })?;
                     dep_table.insert(
                         "path",
@@ -662,7 +665,7 @@ async fn plan_single_cargo_toml_dependency_update(
                 if dep_table.contains_key("path") {
                     let new_rel_path = pathdiff::diff_paths(new_crate_path, cargo_toml_dir)
                         .ok_or_else(|| {
-                            ServerError::Internal("Failed to calculate relative path".to_string())
+                            ServerError::internal("Failed to calculate relative path".to_string())
                         })?;
                     dep_table.insert(
                         "path",
@@ -756,20 +759,20 @@ pub async fn plan_workspace_manifest_updates_for_batch(
             let content = fs::read_to_string(&workspace_toml_path)
                 .await
                 .map_err(|e| {
-                    ServerError::Internal(format!("Failed to read workspace Cargo.toml: {}", e))
+                    ServerError::internal(format!("Failed to read workspace Cargo.toml: {}", e))
                 })?;
 
             if content.contains("[workspace]") {
                 let mut doc = content.parse::<toml_edit::DocumentMut>().map_err(|e| {
-                    ServerError::Internal(format!("Failed to parse workspace Cargo.toml: {}", e))
+                    ServerError::internal(format!("Failed to parse workspace Cargo.toml: {}", e))
                 })?;
 
                 for (old_package_path, new_package_path) in moves {
                     let old_rel_path = old_package_path.strip_prefix(path).map_err(|_| {
-                        ServerError::Internal("Failed to calculate old relative path".to_string())
+                        ServerError::internal("Failed to calculate old relative path".to_string())
                     })?;
                     let new_rel_path = new_package_path.strip_prefix(path).map_err(|_| {
-                        ServerError::Internal("Failed to calculate new relative path".to_string())
+                        ServerError::internal("Failed to calculate new relative path".to_string())
                     })?;
 
                     let old_path_str = old_rel_path.to_string_lossy().to_string();
@@ -872,7 +875,7 @@ async fn plan_dependent_crate_path_updates_for_batch(
         project_root.to_path_buf()
     } else {
         std::env::current_dir()
-            .map_err(|e| ServerError::Internal(format!("Failed to get current directory: {}", e)))?
+            .map_err(|e| ServerError::internal(format!("Failed to get current directory: {}", e)))?
             .join(project_root)
     };
 

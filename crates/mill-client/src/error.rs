@@ -1,6 +1,6 @@
 //! Client error types
 
-use mill_foundation::core::CoreError;
+use mill_foundation::errors::MillError;
 use thiserror::Error;
 
 /// Client operation errors
@@ -35,7 +35,7 @@ pub enum ClientError {
     IoError(String),
 
     #[error("Core error: {0}")]
-    Core(#[from] CoreError),
+    Core(#[from] MillError),
 }
 
 impl ClientError {
@@ -85,11 +85,11 @@ impl ClientError {
     }
 }
 
-impl From<ClientError> for CoreError {
+impl From<ClientError> for MillError {
     fn from(err: ClientError) -> Self {
         match err {
-            ClientError::Core(core_err) => core_err,
-            _ => CoreError::internal(format!("Client error: {}", err)),
+            ClientError::Core(mill_err) => mill_err,
+            _ => MillError::internal(format!("Client error: {}", err)),
         }
     }
 }

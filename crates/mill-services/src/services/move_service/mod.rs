@@ -19,7 +19,10 @@
 mod planner;
 
 use crate::services::reference_updater::ReferenceUpdater;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult, EditPlan};
+use mill_foundation::errors::MillError as ServerError;
+use mill_foundation::protocol::EditPlan;
+
+type ServerResult<T> = Result<T, ServerError>;
 use mill_plugin_api::{PluginDiscovery, ScanScope};
 use std::path::{Path, PathBuf};
 use tracing::info;
@@ -71,7 +74,7 @@ impl<'a> MoveService<'a> {
 
         // Validate source file exists
         if !old_abs.exists() {
-            return Err(ServerError::NotFound(format!(
+            return Err(ServerError::not_found(format!(
                 "Source file does not exist: {}",
                 old_abs.display()
             )));
@@ -114,14 +117,14 @@ impl<'a> MoveService<'a> {
 
         // Validate source directory exists
         if !old_abs.exists() {
-            return Err(ServerError::NotFound(format!(
+            return Err(ServerError::not_found(format!(
                 "Source directory does not exist: {}",
                 old_abs.display()
             )));
         }
 
         if !old_abs.is_dir() {
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "Path is not a directory: {}",
                 old_abs.display()
             )));
@@ -160,7 +163,7 @@ impl<'a> MoveService<'a> {
 
         // Validate source file exists
         if !old_abs.exists() {
-            return Err(ServerError::NotFound(format!(
+            return Err(ServerError::not_found(format!(
                 "Source file does not exist: {}",
                 old_abs.display()
             )));
@@ -235,14 +238,14 @@ impl<'a> MoveService<'a> {
 
         // Validate source directory exists
         if !old_abs.exists() {
-            return Err(ServerError::NotFound(format!(
+            return Err(ServerError::not_found(format!(
                 "Source directory does not exist: {}",
                 old_abs.display()
             )));
         }
 
         if !old_abs.is_dir() {
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "Path is not a directory: {}",
                 old_abs.display()
             )));
@@ -376,7 +379,7 @@ impl<'a> MoveService<'a> {
         // Try to canonicalize the full path if it exists
         let canonical = if abs_path.exists() {
             abs_path.canonicalize().map_err(|e| {
-                ServerError::InvalidRequest(format!(
+                ServerError::invalid_request(format!(
                     "Path canonicalization failed for {:?}: {}",
                     abs_path, e
                 ))
@@ -394,13 +397,13 @@ impl<'a> MoveService<'a> {
                         current = parent.to_path_buf();
                     } else {
                         // Reached root without finding existing path
-                        return Err(ServerError::InvalidRequest(format!(
+                        return Err(ServerError::invalid_request(format!(
                             "Cannot validate path: no existing ancestor found for {:?}",
                             abs_path
                         )));
                     }
                 } else {
-                    return Err(ServerError::InvalidRequest(format!(
+                    return Err(ServerError::invalid_request(format!(
                         "Invalid path: no filename component in {:?}",
                         current
                     )));
@@ -409,7 +412,7 @@ impl<'a> MoveService<'a> {
 
             // Canonicalize the existing ancestor
             let mut canonical = current.canonicalize().map_err(|e| {
-                ServerError::InvalidRequest(format!(
+                ServerError::invalid_request(format!(
                     "Path canonicalization failed for {:?}: {}",
                     current, e
                 ))
@@ -429,7 +432,7 @@ impl<'a> MoveService<'a> {
         })?;
 
         if !canonical.starts_with(&canonical_root) {
-            return Err(ServerError::Auth(format!(
+            return Err(ServerError::auth(format!(
                 "Path traversal detected: {:?} escapes project root {:?}",
                 path, self.project_root
             )));

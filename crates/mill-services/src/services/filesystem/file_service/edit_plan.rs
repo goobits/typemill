@@ -1,8 +1,11 @@
 use super::FileService;
+use mill_foundation::errors::MillError as ServerError;
 use mill_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, DependencyUpdate, EditPlan,
+    DependencyUpdate, EditPlan,
     EditPlanMetadata, EditPlanResult, TextEdit,
 };
+
+type ServerResult<T> = Result<T, ServerError>;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -231,7 +234,7 @@ impl FileService {
                         // Create parent directory for new path if needed
                         if let Some(parent) = abs_new_path.parent() {
                             fs::create_dir_all(parent).await.map_err(|e| {
-                                ServerError::Internal(format!(
+                                ServerError::internal(format!(
                                     "Failed to create parent directory for {}: {}",
                                     new_path_str, e
                                 ))
@@ -262,7 +265,7 @@ impl FileService {
 
                         rename_result.map_err(|e| {
                             error!(error = %e, "File rename failed");
-                            ServerError::Internal(format!(
+                            ServerError::internal(format!(
                                 "Failed to rename {} to {}: {}",
                                 old_path_str, new_path_str, e
                             ))
@@ -282,7 +285,7 @@ impl FileService {
                         // Create parent directories if needed
                         if let Some(parent) = file_path.parent() {
                             fs::create_dir_all(parent).await.map_err(|e| {
-                                ServerError::Internal(format!(
+                                ServerError::internal(format!(
                                     "Failed to create parent directory for {}: {}",
                                     file_path_str, e
                                 ))
@@ -291,7 +294,7 @@ impl FileService {
 
                         // Create empty file or with initial content from new_text
                         fs::write(file_path, &edit.new_text).await.map_err(|e| {
-                            ServerError::Internal(format!(
+                            ServerError::internal(format!(
                                 "Failed to create file {}: {}",
                                 file_path_str, e
                             ))
@@ -312,7 +315,7 @@ impl FileService {
                         if file_path.is_dir() {
                             // Delete directory recursively
                             fs::remove_dir_all(file_path).await.map_err(|e| {
-                                ServerError::Internal(format!(
+                                ServerError::internal(format!(
                                     "Failed to delete directory {}: {}",
                                     file_path_str, e
                                 ))
@@ -320,7 +323,7 @@ impl FileService {
                         } else {
                             // Delete single file
                             fs::remove_file(file_path).await.map_err(|e| {
-                                ServerError::Internal(format!(
+                                ServerError::internal(format!(
                                     "Failed to delete file {}: {}",
                                     file_path_str, e
                                 ))
@@ -364,7 +367,7 @@ impl FileService {
                         )
                         .await
                         .map_err(|e| {
-                            ServerError::Internal(format!(
+                            ServerError::internal(format!(
                                 "Consolidation post-processing failed: {}",
                                 e
                             ))
@@ -428,7 +431,7 @@ impl FileService {
                     None
                 })
                 .ok_or_else(|| {
-                    ServerError::Internal(format!(
+                    ServerError::internal(format!(
                         "File {} not found in snapshots",
                         abs_file_path.display()
                     ))
@@ -462,7 +465,7 @@ impl FileService {
                             "Failed to write modified file"
                         );
                         self.rollback_from_snapshots(&snapshots).await?;
-                        return Err(ServerError::Internal(format!(
+                        return Err(ServerError::internal(format!(
                             "Failed to write file {}: {}. All changes have been rolled back.",
                             file_path, e
                         )));
@@ -490,7 +493,7 @@ impl FileService {
                     );
                     // Rollback all changes and return error
                     self.rollback_from_snapshots(&snapshots).await?;
-                    return Err(ServerError::Internal(format!(
+                    return Err(ServerError::internal(format!(
                         "Failed to apply edits to file {}: {}. All changes have been rolled back.",
                         file_path, e
                     )));
@@ -520,7 +523,7 @@ impl FileService {
                     );
                     // Rollback all changes and return error
                     self.rollback_from_snapshots(&snapshots).await?;
-                    return Err(ServerError::Internal(format!(
+                    return Err(ServerError::internal(format!(
                         "Failed to apply dependency update to {}: {}. All changes have been rolled back.",
                         dep_update.target_file, e
                     )));
@@ -637,7 +640,7 @@ impl FileService {
                     snapshots.insert(file_path.clone(), String::new());
                 }
                 Err(e) => {
-                    return Err(ServerError::Internal(format!(
+                    return Err(ServerError::internal(format!(
                         "Failed to read file {} for snapshot: {}",
                         file_path.display(),
                         e
@@ -704,7 +707,7 @@ impl FileService {
                 errors = %rollback_errors.join("; "),
                 "Encountered errors during rollback"
             );
-            return Err(ServerError::Internal(format!(
+            return Err(ServerError::internal(format!(
                 "Rollback partially failed: {}",
                 rollback_errors.join("; ")
             )));
@@ -763,7 +766,7 @@ impl FileService {
                     edits_count = edits.len(),
                     "Transformer failed to apply edits"
                 );
-                ServerError::Internal(format!("Failed to apply edits: {}", e))
+                ServerError::internal(format!("Failed to apply edits: {}", e))
             })?;
 
         // Check if any edits were skipped - this indicates an error condition
@@ -785,7 +788,7 @@ impl FileService {
             }
 
             // Return error to trigger rollback for atomic guarantees
-            return Err(ServerError::Internal(format!(
+            return Err(ServerError::internal(format!(
                 "Failed to apply {} of {} edits: {}",
                 transform_result.skipped_edits.len(),
                 transform_result.statistics.total_edits,
@@ -824,7 +827,7 @@ impl FileService {
                     error = %e,
                     "AST-based dependency update failed"
                 );
-                ServerError::Internal(format!("Failed to apply dependency update: {}", e))
+                ServerError::internal(format!("Failed to apply dependency update: {}", e))
             })
     }
 }

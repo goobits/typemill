@@ -8,7 +8,7 @@ use crate::handlers::refactoring_handler::RefactoringHandler;
 use crate::handlers::system_handler::SystemHandler;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::ApiResult as ServerResult;
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::Value;
 
 /// Controls how aggressively imports are updated during rename operations
@@ -109,7 +109,7 @@ impl ToolHandler for WorkspaceToolsHandler {
                 self.system_handler.handle_tool_call(context, &call).await
             }
             "update_dependency" => self.handle_update_dependency(context, &call).await,
-            _ => Err(mill_foundation::protocol::ApiError::InvalidRequest(
+            _ => Err(ServerError::invalid_request(
                 format!("Unknown workspace tool: {}", tool_call.name),
             )),
         }
@@ -137,7 +137,7 @@ impl WorkspaceToolsHandler {
 
         // Get the manifest filename (e.g., "Cargo.toml")
         let filename = path.file_name().and_then(|s| s.to_str()).ok_or_else(|| {
-            mill_foundation::protocol::ApiError::InvalidRequest(format!(
+            ServerError::invalid_request(format!(
                 "Invalid manifest path: {}",
                 manifest_path
             ))
@@ -149,7 +149,7 @@ impl WorkspaceToolsHandler {
             .language_plugins
             .get_plugin_for_manifest(filename)
             .ok_or_else(|| {
-                mill_foundation::protocol::ApiError::Unsupported(format!(
+                ServerError::not_supported(format!(
                     "No language plugin found for manifest file: {}",
                     filename
                 ))
@@ -162,7 +162,7 @@ impl WorkspaceToolsHandler {
 
         // Use manifest updater capability - no downcasting or cfg guards needed!
         let manifest_updater = plugin.manifest_updater().ok_or_else(|| {
-            mill_foundation::protocol::ApiError::Unsupported(format!(
+            ServerError::not_supported(format!(
                 "Plugin '{}' does not support manifest updates",
                 plugin.metadata().name
             ))
@@ -172,7 +172,7 @@ impl WorkspaceToolsHandler {
             .update_dependency(path, old_dep_name, new_dep_name, new_path)
             .await
             .map_err(|e| {
-                mill_foundation::protocol::ApiError::Internal(format!(
+                ServerError::internal(format!(
                     "Failed to update dependency: {}",
                     e
                 ))
@@ -184,7 +184,7 @@ impl WorkspaceToolsHandler {
             .write_file(path, &updated_content, false)
             .await
             .map_err(|e| {
-                mill_foundation::protocol::ApiError::Internal(format!(
+                ServerError::internal(format!(
                     "Failed to write manifest file at {}: {}",
                     manifest_path, e
                 ))
@@ -209,7 +209,7 @@ impl WorkspaceToolsHandler {
             .as_ref()
             .and_then(|v| v.as_object())
             .ok_or_else(|| {
-                mill_foundation::protocol::ApiError::InvalidRequest(
+                ServerError::invalid_request(
                     "Arguments must be an object".to_string(),
                 )
             })?;
@@ -218,7 +218,7 @@ impl WorkspaceToolsHandler {
             .get("manifest_path")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                mill_foundation::protocol::ApiError::InvalidRequest(
+                ServerError::invalid_request(
                     "Missing required parameter: manifest_path".to_string(),
                 )
             })?;
@@ -227,7 +227,7 @@ impl WorkspaceToolsHandler {
             .get("old_dep_name")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                mill_foundation::protocol::ApiError::InvalidRequest(
+                ServerError::invalid_request(
                     "Missing required parameter: old_dep_name".to_string(),
                 )
             })?;
@@ -236,7 +236,7 @@ impl WorkspaceToolsHandler {
             .get("new_dep_name")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                mill_foundation::protocol::ApiError::InvalidRequest(
+                ServerError::invalid_request(
                     "Missing required parameter: new_dep_name".to_string(),
                 )
             })?;

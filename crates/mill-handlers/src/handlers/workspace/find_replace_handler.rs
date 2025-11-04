@@ -11,9 +11,9 @@ use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use crate::handlers::workspace::{case_preserving, literal_matcher, regex_matcher};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_foundation::protocol::{
-    ApiError, ApiResult as ServerResult, EditLocation, EditPlan, EditPlanMetadata, EditType,
-    TextEdit,
+    EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit,
 };
 use regex;
 use serde::{Deserialize, Serialize};
@@ -139,12 +139,12 @@ impl ToolHandler for FindReplaceHandler {
     ) -> ServerResult<Value> {
         let args = tool_call.arguments.clone().unwrap_or_default();
         let params: FindReplaceParams = serde_json::from_value(args).map_err(|e| {
-            ApiError::InvalidRequest(format!("Failed to parse find_replace params: {}", e))
+            ServerError::invalid_request(format!("Failed to parse find_replace params: {}", e))
         })?;
 
         // Validate parameters
         if params.pattern.is_empty() {
-            return Err(ApiError::InvalidRequest(
+            return Err(ServerError::invalid_request(
                 "Pattern cannot be empty".to_string(),
             ));
         }
@@ -152,7 +152,7 @@ impl ToolHandler for FindReplaceHandler {
         // Validate regex pattern early (before processing any files)
         if params.mode == SearchMode::Regex {
             regex::Regex::new(&params.pattern)
-                .map_err(|e| ApiError::InvalidRequest(format!("Invalid regex pattern: {}", e)))?;
+                .map_err(|e| ServerError::invalid_request(format!("Invalid regex pattern: {}", e)))?;
         }
 
         info!(
@@ -237,7 +237,7 @@ struct FileEdits {
 async fn discover_files(
     workspace_root: &Path,
     scope: &ScopeConfig,
-) -> Result<Vec<PathBuf>, ApiError> {
+) -> Result<Vec<PathBuf>, ServerError> {
     use globset::{Glob, GlobSetBuilder};
     use ignore::WalkBuilder;
 
@@ -245,13 +245,13 @@ async fn discover_files(
     let mut exclude_builder = GlobSetBuilder::new();
     for pattern in &scope.exclude_patterns {
         let glob = Glob::new(pattern).map_err(|e| {
-            ApiError::InvalidRequest(format!("Invalid exclude pattern '{}': {}", pattern, e))
+            ServerError::invalid_request(format!("Invalid exclude pattern '{}': {}", pattern, e))
         })?;
         exclude_builder.add(glob);
     }
     let exclude_matcher = exclude_builder
         .build()
-        .map_err(|e| ApiError::Internal(format!("Failed to build exclude matcher: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to build exclude matcher: {}", e)))?;
 
     // Build include matcher (if specified)
     let include_matcher = if scope.include_patterns.is_empty() {
@@ -260,13 +260,13 @@ async fn discover_files(
         let mut include_builder = GlobSetBuilder::new();
         for pattern in &scope.include_patterns {
             let glob = Glob::new(pattern).map_err(|e| {
-                ApiError::InvalidRequest(format!("Invalid include pattern '{}': {}", pattern, e))
+                ServerError::invalid_request(format!("Invalid include pattern '{}': {}", pattern, e))
             })?;
             include_builder.add(glob);
         }
         Some(
             include_builder.build().map_err(|e| {
-                ApiError::Internal(format!("Failed to build include matcher: {}", e))
+                ServerError::internal(format!("Failed to build include matcher: {}", e))
             })?,
         )
     };
@@ -278,7 +278,7 @@ async fn discover_files(
         .git_ignore(true) // Respect .gitignore
         .build()
     {
-        let entry = entry.map_err(|e| ApiError::Internal(format!("Walk error: {}", e)))?;
+        let entry = entry.map_err(|e| ServerError::internal(format!("Walk error: {}", e)))?;
         let path = entry.path();
 
         // Only include files, not directories
@@ -309,14 +309,14 @@ async fn process_file(
     file_path: &Path,
     params: &FindReplaceParams,
     context: &ToolHandlerContext,
-) -> Result<FileEdits, ApiError> {
+) -> Result<FileEdits, ServerError> {
     // Read file content
     let content = context
         .app_state
         .file_service
         .read_file(file_path)
         .await
-        .map_err(|e| ApiError::Internal(format!("Failed to read file: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
     // Find matches based on mode
     let edits = match params.mode {
@@ -328,7 +328,7 @@ async fn process_file(
         SearchMode::Regex => {
             let matches =
                 regex_matcher::find_regex_matches(&content, &params.pattern, &params.replacement)
-                    .map_err(|e| ApiError::InvalidRequest(format!("Regex error: {}", e)))?;
+                    .map_err(|e| ServerError::invalid_request(format!("Regex error: {}", e)))?;
             convert_regex_matches_to_edits(matches)?
         }
     };
@@ -344,7 +344,7 @@ fn convert_literal_matches_to_edits(
     matches: Vec<literal_matcher::Match>,
     replacement: &str,
     preserve_case: bool,
-) -> Result<Vec<TextEdit>, ApiError> {
+) -> Result<Vec<TextEdit>, ServerError> {
     matches
         .into_iter()
         .map(|m| {
@@ -378,7 +378,7 @@ fn convert_literal_matches_to_edits(
 /// Convert regex matches to TextEdit objects
 fn convert_regex_matches_to_edits(
     matches: Vec<regex_matcher::RegexMatch>,
-) -> Result<Vec<TextEdit>, ApiError> {
+) -> Result<Vec<TextEdit>, ServerError> {
     matches
         .into_iter()
         .map(|m| {
@@ -445,7 +445,7 @@ fn create_edit_plan(all_edits: Vec<FileEdits>, params: &FindReplaceParams) -> Ed
 async fn apply_plan(
     plan: &EditPlan,
     context: &ToolHandlerContext,
-) -> Result<Vec<String>, ApiError> {
+) -> Result<Vec<String>, ServerError> {
     // Group edits by file
     let mut edits_by_file: HashMap<String, Vec<TextEdit>> = HashMap::new();
 
@@ -469,7 +469,7 @@ async fn apply_plan(
             .file_service
             .read_file(&path)
             .await
-            .map_err(|e| ApiError::Internal(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
         // Apply edits in reverse order (to preserve positions)
         let mut sorted_edits = edits;
@@ -490,7 +490,7 @@ async fn apply_plan(
             .file_service
             .write_file(&path, &content, false) // false = not dry run
             .await
-            .map_err(|e| ApiError::Internal(format!("Failed to write file: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to write file: {}", e)))?;
 
         modified_files.push(file_path);
     }
@@ -507,14 +507,14 @@ fn char_index_to_byte_index(s: &str, char_idx: usize) -> usize {
 }
 
 /// Apply a single TextEdit to content
-fn apply_single_edit(content: &str, edit: &TextEdit) -> Result<String, ApiError> {
+fn apply_single_edit(content: &str, edit: &TextEdit) -> Result<String, ServerError> {
     let lines: Vec<&str> = content.lines().collect();
 
     let start_line = edit.location.start_line as usize;
     let end_line = edit.location.end_line as usize;
 
     if start_line >= lines.len() || end_line >= lines.len() {
-        return Err(ApiError::Internal(format!(
+        return Err(ServerError::internal(format!(
             "Edit range out of bounds: line {} to {}, content has {} lines",
             start_line,
             end_line,
@@ -545,7 +545,7 @@ fn apply_single_edit(content: &str, edit: &TextEdit) -> Result<String, ApiError>
         let end_byte = char_index_to_byte_index(line, end_char_idx);
 
         if start_byte > line.len() || end_byte > line.len() {
-            return Err(ApiError::Internal(format!(
+            return Err(ServerError::internal(format!(
                 "Edit byte range out of bounds: {} to {}, line length {}",
                 start_byte,
                 end_byte,

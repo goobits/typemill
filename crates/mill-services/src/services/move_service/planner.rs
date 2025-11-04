@@ -1,10 +1,13 @@
 //! Planning logic for file and directory moves
 
 use crate::services::reference_updater::ReferenceUpdater;
-use mill_foundation::protocol::{ApiResult as ServerResult, EditPlan};
+use mill_foundation::errors::MillError as ServerError;
+use mill_foundation::protocol::EditPlan;
 use mill_plugin_api::{PluginDiscovery, ScanScope};
 use std::path::Path;
 use tracing::{info, warn};
+
+type ServerResult<T> = Result<T, ServerError>;
 
 /// Plan a file move with import updates
 pub async fn plan_file_move(

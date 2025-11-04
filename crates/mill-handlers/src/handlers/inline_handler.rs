@@ -16,8 +16,9 @@ use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use lsp_types::{Position, Range, WorkspaceEdit};
 use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, EditPlan, InlinePlan, PlanMetadata,
+    EditPlan, InlinePlan, PlanMetadata,
     PlanSummary, RefactorPlan,
 };
 use serde::{Deserialize, Serialize};
@@ -43,7 +44,7 @@ impl InlineHandler {
 
         // Deserialize parameters
         let params: InlinePlanParams = serde_json::from_value(args).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid inline parameters: {}", e))
+            ServerError::invalid_request(format!("Invalid inline parameters: {}", e))
         })?;
 
         debug!(
@@ -58,7 +59,7 @@ impl InlineHandler {
         match params.kind.as_str() {
             "variable" | "function" | "constant" => {}
             other => {
-                return Err(ServerError::InvalidRequest(format!(
+                return Err(ServerError::invalid_request(format!(
                     "Unsupported inline kind: {}. Must be one of: variable, function, constant",
                     other
                 )))
@@ -89,7 +90,7 @@ impl InlineHandler {
         if params.options.dry_run {
             // Return plan only (preview mode)
             let plan_json = serde_json::to_value(&refactor_plan)
-                .map_err(|e| ServerError::Internal(format!("Failed to serialize plan: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to serialize plan: {}", e)))?;
 
             info!(
                 operation = "inline",
@@ -114,7 +115,7 @@ impl InlineHandler {
                 .await?;
 
             let result_json = serde_json::to_value(&result).map_err(|e| {
-                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+                ServerError::internal(format!("Failed to serialize execution result: {}", e))
             })?;
 
             info!(
@@ -142,7 +143,7 @@ impl InlineHandler {
             .file_service
             .read_file(file_path)
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
         // Call AST refactoring function directly without LSP service
         // Note: LSP integration removed as DirectLspAdapter doesn't implement LspRefactoringService
@@ -155,7 +156,7 @@ impl InlineHandler {
             Some(&context.app_state.language_plugins.inner), // Pass plugin registry
         )
         .await
-        .map_err(|e| ServerError::Internal(format!("Inline variable failed: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Inline variable failed: {}", e)))?;
 
         // Convert EditPlan to InlinePlan
         self.convert_edit_plan_to_inline_plan(
@@ -183,7 +184,7 @@ impl InlineHandler {
             .file_service
             .read_file(file_path)
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
         // Try AST-based inline for functions
         let edit_plan = mill_ast::refactoring::inline_variable::plan_inline_variable(
@@ -195,7 +196,7 @@ impl InlineHandler {
             Some(&context.app_state.language_plugins.inner), // Pass plugin registry
         )
         .await
-        .map_err(|e| ServerError::Internal(format!("Inline function failed: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Inline function failed: {}", e)))?;
 
         self.convert_edit_plan_to_inline_plan(
             edit_plan,
@@ -221,7 +222,7 @@ impl InlineHandler {
             .file_service
             .read_file(file_path)
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
         // Use AST-only approach for inlining constants
         let edit_plan = mill_ast::refactoring::inline_variable::plan_inline_variable(
@@ -233,7 +234,7 @@ impl InlineHandler {
             Some(&context.app_state.language_plugins.inner), // Pass plugin registry
         )
         .await
-        .map_err(|e| ServerError::Internal(format!("Inline constant failed: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Inline constant failed: {}", e)))?;
 
         self.convert_edit_plan_to_inline_plan(
             edit_plan,
@@ -322,10 +323,10 @@ impl InlineHandler {
 
             // Convert file path to file:// URI
             let uri = url::Url::from_file_path(file_path)
-                .map_err(|_| ServerError::Internal(format!("Invalid file path: {}", file_path)))?
+                .map_err(|_| ServerError::internal(format!("Invalid file path: {}", file_path)))?
                 .to_string()
                 .parse::<lsp_types::Uri>()
-                .map_err(|e| ServerError::Internal(format!("Failed to parse URI: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to parse URI: {}", e)))?;
 
             let lsp_edit = lsp_types::TextEdit {
                 range: Range {
@@ -424,7 +425,7 @@ impl ToolHandler for InlineHandler {
     ) -> ServerResult<Value> {
         match tool_call.name.as_str() {
             "inline" => self.handle_inline_plan(context, tool_call).await,
-            _ => Err(ServerError::Unsupported(format!(
+            _ => Err(ServerError::not_supported(format!(
                 "Unknown inline operation: {}",
                 tool_call.name
             ))),

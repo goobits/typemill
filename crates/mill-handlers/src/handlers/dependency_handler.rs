@@ -3,7 +3,7 @@
 use super::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -36,14 +36,10 @@ impl DependencyHandler {
         let content =
             fs::read_to_string(&args.file_path)
                 .await
-                .map_err(|e| ServerError::Runtime {
-                    message: format!("Failed to read file: {}", e),
-                })?;
+                .map_err(|e| ServerError::runtime(format!("Failed to read file: {}", e)))?;
 
         let mut json_val: Value =
-            serde_json::from_str(&content).map_err(|e| ServerError::Runtime {
-                message: format!("Failed to parse JSON: {}", e),
-            })?;
+            serde_json::from_str(&content).map_err(|e| ServerError::runtime(format!("Failed to parse JSON: {}", e)))?;
 
         if let Some(map) = json_val.as_object_mut() {
             // Update version
@@ -113,15 +109,11 @@ impl DependencyHandler {
         }
 
         let updated_content =
-            serde_json::to_string_pretty(&json_val).map_err(|e| ServerError::Runtime {
-                message: format!("Failed to serialize JSON: {}", e),
-            })?;
+            serde_json::to_string_pretty(&json_val).map_err(|e| ServerError::runtime(format!("Failed to serialize JSON: {}", e)))?;
 
         fs::write(&args.file_path, updated_content)
             .await
-            .map_err(|e| ServerError::Runtime {
-                message: format!("Failed to write file: {}", e),
-            })?;
+            .map_err(|e| ServerError::runtime(format!("Failed to write file: {}", e)))?;
         Ok(())
     }
 
@@ -131,14 +123,10 @@ impl DependencyHandler {
         let content =
             fs::read_to_string(&args.file_path)
                 .await
-                .map_err(|e| ServerError::Runtime {
-                    message: format!("Failed to read file: {}", e),
-                })?;
+                .map_err(|e| ServerError::runtime(format!("Failed to read file: {}", e)))?;
 
         let mut toml_val: toml::Value =
-            toml::from_str(&content).map_err(|e| ServerError::Runtime {
-                message: format!("Failed to parse TOML: {}", e),
-            })?;
+            toml::from_str(&content).map_err(|e| ServerError::runtime(format!("Failed to parse TOML: {}", e)))?;
 
         if let Some(table) = toml_val.as_table_mut() {
             // Update version
@@ -191,15 +179,11 @@ impl DependencyHandler {
         }
 
         let updated_content =
-            toml::to_string_pretty(&toml_val).map_err(|e| ServerError::Runtime {
-                message: format!("Failed to serialize TOML: {}", e),
-            })?;
+            toml::to_string_pretty(&toml_val).map_err(|e| ServerError::runtime(format!("Failed to serialize TOML: {}", e)))?;
 
         fs::write(&args.file_path, updated_content)
             .await
-            .map_err(|e| ServerError::Runtime {
-                message: format!("Failed to write file: {}", e),
-            })?;
+            .map_err(|e| ServerError::runtime(format!("Failed to write file: {}", e)))?;
         Ok(())
     }
 
@@ -209,9 +193,7 @@ impl DependencyHandler {
         let content =
             fs::read_to_string(&args.file_path)
                 .await
-                .map_err(|e| ServerError::Runtime {
-                    message: format!("Failed to read file: {}", e),
-                })?;
+                .map_err(|e| ServerError::runtime(format!("Failed to read file: {}", e)))?;
 
         let mut lines: Vec<String> = content.lines().map(String::from).collect();
 
@@ -230,9 +212,7 @@ impl DependencyHandler {
         let updated_content = lines.join("\n");
         fs::write(&args.file_path, updated_content)
             .await
-            .map_err(|e| ServerError::Runtime {
-                message: format!("Failed to write file: {}", e),
-            })?;
+            .map_err(|e| ServerError::runtime(format!("Failed to write file: {}", e)))?;
         Ok(())
     }
 }
@@ -256,7 +236,7 @@ impl ToolHandler for DependencyHandler {
     ) -> ServerResult<Value> {
         let args: UpdateDependenciesArgs =
             serde_json::from_value(tool_call.arguments.clone().unwrap_or_default()).map_err(
-                |e| ServerError::InvalidRequest(format!("Invalid update_dependencies args: {}", e)),
+                |e| ServerError::invalid_request(format!("Invalid update_dependencies args: {}", e)),
             )?;
 
         let is_dry_run = args.dry_run.unwrap_or(false);
@@ -285,7 +265,7 @@ impl ToolHandler for DependencyHandler {
             Some("Cargo.toml") => self.handle_cargo_toml(&args).await?,
             Some("requirements.txt") => self.handle_requirements_txt(&args).await?,
             _ => {
-                return Err(ServerError::InvalidRequest(format!(
+                return Err(ServerError::invalid_request(format!(
                     "Unsupported file for dependency update: {}",
                     args.file_path
                 )))

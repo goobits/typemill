@@ -26,7 +26,7 @@ pub(crate) fn list_functions(source: &str) -> PluginResult<Vec<String>> {
         .with_embedded_str(AST_TOOL_PY)
         .with_temp_filename("ast_tool.py")
         .with_args(vec!["{script}".to_string(), "list-functions".to_string()]);
-    run_ast_tool(tool, source)
+    run_ast_tool(tool, source).map_err(Into::into)
 }
 /// Analyze Python imports and produce an import graph.
 /// Uses dual-mode parsing: Python AST parser with regex fallback.

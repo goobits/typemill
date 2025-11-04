@@ -24,7 +24,7 @@
 use super::super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
@@ -195,7 +195,7 @@ impl ToolHandler for ModuleDependenciesHandler {
         let args = tool_call.arguments.clone().unwrap_or(json!({}));
         let params: ModuleDependenciesParams = serde_json::from_value(args).map_err(|e| {
             error!(error = %e, "Failed to parse parameters");
-            ServerError::InvalidRequest(format!("Invalid parameters: {}", e))
+            ServerError::invalid_request(format!("Invalid parameters: {}", e))
         })?;
 
         debug!(
@@ -234,7 +234,7 @@ async fn analyze_module_dependencies(
     let target_path = PathBuf::from(&params.target.path);
 
     if !target_path.exists() {
-        return Err(ServerError::InvalidRequest(format!(
+        return Err(ServerError::invalid_request(format!(
             "Target path does not exist: {}",
             params.target.path
         )));
@@ -308,7 +308,7 @@ fn collect_rust_files(dir: &Path) -> ServerResult<Vec<PathBuf>> {
     let mut files = Vec::new();
 
     if !dir.is_dir() {
-        return Err(ServerError::InvalidRequest(format!(
+        return Err(ServerError::invalid_request(format!(
             "Path is not a directory: {}",
             dir.display()
         )));

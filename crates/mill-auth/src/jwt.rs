@@ -2,7 +2,7 @@
 
 pub use jsonwebtoken::{decode, DecodingKey, Validation};
 use jsonwebtoken::{encode, EncodingKey, Header};
-use mill_foundation::error::CoreError;
+use mill_foundation::errors::MillError;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -30,7 +30,7 @@ pub fn validate_token(
     token: &str,
     secret: &str,
     auth_config: &mill_config::config::AuthConfig,
-) -> Result<bool, CoreError> {
+) -> Result<bool, MillError> {
     let key = DecodingKey::from_secret(secret.as_ref());
     let mut validation = Validation::default();
 
@@ -47,7 +47,7 @@ pub fn validate_token(
 
     decode::<Claims>(token, &key, &validation)
         .map(|_| true)
-        .map_err(|e| CoreError::permission_denied(e.to_string()))
+        .map_err(|e| MillError::permission_denied(e.to_string()))
 }
 
 /// Validate a JWT token with project ID verification
@@ -56,7 +56,7 @@ pub fn validate_token_with_project(
     secret: &str,
     expected_project_id: &str,
     auth_config: &mill_config::config::AuthConfig,
-) -> Result<bool, CoreError> {
+) -> Result<bool, MillError> {
     let key = DecodingKey::from_secret(secret.as_ref());
     let mut validation = Validation::default();
 
@@ -72,14 +72,14 @@ pub fn validate_token_with_project(
     }
 
     let token_data = decode::<Claims>(token, &key, &validation)
-        .map_err(|e| CoreError::permission_denied(e.to_string()))?;
+        .map_err(|e| MillError::permission_denied(e.to_string()))?;
 
     // Check if project_id claim matches expected value
     if let Some(project_id) = &token_data.claims.project_id {
         if project_id == expected_project_id {
             Ok(true)
         } else {
-            Err(CoreError::permission_denied(format!(
+            Err(MillError::permission_denied(format!(
                 "Project ID mismatch: expected '{}', got '{}'",
                 expected_project_id, project_id
             )))
@@ -101,12 +101,10 @@ pub fn generate_token(
     audience: &str,
     project_id: Option<String>,
     user_id: Option<String>,
-) -> Result<String, CoreError> {
+) -> Result<String, MillError> {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|e| CoreError::Internal {
-            message: format!("System time error: {}", e),
-        })?
+        .map_err(|e| MillError::internal(format!("System time error: {}", e)))?
         .as_secs() as usize;
 
     let claims = Claims {
@@ -123,7 +121,7 @@ pub fn generate_token(
     let key = EncodingKey::from_secret(secret.as_ref());
 
     encode(&header, &claims, &key)
-        .map_err(|e| CoreError::permission_denied(format!("Token generation failed: {}", e)))
+        .map_err(|e| MillError::permission_denied(format!("Token generation failed: {}", e)))
 }
 
 #[cfg(test)]

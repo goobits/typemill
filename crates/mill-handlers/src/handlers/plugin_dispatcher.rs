@@ -20,7 +20,7 @@ use crate::register_handlers_with_logging;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
 use mill_foundation::protocol::AstService;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_system::{LspAdapterPlugin, PluginManager};
 use mill_services::services::planner::Planner;
 use mill_services::services::workflow_executor::WorkflowExecutor;
@@ -120,7 +120,7 @@ impl PluginDispatcher {
             let app_config = mill_config::config::AppConfig::load()
                 .map_err(|e| {
                     error!(error = %e, "Failed to load app config");
-                    ServerError::Internal(format!("Failed to load app config: {}", e))
+                    ServerError::internal(format!("Failed to load app config: {}", e))
                 })?;
             debug!("App config loaded successfully");
             let lsp_config = app_config.lsp;
@@ -166,7 +166,7 @@ impl PluginDispatcher {
                     .register_plugin(&plugin_name, plugin)
                     .await
                     .map_err(|e| {
-                        ServerError::Internal(format!("Failed to register {} plugin: {}", plugin_name, e))
+                        ServerError::internal(format!("Failed to register {} plugin: {}", plugin_name, e))
                     })?;
 
                 registered_plugins += 1;
@@ -179,7 +179,7 @@ impl PluginDispatcher {
             self.plugin_manager
                 .register_plugin("system", system_plugin)
                 .await
-                .map_err(|e| ServerError::Internal(format!("Failed to register System tools plugin: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to register System tools plugin: {}", e)))?;
             registered_plugins += 1;
 
             info!(
@@ -315,7 +315,7 @@ impl PluginDispatcher {
                 result: Some(json!({"status": "ok"})),
                 error: None,
             })),
-            _ => Err(ServerError::Unsupported("Unknown message type".into())),
+            _ => Err(ServerError::not_supported("Unknown message type")),
         }
     }
 
@@ -332,7 +332,7 @@ impl PluginDispatcher {
             "tools/list" => self.handle_list_tools().await?,
             "tools/call" => self.handle_tool_call(request.params, session_info).await?,
             _ => {
-                return Err(ServerError::Unsupported(format!(
+                return Err(ServerError::not_supported(format!(
                     "Unknown method: {}",
                     request.method
                 )))
@@ -363,16 +363,16 @@ impl PluginDispatcher {
     ) -> ServerResult<Value> {
         let start_time = Instant::now();
 
-        let params = params.ok_or_else(|| ServerError::InvalidRequest("Missing params".into()))?;
+        let params = params.ok_or_else(|| ServerError::invalid_request("Missing params"))?;
 
         let tool_call: ToolCall = serde_json::from_value(params)
-            .map_err(|e| ServerError::InvalidRequest(format!("Invalid tool call: {}", e)))?;
+            .map_err(|e| ServerError::invalid_request(format!("Invalid tool call: {}", e)))?;
 
         let tool_name = tool_call.name.clone();
         let analysis_config = Arc::new(
             crate::handlers::tools::analysis::AnalysisConfig::load(&self.app_state.project_root)
                 .map_err(|e| {
-                    ServerError::Internal(format!("Failed to load analysis config: {}", e))
+                    ServerError::internal(format!("Failed to load analysis config: {}", e))
                 })?,
         );
         let context = super::tools::ToolHandlerContext {

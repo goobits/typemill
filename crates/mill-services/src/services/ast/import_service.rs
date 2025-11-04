@@ -2,7 +2,9 @@
 
 use mill_ast::{find_project_files, update_imports_for_rename, ImportPathResolver};
 use mill_foundation::protocol::DependencyUpdate;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::MillError as ServerError;
+
+type ServerResult<T> = Result<T, ServerError>;
 use mill_plugin_api::PluginDiscovery;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -81,7 +83,7 @@ impl ImportService {
             scan_scope,
         )
         .await
-        .map_err(|e| ServerError::Internal(format!("Failed to update imports: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to update imports: {}", e)))?;
 
         debug!(
             edits_count = edit_plan.edits.len(),
@@ -107,13 +109,13 @@ impl ImportService {
         // Get all project files using adapters
         let project_files = find_project_files(&self.project_root, self.plugin_registry.all())
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to find project files: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to find project files: {}", e)))?;
 
         // Find files importing the target (pass plugins for plugin-aware detection)
         let affected = resolver
             .find_affected_files(file_path, &project_files, self.plugin_registry.all())
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to find affected files: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to find affected files: {}", e)))?;
 
         Ok(affected)
     }
@@ -126,7 +128,7 @@ impl ImportService {
     ) -> ServerResult<bool> {
         let content = tokio::fs::read_to_string(source_file)
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
         let target_stem = target_file
             .file_stem()
@@ -180,14 +182,14 @@ impl ImportService {
             &content,
             update,
         )
-        .map_err(|e| ServerError::Internal(format!("Failed to update import reference: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to update import reference: {}", e)))?;
 
         if original_content == updated_content {
             return Ok(false); // No changes were made
         }
 
         fs::write(file_path, updated_content).await.map_err(|e| {
-            ServerError::Internal(format!(
+            ServerError::internal(format!(
                 "Failed to write updated content to {}: {}",
                 file_path.display(),
                 e

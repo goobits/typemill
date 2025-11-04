@@ -5,7 +5,7 @@
 use super::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::{json, Value};
 use tracing::{debug, error, info, warn};
 
@@ -39,7 +39,7 @@ impl ToolHandler for WorkflowHandler {
         match tool_call.name.as_str() {
             "achieve_intent" => self.handle_achieve_intent(tool_call.clone(), context).await,
             "apply_edits" => self.handle_apply_edits(tool_call.clone(), context).await,
-            _ => Err(ServerError::Unsupported(format!(
+            _ => Err(ServerError::not_supported(format!(
                 "Unknown workflow operation: {}",
                 tool_call.name
             ))),
@@ -56,7 +56,7 @@ impl WorkflowHandler {
         debug!(tool_name = %tool_call.name, "Planning or resuming workflow");
 
         let args = tool_call.arguments.ok_or_else(|| {
-            ServerError::InvalidRequest("Missing arguments for achieve_intent".into())
+            ServerError::invalid_request("Missing arguments for achieve_intent")
         })?;
 
         // Check if this is a workflow resume request
@@ -69,17 +69,18 @@ impl WorkflowHandler {
                 .app_state
                 .workflow_executor
                 .resume_workflow(workflow_id, resume_data)
-                .await;
+                .await
+                .map_err(|e| e.into());
         }
 
         // Otherwise, plan a new workflow
         let intent_value = args
             .get("intent")
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'intent' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'intent' parameter"))?;
 
         let intent: mill_foundation::core::model::workflow::Intent =
             serde_json::from_value(intent_value.clone()).map_err(|e| {
-                ServerError::InvalidRequest(format!("Invalid intent format: {}", e))
+                ServerError::invalid_request(format!("Invalid intent format: {}", e))
             })?;
 
         // Check if we should execute the workflow
@@ -129,7 +130,7 @@ impl WorkflowHandler {
                                 error = %e,
                                 "Workflow execution failed"
                             );
-                            Err(e)
+                            Err(e.into())
                         }
                     }
                 } else {
@@ -142,7 +143,7 @@ impl WorkflowHandler {
             }
             Err(e) => {
                 error!(intent = %intent.name, error = %e, "Failed to plan workflow for intent");
-                Err(ServerError::Runtime { message: e })
+                Err(ServerError::runtime(e))
             }
         }
     }
@@ -157,12 +158,12 @@ impl WorkflowHandler {
         let args = tool_call.arguments.unwrap_or(json!({}));
         let edit_plan_value = args
             .get("edit_plan")
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'edit_plan' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'edit_plan' parameter"))?;
 
         // Parse the EditPlan from the JSON value
         let edit_plan: mill_foundation::planning::EditPlan =
             serde_json::from_value(edit_plan_value.clone()).map_err(|e| {
-                ServerError::InvalidRequest(format!("Invalid edit_plan format: {}", e))
+                ServerError::invalid_request(format!("Invalid edit_plan format: {}", e))
             })?;
 
         debug!(
@@ -205,9 +206,7 @@ impl WorkflowHandler {
             }
             Err(e) => {
                 error!(error = %e, "Failed to apply edit plan");
-                Err(ServerError::Runtime {
-                    message: format!("Failed to apply edit plan: {}", e),
-                })
+                Err(ServerError::runtime(format!("Failed to apply edit plan: {}", e)))
             }
         }
     }

@@ -17,8 +17,9 @@ use async_trait::async_trait;
 use lsp_types::{Position, Range, WorkspaceEdit};
 use mill_ast::refactoring::CodeRange;
 use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, EditPlan, ExtractPlan, PlanMetadata,
+    EditPlan, ExtractPlan, PlanMetadata,
     PlanSummary, RefactorPlan,
 };
 use serde::{Deserialize, Serialize};
@@ -44,7 +45,7 @@ impl ExtractHandler {
 
         // Deserialize parameters
         let params: ExtractPlanParams = serde_json::from_value(args).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid extract parameters: {}", e))
+            ServerError::invalid_request(format!("Invalid extract parameters: {}", e))
         })?;
 
         debug!(
@@ -57,7 +58,7 @@ impl ExtractHandler {
         match params.kind.as_str() {
             "function" | "variable" | "constant" | "module" => {}
             other => {
-                return Err(ServerError::InvalidRequest(format!(
+                return Err(ServerError::invalid_request(format!(
                     "Unsupported extract kind: {}. Must be one of: function, variable, constant, module",
                     other
                 )))
@@ -92,7 +93,7 @@ impl ExtractHandler {
         if params.options.dry_run {
             // Return plan only (existing behavior - preview mode)
             let plan_json = serde_json::to_value(&refactor_plan)
-                .map_err(|e| ServerError::Internal(format!("Failed to serialize plan: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to serialize plan: {}", e)))?;
 
             info!(
                 operation = "extract",
@@ -119,7 +120,7 @@ impl ExtractHandler {
                 .await?;
 
             let result_json = serde_json::to_value(&result).map_err(|e| {
-                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+                ServerError::internal(format!("Failed to serialize execution result: {}", e))
             })?;
 
             info!(
@@ -157,7 +158,7 @@ impl ExtractHandler {
             .file_service
             .read_file(file_path)
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
         // Call AST refactoring function directly without LSP service
         // Note: LSP integration removed as DirectLspAdapter doesn't implement LspRefactoringService
@@ -170,7 +171,7 @@ impl ExtractHandler {
             Some(&context.app_state.language_plugins.inner), // Pass plugin registry
         )
         .await
-        .map_err(|e| ServerError::Internal(format!("Extract function failed: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Extract function failed: {}", e)))?;
 
         // Convert EditPlan to ExtractPlan
         self.convert_edit_plan_to_extract_plan(
@@ -205,7 +206,7 @@ impl ExtractHandler {
             .file_service
             .read_file(file_path)
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
         // Try to use extract_variable if available, otherwise fall back to extract_function
         // and adapt the result (AST-only approach, no LSP service)
@@ -218,7 +219,7 @@ impl ExtractHandler {
             Some(&context.app_state.language_plugins.inner), // Pass plugin registry
         )
         .await
-        .map_err(|e| ServerError::Internal(format!("Extract variable failed: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Extract variable failed: {}", e)))?;
 
         self.convert_edit_plan_to_extract_plan(
             edit_plan,
@@ -251,7 +252,7 @@ impl ExtractHandler {
             .file_service
             .read_file(file_path)
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
         // Use AST-only approach for extracting constants
         let edit_plan = mill_ast::refactoring::extract_function::plan_extract_function(
@@ -263,7 +264,7 @@ impl ExtractHandler {
             Some(&context.app_state.language_plugins.inner), // Pass plugin registry
         )
         .await
-        .map_err(|e| ServerError::Internal(format!("Extract constant failed: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Extract constant failed: {}", e)))?;
 
         self.convert_edit_plan_to_extract_plan(
             edit_plan,
@@ -284,7 +285,7 @@ impl ExtractHandler {
     ) -> ServerResult<ExtractPlan> {
         // Module extraction is more complex and typically requires language plugin support
         // For now, return a not implemented error
-        Err(ServerError::Unsupported(format!(
+        Err(ServerError::not_supported(format!(
             "Extract module not yet implemented for: {}",
             source.file_path
         )))
@@ -372,10 +373,10 @@ impl ExtractHandler {
 
             // Convert file path to file:// URI
             let uri = url::Url::from_file_path(file_path)
-                .map_err(|_| ServerError::Internal(format!("Invalid file path: {}", file_path)))?
+                .map_err(|_| ServerError::internal(format!("Invalid file path: {}", file_path)))?
                 .to_string()
                 .parse::<lsp_types::Uri>()
-                .map_err(|e| ServerError::Internal(format!("Failed to parse URI: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to parse URI: {}", e)))?;
 
             let lsp_edit = lsp_types::TextEdit {
                 range: Range {
@@ -474,7 +475,7 @@ impl ToolHandler for ExtractHandler {
     ) -> ServerResult<Value> {
         match tool_call.name.as_str() {
             "extract" => self.handle_extract_plan(context, tool_call).await,
-            _ => Err(ServerError::Unsupported(format!(
+            _ => Err(ServerError::not_supported(format!(
                 "Unknown extract operation: {}",
                 tool_call.name
             ))),

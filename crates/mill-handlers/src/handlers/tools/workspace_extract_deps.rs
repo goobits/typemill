@@ -8,7 +8,7 @@
 use super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
@@ -40,7 +40,7 @@ impl ToolHandler for WorkspaceExtractDepsHandler {
             "workspace.extract_dependencies" => {
                 handle_extract_dependencies(context, tool_call).await
             }
-            _ => Err(ApiError::InvalidRequest(format!(
+            _ => Err(ServerError::invalid_request(format!(
                 "Unknown workspace extract deps tool: {}",
                 tool_call.name
             ))),
@@ -134,10 +134,10 @@ async fn handle_extract_dependencies(
         tool_call
             .arguments
             .as_ref()
-            .ok_or_else(|| ApiError::InvalidRequest("Missing arguments".to_string()))?
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments"))?
             .clone(),
     )
-    .map_err(|e| ApiError::InvalidRequest(format!("Invalid arguments: {}", e)))?;
+    .map_err(|e| ServerError::invalid_request(format!("Invalid arguments: {}", e)))?;
 
     debug!(
         source_manifest = %params.source_manifest,
@@ -154,14 +154,14 @@ async fn handle_extract_dependencies(
 
     // Validate files exist
     if !source_path.exists() {
-        return Err(ApiError::InvalidRequest(format!(
+        return Err(ServerError::invalid_request(format!(
             "Source manifest not found: {}",
             source_path.display()
         )));
     }
 
     if !target_path.exists() {
-        return Err(ApiError::InvalidRequest(format!(
+        return Err(ServerError::invalid_request(format!(
             "Target manifest not found: {}",
             target_path.display()
         )));
@@ -170,12 +170,12 @@ async fn handle_extract_dependencies(
     // Read manifests
     let source_content = fs::read_to_string(&source_path).map_err(|e| {
         error!(error = %e, source_path = %source_path.display(), "Failed to read source manifest");
-        ApiError::Internal(format!("Failed to read source manifest: {}", e))
+        ServerError::internal(format!("Failed to read source manifest: {}", e))
     })?;
 
     let target_content = fs::read_to_string(&target_path).map_err(|e| {
         error!(error = %e, target_path = %target_path.display(), "Failed to read target manifest");
-        ApiError::Internal(format!("Failed to read target manifest: {}", e))
+        ServerError::internal(format!("Failed to read target manifest: {}", e))
     })?;
 
     // Extract dependencies
@@ -191,7 +191,7 @@ async fn handle_extract_dependencies(
         let updated = extraction_result.updated_content.as_ref().unwrap();
         fs::write(&target_path, updated).map_err(|e| {
             error!(error = %e, target_path = %target_path.display(), "Failed to write target manifest");
-            ApiError::Internal(format!("Failed to write target manifest: {}", e))
+            ServerError::internal(format!("Failed to write target manifest: {}", e))
         })?;
         debug!(target_path = %target_path.display(), "Wrote updated target manifest");
         true
@@ -232,17 +232,13 @@ fn extract_dependencies(
     // Parse source manifest
     let source_doc = source_content.parse::<DocumentMut>().map_err(|e| {
         error!(error = %e, "Failed to parse source manifest");
-        ApiError::Parse {
-            message: format!("Failed to parse source Cargo.toml: {}", e),
-        }
+        ServerError::parse(format!("Failed to parse source Cargo.toml: {}", e))
     })?;
 
     // Parse target manifest
     let mut target_doc = target_content.parse::<DocumentMut>().map_err(|e| {
         error!(error = %e, "Failed to parse target manifest");
-        ApiError::Parse {
-            message: format!("Failed to parse target Cargo.toml: {}", e),
-        }
+        ServerError::parse(format!("Failed to parse target Cargo.toml: {}", e))
     })?;
 
     let mut dependencies_added = Vec::new();
@@ -365,8 +361,8 @@ fn add_dependency_to_manifest(
         doc[section] = Item::Table(toml_edit::Table::new());
     }
 
-    let table = doc[section].as_table_mut().ok_or_else(|| ApiError::Parse {
-        message: format!("[{}] is not a table", section),
+    let table = doc[section].as_table_mut().ok_or_else(|| {
+        ServerError::parse(format!("[{}] is not a table", section))
     })?;
 
     // Clone the dependency item

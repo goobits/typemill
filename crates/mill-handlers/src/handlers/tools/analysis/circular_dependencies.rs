@@ -9,7 +9,7 @@ use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::protocol::analysis_result::{
     AnalysisResult, Finding, FindingLocation, SafetyLevel, Severity, Suggestion,
 };
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::{json, Value};
 #[cfg(feature = "analysis-circular-deps")]
 use std::collections::HashMap;
@@ -53,13 +53,13 @@ impl ToolHandler for CircularDependenciesHandler {
                 .unwrap_or_else(|| project_root.clone());
 
             let builder = DependencyGraphBuilder::new(&context.app_state.language_plugins.inner);
-            let graph = builder.build(&path).map_err(ServerError::Internal)?;
+            let graph = builder.build(&path).map_err(|e| ServerError::internal(e.to_string()))?;
             let min_size = args
                 .get("min_size")
                 .and_then(|v| v.as_u64())
                 .map(|v| v as usize);
             let result = find_circular_dependencies(&graph, min_size)
-                .map_err(|e| ServerError::Internal(e.to_string()))?;
+                .map_err(|e| ServerError::internal(e.to_string()))?;
 
             let findings = result
                 .cycles
@@ -144,7 +144,7 @@ impl ToolHandler for CircularDependenciesHandler {
         #[cfg(not(feature = "analysis-circular-deps"))]
         {
             let _ = (context, args);
-            Err(ServerError::Unsupported(
+            Err(ServerError::not_supported(
                 "The 'analyze.cycles' tool requires the 'analysis-circular-deps' feature."
                     .to_string(),
             ))

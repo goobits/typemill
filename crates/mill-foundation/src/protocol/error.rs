@@ -5,6 +5,7 @@ use serde::Serialize;
 use thiserror::Error;
 
 /// Core API operation errors
+#[deprecated(since = "0.3.0", note = "Use MillError instead")]
 #[derive(Error, Debug, Serialize)]
 #[non_exhaustive]
 #[serde(tag = "type", content = "details")]
@@ -204,6 +205,7 @@ impl From<crate::model::mcp::McpError> for ApiError {
 }
 
 /// Result type alias for API operations
+#[deprecated(since = "0.3.0", note = "Use MillResult instead")]
 pub type ApiResult<T> = Result<T, ApiError>;
 
 /// Macro for logging errors with automatic category extraction

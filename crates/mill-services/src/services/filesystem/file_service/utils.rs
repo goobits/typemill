@@ -1,10 +1,12 @@
 use super::FileService;
-use mill_foundation::protocol::ApiResult as ServerResult;
+use mill_foundation::errors::MillError as ServerError;
 use mill_foundation::validation::ValidationFailureAction;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use tracing::{debug, error, info, warn};
+
+type ServerResult<T> = Result<T, ServerError>;
 
 impl FileService {
     /// Run post-operation validation if configured
@@ -152,8 +154,6 @@ impl FileService {
     /// # Errors
     /// Returns error if path escapes project root or cannot be validated
     pub fn to_absolute_path_checked(&self, path: &Path) -> ServerResult<PathBuf> {
-        use mill_foundation::protocol::ApiError as ServerError;
-
         // Convert to absolute
         let abs_path = if path.is_absolute() {
             path.to_path_buf()
@@ -164,7 +164,7 @@ impl FileService {
         // Try to canonicalize the full path if it exists
         let canonical = if abs_path.exists() {
             abs_path.canonicalize().map_err(|e| {
-                ServerError::InvalidRequest(format!(
+                ServerError::invalid_request(format!(
                     "Path canonicalization failed for {:?}: {}",
                     abs_path, e
                 ))
@@ -182,13 +182,13 @@ impl FileService {
                         current = parent.to_path_buf();
                     } else {
                         // Reached root without finding existing path
-                        return Err(ServerError::InvalidRequest(format!(
+                        return Err(ServerError::invalid_request(format!(
                             "Cannot validate path: no existing ancestor found for {:?}",
                             abs_path
                         )));
                     }
                 } else {
-                    return Err(ServerError::InvalidRequest(format!(
+                    return Err(ServerError::invalid_request(format!(
                         "Invalid path: no filename component in {:?}",
                         current
                     )));
@@ -197,7 +197,7 @@ impl FileService {
 
             // Canonicalize the existing ancestor
             let mut canonical = current.canonicalize().map_err(|e| {
-                ServerError::InvalidRequest(format!(
+                ServerError::invalid_request(format!(
                     "Path canonicalization failed for {:?}: {}",
                     current, e
                 ))
@@ -213,7 +213,7 @@ impl FileService {
 
         // Verify containment within project root using cached canonical root
         if !canonical.starts_with(&self.canonical_project_root) {
-            return Err(ServerError::Auth(format!(
+            return Err(ServerError::auth(format!(
                 "Path traversal detected: {:?} escapes project root {:?}",
                 path, self.project_root
             )));

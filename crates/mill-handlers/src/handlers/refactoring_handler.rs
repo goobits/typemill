@@ -6,7 +6,7 @@
 use crate::handlers::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::Value;
 
 pub struct RefactoringHandler;
@@ -32,7 +32,7 @@ impl ToolHandler for RefactoringHandler {
         _context: &ToolHandlerContext,
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        Err(ApiError::InvalidRequest(format!(
+        Err(ServerError::invalid_request(format!(
             "RefactoringHandler stub does not handle tool: {}",
             tool_call.name
         )))

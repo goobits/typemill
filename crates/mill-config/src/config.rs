@@ -1,6 +1,6 @@
 //! Configuration management for Codeflow Buddy
 
-use mill_foundation::error::{CoreError, CoreResult};
+use mill_foundation::errors::{MillError, MillResult};
 use mill_foundation::validation::ValidationConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -363,7 +363,7 @@ impl ServerConfig {
 
 impl AppConfig {
     /// Save configuration to a specified file path
-    pub fn save(&self, path: &std::path::Path) -> CoreResult<()> {
+    pub fn save(&self, path: &std::path::Path) -> MillResult<()> {
         // Ensure the parent directory exists
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -371,11 +371,11 @@ impl AppConfig {
 
         // Serialize configuration to JSON with pretty formatting
         let json_content = serde_json::to_string_pretty(self)
-            .map_err(|e| CoreError::config(format!("Failed to serialize configuration: {}", e)))?;
+            .map_err(|e| MillError::config(format!("Failed to serialize configuration: {}", e)))?;
 
         // Write to file
         std::fs::write(path, json_content)
-            .map_err(|e| CoreError::config(format!("Failed to write configuration file: {}", e)))?;
+            .map_err(|e| MillError::config(format!("Failed to write configuration file: {}", e)))?;
 
         Ok(())
     }
@@ -387,7 +387,7 @@ impl AppConfig {
     /// 2. Environment-specific profile from mill.toml (based on TYPEMILL_ENV)
     /// 3. Base configuration from mill.toml
     /// 4. Default values
-    pub fn load() -> CoreResult<Self> {
+    pub fn load() -> MillResult<Self> {
         use figment::{
             providers::{Env, Format, Toml},
             Figment,
@@ -444,7 +444,7 @@ impl AppConfig {
         // Extract and deserialize configuration
         let app_config: AppConfig = figment_final
             .extract()
-            .map_err(|e| CoreError::config(format!("Failed to load configuration: {}", e)))?;
+            .map_err(|e| MillError::config(format!("Failed to load configuration: {}", e)))?;
 
         // Validate configuration
         app_config.validate()?;
@@ -459,38 +459,38 @@ impl AppConfig {
     }
 
     /// Validate the configuration
-    fn validate(&self) -> CoreResult<()> {
+    fn validate(&self) -> MillResult<()> {
         // Validate server config
         if self.server.port == 0 {
-            return Err(CoreError::config("Server port cannot be 0"));
+            return Err(MillError::config("Server port cannot be 0"));
         }
 
         if self.server.timeout_ms == 0 {
-            return Err(CoreError::config("Server timeout cannot be 0"));
+            return Err(MillError::config("Server timeout cannot be 0"));
         }
 
         // Validate LSP config
         if self.lsp.servers.is_empty() {
-            return Err(CoreError::config(
+            return Err(MillError::config(
                 "At least one LSP server must be configured",
             ));
         }
 
         for server in &self.lsp.servers {
             if server.extensions.is_empty() {
-                return Err(CoreError::config(
+                return Err(MillError::config(
                     "LSP server must handle at least one extension",
                 ));
             }
             if server.command.is_empty() {
-                return Err(CoreError::config("LSP server command cannot be empty"));
+                return Err(MillError::config("LSP server command cannot be empty"));
             }
         }
 
         // Validate logging config
         let valid_levels = ["trace", "debug", "info", "warn", "error"];
         if !valid_levels.contains(&self.logging.level.as_str()) {
-            return Err(CoreError::config(format!(
+            return Err(MillError::config(format!(
                 "Invalid log level '{}', must be one of: {}",
                 self.logging.level,
                 valid_levels.join(", ")
@@ -501,7 +501,7 @@ impl AppConfig {
 
         // Validate cache config
         if self.cache.enabled && self.cache.max_size_bytes == 0 {
-            return Err(CoreError::config(
+            return Err(MillError::config(
                 "Cache max size cannot be 0 when cache is enabled",
             ));
         }
@@ -545,7 +545,7 @@ impl AppConfig {
         language: &str,
         command: Vec<String>,
         root_dir: Option<std::path::PathBuf>,
-    ) -> CoreResult<()> {
+    ) -> MillResult<()> {
         // Map common language names to extensions
         let extension = match language {
             "rust" | "rs" => "rs",
@@ -562,7 +562,7 @@ impl AppConfig {
             .iter_mut()
             .find(|s| s.extensions.contains(&extension.to_string()))
             .ok_or_else(|| {
-                CoreError::config(format!(
+                MillError::config(format!(
                     "No LSP server configured for language: {}",
                     language
                 ))

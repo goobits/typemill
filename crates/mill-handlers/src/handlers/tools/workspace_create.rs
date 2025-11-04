@@ -7,7 +7,7 @@
 use super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_api::{CreatePackageConfig, PackageType, Template};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -35,7 +35,7 @@ impl ToolHandler for WorkspaceCreateHandler {
     ) -> ServerResult<Value> {
         match tool_call.name.as_str() {
             "workspace.create_package" => handle_create_package(context, tool_call).await,
-            _ => Err(ApiError::InvalidRequest(format!(
+            _ => Err(ServerError::invalid_request(format!(
                 "Unknown workspace create tool: {}",
                 tool_call.name
             ))),
@@ -105,10 +105,10 @@ async fn handle_create_package(
         tool_call
             .arguments
             .as_ref()
-            .ok_or_else(|| ApiError::InvalidRequest("Missing arguments".to_string()))?
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments".to_string()))?
             .clone(),
     )
-    .map_err(|e| ApiError::InvalidRequest(format!("Invalid arguments: {}", e)))?;
+    .map_err(|e| ServerError::invalid_request(format!("Invalid arguments: {}", e)))?;
 
     debug!(
         package_path = %params.package_path,
@@ -119,7 +119,7 @@ async fn handle_create_package(
 
     // Dry-run mode not yet supported - requires non-mutable plugin operations
     if params.options.dry_run {
-        return Err(ApiError::InvalidRequest(
+        return Err(ServerError::invalid_request(
             "dry_run mode not yet supported for workspace.create_package".to_string(),
         ));
     }
@@ -134,7 +134,7 @@ async fn handle_create_package(
         .language_plugins
         .get_plugin(language_ext)
         .ok_or_else(|| {
-            ApiError::Unsupported(format!(
+            ServerError::not_supported(format!(
                 "No language plugin found for extension: {}",
                 language_ext
             ))
@@ -142,7 +142,7 @@ async fn handle_create_package(
 
     // Get project factory capability
     let project_factory = plugin.project_factory().ok_or_else(|| {
-        ApiError::Unsupported(format!(
+        ServerError::not_supported(format!(
             "{} language plugin does not support package creation",
             plugin.metadata().name
         ))
@@ -160,17 +160,17 @@ async fn handle_create_package(
     // Delegate to plugin
     let result = project_factory.create_package(&config).map_err(|e| {
         error!(error = ?e, "Failed to create package");
-        // Convert PluginApiError to ApiError
+        // Convert PluginApiError to ServerError
         match e {
-            mill_plugin_api::PluginApiError::Parse { message, .. } => ApiError::Parse { message },
-            mill_plugin_api::PluginApiError::Manifest { message } => ApiError::Parse { message },
+            mill_plugin_api::PluginApiError::Parse { message, .. } => ServerError::parse(message),
+            mill_plugin_api::PluginApiError::Manifest { message } => ServerError::parse(message),
             mill_plugin_api::PluginApiError::NotSupported { operation } => {
-                ApiError::Unsupported(operation)
+                ServerError::not_supported(operation)
             }
             mill_plugin_api::PluginApiError::InvalidInput { message } => {
-                ApiError::InvalidRequest(message)
+                ServerError::invalid_request(message)
             }
-            mill_plugin_api::PluginApiError::Internal { message } => ApiError::Internal(message),
+            mill_plugin_api::PluginApiError::Internal { message } => ServerError::internal(message),
         }
     })?;
 

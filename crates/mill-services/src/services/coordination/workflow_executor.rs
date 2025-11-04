@@ -86,49 +86,41 @@ impl DefaultWorkflowExecutor {
                 if s.starts_with("$steps.") {
                     let parts: Vec<&str> = s.split('.').collect();
                     if parts.len() < 3 {
-                        return Err(ServerError::Runtime {
-                            message: format!(
-                                "Invalid placeholder format '{}': expected $steps.INDEX.PATH",
-                                s
-                            ),
-                        });
+                        return Err(ServerError::runtime(format!(
+                            "Invalid placeholder format '{}': expected $steps.INDEX.PATH",
+                            s
+                        )));
                     }
 
                     let step_index =
                         parts[1]
                             .parse::<usize>()
-                            .map_err(|_| ServerError::Runtime {
-                                message: format!(
-                                    "Invalid step index in placeholder '{}': '{}' is not a number",
-                                    s, parts[1]
-                                ),
-                            })?;
+                            .map_err(|_| ServerError::runtime(format!(
+                                "Invalid step index in placeholder '{}': '{}' is not a number",
+                                s, parts[1]
+                            )))?;
 
                     let step_result =
                         step_results
                             .get(&step_index)
-                            .ok_or_else(|| ServerError::Runtime {
-                                message: format!(
-                                    "Failed to resolve placeholder '{}': step {} has not been executed yet",
-                                    s, step_index
-                                ),
-                            })?;
+                            .ok_or_else(|| ServerError::runtime(format!(
+                                "Failed to resolve placeholder '{}': step {} has not been executed yet",
+                                s, step_index
+                            )))?;
 
                     // Navigate the path in the result
                     let mut current = step_result;
                     for (i, part) in parts[2..].iter().enumerate() {
-                        current = current.get(part).ok_or_else(|| ServerError::Runtime {
-                            message: format!(
-                                "Failed to resolve placeholder '{}': field '{}' not found in {}",
-                                s,
-                                part,
-                                if i == 0 {
-                                    format!("step {} result", step_index)
-                                } else {
-                                    format!("path '{}'", parts[2..i + 2].join("."))
-                                }
-                            ),
-                        })?;
+                        current = current.get(part).ok_or_else(|| ServerError::runtime(format!(
+                            "Failed to resolve placeholder '{}': field '{}' not found in {}",
+                            s,
+                            part,
+                            if i == 0 {
+                                format!("step {} result", step_index)
+                            } else {
+                                format!("path '{}'", parts[2..i + 2].join("."))
+                            }
+                        )))?;
                     }
                     Ok(current.clone())
                 } else {
@@ -231,17 +223,15 @@ impl DefaultWorkflowExecutor {
                     e
                 ));
 
-                Err(ServerError::Runtime {
-                    message: format!(
-                        "Workflow '{}' failed at step {}/{} ({}): {}. Error: {}",
-                        workflow_name,
-                        step_index + 1,
-                        total_steps,
-                        step.tool,
-                        step.description,
-                        e
-                    ),
-                })
+                Err(ServerError::runtime(format!(
+                    "Workflow '{}' failed at step {}/{} ({}): {}. Error: {}",
+                    workflow_name,
+                    step_index + 1,
+                    total_steps,
+                    step.tool,
+                    step.description,
+                    e
+                )))
             }
         }
     }
@@ -358,9 +348,10 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
         let paused_state = self
             .paused_workflows
             .remove(workflow_id)
-            .ok_or_else(|| ServerError::Runtime {
-                message: format!("Workflow '{}' not found or already completed", workflow_id),
-            })?
+            .ok_or_else(|| ServerError::runtime(format!(
+                "Workflow '{}' not found or already completed",
+                workflow_id
+            )))?
             .1;
 
         let workflow = paused_state.workflow;
@@ -518,7 +509,7 @@ mod tests {
 
         let error = resolved.unwrap_err();
         match error {
-            ServerError::Runtime { message } => {
+            ServerError::Runtime { message, .. } => {
                 assert!(message.contains("step 0 has not been executed"));
             }
             _ => panic!("Expected Runtime error"),
@@ -544,7 +535,7 @@ mod tests {
 
         let error = resolved.unwrap_err();
         match error {
-            ServerError::Runtime { message } => {
+            ServerError::Runtime { message, .. } => {
                 assert!(message.contains("field 'nonexistent' not found"));
             }
             _ => panic!("Expected Runtime error"),
@@ -563,7 +554,7 @@ mod tests {
 
         let error = resolved.unwrap_err();
         match error {
-            ServerError::Runtime { message } => {
+            ServerError::Runtime { message, .. } => {
                 // The error should be about invalid format - either missing PATH or invalid index
                 assert!(
                     message.contains("Invalid placeholder format")

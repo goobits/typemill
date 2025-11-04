@@ -14,6 +14,8 @@ pub use analysis_result::{
     FixActions, Position, Range, RefactorCall, SafetyLevel, Severity, SeverityBreakdown,
     Suggestion, SuggestionTarget,
 };
+// Legacy error types - deprecated in favor of MillError/MillResult
+#[allow(deprecated)]
 pub use error::{ApiError, ApiResult};
 
 // Re-export planning types (from crate root)
@@ -191,7 +193,7 @@ impl std::fmt::Display for CacheStats {
 #[async_trait]
 pub trait AstService: Send + Sync {
     /// Build import graph for a file
-    async fn build_import_graph(&self, file: &Path) -> ApiResult<ImportGraph>;
+    async fn build_import_graph(&self, file: &Path) -> Result<ImportGraph, crate::errors::MillError>;
 
     /// Get cache statistics for monitoring
     async fn cache_stats(&self) -> CacheStats;
@@ -201,16 +203,16 @@ pub trait AstService: Send + Sync {
 #[async_trait]
 pub trait LspService: Send + Sync {
     /// Send an LSP request and get response
-    async fn request(&self, message: Message) -> ApiResult<Message>;
+    async fn request(&self, message: Message) -> Result<Message, crate::errors::MillError>;
 
     /// Check if LSP server is available for file extension
     async fn is_available(&self, extension: &str) -> bool;
 
     /// Restart LSP server for given extensions
-    async fn restart_servers(&self, extensions: Option<Vec<String>>) -> ApiResult<()>;
+    async fn restart_servers(&self, extensions: Option<Vec<String>>) -> Result<(), crate::errors::MillError>;
 
     /// Notify LSP server that a file has been opened
-    async fn notify_file_opened(&self, file_path: &Path) -> ApiResult<()>;
+    async fn notify_file_opened(&self, file_path: &Path) -> Result<(), crate::errors::MillError>;
 }
 
 /// Message dispatcher interface for transport layer

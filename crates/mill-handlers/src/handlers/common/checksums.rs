@@ -4,7 +4,8 @@
 //! rename and move handlers to ensure file integrity during refactoring.
 
 use crate::handlers::tools::ToolHandlerContext;
-use mill_foundation::protocol::{ApiResult as ServerResult, TextEdit as ProtocolTextEdit};
+use mill_foundation::errors::MillResult as ServerResult;
+use mill_foundation::protocol::{TextEdit as ProtocolTextEdit};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use tracing::debug;

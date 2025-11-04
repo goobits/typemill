@@ -1,7 +1,8 @@
 //! A fluent builder for setting up LSP integration tests.
 
 use crate::harness::{MockLspService, RealLspService, TestWorkspace};
-use mill_foundation::protocol::{ApiError, LspService};
+use mill_foundation::errors::MillError;
+use mill_foundation::protocol::LspService;
 use std::sync::Arc;
 
 /// Test mode for LSP services
@@ -51,13 +52,13 @@ impl LspTestBuilder {
 
     /// Build the test context for mock mode, returning concrete MockLspService.
     /// This allows direct access to mock configuration methods.
-    pub async fn build_mock(self) -> Result<(Arc<MockLspService>, TestWorkspace), ApiError> {
+    pub async fn build_mock(self) -> Result<(Arc<MockLspService>, TestWorkspace), MillError> {
         match self.mode {
             LspTestMode::Mock => {
                 let mock_service = Arc::new(MockLspService::new());
                 Ok((mock_service, self.workspace))
             }
-            LspTestMode::Real => Err(ApiError::lsp(
+            LspTestMode::Real => Err(MillError::lsp(
                 "build_mock() called but mode is Real. Use build() for trait object.".to_string(),
             )),
         }
@@ -66,7 +67,7 @@ impl LspTestBuilder {
     /// Build the test context, providing an LspService trait object and TestWorkspace.
     /// Returns either a MockLspService or RealLspService based on the configured mode.
     /// For mock tests that need to configure responses, use build_mock() instead.
-    pub async fn build(self) -> Result<(Arc<dyn LspService>, TestWorkspace), ApiError> {
+    pub async fn build(self) -> Result<(Arc<dyn LspService>, TestWorkspace), MillError> {
         let lsp_service: Arc<dyn LspService> = match self.mode {
             LspTestMode::Mock => Arc::new(MockLspService::new()),
             LspTestMode::Real => {

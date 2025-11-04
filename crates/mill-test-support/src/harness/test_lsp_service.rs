@@ -2,7 +2,8 @@
 
 use async_trait::async_trait;
 // No longer need cb_core imports since we use mill_foundation::protocol::Message
-use mill_foundation::protocol::{ApiError, LspService, Message};
+use mill_foundation::errors::MillError;
+use mill_foundation::protocol::{LspService, Message};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -167,7 +168,7 @@ impl MockLspService {
 
 #[async_trait]
 impl LspService for MockLspService {
-    async fn request(&self, message: Message) -> Result<Message, ApiError> {
+    async fn request(&self, message: Message) -> Result<Message, MillError> {
         // Store the request for verification
         {
             let mut requests = self
@@ -184,7 +185,7 @@ impl LspService for MockLspService {
                 .lock()
                 .expect("Error methods lock poisoned - previous test panicked");
             if let Some(error_msg) = errors.get(&message.method) {
-                return Err(ApiError::lsp(error_msg.clone()));
+                return Err(MillError::lsp(error_msg.clone()));
             }
         }
 
@@ -216,12 +217,12 @@ impl LspService for MockLspService {
         true
     }
 
-    async fn restart_servers(&self, _extensions: Option<Vec<String>>) -> Result<(), ApiError> {
+    async fn restart_servers(&self, _extensions: Option<Vec<String>>) -> Result<(), MillError> {
         // No-op for testing
         Ok(())
     }
 
-    async fn notify_file_opened(&self, _file_path: &std::path::Path) -> Result<(), ApiError> {
+    async fn notify_file_opened(&self, _file_path: &std::path::Path) -> Result<(), MillError> {
         // No-op for testing - the mock LSP service doesn't need actual file notifications
         Ok(())
     }

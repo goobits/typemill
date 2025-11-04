@@ -1,9 +1,9 @@
 //! Error construction utilities and helpers
 //!
-//! This module provides ergonomic builders and macros for creating `PluginApiError` instances
+//! This module provides ergonomic builders and macros for creating `MillError` instances
 //! with rich context. Reduces boilerplate from repetitive error construction patterns.
 
-use mill_plugin_api::PluginApiError;
+use mill_foundation::errors::MillError;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -124,8 +124,8 @@ impl ErrorBuilder {
         }
     }
 
-    /// Build the final PluginApiError
-    pub fn build(self) -> PluginApiError {
+    /// Build the final MillError
+    pub fn build(self) -> MillError {
         let mut final_message = self.message;
 
         // Append context if any
@@ -143,9 +143,9 @@ impl ErrorBuilder {
         }
 
         match self.kind {
-            ErrorKind::Parse => PluginApiError::parse(final_message),
-            ErrorKind::Manifest => PluginApiError::manifest(final_message),
-            ErrorKind::Internal => PluginApiError::internal(final_message),
+            ErrorKind::Parse => MillError::parse(final_message),
+            ErrorKind::Manifest => MillError::manifest(final_message),
+            ErrorKind::Internal => MillError::internal(final_message),
         }
     }
 }
@@ -162,7 +162,7 @@ impl ErrorBuilder {
 #[macro_export]
 macro_rules! parse_error {
     ($($arg:tt)*) => {
-        mill_plugin_api::PluginApiError::parse(format!($($arg)*))
+        mill_foundation::errors::MillError::parse(format!($($arg)*))
     };
 }
 
@@ -170,7 +170,7 @@ macro_rules! parse_error {
 #[macro_export]
 macro_rules! manifest_error {
     ($($arg:tt)*) => {
-        mill_plugin_api::PluginApiError::manifest(format!($($arg)*))
+        mill_foundation::errors::MillError::manifest(format!($($arg)*))
     };
 }
 
@@ -178,33 +178,33 @@ macro_rules! manifest_error {
 #[macro_export]
 macro_rules! internal_error {
     ($($arg:tt)*) => {
-        mill_plugin_api::PluginApiError::internal(format!($($arg)*))
+        mill_foundation::errors::MillError::internal(format!($($arg)*))
     };
 }
 
 /// Helper function for I/O errors in manifest operations
-pub fn io_to_manifest_error(error: std::io::Error, path: &Path) -> PluginApiError {
+pub fn io_to_manifest_error(error: std::io::Error, path: &Path) -> MillError {
     ErrorBuilder::manifest(format!("Failed to read file: {}", error))
         .with_path(path)
         .build()
 }
 
 /// Helper function for I/O errors in parsing operations
-pub fn io_to_parse_error(error: std::io::Error, context: &str) -> PluginApiError {
+pub fn io_to_parse_error(error: std::io::Error, context: &str) -> MillError {
     ErrorBuilder::parse(format!("I/O error: {}", error))
         .with_context("context", context)
         .build()
 }
 
 /// Helper function for JSON deserialization errors
-pub fn json_error(error: serde_json::Error, context: &str) -> PluginApiError {
+pub fn json_error(error: serde_json::Error, context: &str) -> MillError {
     ErrorBuilder::parse(format!("Failed to parse JSON: {}", error))
         .with_context("context", context)
         .build()
 }
 
 /// Helper function for TOML deserialization errors
-pub fn toml_error(error: impl std::fmt::Display, context: &str) -> PluginApiError {
+pub fn toml_error(error: impl std::fmt::Display, context: &str) -> MillError {
     ErrorBuilder::manifest(format!("Failed to parse TOML: {}", error))
         .with_context("context", context)
         .build()

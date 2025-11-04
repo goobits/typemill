@@ -4,10 +4,13 @@
 //! Handles all edit types: Replace, Create, Move, Delete.
 
 use lsp_types::{Uri, WorkspaceEdit};
+use mill_foundation::errors::MillError;
 use mill_foundation::protocol::{
-    ApiError, ApiResult as ServerResult, ConsolidationMetadata, EditPlan, EditPlanMetadata,
+    ConsolidationMetadata, EditPlan, EditPlanMetadata,
     EditType, RefactorPlan, RefactorPlanExt, TextEdit,
 };
+
+type ServerResult<T> = Result<T, MillError>;
 use std::path::Path;
 use tracing::{debug, info};
 
@@ -164,7 +167,9 @@ impl PlanConverter {
                 _ => None,
             })
             .ok_or_else(|| {
-                ApiError::Internal("Consolidation plan missing RenameFile operation".to_string())
+                MillError::internal(
+                    "Consolidation plan missing RenameFile operation"
+                )
             })?;
 
         // Convert URIs to paths
@@ -179,7 +184,9 @@ impl PlanConverter {
             .file_name()
             .and_then(|n| n.to_str())
             .ok_or_else(|| {
-                ApiError::Internal(format!("Cannot extract crate name from: {}", old_path))
+                MillError::internal(format!(
+                    "Cannot extract crate name from: {}", old_path
+                ))
             })?
             .to_string();
 
@@ -191,7 +198,9 @@ impl PlanConverter {
             .file_name()
             .and_then(|n| n.to_str())
             .ok_or_else(|| {
-                ApiError::Internal(format!("Cannot extract module name from: {}", new_path))
+                MillError::internal(format!(
+                    "Cannot extract module name from: {}", new_path
+                ))
             })?
             .to_string();
 
@@ -203,9 +212,8 @@ impl PlanConverter {
             .find(|p| p.file_name().and_then(|n| n.to_str()) == Some("src"))
             .and_then(|src_dir| src_dir.parent())
             .ok_or_else(|| {
-                ApiError::Internal(format!(
-                    "Cannot find target crate root (src/ parent) for: {}",
-                    new_path
+                MillError::internal(format!(
+                    "Cannot find target crate root (src/ parent) for: {}", new_path
                 ))
             })?
             .to_string_lossy()
@@ -215,9 +223,8 @@ impl PlanConverter {
             .file_name()
             .and_then(|n| n.to_str())
             .ok_or_else(|| {
-                ApiError::Internal(format!(
-                    "Cannot extract target crate name from: {}",
-                    target_crate_path
+                MillError::internal(format!(
+                    "Cannot extract target crate name from: {}", target_crate_path
                 ))
             })?
             .to_string();
@@ -374,9 +381,11 @@ impl PlanConverter {
     ///
     /// This ensures consistent path representation for checksum validation
     /// across platforms and handles paths with spaces correctly (via URL decoding).
-    fn uri_to_path_string(uri: &Uri) -> Result<String, ApiError> {
+    fn uri_to_path_string(uri: &Uri) -> Result<String, MillError> {
         urlencoding::decode(uri.path().as_str())
-            .map_err(|e| ApiError::Internal(format!("Failed to decode URI path: {}", e)))
+            .map_err(|e| MillError::internal(format!(
+                "Failed to decode URI path: {}", e
+            )))
             .map(|decoded| decoded.into_owned())
     }
 

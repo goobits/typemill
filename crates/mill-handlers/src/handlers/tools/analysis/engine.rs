@@ -12,7 +12,7 @@
 use super::super::ToolHandlerContext;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::protocol::analysis_result::{AnalysisResult, AnalysisScope, Finding};
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde::Deserialize;
 use serde_json::Value;
 use std::path::Path;
@@ -95,7 +95,7 @@ pub(crate) struct ScopeParam {
 pub(crate) fn parse_scope_param(args: &Value) -> ServerResult<ScopeParam> {
     if let Some(scope_value) = args.get("scope") {
         serde_json::from_value(scope_value.clone())
-            .map_err(|e| ServerError::InvalidRequest(format!("Invalid scope: {}", e)))
+            .map_err(|e| ServerError::invalid_request(format!("Invalid scope: {}", e)))
     } else {
         Ok(ScopeParam {
             scope_type: None,
@@ -124,8 +124,8 @@ pub(crate) fn extract_file_path(args: &Value, scope_param: &ScopeParam) -> Serve
         .clone()
         .or_else(|| args.get("filePath").and_then(|v| v.as_str()).map(String::from))
         .ok_or_else(|| {
-            ServerError::InvalidRequest(
-                "Missing file path. For MVP, only file-level analysis is supported via scope.path or file_path parameter".into(),
+            ServerError::invalid_request(
+                "Missing file path. For MVP, only file-level analysis is supported via scope.path or file_path parameter",
             )
         })
 }
@@ -268,7 +268,7 @@ pub async fn run_analysis_with_config(
 
     // Check if kind is enabled in configuration
     if !config.is_kind_enabled(category, kind) {
-        return Err(ServerError::InvalidRequest(format!(
+        return Err(ServerError::invalid_request(format!(
             "Analysis kind '{}' is disabled in configuration for category '{}'",
             kind, category
         )));
@@ -304,7 +304,7 @@ pub async fn run_analysis_with_config(
         .extension()
         .and_then(|ext| ext.to_str())
         .ok_or_else(|| {
-            ServerError::InvalidRequest(format!("File has no extension: {}", file_path))
+            ServerError::invalid_request(format!("File has no extension: {}", file_path))
         })?;
 
     let content = context
@@ -312,7 +312,7 @@ pub async fn run_analysis_with_config(
         .file_service
         .read_file(file_path_obj)
         .await
-        .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
     // Step 4: Get language plugin
     let plugin = context
@@ -320,7 +320,7 @@ pub async fn run_analysis_with_config(
         .language_plugins
         .get_plugin(extension)
         .ok_or_else(|| {
-            ServerError::Unsupported(format!(
+            ServerError::not_supported(format!(
                 "No language plugin found for extension: {}",
                 extension
             ))
@@ -330,7 +330,7 @@ pub async fn run_analysis_with_config(
     let parsed = plugin
         .parse(&content)
         .await
-        .map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to parse file: {}", e)))?;
 
     let language = plugin.metadata().name;
 
@@ -410,7 +410,7 @@ pub async fn run_analysis_with_config(
 
     // Step 10: Serialize to JSON and return
     serde_json::to_value(result)
-        .map_err(|e| ServerError::Internal(format!("Failed to serialize result: {}", e)))
+        .map_err(|e| ServerError::internal(format!("Failed to serialize result: {}", e)))
 }
 
 /// Orchestrates a simplified analysis workflow for Markdown files
@@ -462,7 +462,7 @@ pub async fn run_markdown_analysis(
         .extension()
         .and_then(|ext| ext.to_str())
         .ok_or_else(|| {
-            ServerError::InvalidRequest(format!("File has no extension: {}", file_path))
+            ServerError::invalid_request(format!("File has no extension: {}", file_path))
         })?;
 
     let content = context
@@ -470,14 +470,14 @@ pub async fn run_markdown_analysis(
         .file_service
         .read_file(file_path_obj)
         .await
-        .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
     let plugin = context
         .app_state
         .language_plugins
         .get_plugin(extension)
         .ok_or_else(|| {
-            ServerError::Unsupported(format!(
+            ServerError::not_supported(format!(
                 "No language plugin found for extension: {}",
                 extension
             ))
@@ -487,7 +487,7 @@ pub async fn run_markdown_analysis(
     let parsed = plugin
         .parse(&content)
         .await
-        .map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to parse file: {}", e)))?;
     let language = plugin.metadata().name;
 
     // Step 4: Execute the custom analysis function (no complexity report)
@@ -523,7 +523,7 @@ pub async fn run_markdown_analysis(
     );
 
     serde_json::to_value(result)
-        .map_err(|e| ServerError::Internal(format!("Failed to serialize result: {}", e)))
+        .map_err(|e| ServerError::internal(format!("Failed to serialize result: {}", e)))
 }
 
 #[cfg(test)]

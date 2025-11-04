@@ -1,7 +1,9 @@
 //! Operation queue for serializing file operations
 
 use super::lock_manager::{LockManager, LockType};
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::MillError as ServerError;
+
+type ServerResult<T> = Result<T, ServerError>;
 use serde_json::Value;
 use std::collections::VecDeque;
 use std::path::PathBuf;

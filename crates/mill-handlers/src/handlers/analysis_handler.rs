@@ -6,7 +6,7 @@
 use super::tools::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::Value;
 use tracing::debug;
 
@@ -37,7 +37,7 @@ impl ToolHandler for AnalysisHandler {
     ) -> ServerResult<Value> {
         debug!(tool_name = %tool_call.name, "Handling code analysis operation");
 
-        Err(ServerError::Unsupported(format!(
+        Err(ServerError::not_supported(format!(
             "Unknown analysis operation: {}",
             tool_call.name
         )))

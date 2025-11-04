@@ -10,5 +10,7 @@ pub mod utils;
 pub use dry_run::{execute_with_dry_run, DryRunnable};
 
 // Re-export from foundation modules for backwards compatibility
+// Note: ApiError and CoreError are deprecated in favor of MillError
+#[allow(deprecated)]
 pub use crate::error::{ApiError, CoreError};
 pub use crate::model;

@@ -21,12 +21,44 @@ pub mod planning;
 pub mod protocol;
 pub mod validation;
 
-// Re-export commonly used types for convenience
-// Error types
-pub use error::{ApiError, CoreError, CoreResult};
+// ============================================================================
+// ERROR TYPES - MIGRATION GUIDE
+// ============================================================================
+//
+// **NEW (v0.3.0+):** Use the unified error types from the `errors` module:
+//   - `MillError` - Primary error type for all operations
+//   - `MillResult<T>` - Result type alias (Result<T, MillError>)
+//   - `ErrorResponse` - Standardized error response for API/MCP
+//   - `error_codes` - Standard error code constants
+//
+// **DEPRECATED:** Legacy error types are still exported for backward compatibility:
+//   - `CoreError` → Use `MillError` instead
+//   - `CoreResult<T>` → Use `MillResult<T>` instead
+//   - `ApiError` (from protocol::error) → Use `MillError` instead
+//   - `ApiResult<T>` → Use `MillResult<T>` instead
+//
+// Migration example:
+//   ```rust
+//   // Old (deprecated)
+//   use mill_foundation::{CoreError, CoreResult};
+//   fn old_fn() -> CoreResult<String> { ... }
+//
+//   // New (recommended)
+//   use mill_foundation::{MillError, MillResult};
+//   fn new_fn() -> MillResult<String> { ... }
+//   ```
+// ============================================================================
 
-// New unified error types
+// Re-export commonly used types for convenience
+
+// **PRIMARY ERROR TYPES** (use these in new code)
 pub use errors::{error_codes, ErrorResponse, MillError, MillResult};
+
+// **LEGACY ERROR TYPES** (deprecated, kept for backward compatibility)
+#[allow(deprecated)]
+pub use error::{ApiError as CoreApiError, CoreError, CoreResult};
+#[allow(deprecated)]
+pub use protocol::error::{ApiError, ApiResult};
 
 // Model types
 pub use model::{

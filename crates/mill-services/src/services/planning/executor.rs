@@ -5,9 +5,12 @@
 
 use crate::services::filesystem::file_service::EditPlanResult;
 use crate::{ChecksumValidator, PlanConverter, PostApplyValidator};
+use mill_foundation::errors::MillError;
 use mill_foundation::protocol::{
-    ApiError, ApiResult as ServerResult, EditPlan, EditType, RefactorPlan, RefactorPlanExt,
+    EditPlan, EditType, RefactorPlan, RefactorPlanExt,
 };
+
+type ServerResult<T> = Result<T, MillError>;
 use mill_foundation::validation::{ValidationConfig, ValidationResult};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -194,7 +197,7 @@ impl PlanExecutor {
                 // Validation execution failed (timeout, command not found, etc.)
                 error!(error = %e, "Validation execution failed");
 
-                Err(ApiError::Internal(format!(
+                Err(MillError::internal(format!(
                     "Post-apply validation execution failed: {}. \
                      Changes were applied but could not validate.",
                     e
@@ -225,8 +228,8 @@ impl PlanExecutor {
     }
 
     /// Create a validation failed error
-    fn create_validation_failed_error(&self, validation_result: ValidationResult) -> ApiError {
-        ApiError::Internal(format!(
+    fn create_validation_failed_error(&self, validation_result: ValidationResult) -> MillError {
+        MillError::internal(format!(
             "Post-apply validation failed (exit code {}). \
              Changes were applied but validation command failed.\n\
              Command: {}\n\

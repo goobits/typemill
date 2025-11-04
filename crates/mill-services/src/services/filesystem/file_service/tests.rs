@@ -5,8 +5,9 @@ mod tests {
     use crate::services::coordination::operation_queue::{OperationQueue, OperationType};
     use crate::services::filesystem::file_service::FileService;
     use mill_ast::AstCache;
+    use mill_foundation::errors::MillError;
     use mill_foundation::protocol::{
-        ApiError, DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit,
+        DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit,
     };
     use std::path::Path;
     use std::sync::Arc;
@@ -19,10 +20,12 @@ mod tests {
         tokio::spawn(async move {
             queue
                 .process_with(|op, stats| async move {
-                    let result: Result<(), ApiError> = match op.operation_type {
+                    let result: Result<(), MillError> = match op.operation_type {
                         OperationType::CreateDir => {
                             fs::create_dir_all(&op.file_path).await.map_err(|e| {
-                                ApiError::Internal(format!("Failed to create directory: {}", e))
+                                MillError::internal(format!(
+                                    "Failed to create directory: {}", e
+                                ))
                             })
                         }
                         OperationType::CreateFile | OperationType::Write => {
@@ -32,13 +35,17 @@ mod tests {
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("");
                             fs::write(&op.file_path, content).await.map_err(|e| {
-                                ApiError::Internal(format!("Failed to write file: {}", e))
+                                MillError::internal(format!(
+                                    "Failed to write file: {}", e
+                                ))
                             })
                         }
                         OperationType::Delete => {
                             if op.file_path.exists() {
                                 fs::remove_file(&op.file_path).await.map_err(|e| {
-                                    ApiError::Internal(format!("Failed to delete file: {}", e))
+                                    MillError::internal(format!(
+                                        "Failed to delete file: {}", e
+                                    ))
                                 })
                             } else {
                                 Ok(())
@@ -50,10 +57,12 @@ mod tests {
                                 .get("new_path")
                                 .and_then(|v| v.as_str())
                                 .ok_or_else(|| {
-                                ApiError::Internal("Missing new_path".to_string())
+                                MillError::internal("Missing new_path")
                             })?;
                             fs::rename(&op.file_path, new_path_str).await.map_err(|e| {
-                                ApiError::Internal(format!("Failed to rename file: {}", e))
+                                MillError::internal(format!(
+                                    "Failed to rename file: {}", e
+                                ))
                             })
                         }
                         _ => Ok(()),
@@ -585,7 +594,7 @@ mod move_tests {
 
     use tempfile::TempDir;
 
-    use mill_foundation::protocol::ApiError;
+    use mill_foundation::errors::MillError;
 
     use super::tests::create_test_service;
 
@@ -645,10 +654,10 @@ mod move_tests {
             .await;
 
         assert!(result.is_err());
-        if let Err(ApiError::AlreadyExists(path_str)) = result {
-            // The error message contains the full absolute path.
-            // We'll just check that it contains the destination path we expect.
-            assert!(path_str.contains(dest_path.to_str().unwrap()));
+        if let Err(ref err) = result {
+            // The error message contains "Resource already exists" and the path
+            assert!(err.message.contains("Resource already exists"));
+            assert!(err.message.contains(dest_path.to_str().unwrap()));
         } else {
             panic!("Expected AlreadyExists error, got {:?}", result);
         }
@@ -767,10 +776,10 @@ mod move_tests {
             .await;
 
         assert!(result.is_err());
-        if let Err(ApiError::AlreadyExists(path_str)) = result {
-            // The error message contains the full absolute path.
-            // We'll just check that it contains the destination path we expect.
-            assert!(path_str.contains(dest_dir.to_str().unwrap()));
+        if let Err(ref err) = result {
+            // The error message contains "Resource already exists" and the path
+            assert!(err.message.contains("Resource already exists"));
+            assert!(err.message.contains(dest_dir.to_str().unwrap()));
         } else {
             panic!("Expected AlreadyExists error, got {:?}", result);
         }

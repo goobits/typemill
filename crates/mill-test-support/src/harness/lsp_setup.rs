@@ -211,7 +211,7 @@ impl LspSetupHelper {
     /// Note: Language support temporarily reduced to TypeScript + Rust
     pub fn get_lsp_command(
         extension: &str,
-    ) -> Result<Vec<String>, mill_foundation::protocol::ApiError> {
+    ) -> Result<Vec<String>, mill_foundation::errors::MillError> {
         match extension {
             "ts" | "tsx" | "js" | "jsx" => {
                 let ts_lsp_path = Self::resolve_command_path("typescript-language-server")
@@ -223,7 +223,7 @@ impl LspSetupHelper {
                     .unwrap_or_else(|| "rust-analyzer".to_string());
                 Ok(vec![rust_analyzer_path])
             }
-            _ => Err(mill_foundation::protocol::ApiError::lsp(format!(
+            _ => Err(mill_foundation::errors::MillError::lsp(format!(
                 "No LSP server configured for extension: {} (only TypeScript and Rust supported)",
                 extension
             ))),

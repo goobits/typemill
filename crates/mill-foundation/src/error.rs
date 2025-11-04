@@ -5,6 +5,7 @@ use serde_json::Value;
 use thiserror::Error;
 
 /// Core error type used throughout the Codeflow Buddy system
+#[deprecated(since = "0.3.0", note = "Use MillError instead")]
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum CoreError {
@@ -88,6 +89,7 @@ impl CoreError {
 }
 
 /// Result type alias for convenience
+#[deprecated(since = "0.3.0", note = "Use MillResult instead")]
 pub type CoreResult<T> = Result<T, CoreError>;
 
 // ============================================================================

@@ -20,7 +20,7 @@ use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::protocol::analysis_result::{
     Finding, FindingLocation, Position, Range, SafetyLevel, Severity, Suggestion,
 };
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_api::{Symbol, SymbolKind};
 use regex::Regex;
 use serde_json::{json, Value};
@@ -1552,14 +1552,14 @@ impl ToolHandler for DocumentationHandler {
         let kind = args
             .get("kind")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'kind' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'kind' parameter"))?;
 
         // Validate kind
         if !matches!(
             kind,
             "coverage" | "quality" | "style" | "examples" | "todos"
         ) {
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "Unsupported kind '{}'. Supported: 'coverage', 'quality', 'style', 'examples', 'todos'",
                 kind
             )));

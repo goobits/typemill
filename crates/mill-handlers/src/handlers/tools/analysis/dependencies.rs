@@ -21,7 +21,7 @@ use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::protocol::analysis_result::{
     Finding, FindingLocation, Position, Range, SafetyLevel, Severity, Suggestion,
 };
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -1200,14 +1200,14 @@ impl ToolHandler for DependenciesHandler {
         let kind = args
             .get("kind")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'kind' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'kind' parameter"))?;
 
         // Validate kind
         if !matches!(
             kind,
             "imports" | "graph" | "circular" | "coupling" | "cohesion" | "depth"
         ) {
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "Unsupported kind '{}'. Supported: 'imports', 'graph', 'circular', 'coupling', 'cohesion', 'depth'",
                 kind
             )));
@@ -1222,9 +1222,9 @@ impl ToolHandler for DependenciesHandler {
                 let project_root = &context.app_state.project_root;
                 let builder =
                     DependencyGraphBuilder::new(&context.app_state.language_plugins.inner);
-                let graph = builder.build(project_root).map_err(ServerError::Internal)?;
+                let graph = builder.build(project_root).map_err(|e| ServerError::internal(e.to_string()))?;
                 let result = find_circular_dependencies(&graph, None)
-                    .map_err(|e| ServerError::Internal(e.to_string()))?;
+                    .map_err(|e| ServerError::internal(e.to_string()))?;
 
                 let findings = result
                     .cycles

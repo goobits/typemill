@@ -71,11 +71,11 @@ impl<P: LanguagePlugin + 'static> PluginServer<P> {
         let result = match self.dispatch(req.method.as_str(), req.params).await {
             Ok(value) => value,
             Err(e) => {
-                // `PluginApiError` has a `From` impl for `ApiError`, which can be converted
+                // `PluginApiError` has a `From` impl for `MillError`, which can be converted
                 // to the JSON-RPC error format.
-                let api_error: mill_foundation::error::ApiError = e.into();
+                let mill_error: mill_foundation::errors::MillError = e.into();
                 // JSON-RPC error code: -32603 = Internal error
-                return PluginResponse::error(req.id, -32603, &api_error.message);
+                return PluginResponse::error(req.id, -32603, &mill_error.to_string());
             }
         };
 

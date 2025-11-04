@@ -1,6 +1,6 @@
 //! Remote command execution utilities
 
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_workspaces::WorkspaceManager;
 use reqwest;
 use serde_json::json;
@@ -18,7 +18,7 @@ pub async fn execute_in_workspace(
     let workspace = workspace_manager
         .get(user_id, workspace_id)
         .ok_or_else(|| {
-            ServerError::InvalidRequest(format!(
+            ServerError::invalid_request(format!(
                 "Workspace '{}' not found for user '{}'",
                 workspace_id, user_id
             ))
@@ -33,7 +33,7 @@ pub async fn execute_in_workspace(
         .build()
         .map_err(|e| {
             error!(error = %e, "Failed to create HTTP client");
-            ServerError::Internal("HTTP client error".into())
+            ServerError::internal("HTTP client error")
         })?;
 
     // Execute command via agent
@@ -49,7 +49,7 @@ pub async fn execute_in_workspace(
                 error = %e,
                 "Failed to send command to workspace agent"
             );
-            ServerError::Internal(format!("Failed to reach workspace agent: {}", e))
+            ServerError::internal(format!("Failed to reach workspace agent: {}", e))
         })?;
 
     // Check response status
@@ -65,7 +65,7 @@ pub async fn execute_in_workspace(
             error = %error_text,
             "Workspace agent returned error"
         );
-        return Err(ServerError::Internal(format!(
+        return Err(ServerError::internal(format!(
             "Workspace agent error ({}): {}",
             status, error_text
         )));
@@ -74,7 +74,7 @@ pub async fn execute_in_workspace(
     // Parse response
     let result: serde_json::Value = response.json().await.map_err(|e| {
         error!(error = %e, "Failed to parse agent response");
-        ServerError::Internal("Failed to parse agent response".into())
+        ServerError::internal("Failed to parse agent response")
     })?;
 
     // Extract stdout from response
@@ -84,6 +84,6 @@ pub async fn execute_in_workspace(
         .map(|s| s.to_string())
         .ok_or_else(|| {
             error!("Agent response missing stdout field");
-            ServerError::Internal("Invalid agent response format".into())
+            ServerError::internal("Invalid agent response format")
         })
 }

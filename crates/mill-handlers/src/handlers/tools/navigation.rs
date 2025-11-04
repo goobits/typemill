@@ -10,7 +10,7 @@
 use super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::ApiResult as ServerResult;
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_system::PluginRequest;
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -120,7 +120,7 @@ impl NavigationHandler {
     fn convert_tool_call_to_plugin_request(
         &self,
         tool_call: &ToolCall,
-    ) -> Result<PluginRequest, mill_foundation::protocol::ApiError> {
+    ) -> Result<PluginRequest, ServerError> {
         let args = tool_call.arguments.clone().unwrap_or(json!({}));
 
         // Handle workspace-level operations that don't require a file path
@@ -135,8 +135,8 @@ impl NavigationHandler {
                     args.get("filePath")
                         .and_then(|v| v.as_str())
                         .ok_or_else(|| {
-                            mill_foundation::protocol::ApiError::InvalidRequest(
-                                "Missing file_path parameter".into(),
+                            ServerError::invalid_request(
+                                "Missing file_path parameter",
                             )
                         })?;
                 PathBuf::from(file_path_str)
@@ -149,26 +149,26 @@ impl NavigationHandler {
         // Validate that if position parameters are present, they must be valid numbers
         if let Some(line_value) = args.get("line") {
             let line = line_value.as_u64().ok_or_else(|| {
-                mill_foundation::protocol::ApiError::InvalidRequest(format!(
+                ServerError::invalid_request(format!(
                     "Invalid type for 'line' parameter: expected number, got {:?}",
                     line_value
                 ))
             })?;
             let character_value = args.get("character").ok_or_else(|| {
-                mill_foundation::protocol::ApiError::InvalidRequest(
-                    "Missing 'character' parameter (required when 'line' is present)".into(),
+                ServerError::invalid_request(
+                    "Missing 'character' parameter (required when 'line' is present)",
                 )
             })?;
             let character = character_value.as_u64().ok_or_else(|| {
-                mill_foundation::protocol::ApiError::InvalidRequest(format!(
+                ServerError::invalid_request(format!(
                     "Invalid type for 'character' parameter: expected number, got {:?}",
                     character_value
                 ))
             })?;
             request = request.with_position(line.saturating_sub(1) as u32, character as u32);
         } else if args.get("character").is_some() {
-            return Err(mill_foundation::protocol::ApiError::InvalidRequest(
-                "Missing 'line' parameter (required when 'character' is present)".into(),
+            return Err(ServerError::invalid_request(
+                "Missing 'line' parameter (required when 'character' is present)",
             ));
         }
 
@@ -255,7 +255,7 @@ impl ToolHandler for NavigationHandler {
                 "processing_time_ms": response.metadata.processing_time_ms,
                 "cached": response.metadata.cached
             })),
-            Err(err) => Err(mill_foundation::protocol::ApiError::Internal(format!(
+            Err(err) => Err(ServerError::internal(format!(
                 "Plugin request failed: {}",
                 err
             ))),
@@ -275,14 +275,14 @@ impl InternalNavigationHandler {
     fn convert_tool_call_to_plugin_request(
         &self,
         tool_call: &ToolCall,
-    ) -> Result<PluginRequest, mill_foundation::protocol::ApiError> {
+    ) -> Result<PluginRequest, ServerError> {
         let args = tool_call.arguments.clone().unwrap_or(json!({}));
         let file_path_str = args
             .get("filePath")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                mill_foundation::protocol::ApiError::InvalidRequest(
-                    "Missing file_path parameter".into(),
+                ServerError::invalid_request(
+                    "Missing file_path parameter",
                 )
             })?;
 
@@ -317,7 +317,7 @@ impl ToolHandler for InternalNavigationHandler {
                 "processing_time_ms": response.metadata.processing_time_ms,
                 "cached": response.metadata.cached
             })),
-            Err(err) => Err(mill_foundation::protocol::ApiError::Internal(format!(
+            Err(err) => Err(ServerError::internal(format!(
                 "Plugin request failed: {}",
                 err
             ))),

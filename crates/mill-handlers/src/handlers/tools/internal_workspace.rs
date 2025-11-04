@@ -8,7 +8,7 @@
 use super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::Value;
 
 pub struct InternalWorkspaceHandler;
@@ -32,13 +32,13 @@ impl InternalWorkspaceHandler {
             .arguments
             .as_ref()
             .and_then(|v| v.as_object())
-            .ok_or_else(|| ApiError::InvalidRequest("Arguments must be an object".to_string()))?;
+            .ok_or_else(|| ServerError::invalid_request("Arguments must be an object"))?;
 
         let changes = args
             .get("changes")
             .and_then(|v| v.as_object())
             .ok_or_else(|| {
-                ApiError::InvalidRequest("Missing required parameter: changes".to_string())
+                ServerError::invalid_request("Missing required parameter: changes")
             })?;
 
         let dry_run = args
@@ -51,33 +51,33 @@ impl InternalWorkspaceHandler {
         for (file_path, edits_value) in changes {
             let edits_array = edits_value
                 .as_array()
-                .ok_or_else(|| ApiError::InvalidRequest("Edits must be an array".to_string()))?;
+                .ok_or_else(|| ServerError::invalid_request("Edits must be an array"))?;
 
             for edit_value in edits_array {
                 let range = edit_value
                     .get("range")
-                    .ok_or_else(|| ApiError::InvalidRequest("Edit missing range".to_string()))?;
+                    .ok_or_else(|| ServerError::invalid_request("Edit missing range"))?;
 
                 let start_line = range["start"]["line"]
                     .as_u64()
-                    .ok_or_else(|| ApiError::InvalidRequest("Invalid start line".to_string()))?
+                    .ok_or_else(|| ServerError::invalid_request("Invalid start line"))?
                     as u32;
                 let start_char = range["start"]["character"].as_u64().ok_or_else(|| {
-                    ApiError::InvalidRequest("Invalid start character".to_string())
+                    ServerError::invalid_request("Invalid start character")
                 })? as u32;
                 let end_line = range["end"]["line"]
                     .as_u64()
-                    .ok_or_else(|| ApiError::InvalidRequest("Invalid end line".to_string()))?
+                    .ok_or_else(|| ServerError::invalid_request("Invalid end line"))?
                     as u32;
                 let end_char = range["end"]["character"]
                     .as_u64()
-                    .ok_or_else(|| ApiError::InvalidRequest("Invalid end character".to_string()))?
+                    .ok_or_else(|| ServerError::invalid_request("Invalid end character"))?
                     as u32;
 
                 let new_text = edit_value
                     .get("newText")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| ApiError::InvalidRequest("Edit missing newText".to_string()))?
+                    .ok_or_else(|| ServerError::invalid_request("Edit missing newText"))?
                     .to_string();
 
                 all_edits.push(mill_foundation::protocol::TextEdit {
@@ -164,7 +164,7 @@ impl ToolHandler for InternalWorkspaceHandler {
     ) -> ServerResult<Value> {
         match tool_call.name.as_str() {
             "apply_workspace_edit" => self.handle_apply_workspace_edit(context, tool_call).await,
-            _ => Err(ApiError::InvalidRequest(format!(
+            _ => Err(ServerError::invalid_request(format!(
                 "Unknown internal workspace tool: {}",
                 tool_call.name
             ))),

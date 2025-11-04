@@ -1,7 +1,8 @@
 //! An implementation of LspService that communicates with a real LSP server process.
 
 use async_trait::async_trait;
-use mill_foundation::protocol::{ApiError, LspService, Message};
+use mill_foundation::errors::MillError;
+use mill_foundation::protocol::{LspService, Message};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
@@ -24,7 +25,7 @@ pub struct RealLspService {
 
 impl RealLspService {
     /// Create a new RealLspService for the given language extension (e.g., "ts", "py").
-    pub async fn new(extension: &str, root_path: &Path) -> Result<Self, ApiError> {
+    pub async fn new(extension: &str, root_path: &Path) -> Result<Self, MillError> {
         Self::new_with_options(extension, root_path, None).await
     }
 
@@ -33,7 +34,7 @@ impl RealLspService {
         extension: &str,
         root_path: &Path,
         initialization_options: Option<Value>,
-    ) -> Result<Self, ApiError> {
+    ) -> Result<Self, MillError> {
         let cmd = LspSetupHelper::get_lsp_command(extension)?;
 
         // Augment PATH to include cargo bin and NVM node bin
@@ -79,7 +80,7 @@ impl RealLspService {
             .current_dir(root_path);
 
         let mut child = command.spawn().map_err(|e| {
-            ApiError::lsp(format!(
+            MillError::lsp(format!(
                 "Failed to spawn LSP server for {}: {}",
                 extension, e
             ))
@@ -88,11 +89,11 @@ impl RealLspService {
         let stdin = child
             .stdin
             .take()
-            .ok_or_else(|| ApiError::lsp("Failed to capture stdin of LSP server".to_string()))?;
+            .ok_or_else(|| MillError::lsp("Failed to capture stdin of LSP server".to_string()))?;
         let stdout = child
             .stdout
             .take()
-            .ok_or_else(|| ApiError::lsp("Failed to capture stdout of LSP server".to_string()))?;
+            .ok_or_else(|| MillError::lsp("Failed to capture stdout of LSP server".to_string()))?;
 
         let responses = Arc::new(Mutex::new(HashMap::new()));
         let responses_clone = responses.clone();
@@ -228,7 +229,7 @@ impl RealLspService {
     }
 
     /// Send LSP initialize request
-    async fn initialize(&self, root_path: &Path) -> Result<(), ApiError> {
+    async fn initialize(&self, root_path: &Path) -> Result<(), MillError> {
         let mut init_params = serde_json::json!({
             "processId": std::process::id(),
             "rootUri": format!("file://{}", root_path.display()),
@@ -260,7 +261,7 @@ impl RealLspService {
         // Send initialize request
         let _response = timeout(Duration::from_secs(10), self.request(init_message))
             .await
-            .map_err(|_| ApiError::lsp("LSP initialization timed out".to_string()))??;
+            .map_err(|_| MillError::lsp("LSP initialization timed out".to_string()))??;
 
         // Send initialized notification
         let initialized_msg = serde_json::json!({
@@ -275,7 +276,7 @@ impl RealLspService {
         self.stdin_tx
             .send(lsp_msg)
             .await
-            .map_err(|_| ApiError::lsp("Failed to send initialized notification".to_string()))?;
+            .map_err(|_| MillError::lsp("Failed to send initialized notification".to_string()))?;
 
         Ok(())
     }
@@ -283,11 +284,11 @@ impl RealLspService {
 
 #[async_trait]
 impl LspService for RealLspService {
-    async fn request(&self, message: Message) -> Result<Message, ApiError> {
+    async fn request(&self, message: Message) -> Result<Message, MillError> {
         let id = message
             .id
             .clone()
-            .ok_or_else(|| ApiError::lsp("Request has no ID".to_string()))?;
+            .ok_or_else(|| MillError::lsp("Request has no ID".to_string()))?;
 
         // Convert to LSP JSON-RPC format
         let lsp_request = serde_json::json!({
@@ -298,7 +299,7 @@ impl LspService for RealLspService {
         });
 
         let request_str = serde_json::to_string(&lsp_request)
-            .map_err(|e| ApiError::lsp(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| MillError::lsp(format!("Failed to serialize request: {}", e)))?;
 
         let lsp_message = format!(
             "Content-Length: {}\r\n\r\n{}",
@@ -309,7 +310,7 @@ impl LspService for RealLspService {
         self.stdin_tx
             .send(lsp_message)
             .await
-            .map_err(|e| ApiError::lsp(format!("Failed to write to LSP stdin: {}", e)))?;
+            .map_err(|e| MillError::lsp(format!("Failed to write to LSP stdin: {}", e)))?;
 
         // Wait for response with timeout
         let timeout_duration = Duration::from_secs(10);
@@ -322,19 +323,19 @@ impl LspService for RealLspService {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
-        Err(ApiError::lsp("LSP request timed out".to_string()))
+        Err(MillError::lsp("LSP request timed out".to_string()))
     }
 
     async fn is_available(&self, extension: &str) -> bool {
         LspSetupHelper::get_lsp_command(extension).is_ok()
     }
 
-    async fn restart_servers(&self, _extensions: Option<Vec<String>>) -> Result<(), ApiError> {
+    async fn restart_servers(&self, _extensions: Option<Vec<String>>) -> Result<(), MillError> {
         // This would involve killing and restarting the child process.
         Ok(())
     }
 
-    async fn notify_file_opened(&self, _file_path: &Path) -> Result<(), ApiError> {
+    async fn notify_file_opened(&self, _file_path: &Path) -> Result<(), MillError> {
         // Implementation for textDocument/didOpen notification
         Ok(())
     }

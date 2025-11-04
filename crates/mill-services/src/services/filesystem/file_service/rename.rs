@@ -1,7 +1,9 @@
 use super::FileService;
 use crate::services::filesystem::git_service::GitService;
 use mill_foundation::core::dry_run::DryRunnable;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::MillError as ServerError;
+
+type ServerResult<T> = Result<T, ServerError>;
 use serde_json::{json, Value};
 use std::path::Path;
 use tokio::fs;
@@ -48,8 +50,8 @@ impl FileService {
 
             tokio::task::spawn_blocking(move || GitService::git_mv(&old_clone, &new_clone))
                 .await
-                .map_err(|e| ServerError::Internal(format!("Task join error: {}", e)))?
-                .map_err(|e| ServerError::Internal(format!("git mv failed: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Task join error: {}", e)))?
+                .map_err(|e| ServerError::internal(format!("git mv failed: {}", e)))?;
         } else {
             // Fallback to filesystem rename
             debug!(
@@ -62,13 +64,13 @@ impl FileService {
             // Ensure parent directory exists
             if let Some(parent) = new.parent() {
                 fs::create_dir_all(parent).await.map_err(|e| {
-                    ServerError::Internal(format!("Failed to create parent directory: {}", e))
+                    ServerError::internal(format!("Failed to create parent directory: {}", e))
                 })?;
             }
 
             fs::rename(old, new)
                 .await
-                .map_err(|e| ServerError::Internal(format!("Failed to rename file: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to rename file: {}", e)))?;
         }
 
         Ok(())
@@ -90,7 +92,7 @@ impl FileService {
         if dry_run {
             // Preview mode - just return what would happen
             if !old_abs.exists() {
-                return Err(ServerError::NotFound(format!(
+                return Err(ServerError::not_found(format!(
                     "Source file does not exist: {:?}",
                     old_abs
                 )));
@@ -99,8 +101,8 @@ impl FileService {
             // Allow case-only renames on case-insensitive filesystems
             // Only error if new path exists AND points to a different file
             if new_abs.exists() && !self.is_same_file(&old_abs, &new_abs).await? {
-                return Err(ServerError::AlreadyExists(format!(
-                    "Destination file already exists: {:?}",
+                return Err(ServerError::invalid_request(format!(
+                    "Resource already exists: Destination file already exists: {:?}",
                     new_abs
                 )));
             }
@@ -129,7 +131,7 @@ impl FileService {
         } else {
             // Execution mode - perform rename and update imports
             if !old_abs.exists() {
-                return Err(ServerError::NotFound(format!(
+                return Err(ServerError::not_found(format!(
                     "Source file does not exist: {:?}",
                     old_abs
                 )));
@@ -138,8 +140,8 @@ impl FileService {
             // Allow case-only renames on case-insensitive filesystems
             // Only error if new path exists AND points to a different file
             if new_abs.exists() && !self.is_same_file(&old_abs, &new_abs).await? {
-                return Err(ServerError::AlreadyExists(format!(
-                    "Destination file already exists: {:?}",
+                return Err(ServerError::invalid_request(format!(
+                    "Resource already exists: Destination file already exists: {:?}",
                     new_abs
                 )));
             }
@@ -153,7 +155,7 @@ impl FileService {
                 .await
                 .map_err(|e| {
                     warn!(error = %e, "Failed to find affected files");
-                    ServerError::Internal(format!("Failed to find affected files: {}", e))
+                    ServerError::internal(format!("Failed to find affected files: {}", e))
                 })?;
 
             info!(
@@ -192,7 +194,7 @@ impl FileService {
             // Apply the edit plan to update imports
             let edit_result = self.apply_edit_plan(&edit_plan).await.map_err(|e| {
                 warn!(error = %e, "Failed to apply import update edits");
-                ServerError::Internal(format!("Failed to apply import updates: {}", e))
+                ServerError::internal(format!("Failed to apply import updates: {}", e))
             })?;
 
             info!(
@@ -239,15 +241,15 @@ impl FileService {
         if dry_run {
             // Preview mode - just return what would happen
             if !old_abs_dir.exists() {
-                return Err(ServerError::NotFound(format!(
+                return Err(ServerError::not_found(format!(
                     "Source directory does not exist: {:?}",
                     old_abs_dir
                 )));
             }
 
             if new_abs_dir.exists() {
-                return Err(ServerError::AlreadyExists(format!(
-                    "Destination directory already exists: {:?}",
+                return Err(ServerError::invalid_request(format!(
+                    "Resource already exists: Destination directory already exists: {:?}",
                     new_abs_dir
                 )));
             }
@@ -287,15 +289,15 @@ impl FileService {
         } else {
             // Execution mode - perform directory rename and update imports
             if !old_abs_dir.exists() {
-                return Err(ServerError::NotFound(format!(
+                return Err(ServerError::not_found(format!(
                     "Source directory does not exist: {:?}",
                     old_abs_dir
                 )));
             }
 
             if new_abs_dir.exists() {
-                return Err(ServerError::AlreadyExists(format!(
-                    "Destination directory already exists: {:?}",
+                return Err(ServerError::invalid_request(format!(
+                    "Resource already exists: Destination directory already exists: {:?}",
                     new_abs_dir
                 )));
             }

@@ -5,7 +5,7 @@
 
 use lsp_types::Position;
 use mill_foundation::planning::{MovePlan, PlanMetadata};
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::{json, Value};
 use std::path::Path;
 use tracing::{debug, error, info, warn};
@@ -43,7 +43,7 @@ pub async fn plan_symbol_move(
                 function = "plan_symbol_move",
                 "File has no extension"
             );
-            ServerError::InvalidRequest(format!("File has no extension: {}", target_path))
+            ServerError::invalid_request(format!("File has no extension: {}", target_path))
         })?;
 
     debug!(
@@ -106,7 +106,7 @@ async fn try_lsp_symbol_move(
             function = "try_lsp_symbol_move",
             "LSP adapter not initialized"
         );
-        ServerError::Internal("LSP adapter not initialized".into())
+        ServerError::internal("LSP adapter not initialized")
     })?;
 
     debug!(
@@ -124,7 +124,7 @@ async fn try_lsp_symbol_move(
             function = "try_lsp_symbol_move",
             "No LSP server configured for extension"
         );
-        ServerError::Unsupported(format!(
+        ServerError::not_supported(format!(
             "No LSP server configured for extension {}: {}",
             extension, e
         ))
@@ -141,7 +141,7 @@ async fn try_lsp_symbol_move(
                 function = "try_lsp_symbol_move",
                 "Invalid file path for URI conversion"
             );
-            ServerError::Internal(format!("Invalid file path: {}", abs_path.display()))
+            ServerError::internal(format!("Invalid file path: {}", abs_path.display()))
         })?
         .to_string();
 
@@ -163,7 +163,7 @@ async fn try_lsp_symbol_move(
                 function = "try_lsp_symbol_move",
                 "Invalid destination path for URI conversion"
             );
-            ServerError::Internal(format!(
+            ServerError::internal(format!(
                 "Invalid destination path: {}",
                 abs_dest_path.display()
             ))
@@ -214,7 +214,7 @@ async fn try_lsp_symbol_move(
                 function = "try_lsp_symbol_move",
                 "LSP textDocument/codeAction request failed"
             );
-            ServerError::Internal(format!("LSP move failed: {}", e))
+            ServerError::internal(format!("LSP move failed: {}", e))
         })?;
 
     debug!(
@@ -231,7 +231,7 @@ async fn try_lsp_symbol_move(
             function = "try_lsp_symbol_move",
             "Failed to parse LSP code actions from response"
         );
-        ServerError::Internal(format!("Failed to parse LSP code actions: {}", e))
+        ServerError::internal(format!("Failed to parse LSP code actions: {}", e))
     })?;
 
     info!(
@@ -256,7 +256,7 @@ async fn try_lsp_symbol_move(
                 function = "try_lsp_symbol_move",
                 "No move code action found in LSP response"
             );
-            ServerError::Unsupported("No move code action available from LSP".into())
+            ServerError::not_supported("No move code action available from LSP")
         })?;
 
     debug!(
@@ -279,7 +279,7 @@ async fn try_lsp_symbol_move(
                 function = "try_lsp_symbol_move",
                 "Failed to parse WorkspaceEdit from code action"
             );
-            ServerError::Internal(format!("Failed to parse WorkspaceEdit: {}", e))
+            ServerError::internal(format!("Failed to parse WorkspaceEdit: {}", e))
         })?
     } else if move_action.get("command").is_some() && !move_action["command"].is_null() {
         // Case B: A command needs to be executed
@@ -296,7 +296,7 @@ async fn try_lsp_symbol_move(
                     function = "try_lsp_symbol_move",
                     "Failed to parse Command from code action"
                 );
-                ServerError::Internal(format!("Failed to parse Command: {}", e))
+                ServerError::internal(format!("Failed to parse Command: {}", e))
             })?;
 
         debug!(
@@ -320,7 +320,7 @@ async fn try_lsp_symbol_move(
                 function = "try_lsp_symbol_move",
                 "Failed to serialize ExecuteCommandParams"
             );
-            ServerError::Internal(format!("Failed to serialize ExecuteCommandParams: {}", e))
+            ServerError::internal(format!("Failed to serialize ExecuteCommandParams: {}", e))
         })?;
 
         // Send the command and try to interpret the result as a WorkspaceEdit
@@ -335,7 +335,7 @@ async fn try_lsp_symbol_move(
                     function = "try_lsp_symbol_move",
                     "LSP workspace/executeCommand request failed"
                 );
-                ServerError::Internal(format!("executeCommand failed: {}", e))
+                ServerError::internal(format!("executeCommand failed: {}", e))
             })?;
 
         debug!(
@@ -351,7 +351,7 @@ async fn try_lsp_symbol_move(
                 function = "try_lsp_symbol_move",
                 "Failed to parse WorkspaceEdit from executeCommand result"
             );
-            ServerError::Internal(format!("Failed to parse WorkspaceEdit: {}", e))
+            ServerError::internal(format!("Failed to parse WorkspaceEdit: {}", e))
         })?
     } else {
         // No actionable information found
@@ -360,8 +360,8 @@ async fn try_lsp_symbol_move(
             function = "try_lsp_symbol_move",
             "CodeAction contained neither an edit nor a command"
         );
-        return Err(ServerError::Unsupported(
-            "CodeAction contained neither an edit nor a command.".into(),
+        return Err(ServerError::not_supported(
+            "CodeAction contained neither an edit nor a command.",
         ));
     };
 
@@ -429,7 +429,7 @@ async fn ast_symbol_move_fallback(
         function = "ast_symbol_move_fallback",
         "AST-based symbol move not yet implemented"
     );
-    Err(ServerError::Unsupported(
-        "AST-based symbol move not yet implemented. LSP server required.".into(),
+    Err(ServerError::not_supported(
+        "AST-based symbol move not yet implemented. LSP server required.",
     ))
 }

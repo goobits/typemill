@@ -9,8 +9,9 @@ use lsp_types::{
     ResourceOp, TextDocumentEdit, TextEdit as LspTextEdit,
 };
 use mill_foundation::planning::{MovePlan, PlanMetadata, PlanSummary};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, EditPlan, TextEdit as ProtocolTextEdit,
+    EditPlan, TextEdit as ProtocolTextEdit,
 };
 use std::collections::HashMap;
 use std::path::Path;
@@ -117,18 +118,18 @@ fn build_workspace_edit(
 ) -> ServerResult<lsp_types::WorkspaceEdit> {
     // Start with the rename operation
     let old_uri = url::Url::from_file_path(old_path)
-        .map_err(|_| ServerError::InvalidRequest("Invalid source file path".into()))?;
+        .map_err(|_| ServerError::invalid_request("Invalid source file path"))?;
     let new_uri = url::Url::from_file_path(new_path)
-        .map_err(|_| ServerError::InvalidRequest("Invalid destination file path".into()))?;
+        .map_err(|_| ServerError::invalid_request("Invalid destination file path"))?;
 
     let mut document_changes =
         vec![DocumentChangeOperation::Op(ResourceOp::Rename(
             RenameFile {
                 old_uri: old_uri.as_str().parse().map_err(|e| {
-                    ServerError::Internal(format!("Failed to parse old URI: {}", e))
+                    ServerError::internal(format!("Failed to parse old URI: {}", e))
                 })?,
                 new_uri: new_uri.as_str().parse().map_err(|e| {
-                    ServerError::Internal(format!("Failed to parse new URI: {}", e))
+                    ServerError::internal(format!("Failed to parse new URI: {}", e))
                 })?,
                 options: None,
                 annotation_id: None,
@@ -142,7 +143,7 @@ fn build_workspace_edit(
         if let Some(ref file_path) = edit.file_path {
             let path = Path::new(file_path);
             let file_uri = url::Url::from_file_path(path).map_err(|_| {
-                ServerError::Internal(format!("Invalid file path for edit: {}", file_path))
+                ServerError::internal(format!("Invalid file path for edit: {}", file_path))
             })?;
 
             let lsp_edit = LspTextEdit {
@@ -162,7 +163,7 @@ fn build_workspace_edit(
             files_with_edits
                 .entry(
                     file_uri.as_str().parse().map_err(|e| {
-                        ServerError::Internal(format!("Failed to parse URI: {}", e))
+                        ServerError::internal(format!("Failed to parse URI: {}", e))
                     })?,
                 )
                 .or_insert_with(Vec::new)

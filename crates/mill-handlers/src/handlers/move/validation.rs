@@ -5,7 +5,7 @@
 
 use lsp_types::{Uri, WorkspaceEdit};
 use mill_foundation::planning::{PlanSummary, PlanWarning};
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -23,7 +23,7 @@ use crate::handlers::tools::ToolHandlerContext;
 /// across platforms and handles paths with spaces correctly (via URL decoding).
 fn uri_to_path_string(uri: &Uri) -> Result<String, ServerError> {
     urlencoding::decode(uri.path().as_str())
-        .map_err(|e| ServerError::Internal(format!("Failed to decode URI path: {}", e)))
+        .map_err(|e| ServerError::internal(format!("Failed to decode URI path: {}", e)))
         .map(|decoded| decoded.into_owned())
 }
 

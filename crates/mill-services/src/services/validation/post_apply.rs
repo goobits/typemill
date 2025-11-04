@@ -3,7 +3,9 @@
 //! Executes external validation commands (e.g., "cargo check") after applying
 //! a refactoring plan to verify the changes didn't break the codebase.
 
-use mill_foundation::protocol::{ApiError, ApiResult as ServerResult};
+use mill_foundation::errors::MillError;
+
+type ServerResult<T> = Result<T, MillError>;
 use mill_foundation::validation::{ValidationConfig, ValidationResult};
 use std::time::Instant;
 use tokio::process::Command;
@@ -71,12 +73,14 @@ impl PostApplyValidator {
         )
         .await
         .map_err(|_| {
-            ApiError::Internal(format!(
+            MillError::internal(format!(
                 "Validation command timed out after {} seconds",
                 config.timeout_seconds
             ))
         })?
-        .map_err(|e| ApiError::Internal(format!("Failed to execute validation command: {}", e)))?;
+        .map_err(|e| MillError::internal(format!(
+            "Failed to execute validation command: {}", e
+        )))?;
 
         let duration_ms = start.elapsed().as_millis() as u64;
         let exit_code = output.status.code().unwrap_or(-1);

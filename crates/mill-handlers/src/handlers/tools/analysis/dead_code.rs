@@ -19,7 +19,7 @@ use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::protocol::analysis_result::{
     Finding, FindingLocation, Position, Range, SafetyLevel, Severity, Suggestion,
 };
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_api::ParsedSource;
 use regex::Regex;
 use serde_json::{json, Value};
@@ -1603,7 +1603,7 @@ impl DeadCodeHandler {
 
         // Extract workspace path from scope
         let workspace_path_str = scope_param.path.as_ref().ok_or_else(|| {
-            ServerError::InvalidRequest(
+            ServerError::invalid_request(
                 "Missing path for workspace scope. Specify scope.path with workspace directory"
                     .into(),
             )
@@ -1653,7 +1653,7 @@ impl DeadCodeHandler {
         let lsp_adapter = lsp_adapter_lock
             .as_ref()
             .ok_or_else(|| {
-                ServerError::Internal(
+                ServerError::internal(
                     "LSP adapter not initialized. Workspace scope requires LSP integration."
                         .to_string(),
                 )
@@ -1669,7 +1669,7 @@ impl DeadCodeHandler {
         let report = analyzer
             .analyze(lsp_provider, workspace_path, config)
             .await
-            .map_err(|e| ServerError::Internal(format!("LSP analysis failed: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("LSP analysis failed: {}", e)))?;
 
         info!(
             workspace_path = %workspace_path_str,
@@ -1750,7 +1750,7 @@ impl DeadCodeHandler {
         );
 
         serde_json::to_value(result)
-            .map_err(|e| ServerError::Internal(format!("Failed to serialize result: {}", e)))
+            .map_err(|e| ServerError::internal(format!("Failed to serialize result: {}", e)))
     }
 
     /// Fallback handler for when LSP feature is not enabled
@@ -1762,7 +1762,7 @@ impl DeadCodeHandler {
         _scope_param: &super::engine::ScopeParam,
         _kind: &str,
     ) -> ServerResult<Value> {
-        Err(ServerError::Unsupported(
+        Err(ServerError::not_supported(
             "Workspace scope for dead code analysis requires the 'analysis-dead-code' feature to be enabled. \
              File-level analysis is available without this feature.".to_string(),
         ))
@@ -1849,7 +1849,7 @@ impl DeadCodeHandler {
         let start_time = Instant::now();
 
         let workspace_path_str = scope_param.path.as_ref().ok_or_else(|| {
-            ServerError::InvalidRequest("Missing path for workspace scope.".into())
+            ServerError::invalid_request("Missing path for workspace scope.")
         })?;
 
         let workspace_path = Path::new(workspace_path_str);
@@ -1875,7 +1875,7 @@ impl DeadCodeHandler {
         let report = analyzer
             .analyze(lsp_provider, workspace_path, config)
             .await
-            .map_err(|e| ServerError::Internal(format!("LSP analysis failed: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("LSP analysis failed: {}", e)))?;
 
         let scope = AnalysisScope {
             scope_type: "workspace".to_string(),
@@ -1928,7 +1928,7 @@ impl DeadCodeHandler {
         result.finalize(start_time.elapsed().as_millis() as u64);
 
         serde_json::to_value(result)
-            .map_err(|e| ServerError::Internal(format!("Failed to serialize result: {}", e)))
+            .map_err(|e| ServerError::internal(format!("Failed to serialize result: {}", e)))
     }
 }
 
@@ -1953,7 +1953,7 @@ impl ToolHandler for DeadCodeHandler {
         let kind = args
             .get("kind")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'kind' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'kind' parameter"))?;
 
         // Validate kind
         let is_valid = match kind {
@@ -1969,7 +1969,7 @@ impl ToolHandler for DeadCodeHandler {
             let supported = "'unused_imports', 'unused_symbols', 'unreachable_code', 'unused_parameters', 'unused_types', 'unused_variables', 'deep'".to_string();
             #[cfg(not(feature = "analysis-deep-dead-code"))]
             let supported = "'unused_imports', 'unused_symbols', 'unreachable_code', 'unused_parameters', 'unused_types', 'unused_variables'".to_string();
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "Unsupported kind '{}'. Supported: {}",
                 kind, supported
             )));
@@ -2012,7 +2012,7 @@ impl ToolHandler for DeadCodeHandler {
                         .extension()
                         .and_then(|ext| ext.to_str())
                         .ok_or_else(|| {
-                            ServerError::InvalidRequest(format!(
+                            ServerError::invalid_request(format!(
                                 "File has no extension: {}",
                                 file_path
                             ))
@@ -2023,20 +2023,20 @@ impl ToolHandler for DeadCodeHandler {
                         .read_file(file_path_obj)
                         .await
                         .map_err(|e| {
-                            ServerError::Internal(format!("Failed to read file: {}", e))
+                            ServerError::internal(format!("Failed to read file: {}", e))
                         })?;
                     let plugin = context
                         .app_state
                         .language_plugins
                         .get_plugin(extension)
                         .ok_or_else(|| {
-                            ServerError::Unsupported(format!(
+                            ServerError::not_supported(format!(
                                 "No language plugin found for extension: {}",
                                 extension
                             ))
                         })?;
                     let parsed_source = plugin.parse(&content).await.map_err(|e| {
-                        ServerError::Internal(format!("Failed to parse file: {}", e))
+                        ServerError::internal(format!("Failed to parse file: {}", e))
                     })?;
                     let language = plugin.metadata().name;
                     let complexity_report = mill_ast::complexity::analyze_file_complexity(
@@ -2130,7 +2130,7 @@ impl ToolHandler for DeadCodeHandler {
                     result.finalize(start_time.elapsed().as_millis() as u64);
 
                     serde_json::to_value(result).map_err(|e| {
-                        ServerError::Internal(format!("Failed to serialize result: {}", e))
+                        ServerError::internal(format!("Failed to serialize result: {}", e))
                     })
                 }
                 "unreachable_code" | "unused_parameters" | "unused_types" | "unused_variables" => {
@@ -2151,7 +2151,7 @@ impl ToolHandler for DeadCodeHandler {
                         .extension()
                         .and_then(|ext| ext.to_str())
                         .ok_or_else(|| {
-                            ServerError::InvalidRequest(format!(
+                            ServerError::invalid_request(format!(
                                 "File has no extension: {}",
                                 file_path
                             ))
@@ -2162,20 +2162,20 @@ impl ToolHandler for DeadCodeHandler {
                         .read_file(file_path_obj)
                         .await
                         .map_err(|e| {
-                            ServerError::Internal(format!("Failed to read file: {}", e))
+                            ServerError::internal(format!("Failed to read file: {}", e))
                         })?;
                     let plugin = context
                         .app_state
                         .language_plugins
                         .get_plugin(extension)
                         .ok_or_else(|| {
-                            ServerError::Unsupported(format!(
+                            ServerError::not_supported(format!(
                                 "No language plugin found for extension: {}",
                                 extension
                             ))
                         })?;
                     let parsed_source = plugin.parse(&content).await.map_err(|e| {
-                        ServerError::Internal(format!("Failed to parse file: {}", e))
+                        ServerError::internal(format!("Failed to parse file: {}", e))
                     })?;
                     let language = plugin.metadata().name;
                     let complexity_report = mill_ast::complexity::analyze_file_complexity(
@@ -2271,11 +2271,11 @@ impl ToolHandler for DeadCodeHandler {
                     result.finalize(start_time.elapsed().as_millis() as u64);
 
                     serde_json::to_value(result).map_err(|e| {
-                        ServerError::Internal(format!("Failed to serialize result: {}", e))
+                        ServerError::internal(format!("Failed to serialize result: {}", e))
                     })
                 }
                 _ => {
-                    return Err(ServerError::InvalidRequest(format!(
+                    return Err(ServerError::invalid_request(format!(
                         "Kind '{}' is not supported for file-scope analysis. Use scope_type='workspace' or choose a different kind.",
                         kind
                     )));

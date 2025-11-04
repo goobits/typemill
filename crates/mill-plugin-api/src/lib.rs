@@ -15,7 +15,6 @@
 //! - Refactoring operations
 
 use async_trait::async_trait;
-use mill_foundation::error::ApiError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
@@ -148,36 +147,6 @@ impl PluginApiError {
     }
 }
 
-/// Convert PluginApiError to ApiError for MCP responses
-impl From<PluginApiError> for ApiError {
-    fn from(err: PluginApiError) -> Self {
-        use mill_foundation::error::error_codes::*;
-
-        match err {
-            PluginApiError::Parse { message, location } => {
-                let mut error = ApiError::new(E1008_INVALID_DATA, message);
-                if let Some(loc) = location {
-                    error = error.details(serde_json::json!({
-                        "line": loc.line,
-                        "column": loc.column
-                    }));
-                }
-                error
-            }
-            PluginApiError::Manifest { message } => ApiError::new(E1008_INVALID_DATA, message),
-            PluginApiError::NotSupported { operation } => ApiError::new(
-                E1007_NOT_SUPPORTED,
-                format!("Operation not supported: {}", operation),
-            ),
-            PluginApiError::InvalidInput { message } => {
-                ApiError::new(E1001_INVALID_REQUEST, message)
-            }
-            PluginApiError::Internal { message } => {
-                ApiError::new(E1000_INTERNAL_SERVER_ERROR, message)
-            }
-        }
-    }
-}
 
 // ============================================================================
 // Core Data Types
@@ -1077,5 +1046,327 @@ mod tests {
             refactoring.is_none(),
             "Should return None when capability not present"
         );
+    }
+}
+
+// ============================================================================
+// Conversion to MillError
+// ============================================================================
+
+impl From<PluginApiError> for mill_foundation::errors::MillError {
+    fn from(err: PluginApiError) -> Self {
+        match err {
+            PluginApiError::Parse { message, location } => {
+                let mut error = mill_foundation::errors::MillError::Parse {
+                    message,
+                    file: None,
+                    line: None,
+                    column: None,
+                };
+
+                // Add location information if present
+                if let mill_foundation::errors::MillError::Parse { line, column, .. } = &mut error {
+                    if let Some(loc) = location {
+                        *line = Some(loc.line);
+                        *column = Some(loc.column);
+                    }
+                }
+
+                error
+            }
+            PluginApiError::Manifest { message } => mill_foundation::errors::MillError::Manifest {
+                message,
+                file: None,
+            },
+            PluginApiError::NotSupported { operation } => {
+                mill_foundation::errors::MillError::NotSupported {
+                    operation,
+                    reason: None,
+                }
+            }
+            PluginApiError::InvalidInput { message } => {
+                mill_foundation::errors::MillError::InvalidData {
+                    message,
+                    field: None,
+                }
+            }
+            PluginApiError::Internal { message } => mill_foundation::errors::MillError::Internal {
+                message,
+                source: None,
+            },
+        }
+    }
+}
+
+// ============================================================================
+// Conversion from MillError (for `?` operator in plugins)
+// ============================================================================
+
+impl From<mill_foundation::errors::MillError> for PluginApiError {
+    fn from(err: mill_foundation::errors::MillError) -> Self {
+        use mill_foundation::errors::MillError;
+
+        match err {
+            // Direct mappings
+            MillError::Parse { message, .. } => PluginApiError::Parse {
+                message,
+                location: None,
+            },
+            MillError::Manifest { message, .. } => PluginApiError::Manifest { message },
+            MillError::NotSupported { operation, .. } => {
+                PluginApiError::NotSupported { operation }
+            }
+            MillError::InvalidData { message, .. } => PluginApiError::InvalidInput { message },
+
+            // All other variants map to Internal
+            MillError::Config { message, .. } => PluginApiError::Internal { message },
+            MillError::Bootstrap { message, .. } => PluginApiError::Internal { message },
+            MillError::NotFound { resource, .. } => {
+                PluginApiError::Internal {
+                    message: format!("Resource not found: {}", resource),
+                }
+            }
+            MillError::AlreadyExists { resource, .. } => {
+                PluginApiError::Internal {
+                    message: format!("Resource already exists: {}", resource),
+                }
+            }
+            MillError::Io { message, .. } => PluginApiError::Internal { message },
+            MillError::Validation { message, .. } => PluginApiError::InvalidInput { message },
+            MillError::Json { message, .. } => PluginApiError::Parse {
+                message,
+                location: None,
+            },
+            MillError::Serialization { message, .. } => PluginApiError::Internal { message },
+            MillError::PermissionDenied { operation, .. } => {
+                PluginApiError::Internal {
+                    message: format!("Permission denied: {}", operation),
+                }
+            }
+            MillError::Timeout { operation, .. } => {
+                PluginApiError::Internal {
+                    message: format!("Timeout during: {}", operation),
+                }
+            }
+            MillError::Lsp { message, .. } => PluginApiError::Internal { message },
+            MillError::Ast { message, .. } => PluginApiError::Parse {
+                message,
+                location: None,
+            },
+            MillError::UnsupportedSyntax { feature, .. } => {
+                PluginApiError::NotSupported { operation: feature }
+            }
+            MillError::PluginNotFound { name, .. } => {
+                PluginApiError::Internal {
+                    message: format!("Plugin not found: {}", name),
+                }
+            }
+            MillError::Plugin { message, .. } => PluginApiError::Internal { message },
+            MillError::Connection { message, .. } => PluginApiError::Internal { message },
+            MillError::Transport { message, .. } => PluginApiError::Internal { message },
+            MillError::Auth { message, .. } => PluginApiError::Internal { message },
+            MillError::InvalidRequest { message, .. } => PluginApiError::InvalidInput { message },
+            MillError::Analysis { message, .. } => PluginApiError::Internal { message },
+            MillError::Transformation { message, .. } => PluginApiError::Internal { message },
+            MillError::Runtime { message, .. } => PluginApiError::Internal { message },
+            MillError::Internal { message, .. } => PluginApiError::Internal { message },
+
+            // Wildcard pattern for any future MillError variants (MillError is #[non_exhaustive])
+            _ => PluginApiError::Internal {
+                message: err.to_string(),
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod error_conversion_tests {
+    use super::*;
+    use mill_foundation::errors::MillError;
+
+    #[test]
+    fn test_parse_error_conversion() {
+        let plugin_err = PluginApiError::parse("syntax error");
+        let mill_err: MillError = plugin_err.into();
+        
+        match mill_err {
+            MillError::Parse { message, .. } => {
+                assert_eq!(message, "syntax error");
+            }
+            _ => panic!("Expected Parse error"),
+        }
+    }
+
+    #[test]
+    fn test_parse_error_with_location_conversion() {
+        let plugin_err = PluginApiError::parse_at("syntax error", 10, 5);
+        let mill_err: MillError = plugin_err.into();
+        
+        match mill_err {
+            MillError::Parse { message, line, column, .. } => {
+                assert_eq!(message, "syntax error");
+                assert_eq!(line, Some(10));
+                assert_eq!(column, Some(5));
+            }
+            _ => panic!("Expected Parse error with location"),
+        }
+    }
+
+    #[test]
+    fn test_manifest_error_conversion() {
+        let plugin_err = PluginApiError::manifest("invalid manifest");
+        let mill_err: MillError = plugin_err.into();
+        
+        match mill_err {
+            MillError::Manifest { message, .. } => {
+                assert_eq!(message, "invalid manifest");
+            }
+            _ => panic!("Expected Manifest error"),
+        }
+    }
+
+    #[test]
+    fn test_not_supported_conversion() {
+        let plugin_err = PluginApiError::not_supported("refactor");
+        let mill_err: MillError = plugin_err.into();
+        
+        match mill_err {
+            MillError::NotSupported { operation, .. } => {
+                assert_eq!(operation, "refactor");
+            }
+            _ => panic!("Expected NotSupported error"),
+        }
+    }
+
+    #[test]
+    fn test_invalid_input_conversion() {
+        let plugin_err = PluginApiError::invalid_input("missing param");
+        let mill_err: MillError = plugin_err.into();
+        
+        match mill_err {
+            MillError::InvalidData { message, .. } => {
+                assert_eq!(message, "missing param");
+            }
+            _ => panic!("Expected InvalidData error"),
+        }
+    }
+
+    #[test]
+    fn test_internal_error_conversion() {
+        let plugin_err = PluginApiError::internal("unexpected state");
+        let mill_err: MillError = plugin_err.into();
+
+        match mill_err {
+            MillError::Internal { message, .. } => {
+                assert_eq!(message, "unexpected state");
+            }
+            _ => panic!("Expected Internal error"),
+        }
+    }
+
+    // Tests for MillError -> PluginApiError conversion
+    #[test]
+    fn test_mill_parse_to_plugin() {
+        let mill_err = MillError::parse("syntax error");
+        let plugin_err: PluginApiError = mill_err.into();
+
+        match plugin_err {
+            PluginApiError::Parse { message, .. } => {
+                assert_eq!(message, "syntax error");
+            }
+            _ => panic!("Expected Parse error"),
+        }
+    }
+
+    #[test]
+    fn test_mill_manifest_to_plugin() {
+        let mill_err = MillError::manifest("invalid manifest");
+        let plugin_err: PluginApiError = mill_err.into();
+
+        match plugin_err {
+            PluginApiError::Manifest { message } => {
+                assert_eq!(message, "invalid manifest");
+            }
+            _ => panic!("Expected Manifest error"),
+        }
+    }
+
+    #[test]
+    fn test_mill_not_supported_to_plugin() {
+        let mill_err = MillError::not_supported("operation");
+        let plugin_err: PluginApiError = mill_err.into();
+
+        match plugin_err {
+            PluginApiError::NotSupported { operation } => {
+                assert_eq!(operation, "operation");
+            }
+            _ => panic!("Expected NotSupported error"),
+        }
+    }
+
+    #[test]
+    fn test_mill_invalid_data_to_plugin() {
+        let mill_err = MillError::invalid_data("bad data");
+        let plugin_err: PluginApiError = mill_err.into();
+
+        match plugin_err {
+            PluginApiError::InvalidInput { message } => {
+                assert_eq!(message, "bad data");
+            }
+            _ => panic!("Expected InvalidInput error"),
+        }
+    }
+
+    #[test]
+    fn test_mill_validation_to_plugin() {
+        let mill_err = MillError::validation("validation failed");
+        let plugin_err: PluginApiError = mill_err.into();
+
+        match plugin_err {
+            PluginApiError::InvalidInput { message } => {
+                assert_eq!(message, "validation failed");
+            }
+            _ => panic!("Expected InvalidInput error"),
+        }
+    }
+
+    #[test]
+    fn test_mill_internal_to_plugin() {
+        let mill_err = MillError::internal("internal error");
+        let plugin_err: PluginApiError = mill_err.into();
+
+        match plugin_err {
+            PluginApiError::Internal { message } => {
+                assert_eq!(message, "internal error");
+            }
+            _ => panic!("Expected Internal error"),
+        }
+    }
+
+    #[test]
+    fn test_mill_io_to_plugin() {
+        let mill_err = MillError::io("io error");
+        let plugin_err: PluginApiError = mill_err.into();
+
+        match plugin_err {
+            PluginApiError::Internal { message } => {
+                assert_eq!(message, "io error");
+            }
+            _ => panic!("Expected Internal error"),
+        }
+    }
+
+    #[test]
+    fn test_mill_not_found_to_plugin() {
+        let mill_err = MillError::not_found("resource");
+        let plugin_err: PluginApiError = mill_err.into();
+
+        match plugin_err {
+            PluginApiError::Internal { message } => {
+                assert!(message.contains("Resource not found"));
+                assert!(message.contains("resource"));
+            }
+            _ => panic!("Expected Internal error"),
+        }
     }
 }

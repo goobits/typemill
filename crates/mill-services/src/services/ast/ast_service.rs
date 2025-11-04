@@ -5,11 +5,14 @@ use std::path::Path;
 use std::sync::Arc;
 
 use mill_ast::AstCache;
-use mill_foundation::protocol::{ApiResult, CacheStats, ImportGraph};
+use mill_foundation::errors::MillError;
+use mill_foundation::protocol::{CacheStats, ImportGraph};
 use mill_plugin_api::PluginDiscovery;
 use tracing::{debug, trace};
 
 use mill_foundation::protocol::AstService;
+
+type ApiResult<T> = Result<T, MillError>;
 
 /// Default implementation of the AST service with caching
 pub struct DefaultAstService {
@@ -106,12 +109,14 @@ fn build_import_graph_with_plugin(
     source: &str,
     path: &Path,
     registry: Arc<PluginDiscovery>,
-) -> Result<mill_foundation::protocol::ImportGraph, mill_foundation::protocol::ApiError> {
+) -> Result<mill_foundation::protocol::ImportGraph, mill_foundation::errors::MillError> {
     // Determine file extension
     let extension = path
         .extension()
         .and_then(|ext| ext.to_str())
-        .ok_or_else(|| mill_foundation::protocol::ApiError::internal("File has no extension"))?;
+        .ok_or_else(|| mill_foundation::errors::MillError::internal(
+            "File has no extension"
+        ))?;
 
     // Try to find appropriate plugin from registry - works for all languages with plugins
     if let Some(plugin) = registry.find_by_extension(extension) {
@@ -119,7 +124,7 @@ fn build_import_graph_with_plugin(
         return plugin
             .analyze_detailed_imports(source, Some(path))
             .map_err(|e| {
-                mill_foundation::protocol::ApiError::internal(format!(
+                mill_foundation::errors::MillError::internal(format!(
                     "Failed to parse imports: {}",
                     e
                 ))
@@ -128,6 +133,8 @@ fn build_import_graph_with_plugin(
 
     // Fallback to mill-ast parser for languages without plugins
     mill_ast::parser::build_import_graph(source, path).map_err(|e| {
-        mill_foundation::protocol::ApiError::internal(format!("AST parsing failed: {}", e))
+        mill_foundation::errors::MillError::internal(format!(
+            "AST parsing failed: {}", e
+        ))
     })
 }

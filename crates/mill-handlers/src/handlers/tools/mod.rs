@@ -5,7 +5,7 @@
 
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::ApiResult as ServerResult;
+use mill_foundation::errors::MillResult as ServerResult;
 use serde_json::Value;
 
 use super::lsp_adapter::DirectLspAdapter;
@@ -51,7 +51,7 @@ pub use dispatch::dispatch_to_language_plugin;
 /// Dispatch helpers for language plugin operations
 mod dispatch {
     use super::ToolHandlerContext;
-    use mill_foundation::protocol::{ApiError, ApiResult};
+    use mill_foundation::errors::{MillError, MillResult};
     use std::path::Path;
 
     /// Dispatch a file operation to the appropriate language plugin based on file extension
@@ -83,7 +83,7 @@ mod dispatch {
         context: &ToolHandlerContext,
         file_path: &str,
         operation: F,
-    ) -> ApiResult<T>
+    ) -> MillResult<T>
     where
         F: FnOnce(&dyn mill_plugin_api::LanguagePlugin, String) -> Fut,
         Fut: std::future::Future<Output = mill_plugin_api::PluginResult<T>>,
@@ -94,7 +94,7 @@ mod dispatch {
             .extension()
             .and_then(|ext| ext.to_str())
             .ok_or_else(|| {
-                ApiError::InvalidRequest(format!("File has no extension: {}", file_path))
+                MillError::invalid_request(format!("File has no extension: {}", file_path))
             })?;
 
         // Read file content using FileService (respects caching, locking, virtual workspaces)
@@ -103,7 +103,7 @@ mod dispatch {
             .file_service
             .read_file(path)
             .await
-            .map_err(|e| ApiError::Internal(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| MillError::internal(format!("Failed to read file: {}", e)))?;
 
         // Look up language plugin by extension
         let plugin = context
@@ -111,7 +111,7 @@ mod dispatch {
             .language_plugins
             .get_plugin(extension)
             .ok_or_else(|| {
-                ApiError::Unsupported(format!(
+                MillError::not_supported(format!(
                     "No language plugin found for extension: {}",
                     extension
                 ))
@@ -119,22 +119,22 @@ mod dispatch {
 
         // Execute the operation with the plugin
         operation(plugin, content).await.map_err(|e| {
-            // Convert PluginApiError to ApiError
+            // Convert PluginApiError to MillError
             match e {
                 mill_plugin_api::PluginApiError::Parse { message, .. } => {
-                    ApiError::Parse { message }
+                    MillError::parse(message)
                 }
                 mill_plugin_api::PluginApiError::Manifest { message } => {
-                    ApiError::Parse { message }
+                    MillError::parse(message)
                 }
                 mill_plugin_api::PluginApiError::NotSupported { operation } => {
-                    ApiError::Unsupported(operation)
+                    MillError::not_supported(operation)
                 }
                 mill_plugin_api::PluginApiError::InvalidInput { message } => {
-                    ApiError::InvalidRequest(message)
+                    MillError::invalid_request(message)
                 }
                 mill_plugin_api::PluginApiError::Internal { message } => {
-                    ApiError::Internal(message)
+                    MillError::internal(message)
                 }
             }
         })

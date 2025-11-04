@@ -2,7 +2,7 @@
 
 use super::*;
 use futures_util::future;
-use mill_foundation::protocol::ApiError as ServerError;
+use mill_foundation::errors::MillError as ServerError;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::Arc;

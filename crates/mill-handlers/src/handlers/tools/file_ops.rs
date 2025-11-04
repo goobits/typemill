@@ -12,7 +12,7 @@ use super::{ToolHandler, ToolHandlerContext};
 use crate::handlers::file_operation_handler::FileOperationHandler;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::ApiResult as ServerResult;
+use mill_foundation::errors::MillResult as ServerResult;
 use serde_json::Value;
 
 pub struct FileToolsHandler {

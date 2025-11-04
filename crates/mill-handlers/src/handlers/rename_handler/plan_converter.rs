@@ -7,7 +7,8 @@ use lsp_types::{
     DocumentChangeOperation, DocumentChanges, OptionalVersionedTextDocumentIdentifier, RenameFile,
     ResourceOp, TextDocumentEdit, TextEdit, Uri, WorkspaceEdit,
 };
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult, EditPlan};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
+use mill_foundation::protocol::EditPlan;
 use std::collections::HashMap;
 use std::path::Path;
 use tracing::debug;
@@ -41,20 +42,20 @@ pub(crate) fn editplan_to_workspace_edit(
 
     // Convert paths to URIs
     let old_url = url::Url::from_file_path(old_abs)
-        .map_err(|_| ServerError::Internal(format!("Invalid old path: {}", old_abs.display())))?;
+        .map_err(|_| ServerError::internal(format!("Invalid old path: {}", old_abs.display())))?;
 
     let old_uri: Uri = old_url
         .as_str()
         .parse()
-        .map_err(|e| ServerError::Internal(format!("Failed to parse old URI: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to parse old URI: {}", e)))?;
 
     let new_url = url::Url::from_file_path(new_abs)
-        .map_err(|_| ServerError::Internal(format!("Invalid new path: {}", new_abs.display())))?;
+        .map_err(|_| ServerError::internal(format!("Invalid new path: {}", new_abs.display())))?;
 
     let new_uri: Uri = new_url
         .as_str()
         .parse()
-        .map_err(|e| ServerError::Internal(format!("Failed to parse new URI: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to parse new URI: {}", e)))?;
 
     // Create document changes list starting with rename operation
     let mut document_changes = vec![DocumentChangeOperation::Op(ResourceOp::Rename(
@@ -83,13 +84,13 @@ pub(crate) fn editplan_to_workspace_edit(
 
             // Convert file path to URI
             let file_url = url::Url::from_file_path(path).map_err(|_| {
-                ServerError::Internal(format!("Invalid file path for edit: {}", file_path))
+                ServerError::internal(format!("Invalid file path for edit: {}", file_path))
             })?;
 
             let file_uri: Uri = file_url
                 .as_str()
                 .parse()
-                .map_err(|e| ServerError::Internal(format!("Failed to parse URI: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to parse URI: {}", e)))?;
 
             // Convert to LSP TextEdit
             let lsp_edit = TextEdit {

@@ -3,9 +3,10 @@
 //! Validates that files haven't changed since a plan was created by comparing
 //! SHA-256 checksums. This prevents applying stale plans to modified files.
 
-use mill_foundation::protocol::{
-    ApiError, ApiResult as ServerResult, RefactorPlan, RefactorPlanExt,
-};
+use mill_foundation::errors::MillError;
+use mill_foundation::protocol::{RefactorPlan, RefactorPlanExt};
+
+type ServerResult<T> = Result<T, MillError>;
 use sha2::{Digest, Sha256};
 use std::path::Path;
 use tracing::{debug, info, warn};
@@ -53,9 +54,8 @@ impl ChecksumValidator {
                 .read_file(Path::new(&file_path))
                 .await
                 .map_err(|e| {
-                    ApiError::InvalidRequest(format!(
-                        "Cannot validate checksum for {}: {}",
-                        file_path, e
+                    MillError::invalid_request(format!(
+                        "Cannot validate checksum for {}: {}", file_path, e
                     ))
                 })?;
 
@@ -69,7 +69,7 @@ impl ChecksumValidator {
                     "Checksum mismatch - file has changed since plan was created"
                 );
 
-                return Err(ApiError::InvalidRequest(format!(
+                return Err(MillError::invalid_request(format!(
                     "File '{}' has changed since plan was created. \
                      Expected checksum: {}, Actual: {}. \
                      Please regenerate the plan with current file contents.",

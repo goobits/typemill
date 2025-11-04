@@ -39,7 +39,7 @@ use async_trait::async_trait;
 use lsp_types::Position;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::planning::{MovePlan, RefactorPlan};
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::Path;
@@ -140,7 +140,7 @@ impl ToolHandler for MoveHandler {
                 operation_id = %operation_id,
                 "Missing arguments for move"
             );
-            ServerError::InvalidRequest("Missing arguments for move".into())
+            ServerError::invalid_request("Missing arguments for move")
         })?;
 
         let params: MovePlanParams = serde_json::from_value(args.clone()).map_err(|e| {
@@ -150,7 +150,7 @@ impl ToolHandler for MoveHandler {
                 arguments = ?args,
                 "Failed to parse move parameters"
             );
-            ServerError::InvalidRequest(format!("Invalid move parameters: {}", e))
+            ServerError::invalid_request(format!("Invalid move parameters: {}", e))
         })?;
 
         info!(
@@ -200,7 +200,7 @@ impl ToolHandler for MoveHandler {
                     error = %e,
                     "Failed to serialize move plan to JSON"
                 );
-                ServerError::Internal(format!("Failed to serialize move plan: {}", e))
+                ServerError::internal(format!("Failed to serialize move plan: {}", e))
             })?;
 
             info!(
@@ -233,7 +233,7 @@ impl ToolHandler for MoveHandler {
                     error = %e,
                     "Failed to serialize execution result"
                 );
-                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+                ServerError::internal(format!("Failed to serialize execution result: {}", e))
             })?;
 
             info!(
@@ -287,7 +287,7 @@ impl MoveHandler {
                     unsupported_kind = %kind,
                     "Unsupported move kind requested"
                 );
-                Err(ServerError::InvalidRequest(format!(
+                Err(ServerError::invalid_request(format!(
                     "Unsupported move kind: {}. Must be one of: symbol, file, directory, module",
                     kind
                 )))
@@ -313,7 +313,7 @@ impl MoveHandler {
                     path = %params.target.path,
                     "Symbol move requires selector.position but none was provided"
                 );
-                ServerError::InvalidRequest("Symbol move requires selector.position".into())
+                ServerError::invalid_request("Symbol move requires selector.position")
             })?
             .position;
 
@@ -389,8 +389,8 @@ impl MoveHandler {
         );
         // Module move is complex and requires language-specific support
         // Would use extract_module_to_package or similar AST functions
-        Err(ServerError::Unsupported(
-            "Module move not yet implemented. Requires language plugin support.".into(),
+        Err(ServerError::not_supported(
+            "Module move not yet implemented. Requires language plugin support.",
         ))
     }
 }

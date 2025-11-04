@@ -5,23 +5,23 @@
 use super::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_system::PluginRequest;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 
-fn to_api_error(plugin_error: mill_plugin_system::PluginSystemError) -> ApiError {
+fn to_api_error(plugin_error: mill_plugin_system::PluginSystemError) -> ServerError {
     match plugin_error {
         mill_plugin_system::PluginSystemError::MethodNotSupported { method, plugin } => {
-            ApiError::Unsupported(format!(
+            ServerError::not_supported(format!(
                 "Method '{}' not supported by plugin '{}'",
                 method, plugin
             ))
         }
         mill_plugin_system::PluginSystemError::SerializationError { message } => {
-            ApiError::Parse { message }
+            ServerError::parse(message)
         }
-        e => ApiError::Internal(e.to_string()),
+        e => ServerError::internal(e.to_string()),
     }
 }
 
@@ -35,13 +35,13 @@ impl InternalIntelligenceHandler {
     fn convert_tool_call_to_plugin_request(
         &self,
         tool_call: &ToolCall,
-    ) -> Result<PluginRequest, ApiError> {
+    ) -> Result<PluginRequest, ServerError> {
         let args = tool_call.arguments.clone().unwrap_or_default();
 
         let file_path_str = args
             .get("filePath")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ApiError::InvalidRequest("Missing file_path parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing file_path parameter"))?;
 
         let file_path = PathBuf::from(file_path_str);
 

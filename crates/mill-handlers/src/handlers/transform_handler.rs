@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use lsp_types::{Range, WorkspaceEdit};
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::planning::{PlanMetadata, PlanSummary, RefactorPlan, TransformPlan};
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -97,10 +97,10 @@ impl ToolHandler for TransformHandler {
         let args = tool_call
             .arguments
             .clone()
-            .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for transform".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments for transform"))?;
 
         let params: TransformPlanParams = serde_json::from_value(args).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid transform parameters: {}", e))
+            ServerError::invalid_request(format!("Invalid transform parameters: {}", e))
         })?;
 
         debug!(
@@ -118,7 +118,7 @@ impl ToolHandler for TransformHandler {
             "fn_to_closure" => self.plan_fn_to_closure(&params, context).await?,
             "closure_to_fn" => self.plan_closure_to_fn(&params, context).await?,
             kind => {
-                return Err(ServerError::InvalidRequest(format!(
+                return Err(ServerError::invalid_request(format!(
                     "Unsupported transform kind: {}. Must be one of: if_to_match, match_to_if, add_async, remove_async, fn_to_closure, closure_to_fn",
                     kind
                 )));
@@ -132,7 +132,7 @@ impl ToolHandler for TransformHandler {
         if params.options.dry_run {
             // Return plan only (preview mode)
             let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
-                ServerError::Internal(format!("Failed to serialize transform plan: {}", e))
+                ServerError::internal(format!("Failed to serialize transform plan: {}", e))
             })?;
 
             info!(
@@ -158,7 +158,7 @@ impl ToolHandler for TransformHandler {
                 .await?;
 
             let result_json = serde_json::to_value(&result).map_err(|e| {
-                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+                ServerError::internal(format!("Failed to serialize execution result: {}", e))
             })?;
 
             info!(
@@ -265,7 +265,7 @@ impl TransformHandler {
             .extension()
             .and_then(|ext| ext.to_str())
             .ok_or_else(|| {
-                ServerError::InvalidRequest(format!(
+                ServerError::invalid_request(format!(
                     "File has no extension: {}",
                     params.transformation.file_path
                 ))
@@ -275,11 +275,11 @@ impl TransformHandler {
         let lsp_adapter = context.lsp_adapter.lock().await;
         let adapter = lsp_adapter
             .as_ref()
-            .ok_or_else(|| ServerError::Internal("LSP adapter not initialized".into()))?;
+            .ok_or_else(|| ServerError::internal("LSP adapter not initialized"))?;
 
         // Get or create LSP client for this extension
         let client = adapter.get_or_create_client(extension).await.map_err(|e| {
-            ServerError::Unsupported(format!(
+            ServerError::not_supported(format!(
                 "No LSP server configured for extension {}: {}",
                 extension, e
             ))
@@ -289,7 +289,7 @@ impl TransformHandler {
         let abs_path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
         let file_uri = url::Url::from_file_path(&abs_path)
             .map_err(|_| {
-                ServerError::Internal(format!("Invalid file path: {}", abs_path.display()))
+                ServerError::internal(format!("Invalid file path: {}", abs_path.display()))
             })?
             .to_string();
 
@@ -316,12 +316,12 @@ impl TransformHandler {
             .await
             .map_err(|e| {
                 error!(error = %e, "LSP transform request failed");
-                ServerError::Internal(format!("LSP transform failed: {}", e))
+                ServerError::internal(format!("LSP transform failed: {}", e))
             })?;
 
         // Parse code actions from response
         let code_actions: Vec<Value> = serde_json::from_value(lsp_result).map_err(|e| {
-            ServerError::Internal(format!("Failed to parse LSP code actions: {}", e))
+            ServerError::internal(format!("Failed to parse LSP code actions: {}", e))
         })?;
 
         // Find the appropriate transform action
@@ -335,7 +335,7 @@ impl TransformHandler {
                     .unwrap_or(false)
             })
             .ok_or_else(|| {
-                ServerError::Unsupported(format!(
+                ServerError::not_supported(format!(
                     "No {} code action available from LSP",
                     code_action_kind
                 ))
@@ -346,9 +346,9 @@ impl TransformHandler {
             transform_action
                 .get("edit")
                 .cloned()
-                .ok_or_else(|| ServerError::Internal("Code action missing edit field".into()))?,
+                .ok_or_else(|| ServerError::internal("Code action missing edit field"))?,
         )
-        .map_err(|e| ServerError::Internal(format!("Failed to parse WorkspaceEdit: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to parse WorkspaceEdit: {}", e)))?;
 
         // Read file content for checksum
         let content = context
@@ -357,7 +357,7 @@ impl TransformHandler {
             .read_file(&abs_path)
             .await
             .map_err(|e| {
-                ServerError::Internal(format!("Failed to read file for checksum: {}", e))
+                ServerError::internal(format!("Failed to read file for checksum: {}", e))
             })?;
 
         let mut file_checksums = HashMap::new();

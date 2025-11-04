@@ -89,7 +89,7 @@ fn spawn_operation_worker(
                     let result = match op.operation_type {
                         OperationType::CreateDir => {
                             fs::create_dir_all(&op.file_path).await.map_err(|e| {
-                                mill_foundation::protocol::ApiError::Internal(format!(
+                                mill_foundation::errors::MillError::internal(format!(
                                     "Failed to create directory {}: {}",
                                     op.file_path.display(),
                                     e
@@ -104,7 +104,7 @@ fn spawn_operation_worker(
                                 .unwrap_or("");
 
                             let mut file = fs::File::create(&op.file_path).await.map_err(|e| {
-                                mill_foundation::protocol::ApiError::Internal(format!(
+                                mill_foundation::errors::MillError::internal(format!(
                                     "Failed to create file {}: {}",
                                     op.file_path.display(),
                                     e
@@ -113,7 +113,7 @@ fn spawn_operation_worker(
 
                             use tokio::io::AsyncWriteExt;
                             file.write_all(content.as_bytes()).await.map_err(|e| {
-                                mill_foundation::protocol::ApiError::Internal(format!(
+                                mill_foundation::errors::MillError::internal(format!(
                                     "Failed to write content to {}: {}",
                                     op.file_path.display(),
                                     e
@@ -121,7 +121,7 @@ fn spawn_operation_worker(
                             })?;
 
                             file.sync_all().await.map_err(|e| {
-                                mill_foundation::protocol::ApiError::Internal(format!(
+                                mill_foundation::errors::MillError::internal(format!(
                                     "Failed to sync file {}: {}",
                                     op.file_path.display(),
                                     e
@@ -133,7 +133,7 @@ fn spawn_operation_worker(
                         OperationType::Delete => {
                             if op.file_path.exists() {
                                 fs::remove_file(&op.file_path).await.map_err(|e| {
-                                    mill_foundation::protocol::ApiError::Internal(format!(
+                                    mill_foundation::errors::MillError::internal(format!(
                                         "Failed to delete file {}: {}",
                                         op.file_path.display(),
                                         e
@@ -149,12 +149,12 @@ fn spawn_operation_worker(
                                 .get("new_path")
                                 .and_then(|v| v.as_str())
                                 .ok_or_else(|| {
-                                mill_foundation::protocol::ApiError::InvalidRequest(
-                                    "Rename operation missing new_path".to_string(),
+                                mill_foundation::errors::MillError::invalid_request(
+                                    "Rename operation missing new_path"
                                 )
                             })?;
                             fs::rename(&op.file_path, new_path_str).await.map_err(|e| {
-                                mill_foundation::protocol::ApiError::Internal(format!(
+                                mill_foundation::errors::MillError::internal(format!(
                                     "Failed to rename file {} to {}: {}",
                                     op.file_path.display(),
                                     new_path_str,
@@ -173,7 +173,9 @@ fn spawn_operation_worker(
                                 .await
                                 .map(|_| ())
                                 .map_err(|e| {
-                                    mill_foundation::protocol::ApiError::Plugin(e.to_string())
+                                    mill_foundation::errors::MillError::internal(format!(
+                                        "Plugin error: {}", e
+                                    ))
                                 })
                         }
                         OperationType::Read | OperationType::Format | OperationType::Refactor => {
@@ -210,7 +212,7 @@ fn spawn_operation_worker(
 pub async fn register_mcp_proxy_if_enabled(
     plugin_manager: &Arc<mill_plugin_system::PluginManager>,
     external_mcp_config: Option<&mill_config::config::ExternalMcpConfig>,
-) -> Result<(), mill_foundation::protocol::ApiError> {
+) -> Result<(), mill_foundation::errors::MillError> {
     if let Some(config) = external_mcp_config {
         use mill_plugin_system::mcp::McpProxyPlugin;
         use mill_plugin_system::LanguagePlugin;
@@ -222,9 +224,8 @@ pub async fn register_mcp_proxy_if_enabled(
 
         let mut plugin = McpProxyPlugin::new(config.servers.clone());
         plugin.initialize().await.map_err(|e| {
-            mill_foundation::protocol::ApiError::plugin(format!(
-                "Failed to initialize MCP proxy plugin: {}",
-                e
+            mill_foundation::errors::MillError::internal(format!(
+                "Failed to initialize MCP proxy plugin: {}", e
             ))
         })?;
 
@@ -232,9 +233,8 @@ pub async fn register_mcp_proxy_if_enabled(
             .register_plugin("mcp-proxy", Arc::new(plugin))
             .await
             .map_err(|e| {
-                mill_foundation::protocol::ApiError::plugin(format!(
-                    "Failed to register MCP proxy plugin: {}",
-                    e
+                mill_foundation::errors::MillError::internal(format!(
+                    "Failed to register MCP proxy plugin: {}", e
                 ))
             })?;
     }

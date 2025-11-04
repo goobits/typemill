@@ -16,7 +16,7 @@ use async_trait::async_trait;
 use lsp_types::{Position, WorkspaceEdit};
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::planning::{PlanSummary, PlanWarning, RefactorPlan, RenamePlan};
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
@@ -156,10 +156,10 @@ impl ToolHandler for RenameHandler {
         let args = tool_call
             .arguments
             .clone()
-            .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for rename".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments for rename"))?;
 
         let params: RenamePlanParams = serde_json::from_value(args).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid rename parameters: {}", e))
+            ServerError::invalid_request(format!("Invalid rename parameters: {}", e))
         })?;
 
         // Validate parameters: must have either target or targets, but not both
@@ -167,8 +167,8 @@ impl ToolHandler for RenameHandler {
             (Some(target), None) => {
                 // Single target mode (existing API)
                 let new_name = params.new_name.as_ref().ok_or_else(|| {
-                    ServerError::InvalidRequest(
-                        "new_name is required for single target mode".into(),
+                    ServerError::invalid_request(
+                        "new_name is required for single target mode",
                     )
                 })?;
 
@@ -193,7 +193,7 @@ impl ToolHandler for RenameHandler {
                             .await?
                     }
                     kind => {
-                        return Err(ServerError::InvalidRequest(format!(
+                        return Err(ServerError::invalid_request(format!(
                             "Unsupported rename kind: {}. Must be one of: symbol, file, directory",
                             kind
                         )));
@@ -211,14 +211,13 @@ impl ToolHandler for RenameHandler {
                     .await?
             }
             (Some(_), Some(_)) => {
-                return Err(ServerError::InvalidRequest(
-                    "Cannot specify both 'target' and 'targets'. Use 'target' for single rename or 'targets' for batch.".into()
+                return Err(ServerError::invalid_request(
+                    "Cannot specify both 'target' and 'targets'. Use 'target' for single rename or 'targets' for batch."
                 ));
             }
             (None, None) => {
-                return Err(ServerError::InvalidRequest(
-                    "Must specify either 'target' (for single rename) or 'targets' (for batch)."
-                        .into(),
+                return Err(ServerError::invalid_request(
+                    "Must specify either 'target' (for single rename) or 'targets' (for batch).",
                 ));
             }
         };
@@ -230,7 +229,7 @@ impl ToolHandler for RenameHandler {
         if params.options.dry_run {
             // Return plan only (existing behavior - preview mode)
             let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
-                ServerError::Internal(format!("Failed to serialize rename plan: {}", e))
+                ServerError::internal(format!("Failed to serialize rename plan: {}", e))
             })?;
 
             info!(
@@ -258,7 +257,7 @@ impl ToolHandler for RenameHandler {
                 .await?;
 
             let result_json = serde_json::to_value(&result).map_err(|e| {
-                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+                ServerError::internal(format!("Failed to serialize execution result: {}", e))
             })?;
 
             info!(
@@ -351,7 +350,7 @@ impl RenameHandler {
             for uri in changes.keys() {
                 let path = std::path::PathBuf::from(
                     urlencoding::decode(uri.path().as_str())
-                        .map_err(|_| ServerError::Internal("Invalid URI path".to_string()))?
+                        .map_err(|_| ServerError::internal("Invalid URI path".to_string()))?
                         .into_owned(),
                 );
                 affected_files.insert(path);
@@ -364,7 +363,7 @@ impl RenameHandler {
                     for edit in edits {
                         let path = std::path::PathBuf::from(
                             urlencoding::decode(edit.text_document.uri.path().as_str())
-                                .map_err(|_| ServerError::Internal("Invalid URI path".to_string()))?
+                                .map_err(|_| ServerError::internal("Invalid URI path".to_string()))?
                                 .into_owned(),
                         );
                         affected_files.insert(path);
@@ -377,7 +376,7 @@ impl RenameHandler {
                                 let path = std::path::PathBuf::from(
                                     urlencoding::decode(edit.text_document.uri.path().as_str())
                                         .map_err(|_| {
-                                            ServerError::Internal("Invalid URI path".to_string())
+                                            ServerError::internal("Invalid URI path".to_string())
                                         })?
                                         .into_owned(),
                                 );
@@ -389,7 +388,7 @@ impl RenameHandler {
                                         let path = std::path::PathBuf::from(
                                             urlencoding::decode(create.uri.path().as_str())
                                                 .map_err(|_| {
-                                                    ServerError::Internal(
+                                                    ServerError::internal(
                                                         "Invalid URI path".to_string(),
                                                     )
                                                 })?
@@ -401,7 +400,7 @@ impl RenameHandler {
                                         let path = std::path::PathBuf::from(
                                             urlencoding::decode(rename.old_uri.path().as_str())
                                                 .map_err(|_| {
-                                                    ServerError::Internal(
+                                                    ServerError::internal(
                                                         "Invalid URI path".to_string(),
                                                     )
                                                 })?
@@ -411,7 +410,7 @@ impl RenameHandler {
                                         let path = std::path::PathBuf::from(
                                             urlencoding::decode(rename.new_uri.path().as_str())
                                                 .map_err(|_| {
-                                                    ServerError::Internal(
+                                                    ServerError::internal(
                                                         "Invalid URI path".to_string(),
                                                     )
                                                 })?
@@ -423,7 +422,7 @@ impl RenameHandler {
                                         let path = std::path::PathBuf::from(
                                             urlencoding::decode(delete.uri.path().as_str())
                                                 .map_err(|_| {
-                                                    ServerError::Internal(
+                                                    ServerError::internal(
                                                         "Invalid URI path".to_string(),
                                                     )
                                                 })?
@@ -476,7 +475,7 @@ impl RenameHandler {
         // Validate all targets have new_name
         for (idx, target) in targets.iter().enumerate() {
             if target.new_name.is_none() {
-                return Err(ServerError::InvalidRequest(format!(
+                return Err(ServerError::invalid_request(format!(
                     "Target {} (path: {}) missing new_name field (required for batch mode)",
                     idx, target.path
                 )));
@@ -510,7 +509,7 @@ impl RenameHandler {
 
         // Fail if there are conflicts
         if !warnings.is_empty() {
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "Batch rename has naming conflicts: {}",
                 warnings
                     .iter()
@@ -572,7 +571,7 @@ impl RenameHandler {
                     // Convert (path, old_content, new_content) to LSP edits
                     for (manifest_path, old_content, new_content) in updates {
                         let uri = url::Url::from_file_path(&manifest_path).map_err(|_| {
-                            ServerError::Internal(format!(
+                            ServerError::internal(format!(
                                 "Invalid manifest path: {}",
                                 manifest_path.display()
                             ))
@@ -597,7 +596,7 @@ impl RenameHandler {
                             lsp_types::TextDocumentEdit {
                                 text_document: lsp_types::OptionalVersionedTextDocumentIdentifier {
                                     uri: uri.as_str().parse().map_err(|e| {
-                                        ServerError::Internal(format!("Failed to parse URI: {}", e))
+                                        ServerError::internal(format!("Failed to parse URI: {}", e))
                                     })?,
                                     version: None,
                                 },
@@ -641,7 +640,7 @@ impl RenameHandler {
                         .await?
                 }
                 kind => {
-                    return Err(ServerError::InvalidRequest(format!(
+                    return Err(ServerError::invalid_request(format!(
                         "Unsupported rename kind in batch: {}. Must be one of: symbol, file, directory",
                         kind
                     )));

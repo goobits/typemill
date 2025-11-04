@@ -9,10 +9,13 @@ pub mod detectors;
 
 pub use cache::FileImportInfo;
 
+use mill_foundation::errors::MillError as ServerError;
 use mill_foundation::protocol::{
-    ApiError as ServerError, ApiResult as ServerResult, DependencyUpdate, EditLocation, EditPlan,
+    DependencyUpdate, EditLocation, EditPlan,
     EditPlanMetadata, EditType, TextEdit,
 };
+
+type ServerResult<T> = Result<T, ServerError>;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -698,7 +701,7 @@ impl ReferenceUpdater {
         let updated_content = import_advanced_support
             .update_import_reference(file_path, &content, update)
             .map_err(|e| {
-                ServerError::Internal(format!("Failed to update import reference: {}", e))
+                ServerError::internal(format!("Failed to update import reference: {}", e))
             })?;
 
         if original_content == updated_content {
@@ -708,7 +711,7 @@ impl ReferenceUpdater {
         tokio::fs::write(file_path, updated_content)
             .await
             .map_err(|e| {
-                ServerError::Internal(format!(
+                ServerError::internal(format!(
                     "Failed to write updated content to {}: {}",
                     file_path.display(),
                     e
@@ -884,12 +887,12 @@ pub async fn find_project_files(
                 }
 
                 let mut read_dir = tokio::fs::read_dir(dir).await.map_err(|e| {
-                    ServerError::Internal(format!("Failed to read directory: {}", e))
+                    ServerError::internal(format!("Failed to read directory: {}", e))
                 })?;
                 while let Some(entry) = read_dir
                     .next_entry()
                     .await
-                    .map_err(|e| ServerError::Internal(format!("Failed to read entry: {}", e)))?
+                    .map_err(|e| ServerError::internal(format!("Failed to read entry: {}", e)))?
                 {
                     let path = entry.path();
                     if path.is_dir() {

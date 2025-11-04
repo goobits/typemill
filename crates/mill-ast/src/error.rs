@@ -1,6 +1,6 @@
 //! AST error types
 
-use mill_foundation::core::CoreError;
+use mill_foundation::errors::MillError;
 use thiserror::Error;
 
 /// AST operation errors
@@ -20,7 +20,7 @@ pub enum AstError {
     UnsupportedSyntax { feature: String },
 
     #[error("Core error: {0}")]
-    Core(#[from] CoreError),
+    Core(#[from] MillError),
 }
 
 impl AstError {
@@ -49,11 +49,11 @@ impl AstError {
     }
 }
 
-impl From<AstError> for CoreError {
+impl From<AstError> for MillError {
     fn from(err: AstError) -> Self {
         match err {
             AstError::Core(core_err) => core_err,
-            _ => CoreError::internal(format!("AST error: {}", err)),
+            _ => MillError::internal(format!("AST error: {}", err)),
         }
     }
 }

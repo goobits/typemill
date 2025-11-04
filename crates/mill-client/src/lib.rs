@@ -125,7 +125,7 @@ impl SessionReport {
             ClientError::IoError(_) => "IoError",
             ClientError::TransportError(_) => "TransportError",
             ClientError::ProtocolError(_) => "ProtocolError",
-            ClientError::Core(_) => "CoreError",
+            ClientError::Core(_) => "MillError",
         }
         .to_string();
 

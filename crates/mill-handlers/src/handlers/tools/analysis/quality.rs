@@ -12,7 +12,7 @@ use mill_foundation::protocol::analysis_result::{
     AnalysisResult, AnalysisScope, Finding, FindingLocation, Position, Range, SafetyLevel,
     Severity, Suggestion,
 };
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -91,8 +91,8 @@ impl QualityHandler {
 
         // Extract directory path from scope.path or default to current dir
         let directory_path = scope_param.path.as_ref().ok_or_else(|| {
-            ServerError::InvalidRequest(
-                "Missing path for workspace scope. Specify scope.path with directory".into(),
+            ServerError::invalid_request(
+                "Missing path for workspace scope. Specify scope.path with directory",
             )
         })?;
 
@@ -276,7 +276,7 @@ impl QualityHandler {
         );
 
         let mut value = serde_json::to_value(result)
-            .map_err(|e| ServerError::Internal(format!("Failed to serialize result: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to serialize result: {}", e)))?;
 
         if !all_errors.is_empty() {
             value["errors"] = json!(all_errors);
@@ -299,7 +299,7 @@ impl QualityHandler {
 
         // Extract path from scope.path
         let path_str = scope_param.path.as_ref().ok_or_else(|| {
-            ServerError::InvalidRequest("Missing path for scope. Specify scope.path".into())
+            ServerError::invalid_request("Missing path for scope. Specify scope.path")
         })?;
 
         let path = std::path::Path::new(path_str);
@@ -323,7 +323,7 @@ impl QualityHandler {
             {
                 vec![path.to_path_buf()]
             } else {
-                return Err(ServerError::InvalidRequest(format!(
+                return Err(ServerError::invalid_request(format!(
                     "File {} is not a markdown file",
                     path_str
                 )));
@@ -634,7 +634,7 @@ impl QualityHandler {
 
         // Serialize to JSON
         let mut value = serde_json::to_value(result)
-            .map_err(|e| ServerError::Internal(format!("Failed to serialize result: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to serialize result: {}", e)))?;
 
         if !all_errors.is_empty() {
             value["errors"] = json!(all_errors);
@@ -2238,7 +2238,7 @@ impl ToolHandler for QualityHandler {
         let kind = args
             .get("kind")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'kind' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'kind' parameter"))?;
 
         // Validate kind
         if !matches!(
@@ -2250,7 +2250,7 @@ impl ToolHandler for QualityHandler {
                 | "markdown_structure"
                 | "markdown_formatting"
         ) {
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "Unsupported kind '{}'. Supported: 'complexity', 'smells', 'maintainability', 'readability', 'markdown_structure', 'markdown_formatting'",
                 kind
             )));
@@ -2274,7 +2274,7 @@ impl ToolHandler for QualityHandler {
                     .get("options")
                     .map(|v| serde_json::from_value(v.clone()))
                     .transpose()
-                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid options: {}", e)))?
+                    .map_err(|e| ServerError::invalid_request(format!("Invalid options: {}", e)))?
                     .unwrap_or_else(|| QualityOptions {
                         severity_filter: None,
                         limit: default_limit(),
@@ -2301,7 +2301,7 @@ impl ToolHandler for QualityHandler {
                     .extension()
                     .and_then(|ext| ext.to_str())
                     .ok_or_else(|| {
-                        ServerError::InvalidRequest(format!("File has no extension: {}", file_path))
+                        ServerError::invalid_request(format!("File has no extension: {}", file_path))
                     })?;
 
                 let content = context
@@ -2309,7 +2309,7 @@ impl ToolHandler for QualityHandler {
                     .file_service
                     .read_file(file_path_obj)
                     .await
-                    .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+                    .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
                 // Get language plugin
                 let plugin = context
@@ -2317,7 +2317,7 @@ impl ToolHandler for QualityHandler {
                     .language_plugins
                     .get_plugin(extension)
                     .ok_or_else(|| {
-                        ServerError::Unsupported(format!(
+                        ServerError::not_supported(format!(
                             "No language plugin found for extension: {}",
                             extension
                         ))
@@ -2327,7 +2327,7 @@ impl ToolHandler for QualityHandler {
                 let parsed = plugin
                     .parse(&content)
                     .await
-                    .map_err(|e| ServerError::Internal(format!("Failed to parse file: {}", e)))?;
+                    .map_err(|e| ServerError::internal(format!("Failed to parse file: {}", e)))?;
 
                 let language = plugin.metadata().name;
 
@@ -2368,7 +2368,7 @@ impl ToolHandler for QualityHandler {
 
                 // Serialize to JSON
                 serde_json::to_value(result).map_err(|e| {
-                    ServerError::Internal(format!("Failed to serialize result: {}", e))
+                    ServerError::internal(format!("Failed to serialize result: {}", e))
                 })
             }
             "smells" => {
@@ -2416,7 +2416,7 @@ impl ToolHandler for QualityHandler {
                     .get("options")
                     .map(|v| serde_json::from_value(v.clone()))
                     .transpose()
-                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid options: {}", e)))?
+                    .map_err(|e| ServerError::invalid_request(format!("Invalid options: {}", e)))?
                     .unwrap_or_else(|| QualityOptions {
                         severity_filter: None,
                         limit: default_limit(),
@@ -2448,7 +2448,7 @@ impl ToolHandler for QualityHandler {
                     .get("options")
                     .map(|v| serde_json::from_value(v.clone()))
                     .transpose()
-                    .map_err(|e| ServerError::InvalidRequest(format!("Invalid options: {}", e)))?
+                    .map_err(|e| ServerError::invalid_request(format!("Invalid options: {}", e)))?
                     .unwrap_or_else(|| QualityOptions {
                         severity_filter: None,
                         limit: default_limit(),

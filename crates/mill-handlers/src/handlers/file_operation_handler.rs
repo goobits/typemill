@@ -6,7 +6,7 @@ use super::tools::{ToolHandler, ToolHandlerContext};
 use crate::utils::{dry_run::wrap_dry_run_result, remote_exec};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::{json, Value};
 use std::path::Path;
 use tracing::debug;
@@ -68,7 +68,7 @@ impl ToolHandler for FileOperationHandler {
             "read_file" => self.handle_read_file(tool_call.clone(), context).await,
             "write_file" => self.handle_write_file(tool_call.clone(), context).await,
             "list_files" => self.handle_list_files(tool_call.clone(), context).await,
-            _ => Err(ServerError::Unsupported(format!(
+            _ => Err(ServerError::not_supported(format!(
                 "Unknown file operation: {}",
                 tool_call.name
             ))),
@@ -83,17 +83,17 @@ impl FileOperationHandler {
         context: &ToolHandlerContext,
     ) -> ServerResult<Value> {
         let args = tool_call.arguments.ok_or_else(|| {
-            ServerError::InvalidRequest("Missing arguments for rename_file".into())
+            ServerError::invalid_request("Missing arguments for rename_file")
         })?;
 
         let old_path = args
             .get("old_path")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'old_path' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'old_path' parameter"))?;
         let new_path = args
             .get("new_path")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'new_path' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'new_path' parameter"))?;
         let dry_run = args
             .get("dryRun")
             .and_then(|v| v.as_bool())
@@ -114,13 +114,13 @@ impl FileOperationHandler {
         context: &ToolHandlerContext,
     ) -> ServerResult<Value> {
         let args = tool_call.arguments.ok_or_else(|| {
-            ServerError::InvalidRequest("Missing arguments for rename_directory".into())
+            ServerError::invalid_request("Missing arguments for rename_directory")
         })?;
 
         // Deserialize into strongly-typed parameters
         let params: mill_foundation::protocol::RenameDirectoryParams = serde_json::from_value(args)
             .map_err(|e| {
-                ServerError::InvalidRequest(format!("Invalid rename_directory parameters: {}", e))
+                ServerError::invalid_request(format!("Invalid rename_directory parameters: {}", e))
             })?;
 
         // Parse update_mode parameter (optional, defaults to Conservative)
@@ -138,7 +138,7 @@ impl FileOperationHandler {
 
         // Require dry_run=true for risky modes if not already in dry_run mode
         if update_mode.is_risky() && !params.dry_run {
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "⚠️ {} mode requires dry_run=true for safety. Please run with dry_run=true first to preview changes, then re-run without dry_run if the changes look correct. {}",
                 match update_mode {
                     crate::handlers::tools::workspace::UpdateMode::Aggressive => "Aggressive",
@@ -181,13 +181,13 @@ impl FileOperationHandler {
         context: &ToolHandlerContext,
     ) -> ServerResult<Value> {
         let args = tool_call.arguments.ok_or_else(|| {
-            ServerError::InvalidRequest("Missing arguments for create_file".into())
+            ServerError::invalid_request("Missing arguments for create_file")
         })?;
 
         let file_path = args
             .get("filePath")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'file_path' parameter"))?;
         let content = args.get("content").and_then(|v| v.as_str());
         let overwrite = args
             .get("overwrite")
@@ -213,13 +213,13 @@ impl FileOperationHandler {
         context: &ToolHandlerContext,
     ) -> ServerResult<Value> {
         let args = tool_call.arguments.ok_or_else(|| {
-            ServerError::InvalidRequest("Missing arguments for delete_file".into())
+            ServerError::invalid_request("Missing arguments for delete_file")
         })?;
 
         let file_path = args
             .get("filePath")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'file_path' parameter"))?;
         let force = args.get("force").and_then(|v| v.as_bool()).unwrap_or(false);
         let dry_run = args
             .get("dryRun")
@@ -242,19 +242,19 @@ impl FileOperationHandler {
     ) -> ServerResult<Value> {
         let args = tool_call
             .arguments
-            .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for read_file".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments for read_file"))?;
 
         let file_path = args
             .get("filePath")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'file_path' parameter"))?;
         let workspace_id = args.get("workspace_id").and_then(|v| v.as_str());
 
         // Route to workspace or local filesystem
         let content = if let Some(workspace_id) = workspace_id {
             let user_id = context.user_id.as_deref().ok_or_else(|| {
-                ServerError::InvalidRequest(
-                    "A user_id is required for remote workspace operations".into(),
+                ServerError::invalid_request(
+                    "A user_id is required for remote workspace operations",
                 )
             })?;
             // Execute in remote workspace
@@ -288,17 +288,17 @@ impl FileOperationHandler {
         context: &ToolHandlerContext,
     ) -> ServerResult<Value> {
         let args = tool_call.arguments.ok_or_else(|| {
-            ServerError::InvalidRequest("Missing arguments for write_file".into())
+            ServerError::invalid_request("Missing arguments for write_file")
         })?;
 
         let file_path = args
             .get("filePath")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'file_path' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'file_path' parameter"))?;
         let content = args
             .get("content")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ServerError::InvalidRequest("Missing 'content' parameter".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing 'content' parameter"))?;
         let dry_run = args
             .get("dryRun")
             .and_then(|v| v.as_bool())
@@ -308,15 +308,15 @@ impl FileOperationHandler {
         // Route to workspace or local filesystem
         if let Some(workspace_id) = workspace_id {
             let user_id = context.user_id.as_deref().ok_or_else(|| {
-                ServerError::InvalidRequest(
-                    "A user_id is required for remote workspace operations".into(),
+                ServerError::invalid_request(
+                    "A user_id is required for remote workspace operations",
                 )
             })?;
 
             // Remote workspace - dry_run not supported for remote operations
             if dry_run {
-                return Err(ServerError::InvalidRequest(
-                    "dry_run not supported for remote workspace operations".into(),
+                return Err(ServerError::invalid_request(
+                    "dry_run not supported for remote workspace operations",
                 ));
             }
 

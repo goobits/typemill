@@ -2,7 +2,7 @@ use super::{RenameHandler, RenameOptions, RenameTarget};
 use crate::handlers::tools::ToolHandlerContext;
 use lsp_types::WorkspaceEdit;
 use mill_foundation::planning::{PlanMetadata, RenamePlan};
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::json;
 use std::path::Path;
 use tracing::{debug, error};
@@ -23,7 +23,7 @@ impl RenameHandler {
             .selector
             .as_ref()
             .ok_or_else(|| {
-                ServerError::InvalidRequest("Symbol rename requires selector.position".into())
+                ServerError::invalid_request("Symbol rename requires selector.position")
             })?
             .position;
 
@@ -33,18 +33,18 @@ impl RenameHandler {
             .extension()
             .and_then(|ext| ext.to_str())
             .ok_or_else(|| {
-                ServerError::InvalidRequest(format!("File has no extension: {}", target.path))
+                ServerError::invalid_request(format!("File has no extension: {}", target.path))
             })?;
 
         // Get LSP adapter
         let lsp_adapter = context.lsp_adapter.lock().await;
         let adapter = lsp_adapter
             .as_ref()
-            .ok_or_else(|| ServerError::Internal("LSP adapter not initialized".into()))?;
+            .ok_or_else(|| ServerError::internal("LSP adapter not initialized"))?;
 
         // Get or create LSP client for this extension
         let client = adapter.get_or_create_client(extension).await.map_err(|e| {
-            ServerError::Unsupported(format!(
+            ServerError::not_supported(format!(
                 "No LSP server configured for extension {}: {}",
                 extension, e
             ))
@@ -54,7 +54,7 @@ impl RenameHandler {
         let abs_path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
         let file_uri = url::Url::from_file_path(&abs_path)
             .map_err(|_| {
-                ServerError::Internal(format!("Invalid file path: {}", abs_path.display()))
+                ServerError::internal(format!("Invalid file path: {}", abs_path.display()))
             })?
             .to_string();
 
@@ -74,12 +74,12 @@ impl RenameHandler {
             .await
             .map_err(|e| {
                 error!(error = %e, "LSP rename request failed");
-                ServerError::Internal(format!("LSP rename failed: {}", e))
+                ServerError::internal(format!("LSP rename failed: {}", e))
             })?;
 
         // Parse WorkspaceEdit from LSP response
         let workspace_edit: WorkspaceEdit = serde_json::from_value(lsp_result).map_err(|e| {
-            ServerError::Internal(format!("Failed to parse LSP WorkspaceEdit: {}", e))
+            ServerError::internal(format!("Failed to parse LSP WorkspaceEdit: {}", e))
         })?;
 
         // Calculate file checksums and summary

@@ -36,7 +36,7 @@ fn parse_go_imports_ast(source: &str) -> Result<Vec<ImportInfo>, PluginApiError>
             "analyze-imports".to_string(),
         ]);
 
-    run_ast_tool(tool, source)
+    run_ast_tool(tool, source).map_err(Into::into)
 }
 
 /// Parse Go imports using regex (fallback implementation)

@@ -172,6 +172,82 @@ impl From<std::io::Error> for PluginSystemError {
     }
 }
 
+// Conversion to MillError (when mill-foundation is available via runtime feature)
+#[cfg(feature = "runtime")]
+impl From<PluginSystemError> for mill_foundation::errors::MillError {
+    fn from(err: PluginSystemError) -> Self {
+        use mill_foundation::errors::MillError;
+
+        match err {
+            PluginSystemError::PluginNotFound { file, method } => MillError::PluginNotFound {
+                name: format!("{} (method: {})", file, method),
+                file_extension: None,
+            },
+            PluginSystemError::PluginRequestFailed { plugin, message } => MillError::Plugin {
+                plugin,
+                message,
+                operation: Some("request".to_string()),
+            },
+            PluginSystemError::ConfigurationError { message } => MillError::Config {
+                message,
+                source: None,
+            },
+            PluginSystemError::InitializationError { plugin, message } => MillError::Plugin {
+                plugin,
+                message: format!("Initialization failed: {}", message),
+                operation: Some("initialization".to_string()),
+            },
+            PluginSystemError::VersionIncompatible {
+                plugin,
+                version,
+                system_version,
+            } => MillError::Plugin {
+                plugin: plugin.clone(),
+                message: format!(
+                    "Version {} is incompatible with system version {}",
+                    version, system_version
+                ),
+                operation: Some("version_check".to_string()),
+            },
+            PluginSystemError::MethodNotSupported { method, plugin } => MillError::NotSupported {
+                operation: format!("Method '{}' in plugin '{}'", method, plugin),
+                reason: Some("Method not supported by plugin".to_string()),
+            },
+            PluginSystemError::AmbiguousPluginSelection {
+                method,
+                plugins,
+                priority,
+            } => MillError::Plugin {
+                plugin: plugins.join(", "),
+                message: format!(
+                    "Ambiguous plugin selection for method '{}': multiple plugins with priority {}",
+                    method, priority
+                ),
+                operation: Some("selection".to_string()),
+            },
+            PluginSystemError::LifecycleError { message } => MillError::Plugin {
+                plugin: "unknown".to_string(),
+                message: format!("Lifecycle error: {}", message),
+                operation: Some("lifecycle".to_string()),
+            },
+            PluginSystemError::SerializationError { message } => MillError::Serialization {
+                message,
+                format: Some("plugin_data".to_string()),
+            },
+            PluginSystemError::IoError { message } => MillError::Io {
+                message,
+                path: None,
+                source: None,
+            },
+            PluginSystemError::Generic { message } => MillError::Plugin {
+                plugin: "unknown".to_string(),
+                message,
+                operation: None,
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

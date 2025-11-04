@@ -4,7 +4,9 @@ use crate::services::coordination::operation_queue::{
 };
 use crate::services::reference_updater::find_project_files;
 use mill_foundation::core::dry_run::DryRunnable;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::MillError as ServerError;
+
+type ServerResult<T> = Result<T, ServerError>;
 use serde_json::{json, Value};
 use std::path::Path;
 use tokio::fs;
@@ -25,9 +27,8 @@ impl FileService {
         if dry_run {
             // Preview mode - just return what would happen
             if abs_path.exists() && !overwrite {
-                return Err(ServerError::AlreadyExists(format!(
-                    "File already exists: {:?}",
-                    abs_path
+                return Err(ServerError::invalid_request(format!(
+                    "Resource already exists: File already exists: {:?}", abs_path
                 )));
             }
 
@@ -43,9 +44,8 @@ impl FileService {
         } else {
             // Execution mode - queue the operation
             if abs_path.exists() && !overwrite {
-                return Err(ServerError::AlreadyExists(format!(
-                    "File already exists: {:?}",
-                    abs_path
+                return Err(ServerError::invalid_request(format!(
+                    "Resource already exists: File already exists: {:?}", abs_path
                 )));
             }
 
@@ -73,7 +73,7 @@ impl FileService {
             transaction
                 .commit()
                 .await
-                .map_err(|e| ServerError::Internal(e.to_string()))?;
+                .map_err(|e| ServerError::internal(e.to_string()))?;
 
             info!(path = ?abs_path, "Queued create_file operation");
 
@@ -82,7 +82,7 @@ impl FileService {
 
             // Verify the file was created
             if !abs_path.exists() {
-                return Err(ServerError::Internal(format!(
+                return Err(ServerError::internal(format!(
                     "File creation failed: {:?}",
                     abs_path
                 )));
@@ -121,7 +121,7 @@ impl FileService {
                         }),
                     ));
                 } else {
-                    return Err(ServerError::NotFound(format!(
+                    return Err(ServerError::not_found(format!(
                         "File does not exist: {:?}",
                         abs_path
                     )));
@@ -136,7 +136,7 @@ impl FileService {
                     .find_affected_files(&abs_path, &project_files, plugins)
                     .await?;
                 if !affected.is_empty() {
-                    return Err(ServerError::InvalidRequest(format!(
+                    return Err(ServerError::invalid_request(format!(
                         "File is imported by {} other files",
                         affected.len()
                     )));
@@ -169,7 +169,7 @@ impl FileService {
                         }),
                     ));
                 } else {
-                    return Err(ServerError::NotFound(format!(
+                    return Err(ServerError::not_found(format!(
                         "File does not exist: {:?}",
                         abs_path
                     )));
@@ -188,7 +188,7 @@ impl FileService {
                         affected_files_count = affected.len(),
                         "File is imported by other files. Use force=true to delete anyway"
                     );
-                    return Err(ServerError::InvalidRequest(format!(
+                    return Err(ServerError::invalid_request(format!(
                         "File is imported by {} other files",
                         affected.len()
                     )));
@@ -206,7 +206,7 @@ impl FileService {
             transaction
                 .commit()
                 .await
-                .map_err(|e| ServerError::Internal(e.to_string()))?;
+                .map_err(|e| ServerError::internal(e.to_string()))?;
 
             info!(path = ?abs_path, "Queued delete_file operation");
 
@@ -215,7 +215,7 @@ impl FileService {
 
             // Verify the file was deleted
             if abs_path.exists() {
-                return Err(ServerError::Internal(format!(
+                return Err(ServerError::internal(format!(
                     "File deletion failed: {:?}",
                     abs_path
                 )));
@@ -236,7 +236,7 @@ impl FileService {
         let abs_path = self.to_absolute_path_checked(path)?;
 
         if !abs_path.exists() {
-            return Err(ServerError::NotFound(format!(
+            return Err(ServerError::not_found(format!(
                 "File does not exist: {:?}",
                 abs_path
             )));
@@ -244,7 +244,7 @@ impl FileService {
 
         let content = fs::read_to_string(&abs_path)
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
         Ok(content)
     }
@@ -295,7 +295,7 @@ impl FileService {
             transaction
                 .commit()
                 .await
-                .map_err(|e| ServerError::Internal(e.to_string()))?;
+                .map_err(|e| ServerError::internal(e.to_string()))?;
 
             info!(path = ?abs_path, "Queued write_file operation");
 
@@ -304,7 +304,7 @@ impl FileService {
 
             // Verify the file was written
             if !abs_path.exists() {
-                return Err(ServerError::Internal(format!(
+                return Err(ServerError::internal(format!(
                     "File write failed: {:?}",
                     abs_path
                 )));
@@ -335,14 +335,14 @@ impl FileService {
         let abs_path = self.to_absolute_path_checked(path)?;
 
         if !abs_path.exists() {
-            return Err(ServerError::NotFound(format!(
+            return Err(ServerError::not_found(format!(
                 "Directory not found: {}",
                 abs_path.display()
             )));
         }
 
         if !abs_path.is_dir() {
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "Path is not a directory: {}",
                 abs_path.display()
             )));
@@ -356,10 +356,10 @@ impl FileService {
         } else {
             let mut entries = fs::read_dir(&abs_path)
                 .await
-                .map_err(|e| ServerError::Internal(format!("Failed to read directory: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to read directory: {}", e)))?;
 
             while let Some(entry) = entries.next_entry().await.map_err(|e| {
-                ServerError::Internal(format!("Failed to read directory entry: {}", e))
+                ServerError::internal(format!("Failed to read directory entry: {}", e))
             })? {
                 let path = entry.path();
                 if let Some(file_name) = path.file_name() {
@@ -382,7 +382,7 @@ impl FileService {
         use globset::{Glob, GlobMatcher};
 
         let glob = Glob::new(pattern).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid glob pattern '{}': {}", pattern, e))
+            ServerError::invalid_request(format!("Invalid glob pattern '{}': {}", pattern, e))
         })?;
         let matcher: GlobMatcher = glob.compile_matcher();
 
@@ -401,12 +401,12 @@ impl FileService {
     ) -> ServerResult<()> {
         let mut entries = fs::read_dir(current_path)
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to read directory: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read directory: {}", e)))?;
 
         while let Some(entry) = entries
             .next_entry()
             .await
-            .map_err(|e| ServerError::Internal(format!("Failed to read directory entry: {}", e)))?
+            .map_err(|e| ServerError::internal(format!("Failed to read directory entry: {}", e)))?
         {
             let path = entry.path();
 

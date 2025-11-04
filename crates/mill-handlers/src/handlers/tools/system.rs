@@ -6,7 +6,7 @@ use super::{ToolHandler, ToolHandlerContext};
 use crate::handlers::system_handler::SystemHandler;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::{json, Value};
 
 pub struct SystemToolsHandler {
@@ -54,7 +54,7 @@ impl ToolHandler for SystemToolsHandler {
             return Ok(health_report);
         }
 
-        Err(ApiError::InvalidRequest(format!(
+        Err(ServerError::invalid_request(format!(
             "Unknown system tool: {}",
             tool_call.name
         )))

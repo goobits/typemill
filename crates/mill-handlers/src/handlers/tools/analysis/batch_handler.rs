@@ -5,7 +5,7 @@ use crate::handlers::tools::analysis::batch::{
 };
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
@@ -45,7 +45,7 @@ impl ToolHandler for BatchAnalysisHandler {
             tool_call.arguments.clone().unwrap_or(json!({})),
         )
         .map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid arguments for analyze.batch: {}", e))
+            ServerError::invalid_request(format!("Invalid arguments for analyze.batch: {}", e))
         })?;
 
         let request = BatchAnalysisRequest {
@@ -57,9 +57,9 @@ impl ToolHandler for BatchAnalysisHandler {
 
         let result = run_batch_analysis(request, context)
             .await
-            .map_err(|e| ServerError::Internal(format!("Batch analysis failed: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Batch analysis failed: {}", e)))?;
 
         serde_json::to_value(result)
-            .map_err(|e| ServerError::Internal(format!("Failed to serialize batch result: {}", e)))
+            .map_err(|e| ServerError::internal(format!("Failed to serialize batch result: {}", e)))
     }
 }

@@ -1,7 +1,7 @@
 use super::{RenameHandler, RenameOptions, RenameTarget};
 use crate::handlers::tools::ToolHandlerContext;
 use mill_foundation::planning::{PlanMetadata, PlanSummary, RenamePlan};
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use std::collections::HashMap;
 use std::path::Path;
 use tracing::debug;
@@ -72,7 +72,7 @@ impl RenameHandler {
             .read_file(&abs_old)
             .await
             .map_err(|e| {
-                ServerError::Internal(format!("Failed to read file for checksum: {}", e))
+                ServerError::internal(format!("Failed to read file for checksum: {}", e))
             })?;
 
         // Calculate checksums for all affected files

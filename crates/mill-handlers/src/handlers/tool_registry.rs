@@ -4,7 +4,7 @@
 
 use super::tools::{ToolHandler, ToolHandlerContext};
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -104,7 +104,7 @@ impl ToolRegistry {
     ) -> ServerResult<Value> {
         // Block internal tools from external calls (CLI/MCP)
         if self.internal_tools.contains(&tool_call.name) {
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "Tool '{}' is internal and not available via CLI/MCP. Use the public API instead. \
                  Run 'mill tools' to see available public tools.",
                 tool_call.name
@@ -114,7 +114,7 @@ impl ToolRegistry {
         if let Some(handler) = self.handlers.get(&tool_call.name) {
             handler.handle_tool_call(context, &tool_call).await
         } else {
-            Err(ServerError::Unsupported(format!(
+            Err(ServerError::not_supported(format!(
                 "No handler for tool: {}",
                 tool_call.name
             )))

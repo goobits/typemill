@@ -12,7 +12,7 @@ use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::planning::{
     DeletePlan, DeletionTarget, PlanMetadata, PlanSummary, PlanWarning, RefactorPlan,
 };
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde::Deserialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -110,10 +110,10 @@ impl ToolHandler for DeleteHandler {
         let args = tool_call
             .arguments
             .clone()
-            .ok_or_else(|| ServerError::InvalidRequest("Missing arguments for delete".into()))?;
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments for delete"))?;
 
         let params: DeletePlanParams = serde_json::from_value(args).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid delete parameters: {}", e))
+            ServerError::invalid_request(format!("Invalid delete parameters: {}", e))
         })?;
 
         debug!(
@@ -129,7 +129,7 @@ impl ToolHandler for DeleteHandler {
             "directory" => self.plan_directory_delete(&params, context).await?,
             "dead_code" => self.plan_dead_code_delete(&params, context).await?,
             kind => {
-                return Err(ServerError::InvalidRequest(format!(
+                return Err(ServerError::invalid_request(format!(
                     "Unsupported delete kind: {}. Must be one of: symbol, file, directory, dead_code",
                     kind
                 )));
@@ -143,7 +143,7 @@ impl ToolHandler for DeleteHandler {
         if params.options.dry_run {
             // Return plan only (preview mode)
             let plan_json = serde_json::to_value(&refactor_plan).map_err(|e| {
-                ServerError::Internal(format!("Failed to serialize delete plan: {}", e))
+                ServerError::internal(format!("Failed to serialize delete plan: {}", e))
             })?;
 
             info!(
@@ -169,7 +169,7 @@ impl ToolHandler for DeleteHandler {
                 .await?;
 
             let result_json = serde_json::to_value(&result).map_err(|e| {
-                ServerError::Internal(format!("Failed to serialize execution result: {}", e))
+                ServerError::internal(format!("Failed to serialize execution result: {}", e))
             })?;
 
             info!(
@@ -243,8 +243,8 @@ impl DeleteHandler {
 
         // Validate selector is provided
         let selector = params.target.selector.as_ref().ok_or_else(|| {
-            ServerError::InvalidRequest(
-                "Symbol delete requires selector with line/character".into(),
+            ServerError::invalid_request(
+                "Symbol delete requires selector with line/character",
             )
         })?;
 
@@ -256,7 +256,7 @@ impl DeleteHandler {
             .await
             .map_err(|e| {
                 error!(error = %e, file_path = %params.target.path, "Failed to read file");
-                ServerError::Internal(format!("Failed to read file for checksum: {}", e))
+                ServerError::internal(format!("Failed to read file for checksum: {}", e))
             })?;
 
         // Calculate checksum
@@ -271,7 +271,7 @@ impl DeleteHandler {
         let line_index = selector.line as usize;
 
         if line_index >= lines.len() {
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "Line {} is out of bounds (file has {} lines)",
                 selector.line,
                 lines.len()
@@ -314,11 +314,11 @@ impl DeleteHandler {
         // Convert file path to file:// URI
         let canonical_path = file_path
             .canonicalize()
-            .map_err(|e| ServerError::Internal(format!("Failed to canonicalize path: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to canonicalize path: {}", e)))?;
         let uri_string = format!("file://{}", canonical_path.display());
         let uri: Uri = uri_string
             .parse()
-            .map_err(|e| ServerError::Internal(format!("Invalid URI: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Invalid URI: {}", e)))?;
 
         let text_edit = TextEdit {
             range: Range {
@@ -405,7 +405,7 @@ impl DeleteHandler {
             .await
             .map_err(|e| {
                 error!(error = %e, file_path = %params.target.path, "Failed to read file");
-                ServerError::Internal(format!("Failed to read file for checksum: {}", e))
+                ServerError::internal(format!("Failed to read file for checksum: {}", e))
             })?;
 
         // Calculate checksum
@@ -495,7 +495,7 @@ impl DeleteHandler {
 
         // Verify it's a directory
         if !dir_path.is_dir() {
-            return Err(ServerError::InvalidRequest(format!(
+            return Err(ServerError::invalid_request(format!(
                 "Path is not a directory: {}",
                 params.target.path
             )));
