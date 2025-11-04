@@ -100,6 +100,9 @@ test-results/
 # Debug and development tools
 .debug/
 
+# Dogfooding - ignore cloned repos, keep structure
+.dogfood/*/repo/
+
 # Code quality reports
 .build/
 jscpd-report/

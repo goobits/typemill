@@ -1,0 +1,52 @@
+# Docker Compose for Mill Testing
+#
+# This file provides isolated services for testing mill refactoring tools
+# on this project without interfering with other projects.
+#
+# Usage:
+#   docker-compose -f docker-compose.mill-test.yml up -d
+#   docker-compose -f docker-compose.mill-test.yml down -v
+
+version: '3.8'
+
+services:
+  # Example PostgreSQL service
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: testdb
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+    ports:
+      - "5433:5432"  # Non-standard port to avoid conflicts
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d testdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Example Redis service
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"  # Non-standard port to avoid conflicts
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Add other services as needed:
+  # - MongoDB
+  # - RabbitMQ
+  # - Elasticsearch
+  # etc.
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: mill_test_project_a
