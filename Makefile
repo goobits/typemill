@@ -479,12 +479,14 @@ first-time-setup:
 	@echo "🏗️  Step 7/9: Building main Rust project (this may take a few minutes)..."
 	@echo "  → Populating cargo registry (prevents ARM64 corruption)..."
 	@export PATH="$$HOME/.cargo/bin:$$PATH"; \
-	export CARGO_BUILD_JOBS=6; \
+	# Known cargo parallel build race (getrandom crate) requires single-job builds for now.
+	export CARGO_BUILD_JOBS=1; \
 	export CARGO_INCREMENTAL=0; \
 	cargo fetch --locked || { echo "  ⚠️  cargo fetch failed, trying without --locked"; cargo fetch; }
 	@echo "  → Building project with ARM64-safe settings..."
 	@export PATH="$$HOME/.cargo/bin:$$PATH"; \
-	export CARGO_BUILD_JOBS=6; \
+	# Keep single-job builds until getrandom resolver issue is fixed.
+	export CARGO_BUILD_JOBS=1; \
 	export CARGO_INCREMENTAL=0; \
 	cargo build --offline -j 1 || cargo build
 	@echo ""

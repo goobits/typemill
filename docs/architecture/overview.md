@@ -292,7 +292,7 @@ impl Capabilities {
 
 When `error_on_ambiguity: true` in config:
 ```rust
-PluginError::AmbiguousPluginSelection {
+PluginApiError::AmbiguousPluginSelection {
     method: "find_definition",
     plugins: vec!["plugin-a", "plugin-b"],
     priority: 50,
@@ -637,7 +637,7 @@ impl LanguagePlugin for SystemToolsPlugin {
         match request.tool.as_str() {
             "find_definition" => self.find_definition(request, app_state).await,
             "get_diagnostics" => self.get_diagnostics(request, app_state).await,
-            _ => Err(PluginError::UnsupportedTool(request.tool.clone()))
+            _ => Err(PluginApiError::UnsupportedTool(request.tool.clone()))
         }
     }
 }

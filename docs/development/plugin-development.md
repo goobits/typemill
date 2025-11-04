@@ -554,11 +554,11 @@ Current adoption across 4 plugins (Go, Python, Rust, TypeScript):
 let tmp_dir = Builder::new()
     .prefix("mill-ts-ast")
     .tempdir()
-    .map_err(|e| PluginError::internal(format!("Failed to create temp dir: {}", e)))?;
+    .map_err(|e| PluginApiError::internal(format!("Failed to create temp dir: {}", e)))?;
 
 let ast_tool_path = tmp_dir.path().join("ast_tool.js");
 std::fs::write(&ast_tool_path, AST_TOOL_JS)
-    .map_err(|e| PluginError::internal(format!("Failed to write AST tool: {}", e)))?;
+    .map_err(|e| PluginApiError::internal(format!("Failed to write AST tool: {}", e)))?;
 
 let output = Command::new("node")
     .arg(&ast_tool_path)
@@ -567,7 +567,7 @@ let output = Command::new("node")
     .stdout(Stdio::piped())
     .stderr(Stdio::piped())
     .spawn()
-    .map_err(|e| PluginError::external_tool(format!("Failed to spawn node: {}", e)))?;
+    .map_err(|e| PluginApiError::external_tool(format!("Failed to spawn node: {}", e)))?;
 // ... 25 more lines of error handling ...
 ```
 ### After (10 lines)
