@@ -137,6 +137,15 @@ impl ModuleReferenceScanner for GoPlugin {
         let import_re = regex::Regex::new(&import_pattern)
             .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
 
+        // Compile qualified path regex once outside the loop for performance
+        let qualified_re = if scope == ScanScope::All || scope == ScanScope::QualifiedPaths {
+            let qualified_pattern = (constants::QUALIFIED_PATH_PATTERN)(module_name);
+            Some(regex::Regex::new(&qualified_pattern)
+                .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?)
+        } else {
+            None
+        };
+
         for (i, line) in content.lines().enumerate() {
             let line_num = i + 1; // Convert to 1-indexed line numbering
 
@@ -156,7 +165,7 @@ impl ModuleReferenceScanner for GoPlugin {
             }
 
             // Scan for qualified paths like `fmt.Println`
-            if scope == ScanScope::All || scope == ScanScope::QualifiedPaths {
+            if let Some(ref qualified_re) = qualified_re {
                 // Skip lines that are comments
                 if trimmed.starts_with("//") || trimmed.starts_with("/*") {
                     continue;
@@ -164,10 +173,6 @@ impl ModuleReferenceScanner for GoPlugin {
 
                 // Strip inline comments before matching
                 let code_only = line.split("//").next().unwrap_or(line);
-
-                let qualified_pattern = (constants::QUALIFIED_PATH_PATTERN)(module_name);
-                let qualified_re = regex::Regex::new(&qualified_pattern)
-                    .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
 
                 for mat in qualified_re.find_iter(code_only) {
                     references.push(ModuleReference {

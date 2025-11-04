@@ -172,6 +172,22 @@ impl ModuleReferenceScanner for CsharpPlugin {
         use mill_plugin_api::{ModuleReference, ReferenceKind, ScanScope};
         let mut references = Vec::new();
 
+        // Compile using pattern regex once outside the loop for performance
+        let using_re = if scope != ScanScope::QualifiedPaths {
+            Some((constants::USING_STATEMENT_PATTERN)(module_name))
+        } else {
+            None
+        };
+
+        // Compile qualified path regex once outside the loop for performance
+        let qualified_re = if scope == ScanScope::QualifiedPaths || scope == ScanScope::All {
+            let qualified_pattern = (constants::QUALIFIED_PATH_PATTERN)(module_name);
+            Some(regex::Regex::new(&qualified_pattern)
+                .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?)
+        } else {
+            None
+        };
+
         for (line_idx, line) in content.lines().enumerate() {
             let line_num = line_idx + 1;
 
@@ -184,8 +200,7 @@ impl ModuleReferenceScanner for CsharpPlugin {
             let code_only = constants::strip_single_line_comments(line);
 
             // Scan for `using module_name;` with word boundaries
-            if scope != ScanScope::QualifiedPaths {
-                let using_re = (constants::USING_STATEMENT_PATTERN)(module_name);
+            if let Some(ref using_re) = using_re {
                 if let Some(mat) = using_re.find(code_only) {
                     // Skip if this is a using alias (contains '=')
                     if !code_only[mat.start()..].contains('=') {
@@ -201,11 +216,7 @@ impl ModuleReferenceScanner for CsharpPlugin {
             }
 
             // Scan for qualified paths like `module_name.Class`
-            if scope == ScanScope::QualifiedPaths || scope == ScanScope::All {
-                let qualified_pattern = (constants::QUALIFIED_PATH_PATTERN)(module_name);
-                let qualified_re = regex::Regex::new(&qualified_pattern)
-                    .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
-
+            if let Some(ref qualified_re) = qualified_re {
                 for mat in qualified_re.find_iter(code_only) {
                     references.push(ModuleReference {
                         line: line_num,
