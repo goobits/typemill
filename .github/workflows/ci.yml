@@ -56,7 +56,7 @@ jobs:
         run: cargo build --verbose
 
       - name: Run tests (fast)
-        run: cargo nextest run --workspace --verbose
+        run: cargo nextest run --workspace --verbose --release
 
       - name: Run doc tests
         run: cargo test --doc
@@ -90,7 +90,7 @@ jobs:
         uses: taiki-e/install-action@nextest
 
       - name: Run LSP tests
-        run: cargo nextest run --workspace --features lsp-tests --status-level skip
+        run: cargo nextest run --workspace --features lsp-tests --status-level skip --release
 
   build:
     name: Build (${{ matrix.target }})

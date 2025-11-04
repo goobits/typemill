@@ -155,7 +155,7 @@ pub trait RefactoringProvider: Send + Sync {
         _variable_col: u32,
         _file_path: &str,
     ) -> PluginResult<mill_foundation::protocol::EditPlan> {
-        Err(crate::PluginError::not_supported("plan_inline_variable"))
+        Err(crate::PluginApiError::not_supported("plan_inline_variable"))
     }
 
     /// Check if extract function refactoring is supported
@@ -182,7 +182,7 @@ pub trait RefactoringProvider: Send + Sync {
         _function_name: &str,
         _file_path: &str,
     ) -> PluginResult<mill_foundation::protocol::EditPlan> {
-        Err(crate::PluginError::not_supported("plan_extract_function"))
+        Err(crate::PluginApiError::not_supported("plan_extract_function"))
     }
 
     /// Check if extract variable refactoring is supported
@@ -214,7 +214,7 @@ pub trait RefactoringProvider: Send + Sync {
         _variable_name: Option<String>,
         _file_path: &str,
     ) -> PluginResult<mill_foundation::protocol::EditPlan> {
-        Err(crate::PluginError::not_supported("plan_extract_variable"))
+        Err(crate::PluginApiError::not_supported("plan_extract_variable"))
     }
 
     // ============================================================================
@@ -225,13 +225,13 @@ pub trait RefactoringProvider: Send + Sync {
     /// Perform inline variable refactoring (DEPRECATED - use plan_inline_variable)
     #[deprecated(note = "Use async plan_inline_variable instead")]
     fn inline_variable(&self, _params: InlineParams) -> PluginResult<WorkspaceEdit> {
-        Err(crate::PluginError::not_supported("inline_variable"))
+        Err(crate::PluginApiError::not_supported("inline_variable"))
     }
 
     /// Perform extract function refactoring (DEPRECATED - use plan_extract_function)
     #[deprecated(note = "Use async plan_extract_function instead")]
     fn extract_function(&self, _params: ExtractParams) -> PluginResult<WorkspaceEdit> {
-        Err(crate::PluginError::not_supported("extract_function"))
+        Err(crate::PluginApiError::not_supported("extract_function"))
     }
 }
 
@@ -445,7 +445,7 @@ pub trait ManifestUpdater: Send + Sync {
         _dep_path: &str,
         _base_path: &Path,
     ) -> PluginResult<String> {
-        Err(crate::PluginError::not_supported("add_path_dependency"))
+        Err(crate::PluginApiError::not_supported("add_path_dependency"))
     }
 }
 
@@ -520,6 +520,6 @@ pub trait ModuleDeclarationSupport: Send + Sync {
         _module_name: &str,
         _public: bool,
     ) -> PluginResult<String> {
-        Err(crate::PluginError::not_supported("add_module_declaration"))
+        Err(crate::PluginApiError::not_supported("add_module_declaration"))
     }
 }

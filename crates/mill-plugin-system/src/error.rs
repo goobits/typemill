@@ -2,12 +2,12 @@
 
 use thiserror::Error;
 
-/// Result type for plugin operations
-pub type PluginResult<T> = Result<T, PluginError>;
+/// Result type for plugin system operations
+pub type PluginResult<T> = Result<T, PluginSystemError>;
 
 /// Plugin system error types
 #[derive(Error, Debug, Clone)]
-pub enum PluginError {
+pub enum PluginSystemError {
     /// Plugin not found for the given file or method
     #[error("No plugin found for file '{file}' or method '{method}'")]
     PluginNotFound { file: String, method: String },
@@ -61,7 +61,11 @@ pub enum PluginError {
     Generic { message: String },
 }
 
-impl PluginError {
+// Backward compatibility alias (will be removed in future version)
+#[deprecated(since = "0.2.0", note = "Use PluginSystemError instead")]
+pub type PluginError = PluginSystemError;
+
+impl PluginSystemError {
     /// Create a plugin not found error
     pub fn plugin_not_found(file: impl Into<String>, method: impl Into<String>) -> Self {
         Self::PluginNotFound {
@@ -156,13 +160,13 @@ impl PluginError {
     }
 }
 
-impl From<serde_json::Error> for PluginError {
+impl From<serde_json::Error> for PluginSystemError {
     fn from(err: serde_json::Error) -> Self {
         Self::serialization_error(err.to_string())
     }
 }
 
-impl From<std::io::Error> for PluginError {
+impl From<std::io::Error> for PluginSystemError {
     fn from(err: std::io::Error) -> Self {
         Self::io_error(err.to_string())
     }
@@ -174,8 +178,8 @@ mod tests {
 
     #[test]
     fn test_plugin_error_creation() {
-        let error = PluginError::plugin_not_found("test.ts", "find_definition");
-        assert!(matches!(error, PluginError::PluginNotFound { .. }));
+        let error = PluginSystemError::plugin_not_found("test.ts", "find_definition");
+        assert!(matches!(error, PluginSystemError::PluginNotFound { .. }));
         assert!(error.to_string().contains("test.ts"));
         assert!(error.to_string().contains("find_definition"));
     }
@@ -185,21 +189,21 @@ mod tests {
         let json_error = serde_json::from_str::<serde_json::Value>("invalid json");
         assert!(json_error.is_err());
 
-        let plugin_error: PluginError = json_error.unwrap_err().into();
+        let plugin_error: PluginSystemError = json_error.unwrap_err().into();
         assert!(matches!(
             plugin_error,
-            PluginError::SerializationError { .. }
+            PluginSystemError::SerializationError { .. }
         ));
     }
 
     #[test]
     fn test_ambiguous_selection_error() {
         let plugins = vec!["typescript".to_string(), "javascript".to_string()];
-        let error = PluginError::ambiguous_selection("find_definition", plugins, 50);
+        let error = PluginSystemError::ambiguous_selection("find_definition", plugins, 50);
 
         assert!(matches!(
             error,
-            PluginError::AmbiguousPluginSelection { .. }
+            PluginSystemError::AmbiguousPluginSelection { .. }
         ));
         assert!(error.to_string().contains("typescript"));
         assert!(error.to_string().contains("javascript"));

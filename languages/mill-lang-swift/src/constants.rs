@@ -4,7 +4,10 @@
 //! including regex patterns, version numbers, and other configuration values.
 
 use lazy_static::lazy_static;
+use lru::LruCache;
 use regex::Regex;
+use std::num::NonZeroUsize;
+use std::sync::Mutex;
 
 /// Parser version for import graph metadata
 pub const PARSER_VERSION: &str = "0.1.0";
@@ -55,21 +58,49 @@ lazy_static! {
         r"^\s*import\s+(?:class|struct|func|enum|protocol|typealias)?\s*([a-zA-Z0-9_]+)"
     ).expect("Valid regex for Swift import parsing");
 
-    /// Regex pattern for matching qualified paths (e.g., `Foundation.URL`)
-    ///
-    /// Uses word boundary to avoid matching inside strings
-    pub static ref QUALIFIED_PATH_PATTERN: fn(&str) -> Regex = |module_name: &str| {
-        Regex::new(&format!(r"\b{}\.", regex::escape(module_name)))
-            .expect("Valid regex for qualified path matching")
-    };
+    // LRU caches for dynamically compiled regex patterns (capacity: 100 patterns each)
+    pub(crate) static ref QUALIFIED_PATH_CACHE: Mutex<LruCache<String, Regex>> =
+        Mutex::new(LruCache::new(NonZeroUsize::new(100).unwrap()));
 
-    /// Regex pattern for matching import statements with word boundaries
-    ///
-    /// Includes support for:
-    /// - Simple imports: `import Foundation`
-    /// - Qualified imports: `import class Foundation.NSObject`
-    pub static ref IMPORT_WITH_BOUNDARY_PATTERN: fn(&str) -> Regex = |module_name: &str| {
-        Regex::new(&format!(r"\bimport\s+(?:class|struct|func|enum|protocol|typealias)?\s*{}\b", regex::escape(module_name)))
-            .expect("Valid regex for import statement matching")
-    };
+    pub(crate) static ref IMPORT_MODULE_CACHE: Mutex<LruCache<String, Regex>> =
+        Mutex::new(LruCache::new(NonZeroUsize::new(100).unwrap()));
+}
+
+/// Returns a regex pattern for matching qualified paths (e.g., `Foundation.URL`)
+///
+/// Cached to avoid recompilation for frequently used module names.
+/// Uses word boundary to avoid matching inside strings.
+pub fn qualified_path_pattern(module_name: &str) -> Result<Regex, regex::Error> {
+    let mut cache = QUALIFIED_PATH_CACHE.lock().unwrap();
+
+    if let Some(re) = cache.get(module_name) {
+        return Ok(re.clone());
+    }
+
+    let pattern = format!(r"\b{}\.", regex::escape(module_name));
+    let re = Regex::new(&pattern)?;
+    cache.put(module_name.to_string(), re.clone());
+    Ok(re)
+}
+
+/// Returns a regex pattern for matching import statements with word boundaries
+///
+/// Cached to avoid recompilation for frequently used module names.
+/// Includes support for:
+/// - Simple imports: `import Foundation`
+/// - Qualified imports: `import class Foundation.NSObject`
+pub fn import_pattern_for_module(module_name: &str) -> Result<Regex, regex::Error> {
+    let mut cache = IMPORT_MODULE_CACHE.lock().unwrap();
+
+    if let Some(re) = cache.get(module_name) {
+        return Ok(re.clone());
+    }
+
+    let pattern = format!(
+        r"\bimport\s+(?:class|struct|func|enum|protocol|typealias)?\s*{}\b",
+        regex::escape(module_name)
+    );
+    let re = Regex::new(&pattern)?;
+    cache.put(module_name.to_string(), re.clone());
+    Ok(re)
 }

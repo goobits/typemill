@@ -1,6 +1,6 @@
 //! Plugin registry for managing loaded plugins
 
-use crate::{Capabilities, LanguagePlugin, PluginError, PluginMetadata, PluginResult};
+use crate::{PluginSystemError, Capabilities, LanguagePlugin, PluginError, PluginMetadata, PluginResult};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -164,7 +164,7 @@ impl RuntimePluginManager {
             info!("Unregistered plugin '{}'", name);
             Ok(())
         } else {
-            Err(PluginError::plugin_not_found(name, "unregister"))
+            Err(PluginSystemError::plugin_not_found(name, "unregister"))
         }
     }
 
@@ -264,7 +264,7 @@ impl RuntimePluginManager {
         }
 
         // No compatible plugins found
-        Err(PluginError::plugin_not_found(
+        Err(PluginSystemError::plugin_not_found(
             file_path.to_string_lossy(),
             method,
         ))
@@ -300,7 +300,7 @@ impl RuntimePluginManager {
         // Check for ambiguity
         if best_plugins.len() > 1 {
             if self.error_on_ambiguity {
-                return Err(PluginError::AmbiguousPluginSelection {
+                return Err(PluginSystemError::AmbiguousPluginSelection {
                     method: method.to_string(),
                     plugins: best_plugins.iter().map(|p| p.to_string()).collect(),
                     priority: max_priority,
@@ -374,27 +374,27 @@ impl RuntimePluginManager {
     /// Validate plugin metadata
     fn validate_plugin_metadata(&self, metadata: &PluginMetadata) -> PluginResult<()> {
         if metadata.name.is_empty() {
-            return Err(PluginError::configuration_error(
+            return Err(PluginSystemError::configuration_error(
                 "Plugin name cannot be empty",
             ));
         }
 
         if metadata.version.is_empty() {
-            return Err(PluginError::configuration_error(
+            return Err(PluginSystemError::configuration_error(
                 "Plugin version cannot be empty",
             ));
         }
 
         // Basic semver validation (could be more sophisticated)
         if !metadata.version.chars().any(|c| c.is_ascii_digit()) {
-            return Err(PluginError::configuration_error(
+            return Err(PluginSystemError::configuration_error(
                 "Plugin version must contain at least one digit",
             ));
         }
 
         // Validate minimum system version compatibility
         if metadata.min_system_version.as_str() > crate::PLUGIN_SYSTEM_VERSION {
-            return Err(PluginError::version_incompatible(
+            return Err(PluginSystemError::version_incompatible(
                 metadata.name.clone(),
                 metadata.version.clone(),
                 crate::PLUGIN_SYSTEM_VERSION,
@@ -504,7 +504,7 @@ pub(crate) struct RegistryStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{PluginMetadata, PluginRequest, PluginResponse};
+    use crate::{PluginSystemError, PluginMetadata, PluginRequest, PluginResponse};
     use async_trait::async_trait;
     use serde_json::Value;
     use std::path::PathBuf;
@@ -859,7 +859,7 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),
-            PluginError::AmbiguousPluginSelection { .. }
+            PluginSystemError::AmbiguousPluginSelection { .. }
         ));
     }
 

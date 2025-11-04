@@ -2,7 +2,7 @@
 
 use super::client::ExternalMcpClient;
 use super::error::{McpProxyError, McpProxyResult};
-use crate::{PluginError, PluginRequest, PluginResponse, PluginResult};
+use crate::{PluginSystemError, PluginError, PluginRequest, PluginResponse, PluginResult};
 use mill_config::config::ExternalMcpServerConfig;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -74,7 +74,7 @@ impl ExternalMcpManager {
         let parts: Vec<&str> = request.method.split("__").collect();
 
         if parts.len() != 3 || parts[0] != "mcp_proxy" {
-            return Err(PluginError::request_failed(
+            return Err(PluginSystemError::request_failed(
                 "mcp-proxy",
                 format!("Invalid MCP proxy method format: {}", request.method),
             ));
@@ -86,7 +86,7 @@ impl ExternalMcpManager {
         let result = self
             .call_tool(server_name, tool_name, request.params)
             .await
-            .map_err(|e| PluginError::request_failed("mcp-proxy", e.to_string()))?;
+            .map_err(|e| PluginSystemError::request_failed("mcp-proxy", e.to_string()))?;
 
         Ok(PluginResponse::success(result, "mcp-proxy"))
     }

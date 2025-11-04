@@ -502,17 +502,20 @@ The test suite is organized into categories for fast iteration:
 ```bash
 # Fast tests only (mock-based, ~10s)
 # Note: make test auto-installs cargo-nextest if needed
-cargo nextest run --workspace
+# Use --release for 2-5x speedup (critical for regex performance)
+cargo nextest run --workspace --release
 
 # With LSP server tests (~60s, requires LSP servers installed)
-cargo nextest run --workspace --features lsp-tests --status-level skip
+cargo nextest run --workspace --features lsp-tests --status-level skip --release
 
 # Full suite with heavy tests (~80s)
-cargo nextest run --workspace --all-features --status-level skip
+cargo nextest run --workspace --all-features --status-level skip --release
 
 # Performance benchmarks
-cargo nextest run --workspace --features heavy-tests
+cargo nextest run --workspace --features heavy-tests --release
 ```
+
+**Performance Note:** All test commands use `--release` flag for 2-5x faster execution due to regex optimizations. This is critical for performance-sensitive code paths with regex operations.
 **Test Categories:**
 - `fast-tests` (default): Mock-based unit and integration tests
 - `lsp-tests`: Tests requiring real LSP servers (TypeScript, Rust, Python)

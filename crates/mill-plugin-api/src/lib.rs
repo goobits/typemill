@@ -68,11 +68,11 @@ pub use workspace_support::{MoveManifestPlan, WorkspaceSupport};
 // ============================================================================
 
 /// Result type for plugin operations
-pub type PluginResult<T> = Result<T, PluginError>;
+pub type PluginResult<T> = Result<T, PluginApiError>;
 
-/// Errors that can occur during plugin operations
+/// Errors that can occur during plugin API operations
 #[derive(Debug, Clone, thiserror::Error)]
-pub enum PluginError {
+pub enum PluginApiError {
     /// Failed to parse source code
     #[error("Parse error: {message}")]
     Parse {
@@ -98,7 +98,11 @@ pub enum PluginError {
     Internal { message: String },
 }
 
-impl PluginError {
+// Backward compatibility alias (will be removed in future version)
+#[deprecated(since = "0.2.0", note = "Use PluginApiError instead")]
+pub type PluginError = PluginApiError;
+
+impl PluginApiError {
     /// Create a parse error
     pub fn parse(message: impl Into<String>) -> Self {
         Self::Parse {
@@ -144,13 +148,13 @@ impl PluginError {
     }
 }
 
-/// Convert PluginError to ApiError for MCP responses
-impl From<PluginError> for ApiError {
-    fn from(err: PluginError) -> Self {
+/// Convert PluginApiError to ApiError for MCP responses
+impl From<PluginApiError> for ApiError {
+    fn from(err: PluginApiError) -> Self {
         use mill_foundation::error::error_codes::*;
 
         match err {
-            PluginError::Parse { message, location } => {
+            PluginApiError::Parse { message, location } => {
                 let mut error = ApiError::new(E1008_INVALID_DATA, message);
                 if let Some(loc) = location {
                     error = error.details(serde_json::json!({
@@ -160,13 +164,13 @@ impl From<PluginError> for ApiError {
                 }
                 error
             }
-            PluginError::Manifest { message } => ApiError::new(E1008_INVALID_DATA, message),
-            PluginError::NotSupported { operation } => ApiError::new(
+            PluginApiError::Manifest { message } => ApiError::new(E1008_INVALID_DATA, message),
+            PluginApiError::NotSupported { operation } => ApiError::new(
                 E1007_NOT_SUPPORTED,
                 format!("Operation not supported: {}", operation),
             ),
-            PluginError::InvalidInput { message } => ApiError::new(E1001_INVALID_REQUEST, message),
-            PluginError::Internal { message } => {
+            PluginApiError::InvalidInput { message } => ApiError::new(E1001_INVALID_REQUEST, message),
+            PluginApiError::Internal { message } => {
                 ApiError::new(E1000_INTERNAL_SERVER_ERROR, message)
             }
         }

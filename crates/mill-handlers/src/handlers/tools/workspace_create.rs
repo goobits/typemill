@@ -162,15 +162,15 @@ async fn handle_create_package(
         error!(error = ?e, "Failed to create package");
         // Convert PluginError to ApiError
         match e {
-            mill_plugin_api::PluginError::Parse { message, .. } => ApiError::Parse { message },
-            mill_plugin_api::PluginError::Manifest { message } => ApiError::Parse { message },
-            mill_plugin_api::PluginError::NotSupported { operation } => {
+            mill_plugin_api::PluginApiError::Parse { message, .. } => ApiError::Parse { message },
+            mill_plugin_api::PluginApiError::Manifest { message } => ApiError::Parse { message },
+            mill_plugin_api::PluginApiError::NotSupported { operation } => {
                 ApiError::Unsupported(operation)
             }
-            mill_plugin_api::PluginError::InvalidInput { message } => {
+            mill_plugin_api::PluginApiError::InvalidInput { message } => {
                 ApiError::InvalidRequest(message)
             }
-            mill_plugin_api::PluginError::Internal { message } => ApiError::Internal(message),
+            mill_plugin_api::PluginApiError::Internal { message } => ApiError::Internal(message),
         }
     })?;
 

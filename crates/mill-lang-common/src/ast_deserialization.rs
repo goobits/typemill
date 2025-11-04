@@ -118,7 +118,7 @@ impl AstToolOutput {
 /// ```
 pub fn parse_ast_output(json: &str) -> PluginResult<AstToolOutput> {
     serde_json::from_str(json).map_err(|e| {
-        mill_plugin_api::PluginError::parse(format!("Failed to parse AST tool output: {}", e))
+        mill_plugin_api::PluginApiError::parse(format!("Failed to parse AST tool output: {}", e))
     })
 }
 
@@ -127,7 +127,7 @@ pub fn parse_ast_output(json: &str) -> PluginResult<AstToolOutput> {
 /// Wraps a simple symbol array in the standard AstToolOutput structure
 pub fn parse_symbol_array(json: &str) -> PluginResult<Vec<Symbol>> {
     let symbols: Vec<AstSymbol> = serde_json::from_str(json).map_err(|e| {
-        mill_plugin_api::PluginError::parse(format!("Failed to parse symbol array: {}", e))
+        mill_plugin_api::PluginApiError::parse(format!("Failed to parse symbol array: {}", e))
     })?;
 
     Ok(symbols.into_iter().map(Symbol::from).collect())

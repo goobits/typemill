@@ -1,7 +1,7 @@
 //! Plugin manager for orchestrating plugin operations
 
 use crate::registry::RegistryStatistics;
-use crate::{
+use crate::{PluginSystemError, 
     Capabilities, LanguagePlugin, PluginError, PluginMetadata, RuntimePluginManager, PluginRequest,
     PluginResponse, PluginResult,
 };
@@ -104,7 +104,7 @@ impl PluginManager {
             debug!("Configured plugin '{}'", name);
             Ok(())
         } else {
-            Err(PluginError::plugin_not_found(name, "configure"))
+            Err(PluginSystemError::plugin_not_found(name, "configure"))
         }
     }
 
@@ -125,7 +125,7 @@ impl PluginManager {
                 );
                 let plugin = registry.get_plugin(&plugin_name).ok_or_else(|| {
                     error!("get_plugin('{}') returned None!", plugin_name);
-                    PluginError::plugin_not_found(&plugin_name, &request.method)
+                    PluginSystemError::plugin_not_found(&plugin_name, &request.method)
                 })?;
                 debug!("Successfully got plugin '{}' from registry", plugin_name);
                 (plugin_name, plugin)
@@ -500,7 +500,7 @@ impl Default for PluginManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Capabilities, PluginMetadata, PluginRequest, PluginResponse};
+    use crate::{PluginSystemError, Capabilities, PluginMetadata, PluginRequest, PluginResponse};
     use async_trait::async_trait;
     use std::path::PathBuf;
 
@@ -531,7 +531,7 @@ mod tests {
 
         async fn handle_request(&self, request: PluginRequest) -> PluginResult<PluginResponse> {
             if self.should_fail {
-                Err(PluginError::request_failed(&self.name, "test failure"))
+                Err(PluginSystemError::request_failed(&self.name, "test failure"))
             } else {
                 Ok(PluginResponse::success(
                     serde_json::json!({"method": request.method}),
@@ -781,7 +781,7 @@ mod tests {
             }
 
             fn on_file_open(&self, _path: &Path) -> PluginResult<()> {
-                Err(PluginError::request_failed(
+                Err(PluginSystemError::request_failed(
                     "failing-hook",
                     "Intentional test failure",
                 ))

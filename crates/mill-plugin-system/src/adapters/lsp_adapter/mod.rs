@@ -14,7 +14,7 @@ mod tests;
 use crate::{
     Capabilities, DiagnosticCapabilities, EditingCapabilities, IntelligenceCapabilities,
     LanguagePlugin, NavigationCapabilities, PluginError, PluginMetadata, PluginRequest,
-    PluginResponse, PluginResult, RefactoringCapabilities,
+    PluginResponse, PluginResult, PluginSystemError, RefactoringCapabilities,
 };
 use async_trait::async_trait;
 use serde_json::Value;
@@ -78,7 +78,7 @@ impl LanguagePlugin for LspAdapterPlugin {
 
         // Check if we support the file extension (skip for workspace operations)
         if !is_workspace_operation && !self.can_handle_file(&request.file_path) {
-            return Err(PluginError::plugin_not_found(
+            return Err(PluginSystemError::plugin_not_found(
                 request.file_path.to_string_lossy(),
                 &request.method,
             ));
@@ -100,7 +100,7 @@ impl LanguagePlugin for LspAdapterPlugin {
             }
             Err(err) => {
                 error!("LSP service error: {}", err);
-                Err(PluginError::request_failed(&self.metadata.name, err))
+                Err(PluginSystemError::request_failed(&self.metadata.name, err))
             }
         }
     }

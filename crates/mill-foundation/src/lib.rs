@@ -15,6 +15,7 @@
 // ============================================================================
 pub mod core;
 pub mod error;
+pub mod errors;
 pub mod model;
 pub mod planning;
 pub mod protocol;
@@ -23,6 +24,9 @@ pub mod validation;
 // Re-export commonly used types for convenience
 // Error types
 pub use error::{ApiError, CoreError, CoreResult};
+
+// New unified error types
+pub use errors::{error_codes, ErrorResponse, MillError, MillResult};
 
 // Model types
 pub use model::{

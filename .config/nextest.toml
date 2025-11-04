@@ -2,6 +2,8 @@
 # Default profile for local development
 retries = 0
 fail-fast = false
+# Note: Tests should be run with --release flag for 2-5x speedup (regex optimizations)
+# Example: cargo nextest run --workspace --release
 
 [profile.ci]
 # CI profile for GitHub Actions
@@ -9,6 +11,7 @@ retries = 2
 fail-fast = false
 status-level = "all"
 final-status-level = "fail"
+# Note: CI runs tests with --release flag for 2-5x speedup (see .github/workflows/ci.yml)
 
 # Test threads: Use available parallelism
 test-threads = "num-cpus"

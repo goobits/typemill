@@ -188,8 +188,10 @@ impl ModuleReferenceScanner for SwiftPlugin {
         scope: ScanScope,
     ) -> PluginResult<Vec<ModuleReference>> {
         let mut references = Vec::new();
-        let import_re = (constants::IMPORT_WITH_BOUNDARY_PATTERN)(module_name);
-        let qualified_re = (constants::QUALIFIED_PATH_PATTERN)(module_name);
+        let import_re = constants::import_pattern_for_module(module_name)
+            .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
+        let qualified_re = constants::qualified_path_pattern(module_name)
+            .map_err(|e| PluginError::internal(format!("Invalid regex: {}", e)))?;
 
         for (line_idx, line) in content.lines().enumerate() {
             let line_num = line_idx + 1;

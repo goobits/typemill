@@ -2,9 +2,10 @@
 //! `LanguagePlugin` trait.
 
 use crate::process_manager::PluginProcess;
+use crate::PluginSystemError;
 use async_trait::async_trait;
 use mill_plugin_api::{
-    LanguageMetadata, LanguagePlugin, ManifestData, ParsedSource, PluginCapabilities, PluginError,
+    LanguageMetadata, LanguagePlugin, ManifestData, ParsedSource, PluginApiError, PluginCapabilities, PluginError,
     PluginResult,
 };
 use serde_json::Value;
@@ -33,10 +34,10 @@ impl RpcAdapterPlugin {
             .process
             .call(method, params)
             .await
-            .map_err(|e| PluginError::internal(format!("RPC call failed: {}", e)))?;
+            .map_err(|e| PluginApiError::internal(format!("RPC call failed: {}", e)))?;
 
         serde_json::from_value(response_value).map_err(|e| {
-            PluginError::internal(format!("Failed to deserialize RPC response: {}", e))
+            PluginApiError::internal(format!("Failed to deserialize RPC response: {}", e))
         })
     }
 }

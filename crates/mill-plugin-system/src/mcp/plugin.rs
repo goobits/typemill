@@ -1,7 +1,7 @@
 //! MCP Proxy as a LanguagePlugin
 
 use super::manager::ExternalMcpManager;
-use crate::{
+use crate::{PluginSystemError, 
     Capabilities, LanguagePlugin, PluginError, PluginMetadata, PluginRequest, PluginResponse,
     PluginResult,
 };
@@ -27,7 +27,7 @@ impl McpProxyPlugin {
         self.manager
             .start_all_servers()
             .await
-            .map_err(|e| PluginError::initialization_error("mcp-proxy", e.to_string()))
+            .map_err(|e| PluginSystemError::initialization_error("mcp-proxy", e.to_string()))
     }
 }
 

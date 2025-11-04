@@ -36,17 +36,17 @@ test:
 		fi; \
 		echo "✅ cargo-nextest installed"; \
 	fi
-	cargo nextest run --workspace
+	cargo nextest run --workspace --release
 
 # Run the entire test suite, including ignored/skipped tests
 test-full:
 	@command -v cargo-nextest >/dev/null 2>&1 || { echo "⚠️  cargo-nextest not found. Run 'make setup' first."; exit 1; }
-	cargo nextest run --workspace --all-features --status-level skip
+	cargo nextest run --workspace --release --all-features --status-level skip
 
 # Run tests requiring LSP servers
 test-lsp:
 	@command -v cargo-nextest >/dev/null 2>&1 || { echo "⚠️  cargo-nextest not found. Run 'make setup' first."; exit 1; }
-	cargo nextest run --workspace --features lsp-tests --status-level skip
+	cargo nextest run --workspace --release --features lsp-tests --status-level skip
 
 # =============================================================================
 # Fast-Path Development Targets - Focused Subsystem Workflows

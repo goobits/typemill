@@ -58,16 +58,16 @@ impl From<AstError> for CoreError {
     }
 }
 
-impl From<mill_plugin_api::PluginError> for AstError {
-    fn from(err: mill_plugin_api::PluginError) -> Self {
+impl From<mill_plugin_api::PluginApiError> for AstError {
+    fn from(err: mill_plugin_api::PluginApiError) -> Self {
         match err {
-            mill_plugin_api::PluginError::Parse { message, .. } => Self::Parse { message },
-            mill_plugin_api::PluginError::Manifest { message } => Self::Analysis { message },
-            mill_plugin_api::PluginError::NotSupported { operation } => {
+            mill_plugin_api::PluginApiError::Parse { message, .. } => Self::Parse { message },
+            mill_plugin_api::PluginApiError::Manifest { message } => Self::Analysis { message },
+            mill_plugin_api::PluginApiError::NotSupported { operation } => {
                 Self::UnsupportedSyntax { feature: operation }
             }
-            mill_plugin_api::PluginError::InvalidInput { message } => Self::Analysis { message },
-            mill_plugin_api::PluginError::Internal { message } => Self::Analysis { message },
+            mill_plugin_api::PluginApiError::InvalidInput { message } => Self::Analysis { message },
+            mill_plugin_api::PluginApiError::Internal { message } => Self::Analysis { message },
         }
     }
 }

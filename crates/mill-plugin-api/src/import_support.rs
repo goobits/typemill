@@ -3,7 +3,7 @@
 //! Provides import parsing, analysis, and rewriting capabilities through segregated traits.
 //! Languages implement only the traits they need for their specific capabilities.
 
-use crate::{PluginError, PluginResult};
+use crate::{PluginApiError, PluginResult};
 use mill_foundation::protocol::DependencyUpdate;
 use std::path::Path;
 
@@ -120,7 +120,7 @@ pub trait ImportMutationSupport: Send + Sync {
     /// # Returns
     /// The modified line. If the named import was the only one, it may return an empty string.
     fn remove_named_import(&self, line: &str, _import_name: &str) -> PluginResult<String> {
-        Err(PluginError::not_supported(format!(
+        Err(PluginApiError::not_supported(format!(
             "{} does not support removing named imports",
             line
         )))

@@ -104,7 +104,7 @@ async fn test_unsupported_method() {
     assert!(result.is_err());
     assert!(matches!(
         result.unwrap_err(),
-        PluginError::MethodNotSupported { .. }
+        PluginSystemError::MethodNotSupported { .. }
     ));
 }
 

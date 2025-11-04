@@ -2,7 +2,7 @@
 
 use crate::capabilities::Capabilities;
 use crate::{
-    error::PluginError,
+    error::{PluginError, PluginSystemError},
     plugin::{LanguagePlugin, PluginMetadata},
     protocol::{PluginRequest, PluginResponse, ResponseMetadata},
     PluginResult,
@@ -102,7 +102,7 @@ impl SystemToolsPlugin {
         }
 
         let args: ListFilesArgs =
-            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+            serde_json::from_value(params).map_err(|e| PluginSystemError::SerializationError {
                 message: format!("Invalid list_files args: {}", e),
             })?;
 
@@ -171,7 +171,7 @@ impl SystemToolsPlugin {
         }
 
         let args: UpdateDependenciesArgs =
-            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+            serde_json::from_value(params).map_err(|e| PluginSystemError::SerializationError {
                 message: format!("Invalid bulk_update_dependencies args: {}", e),
             })?;
 
@@ -244,7 +244,7 @@ impl SystemToolsPlugin {
                 }
             }
             _ => {
-                return Err(PluginError::PluginRequestFailed {
+                return Err(PluginSystemError::PluginRequestFailed {
                     plugin: "system-tools".to_string(),
                     message: format!("Unknown package manager: {}", detected_manager),
                 })
@@ -257,7 +257,7 @@ impl SystemToolsPlugin {
             .current_dir(&project_path)
             .output()
             .await
-            .map_err(|e| PluginError::IoError {
+            .map_err(|e| PluginSystemError::IoError {
                 message: format!("Failed to execute command: {}", e),
             })?;
 
@@ -297,25 +297,25 @@ impl SystemToolsPlugin {
         }
 
         let args: WebFetchArgs =
-            serde_json::from_value(params).map_err(|e| PluginError::SerializationError {
+            serde_json::from_value(params).map_err(|e| PluginSystemError::SerializationError {
                 message: format!("Invalid web_fetch args: {}", e),
             })?;
 
         debug!(url = %args.url, "Fetching URL content");
 
         // Use reqwest to fetch the URL content
-        let response = reqwest::blocking::get(&args.url).map_err(|e| PluginError::IoError {
+        let response = reqwest::blocking::get(&args.url).map_err(|e| PluginSystemError::IoError {
             message: format!("Failed to fetch URL: {}", e),
         })?;
 
-        let html_content = response.text().map_err(|e| PluginError::IoError {
+        let html_content = response.text().map_err(|e| PluginSystemError::IoError {
             message: format!("Failed to read response text: {}", e),
         })?;
 
         // Convert HTML to Markdown for easier AI processing
         let markdown_content =
             html2md_rs::to_md::safe_from_html_to_md(html_content).map_err(|e| {
-                PluginError::IoError {
+                PluginSystemError::IoError {
                     message: format!("Failed to convert HTML to markdown: {}", e),
                 }
             })?;
@@ -338,7 +338,7 @@ impl SystemToolsPlugin {
             .any(|p| p.metadata().name == "rust");
 
         if !has_rust {
-            return Err(PluginError::MethodNotSupported {
+            return Err(PluginSystemError::MethodNotSupported {
                 method: "extract_module_to_package".to_string(),
                 plugin: "system-tools (requires Rust plugin)".to_string(),
             });
@@ -347,7 +347,7 @@ impl SystemToolsPlugin {
         // Deserialize parameters - no cfg guard needed, we check capabilities at runtime
         let parsed: mill_ast::package_extractor::ExtractModuleToPackageParams =
             serde_json::from_value(params.clone()).map_err(|e| {
-                PluginError::SerializationError {
+                PluginSystemError::SerializationError {
                     message: format!("Invalid extract_module_to_package args: {}", e),
                 }
             })?;
@@ -367,7 +367,7 @@ impl SystemToolsPlugin {
             &self.plugin_registry,
         )
         .await
-        .map_err(|e| PluginError::PluginRequestFailed {
+        .map_err(|e| PluginSystemError::PluginRequestFailed {
             plugin: "system-tools".to_string(),
             message: format!("Failed to plan extract_module_to_package: {}", e),
         })?;
@@ -858,7 +858,7 @@ impl LanguagePlugin for SystemToolsPlugin {
                     .await?
             }
             _ => {
-                return Err(PluginError::MethodNotSupported {
+                return Err(PluginSystemError::MethodNotSupported {
                     method: request.method.clone(),
                     plugin: self.metadata.name.clone(),
                 });

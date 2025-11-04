@@ -1,4 +1,4 @@
-use super::{LspAdapterPlugin, PluginError, PluginRequest, PluginResponse, PluginResult};
+use super::{LspAdapterPlugin, PluginError, PluginRequest, PluginResponse, PluginResult, PluginSystemError};
 use serde_json::{json, Value};
 
 impl LspAdapterPlugin {
@@ -82,7 +82,7 @@ impl LspAdapterPlugin {
                 "items": [],
                 "isIncomplete": false
             })),
-            _ => Err(PluginError::serialization_error(
+            _ => Err(PluginSystemError::serialization_error(
                 "Invalid completion response format",
             )),
         }

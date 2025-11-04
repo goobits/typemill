@@ -100,7 +100,7 @@ impl<P: LanguagePlugin + 'static> PluginServer<P> {
                 Ok(serde_json::to_value(manifest)?)
             }
             // Add other LanguagePlugin methods here...
-            _ => Err(crate::PluginError::not_supported(format!(
+            _ => Err(crate::PluginApiError::not_supported(format!(
                 "Method '{}' is not implemented",
                 method
             ))),
@@ -108,9 +108,9 @@ impl<P: LanguagePlugin + 'static> PluginServer<P> {
     }
 }
 
-// Implement `From` for `serde_json::Error` to `PluginError` for convenience.
-impl From<serde_json::Error> for crate::PluginError {
+// Implement `From` for `serde_json::Error` to `PluginApiError` for convenience.
+impl From<serde_json::Error> for crate::PluginApiError {
     fn from(err: serde_json::Error) -> Self {
-        crate::PluginError::invalid_input(format!("JSON deserialization error: {}", err))
+        crate::PluginApiError::invalid_input(format!("JSON deserialization error: {}", err))
     }
 }

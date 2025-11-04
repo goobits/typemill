@@ -1,4 +1,4 @@
-use super::{LspAdapterPlugin, PluginError, PluginRequest, PluginResult};
+use super::{LspAdapterPlugin, PluginError, PluginRequest, PluginResult, PluginSystemError};
 use serde_json::{json, Value};
 use url::Url;
 
@@ -70,7 +70,7 @@ impl LspAdapterPlugin {
             method if method.contains('.') => method,
 
             _ => {
-                return Err(PluginError::method_not_supported(
+                return Err(PluginSystemError::method_not_supported(
                     &request.method,
                     &self.metadata.name,
                 ));
@@ -101,7 +101,7 @@ impl LspAdapterPlugin {
         // Create proper file:// URI using the url crate
         let file_uri = Url::from_file_path(&abs_path)
             .map_err(|_| {
-                PluginError::configuration_error(format!(
+                PluginSystemError::configuration_error(format!(
                     "Invalid file path: {}",
                     abs_path.display()
                 ))
@@ -135,7 +135,7 @@ impl LspAdapterPlugin {
                 if let Some(query) = request.get_string_param("query") {
                     params = json!({ "query": query });
                 } else {
-                    return Err(PluginError::configuration_error(
+                    return Err(PluginSystemError::configuration_error(
                         "search_workspace_symbols requires query parameter",
                     ));
                 }
@@ -157,7 +157,7 @@ impl LspAdapterPlugin {
                 if let Some(item) = request.get_param("item") {
                     params = json!({ "item": item });
                 } else {
-                    return Err(PluginError::configuration_error(
+                    return Err(PluginSystemError::configuration_error(
                         "call hierarchy methods require item parameter",
                     ));
                 }

@@ -3,7 +3,7 @@
 //! This module provides ergonomic builders and macros for creating `PluginError` instances
 //! with rich context. Reduces boilerplate from repetitive error construction patterns.
 
-use mill_plugin_api::PluginError;
+use mill_plugin_api::PluginApiError;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -124,8 +124,8 @@ impl ErrorBuilder {
         }
     }
 
-    /// Build the final PluginError
-    pub fn build(self) -> PluginError {
+    /// Build the final PluginApiError
+    pub fn build(self) -> PluginApiError {
         let mut final_message = self.message;
 
         // Append context if any
@@ -143,9 +143,9 @@ impl ErrorBuilder {
         }
 
         match self.kind {
-            ErrorKind::Parse => PluginError::parse(final_message),
-            ErrorKind::Manifest => PluginError::manifest(final_message),
-            ErrorKind::Internal => PluginError::internal(final_message),
+            ErrorKind::Parse => PluginApiError::parse(final_message),
+            ErrorKind::Manifest => PluginApiError::manifest(final_message),
+            ErrorKind::Internal => PluginApiError::internal(final_message),
         }
     }
 }
@@ -162,7 +162,7 @@ impl ErrorBuilder {
 #[macro_export]
 macro_rules! parse_error {
     ($($arg:tt)*) => {
-        mill_plugin_api::PluginError::parse(format!($($arg)*))
+        mill_plugin_api::PluginApiError::parse(format!($($arg)*))
     };
 }
 
@@ -170,7 +170,7 @@ macro_rules! parse_error {
 #[macro_export]
 macro_rules! manifest_error {
     ($($arg:tt)*) => {
-        mill_plugin_api::PluginError::manifest(format!($($arg)*))
+        mill_plugin_api::PluginApiError::manifest(format!($($arg)*))
     };
 }
 
@@ -178,33 +178,33 @@ macro_rules! manifest_error {
 #[macro_export]
 macro_rules! internal_error {
     ($($arg:tt)*) => {
-        mill_plugin_api::PluginError::internal(format!($($arg)*))
+        mill_plugin_api::PluginApiError::internal(format!($($arg)*))
     };
 }
 
 /// Helper function for I/O errors in manifest operations
-pub fn io_to_manifest_error(error: std::io::Error, path: &Path) -> PluginError {
+pub fn io_to_manifest_error(error: std::io::Error, path: &Path) -> PluginApiError {
     ErrorBuilder::manifest(format!("Failed to read file: {}", error))
         .with_path(path)
         .build()
 }
 
 /// Helper function for I/O errors in parsing operations
-pub fn io_to_parse_error(error: std::io::Error, context: &str) -> PluginError {
+pub fn io_to_parse_error(error: std::io::Error, context: &str) -> PluginApiError {
     ErrorBuilder::parse(format!("I/O error: {}", error))
         .with_context("context", context)
         .build()
 }
 
 /// Helper function for JSON deserialization errors
-pub fn json_error(error: serde_json::Error, context: &str) -> PluginError {
+pub fn json_error(error: serde_json::Error, context: &str) -> PluginApiError {
     ErrorBuilder::parse(format!("Failed to parse JSON: {}", error))
         .with_context("context", context)
         .build()
 }
 
 /// Helper function for TOML deserialization errors
-pub fn toml_error(error: impl std::fmt::Display, context: &str) -> PluginError {
+pub fn toml_error(error: impl std::fmt::Display, context: &str) -> PluginApiError {
     ErrorBuilder::manifest(format!("Failed to parse TOML: {}", error))
         .with_context("context", context)
         .build()
