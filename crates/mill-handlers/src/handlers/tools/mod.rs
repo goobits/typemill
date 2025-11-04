@@ -170,7 +170,7 @@ impl ToolHandlerContext {
     /// - Works with both mill-handlers and mill-handlers-analysis handlers
     /// - Provides access to the full concrete AppState via the extensions field
     /// - Allows handlers to downcast to access concrete types when needed
-    pub fn to_api_context(&self) -> mill_handler_api::ToolHandlerContext {
+    pub async fn to_api_context(&self) -> mill_handler_api::ToolHandlerContext {
         use super::plugin_dispatcher::{FileServiceWrapper, LanguagePluginRegistryWrapper, AnalysisConfigWrapper, LspAdapterWrapper};
 
         mill_handler_api::ToolHandlerContext {
@@ -184,7 +184,7 @@ impl ToolHandlerContext {
             plugin_manager: self.plugin_manager.clone(),
             lsp_adapter: Arc::new(Mutex::new(
                 // Convert Option<Arc<DirectLspAdapter>> to Option<Arc<dyn LspAdapter>>
-                self.lsp_adapter.blocking_lock()
+                self.lsp_adapter.lock().await
                     .as_ref()
                     .map(|adapter| Arc::new(LspAdapterWrapper((**adapter).clone())) as Arc<dyn mill_handler_api::LspAdapter>)
             )),

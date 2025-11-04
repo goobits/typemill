@@ -509,7 +509,7 @@ impl PluginDispatcher {
         };
 
         // Convert to trait-based context for handler compatibility
-        let api_context = concrete_context.to_api_context();
+        let api_context = concrete_context.to_api_context().await;
 
         let result = self
             .tool_registry
