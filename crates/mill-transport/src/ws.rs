@@ -5,7 +5,7 @@ use futures_util::{SinkExt, StreamExt};
 use mill_auth::jwt::{decode, Claims, DecodingKey, Validation};
 use mill_config::AppConfig;
 use mill_foundation::core::model::mcp::{McpError, McpMessage, McpRequest, McpResponse};
-use mill_foundation::protocol::{ApiError, ApiResult};
+use mill_foundation::errors::{ErrorResponse, MillError, MillResult};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
@@ -99,11 +99,11 @@ impl Drop for ConnectionGuard {
 pub async fn start_ws_server(
     config: Arc<AppConfig>,
     dispatcher: Arc<dyn McpDispatcher>,
-) -> ApiResult<()> {
+) -> MillResult<()> {
     // Enforce TLS for non-loopback hosts
     if !config.server.is_loopback_host() {
         if config.server.tls.is_none() {
-            return Err(ApiError::bootstrap(format!(
+            return Err(MillError::bootstrap(format!(
                 "TLS is required when binding to non-loopback address '{}'. \
                      Configure server.tls or bind to 127.0.0.1",
                 config.server.host
@@ -124,7 +124,7 @@ pub async fn start_ws_server(
     let addr = format!("{}:{}", config.server.host, config.server.port);
     let listener = TcpListener::bind(&addr)
         .await
-        .map_err(|e| ApiError::bootstrap(format!("Failed to bind to {}: {}", addr, e)))?;
+        .map_err(|e| MillError::bootstrap(format!("Failed to bind to {}: {}", addr, e)))?;
 
     // Connection tracking for max_clients enforcement
     let active_connections = Arc::new(std::sync::atomic::AtomicUsize::new(0));
@@ -333,12 +333,12 @@ async fn handle_connection(
                     Ok(response) => response,
                     Err(e) => {
                         // Convert to structured API error
-                        let api_error = e.to_api_response();
+                        let api_error: ErrorResponse = e.into();
 
                         tracing::error!(
                             request_id = %request_id,
                             error_code = %api_error.code,
-                            error = %e,
+                            error = %api_error.message,
                             "Failed to handle message"
                         );
 
@@ -407,7 +407,7 @@ async fn handle_message(
     config: &AppConfig,
     dispatcher: &dyn McpDispatcher,
     session_info: &SessionInfo,
-) -> ApiResult<McpMessage> {
+) -> MillResult<McpMessage> {
     match message {
         McpMessage::Request(request) => {
             if request.method == "initialize" {
@@ -444,11 +444,11 @@ async fn handle_initialize(
     session: &mut Session,
     request: McpRequest,
     _config: &AppConfig,
-) -> ApiResult<McpMessage> {
+) -> MillResult<McpMessage> {
     // Parse initialize payload
     let payload: InitializePayload = if let Some(params) = request.params {
         serde_json::from_value(params)
-            .map_err(|e| ApiError::InvalidRequest(format!("Invalid initialize params: {}", e)))?
+            .map_err(|e| MillError::invalid_request(format!("Invalid initialize params: {}", e)))?
     } else {
         InitializePayload {
             project: None,

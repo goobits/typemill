@@ -2,6 +2,7 @@
 
 use crate::McpDispatcher;
 use mill_foundation::core::model::mcp::{McpError, McpMessage, McpResponse};
+use mill_foundation::errors::ErrorResponse;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use uuid::Uuid;
@@ -146,12 +147,12 @@ pub async fn start_stdio_server(
             Ok(response) => response,
             Err(e) => {
                 // Convert to structured API error
-                let api_error = e.to_api_response();
+                let api_error: ErrorResponse = e.into();
 
                 tracing::error!(
                     request_id = %request_id,
                     error_code = %api_error.code,
-                    error = %e,
+                    error = %api_error.message,
                     "Failed to handle message"
                 );
 

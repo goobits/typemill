@@ -2,7 +2,7 @@
 
 use dashmap::DashMap;
 use mill_foundation::core::model::workflow::Workflow;
-use mill_foundation::protocol::{ApiError as ServerError, ApiResult as ServerResult};
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_system::{PluginManager, PluginRequest};
 use serde_json::{json, Value};
 use std::collections::HashMap;

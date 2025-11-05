@@ -112,7 +112,7 @@ fn generate_lib_rs(lang: &str) -> String {
     ));
     code.push_str("use async_trait::async_trait;\n");
     code.push_str("use mill_plugin_api::{LanguagePlugin, LanguagePluginMetadata, ParsedSource};\n");
-    code.push_str("use mill_foundation::protocol::ApiError;\n");
+    code.push_str("use mill_plugin_api::PluginApiError;\n");
     code.push_str("use std::path::Path;\n\n");
 
     code.push_str(&format!("pub struct {}Plugin;\n\n", title_case));
@@ -149,7 +149,7 @@ fn generate_lib_rs(lang: &str) -> String {
     code.push_str("        }\n");
     code.push_str("    }\n\n");
 
-    code.push_str("    async fn parse(&self, _source: &str, _file_path: &Path) -> Result<ParsedSource, ApiError> {\n");
+    code.push_str("    async fn parse(&self, _source: &str, _file_path: &Path) -> Result<ParsedSource, PluginApiError> {\n");
     code.push_str("        // TODO: Implement parsing logic\n");
     code.push_str("        Ok(ParsedSource {\n");
     code.push_str("            symbols: vec![],\n");
@@ -163,7 +163,7 @@ fn generate_lib_rs(lang: &str) -> String {
     code.push_str("        _parsed_source: &ParsedSource,\n");
     code.push_str("        _line: usize,\n");
     code.push_str("        _character: usize,\n");
-    code.push_str("    ) -> Result<Option<mill_plugin_api::Symbol>, ApiError> {\n");
+    code.push_str("    ) -> Result<Option<mill_plugin_api::Symbol>, PluginApiError> {\n");
     code.push_str("        // TODO: Implement symbol lookup\n");
     code.push_str("        Ok(None)\n");
     code.push_str("    }\n");

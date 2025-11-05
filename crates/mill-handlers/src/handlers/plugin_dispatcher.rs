@@ -640,10 +640,10 @@ impl McpDispatcher for PluginDispatcher {
         &self,
         message: McpMessage,
         session_info: &mill_transport::SessionInfo,
-    ) -> mill_foundation::protocol::ApiResult<McpMessage> {
+    ) -> mill_foundation::errors::MillResult<McpMessage> {
         self.dispatch(message, session_info)
             .await
-            .map_err(|e| mill_foundation::protocol::ApiError::internal(e.to_string()))
+            .map_err(|e| mill_foundation::errors::MillError::internal(e.to_string()))
     }
 }
 

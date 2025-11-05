@@ -6,7 +6,7 @@
 
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::McpMessage;
-use mill_foundation::protocol::ApiResult;
+use mill_foundation::errors::MillResult;
 
 pub mod admin;
 pub mod session;
@@ -26,5 +26,5 @@ pub trait McpDispatcher: Send + Sync {
         &self,
         message: McpMessage,
         session_info: &SessionInfo,
-    ) -> ApiResult<McpMessage>;
+    ) -> MillResult<McpMessage>;
 }
