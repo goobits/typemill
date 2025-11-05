@@ -74,6 +74,68 @@ impl RenameHandler {
                 new_path = %new_path.display(),
                 "Detected consolidation move - will merge Cargo.toml and update imports"
             );
+
+            // Validate that consolidation won't create circular dependencies
+            // Find target crate root (the parent of src/ directory)
+            let target_crate_root = new_path
+                .ancestors()
+                .find(|p| {
+                    p.file_name().and_then(|n| n.to_str()) == Some("src")
+                        && p.parent().map(|parent| parent.join("Cargo.toml").exists()).unwrap_or(false)
+                })
+                .and_then(|src| src.parent())
+                .ok_or_else(|| {
+                    mill_foundation::errors::MillError::InvalidRequest {
+                        message: "Could not find target crate root for consolidation".to_string(),
+                        parameter: Some("newName".to_string()),
+                    }
+                })?;
+
+            // Validate circular dependencies using Rust-specific analysis
+            debug!(
+                source = %old_path.display(),
+                target = %target_crate_root.display(),
+                "Validating consolidation for circular dependencies"
+            );
+
+            #[cfg(feature = "lang-rust")]
+            {
+                use mill_lang_rust::dependency_analysis::validate_no_circular_dependencies;
+
+                match validate_no_circular_dependencies(&old_path, target_crate_root, workspace_root).await {
+                    Ok(analysis) if analysis.has_circular_dependency => {
+                        return Err(mill_foundation::errors::MillError::InvalidRequest {
+                            message: format!(
+                                "Cannot consolidate {} into {}: would create circular dependency.\n\
+                                 Dependency chain: {}\n\
+                                 Problematic modules: {}",
+                                analysis.source_crate,
+                                analysis.target_crate,
+                                analysis.dependency_chain.join(" → "),
+                                analysis.problematic_modules.len()
+                            ),
+                            parameter: Some("target".to_string()),
+                        });
+                    }
+                    Ok(_) => {
+                        info!("Circular dependency validation passed");
+                    }
+                    Err(e) => {
+                        // Log validation error but don't fail the plan
+                        // This allows consolidation to proceed if validation itself fails
+                        tracing::warn!(
+                            error = %e,
+                            "Failed to validate circular dependencies, proceeding anyway"
+                        );
+                    }
+                }
+            }
+
+            #[cfg(not(feature = "lang-rust"))]
+            {
+                // Rust language support not compiled in, skip validation
+                debug!("Rust language support not available, skipping circular dependency validation");
+            }
         }
 
         // Get scope configuration from options

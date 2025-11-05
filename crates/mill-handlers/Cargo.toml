@@ -8,6 +8,8 @@ default = ["refactor-all"]
 # NOTE: Language features removed - handlers use dependency injection via PluginRegistry.
 # Language plugins are registered at the binary level (apps/mill/src/main.rs),
 # not at the handler layer. This eliminates compile-time coupling.
+# Exception: lang-rust is optional for consolidation validation (Rust-specific operation)
+lang-rust = ["dep:mill-lang-rust"]
 analysis-dead-code = ["dep:mill-analysis-dead-code", "dep:mill-analysis-common"]
 analysis-circular-deps = ["dep:mill-analysis-circular-deps", "dep:mill-analysis-graph"]
 analysis-deep-dead-code = ["dep:mill-analysis-deep-dead-code", "dep:mill-analysis-common"]
@@ -68,6 +70,7 @@ mill-analysis-dead-code = { path = "../../analysis/mill-analysis-dead-code", opt
 mill-analysis-deep-dead-code = { path = "../../analysis/mill-analysis-deep-dead-code", optional = true }
 mill-analysis-graph = { path = "../../analysis/mill-analysis-graph", optional = true }
 mill-analysis-circular-deps = { path = "../../analysis/mill-analysis-circular-deps", optional = true }
+mill-lang-rust = { path = "../../languages/mill-lang-rust", optional = true }
 
 [dev-dependencies]
 mill-test-support = { path = "../mill-test-support" }

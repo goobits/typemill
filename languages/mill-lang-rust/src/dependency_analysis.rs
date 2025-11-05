@@ -17,7 +17,7 @@ use tracing::{debug, info, warn};
 
 /// Result of circular dependency analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct CircularDependencyAnalysis {
+pub struct CircularDependencyAnalysis {
     /// Whether consolidation would create a circular dependency
     pub has_circular_dependency: bool,
 
@@ -37,7 +37,7 @@ pub(crate) struct CircularDependencyAnalysis {
 
 /// A module that would create a circular dependency if moved
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct ProblematicModule {
+pub struct ProblematicModule {
     /// File path relative to source crate (e.g., "src/language.rs")
     pub file_path: String,
 
