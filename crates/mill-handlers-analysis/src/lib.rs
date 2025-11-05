@@ -19,6 +19,7 @@ pub mod dependencies;
 pub mod documentation;
 pub mod engine;
 pub mod helpers;
+pub mod lsp_provider_adapter;
 pub mod markdown_fixers;
 pub mod module_dependencies;
 pub mod quality;

@@ -1536,21 +1536,158 @@ impl DeadCodeHandler {
         scope_param: &super::engine::ScopeParam,
         kind: &str,
     ) -> ServerResult<Value> {
-        use mill_analysis_common::{AnalysisEngine, LspProvider};
+        use crate::lsp_provider_adapter::LspProviderAdapter;
+        use mill_analysis_common::AnalysisEngine;
         use mill_analysis_dead_code::{DeadCodeAnalyzer, DeadCodeConfig};
-        use mill_foundation::protocol::analysis_result::{AnalysisResult, AnalysisScope};
+        use mill_foundation::protocol::analysis_result::AnalysisResult;
         use std::path::Path;
         use std::sync::Arc;
         use std::time::Instant;
         use tracing::info;
 
-        // Note: LSP-based dead code analysis temporarily disabled
-        // This requires DirectLspAdapter which is in mill-handlers
-        // TODO: Refactor to use LspAdapter trait from mill-handler-api
-        return Err(ServerError::not_supported(
-            "workspace-scoped dead code analysis".to_string(),
-        ));
+        let start_time = Instant::now();
+        let workspace_path = Path::new(&scope_param.path);
 
+        // Determine file extension for LSP client (default to Rust)
+        let file_extension = args
+            .get("file_extension")
+            .and_then(|v| v.as_str())
+            .unwrap_or("rs")
+            .to_string();
+
+        info!(
+            workspace_path = %workspace_path.display(),
+            file_extension = %file_extension,
+            kind = %kind,
+            "Starting workspace-scoped dead code analysis"
+        );
+
+        // Create LSP provider adapter
+        let lsp_adapter = LspProviderAdapter::new(
+            context.lsp_adapter.clone(),
+            file_extension.clone(),
+        );
+
+        // Configure dead code analysis
+        let mut config = DeadCodeConfig::default();
+
+        // Apply configuration from args
+        if let Some(file_types) = args.get("file_types").and_then(|v| v.as_array()) {
+            config.file_types = Some(
+                file_types
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect(),
+            );
+        }
+
+        if let Some(min_refs) = args.get("min_reference_threshold").and_then(|v| v.as_u64()) {
+            config.min_reference_threshold = min_refs as usize;
+        }
+
+        // Run analysis
+        let analyzer = DeadCodeAnalyzer;
+        let report = analyzer
+            .analyze(Arc::new(lsp_adapter), workspace_path, config)
+            .await
+            .map_err(|e| ServerError::analysis(format!("Dead code analysis failed: {}", e)))?;
+
+        info!(
+            dead_symbols_found = report.dead_symbols.len(),
+            files_analyzed = report.stats.files_analyzed,
+            duration_ms = report.stats.duration_ms,
+            "Workspace dead code analysis completed"
+        );
+
+        // Convert to AnalysisResult format
+        use mill_foundation::protocol::analysis_result::{AnalysisScope, SeverityBreakdown};
+        use uuid::Uuid;
+
+        let findings: Vec<Finding> = report
+            .dead_symbols
+            .iter()
+            .map(|symbol| Finding {
+                id: Uuid::new_v4().to_string(),
+                kind: match symbol.kind.as_str() {
+                    "Function" => "unused_function",
+                    "Class" => "unused_class",
+                    "Variable" => "unused_variable",
+                    "Constant" => "unused_constant",
+                    _ => "unused_symbol",
+                }
+                .to_string(),
+                severity: Severity::Medium,
+                location: FindingLocation {
+                    file_path: symbol.file_path.clone(),
+                    range: Some(Range {
+                        start: Position {
+                            line: symbol.line,
+                            character: symbol.column,
+                        },
+                        end: Position {
+                            line: symbol.line,
+                            character: symbol.column + symbol.name.len() as u32,
+                        },
+                    }),
+                    symbol: Some(symbol.name.clone()),
+                    symbol_kind: Some(symbol.kind.clone()),
+                },
+                message: format!("{} '{}' is never used", symbol.kind, symbol.name),
+                suggestions: vec![Suggestion {
+                    action: "remove_symbol".to_string(),
+                    description: format!("Remove unused {} '{}'", symbol.kind.to_lowercase(), symbol.name),
+                    target: None,
+                    estimated_impact: "low".to_string(),
+                    safety: SafetyLevel::Safe,
+                    confidence: 0.9,
+                    reversible: true,
+                    refactor_call: None,
+                }],
+                metrics: {
+                    let mut map = std::collections::HashMap::new();
+                    map.insert("symbol_kind".to_string(), serde_json::json!(symbol.kind));
+                    map.insert("reference_count".to_string(), serde_json::json!(symbol.reference_count));
+                    Some(map)
+                },
+            })
+            .collect();
+
+        // Count findings by severity
+        let medium_count = findings.len(); // All are Medium severity
+        let by_severity = SeverityBreakdown {
+            high: 0,
+            medium: medium_count,
+            low: 0,
+        };
+
+        let result = AnalysisResult {
+            metadata: mill_foundation::protocol::analysis_result::AnalysisMetadata {
+                category: "dead_code".to_string(),
+                kind: kind.to_string(),
+                scope: AnalysisScope {
+                    scope_type: "workspace".to_string(),
+                    path: workspace_path.to_string_lossy().to_string(),
+                    include: vec![],
+                    exclude: vec![],
+                },
+                language: Some(file_extension.clone()),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                thresholds: None,
+            },
+            summary: mill_foundation::protocol::analysis_result::AnalysisSummary {
+                total_findings: findings.len(),
+                returned_findings: findings.len(),
+                has_more: false,
+                by_severity,
+                files_analyzed: report.stats.files_analyzed,
+                symbols_analyzed: Some(report.stats.symbols_analyzed),
+                analysis_time_ms: report.stats.duration_ms as u64,
+                fix_actions: None,
+            },
+            findings,
+        };
+
+        Ok(serde_json::to_value(result).unwrap())
     }
 
     /// Fallback handler for when LSP feature is not enabled

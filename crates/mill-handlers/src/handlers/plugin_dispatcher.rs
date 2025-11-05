@@ -181,22 +181,7 @@ impl mill_handler_api::AnalysisConfigTrait for AnalysisConfigWrapper {
     }
 }
 
-/// Wrapper for DirectLspAdapter to implement mill_handler_api::LspAdapter
-pub struct LspAdapterWrapper(pub DirectLspAdapter);
-
-#[async_trait]
-impl mill_handler_api::LspAdapter for LspAdapterWrapper {
-    async fn get_or_create_client(&self, file_extension: &str) -> Result<std::sync::Arc<mill_lsp::lsp_system::client::LspClient>, mill_foundation::errors::MillError> {
-        self.0.get_or_create_client(file_extension).await
-            .map_err(|e| mill_foundation::errors::MillError::internal(e))
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        &self.0
-    }
-}
-
-/// Plugin-based MCP dispatcher
+//// Plugin-based MCP dispatcher
 pub struct PluginDispatcher {
     /// Plugin manager for handling requests
     plugin_manager: Arc<PluginManager>,

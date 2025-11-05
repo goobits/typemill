@@ -5,7 +5,7 @@ edition = "2021"
 license.workspace = true
 
 [features]
-default = []
+default = ["analysis-dead-code"]
 analysis-dead-code = ["dep:mill-analysis-dead-code", "dep:mill-analysis-common"]
 analysis-circular-deps = ["dep:mill-analysis-circular-deps", "dep:mill-analysis-graph"]
 analysis-deep-dead-code = ["dep:mill-analysis-deep-dead-code", "dep:mill-analysis-common"]

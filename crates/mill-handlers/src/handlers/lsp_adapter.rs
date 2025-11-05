@@ -387,3 +387,21 @@ impl Drop for DirectLspAdapter {
         });
     }
 }
+
+// Implement the LspAdapter trait for DirectLspAdapter
+#[async_trait]
+impl mill_handler_api::LspAdapter for DirectLspAdapter {
+    async fn get_or_create_client(
+        &self,
+        file_extension: &str,
+    ) -> Result<Arc<mill_lsp::lsp_system::LspClient>, mill_foundation::errors::MillError> {
+        // Delegate to the existing implementation, converting error type
+        self.get_or_create_client(file_extension)
+            .await
+            .map_err(|e| mill_foundation::errors::MillError::lsp(e))
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
