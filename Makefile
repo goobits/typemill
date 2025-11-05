@@ -36,16 +36,40 @@ test:
 		fi; \
 		echo "✅ cargo-nextest installed"; \
 	fi
+	@echo "🔍 Checking for debug binary (required for e2e tests)..."
+	@if [ ! -f target/debug/mill ]; then \
+		echo "📦 Debug binary not found, building now..."; \
+		$(CARGO) build --workspace; \
+		echo "✅ Debug build complete"; \
+	else \
+		echo "✅ Debug binary exists"; \
+	fi
 	cargo nextest run --workspace --release
 
 # Run the entire test suite, including ignored/skipped tests
 test-full:
 	@command -v cargo-nextest >/dev/null 2>&1 || { echo "⚠️  cargo-nextest not found. Run 'make setup' first."; exit 1; }
-	cargo nextest run --workspace --release --all-features --status-level skip
+	@echo "🔍 Checking for debug binary (required for e2e tests)..."
+	@if [ ! -f target/debug/mill ]; then \
+		echo "📦 Debug binary not found, building now..."; \
+		$(CARGO) build --workspace; \
+		echo "✅ Debug build complete"; \
+	else \
+		echo "✅ Debug binary exists"; \
+	fi
+	cargo nextest run --workspace --release --status-level skip
 
 # Run tests requiring LSP servers
 test-lsp:
 	@command -v cargo-nextest >/dev/null 2>&1 || { echo "⚠️  cargo-nextest not found. Run 'make setup' first."; exit 1; }
+	@echo "🔍 Checking for debug binary (required for e2e tests)..."
+	@if [ ! -f target/debug/mill ]; then \
+		echo "📦 Debug binary not found, building now..."; \
+		$(CARGO) build --workspace; \
+		echo "✅ Debug build complete"; \
+	else \
+		echo "✅ Debug binary exists"; \
+	fi
 	cargo nextest run --workspace --release --features lsp-tests --status-level skip
 
 # =============================================================================

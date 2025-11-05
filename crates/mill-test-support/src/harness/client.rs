@@ -27,6 +27,31 @@ impl TestClient {
         );
         let server_path = workspace_root.join("target/debug/mill");
 
+        // Pre-check: Fail fast if binary doesn't exist with helpful message
+        if !server_path.exists() {
+            panic!(
+                "\n\n\
+                 ❌ \x1b[1;31mMill debug binary not found\x1b[0m\n\
+                 \n\
+                 Expected location: \x1b[1m{}\x1b[0m\n\
+                 \n\
+                 E2E tests require the debug build. Please run:\n\
+                 \n\
+                 \x1b[1;36m    cargo build --workspace\x1b[0m\n\
+                 \n\
+                 Or just the mill binary:\n\
+                 \n\
+                 \x1b[1;36m    cargo build -p mill\x1b[0m\n\
+                 \n\
+                 \x1b[33m💡 Note:\x1b[0m Building with \x1b[1m--release\x1b[0m only creates target/release/mill.\n\
+                 Tests need target/debug/mill (the debug build).\n\
+                 \n\
+                 \x1b[33m💡 Low memory?\x1b[0m Use: cargo build -j 1\n\
+                 \n",
+                server_path.display()
+            );
+        }
+
         eprintln!(
             "DEBUG: TestClient using server path: {}",
             server_path.display()

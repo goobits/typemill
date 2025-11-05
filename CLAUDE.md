@@ -448,19 +448,26 @@ generate_refactor_calls = true
 ## Development Commands
 
 ```bash
-# Build the project
+# Build the project (debug mode - required for tests!)
 cargo build
 
-# Development build with debug info
+# Build optimized release version (for production use)
 cargo build --release
+
+# ⚠️ IMPORTANT: E2E tests need the debug build at target/debug/mill
+# Building with --release only creates target/release/mill
+
+# Low memory systems (< 8GB RAM)? Use single-threaded build:
+cargo build -j 1
+cargo build --release -j 1
 
 # Run the server directly
 cargo run
 
-# Run tests/e2e
+# Run tests (requires debug build first! See "Testing Workflow" below)
 cargo nextest run
 
-# Run tests/e2e with output
+# Run tests with output
 cargo nextest run --no-capture
 
 # Run clippy for linting
@@ -497,30 +504,78 @@ cargo xtask --help            # Show all available tasks
 ```
 ## Testing Workflow
 
+⚠️ **IMPORTANT:** E2E tests require the debug build at `target/debug/mill`. You must build it first!
+
+### Quick Start
+
+```bash
+# 1. Build debug binaries (REQUIRED for e2e tests)
+cargo build --workspace
+
+# 2. Run tests
+cargo nextest run --workspace
+
+# For low-memory systems (< 8GB RAM):
+cargo build --workspace -j 1
+```
+
+### Common Test Commands
+
 The test suite is organized into categories for fast iteration:
 
 ```bash
 # Fast tests only (mock-based, ~10s)
-# Note: make test auto-installs cargo-nextest if needed
-# Use --release for 2-5x speedup (critical for regex performance)
+# Note: Requires debug build first! (cargo build --workspace)
 cargo nextest run --workspace --release
 
 # With LSP server tests (~60s, requires LSP servers installed)
 cargo nextest run --workspace --features lsp-tests --status-level skip --release
 
 # Full suite with heavy tests (~80s)
-cargo nextest run --workspace --all-features --status-level skip --release
+# ⚠️ Avoid --all-features (causes C/C++ linker conflicts)
+cargo nextest run --workspace --status-level skip --release
 
 # Performance benchmarks
 cargo nextest run --workspace --features heavy-tests --release
+
+# Single CPU (for memory-constrained systems)
+cargo nextest run --workspace -j 1
 ```
 
-**Performance Note:** All test commands use `--release` flag for 2-5x faster execution due to regex optimizations. This is critical for performance-sensitive code paths with regex operations.
+**Performance Note:** The `--release` flag compiles *tests* in release mode for 2-5x speedup (critical for regex performance), but e2e tests still use the debug *binary* at `target/debug/mill`.
+
 **Test Categories:**
 - `fast-tests` (default): Mock-based unit and integration tests
 - `lsp-tests`: Tests requiring real LSP servers (TypeScript, Rust, Python)
 - `e2e-tests`: End-to-end workflow tests
 - `heavy-tests`: Performance benchmarks and property-based testing
+
+### Troubleshooting Tests
+
+**"Mill debug binary not found" error:**
+```bash
+# Fix: Build the debug binary
+cargo build --workspace
+# Or just mill:
+cargo build -p mill
+```
+
+**Build freezing or OOM killed:**
+```bash
+# Fix: Use single-threaded build
+cargo build --workspace -j 1
+```
+
+**"duplicate symbol '_ts_parser_delete'" linker error:**
+```bash
+# Fix: Don't use --all-features (C/C++ plugin conflict)
+cargo build --workspace  # Works
+cargo build --workspace --all-features  # Fails with linker error
+```
+
+**"Cannot block the current thread from within a runtime":**
+- This was fixed in commit 7da52d89 (Nov 4, 2025)
+- Try: `cargo clean && cargo build --workspace`
 
 **Note:** Language support: TypeScript, Rust, Python, C#, Swift, and Go (100% parity). Additional languages (Java) preserved in git tag `pre-language-reduction` and can be restored using documented migration process (see `.debug/language-plugin-migration/`).
 

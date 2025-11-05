@@ -52,8 +52,17 @@ jobs:
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
-      - name: Build
-        run: cargo build --verbose
+      - name: Build debug binaries (required for e2e tests)
+        run: cargo build --workspace --verbose
+
+      - name: Verify debug binary exists
+        run: |
+          if [ ! -f target/debug/mill ] && [ ! -f target/debug/mill.exe ]; then
+            echo "❌ Error: Debug binary not found at target/debug/mill"
+            echo "E2E tests require the debug build. This should not happen in CI."
+            exit 1
+          fi
+          echo "✅ Debug binary exists"
 
       - name: Run tests (fast)
         run: cargo nextest run --workspace --verbose --release
@@ -88,6 +97,18 @@ jobs:
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
+
+      - name: Build debug binaries (required for e2e tests)
+        run: cargo build --workspace --verbose
+
+      - name: Verify debug binary exists
+        run: |
+          if [ ! -f target/debug/mill ]; then
+            echo "❌ Error: Debug binary not found at target/debug/mill"
+            echo "E2E tests require the debug build. This should not happen in CI."
+            exit 1
+          fi
+          echo "✅ Debug binary exists"
 
       - name: Run LSP tests
         run: cargo nextest run --workspace --features lsp-tests --status-level skip --release
