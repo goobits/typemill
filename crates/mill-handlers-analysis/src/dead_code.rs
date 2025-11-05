@@ -19,12 +19,14 @@ use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::protocol::analysis_result::{
     Finding, FindingLocation, Position, Range, SafetyLevel, Severity, Suggestion,
 };
+use mill_foundation::protocol::{AnalysisMetadata, AnalysisSummary};
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_api::ParsedSource;
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use tracing::debug;
+use uuid::Uuid;
 
 /// Helper to downcast AnalysisConfigTrait to concrete AnalysisConfig
 fn get_analysis_config(context: &ToolHandlerContext) -> ServerResult<&AnalysisConfig> {
@@ -1546,7 +1548,10 @@ impl DeadCodeHandler {
         use tracing::info;
 
         let start_time = Instant::now();
-        let workspace_path = Path::new(&scope_param.path);
+        let path_str = scope_param.path.as_deref().ok_or_else(|| {
+            ServerError::invalid_request("Missing 'path' in scope parameter".to_string())
+        })?;
+        let workspace_path = Path::new(path_str);
 
         // Determine file extension for LSP client (default to Rust)
         let file_extension = args
@@ -1713,21 +1718,143 @@ impl DeadCodeHandler {
         scope_param: &super::engine::ScopeParam,
         kind: &str,
     ) -> ServerResult<Value> {
-        use mill_analysis_common::{AnalysisEngine, LspProvider};
+        use crate::lsp_provider_adapter::LspProviderAdapter;
+        use mill_analysis_common::AnalysisEngine;
         use mill_analysis_deep_dead_code::{DeepDeadCodeAnalyzer, DeepDeadCodeConfig};
-        use mill_foundation::protocol::analysis_result::{AnalysisResult, AnalysisScope};
+        use mill_foundation::protocol::analysis_result::{AnalysisResult, AnalysisScope, SeverityBreakdown};
         use std::path::Path;
         use std::sync::Arc;
         use std::time::Instant;
-        use tracing::info;
 
-        // Note: LSP-based dead code analysis temporarily disabled
-        // This requires DirectLspAdapter which is in mill-handlers
-        // TODO: Refactor to use LspAdapter trait from mill-handler-api
-        return Err(ServerError::not_supported(
-            "workspace-scoped dead code analysis".to_string(),
-        ));
+        // Extract path from Option<String>
+        let path_str = scope_param.path.as_deref().ok_or_else(|| {
+            ServerError::invalid_request("Missing 'path' in scope parameter".to_string())
+        })?;
+        let workspace_path = Path::new(path_str);
 
+        // Get file extension for LSP client (default "rs")
+        let file_extension = args.get("file_extension")
+            .and_then(|v| v.as_str())
+            .unwrap_or("rs")
+            .to_string();
+
+        // Create LSP provider adapter
+        let lsp_adapter = LspProviderAdapter::new(
+            context.lsp_adapter.clone(),
+            file_extension.clone(),
+        );
+
+        // Configure analysis
+        let config = DeepDeadCodeConfig {
+            check_public_exports: args.get("check_public_exports")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
+            exclude_patterns: args.get("exclude_patterns")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                }),
+        };
+
+        // Run analysis
+        let start = Instant::now();
+        let analyzer = DeepDeadCodeAnalyzer;
+        let report = analyzer.analyze(Arc::new(lsp_adapter), workspace_path, config).await
+            .map_err(|e| ServerError::analysis(format!("Deep dead code analysis failed: {}", e)))?;
+        let duration_ms = start.elapsed().as_millis() as u64;
+
+        // Convert DeepDeadCodeReport to AnalysisResult
+        let findings: Vec<Finding> = report.dead_symbols.iter().map(|symbol| {
+            // Convert SymbolKind to string
+            let symbol_kind = format!("{:?}", symbol.kind);
+            let severity = if symbol.is_public {
+                Severity::Low  // Public unused exports are lower priority
+            } else {
+                Severity::Medium
+            };
+
+            Finding {
+                id: Uuid::new_v4().to_string(),
+                kind: "unused_symbol".to_string(),
+                severity,
+                location: FindingLocation {
+                    file_path: symbol.file_path.clone(),
+                    range: Some(Range {
+                        start: Position {
+                            line: symbol.range.start.line,
+                            character: symbol.range.start.character,
+                        },
+                        end: Position {
+                            line: symbol.range.end.line,
+                            character: symbol.range.end.character,
+                        },
+                    }),
+                    symbol: Some(symbol.name.clone()),
+                    symbol_kind: Some(symbol_kind.clone()),
+                },
+                message: format!(
+                    "{} '{}' is never used",
+                    if symbol.is_public { "Public" } else { "Private" },
+                    symbol.name
+                ),
+                suggestions: vec![Suggestion {
+                    action: "remove_symbol".to_string(),
+                    description: format!("Remove unused {} '{}'", symbol_kind.to_lowercase(), symbol.name),
+                    target: None,
+                    estimated_impact: "low".to_string(),
+                    safety: SafetyLevel::Safe,
+                    confidence: if symbol.is_public { 0.7 } else { 0.9 },
+                    reversible: true,
+                    refactor_call: None,
+                }],
+                metrics: {
+                    let mut map = std::collections::HashMap::new();
+                    map.insert("symbol_kind".to_string(), serde_json::json!(symbol_kind));
+                    map.insert("is_public".to_string(), serde_json::json!(symbol.is_public));
+                    map.insert("symbol_id".to_string(), serde_json::json!(symbol.id));
+                    Some(map)
+                },
+            }
+        }).collect();
+
+        let high_count = findings.iter().filter(|f| matches!(f.severity, Severity::High)).count();
+        let medium_count = findings.iter().filter(|f| matches!(f.severity, Severity::Medium)).count();
+        let low_count = findings.iter().filter(|f| matches!(f.severity, Severity::Low)).count();
+
+        let result = AnalysisResult {
+            metadata: AnalysisMetadata {
+                category: "dead_code".to_string(),
+                kind: kind.to_string(),
+                scope: AnalysisScope {
+                    scope_type: "workspace".to_string(),
+                    path: workspace_path.to_string_lossy().to_string(),
+                    include: vec![],
+                    exclude: vec![],
+                },
+                language: Some(file_extension.clone()),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                thresholds: None,
+            },
+            summary: AnalysisSummary {
+                total_findings: findings.len(),
+                returned_findings: findings.len(),
+                has_more: false,
+                by_severity: SeverityBreakdown {
+                    high: high_count,
+                    medium: medium_count,
+                    low: low_count,
+                },
+                files_analyzed: 0, // DeepDeadCodeReport doesn't track this
+                symbols_analyzed: Some(report.dead_symbols.len()),
+                analysis_time_ms: duration_ms,
+                fix_actions: None,
+            },
+            findings,
+        };
+
+        Ok(serde_json::to_value(result).unwrap())
     }
 }
 
