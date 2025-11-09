@@ -15,11 +15,11 @@ use mill_test_support::harness::lsp_installer_harness::{
 extern crate mill_plugin_bundle;
 
 #[test]
-fn test_all_lsp_installers_have_names() {
+fn integration_test_all_lsp_installers_have_names() {
     test_all_lsp_installers_have_names();
 }
 
 #[test]
-fn test_all_lsp_installers_can_check_availability() {
+fn integration_test_all_lsp_installers_can_check_availability() {
     test_all_lsp_installers_can_check_availability();
 }

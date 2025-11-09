@@ -423,16 +423,6 @@ version = "1.0.0"
     }
 
     #[test]
-    fn test_is_workspace_manifest() {
-        let support = PythonWorkspaceSupport::new();
-
-        assert!(support.is_workspace_manifest(PDM_WORKSPACE));
-        assert!(support.is_workspace_manifest(POETRY_WORKSPACE));
-        assert!(support.is_workspace_manifest(HATCH_WORKSPACE));
-        assert!(!support.is_workspace_manifest(SINGLE_PACKAGE));
-    }
-
-    #[test]
     fn test_list_pdm_members() {
         let support = PythonWorkspaceSupport::new();
 

@@ -261,6 +261,52 @@ impl WorkspaceScenarios {
             }
         })
     }
+
+    /// List workspace members when workspace is empty
+    pub fn list_workspace_members_empty() -> WorkspaceTestCase {
+        WorkspaceTestCase::new("list_workspace_members_empty").with_all_languages(|lang| {
+            let manifest = match lang {
+                Language::TypeScript => r#"{"name":"root","workspaces":[]}"#,
+                Language::Rust => "[workspace]\nmembers = []\n",
+                Language::Python => "[tool.pdm.workspace]\nmembers = []\n",
+                Language::Java => "<?xml version=\"1.0\"?>\n<project>\n<modules>\n</modules>\n</project>",
+                Language::Go => "go 1.21\n\nuse ()\n",
+                Language::Cpp => "cmake_minimum_required(VERSION 3.10)\nproject(MyWorkspace)\n",
+                _ => unreachable!(),
+            };
+
+            WorkspaceFixture {
+                language: lang,
+                manifest_content: manifest,
+                operation: WorkspaceOperation::ListWorkspaceMembers,
+                expected: WorkspaceExpectedBehavior::MembersList(vec![]),
+            }
+        })
+    }
+
+    /// Remove a non-existent workspace member (should be no-op)
+    pub fn remove_nonexistent_member() -> WorkspaceTestCase {
+        WorkspaceTestCase::new("remove_nonexistent_member").with_all_languages(|lang| {
+            let (manifest, member) = match lang {
+                Language::TypeScript => (r#"{"name":"root","workspaces":["packages/a"]}"#, "packages/nonexistent"),
+                Language::Rust => ("[workspace]\nmembers = [\"crates/a\"]\n", "crates/nonexistent"),
+                Language::Python => ("[tool.pdm.workspace]\nmembers = [\"packages/a\"]\n", "packages/nonexistent"),
+                Language::Java => ("<?xml version=\"1.0\"?>\n<project>\n<modules>\n<module>module-a</module>\n</modules>\n</project>", "nonexistent"),
+                Language::Go => ("go 1.21\n\nuse (\n    ./module-a\n)\n", "./nonexistent"),
+                Language::Cpp => ("cmake_minimum_required(VERSION 3.10)\nproject(MyWorkspace)\nadd_subdirectory(module-a)\n", "nonexistent"),
+                _ => unreachable!(),
+            };
+
+            WorkspaceFixture {
+                language: lang,
+                manifest_content: manifest,
+                operation: WorkspaceOperation::RemoveWorkspaceMember {
+                    member: member.to_string(),
+                },
+                expected: WorkspaceExpectedBehavior::Removed,  // Should be no-op, member not in list
+            }
+        })
+    }
 }
 
 #[cfg(test)]
@@ -277,9 +323,11 @@ mod tests {
             WorkspaceScenarios::add_workspace_member_duplicate(),
             WorkspaceScenarios::remove_workspace_member(),
             WorkspaceScenarios::update_package_name(),
+            WorkspaceScenarios::list_workspace_members_empty(),
+            WorkspaceScenarios::remove_nonexistent_member(),
         ];
 
-        assert_eq!(scenarios.len(), 7, "Should have 7 core workspace scenarios");
+        assert_eq!(scenarios.len(), 9, "Should have 9 core workspace scenarios");
     }
 
     #[test]

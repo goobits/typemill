@@ -253,4 +253,79 @@ mod workspace_harness_tests {
             }
         }
     }
+
+    #[tokio::test]
+    async fn test_list_workspace_members_empty_all_languages() {
+        let registry = get_test_registry();
+        let scenario = WorkspaceScenarios::list_workspace_members_empty();
+
+        for fixture in scenario.fixtures {
+            let plugin = registry
+                .find_by_extension(fixture.language.file_extension())
+                .expect(&format!("Plugin not found for {:?}", fixture.language));
+
+            let workspace_support = plugin.workspace_support().expect(&format!(
+                "{:?} should have workspace support",
+                fixture.language
+            ));
+
+            let members = workspace_support.list_workspace_members(fixture.manifest_content);
+
+            match &fixture.expected {
+                WorkspaceExpectedBehavior::MembersList(expected) => {
+                    assert_eq!(
+                        members, *expected,
+                        "list_workspace_members_empty failed for {:?}\nManifest: {}\nExpected: {:?}\nGot: {:?}",
+                        fixture.language, fixture.manifest_content, expected, members
+                    );
+                    assert!(
+                        members.is_empty(),
+                        "Empty workspace should return empty list for {:?}",
+                        fixture.language
+                    );
+                }
+                _ => panic!("Wrong expected behavior for list_workspace_members_empty test"),
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_remove_nonexistent_member_all_languages() {
+        let registry = get_test_registry();
+        let scenario = WorkspaceScenarios::remove_nonexistent_member();
+
+        for fixture in scenario.fixtures {
+            let plugin = registry
+                .find_by_extension(fixture.language.file_extension())
+                .expect(&format!("Plugin not found for {:?}", fixture.language));
+
+            let workspace_support = plugin.workspace_support().expect(&format!(
+                "{:?} should have workspace support",
+                fixture.language
+            ));
+
+            if let WorkspaceOperation::RemoveWorkspaceMember { member } = &fixture.operation {
+                let result =
+                    workspace_support.remove_workspace_member(fixture.manifest_content, member);
+
+                // Verify the member was not in the list (operation should be no-op)
+                let members_before = workspace_support.list_workspace_members(fixture.manifest_content);
+                let members_after = workspace_support.list_workspace_members(&result);
+
+                assert_eq!(
+                    members_before, members_after,
+                    "remove_nonexistent_member should be no-op for {:?}\nManifest: {}\nMember: {}\nBefore: {:?}\nAfter: {:?}",
+                    fixture.language, fixture.manifest_content, member, members_before, members_after
+                );
+
+                assert!(
+                    !members_after.contains(member),
+                    "Nonexistent member should not be in list for {:?}",
+                    fixture.language
+                );
+            } else {
+                panic!("Wrong operation for remove_nonexistent_member test");
+            }
+        }
+    }
 }
