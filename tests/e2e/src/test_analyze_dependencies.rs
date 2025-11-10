@@ -6,49 +6,9 @@
 //! Tests various dependency analysis kinds: imports, graph, circular, coupling, cohesion, depth
 
 use crate::harness::{TestClient, TestWorkspace};
+use crate::test_helpers;
 use mill_foundation::protocol::analysis_result::{AnalysisResult, Severity};
 use serde_json::json;
-
-/// Helper to run dependency analysis test
-async fn run_dependency_test<V>(
-    file_name: &str,
-    file_content: &str,
-    kind: &str,
-    verify: V,
-) -> anyhow::Result<()>
-where
-    V: FnOnce(&AnalysisResult) -> anyhow::Result<()>,
-{
-    let workspace = TestWorkspace::new();
-    workspace.create_file(file_name, file_content);
-    let mut client = TestClient::new(workspace.path());
-    let test_file = workspace.absolute_path(file_name);
-
-    let response = client
-        .call_tool(
-            "analyze.dependencies",
-            json!({
-                "kind": kind,
-                "scope": {
-                    "type": "file",
-                    "path": test_file.to_string_lossy()
-                }
-            }),
-        )
-        .await
-        .expect("analyze.dependencies call should succeed");
-
-    let result: AnalysisResult = serde_json::from_value(
-        response
-            .get("result")
-            .expect("Response should have result field")
-            .clone(),
-    )
-    .expect("Should parse as AnalysisResult");
-
-    verify(&result)?;
-    Ok(())
-}
 
 #[tokio::test]
 async fn test_analyze_dependencies_imports_basic() {
@@ -64,7 +24,13 @@ export function MyComponent() {
 }
 "#;
 
-    run_dependency_test("imports_test.ts", code, "imports", |result| {
+    test_helpers::run_analysis_test(
+        "imports_test.ts",
+        code,
+        "analyze.dependencies",
+        "imports",
+        None,
+        |result| {
         assert_eq!(result.metadata.category, "dependencies");
         assert_eq!(result.metadata.kind, "imports");
         assert!(result.summary.symbols_analyzed.is_some());
@@ -106,7 +72,13 @@ export function DataProcessor() {
 }
 "#;
 
-    run_dependency_test("graph_test.ts", code, "graph", |result| {
+    test_helpers::run_analysis_test(
+        "graph_test.ts",
+        code,
+        "analyze.dependencies",
+        "graph",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "graph");
         assert!(result.summary.symbols_analyzed.is_some());
 
@@ -150,7 +122,13 @@ pub fn example() {
 }
 "#;
 
-    run_dependency_test("test_circular.rs", code, "circular", |result| {
+    test_helpers::run_analysis_test(
+        "test_circular.rs",
+        code,
+        "analyze.dependencies",
+        "circular",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "circular");
         assert!(result.summary.symbols_analyzed.is_some());
 
@@ -198,7 +176,13 @@ export function process() {
 }
 "#;
 
-    run_dependency_test("coupling_test.ts", code, "coupling", |result| {
+    test_helpers::run_analysis_test(
+        "coupling_test.ts",
+        code,
+        "analyze.dependencies",
+        "coupling",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "coupling");
         assert!(result.summary.symbols_analyzed.is_some());
 
@@ -256,7 +240,13 @@ export function fn20() { return 20; }
 export function fn21() { return 21; }
 "#;
 
-    run_dependency_test("cohesion_test.ts", code, "cohesion", |result| {
+    test_helpers::run_analysis_test(
+        "cohesion_test.ts",
+        code,
+        "analyze.dependencies",
+        "cohesion",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "cohesion");
         assert!(result.summary.symbols_analyzed.is_some());
 
@@ -303,7 +293,13 @@ export function deepDependency() {
 }
 "#;
 
-    run_dependency_test("depth_test.ts", code, "depth", |result| {
+    test_helpers::run_analysis_test(
+        "depth_test.ts",
+        code,
+        "analyze.dependencies",
+        "depth",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "depth");
         assert!(result.summary.symbols_analyzed.is_some());
 

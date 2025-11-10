@@ -413,3 +413,50 @@ pub fn setup_workspace_from_fixture(workspace: &TestWorkspace, files: &[(&str, &
         workspace.create_file(file_path, content);
     }
 }
+
+/// Helper to run analysis tests with minimal boilerplate
+///
+/// This helper consolidates duplicate analysis test helpers across 8 test files.
+/// It handles workspace setup, file creation, tool invocation, and result verification.
+pub async fn run_analysis_test<V>(
+    file_name: &str,
+    file_content: &str,
+    tool: &str,
+    kind: &str,
+    options: Option<Value>,
+    verify: V,
+) -> Result<()>
+where
+    V: FnOnce(&mill_foundation::protocol::analysis_result::AnalysisResult) -> Result<()>,
+{
+    use mill_foundation::protocol::analysis_result::AnalysisResult;
+
+    let workspace = TestWorkspace::new();
+    workspace.create_file(file_name, file_content);
+    let mut client = TestClient::new(workspace.path());
+    let test_file = workspace.absolute_path(file_name);
+
+    let mut params = json!({
+        "kind": kind,
+        "scope": {
+            "type": "file",
+            "path": test_file.to_string_lossy()
+        }
+    });
+
+    if let Some(opts) = options {
+        params.as_object_mut().unwrap().insert("options".to_string(), opts);
+    }
+
+    let response = client.call_tool(tool, params).await
+        .map_err(|e| anyhow::anyhow!("Analysis tool '{}' failed: {}", tool, e))?;
+
+    let result: AnalysisResult = serde_json::from_value(
+        response.get("result")
+            .ok_or_else(|| anyhow::anyhow!("Response missing 'result' field"))?
+            .clone(),
+    )?;
+
+    verify(&result)?;
+    Ok(())
+}

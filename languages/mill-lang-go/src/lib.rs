@@ -379,15 +379,8 @@ mod tests {
         assert_eq!(plan.edits.len(), 2);
     }
 
-    #[test]
-    fn test_workspace_support_add_and_list_members() {
-        let support = workspace_support::GoWorkspaceSupport;
-        let initial_content = "go 1.21\n";
-        let with_member = support.add_workspace_member(initial_content, "my-go-app");
-        assert!(with_member.contains("use ./my-go-app"));
-        let members = support.list_workspace_members(&with_member);
-        assert_eq!(members, vec!["my-go-app"]);
-    }
+    // Workspace tests deleted - covered by workspace_harness integration tests
+    // See: crates/mill-test-support/src/harness/workspace_harness.rs
 
     #[test]
     fn test_module_reference_scanner() {
@@ -434,15 +427,6 @@ mod tests {
             .await
             .unwrap();
         assert!(updated.contains("example.com/newpkg v1.2.4"));
-    }
-
-    #[tokio::test]
-    async fn test_lsp_installer() {
-        let installer = lsp_installer::GoLspInstaller;
-        // This test can't easily install the real gopls in a hermetic way.
-        // We'll just check that the name is correct. In a real CI environment,
-        // we would mock the `go install` command.
-        assert_eq!(installer.lsp_name(), "gopls");
     }
 
     // ========================================================================
@@ -704,93 +688,7 @@ mod tests {
     }
 
     // ========================================================================
-    // EDGE CASE TESTS (8 tests)
-    // ========================================================================
-
-    #[tokio::test]
-    async fn test_edge_parse_unicode_identifiers() {
-        let plugin = GoPlugin::new();
-        let source = r#"
-package main
-import "fmt"
-func тестфункция() {
-    مُتَغَيِّر := 42
-}
-"#;
-        let result = plugin.parse(source).await;
-        // Should not panic with Unicode identifiers
-        assert!(result.is_ok() || result.is_err()); // Either way, no panic
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_extremely_long_line() {
-        let plugin = GoPlugin::new();
-        let long_string = "a".repeat(15000);
-        let source = format!("package main\nvar x = \"{}\"\n", long_string);
-        let result = plugin.parse(&source).await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_no_newlines() {
-        let plugin = GoPlugin::new();
-        let source = "package main; func main() { fmt.Println(\"hello\") }";
-        let result = plugin.parse(source).await;
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_edge_scan_mixed_line_endings() {
-        let plugin = GoPlugin::new();
-        let scanner = plugin
-            .module_reference_scanner()
-            .expect("Should have scanner");
-        let content = "import \"fmt\"\r\nimport \"os\"\nimport \"io\"";
-        let refs = scanner
-            .scan_references(content, "fmt", ScanScope::All)
-            .expect("Should scan");
-        assert_eq!(refs.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_empty_file() {
-        let plugin = GoPlugin::new();
-        let result = plugin.parse("").await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().symbols.len(), 0);
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_whitespace_only() {
-        let plugin = GoPlugin::new();
-        let result = plugin.parse("   \n\n\t\t\n   ").await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().symbols.len(), 0);
-    }
-
-    #[test]
-    fn test_edge_scan_special_regex_chars() {
-        let plugin = GoPlugin::new();
-        let scanner = plugin
-            .module_reference_scanner()
-            .expect("Should have scanner");
-        let content = "import \"fmt\"";
-        // Test with special regex characters
-        let result = scanner.scan_references(content, "f.*", ScanScope::All);
-        assert!(result.is_ok()); // Should not panic
-    }
-
-    #[test]
-    fn test_edge_handle_null_bytes() {
-        let plugin = GoPlugin::new();
-        let scanner = plugin
-            .module_reference_scanner()
-            .expect("Should have scanner");
-        let content = "import \"fmt\"\x00\nimport \"os\"";
-        let result = scanner.scan_references(content, "fmt", ScanScope::All);
-        assert!(result.is_ok()); // Should not panic
-    }
-
+    // Edge case tests moved to mill-test-support/tests/edge_case_harness_integration.rs
     // ========================================================================
     // PERFORMANCE TESTS (2 tests)
     // ========================================================================

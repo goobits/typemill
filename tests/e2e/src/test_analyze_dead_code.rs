@@ -6,49 +6,9 @@
 //! Analysis tests follow simpler pattern: setup → analyze → verify
 
 use crate::harness::{TestClient, TestWorkspace};
+use crate::test_helpers;
 use mill_foundation::protocol::analysis_result::{AnalysisResult, Severity};
 use serde_json::json;
-
-/// Helper to run dead code analysis test
-async fn run_dead_code_test<V>(
-    file_name: &str,
-    file_content: &str,
-    kind: &str,
-    verify: V,
-) -> anyhow::Result<()>
-where
-    V: FnOnce(&AnalysisResult) -> anyhow::Result<()>,
-{
-    let workspace = TestWorkspace::new();
-    workspace.create_file(file_name, file_content);
-    let mut client = TestClient::new(workspace.path());
-    let test_file = workspace.absolute_path(file_name);
-
-    let response = client
-        .call_tool(
-            "analyze.dead_code",
-            json!({
-                "kind": kind,
-                "scope": {
-                    "type": "file",
-                    "path": test_file.to_string_lossy()
-                }
-            }),
-        )
-        .await
-        .expect("analyze.dead_code call should succeed");
-
-    let result: AnalysisResult = serde_json::from_value(
-        response
-            .get("result")
-            .expect("Response should have result field")
-            .clone(),
-    )
-    .expect("Should parse as AnalysisResult");
-
-    verify(&result)?;
-    Ok(())
-}
 
 #[tokio::test]
 async fn test_analyze_dead_code_unused_imports_basic() {
@@ -62,7 +22,13 @@ export function MyComponent() {
 }
 "#;
 
-    run_dead_code_test("unused_imports.ts", code, "unused_imports", |result| {
+    test_helpers::run_analysis_test(
+        "unused_imports.ts",
+        code,
+        "analyze.dead_code",
+        "unused_imports",
+        None,
+        |result| {
         assert_eq!(result.metadata.category, "dead_code");
         assert_eq!(result.metadata.kind, "unused_imports");
         assert!(result.summary.symbols_analyzed.is_some());
@@ -98,7 +64,13 @@ export function publicFunction() {
 }
 "#;
 
-    run_dead_code_test("unused_symbols.ts", code, "unused_symbols", |result| {
+    test_helpers::run_analysis_test(
+        "unused_symbols.ts",
+        code,
+        "analyze.dead_code",
+        "unused_symbols",
+        None,
+        |result| {
         assert!(result.summary.symbols_analyzed.is_some());
 
         if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
@@ -130,7 +102,13 @@ export function processData(x: number): number {
 }
 "#;
 
-    run_dead_code_test("unreachable.ts", code, "unreachable_code", |result| {
+    test_helpers::run_analysis_test(
+        "unreachable.ts",
+        code,
+        "analyze.dead_code",
+        "unreachable_code",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "unreachable_code");
         assert!(result.summary.symbols_analyzed.is_some());
 
@@ -168,7 +146,13 @@ fn main() {
 }
 "#;
 
-    run_dead_code_test("unused_params.rs", code, "unused_parameters", |result| {
+    test_helpers::run_analysis_test(
+        "unused_params.rs",
+        code,
+        "analyze.dead_code",
+        "unused_parameters",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "unused_parameters");
         assert!(result.summary.symbols_analyzed.is_some());
 
@@ -210,7 +194,13 @@ export function getData(): UsedInterface {
 }
 "#;
 
-    run_dead_code_test("unused_types.ts", code, "unused_types", |result| {
+    test_helpers::run_analysis_test(
+        "unused_types.ts",
+        code,
+        "analyze.dead_code",
+        "unused_types",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "unused_types");
         assert!(result.summary.symbols_analyzed.is_some());
 
@@ -247,7 +237,13 @@ export function calculateTotal(price: number, tax: number): number {
 }
 "#;
 
-    run_dead_code_test("unused_vars.ts", code, "unused_variables", |result| {
+    test_helpers::run_analysis_test(
+        "unused_vars.ts",
+        code,
+        "analyze.dead_code",
+        "unused_variables",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "unused_variables");
         assert!(result.summary.symbols_analyzed.is_some());
 

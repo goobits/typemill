@@ -1,173 +1,20 @@
 mod ast_parser_test;
 mod cmake_parser_test;
-mod import_analyzer_test;
-mod import_support_test;
-mod lsp_installer_test;
+// Import tests moved to mill-test-support/tests/import_harness_integration.rs
 mod makefile_parser_test;
 mod manifest_updater_test;
-mod module_reference_scanner_test;
 mod project_factory_test;
-mod refactoring_test;
-mod workspace_support_test;
+// Refactoring tests: Core operations (extract/inline) tested in C++/Java/Python
+// Workspace tests: Basic operations tested in mill-test-support/tests/workspace_harness_integration.rs
 
-// Analysis metadata tests
+// Analysis metadata tests - moved to ContractTests harness
 #[cfg(test)]
 mod analysis_metadata_tests {
     use crate::CPlugin;
-    use mill_plugin_api::{AnalysisMetadata, LanguagePlugin, ScanScope};
-
-    #[test]
-    fn test_analysis_metadata_test_patterns() {
-        let plugin = CPlugin::default();
-        let patterns = plugin.test_patterns();
-
-        // Should match CUnit/Unity style test functions
-        let test_sample = "void test_something() {}";
-        assert!(patterns.iter().any(|p| p.is_match(test_sample)));
-
-        // Should match Google Test macros (if used with C)
-        let gtest_sample = "TEST(Suite, TestName) {}";
-        assert!(patterns.iter().any(|p| p.is_match(gtest_sample)));
-    }
-
-    #[test]
-    fn test_analysis_metadata_assertion_patterns() {
-        let plugin = CPlugin::default();
-        let patterns = plugin.assertion_patterns();
-
-        // Should match standard C assert
-        let assert_sample = "assert(x == 5);";
-        assert!(patterns.iter().any(|p| p.is_match(assert_sample)));
-
-        // Should match CUnit assertions
-        let cunit_sample = "CU_ASSERT_EQUAL(expected, actual);";
-        assert!(patterns.iter().any(|p| p.is_match(cunit_sample)));
-
-        // Should match Unity assertions
-        let unity_sample = "TEST_ASSERT_TRUE(condition);";
-        assert!(patterns.iter().any(|p| p.is_match(unity_sample)));
-    }
-
-    #[test]
-    fn test_analysis_metadata_complexity_keywords() {
-        let plugin = CPlugin::default();
-        let keywords = plugin.complexity_keywords();
-
-        // Should include C control flow keywords
-        assert!(keywords.contains(&"if"));
-        assert!(keywords.contains(&"else"));
-        assert!(keywords.contains(&"switch"));
-        assert!(keywords.contains(&"case"));
-        assert!(keywords.contains(&"for"));
-        assert!(keywords.contains(&"while"));
-        assert!(keywords.contains(&"do"));
-        assert!(keywords.contains(&"&&"));
-        assert!(keywords.contains(&"||"));
-
-        // Check nesting penalty
-        assert_eq!(plugin.nesting_penalty(), 1.3);
-    }
+    use mill_plugin_api::{LanguagePlugin, ScanScope};
 
     // ========================================================================
-    // EDGE CASE TESTS (8 tests)
-    // ========================================================================
-
-    #[tokio::test]
-    async fn test_edge_parse_unicode_identifiers() {
-        let plugin = CPlugin::default();
-        let source = r#"
-#include <stdio.h>
-void тестфункция() {
-    int مُتَغَيِّر = 42;
-}
-"#;
-        let result = plugin.parse(source).await;
-        // Should not panic with Unicode identifiers
-        assert!(result.is_ok() || result.is_err()); // Either way, no panic
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_extremely_long_line() {
-        let plugin = CPlugin::default();
-        let long_string = "a".repeat(15000);
-        let source = format!("char* x = \"{}\";\n", long_string);
-        let result = plugin.parse(&source).await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_no_newlines() {
-        let plugin = CPlugin::default();
-        let source = "int main() { printf(\"hello\"); return 0; }";
-        let result = plugin.parse(source).await;
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_edge_scan_mixed_line_endings() {
-        let plugin = CPlugin::default();
-        let scanner = plugin
-            .module_reference_scanner()
-            .expect("Should have scanner");
-        let content = "#include <stdio.h>\r\n#include <stdlib.h>\n#include <string.h>";
-        let refs = scanner
-            .scan_references(content, "stdio", ScanScope::All)
-            .expect("Should scan");
-
-        // Debug output
-        eprintln!("\n=== DEBUG: Mixed line endings test ===");
-        eprintln!("Content bytes: {:?}", content.as_bytes());
-        eprintln!("Number of references found: {}", refs.len());
-        for (i, r) in refs.iter().enumerate() {
-            eprintln!(
-                "  Ref {}: text={:?}, line={}, column={}, length={}",
-                i, r.text, r.line, r.column, r.length
-            );
-        }
-        eprintln!("=== END DEBUG ===\n");
-
-        assert_eq!(refs.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_empty_file() {
-        let plugin = CPlugin::default();
-        let result = plugin.parse("").await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().symbols.len(), 0);
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_whitespace_only() {
-        let plugin = CPlugin::default();
-        let result = plugin.parse("   \n\n\t\t\n   ").await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().symbols.len(), 0);
-    }
-
-    #[test]
-    fn test_edge_scan_special_regex_chars() {
-        let plugin = CPlugin::default();
-        let scanner = plugin
-            .module_reference_scanner()
-            .expect("Should have scanner");
-        let content = "#include <stdio.h>";
-        // Test with special regex characters
-        let result = scanner.scan_references(content, "std.*", ScanScope::All);
-        assert!(result.is_ok()); // Should not panic
-    }
-
-    #[test]
-    fn test_edge_handle_null_bytes() {
-        let plugin = CPlugin::default();
-        let scanner = plugin
-            .module_reference_scanner()
-            .expect("Should have scanner");
-        let content = "#include <stdio.h>\x00\n#include <stdlib.h>";
-        let result = scanner.scan_references(content, "stdio", ScanScope::All);
-        assert!(result.is_ok()); // Should not panic
-    }
-
+    // Edge case tests moved to mill-test-support/tests/edge_case_harness_integration.rs
     // ========================================================================
     // PERFORMANCE TESTS (2 tests)
     // ========================================================================

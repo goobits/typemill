@@ -9,56 +9,9 @@
 //! - Less setup boilerplate
 
 use crate::harness::{TestClient, TestWorkspace};
+use crate::test_helpers;
 use mill_foundation::protocol::analysis_result::{AnalysisResult, Severity};
 use serde_json::json;
-
-/// Helper to run analysis test with result validation
-async fn run_analysis_test<V>(
-    file_name: &str,
-    file_content: &str,
-    kind: &str,
-    options: Option<serde_json::Value>,
-    verify: V,
-) -> anyhow::Result<()>
-where
-    V: FnOnce(&AnalysisResult) -> anyhow::Result<()>,
-{
-    let workspace = TestWorkspace::new();
-    workspace.create_file(file_name, file_content);
-    let mut client = TestClient::new(workspace.path());
-    let test_file = workspace.absolute_path(file_name);
-
-    let mut params = json!({
-        "kind": kind,
-        "scope": {
-            "type": "file",
-            "path": test_file.to_string_lossy()
-        }
-    });
-
-    if let Some(opts) = options {
-        params
-            .as_object_mut()
-            .unwrap()
-            .insert("options".to_string(), opts);
-    }
-
-    let response = client
-        .call_tool("analyze.quality", params)
-        .await
-        .expect("analyze.quality call should succeed");
-
-    let result: AnalysisResult = serde_json::from_value(
-        response
-            .get("result")
-            .expect("Response should have result field")
-            .clone(),
-    )
-    .expect("Should parse as AnalysisResult");
-
-    verify(&result)?;
-    Ok(())
-}
 
 #[tokio::test]
 async fn test_analyze_quality_complexity_basic() {
@@ -98,9 +51,10 @@ export function processOrder(
 }
 "#;
 
-    run_analysis_test(
+    test_helpers::run_analysis_test(
         "complex.ts",
         complex_code,
+        "analyze.quality",
         "complexity",
         Some(json!({
             "thresholds": {
@@ -164,9 +118,10 @@ This is a paragraph.
 #Malformed
 "#;
 
-    run_analysis_test(
+    test_helpers::run_analysis_test(
         "test.md",
         markdown_content,
+        "analyze.quality",
         "markdown_structure",
         None,
         |result| {
@@ -217,9 +172,10 @@ unclosed
         "   "
     ); // Trailing whitespace
 
-    run_analysis_test(
+    test_helpers::run_analysis_test(
         "test.md",
         &markdown_content,
+        "analyze.quality",
         "markdown_formatting",
         None,
         |result| {
@@ -283,9 +239,10 @@ export function add(a: number, b: number): number {
 }
 "#;
 
-    run_analysis_test(
+    test_helpers::run_analysis_test(
         "simple.ts",
         simple_code,
+        "analyze.quality",
         "complexity",
         Some(json!({
             "thresholds": {
@@ -346,9 +303,10 @@ export class DataProcessor {
 }
 "#;
 
-    run_analysis_test(
+    test_helpers::run_analysis_test(
         "smelly.ts",
         smelly_code,
+        "analyze.quality",
         "smells",
         Some(json!({"include_suggestions": true})),
         |result| {
@@ -426,9 +384,10 @@ export function veryComplex(x: number, y: number, z: number) {
 }
 "#;
 
-    run_analysis_test(
+    test_helpers::run_analysis_test(
         "mixed.ts",
         mixed_code,
+        "analyze.quality",
         "maintainability",
         Some(json!({"include_suggestions": true})),
         |result| {
@@ -511,9 +470,10 @@ export function wellDocumented() {
 }
 "#;
 
-    run_analysis_test(
+    test_helpers::run_analysis_test(
         "unreadable.ts",
         unreadable_code,
+        "analyze.quality",
         "readability",
         Some(json!({"include_suggestions": true})),
         |result| {
@@ -687,9 +647,10 @@ async fn test_markdown_autofix_toc_detection() {
 ## New Section
 "#;
 
-    run_analysis_test(
+    test_helpers::run_analysis_test(
         "test.md",
         markdown_with_outdated_toc,
+        "analyze.quality",
         "markdown_structure",
         None,
         |result| {

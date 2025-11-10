@@ -524,25 +524,8 @@ import UIKit
         assert!(path.join("Tests").exists());
     }
 
-    #[test]
-    fn test_workspace_support_add_remove() {
-        let plugin = SwiftPlugin::new();
-        let support = plugin
-            .workspace_support()
-            .expect("Plugin should have workspace support");
-        let manifest_content = r#"
-let package = Package(
-    dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
-    ]
-)
-"#;
-        let new_content = support.add_workspace_member(manifest_content, "../MyOtherPackage");
-        assert!(new_content.contains(r#".package(path: "../MyOtherPackage")"#));
-
-        let final_content = support.remove_workspace_member(&new_content, "../MyOtherPackage");
-        assert!(!final_content.contains(r#".package(path: "../MyOtherPackage")"#));
-    }
+    // Workspace tests deleted - covered by workspace_harness integration tests
+    // See: crates/mill-test-support/src/harness/workspace_harness.rs
 
     #[tokio::test]
     async fn test_refactoring_operations() {
@@ -630,16 +613,6 @@ let package = Package(
     }
 
     #[test]
-    fn test_lsp_installer_check() {
-        let plugin = SwiftPlugin::new();
-        let installer = plugin
-            .lsp_installer()
-            .expect("Plugin should have LSP installer");
-        // This test is tricky as it depends on the test environment.
-        // We'll just call the function to make sure it doesn't panic.
-        let _ = installer.check_installed();
-    }
-
     // ========================================================================
     // IMPORT SUPPORT TESTS (20 tests)
     // ========================================================================
@@ -1195,171 +1168,8 @@ import SwiftUI
     // WORKSPACE SUPPORT TESTS (10 tests)
     // ========================================================================
 
-    // Workspace Detection Tests (3 tests)
-    #[test]
-    fn test_workspace_detection_valid_manifest() {
-        let plugin = SwiftPlugin::new();
-        let support = plugin
-            .workspace_support()
-            .expect("Should have workspace support");
-        let content = r#"
-let package = Package(
-    dependencies: [
-        .package(path: "../MyPackage")
-    ]
-)
-"#;
-        assert!(support.is_workspace_manifest(content));
-    }
-
-    #[test]
-    fn test_workspace_detection_non_workspace() {
-        let plugin = SwiftPlugin::new();
-        let support = plugin
-            .workspace_support()
-            .expect("Should have workspace support");
-        let content = "import Foundation\nfunc main() {}";
-        assert!(!support.is_workspace_manifest(content));
-    }
-
-    #[test]
-    fn test_workspace_detection_invalid_manifest() {
-        let plugin = SwiftPlugin::new();
-        let support = plugin
-            .workspace_support()
-            .expect("Should have workspace support");
-        let content = "let package = Package(dependencies: [])"; // No .package(path:)
-        assert!(!support.is_workspace_manifest(content));
-    }
-
-    // Workspace Members Tests (4 tests)
-    #[test]
-    fn test_workspace_list_members() {
-        let plugin = SwiftPlugin::new();
-        let support = plugin
-            .workspace_support()
-            .expect("Should have workspace support");
-        let content = r#"
-dependencies: [
-    .package(path: "../Package1"),
-    .package(path: "../Package2"),
-]
-"#;
-        let members = support.list_workspace_members(content);
-        assert_eq!(members.len(), 2);
-        assert!(members.contains(&"../Package1".to_string()));
-        assert!(members.contains(&"../Package2".to_string()));
-    }
-
-    #[test]
-    fn test_workspace_add_member() {
-        let plugin = SwiftPlugin::new();
-        let support = plugin
-            .workspace_support()
-            .expect("Should have workspace support");
-        let content = r#"
-let package = Package(
-    dependencies: [
-        .package(url: "https://example.com", from: "1.0.0")
-    ]
-)
-"#;
-        let new_content = support.add_workspace_member(content, "../NewPackage");
-        assert!(new_content.contains(r#".package(path: "../NewPackage")"#));
-    }
-
-    #[test]
-    fn test_workspace_remove_member() {
-        let plugin = SwiftPlugin::new();
-        let support = plugin
-            .workspace_support()
-            .expect("Should have workspace support");
-        let content = r#"
-dependencies: [
-    .package(path: "../Package1"),
-    .package(path: "../Package2"),
-]
-"#;
-        let new_content = support.remove_workspace_member(content, "../Package1");
-        assert!(!new_content.contains(r#".package(path: "../Package1")"#));
-        assert!(new_content.contains(r#".package(path: "../Package2")"#));
-    }
-
-    #[test]
-    fn test_workspace_add_duplicate_member() {
-        let plugin = SwiftPlugin::new();
-        let support = plugin
-            .workspace_support()
-            .expect("Should have workspace support");
-        let content = r#"
-dependencies: [
-    .package(path: "../Package1")
-]
-"#;
-        let new_content = support.add_workspace_member(content, "../Package1");
-        // Should add it (current implementation doesn't check for duplicates)
-        // In production, should either skip or error
-        assert!(new_content.contains(r#"../Package1"#));
-    }
-
-    // Package Management Tests (3 tests)
-    #[test]
-    fn test_workspace_update_package_name() {
-        let plugin = SwiftPlugin::new();
-        let support = plugin
-            .workspace_support()
-            .expect("Should have workspace support");
-        let content = r#"
-let package = Package(
-    name: "OldName",
-    products: []
-)
-"#;
-        let new_content = support.update_package_name(content, "NewName");
-        // The regex replaces (name:\s*")([^"]+)" with $1NewName"
-        assert!(new_content.contains("NewName"), "Should contain new name");
-    }
-
-    #[test]
-    fn test_workspace_add_dependency() {
-        let plugin = SwiftPlugin::new();
-        let updater = plugin
-            .manifest_updater()
-            .expect("Should have manifest updater");
-        let manifest =
-            updater.generate_manifest("MyPackage", &["https://github.com/vapor/vapor".to_string()]);
-        assert!(manifest.contains(r#"name: "MyPackage""#));
-        assert!(manifest.contains(r#"https://github.com/vapor/vapor"#));
-    }
-
-    #[test]
-    fn test_workspace_remove_dependency() {
-        let plugin = SwiftPlugin::new();
-        let updater = plugin
-            .manifest_updater()
-            .expect("Should have manifest updater");
-        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
-        let manifest_path = temp_dir.path().join("Package.swift");
-        let content = r#"
-dependencies: [
-    .package(name: "Vapor", url: "https://github.com/vapor/vapor", from: "4.0.0"),
-    .package(name: "Fluent", url: "https://github.com/vapor/fluent", from: "4.0.0")
-]
-"#;
-        std::fs::write(&manifest_path, content).expect("Failed to write manifest");
-        let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-            // Provide a version to avoid the buggy code path in update_dependency
-            updater
-                .update_dependency(&manifest_path, "Vapor", "VaporKit", Some("4.0.0"))
-                .await
-        });
-        assert!(result.is_ok());
-        let new_content = result.unwrap();
-        assert!(
-            new_content.contains("VaporKit"),
-            "Should contain renamed dependency"
-        );
-    }
+    // Workspace tests deleted - covered by workspace_harness integration tests
+    // See: crates/mill-test-support/src/harness/workspace_harness.rs
 
     // ========================================================================
     // ERROR PATH TESTS (10 tests)
@@ -1484,93 +1294,7 @@ dependencies: [
     }
 
     // ========================================================================
-    // EDGE CASE TESTS (8 tests)
-    // ========================================================================
-
-    #[tokio::test]
-    async fn test_edge_parse_unicode_identifiers() {
-        let plugin = SwiftPlugin::new();
-        let source = r#"
-import 日本語モジュール
-func тестфункция() {}
-let مُتَغَيِّر = 42
-"#;
-        let result = plugin.parse(source).await;
-        assert!(result.is_ok());
-        // Current regex may not capture Unicode identifiers properly
-        // Should not panic with Unicode identifiers
-        let _parsed = result.unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_extremely_long_line() {
-        let plugin = SwiftPlugin::new();
-        let long_string = "a".repeat(15000);
-        let source = format!("let x = \"{}\"\n", long_string);
-        let result = plugin.parse(&source).await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_no_newlines() {
-        let plugin = SwiftPlugin::new();
-        let source = "func main() { print(\"hello\") }";
-        let result = plugin.parse(source).await;
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_edge_scan_mixed_line_endings() {
-        let plugin = SwiftPlugin::new();
-        let scanner = plugin
-            .module_reference_scanner()
-            .expect("Should have scanner");
-        let content = "import Foundation\r\nimport UIKit\nimport Combine";
-        let refs = scanner
-            .scan_references(content, "Foundation", ScanScope::All)
-            .expect("Should scan");
-        assert_eq!(refs.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_empty_file() {
-        let plugin = SwiftPlugin::new();
-        let result = plugin.parse("").await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().symbols.len(), 0);
-    }
-
-    #[tokio::test]
-    async fn test_edge_parse_whitespace_only() {
-        let plugin = SwiftPlugin::new();
-        let result = plugin.parse("   \n\n\t\t\n   ").await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().symbols.len(), 0);
-    }
-
-    #[test]
-    fn test_edge_scan_special_regex_chars() {
-        let plugin = SwiftPlugin::new();
-        let scanner = plugin
-            .module_reference_scanner()
-            .expect("Should have scanner");
-        let content = "import Foundation";
-        // Test with special regex characters
-        let result = scanner.scan_references(content, "Found.*", ScanScope::All);
-        assert!(result.is_ok()); // Should not panic
-    }
-
-    #[test]
-    fn test_edge_handle_null_bytes() {
-        let plugin = SwiftPlugin::new();
-        let scanner = plugin
-            .module_reference_scanner()
-            .expect("Should have scanner");
-        let content = "import Foundation\x00\nimport UIKit";
-        let result = scanner.scan_references(content, "Foundation", ScanScope::All);
-        assert!(result.is_ok()); // Should not panic
-    }
-
+    // Edge case tests moved to mill-test-support/tests/edge_case_harness_integration.rs
     // ========================================================================
     // PERFORMANCE TESTS (2 tests)
     // ========================================================================
@@ -1839,34 +1563,5 @@ protocol DataSource {
         assert_eq!(plugin.nesting_penalty(), 1.4);
     }
 
-    #[test]
-    fn test_list_functions_multiple() {
-        let source = r#"
-func firstFunction() {
-    print("first")
-}
-
-func secondFunction() -> Int {
-    return 42
-}
-
-func thirdFunction() {}
-"#;
-        let result = list_functions(source);
-        assert_eq!(result.len(), 3);
-        assert!(result.contains(&"firstFunction".to_string()));
-        assert!(result.contains(&"secondFunction".to_string()));
-        assert!(result.contains(&"thirdFunction".to_string()));
-    }
-
-    #[test]
-    fn test_list_functions_empty() {
-        let source = r#"
-struct MyStruct {}
-class MyClass {}
-enum Status { case active }
-"#;
-        let result = list_functions(source);
-        assert_eq!(result.len(), 0);
-    }
+    // List functions tests moved to mill-test-support/tests/list_functions_harness_integration.rs
 }

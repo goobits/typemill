@@ -13,6 +13,177 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 ### [Unreleased]
 
+### [0.8.4] - 2025-11-10
+
+🧪 **Version 0.8.4** - Analysis & workspace test consolidation (Phase 13 completion)
+
+#### Added
+
+- **Shared Analysis Test Helper** - Centralized test infrastructure for analysis tools
+  - Created `run_analysis_test()` helper in `tests/e2e/src/test_helpers.rs`
+  - Handles workspace setup, file creation, tool invocation, and result verification
+  - Consolidates duplicate helpers across 6 analysis test files (~230 LOC saved)
+
+#### Removed
+
+- **Analysis Test Helpers** - Deleted duplicate helper functions from analysis test files
+  - Removed `run_analysis_test()` from `test_analyze_quality.rs` (46 lines)
+  - Removed `run_dead_code_test()` from `test_analyze_dead_code.rs` (40 lines)
+  - Removed `run_dependency_test()` from `test_analyze_dependencies.rs` (40 lines)
+  - Removed `run_structure_test()` from `test_analyze_structure.rs` (40 lines)
+  - Removed `analyze_documentation()` from `test_analyze_documentation.rs` (32 lines)
+  - Removed `analyze_tests()` from `test_analyze_tests.rs` (32 lines)
+
+- **Workspace Unit Tests** - Deleted duplicate workspace tests from language plugins
+  - Removed 8 tests from `mill-lang-typescript/src/workspace_support.rs` (119 lines)
+  - Removed 11 tests from `mill-lang-python/src/workspace_support.rs` (163 lines)
+  - Removed 4 tests from `mill-lang-java/src/workspace_support.rs` (56 lines)
+  - Removed 7 tests from `mill-lang-csharp/src/workspace_support.rs` (96 lines)
+  - Removed 11 tests from `mill-lang-swift/src/lib.rs` (184 lines)
+  - Removed 1 test from `mill-lang-go/src/lib.rs` (9 lines)
+  - Functionality covered by existing `workspace_harness` integration tests
+
+#### Changed
+
+- **Test Consolidation Progress** - Phase 13 of test infrastructure consolidation
+  - Updated 9 analysis test calls to use shared `test_helpers::run_analysis_test()`
+  - All analysis tests now use consistent error handling and result verification
+  - Workspace tests centralized in `crates/mill-test-support/src/harness/workspace_harness.rs`
+  - **Phase 13 savings:** ~857 LOC saved (230 analysis + 627 workspace)
+  - **Total consolidation to date:** ~2,204 LOC saved, 162 tests eliminated
+
+#### Fixed
+
+- **Edge Case Test Integration** - Fixed infinite recursion in test harness integration
+  - Updated `edge_case_harness_integration.rs` to use module-qualified function calls
+  - Changed from wildcard import to explicit module path (`edge_case_tests::test_*`)
+  - Prevents test functions from calling themselves recursively
+
+### [0.8.3] - 2025-11-10
+
+🧪 **Version 0.8.3** - List functions test consolidation (Phase 12 completion)
+
+#### Added
+
+- **List Functions Test Harness** - Centralized function listing tests for all language plugins
+  - Created `list_functions_harness.rs` with 2 comprehensive test functions
+  - Tests extraction of function names from source code
+  - Tests empty results (source with no functions, only fields/constants)
+  - Integration tests run automatically against ALL discovered language plugins
+  - Eliminates 14 duplicate tests across 7 languages (~165 LOC saved)
+
+#### Fixed
+
+- **Edge Case Test Harness** - Fixed plugin discovery API calls
+  - Updated `edge_case_tests.rs` to use `plugin_discovery::get_test_registry().all()`
+  - Removed unstable `as_str()` calls in favor of `as_ref()`
+  - Fixed async/await calls for `list_functions()` method
+
+#### Changed
+
+- **Test Consolidation Progress** - Phase 12 of test infrastructure consolidation
+  - Deleted `test_list_functions_multiple` and `test_list_functions_empty` from 7 language plugins
+  - Languages consolidated: TypeScript, Go, Java, C#, Swift, C, C++
+  - **Total consolidation to date:** ~1,347 LOC saved, 112 tests eliminated
+
+### [0.8.2] - 2025-11-10
+
+🧪 **Version 0.8.2** - Edge case test consolidation (Phase 7 completion)
+
+#### Added
+
+- **Edge Case Test Harness** - Centralized edge case testing for all language plugins
+  - Created `edge_case_tests.rs` harness with 8 comprehensive test functions
+  - Tests Unicode identifiers, extremely long lines, empty files, mixed line endings, etc.
+  - Integration tests run automatically against ALL discovered language plugins
+  - Eliminates 56 duplicate tests across 7 languages (~547 LOC saved)
+
+#### Changed
+
+- **Test Consolidation Completion** - Phase 7 of test infrastructure consolidation
+  - Deleted duplicate edge case tests from Python, Java, Go, Swift, C, C#, and Rust
+  - Performance tests preserved in each language (language-specific benchmarks)
+  - All edge case scenarios now centralized: Unicode, long lines, empty files, null bytes, special regex chars, etc.
+
+#### Impact
+
+- **Phase 7 alone**: 56 tests eliminated, ~547 LOC saved
+- **Total consolidation (Phases 1-7)**: ~1,182 LOC saved, 98 tests eliminated
+- Future language plugins automatically get comprehensive edge case test coverage
+- Single source of truth for edge case testing across all languages
+
+### [0.8.1] - 2025-11-10
+
+🔧 **Version 0.8.1** - Test infrastructure consolidation, Java parser fix, and error API unification
+
+#### Added
+
+- **Deep Dead Code Analysis** - Workspace-scoped dead code analysis with LspAdapter integration
+  - Cross-file dependency tracking and import/export analysis
+  - Integrated with LSP provider for accurate symbol resolution
+
+- **Test Infrastructure Consolidation** - Major test deduplication effort
+  - Phase 1: Import harness migration (18 tests consolidated, ~216 LOC saved)
+  - Phase 2: Refactoring test consolidation (9 tests eliminated, 214 LOC saved)
+  - Phase 3: LSP/metadata duplicate test deletion
+  - Total impact: ~430 lines of duplicate test code eliminated
+  - All core language plugin tests passing (Python: 60/60, C: 34/34, Java: 75/75)
+
+- **Dogfooding Infrastructure** - Testing TypeMill on real projects for validation
+
+#### Changed
+
+- **Error API Unification** - Complete migration from CoreError/ApiError to MillError
+  - Unified error handling across all crates
+  - Cleaner error propagation and handling
+  - Removed deprecated error types
+
+- **Analysis Handler Extraction** - Extracted analysis handlers to separate `mill-handlers-analysis` crate
+  - Better separation of concerns
+  - Cleaner crate organization
+
+- **API Clarity Improvements** - Enhanced public/private API boundaries
+  - Added 242+ `pub(crate)` markers across codebase
+  - Cleaner module boundaries and encapsulation
+  - Removed wildcard re-exports in mill-ast
+
+#### Fixed
+
+- **Java Parser JAR Build** - Fixed Java import support (4 failing tests → all 75 passing)
+  - Manually built java-parser JAR when Maven Central unreachable
+  - Fixed build.rs to use CARGO_MANIFEST_DIR for correct path resolution
+  - Committed pre-built JAR to eliminate Maven dependency
+
+- **Import Harness Bugs** - Fixed Java exclusion and Go duplicate test attributes
+  - Java requires Maven-built JAR (excluded from harness until built)
+  - Removed duplicate test attributes in Go plugin
+
+- **TypeScript Import Path Calculation** - Fixed macOS canonicalization bug
+  - Import paths now correctly calculated for non-existent files
+  - Resolves path issues on macOS file systems
+
+- **LSP Reference Queries** - Explicitly open files in LSP before reference queries
+  - Prevents reference lookup failures
+  - More reliable LSP integration
+
+- **Async Context Panics** - Made `to_api_context` async to avoid `blocking_lock` panic
+  - Prevents "Cannot block the current thread from within a runtime" errors
+  - Fixes runtime context issues in test environment
+
+#### Performance
+
+- **Regex Optimization** - Fixed catastrophic regex recompilation in Go/C# plugins
+  - 200-500x speedup by caching compiled regexes
+  - Eliminated per-invocation recompilation overhead
+
+- **Parallel Builds** - Re-enabled parallel builds in Makefile after resolving cache issue
+  - Faster build times with cargo caching
+
+#### Documentation
+
+- **Java Runtime Requirements** - Added documentation for Java runtime dependencies
+- **Error Type Migration** - Updated docs for MillError usage patterns
+
 ### [0.8.0] - 2025-10-26
 
 🚀 **Version 0.8.0** - Python restoration, unified API completion, and code quality improvements

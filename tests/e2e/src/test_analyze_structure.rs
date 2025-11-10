@@ -6,49 +6,9 @@
 //! Tests structure analysis: symbols, hierarchy, interfaces, inheritance, modules
 
 use crate::harness::{TestClient, TestWorkspace};
+use crate::test_helpers;
 use mill_foundation::protocol::analysis_result::{AnalysisResult, Severity};
 use serde_json::json;
-
-/// Helper to run structure analysis test
-async fn run_structure_test<V>(
-    file_name: &str,
-    file_content: &str,
-    kind: &str,
-    verify: V,
-) -> anyhow::Result<()>
-where
-    V: FnOnce(&AnalysisResult) -> anyhow::Result<()>,
-{
-    let workspace = TestWorkspace::new();
-    workspace.create_file(file_name, file_content);
-    let mut client = TestClient::new(workspace.path());
-    let test_file = workspace.absolute_path(file_name);
-
-    let response = client
-        .call_tool(
-            "analyze.structure",
-            json!({
-                "kind": kind,
-                "scope": {
-                    "type": "file",
-                    "path": test_file.to_string_lossy()
-                }
-            }),
-        )
-        .await
-        .expect("analyze.structure call should succeed");
-
-    let result: AnalysisResult = serde_json::from_value(
-        response
-            .get("result")
-            .expect("Response should have result field")
-            .clone(),
-    )
-    .expect("Should parse as AnalysisResult");
-
-    verify(&result)?;
-    Ok(())
-}
 
 #[tokio::test]
 async fn test_analyze_structure_symbols_basic() {
@@ -79,7 +39,13 @@ export type UserData = {
 };
 "#;
 
-    run_structure_test("symbols_test.ts", code, "symbols", |result| {
+    test_helpers::run_analysis_test(
+        "symbols_test.ts",
+        code,
+        "analyze.structure",
+        "symbols",
+        None,
+        |result| {
         assert_eq!(result.metadata.category, "structure");
         assert_eq!(result.metadata.kind, "symbols");
         assert!(result.summary.symbols_analyzed.is_some());
@@ -141,7 +107,13 @@ export class LeafClass extends MiddleClass {
 }
 "#;
 
-    run_structure_test("hierarchy_test.ts", code, "hierarchy", |result| {
+    test_helpers::run_analysis_test(
+        "hierarchy_test.ts",
+        code,
+        "analyze.structure",
+        "hierarchy",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "hierarchy");
         assert!(result.summary.symbols_analyzed.is_some());
 
@@ -208,7 +180,13 @@ export interface SimpleInterface {
 }
 "#;
 
-    run_structure_test("interfaces_test.ts", code, "interfaces", |result| {
+    test_helpers::run_analysis_test(
+        "interfaces_test.ts",
+        code,
+        "analyze.structure",
+        "interfaces",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "interfaces");
         assert!(result.summary.symbols_analyzed.is_some());
 
@@ -281,7 +259,13 @@ export class Level5 extends Level4 {
 }
 "#;
 
-    run_structure_test("inheritance_test.ts", code, "inheritance", |result| {
+    test_helpers::run_analysis_test(
+        "inheritance_test.ts",
+        code,
+        "analyze.structure",
+        "inheritance",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "inheritance");
         assert!(result.summary.symbols_analyzed.is_some());
 
@@ -346,7 +330,13 @@ export function helper2() { return "helper2"; }
 export function helper3() { return "helper3"; }
 "#;
 
-    run_structure_test("modules_test.ts", code, "modules", |result| {
+    test_helpers::run_analysis_test(
+        "modules_test.ts",
+        code,
+        "analyze.structure",
+        "modules",
+        None,
+        |result| {
         assert_eq!(result.metadata.kind, "modules");
         assert!(result.summary.symbols_analyzed.is_some());
 
