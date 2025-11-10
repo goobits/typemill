@@ -13,6 +13,32 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 ### [Unreleased]
 
+### [0.8.2] - 2025-11-10
+
+🧪 **Version 0.8.2** - Edge case test consolidation (Phase 7 completion)
+
+#### Added
+
+- **Edge Case Test Harness** - Centralized edge case testing for all language plugins
+  - Created `edge_case_tests.rs` harness with 8 comprehensive test functions
+  - Tests Unicode identifiers, extremely long lines, empty files, mixed line endings, etc.
+  - Integration tests run automatically against ALL discovered language plugins
+  - Eliminates 56 duplicate tests across 7 languages (~547 LOC saved)
+
+#### Changed
+
+- **Test Consolidation Completion** - Phase 7 of test infrastructure consolidation
+  - Deleted duplicate edge case tests from Python, Java, Go, Swift, C, C#, and Rust
+  - Performance tests preserved in each language (language-specific benchmarks)
+  - All edge case scenarios now centralized: Unicode, long lines, empty files, null bytes, special regex chars, etc.
+
+#### Impact
+
+- **Phase 7 alone**: 56 tests eliminated, ~547 LOC saved
+- **Total consolidation (Phases 1-7)**: ~1,182 LOC saved, 98 tests eliminated
+- Future language plugins automatically get comprehensive edge case test coverage
+- Single source of truth for edge case testing across all languages
+
 ### [0.8.1] - 2025-11-10
 
 🔧 **Version 0.8.1** - Test infrastructure consolidation, Java parser fix, and error API unification
