@@ -436,15 +436,6 @@ mod tests {
         assert!(updated.contains("example.com/newpkg v1.2.4"));
     }
 
-    #[tokio::test]
-    async fn test_lsp_installer() {
-        let installer = lsp_installer::GoLspInstaller;
-        // This test can't easily install the real gopls in a hermetic way.
-        // We'll just check that the name is correct. In a real CI environment,
-        // we would mock the `go install` command.
-        assert_eq!(installer.lsp_name(), "gopls");
-    }
-
     // ========================================================================
     // ERROR PATH TESTS
     // ========================================================================

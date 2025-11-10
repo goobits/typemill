@@ -4,6 +4,7 @@ pub mod contract_tests;
 pub mod edge_case_tests;
 pub mod fixtures;
 pub mod import_harness;
+pub mod lsp_installer_harness;
 pub mod lsp_setup;
 pub mod mcp_fixtures;
 pub mod plugin_discovery;

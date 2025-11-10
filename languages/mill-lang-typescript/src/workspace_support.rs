@@ -412,16 +412,6 @@ mod tests {
     }
 
     #[test]
-    fn test_is_workspace_manifest() {
-        let support = TypeScriptWorkspaceSupport::new();
-
-        assert!(support.is_workspace_manifest(NPM_WORKSPACE));
-        assert!(support.is_workspace_manifest(YARN_OBJECT_WORKSPACE));
-        assert!(support.is_workspace_manifest(PNPM_WORKSPACE));
-        assert!(!support.is_workspace_manifest(SINGLE_PACKAGE));
-    }
-
-    #[test]
     fn test_list_npm_workspace_members() {
         let support = TypeScriptWorkspaceSupport::new();
 
@@ -496,23 +486,5 @@ mod tests {
         let members = support.list_workspace_members(&result);
         assert_eq!(members.len(), 1);
         assert!(members.contains(&"packages/*".to_string()));
-    }
-
-    #[test]
-    fn test_update_package_name() {
-        let support = TypeScriptWorkspaceSupport::new();
-
-        let result = support.update_package_name(SINGLE_PACKAGE, "new-package");
-        assert!(result.contains("\"new-package\""));
-        assert!(!result.contains("\"single-package\""));
-    }
-
-    #[test]
-    fn test_add_duplicate_member() {
-        let support = TypeScriptWorkspaceSupport::new();
-
-        let result = support.add_workspace_member(NPM_WORKSPACE, "packages/*");
-        let members = support.list_workspace_members(&result);
-        assert_eq!(members.len(), 2); // Should not duplicate
     }
 }

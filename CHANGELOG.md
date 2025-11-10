@@ -13,6 +13,78 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 ### [Unreleased]
 
+### [0.8.1] - 2025-11-10
+
+🔧 **Version 0.8.1** - Test infrastructure consolidation, Java parser fix, and error API unification
+
+#### Added
+
+- **Deep Dead Code Analysis** - Workspace-scoped dead code analysis with LspAdapter integration
+  - Cross-file dependency tracking and import/export analysis
+  - Integrated with LSP provider for accurate symbol resolution
+
+- **Test Infrastructure Consolidation** - Major test deduplication effort
+  - Phase 1: Import harness migration (18 tests consolidated, ~216 LOC saved)
+  - Phase 2: Refactoring test consolidation (9 tests eliminated, 214 LOC saved)
+  - Phase 3: LSP/metadata duplicate test deletion
+  - Total impact: ~430 lines of duplicate test code eliminated
+  - All core language plugin tests passing (Python: 60/60, C: 34/34, Java: 75/75)
+
+- **Dogfooding Infrastructure** - Testing TypeMill on real projects for validation
+
+#### Changed
+
+- **Error API Unification** - Complete migration from CoreError/ApiError to MillError
+  - Unified error handling across all crates
+  - Cleaner error propagation and handling
+  - Removed deprecated error types
+
+- **Analysis Handler Extraction** - Extracted analysis handlers to separate `mill-handlers-analysis` crate
+  - Better separation of concerns
+  - Cleaner crate organization
+
+- **API Clarity Improvements** - Enhanced public/private API boundaries
+  - Added 242+ `pub(crate)` markers across codebase
+  - Cleaner module boundaries and encapsulation
+  - Removed wildcard re-exports in mill-ast
+
+#### Fixed
+
+- **Java Parser JAR Build** - Fixed Java import support (4 failing tests → all 75 passing)
+  - Manually built java-parser JAR when Maven Central unreachable
+  - Fixed build.rs to use CARGO_MANIFEST_DIR for correct path resolution
+  - Committed pre-built JAR to eliminate Maven dependency
+
+- **Import Harness Bugs** - Fixed Java exclusion and Go duplicate test attributes
+  - Java requires Maven-built JAR (excluded from harness until built)
+  - Removed duplicate test attributes in Go plugin
+
+- **TypeScript Import Path Calculation** - Fixed macOS canonicalization bug
+  - Import paths now correctly calculated for non-existent files
+  - Resolves path issues on macOS file systems
+
+- **LSP Reference Queries** - Explicitly open files in LSP before reference queries
+  - Prevents reference lookup failures
+  - More reliable LSP integration
+
+- **Async Context Panics** - Made `to_api_context` async to avoid `blocking_lock` panic
+  - Prevents "Cannot block the current thread from within a runtime" errors
+  - Fixes runtime context issues in test environment
+
+#### Performance
+
+- **Regex Optimization** - Fixed catastrophic regex recompilation in Go/C# plugins
+  - 200-500x speedup by caching compiled regexes
+  - Eliminated per-invocation recompilation overhead
+
+- **Parallel Builds** - Re-enabled parallel builds in Makefile after resolving cache issue
+  - Faster build times with cargo caching
+
+#### Documentation
+
+- **Java Runtime Requirements** - Added documentation for Java runtime dependencies
+- **Error Type Migration** - Updated docs for MillError usage patterns
+
 ### [0.8.0] - 2025-10-26
 
 🚀 **Version 0.8.0** - Python restoration, unified API completion, and code quality improvements
