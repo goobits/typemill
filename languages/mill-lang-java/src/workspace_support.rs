@@ -327,60 +327,6 @@ fn write_modules_section<W: std::io::Write>(
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
 
-    const SIMPLE_WORKSPACE_POM: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
-<project>
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>com.example</groupId>
-    <artifactId>parent-project</artifactId>
-    <version>1.0.0</version>
-    <packaging>pom</packaging>
-
-    <modules>
-        <module>module-a</module>
-        <module>module-b</module>
-    </modules>
-</project>"#;
-
-    const SINGLE_MODULE_POM: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
-<project>
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>com.example</groupId>
-    <artifactId>single-module</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
-</project>"#;
-
-    #[test]
-    fn test_add_member_to_nonworkspace() {
-        let support = JavaWorkspaceSupport::new();
-
-        let pom_with_packaging = r#"<?xml version="1.0" encoding="UTF-8"?>
-<project>
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>com.example</groupId>
-    <artifactId>single-module</artifactId>
-    <version>1.0.0</version>
-    <packaging>pom</packaging>
-</project>"#;
-
-        let result = support.add_workspace_member(pom_with_packaging, "new-module");
-        assert!(result.contains("<module>new-module</module>"));
-        assert!(support.is_workspace_manifest(&result));
-    }
-
-    #[test]
-    fn test_alphabetical_sorting() {
-        let support = JavaWorkspaceSupport::new();
-
-        let result = support.add_workspace_member(SIMPLE_WORKSPACE_POM, "module-aaa");
-        let members = support.list_workspace_members(&result);
-
-        assert_eq!(members[0], "module-a");
-        assert_eq!(members[1], "module-aaa");
-        assert_eq!(members[2], "module-b");
-    }
-}
+// Unit tests deleted - functionality is covered by workspace_harness integration tests
+// See: crates/mill-test-support/src/harness/workspace_harness.rs

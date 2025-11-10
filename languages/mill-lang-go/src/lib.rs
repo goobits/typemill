@@ -379,15 +379,8 @@ mod tests {
         assert_eq!(plan.edits.len(), 2);
     }
 
-    #[test]
-    fn test_workspace_support_add_and_list_members() {
-        let support = workspace_support::GoWorkspaceSupport;
-        let initial_content = "go 1.21\n";
-        let with_member = support.add_workspace_member(initial_content, "my-go-app");
-        assert!(with_member.contains("use ./my-go-app"));
-        let members = support.list_workspace_members(&with_member);
-        assert_eq!(members, vec!["my-go-app"]);
-    }
+    // Workspace tests deleted - covered by workspace_harness integration tests
+    // See: crates/mill-test-support/src/harness/workspace_harness.rs
 
     #[test]
     fn test_module_reference_scanner() {

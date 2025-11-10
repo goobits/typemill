@@ -13,6 +13,52 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 ### [Unreleased]
 
+### [0.8.4] - 2025-11-10
+
+🧪 **Version 0.8.4** - Analysis & workspace test consolidation (Phase 13 completion)
+
+#### Added
+
+- **Shared Analysis Test Helper** - Centralized test infrastructure for analysis tools
+  - Created `run_analysis_test()` helper in `tests/e2e/src/test_helpers.rs`
+  - Handles workspace setup, file creation, tool invocation, and result verification
+  - Consolidates duplicate helpers across 6 analysis test files (~230 LOC saved)
+
+#### Removed
+
+- **Analysis Test Helpers** - Deleted duplicate helper functions from analysis test files
+  - Removed `run_analysis_test()` from `test_analyze_quality.rs` (46 lines)
+  - Removed `run_dead_code_test()` from `test_analyze_dead_code.rs` (40 lines)
+  - Removed `run_dependency_test()` from `test_analyze_dependencies.rs` (40 lines)
+  - Removed `run_structure_test()` from `test_analyze_structure.rs` (40 lines)
+  - Removed `analyze_documentation()` from `test_analyze_documentation.rs` (32 lines)
+  - Removed `analyze_tests()` from `test_analyze_tests.rs` (32 lines)
+
+- **Workspace Unit Tests** - Deleted duplicate workspace tests from language plugins
+  - Removed 8 tests from `mill-lang-typescript/src/workspace_support.rs` (119 lines)
+  - Removed 11 tests from `mill-lang-python/src/workspace_support.rs` (163 lines)
+  - Removed 4 tests from `mill-lang-java/src/workspace_support.rs` (56 lines)
+  - Removed 7 tests from `mill-lang-csharp/src/workspace_support.rs` (96 lines)
+  - Removed 11 tests from `mill-lang-swift/src/lib.rs` (184 lines)
+  - Removed 1 test from `mill-lang-go/src/lib.rs` (9 lines)
+  - Functionality covered by existing `workspace_harness` integration tests
+
+#### Changed
+
+- **Test Consolidation Progress** - Phase 13 of test infrastructure consolidation
+  - Updated 9 analysis test calls to use shared `test_helpers::run_analysis_test()`
+  - All analysis tests now use consistent error handling and result verification
+  - Workspace tests centralized in `crates/mill-test-support/src/harness/workspace_harness.rs`
+  - **Phase 13 savings:** ~857 LOC saved (230 analysis + 627 workspace)
+  - **Total consolidation to date:** ~2,204 LOC saved, 162 tests eliminated
+
+#### Fixed
+
+- **Edge Case Test Integration** - Fixed infinite recursion in test harness integration
+  - Updated `edge_case_harness_integration.rs` to use module-qualified function calls
+  - Changed from wildcard import to explicit module path (`edge_case_tests::test_*`)
+  - Prevents test functions from calling themselves recursively
+
 ### [0.8.3] - 2025-11-10
 
 🧪 **Version 0.8.3** - List functions test consolidation (Phase 12 completion)

@@ -13,7 +13,7 @@
 //! This replaces ~48 duplicate tests across 6 individual language plugins
 //! (Python, Java, Go, C#, Swift, C) with 8 centralized tests.
 
-use mill_test_support::harness::edge_case_tests::*;
+use mill_test_support::harness::edge_case_tests;
 
 // Force linker to include plugin-bundle for inventory collection
 #[cfg(test)]
@@ -21,46 +21,46 @@ extern crate mill_plugin_bundle;
 
 #[tokio::test]
 async fn test_all_plugins_parse_unicode_identifiers() {
-    test_all_plugins_parse_unicode_identifiers().await;
+    edge_case_tests::test_all_plugins_parse_unicode_identifiers().await;
 }
 
 #[tokio::test]
 async fn test_all_plugins_parse_extremely_long_line() {
-    test_all_plugins_parse_extremely_long_line().await;
+    edge_case_tests::test_all_plugins_parse_extremely_long_line().await;
 }
 
 #[tokio::test]
 async fn test_all_plugins_parse_no_newlines() {
-    test_all_plugins_parse_no_newlines().await;
+    edge_case_tests::test_all_plugins_parse_no_newlines().await;
 }
 
 #[tokio::test]
 async fn test_all_plugins_scan_mixed_line_endings() {
-    test_all_plugins_scan_mixed_line_endings().await;
+    edge_case_tests::test_all_plugins_scan_mixed_line_endings().await;
 }
 
 #[tokio::test]
 async fn test_all_plugins_parse_empty_file() {
-    test_all_plugins_parse_empty_file().await;
+    edge_case_tests::test_all_plugins_parse_empty_file().await;
 }
 
 #[tokio::test]
 async fn test_all_plugins_parse_whitespace_only() {
-    test_all_plugins_parse_whitespace_only().await;
+    edge_case_tests::test_all_plugins_parse_whitespace_only().await;
 }
 
 #[tokio::test]
 async fn test_all_plugins_scan_special_regex_chars() {
-    test_all_plugins_scan_special_regex_chars().await;
+    edge_case_tests::test_all_plugins_scan_special_regex_chars().await;
 }
 
 #[tokio::test]
 async fn test_all_plugins_handle_null_bytes() {
-    test_all_plugins_handle_null_bytes().await;
+    edge_case_tests::test_all_plugins_handle_null_bytes().await;
 }
 
 /// Comprehensive test that runs all edge case scenarios
 #[tokio::test]
 async fn test_comprehensive_edge_cases() {
-    test_all_plugins_handle_edge_cases().await;
+    edge_case_tests::test_all_plugins_handle_edge_cases().await;
 }
