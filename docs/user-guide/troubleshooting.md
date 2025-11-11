@@ -293,4 +293,4 @@ Report at: https://github.com/goobits/typemill/issues
 - **[configuration.md](configuration.md)** - Complete configuration reference
 - **[setup-guide.md](setup-guide.md)** - Team setup strategies
 - **[cheatsheet.md](cheatsheet.md)** - Quick command reference
-- **[tools/README.md](tools/README.md)** - All 29 tools
+- **[tools/README.md](../tools/README.md)** - All 29 tools

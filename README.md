@@ -172,7 +172,7 @@ echo 'TYPEMILL__SERVER__AUTH__JWT_SECRET=dev-secret' > .env
 - ✅ Enable TLS when binding to non-loopback addresses for production
 - ✅ Use secret management services (Vault, AWS Secrets Manager) in production
 
-See [docs/configuration.md](docs/configuration.md) for complete configuration reference including environment variables, and [Docker Deployment](docs/operations/docker_deployment.md) for production setup.
+See [docs/user-guide/configuration.md](docs/user-guide/configuration.md) for complete configuration reference including environment variables, and [Docker Deployment](docs/operations/docker_deployment.md) for production setup.
 
 ## 📥 LSP Server Management
 

@@ -365,7 +365,7 @@ let updated_content = manifest_updater
 
 ### New Capability Traits
 
-See [docs/architecture/overview.md](architecture/overview.md) for complete details on ManifestUpdater, ModuleLocator, and RefactoringProvider traits.
+See [docs/architecture/overview.md](../architecture/overview.md) for complete details on ManifestUpdater, ModuleLocator, and RefactoringProvider traits.
 
 ### Migration Pattern: Old → New
 

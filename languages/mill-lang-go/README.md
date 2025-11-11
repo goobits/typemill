@@ -299,7 +299,7 @@ registry.register(Arc::new(cb_lang_go::GoPlugin::new()));
 
 ## Contributing
 
-For creating new language plugins, see the **[Language Plugins Guide](../README.md)** which covers:
+For creating new language plugins, see the **[Language Plugins Guide](../../docs/development/plugin-development.md)** which covers:
 - Plugin structure and schema requirements
 - `LanguagePlugin` trait implementation
 - Plugin registration steps

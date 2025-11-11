@@ -861,7 +861,7 @@ See **[docs/operations/cache_configuration.md](docs/operations/cache_configurati
 
 ### Adding New Language Plugins
 
-**See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** for complete guide on implementing language plugins:
+**See [docs/development/overview.md](docs/development/overview.md)** for complete guide on implementing language plugins:
 - **NEW: `define_language_plugin!` macro** - Eliminates ~70 lines of boilerplate per plugin
 - Plugin structure and schema requirements
 - `LanguagePlugin` trait implementation
@@ -928,7 +928,7 @@ The codebase uses a **capability-based dispatch pattern** where plugins expose c
 - `ModuleLocator` - Find module files within packages
 - `RefactoringProvider` - AST-based refactoring operations
 
-For implementation details and examples, see **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
+For implementation details and examples, see **[docs/development/overview.md](docs/development/overview.md)**.
 
 ### Adding New MCP Tools
 

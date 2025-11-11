@@ -61,7 +61,7 @@ The plugin is registered in `crates/cb-services/src/services/registry_builder.rs
 
 ## References
 
-- [Language Plugin Guide](../README.md)
+- [Language Plugin Guide](../../docs/development/plugin-development.md)
 - [Scaffolding Guide](./SCAFFOLDING.md)
 - [API Documentation](../../cb-plugin-api/src/lib.rs)
 - Reference implementations: `cb-lang-go`, `cb-lang-typescript`
