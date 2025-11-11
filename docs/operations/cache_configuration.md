@@ -270,5 +270,5 @@ Planned cache features:
 ## See Also
 
 - [Configuration Overview](../README.md)
-- [Performance Tuning](../deployment/PERFORMANCE.md) (planned)
-- [Architecture: Caching](../architecture/CACHING.md) (planned)
+- [Configuration Reference](../user-guide/configuration.md)
+- [Operations: Docker Deployment](docker_deployment.md)

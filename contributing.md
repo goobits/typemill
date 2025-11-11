@@ -391,7 +391,7 @@ With sccache and mold installed:
 - **[docs/user-guide/getting-started.md](docs/user-guide/getting-started.md)** - Complete setup guide
 - **[docs/user-guide/cheatsheet.md](docs/user-guide/cheatsheet.md)** - Quick command reference
 - **[docs/development/overview.md](docs/development/overview.md)** - Complete contributor quickstart
-- **[docs/architecture/overview.md](docs/architecture/overview.md)** - System architecture
+- **[docs/architecture/core-concepts.md](docs/architecture/core-concepts.md)** - System architecture
 
 ### CLI Documentation Viewer
 

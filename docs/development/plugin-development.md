@@ -365,7 +365,7 @@ let updated_content = manifest_updater
 
 ### New Capability Traits
 
-See [docs/architecture/overview.md](architecture/overview.md) for complete details on ManifestUpdater, ModuleLocator, and RefactoringProvider traits.
+See [docs/architecture/core-concepts.md](../architecture/core-concepts.md) for complete details on ManifestUpdater, ModuleLocator, and RefactoringProvider traits.
 
 ### Migration Pattern: Old → New
 
@@ -700,7 +700,7 @@ All tools support the same `options.dryRun` parameter:
 
 - [Testing Guide](testing.md) - Comprehensive testing patterns
 - [Logging Guidelines](logging_guidelines.md) - Structured logging standards
-- [Architecture Overview](../architecture/overview.md) - System architecture
+- [Core Concepts](../architecture/core-concepts.md) - System architecture
 - [Tools API Reference](../tools/README.md) - Complete tool documentation
 - **[Plugin Migration Guide](../guides/plugin-migration.md)** - Refactoring guide for plugin system changes
 

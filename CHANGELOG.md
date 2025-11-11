@@ -289,7 +289,7 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Conflict detection and validation
 
 - **Tool Access Control** - Internal tools blocked from CLI/MCP
-  - Clean separation of public API (36 tools) vs internal tools (20 tools)
+  - Clean separation of public API (29 tools) vs internal tools (20 tools)
   - Prevents accidental usage of internal plumbing tools
   - Better security and API surface management
 

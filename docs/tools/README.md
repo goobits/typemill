@@ -4,7 +4,7 @@
 
 This directory contains focused documentation for each tool category. Each category file follows a consistent structure with terse but complete documentation, real examples from the codebase, and common patterns.
 
-> **📋 For the authoritative tool catalog** including internal tools, see **[architecture/tools_visibility_spec.md](../architecture/tools_visibility_spec.md)**
+> **📋 For the authoritative tool catalog** including internal tools, see **[architecture/specifications.md](../architecture/specifications.md#tools-visibility-specification)**
 
 ---
 
@@ -283,9 +283,9 @@ Common error codes:
 ## Links
 
 - **[Main Documentation](../README.md)** - Complete documentation index
-- **[Architecture](../architecture/overview.md)** - System architecture
+- **[Architecture](../architecture/core-concepts.md)** - System architecture
 - **[Contributing](../../contributing.md)** - Development guide
-- **[API Contracts](../architecture/api_contracts.md)** - JSON schemas and validation rules
+- **[API Contracts](../architecture/specifications.md)** - JSON schemas and validation rules
 
 ---
 
