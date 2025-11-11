@@ -103,8 +103,8 @@ mod tests {
         #[cfg(unix)]
         {
             assert!(
-                home_path.starts_with("/home") || home_path.starts_with("/Users"),
-                "Unix home should start with /home or /Users: {:?}",
+                home_path.starts_with("/home") || home_path.starts_with("/Users") || home_path.starts_with("/root"),
+                "Unix home should start with /home, /Users, or /root: {:?}",
                 home_path
             );
         }
