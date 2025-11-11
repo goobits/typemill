@@ -41,7 +41,7 @@ Provides TypeScript/JavaScript AST parsing using SWC, dependency graph analysis,
 - Go → `cb-lang-go`
 - Rust → `cb-lang-rust`
 
-See [crates/languages/README.md](../languages/README.md) for plugin details.
+See [docs/development/plugin-development.md](../../docs/development/plugin-development.md) for plugin details.
 
 ## API
 

@@ -305,7 +305,7 @@ For creating new language plugins, see the **[Language Plugins Guide](../../docs
 - Plugin registration steps
 - Testing and logging standards
 
-For general contribution guidelines, see [CONTRIBUTING.md](../../../CONTRIBUTING.md):
+For general contribution guidelines, see [contributing.md](../../contributing.md):
 - Code standards
 - PR process
 

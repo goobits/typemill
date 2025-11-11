@@ -49,7 +49,7 @@
 ### Contributors
 
 **Getting started with development:**
-1. **[DEVELOPMENT.md](DEVELOPMENT.md)** - Complete development guide
+1. **[development/overview.md](development/overview.md)** - Complete development guide
 2. **[development/testing.md](development/testing.md)** - Testing architecture
 3. **[development/logging_guidelines.md](development/logging_guidelines.md)** - Structured logging
 

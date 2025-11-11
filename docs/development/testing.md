@@ -217,7 +217,6 @@ See real test implementations in the codebase:
 - [Test Pyramid Pattern](https://martinfowler.com/articles/practical-test-pyramid.html)
 - [contributing.md](../../contributing.md) - Development setup
 - [tests/e2e/](../../tests/e2e/) - Integration test suite
-- [docs/archive/testing_guide-verbose.md](archive/testing_guide-verbose.md) - Full guide with explanations
 
 ## Related Documentation
 

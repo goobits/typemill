@@ -303,7 +303,7 @@ Production Docker images are not currently provided but may be added in the futu
 ## See Also
 
 - [Contributing Guide](../../contributing.md) - Setup and development workflow
-- [Development Guide](../DEVELOPMENT.md) - Language plugin development
+- [Development Guide](../development/overview.md) - Language plugin development
 - [Testing Guide](../development/testing.md) - Test infrastructure
 - [Logging Guidelines](../development/logging_guidelines.md) - Structured logging
 

@@ -291,6 +291,6 @@ Report at: https://github.com/goobits/typemill/issues
 ## 📚 Related Documentation
 
 - **[configuration.md](configuration.md)** - Complete configuration reference
-- **[setup-guide.md](setup-guide.md)** - Team setup strategies
+- **[getting-started.md](getting-started.md)** - Getting started guide
 - **[cheatsheet.md](cheatsheet.md)** - Quick command reference
 - **[tools/README.md](../tools/README.md)** - All 29 tools
