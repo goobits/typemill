@@ -93,7 +93,7 @@
 - **[user-guide/cheatsheet.md](user-guide/cheatsheet.md)** - Command quick reference
 - **[user-guide/troubleshooting.md](user-guide/troubleshooting.md)** - Troubleshooting guide
 
-### Tool Reference (28 Public Tools)
+### Tool Reference (29 Public Tools)
 - **[tools/README.md](tools/README.md)** - Complete tool catalog
   _For authoritative specification including internal tools, see **[architecture/tools_visibility_spec.md](architecture/tools_visibility_spec.md)**_
 - **[tools/navigation.md](tools/navigation.md)** - Navigation & intelligence (8 tools)

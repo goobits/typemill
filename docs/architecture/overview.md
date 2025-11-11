@@ -119,7 +119,7 @@ The current architecture uses a plugin-based dispatch system:
 
 ## Core Architecture: Unified Handlers & Plugins
 
-The "Foundations First" architecture unifies 55 tools (36 public MCP tools + 19 internal tools) through a consistent, high-performance handler pattern. This design eliminates technical debt, enables zero-cost abstractions, and provides a scalable foundation for future tool additions.
+The "Foundations First" architecture unifies 49 tools (29 public MCP tools + 20 internal tools) through a consistent, high-performance handler pattern. This design eliminates technical debt, enables zero-cost abstractions, and provides a scalable foundation for future tool additions.
 
 ### The Unified `ToolHandler` Trait
 

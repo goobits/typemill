@@ -6,7 +6,7 @@
 
 Pure Rust MCP server bridging Language Server Protocol (LSP) to AI coding assistants
 
-Provides 28 MCP tools for code navigation, refactoring, analysis, and batch operations across TypeScript and Rust projects.
+Provides 29 MCP tools for code navigation, refactoring, analysis, and batch operations across TypeScript and Rust projects.
 
 ## ✨ Key Features
 - **🎯 Safe Refactoring** - Unified dryRun API (default: preview, explicit opt-in to execute) with automatic rollback on failure
@@ -14,7 +14,7 @@ Provides 28 MCP tools for code navigation, refactoring, analysis, and batch oper
 - **⚡ Rust Performance** - Zero-cost abstractions, memory safety, async I/O
 - **🔄 Comprehensive Updates** - Automatic import updates, cross-file reference tracking
 - **🐳 Production Ready** - WebSocket server, JWT auth, multi-tenant isolation, Docker support
-- **🛠️ 36 Tools** - Navigation, refactoring, analysis, workspace operations, batch processing
+- **🛠️ 49 Tools** - 29 public MCP tools + 20 internal tools for navigation, refactoring, analysis, workspace operations
 
 ## 🚀 Quick Start
 ```bash
@@ -80,7 +80,7 @@ mill tool workspace.find_replace --pattern "oldName" --replacement "newName"
 - Use `rename` for file/directory operations
 - Use `move` for code symbol operations (requires source position)
 
-## 📚 Available Tools (28 total)
+## 📚 Available Tools (29 total)
 
 **🔍 Navigation & Intelligence (8 tools)**
 - `find_definition`, `find_references`, `search_symbols`
