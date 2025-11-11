@@ -14,7 +14,7 @@ TypeMill is a Pure Rust MCP server that bridges Language Server Protocol (LSP) f
 
 **Start Here:**
 - **[docs/tools/](docs/tools/)** - Complete tool catalog with parameters, examples, return types
-- **[docs/architecture/overview.md](docs/architecture/overview.md)** - System architecture and data flow
+- **[docs/architecture/core-concepts.md](docs/architecture/core-concepts.md)** - System architecture and data flow
 
 **Development:**
 - **[contributing.md](contributing.md)** - Add tools, handler architecture, best practices
@@ -268,8 +268,8 @@ cargo fmt && cargo clippy
 - [tools/workspace.md](docs/tools/workspace.md) - Workspace tools (4)
 
 **Architecture:**
-- [architecture/overview.md](docs/architecture/overview.md) - System design, data flow
-- [architecture/api_contracts.md](docs/architecture/api_contracts.md) - Handler contracts
+- [architecture/core-concepts.md](docs/architecture/core-concepts.md) - System design, data flow
+- [architecture/specifications.md](docs/architecture/specifications.md) - API contracts and tool visibility
 - [architecture/internal_tools.md](docs/architecture/internal_tools.md) - Internal vs public tools
 
 **Configuration:**

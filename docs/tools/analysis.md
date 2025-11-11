@@ -1412,7 +1412,7 @@ All findings include actionable suggestions:
 **Related Documentation:**
 - [Refactoring Tools](refactoring.md) - Apply suggestions from analysis
 - [Workspace Tools](workspace.md) - Use module_dependencies for crate extraction
-- [API Contracts](../architecture/api_contracts.md) - JSON schemas and validation
+- [API Contracts](../architecture/specifications.md) - JSON schemas and validation
 - **[Actionable Suggestions](../features/actionable_suggestions.md)** - How analysis suggestions work
 - **[Cache Configuration](../operations/cache_configuration.md)** - Performance tuning for analysis
 

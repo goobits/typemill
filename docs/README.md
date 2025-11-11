@@ -35,7 +35,7 @@
 2. **[user-guide/cheatsheet.md](user-guide/cheatsheet.md)** - Quick command reference
 3. **[user-guide/configuration.md](user-guide/configuration.md)** - Configuration reference
 4. **[user-guide/troubleshooting.md](user-guide/troubleshooting.md)** - Common issues and solutions
-5. **[tools/README.md](tools/README.md)** - Complete tool catalog (29 tools, see **[architecture/tools_visibility_spec.md](architecture/tools_visibility_spec.md)** for full specification)
+5. **[tools/README.md](tools/README.md)** - Complete tool catalog (29 tools, see **[architecture/specifications.md](architecture/specifications.md#tools-visibility-specification)** for full specification)
 
 **Tool categories:**
 - **[Navigation Tools](tools/navigation.md)** - Find definitions, references, symbols (8 tools)
@@ -59,8 +59,8 @@
 3. **[development/logging_guidelines.md](development/logging_guidelines.md)** - Structured logging
 
 **Architecture deep-dive:**
-- **[architecture/overview.md](architecture/overview.md)** - System architecture
-- **[architecture/api_contracts.md](architecture/api_contracts.md)** - Handler contracts
+- **[architecture/core-concepts.md](architecture/core-concepts.md)** - System architecture
+- **[architecture/specifications.md](architecture/specifications.md)** - API contracts and tool visibility
 - **[architecture/lang_common_api.md](architecture/lang_common_api.md)** - Language abstraction
 
 **For contributing workflow:** See [contributing.md](https://github.com/goobits/typemill/blob/main/contributing.md) on GitHub
@@ -82,11 +82,10 @@
 ### 🏗️ Architects
 
 **Understanding internals:**
-1. **[architecture/overview.md](architecture/overview.md)** - Complete system design
-2. **[architecture/layers.md](architecture/layers.md)** - Layer architecture
+1. **[architecture/core-concepts.md](architecture/core-concepts.md)** - Complete system design
+2. **[architecture/specifications.md](architecture/specifications.md)** - API contracts and tool visibility
 3. **[architecture/internal_tools.md](architecture/internal_tools.md)** - Tool visibility policy
-4. **[architecture/primitives.md](architecture/primitives.md)** - Core data structures
-5. **[architecture/api_contracts.md](architecture/api_contracts.md)** - Handler patterns
+4. **[architecture/lang_common_api.md](architecture/lang_common_api.md)** - Language abstraction
 
 ---
 
@@ -100,7 +99,7 @@
 
 ### Tool Reference (29 Public Tools)
 - **[tools/README.md](tools/README.md)** - Complete tool catalog
-  _For authoritative specification including internal tools, see **[architecture/tools_visibility_spec.md](architecture/tools_visibility_spec.md)**_
+  _For authoritative specification including internal tools, see **[architecture/specifications.md](architecture/specifications.md#tools-visibility-specification)**_
 - **[tools/navigation.md](tools/navigation.md)** - Navigation & intelligence (8 tools)
 - **[tools/refactoring.md](tools/refactoring.md)** - Editing & refactoring (7 tools)
 - **[tools/analysis.md](tools/analysis.md)** - Code analysis (8 tools)
@@ -122,13 +121,10 @@
 - **[operations/cicd.md](operations/cicd.md)** - CI/CD integration guide
 
 ### Architecture
-- **[architecture/overview.md](architecture/overview.md)** - System architecture & data flow
-- **[architecture/api_contracts.md](architecture/api_contracts.md)** - Unified Analysis & Refactoring API
+- **[architecture/core-concepts.md](architecture/core-concepts.md)** - System architecture & design philosophy
+- **[architecture/specifications.md](architecture/specifications.md)** - API contracts & tool visibility
 - **[architecture/internal_tools.md](architecture/internal_tools.md)** - Public vs internal tools policy
 - **[architecture/lang_common_api.md](architecture/lang_common_api.md)** - Language plugin common API
-- **[architecture/layers.md](architecture/layers.md)** - Architectural layers
-- **[architecture/primitives.md](architecture/primitives.md)** - Code primitives foundation
-- **[architecture/tools_visibility_spec.md](architecture/tools_visibility_spec.md)** - Tools visibility specification
 
 ### Features
 - **[features/actionable_suggestions.md](features/actionable_suggestions.md)** - Actionable suggestions system
@@ -164,7 +160,7 @@ mill docs <topic> --raw                # View raw markdown
 | **[user-guide/cheatsheet](user-guide/cheatsheet.md)** | Command reference | All users | `mill docs user-guide/cheatsheet` |
 | **[tools/](tools/)** | Tool API reference | Integrators | `mill docs tools` |
 | **[development/overview](development/overview.md)** | Plugin development | Contributors | `mill docs development/overview` |
-| **[architecture/overview](architecture/overview.md)** | System design | Architects | `mill docs architecture/overview` |
+| **[architecture/core-concepts](architecture/core-concepts.md)** | System design | Architects | `mill docs architecture/core-concepts` |
 | **[operations/docker_deployment](operations/docker_deployment.md)** | Deployment | Operators | `mill docs operations/docker_deployment` |
 
 ---

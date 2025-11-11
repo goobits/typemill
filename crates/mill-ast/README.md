@@ -101,4 +101,4 @@ cargo test -p cb-ast
 ```
 ## Documentation
 
-For complete architecture details, see [docs/architecture/overview.md](../../docs/architecture/overview.md).
+For complete architecture details, see [docs/architecture/core-concepts.md](../../docs/architecture/core-concepts.md).

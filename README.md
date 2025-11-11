@@ -271,7 +271,7 @@ curl -I https://github.com/rust-lang/rust-analyzer/releases
 - **[Getting Started](docs/user-guide/getting-started.md)** - Complete setup guide
 - **[Configuration Reference](docs/user-guide/configuration.md)** - Configuration options
 - **[Tool Reference](docs/tools/)** - Complete API for all 29 tools
-- **[Architecture Overview](docs/architecture/overview.md)** - System design and components
+- **[Core Concepts](docs/architecture/core-concepts.md)** - System architecture and design philosophy
 - **[Contributing Guide](contributing.md)** - Development setup and workflow
 - **[Docker Deployment](docs/operations/docker_deployment.md)** - Production deployment
 - **[CLAUDE.md](CLAUDE.md)** - AI agent instructions and comprehensive guide

@@ -98,8 +98,8 @@ cargo run -- start
 - **[contributing.md](https://github.com/goobits/typemill/blob/main/contributing.md)** - Full contributing guide
 
 ### Architecture
-- **[Architecture Overview](../architecture/overview.md)** - System design
-- **[API Contracts](../architecture/api_contracts.md)** - Handler patterns
+- **[Core Concepts](../architecture/core-concepts.md)** - System design
+- **[API Specifications](../architecture/specifications.md)** - Handler contracts and tool visibility
 - **[Lang Common API](../architecture/lang_common_api.md)** - Language abstraction
 
 ---
@@ -302,7 +302,7 @@ RUST_LOG=mill_lsp=trace cargo run -- start
 1. **[Plugin Development](plugin-development.md)** - Create language plugins
 2. **[Testing Guide](testing.md)** - Write tests
 3. **[Logging Guidelines](logging_guidelines.md)** - Structured logging
-4. **[Architecture Overview](../architecture/overview.md)** - Understand system design
+4. **[Core Concepts](../architecture/core-concepts.md)** - Understand system design
 5. **[contributing.md](https://github.com/goobits/typemill/blob/main/contributing.md)** - Full workflow
 
 ---
