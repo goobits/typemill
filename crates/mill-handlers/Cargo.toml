@@ -11,7 +11,7 @@ default = ["refactor-all"]
 # Exception: lang-rust is optional for consolidation validation (Rust-specific operation)
 lang-rust = ["dep:mill-lang-rust"]
 analysis-dead-code = ["dep:mill-analysis-dead-code", "dep:mill-analysis-common"]
-analysis-circular-deps = ["dep:mill-analysis-circular-deps", "dep:mill-analysis-graph"]
+analysis-circular-deps = ["mill-handlers-analysis/analysis-circular-deps", "dep:mill-analysis-circular-deps", "dep:mill-analysis-graph"]
 analysis-deep-dead-code = ["dep:mill-analysis-deep-dead-code", "dep:mill-analysis-common"]
 
 # Refactoring operations - optional for faster compilation
@@ -33,7 +33,7 @@ mill-services = { path = "../mill-services", default-features = false }
 mill-plugin-api = { path = "../mill-plugin-api" }
 mill-lsp = { path = "../mill-lsp" }
 mill-handler-api = { path = "../mill-handler-api" }
-mill-handlers-analysis = { path = "../mill-handlers-analysis" }
+mill-handlers-analysis = { path = "../mill-handlers-analysis", default-features = false }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
