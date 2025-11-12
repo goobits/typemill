@@ -11,6 +11,7 @@ use fs2::FileExt;
 use mill_client::format_plan;
 use mill_config::config::AppConfig;
 use mill_foundation::core::utils::system::command_exists;
+use mill_foundation::errors::MillError;
 use mill_foundation::planning::RefactorPlan;
 use mill_foundation::protocol::analysis_result::AnalysisResult;
 use mill_transport::SessionInfo;
@@ -633,7 +634,7 @@ async fn handle_cycles_command(command: Cycles) {
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            let error = mill_foundation::protocol::ApiError::internal(format!(
+            let error = MillError::internal(format!(
                 "Failed to initialize: {}",
                 e
             ));
@@ -693,7 +694,7 @@ async fn handle_cycles_command(command: Cycles) {
                     output_result(&result, &command.format);
                 }
             } else if let Some(error) = response.error {
-                let api_error = mill_foundation::protocol::ApiError::from(error);
+                let api_error = MillError::from(error);
                 output_error(&api_error, &command.format);
                 process::exit(3); // Tool error
             }
@@ -703,7 +704,7 @@ async fn handle_cycles_command(command: Cycles) {
             process::exit(3); // Tool error
         }
         Err(server_error) => {
-            let api_error = mill_foundation::protocol::ApiError::internal(server_error.to_string());
+            let api_error = MillError::internal(server_error.to_string());
             output_error(&api_error, &command.format);
             process::exit(3); // Tool error
         }
@@ -724,7 +725,7 @@ async fn handle_dead_code_command(command: DeadCode) {
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            let error = mill_foundation::protocol::ApiError::internal(format!(
+            let error = MillError::internal(format!(
                 "Failed to initialize: {}",
                 e
             ));
@@ -783,7 +784,7 @@ async fn handle_dead_code_command(command: DeadCode) {
                     output_result(&result, &command.format);
                 }
             } else if let Some(error) = response.error {
-                let api_error = mill_foundation::protocol::ApiError::from(error);
+                let api_error = MillError::from(error);
                 output_error(&api_error, &command.format);
                 process::exit(3);
             }
@@ -793,7 +794,7 @@ async fn handle_dead_code_command(command: DeadCode) {
             process::exit(3);
         }
         Err(server_error) => {
-            let api_error = mill_foundation::protocol::ApiError::internal(server_error.to_string());
+            let api_error = MillError::internal(server_error.to_string());
             output_error(&api_error, &command.format);
             process::exit(3);
         }
@@ -1555,7 +1556,7 @@ async fn handle_tool_command(
                     let error = mill_foundation::core::model::mcp::McpError::invalid_request(
                         format!("Failed to read input file '{}': {}", file_path, e),
                     );
-                    let api_error = mill_foundation::protocol::ApiError::from(error);
+                    let api_error = MillError::from(error);
                     output_error(&api_error, format);
                     process::exit(1);
                 }
@@ -1566,7 +1567,7 @@ async fn handle_tool_command(
                     let error = mill_foundation::core::model::mcp::McpError::invalid_request(
                         format!("Invalid JSON in file '{}': {}", file_path, e),
                     );
-                    let api_error = mill_foundation::protocol::ApiError::from(error);
+                    let api_error = MillError::from(error);
                     output_error(&api_error, format);
                     process::exit(1);
                 }
@@ -1580,7 +1581,7 @@ async fn handle_tool_command(
                     let error = mill_foundation::core::model::mcp::McpError::invalid_request(
                         format!("Failed to read from stdin: {}", e),
                     );
-                    let api_error = mill_foundation::protocol::ApiError::from(error);
+                    let api_error = MillError::from(error);
                     output_error(&api_error, format);
                     process::exit(1);
                 }
@@ -1590,7 +1591,7 @@ async fn handle_tool_command(
                         let error = mill_foundation::core::model::mcp::McpError::invalid_request(
                             format!("Invalid JSON from stdin: {}", e),
                         );
-                        let api_error = mill_foundation::protocol::ApiError::from(error);
+                        let api_error = MillError::from(error);
                         output_error(&api_error, format);
                         process::exit(1);
                     }
@@ -1603,7 +1604,7 @@ async fn handle_tool_command(
                         let error = mill_foundation::core::model::mcp::McpError::invalid_request(
                             format!("Invalid JSON arguments: {}", e),
                         );
-                        let api_error = mill_foundation::protocol::ApiError::from(error);
+                        let api_error = MillError::from(error);
                         output_error(&api_error, format);
                         process::exit(1);
                     }
@@ -1648,7 +1649,7 @@ async fn handle_tool_command(
             match flag_parser::parse_flags_to_json(tool_name, flags) {
                 Ok(json) => json,
                 Err(e) => {
-                    let error = mill_foundation::protocol::ApiError::InvalidRequest(format!(
+                    let error = MillError::InvalidRequest(format!(
                         "Invalid flag arguments: {}",
                         e
                     ));
@@ -1662,7 +1663,7 @@ async fn handle_tool_command(
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            let error = mill_foundation::protocol::ApiError::internal(format!(
+            let error = MillError::internal(format!(
                 "Failed to initialize: {}",
                 e
             ));
@@ -1709,7 +1710,7 @@ async fn handle_tool_command(
             if let Some(result) = response.result {
                 output_result(&result, format);
             } else if let Some(error) = response.error {
-                let api_error = mill_foundation::protocol::ApiError::from(error);
+                let api_error = MillError::from(error);
                 output_error(&api_error, format);
                 process::exit(1);
             }
@@ -1720,7 +1721,7 @@ async fn handle_tool_command(
         }
         Err(server_error) => {
             // Convert ServerError to ApiError and output to stderr
-            let api_error = mill_foundation::protocol::ApiError::internal(server_error.to_string());
+            let api_error = MillError::internal(server_error.to_string());
             output_error(&api_error, format);
             process::exit(1);
         }
@@ -1747,7 +1748,7 @@ async fn handle_convert_naming(
             .filter_map(|p| p.to_str().map(String::from))
             .collect(),
         Err(e) => {
-            let error = mill_foundation::protocol::ApiError::InvalidRequest(format!(
+            let error = MillError::InvalidRequest(format!(
                 "Invalid glob pattern '{}': {}",
                 glob_pattern, e
             ));
@@ -1837,7 +1838,7 @@ async fn handle_convert_naming(
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            let error = mill_foundation::protocol::ApiError::internal(format!(
+            let error = MillError::internal(format!(
                 "Failed to initialize: {}",
                 e
             ));
@@ -1906,7 +1907,7 @@ async fn handle_convert_naming(
                             if apply_response.error.is_some() {
                                 eprintln!("❌ Failed to apply renames");
                                 output_error(
-                                    &mill_foundation::protocol::ApiError::internal(format!(
+                                    &MillError::internal(format!(
                                         "{:?}",
                                         apply_response.error
                                     )),
@@ -2068,7 +2069,7 @@ fn output_result(result: &serde_json::Value, format: &str) {
 }
 
 /// Output error to stderr based on format
-fn output_error(error: &mill_foundation::protocol::ApiError, format: &str) {
+fn output_error(error: &MillError, format: &str) {
     let error_json = serde_json::to_value(error).unwrap_or(serde_json::json!({
         "error": error.to_string()
     }));

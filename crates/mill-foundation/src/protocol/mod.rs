@@ -221,7 +221,7 @@ pub trait LspService: Send + Sync {
 #[async_trait]
 pub trait MessageDispatcher: Send + Sync {
     /// Dispatch a message and return response
-    async fn dispatch(&self, message: serde_json::Value) -> ApiResult<serde_json::Value>;
+    async fn dispatch(&self, message: serde_json::Value) -> crate::MillResult<serde_json::Value>;
 }
 
 /// Parameters for rename_directory operation

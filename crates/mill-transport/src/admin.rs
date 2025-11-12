@@ -12,7 +12,7 @@ use mill_auth::{
     jwt::{decode, Claims, DecodingKey, Validation},
 };
 use mill_config::config::AppConfig;
-use mill_foundation::protocol::ApiResult;
+use mill_foundation::MillResult;
 use mill_workspaces::{Workspace, WorkspaceManager};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
