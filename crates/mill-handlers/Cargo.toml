@@ -10,9 +10,9 @@ default = ["refactor-all"]
 # not at the handler layer. This eliminates compile-time coupling.
 # Exception: lang-rust is optional for consolidation validation (Rust-specific operation)
 lang-rust = ["dep:mill-lang-rust"]
-analysis-dead-code = ["dep:mill-analysis-dead-code", "dep:mill-analysis-common"]
-analysis-circular-deps = ["dep:mill-analysis-circular-deps", "dep:mill-analysis-graph"]
-analysis-deep-dead-code = ["dep:mill-analysis-deep-dead-code", "dep:mill-analysis-common"]
+analysis-dead-code = ["mill-handlers-analysis/analysis-dead-code"]
+analysis-circular-deps = ["mill-handlers-analysis/analysis-circular-deps"]
+analysis-deep-dead-code = ["mill-handlers-analysis/analysis-deep-dead-code"]
 
 # Refactoring operations - optional for faster compilation
 refactor-rename = []
@@ -33,7 +33,7 @@ mill-services = { path = "../mill-services", default-features = false }
 mill-plugin-api = { path = "../mill-plugin-api" }
 mill-lsp = { path = "../mill-lsp" }
 mill-handler-api = { path = "../mill-handler-api" }
-mill-handlers-analysis = { path = "../mill-handlers-analysis" }
+mill-handlers-analysis = { path = "../mill-handlers-analysis", default-features = false }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
@@ -65,11 +65,6 @@ mill-plugin-system = { path = "../mill-plugin-system", default-features = false,
 mill-config = { path = "../mill-config" }
 mill-workspaces = { path = "../mill-workspaces" }
 mill-ast = { path = "../mill-ast", default-features = false }
-mill-analysis-common = { path = "../../analysis/mill-analysis-common", optional = true }
-mill-analysis-dead-code = { path = "../../analysis/mill-analysis-dead-code", optional = true }
-mill-analysis-deep-dead-code = { path = "../../analysis/mill-analysis-deep-dead-code", optional = true }
-mill-analysis-graph = { path = "../../analysis/mill-analysis-graph", optional = true }
-mill-analysis-circular-deps = { path = "../../analysis/mill-analysis-circular-deps", optional = true }
 mill-lang-rust = { path = "../../languages/mill-lang-rust", optional = true }
 
 [dev-dependencies]

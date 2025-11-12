@@ -381,16 +381,13 @@ async fn test_analyze_dependencies_circular_typescript_workspace() {
 
     let response = client
         .call_tool(
-            "analyze.dependencies",
+            "analyze.cycles",
             json!({
-                "kind": "circular",
-                "scope": {
-                    "type": "workspace"
-                }
+                "path": workspace.path().to_string_lossy().to_string()
             }),
         )
         .await
-        .expect("analyze.dependencies call should succeed");
+        .expect("analyze.cycles call should succeed");
 
     let result: AnalysisResult = serde_json::from_value(
         response

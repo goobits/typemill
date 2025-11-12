@@ -40,6 +40,9 @@ use mill_foundation::protocol::analysis_result::AnalysisResult;
 #[cfg(feature = "analysis-circular-deps")]
 use mill_plugin_api::PluginDiscovery;
 
+#[cfg(feature = "analysis-circular-deps")]
+use std::sync::Arc;
+
 /// Detect and analyze import/export statements using plugin-based AST parsing
 ///
 /// This function uses language plugins to accurately parse import statements
@@ -1225,9 +1228,10 @@ impl ToolHandler for DependenciesHandler {
             #[cfg(feature = "analysis-circular-deps")]
             {
                 let project_root = &context.app_state.project_root;
-                let plugin_discovery = context.app_state.language_plugins.inner()
-                    .downcast_ref::<PluginDiscovery>()
+                let plugin_discovery_arc = context.app_state.language_plugins.inner()
+                    .downcast_ref::<Arc<PluginDiscovery>>()
                     .ok_or_else(|| ServerError::internal("Failed to downcast to PluginDiscovery".to_string()))?;
+                let plugin_discovery = plugin_discovery_arc.as_ref();
                 let builder = DependencyGraphBuilder::new(plugin_discovery);
                 let graph = builder.build(project_root).map_err(|e| ServerError::internal(e.to_string()))?;
                 let result = find_circular_dependencies(&graph, None)

@@ -103,7 +103,12 @@ impl RenameHandler {
                 use mill_lang_rust::dependency_analysis::validate_no_circular_dependencies;
 
                 match validate_no_circular_dependencies(&old_path, target_crate_root, workspace_root).await {
-                    Ok(analysis) if analysis.has_circular_dependency => {
+                    // Only reject if there are ACTUAL problematic modules that would create circular imports.
+                    // It's normal for target to depend on source (e.g., app → lib) during consolidation.
+                    // The key question is: are there specific modules in source that would create
+                    // circular imports after being merged into target? If problematic_modules is empty,
+                    // the consolidation is safe.
+                    Ok(analysis) if analysis.has_circular_dependency && !analysis.problematic_modules.is_empty() => {
                         return Err(mill_foundation::errors::MillError::InvalidRequest {
                             message: format!(
                                 "Cannot consolidate {} into {}: would create circular dependency.\n\

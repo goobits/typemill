@@ -6,6 +6,8 @@ use mill_analysis_circular_deps::{
 };
 #[cfg(feature = "analysis-circular-deps")]
 use mill_plugin_api::PluginDiscovery;
+#[cfg(feature = "analysis-circular-deps")]
+use std::sync::Arc;
 use mill_foundation::core::model::mcp::ToolCall;
 #[cfg(feature = "analysis-circular-deps")]
 use mill_foundation::protocol::analysis_result::{
@@ -54,9 +56,10 @@ impl ToolHandler for CircularDependenciesHandler {
                 .map(|p| project_root.join(p))
                 .unwrap_or_else(|| project_root.clone());
 
-            let plugin_discovery = context.app_state.language_plugins.inner()
-                .downcast_ref::<PluginDiscovery>()
+            let plugin_discovery_arc = context.app_state.language_plugins.inner()
+                .downcast_ref::<Arc<PluginDiscovery>>()
                 .ok_or_else(|| ServerError::internal("Failed to downcast to PluginDiscovery".to_string()))?;
+            let plugin_discovery = plugin_discovery_arc.as_ref();
             let builder = DependencyGraphBuilder::new(plugin_discovery);
             let graph = builder.build(&path).map_err(|e| ServerError::internal(e.to_string()))?;
             let min_size = args
