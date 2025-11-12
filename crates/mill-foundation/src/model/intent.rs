@@ -1,4 +1,6 @@
 //! Intent specification types for workflow automation
+//!
+//! Future feature: Automated workflow orchestration and intent-based execution
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -19,7 +21,7 @@ pub struct IntentSpec {
 /// Metadata for intent specifications
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct IntentMetadata {
+pub struct IntentMetadata {
     /// Source of the intent (e.g., "user", "automated", "system")
     pub source: String,
     /// Optional correlation ID for tracking
@@ -39,6 +41,7 @@ pub(crate) struct IntentMetadata {
 /// Intent execution result
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Intent-based workflow automation
 pub(crate) struct IntentResult {
     /// Success status
     pub success: bool,
@@ -59,6 +62,7 @@ pub(crate) struct IntentResult {
 /// Intent execution error
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Intent-based workflow automation
 pub(crate) struct IntentError {
     /// Error code
     pub code: String,
@@ -75,6 +79,7 @@ pub(crate) struct IntentError {
 /// Retry information for failed intents
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Intent-based workflow automation
 pub(crate) struct IntentRetryInfo {
     /// Number of retry attempts made
     pub attempts: u32,
@@ -91,6 +96,7 @@ pub(crate) struct IntentRetryInfo {
 /// Intent execution metrics
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Intent-based workflow automation
 pub(crate) struct IntentMetrics {
     /// Execution start time
     pub start_time: chrono::DateTime<chrono::Utc>,
@@ -108,6 +114,7 @@ pub(crate) struct IntentMetrics {
 /// Resource usage metrics for intent execution
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Intent-based workflow automation
 pub(crate) struct IntentResourceUsage {
     /// CPU time used in milliseconds
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -127,6 +134,7 @@ pub(crate) struct IntentResourceUsage {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
+#[allow(dead_code)] // Future feature: Intent-based workflow automation
 pub(crate) enum IntentStatus {
     /// Intent is pending execution
     Pending,
@@ -147,6 +155,7 @@ pub(crate) enum IntentStatus {
 /// Intent execution context
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Intent-based workflow automation
 pub(crate) struct IntentContext {
     /// Unique execution ID
     pub execution_id: String,
@@ -223,6 +232,7 @@ impl IntentSpec {
 
 impl IntentMetadata {
     /// Create new metadata with source
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn new(source: impl Into<String>) -> Self {
         Self {
             source: source.into(),
@@ -234,18 +244,21 @@ impl IntentMetadata {
     }
 
     /// Set correlation ID
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn with_correlation_id(mut self, correlation_id: impl Into<String>) -> Self {
         self.correlation_id = Some(correlation_id.into());
         self
     }
 
     /// Set priority
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn with_priority(mut self, priority: u8) -> Self {
         self.priority = Some(priority.clamp(1, 10));
         self
     }
 
     /// Add context value
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn with_context(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
         self.context.insert(key.into(), value);
         self
@@ -254,6 +267,7 @@ impl IntentMetadata {
 
 impl IntentResult {
     /// Create a successful result
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn success() -> Self {
         Self {
             success: true,
@@ -265,6 +279,7 @@ impl IntentResult {
     }
 
     /// Create a successful result with data
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn success_with_data(data: serde_json::Value) -> Self {
         Self {
             success: true,
@@ -276,6 +291,7 @@ impl IntentResult {
     }
 
     /// Create a failed result
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn failure(error: IntentError) -> Self {
         Self {
             success: false,
@@ -287,6 +303,7 @@ impl IntentResult {
     }
 
     /// Create a failed result with message
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn failure_with_message(error: IntentError, message: impl Into<String>) -> Self {
         Self {
             success: false,
@@ -298,6 +315,7 @@ impl IntentResult {
     }
 
     /// Add metrics to the result
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn with_metrics(mut self, metrics: IntentMetrics) -> Self {
         self.metrics = Some(metrics);
         self
@@ -306,6 +324,7 @@ impl IntentResult {
 
 impl IntentError {
     /// Create a new intent error
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
             code: code.into(),
@@ -316,12 +335,14 @@ impl IntentError {
     }
 
     /// Add error details
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn with_details(mut self, details: serde_json::Value) -> Self {
         self.details = Some(details);
         self
     }
 
     /// Add retry information
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn with_retry_info(mut self, retry_info: IntentRetryInfo) -> Self {
         self.retry_info = Some(retry_info);
         self
@@ -330,6 +351,7 @@ impl IntentError {
 
 impl IntentContext {
     /// Create a new intent context
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn new(execution_id: impl Into<String>, intent: IntentSpec) -> Self {
         Self {
             execution_id: execution_id.into(),

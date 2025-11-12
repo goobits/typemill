@@ -111,7 +111,7 @@ pub async fn start_admin_server(
     port: u16,
     config: Arc<AppConfig>,
     workspace_manager: Arc<WorkspaceManager>,
-) -> ApiResult<()> {
+) -> MillResult<()> {
     let state = AdminState {
         version: env!("CARGO_PKG_VERSION").to_string(),
         start_time: std::time::Instant::now(),

@@ -3,6 +3,7 @@
 use super::MillError;
 #[allow(deprecated)]
 use crate::protocol::error::ApiError;
+use crate::model::mcp::McpError;
 
 impl From<std::io::Error> for MillError {
     fn from(err: std::io::Error) -> Self {
@@ -19,6 +20,48 @@ impl From<serde_json::Error> for MillError {
         MillError::Json {
             message: err.to_string(),
             source: Some(err),
+        }
+    }
+}
+
+impl From<McpError> for MillError {
+    fn from(err: McpError) -> Self {
+        // Map MCP error codes to MillError variants
+        // Standard JSON-RPC error codes:
+        // -32700: Parse error
+        // -32600: Invalid Request
+        // -32601: Method not found
+        // -32602: Invalid params
+        // -32603: Internal error
+        // -32000 to -32099: Server error (reserved for implementation-defined server-errors)
+
+        match err.code {
+            -32700 => MillError::Parse {
+                message: err.message,
+                file: None,
+                line: None,
+                column: None,
+            },
+            -32600 => MillError::InvalidRequest {
+                message: err.message,
+                parameter: None,
+            },
+            -32601 => MillError::NotFound {
+                resource: err.message,
+                resource_type: Some("method".to_string()),
+            },
+            -32602 => MillError::InvalidRequest {
+                message: err.message,
+                parameter: Some("params".to_string()),
+            },
+            -32603 => MillError::Internal {
+                message: err.message,
+                source: None,
+            },
+            _ => MillError::Internal {
+                message: format!("MCP error {}: {}", err.code, err.message),
+                source: None,
+            },
         }
     }
 }

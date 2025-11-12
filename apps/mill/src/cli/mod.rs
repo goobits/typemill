@@ -1649,10 +1649,10 @@ async fn handle_tool_command(
             match flag_parser::parse_flags_to_json(tool_name, flags) {
                 Ok(json) => json,
                 Err(e) => {
-                    let error = MillError::InvalidRequest(format!(
-                        "Invalid flag arguments: {}",
-                        e
-                    ));
+                    let error = MillError::InvalidRequest {
+                        message: format!("Invalid flag arguments: {}", e),
+                        parameter: Some("arguments".to_string()),
+                    };
                     output_error(&error, format);
                     process::exit(1);
                 }
@@ -1748,10 +1748,10 @@ async fn handle_convert_naming(
             .filter_map(|p| p.to_str().map(String::from))
             .collect(),
         Err(e) => {
-            let error = MillError::InvalidRequest(format!(
-                "Invalid glob pattern '{}': {}",
-                glob_pattern, e
-            ));
+            let error = MillError::InvalidRequest {
+                message: format!("Invalid glob pattern '{}': {}", glob_pattern, e),
+                parameter: Some("glob_pattern".to_string()),
+            };
             output_error(&error, format);
             process::exit(1);
         }
@@ -2070,9 +2070,9 @@ fn output_result(result: &serde_json::Value, format: &str) {
 
 /// Output error to stderr based on format
 fn output_error(error: &MillError, format: &str) {
-    let error_json = serde_json::to_value(error).unwrap_or(serde_json::json!({
+    let error_json = serde_json::json!({
         "error": error.to_string()
-    }));
+    });
 
     let output = match format {
         "compact" => serde_json::to_string(&error_json).unwrap_or_else(|_| "{}".to_string()),

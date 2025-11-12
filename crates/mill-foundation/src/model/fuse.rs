@@ -1,4 +1,6 @@
 //! FUSE filesystem configuration and types
+//!
+//! Future feature: FUSE filesystem integration for virtual code views
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -6,6 +8,7 @@ use std::path::PathBuf;
 /// FUSE filesystem configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: FUSE filesystem integration
 pub(crate) struct FuseConfig {
     /// Mount point for the FUSE filesystem
     pub mount_point: PathBuf,
@@ -26,6 +29,7 @@ pub(crate) struct FuseConfig {
 /// FUSE operation result
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
+#[allow(dead_code)] // Future feature: FUSE filesystem integration
 pub(crate) enum FuseResult<T> {
     Ok(T),
     Err(FuseError),
@@ -34,6 +38,7 @@ pub(crate) enum FuseResult<T> {
 /// FUSE operation errors
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
+#[allow(dead_code)] // Future feature: FUSE filesystem integration
 pub(crate) enum FuseError {
     /// File or directory not found
     NotFound,
@@ -63,6 +68,7 @@ pub(crate) enum FuseError {
 
 /// File attributes for FUSE operations
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)] // Future feature: FUSE filesystem integration
 pub(crate) struct FuseFileAttr {
     /// File size in bytes
     pub size: u64,
@@ -94,6 +100,7 @@ pub(crate) struct FuseFileAttr {
 
 /// Directory entry for FUSE operations
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)] // Future feature: FUSE filesystem integration
 pub(crate) struct FuseDirEntry {
     /// File name
     pub name: String,
@@ -105,6 +112,7 @@ pub(crate) struct FuseDirEntry {
 
 /// FUSE filesystem statistics
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)] // Future feature: FUSE filesystem integration
 pub(crate) struct FuseStatfs {
     /// Total blocks in filesystem
     pub blocks: u64,
@@ -143,16 +151,19 @@ impl Default for FuseConfig {
 
 impl<T> FuseResult<T> {
     /// Check if the result is ok
+    #[allow(dead_code)] // Future feature: FUSE filesystem integration
     pub fn is_ok(&self) -> bool {
         matches!(self, Self::Ok(_))
     }
 
     /// Check if the result is an error
+    #[allow(dead_code)] // Future feature: FUSE filesystem integration
     pub fn is_err(&self) -> bool {
         matches!(self, Self::Err(_))
     }
 
     /// Convert to a standard Result
+    #[allow(dead_code)] // Future feature: FUSE filesystem integration
     pub fn into_result(self) -> Result<T, FuseError> {
         match self {
             Self::Ok(value) => Ok(value),
