@@ -987,88 +987,100 @@ fn print_install_commands(missing_lsps: &[String]) {
 
 /// Handle the status command
 async fn handle_status() {
-    println!("📊 TypeMill Status\n");
+    use mill_client::formatting::Formatter;
+    let fmt = Formatter::new();
+
+    println!("{}\n", fmt.title("TypeMill Status"));
 
     // 1. Check server status
-    println!("🖥️  Server Status:");
+    println!("{}", fmt.header("Server Status"));
     let pid_file = get_pid_file_path();
     let server_running = if pid_file.exists() {
         match std::fs::read_to_string(&pid_file) {
             Ok(pid_str) => {
                 if let Ok(pid) = pid_str.trim().parse::<u32>() {
                     if is_process_running(pid) {
-                        println!("   ✅ Running (PID: {})", pid);
-                        println!("   📄 PID file: {}", pid_file.display());
+                        println!("  {}", fmt.success(&format!("Running (PID: {})", pid)));
+                        println!("  {}", fmt.key_value("PID file", &pid_file.display().to_string()));
                         true
                     } else {
-                        println!("   ⚠️  Not running (stale PID file found)");
+                        println!("  {}", fmt.warning("Not running (stale PID file found)"));
                         let _ = std::fs::remove_file(&pid_file);
                         false
                     }
                 } else {
-                    println!("   ❌ Invalid PID file format");
+                    println!("  {}", fmt.error("Invalid PID file format"));
                     false
                 }
             }
             Err(e) => {
-                println!("   ❌ Failed to read PID file: {}", e);
+                println!("  {}", fmt.error(&format!("Failed to read PID file: {}", e)));
                 false
             }
         }
     } else {
-        println!("   ⭕ Not running");
-        println!("   💡 Start with: mill start");
+        println!("  {}", fmt.info("Not running"));
+        println!("  {}", fmt.subtitle("Start with: mill start"));
         false
     };
 
     println!();
 
     // 2. Check configuration
-    println!("⚙️  Configuration:");
+    println!("{}", fmt.header("Configuration"));
     match AppConfig::load() {
         Ok(config) => {
             let config_path = std::path::Path::new(".typemill/config.json");
-            println!("   ✅ Found at: {}", config_path.display());
-            println!("   📋 Log level: {}", config.logging.level);
-            println!("   📝 Log format: {:?}", config.logging.format);
+            println!("  {}", fmt.success("Configuration loaded"));
+            println!("  {}", fmt.key_value("Path", &config_path.display().to_string()));
+            println!("  {}", fmt.key_value("Log level", &config.logging.level));
+            println!("  {}", fmt.key_value("Log format", &format!("{:?}", config.logging.format)));
 
             if let Some(fuse_config) = &config.fuse {
-                println!("   ⚠️  FUSE enabled: {}", fuse_config.mount_point.display());
+                println!("  {}", fmt.warning(&format!("FUSE enabled: {}", fuse_config.mount_point.display())));
             }
 
             println!();
-            println!("🔧 Configured LSP Servers:");
-            for (idx, server) in config.lsp.servers.iter().enumerate() {
+            println!("{}", fmt.header("LSP Servers"));
+
+            // Build status summary data
+            let mut status_items = Vec::new();
+            for server in &config.lsp.servers {
                 let cmd = &server.command[0];
                 let extensions = server.extensions.join(", ");
-                let status = if command_exists(cmd) { "✅" } else { "❌" };
+                let is_ok = command_exists(cmd);
 
-                println!("   {}. {} {}", idx + 1, status, cmd);
-                println!("      Extensions: {}", extensions);
+                status_items.push((
+                    cmd.clone(),
+                    format!("Extensions: {}", extensions),
+                    is_ok
+                ));
+            }
 
-                if let Some(restart) = server.restart_interval {
-                    println!("      Restart interval: {} minutes", restart);
-                }
+            println!("{}", fmt.status_summary(&status_items));
 
+            // Show warnings for missing LSPs
+            for server in &config.lsp.servers {
+                let cmd = &server.command[0];
                 if !command_exists(cmd) {
-                    println!("      ⚠️  Command not found in PATH");
+                    println!("  {}", fmt.warning(&format!("'{}' not found in PATH", cmd)));
                 }
             }
         }
         Err(e) => {
-            println!("   ❌ Configuration error: {}", e);
-            println!("   💡 Run: mill setup");
+            println!("  {}", fmt.error(&format!("Configuration error: {}", e)));
+            println!("  {}", fmt.subtitle("Run: mill setup"));
         }
     }
 
     println!();
 
     // 3. Show all running mill processes (helpful for debugging)
-    println!("🔍 Running TypeMill Processes:");
+    println!("{}", fmt.header("Running Processes"));
     match find_all_mill_processes() {
         Ok(pids) => {
             if pids.is_empty() {
-                println!("   ⭕ No mill processes found");
+                println!("  {}", fmt.info("No mill processes found"));
             } else {
                 for pid in pids {
                     let marker = if server_running
@@ -1082,39 +1094,40 @@ async fn handle_status() {
                     } else {
                         ""
                     };
-                    println!("   • PID: {}{}", pid, marker);
+                    println!("  • PID: {}{}", pid, marker);
                 }
             }
         }
         Err(e) => {
-            println!("   ⚠️  Could not list processes: {}", e);
+            println!("  {}", fmt.warning(&format!("Could not list processes: {}", e)));
         }
     }
 
     println!();
-    println!("✨ Status check complete");
+    println!("{}", fmt.success("Status check complete"));
 }
 
 /// Handle the doctor command
 async fn handle_doctor() {
+    use mill_client::formatting::Formatter;
     use mill_foundation::core::utils::system;
 
-    println!("🩺 Running TypeMill Doctor...");
-    println!();
+    let fmt = Formatter::new();
+
+    println!("{}\n", fmt.title("TypeMill Doctor"));
 
     // 1. Check for and validate the configuration file
-    print!("Checking for configuration file... ");
+    println!("{}", fmt.header("Configuration File"));
     match AppConfig::load() {
         Ok(config) => {
-            println!("[✓] Found and parsed successfully.");
-            println!();
+            println!("  {}\n", fmt.success("Found and parsed successfully"));
 
             // 2. Check language servers with actual testing
-            println!("Checking language servers:");
+            println!("{}", fmt.header("Language Servers"));
             for server in &config.lsp.servers {
                 let cmd = &server.command[0];
                 let exts = server.extensions.join(", ");
-                print!("  - {} (for {})... ", cmd, exts);
+                println!("  {}", fmt.subtitle(&format!("{} (for {})", cmd, exts)));
 
                 // Test if command actually works
                 let (works, info) = system::test_command_with_version(
@@ -1132,49 +1145,49 @@ async fn handle_doctor() {
                     } else {
                         &info
                     };
-                    println!("[✓] {}", version);
+                    println!("    {}", fmt.success(&format!("Installed: {}", version)));
 
                     // Additional checks for TypeScript
                     if server.extensions.contains(&"ts".to_string()) {
                         if server.root_dir.is_none() {
-                            println!("    ⚠️  Warning: rootDir not set");
-                            println!("       TypeScript LSP may not find dependencies");
+                            println!("    {}", fmt.warning("rootDir not set"));
+                            println!("      {}", fmt.subtitle("TypeScript LSP may not find dependencies"));
 
                             // Suggest rootDir
                             if let Some(detected) =
                                 lsp_helpers::detect_typescript_root(std::path::Path::new("."))
                             {
-                                println!(
-                                    "       Suggestion: Set rootDir to '{}'",
+                                println!("      {}", fmt.info(&format!(
+                                    "Suggestion: Set rootDir to '{}'",
                                     detected.display()
-                                );
-                                println!("       Run: mill setup --update");
+                                )));
+                                println!("      {}", fmt.subtitle("Run: mill setup --update"));
                             }
                         }
                     }
                 } else {
                     // Command doesn't work
                     if std::path::Path::new(cmd).is_absolute() {
-                        println!("[✗] Absolute path not found");
-                        println!("       File doesn't exist: {}", cmd);
+                        println!("    {}", fmt.error("Absolute path not found"));
+                        println!("      {}", fmt.subtitle(&format!("File doesn't exist: {}", cmd)));
                     } else {
-                        println!("[✗] Not found in PATH");
-                        println!(
-                            "       Install via: mill install-lsp {}",
+                        println!("    {}", fmt.error("Not found in PATH"));
+                        println!("      {}", fmt.subtitle(&format!(
+                            "Install via: mill install-lsp {}",
                             server.extensions[0]
-                        );
+                        )));
                     }
                 }
+                println!();
             }
         }
         Err(e) => {
-            println!("[✗] Error: {}", e);
-            println!("  > Run `mill setup` to create a new configuration file.");
+            println!("  {}", fmt.error(&format!("Error: {}", e)));
+            println!("  {}", fmt.subtitle("Run `mill setup` to create a new configuration file."));
         }
     }
 
-    println!();
-    println!("✨ Doctor's checkup complete.");
+    println!("{}", fmt.success("Doctor's checkup complete"));
 }
 
 /// Handle the install-lsp command
@@ -1468,10 +1481,13 @@ fn terminate_process(pid: u32) -> bool {
 
 /// Handle tools list command - list all available MCP tools
 async fn handle_tools_command(format: &str) {
+    use mill_client::formatting::Formatter;
+    let fmt = Formatter::new();
+
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            eprintln!("Error initializing: {}", e);
+            eprintln!("{}", fmt.error(&format!("Error initializing: {}", e)));
             process::exit(1);
         }
     };
@@ -1501,26 +1517,30 @@ async fn handle_tools_command(format: &str) {
         }
         _ => {
             // Table format with handler information
-            println!("┌{0:─<32}┬{0:─<20}┐", "");
-            println!("│ {:<30} │ {:<18} │", "TOOL NAME", "HANDLER");
-            println!("├{0:─<32}┼{0:─<20}┤", "");
+            println!("{}\n", fmt.title("Available MCP Tools"));
 
-            for (tool_name, handler_name) in &tools_with_handlers {
-                println!("│ {:<30} │ {:<18} │", tool_name, handler_name);
-            }
+            // Build table data
+            let headers = vec!["Tool Name", "Handler"];
+            let rows: Vec<Vec<String>> = tools_with_handlers
+                .iter()
+                .map(|(name, handler)| vec![name.clone(), handler.clone()])
+                .collect();
 
-            println!("└{0:─<32}┴{0:─<20}┘", "");
-            println!();
-            println!(
+            println!("{}", fmt.table(&headers, &rows));
+
+            // Summary
+            let handler_count = tools_with_handlers
+                .iter()
+                .map(|(_, h)| h)
+                .collect::<std::collections::HashSet<_>>()
+                .len();
+
+            println!("{}", fmt.info(&format!(
                 "Public tools: {} across {} handlers",
                 tools_with_handlers.len(),
-                tools_with_handlers
-                    .iter()
-                    .map(|(_, h)| h)
-                    .collect::<std::collections::HashSet<_>>()
-                    .len()
-            );
-            println!("(Internal tools hidden - 20 backend-only tools not shown)");
+                handler_count
+            )));
+            println!("{}", fmt.subtitle("(Internal tools hidden - 20 backend-only tools not shown)"));
         }
     }
 }
