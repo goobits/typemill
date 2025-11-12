@@ -357,21 +357,25 @@ impl Interactive {
 }
 
 /// Create a default interactive instance
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn interactive() -> Interactive {
     Interactive::new()
 }
 
 /// Convenience function to get user confirmation
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn confirm(prompt: &str) -> ClientResult<bool> {
     interactive().confirm(prompt, None)
 }
 
 /// Convenience function to get user input
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn input(prompt: &str) -> ClientResult<String> {
     interactive().required_input(prompt, None)
 }
 
 /// Convenience function to get user selection
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn select(prompt: &str, options: &[&str]) -> ClientResult<usize> {
     interactive().select(prompt, options, None)
 }

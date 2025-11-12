@@ -534,6 +534,7 @@ pub async fn run_cli() -> ClientResult<()> {
 }
 
 /// Convenience function to create a client config from args
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn create_client_config_from_args(
     url: Option<String>,
     token: Option<String>,
@@ -556,6 +557,7 @@ pub(crate) fn create_client_config_from_args(
 }
 
 /// Get version information
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn version_info() -> String {
     format!(
         "{} {} ({})",
@@ -566,6 +568,7 @@ pub(crate) fn version_info() -> String {
 }
 
 /// Check if running in a terminal (for color/emoji detection)
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn is_terminal() -> bool {
     use std::io::IsTerminal;
     std::io::stdout().is_terminal()

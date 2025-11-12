@@ -10,9 +10,11 @@ use regex::Regex;
 pub const DEFAULT_TS_VERSION: &str = "^5.0.0";
 
 /// Parser version for import graph metadata
+#[allow(dead_code)] // Future enhancement: Parser versioning
 pub const PARSER_VERSION: &str = "0.1.0";
 
 /// Node runtime command
+#[allow(dead_code)] // Future enhancement: Runtime execution
 pub const NODE_COMMAND: &str = "node";
 
 // ============================================================================

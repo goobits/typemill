@@ -7,7 +7,7 @@ use mill_analysis_common::{
     AnalysisError, LspProvider,
 };
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{debug, info, warn};

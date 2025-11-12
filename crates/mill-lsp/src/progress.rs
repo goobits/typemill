@@ -63,7 +63,7 @@ impl std::fmt::Display for ProgressToken {
 /// Internal implementation detail for progress tracking.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-pub(crate) enum WorkDoneProgressValue {
+pub enum WorkDoneProgressValue {
     /// Progress has started
     #[serde(rename = "begin")]
     Begin {
@@ -105,7 +105,7 @@ pub(crate) enum WorkDoneProgressValue {
 ///
 /// Internal implementation detail for progress tracking.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct ProgressParams {
+pub struct ProgressParams {
     /// The progress token provided by the server
     pub token: ProgressToken,
     /// The progress value
@@ -114,7 +114,7 @@ pub(crate) struct ProgressParams {
 
 /// Internal progress state tracked by ProgressManager
 #[derive(Debug, Clone)]
-pub(crate) enum ProgressState {
+pub enum ProgressState {
     /// Task is in progress
     InProgress {
         title: String,

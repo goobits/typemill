@@ -1,10 +1,13 @@
 //! LSP (Language Server Protocol) message types and structures
+//!
+//! Future feature: Direct LSP protocol type definitions for advanced use cases
 
 use serde::{Deserialize, Serialize};
 
 /// LSP request message
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspRequest {
     pub jsonrpc: String,
     pub id: serde_json::Value,
@@ -16,6 +19,7 @@ pub(crate) struct LspRequest {
 /// LSP response message
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspResponse {
     pub jsonrpc: String,
     pub id: serde_json::Value,
@@ -28,6 +32,7 @@ pub(crate) struct LspResponse {
 /// LSP notification message
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspNotification {
     pub jsonrpc: String,
     pub method: String,
@@ -38,6 +43,7 @@ pub(crate) struct LspNotification {
 /// LSP error object
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspError {
     pub code: i32,
     pub message: String,
@@ -48,6 +54,7 @@ pub(crate) struct LspError {
 /// LSP position in a document
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspPosition {
     /// Line position (0-based)
     pub line: u32,
@@ -58,6 +65,7 @@ pub(crate) struct LspPosition {
 /// LSP range in a document
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspRange {
     /// The range's start position
     pub start: LspPosition,
@@ -68,6 +76,7 @@ pub(crate) struct LspRange {
 /// LSP location reference
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspLocation {
     /// The location's URI
     pub uri: String,
@@ -78,6 +87,7 @@ pub(crate) struct LspLocation {
 /// LSP text document identifier
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspTextDocumentIdentifier {
     /// The text document's URI
     pub uri: String,
@@ -86,6 +96,7 @@ pub(crate) struct LspTextDocumentIdentifier {
 /// LSP versioned text document identifier
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspVersionedTextDocumentIdentifier {
     /// The text document's URI
     pub uri: String,
@@ -96,6 +107,7 @@ pub(crate) struct LspVersionedTextDocumentIdentifier {
 /// LSP text document position params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspTextDocumentPositionParams {
     /// The text document
     pub text_document: LspTextDocumentIdentifier,
@@ -106,6 +118,7 @@ pub(crate) struct LspTextDocumentPositionParams {
 /// LSP definition params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspDefinitionParams {
     #[serde(flatten)]
     pub text_document_position_params: LspTextDocumentPositionParams,
@@ -118,6 +131,7 @@ pub(crate) struct LspDefinitionParams {
 /// LSP references params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspReferencesParams {
     #[serde(flatten)]
     pub text_document_position_params: LspTextDocumentPositionParams,
@@ -131,6 +145,7 @@ pub(crate) struct LspReferencesParams {
 /// LSP reference context
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspReferenceContext {
     /// Include the declaration of the current symbol
     pub include_declaration: bool,
@@ -139,6 +154,7 @@ pub(crate) struct LspReferenceContext {
 /// LSP hover params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspHoverParams {
     #[serde(flatten)]
     pub text_document_position_params: LspTextDocumentPositionParams,
@@ -149,6 +165,7 @@ pub(crate) struct LspHoverParams {
 /// LSP hover result
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspHover {
     /// The hover's content
     pub contents: LspMarkupContent,
@@ -160,6 +177,7 @@ pub(crate) struct LspHover {
 /// LSP markup content
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspMarkupContent {
     /// The type of the markup
     pub kind: String, // "plaintext" or "markdown"
@@ -170,6 +188,7 @@ pub(crate) struct LspMarkupContent {
 /// LSP completion params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspCompletionParams {
     #[serde(flatten)]
     pub text_document_position_params: LspTextDocumentPositionParams,
@@ -184,6 +203,7 @@ pub(crate) struct LspCompletionParams {
 /// LSP completion context
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspCompletionContext {
     /// How the completion was triggered
     pub trigger_kind: u32,
@@ -195,6 +215,7 @@ pub(crate) struct LspCompletionContext {
 /// LSP completion item
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspCompletionItem {
     /// The label of this completion item
     pub label: String,
@@ -243,6 +264,7 @@ pub(crate) struct LspCompletionItem {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 #[non_exhaustive]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) enum LspDocumentation {
     String(String),
     MarkupContent(LspMarkupContent),
@@ -251,6 +273,7 @@ pub(crate) enum LspDocumentation {
 /// LSP text edit
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspTextEdit {
     /// The range of the text document to be manipulated
     pub range: LspRange,
@@ -261,6 +284,7 @@ pub(crate) struct LspTextEdit {
 /// LSP command
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspCommand {
     /// Title of the command
     pub title: String,
@@ -274,6 +298,7 @@ pub(crate) struct LspCommand {
 /// LSP work done progress params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspWorkDoneProgressParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub work_done_token: Option<serde_json::Value>,
@@ -282,6 +307,7 @@ pub(crate) struct LspWorkDoneProgressParams {
 /// LSP partial result params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspPartialResultParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub partial_result_token: Option<serde_json::Value>,
@@ -290,6 +316,7 @@ pub(crate) struct LspPartialResultParams {
 /// LSP diagnostic
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspDiagnostic {
     /// The range at which the message applies
     pub range: LspRange,
@@ -321,6 +348,7 @@ pub(crate) struct LspDiagnostic {
 /// LSP code description
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspCodeDescription {
     /// An URI to open with more information about the diagnostic error
     pub href: String,
@@ -329,6 +357,7 @@ pub(crate) struct LspCodeDescription {
 /// LSP diagnostic related information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // Future feature: Direct LSP protocol support
 pub(crate) struct LspDiagnosticRelatedInformation {
     /// The location of this related diagnostic information
     pub location: LspLocation,
@@ -338,6 +367,7 @@ pub(crate) struct LspDiagnosticRelatedInformation {
 
 impl LspRequest {
     /// Create a new LSP request
+    #[allow(dead_code)] // Future feature: Direct LSP protocol support
     pub fn new(id: impl Into<serde_json::Value>, method: impl Into<String>) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -348,6 +378,7 @@ impl LspRequest {
     }
 
     /// Create a new LSP request with parameters
+    #[allow(dead_code)] // Future feature: Direct LSP protocol support
     pub fn with_params(
         id: impl Into<serde_json::Value>,
         method: impl Into<String>,
@@ -364,6 +395,7 @@ impl LspRequest {
 
 impl LspResponse {
     /// Create a new success response
+    #[allow(dead_code)] // Future feature: Direct LSP protocol support
     pub fn success(id: impl Into<serde_json::Value>, result: serde_json::Value) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -374,6 +406,7 @@ impl LspResponse {
     }
 
     /// Create a new error response
+    #[allow(dead_code)] // Future feature: Direct LSP protocol support
     pub fn error(id: impl Into<serde_json::Value>, error: LspError) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -386,6 +419,7 @@ impl LspResponse {
 
 impl LspNotification {
     /// Create a new notification
+    #[allow(dead_code)] // Future feature: Direct LSP protocol support
     pub fn new(method: impl Into<String>) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -395,6 +429,7 @@ impl LspNotification {
     }
 
     /// Create a new notification with parameters
+    #[allow(dead_code)] // Future feature: Direct LSP protocol support
     pub fn with_params(method: impl Into<String>, params: serde_json::Value) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),

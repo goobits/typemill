@@ -2,6 +2,7 @@ use super::{CodeRange, ExtractableFunction};
 use crate::error::{AstError, AstResult};
 
 /// Detect file language from file path
+#[allow(dead_code)] // Future enhancement: Language-specific refactoring
 pub(crate) fn detect_language(file_path: &str) -> &str {
     if file_path.ends_with(".ts") || file_path.ends_with(".tsx") {
         "typescript"

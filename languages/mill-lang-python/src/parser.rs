@@ -163,10 +163,15 @@ pub(crate) fn extract_python_functions(source: &str) -> PluginResult<Vec<PythonF
 pub(crate) struct PythonFunction {
     pub name: String,
     pub start_line: u32,
+    #[allow(dead_code)] // Future enhancement: Function body analysis
     pub end_line: u32,
+    #[allow(dead_code)] // Future enhancement: Parameter analysis
     pub args: Vec<String>,
+    #[allow(dead_code)] // Future enhancement: Scope analysis
     pub body_start_line: u32,
+    #[allow(dead_code)] // Future enhancement: Async function analysis
     pub is_async: bool,
+    #[allow(dead_code)] // Future enhancement: Decorator analysis
     pub decorators: Vec<String>,
 }
 /// Extract Python variable assignments
@@ -201,6 +206,7 @@ pub(crate) fn extract_python_variables(source: &str) -> PluginResult<Vec<PythonV
 pub(crate) struct PythonVariable {
     pub name: String,
     pub line: u32,
+    #[allow(dead_code)] // Future enhancement: Type-based refactoring
     pub value_type: PythonValueType,
     pub is_constant: bool,
 }
@@ -212,6 +218,7 @@ pub(crate) enum PythonValueType {
     List,
     Dict,
     Tuple,
+    #[allow(dead_code)] // Future enhancement: Set literal detection
     Set,
     None,
     Function,
@@ -296,6 +303,7 @@ pub(crate) fn extract_symbols(source: &str) -> PluginResult<Vec<Symbol>> {
     Ok(symbols)
 }
 /// Find the end line of a Python function
+#[allow(dead_code)] // Future enhancement: Precise function boundary detection
 pub(crate) fn find_python_function_end(
     source: &str,
     function_start_line: u32,
@@ -326,6 +334,7 @@ pub(crate) fn find_python_function_end(
     Ok(lines.len() as u32 - 1)
 }
 /// Get indentation level at specific line
+#[allow(dead_code)] // Future enhancement: Indentation-aware refactoring
 pub(crate) fn get_python_indentation_at_line(source: &str, line: u32) -> u32 {
     let lines: Vec<&str> = source.lines().collect();
     if let Some(line_text) = lines.get(line as usize) {
@@ -430,6 +439,7 @@ pub(crate) fn get_variable_usages_in_scope(
     Ok(usages)
 }
 /// Find variables in scope for a given line
+#[allow(dead_code)] // Future enhancement: Scope-aware variable analysis
 pub(crate) fn find_python_scope_variables(
     source: &str,
     target_line: u32,

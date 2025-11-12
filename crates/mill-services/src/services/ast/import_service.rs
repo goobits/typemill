@@ -209,6 +209,7 @@ impl ImportService {
 
 /// Report of import update operations (internal to mill-services)
 #[derive(Debug, Clone, serde::Serialize)]
+#[allow(dead_code)] // Future enhancement: Import update reporting
 pub(crate) struct ImportUpdateReport {
     /// Number of files that were updated
     pub files_updated: usize,

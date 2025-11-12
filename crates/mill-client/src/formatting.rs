@@ -617,30 +617,37 @@ pub fn format_plan(plan: &RefactorPlan) -> String {
 }
 
 /// Convenience functions for common formatting
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn format_success(message: &str) -> String {
     Formatter::default().success(message)
 }
 
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn format_error(message: &str) -> String {
     Formatter::default().error(message)
 }
 
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn format_warning(message: &str) -> String {
     Formatter::default().warning(message)
 }
 
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn format_info(message: &str) -> String {
     Formatter::default().info(message)
 }
 
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn format_json(value: &Value) -> Result<String, ClientError> {
     Formatter::default().json(value)
 }
 
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn format_mcp_response(response: &MCPResponse) -> Result<String, ClientError> {
     Formatter::default().mcp_response(response)
 }
 
+#[allow(dead_code)] // Future CLI enhancement
 pub(crate) fn format_client_error(error: &ClientError) -> String {
     Formatter::default().client_error(error)
 }

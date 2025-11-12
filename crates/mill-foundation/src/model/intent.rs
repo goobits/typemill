@@ -364,24 +364,28 @@ impl IntentContext {
     }
 
     /// Update the status
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn with_status(mut self, status: IntentStatus) -> Self {
         self.status = status;
         self
     }
 
     /// Add result
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn with_result(mut self, result: IntentResult) -> Self {
         self.result = Some(result);
         self
     }
 
     /// Set parent execution ID
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn with_parent(mut self, parent_id: impl Into<String>) -> Self {
         self.parent_execution_id = Some(parent_id.into());
         self
     }
 
     /// Add child execution ID
+    #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn add_child(&mut self, child_id: impl Into<String>) {
         self.child_execution_ids.push(child_id.into());
     }

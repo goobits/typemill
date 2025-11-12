@@ -10,6 +10,7 @@ use std::sync::OnceLock;
 pub const DEFAULT_EDITION: &str = "2021";
 
 /// Parser version for import graph metadata
+#[allow(dead_code)] // Future enhancement: Parser versioning
 pub const PARSER_VERSION: &str = "0.1.0";
 
 /// Regex pattern for extracting Rust test annotations
