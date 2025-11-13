@@ -1,0 +1,26 @@
+# Cargo Audit Configuration
+#
+# This file documents known security advisories that have been reviewed
+# and either accepted as low-risk or are awaiting upstream fixes.
+
+[advisories]
+# RUSTSEC-2023-0071: Marvin Attack in rsa crate
+#
+# Status: No patched version available (as of 2025-11-13)
+# Severity: Medium (CVSS 5.9)
+# Impact: Potential RSA private key recovery through timing sidechannels
+#
+# Risk Assessment:
+# - TypeMill runs as a local MCP server, not exposed to network attackers
+# - Exploit requires ability to observe timing information over network
+# - Upstream fix is in development (migration to constant-time crypto-bigint)
+#
+# Mitigation:
+# - Monitor RustCrypto/RSA issue #390 for stable fix
+# - Update jsonwebtoken when new version with patched rsa is available
+# - Consider alternative JWT libraries if networked deployment is needed
+#
+# Decision: Accepting risk for local development/deployment use cases
+ignore = [
+    "RUSTSEC-2023-0071",
+]
