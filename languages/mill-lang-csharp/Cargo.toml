@@ -30,8 +30,11 @@ tracing = { workspace = true }
 lsp-types = { workspace = true, features = ["proposed"] }
 
 # Parsing
-tree-sitter = "0.20"
-tree-sitter-c-sharp = "0.20"
+tree-sitter = { workspace = true }
+# TODO: Switch to crates.io version when tree-sitter-c-sharp 0.24.x is released
+# Tracking: https://github.com/tree-sitter/tree-sitter-c-sharp/releases
+# Using git dependency for tree-sitter 0.25 compatibility
+tree-sitter-c-sharp = { git = "https://github.com/tree-sitter/tree-sitter-c-sharp", rev = "485f0bae0274ac9114797fc10db6f7034e4086e3" }
 
 # Utilities
 chrono = { version = "0.4", features = ["serde"] }

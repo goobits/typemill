@@ -9,7 +9,16 @@ use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::CodeRange;
-use tree_sitter::{Node, Parser, Point, Query, QueryCursor};
+use tree_sitter::{Node, Parser, Point, Query, QueryCursor, StreamingIterator};
+
+/// Get the C# language for tree-sitter
+fn get_language() -> tree_sitter::Language {
+    use tree_sitter::ffi::TSLanguage;
+    extern "C" {
+        fn tree_sitter_c_sharp() -> *const TSLanguage;
+    }
+    unsafe { tree_sitter::Language::from_raw(tree_sitter_c_sharp()) }
+}
 
 /// Error type for refactoring operations
 #[derive(Debug, thiserror::Error)]
@@ -33,7 +42,7 @@ pub fn plan_extract_function(
 ) -> RefactoringResult<EditPlan> {
     let mut parser = Parser::new();
     parser
-        .set_language(tree_sitter_c_sharp::language())
+        .set_language(&get_language())
         .map_err(|e| RefactoringError::Parse(format!("Failed to load C# grammar: {}", e)))?;
     let tree = parser
         .parse(source, None)
@@ -130,7 +139,7 @@ pub fn plan_extract_variable(
 ) -> RefactoringResult<EditPlan> {
     let mut parser = Parser::new();
     parser
-        .set_language(tree_sitter_c_sharp::language())
+        .set_language(&get_language())
         .map_err(|e| RefactoringError::Parse(format!("Failed to load C# grammar: {}", e)))?;
     let tree = parser
         .parse(source, None)
@@ -225,7 +234,7 @@ pub fn plan_inline_variable(
 ) -> RefactoringResult<EditPlan> {
     let mut parser = Parser::new();
     parser
-        .set_language(tree_sitter_c_sharp::language())
+        .set_language(&get_language())
         .map_err(|e| RefactoringError::Parse(format!("Failed to load C# grammar: {}", e)))?;
     let tree = parser
         .parse(source, None)
@@ -246,26 +255,28 @@ pub fn plan_inline_variable(
 
     let mut edits = Vec::new();
     let query_str = format!(r#"((identifier) @ref (#eq? @ref "{}"))"#, var_name);
-    let query = Query::new(tree_sitter_c_sharp::language(), &query_str)
+    let query = Query::new(&get_language(), &query_str)
         .map_err(|e| RefactoringError::Query(e.to_string()))?;
     let mut cursor = QueryCursor::new();
 
-    for match_ in cursor.matches(&query, scope_node, source.as_bytes()) {
-        for capture in match_.captures {
-            let reference_node = capture.node;
-            if reference_node.id() != var_ident_node.id() {
-                edits.push(TextEdit {
-                    file_path: Some(file_path.to_string()),
-                    edit_type: EditType::Replace,
-                    location: node_to_location(reference_node).into(),
-                    original_text: var_name.clone(),
-                    new_text: var_value.clone(),
-                    priority: 90,
-                    description: format!("Inline variable '{}'", var_name),
-                });
+    cursor
+        .matches(&query, scope_node, source.as_bytes())
+        .for_each(|match_| {
+            for capture in match_.captures {
+                let reference_node = capture.node;
+                if reference_node.id() != var_ident_node.id() {
+                    edits.push(TextEdit {
+                        file_path: Some(file_path.to_string()),
+                        edit_type: EditType::Replace,
+                        location: node_to_location(reference_node).into(),
+                        original_text: var_name.clone(),
+                        new_text: var_value.clone(),
+                        priority: 90,
+                        description: format!("Inline variable '{}'", var_name),
+                    });
+                }
             }
-        }
-    }
+        });
 
     edits.push(TextEdit {
         file_path: Some(file_path.to_string()),
