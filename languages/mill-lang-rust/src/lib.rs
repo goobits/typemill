@@ -368,6 +368,23 @@ impl mill_plugin_api::RefactoringProvider for RustPlugin {
             mill_plugin_api::PluginApiError::internal(format!("Rust refactoring error: {}", e))
         })
     }
+
+    fn supports_extract_constant(&self) -> bool {
+        true
+    }
+
+    async fn plan_extract_constant(
+        &self,
+        source: &str,
+        line: u32,
+        character: u32,
+        name: &str,
+        file_path: &str,
+    ) -> mill_plugin_api::PluginResult<mill_foundation::protocol::EditPlan> {
+        refactoring::plan_extract_constant(source, line, character, name, file_path).map_err(
+            |e| mill_plugin_api::PluginApiError::internal(format!("Rust refactoring error: {}", e)),
+        )
+    }
 }
 
 impl mill_plugin_api::ImportAnalyzer for RustPlugin {
