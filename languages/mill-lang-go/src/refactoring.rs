@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use mill_lang_common::{CodeRange, LineExtractor};
+use mill_lang_common::{is_screaming_snake_case, CodeRange, LineExtractor};
 use mill_plugin_api::{PluginApiError, PluginResult};
 use std::collections::HashMap;
 
@@ -806,29 +806,6 @@ fn is_valid_go_constant_name(name: &str) -> bool {
     }
 
     false
-}
-
-/// Check if name is in SCREAMING_SNAKE_CASE
-fn is_screaming_snake_case(name: &str) -> bool {
-    if name.is_empty() {
-        return false;
-    }
-
-    // Must not start or end with underscore
-    if name.starts_with('_') || name.ends_with('_') {
-        return false;
-    }
-
-    // Check each character - only uppercase, digits, and underscores allowed
-    for ch in name.chars() {
-        match ch {
-            'A'..='Z' | '0'..='9' | '_' => continue,
-            _ => return false,
-        }
-    }
-
-    // Must have at least one uppercase letter
-    name.chars().any(|c| c.is_ascii_uppercase())
 }
 
 /// Check if name is in PascalCase

@@ -6,7 +6,7 @@ use crate::constants;
 use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use mill_lang_common::LineExtractor;
+use mill_lang_common::{is_screaming_snake_case, LineExtractor};
 use std::collections::HashMap;
 
 /// Plan extract function refactoring for Rust
@@ -232,29 +232,6 @@ impl From<CodeRange> for EditLocation {
             end_column: range.end_col,
         }
     }
-}
-
-/// Check if a name follows SCREAMING_SNAKE_CASE convention
-fn is_screaming_snake_case(name: &str) -> bool {
-    if name.is_empty() {
-        return false;
-    }
-
-    // Must not start or end with underscore
-    if name.starts_with('_') || name.ends_with('_') {
-        return false;
-    }
-
-    // Check each character
-    for ch in name.chars() {
-        match ch {
-            'A'..='Z' | '0'..='9' | '_' => continue,
-            _ => return false,
-        }
-    }
-
-    // Must have at least one uppercase letter
-    name.chars().any(|c| c.is_ascii_uppercase())
 }
 
 /// Infer the explicit type from a literal value
@@ -951,21 +928,6 @@ pub fn plan_inline_variable(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_is_screaming_snake_case() {
-        assert!(is_screaming_snake_case("TAX_RATE"));
-        assert!(is_screaming_snake_case("MAX_VALUE"));
-        assert!(is_screaming_snake_case("A"));
-        assert!(is_screaming_snake_case("PI"));
-
-        assert!(!is_screaming_snake_case(""));
-        assert!(!is_screaming_snake_case("_TAX_RATE")); // starts with underscore
-        assert!(!is_screaming_snake_case("TAX_RATE_")); // ends with underscore
-        assert!(!is_screaming_snake_case("tax_rate")); // lowercase
-        assert!(!is_screaming_snake_case("TaxRate")); // camelCase
-        assert!(!is_screaming_snake_case("tax-rate")); // kebab-case
-    }
 
     #[test]
     fn test_find_rust_literal_at_position_number() {

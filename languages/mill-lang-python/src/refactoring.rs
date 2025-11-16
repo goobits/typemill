@@ -15,7 +15,8 @@ use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis, LineExtractor,
+    count_unescaped_quotes, is_screaming_snake_case, ExtractVariableAnalysis, ExtractableFunction,
+    InlineVariableAnalysis, LineExtractor,
 };
 use std::collections::HashMap;
 
@@ -740,29 +741,6 @@ pub(crate) fn plan_extract_constant(
     })
 }
 
-/// Check if a name follows SCREAMING_SNAKE_CASE convention
-fn is_screaming_snake_case(name: &str) -> bool {
-    if name.is_empty() {
-        return false;
-    }
-
-    // Must not start or end with underscore
-    if name.starts_with('_') || name.ends_with('_') {
-        return false;
-    }
-
-    // Check each character
-    for ch in name.chars() {
-        match ch {
-            'A'..='Z' | '0'..='9' | '_' => continue,
-            _ => return false,
-        }
-    }
-
-    // Must have at least one uppercase letter
-    name.chars().any(|c| c.is_ascii_uppercase())
-}
-
 /// Finds a Python literal at a given position in a line of code.
 ///
 /// This function identifies literals by checking the cursor position against different literal types
@@ -1129,34 +1107,6 @@ fn find_python_literal_occurrences(source: &str, literal_value: &str) -> Vec<Cod
 ///
 /// # Examples
 /// ```
-/// count_unescaped_quotes("hello", '"') -> 0
-/// count_unescaped_quotes("\"hello\"", '"') -> 2
-/// count_unescaped_quotes("\"He said \\\"hi\\\"\"", '"') -> 2  // outer quotes only
-/// count_unescaped_quotes("\"path\\\\to\\\\file\"", '"') -> 2  // \\\\ doesn't escape quote
-/// ```
-#[allow(dead_code)]
-fn count_unescaped_quotes(text: &str, quote_char: char) -> usize {
-    let mut count = 0;
-    let mut chars = text.chars().peekable();
-    let mut backslash_count = 0;
-
-    while let Some(ch) = chars.next() {
-        if ch == '\\' {
-            backslash_count += 1;
-        } else {
-            if ch == quote_char {
-                // Quote is escaped if preceded by an odd number of backslashes
-                if backslash_count % 2 == 0 {
-                    count += 1;
-                }
-            }
-            backslash_count = 0;
-        }
-    }
-
-    count
-}
-
 /// Validates whether a position in source code is a valid location for a literal.
 ///
 /// A position is considered valid if it's not inside a string literal or comment.
@@ -1374,21 +1324,6 @@ z = x * 2"#;
     }
 
     #[test]
-    fn test_is_screaming_snake_case() {
-        assert!(is_screaming_snake_case("TAX_RATE"));
-        assert!(is_screaming_snake_case("MAX_VALUE"));
-        assert!(is_screaming_snake_case("A"));
-        assert!(is_screaming_snake_case("PI"));
-
-        assert!(!is_screaming_snake_case(""));
-        assert!(!is_screaming_snake_case("_TAX_RATE")); // starts with underscore
-        assert!(!is_screaming_snake_case("TAX_RATE_")); // ends with underscore
-        assert!(!is_screaming_snake_case("tax_rate")); // lowercase
-        assert!(!is_screaming_snake_case("TaxRate")); // camelCase
-        assert!(!is_screaming_snake_case("tax-rate")); // kebab-case
-    }
-
-    #[test]
     fn test_find_python_literal_at_position_number() {
         let line = "x = 42";
         let result = find_python_literal_at_position(line, 4);
@@ -1483,42 +1418,6 @@ greeting = "hello"
 
     // Refactoring tests: Core operations (extract/inline) tested in other languages (C++/Java)
     // Kept: Python-specific tests (suggest_variable_name helper, analysis functions)
-
-    #[test]
-    fn test_count_unescaped_quotes_empty() {
-        assert_eq!(count_unescaped_quotes("", '"'), 0);
-        assert_eq!(count_unescaped_quotes("", '\''), 0);
-    }
-
-    #[test]
-    fn test_count_unescaped_quotes_regular() {
-        assert_eq!(count_unescaped_quotes("\"hello\"", '"'), 2);
-        assert_eq!(count_unescaped_quotes("'hello'", '\''), 2);
-        assert_eq!(count_unescaped_quotes("x = \"hello\"", '"'), 2);
-    }
-
-    #[test]
-    fn test_count_unescaped_quotes_escaped() {
-        // Escaped quote in double-quoted string
-        assert_eq!(count_unescaped_quotes("\"He said \\\"hi\\\"\"", '"'), 2);
-        // Escaped quote in single-quoted string
-        assert_eq!(count_unescaped_quotes("'It\\'s fine'", '\''), 2);
-    }
-
-    #[test]
-    fn test_count_unescaped_quotes_escaped_backslash() {
-        // Double backslash doesn't escape the quote
-        assert_eq!(count_unescaped_quotes("\"path\\\\to\\\\file\"", '"'), 2);
-        // Triple backslash escapes the quote
-        assert_eq!(count_unescaped_quotes("\"test\\\\\\\"", '"'), 1);
-    }
-
-    #[test]
-    fn test_count_unescaped_quotes_mixed() {
-        // Single quotes inside double-quoted string
-        assert_eq!(count_unescaped_quotes("\"It's fine\"", '"'), 2);
-        assert_eq!(count_unescaped_quotes("\"It's fine\"", '\''), 1);
-    }
 
     #[test]
     fn test_is_valid_python_literal_location_escaped_quotes() {

@@ -16,6 +16,7 @@ use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::is_screaming_snake_case;
+use mill_lang_common::is_escaped;
 use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 use mill_plugin_api::{PluginApiError, PluginResult, RefactoringProvider};
 use std::collections::HashMap;
@@ -536,28 +537,6 @@ fn find_literal_occurrences(source: &str, literal_value: &str) -> Vec<CommonCode
     occurrences
 }
 
-/// Check if a character at the given position is escaped
-fn is_escaped(s: &str, pos: usize) -> bool {
-    if pos == 0 {
-        return false;
-    }
-
-    // Count consecutive backslashes before this position
-    let mut backslash_count = 0;
-    let mut check_pos = pos;
-
-    while check_pos > 0 {
-        check_pos -= 1;
-        if s.chars().nth(check_pos) == Some('\\') {
-            backslash_count += 1;
-        } else {
-            break;
-        }
-    }
-
-    // Odd number of backslashes means the character is escaped
-    backslash_count % 2 == 1
-}
 
 /// Checks if a position in the line is a valid literal location
 fn is_valid_literal_location(line: &str, pos: usize, len: usize) -> bool {

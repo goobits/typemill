@@ -8,6 +8,8 @@
 use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
+use mill_lang_common::is_escaped;
+use mill_lang_common::is_screaming_snake_case;
 use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -603,29 +605,6 @@ pub(crate) fn plan_extract_constant(
     })
 }
 
-/// Check if a name follows SCREAMING_SNAKE_CASE convention
-fn is_screaming_snake_case(name: &str) -> bool {
-    if name.is_empty() {
-        return false;
-    }
-
-    // Must not start or end with underscore
-    if name.starts_with('_') || name.ends_with('_') {
-        return false;
-    }
-
-    // Check each character
-    for ch in name.chars() {
-        match ch {
-            'A'..='Z' | '0'..='9' | '_' => continue,
-            _ => return false,
-        }
-    }
-
-    // Must have at least one uppercase letter
-    name.chars().any(|c| c.is_ascii_uppercase())
-}
-
 /// Finds a Java literal at a given position in a line of code
 fn find_java_literal_at_position(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
     // Try numeric literal first
@@ -760,29 +739,6 @@ fn find_java_numeric_literal(line_text: &str, col: usize) -> Option<(String, Cod
     }
 
     None
-}
-
-/// Check if a character at the given position is escaped
-fn is_escaped(s: &str, pos: usize) -> bool {
-    if pos == 0 {
-        return false;
-    }
-
-    // Count consecutive backslashes before this position
-    let mut backslash_count = 0;
-    let mut check_pos = pos;
-
-    while check_pos > 0 {
-        check_pos -= 1;
-        if s.chars().nth(check_pos) == Some('\\') {
-            backslash_count += 1;
-        } else {
-            break;
-        }
-    }
-
-    // Odd number of backslashes means the character is escaped
-    backslash_count % 2 == 1
 }
 
 /// Finds a string literal at a cursor position in Java code

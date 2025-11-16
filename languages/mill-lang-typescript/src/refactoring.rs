@@ -3,7 +3,8 @@ use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    CodeRange, ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis,
+    is_escaped, is_screaming_snake_case, CodeRange, ExtractVariableAnalysis, ExtractableFunction,
+    InlineVariableAnalysis,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
 use std::collections::HashMap;
@@ -647,41 +648,6 @@ fn ast_extract_constant_ts_js(
 
 // --- Visitors (moved from mill-ast) ---
 
-/// Helper function to check if a character at a given position is escaped.
-/// A character is escaped if it's preceded by an odd number of consecutive backslashes.
-///
-/// # Examples
-/// - `"He said \"hi\""` - The quote at position 9 is escaped (preceded by 1 backslash)
-/// - `"Path: C:\\Users"` - The 'U' at position 11 is not escaped (preceded by 2 backslashes forming \\)
-///
-/// # Note on backslash counting
-/// Backslashes work in pairs: `\\` produces one literal backslash.
-/// - 1 backslash before a char = escaped
-/// - 2 backslashes before a char = not escaped (the 2 backslashes form a literal \)
-/// - 3 backslashes before a char = escaped (2 form a literal \, 1 escapes the char)
-fn is_escaped(text: &str, pos: usize) -> bool {
-    if pos == 0 {
-        return false;
-    }
-
-    let chars: Vec<char> = text.chars().collect();
-    let mut backslash_count = 0;
-    let mut check_pos = pos;
-
-    // Count consecutive backslashes IMMEDIATELY before the position
-    while check_pos > 0 {
-        check_pos -= 1;
-        if check_pos < chars.len() && chars[check_pos] == '\\' {
-            backslash_count += 1;
-        } else {
-            break;
-        }
-    }
-
-    // If odd number of backslashes, the character is escaped
-    backslash_count % 2 == 1
-}
-
 /// Helper to check if a character is part of a numeric literal
 fn is_numeric_char(ch: Option<char>) -> bool {
     match ch {
@@ -1197,57 +1163,6 @@ fn suggest_variable_name(expression: &str) -> String {
     "extracted".to_string()
 }
 
-/// Validates that a constant name follows the SCREAMING_SNAKE_CASE convention.
-///
-/// SCREAMING_SNAKE_CASE is the standard naming convention for constants in TypeScript/JavaScript.
-/// It improves code readability by making constants easily distinguishable from variables at a glance.
-///
-/// # Requirements
-/// - Only uppercase letters (A-Z), digits (0-9), and underscores (_) are allowed
-/// - Must contain at least one uppercase letter (prevents pure numeric names like "123")
-/// - Cannot start with underscore (reserved for private/internal conventions)
-/// - Cannot end with underscore (conventionally implies trailing metadata)
-///
-/// # Valid Examples
-/// - `TAX_RATE` - simple constant
-/// - `MAX_USERS` - multi-word constant
-/// - `API_KEY_V2` - constant with version number
-/// - `DB_TIMEOUT_MS` - constant with unit suffix
-/// - `A` - single-letter constants are valid
-///
-/// # Invalid Examples
-/// - `tax_rate` - lowercase
-/// - `TaxRate` - camelCase
-/// - `_TAX_RATE` - starts with underscore
-/// - `TAX_RATE_` - ends with underscore
-/// - `TAX-RATE` - uses hyphen instead of underscore
-/// - `123` - no uppercase letter
-///
-/// # Called By
-/// - `ast_extract_constant_ts_js()` - Validates constant names before generating edits
-#[allow(dead_code)]
-fn is_screaming_snake_case(name: &str) -> bool {
-    if name.is_empty() {
-        return false;
-    }
-
-    // Must not start or end with underscore to maintain style consistency
-    if name.starts_with('_') || name.ends_with('_') {
-        return false;
-    }
-
-    // Check each character - only uppercase, digits, and underscores allowed
-    for ch in name.chars() {
-        match ch {
-            'A'..='Z' | '0'..='9' | '_' => continue,
-            _ => return false,
-        }
-    }
-
-    // Must have at least one uppercase letter to ensure it's not purely numeric
-    name.chars().any(|c| c.is_ascii_uppercase())
-}
-
 /// Finds all valid occurrences of a literal value in source code.
 ///
 /// This function performs a comprehensive search for a literal value throughout the source code,
@@ -1429,21 +1344,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_is_screaming_snake_case() {
-        assert!(is_screaming_snake_case("TAX_RATE"));
-        assert!(is_screaming_snake_case("MAX_VALUE"));
-        assert!(is_screaming_snake_case("A"));
-        assert!(is_screaming_snake_case("PI"));
-
-        assert!(!is_screaming_snake_case(""));
-        assert!(!is_screaming_snake_case("_TAX_RATE")); // starts with underscore
-        assert!(!is_screaming_snake_case("TAX_RATE_")); // ends with underscore
-        assert!(!is_screaming_snake_case("tax_rate")); // lowercase
-        assert!(!is_screaming_snake_case("TaxRate")); // camelCase
-        assert!(!is_screaming_snake_case("tax-rate")); // kebab-case
-    }
-
-    #[test]
     fn test_find_literal_occurrences() {
         let source = "const x = 42;\nconst y = 42;\nconst z = 100;";
         let occurrences = find_literal_occurrences(source, "42");
@@ -1553,29 +1453,6 @@ mod tests {
         let occurrences = find_literal_occurrences(source, "42");
         // Should only find the first 42, not the one in the comment
         assert_eq!(occurrences.len(), 1, "Should skip literal in comment");
-    }
-
-    // Helper function tests
-
-    #[test]
-    fn test_is_escaped_helper() {
-        assert!(!is_escaped("hello", 0), "First char cannot be escaped");
-
-        // In "a\"b", position 2 is the quote, preceded by 1 backslash -> escaped
-        assert!(is_escaped(r#"a\"b"#, 2), "Quote after single backslash is escaped");
-
-        // In "a\\", position 2 is the second backslash, preceded by 1 backslash -> escaped
-        assert!(is_escaped(r#"a\\"#, 2), "Second backslash IS escaped by the first");
-
-        // In "a\\\", position 3 is the third backslash, preceded by 2 backslashes -> not escaped
-        assert!(!is_escaped(r#"a\\\"#, 3), "Third backslash preceded by 2 is not escaped");
-
-        // In "a\\\\", position 4 is the fourth backslash, preceded by 3 backslashes -> escaped
-        assert!(is_escaped(r#"a\\\\"#, 4), "Fourth backslash preceded by 3 is escaped");
-
-        // Test a quote after pairs of backslashes
-        assert!(!is_escaped(r#"a\\"#, 3), "Character after pair of backslashes is not escaped");
-        assert!(is_escaped(r#"a\\\"#, 4), "Character after 3 backslashes is escaped");
     }
 
     #[test]
