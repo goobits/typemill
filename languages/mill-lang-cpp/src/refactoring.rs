@@ -15,8 +15,9 @@ use async_trait::async_trait;
 use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use mill_lang_common::is_screaming_snake_case;
 use mill_lang_common::is_escaped;
+use mill_lang_common::is_screaming_snake_case;
+use mill_lang_common::is_valid_code_literal_location;
 use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 use mill_lang_common::refactoring::find_literal_occurrences;
 use mill_plugin_api::{PluginApiError, PluginResult, RefactoringProvider};
@@ -512,53 +513,19 @@ fn plan_extract_constant_impl(
 // Helper functions
 
 /// Checks if a position in the line is a valid literal location
+/// C++ version includes additional word boundary checks for numeric literals
 fn is_valid_literal_location(line: &str, pos: usize, len: usize) -> bool {
-    let before = &line[..pos];
-
-    // Count non-escaped quotes to determine if we're inside a string
-    let mut single_quotes = 0;
-    let mut double_quotes = 0;
-    for (i, ch) in before.char_indices() {
-        if ch == '\'' && !is_escaped(before, i) {
-            single_quotes += 1;
-        } else if ch == '"' && !is_escaped(before, i) {
-            double_quotes += 1;
-        }
-    }
-
-    // If odd number of quotes, we're inside a string
-    if single_quotes % 2 == 1 || double_quotes % 2 == 1 {
+    // Use shared validation for strings and comments
+    if !is_valid_code_literal_location(line, pos, len) {
         return false;
     }
 
-    // Check if we're in a single-line comment
-    if let Some(comment_pos) = line.find("//") {
-        if pos > comment_pos {
-            return false;
-        }
-    }
-
-    // Check for block comment markers (/* ... */)
-    if let Some(block_start) = line.find("/*") {
-        if pos > block_start {
-            // Check if we're before the closing */
-            if let Some(block_end) = line[block_start..].find("*/") {
-                let actual_block_end = block_start + block_end + 2; // +2 for */
-                if pos < actual_block_end {
-                    return false;
-                }
-            } else {
-                // Block comment opened but not closed on this line - assume we're in it
-                return false;
-            }
-        }
-    }
-
-    // For numeric literals, check word boundaries
+    // C++-specific: For numeric literals, check word boundaries
     if let Some(ch) = line[pos..].chars().next() {
         if ch.is_ascii_digit() {
             // Check character before
             if pos > 0 {
+                let before = &line[..pos];
                 if let Some(prev_ch) = before.chars().last() {
                     if prev_ch.is_alphanumeric() || prev_ch == '_' {
                         return false;

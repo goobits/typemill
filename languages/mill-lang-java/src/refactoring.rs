@@ -11,6 +11,7 @@ use mill_foundation::protocol::{
 use mill_lang_common::find_literal_occurrences;
 use mill_lang_common::is_escaped;
 use mill_lang_common::is_screaming_snake_case;
+use mill_lang_common::is_valid_code_literal_location;
 use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 use mill_lang_common::ExtractConstantAnalysis;
 use serde::{Deserialize, Serialize};
@@ -811,48 +812,9 @@ fn find_java_keyword_literal(line_text: &str, col: usize) -> Option<(String, Cod
     None
 }
 
-/// Validates whether a position in source code is a valid location for a literal
-fn is_valid_java_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    // Count non-escaped quotes before position to determine if we're inside a string literal
-    let before = &line[..pos];
-    let mut double_quotes = 0;
-    for (i, ch) in before.char_indices() {
-        if ch == '"' && !is_escaped(before, i) {
-            double_quotes += 1;
-        }
-    }
-
-    // If odd number of quotes appear before the position, we're inside a string literal
-    if double_quotes % 2 == 1 {
-        return false;
-    }
-
-    // Check for single-line comment marker (//). Anything after it is a comment.
-    if let Some(comment_pos) = line.find("//") {
-        if pos > comment_pos {
-            return false;
-        }
-    }
-
-    // Check for block comment markers (/* ... */)
-    // This is a simplified check - doesn't handle multi-line block comments
-    // but catches single-line block comments like /* comment */ code
-    if let Some(block_start) = line.find("/*") {
-        if pos > block_start {
-            // Check if we're before the closing */
-            if let Some(block_end) = line[block_start..].find("*/") {
-                let actual_block_end = block_start + block_end + 2; // +2 for */
-                if pos < actual_block_end {
-                    return false;
-                }
-            } else {
-                // Block comment opened but not closed on this line - assume we're in it
-                return false;
-            }
-        }
-    }
-
-    true
+// is_valid_java_literal_location is now provided by mill_lang_common::is_valid_code_literal_location
+fn is_valid_java_literal_location(line: &str, pos: usize, len: usize) -> bool {
+    is_valid_code_literal_location(line, pos, len)
 }
 
 /// Finds the appropriate insertion point for a constant declaration in Java code

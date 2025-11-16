@@ -7,8 +7,8 @@ use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    find_literal_occurrences, is_screaming_snake_case, CodeRange, ExtractConstantAnalysis,
-    LineExtractor,
+    find_literal_occurrences, is_screaming_snake_case, is_valid_code_literal_location, CodeRange,
+    ExtractConstantAnalysis, LineExtractor,
 };
 use std::collections::HashMap;
 
@@ -530,64 +530,9 @@ fn find_rust_keyword_literal(line_text: &str, col: usize) -> Option<(String, Cod
     None
 }
 
-/// Validate whether a position in source code is a valid location for a Rust literal
-/// Handles escaped quotes properly by counting backslashes
-fn is_valid_rust_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    let bytes = line.as_bytes();
-
-    // Count non-escaped quotes before position to determine if we're inside a string literal
-    let mut quote_count = 0;
-    let mut i = 0;
-
-    while i < pos && i < bytes.len() {
-        if bytes[i] == b'"' {
-            // Count backslashes before this quote
-            let mut backslash_count = 0;
-            let mut check = i;
-            while check > 0 && bytes[check - 1] == b'\\' {
-                backslash_count += 1;
-                check -= 1;
-            }
-
-            // If even number of backslashes (or zero), this quote is not escaped
-            if backslash_count % 2 == 0 {
-                quote_count += 1;
-            }
-        }
-        i += 1;
-    }
-
-    // If odd number of non-escaped quotes, we're inside a string literal
-    if quote_count % 2 == 1 {
-        return false;
-    }
-
-    // Check for single-line comment marker. Anything after "//" is a comment.
-    // But make sure the "//" itself is not in a string
-    let mut i = 0;
-    let mut in_string = false;
-    while i < bytes.len() {
-        if bytes[i] == b'"' {
-            let mut backslash_count = 0;
-            let mut check = i;
-            while check > 0 && bytes[check - 1] == b'\\' {
-                backslash_count += 1;
-                check -= 1;
-            }
-            if backslash_count % 2 == 0 {
-                in_string = !in_string;
-            }
-        } else if !in_string && i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'/' {
-            // Found comment marker outside of string
-            if pos > i {
-                return false;
-            }
-            break;
-        }
-        i += 1;
-    }
-
-    true
+// is_valid_rust_literal_location is now provided by mill_lang_common::is_valid_code_literal_location
+fn is_valid_rust_literal_location(line: &str, pos: usize, len: usize) -> bool {
+    is_valid_code_literal_location(line, pos, len)
 }
 
 

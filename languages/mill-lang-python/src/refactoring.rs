@@ -1074,6 +1074,8 @@ fn find_python_keyword_literal(line_text: &str, col: usize) -> Option<(String, C
 ///
 /// # Called By
 /// - `find_literal_occurrences()` - Validates matches before including them in results
+///
+/// Python-specific validation: Uses # for comments instead of // or /* */
 #[allow(dead_code)]
 fn is_valid_python_literal_location(line: &str, pos: usize, _len: usize) -> bool {
     // Count unescaped quotes before position to determine if we're inside a string literal.
@@ -1088,9 +1090,14 @@ fn is_valid_python_literal_location(line: &str, pos: usize, _len: usize) -> bool
     }
 
     // Check for Python comment marker (#). Anything after it is a comment.
+    // Unlike C-style languages, Python uses # instead of //
     if let Some(comment_pos) = line.find('#') {
-        if pos > comment_pos {
-            return false;
+        // Make sure the # is not inside a string
+        let sq = count_unescaped_quotes(&line[..comment_pos], '\'');
+        let dq = count_unescaped_quotes(&line[..comment_pos], '"');
+
+        if sq % 2 == 0 && dq % 2 == 0 && pos > comment_pos {
+            return false; // We're after a real comment
         }
     }
 

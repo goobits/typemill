@@ -21,8 +21,8 @@ use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    find_literal_occurrences, is_escaped, is_screaming_snake_case, CodeRange,
-    ExtractConstantAnalysis,
+    find_literal_occurrences, is_escaped, is_screaming_snake_case, is_valid_code_literal_location,
+    CodeRange, ExtractConstantAnalysis,
 };
 use serde_json::json;
 use std::collections::HashMap;
@@ -627,45 +627,9 @@ fn is_valid_c_number(text: &str) -> bool {
 ///
 /// # Returns
 /// `true` if the position is a valid literal location, `false` otherwise.
-fn is_valid_c_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    // Count non-escaped quotes before position to determine if we're inside a string literal
-    let before = &line[..pos];
-    let mut double_quotes = 0;
-    for (i, ch) in before.char_indices() {
-        if ch == '"' && !is_escaped(before, i) {
-            double_quotes += 1;
-        }
-    }
-
-    // If odd number of quotes appear before the position, we're inside a string literal
-    if double_quotes % 2 == 1 {
-        return false;
-    }
-
-    // Check for C++ style comment (//)
-    if let Some(comment_pos) = line.find("//") {
-        if pos > comment_pos {
-            return false;
-        }
-    }
-
-    // Check for C style block comment (/* ... */)
-    if let Some(block_start) = line.find("/*") {
-        if pos > block_start {
-            // Check if we're before the closing */
-            if let Some(block_end) = line[block_start..].find("*/") {
-                let actual_block_end = block_start + block_end + 2; // +2 for */
-                if pos < actual_block_end {
-                    return false;
-                }
-            } else {
-                // Block comment opened but not closed on this line - assume we're in it
-                return false;
-            }
-        }
-    }
-
-    true
+// is_valid_c_literal_location is now provided by mill_lang_common::is_valid_code_literal_location
+fn is_valid_c_literal_location(line: &str, pos: usize, len: usize) -> bool {
+    is_valid_code_literal_location(line, pos, len)
 }
 
 /// Finds the appropriate insertion point for a constant declaration in C code.

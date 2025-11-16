@@ -198,6 +198,100 @@ pub fn count_unescaped_quotes(text: &str, quote_char: char) -> usize {
     count
 }
 
+/// Validates whether a position in source code is a valid location for a literal.
+///
+/// A position is considered valid if it's NOT inside:
+/// - A string literal (single quotes, double quotes, or backticks)
+/// - A single-line comment (`//`)
+/// - A block comment (`/* */`)
+///
+/// This function is used during refactoring operations to ensure we only
+/// replace literals in actual code, not in strings or comments.
+///
+/// # Arguments
+/// * `line` - The line of source code to check
+/// * `pos` - The character position within the line
+/// * `_len` - Length of the literal (reserved for future use)
+///
+/// # Returns
+/// `true` if the position is valid for literal replacement, `false` otherwise
+///
+/// # Examples
+/// ```
+/// use mill_lang_common::validation::is_valid_code_literal_location;
+///
+/// // Valid: literal outside strings/comments
+/// assert!(is_valid_code_literal_location("const x = 42;", 10, 2));
+///
+/// // Invalid: inside string
+/// assert!(!is_valid_code_literal_location("const s = \"42\";", 12, 2));
+///
+/// // Invalid: inside comment
+/// assert!(!is_valid_code_literal_location("const x = 0; // 42", 16, 2));
+/// ```
+pub fn is_valid_code_literal_location(line: &str, pos: usize, _len: usize) -> bool {
+    if pos > line.len() {
+        return false;
+    }
+
+    let before = &line[..pos];
+
+    // Check for strings using count_unescaped_quotes
+    let single_quotes = count_unescaped_quotes(before, '\'');
+    let double_quotes = count_unescaped_quotes(before, '"');
+    let backticks = count_unescaped_quotes(before, '`');
+
+    // Odd number of quotes means we're inside a string
+    if single_quotes % 2 == 1 || double_quotes % 2 == 1 || backticks % 2 == 1 {
+        return false;
+    }
+
+    // Check for single-line comments
+    if let Some(comment_pos) = line.find("//") {
+        if pos > comment_pos {
+            // Make sure the // is not inside a string
+            let before_comment = &line[..comment_pos];
+            let sq = count_unescaped_quotes(before_comment, '\'');
+            let dq = count_unescaped_quotes(before_comment, '"');
+            let bt = count_unescaped_quotes(before_comment, '`');
+
+            if sq % 2 == 0 && dq % 2 == 0 && bt % 2 == 0 {
+                return false; // We're after a real comment
+            }
+        }
+    }
+
+    // Check for block comments
+    if let Some(open_pos) = line.rfind("/*") {
+        if let Some(close_pos) = line[open_pos..].find("*/") {
+            let absolute_close = open_pos + close_pos + 2;
+            if pos > open_pos && pos < absolute_close {
+                // Make sure the /* is not inside a string
+                let before_open = &line[..open_pos];
+                let sq = count_unescaped_quotes(before_open, '\'');
+                let dq = count_unescaped_quotes(before_open, '"');
+                let bt = count_unescaped_quotes(before_open, '`');
+
+                if sq % 2 == 0 && dq % 2 == 0 && bt % 2 == 0 {
+                    return false; // Inside closed block comment
+                }
+            }
+        } else if pos > open_pos {
+            // Unclosed block comment
+            let before_open = &line[..open_pos];
+            let sq = count_unescaped_quotes(before_open, '\'');
+            let dq = count_unescaped_quotes(before_open, '"');
+            let bt = count_unescaped_quotes(before_open, '`');
+
+            if sq % 2 == 0 && dq % 2 == 0 && bt % 2 == 0 {
+                return false; // Inside unclosed block comment
+            }
+        }
+    }
+
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -381,5 +475,114 @@ mod tests {
         let text = r#""It's fine""#;
         assert_eq!(count_unescaped_quotes(text, '"'), 2); // double quotes
         assert_eq!(count_unescaped_quotes(text, '\''), 1); // single quote
+    }
+
+    // ========================================================================
+    // is_valid_code_literal_location tests
+    // ========================================================================
+
+    #[test]
+    fn test_is_valid_code_literal_location_basic_valid() {
+        // Valid positions - outside strings and comments
+        assert!(is_valid_code_literal_location("const x = 42;", 10, 2));
+        assert!(is_valid_code_literal_location("let y = 100;", 8, 3));
+        assert!(is_valid_code_literal_location("var z = 3.14;", 8, 4));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_inside_double_quotes() {
+        // Invalid: inside double-quoted strings
+        assert!(!is_valid_code_literal_location(r#"const s = "42";"#, 12, 2));
+        assert!(!is_valid_code_literal_location(r#"msg = "value: 42";"#, 14, 2));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_inside_single_quotes() {
+        // Invalid: inside single-quoted strings
+        assert!(!is_valid_code_literal_location("const c = '4';", 12, 1));
+        assert!(!is_valid_code_literal_location("msg = 'test 42';", 13, 2));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_inside_backticks() {
+        // Invalid: inside backtick strings (template literals)
+        assert!(!is_valid_code_literal_location("const t = `value: 42`;", 18, 2));
+        assert!(!is_valid_code_literal_location("msg = `test ${42}`;", 15, 2));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_escaped_quotes() {
+        // Escaped quotes should not toggle string state
+        assert!(!is_valid_code_literal_location(r#"const s = "He said \"42\"";"#, 20, 2));
+        assert!(is_valid_code_literal_location(r#"const s = "text\""; let x = 42;"#, 28, 2));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_single_line_comment() {
+        // Invalid: inside single-line comments
+        assert!(!is_valid_code_literal_location("const x = 0; // 42", 16, 2));
+        assert!(!is_valid_code_literal_location("// const x = 42;", 13, 2));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_comment_in_string() {
+        // Valid: // inside a string should not be treated as comment
+        assert!(!is_valid_code_literal_location(r#"const s = "url://test"; const x = 42;"#, 13, 2));
+        assert!(is_valid_code_literal_location(r#"const s = "url://test"; const x = 42;"#, 34, 2));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_block_comment_closed() {
+        // Invalid: inside closed block comments
+        assert!(!is_valid_code_literal_location("const x = /* 42 */ 0;", 13, 2));
+        assert!(is_valid_code_literal_location("const x = /* comment */ 42;", 24, 2));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_block_comment_unclosed() {
+        // Invalid: inside unclosed block comments
+        assert!(!is_valid_code_literal_location("const x = 0; /* 42", 16, 2));
+        assert!(is_valid_code_literal_location("const x = 42; /* comment", 10, 2));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_block_comment_in_string() {
+        // Valid: /* */ inside string should not be treated as comment
+        assert!(!is_valid_code_literal_location(r#"const s = "/* test */"; const x = 42;"#, 13, 2));
+        assert!(is_valid_code_literal_location(r#"const s = "/* test */"; const x = 42;"#, 34, 2));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_position_out_of_bounds() {
+        // Invalid: position beyond string length
+        assert!(!is_valid_code_literal_location("const x = 42;", 100, 2));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_edge_cases() {
+        // Empty line
+        assert!(is_valid_code_literal_location("", 0, 0));
+
+        // Position at start
+        assert!(is_valid_code_literal_location("42", 0, 2));
+
+        // Position at exact string length
+        assert!(is_valid_code_literal_location("const x = 42;", 13, 0));
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_multiple_quotes() {
+        // Multiple strings on same line
+        assert!(!is_valid_code_literal_location(r#""a" + "42" + "c""#, 7, 2)); // inside second string
+        assert!(is_valid_code_literal_location(r#""a" + 42 + "c""#, 6, 2)); // between strings
+    }
+
+    #[test]
+    fn test_is_valid_code_literal_location_complex_scenarios() {
+        // Real-world examples
+        assert!(is_valid_code_literal_location("const TAX_RATE = 0.08;", 17, 4));
+        assert!(!is_valid_code_literal_location(r#"const msg = "Rate: 0.08";"#, 19, 4));
+        assert!(!is_valid_code_literal_location("const x = 42; // Comment with 0.08", 32, 4));
+        assert!(is_valid_code_literal_location(r#"const url = "http://test"; const port = 8080;"#, 40, 4));
     }
 }

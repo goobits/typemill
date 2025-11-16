@@ -134,7 +134,9 @@ pub use refactoring::{
     VariableUsage,
 };
 pub use subprocess::{run_ast_tool, run_ast_tool_raw, SubprocessAstTool};
-pub use validation::{count_unescaped_quotes, is_escaped, is_screaming_snake_case};
+pub use validation::{
+    count_unescaped_quotes, is_escaped, is_screaming_snake_case, is_valid_code_literal_location,
+};
 pub use versioning::{
     detect_dependency_source, extract_version_number, normalize_version, parse_git_url,
 };

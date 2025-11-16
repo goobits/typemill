@@ -3,7 +3,7 @@ use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    count_unescaped_quotes, find_literal_occurrences, is_escaped, is_screaming_snake_case,
+    find_literal_occurrences, is_escaped, is_screaming_snake_case, is_valid_code_literal_location,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
 use regex::Regex;
@@ -667,57 +667,7 @@ fn find_swift_boolean_literal(line_text: &str, col: usize) -> Option<(String, u3
 /// Validates whether a position in source code is a valid location for a literal.
 /// A position is considered valid if it's not inside a string literal or comment.
 ///
-/// # Algorithm
-/// 1. Count unescaped quotes before the position to determine if we're inside a string
-/// 2. If an odd number of unescaped quotes appear before the position, we're inside a string literal
-/// 3. Check for `//` single-line comments; any position after the comment marker is invalid
-/// 4. Check for `/* */` block comments; any position inside a block comment is invalid
-/// 5. Return true only if outside both strings and comments
-fn is_valid_swift_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    if pos > line.len() {
-        return false;
-    }
-
-    // Count unescaped quotes before position to determine if we're inside a string literal.
-    // Each unescaped quote toggles the "inside string" state. Odd count = inside string, even = outside.
-    let before = &line[..pos];
-    let double_quotes = count_unescaped_quotes(before, '"');
-
-    // If odd number of unescaped quotes appear before the position, we're inside a string literal
-    if double_quotes % 2 == 1 {
-        return false;
-    }
-
-    // Check for single-line comment marker (//)
-    if let Some(comment_pos) = line.find("//") {
-        // Make sure the // is not inside a string
-        let quotes_before_comment = count_unescaped_quotes(&line[..comment_pos], '"');
-        if quotes_before_comment % 2 == 0 && pos > comment_pos {
-            return false;
-        }
-    }
-
-    // Check for block comment markers (/* */)
-    // Look for opening /* before position
-    if let Some(block_start) = line.find("/*") {
-        let quotes_before_block_start = count_unescaped_quotes(&line[..block_start], '"');
-        // Only consider it a comment if not inside a string
-        if quotes_before_block_start % 2 == 0 {
-            // Check if there's a closing */ after the opening /*
-            if let Some(block_end_relative) = line[block_start + 2..].find("*/") {
-                let block_end = block_start + 2 + block_end_relative + 2;
-                // If position is between /* and */, it's inside a block comment
-                if pos > block_start && pos < block_end {
-                    return false;
-                }
-            } else {
-                // No closing */ found, so everything after /* is a comment
-                if pos > block_start {
-                    return false;
-                }
-            }
-        }
-    }
-
-    true
+// is_valid_swift_literal_location is now provided by mill_lang_common::is_valid_code_literal_location
+fn is_valid_swift_literal_location(line: &str, pos: usize, len: usize) -> bool {
+    is_valid_code_literal_location(line, pos, len)
 }

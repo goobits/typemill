@@ -3,8 +3,8 @@ use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    find_literal_occurrences, is_escaped, is_screaming_snake_case, CodeRange,
-    ExtractConstantAnalysis, ExtractVariableAnalysis, ExtractableFunction,
+    find_literal_occurrences, is_escaped, is_screaming_snake_case, is_valid_code_literal_location,
+    CodeRange, ExtractConstantAnalysis, ExtractVariableAnalysis, ExtractableFunction,
     InlineVariableAnalysis,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
@@ -1148,115 +1148,11 @@ fn suggest_variable_name(expression: &str) -> String {
     "extracted".to_string()
 }
 
-/// Validates whether a position in source code is a valid location for a literal.
-///
-/// A position is considered valid if it's not inside a string literal or comment.
-/// This prevents replacing:
-/// - Literals that are part of string content (e.g., the "0.08" in `"The rate is 0.08%"`)
-/// - Literals in comments (e.g., the value in `// TODO: update rate from 0.08 to 0.10`)
-///
-/// # Algorithm
-/// Uses a state machine to scan through the line character by character:
-/// 1. Tracks whether we're inside a string (and which quote type)
-/// 2. Properly handles escaped quotes (e.g., `"He said \"hi\""`)
-/// 3. Detects single-line comments (`//`)
-/// 4. Returns true only if the position is outside strings and comments
-///
-/// # Arguments
-/// * `line` - The current line of code
-/// * `pos` - Character position within the line where the potential literal is located
-/// * `_len` - Length of the literal (not currently used but available for future enhancements)
-///
-/// # Returns
-/// `true` if the position is a valid literal location (outside strings and comments),
-/// `false` if the position is inside a string or comment.
-///
-/// # Limitations
-/// - Multi-line comments (`/* */`) spanning multiple lines are not detected
-/// - Template literal expressions (`${...}`) are not specially handled
-///
-/// # Examples
-/// ```
-/// // Valid locations (outside strings):
-/// is_valid_literal_location("const x = 42;", 10, 2) -> true
-///
-/// // Invalid locations (inside strings):
-/// is_valid_literal_location("const msg = \"42\";", 14, 2) -> false
-///
-/// // Invalid locations (inside comments):
-/// is_valid_literal_location("const x = 0; // rate is 42", 24, 2) -> false
-///
-/// // Handles escaped quotes correctly:
-/// is_valid_literal_location("const s = \"He said \\\"42\\\"\";", 20, 2) -> false
-/// ```
-///
-/// # Called By
-/// - `find_literal_occurrences()` - Validates matches before including them in results
+// is_valid_literal_location is now provided by mill_lang_common::is_valid_code_literal_location
+// We keep the same name via a simple alias to minimize code changes
 #[allow(dead_code)]
-fn is_valid_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    if pos > line.len() {
-        return false;
-    }
-
-    // State machine to track string context
-    #[derive(Debug, PartialEq)]
-    enum State {
-        Normal,
-        InSingleQuote,
-        InDoubleQuote,
-        InBacktick,
-        InComment,
-    }
-
-    let mut state = State::Normal;
-    let chars: Vec<char> = line.chars().collect();
-
-    for i in 0..pos {
-        if i >= chars.len() {
-            break;
-        }
-
-        let ch = chars[i];
-
-        match state {
-            State::Normal => {
-                // Check for comment start
-                if ch == '/' && i + 1 < chars.len() && chars[i + 1] == '/' {
-                    state = State::InComment;
-                    continue;
-                }
-
-                // Check for string start
-                match ch {
-                    '\'' if !is_escaped(line, i) => state = State::InSingleQuote,
-                    '"' if !is_escaped(line, i) => state = State::InDoubleQuote,
-                    '`' if !is_escaped(line, i) => state = State::InBacktick,
-                    _ => {}
-                }
-            }
-            State::InSingleQuote => {
-                if ch == '\'' && !is_escaped(line, i) {
-                    state = State::Normal;
-                }
-            }
-            State::InDoubleQuote => {
-                if ch == '"' && !is_escaped(line, i) {
-                    state = State::Normal;
-                }
-            }
-            State::InBacktick => {
-                if ch == '`' && !is_escaped(line, i) {
-                    state = State::Normal;
-                }
-            }
-            State::InComment => {
-                // Once in a comment, we stay in comment for the rest of the line
-            }
-        }
-    }
-
-    // Position is valid only if we're in Normal state (not in string or comment)
-    state == State::Normal
+fn is_valid_literal_location(line: &str, pos: usize, len: usize) -> bool {
+    is_valid_code_literal_location(line, pos, len)
 }
 
 #[cfg(test)]

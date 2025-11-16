@@ -7,8 +7,8 @@ use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    find_literal_occurrences, is_screaming_snake_case, CodeRange, ExtractConstantAnalysis,
-    LineExtractor,
+    count_unescaped_quotes, find_literal_occurrences, is_screaming_snake_case,
+    is_valid_code_literal_location, CodeRange, ExtractConstantAnalysis, LineExtractor,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
 use std::collections::HashMap;
@@ -651,100 +651,11 @@ fn find_insertion_point(source: &str) -> CodeRange {
 }
 
 
-/// Counts unescaped quotes of a specific type before a position
-///
-/// This function correctly handles escaped quotes (e.g., `\"`) in Go string literals.
-/// In Go, backslash escapes are only valid in interpreted string literals (double quotes),
-/// not in raw string literals (backticks).
-fn count_unescaped_quotes(text: &str, quote_char: char) -> usize {
-    let mut count = 0;
-    let mut chars = text.chars().peekable();
-    let mut escaped = false;
-
-    while let Some(ch) = chars.next() {
-        if escaped {
-            // This character is escaped, skip it
-            escaped = false;
-        } else if ch == '\\' && quote_char == '"' {
-            // Backslash only escapes in double-quoted strings, not backticks or single quotes
-            escaped = true;
-        } else if ch == quote_char {
-            count += 1;
-        }
-    }
-
-    count
-}
-
-/// Validates whether a position in source code is a valid location for a literal
-///
-/// This function checks if a position is inside a string literal or comment.
-///
-/// # Important limitations
-/// - Multi-line raw strings (backticks) are not fully supported. This function only
-///   checks the current line, so it may incorrectly identify positions inside multi-line
-///   raw strings as valid. Full support would require parsing the entire file.
-/// - Block comments (`/* */`) spanning multiple lines are only detected on the current line.
-///
-/// # Arguments
-/// * `line` - The line of text to check
-/// * `pos` - The position within the line to validate
-/// * `_len` - The length of the literal (currently unused)
-fn is_valid_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    let before = &line[..pos];
-
-    // Count unescaped quotes before the position
-    let single_quotes = count_unescaped_quotes(before, '\'');
-    let double_quotes = count_unescaped_quotes(before, '"');
-    let backticks = count_unescaped_quotes(before, '`');
-
-    // If an odd number of quotes appear before the position, we're inside a string
-    // Note: This doesn't handle multi-line raw strings (backticks) correctly
-    if single_quotes % 2 == 1 || double_quotes % 2 == 1 || backticks % 2 == 1 {
-        return false;
-    }
-
-    // Check for single-line comment marker
-    if let Some(comment_pos) = line.find("//") {
-        // Make sure the // is not inside a string
-        let before_comment = &line[..comment_pos];
-        let sq = count_unescaped_quotes(before_comment, '\'');
-        let dq = count_unescaped_quotes(before_comment, '"');
-        let bt = count_unescaped_quotes(before_comment, '`');
-
-        // Only treat as comment if not inside a string
-        if sq % 2 == 0 && dq % 2 == 0 && bt % 2 == 0 && pos > comment_pos {
-            return false;
-        }
-    }
-
-    // Check for block comment markers /* */
-    // Note: This only handles block comments on a single line, not multi-line block comments
-    if let Some(open_pos) = line.find("/*") {
-        // Make sure the /* is not inside a string
-        let before_open = &line[..open_pos];
-        let sq = count_unescaped_quotes(before_open, '\'');
-        let dq = count_unescaped_quotes(before_open, '"');
-        let bt = count_unescaped_quotes(before_open, '`');
-
-        if sq % 2 == 0 && dq % 2 == 0 && bt % 2 == 0 {
-            // We found a block comment start
-            if let Some(close_pos) = line[open_pos..].find("*/") {
-                let close_abs = open_pos + close_pos + 2;
-                if pos >= open_pos && pos < close_abs {
-                    return false;
-                }
-            } else {
-                // Block comment starts but doesn't close on this line
-                // Position is in comment if it's after the open
-                if pos > open_pos {
-                    return false;
-                }
-            }
-        }
-    }
-
-    true
+// count_unescaped_quotes is now provided by mill_lang_common
+// is_valid_literal_location is now provided by mill_lang_common::is_valid_code_literal_location
+// We keep the same name via a simple alias to minimize code changes
+fn is_valid_literal_location(line: &str, pos: usize, len: usize) -> bool {
+    is_valid_code_literal_location(line, pos, len)
 }
 
 /// Validates that a constant name follows Go naming conventions

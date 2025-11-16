@@ -9,9 +9,8 @@ use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    refactoring::find_literal_occurrences,
-    validation::{count_unescaped_quotes, is_escaped, is_screaming_snake_case},
-    CodeRange, ExtractConstantAnalysis,
+    count_unescaped_quotes, is_escaped, is_screaming_snake_case, is_valid_code_literal_location,
+    refactoring::find_literal_occurrences, CodeRange, ExtractConstantAnalysis,
 };
 use tree_sitter::{Node, Parser, Point, Query, QueryCursor, StreamingIterator};
 
@@ -825,44 +824,9 @@ fn find_csharp_keyword_literal(line_text: &str, col: usize) -> Option<(String, C
     None
 }
 
-/// Validates whether a position in source code is a valid location for a literal.
-fn is_valid_csharp_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    // Count unescaped quotes before position to determine if we're inside a string literal.
-    let before = &line[..pos];
-    let single_quotes = count_unescaped_quotes(before, '\'');
-    let double_quotes = count_unescaped_quotes(before, '"');
-
-    // If odd number of unescaped quotes appear before the position, we're inside a string literal
-    if single_quotes % 2 == 1 || double_quotes % 2 == 1 {
-        return false;
-    }
-
-    // Check for C# single-line comment marker (//). Anything after it is a comment.
-    if let Some(comment_pos) = line.find("//") {
-        if pos > comment_pos {
-            return false;
-        }
-    }
-
-    // Check for block comment markers (/* ... */)
-    // This is a simplified check - doesn't handle multi-line block comments
-    // but catches single-line block comments like /* comment */ code
-    if let Some(block_start) = line.find("/*") {
-        if pos > block_start {
-            // Check if we're before the closing */
-            if let Some(block_end) = line[block_start..].find("*/") {
-                let actual_block_end = block_start + block_end + 2; // +2 for */
-                if pos < actual_block_end {
-                    return false;
-                }
-            } else {
-                // Block comment opened but not closed on this line - assume we're in it
-                return false;
-            }
-        }
-    }
-
-    true
+// is_valid_csharp_literal_location is now provided by mill_lang_common::is_valid_code_literal_location
+fn is_valid_csharp_literal_location(line: &str, pos: usize, len: usize) -> bool {
+    is_valid_code_literal_location(line, pos, len)
 }
 
 /// Finds the appropriate insertion point for a constant declaration in C# code.
