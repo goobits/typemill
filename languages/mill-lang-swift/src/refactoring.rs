@@ -1,10 +1,8 @@
 use lazy_static::lazy_static;
-use mill_foundation::protocol::{
-    EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
-};
+use mill_foundation::protocol::{EditPlan, EditType, TextEdit};
 use mill_lang_common::{
     find_literal_occurrences, is_escaped, is_valid_code_literal_location,
-    ExtractConstantEditPlanBuilder, LineExtractor,
+    refactoring::edit_plan_builder::EditPlanBuilder, ExtractConstantEditPlanBuilder, LineExtractor,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
 use regex::Regex;
@@ -69,24 +67,13 @@ pub fn plan_extract_function(
         description: format!("Replace selection with call to '{}'", function_name),
     };
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits: vec![insert_edit, replace_edit],
-        dependency_updates: vec![],
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify syntax after extraction".to_string(),
-            parameters: Default::default(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_function".to_string(),
-            intent_arguments: serde_json::json!({ "function_name": function_name }),
-            created_at: chrono::Utc::now(),
-            complexity: 3,
-            impact_areas: vec!["function_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_function")
+        .with_edits(vec![insert_edit, replace_edit])
+        .with_syntax_validation("Verify syntax after extraction")
+        .with_intent_args(serde_json::json!({ "function_name": function_name }))
+        .with_complexity(3)
+        .with_impact_area("function_extraction")
+        .build())
 }
 
 lazy_static! {
@@ -153,24 +140,13 @@ pub fn plan_inline_variable(
         description: format!("Remove declaration of '{}'", var_name),
     });
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: vec![],
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify syntax is valid".to_string(),
-            parameters: Default::default(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "inline_variable".to_string(),
-            intent_arguments: serde_json::json!({ "variable_name": var_name }),
-            created_at: chrono::Utc::now(),
-            complexity: 4,
-            impact_areas: vec!["variable_inlining".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "inline_variable")
+        .with_edits(edits)
+        .with_syntax_validation("Verify syntax is valid")
+        .with_intent_args(serde_json::json!({ "variable_name": var_name }))
+        .with_complexity(4)
+        .with_impact_area("variable_inlining")
+        .build())
 }
 
 pub fn plan_extract_variable(
@@ -240,27 +216,16 @@ pub fn plan_extract_variable(
         description: format!("Replace expression with '{}'", var_name),
     };
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits: vec![insert_edit, replace_edit],
-        dependency_updates: vec![],
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify syntax after extraction".to_string(),
-            parameters: Default::default(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_variable".to_string(),
-            intent_arguments: serde_json::json!({
-                "expression": expression_text,
-                "variable_name": var_name,
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: 2,
-            impact_areas: vec!["variable_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_variable")
+        .with_edits(vec![insert_edit, replace_edit])
+        .with_syntax_validation("Verify syntax after extraction")
+        .with_intent_args(serde_json::json!({
+            "expression": expression_text,
+            "variable_name": var_name,
+        }))
+        .with_complexity(2)
+        .with_impact_area("variable_extraction")
+        .build())
 }
 
 // ============================================================================
@@ -342,9 +307,7 @@ pub fn plan_extract_constant(
     let analysis = analyze_extract_constant(source, line, character, file_path)?;
 
     ExtractConstantEditPlanBuilder::new(analysis, name.to_string(), file_path.to_string())
-        .with_declaration_format(|name, value| {
-            format!("let {} = {}\n", name, value)
-        })
+        .with_declaration_format(|name, value| format!("let {} = {}\n", name, value))
         .map_err(|e| PluginApiError::invalid_input(e))
 }
 
@@ -403,7 +366,11 @@ fn find_swift_numeric_literal(line_text: &str, col: usize) -> Option<(String, u3
                     start -= 1;
                     break;
                 } else if let Some(&before_sign) = chars.get(start.saturating_sub(2)) {
-                    if !before_sign.is_alphanumeric() && before_sign != '_' && before_sign != ')' && before_sign != ']' {
+                    if !before_sign.is_alphanumeric()
+                        && before_sign != '_'
+                        && before_sign != ')'
+                        && before_sign != ']'
+                    {
                         start -= 1;
                         break;
                     }
@@ -432,13 +399,16 @@ fn find_swift_numeric_literal(line_text: &str, col: usize) -> Option<(String, u3
         } else if next == 'b' {
             // Binary: 0b1010, 0b1111_0000
             end += 2;
-            while end < chars.len() && (chars[end] == '0' || chars[end] == '1' || chars[end] == '_') {
+            while end < chars.len() && (chars[end] == '0' || chars[end] == '1' || chars[end] == '_')
+            {
                 end += 1;
             }
         } else if next == 'o' {
             // Octal: 0o77, 0o755
             end += 2;
-            while end < chars.len() && ((chars[end] >= '0' && chars[end] <= '7') || chars[end] == '_') {
+            while end < chars.len()
+                && ((chars[end] >= '0' && chars[end] <= '7') || chars[end] == '_')
+            {
                 end += 1;
             }
         } else {
@@ -559,7 +529,10 @@ fn find_swift_string_literal(line_text: &str, col: usize) -> Option<(String, u32
     // Look for opening quote before cursor - must be unescaped
     let mut opening_quote_pos: Option<usize> = None;
 
-    for (i, ch) in line_text[..=col.min(line_text.len().saturating_sub(1))].char_indices().rev() {
+    for (i, ch) in line_text[..=col.min(line_text.len().saturating_sub(1))]
+        .char_indices()
+        .rev()
+    {
         if ch == '"' && !is_escaped(line_text, i) {
             opening_quote_pos = Some(i);
             break;
@@ -574,7 +547,11 @@ fn find_swift_string_literal(line_text: &str, col: usize) -> Option<(String, u32
         while pos < chars.len() {
             if chars[pos] == '"' && !is_escaped(line_text, pos) {
                 // Found unescaped closing quote
-                return Some((line_text[start_pos..pos + 1].to_string(), start_pos as u32, (pos + 1) as u32));
+                return Some((
+                    line_text[start_pos..pos + 1].to_string(),
+                    start_pos as u32,
+                    (pos + 1) as u32,
+                ));
             }
             pos += 1;
         }

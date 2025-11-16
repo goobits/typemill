@@ -18,11 +18,12 @@
 use mill_plugin_api::PluginResult;
 
 use mill_foundation::protocol::{
-    EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit,
+    EditLocation, EditPlan, EditType, TextEdit,
 };
 use mill_lang_common::{
     find_literal_occurrences, is_valid_code_literal_location,
     CodeRange, ExtractConstantAnalysis, ExtractConstantEditPlanBuilder,
+    refactoring::edit_plan_builder::EditPlanBuilder,
 };
 #[cfg(test)]
 use mill_lang_common::{is_escaped, is_screaming_snake_case};
@@ -91,25 +92,16 @@ pub fn plan_extract_function(
         description: format!("Call new function '{}'", function_name),
     };
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits: vec![insert_edit, call_edit],
-        dependency_updates: vec![],
-        validations: vec![],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_function".to_string(),
-            intent_arguments: json!({
-                "start_line": start_line,
-                "end_line": end_line,
-                "function_name": function_name,
-                "file_path": file_path,
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: 2,
-            impact_areas: vec!["refactoring".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_function")
+        .with_edits(vec![insert_edit, call_edit])
+        .with_intent_args(json!({
+            "start_line": start_line,
+            "end_line": end_line,
+            "function_name": function_name,
+        }))
+        .with_complexity(2)
+        .with_impact_area("function_extraction")
+        .build())
 }
 
 /// Analyze variable declaration for inlining (C)
@@ -178,24 +170,15 @@ pub fn plan_inline_variable(
             }
         }
 
-        Ok(EditPlan {
-            source_file: file_path.to_string(),
-            edits,
-            dependency_updates: vec![],
-            validations: vec![],
-            metadata: EditPlanMetadata {
-                intent_name: "inline_variable".to_string(),
-                intent_arguments: json!({
-                    "variable_line": variable_line,
-                    "variable_col": variable_col,
-                    "file_path": file_path,
-                }),
-                created_at: chrono::Utc::now(),
-                complexity: 2,
-                impact_areas: vec!["refactoring".to_string()],
-                consolidation: None,
-            },
-        })
+        Ok(EditPlanBuilder::new(file_path, "inline_variable")
+            .with_edits(edits)
+            .with_intent_args(json!({
+                "variable_line": variable_line,
+                "variable_col": variable_col,
+            }))
+            .with_complexity(2)
+            .with_impact_area("variable_inlining")
+            .build())
     } else {
         Err(mill_plugin_api::PluginApiError::not_supported(
             "Could not find a simple integer variable declaration to inline.",
@@ -271,27 +254,18 @@ pub fn plan_extract_variable(
         description: format!("Replace expression with new variable '{}'", var_name),
     };
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits: vec![insert_edit, replace_edit],
-        dependency_updates: vec![],
-        validations: vec![],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_variable".to_string(),
-            intent_arguments: json!({
-                "start_line": start_line,
-                "start_col": start_col,
-                "end_line": end_line,
-                "end_col": end_col,
-                "variable_name": var_name,
-                "file_path": file_path,
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: 2,
-            impact_areas: vec!["refactoring".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_variable")
+        .with_edits(vec![insert_edit, replace_edit])
+        .with_intent_args(json!({
+            "start_line": start_line,
+            "start_col": start_col,
+            "end_line": end_line,
+            "end_col": end_col,
+            "variable_name": var_name,
+        }))
+        .with_complexity(2)
+        .with_impact_area("variable_extraction")
+        .build())
 }
 
 /// Analyzes source code to extract information about a numeric literal at a cursor position.

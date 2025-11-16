@@ -5,13 +5,11 @@
 //! - Extract Variable
 //! - Inline Variable
 
-use mill_foundation::protocol::{
-    EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
-};
+use mill_foundation::protocol::{EditPlan, EditType, TextEdit};
 use mill_lang_common::{
-    count_unescaped_quotes, is_escaped, is_screaming_snake_case, is_valid_code_literal_location,
-    refactoring::find_literal_occurrences, CodeRange, ExtractConstantAnalysis,
-    ExtractConstantEditPlanBuilder, LineExtractor,
+    is_escaped, is_valid_code_literal_location,
+    refactoring::{edit_plan_builder::EditPlanBuilder, find_literal_occurrences},
+    CodeRange, ExtractConstantAnalysis, ExtractConstantEditPlanBuilder, LineExtractor,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
 use tree_sitter::{Node, Parser, Point, Query, QueryCursor, StreamingIterator};
@@ -46,7 +44,9 @@ pub fn plan_extract_function(
         )
     })?;
     let end_node = find_node_at_point(root, end_point).ok_or_else(|| {
-        PluginApiError::invalid_input("Could not find a node at the end of the selection.".to_string())
+        PluginApiError::invalid_input(
+            "Could not find a node at the end of the selection.".to_string(),
+        )
     })?;
 
     let selected_text = &source[start_node.start_byte()..end_node.end_byte()];
@@ -56,7 +56,8 @@ pub fn plan_extract_function(
             PluginApiError::invalid_input("Selection is not inside a method.".to_string())
         })?;
 
-    let indent = LineExtractor::get_indentation_str(source, enclosing_method.start_position().row as u32);
+    let indent =
+        LineExtractor::get_indentation_str(source, enclosing_method.start_position().row as u32);
     let method_indent = format!("{}    ", indent);
 
     let new_method_text = format!(
@@ -95,24 +96,13 @@ pub fn plan_extract_function(
         description: format!("Replace selection with call to '{}'", function_name),
     };
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits: vec![insert_edit, replace_edit],
-        dependency_updates: vec![],
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify syntax after extraction".to_string(),
-            parameters: Default::default(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_method".to_string(),
-            intent_arguments: serde_json::json!({ "function_name": function_name }),
-            created_at: chrono::Utc::now(),
-            complexity: 3,
-            impact_areas: vec!["function_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_method")
+        .with_edits(vec![insert_edit, replace_edit])
+        .with_syntax_validation("Verify syntax after extraction")
+        .with_intent_args(serde_json::json!({ "function_name": function_name }))
+        .with_complexity(3)
+        .with_impact_area("function_extraction")
+        .build())
 }
 
 /// Generate edit plan for extract variable refactoring
@@ -159,7 +149,8 @@ pub fn plan_extract_variable(
             )
         })?;
 
-    let indent = LineExtractor::get_indentation_str(source, insertion_statement.start_position().row as u32);
+    let indent =
+        LineExtractor::get_indentation_str(source, insertion_statement.start_position().row as u32);
     let var_name = variable_name.unwrap_or_else(|| "extracted".to_string());
 
     let declaration_text = format!("var {} = {};", var_name, expression_text);
@@ -190,27 +181,16 @@ pub fn plan_extract_variable(
         description: format!("Replace expression with '{}'", var_name),
     };
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits: vec![insert_edit, replace_edit],
-        dependency_updates: vec![],
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify syntax after extraction".to_string(),
-            parameters: Default::default(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_variable".to_string(),
-            intent_arguments: serde_json::json!({
-                "expression": expression_text,
-                "variable_name": var_name,
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: 2,
-            impact_areas: vec!["variable_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_variable")
+        .with_edits(vec![insert_edit, replace_edit])
+        .with_syntax_validation("Verify syntax after extraction")
+        .with_intent_args(serde_json::json!({
+            "expression": expression_text,
+            "variable_name": var_name,
+        }))
+        .with_complexity(2)
+        .with_impact_area("variable_extraction")
+        .build())
 }
 
 /// Generate edit plan for inline variable refactoring
@@ -279,24 +259,13 @@ pub fn plan_inline_variable(
         description: format!("Remove declaration of '{}'", var_name),
     });
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: vec![],
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify syntax is valid".to_string(),
-            parameters: Default::default(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "inline_variable".to_string(),
-            intent_arguments: serde_json::json!({ "variable_name": var_name }),
-            created_at: chrono::Utc::now(),
-            complexity: 4,
-            impact_areas: vec!["variable_inlining".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "inline_variable")
+        .with_edits(edits)
+        .with_syntax_validation("Verify syntax is valid")
+        .with_intent_args(serde_json::json!({ "variable_name": var_name }))
+        .with_complexity(4)
+        .with_impact_area("variable_inlining")
+        .build())
 }
 
 // Helper functions
@@ -343,7 +312,6 @@ fn find_ancestor_of_kind<'a>(node: Node<'a>, kind: &str) -> Option<Node<'a>> {
     }
     None
 }
-
 
 fn node_to_location(node: Node) -> CodeRange {
     let range = node.range();
@@ -460,8 +428,8 @@ pub(crate) fn analyze_extract_constant(
         .ok_or_else(|| PluginApiError::invalid_input("Invalid line number".to_string()))?;
 
     // Find the literal at the cursor position
-    let found_literal = find_csharp_literal_at_position(line_text, character as usize)
-        .ok_or_else(|| {
+    let found_literal =
+        find_csharp_literal_at_position(line_text, character as usize).ok_or_else(|| {
             PluginApiError::invalid_input("No literal found at the specified location".to_string())
         })?;
 
@@ -474,7 +442,8 @@ pub(crate) fn analyze_extract_constant(
     };
 
     // Find all occurrences of this literal value in the source
-    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_csharp_literal_location);
+    let occurrence_ranges =
+        find_literal_occurrences(source, &literal_value, is_valid_csharp_literal_location);
 
     // Insertion point: at class level (after opening brace of class)
     let insertion_point = find_csharp_insertion_point_for_constant(source)?;
@@ -567,7 +536,10 @@ pub fn plan_extract_constant(
 
     ExtractConstantEditPlanBuilder::new(analysis, name.to_string(), file_path.to_string())
         .with_declaration_format(|name, value| {
-            format!("{}private const {} {} = {};\n", const_indent, csharp_type, name, value)
+            format!(
+                "{}private const {} {} = {};\n",
+                const_indent, csharp_type, name, value
+            )
         })
         .map_err(|e| PluginApiError::invalid_input(e))
 }
@@ -606,19 +578,31 @@ fn find_csharp_numeric_literal(line_text: &str, col: usize) -> Option<(String, C
     }
 
     // Check for hexadecimal literal (0x or 0X prefix)
-    let is_hex = col >= 2 && (chars[col - 1] == 'x' || chars[col - 1] == 'X') && chars[col - 2] == '0'
+    let is_hex = col >= 2
+        && (chars[col - 1] == 'x' || chars[col - 1] == 'X')
+        && chars[col - 2] == '0'
         || col >= 1 && (chars[col] == 'x' || chars[col] == 'X') && col > 0 && chars[col - 1] == '0'
-        || col > 0 && chars[col - 1].is_ascii_hexdigit() && col >= 2 && (chars[col - 2] == 'x' || chars[col - 2] == 'X');
+        || col > 0
+            && chars[col - 1].is_ascii_hexdigit()
+            && col >= 2
+            && (chars[col - 2] == 'x' || chars[col - 2] == 'X');
 
     // If we're in a hex literal, find its boundaries
     if is_hex {
         // Find the start (should be '0x' or '0X')
         let mut start = col;
         while start > 0 {
-            if chars[start] == '0' && start + 1 < chars.len() && (chars[start + 1] == 'x' || chars[start + 1] == 'X') {
+            if chars[start] == '0'
+                && start + 1 < chars.len()
+                && (chars[start + 1] == 'x' || chars[start + 1] == 'X')
+            {
                 break;
             }
-            if !chars[start].is_ascii_hexdigit() && chars[start] != 'x' && chars[start] != 'X' && chars[start] != '_' {
+            if !chars[start].is_ascii_hexdigit()
+                && chars[start] != 'x'
+                && chars[start] != 'X'
+                && chars[start] != '_'
+            {
                 start += 1;
                 break;
             }
@@ -632,7 +616,12 @@ fn find_csharp_numeric_literal(line_text: &str, col: usize) -> Option<(String, C
             if chars[i] == 'x' || chars[i] == 'X' {
                 found_x = true;
                 end = i + 1;
-            } else if found_x && (chars[i].is_ascii_hexdigit() || chars[i] == '_' || chars[i] == 'L' || chars[i] == 'l') {
+            } else if found_x
+                && (chars[i].is_ascii_hexdigit()
+                    || chars[i] == '_'
+                    || chars[i] == 'L'
+                    || chars[i] == 'l')
+            {
                 end = i + 1;
             } else if found_x {
                 break;
@@ -684,7 +673,18 @@ fn find_csharp_numeric_literal(line_text: &str, col: usize) -> Option<(String, C
     let mut end = col;
     for i in col..chars.len() {
         let c = chars[i];
-        if c.is_ascii_digit() || c == '.' || c == '_' || c == 'f' || c == 'F' || c == 'L' || c == 'l' || c == 'd' || c == 'D' || c == 'm' || c == 'M' {
+        if c.is_ascii_digit()
+            || c == '.'
+            || c == '_'
+            || c == 'f'
+            || c == 'F'
+            || c == 'L'
+            || c == 'l'
+            || c == 'd'
+            || c == 'D'
+            || c == 'm'
+            || c == 'M'
+        {
             end = i + 1;
         } else {
             break;
@@ -977,7 +977,9 @@ class Program
             .iter()
             .find(|e| e.edit_type == EditType::Insert)
             .unwrap();
-        assert!(insert_edit.new_text.contains("private const int ANSWER = 42;"));
+        assert!(insert_edit
+            .new_text
+            .contains("private const int ANSWER = 42;"));
     }
 
     #[test]
@@ -1069,7 +1071,10 @@ class Program
         let line = r#"string path = "C:\\Users\\Admin\\file.txt";"#;
         // Position 20 is inside the string literal
         let result = find_csharp_string_literal(line, 20);
-        assert!(result.is_some(), "Should find string with escaped backslashes");
+        assert!(
+            result.is_some(),
+            "Should find string with escaped backslashes"
+        );
         let (literal, _) = result.unwrap();
         assert_eq!(literal, r#""C:\\Users\\Admin\\file.txt""#);
     }
@@ -1213,7 +1218,10 @@ class Colors
 
         let plan = result.unwrap();
         // Check that we have the expected edits
-        assert!(plan.edits.len() >= 2, "Should have insertion and replacement edits");
+        assert!(
+            plan.edits.len() >= 2,
+            "Should have insertion and replacement edits"
+        );
     }
 
     #[test]
@@ -1237,7 +1245,11 @@ class Program
 
         let plan = result.unwrap();
         // Should find both occurrences
-        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits");
+        assert_eq!(
+            plan.edits.len(),
+            3,
+            "Should have 1 insert + 2 replace edits"
+        );
     }
 
     #[test]
@@ -1248,7 +1260,11 @@ string msg = "Rate is \"8\"";
 int value = 8;"#;
         let occurrences = find_literal_occurrences(source, "8", is_valid_csharp_literal_location);
         // Should find 2 occurrences (lines 0 and 2), but not the one inside the string
-        assert_eq!(occurrences.len(), 2, "Should find exactly 2 valid occurrences");
+        assert_eq!(
+            occurrences.len(),
+            2,
+            "Should find exactly 2 valid occurrences"
+        );
         assert_eq!(occurrences[0].start_line, 0);
         assert_eq!(occurrences[1].start_line, 2);
     }
@@ -1273,7 +1289,11 @@ class Program
         );
 
         let plan = result.unwrap();
-        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits");
+        assert_eq!(
+            plan.edits.len(),
+            3,
+            "Should have 1 insert + 2 replace edits"
+        );
     }
 
     #[test]
@@ -1296,6 +1316,10 @@ class Program
         );
 
         let plan = result.unwrap();
-        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits");
+        assert_eq!(
+            plan.edits.len(),
+            3,
+            "Should have 1 insert + 2 replace edits"
+        );
     }
 }

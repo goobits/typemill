@@ -5,17 +5,15 @@
 //! - Extract variable
 //! - Inline variable
 
-use mill_foundation::protocol::{
-    EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
-};
+use mill_foundation::protocol::{EditPlan, EditType, TextEdit};
 use mill_lang_common::find_literal_occurrences;
 use mill_lang_common::is_escaped;
 use mill_lang_common::is_valid_code_literal_location;
 use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
+use mill_lang_common::refactoring::edit_plan_builder::EditPlanBuilder;
 use mill_lang_common::{ExtractConstantAnalysis, LineExtractor};
 use mill_plugin_api::{PluginApiError, PluginResult};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use tree_sitter::{Node, Parser, Point, Query, QueryCursor, StreamingIterator};
 
 fn get_language() -> tree_sitter::Language {
@@ -109,24 +107,13 @@ pub(crate) fn plan_extract_function(
         description: format!("Replace selection with call to '{}'", function_name),
     };
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits: vec![insert_edit, replace_edit],
-        dependency_updates: vec![],
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify syntax after extraction".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_function".to_string(),
-            intent_arguments: serde_json::json!({ "function_name": function_name }),
-            created_at: chrono::Utc::now(),
-            complexity: 3,
-            impact_areas: vec!["function_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_function")
+        .with_edits(vec![insert_edit, replace_edit])
+        .with_syntax_validation("Verify syntax after extraction")
+        .with_intent_args(serde_json::json!({ "function_name": function_name }))
+        .with_complexity(3)
+        .with_impact_area("function_extraction")
+        .build())
 }
 
 /// Generate edit plan for extract variable refactoring
@@ -206,27 +193,16 @@ pub(crate) fn plan_extract_variable(
         description: format!("Replace expression with '{}'", var_name),
     };
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits: vec![insert_edit, replace_edit],
-        dependency_updates: vec![],
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify syntax after extraction".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_variable".to_string(),
-            intent_arguments: serde_json::json!({
-                "expression": expression_text,
-                "variable_name": var_name,
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: 2,
-            impact_areas: vec!["variable_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_variable")
+        .with_edits(vec![insert_edit, replace_edit])
+        .with_syntax_validation("Verify syntax after extraction")
+        .with_intent_args(serde_json::json!({
+            "expression": expression_text,
+            "variable_name": var_name,
+        }))
+        .with_complexity(2)
+        .with_impact_area("variable_extraction")
+        .build())
 }
 
 /// Generate edit plan for inline variable refactoring
@@ -295,24 +271,13 @@ pub(crate) fn plan_inline_variable(
         description: format!("Remove declaration of '{}'", var_name),
     });
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: vec![],
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify syntax is valid".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "inline_variable".to_string(),
-            intent_arguments: serde_json::json!({ "variable_name": var_name }),
-            created_at: chrono::Utc::now(),
-            complexity: 4,
-            impact_areas: vec!["variable_inlining".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "inline_variable")
+        .with_edits(edits)
+        .with_syntax_validation("Verify syntax is valid")
+        .with_intent_args(serde_json::json!({ "variable_name": var_name }))
+        .with_complexity(4)
+        .with_impact_area("variable_inlining")
+        .build())
 }
 
 // Helper functions

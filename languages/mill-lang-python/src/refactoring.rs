@@ -11,15 +11,13 @@ use crate::parser::{
     analyze_python_expression_range, extract_python_functions, extract_python_variables,
     find_variable_at_position, get_variable_usages_in_scope,
 };
-use mill_foundation::protocol::{
-    EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
-};
+use mill_foundation::protocol::{EditPlan, EditType, TextEdit};
 use mill_lang_common::{
-    count_unescaped_quotes, find_literal_occurrences, ExtractConstantAnalysis,
-    ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis, LineExtractor,
+    count_unescaped_quotes, find_literal_occurrences, refactoring::edit_plan_builder::EditPlanBuilder,
+    ExtractConstantAnalysis, ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis,
+    LineExtractor,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
-use std::collections::HashMap;
 
 // Re-export for use within the plugin
 pub use mill_lang_common::CodeRange;
@@ -211,26 +209,16 @@ pub(crate) fn plan_extract_function(
         priority: 90,
         description: format!("Replace selected code with call to '{}'", new_function_name),
     });
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: Vec::new(),
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify Python syntax is valid after extraction".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_function".to_string(),
-            intent_arguments: serde_json::json!(
-                { "range" : range, "function_name" : new_function_name }
-            ),
-            created_at: chrono::Utc::now(),
-            complexity: analysis.complexity_score.min(10) as u8,
-            impact_areas: vec!["function_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_function")
+        .with_edits(edits)
+        .with_syntax_validation("Verify Python syntax is valid after extraction")
+        .with_intent_args(serde_json::json!({
+            "range": range,
+            "function_name": new_function_name
+        }))
+        .with_complexity(analysis.complexity_score.min(10) as u8)
+        .with_impact_area("function_extraction")
+        .build())
 }
 /// Generate edit plan for inline variable refactoring (Python)
 pub(crate) fn plan_inline_variable(
@@ -281,27 +269,17 @@ pub(crate) fn plan_inline_variable(
         priority: 50,
         description: format!("Remove declaration of '{}'", analysis.variable_name),
     });
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: Vec::new(),
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify Python syntax is valid after inlining".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "inline_variable".to_string(),
-            intent_arguments: serde_json::json!(
-                { "variable" : analysis.variable_name, "line" : variable_line, "column" :
-                variable_col }
-            ),
-            created_at: chrono::Utc::now(),
-            complexity: (analysis.usage_locations.len().min(10)) as u8,
-            impact_areas: vec!["variable_inlining".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "inline_variable")
+        .with_edits(edits)
+        .with_syntax_validation("Verify Python syntax is valid after inlining")
+        .with_intent_args(serde_json::json!({
+            "variable": analysis.variable_name,
+            "line": variable_line,
+            "column": variable_col
+        }))
+        .with_complexity_from_count(analysis.usage_locations.len())
+        .with_impact_area("variable_inlining")
+        .build())
 }
 /// Generate edit plan for extract variable refactoring (Python)
 pub(crate) fn plan_extract_variable(
@@ -346,28 +324,20 @@ pub(crate) fn plan_extract_variable(
         priority: 90,
         description: format!("Replace expression with '{}'", var_name),
     });
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: Vec::new(),
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify Python syntax is valid after extraction".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_variable".to_string(),
-            intent_arguments: serde_json::json!(
-                { "expression" : analysis.expression, "variableName" : var_name,
-                "startLine" : start_line, "startCol" : start_col, "endLine" : end_line,
-                "endCol" : end_col }
-            ),
-            created_at: chrono::Utc::now(),
-            complexity: 2,
-            impact_areas: vec!["variable_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_variable")
+        .with_edits(edits)
+        .with_syntax_validation("Verify Python syntax is valid after extraction")
+        .with_intent_args(serde_json::json!({
+            "expression": analysis.expression,
+            "variableName": var_name,
+            "startLine": start_line,
+            "startCol": start_col,
+            "endLine": end_line,
+            "endCol": end_col
+        }))
+        .with_complexity(2)
+        .with_impact_area("variable_extraction")
+        .build())
 }
 /// Extract text from a Python code range
 fn extract_range_text(source: &str, range: &CodeRange) -> PluginResult<String> {

@@ -4,14 +4,13 @@
 
 use crate::constants;
 use mill_foundation::protocol::{
-    EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
+    EditLocation, EditPlan, EditType, TextEdit,
 };
 use mill_lang_common::{
     find_literal_occurrences, is_valid_code_literal_location, CodeRange, ExtractConstantAnalysis,
-    ExtractConstantEditPlanBuilder, LineExtractor,
+    ExtractConstantEditPlanBuilder, LineExtractor, refactoring::edit_plan_builder::EditPlanBuilder,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
-use std::collections::HashMap;
 
 /// Plan extract function refactoring for Rust
 pub fn plan_extract_function(
@@ -79,27 +78,16 @@ pub fn plan_extract_function(
         description: format!("Create extracted function '{}'", function_name),
     });
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: Vec::new(),
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify Rust syntax is valid after extraction".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_function".to_string(),
-            intent_arguments: serde_json::json!({
-                "function_name": function_name,
-                "line_count": end_line - start_line + 1
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: 5,
-            impact_areas: vec!["function_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_function")
+        .with_edits(edits)
+        .with_syntax_validation("Verify Rust syntax is valid after extraction")
+        .with_intent_args(serde_json::json!({
+            "function_name": function_name,
+            "line_count": end_line - start_line + 1
+        }))
+        .with_complexity(5)
+        .with_impact_area("function_extraction")
+        .build())
 }
 
 /// Plan extract variable refactoring for Rust
@@ -180,27 +168,16 @@ pub fn plan_extract_variable(
         description: format!("Replace expression with '{}'", var_name),
     });
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: Vec::new(),
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify Rust syntax is valid after extraction".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_variable".to_string(),
-            intent_arguments: serde_json::json!({
-                "variable_name": var_name,
-                "expression": expression
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: 3,
-            impact_areas: vec!["variable_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_variable")
+        .with_edits(edits)
+        .with_syntax_validation("Verify Rust syntax is valid after extraction")
+        .with_intent_args(serde_json::json!({
+            "variable_name": var_name,
+            "expression": expression
+        }))
+        .with_complexity(3)
+        .with_impact_area("variable_extraction")
+        .build())
 }
 
 /// Infer the explicit type from a literal value
@@ -722,27 +699,16 @@ pub fn plan_inline_variable(
             description: format!("Remove variable declaration for '{}'", var_name),
         });
 
-        Ok(EditPlan {
-            source_file: file_path.to_string(),
-            edits,
-            dependency_updates: Vec::new(),
-            validations: vec![ValidationRule {
-                rule_type: ValidationType::SyntaxCheck,
-                description: "Verify Rust syntax is valid after inlining".to_string(),
-                parameters: HashMap::new(),
-            }],
-            metadata: EditPlanMetadata {
-                intent_name: "inline_variable".to_string(),
-                intent_arguments: serde_json::json!({
-                    "variable_name": var_name,
-                    "value": initializer
-                }),
-                created_at: chrono::Utc::now(),
-                complexity: 3,
-                impact_areas: vec!["variable_inlining".to_string()],
-                consolidation: None,
-            },
-        })
+        Ok(EditPlanBuilder::new(file_path, "inline_variable")
+            .with_edits(edits)
+            .with_syntax_validation("Verify Rust syntax is valid after inlining")
+            .with_intent_args(serde_json::json!({
+                "variable_name": var_name,
+                "value": initializer
+            }))
+            .with_complexity(3)
+            .with_impact_area("variable_inlining")
+            .build())
     } else {
         Err(PluginApiError::invalid_input(format!(
             "Could not find variable declaration at {}:{}",

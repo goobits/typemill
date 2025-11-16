@@ -3,16 +3,14 @@
 //! This module provides AST-based refactoring capabilities for Go code.
 
 use lazy_static::lazy_static;
-use mill_foundation::protocol::{
-    EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
-};
+use mill_foundation::protocol::{EditType, TextEdit};
 use mill_lang_common::{
-    count_unescaped_quotes, find_literal_occurrences, is_screaming_snake_case,
-    is_valid_code_literal_location, CodeRange, ExtractConstantAnalysis,
-    ExtractConstantEditPlanBuilder, LineExtractor,
+    find_literal_occurrences, is_screaming_snake_case,
+    is_valid_code_literal_location, refactoring::edit_plan_builder::EditPlanBuilder, CodeRange,
+    ExtractConstantAnalysis, ExtractConstantEditPlanBuilder, LineExtractor,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
-use std::collections::HashMap;
+use mill_foundation::protocol::EditPlan;
 
 /// Plan extract function refactoring for Go
 pub fn plan_extract_function(
@@ -50,12 +48,12 @@ pub fn plan_extract_function(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Insert,
-        location: EditLocation {
+        location: CodeRange {
             start_line,
-            start_column: 0,
+            start_col: 0,
             end_line: start_line,
-            end_column: 0,
-        },
+            end_col: 0,
+        }.into(),
         original_text: String::new(),
         new_text: new_function,
         priority: 100,
@@ -66,39 +64,28 @@ pub fn plan_extract_function(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Replace,
-        location: EditLocation {
+        location: CodeRange {
             start_line,
-            start_column: 0,
+            start_col: 0,
             end_line,
-            end_column: lines[end_line as usize].len() as u32,
-        },
+            end_col: lines[end_line as usize].len() as u32,
+        }.into(),
         original_text: selected_code.clone(),
         new_text: function_call,
         priority: 90,
         description: format!("Replace code with call to '{}'", function_name),
     });
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: Vec::new(),
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify Go syntax is valid after extraction".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_function".to_string(),
-            intent_arguments: serde_json::json!({
-                "function_name": function_name,
-                "line_count": end_line - start_line + 1
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: 5,
-            impact_areas: vec!["function_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_function")
+        .with_edits(edits)
+        .with_syntax_validation("Verify Go syntax is valid after extraction")
+        .with_intent_args(serde_json::json!({
+            "function_name": function_name,
+            "line_count": end_line - start_line + 1
+        }))
+        .with_complexity(5)
+        .with_impact_area("function_extraction")
+        .build())
 }
 
 /// Plan extract variable refactoring for Go
@@ -151,12 +138,12 @@ pub fn plan_extract_variable(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Insert,
-        location: EditLocation {
+        location: CodeRange {
             start_line,
-            start_column: 0,
+            start_col: 0,
             end_line: start_line,
-            end_column: 0,
-        },
+            end_col: 0,
+        }.into(),
         original_text: String::new(),
         new_text: declaration,
         priority: 100,
@@ -167,39 +154,28 @@ pub fn plan_extract_variable(
     edits.push(TextEdit {
         file_path: None,
         edit_type: EditType::Replace,
-        location: EditLocation {
+        location: CodeRange {
             start_line,
-            start_column: start_col,
+            start_col,
             end_line,
-            end_column: end_col,
-        },
+            end_col,
+        }.into(),
         original_text: expression.clone(),
         new_text: var_name.clone(),
         priority: 90,
         description: format!("Replace expression with '{}'", var_name),
     });
 
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: Vec::new(),
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify Go syntax is valid after extraction".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_variable".to_string(),
-            intent_arguments: serde_json::json!({
-                "variable_name": var_name,
-                "expression": expression
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: 3,
-            impact_areas: vec!["variable_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    Ok(EditPlanBuilder::new(file_path, "extract_variable")
+        .with_edits(edits)
+        .with_syntax_validation("Verify Go syntax is valid after extraction")
+        .with_intent_args(serde_json::json!({
+            "variable_name": var_name,
+            "expression": expression
+        }))
+        .with_complexity(3)
+        .with_impact_area("variable_extraction")
+        .build())
 }
 
 lazy_static! {
@@ -251,12 +227,12 @@ pub fn plan_inline_variable(
                 edits.push(TextEdit {
                     file_path: None,
                     edit_type: EditType::Replace,
-                    location: EditLocation {
+                    location: CodeRange {
                         start_line: line_num,
-                        start_column: mat.start() as u32,
+                        start_col: mat.start() as u32,
                         end_line: line_num,
-                        end_column: mat.end() as u32,
-                    },
+                        end_col: mat.end() as u32,
+                    }.into(),
                     original_text: var_name.to_string(),
                     new_text: initializer.to_string(),
                     priority: 100,
@@ -269,39 +245,28 @@ pub fn plan_inline_variable(
         edits.push(TextEdit {
             file_path: None,
             edit_type: EditType::Delete,
-            location: EditLocation {
+            location: CodeRange {
                 start_line: variable_line,
-                start_column: 0,
+                start_col: 0,
                 end_line: variable_line,
-                end_column: line_text.len() as u32,
-            },
+                end_col: line_text.len() as u32,
+            }.into(),
             original_text: line_text.to_string(),
             new_text: String::new(),
             priority: 50,
             description: format!("Remove variable declaration for '{}'", var_name),
         });
 
-        Ok(EditPlan {
-            source_file: file_path.to_string(),
-            edits,
-            dependency_updates: Vec::new(),
-            validations: vec![ValidationRule {
-                rule_type: ValidationType::SyntaxCheck,
-                description: "Verify Go syntax is valid after inlining".to_string(),
-                parameters: HashMap::new(),
-            }],
-            metadata: EditPlanMetadata {
-                intent_name: "inline_variable".to_string(),
-                intent_arguments: serde_json::json!({
-                    "variable_name": var_name,
-                    "value": initializer
-                }),
-                created_at: chrono::Utc::now(),
-                complexity: 3,
-                impact_areas: vec!["variable_inlining".to_string()],
-                consolidation: None,
-            },
-        })
+        Ok(EditPlanBuilder::new(file_path, "inline_variable")
+            .with_edits(edits)
+            .with_syntax_validation("Verify Go syntax is valid after inlining")
+            .with_intent_args(serde_json::json!({
+                "variable_name": var_name,
+                "value": initializer
+            }))
+            .with_complexity(3)
+            .with_impact_area("variable_inlining")
+            .build())
     } else {
         Err(PluginApiError::internal(format!(
             "Could not find variable declaration at line {}",
@@ -385,28 +350,17 @@ pub fn plan_extract_constant(
             });
         }
 
-        Ok(EditPlan {
-            source_file: file_path.to_string(),
-            edits,
-            dependency_updates: Vec::new(),
-            validations: vec![ValidationRule {
-                rule_type: ValidationType::SyntaxCheck,
-                description: "Verify Go syntax is valid after constant extraction".to_string(),
-                parameters: HashMap::new(),
-            }],
-            metadata: EditPlanMetadata {
-                intent_name: "extract_constant".to_string(),
-                intent_arguments: serde_json::json!({
-                    "literal": analysis.literal_value,
-                    "constantName": name,
-                    "occurrences": analysis.occurrence_ranges.len(),
-                }),
-                created_at: chrono::Utc::now(),
-                complexity: (analysis.occurrence_ranges.len().min(10)) as u8,
-                impact_areas: vec!["constant_extraction".to_string()],
-                consolidation: None,
-            },
-        })
+        Ok(EditPlanBuilder::new(file_path, "extract_constant")
+            .with_edits(edits)
+            .with_syntax_validation("Verify Go syntax is valid after constant extraction")
+            .with_intent_args(serde_json::json!({
+                "literal": analysis.literal_value,
+                "constantName": name,
+                "occurrences": analysis.occurrence_ranges.len(),
+            }))
+            .with_complexity_from_count(analysis.occurrence_ranges.len())
+            .with_impact_area("constant_extraction")
+            .build())
     }
 }
 
