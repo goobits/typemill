@@ -647,6 +647,129 @@ fn ast_extract_constant_ts_js(
 
 // --- Visitors (moved from mill-ast) ---
 
+/// Helper function to check if a character at a given position is escaped.
+/// A character is escaped if it's preceded by an odd number of consecutive backslashes.
+///
+/// # Examples
+/// - `"He said \"hi\""` - The quote at position 9 is escaped (preceded by 1 backslash)
+/// - `"Path: C:\\Users"` - The 'U' at position 11 is not escaped (preceded by 2 backslashes forming \\)
+///
+/// # Note on backslash counting
+/// Backslashes work in pairs: `\\` produces one literal backslash.
+/// - 1 backslash before a char = escaped
+/// - 2 backslashes before a char = not escaped (the 2 backslashes form a literal \)
+/// - 3 backslashes before a char = escaped (2 form a literal \, 1 escapes the char)
+fn is_escaped(text: &str, pos: usize) -> bool {
+    if pos == 0 {
+        return false;
+    }
+
+    let chars: Vec<char> = text.chars().collect();
+    let mut backslash_count = 0;
+    let mut check_pos = pos;
+
+    // Count consecutive backslashes IMMEDIATELY before the position
+    while check_pos > 0 {
+        check_pos -= 1;
+        if check_pos < chars.len() && chars[check_pos] == '\\' {
+            backslash_count += 1;
+        } else {
+            break;
+        }
+    }
+
+    // If odd number of backslashes, the character is escaped
+    backslash_count % 2 == 1
+}
+
+/// Helper to check if a character is part of a numeric literal
+fn is_numeric_char(ch: Option<char>) -> bool {
+    match ch {
+        Some(c) => c.is_ascii_digit() || c == '.' || c == '_',
+        None => false,
+    }
+}
+
+/// Scans forward from a position to find the end of a regular number (not hex/binary/octal)
+/// Handles: integers, floats, scientific notation (e.g., 1.5e-10, 2E+5)
+fn scan_regular_number(line_text: &str, start: usize) -> Option<usize> {
+    let chars: Vec<char> = line_text.chars().collect();
+    let mut pos = start;
+
+    // Skip optional sign
+    if pos < chars.len() && (chars[pos] == '-' || chars[pos] == '+') {
+        pos += 1;
+    }
+
+    // Scan digits before decimal point
+    let digit_start = pos;
+    while pos < chars.len() && (chars[pos].is_ascii_digit() || chars[pos] == '_') {
+        pos += 1;
+    }
+
+    // Handle decimal point
+    if pos < chars.len() && chars[pos] == '.' {
+        pos += 1;
+        // Scan digits after decimal point
+        while pos < chars.len() && (chars[pos].is_ascii_digit() || chars[pos] == '_') {
+            pos += 1;
+        }
+    }
+
+    // Must have at least one digit
+    if pos == digit_start || (pos == digit_start + 1 && chars.get(digit_start) == Some(&'.')) {
+        return None;
+    }
+
+    // Handle scientific notation (e or E)
+    if pos < chars.len() {
+        let ch = chars[pos].to_ascii_lowercase();
+        if ch == 'e' {
+            pos += 1;
+            // Optional sign after 'e'
+            if pos < chars.len() && (chars[pos] == '+' || chars[pos] == '-') {
+                pos += 1;
+            }
+            // Must have digits in exponent
+            let exp_start = pos;
+            while pos < chars.len() && (chars[pos].is_ascii_digit() || chars[pos] == '_') {
+                pos += 1;
+            }
+            if pos == exp_start {
+                // Invalid: 'e' without exponent
+                return None;
+            }
+        }
+    }
+
+    Some(pos)
+}
+
+/// Validates that a string represents a valid TypeScript/JavaScript number
+fn is_valid_number(text: &str) -> bool {
+    if text.is_empty() {
+        return false;
+    }
+
+    // Remove underscores (numeric separators)
+    let cleaned = text.replace('_', "");
+
+    // Check for hex, binary, octal
+    if cleaned.starts_with("0x") || cleaned.starts_with("0X") {
+        return cleaned.len() > 2 && cleaned[2..].chars().all(|c| c.is_ascii_hexdigit());
+    }
+    if cleaned.starts_with("0b") || cleaned.starts_with("0B") {
+        return cleaned.len() > 2 && cleaned[2..].chars().all(|c| c == '0' || c == '1');
+    }
+    if cleaned.starts_with("0o") || cleaned.starts_with("0O") {
+        return cleaned.len() > 2 && cleaned[2..].chars().all(|c| c >= '0' && c <= '7');
+    }
+
+    // For regular numbers, try parsing as f64
+    // This handles integers, floats, scientific notation, and negative numbers
+    cleaned.parse::<f64>().is_ok()
+}
+
 /// Visitor to find a literal at a specific line and character position
 struct LiteralFinder {
     target_line: u32,
@@ -704,21 +827,86 @@ impl LiteralFinder {
 
     fn find_numeric_literal(&self, line_text: &str) -> Option<CodeRange> {
         let col = self.target_character as usize;
+        if col >= line_text.len() {
+            return None;
+        }
 
-        // Find the start of the number
-        let start = line_text[..col]
-            .rfind(|c: char| !c.is_ascii_digit() && c != '.')
-            .map(|p| p + 1)
-            .unwrap_or(0);
+        // Try to find the start of a numeric literal
+        // TypeScript supports: integers, floats, negative numbers, scientific notation, hex, binary, octal
 
-        // Find the end of the number
-        let end = col + line_text[col..]
-            .find(|c: char| !c.is_ascii_digit() && c != '.')
-            .unwrap_or(line_text.len() - col);
+        // Scan backwards to find potential start of number
+        let mut start = col;
+
+        // Handle the case where cursor is right after a number
+        if col > 0 && !is_numeric_char(line_text.chars().nth(col)) {
+            start = col.saturating_sub(1);
+        }
+
+        // Scan backwards to find the actual start
+        while start > 0 {
+            let prev_char = line_text.chars().nth(start.saturating_sub(1));
+            if let Some(ch) = prev_char {
+                if is_numeric_char(Some(ch)) {
+                    start -= 1;
+                } else if ch == '-' || ch == '+' {
+                    // Check if this is a sign (not an operator)
+                    // It's a sign if preceded by non-identifier character or at start
+                    if start == 1 {
+                        start -= 1;
+                        break;
+                    } else if let Some(before_sign) = line_text.chars().nth(start.saturating_sub(2)) {
+                        if !before_sign.is_alphanumeric() && before_sign != '_' && before_sign != ')' && before_sign != ']' {
+                            start -= 1;
+                            break;
+                        }
+                    }
+                    break;
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        // Scan forward to find the end
+        let mut end = start;
+        let chars: Vec<char> = line_text.chars().collect();
+
+        // Check for hex (0x), binary (0b), or octal (0o) prefix
+        if end < chars.len() && chars.get(end) == Some(&'0') && end + 1 < chars.len() {
+            let next = chars[end + 1].to_ascii_lowercase();
+            if next == 'x' {
+                // Hexadecimal
+                end += 2;
+                while end < chars.len() && chars[end].is_ascii_hexdigit() {
+                    end += 1;
+                }
+            } else if next == 'b' {
+                // Binary
+                end += 2;
+                while end < chars.len() && (chars[end] == '0' || chars[end] == '1') {
+                    end += 1;
+                }
+            } else if next == 'o' {
+                // Octal
+                end += 2;
+                while end < chars.len() && chars[end] >= '0' && chars[end] <= '7' {
+                    end += 1;
+                }
+            } else {
+                // Regular number
+                end = scan_regular_number(line_text, start)?;
+            }
+        } else {
+            // Regular number (including negative, floats, scientific notation)
+            end = scan_regular_number(line_text, start)?;
+        }
 
         if start < end && end <= line_text.len() {
             let text = &line_text[start..end];
-            if text.chars().any(|c| c.is_ascii_digit()) {
+            // Validate that this is actually a valid number
+            if is_valid_number(text) {
                 return Some(CodeRange {
                     start_line: self.target_line,
                     start_col: start as u32,
@@ -727,30 +915,46 @@ impl LiteralFinder {
                 });
             }
         }
+
         None
     }
 
     fn find_string_literal(&self, line_text: &str) -> Option<CodeRange> {
         let col = self.target_character as usize;
+        if col > line_text.len() {
+            return None;
+        }
 
         // Look for opening quote before cursor
-        for (i, ch) in line_text[..col].char_indices().rev() {
-            if ch == '"' || ch == '\'' || ch == '`' {
-                // Find closing quote after cursor
-                let quote = ch;
-                for (j, ch2) in line_text[col..].char_indices() {
-                    if ch2 == quote {
-                        return Some(CodeRange {
-                            start_line: self.target_line,
-                            start_col: i as u32,
-                            end_line: self.target_line,
-                            end_col: (col + j + 1) as u32,
-                        });
-                    }
-                }
+        // We need to find an unescaped quote
+        let mut opening_quote: Option<(char, usize)> = None;
+
+        for (i, ch) in line_text[..=col.min(line_text.len().saturating_sub(1))].char_indices().rev() {
+            if (ch == '"' || ch == '\'' || ch == '`') && !is_escaped(line_text, i) {
+                opening_quote = Some((ch, i));
                 break;
             }
         }
+
+        if let Some((quote_char, start_pos)) = opening_quote {
+            // Find the matching closing quote after cursor, skipping escaped quotes
+            let mut pos = col;
+            let chars: Vec<char> = line_text.chars().collect();
+
+            while pos < chars.len() {
+                if chars[pos] == quote_char && !is_escaped(line_text, pos) {
+                    // Found unescaped closing quote
+                    return Some(CodeRange {
+                        start_line: self.target_line,
+                        start_col: start_pos as u32,
+                        end_line: self.target_line,
+                        end_col: (pos + 1) as u32,
+                    });
+                }
+                pos += 1;
+            }
+        }
+
         None
     }
 
@@ -1117,10 +1321,11 @@ fn find_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange>
 /// - Literals in comments (e.g., the value in `// TODO: update rate from 0.08 to 0.10`)
 ///
 /// # Algorithm
-/// 1. Count quote characters before the position to determine if we're inside a string
-/// 2. If an odd number of quotes appear before the position, we're inside a string literal
-/// 3. Check for `//` comments; any position after the comment marker is invalid
-/// 4. Return true only if outside both strings and comments
+/// Uses a state machine to scan through the line character by character:
+/// 1. Tracks whether we're inside a string (and which quote type)
+/// 2. Properly handles escaped quotes (e.g., `"He said \"hi\""`)
+/// 3. Detects single-line comments (`//`)
+/// 4. Returns true only if the position is outside strings and comments
 ///
 /// # Arguments
 /// * `line` - The current line of code
@@ -1132,13 +1337,8 @@ fn find_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange>
 /// `false` if the position is inside a string or comment.
 ///
 /// # Limitations
-/// This function uses a simple quote-counting approach which works well for most cases but
-/// has edge cases:
-/// - Escaped quotes in strings may not be handled correctly (e.g., `"He said \"hi\""`)
-/// - Template literal syntax edge cases may exist (e.g., `${nested}` expressions)
-/// - Multi-line comments (`/* */`) are not detected (only single-line `//`)
-///
-/// For production use with edge-case handling, consider using the full AST via the SWC parser.
+/// - Multi-line comments (`/* */`) spanning multiple lines are not detected
+/// - Template literal expressions (`${...}`) are not specially handled
 ///
 /// # Examples
 /// ```
@@ -1150,32 +1350,78 @@ fn find_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange>
 ///
 /// // Invalid locations (inside comments):
 /// is_valid_literal_location("const x = 0; // rate is 42", 24, 2) -> false
+///
+/// // Handles escaped quotes correctly:
+/// is_valid_literal_location("const s = \"He said \\\"42\\\"\";", 20, 2) -> false
 /// ```
 ///
 /// # Called By
 /// - `find_literal_occurrences()` - Validates matches before including them in results
 #[allow(dead_code)]
 fn is_valid_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    // Count quotes before position to determine if we're inside a string literal.
-    // This works because quotes toggle "inside string" state as we scan left-to-right.
-    let before = &line[..pos];
-    let single_quotes = before.matches('\'').count();
-    let double_quotes = before.matches('"').count();
-    let backticks = before.matches('`').count();
-
-    // If an odd number of quotes appear before the position, we're inside that quote style
-    if single_quotes % 2 == 1 || double_quotes % 2 == 1 || backticks % 2 == 1 {
+    if pos > line.len() {
         return false;
     }
 
-    // Check for single-line comment marker. Anything after "//" is a comment.
-    if let Some(comment_pos) = line.find("//") {
-        if pos > comment_pos {
-            return false;
+    // State machine to track string context
+    #[derive(Debug, PartialEq)]
+    enum State {
+        Normal,
+        InSingleQuote,
+        InDoubleQuote,
+        InBacktick,
+        InComment,
+    }
+
+    let mut state = State::Normal;
+    let chars: Vec<char> = line.chars().collect();
+
+    for i in 0..pos {
+        if i >= chars.len() {
+            break;
+        }
+
+        let ch = chars[i];
+
+        match state {
+            State::Normal => {
+                // Check for comment start
+                if ch == '/' && i + 1 < chars.len() && chars[i + 1] == '/' {
+                    state = State::InComment;
+                    continue;
+                }
+
+                // Check for string start
+                match ch {
+                    '\'' if !is_escaped(line, i) => state = State::InSingleQuote,
+                    '"' if !is_escaped(line, i) => state = State::InDoubleQuote,
+                    '`' if !is_escaped(line, i) => state = State::InBacktick,
+                    _ => {}
+                }
+            }
+            State::InSingleQuote => {
+                if ch == '\'' && !is_escaped(line, i) {
+                    state = State::Normal;
+                }
+            }
+            State::InDoubleQuote => {
+                if ch == '"' && !is_escaped(line, i) {
+                    state = State::Normal;
+                }
+            }
+            State::InBacktick => {
+                if ch == '`' && !is_escaped(line, i) {
+                    state = State::Normal;
+                }
+            }
+            State::InComment => {
+                // Once in a comment, we stay in comment for the rest of the line
+            }
         }
     }
 
-    true
+    // Position is valid only if we're in Normal state (not in string or comment)
+    state == State::Normal
 }
 
 #[cfg(test)]
@@ -1218,5 +1464,136 @@ mod tests {
         let source = "const x = 42;\n";
         let result = plan_extract_constant(source, 0, 10, "answer", "test.ts");
         assert!(result.is_err(), "Should reject lowercase name");
+    }
+
+    // Edge case tests for numeric literals
+
+    #[test]
+    fn test_extract_constant_negative_number() {
+        let source = "const x = -42;\n";
+        let result = plan_extract_constant(source, 0, 11, "NEGATIVE_VALUE", "test.ts");
+        assert!(result.is_ok(), "Should extract negative number: {:?}", result);
+    }
+
+    #[test]
+    fn test_extract_constant_scientific_notation_lowercase() {
+        let source = "const x = 1e-5;\n";
+        let result = plan_extract_constant(source, 0, 11, "SMALL_VALUE", "test.ts");
+        assert!(result.is_ok(), "Should extract scientific notation (lowercase e): {:?}", result);
+    }
+
+    #[test]
+    fn test_extract_constant_scientific_notation_uppercase() {
+        let source = "const x = 2.5E10;\n";
+        let result = plan_extract_constant(source, 0, 12, "BIG_VALUE", "test.ts");
+        assert!(result.is_ok(), "Should extract scientific notation (uppercase E): {:?}", result);
+    }
+
+    #[test]
+    fn test_extract_constant_hexadecimal() {
+        let source = "const x = 0xFF;\n";
+        let result = plan_extract_constant(source, 0, 11, "HEX_VALUE", "test.ts");
+        assert!(result.is_ok(), "Should extract hexadecimal: {:?}", result);
+    }
+
+    #[test]
+    fn test_extract_constant_binary() {
+        let source = "const x = 0b1010;\n";
+        let result = plan_extract_constant(source, 0, 12, "BINARY_VALUE", "test.ts");
+        assert!(result.is_ok(), "Should extract binary: {:?}", result);
+    }
+
+    #[test]
+    fn test_extract_constant_octal() {
+        let source = "const x = 0o777;\n";
+        let result = plan_extract_constant(source, 0, 12, "OCTAL_VALUE", "test.ts");
+        assert!(result.is_ok(), "Should extract octal: {:?}", result);
+    }
+
+    // Edge case tests for string literals with escaped quotes
+
+    #[test]
+    fn test_extract_constant_string_with_escaped_quotes() {
+        let source = format!("{}\n", r#"const msg = "He said \"hello\"";"#);
+        let result = plan_extract_constant(&source, 0, 15, "GREETING", "test.ts");
+        assert!(result.is_ok(), "Should extract string with escaped quotes: {:?}", result);
+    }
+
+    #[test]
+    fn test_is_valid_literal_location_escaped_quotes() {
+        let line = r#"const s = "He said \"42\"";"#;
+        // Position 20 is inside the escaped quote area
+        assert!(!is_valid_literal_location(line, 20, 2), "Should detect inside string with escaped quotes");
+    }
+
+    #[test]
+    fn test_is_valid_literal_location_outside_string() {
+        let line = "const x = 42;";
+        assert!(is_valid_literal_location(line, 10, 2), "Should allow literal outside string");
+    }
+
+    #[test]
+    fn test_is_valid_literal_location_inside_comment() {
+        let line = "const x = 0; // rate is 42";
+        assert!(!is_valid_literal_location(line, 24, 2), "Should reject literal inside comment");
+    }
+
+    #[test]
+    fn test_find_literal_occurrences_skips_strings() {
+        let source = r#"const x = 42; const s = "42";"#;
+        let occurrences = find_literal_occurrences(source, "42");
+        // Should only find the numeric 42, not the string "42"
+        assert_eq!(occurrences.len(), 1, "Should find only numeric literal, not string");
+        assert_eq!(occurrences[0].start_col, 10, "Should find numeric 42 at correct position");
+    }
+
+    #[test]
+    fn test_find_literal_occurrences_skips_comments() {
+        let source = "const x = 42; // 42 in comment";
+        let occurrences = find_literal_occurrences(source, "42");
+        // Should only find the first 42, not the one in the comment
+        assert_eq!(occurrences.len(), 1, "Should skip literal in comment");
+    }
+
+    // Helper function tests
+
+    #[test]
+    fn test_is_escaped_helper() {
+        assert!(!is_escaped("hello", 0), "First char cannot be escaped");
+
+        // In "a\"b", position 2 is the quote, preceded by 1 backslash -> escaped
+        assert!(is_escaped(r#"a\"b"#, 2), "Quote after single backslash is escaped");
+
+        // In "a\\", position 2 is the second backslash, preceded by 1 backslash -> escaped
+        assert!(is_escaped(r#"a\\"#, 2), "Second backslash IS escaped by the first");
+
+        // In "a\\\", position 3 is the third backslash, preceded by 2 backslashes -> not escaped
+        assert!(!is_escaped(r#"a\\\"#, 3), "Third backslash preceded by 2 is not escaped");
+
+        // In "a\\\\", position 4 is the fourth backslash, preceded by 3 backslashes -> escaped
+        assert!(is_escaped(r#"a\\\\"#, 4), "Fourth backslash preceded by 3 is escaped");
+
+        // Test a quote after pairs of backslashes
+        assert!(!is_escaped(r#"a\\"#, 3), "Character after pair of backslashes is not escaped");
+        assert!(is_escaped(r#"a\\\"#, 4), "Character after 3 backslashes is escaped");
+    }
+
+    #[test]
+    fn test_is_valid_number_helper() {
+        // Valid numbers
+        assert!(is_valid_number("42"), "Should validate integer");
+        assert!(is_valid_number("-42"), "Should validate negative integer");
+        assert!(is_valid_number("3.14"), "Should validate float");
+        assert!(is_valid_number("1e-5"), "Should validate scientific notation");
+        assert!(is_valid_number("2.5E10"), "Should validate scientific notation with uppercase E");
+        assert!(is_valid_number("0xFF"), "Should validate hexadecimal");
+        assert!(is_valid_number("0b1010"), "Should validate binary");
+        assert!(is_valid_number("0o777"), "Should validate octal");
+
+        // Invalid numbers
+        assert!(!is_valid_number(""), "Should reject empty string");
+        assert!(!is_valid_number("abc"), "Should reject non-numeric string");
+        assert!(!is_valid_number("0x"), "Should reject incomplete hex");
+        assert!(!is_valid_number("0b"), "Should reject incomplete binary");
     }
 }
